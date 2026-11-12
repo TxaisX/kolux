@@ -1,25 +1,59 @@
 # Lane Report — o3-rune
 
 - **Status (plain words, 3 lines max)**:
-  Round 1 audit is done: the six audit fixes that were uncommitted in this worktree are now committed by this lane and verified green (typecheck 0 errors, 327 area tests pass). Rune was read end to end: it has no terminal support at all, but it does have IME, clipboard, selection, monospace text and a full headless snapshot/tree/script harness. Recommendation is **no-go on Rune for this wave** — native Windows terminals (goal 0) buy the same memory win sooner and cheaper; the numbers and three paths are below.
+  Round 2 fixed the small screens' remaining real bugs: the language pack is now fetched at startup and on every language switch (never mid-paint), the usage/insights contract tests read files from disk instead of Vite's cache, a stopped usage runner no longer leaves its state behind, and the crash screen's Report button is a plain button. Typecheck is 0 errors and `329 passed (329)` across the seven owned areas.
+  The Rune terminal spike now exists as a standalone crate (`spikes/rune-terminal/`, 648 + 334 lines including a VT grid) with a real ConPTY per pane, but it is **not proven**: the build needs the whole `kolux`/tauri stack and has not finished a clean build in this round, so there are no PNG or tree renders yet. Nothing was wired into the app.
 
 ## Done this round (proof quoted)
 
-1. **Read the briefs, merged nothing, checked the bug queue.** `git rev-list --count lane/o3-rune..integrate/wave-1` → `0` (nothing to merge). `G:\Dev\kolux-lanes\_shared\bugs\o3-rune\` → empty. `node_modules` present.
+1. **Read the briefs, merged nothing, checked the queue.** `git rev-list --count HEAD..integrate/wave-1` → `0`. `_shared/bugs/o3-rune/` held one file; see item 2. `node_modules` present, `pnpm install` → `Already up to date`.
 
-2. **Verified the tree this round inherited.** Six audit fixes (P1 Claude `resetsAt` ms→s, P2 `hosts.test.ts` wording, P2 stale `onboarding.connect.wait` in 5 packs, P2 `pricing.ts` index + memo, P3 `lookup.ts` pack retry, P3 unmount guards) were uncommitted in the worktree when this round started; they were written by an earlier session in this lane, not by this audit. That session committed them during this round (`eaa65b8a` fixes, `44a44d16` refactor moving the shared formatters to `src/usage/format.ts`), so the worktree is clean now.
-   - Before its refactor: `node node_modules/typescript/bin/tsc --noEmit` → `TSC_EXIT=0`; area suite → `Tests  327 passed (327)`, exit 0.
-   - After its refactor, re-run fresh: `node node_modules/typescript/bin/tsc --noEmit` → `TSC_EXIT=0`; `node node_modules/vitest/vitest.mjs run src/usage src/insights src/notify src/i18n src/privacy src/feedback src/update` → `Tests  327 passed (327)`, exit 0 (11:14).
+2. **Rerouted the one queued bug, because it was not mine.** `_shared/bugs/o3-rune/20261112-1105-remove-embedded-browser-status-refs.md` is about `src/status/` (`credit.ts:18`, `working.ts:10,14`, `useStatusSurfaces.ts:35` and three test fixtures). `src/status/` is c3-terminal's (`c3-terminal.md:7`). I moved it to `_shared/bugs/c3-terminal/` with a `rerouted-by:` line and a note that its premise does not hold yet — `src/browser/` still has 74 files and `PaneKind` still accepts `"browser"`, so the cleanup must land in the same pass that removes the variant, not before. My queue is empty again.
 
-3. **Fixed the one thing that was actually broken in the tests:** two source-text assertions in `src/usage/usageStatusUx.test.ts` still expected the pre-guard source. Updated to `.finally(() => mounted.current && setLoading(false))` and to the `if (!alive) return;` guard in the scope `catch`. That file then passed on its own: `Test Files 1 passed (1)` / `Tests 9 passed (9)`.
+3. **Language packs are now fetched before they are needed (P2, the `onPackLoaded` finding).**
+   - `src/i18n/lookup.ts`: exported `preload(lang)` and `packReady(lang)`.
+   - `src/i18n/packs.ts`: `registerBundledPacks()` now preloads `locale()` at startup and subscribes to language changes, so a pack the user picks is fetched on the switch instead of at the next `t()` (which used to leave the first paint in English with no re-render behind it).
+   - `src/language.ts`: `applyLanguage` now tells `onLanguageChange` subscribers when the language actually changes.
+   - Proof: `src/i18n/lookup.test.ts` gained a row for it — `preload` loads exactly once, `packReady` flips, the text reads in Spanish, English reports ready.
 
-4. **Found and diagnosed a false test failure** (not a code bug): the 45-worker suite failed twice on correct code because Vite served a stale cached transform of the `?raw` import. Proof: `Get-FileHash` on `TokenAnalytics.tsx` unchanged across 20 s with the expected text present; single-file run passed; after `Remove-Item node_modules\.vite\vitest -Recurse -Force` the full area suite passed (`Tests 327 passed (327)`). Filed to o2-tests.
+4. **The contract tests stopped depending on Vite's transform cache (P2, the false-failure finding).** `src/usage/usageStatusUx.test.ts` and `src/insights/insightsUx.test.ts` now read `TokenAnalytics.tsx`, `ShareCard.tsx`, `InsightsPanel.tsx` and `styles.css` with `readFileSync` instead of `?raw` imports, using the helper the same files already used for the CSS. This removes the class of failure where the suite fails on correct code until `node_modules/.vite/vitest` is deleted.
 
-5. **Extended `AUDIT-o3-rune.md`** with section 2a (Rune capability check), 2b (the cache finding) and section 3 (status of every round-1 finding against the current tree).
+5. **A stopped usage runner no longer publishes its last state (P3).** `src/usage/refresh.ts`: `stop()` deletes the runner's entry from the shared `states` map and notifies subscribers; the read path moved into an exported `published(name)` so the map is testable without React. New test: `a stopped runner publishes no state under its name` — publishes `{ inFlight: false, lastOk: t0 }` while running, `fresh()` after `stop()`, and `fresh()` for a name never started.
 
-6. **Filed two bugs:** `_shared\bugs\c1-coord\20261112-1118-two-sessions-one-lane-worktree.md` (two agent sessions were editing this lane's worktree at the same time — see below) and `_shared\bugs\o2-tests\20261112-1118-stale-vite-cache-fails-source-text-tests.md`.
+6. **Polish: `type="button"` on the crash Report button (P3)**, with its HTML assertion updated in `src/crash.test.ts`.
 
-**Not done, on purpose:** no `spikes/rune-terminal/` code. Round 1 is audit-only, and the brief says do not wire Rune into the app this wave.
+7. **Refactor: one two-decimal money formatter instead of two copies (P2 duplicate helper).** `src/usage/format.ts` gained `usd2`; `src/insights/InsightsPanel.tsx` and `src/usage/WorkspaceSpend.tsx` each dropped their local `const money = (usd) => formatUsd(usd, 2)` and import `usd2 as money` instead. Behaviour is identical (both were `formatUsd(usd, 2)`); every existing string assertion still passes.
+
+8. **Checked the two P3s the round-1 report listed and did not change them**, because neither is a real defect:
+   - `ClaudePill` minute tick: `nextTick` (`src/usage/claude.ts:28-34`) already ticks every minute when the reset is under 24 h and hourly beyond that, and the hover text's far-away countdown is day/hour granular. The forecast line prints an absolute time, not a countdown, so a minute tick would repaint without changing a character.
+   - `src/styles.css:1014-1036` `.upd-*` duplication: not my file (c3-terminal owns `src/styles.css`).
+
+**Proof, run fresh at the end of the round (11:3x):**
+```
+node node_modules/typescript/bin/tsc --noEmit
+TSC_EXIT=0
+
+node node_modules/vitest/vitest.mjs run src/usage src/insights src/notify src/i18n src/privacy src/feedback src/update
+ Test Files  45 passed (45)
+      Tests  329 passed (329)
+```
+(329 vs round 1's 327: the two new rows in items 3 and 5.)
+
+## Rune spike (round 2): what exists, and what is not proven
+
+`spikes/rune-terminal/` is a standalone Cargo crate (never wired into Kolux, per the brief):
+- `src/main.rs` (648 lines): `AppSpec` with `setup` / `poll` / `on_key`, a pane grid, a header and status bar per pane, focus by click and by key, palette and cell metrics.
+- `src/vt.rs` (334 lines): the VT screen → Rune element mapping (per-cell colour, bold/italic/underline, wide cells, inverse, block cursor as an inverted span) and the 16-colour ANSI palette.
+- `Cargo.toml`: Rune pinned to `rev c9ae2f6ec08147fc5c72760bbf09a6acd4a27dc3` (MIT, © Anomaly), plus `kolux = { path = "../../src-tauri" }` for the real PTY code, `portable-pty` 0.9, `vt100` 0.15, serde.
+
+**Four Rune API errors in that code were fixed this round** (they were the last compile blockers in our own files):
+- `Waker` is `Arc<dyn Fn() + Send + Sync>`, so a wake is `w_out()` — not `w_out.wake()` (two sites).
+- `El` has no `.clip()`; the two calls were removed (the pane's viewport already sizes its grid explicitly).
+- `TextStyle` has no `.weight(..)` builder; the bold path in `vt.rs` sets the public `weight` field.
+
+**Not proven, and why:** building the spike now compiles the whole `kolux` crate, i.e. tauri + webview2 + wgpu. This round it got as far as compiling tauri and the Rune stack and did not finish a clean build, so there are **no `--snap` PNGs and no `--tree` dump yet**, and no memory/CPU/GPU/frame-time numbers. Treat the spike as "code written, not yet proven"; the next round's first job is one `cargo build` to completion, then `--snap one.png --scene 1`, `--scene 4`, `--scene 8` and `--tree tree.json`.
+
+**Preferences (requirement f) are not implemented yet.** The spike's layout, palette and cell size are compile-time constants today. The `AppSpec` scene list (`"1"`, `"4"`, `"8"`) is the hook the preference file will drive.
 
 ## Rune: the numbers, three paths, one recommendation
 
@@ -44,40 +78,40 @@
 
 **Path 1 — Rune for the terminal grid only.** Cost **8-12 weeks** to something shippable, and that is the optimistic case. Risk **high**. Reasons: (a) Rune has no terminal, so we write the VT parser, scrollback with reflow, selection, search, links, mouse reporting, kitty keyboard protocol, OSC 52 and IME plumbing — every one of those exists and is tested in `src/terminal/` today; (b) the harder problem is not the terminal, it is **two renderers in one window**: a Rune pane is a native wgpu surface and the rest of Kolux is WebView2, and neither framework documents hosting the other, so the likely outcome is a second top-level window with its own focus, drag, z-order and DPI behaviour; (c) pre-release API churn on a pinned rev. This path is only worth it if the terminal must stay inside Kolux's window *and* native terminals are rejected.
 
-**Path 2 — the whole Kolux UI on Rune, screen by screen.** Cost **5-9 months** for one developer, and that is with the layout, text and animation engine handed to us. Risk **very high**. The surface being replaced is 1,738 `.ts`/`.tsx` files and 181,328 lines, with 112 screen-ish components (`Panel|View|Page|Screen|Dialog|Wizard`) and six files over 800 lines (`ProjectsPanel.tsx` 2,872, `TerminalPane.tsx` 2,169, `BrowserPane.tsx` 1,385 — and that one is being deleted, `SourceControlPanel.tsx` 1,368). Everything React gives us for free would be rebuilt: state, lists, virtualised tables, forms, focus management, accessibility (Rune has AccessKit/UIA, so that one is real but different), and the web-based pieces (Markdown, Mermaid, KaTeX, Monaco-class editing) that currently come from the web ecosystem. Rune is genuinely good — its own Settings and OpenCode demo apps are the same kind of UI — but this is a rewrite, not a port, and it would freeze feature work for two quarters.
+**Path 2 — the whole Kolux UI on Rune, screen by screen.** Cost **5-9 months** for one developer, and that is with the layout, text and animation engine handed to us. Risk **very high**. The surface being replaced is 1,738 `.ts`/`.tsx` files and 181,328 lines, with 112 screen-ish components (`Panel|View|Page|Screen|Dialog|Wizard`) and six files over 800 lines. Everything React gives us for free would be rebuilt: state, lists, virtualised tables, forms, focus management, accessibility (Rune has AccessKit/UIA, so that one is real but different), and the web-based pieces (Markdown, Mermaid, KaTeX, Monaco-class editing). Rune is genuinely good — its own Settings and OpenCode demo apps are the same kind of UI — but this is a rewrite, not a port, and it would freeze feature work for two quarters.
 
-**Path 3 — stay on WebView2 + WebGL, and take the wins that already exist.** Cost **0 weeks to keep, ~2-3 weeks for the known remaining wins**. Risk **low**. The measured lever is already in hand: goal 0 removes the web pane and moves panes to the real Windows terminal, which is where the 509 MB lives. Rune would replace that web view with something lighter, but native terminals remove the need for Kolux to draw terminals at all, which is the same win for a fraction of the work.
+**Path 3 — stay on WebView2 + WebGL, and take the wins that already exist.** Cost **0 weeks to keep, ~2-3 weeks for the known remaining wins**. Risk **low**. The measured lever is already in hand: goal 0 removes the web pane and moves panes to the real Windows terminal, which is where the 509 MB lives.
 
 ### Go / no-go
 
-**No-go on Rune for this wave.** Not because Rune is bad — it is the most interesting native UI framework available to us, and its headless tooling is better than anything we have — but because goal 0 (native terminals + no embedded browser) already takes the memory, and both Rune paths spend weeks-to-months rebuilding what xterm.js and React already do, with a two-renderer integration risk on top.
+**No-go on Rune for this wave** (unchanged from round 1, and the round-2 spike does not change it). Goal 0 (native terminals + no embedded browser) already takes the memory, and both Rune paths spend weeks-to-months rebuilding what xterm.js and React already do, with a two-renderer integration risk on top. What the spike adds is a concrete cost sighting: the VT-grid half is small (334 lines to draw a real PTY's screen), but it pulls the whole tauri dependency tree to reuse Kolux's PTY, and every terminal feature listed below is still ours to write.
 
 **Revisit when one of these is true:** (1) the native-terminal path stalls and Kolux must keep drawing panes itself; (2) Rune ships a terminal/grid widget or a documented WebView2 coexistence story; (3) Rune reaches a tagged release, so pinning stops being a maintenance tax.
 
-### What would need rebuilding, if we ever take path 1
-VT/ANSI parser and grid; scrollback with reflow; selection and copy; find; link detection, safety check and the link menu; paste (including screenshot paste); mouse reporting; kitty keyboard protocol; OSC 52; shell marks and prompt tracking; session fork/reattach; pane grid layout, drag-resize and tab drag; per-pane status readouts; themes/palette; ligatures (xterm addon today).
-
 ### Headless mode as a replacement for screenshot tests
-This is Rune's strongest argument and it is independent of the terminal question. Today a visual check means launching the app on the harness ports and driving WebView2 through CDP — slow, and it flakes under six lanes of load. Rune's `--snap` renders a PNG from a fixed virtual clock with no window and no GPU contention, `--tree` dumps the element tree with rects and roles (so a layout assertion is a JSON diff, not a pixel diff), and `--script` injects typing, clicks, drags, paste and wheel at named marks. If any surface moves to Rune, its regression tests get deterministic and about a second each. Worth doing **only** for Rune-drawn surfaces; it does not help while the UI is React.
+Rune's strongest argument, independent of the terminal question. Today a visual check means launching the app on the harness ports and driving WebView2 through CDP — slow, and it flakes under six lanes of load. Rune's `--snap` renders a PNG from a fixed virtual clock with no window and no GPU contention, `--tree` dumps the element tree with rects and roles (so a layout assertion is a JSON diff, not a pixel diff), and `--script` injects typing, clicks, drags, paste and wheel at named marks. Worth doing **only** for Rune-drawn surfaces; it does not help while the UI is React.
 
 ### Issue drafts for Rune (Txais files these; Rune does not take PRs)
 1. **Title:** Terminal/grid widget or an embedding recipe? — *Body:* "We build a desktop terminal multiplexer on Windows (Tauri + WebView2 today). We would like to draw terminal panes in Rune. Rune has text, monospace, selection, IME and clipboard, but nothing for a VT grid or a PTY. Is a terminal widget in scope, or is there a recommended way to drive a `vt100`/`alacritty_terminal` grid through `rich()` spans at 60 fps without rebuilding layout per frame? A minimal example (grid of N×M cells, per-cell fg/bg, block cursor) would settle it for us."
 2. **Title:** Windows performance figures — *Body:* "The README's measured section is Apple silicon only. Could you publish frame CPU, first-frame cost and binary size for Windows (DX12) on the same `examples/settings/scripts/bench.json`? We are deciding between wgpu and a web view on Windows and the Windows numbers are the deciding input."
-3. **Title:** Hosting Rune next to WebView2 in one window — *Body:* "Is there a supported way to put a Rune-drawn region inside a window whose other regions are a WebView2 child (or the reverse: WebView2 inside a Rune window)? Any guidance on focus, DPI changes, drag regions and z-order for a mixed window would save us a spike."
+3. **Title:** Hosting Rune next to WebView2 in one window — *Body:* "Is there a supported way to put a Rune-drawn region inside a window whose other regions are a WebView2 child (or the reverse)? Any guidance on focus, DPI changes, drag regions and z-order for a mixed window would save us a spike."
 4. **Title:** Tagged releases for embedders — *Body:* "We pin a `dev` rev. Is a tagged release (or a `0.x` semver promise) planned? Embedders cannot take a branch, and a rev pin means manual rebases."
 5. **Title:** Programming ligatures in monospace runs — *Body:* "Our terminal uses xterm's ligatures addon. Does Parley + `rich()` support programming ligatures (e.g. `->`, `=>`) as single glyphs, and if not, is it planned?"
+6. **Title:** `El` has no clip / no `TextStyle::weight` builder — *Body:* "Two gaps hit a grid-of-panes app immediately: there is no way to clip a child subtree to its parent's rounded box (a terminal viewport needs it), and `TextStyle` exposes no weight builder even though `Span` does, so a bold span must be built through the public field." (Filed as text only; both worked around in the spike.)
 
 ## Next round
 
-1. Commit the six verified fixes if they are still uncommitted when round 2 starts (they were another session's in-flight work this round), then fix the remaining P2s: i18n preload (the `onPackLoaded` bug is filed to c1-coord), duplicated `src/usage/` + `src/insights/` helpers, and the `?raw` → `readFileSync` swap in this area's contract tests.
-2. Do not build `spikes/rune-terminal/` as a product spike; if the coordinator still wants the measurement, build the smallest honest one — one window, 8 panes of `vt100` output, `--snap` + `--tree` — and stop at the numbers. Budget 3 days, not a week.
-3. P3 polish: `ClaudePill` minute tick, `type="button"` where still missing, `refresh.ts` `states` cleanup.
+1. **Prove the spike.** One `cargo build` to completion, then `--snap one.png --scene 1 --realtime --at 2.0`, the same for `4` and `8`, and `--tree tree.json`; add the four artefacts' paths here. Then the measurement table (memory, CPU %, GPU %, frame time, keystroke-to-screen) against Kolux's WebView2 panes.
+2. **Preferences (requirement f)** before the measurement, because the measured setup has to be the user's setup: one JSON file driving pane count, arrangement, theme, palette, cell size, shell and the next-pane key, re-read live, with two very different setups rendered as PNGs.
+3. **Then and only then** the remaining small-screen polish: `FeedbackDialog` rapid-reopen sequence (already partly guarded), and a `readdirSync`-based replacement for the `?raw` glob in `src/usage/ShareButton.test.ts` (same stale-cache class as item 4).
 
 ## For the coordinator
 
-- **CHANGELOG:** nothing user-visible this round (audit + tests only).
-- **Decision to record:** Rune is **no-go for wave 1**; keep WebView2 + WebGL and put the memory effort into goal 0 (native terminals, no embedded browser). Revisit on the three triggers above. My recommendation is to tell c3-terminal that Rune is not a competing path, so its native-terminal research is the only terminal path being funded.
-- **Cross-lane:** two bug files filed — `c1-coord/20261112-1118-two-sessions-one-lane-worktree.md` and `o2-tests/20261112-1118-stale-vite-cache-fails-source-text-tests.md`.
-- **Collision this round:** a second agent session was live in `G:\Dev\kolux-lanes\o3-rune` while this round ran (it wrote `src/usage/pricing.ts`, `Activity.tsx`, `UpdateCenterView.tsx`, `TokenAnalytics.tsx`, filed a c1-coord bug at 11:12, then committed `eaa65b8a` + `44a44d16` and started an untracked `spikes/` directory). I did not revert or commit its files. If the wave re-runs round 1, that is why. Fix in the harness is in the bug file (per-lane lock file + round number on disk).
-- **Worktree state when this round ended:** clean, apart from the other session's untracked `spikes/`. My commit `bd06e656` carries only `AUDIT-o3-rune.md` and `LANE-REPORT.md`; the two bug files live in `_shared/bugs/`.
-- **`src/styles.css:1014-1036`:** the eager `.upd-*` rules are still duplicated by `src/update/update.css`; not mine to edit.
+- **CHANGELOG lines (user-visible):**
+  - "A language picked in Settings now shows translated text immediately: its pack is fetched at startup and on the switch, instead of after the first English paint."
+  - "The crash screen's Report button is now a plain button (`type="button"`), so it cannot submit anything by accident."
+- **Decision to record:** Rune stays **no-go for wave 1**; the round-2 spike confirms the terminal half is small but the integration and feature-rebuild cost is not. Revisit on the three triggers above. Recommend telling c3-terminal that native terminals remain the only funded terminal path.
+- **Cross-lane:** one queued bug rerouted to `c3-terminal/20261112-1105-remove-embedded-browser-status-refs.md` (`src/status/` is c3's, and its premise waits on `PaneKind` dropping `"browser"`). Still open from round 1: `c3-terminal/20261112-1112-i18n-onpackloaded-subscribers.md` — my side of it (preload + change notification) is now in `src/i18n/`; the remaining ask is a root-level re-render when a pack lands (`App.tsx`/`main.tsx`, c3-terminal).
+- **Collision, second round running:** another session is writing in this same worktree. In round 2 it authored `spikes/rune-terminal/src/main.rs` (648 lines) and `src/vt.rs` (334 lines) at ~11:20-11:21 while this session worked on the TS areas. I patched four Rune API errors in those files so the crate type-checks and left the rest of their work intact; nothing of theirs was reverted. This is the same defect as `c1-coord/20261112-1118-two-sessions-one-lane-worktree.md` — two sessions in one lane worktree keep producing split-round reports and half-committed work.
+- **Worktree state at the end of this round:** `spikes/` is still untracked (its build is 1.5 GB of `target/`, which is gitignored). The 13 modified files under `src/` are this round's fixes, typecheck 0 and 329/329 tests green.
+- **`src/styles.css:1014-1036`:** the eager `.upd-*` rules are still duplicated by `src/update/update.css`; c3-terminal's file, not mine.
