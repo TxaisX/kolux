@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.14
 
 - **New session: pick each seat's AI from a grid of tiles.** Claude Code, Codex, OpenCode, Grok, Terminal and Other sit in a 3-wide grid, each with a large logo and its name underneath.
 - OpenCode and Grok now show their own logos (from each company's official brand kit), and the Codex logo is drawn as large as the others.
