@@ -1860,10 +1860,16 @@ impl Git {
         }
     }
 
-    /// Finds git on the path. Called once at startup; the version is shown to the user.
+    /// Finds git on the path; the version is shown to the user. The first version read is kept for
+    /// the process (c2-agents audit 22: every status read, auto-PR check and test used to start its
+    /// own `git --version`); a failed read is not kept, so a Git installed later is still found.
     pub fn detect() -> Result<Git, String> {
+        static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+        if let Some(v) = VERSION.get() {
+            return Ok(Git { version: v.clone() });
+        }
         let version = run(&["--version"], None).map_err(|e| format!("Git is not available: {e}"))?;
-        Ok(Git { version })
+        Ok(Git { version: VERSION.get_or_init(|| version).clone() })
     }
 
     /// The top-level folder of the repository that holds `path`, or an error if there is none.
