@@ -241,8 +241,9 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
 
   const act = (p: Promise<unknown>) => p.then(() => load()).catch((e) => fail(String(e)));
   // T-193-b: a Hermes or OpenClaw job is run, paused and deleted in its own tool, then the tools are asked again.
+  // `refresh` reads the list itself, so this path does not (audit N-32: one read, not two).
   const external = (a: Automation, action: "run" | "pause" | "resume" | "delete") =>
-    act(invoke("automation_external_act", { tool: a.source, action, id: a.jobId, input: null }).then(() => refresh()));
+    invoke("automation_external_act", { tool: a.source, action, id: a.jobId, input: null }).then(() => refresh()).catch((e) => fail(String(e)));
   const runNow = (a: Automation) => {
     setMenu(null);
     if (running.includes(a.id)) return; // the first ask is still on its way

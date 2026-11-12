@@ -95,9 +95,8 @@ const CODEX_COMMANDS: Array<[string, string]> = [
   ["theme", "Pick the color theme"],
 ];
 
-/** CHAT-019: the commands of `agent`. `reported` is the session's own command list, which replaces the built-in one when the session reports it. */
-export function commandsFor(agent: string | undefined, reported?: readonly string[] | null): Entry[] {
-  if (reported && reported.length > 0) return reported.map((n) => n.replace(/^\//, "")).filter(Boolean).map((name) => ({ kind: "command" as const, name, insert: `/${name}` }));
+/** CHAT-019: the built-in command list of `agent`. (A session's own list had a path in, but nothing ever filled it: audit N-27.) */
+export function commandsFor(agent: string | undefined): Entry[] {
   const list = isClaude(agent) ? CLAUDE_COMMANDS : agent === "codex" ? CODEX_COMMANDS : [];
   return list.map(([name, description]) => ({ kind: "command" as const, name, insert: `/${name}`, description }));
 }
@@ -164,13 +163,13 @@ export type Load<T> = { state: "idle" } | { state: "loading" } | { state: "ready
 /** CHAT-019: what the menu shows for a trigger, and the status lines under it. */
 export type Menu = { entries: Entry[]; notes: Array<{ text: string; retry?: "skills" | "files" }> };
 
-export type Sources = { agent: string | undefined; reported?: readonly string[] | null; skills: Load<Scan>; files: Load<string[]> };
+export type Sources = { agent: string | undefined; skills: Load<Scan>; files: Load<string[]> };
 
 export function menuFor(t: Trigger, s: Sources): Menu {
   const kinds = kindsFor(t, s.agent);
   const notes: Menu["notes"] = [];
   let all: Entry[] = [];
-  if (kinds.includes("command")) all = all.concat(commandsFor(s.agent, s.reported));
+  if (kinds.includes("command")) all = all.concat(commandsFor(s.agent));
   if (kinds.includes("skill")) {
     if (s.skills.state === "ready") {
       const skills = skillEntries(s.skills.value.skills, s.agent);
