@@ -115,9 +115,35 @@ proof. `scripts/feature-map.test.mjs` keeps it honest: the three mapped screens 
 node node_modules/vitest/vitest.mjs run scripts/
 ```
 
-## 10. `?raw` contract tests and the Vite cache (added round 3)
+## 10. `?raw` contract tests and the Vite cache (added round 3, workaround round 4)
 
 `tests/raw-contract-imports.md` lists all 75 test files that assert on source text read through Vite's `?raw`,
 grouped by area with the owning lane. Those transforms are cached, so a stale entry can fail a correct file or pass a
-changed one. Delete `node_modules/.vite` before a full-suite run until every area reads its file with `node:fs`
-(queued bug `20261112-1118`; the CI half is filed to `c1-coord`).
+changed one. **Run `npx vitest run --no-fsModuleCache`** (round 4: one flag, no file deletion) until every area reads its
+file with `node:fs` (queued bug `20261112-1118`; the CI half is filed to `c1-coord`). `scripts/raw-cache-probe.test.mjs`
+is the detector: it fails if a `?raw` import ever disagrees with the same file read from disk.
+
+## 11. The harness tests itself (added round 4)
+
+Three test files keep the harness from rotting the way the app used to:
+
+- `scripts/harness-imports.test.mjs` — every named import from a local module is really exported, every relative import
+  resolves, no shared constant is used without being declared or imported (this catches the round-4 `TID` bug that would
+  have failed every live proof), and a proof that another proof imports must carry its `pathToFileURL(process.argv[1])`
+  main guard so importing it cannot launch an app.
+- `scripts/feature-map.test.mjs` — the map's sections and verdict legend survive, and every `data-testid` it quotes still
+  exists in `src/`.
+- `scripts/raw-cache-probe.test.mjs` — see section 10.
+
+## 12. Latency (Goal 0, item 7, added round 4)
+
+`scripts/prove/live-latency.mjs` measures the three targets in the running app (keystroke → character < 16 ms, click →
+visible response < 50 ms, new session → ready prompt < 300 ms). It is a normal `live-*.mjs`, so the runner picks it up:
+
+```powershell
+node scripts/stress/run-all.mjs --instances 1 --only latency --timeout 20 --out G:/Temp/o2-latency
+```
+
+Samples are taken in the page with `performance.now()`, so they measure Kolux's path, not the harness's. Read the log
+(`logs/live-latency.log`) for every sample, not just the median, and rerun on a quiet machine before believing a
+regression: a shared PC moves these numbers by 2-3x. The current numbers live in `docs/guide/feature-map.md`, section 4.

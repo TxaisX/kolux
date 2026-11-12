@@ -283,6 +283,22 @@ export const LIVE_LOGS = LOGS;
 export const TERM = "section.pane[data-agent]";
 export const SHELL = 'section.pane[data-agent="shell"]';
 
+// The controls the harness drives, by their stable attributes in src/. One place, so a renamed id is one edit here
+// instead of a hunt through the proofs. Round 4: this map was missing altogether — `startPlain()` referred to `TID`
+// thirteen times and the name was declared nowhere, so every live proof would have died on its first line with
+// "TID is not defined" the moment the lane finally launched the app. src/ references are the 2026-11-12 tree.
+export const TID = {
+  addProject: '[data-testid="sidebar-add-project"]', // src/projects/ProjectsPanel.tsx:2520
+  addByPath: "[data-add-by-path]", // src/projects/AddProject.tsx:159
+  folderInput: 'input[aria-label="project folder"]', // src/projects/ProjectsPanel.tsx:2582
+  chooser: '[data-testid="chooser-pane"]', // src/launch/ChooserPane.tsx:311
+  seats: ".seats", // src/launch/ChooserPane.tsx:503
+  seatTerminal: '[data-testid="seat-agent-terminal"]', // src/launch/ChooserPane.tsx:542
+  chooserStart: '[data-testid="chooser-start"]', // src/launch/ChooserPane.tsx:673
+  paneNewSession: '[data-testid="pane-new-session"]', // src/terminal/TerminalPane.tsx:1887
+  newSessionMenu: '[data-testid="new-session-menu"]', // src/launch/PlusMenu.tsx:144
+};
+
 /** A stand-in claude.cmd: prints a banner and stays up (no network, no sign-in). body = extra batch lines run after the banner. */
 export function writeStandinClaude(dir, body = []) {
   mkdirSync(dir, { recursive: true });

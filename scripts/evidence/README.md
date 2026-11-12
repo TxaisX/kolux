@@ -22,5 +22,8 @@ Proof screenshots for `evidence/<task>.png` come from the running app, never fro
   mounting, or a window that is off-screen, no longer fails the run on the first attempt.
 - **Vitest and `?raw` contract tests.** A source-text test that imports `./X.tsx?raw` reads Vite's transform cache: after
   editing `X.tsx` a second run in the same `node_modules/.vite` can see the old text and fail on correct code (seen in
-  lane o3-rune, 2026-11-12). Clear `node_modules/.vite` before a full-suite run, or have those tests read the file with
+  lane o3-rune, 2026-11-12). **One flag is the workaround: `npx vitest run --no-fsModuleCache`** stops Vitest reusing the
+  transform, so no cache clear is needed (round 4, vitest 5.1.0: `--help` lists `--fsModuleCache` default `true`, and
+  `--clearCache` wipes it without running tests). `scripts/raw-cache-probe.test.mjs` fails if a `?raw` import ever
+  disagrees with the file on disk, which is this bug's signature. The permanent fix is still for those tests to read with
   `node:fs` like `src/usage/usageStatusUx.test.ts` already does for `styles.css`.
