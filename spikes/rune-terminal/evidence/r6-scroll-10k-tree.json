@@ -1,0 +1,5937 @@
+{
+  "t": 3.0,
+  "anim_t": 2.9999999999999942,
+  "viewport": [
+    1440.0,
+    900.0
+  ],
+  "scale": 2.0,
+  "dark_system": true,
+  "reduced_motion": false,
+  "time_scale": 1.0,
+  "animating": false,
+  "elements": [
+    {
+      "path": "hist-root",
+      "role": "group",
+      "rect": [
+        0.0,
+        0.0,
+        1440.0,
+        900.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#0b0d10ff",
+      "key": "hist-root"
+    },
+    {
+      "path": "hist-root/hist-hdr",
+      "role": "group",
+      "rect": [
+        8.0,
+        8.0,
+        1424.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#16191fff",
+      "key": "hist-hdr"
+    },
+    {
+      "path": "hist-root/hist-hdr/#0",
+      "role": "text",
+      "rect": [
+        16.0,
+        8.0,
+        97.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "Scrollback probe",
+      "color": "#f1f5f9ff"
+    },
+    {
+      "path": "hist-root/hist-hdr/#1",
+      "role": "text",
+      "rect": [
+        121.5,
+        8.0,
+        167.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "10000 rows · 96 cols · 13.0 pt",
+      "color": "#94a3b8ff"
+    },
+    {
+      "path": "hist-root/hist-hdr/#2",
+      "role": "group",
+      "rect": [
+        297.0,
+        8.0,
+        1087.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000"
+    },
+    {
+      "path": "hist-root/hist-hdr/#3",
+      "role": "text",
+      "rect": [
+        1392.5,
+        8.0,
+        31.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "static",
+      "color": "#94a3b8ff"
+    },
+    {
+      "path": "hist-root/hist-vp",
+      "role": "group",
+      "rect": [
+        8.0,
+        38.0,
+        1424.0,
+        824.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#101216ff",
+      "key": "hist-vp"
+    },
+    {
+      "path": "hist-root/hist-vp/hist",
+      "role": "group",
+      "rect": [
+        14.0,
+        -1622.0,
+        1412.0,
+        2484.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "hist",
+      "target": [
+        14.0,
+        44.0,
+        1412.0,
+        180000.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9862",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1622.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9862",
+      "target": [
+        14.0,
+        177560.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9863",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1604.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9863",
+      "target": [
+        14.0,
+        177578.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9864",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1586.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9864",
+      "target": [
+        14.0,
+        177596.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9865",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1568.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9865",
+      "target": [
+        14.0,
+        177614.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9866",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1550.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9866",
+      "target": [
+        14.0,
+        177632.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9867",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1532.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9867",
+      "target": [
+        14.0,
+        177650.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9868",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1514.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9868",
+      "target": [
+        14.0,
+        177668.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9869",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1496.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9869",
+      "target": [
+        14.0,
+        177686.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9870",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1478.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9870",
+      "target": [
+        14.0,
+        177704.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9871",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1460.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9871",
+      "target": [
+        14.0,
+        177722.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9872",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1442.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9872",
+      "target": [
+        14.0,
+        177740.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9873",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1424.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9873",
+      "target": [
+        14.0,
+        177758.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9874",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1406.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9874",
+      "target": [
+        14.0,
+        177776.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9875",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1388.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9875",
+      "target": [
+        14.0,
+        177794.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9876",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1370.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9876",
+      "target": [
+        14.0,
+        177812.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9877",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1352.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9877",
+      "target": [
+        14.0,
+        177830.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9878",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1334.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9878",
+      "target": [
+        14.0,
+        177848.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9879",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1316.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9879",
+      "target": [
+        14.0,
+        177866.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9880",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1298.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9880",
+      "target": [
+        14.0,
+        177884.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9881",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1280.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9881",
+      "target": [
+        14.0,
+        177902.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9882",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1262.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9882",
+      "target": [
+        14.0,
+        177920.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9883",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1244.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9883",
+      "target": [
+        14.0,
+        177938.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9884",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1226.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9884",
+      "target": [
+        14.0,
+        177956.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9885",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1208.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9885",
+      "target": [
+        14.0,
+        177974.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9886",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1190.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9886",
+      "target": [
+        14.0,
+        177992.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9887",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1172.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9887",
+      "target": [
+        14.0,
+        178010.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9888",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1154.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9888",
+      "target": [
+        14.0,
+        178028.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9889",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1136.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9889",
+      "target": [
+        14.0,
+        178046.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9890",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1118.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9890",
+      "target": [
+        14.0,
+        178064.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9891",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1100.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9891",
+      "target": [
+        14.0,
+        178082.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9892",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1082.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9892",
+      "target": [
+        14.0,
+        178100.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9893",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1064.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9893",
+      "target": [
+        14.0,
+        178118.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9894",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1046.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9894",
+      "target": [
+        14.0,
+        178136.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9895",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1028.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9895",
+      "target": [
+        14.0,
+        178154.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9896",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -1010.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9896",
+      "target": [
+        14.0,
+        178172.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9897",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -992.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9897",
+      "target": [
+        14.0,
+        178190.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9898",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -974.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9898",
+      "target": [
+        14.0,
+        178208.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9899",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -956.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9899",
+      "target": [
+        14.0,
+        178226.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9900",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -938.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9900",
+      "target": [
+        14.0,
+        178244.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9901",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -920.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9901",
+      "target": [
+        14.0,
+        178262.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9902",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -902.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9902",
+      "target": [
+        14.0,
+        178280.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9903",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -884.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9903",
+      "target": [
+        14.0,
+        178298.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9904",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -866.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9904",
+      "target": [
+        14.0,
+        178316.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9905",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -848.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9905",
+      "target": [
+        14.0,
+        178334.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9906",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -830.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9906",
+      "target": [
+        14.0,
+        178352.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9907",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -812.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9907",
+      "target": [
+        14.0,
+        178370.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9908",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -794.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9908",
+      "target": [
+        14.0,
+        178388.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9909",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -776.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9909",
+      "target": [
+        14.0,
+        178406.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9910",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -758.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9910",
+      "target": [
+        14.0,
+        178424.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9911",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -740.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9911",
+      "target": [
+        14.0,
+        178442.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9912",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -722.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9912",
+      "target": [
+        14.0,
+        178460.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9913",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -704.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9913",
+      "target": [
+        14.0,
+        178478.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9914",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -686.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9914",
+      "target": [
+        14.0,
+        178496.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9915",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -668.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9915",
+      "target": [
+        14.0,
+        178514.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9916",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -650.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9916",
+      "target": [
+        14.0,
+        178532.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9917",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -632.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9917",
+      "target": [
+        14.0,
+        178550.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9918",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -614.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9918",
+      "target": [
+        14.0,
+        178568.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9919",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -596.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9919",
+      "target": [
+        14.0,
+        178586.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9920",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -578.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9920",
+      "target": [
+        14.0,
+        178604.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9921",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -560.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9921",
+      "target": [
+        14.0,
+        178622.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9922",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -542.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9922",
+      "target": [
+        14.0,
+        178640.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9923",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -524.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9923",
+      "target": [
+        14.0,
+        178658.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9924",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -506.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9924",
+      "target": [
+        14.0,
+        178676.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9925",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -488.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9925",
+      "target": [
+        14.0,
+        178694.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9926",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -470.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9926",
+      "target": [
+        14.0,
+        178712.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9927",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -452.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9927",
+      "target": [
+        14.0,
+        178730.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9928",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -434.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9928",
+      "target": [
+        14.0,
+        178748.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9929",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -416.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9929",
+      "target": [
+        14.0,
+        178766.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9930",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -398.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9930",
+      "target": [
+        14.0,
+        178784.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9931",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -380.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9931",
+      "target": [
+        14.0,
+        178802.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9932",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -362.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9932",
+      "target": [
+        14.0,
+        178820.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9933",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -344.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9933",
+      "target": [
+        14.0,
+        178838.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9934",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -326.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9934",
+      "target": [
+        14.0,
+        178856.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9935",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -308.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9935",
+      "target": [
+        14.0,
+        178874.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9936",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -290.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9936",
+      "target": [
+        14.0,
+        178892.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9937",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -272.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9937",
+      "target": [
+        14.0,
+        178910.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9938",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -254.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9938",
+      "target": [
+        14.0,
+        178928.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9939",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -236.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9939",
+      "target": [
+        14.0,
+        178946.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9940",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -218.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9940",
+      "target": [
+        14.0,
+        178964.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9941",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -200.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9941",
+      "target": [
+        14.0,
+        178982.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9942",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -182.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9942",
+      "target": [
+        14.0,
+        179000.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9943",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -164.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9943",
+      "target": [
+        14.0,
+        179018.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9944",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -146.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9944",
+      "target": [
+        14.0,
+        179036.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9945",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -128.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9945",
+      "target": [
+        14.0,
+        179054.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9946",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -110.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9946",
+      "target": [
+        14.0,
+        179072.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9947",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -92.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9947",
+      "target": [
+        14.0,
+        179090.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9948",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -74.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9948",
+      "target": [
+        14.0,
+        179108.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9949",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -56.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9949",
+      "target": [
+        14.0,
+        179126.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9950",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -38.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9950",
+      "target": [
+        14.0,
+        179144.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9951",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -20.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9951",
+      "target": [
+        14.0,
+        179162.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9952",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        -2.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9952",
+      "target": [
+        14.0,
+        179180.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9953",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        16.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9953",
+      "target": [
+        14.0,
+        179198.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9954",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        34.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9954",
+      "target": [
+        14.0,
+        179216.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9955",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        52.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9955",
+      "target": [
+        14.0,
+        179234.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9956",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        70.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9956",
+      "target": [
+        14.0,
+        179252.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9957",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        88.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9957",
+      "target": [
+        14.0,
+        179270.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9958",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        106.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9958",
+      "target": [
+        14.0,
+        179288.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9959",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        124.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9959",
+      "target": [
+        14.0,
+        179306.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9960",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        142.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9960",
+      "target": [
+        14.0,
+        179324.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9961",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        160.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9961",
+      "target": [
+        14.0,
+        179342.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9962",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        178.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9962",
+      "target": [
+        14.0,
+        179360.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9963",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        196.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9963",
+      "target": [
+        14.0,
+        179378.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9964",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        214.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9964",
+      "target": [
+        14.0,
+        179396.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9965",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        232.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9965",
+      "target": [
+        14.0,
+        179414.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9966",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        250.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9966",
+      "target": [
+        14.0,
+        179432.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9967",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        268.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9967",
+      "target": [
+        14.0,
+        179450.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9968",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        286.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9968",
+      "target": [
+        14.0,
+        179468.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9969",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        304.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9969",
+      "target": [
+        14.0,
+        179486.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9970",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        322.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9970",
+      "target": [
+        14.0,
+        179504.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9971",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        340.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9971",
+      "target": [
+        14.0,
+        179522.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9972",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        358.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9972",
+      "target": [
+        14.0,
+        179540.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9973",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        376.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9973",
+      "target": [
+        14.0,
+        179558.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9974",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        394.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9974",
+      "target": [
+        14.0,
+        179576.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9975",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        412.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9975",
+      "target": [
+        14.0,
+        179594.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9976",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        430.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9976",
+      "target": [
+        14.0,
+        179612.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9977",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        448.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9977",
+      "target": [
+        14.0,
+        179630.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9978",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        466.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9978",
+      "target": [
+        14.0,
+        179648.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9979",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        484.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9979",
+      "target": [
+        14.0,
+        179666.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9980",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        502.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9980",
+      "target": [
+        14.0,
+        179684.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9981",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        520.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9981",
+      "target": [
+        14.0,
+        179702.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9982",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        538.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9982",
+      "target": [
+        14.0,
+        179720.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9983",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        556.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9983",
+      "target": [
+        14.0,
+        179738.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9984",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        574.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9984",
+      "target": [
+        14.0,
+        179756.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9985",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        592.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9985",
+      "target": [
+        14.0,
+        179774.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9986",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        610.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9986",
+      "target": [
+        14.0,
+        179792.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9987",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        628.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9987",
+      "target": [
+        14.0,
+        179810.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9988",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        646.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9988",
+      "target": [
+        14.0,
+        179828.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9989",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        664.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9989",
+      "target": [
+        14.0,
+        179846.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9990",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        682.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9990",
+      "target": [
+        14.0,
+        179864.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9991",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        700.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9991",
+      "target": [
+        14.0,
+        179882.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9992",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        718.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9992",
+      "target": [
+        14.0,
+        179900.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9993",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        736.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9993",
+      "target": [
+        14.0,
+        179918.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9994",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        754.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9994",
+      "target": [
+        14.0,
+        179936.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9995",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        772.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9995",
+      "target": [
+        14.0,
+        179954.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9996",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        790.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9996",
+      "target": [
+        14.0,
+        179972.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9997",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        808.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9997",
+      "target": [
+        14.0,
+        179990.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9998",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        826.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9998",
+      "target": [
+        14.0,
+        180008.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-vp/hist/h9999",
+      "role": "terminal",
+      "rect": [
+        14.0,
+        844.0,
+        731.25,
+        18.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "h9999",
+      "target": [
+        14.0,
+        180026.0,
+        731.25,
+        18.0
+      ]
+    },
+    {
+      "path": "hist-root/hist-status",
+      "role": "group",
+      "rect": [
+        8.0,
+        868.0,
+        1424.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#16191fff",
+      "key": "hist-status"
+    },
+    {
+      "path": "hist-root/hist-status/#0",
+      "role": "text",
+      "rect": [
+        16.0,
+        868.0,
+        272.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "Kolux Rune Spike · scrollback · 0 added this run",
+      "color": "#f1f5f9ff"
+    },
+    {
+      "path": "hist-root/hist-status/#1",
+      "role": "group",
+      "rect": [
+        300.0,
+        868.0,
+        1004.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000"
+    },
+    {
+      "path": "hist-root/hist-status/#2",
+      "role": "text",
+      "rect": [
+        1316.5,
+        868.0,
+        107.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "virtualize + growth",
+      "color": "#94a3b8ff"
+    }
+  ],
+  "warnings": [],
+  "title": "Kolux Rune Terminal Spike",
+  "accessibility": {
+    "role": "window",
+    "name": "Kolux Rune Terminal Spike",
+    "bounds": [
+      0.0,
+      0.0,
+      1440.0,
+      900.0
+    ],
+    "children": [
+      {
+        "role": "group",
+        "key": "hist-root",
+        "bounds": [
+          0.0,
+          0.0,
+          1440.0,
+          900.0
+        ],
+        "children": [
+          {
+            "role": "group",
+            "key": "hist-hdr",
+            "bounds": [
+              8.0,
+              8.0,
+              1424.0,
+              24.0
+            ],
+            "children": [
+              {
+                "role": "label",
+                "name": "Scrollback probe",
+                "bounds": [
+                  16.0,
+                  8.0,
+                  97.5,
+                  24.0
+                ]
+              },
+              {
+                "role": "label",
+                "name": "10000 rows · 96 cols · 13.0 pt",
+                "bounds": [
+                  121.5,
+                  8.0,
+                  167.5,
+                  24.0
+                ]
+              },
+              {
+                "role": "label",
+                "name": "static",
+                "bounds": [
+                  1392.5,
+                  8.0,
+                  31.5,
+                  24.0
+                ]
+              }
+            ]
+          },
+          {
+            "role": "scroll-view",
+            "key": "hist-vp",
+            "states": [
+              "clips"
+            ],
+            "actions": [
+              "scroll-up",
+              "scroll-down",
+              "set-scroll-offset"
+            ],
+            "bounds": [
+              8.0,
+              38.0,
+              1424.0,
+              824.0
+            ],
+            "scroll": [
+              0.0,
+              179182.0,
+              179182.0
+            ],
+            "children": [
+              {
+                "role": "group",
+                "key": "hist",
+                "setSize": 10000,
+                "actions": [
+                  "scroll-into-view"
+                ],
+                "bounds": [
+                  14.0,
+                  -1622.0,
+                  1412.0,
+                  2484.0
+                ],
+                "children": [
+                  {
+                    "role": "terminal",
+                    "key": "h9862",
+                    "position": 9863,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1622.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9863",
+                    "position": 9864,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1604.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9864",
+                    "position": 9865,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1586.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9865",
+                    "position": 9866,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1568.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9866",
+                    "position": 9867,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1550.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9867",
+                    "position": 9868,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1532.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9868",
+                    "position": 9869,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1514.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9869",
+                    "position": 9870,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1496.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9870",
+                    "position": 9871,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1478.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9871",
+                    "position": 9872,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1460.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9872",
+                    "position": 9873,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1442.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9873",
+                    "position": 9874,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1424.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9874",
+                    "position": 9875,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1406.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9875",
+                    "position": 9876,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1388.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9876",
+                    "position": 9877,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1370.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9877",
+                    "position": 9878,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1352.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9878",
+                    "position": 9879,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1334.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9879",
+                    "position": 9880,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1316.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9880",
+                    "position": 9881,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1298.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9881",
+                    "position": 9882,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1280.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9882",
+                    "position": 9883,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1262.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9883",
+                    "position": 9884,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1244.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9884",
+                    "position": 9885,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1226.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9885",
+                    "position": 9886,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1208.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9886",
+                    "position": 9887,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1190.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9887",
+                    "position": 9888,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1172.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9888",
+                    "position": 9889,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1154.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9889",
+                    "position": 9890,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1136.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9890",
+                    "position": 9891,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1118.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9891",
+                    "position": 9892,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1100.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9892",
+                    "position": 9893,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1082.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9893",
+                    "position": 9894,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1064.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9894",
+                    "position": 9895,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1046.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9895",
+                    "position": 9896,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1028.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9896",
+                    "position": 9897,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -1010.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9897",
+                    "position": 9898,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -992.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9898",
+                    "position": 9899,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -974.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9899",
+                    "position": 9900,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -956.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9900",
+                    "position": 9901,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -938.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9901",
+                    "position": 9902,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -920.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9902",
+                    "position": 9903,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -902.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9903",
+                    "position": 9904,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -884.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9904",
+                    "position": 9905,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -866.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9905",
+                    "position": 9906,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -848.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9906",
+                    "position": 9907,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -830.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9907",
+                    "position": 9908,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -812.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9908",
+                    "position": 9909,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -794.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9909",
+                    "position": 9910,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -776.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9910",
+                    "position": 9911,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -758.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9911",
+                    "position": 9912,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -740.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9912",
+                    "position": 9913,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -722.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9913",
+                    "position": 9914,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -704.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9914",
+                    "position": 9915,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -686.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9915",
+                    "position": 9916,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -668.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9916",
+                    "position": 9917,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -650.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9917",
+                    "position": 9918,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -632.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9918",
+                    "position": 9919,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -614.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9919",
+                    "position": 9920,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -596.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9920",
+                    "position": 9921,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -578.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9921",
+                    "position": 9922,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -560.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9922",
+                    "position": 9923,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -542.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9923",
+                    "position": 9924,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -524.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9924",
+                    "position": 9925,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -506.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9925",
+                    "position": 9926,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -488.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9926",
+                    "position": 9927,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -470.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9927",
+                    "position": 9928,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -452.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9928",
+                    "position": 9929,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -434.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9929",
+                    "position": 9930,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -416.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9930",
+                    "position": 9931,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -398.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9931",
+                    "position": 9932,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -380.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9932",
+                    "position": 9933,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -362.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9933",
+                    "position": 9934,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -344.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9934",
+                    "position": 9935,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -326.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9935",
+                    "position": 9936,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -308.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9936",
+                    "position": 9937,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -290.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9937",
+                    "position": 9938,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -272.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9938",
+                    "position": 9939,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -254.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9939",
+                    "position": 9940,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -236.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9940",
+                    "position": 9941,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -218.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9941",
+                    "position": 9942,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -200.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9942",
+                    "position": 9943,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -182.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9943",
+                    "position": 9944,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -164.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9944",
+                    "position": 9945,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -146.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9945",
+                    "position": 9946,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -128.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9946",
+                    "position": 9947,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -110.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9947",
+                    "position": 9948,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -92.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9948",
+                    "position": 9949,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -74.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9949",
+                    "position": 9950,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -56.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9950",
+                    "position": 9951,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -38.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9951",
+                    "position": 9952,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -20.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9952",
+                    "position": 9953,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      -2.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9953",
+                    "position": 9954,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      16.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9954",
+                    "position": 9955,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      34.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9955",
+                    "position": 9956,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      52.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9956",
+                    "position": 9957,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      70.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9957",
+                    "position": 9958,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      88.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9958",
+                    "position": 9959,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      106.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9959",
+                    "position": 9960,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      124.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9960",
+                    "position": 9961,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      142.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9961",
+                    "position": 9962,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      160.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9962",
+                    "position": 9963,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      178.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9963",
+                    "position": 9964,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      196.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9964",
+                    "position": 9965,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      214.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9965",
+                    "position": 9966,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      232.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9966",
+                    "position": 9967,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      250.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9967",
+                    "position": 9968,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      268.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9968",
+                    "position": 9969,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      286.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9969",
+                    "position": 9970,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      304.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9970",
+                    "position": 9971,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      322.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9971",
+                    "position": 9972,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      340.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9972",
+                    "position": 9973,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      358.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9973",
+                    "position": 9974,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      376.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9974",
+                    "position": 9975,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      394.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9975",
+                    "position": 9976,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      412.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9976",
+                    "position": 9977,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      430.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9977",
+                    "position": 9978,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      448.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9978",
+                    "position": 9979,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      466.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9979",
+                    "position": 9980,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      484.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9980",
+                    "position": 9981,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      502.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9981",
+                    "position": 9982,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      520.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9982",
+                    "position": 9983,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      538.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9983",
+                    "position": 9984,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      556.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9984",
+                    "position": 9985,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      574.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9985",
+                    "position": 9986,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      592.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9986",
+                    "position": 9987,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      610.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9987",
+                    "position": 9988,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      628.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9988",
+                    "position": 9989,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      646.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9989",
+                    "position": 9990,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      664.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9990",
+                    "position": 9991,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      682.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9991",
+                    "position": 9992,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      700.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9992",
+                    "position": 9993,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      718.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9993",
+                    "position": 9994,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      736.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9994",
+                    "position": 9995,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      754.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9995",
+                    "position": 9996,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      772.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9996",
+                    "position": 9997,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      790.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9997",
+                    "position": 9998,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      808.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9998",
+                    "position": 9999,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      826.0,
+                      731.3,
+                      18.0
+                    ]
+                  },
+                  {
+                    "role": "terminal",
+                    "key": "h9999",
+                    "position": 10000,
+                    "actions": [
+                      "scroll-into-view"
+                    ],
+                    "bounds": [
+                      14.0,
+                      844.0,
+                      731.3,
+                      18.0
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "role": "group",
+            "key": "hist-status",
+            "bounds": [
+              8.0,
+              868.0,
+              1424.0,
+              24.0
+            ],
+            "children": [
+              {
+                "role": "label",
+                "name": "Kolux Rune Spike · scrollback · 0 added this run",
+                "bounds": [
+                  16.0,
+                  868.0,
+                  272.0,
+                  24.0
+                ]
+              },
+              {
+                "role": "label",
+                "name": "virtualize + growth",
+                "bounds": [
+                  1316.5,
+                  868.0,
+                  107.5,
+                  24.0
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "role": "status",
+        "states": [
+          "live-polite"
+        ],
+        "bounds": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ]
+      }
+    ]
+  }
+}

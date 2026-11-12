@@ -1,4 +1,5 @@
 mod prefs;
+mod scrollback;
 mod vt;
 
 use std::cell::RefCell;
@@ -128,10 +129,13 @@ struct AppState {
     looks: Vec<PaneLook>,
     fast_cmd: bool,
     no_pty: bool,
+    /// `--scrollback N`: the history-probe scene instead of the pty grid (see `scrollback.rs`).
+    hist: Option<scrollback::Scrollback>,
     bench: BenchState,
 }
 
 /// A pane's resolved drawing recipe: what `PaneLook::from` measured out of one `prefs::Look`.
+#[derive(Clone)]
 struct PaneLook {
     style: TextStyle,
     cell_w: f32,
@@ -181,7 +185,7 @@ impl Default for AppState {
     fn default() -> Self {
         let args = rune::extra_args();
         let mut prefs = Prefs::default();
-        if let Some(n) = arg_value(&args, "--panes").and_then(|v| v.parse::<usize>().ok()).filter(|&n| (1..=32).contains(&n)) {
+        if let Some(n) = arg_value(args, "--panes").and_then(|v| v.parse::<usize>().ok()).filter(|&n| (1..=32).contains(&n)) {
             prefs.layout.panes = n;
         }
         if args.iter().any(|a| a == "--no-banner") {
@@ -191,11 +195,15 @@ impl Default for AppState {
         let no_pty = args.iter().any(|a| a == "--no-pty");
         let bench = args.iter().any(|a| a == "--bench");
         let probe = args.iter().any(|a| a == "--probe");
+        let scrollback = arg_value(args, "--scrollback")
+            .and_then(|v| v.parse::<usize>().ok())
+            .filter(|&n| (100..=1_000_000).contains(&n));
+        let stream = !args.iter().any(|a| a == "--no-stream");
 
         // A prefs file on the command line is loaded before the first frame. A file that will not
         // parse must not take the window down: the built-in defaults stay live and the reason is
         // shown in the status bar, and the watcher keeps trying.
-        let prefs_path = arg_value(&args, "--prefs").map(PathBuf::from);
+        let prefs_path = arg_value(args, "--prefs").map(PathBuf::from);
         let mut prefs_error = None;
         let resolved = match &prefs_path {
             Some(path) => match Prefs::load(path).and_then(|p| p.resolve()) {
@@ -223,9 +231,21 @@ impl Default for AppState {
             looks: Vec::new(),
             fast_cmd,
             no_pty,
+            hist: None,
             bench: BenchState::new(bench, probe),
         };
         state.apply_prefs();
+        if let Some(n) = scrollback {
+            let look = state.look(0).clone();            state.hist = Some(scrollback::Scrollback::new(n, &look, stream));
+            println!(
+                "SCROLLBACK rows={} cols={} cell={:.2}x{:.2} stream={}",
+                n,
+                state.hist.as_ref().map(|h| h.count()).unwrap_or(0),
+                look.cell_w,
+                look.cell_h,
+                stream
+            );
+        }
         state
     }
 }
@@ -270,6 +290,10 @@ fn arg_value<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
 
 fn spawn_panes(s: &mut AppState, waker: Waker) {
     s.waker = Some(waker.clone());
+    // The scrollback probe draws rows, not shells: no pty, so its memory number is the list.
+    if s.hist.is_some() {
+        return;
+    }
     let path_env = fresh_terminal_path(std::env::var_os("PATH"));
     let count = s.pane_count().max(1);
     let banner = s.prefs.raw.layout.banner;
@@ -482,6 +506,21 @@ fn poll_pty(s: &mut AppState, _clock: f64, tx: &mut Tx) -> bool {
         reload_prefs(s, tx);
     }
 
+    // The history probe streams a row a frame and keeps the frame loop going by itself; with
+    // `--bench` it reports its own frame numbers after ten seconds.
+    if let Some(hist) = &mut s.hist {
+        if hist.tick() {
+            changed = true;
+        }
+        if s.bench.enabled {
+            tx.wake_after(Duration::from_millis(16));
+            if !s.bench.reported && s.bench.started_at.elapsed() >= Duration::from_secs(10) {
+                s.bench.reported = true;
+                report_bench(&s.bench);
+            }
+        }
+    }
+
     if s.bench.probe_enabled {
         if let Some(due) = s.bench.next_probe_at {
             if now >= due && s.bench.pending_probe.is_none() && s.bench.probes_sent < s.bench.probes_target {
@@ -689,6 +728,10 @@ fn on_key(s: &mut AppState, ev: &KeyEvent, tx: &mut Tx) -> bool {
 }
 
 fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
+    // The history probe replaces the pane grid entirely: same window, same prefs, one list.
+    if let Some(hist) = &s.hist {
+        return hist.view(s);
+    }
     // Uncoloured text takes the first pane's ink until the pane loop sets its own.
     cx.foreground(s.look(0).palette.fg);
     cx.caption_color(s.prefs.colors.text_dim);
