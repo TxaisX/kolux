@@ -406,7 +406,19 @@ tell me to delete the control.
 | N-41 | CLOSED earlier: `browserSearchSessionUrl` appears nowhere in `src/`. | grep |
 | N-44 | CLOSED by c3-terminal `a4671921`: `removeSession` consults `removePlan`, so "Stop without asking" is honoured. The control stays. | bug file in `_shared/bugs/done/` |
 
-Still open after this round, in order: N-45 (settings search mounts every matching page — 2-3 h), N-30
-(tests for five IPC-heavy components — 2 h), N-52/N-53 (settings tests, shortcuts list filtering), N-29
-(chat re-render), N-47/N-48 (the two duplicate number fields), N-50 (dead exports), N-24, N-22, N-25, N-10,
-N-12, N-42/N-43 (closed in round 4 / verified), N-37, N-38, N-31, N-33, N-34, N-35, N-36.
+## Round 6 closures (2026-11-12)
+
+| # | State | Where |
+|---|---|---|
+| N-45 | FIXED `590f3b81` + `fd0183c9`: a `SearchRun` context says a search is drawing the page. While it is true, `ClaudeSetupPage` runs neither `project_list` nor the `claude_setup` disk scan, `GitPage` runs neither `scm_gh_budget` nor `branch_prefix_check`, `AutoPrSettings` runs no `project_list`/`workspace_list`, `TerminalPage` asks for no `shell_list` and builds no sample terminal, and the usage page runs neither `Activity` nor `TokenAnalytics` (the agents' log scan). Each draws its headings and controls with one line saying the value shows when the page is opened. Five fake-DOM tests hold both answers. | `search.ts`, `SettingsPage.tsx`, 4 cards, `searchRun.test.ts` |
+| N-47 | FIXED `2b9db16e`: `NumberDraftField` is the one "typed text stays as typed, a pause saves a finished number in range, leaving clamps and saves" box; `DelayField` and `MinutesField` pass their parse, range and label. | `NumberDraftField.tsx` (new) |
+| N-48 | FIXED `fd0183c9`: `NumberField` moved to its own module and `InputCards`' `Lines` is it, so the Enter/blur/leave rule lives once. | `NumberField.tsx` (new), `InputCards.tsx` |
+| N-50 | FIXED `a7e8b506`: `pickers.ts` and its test are gone (4 exports only the test used), and so are `NEUTRAL`, `hasChanges`, `autoSaver`, `hiddenWhitespace` and `openInItems`; the two Open in tests now assert through `scm/openWith.fileApps`, the real menu builder. | 6 files + 3 tests |
+| N-53 | FIXED `86ba3125`: one `useMemo` filters the shortcut rows and one groups them by area, instead of re-filtering inside every area group on every render. No debounce added: the filter is a `includes` over ~200 rows, so a settle timer would cost latency for no gain. | `ShortcutsPage.tsx` |
+| N-52 | PARTLY CLOSED: the global key recording is already covered by the SET-009 cards (`__cards__/SET-008-013.test.ts` mounts the page on the fake DOM and drives the window's own `keydown`: record, Esc keeps the old chord and lets go of the keyboard, Reset). This round adds the volume rule of `NotificationsPage` (saves once on release, not per drag step; nothing when untouched; the test button asks the window for a sample) in `NotificationsPage.test.tsx`. Still untested: `CustomThemeEditor` (save/rename/duplicate/delete/import) and `GeneralPage`'s own handlers. | `NotificationsPage.test.tsx` (new) |
+| N-30 | Still open: fake-DOM tests for `ChatView`, `MessageBox`, `RunsDashboard`, `SkillUpdate` (2 h). | — |
+
+Still open after this round, in order: N-30 (five IPC-heavy components — 2 h), N-52 (the rest: custom theme
+editor, General page), N-29 (chat re-render), N-24, N-22, N-25, N-10, N-12, N-37, N-38, N-31, N-33, N-34,
+N-35, N-36, and N-18 (two `git status` reads per Checks-tab open, which needs `scm_watch` to send a first
+status — c3-terminal's side).
