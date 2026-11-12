@@ -61,16 +61,16 @@ test("a four-AI own-folder Start lands as one grid in the chooser's folder, each
   expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toEqual([1, 2, 3, 4].map((i) => ({ path: `C:\\r\\wts\\wt${i}`, view: "C:\\r" })));
 });
 
-test("one AI seat in a worktree of its own is no team: its worktree is a workspace of its own, nothing recorded", async () => {
+test("one AI seat in a worktree of its own is a team of one (Txais 2026-11-12): shown in the chooser's folder, the worktree recorded", async () => {
   h.made = 0;
   const chooser: P = { ...shell(50), seats: [seat], copies: "separate" };
   const { a, setPanes, setActiveDir, settingsRef } = setup([chooser]);
   await a.startSeats(50, [seat] as never);
   const next = setPanes.mock.calls[0][0]([chooser]) as { cwd: string; view?: string }[];
   expect(next.map((p) => p.cwd)).toEqual(["C:\\r\\wts\\wt1"]);
-  expect(next[0].view).toBeUndefined();
-  expect(setActiveDir).toHaveBeenCalledWith("C:\\r\\wts\\wt1");
-  expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toBeUndefined();
+  expect(next[0].view).toBe("C:\\r");
+  expect(setActiveDir).toHaveBeenCalledWith("C:\\r");
+  expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toEqual([{ path: "C:\\r\\wts\\wt1", view: "C:\\r" }]);
 });
 
 test("the team record is laid over the copy on disk, so another window's team worktrees are kept (Row 794-c)", async () => {
@@ -154,4 +154,15 @@ test("each team worktree is recorded as soon as it is made, and stays recorded w
   } finally {
     h.failNotes = false;
   }
+});
+
+test("the sidebar quick launch (own folder) records its worktree against the project folder, so the agent shows in the folder's grid", async () => {
+  h.made = 0;
+  const r = setup([shell(50)]);
+  await r.a.launch(agent as never, "p1");
+  expect(r.settingsRef.current[TEAM_WORKTREES_SETTING]).toEqual([{ path: "C:\\r\\wts\\wt1", view: "C:\\r" }]);
+  const next = r.setPanes.mock.calls[0][0]([]) as { cwd: string; view?: string }[];
+  expect(next).toHaveLength(1);
+  expect(next[0]).toMatchObject({ cwd: "C:\\r\\wts\\wt1", view: "C:\\r" });
+  expect(r.setActiveDir).toHaveBeenCalledWith("C:\\r");
 });
