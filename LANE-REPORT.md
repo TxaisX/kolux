@@ -4,29 +4,36 @@ NOTE: this file is deliberately NOT committed on integrate/wave-1. Committing it
 LANE-REPORT.md on the integration branch and every lane's round-start merge would hit an
 add/add conflict with its own report. It persists on disk in this worktree. See AUDIT-c1-coord.md #0.
 
-## Status (plain words)
-Round 1 done: coordinator audit written, baseline gate green on the starting code, bugs routed.
-Lane merges are paused until Txais picks a fix for the LANE-REPORT.md collision.
+## Status (plain words, 3 lines max)
+Bug queue cleared: the Setup Guide's "Create a workspace" step works again, the wizard redraws in a newly loaded language, the sidebar row has a test hook, and a red gate test is green.
+Starting an agent spends less time finding its program: 67 ms -> 18 ms for the lookups on this PC.
+Two huge Rust files halved by moving their tests out (projects.rs 6921 -> 3323 lines, scm.rs 5801 -> 2984).
 
-## Done this round (round 1, 2026-11-12)
-- AUDIT-c1-coord.md written and committed (12 findings, P0 1, P1 2, P2 5, P3 4).
-- Baseline gate on integrate/wave-1 = main 2029d743 (no lane merged: see below). Logs in G:\Dev\kolux-lanes\_shared\logs\c1-gate\.
-  - `npx tsc --noEmit` -> `tsc exit 0`
-  - `pnpm check` -> `plan-check: OK` ... `check exit 0` (first attempt at 10:46 died with 0xC0000142 under load; re-run passed)
-  - `npx vitest run` -> `Test Files 1 failed | 916 passed (917)`, `Tests 1 failed | 6800 passed (6801)`. Failure: src/terminal/outputFlood.test.ts 48 MB parse timed out 5010 ms. Re-run alone: `Tests 2 passed (2)`. Load flake.
-  - `cargo test --manifest-path src-tauri/Cargo.toml` -> `test result: FAILED. 3160 passed; 1 failed; 7 ignored` (tools::tests::row961 ... got Hung). Re-run alone: `test result: ok. 2 passed; 0 failed`. Load flake.
-  - Bug filed to c3-terminal: 20261112-1130-load-sensitive-timing-tests.md.
-- Live smoke: `node scripts/evidence/smoke.mjs --port 1430 --cdp 9341 --identifier com.txaisxiong.kolux.c1.smoke --offscreen` -> `zero panes after launch: PASS`, `PASS close ... survivors 0`, flows 1-5 FAIL in setup (`could not focus add-project-folder-input`), `smoke: 0/4 flows passed`. Evidence: evidence/smoke-2029d743.txt (not committed). Bug P1 filed to o2-tests. Also P2 to o2-tests: smoke.mjs lacks the New session (Claude/Grok/Terminal) and sidebar-folder-only flows.
-- Identifier note: smoke.mjs refuses identifiers not ending in ".smoke"; use com.txaisxiong.kolux.c1.smoke.
-- Lane merges: NOT done. o2-tests and o3-rune each have 1 commit, both adding LANE-REPORT.md at root -> add/add collision (AUDIT #0). c2-agents, c3-terminal, o1-tools: 0 commits at time of check.
-- Bug routing: i18n-onpackloaded -> c3-terminal. Kept: browser-removal docs/gates (2 bugs, do after o1-tools' removal lands), two-sessions-one-worktree (harness, Txais). Note in _shared/bugs/c1-coord/README-routing-r1.md.
-- WAVE-STATUS.md written for Txais.
+## Done this round (round 4)
+- Start: lib.rs showed as modified with an empty diff (stat-only, autocrlf); `git -c core.autocrlf=false add` cleared it without a content change, then `git merge --no-edit integrate/wave-1` merged cleanly. No handoff notes from other lanes existed yet.
+- Bug sidebar test id (6e76a581): the worktree-style sidebar row carries `data-testid="sidebar-workspace"`. Moved to done.
+- Bug wizard language redraw (66463f13): Wizard calls `usePackLoaded()`; hooksConsent.test.ts stubs that hook (its stand-in React has no useReducer). Moved to done.
+- Bug guide "Create a workspace" (adc5a612): `plusFor` now clicks the project's folder row, then `button.sb-new`; tests updated. Moved to done.
+  Proof: `npx vitest run src/onboarding src/projects` -> `Test Files 112 passed (112)`, `Tests 761 passed (761)`; `npx tsc --noEmit` exit 0.
+- Bug tower entry test (0f2cad06): language mock carries `locale`/`onLanguageChange`. Proof: `npx vitest run src/tower` -> `Tests 61 passed (61)`, no unhandled errors. Moved to done.
+- Bug new-session latency 1050 ms: traced; the measured path (pane + > Blank terminal) is `onSplit("right")` in c3's TerminalPane.tsx, no c2 code in it. Analysis appended, routed to c3-terminal.
+- Bug web-entry kind/space copy: both halves are c3 files (src/space/ is c3's); routed to c3 with the rename plan.
+- Audit 12, session start speed (e3fd1fb4): `program_finder()` reads the search path once per agent start.
+  Before/after: `cargo test --lib program_finder_timing -- --ignored --nocapture` -> `per start: old 66.681245ms, shared finder 18.19634ms`.
+  `cargo test --lib agent` -> `test result: ok. 350 passed; 0 failed; 2 ignored`.
+- Refactor (af847b54): projects.rs tests -> projects_tests.rs. `cargo test --lib projects::` -> 131 passed before and after.
+- Refactor (f3f1100f): scm.rs tests -> scm_tests.rs; 27 lines inside multi-line string literals kept byte-identical. `cargo test --lib scm` -> 169 passed before and after.
+- `cargo clippy --lib --tests`: no warnings in agents/agent_shell/projects/scm/git files.
 
-## Next round
-1. If Txais approved the fix for AUDIT #0: apply it, then merge each lane branch one at a time and run the full gate alone on the merged branch.
-2. Combine every AUDIT-<lane>.md into docs/research/kolux-audit-2026-11-12.md (summary table, P0/P1 list, refactor plan per area, out of scope). Commit.
-3. Own fixes: PLAN.md mojibake (AUDIT #4), claim unowned paths in DECISIONS (AUDIT #1); after the web pane removal merges: DECISIONS row, CHANGELOG line, BROW cards retired, README line, glossary-check / privacy-audit paths.
+## Next round (top 3)
+1. Bug 1 go-live once c3 wires `agent_shell::via_shell` (`_shared/bugs/c3-terminal/20261112-1600-agent-shell-wrap-hook.md`): harness screenshots of Claude Code, Grok, Codex, OpenCode, Terminal at their prompts; measure agent New session to prompt.
+2. Fold `installed_program` into `program_finder` (the last extra search-path read, ~20 ms); rename newTabEntryRun.ts `kind: "browser"` -> "web" once c3 says Pane.tsx is ready.
+3. ProjectsPanel.tsx split (useWorktreeScan, usePrPoll); audit 20 (panel test of worktree hiding), audit 34 (timers while hidden).
 
 ## For the coordinator
-- DECISIONS rows to add when the work lands: web pane retired (Txais 2026-11-12, supersedes OD-18/BROW-*); native terminal path (after c3's recommendation); "Context used" ring removed (c3); ownership of unowned paths (AUDIT #1).
-- CHANGELOG lines: none yet (no user-visible change this round).
+- CHANGELOG: "Setup Guide: Create a workspace opens New session on the right folder again." / "The first-run wizard switches language as soon as the pack loads." / "Starting an agent finds its program faster (one search-path read instead of up to four)."
+- Gate: src/tower/entry.test.ts fixed (was red on the merged gate).
+- Cross-lane, still open: c3-terminal wires `crate::agents::agent_shell::via_shell` (bug file has exact lines); c3 owns the new-session latency (pane split path) and the "browser" kind rename.
+- Decision still wanted (from round 1): agents started through Windows PowerShell 5.1 when PowerShell 7 is absent, with the user's profile loaded. OK?
+- Audit 27 product call still open: should OpenCode lead the New session dropdown?
+- Token ledger refreshed: all-time 17.66B tokens, $4,630.25 API-equivalent; recorded pay-per-token spend (OpenCode) $77.53.
