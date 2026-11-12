@@ -6,7 +6,9 @@ param(
   [int]$Seconds = 20,
   [string]$Out = "evidence/sample.csv",
   [switch]$PowerShellShell,
-  [switch]$Windowed
+  [switch]$Windowed,
+  [switch]$NoPty,
+  [string[]]$Extra = @()
 )
 
 if ($Windowed) {
@@ -16,6 +18,8 @@ if ($Windowed) {
   $runArgs = @("--snap", "evidence/_sample.png", "--scene", "$Panes", "--realtime", "--at", "$Seconds")
 }
 if (-not $PowerShellShell) { $runArgs += "--cmd" }
+if ($NoPty) { $runArgs += "--no-pty" }
+if ($Extra.Count -gt 0) { $runArgs += $Extra }
 $p = Start-Process -FilePath $Exe -ArgumentList $runArgs -PassThru -RedirectStandardOutput "evidence/_sample.out" -RedirectStandardError "evidence/_sample.err" -NoNewWindow
 Write-Output "pid=$($p.Id) panes=$Panes seconds=$Seconds exe=$Exe"
 
@@ -57,8 +61,12 @@ while (-not $p.HasExited) {
   }
   Start-Sleep -Milliseconds 1000
 }
-$p.WaitForExit()
-if ($Windowed -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force; Write-Output "stopped pid=$($p.Id) (started by this sampler)" }
+if ($Windowed) {
+  # A windowed run never exits on its own: stop the process THIS sampler started, before waiting.
+  if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force; Write-Output "stopped pid=$($p.Id) (started by this sampler)" }
+} else {
+  $p.WaitForExit()
+}
 $samples | Export-Csv -Path $Out -NoTypeInformation
 $samples | Format-Table -AutoSize
 

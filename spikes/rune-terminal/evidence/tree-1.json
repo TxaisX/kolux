@@ -1,0 +1,511 @@
+{
+  "t": 1.5666666666666667,
+  "anim_t": 1.566666666666666,
+  "viewport": [
+    1440.0,
+    900.0
+  ],
+  "scale": 2.0,
+  "dark_system": true,
+  "reduced_motion": false,
+  "time_scale": 1.0,
+  "animating": false,
+  "elements": [
+    {
+      "path": "root",
+      "role": "group",
+      "rect": [
+        0.0,
+        0.0,
+        1440.0,
+        900.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#0b0d10ff",
+      "key": "root"
+    },
+    {
+      "path": "root/pane-grid",
+      "role": "group",
+      "rect": [
+        8.0,
+        8.0,
+        1424.0,
+        854.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "pane-grid"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0",
+      "role": "group",
+      "rect": [
+        8.0,
+        8.0,
+        1424.0,
+        854.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "grid-row-0"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0",
+      "role": "button",
+      "rect": [
+        8.0,
+        8.0,
+        1424.0,
+        854.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": true,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#101216ff",
+      "key": "pane-0"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0/hdr-0",
+      "role": "group",
+      "rect": [
+        8.0,
+        8.0,
+        1424.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#1d2430ff",
+      "key": "hdr-0"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0/hdr-0/#0",
+      "role": "group",
+      "rect": [
+        16.0,
+        8.0,
+        7.0,
+        7.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#60a5faff"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0/hdr-0/#1",
+      "role": "text",
+      "rect": [
+        29.0,
+        8.0,
+        134.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "Pane 1 · powershell.exe",
+      "color": "#f1f5f9ff"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0/hdr-0/#2",
+      "role": "group",
+      "rect": [
+        169.0,
+        8.0,
+        1206.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0/hdr-0/#3",
+      "role": "text",
+      "rect": [
+        1381.5,
+        8.0,
+        42.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "184x45",
+      "color": "#94a3b8ff"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0/vp-0",
+      "role": "group",
+      "rect": [
+        8.0,
+        32.0,
+        1424.0,
+        830.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#101216ff",
+      "key": "vp-0"
+    },
+    {
+      "path": "root/pane-grid/grid-row-0/pane-0/vp-0/grid-0",
+      "role": "terminal",
+      "rect": [
+        16.0,
+        38.0,
+        1401.56,
+        810.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "key": "grid-0"
+    },
+    {
+      "path": "root/status-bar",
+      "role": "group",
+      "rect": [
+        8.0,
+        868.0,
+        1424.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#16191fff",
+      "key": "status-bar"
+    },
+    {
+      "path": "root/status-bar/#0",
+      "role": "text",
+      "rect": [
+        16.0,
+        868.0,
+        199.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "Kolux Rune Terminal Spike · 1 pane",
+      "color": "#f1f5f9ff"
+    },
+    {
+      "path": "root/status-bar/#1",
+      "role": "text",
+      "rect": [
+        227.0,
+        868.0,
+        235.0,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "Pane 1 · powershell.exe · 184x45 · 1062 B",
+      "color": "#94a3b8ff"
+    },
+    {
+      "path": "root/status-bar/#2",
+      "role": "group",
+      "rect": [
+        474.0,
+        868.0,
+        706.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000"
+    },
+    {
+      "path": "root/status-bar/#3",
+      "role": "text",
+      "rect": [
+        1192.5,
+        868.0,
+        231.5,
+        24.0
+      ],
+      "opacity": 1.0,
+      "scale": 1.0,
+      "blur": 0.0,
+      "focusable": false,
+      "focused": false,
+      "focusVisible": false,
+      "inert": false,
+      "loopPhase": null,
+      "fill": "#00000000",
+      "text": "Click pane or Ctrl+Tab / Alt+1..8 to focus",
+      "color": "#94a3b8ff"
+    }
+  ],
+  "warnings": [],
+  "title": "Kolux Rune Terminal Spike",
+  "accessibility": {
+    "role": "window",
+    "name": "Kolux Rune Terminal Spike",
+    "bounds": [
+      0.0,
+      0.0,
+      1440.0,
+      900.0
+    ],
+    "children": [
+      {
+        "role": "group",
+        "key": "root",
+        "bounds": [
+          0.0,
+          0.0,
+          1440.0,
+          900.0
+        ],
+        "children": [
+          {
+            "role": "group",
+            "key": "pane-grid",
+            "bounds": [
+              8.0,
+              8.0,
+              1424.0,
+              854.0
+            ],
+            "children": [
+              {
+                "role": "group",
+                "key": "grid-row-0",
+                "bounds": [
+                  8.0,
+                  8.0,
+                  1424.0,
+                  854.0
+                ],
+                "children": [
+                  {
+                    "role": "button",
+                    "key": "pane-0",
+                    "actions": [
+                      "click",
+                      "focus"
+                    ],
+                    "bounds": [
+                      8.0,
+                      8.0,
+                      1424.0,
+                      854.0
+                    ],
+                    "children": [
+                      {
+                        "role": "group",
+                        "key": "hdr-0",
+                        "bounds": [
+                          8.0,
+                          8.0,
+                          1424.0,
+                          24.0
+                        ],
+                        "children": [
+                          {
+                            "role": "label",
+                            "name": "Pane 1 · powershell.exe",
+                            "bounds": [
+                              29.0,
+                              8.0,
+                              134.0,
+                              24.0
+                            ]
+                          },
+                          {
+                            "role": "label",
+                            "name": "184x45",
+                            "bounds": [
+                              1381.5,
+                              8.0,
+                              42.5,
+                              24.0
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "role": "group",
+                        "key": "vp-0",
+                        "bounds": [
+                          8.0,
+                          32.0,
+                          1424.0,
+                          830.0
+                        ],
+                        "children": [
+                          {
+                            "role": "terminal",
+                            "key": "grid-0",
+                            "bounds": [
+                              16.0,
+                              38.0,
+                              1401.6,
+                              810.0
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "role": "group",
+            "key": "status-bar",
+            "bounds": [
+              8.0,
+              868.0,
+              1424.0,
+              24.0
+            ],
+            "children": [
+              {
+                "role": "label",
+                "name": "Kolux Rune Terminal Spike · 1 pane",
+                "bounds": [
+                  16.0,
+                  868.0,
+                  199.0,
+                  24.0
+                ]
+              },
+              {
+                "role": "label",
+                "name": "Pane 1 · powershell.exe · 184x45 · 1062 B",
+                "bounds": [
+                  227.0,
+                  868.0,
+                  235.0,
+                  24.0
+                ]
+              },
+              {
+                "role": "label",
+                "name": "Click pane or Ctrl+Tab / Alt+1..8 to focus",
+                "bounds": [
+                  1192.5,
+                  868.0,
+                  231.5,
+                  24.0
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "role": "status",
+        "states": [
+          "live-polite"
+        ],
+        "bounds": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ]
+      }
+    ]
+  }
+}

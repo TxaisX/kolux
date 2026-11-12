@@ -46,7 +46,7 @@ const rank = (s: LiveSession) => {
   return lane === "needs" ? 0 : lane === "working" ? 1 : 2;
 };
 
-/** The open agent panes across every workspace (shells, seat choosers and browser/editor tabs left out, as in the Tower). */
+/** The open agent panes across every workspace (shells, seat choosers and editor tabs left out, as in the Tower). */
 export function liveSessions<P extends PaneLike>(
   panes: P[],
   agentOf: (p: P) => string,

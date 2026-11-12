@@ -1,0 +1,49 @@
+{
+  "layout": {
+    "panes": 4,
+    "columns": 2,
+    "gap": 6,
+    "outer_pad": 8,
+    "header": true,
+    "status_bar": true,
+    "banner": true
+  },
+  "theme": {
+    "name": "midnight-blue",
+    "app_bg": "#0b0d10",
+    "pane_bg": "#101216",
+    "header_bg": "#16191f",
+    "header_active_bg": "#1d2430",
+    "border_idle": "#272c36",
+    "border_active": "#60a5fa",
+    "text": "#f1f5f9",
+    "text_dim": "#94a3b8",
+    "cursor_bg": "#60a5fa",
+    "cursor_fg": "#101216",
+    "cursor_unfocused": "#64748b",
+    "ansi": [
+      "#181a1f", "#ef5350", "#81c784", "#ffd54f",
+      "#64b5f6", "#ba68c8", "#4dd0e1", "#cbd5e1",
+      "#64748b", "#f87171", "#4ade80", "#facc15",
+      "#60a5fa", "#d8b4fe", "#22d3ee", "#f8fafc"
+    ]
+  },
+  "font": {
+    "size": 13,
+    "line_height": 18,
+    "cell_width": 0,
+    "pad_x": 8,
+    "pad_y": 6
+  },
+  "shell": {
+    "program": null,
+    "args": [],
+    "env": { "KOLUX_PROFILE": "focus" }
+  },
+  "keys": {
+    "next_pane": "ctrl+tab",
+    "prev_pane": "ctrl+shift+tab",
+    "reload": "ctrl+r",
+    "quit": "ctrl+q"
+  }
+}

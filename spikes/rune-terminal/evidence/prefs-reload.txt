@@ -1,0 +1,3 @@
+PREFS_RELOAD file=evidence/_live-prefs.json panes=3 columns=3 theme=daylight-paper font=15/22 shell=powershell.exe gap=18
+PREFS_ERROR prefs: invalid type: string "three", expected usize at line 1 column 30
+PREFS_RELOAD file=evidence/_live-prefs.json panes=3 columns=3 theme=daylight-paper font=15/22 shell=powershell.exe gap=18
