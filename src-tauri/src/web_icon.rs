@@ -3,8 +3,8 @@
 // chooses these addresses, so none is ever handed to the page: Rust fetches them and returns a data
 // URL, or nothing.
 //
-// The fetch reuses the browser pane's guarded icon client (browser.rs, the one network client the
-// privacy statement names for site icons) instead of building a second one:
+// The fetch reuses the guarded icon client (net.rs, the one network client the privacy statement
+// names for site icons) instead of building a second one:
 // - its own name lookup returns only public addresses and reqwest connects only to what that lookup
 //   returned, so the address actually connected to is the checked one (DNS rebinding included: a
 //   name that answers a local address at fetch time gets an empty lookup and is never asked);
@@ -24,7 +24,7 @@ use std::time::Duration;
 use serde_json::Value;
 use tauri::Url;
 
-use crate::browser;
+use crate::net;
 use crate::projects::AUTO_ICON_FILE_MAX;
 
 /// How long one web icon fetch may take in all, redirects included.
@@ -43,7 +43,7 @@ const CACHE_MAX: usize = 256;
 pub fn web_icon_url(raw: &str) -> Option<Url> {
     let url = Url::parse(raw.trim()).ok()?;
     let host_ok = url.host_str().is_some_and(|h| !h.is_empty());
-    (url.scheme() == "https" && host_ok && url.username().is_empty() && url.password().is_none() && !browser::local_host(&url) && browser::allowed(&url, None).is_ok()).then_some(url)
+    (url.scheme() == "https" && host_ok && url.username().is_empty() && url.password().is_none() && !net::local_host(&url) && net::allowed(&url, None).is_ok()).then_some(url)
 }
 
 /// The picture the package manifest names, when it is a web address.
@@ -76,11 +76,10 @@ fn system_lookup(host: &str) -> std::io::Result<Vec<IpAddr>> {
     Ok((host, 0).to_socket_addrs()?.map(|a| a.ip()).collect())
 }
 
-/// The browser's guarded clients, built once for project icons with no dev origin, so the browser
-/// pane's own clients keep theirs.
-fn clients() -> Option<&'static browser::IconClients> {
-    static CLIENTS: OnceLock<Option<browser::IconClients>> = OnceLock::new();
-    CLIENTS.get_or_init(|| browser::icon_clients(None, system_lookup)).as_ref()
+/// The guarded icon clients, built once for project icons, with no dev origin.
+fn clients() -> Option<&'static net::IconClients> {
+    static CLIENTS: OnceLock<Option<net::IconClients>> = OnceLock::new();
+    CLIENTS.get_or_init(|| net::icon_clients(None, system_lookup)).as_ref()
 }
 
 static CACHE: LazyLock<Mutex<HashMap<String, Option<String>>>> = LazyLock::new(Mutex::default);
@@ -91,7 +90,7 @@ pub fn fetch(url: &Url) -> Option<String> {
     if let Some(hit) = CACHE.lock().ok().and_then(|c| c.get(url.as_str()).cloned()) {
         return hit;
     }
-    let got = clients().and_then(|c| tauri::async_runtime::block_on(browser::fetch_icon_within(c, false, url.clone(), None, WEB_ICON_TIME))).filter(|d| accept(d));
+    let got = clients().and_then(|c| tauri::async_runtime::block_on(net::fetch_icon_within(c, false, url.clone(), None, WEB_ICON_TIME))).filter(|d| accept(d));
     if let Ok(mut c) = CACHE.lock() {
         if c.len() >= CACHE_MAX {
             c.clear();
@@ -211,7 +210,7 @@ mod tests {
     #[test]
     fn the_lookup_keeps_only_public_addresses() {
         // What the fetch's own name lookup hands reqwest: a name rebound to a local address at fetch
-        // time comes back empty, so nothing is connected to (browser::Resolver refuses an empty list).
+        // time comes back empty, so nothing is connected to (net::Resolver refuses an empty list).
         let local: Vec<IpAddr> = vec![
             Ipv4Addr::LOCALHOST.into(),
             Ipv4Addr::new(10, 1, 2, 3).into(),
@@ -220,17 +219,17 @@ mod tests {
             "fe80::1".parse::<Ipv6Addr>().unwrap().into(),
             "::ffff:192.168.0.1".parse::<Ipv6Addr>().unwrap().into(),
         ];
-        assert!(browser::public_addrs(local.clone()).is_empty());
+        assert!(net::public_addrs(local.clone()).is_empty());
         let public: IpAddr = Ipv4Addr::new(93, 184, 215, 14).into();
         let mut mixed = local;
         mixed.push(public);
-        assert_eq!(browser::public_addrs(mixed), vec![public], "a mixed answer connects to the public address only");
+        assert_eq!(net::public_addrs(mixed), vec![public], "a mixed answer connects to the public address only");
     }
 
     #[test]
     fn redirects_are_checked_on_every_hop() {
         let first = web_icon_url("https://example.com/icon.png").unwrap();
-        let hop = |to: &str| browser::hop_ok(&Url::parse(to).unwrap(), std::slice::from_ref(&first), None);
+        let hop = |to: &str| net::hop_ok(&Url::parse(to).unwrap(), std::slice::from_ref(&first), None);
         assert!(hop("https://cdn.example.net/icon.png"));
         for to in [
             "http://example.com/icon.png",
@@ -248,7 +247,7 @@ mod tests {
         }
         // the hop cap
         let long: Vec<Url> = (0..6).map(|i| Url::parse(&format!("https://h{i}.example.com/")).unwrap()).collect();
-        assert!(!browser::hop_ok(&Url::parse("https://end.example.com/").unwrap(), &long, None));
+        assert!(!net::hop_ok(&Url::parse("https://end.example.com/").unwrap(), &long, None));
     }
 
     #[test]

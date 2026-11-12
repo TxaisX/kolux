@@ -169,8 +169,6 @@ pub(super) fn commands() -> Vec<Command> {
     all.extend(file_cli::COMMANDS.iter().copied());
     // T-312 (ORCH-062..064): the runtime commands for files, git, past sessions and automations.
     all.extend(crate::orchestration::runtime::COMMANDS.iter().copied());
-    // T-195 (BROW-042, BROW-046, BROW-047), T-241 (BROW-044, BROW-045, BROW-048): the browser commands live in browser.rs's own cli module.
-    all.extend(crate::browser::cli::COMMANDS.iter().copied());
     all
 }
 
@@ -591,8 +589,6 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
         } else if command.starts_with("file.") {
             // CLI-022: the path (bare or --path) and --mode are checked before any lookup.
             args = file_cli::check(command, &flags)?;
-        } else if crate::browser::cli::is_browser(command) {
-            args = crate::browser::cli::check(command, &flags)?;
         } else if local_cli::COMMANDS.iter().any(|c| c.1 == command) {
             args = flags.clone();
         } else if TERM.iter().any(|(_, c, _)| *c == command) {

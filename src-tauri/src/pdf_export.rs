@@ -187,7 +187,7 @@ impl Page for AppPage {
     }
 
     fn print(&self, out: &Path, wait: Duration) -> Result<bool, String> {
-        super::engine::print_pdf(self.win.as_ref(), &out.to_string_lossy(), wait)
+        crate::webview_engine::print_pdf(self.win.as_ref(), &out.to_string_lossy(), wait)
     }
 
     fn close(&self) {

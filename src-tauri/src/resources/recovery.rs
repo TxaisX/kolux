@@ -779,7 +779,7 @@ pub fn browser_args(current: Option<&str>, safe: bool) -> String {
             s.push_str(a);
         }
     }
-    crate::browser::popup::fedcm_off(&s)
+    crate::webview_args::fedcm_off(&s)
 }
 
 /// The arguments the windows were given at launch: every webview Kolux opens later on the same data
@@ -804,8 +804,8 @@ fn launch_string(current: Option<&str>, safe: bool, proxy: Option<&tauri::Url>) 
     // T-324-b (APP-022): the interface's memory ceiling rides in the same string.
     let s = super::renderer_heap::apply_here(&browser_args(current, safe));
     // A proxy the switch cannot carry (credentials, a bad shape) is left out here: the main window then
-    // runs without it, and every tab refuses it.
-    crate::browser::proxy::tab_browser_args(&s, proxy).unwrap_or(s)
+    // runs without it.
+    crate::webview_args::with_proxy(&s, proxy).unwrap_or(s)
 }
 
 /// The usable `httpProxy` in a profile's settings file (or its last good copy), as `proxy_of`
@@ -815,10 +815,10 @@ fn saved_proxy_in(dir: &Path) -> Option<tauri::Url> {
     // Same rule as the settings load (state.rs read_file): the copy stands in for a missing or corrupt file.
     let settings = read("settings.json").or_else(|| read("settings.json.bak"))?;
     let plain = crate::secrets::unseal(settings.get("httpProxy")?.as_str()?).ok()?;
-    crate::browser::proxy_of(Some(&plain)).ok().flatten()
+    crate::net::proxy_of(Some(&plain)).ok().flatten()
 }
 
-/// What a webview opened later (a browser tab on the default profile) passes.
+/// What a webview opened later on the default data folder (the PDF window, the tower) passes.
 pub fn browser_args_now() -> String {
     args_for_later_window(LAUNCH_ARGS.get().map(String::as_str))
 }
@@ -2337,15 +2337,15 @@ mod tests {
     }
 
     #[test]
-    fn row939_a_tab_on_the_windows_folder_matches_its_string_exactly_when_the_proxy_is_unchanged() {
-        use crate::browser::proxy;
+    fn row939_the_launch_string_carries_the_saved_proxy_once_and_round_trips() {
+        use crate::webview_args::{with_proxy, without_proxy};
         let url = tauri::Url::parse("http://127.0.0.1:8080").unwrap();
         let launch = launch_string(Some("--x"), false, Some(&url));
-        let tab = proxy::tab_browser_args(&proxy::without_proxy(&launch), Some(&url)).unwrap();
-        assert!(proxy::same_args(&launch, &tab), "{launch} vs {tab}");
+        let again = with_proxy(&without_proxy(&launch), Some(&url)).unwrap();
+        assert!(launch.split_whitespace().eq(again.split_whitespace()), "{launch} vs {again}");
         assert_eq!(launch.split_whitespace().filter(|a| a.starts_with("--proxy-server=")).count(), 1);
-        let cleared = proxy::tab_browser_args(&proxy::without_proxy(&launch), None).unwrap();
-        assert!(!proxy::same_args(&launch, &cleared), "a cleared setting is a different string from the window's, so the tab is refused");
+        let cleared = with_proxy(&without_proxy(&launch), None).unwrap();
+        assert!(!cleared.contains("--proxy-server="), "no saved proxy: no switch");
     }
 
     // Rows 955 / 959: a window that passes no browser arguments gets wry's defaults, and the engine
@@ -2367,35 +2367,6 @@ mod tests {
     /// What a builder chain must itself contain: the one source's string, a data folder, or the
     /// opener's engine. A hardcoded string, or a neighbour's call, does not count.
     const WEBVIEW_ARG_CALLS: [&str; 4] = [".additional_browser_args(&browser_args_now())", ".additional_browser_args(&crate::resources::recovery::browser_args_now())", ".data_directory(", ".window_features("];
-
-    /// The three links by which the tab's builder reaches the one browser-argument source, through
-    /// variables: launch string -> proxy setup -> the window's `args`.
-    const TAB_LINKS: [&str; 3] = ["let launch = crate::resources::recovery::browser_args_now();", "proxy::tab_setup(&launch,", ".additional_browser_args(&args)"];
-
-    /// Whether the tab builder at `line` (1-based) sits inside `browser_open` and its links appear
-    /// there in order with nothing rebinding `args` after the setup hands it over.
-    fn tab_builder_vouched(code: &str, line: usize) -> bool {
-        let Some(start) = code.find("pub async fn browser_open(") else { return false };
-        let end = code[start..].find("\n}").map_or(code.len(), |i| start + i);
-        let body = &code[start..end];
-        let at = code.split('\n').take(line - 1).map(|l| l.len() + 1).sum::<usize>();
-        if at < start || at > end {
-            return false;
-        }
-        let Some(p1) = body.find(TAB_LINKS[0]) else { return false };
-        let Some(p2) = body[p1..].find(TAB_LINKS[1]).map(|i| p1 + i) else { return false };
-        let Some(p3) = body[p2..].find("let (args,").map(|i| p2 + i) else { return false };
-        let Some(p4) = body[p3..].find(TAB_LINKS[2]).map(|i| p3 + i) else { return false };
-        let between = &body[p3 + "let (args,".len()..p4];
-        let word = |t: &str| t.match_indices("args").any(|(i, _)| !t[..i].ends_with(|c: char| c.is_alphanumeric() || c == '_') && !t[i + 4..].starts_with(|c: char| c.is_alphanumeric() || c == '_'));
-        let rebinds = between.split(';').any(|stmt| {
-            let stmt = stmt.trim_start();
-            let target = stmt.strip_prefix("let ").map_or(stmt, |p| p.split('=').next().unwrap_or(""));
-            let assigns = stmt.match_indices("args").any(|(i, _)| word(&stmt[i..i + 4]) && !stmt[..i].ends_with(|c: char| c.is_alphanumeric() || c == '_' || c == '.') && { let t = stmt[i + 4..].trim_start(); (t.starts_with('=') && !t.starts_with("==")) || t.starts_with("+=") });
-            (stmt.starts_with("let ") && word(target)) || assigns
-        });
-        !rebinds
-    }
 
     /// Where the statement that holds the builder at `from` ends: its own `;` (so `?;` too) outside
     /// any bracket, or the bracket that closes it when it is the tail expression.
@@ -2493,15 +2464,12 @@ mod tests {
                 let found = WEBVIEW_BUILDERS.iter().map(|c| code.matches(c).count()).sum::<usize>();
                 seen += found;
                 if !exempt.contains(&name.as_str()) {
-                    let mut bad = builders_without_args(code);
-                    // The tab's builder reaches its string through variables (launch -> tab_setup -> args), so
-                    // this one builder is vouched for by those links in order inside browser_open, not by the file containing them.
-                    bad.retain(|(line, ctor)| !(name == "browser.rs" && *ctor == "WebviewBuilder::new(" && code.lines().nth(line - 1).is_some_and(|l| l.contains("with_profile(")) && tab_builder_vouched(code, *line)));
+                    let bad = builders_without_args(code);
                     assert!(bad.is_empty(), "{name} builds a webview without browser arguments, a data folder or window features: {bad:?}");
                 }
             }
         }
-        assert!(seen >= 4, "the scan found the window builders: {seen}");
+        assert!(seen >= 3, "the scan found the window builders: {seen}");
     }
 
     // Row 955 LOW: the scan pairs each builder with its own browser-argument call, so a second,
@@ -2564,45 +2532,5 @@ fn c(app: &App) {
 "#;
         let bad = builders_without_args(fixture);
         assert_eq!(bad.iter().map(|b| b.0).collect::<Vec<_>>(), vec![3, 8], "both destructured builders are found; the named one is still paid for by its own later call");
-    }
-
-    const BROWSER_FIXTURE: &str = r#"
-pub async fn browser_open(app: AppHandle) -> Result<(), String> {
-    let (builder, spoof, folder) = with_profile(WebviewBuilder::new(label(id), url), id, profile, true, &key);
-    let launch = crate::resources::recovery::browser_args_now();
-    let setup = proxy::tab_setup(&launch, &folder, saved.as_ref());
-    let (args, url_proxy) = setup?;
-    let builder = builder
-        .additional_browser_args(&args)
-        .focused(false);
-    Ok(())
-}
-
-fn elsewhere() {
-    let launch = crate::resources::recovery::browser_args_now();
-    let setup = proxy::tab_setup(&launch, &f, None);
-    let (args, p) = setup?;
-    b.additional_browser_args(&args);
-}
-"#;
-
-    // Row 954d: the tab builder's three links must sit in order inside browser_open itself.
-    #[test]
-    fn row954d_the_tab_builders_links_must_be_in_order_inside_browser_open() {
-        assert!(tab_builder_vouched(BROWSER_FIXTURE, 3), "the good shape passes");
-        let before_builder = |extra: &str| BROWSER_FIXTURE.replace("    let builder = builder", &format!("    {extra}
-    let builder = builder"));
-        assert!(!tab_builder_vouched(&before_builder("let args = \"--x\".to_string();"), 3), "a later hardcoded args string fails");
-        assert!(!tab_builder_vouched(&before_builder("args = \"--x\".to_string();"), 3), "reassigning args fails");
-        assert!(!tab_builder_vouched(&before_builder("let (args, _) = (String::new(), 1);"), 3), "shadowing args in a pattern fails");
-        assert!(tab_builder_vouched(&before_builder("let shown = format!(\"{args}\");"), 3), "reading args is not rebinding it");
-        let (l, s) = ("    let launch = crate::resources::recovery::browser_args_now();", "    let setup = proxy::tab_setup(&launch, &folder, saved.as_ref());");
-        let swapped = BROWSER_FIXTURE.replace(&format!("{l}
-{s}"), &format!("{s}
-{l}"));
-        assert!(!tab_builder_vouched(&swapped, 3), "links out of order fail");
-        assert!(!tab_builder_vouched(BROWSER_FIXTURE, 14), "links in another function do not vouch for a builder there");
-        let gone = BROWSER_FIXTURE.replace("pub async fn browser_open(", "pub async fn browser_open_two(");
-        assert!(!tab_builder_vouched(&gone, 3), "no browser_open, no vouch");
     }
 }
