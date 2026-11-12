@@ -30,7 +30,31 @@ export const clickTab = (app, name) =>
   app.evalJs(`(()=>{const t=[...document.querySelectorAll("div[role=tab]")].find(t=>t.textContent.trim().startsWith(${JSON.stringify(name)})); if(!t) return false; t.dispatchEvent(new MouseEvent("mousedown",{bubbles:true})); t.click(); return true;})()`);
 export const tabs = (app) => app.evalJs(`[...document.querySelectorAll("div[role=tab]")].map(t=>t.textContent.trim()+":"+t.ariaSelected)`);
 export const clickRow = (app, name) => app.evalJs(`(()=>{const r=[...document.querySelectorAll(".ex-row")].find(r=>r.textContent.trim()===${JSON.stringify(name)}); if(!r) return false; r.click(); return true;})()`);
+/** The visible All Changes pane: the one review of a worktree (EDIT-029). */
+export const AC = `[...document.querySelectorAll("section.pane.editor.all-changes")].find(p=>p.offsetParent!==null)`;
+/**
+ * Opens the All Changes pane of the first project. The right-sidebar Source Control panel that used to hold it went
+ * with T-644: the pane now opens from the project (or worktree) row's menu, "Review changes" (src/projects/menu.ts).
+ * True when the pane is visible.
+ */
+export async function openAllChanges(app, ms = 30000) {
+  if (await app.evalJs(`!!${AC}`)) return true;
+  const opened = await app.evalJs(`(()=>{const row=[...document.querySelectorAll(".sb-main,[data-path]")].find(r=>r.offsetParent!==null); if(!row) return false; const b=row.getBoundingClientRect(); row.dispatchEvent(new MouseEvent("contextmenu",{bubbles:true,cancelable:true,clientX:b.left+40,clientY:b.top+b.height/2,button:2})); return true;})()`);
+  if (opened) {
+    await app.sleep(700);
+    await app.evalJs(`(()=>{const i=[...document.querySelectorAll('.sb-menu [role="menuitem"]')].find(b=>b.textContent.trim()==="Review changes"); if(!i||i.disabled) return false; i.click(); return true;})()`);
+  }
+  return !!(await poll(() => app.evalJs(`!!${AC}`), ms, 500));
+}
+/** The changed-file count the All Changes tag states ("30 files changed"), or null. */
+export const acCount = async (app) => {
+  const tag = await app.evalJs(`(()=>{const p=${AC}; return p?p.querySelector(".preview-tag")?.textContent??null:null;})()`);
+  const m = /^(\d+)\s+files?/.exec(tag ?? "");
+  return { tag, count: m ? Number(m[1]) : null };
+};
 export const clickScm = (app, path) => app.evalJs(`(()=>{const r=[...document.querySelectorAll(".scm-row")].find(r=>r.title===${JSON.stringify(path)}); if(!r) return false; r.click(); return true;})()`);
+// `clickScm` / `openScm` drove the right-sidebar Source Control panel, which T-644 removed. Nothing that still runs calls
+// them: only the retired proofs (live-GIT-001/003/004/007/037/040, live-EDIT-027) do, so they stay for those scripts' sake.
 export const openScm = (app) => app.evalJs(`(()=>{const t=[...document.querySelectorAll("[role=tab]")].find(t=>t.textContent.trim()==="Source Control"); t.dispatchEvent(new MouseEvent("mousedown",{bubbles:true})); t.click(); return true;})()`);
 export const pickScreen2 = (app, label) => app.evalJs(`(()=>{const b=[...document.querySelectorAll(".switcher button")].find(b=>b.textContent.trim()===${JSON.stringify(label)}); b.click(); return true;})()`);
 /** Focus the visible terminal's input and run one command line. */

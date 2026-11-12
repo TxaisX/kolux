@@ -69,7 +69,7 @@ const settings = {};
 const fixed = { focus: () => {}, close: () => {}, toggle: () => {}, answer: () => {}, review: () => {}, expand: () => {}, primary: () => {} };
 const props = (over: Partial<TerminalProps> = {}, fns = fixed): TerminalProps => ({
   hidden: false, focused: false, cwd: "C:/w", branch: "main", agent: "claude", program: "claude", args: ["--x"], env: [["A", "1"]], name: "Claude", title: "w",
-  hook: "working", context: 40, unread: false, number: 3, usage: { tokens: 10, window: 200, costUsd: null, left: false }, crew: [{ id: "c", kind: "task", state: "working" }],
+  hook: "working", unread: false, number: 3, usage: { tokens: 10, window: 200, costUsd: null, left: false }, crew: [{ id: "c", kind: "task", state: "working" }],
   entryTabs: [{ key: 3, name: "w" }], keySettings: settings, onFocus: fns.focus, onClose: fns.close,
   card: { expanded: false, onToggle: fns.toggle, chip: { lane: "working", word: "Working", line: "", answer: false }, column: 1, onAnswer: fns.answer, onReview: fns.review, meter: { context: { tokens: 10, window: 200, percent: 5 } } },
   expand: { on: false, can: true, toggle: fns.expand },
@@ -84,7 +84,7 @@ test("sameTerminal: equal data with fresh objects (card, meter, usage, tab list)
 test("sameTerminal: a change in any piece of data the pane shows redraws it", () => {
   const base = props();
   const changes: Partial<TerminalProps>[] = [
-    { hidden: true }, { focused: true }, { hook: "permission" }, { unread: true }, { context: 41 }, { title: "x" }, { name: "Codex" }, { branch: "dev" },
+    { hidden: true }, { focused: true }, { hook: "permission" }, { unread: true }, { title: "x" }, { name: "Codex" }, { branch: "dev" },
     { args: ["--y"] }, { env: [["A", "2"]] }, { usage: { tokens: 11, window: 200, costUsd: null, left: false } }, { crew: [] }, { entryTabs: [{ key: 3, name: "renamed" }] },
     { keySettings: { linksOpenInKolux: true } }, { stop: { cause: "limit" } }, { pendingTool: "Bash" }, { renameAsk: 1 }, { restored: true }, { account: "a@b" },
     { card: { ...base.card!, expanded: true } }, { card: { ...base.card!, column: 2 } }, { card: { ...base.card!, chip: { lane: "done", word: "Done", line: "", answer: false } } },

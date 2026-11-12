@@ -10,8 +10,9 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-process.env.PROVE_PORT = "1493";
-process.env.PROVE_CDP = "9313";
+// A value the harness passed in wins (run-all.mjs gives each slot its own ports); these are this seat's defaults.
+process.env.PROVE_PORT ||= "1493";
+process.env.PROVE_CDP ||= "9313";
 
 const { reporter, startPlain, finish, sleep } = await import("./live-common.mjs");
 const { checker } = await import("./live-views-dom.mjs");

@@ -39,10 +39,20 @@ let current: Language = systemLanguage(osTags());
 /** The language the interface uses right now (a BCP 47 tag for Intl and toLocale* calls). */
 export const locale = (): Language => current;
 
+const listeners = new Set<(lang: Language) => void>();
+
+/** Called after the language in force changes, so what a language owns (its pack) can be fetched at once. */
+export function onLanguageChange(f: (lang: Language) => void): () => void {
+  listeners.add(f);
+  return () => void listeners.delete(f);
+}
+
 /** Puts the saved choice in force: the document language and every later `locale()` call. */
 export function applyLanguage(saved: unknown, os: readonly string[] = osTags()): Language {
   const choice = savedLanguage(saved);
+  const before = current;
   current = choice === "system" ? systemLanguage(os) : choice;
   if (typeof document !== "undefined") document.documentElement.lang = current;
+  if (current !== before) listeners.forEach((f) => f(current));
   return current;
 }

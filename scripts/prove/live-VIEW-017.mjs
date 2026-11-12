@@ -14,9 +14,11 @@ try {
   ctx = await startPlain("VIEW-017", { report: rep, standin: [] });
   const { app } = ctx;
   await sleep(3000);
-  await app.click("button.newtab");
-  await waitFor("the New tab menu", () => app.exists('[role="menu"][aria-label="New tab"]'), 5000);
-  await app.clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', "/^\\s*Claude Code\\s*$/");
+  // The pane header's plus opens the New session menu (button.newtab went with the old tab strip).
+  await app.focusPane("section.pane[data-agent]", 0, ".xterm-helper-textarea");
+  await app.click('[data-testid="terminal-pane"].focused [data-testid="pane-new-session"]');
+  await waitFor("the New tab menu", () => app.exists('[data-testid="new-session-menu"]'), 5000);
+  await app.clickWhere('[data-testid="new-session-menu"] [role="menuitem"]', "/^\\s*Claude Code\\s*$/");
   await waitFor("a Claude stand-in pane", () => app.shown(CL), 20000);
   await waitFor("the banner", async () => ((await ctx.text(0, CL)) ?? "").includes("stand-in for Claude Code"), 30000, 500);
   await pickScreen(app, "Agents");

@@ -1,0 +1,5 @@
+KOLUX-SPIKE-C  output from cmd.exe running under OUR ConPTY, drawn by the Windows Terminal engine
+[31mred [32mgreen [33myellow [34mblue [35mmagenta [36mcyan[0m  [1mbold[0m [4munderline[0m [7mreverse[0m
+[38;2;255;128;0mtruecolor orange[0m [48;2;0;64;128m truecolor bg [0m
+box: ┌──────┐ │ pane │ └──────┘   cjk: 日本語  emoji: 🚀✅
+Claude-ish prompt: [38;2;215;119;87m●[0m Thinking…  [2m(esc to interrupt)[0m

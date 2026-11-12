@@ -18,7 +18,7 @@ test("P4a-12: the rail names the shells it does not list, singular and plural, a
   expect(shellNote([ai(1)])).toBe("");
   expect(shellNote([ai(1), shell(2)])).toBe("1 shell is on the Terminals screen");
   expect(shellNote([shell(1), shell(2), shell(3), ai(4)])).toBe("3 shells are on the Terminals screen");
-  // Editor and browser tabs and not-started presets are not shells.
+  // Editor tabs and not-started presets are not shells.
   expect(shellNote([{ key: 1, program: null, cwd: null, kind: "editor" }, { key: 2, program: null, cwd: null, seats: [{ agent: null }] }])).toBe("");
 });
 

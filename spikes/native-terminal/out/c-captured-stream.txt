@@ -1,0 +1,24 @@
+[?9001h[?1004h[?25l[2J[m[H]0;C:\WINDOWS\SYSTEM32\cmd.exe - chcp  65001 [?25h]0;C:\WINDOWS\SYSTEM32\cmd.exe[?25lKOLUX-SPIKE-C  output from cmd.exe running under OUR ConPTY, drawn by the Windows Terminal engine[31m
+red [32mgreen [33myellow [34mblue [35mmagenta [36mcyan  [m[1mbold[22m [4munderline[24m [7mreverse[38;2;255;128;0m[27m
+truecolor orange [39m[48;2;0;64;128m truecolor bg [m
+box: ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ Γöé pane Γöé ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ   cjk: µùÑµ£¼Φ¬₧  emoji: ≡ƒÜÇΓ£à
+Claude-ish prompt: [38;2;215;119;87mΓùÅ [mThinkingΓÇª  [2m(esc to interrupt)[7;1H[?25h[22mG:\Dev\kolux-lanes\c3-terminal>echo via-api
+]0;C:\WINDOWS\SYSTEM32\cmd.exe - echo  via-api[?25lvia-api[10;1HG:\Dev\kolux-lanes\c3-terminal>]0;C:\WINDOWS\SYSTEM32\cmd.exe[?25h[?25l[8;15;62t[HKOLUX-SPIKE-C  output from cmd.exe running under OUR ConPTY, drawn by the Windows Terminal engine[K[31m
+red [32mgreen [33myellow [34mblue [35mmagenta [36mcyan  [m[1mbold[22m [4munderline[24m [7mreverse[27m    [38;2;255;128;0m
+truecolor orange [39m[48;2;0;64;128m truecolor bg [m[K
+box: ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ Γöé pane Γöé ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ   cjk: µùÑµ£¼Φ¬₧  emoji: ≡ƒÜÇΓ£à[K
+Claude-ish prompt: [38;2;215;119;87mΓùÅ [mThinkingΓÇª  [2m(esc to interrupt)[22m        
+[K
+G:\Dev\kolux-lanes\c3-terminal>echo via-api[K
+via-api[K
+[K
+G:\Dev\kolux-lanes\c3-terminal>[K
+[K
+[K
+[K[12;32H[?25h[?25l[Höé ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ   cjk: µùÑµ£¼Φ¬₧  emoji: ≡ƒÜÇΓ£à[K
+Claude-ish prompt: [38;2;215;119;87mΓùÅ [mThinkingΓÇª  [2m(esc to interrupt)[22m[K
+[K
+G:\Dev\kolux-lanes\c3-terminal>echo via-api[K
+via-api[K
+[K
+G:\Dev\kolux-lanes\c3-terminal>[K[?25h

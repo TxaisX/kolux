@@ -24,7 +24,7 @@ const pack = {
   "inbox.bell.needs.many": "받은편지함, {count}건이 확인을 기다립니다",
   "connect.claude": "연결을 누르면 브라우저에서 Claude 로그인 페이지가 한 번 열리고, 1년간 유효한 키가 저장됩니다.",
   "connect.codex": "연결을 누르면 Kolux 전용 Codex 홈에 ChatGPT 계정이 추가됩니다. 기존 Codex 폴더는 그대로 유지됩니다.",
-  "onboarding.connect.wait": "계속하려면 위에서 AI를 연결하거나, 왼쪽 버튼으로 나중에 하세요.",
+  "onboarding.connect.wait": "계속하려면 위에서 AI를 연결하거나 “나중에 할게요”를 선택하세요.",
   "sleep.asleep": "메모리를 아끼기 위해 잠자는 중 · {count}분 유휴",
   "sleep.asleep.hint": "깨우기를 누르면 같은 에이전트가 멈춘 곳에서 다시 시작됩니다.",
   "sleep.wake": "깨우기",

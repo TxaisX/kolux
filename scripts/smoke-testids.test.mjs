@@ -47,6 +47,23 @@ test("the check itself catches a missing id", () => {
   expect(declared("no-such-control")).toBe(false);
 });
 
+test("flow 6 starts every agent the New session menu offers, from that menu", () => {
+  // The rows it clicks are the menu's own data-testid rows, not the visible text a rename would change.
+  expect(src).toContain("data-testid={`new-session-item-${a.id}`}");
+  expect(declared("new-session-menu")).toBe(true);
+  expect(declared("new-session-item-claude")).toBe(true);
+  expect(declared("new-session-item-opencode")).toBe(true);
+  for (const label of ["Claude Code", "Codex", "Grok", "OpenCode", "Blank terminal"]) expect(smoke, label).toContain(label);
+});
+
+test("flow 7 asserts the sidebar's real workspace row and that the removed pane-row class stays gone", () => {
+  // The row a workspace shows is .sess[role=button] (src/projects/ProjectsPanel.tsx); pane-row was removed and four
+  // live checks still queried it, so this keeps the smoke from ever re-adopting it.
+  expect(smoke).toContain(".sess[role=button]");
+  expect(smoke).toContain(".pane-row");
+  expect(src).not.toContain("pane-row");
+});
+
 test("smoke.mjs no longer matches the controls it clicks by label or class", () => {
   for (const stale of ['aria-label="Add project"', "data-add-by-path", 'aria-label="project folder"', "button.ib.panel", ".layouts", "section.pane", "button.newtab", 'title^="Split right"', 'title^="New session"'])
     expect(smoke, stale).not.toContain(stale);

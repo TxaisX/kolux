@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { caps, completed, doneFrom, doneId, firstOpen, forward, latest, legacyProfile, LEGACY_DONE, milestonesShown, moveOn, nextTip, notePage, PAGE_SHOWN, pageNoter, pageCounts, railKey, ring, startTicked, stopDone, STEPS, stopOf, visits, withRecord, workflowDone, WORKFLOWS, type Facts, type Place, type Setup, type StepId } from "./guide";
+import { caps, completed, doneFrom, doneId, firstOpen, forward, latest, legacyProfile, LEGACY_DONE, milestonesShown, moveOn, nextTip, railKey, ring, startTicked, stopDone, STEPS, stopOf, visits, withRecord, workflowDone, WORKFLOWS, type Facts, type Place, type Setup, type StepId } from "./guide";
 
 const set = (...ids: StepId[]) => new Set<StepId>(ids);
 
 describe("Setup Guide (ONB-014)", () => {
-  it("has eight steps, the Setup group before the parallel-work group", () => {
-    expect(STEPS).toHaveLength(8);
+  it("has seven steps, the Setup group before the parallel-work group", () => {
+    expect(STEPS).toHaveLength(7);
     const groups = STEPS.map((s) => s.group);
     expect(groups.lastIndexOf("setup")).toBeLessThan(groups.indexOf("parallel"));
     expect(STEPS.every((s) => s.ko.name && s.ko.about && s.en.name && s.en.about)).toBe(true);
@@ -22,7 +22,7 @@ describe("Setup Guide (ONB-014)", () => {
 
   it("moves on once the step showing is done", () => {
     expect(moveOn("cli", set())).toBe("cli");
-    expect(moveOn("cli", set("cli"))).toBe("browser");
+    expect(moveOn("cli", set("cli"))).toBe("integrations");
     expect(moveOn("repos", set("repos"))).toBe("notifications");
     const all = set(...STEPS.map((s) => s.id));
     expect(moveOn("cli", all)).toBe("cli");
@@ -33,7 +33,6 @@ describe("Setup Guide (ONB-014)", () => {
     const core = STEPS.filter((s) => s.core).map((s) => s.id);
     expect(milestonesShown(set(...core.slice(1)))).toBe(true);
     expect(milestonesShown(set(...core))).toBe(false);
-    expect(ring(set("browser"))).toEqual({ done: 0, total: 6 });
   });
 });
 
@@ -96,7 +95,7 @@ describe("startup tips (ONB-027)", () => {
   });
 });
 
-const none: Facts = { workspaces: null, gitProjects: null, pageShown: false, integrations: null, cli: false, notifications: null, agent: null, setupScript: null };
+const none: Facts = { workspaces: null, gitProjects: null, integrations: null, cli: false, notifications: null, agent: null, setupScript: null };
 const main = (path = "C:/p"): Place => ({ path, head: "abc123", isMain: true, kind: "main" });
 
 describe("Setup Guide steps tick from real state (ONB-015)", () => {
@@ -109,14 +108,6 @@ describe("Setup Guide steps tick from real state (ONB-015)", () => {
     expect(doneFrom({ ...none, workspaces: [[main(), main()]] }).has("multitask")).toBe(false);
     expect(doneFrom({ ...none, workspaces: [[main(), { path: "C:/w/new", head: "", isMain: false, kind: "managed" }]] }).has("multitask")).toBe(false);
     expect(doneFrom({ ...none, workspaces: [[main()], [main("C:/q"), { path: "C:/w/a", head: "def456", isMain: false, kind: "managed" }]] }).has("multitask")).toBe(true);
-  });
-
-  it("Browser: a blank page does not count, a loaded page does", () => {
-    expect(pageCounts("about:blank")).toBe(false);
-    expect(pageCounts("")).toBe(false);
-    expect(pageCounts(null)).toBe(false);
-    expect(pageCounts("https://example.com/")).toBe(true);
-    expect(doneFrom({ ...none, pageShown: true }).has("browser")).toBe(true);
   });
 
   it("Multiple repos needs two git projects; Integrations waits while its checks are out", () => {
@@ -161,7 +152,6 @@ describe("Explore Kolux stops need a visit and real setup (ONB-023)", () => {
     expect(stopDone("tasks", new Set(["tasks"]), { ...off, taskSource: true }, kept)).toBe(true);
     expect(stopDone("orchestration", new Set(["orchestration"]), { ...off, skills: ["kolux-cli"] }, kept)).toBe(false);
     expect(stopDone("orchestration", new Set(["orchestration"]), { ...off, skills: ["orchestration"] }, kept)).toBe(true);
-    expect(stopDone("browser", new Set(["browser"]), { ...off, skills: ["browser-use"] }, kept)).toBe(true);
     expect(stopDone("editor", new Set(["editor"]), off, kept)).toBe(true);
   });
 
@@ -178,41 +168,7 @@ describe("Explore Kolux stops need a visit and real setup (ONB-023)", () => {
   });
 });
 
-describe("the browser pane's page note (ONB-015)", () => {
-  it("only a loaded page that is not blank is kept, and only the first one per window writes (FIX-1)", () => {
-    const kept: string[] = [];
-    const used: string[] = [];
-    const mark = async (list: string, id: string) => (kept.push(`${list}:${id}`), { tipsSeen: [], visited: [], tried: [], toursSeen: [], toursAuto: null });
-    const note = pageNoter(mark, (id) => used.push(id));
-    note("about:blank");
-    note("");
-    note("https://example.com/");
-    note("https://example.com/next");
-    note("https://example.org/");
-    expect(kept).toEqual([`tried:${PAGE_SHOWN}`]);
-    expect(used).toEqual(["browser-page"]);
-    expect(typeof notePage).toBe("function");
-  });
-
-  it("a page note whose write failed is tried again on the next page; once one is kept, none more (FIX-2)", async () => {
-    const kept: string[] = [];
-    let fail = true;
-    const mark = (list: string, id: string) => (kept.push(`${list}:${id}`), fail ? Promise.reject(new Error("locked")) : Promise.resolve({ tipsSeen: [], visited: [], tried: [], toursSeen: [], toursAuto: null }));
-    const used: string[] = [];
-    const note = pageNoter(mark, (id) => used.push(id));
-    const flush = () => new Promise((r) => setTimeout(r, 0));
-    note("https://example.com/");
-    await flush();
-    fail = false;
-    note("https://example.com/next");
-    await flush();
-    note("https://example.org/");
-    await flush();
-    expect(kept).toEqual([`tried:${PAGE_SHOWN}`, `tried:${PAGE_SHOWN}`]);
-    // FIX-4: the retry writes the mark again but the use is counted once (the same first page).
-    expect(used).toEqual(["browser-page"]);
-  });
-
+describe("the saved record (ONB-015)", () => {
   it("the saved record merges into what this window already saw; an early visit is never lost (FIX-1)", () => {
     // "workspaces" was visited in this window before the record (which only knows "tasks") arrived.
     const r = withRecord(new Set(["workspaces"]), new Set(["explore-usage"]), { visited: ["tasks", "nope"], tried: ["explore-agents"] });
@@ -229,7 +185,7 @@ describe("the legacy-profile rule (ONB-015)", () => {
   });
   it("a profile that never hid the checklist is not legacy, and a failed read is never taken as completion", () => {
     expect(legacyProfile({ setupChecklist: true }, [])).toBe(false);
-    expect(legacyProfile({}, ["browser-page"])).toBe(false);
+    expect(legacyProfile({}, ["repos-two"])).toBe(false);
     expect(legacyProfile(null, null)).toBeNull();
     expect(legacyProfile(null, [])).toBe(false);
     expect([...doneFrom({ ...none, legacy: null })]).toEqual([]);
@@ -237,6 +193,6 @@ describe("the legacy-profile rule (ONB-015)", () => {
   });
   it("a retired step id (the old split-terminal step) no longer counts toward progress", () => {
     const stale = new Set(["split-terminal", "browser"]) as unknown as Set<StepId>;
-    expect(ring(stale).done).toBe(ring(set("browser")).done);
+    expect(ring(stale).done).toBe(0);
   });
 });

@@ -22,6 +22,23 @@ public static class Drive {
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT r);
   [DllImport("user32.dll")] public static extern short VkKeyScan(char c);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+  // The app's own window, by pid + class + title: Process.MainWindowHandle names tao's hidden event-target window once
+  // the app is minimised, so a click posted there never reached the page (same rule as WIN_PS in app-launch.mjs).
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  public static IntPtr AppWindow(uint pid) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows((h, l) => {
+      uint p; GetWindowThreadProcessId(h, out p);
+      if (p != pid || !IsWindowVisible(h)) return true;
+      var c = new StringBuilder(64); GetClassName(h, c, 64); var t = new StringBuilder(64); GetWindowText(h, t, 64);
+      if (c.ToString() == "Tauri Window" && t.ToString() == "Kolux") { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
   public static IntPtr FindChild(IntPtr parent, string cls) {
     IntPtr found = IntPtr.Zero;
     EnumChildWindows(parent, (h, l) => {
@@ -57,9 +74,12 @@ public static class Drive {
   }
 }
 "@
-$p = Get-Process | Where-Object { $_.MainWindowTitle -like "Kolux*" } | Select-Object -First 1
-if (-not $p) { Write-Error "no Kolux window"; exit 1 }
-$h = $p.MainWindowHandle
+$cands = @(Get-Process | Where-Object { $_.ProcessName -like "kolux*" -or $_.MainWindowTitle -like "Kolux*" })
+if (-not $cands.Count) { Write-Error "no Kolux window"; exit 1 }
+$h = [IntPtr]::Zero; $p = $null
+foreach ($c in $cands) { $w = [Drive]::AppWindow($c.Id); if ($w -ne [IntPtr]::Zero) { $h = $w; $p = $c; break } }
+if (-not $p) { $p = $cands[0]; $h = $p.MainWindowHandle }  # a build that renames its window still gets driven
+if ($h -eq [IntPtr]::Zero) { Write-Error "no window for pid $($p.Id)"; exit 1 }
 $child = [Drive]::FindChild($h, "Chrome_RenderWidgetHostHWND")
 if ($child -eq [IntPtr]::Zero) { Write-Error "no web view child window"; exit 1 }
 if ($Click -ne "") {

@@ -1,0 +1,6 @@
+pnpm smoke at 2026-11-12T20:03:13.459Z on d35a70d0 (G:\Dev\kolux-lanes\o2-tests)
+args: --only 6,7 --port 1501 --cdp 9351 --identifier com.txaisxiong.kolux.o2.smoke --temp G:/Temp/o2-smoke; T-184 ticked: false; flow 5 report-only
+FAIL 6: timed out after 30000 ms waiting for a Grok pane
+FAIL 7: timed out after 20000 ms waiting for the six-pane grid
+FAIL close [report-only]: WM_CLOSE by PostMessage (the page did not answer), exited in 13.8 s; pre-close tree 20 (msedgewebview2.exe x6, conhost.exe x7, powershell.exe x3, cmd.exe x3, git.exe x1); survivors 5 (msedgewebview2.exe x5)
+smoke: 0/2 flows passed

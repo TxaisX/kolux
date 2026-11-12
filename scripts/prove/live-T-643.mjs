@@ -5,7 +5,7 @@
 // name cut short by an ellipsis carries a tooltip, no terminal rows, no "Check for updates" button; and takes a screenshot.
 import { copyFileSync } from "node:fs";
 import { ROOT, LIVE_LOGS, finish, reporter, sleep, startPlain } from "./live-common.mjs";
-import { ps } from "../evidence/app-launch.mjs";
+import { ps, WIN_PS, waitAppWindow } from "../evidence/app-launch.mjs";
 
 const side = process.argv[2] === "480" ? 480 : 220;
 const look = process.argv[3] === "classic" ? "classic" : "new";
@@ -28,7 +28,7 @@ const PANE = `(() => {
   const cut = vis.filter((e) => e.children.length === 0 && e.textContent.trim() && e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow === "ellipsis");
   const untipped = cut.filter((e) => !e.closest("[title]") && !e.closest("[aria-label]")).map((e) => e.textContent.trim().slice(0, 40));
   return { inner: innerWidth, sidebarW: Math.round(sr.width), out: out.slice(0, 8), scrollers, cut: cut.length, untipped,
-    paneRows: s.querySelectorAll(".pane-row").length, updButton: [...s.querySelectorAll("button")].filter((b) => /check for updates/i.test(b.getAttribute("aria-label") + " " + b.textContent)).length };
+    paneRows: s.querySelectorAll(".sess[role=button]").length, updButton: [...s.querySelectorAll("button")].filter((b) => /check for updates/i.test(b.getAttribute("aria-label") + " " + b.textContent)).length };
 })()`;
 
 let ctx;
@@ -59,7 +59,9 @@ try {
     let cx = Math.round(w * dpr);
     for (let i = 0; i < 4; i++) {
       await ps(`Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h,IntPtr a,int x,int y,int cx,int cy,uint f);' -Name W2 -Namespace U2
-        $h = (Get-Process -Id ${app.pid}).MainWindowHandle; [U2.W2]::SetWindowPos($h,[IntPtr]::Zero,0,0,${cx},${Math.round(860 * dpr)},0x0016) | Out-Null`);
+        ${WIN_PS}
+        ${waitAppWindow(app.pid)}
+        if ($h -eq [IntPtr]::Zero) { throw 'no window for pid ${app.pid}' } else { [U2.W2]::SetWindowPos($h,[IntPtr]::Zero,-32000,-32000,${cx},${Math.round(860 * dpr)},0x0016) | Out-Null }`);
       await sleep(900);
       const got = await app.evalJs("innerWidth");
       if (got === w) return got;

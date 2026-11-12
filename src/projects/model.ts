@@ -1,4 +1,5 @@
 import { locale } from "../language";
+import { dirKey } from "../workspaces";
 // The shapes the Rust side hands over for projects and workspaces, plus the pure helpers the
 // sidebar draws from. No Tauri calls here, so it can be tested on its own.
 
@@ -110,7 +111,7 @@ export function parentChoices(all: Worktree[], w: Worktree): Worktree[] {
   return all.filter((x) => !x.isMain && !under.has(norm(x.path)) && !(w.parent && norm(w.parent) === norm(x.path)));
 }
 
-const norm = (p: string) => p.replace(/[\\/]+/g, "/").replace(/\/$/, "").toLowerCase();
+const norm = dirKey;
 /** PROJ-006 / PROJ-007: after adding a project, the worktree at the folder that became the project, else the main checkout. */
 export function openedWorktree(list: Worktree[], path: string): Worktree | undefined {
   return list.find((w) => norm(w.path) === norm(path)) ?? list.find((w) => w.isMain);

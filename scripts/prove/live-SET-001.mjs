@@ -3,8 +3,7 @@
 import { pathToFileURL } from "node:url";
 import { writeFileSync } from "node:fs";
 import { reporter, startPlain, finish, sleep, poll, checker, LIVE_LOGS } from "./live-proj-common.mjs";
-import { ROOT } from "./live-common.mjs";
-import { targets, evidence } from "./live-browser-common.mjs";
+import { PAGE, ROOT, evidence, targets } from "./live-common.mjs";
 
 const READ = `JSON.stringify({ css: document.documentElement.style.cssText, mode: document.documentElement.dataset.mode, surface: getComputedStyle(document.documentElement).getPropertyValue("--surface").trim(), accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(), theme: (() => { try { return JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => /appearance|look|theme/i.test(k)) ?? "x") ?? "null")?.appearance?.theme ?? null; } catch { return "?"; } })() })`;
 
@@ -21,7 +20,7 @@ async function evalIn(t, expression) {
 
 export async function run001b3(ctx, { check, log }) {
   const { app } = ctx;
-  const mainT = async () => (await targets()).find((t) => t.type === "page" && /localhost:1470|tauri\.localhost/.test(t.url) && !/tower-window/.test(t.url));
+  const mainT = async () => (await targets()).find((t) => t.type === "page" && PAGE.test(t.url) && !/tower-window/.test(t.url));
   const classic = await evalIn(await mainT(), READ);
   log(`main window before choosing: surface=${classic.surface} accent=${classic.accent} mode=${classic.mode} theme=${classic.theme}`);
   await ctx.rawKey({ key: ",", code: "Comma", vk: 188, mods: 2 });

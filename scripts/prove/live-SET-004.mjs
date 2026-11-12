@@ -6,8 +6,7 @@ import { pathToFileURL } from "node:url";
 import { inflateSync } from "node:zlib";
 import { writeFileSync } from "node:fs";
 import { reporter, startPlain, finish, sleep, poll, checker, LIVE_LOGS } from "./live-proj-common.mjs";
-import { ROOT, dismissFirstRun } from "./live-common.mjs";
-import { evidence } from "./live-browser-common.mjs";
+import { ROOT, dismissFirstRun, evidence } from "./live-common.mjs";
 
 const FONT = "Georgia";
 const REC = `(() => {
@@ -56,7 +55,7 @@ function startRecorder(log) {
     let ws = null;
     while (!state.stop && !ws) {
       try {
-        const v = await (await fetch("http://127.0.0.1:9290/json/version", { signal: AbortSignal.timeout(400) })).json();
+        const v = await (await fetch(`http://127.0.0.1:${process.env.PROVE_CDP || "9290"}/json/version`, { signal: AbortSignal.timeout(400) })).json();
         ws = new WebSocket(v.webSocketDebuggerUrl);
         await new Promise((ok, bad) => { ws.onopen = ok; ws.onerror = () => bad(new Error("ws")); });
       } catch { ws = null; await sleep(10); }

@@ -44,9 +44,11 @@ try {
   await sleep(2500);
   log(`worktrees in the sidebar: ${JSON.stringify(await labels())}; selected: ${await selected()}`);
   check("setup: the second worktree (wt-b) exists and is the one shown", !!made && (await selected()) === "wt-b", `labels=${JSON.stringify(await labels())} selected=${await selected()}`);
-  await app.click("button.newtab");
-  await app.waitFor("the New tab menu", () => app.exists('[role="menu"][aria-label="New tab"]'), 5000);
-  await app.clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', "/^ *Claude Code *$/");
+  // The pane header's plus opens the New session menu (button.newtab went with the old tab strip).
+  await app.focusPane("section.pane[data-agent]", 0, ".xterm-helper-textarea");
+  await app.click('[data-testid="terminal-pane"].focused [data-testid="pane-new-session"]');
+  await app.waitFor("the New tab menu", () => app.exists('[data-testid="new-session-menu"]'), 5000);
+  await app.clickWhere('[data-testid="new-session-menu"] [role="menuitem"]', "/^ *Claude Code *$/");
   await app.waitFor("a Claude pane", () => app.shown(CLAUDE), 20000);
   const working = await poll(() => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(CLAUDE + " .st")})].some(e=>e.getAttribute("aria-label")==="status: Working")`), 30000, 500);
   log(`Claude pane working: ${!!working}; tabs in wt-b ${JSON.stringify(await tabs(app))}`);

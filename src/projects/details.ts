@@ -10,13 +10,6 @@ export function itemFromPaste(pasted: string): string {
   return w ? `https://${w.host}/${w.owner}/${w.repo}/${w.kind === "pull" ? "pull" : "issues"}/${w.number}` : pasted.trim();
 }
 
-/** The card's words for a linked item: "pull request #12", "issue #5", or "#7" for a bare number; null when unlinked. */
-export function linkLabel(item: string | null): string | null {
-  if (!item) return null;
-  const w = workItem(item);
-  if (w) return `${w.kind === "pull" ? "pull request" : "issue"} #${w.number}`;
-  return /^#\d+$/.test(item) ? `issue ${item}` : item;
-}
 
 export type Span = { t: "text"; text: string } | { t: "link"; text: string; href: string } | { t: "image"; alt: string; href: string };
 export type Block = { kind: "heading"; level: number; spans: Span[] } | { kind: "para"; spans: Span[] };

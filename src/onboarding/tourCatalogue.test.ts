@@ -1,9 +1,9 @@
-// ONB-032 rest and ONB-033 rest (T-245-b): the board and browser tours, how a waiting tour behaves
+// ONB-032 rest and ONB-033 rest (T-245-b): the board tour, how a waiting tour behaves
 // and the naming rule. T-776 dropped the workspace-creation tour and its hand-over: Kolux makes no extra folders.
 import { describe, expect, it } from "vitest";
 import {
-  autoStarts, BOARD_LANE, BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW, FIRST_TARGET_TRIES, gaveUp, lookAt, nameAfterToggle, nextShown, ownerOff, progress,
-  replayOf, SIDEBAR_SHOW, targetsOf, TOURS, type Look, type Want,
+  autoStarts, BOARD_LANE, FIRST_TARGET_TRIES, gaveUp, lookAt, nameAfterToggle, nextShown, ownerOff, progress,
+  replayOf, SIDEBAR_SHOW, TOURS, type Look, type Want,
 } from "./tour";
 
 const tour = (id: string) => TOURS.find((t) => t.id === id)!;
@@ -25,14 +25,6 @@ describe("the catalogue (ONB-033)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
     expect(lane.ko.body).not.toMatch(/첫 열|한 단계/);
   });
-  it("has the browser tour: grab, annotate, import cookies, always counted as three", () => {
-    const t = tour("browser");
-    expect(t.steps).toHaveLength(3);
-    expect(t.count).toBe(3);
-    // the cookie step points at its hint button, falling back to the row in the overflow menu
-    expect(targetsOf(t.steps[2])).toEqual([BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW]);
-    expect(t.steps.every((s) => s.en.title && s.ko.title)).toBe(true);
-  });
   it("the parallel tour's second step opens the sidebar when it is hidden", () => {
     expect(tour("parallel").steps[1].reveal).toBe(SIDEBAR_SHOW);
   });
@@ -49,8 +41,8 @@ describe("the parallel tour only on a workspace's terminal tab (ONB-033)", () =>
   });
 });
 
-describe("progress (ONB-033: the browser tour always counts three)", () => {
-  it("a counted tour reads by position even while the cookie step has no target", () => {
+describe("progress (ONB-033: a tour with a fixed count always counts it)", () => {
+  it("a counted tour reads by position even while one step has no target", () => {
     const present = [true, true, false];
     expect(progress({ count: 3 }, present, 0)).toEqual({ label: "1 of 3", dots: 3, on: 0 });
     expect(progress({ count: 3 }, present, 1)).toEqual({ label: "2 of 3", dots: 3, on: 1 });

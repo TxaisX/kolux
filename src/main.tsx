@@ -9,6 +9,7 @@ import { installWindowBackground } from "./recovery/windowBackground";
 import { stampLook } from "./settings/general";
 import { applyLanguage, LANGUAGE_FIELD } from "./language";
 import { registerBundledPacks } from "./i18n/packs";
+import { loadPack } from "./i18n/lookup";
 import { applyZoom, ZOOM_FIELD } from "./settings/zoom";
 import { applyText, followText } from "./terminal/text";
 import { installMenuWheel } from "./settings/menuWheel";
@@ -128,6 +129,8 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
   if (saved) applyAppearance(readAppearance(stamped || saved));
   // SET-017: the saved language is in force before the first frame draws.
   applyLanguage(saved?.[LANGUAGE_FIELD]);
+  // ...and its pack is here before that frame (a local file: a few ms; capped so a bad pack never holds the start).
+  await Promise.race([loadPack(), new Promise((r) => setTimeout(r, 300))]);
   // SET-019: and so is the saved interface zoom.
   applyZoom(saved?.[ZOOM_FIELD]);
   // PROJ-067: the saved tabs come back, less those whose folder is gone.
