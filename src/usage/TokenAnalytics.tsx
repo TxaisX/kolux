@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Segmented } from "../settings/GeneralPage";
 import { locale } from "../language";
 import { estimate } from "./pricing";
+import { compactCount as count, formatDayMedium as dayText, formatUsd } from "./format";
 import ShareCard from "./ShareCard";
 import { watchDay } from "./today";
 import { loadFailedText, scanFailedNote, scopeFailedNote, trackFailedNote } from "./analyticsNotes";
@@ -33,10 +34,8 @@ const SCOPES: Array<{ id: Scope; label: string }> = [
 ];
 export const DEFAULT_FILTERS: Filters = { range: "30", scope: "kolux", roots: [] };
 
-const count = (n: number) => new Intl.NumberFormat(locale(), { notation: "compact", maximumFractionDigits: 1 }).format(n);
-const money = (usd: number, partial: boolean) => (partial && usd === 0 ? "n/a" : new Intl.NumberFormat(locale(), { style: "currency", currency: "USD" }).format(usd));
+const money = (usd: number, partial: boolean) => (partial && usd === 0 ? "n/a" : formatUsd(usd));
 const share = (x: number) => new Intl.NumberFormat(locale(), { style: "percent", maximumFractionDigits: 1 }).format(x);
-const dayText = (day: string) => new Date(day + "T12:00:00").toLocaleDateString(locale(), { dateStyle: "medium" });
 /** usage-status.md:17: the figure a heatmap cell or a chart bar shows on hover, said to a screen reader too. */
 export const figureLabel = (day: string, tokens: number) => `${dayText(day)}: ${count(tokens)} tokens`;
 
