@@ -29,10 +29,9 @@ import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
 import { sameDir, underDir } from "../workspaces";
-import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, withoutTeamMade, hiddenTeamFolders, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, withoutTeamMade, hiddenTeamFolders, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
-import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
-import { recordPoll } from "../scm/prSearch";
+import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
@@ -74,7 +73,6 @@ import AutomationsRow from "./AutomationsRow";
 import SkillsRow from "./SkillsRow";
 import { chromeShown } from "../chrome/chromeItems";
 import { VOCAB } from "../terminal/status";
-import { onFinish, REFRESH_AFTER_MS, wantsRefresh } from "../status/finished";
 import type { AgentPass } from "../launch/agents";
 import { KeyText } from "../keys/KeymapContext";
 import { GLOSSARY } from "../glossary";
@@ -278,8 +276,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [hiddenWts, setHiddenWts] = useState<Record<string, Worktree[]>>({}); // PROJ-042: hidden by the user
   const [fresh, setFresh] = useState<Record<string, Worktree[]>>({}); // PROJ-041: made outside Kolux, not yet reviewed
   const [pushedBy, setPushedBy] = useState<Record<string, Pushed>>({}); // GIT-065: by worktree path
-  const [prBy, setPrBy] = useState<Record<string, PrState>>({}); // GIT-027: the background poll, by worktree path
-  const polled = useRef({ failures: 0, at: 0, next: 0, limited: 0 });
   const pushTag = (w: Worktree) => {
     const b = pushBadge(pushedBy[w.path]);
     return b && <span className={`hint push ${b.tone}`}>{b.text}</span>;
@@ -525,49 +521,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const norm = (d: string) => d.replace(/[\\/]+$/, "").toLowerCase();
   const pollActive = activeDir === null ? null : (pollPaths.find((p) => norm(p) === norm(activeDir)) ?? null);
   const pollLinks = linkedPrs(settings[SCM_LINKED_PR_KEY]);
-  const pollKey = JSON.stringify([pollPaths, pollActive, pollLinks]);
-  useEffect(() => {
-    if (pollPaths.length === 0) return;
-    const st = polled.current;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let dead = false;
-    const later = (ms: number) => {
-      clearTimeout(timer);
-      st.next = Date.now() + ms;
-      timer = setTimeout(round, ms);
-    };
-    const round = () => {
-      if (document.hidden) return later(60_000);
-      invoke<PrPoll>("scm_prs_poll", { items: pollItems(pollPaths, pollActive, pollLinks) })
-        .then((answer) => {
-          if (dead) return;
-          setPrBy((prev) => mergePoll(prev, answer));
-          recordPoll(answer); // VIEW-043: the palette lists these pull requests
-          st.failures = answer.prs.some((x) => x.error !== null) ? st.failures + 1 : 0;
-          st.at = Date.now();
-          st.limited = answer.limitedUntil ?? 0;
-          later(nextDelay(st.failures, answer.limitedUntil, Date.now()));
-        })
-        .catch(() => {
-          if (dead) return;
-          st.failures += 1;
-          later(nextDelay(st.failures, null, Date.now()));
-        });
-    };
-    later(Math.max(1500, st.next - Date.now()));
-    const focus = () => {
-      if (Date.now() - st.at > STALE_MS && st.limited * 1000 < Date.now()) later(0);
-    };
-    window.addEventListener("focus", focus);
-    // STAT-038: an agent finishing in a listed workspace brings the next round forward, once per finish.
-    const off = onFinish((cwd) => wantsRefresh({ hidden: document.hidden, paths: pollPaths, cwd, limitedUntil: st.limited, now: Date.now() }) && later(REFRESH_AFTER_MS));
-    return () => {
-      dead = true;
-      clearTimeout(timer);
-      off();
-      window.removeEventListener("focus", focus);
-    };
-  }, [pollKey]);
+  const prBy = usePrPoll(pollPaths, pollActive, pollLinks); // GIT-027: the background poll, by worktree path
   // PROJ-063: a branch switched inside a workspace folder shows on its row within a few seconds.
   // PROJ-041: the same poll notices worktrees made outside Kolux, in both layouts (DT-O2).
   useEffect(() => {
