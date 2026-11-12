@@ -229,10 +229,10 @@ fn spawn_panes(s: &mut AppState, waker: Waker) {
                 if s.demo_banner {
                     if let Some(w) = &writer {
                         let cmd = if short.to_ascii_lowercase().contains("cmd") {
-                            format!("echo Pane {} [%CD%] \x1b[1;36mrune-terminal\x1b[0m \x1b[32mANSI\x1b[0m \x1b[38;2;250;204;21mRGB\x1b[0m\r\n", i + 1)
+                            format!("echo Pane {} [%CD%] \x1b[1;36mrune-terminal\x1b[0m \x1b[32mANSI\x1b[0m \x1b[38;2;250;204;21mRGB\x1b[0m\r", i + 1)
                         } else {
                             format!(
-                                "Write-Host \"Pane {} $([char]27)[1;36mrune-terminal$([char]27)[0m $([char]27)[32mANSI16$([char]27)[0m $([char]27)[38;2;250;204;21mTrueColor$([char]27)[0m $([char]27)[4;35mUnderline$([char]27)[0m\"\r\n",
+                                "Write-Host \"Pane {} $([char]27)[1;36mrune-terminal$([char]27)[0m $([char]27)[32mANSI16$([char]27)[0m $([char]27)[38;2;250;204;21mTrueColor$([char]27)[0m $([char]27)[4;35mUnderline$([char]27)[0m\"\r",
                                 i + 1
                             )
                         };
@@ -251,7 +251,7 @@ fn spawn_panes(s: &mut AppState, waker: Waker) {
     }
 
     if s.bench.probe_enabled {
-        s.bench.next_probe_at = Some(Instant::now() + Duration::from_millis(1200));
+        s.bench.next_probe_at = Some(Instant::now() + Duration::from_millis(4000));
     }
     if s.bench.enabled {
         println!(
@@ -262,6 +262,41 @@ fn spawn_panes(s: &mut AppState, waker: Waker) {
             s.cell_h
         );
     }
+}
+
+/// The console host asks the terminal where the cursor is (`ESC[6n`) before it prints anything, and
+/// waits for the answer. Windows Terminal answers it; xterm.js answers it inside Kolux today; a grid
+/// drawn by hand has to answer it too or every pane stays blank (measured: 4 bytes, then silence).
+/// Also answers the status report (`ESC[5n`) and the primary device attributes (`ESC[c`).
+fn terminal_replies(bytes: &[u8], screen: &vt100::Screen) -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i + 2 < bytes.len() {
+        if bytes[i] != 0x1b || bytes[i + 1] != b'[' {
+            i += 1;
+            continue;
+        }
+        let start = i + 2;
+        let mut end = start;
+        while end < bytes.len() && !(0x40..=0x7e).contains(&bytes[end]) {
+            end += 1;
+        }
+        if end >= bytes.len() {
+            break; // a sequence split across reads is answered when its tail arrives
+        }
+        let params = &bytes[start..end];
+        match bytes[end] {
+            b'n' if params == &b"6"[..] || params.is_empty() => {
+                let (row, col) = screen.cursor_position();
+                out.extend_from_slice(format!("\x1b[{};{}R", row + 1, col + 1).as_bytes());
+            }
+            b'n' if params == &b"5"[..] => out.extend_from_slice(b"\x1b[0n"),
+            b'c' if params.is_empty() || params == &b"0"[..] => out.extend_from_slice(b"\x1b[?1;2c"),
+            _ => {}
+        }
+        i = end + 1;
+    }
+    out
 }
 
 fn poll_pty(s: &mut AppState, _clock: f64, tx: &mut Tx) -> bool {
@@ -287,6 +322,12 @@ fn poll_pty(s: &mut AppState, _clock: f64, tx: &mut Tx) -> bool {
                 if let Some(pane) = s.panes.get_mut(idx) {
                     pane.bytes_in += bytes.len() as u64;
                     pane.parser.process(&bytes);
+                    let replies = terminal_replies(&bytes, pane.parser.screen());
+                    if !replies.is_empty() {
+                        if let Some(w) = pane.writer.as_ref() {
+                            let _ = write_shared(w, &replies);
+                        }
+                    }
                     changed = true;
                     if idx == 0 {
                         if let Some(probe) = s.bench.pending_probe {
@@ -461,12 +502,14 @@ fn on_key(s: &mut AppState, ev: &KeyEvent, _tx: &mut Tx) -> bool {
 }
 
 fn grid_dims(count: usize) -> (usize, usize) {
+    // Columns first, rows second: kept at two columns past four panes because four columns of an
+    // 80-column pane overflow a 1440 px window and the right-hand panes fall off the edge.
     match count {
         0 | 1 => (1, 1),
         2 => (2, 1),
         3 | 4 => (2, 2),
-        5 | 6 => (3, 2),
-        _ => (4, 2),
+        5 | 6 => (2, 3),
+        _ => (2, 4),
     }
 }
 
@@ -536,6 +579,7 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                 let viewport = el()
                     .key(format!("vp-{pane_idx}"))
                     .w_full()
+                    .min_w(0.0)
                     .grow(1.0)
                     .min_h(0.0)
                     .padding(CELL_PAD_Y)
@@ -553,6 +597,7 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                     .child(
                         grid(pane.cols, cell_w, cell_h, grid_rows)
                             .key(format!("grid-{pane_idx}"))
+                            .min_w(0.0)
                             .w(pane.cols as f32 * cell_w)
                             .h(pane.rows as f32 * cell_h),
                     );
@@ -560,9 +605,11 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                 let card = col()
                     .key(format!("pane-{pane_idx}"))
                     .grow(1.0)
+                    .min_w(0.0)
                     .h_full()
                     .min_h(0.0)
                     .radius(6.0)
+                    .clip_rounded(6.0)
                     .border(if is_active { 1.5 } else { 1.0 }, if is_active { border_active } else { border_idle })
                     .fill(s.palette.bg)
                     .focusable(true)
@@ -579,6 +626,7 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
             row()
                 .key(format!("grid-row-{r_idx}"))
                 .w_full()
+                .min_w(0.0)
                 .grow(1.0)
                 .min_h(0.0)
                 .gap(GRID_GAP)
