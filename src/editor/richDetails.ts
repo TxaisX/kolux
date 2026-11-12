@@ -20,7 +20,8 @@ import {
   type RangeSelection,
   type SerializedElementNode,
 } from "lexical";
-import { $convertFromMarkdownString, $convertToMarkdownString, type MultilineElementTransformer, type Transformer } from "@lexical/markdown";
+import { $convertFromMarkdownString, type MultilineElementTransformer, type Transformer } from "@lexical/markdown";
+import { $exportMarkdown } from "./mdExport";
 
 export class SummaryNode extends ElementNode {
   static getType() {
@@ -173,7 +174,7 @@ export function makeDetails(all: () => Transformer[]): MultilineElementTransform
       const kids = node.getChildren();
       const title = kids.find($isSummaryNode)?.getTextContent().replace(/[<>\n]/g, " ") ?? "";
       const body = kids.find($isBodyNode);
-      const text = body ? $convertToMarkdownString(all(), body).replace(/^\n+|\n+$/g, "") : "";
+      const text = body ? $exportMarkdown(all(), body).replace(/^\n+|\n+$/g, "") : "";
       return `<details>\n<summary>${title}</summary>\n\n${text ? text + "\n\n" : ""}</details>`;
     },
     type: "multiline-element",

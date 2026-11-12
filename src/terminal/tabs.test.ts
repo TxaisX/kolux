@@ -66,7 +66,7 @@ test("only a whole-word term-N handle is a link, with its place in the line (TER
 test("a tab's menu offers Rename for a terminal or agent tab and Close for every tab (TERM-048)", () => {
   expect(tabMenu(undefined).map((i) => i.id)).toEqual(["rename", "close"]);
   expect(tabMenu("editor").map((i) => i.id)).toEqual(["close"]);
-  expect(tabMenu("browser").map((i) => i.id)).toEqual(["close"]);
+  expect(tabMenu("diff").map((i) => i.id)).toEqual(["close"]);
   expect(tabMenu(undefined)[0]).toMatchObject({ label: "Rename tab", keys: "tab.rename" });
 });
 

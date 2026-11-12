@@ -12,7 +12,6 @@ import Sidebar from "./window/Sidebar";
 import WindowTopBar from "./window/TopBar";
 import { WindowStoreProvider, useWindow } from "./window/store";
 import type { WindowBag } from "./windowBag";
-import { useShowTerminalsOnBrowserOpen } from "./browserOpen";
 import { useLayoutEffect, type CSSProperties } from "react";
 import { tally } from "./window/stable";
 
@@ -26,8 +25,7 @@ export function windowView(w: WindowBag) {
 }
 
 function WindowSurfaces() {
-  const { leftWidth, setScreen, setPage } = useWindow();
-  useShowTerminalsOnBrowserOpen(setScreen, setPage); // GIT-036: a page asked for in the browser is shown, whatever screen asked
+  const { leftWidth } = useWindow();
   useLayoutEffect(() => tally("window")); // PKG-2: the speed harness counts whole-window commits (off unless it asks, stable.ts)
   return (
     <div className="app">

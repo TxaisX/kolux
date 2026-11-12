@@ -32,7 +32,7 @@ export function useStatusSurfaces({ agentOf, exitedPrompt, hook, liveIds, panes,
   // STAT-001: a hook-fed state wins over the guess from the program's state.
   for (const p of panes) {
     const dir = viewOf(p);
-    if (dir !== null && p.kind !== "browser" && !p.seats) (byDir[dir] ??= []).push(statusOf(p) ?? paneState(p.agent, running[p.key]));
+    if (dir !== null && !p.seats) (byDir[dir] ??= []).push(statusOf(p) ?? paneState(p.agent, running[p.key]));
   }
   const rowStates: Record<string, RowInfo> = {};
   const workingIn = workingByDir(panes.map((p) => ({ ...p, cwd: viewOf(p) })), hook, running, liveIds); // STAT-036: working agents per workspace (shown grid, DT-C274)

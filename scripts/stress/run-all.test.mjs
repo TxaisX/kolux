@@ -11,6 +11,8 @@ import {
   selectorDrift,
   shouldRun,
   slotConfig,
+  slotAppPids,
+  parseProcessTable,
   warningsFor,
 } from "./run-all.mjs";
 
@@ -50,6 +52,52 @@ test("parseArgs validates --instances, --timeout, --only, and boolean flags", ()
 
   assert.throws(() => parseArgs(["--instances", "12"]), /1\.\.10/);
   assert.throws(() => parseArgs(["--instances", "0"]), /1\.\.10/);
+});
+
+test("parseProcessTable splits pid|ppid|name|commandLine, keeps a | inside a command line, drops junk", () => {
+  const table = parseProcessTable(
+    [
+      "100|1|kolux.exe|C:\\repo\\src-tauri\\target\\debug\\kolux.exe",
+      "101|100|msedgewebview2.exe|C:\\x\\msedgewebview2.exe --remote-debugging-port=9350 --a=b|c",
+      "",
+      "not a process line",
+      "202|1|cmd.exe|cmd /c echo hi",
+    ].join("\r\n"),
+  );
+  assert.deepEqual(
+    table.map((p) => [p.pid, p.ppid, p.name]),
+    [
+      [100, 1, "kolux.exe"],
+      [101, 100, "msedgewebview2.exe"],
+      [202, 1, "cmd.exe"],
+    ],
+  );
+  assert.equal(table[1].cmd, "C:\\x\\msedgewebview2.exe --remote-debugging-port=9350 --a=b|c");
+  assert.deepEqual(parseProcessTable(""), []);
+  assert.deepEqual(parseProcessTable(null), []);
+});
+
+test("slotAppPids finds the app by its slot's CDP port only: never a name scan, never another app", () => {
+  // One slot's app (kolux 100) with the WebView2 child that carries its CDP port, an installed/tray app (kolux 200)
+  // that never carries it, a later slot's app (kolux 300) on the next port, and a browser that is not an app at all.
+  const procs = parseProcessTable(
+    [
+      "100|1|kolux.exe|C:\\repo\\src-tauri\\target\\debug\\kolux.exe",
+      "101|100|msedgewebview2.exe|msedgewebview2.exe --remote-debugging-port=9350 --user-data-dir=C:\\t\\slot-0",
+      "102|101|msedgewebview2.exe|msedgewebview2.exe --type=renderer --remote-debugging-port=9350",
+      "200|1|kolux.exe|C:\\Users\\X\\AppData\\Local\\Programs\\kolux\\kolux.exe",
+      "201|200|msedgewebview2.exe|msedgewebview2.exe --remote-debugging-port=9222",
+      "300|1|kolux.exe|C:\\repo2\\src-tauri\\target\\debug\\kolux.exe",
+      "301|300|msedgewebview2.exe|msedgewebview2.exe --remote-debugging-port=9351",
+      "400|1|chrome.exe|chrome.exe --remote-debugging-port=9350",
+    ].join("\n"),
+  );
+  assert.deepEqual(slotAppPids(procs, 9350), [100]);
+  assert.deepEqual(slotAppPids(procs, 9351), [300]);
+  assert.deepEqual(slotAppPids(procs, 9355), []);
+  // A descendant with a stale parent pid (its parent already exited) must not be attached to an unrelated app.
+  const stale = parseProcessTable(["501|999|msedgewebview2.exe|msedgewebview2.exe --remote-debugging-port=9350"].join("\n"));
+  assert.deepEqual(slotAppPids(stale, 9350), []);
 });
 
 test("classifyProveScript separates helpers, real-Claude, retired-browser, installed, and stand-in scripts", () => {

@@ -12,10 +12,9 @@ import { folderName } from "../projects/model";
 import { sameDir } from "../workspaces";
 import type { Badge } from "./tabs";
 
-/** What a tab is called: the seat's title, the agent, the browser page's title, or "Terminal N". */
+/** What a tab is called: the seat's title, the agent, or "Terminal N". */
 /** TERM-058: a terminal tab follows the running program's title (`live`) unless the user named it; a worker's task label (ORCH-066) comes first. */
-export function tabName(p: Pane, titles: Record<number, string>, label?: string, live: Record<number, Identity> = {}): string {
-  if (p.kind === "browser") return p.title || titles[p.key] || "New Tab";
+export function tabName(p: Pane, _titles: Record<number, string>, label?: string, live: Record<number, Identity> = {}): string {
   if (p.kind === "editor") return baseName(p.path ?? "");
   if (p.kind === "preview") return `Preview ${baseName(p.path ?? "")}`;
   if (p.kind === "changes") return "All Changes";

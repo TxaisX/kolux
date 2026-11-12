@@ -38,7 +38,8 @@ vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ show: asyn
 vi.mock("./theme", () => ({ applyAppearance: () => {}, cachedAppearance: () => null, followSystemMode: () => {}, readAppearance: () => null }));
 vi.mock("./settings/general", () => ({ stampLook: () => null }));
 vi.mock("./settings/saveChanged", () => ({ saveChanged: async () => {} }));
-vi.mock("./language", () => ({ applyLanguage: (l: unknown) => void h.langs.push(l), LANGUAGE_FIELD: "language" }));
+// locale / onLanguageChange: the language-pack preload (i18n/packs.ts, i18n/lookup.ts) reads them before the first draw.
+vi.mock("./language", () => ({ applyLanguage: (l: unknown) => void h.langs.push(l), LANGUAGE_FIELD: "language", locale: () => "en", onLanguageChange: () => () => {} }));
 vi.mock("./settings/zoom", () => ({ applyZoom: () => {}, ZOOM_FIELD: "zoom" }));
 vi.mock("./terminal/text", () => ({ followText: (s: unknown) => void h.texts.push(s), applyText: (s: unknown) => void h.texts.push(s) }));
 vi.mock("./settings/menuWheel", () => ({ installMenuWheel: () => {} }));

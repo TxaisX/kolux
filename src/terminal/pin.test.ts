@@ -49,7 +49,7 @@ describe("C01-R4-01 Close all editor tabs", () => {
   const strip = [
     { key: 11, kind: undefined }, // a terminal
     { key: 12, kind: "editor" },
-    { key: 13, kind: "browser" },
+    { key: 13, kind: "terminal" },
     { key: 14, kind: "diff" },
     { key: 15, kind: "preview" },
     { key: 16, kind: "changes" },
@@ -57,9 +57,9 @@ describe("C01-R4-01 Close all editor tabs", () => {
   ];
   const order = strip.map((p) => p.key);
 
-  it("takes the strip's editor tabs and never a terminal or a browser tab", () => {
+  it("takes the strip's editor tabs and never a terminal", () => {
     expect(editorCloseSet(order, strip, new Set())).toEqual([12, 14, 15, 16, 17]);
-    // A strip of terminals and browsers has nothing for this command to close.
+    // A strip of terminals has nothing for this command to close.
     expect(editorCloseSet([11, 13], strip, new Set())).toEqual([]);
     // A key with no pane behind it closes nothing.
     expect(editorCloseSet([99], strip, new Set())).toEqual([]);

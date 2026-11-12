@@ -62,7 +62,7 @@ describe("TERM-049 Tab Color and menu head", () => {
     const ids = (kind: string | undefined) => tabMenuHead(kind, false, { enabled: true, why: null }).map((e) => e.id);
     expect(ids(undefined)).toEqual(["rename", "pin", "color", "splitRight", "splitDown"]);
     expect(ids("editor")).toEqual(["pin", "color", "splitRight", "splitDown"]);
-    expect(tabMenuHead("browser", true, { enabled: false, why: "x" })[0]).toEqual({ id: "pin", label: "Unpin tab" });
+    expect(tabMenuHead("diff", true, { enabled: false, why: "x" })[0]).toEqual({ id: "pin", label: "Unpin tab" });
     const off = tabMenuHead(undefined, false, { enabled: false, why: "alone" })[4];
     expect(off).toMatchObject({ id: "splitDown", disabled: true, why: "alone" });
   });

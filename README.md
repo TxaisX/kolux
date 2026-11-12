@@ -40,7 +40,7 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 ## What it does
 
 - **Parallel agents in one folder, or a folder each.** Launch a Solo, Pair, Workbench, or Swarm lineup. By default each seat in a Git project gets its own Git worktree and branch. Turn off Own folder for each agent and every seat works in your project's folder; the chooser then warns that several AIs will edit the same files.
-- **One window.** Terminals, browser tabs, an editor, and diffs sit in the same split layout.
+- **One window.** Terminals, an editor, and diffs sit in the same split layout. Web pages open in your own browser.
 - **Status at a glance.** Claude Code, Codex, Gemini CLI, and other agents report their own state through hooks. Working, needs you, stopped, and done use one vocabulary across the pane, Board, Inbox, tray dot, and notifications.
 - **Usage and limits.** Token and cost figures come from local Claude and Codex logs. Weekly plan limits show on the pill and pane gauges where the provider reports them.
 - **Review and ship.** When an agent finishes, press **Review changes** on its Board card or Inbox row. That opens All Changes, where you read every changed file, then stage, commit, push, and pull. Pull-request checks show in the right panel's Checks tab.
