@@ -1,7 +1,7 @@
 // PROJ-066: each workspace keeps its own panes; switching shows one set and hides the rest;
 // removing a workspace drops every pane inside it.
 import { expect, test } from "vitest";
-import { activeAfterRemove, focusIn, nameOf, panesIn, sameDir, underDir, withoutDir } from "./workspaces";
+import { activeAfterRemove, focusIn, nameOf, panesIn, sameDir, underDir, viewOf, withoutDir } from "./workspaces";
 
 const panes = [
   { key: 1, cwd: null },
@@ -72,4 +72,33 @@ test("a path that climbs out of a folder is not inside it", () => {
   expect(underDir("C:/repo/ws/alpha/src/.././lib", "C:/repo/ws/alpha/")).toBe(true);
   expect(underDir("D:/repo/ws/alpha", "C:/repo/ws/alpha")).toBe(false);
   expect(underDir("C:/repo/ws/alpha-2", "C:/repo/ws/alpha")).toBe(false);
+});
+test("DT-C274: a pane shown in another folder's grid is in that grid, not in its own folder's", () => {
+  const team = [
+    { key: 1, cwd: "C:/r" },
+    { key: 2, cwd: "C:/r/wts/one", view: "C:/r" },
+    { key: 3, cwd: "C:/r/wts/two", view: "c:/R/" },
+    { key: 4, cwd: "C:/r/wts/one" },
+    { key: 5, cwd: "C:/r/wts/two", view: null },
+  ];
+  expect(viewOf(team[0])).toBe("C:/r");
+  expect(viewOf(team[1])).toBe("C:/r");
+  expect(viewOf(team[4])).toBeNull(); // an explicit null view is the Home grid, not the pane's cwd
+  expect(panesIn(team, "C:/r").map((p) => p.key)).toEqual([1, 2, 3]);
+  expect(panesIn(team, "C:/r/wts/one").map((p) => p.key)).toEqual([4]);
+  expect(panesIn(team, null).map((p) => p.key)).toEqual([5]);
+  // the focus stays inside the grid shown: a team pane focused in the team's grid keeps it, one shown elsewhere does not
+  expect(focusIn(team, "C:/r", 3)).toBe(3);
+  expect(focusIn(team, "C:/r", 4)).toBe(1);
+  expect(focusIn(team, "C:/r/wts/one", 2)).toBe(4);
+});
+
+test("DT-C274: removing a folder closes the panes running in it and the panes shown in its grid", () => {
+  const team = [
+    { key: 1, cwd: "C:/r" },
+    { key: 2, cwd: "C:/r/wts/one", view: "C:/r" },
+    { key: 3, cwd: "C:/other" },
+  ];
+  expect(withoutDir(team, "C:/r/wts/one").map((p) => p.key)).toEqual([1, 3]); // its worktree removed
+  expect(withoutDir(team, "C:/r").map((p) => p.key)).toEqual([3]); // the folder its grid is in removed
 });

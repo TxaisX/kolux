@@ -24,7 +24,7 @@ import { cellsOf, groupOf } from "../terminal/grid";
 import { editorCloseSet } from "../terminal/pin";
 import { nextNeedsYou } from "../terminal/status";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, type CycleMode } from "../terminal/tabCycle";
-import { panesIn, sameDir } from "../workspaces";
+import { panesIn, sameDir, viewOf } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
 import { worktreesOffNote } from "../projects/singleFolder";
@@ -414,7 +414,7 @@ export function useWindowKeys(w: WindowBag) {
               if (page) openInBrowser(page.url);
             } else if (r.kind === "terminal") {
               const key = nextKey.current++;
-              const dir = r.pane.cwd || null;
+              const dir = viewOf({ cwd: r.pane.cwd || null, view: r.pane.view }); // DT-C274: the grid it was shown in
               setPanes((ps) => [...ps, paneFor(r.pane, key, placement(ps, focused, dir))]);
               setScreen("terminals");
               if (!sameDir(dir, activeDir)) setActiveDir(dir);

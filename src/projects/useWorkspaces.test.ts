@@ -9,6 +9,7 @@ import { type FakeDocument, installDom, mount } from "../tasks/fakeDom";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { seatReady } from "../launch/seats";
 import { useWorkspaceActions } from "./useWorkspaces";
+import { TEAM_WORKTREES_SETTING } from "./rows";
 
 const A = "C:/w/ws/a";
 const B = "C:/w/ws/b";
@@ -19,7 +20,7 @@ type Host = { actions: ReturnType<typeof useWorkspaceActions>; panes: Pane[]; se
 let host: Host;
 let doc: FakeDocument;
 
-function Harness({ start, active, recent }: { start: Pane[]; active: string; recent: string[] }) {
+function Harness({ start, active, recent, settings = {} }: { start: Pane[]; active: string; recent: string[]; settings?: Record<string, unknown> }) {
   const [panes, setPanes] = useState(start);
   const [focused, setFocused] = useState(start[0].key);
   const [activeDir, setActiveDir] = useState<string | null>(active);
@@ -29,7 +30,7 @@ function Harness({ start, active, recent }: { start: Pane[]; active: string; rec
   const activeRef = useRef<string | null>(activeDir);
   activeRef.current = activeDir;
   const owner = { [A]: "p1", [B]: "p1", [C]: "p1" };
-  const actions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, setStacked, nextKey, settings: {}, screen: "terminals", setScreen: () => {}, setPage: () => {}, owner, recentDirs, activeRef });
+  const actions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, setStacked, nextKey, settings, screen: "terminals", setScreen: () => {}, setPage: () => {}, owner, recentDirs, activeRef });
   host = { actions, panes, setPanes, active: activeDir, focused };
   return null;
 }
@@ -87,4 +88,22 @@ test("T-664 (b): a prefill never changes a workspace that already has panes", as
   await act(async () => host.actions.select(B, null, false, { agent: "claude", task: "ignored" }));
   expect(host.panes).toEqual([pane(1, A), pane(2, B)]);
   expect(host.active).toBe(B);
+});
+
+// DT-C274: a team worktree is shown in its team's grid while that grid has panes; a stranded one (its grid empty)
+// is shown as a plain workspace of its own, with no view.
+test("selecting a team worktree shows its team's grid, or the worktree itself once that grid is empty", async () => {
+  const W = "C:/w/ws/team1";
+  const settings = { [TEAM_WORKTREES_SETTING]: [{ path: W, view: A }] };
+  await mount(createElement(Harness, { start: [{ ...pane(1, W), view: A }, pane(2, B)], active: B, recent: [B], settings }), doc);
+  await act(async () => host.actions.select(W, null));
+  expect(host.active).toBe(A);
+  expect(host.focused).toBe(1);
+  await act(async () => host.setPanes((ps) => ps.filter((p) => p.key !== 1)));
+  await act(async () => host.actions.select(B, null));
+  await act(async () => host.actions.select(W, null));
+  expect(host.active, "stranded: shown as itself").toBe(W);
+  const made = host.panes.find((p) => p.key >= 100);
+  expect(made?.cwd).toBe(W);
+  expect(made?.view).toBeUndefined();
 });

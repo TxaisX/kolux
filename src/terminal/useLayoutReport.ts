@@ -1,6 +1,6 @@
 // Which pane is in view (TERM-118) and the layout report the command line reads (CLI-023), moved out of App.tsx
 // as they were (cycle 2, the App.tsx split). Called where they sat, so the window's hook order is unchanged.
-import { sameDir } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 import { tabName } from "./tabName";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef } from "react";
@@ -15,7 +15,7 @@ export function useLayoutReport({ activeDir, activeOf, board, cells, cliFailed, 
   const inView = (key: number) => {
     const cell = cells.find((c) => c.panes.some((p) => p.key === key));
     if (!cell) return false;
-    return board || (terminals && sameDir(cell.panes[0].cwd, activeDir) && activeOf(cell) === key);
+    return board || (terminals && sameDir(viewOf(cell.panes[0]), activeDir) && activeOf(cell) === key);
   };
   // CLI-023: the command line learns where each terminal sits (its worktree pane, its tab, its
   // name, whether it is in view) from this report, sent whenever that changes.
@@ -23,10 +23,10 @@ export function useLayoutReport({ activeDir, activeOf, board, cells, cliFailed, 
   const reportLayout = () => {
     const rows: Record<string, unknown>[] = [];
     for (const c of cells) {
-      const here = cells.filter((x) => sameDir(x.panes[0].cwd, c.panes[0].cwd));
+      const here = cells.filter((x) => sameDir(viewOf(x.panes[0]), viewOf(c.panes[0]))); // the cells of its grid (DT-C274)
       c.panes.forEach((p, i) => {
         const id = ptys.current[p.key];
-        if (id !== undefined) rows.push({ handle: `term-${id}`, dir: p.cwd, cell: here.indexOf(c) + 1, tab: i + 1, title: tabName(p, titles), custom: p.title ?? null, shown: inView(p.key), ask: p.ask ?? null });
+        if (id !== undefined) rows.push({ handle: `term-${id}`, dir: p.cwd, view: viewOf(p), cell: here.indexOf(c) + 1, tab: i + 1, title: tabName(p, titles), custom: p.title ?? null, shown: inView(p.key), ask: p.ask ?? null });
       });
     }
     for (const [ask, error] of Object.entries(cliFailed.current)) rows.push({ ask, error });

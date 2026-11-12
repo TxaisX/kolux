@@ -17,7 +17,7 @@ import { IDLE, shownAgent } from "../../terminal/shellMarks";
 import Ring from "../../usage/Ring";
 import { capOn, claudeOf, codexOf, contextFill, meterOf, meterText } from "../../usage/meter";
 import NameField from "../../terminal/NameField";
-import { sameDir } from "../../workspaces";
+import { sameDir, viewOf } from "../../workspaces";
 import Pane from "./Pane";
 import { gridFrame } from "./gridFrame";
 import { tabKeyAction, tabStop } from "./tabKeys";
@@ -77,7 +77,7 @@ export default function Grid() {
             key={c.group}
             className="cell"
             data-drop={dropHint?.group === c.group && !dropHint.tab ? dropHint.zone : undefined}
-            hidden={agentsScreen ? !mine : !board && (!sameDir(c.panes[0].cwd, activeDir) || (zoomed !== null && c.group !== zoomed))}
+            hidden={agentsScreen ? !mine : !board && (!sameDir(viewOf(c.panes[0]), activeDir) || (zoomed !== null && c.group !== zoomed))}
             onDragOver={(e) => {
               if (!dragging.current) return;
               e.preventDefault();

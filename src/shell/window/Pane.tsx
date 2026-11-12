@@ -20,7 +20,7 @@ import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { onRunning } from "../../inbox/exitedPrompt";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
 import { capOn, claudeOf, codexOf, contextFill, meterOf, readsLeft } from "../../usage/meter";
-import { nameOf, sameDir } from "../../workspaces";
+import { nameOf, sameDir, viewOf } from "../../workspaces";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
 import { deferred } from "../../lazy/deferred";
@@ -295,7 +295,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       sessionKnown={!!p.session}
       session={p.session}
       onSessionLaunch={act.sessionLaunch} // after-list #117: Continue / Fork open a second pane beside this one
-      entryTabs={panes.filter((q) => sameDir(q.cwd, activeDir)).map((q) => ({ key: q.key, name: tabName(q, titles, labelOf(q), liveIds) }))}
+      entryTabs={panes.filter((q) => sameDir(viewOf(q), activeDir)).map((q) => ({ key: q.key, name: tabName(q, titles, labelOf(q), liveIds) }))}
       onEntry={act.entry}
       shells={shells}
       onShell={act.shell}

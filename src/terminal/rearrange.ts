@@ -4,7 +4,7 @@
 // `group` change. Pure: the window hands in the panes and applies what comes back. A move that
 // would leave the layout as it is returns null, so a self-drop does nothing.
 import { cellsOf, groupOf, MAX_PANES, type Tabbed } from "./grid";
-import { sameDir } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 
 /** TERM-015: the drag handle shows only when the workspace holds more than one cell. */
 export const showsDragHandle = (cells: number): boolean => cells > 1;
@@ -72,8 +72,9 @@ export function place<P extends Tabbed>(panes: P[], moving: P[], at: { before?: 
   return [...kept.slice(0, i), ...placed, ...kept.slice(i)];
 }
 
-export function cellsHere<P extends Tabbed & { cwd: string | null }>(panes: P[], cwd: string | null): number {
-  return cellsOf(panes.filter((p) => sameDir(p.cwd, cwd))).length;
+/** The cells of the grid shown in folder `dir` (DT-C274: by `viewOf`). */
+export function cellsHere<P extends Tabbed & { cwd: string | null; view?: string | null }>(panes: P[], dir: string | null): number {
+  return cellsOf(panes.filter((p) => sameDir(viewOf(p), dir))).length;
 }
 
 /**
@@ -102,7 +103,7 @@ export function dropTab<P extends Tabbed & { cwd: string | null }>(panes: P[], k
     return { panes: next, group: dest };
   }
   const tg = cellsOf(panes).find((c) => c.group === target.group);
-  if (!tg || !sameDir(tg.panes[0].cwd, me.cwd)) return null;
+  if (!tg || !sameDir(viewOf(tg.panes[0]), viewOf(me))) return null;
   const base = rehome(panes, key);
   const moving = base.find((p) => p.key === key) as P;
   const others = base.filter((p) => p.key !== key);
@@ -119,7 +120,7 @@ export function dropTab<P extends Tabbed & { cwd: string | null }>(panes: P[], k
   at = target.zone === "left" || target.zone === "top" ? { before: target.group } : { after: target.group };
   into = "own";
   const next = place(base, [moving], at, into);
-  if (layoutOf(next) === layoutOf(panes) || cellsHere(next, me.cwd) > MAX_PANES) return null;
+  if (layoutOf(next) === layoutOf(panes) || cellsHere(next, viewOf(me)) > MAX_PANES) return null;
   return { panes: next, group: moving.key };
 }
 
@@ -131,7 +132,7 @@ export function dropCell<P extends Tabbed & { cwd: string | null }>(panes: P[], 
   if (group === target.group) return null;
   const from = cellsOf(panes).find((c) => c.group === group);
   const to = cellsOf(panes).find((c) => c.group === target.group);
-  if (!from || !to || !sameDir(from.panes[0].cwd, to.panes[0].cwd)) return null;
+  if (!from || !to || !sameDir(viewOf(from.panes[0]), viewOf(to.panes[0]))) return null;
   let next: P[];
   if (target.zone === "centre" || target.zone === "strip") next = place(panes, from.panes, { after: target.group }, target.group);
   else next = place(panes, from.panes, target.zone === "left" || target.zone === "top" ? { before: target.group } : { after: target.group }, group);

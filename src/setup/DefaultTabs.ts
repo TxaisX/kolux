@@ -7,7 +7,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Pane } from "../App";
 import { cellsOf } from "../terminal/grid";
 import { TAB_COLORS, setTabColor, type TabColors } from "../terminal/tabColor";
-import { panesIn } from "../workspaces";
+import { panesIn, sameDir } from "../workspaces";
 import { askTrust, trusted, type TrustAnswer, type TrustAsk } from "./TrustPrompt";
 
 /** One default tab; a field the file left out or that failed its limits is null. */
@@ -69,14 +69,20 @@ type OpenDeps = {
   ask?: (a: TrustAsk) => Promise<TrustAnswer>;
 };
 
-/** PROJ-034: opens kolux.yaml's default tabs in the new workspace `dir` of the repository at `root`, beside its first pane, without taking focus. Never throws: a failure is said, not raised. */
-export async function openDefaultTabs(root: string, dir: string, branch: string | null, deps: OpenDeps): Promise<void> {
+/** PROJ-034: opens kolux.yaml's default tabs in the new workspace `dir` of the repository at `root`, beside its first pane, without taking focus. Never throws: a failure is said, not raised.
+ *  DT-C274: `view` is the grid a team worktree is shown in: the tabs run in `dir`, are shown there, and join the cell of
+ *  the pane that runs in `dir` (its agent), so the team's grid gains tabs, not cells. */
+export async function openDefaultTabs(root: string, dir: string, branch: string | null, deps: OpenDeps, view?: string | null): Promise<void> {
   try {
     const { tabs, refused } = await defaultTabs(root, dir, deps.invoke, deps.ask);
     if (refused) deps.say(refused);
     if (tabs.length === 0) return;
     const made = tabPanes(tabs, dir, branch, () => deps.nextKey.current++);
     deps.setPanes((ps) => {
+      if (view !== undefined) {
+        const mine = cellsOf(panesIn(ps, view)).find((c) => c.panes.some((p) => sameDir(p.cwd, dir)))?.group;
+        return [...ps, ...made.panes.map((p) => ({ ...p, view, ...(mine === undefined ? {} : { group: mine }) }))];
+      }
       const group = cellsOf(panesIn(ps, dir))[0]?.group;
       return [...ps, ...(group === undefined ? made.panes : made.panes.map((p) => ({ ...p, group })))];
     });

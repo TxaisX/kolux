@@ -8,13 +8,13 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Pane } from "../App";
 import { CLOSED_MAX, pathForms, remember, reopen } from "../terminal/closedTabs";
 import { cellsOf, groupOf, MAX_PANES } from "../terminal/grid";
-import { panesIn, sameDir } from "../workspaces";
+import { panesIn, sameDir, viewOf } from "../workspaces";
 
 /** The folder check Reopen uses. Plain path_kind answers "outside" for a folder under no project, so such a tab always fell back to the shown workspace (after-list 383); folderOnly makes it say dir or missing. */
 export const folderKind = (path: string): Promise<string> => invoke<string>("path_kind", { path, folderOnly: true });
 
 /** What a closed terminal or agent tab needs to start again: where, and what it ran. */
-export type ClosedPane = Pick<Pane, "branch" | "agent" | "agentId" | "program" | "args" | "env" | "title" | "word"> & {
+export type ClosedPane = Pick<Pane, "branch" | "agent" | "agentId" | "program" | "args" | "env" | "title" | "word" | "view"> & {
   /** The folder; "" for a pane that belonged to no workspace. */
   cwd: string;
 };
@@ -22,7 +22,9 @@ export type ClosedPane = Pick<Pane, "branch" | "agent" | "agentId" | "program" |
 /** A tab that carries no program of its own (browser, editor, diff, changes, launch sheet) is not remembered here. */
 export function closedRecord(p: Pane): ClosedPane | null {
   if (p.kind || p.seats) return null;
-  return { cwd: p.cwd ?? "", branch: p.branch, agent: p.agent, agentId: p.agentId, program: p.program, args: p.args, env: p.env, title: p.title, word: p.word };
+  const rec: ClosedPane = { cwd: p.cwd ?? "", branch: p.branch, agent: p.agent, agentId: p.agentId, program: p.program, args: p.args, env: p.env, title: p.title, word: p.word };
+  if (p.view !== undefined) rec.view = p.view; // DT-C274: a team tab comes back in its team's grid
+  return rec;
 }
 
 export type Reopen = { kind: "terminal"; pane: ClosedPane } | { kind: "browser" } | { kind: "none" };
@@ -83,11 +85,12 @@ export function paneFor(rec: ClosedPane, key: number, group?: number): Pane {
   return { ...rest, key, cwd: cwd === "" ? null : cwd, group };
 }
 
-/** The cell the tab returns to: the focused pane's cell when it is in the same folder; a new cell of its
- * own, unless the workspace already shows the most cells it can, then the first cell. */
-export function placement(panes: readonly Pane[], focused: number, cwd: string | null): number | undefined {
-  const here = panes.find((p) => p.key === focused && sameDir(p.cwd, cwd));
+/** The cell the tab returns to: the focused pane's cell when it is in the same grid; a new cell of its
+ * own, unless the workspace already shows the most cells it can, then the first cell. `dir` is the folder whose
+ * grid the tab returns to (DT-C274: `viewOf` the closed tab). */
+export function placement(panes: readonly Pane[], focused: number, dir: string | null): number | undefined {
+  const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), dir));
   if (here) return groupOf(here);
-  const cells = cellsOf([...panesIn([...panes], cwd)]);
+  const cells = cellsOf([...panesIn([...panes], dir)]);
   return cells.length >= MAX_PANES ? cells[0]?.group : undefined;
 }

@@ -279,3 +279,17 @@ test("dtc27: a fresh start brings agent tabs back as plain shells in their folde
   expect(freshShells(restoreLayout(saved)!).panes[0].program).toBeNull();
   expect(l.panes.some(restoreAsks)).toBe(false);
 });
+
+test("DT-C274: a team pane's view folder is saved and restored, and a missing view folder drops the pane", () => {
+  const panes = [shell(1, "C:/r"), shell(2, "C:/r/wts/one", { view: "C:/r" }), shell(3, "C:/r/wts/two", { view: "C:/r" })];
+  const l = layoutOf(panes, {}, 2, "C:/r", {});
+  expect(l.panes.map((p) => p.view)).toEqual([undefined, "C:/r", "C:/r"]);
+  const back = restoreLayout(JSON.parse(JSON.stringify(l)))!;
+  expect(back).toEqual(l);
+  expect(freshShells(back).panes.map((p) => p.view)).toEqual([undefined, "C:/r", "C:/r"]);
+  expect(reviveSaved(back.panes[1]).view).toBe("C:/r");
+  // the worktrees still there but the folder their grid is in gone: the team panes are not brought back
+  expect(stillThere(back, (d) => d !== "C:/r").panes.map((p) => p.key)).toEqual([]);
+  // the view folder there, one worktree gone: only that pane goes
+  expect(stillThere(back, (d) => d !== "C:/r/wts/two").panes.map((p) => p.key)).toEqual([1, 2]);
+});

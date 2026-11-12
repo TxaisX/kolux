@@ -12,7 +12,7 @@ import { SCM_AGENT_KEY, SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { FOLDER_TAB_KEY, rememberTab } from "../../sessions/folderTabs";
 import { openSessions } from "../../sessions/openPanes";
 import { saveChanged } from "../../settings/saveChanged";
-import { panesIn } from "../../workspaces";
+import { sameDir } from "../../workspaces";
 import { useDeeds, useWindow } from "./store";
 import { useStableFns } from "./stable";
 import { AgentsPanel } from "../../lazy/pages";
@@ -70,7 +70,7 @@ export default function WindowRight() {
         launch={async (id, dir, prompt, extra) => {
           const a = agents.find((x) => x.id === id);
           if (!a) throw new Error(`${id} is not installed here.`);
-          await openIn(a, dir, panesIn(panes, dir)[0]?.branch ?? null, prompt, true, extra);
+          await openIn(a, dir, panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null, prompt, true, extra);
           return { handed: true };
         }}
         makeWorkspace={async (item) => {

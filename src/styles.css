@@ -186,8 +186,6 @@ input { font: inherit; }
 .proj.folder:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .proj .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .proj .hint { flex: none; font-size: 11px; color: var(--fg-muted); }
-/* The folder row's agent count: spaced off the branch name and sized like it, not the 14px bold name. */
-.proj .count { flex: none; margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--fg); font-variant-numeric: tabular-nums; }
 .proj .ib { opacity: 0; }
 /* One folder per project: the old worktree rows stay in the DOM (saved work, keyboard, old rows)
    but do not draw beside the folder row. */
@@ -195,7 +193,6 @@ input { font: inherit; }
 .proj:hover .ib, .proj .ib.on, .proj .ib:focus-visible { opacity: 1; } /* a keyboard user lands on the hidden buttons too */
 .branch { display: flex; align-items: center; height: 32px; padding: 0 12px 0 8px; gap: 8px; border-radius: 6px; font-size: 14px; font-weight: 500; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 .branch .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.branch .count, .sess .count { font-size: 11px; color: var(--fg); }
 /* PROJ-062: the second line of a workspace card (Default and Detailed). */
 .hdr-badge { flex: none; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; }
 .sb-group .hdr-badge { margin-right: 6px; }

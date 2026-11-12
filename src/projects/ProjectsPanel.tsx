@@ -28,8 +28,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { underDir } from "../workspaces";
-import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, runningUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
+import { sameDir, underDir } from "../workspaces";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, withoutTeamMade, hiddenTeamFolders, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
 import { recordPoll } from "../scm/prSearch";
@@ -74,7 +74,6 @@ import AutomationsRow from "./AutomationsRow";
 import SkillsRow from "./SkillsRow";
 import { chromeShown } from "../chrome/chromeItems";
 import { VOCAB } from "../terminal/status";
-import { workingWord } from "../status/working";
 import { onFinish, REFRESH_AFTER_MS, wantsRefresh } from "../status/finished";
 import type { AgentPass } from "../launch/agents";
 import { KeyText } from "../keys/KeymapContext";
@@ -114,13 +113,14 @@ type Props = {
   openDirs: string[];
   /** VIEW-051: the window's agent and shell panes; a workspace lists its running ones as rows
    * and counts them (the left pane no longer lists terminals as rows). */
-  sessions?: { key: number; agent: string; title: string; cwd: string | null; running: boolean }[];
+  sessions?: { key: number; agent: string; title: string; cwd: string | null; view?: string | null; running: boolean }[];
   /** PROJ-063: each open folder's strongest agent state and when it last changed. */
   states: Record<string, RowInfo>;
   /** PROJ-063 / TERM-118: workspace paths marked unread, kept by the window; `onUnread` flips one. */
   unread: Set<string>;
   onUnread: (dir: string, unread: boolean) => void;
-  /** PROJ-045 / PROJ-050: the remembered group-by and sort choices, saved through `onSetting`. */
+  /** PROJ-045 / PROJ-050: the remembered group-by and sort choices, saved through `onSetting`. DT-C274: a function
+   *  `value` is applied to the key's latest saved value at write time (undefined from it writes nothing). */
   settings: Record<string, unknown>;
   onSetting: (key: string, value: unknown) => void;
   /** The workspace the grid shows (PROJ-066); its row is the selected one. */
@@ -259,7 +259,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [listed, setWorktrees] = useState<Record<string, Worktree[]>>({}); // the ones not hidden by hand
   // AUTO-024: the switch that leaves out worktrees made by automation runs; moving to one turns it off.
   const hideAuto = settings[HIDE_AUTOMATION_SETTING] === true;
-  const worktrees = useMemo(() => withoutAutomationMade(listed, hideAuto), [listed, hideAuto]); // the ones the sidebar shows
+  // DT-C274: an own-folder team's worktrees are left out too; the team is reached by the row of the folder its grid is in.
+  // One left with nothing in its team's grid and nothing running in it is shown again, so it can still be reached.
+  const team = settings[TEAM_WORKTREES_SETTING];
+  const teamRef = useRef(team);
+  teamRef.current = team;
+  const onSettingRef = useRef(onSetting);
+  onSettingRef.current = onSetting;
+  const openKey = openDirs.join("\n");
+  const teamHidden = useMemo(() => hiddenTeamFolders(team, openDirs), [team, openKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const worktrees = useMemo(() => withoutTeamMade(withoutAutomationMade(listed, hideAuto), teamHidden, sameDir), [listed, hideAuto, teamHidden]); // the ones the sidebar shows
   const wasActive = useRef(activeDir);
   useEffect(() => {
     if (jumpUnhides(wasActive.current, activeDir, listed, hideAuto, same)) onSetting(HIDE_AUTOMATION_SETTING, false);
@@ -451,6 +460,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const next = keep(scanned.current);
     const unseen = keep(unseenKnown.current);
     let shownAt = 0;
+    const teamAtStart = teamRef.current; // DT-C274: the team record this scan can prune
+    let complete = list.length > 0;
     // Each project's answer shows as it arrives (at most ~8 repaints a second), not after the whole sweep.
     await scanProjects(
       list,
@@ -462,6 +473,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         } else {
           // ACCT-056: a failed scan removes nothing; the worktrees already known stay listed.
           next[p.id] = afterScan(next[p.id], null);
+          complete = false;
           // T-744: the 5 s poll's warning never covers an action's error, which stays until it is closed.
           const text = `Could not list the workspaces of ${p.name}, so the last known list stays: ${answer.error}`;
           setMessage((m) => (m?.kind === "error" ? m : { kind: "warn", text }));
@@ -475,6 +487,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       },
     );
     showScanned({ ...next }, { ...unseen });
+    // DT-C274: a team worktree a full scan no longer finds (removed outside the sidebar) leaves the record.
+    if (complete) {
+      const found = [...Object.values(next).flat(), ...Object.values(unseen).flat()].map((w) => w.path);
+      // Pruned against the record as it is when written (a launch may have added a worktree since the last render).
+      onSettingRef.current(TEAM_WORKTREES_SETTING, (latest: unknown) => prunedTeamFolders(latest, found, teamAtStart) ?? undefined);
+    }
     // GIT-065: the same poll keeps each row's unpushed badge current; a failed read keeps the last.
     const shown = Object.values(next).flat().filter((w) => !w.hidden).map((w) => w.path);
     // One read at a time: a slow round must not pile up behind the next poll.
@@ -1675,17 +1693,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   };
   const openCount = (w: Worktree) => openDirs.filter((d) => same(d, w.path)).length;
   const isActive = (w: Worktree) => openCount(w) > 0;
-  // VIEW-051: only running panes count, so an exited tab drops out; none shows no count.
-  const liveIn = (w: Worktree) => sessions.filter((s) => s.running && s.cwd !== null && same(s.cwd, w.path));
-  const liveCount = (w: Worktree) => {
-    const n = liveIn(w).length;
-    // STAT-036: the agents working here come first ("2 working"); a sleeping workspace shows none and says sleeping beside its name.
-    const word = isAsleep(w) ? "" : workingWord(infoOf(w).working);
-    if (word) return <span className="count working" title={`${word}; split panes are counted apart`}>{word}</span>;
-    return n > 0 ? <span className="count">{n}</span> : null;
-  };
+  // Txais (2026-11-12): a row shows no count of the agents in it ("1 working", "1"); its state word says what is happening.
   // TERM-045: the line a removal question adds when terminals under these workspaces still run (and the ask is on).
-  const runNote = (paths: string[]) => closingNote(asksBeforeClose(settings) ? runningUnder(paths, sessions.filter((s) => s.running && s.cwd !== null).map((s) => s.cwd as string)) : 0);
+  // DT-C274: a session counts under a folder when it runs there or is shown in its grid (an own-folder team's agents).
+  const runNote = (paths: string[]) => closingNote(asksBeforeClose(settings) ? sessionsUnder(paths, sessions.filter((s) => s.running)) : 0);
   const isSelected = (w: Worktree) => activeDir !== null && same(activeDir, w.path);
   const infoOf = (w: Worktree): RowInfo => {
     const info = Object.entries(states).find(([d]) => same(d, w.path))?.[1] ?? { state: "idle", changed: 0, pr: null };
@@ -1871,7 +1882,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const batchNames = batch?.root === w.path ? unsavedIn(batch.order) : [];
     const info = infoOf(w);
     // PROJ-062: what the card shows under its name, and what a hover adds for the rest.
-    const facts: CardFacts = { agents: liveIn(w).length, state: info.state, pr: info.pr, changed: cardChanges.countFor(w.path), note: w.comment ?? null, ports: cardPorts.portsFor(w.path), task: w.number ?? null };
+    // Txais (2026-11-12): the sidebar card leaves out how many agents run here ("1 agent"); its status word stays.
+    const facts: CardFacts = { agents: 0, state: info.state, pr: info.pr, changed: cardChanges.countFor(w.path), note: w.comment ?? null, ports: cardPorts.portsFor(w.path), task: w.number ?? null };
     const hoverTitle = cardTitle(worktreeLabel(w), w.branch, cardDetails.shown, facts, `Show ${w.path}${isAsleep(w) ? " (asleep: showing it wakes it)" : ""}`);
     const un = isUnread(w);
     const shut = shutKids.has(w.path);
@@ -1944,7 +1956,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           )}
           {pushTag(w)}
           {groupBy !== "project" && <span className="hint">{projectLabel(p)}</span>}
-          {liveCount(w)}
           {!asking && (
             <button
               className={`ib${isPinned(w) ? " on" : ""}`}
@@ -2277,12 +2288,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <span className={`dot ${infoOf(main).state}${isActive(main) ? " live" : ""}`} role="img" aria-label={infoOf(main).state} data-tip={VOCAB[infoOf(main).state].explain} />
             )}
             <span className="name" title={p.displayName ? p.name : undefined}>{projectLabel(p)}{labels[p.id]?.hint && <span className="sb-name-hint" title={labels[p.id].hint ?? undefined}>{labels[p.id].hintCut}</span>}</span>
-            {folder && (
-              <>
-                <span className="hint" title={main.path}>{worktreeLabel(main)}</span>
-                {liveCount(main)}
-              </>
-            )}
+            {folder && <span className="hint" title={main.path}>{worktreeLabel(main)}</span>}
             <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
               <Gear />
             </button>
@@ -2311,7 +2317,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <span className={`dot ${infoOf(main).state}${isActive(main) ? " live" : ""}`} role="img" aria-label={infoOf(main).state} data-tip={VOCAB[infoOf(main).state].explain} />
               <span className="name">{worktreeLabel(main)}</span>
               {pushTag(main)}
-              {!singleFolder() && liveCount(main)}
               <span className="chev">
                 <ChevronDown size={12} />
               </span>

@@ -19,6 +19,8 @@ const AGENTS: Agent[] = ["claude", "codex", "shell"];
 export type SavedPane = {
   key: number;
   cwd: string | null;
+  /** DT-C274: the folder whose grid shows the tab when it is not `cwd` (an own-folder team's one grid). */
+  view?: string | null;
   branch: string | null;
   agent: Agent;
   agentId?: string;
@@ -80,6 +82,7 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     const chooser = !!p.seats && p.program === null && !p.kind;
     const s: SavedPane = { key: p.key, cwd: p.cwd, branch: p.branch, agent: p.agent, program: p.program, args: p.agent === "shell" ? p.args : [] };
     if (chooser) s.chooser = true;
+    if (p.view !== undefined) s.view = p.view;
     if (p.agentId !== undefined) s.agentId = p.agentId;
     if (p.session) s.session = p.session;
     if (p.forkOf) s.forkOf = p.forkOf;
@@ -211,6 +214,7 @@ function readPane(v: unknown): SavedPane | null {
     p.kind = o.kind as PaneKind;
     if (o.kind !== "browser" && o.kind !== "changes" && !str(o.path)) return null;
   }
+  if (o.view !== undefined && strOrNull(o.view)) p.view = o.view;
   if (str(o.agentId)) p.agentId = o.agentId;
   if (str(o.forkOf) && o.forkOf !== "") p.forkOf = o.forkOf;
   const own = resumeId({ session: str(o.session) ? o.session : undefined, forkOf: p.forkOf });
@@ -256,9 +260,10 @@ export function restoreLayout(value: unknown): SavedLayout | null {
   return tidy(uniqueOwners(panes), activeTab, num(o.focused) ? o.focused : 0, strOrNull(o.activeDir) ? o.activeDir : null, stacked);
 }
 
-/** Drops the tabs whose folder is gone; the active workspace and tab come back only while they exist. */
+/** Drops the tabs whose folder is gone; the active workspace and tab come back only while they exist. DT-C274: a tab
+ *  whose grid's folder is gone goes too, as removing that folder closes it (workspaces.ts withoutDir). */
 export function stillThere(l: SavedLayout, exists: (dir: string) => boolean): SavedLayout {
-  const panes = l.panes.filter((p) => p.cwd === null || exists(p.cwd));
+  const panes = l.panes.filter((p) => (p.cwd === null || exists(p.cwd)) && (p.view === undefined || p.view === null || exists(p.view)));
   const activeDir = l.activeDir !== null && !exists(l.activeDir) ? null : l.activeDir;
   return tidy(panes, l.activeTab, l.focused, activeDir, l.stacked);
 }

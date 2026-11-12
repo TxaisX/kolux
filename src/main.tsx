@@ -133,7 +133,7 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
   // PROJ-067: the saved tabs come back, less those whose folder is gone.
   let layout = restoreLayout((stamped || saved || {})[LAYOUT_FIELD]);
   if (layout) {
-    const dirs = [...new Set([...layout.panes.map((p) => p.cwd), layout.activeDir].filter((d): d is string => d !== null))];
+    const dirs = [...new Set([...layout.panes.flatMap((p) => [p.cwd, p.view ?? null]), layout.activeDir].filter((d): d is string => d !== null))]; // DT-C274: a team tab's grid folder is checked too
     // PKG-4: one wave, not two. The folder checks and the history removal start together and both are awaited
     // before this returns, so DT-C27 still holds (nothing old is replayed before a pane opens). The history of
     // every saved tab is forgotten, including a tab whose folder turns out to be gone: that tab is dropped and its

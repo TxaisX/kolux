@@ -1,5 +1,5 @@
 // VIEW-051 acceptance: the real ProjectsPanel on the small DOM, fed the window's panes as the `sessions` prop.
-// MIRROR src/App.tsx (the `sessions` prop built from the window's panes); the row and count decisions are ProjectsPanel's liveIn/liveCount (T-640: terminal rows are gone from the left pane; they stay tabs in the main area).
+// MIRROR src/App.tsx (the `sessions` prop built from the window's panes); the row decisions are ProjectsPanel's (DT-C274: rows no longer carry a running-agent count) (T-640: terminal rows are gone from the left pane; they stay tabs in the main area).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../../tasks/fakeDom";
@@ -52,25 +52,24 @@ async function panel(sessions: Session[]) {
 const paneRows = (c: FakeNode) => find(c, (n) => n.attrs["data-pane"] !== undefined);
 const counts = (c: FakeNode) => find(c, (n) => String(n.attrs.className ?? n.attrs.class ?? "").split(" ").includes("count")).map((n) => n.textContent.trim());
 
-test("box 1: running Cursor and Gemini panes are counted but not listed as rows in the left pane", async () => {
+// DT-C274 (Txais: "We only want the green text ... You don't have to tell me how many things are working inside
+// that tree"): the rows no longer show a running-agent count, so running panes give neither rows nor a count.
+test("box 1: running Cursor and Gemini panes are not listed as rows in the left pane, and no count shows", async () => {
   const c = await panel([
     { key: 1, agent: "cursor", title: "Fix the login", cwd: "C:/w/app", running: true },
     { key: 2, agent: "gemini", title: "Write the docs", cwd: "C:/w/app", running: true },
   ]);
   expect(paneRows(c)).toEqual([]);
-  expect(counts(c)).toEqual(["2"]);
+  expect(counts(c)).toEqual([]);
 });
 
-test("box 2: closing a tab (its pane stops running) drops the worktree's count, and none shows no count", async () => {
+test("box 2: running or stopped, a worktree's row shows no agent count (DT-C274)", async () => {
   const two: Session[] = [
     { key: 1, agent: "claude", title: "a", cwd: "C:/w/app", running: true },
     { key: 2, agent: "codex", title: "b", cwd: "C:/w/app", running: true },
   ];
   const before = await panel(two);
-  expect(counts(before)).toEqual(["2"]);
-  await unmount();
-  const after = await panel([two[0], { ...two[1], running: false }]);
-  expect(counts(after)).toEqual(["1"]);
+  expect(counts(before)).toEqual([]);
   await unmount();
   const none = await panel([{ ...two[0], running: false }, { ...two[1], running: false }]);
   expect(paneRows(none)).toEqual([]);

@@ -4,6 +4,8 @@
 
 - **New session: pick each seat's AI from a grid of tiles.** Claude Code, Codex, OpenCode, Grok, Terminal and Other sit in a 3-wide grid, each with a large logo and its name underneath.
 - OpenCode and Grok now show their own logos (from each company's official brand kit), and the Codex logo is drawn as large as the others.
+- **A team of agents works in one screen.** Start two or more AIs with "Own folder for each AI" and they all open side by side in one grid on the project, each still in its own folder on its own branch. Their folders are not listed in the sidebar. They show up again once no agent is using them, so you can clean them up. After a restart the team comes back in the same grid.
+- Sidebar rows are easier to read: the white "1 working" count no longer sits on top of the green status, and the second line says just "Working" or "Needs you" instead of "1 agent · Working".
 
 ## 0.1.13
 

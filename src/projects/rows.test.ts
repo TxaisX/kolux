@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { groupRows, jumpUnhides, paneState, smartOrder, sortFromSetting, strongest, withoutAutomationMade, type RowInfo } from "./rows";
+import { addTeamFolders, groupRows, hiddenTeamFolders, jumpUnhides, mergedTeamFolders, movedTeamFolders, paneState, prunedTeamFolders, sessionsUnder, smartOrder, sortFromSetting, strongest, TEAM_WORKTREES_SETTING, teamFoldersOf, teamViewOf, withoutAutomationMade, withoutTeamMade, type RowInfo } from "./rows";
 
 const at = (state: RowInfo["state"], changed: number, pr: RowInfo["pr"] = null): RowInfo => ({ state, changed, pr });
 
@@ -60,4 +60,106 @@ test("AUTO-024: the switch hides worktrees made by automations, and jumping to o
   expect(jumpUnhides("C:/r/wts/lead", "C:/r/wts/otter", lists, false, same)).toBe(false);
   expect(jumpUnhides("C:/r/wts/otter", "C:/r/wts/lead", lists, true, same)).toBe(false);
   expect(jumpUnhides(null, null, lists, true, same)).toBe(false);
+});
+
+test("DT-C274: the worktrees a team launch made are left out of the sidebar; the main checkout and hand-made ones stay", () => {
+  const lists = {
+    p1: [{ path: "C:/r", isMain: true }, { path: "C:/r/wts/one" }, { path: "C:/r/wts/two" }, { path: "C:/r/wts/mine" }],
+    p2: [{ path: "D:/q", isMain: true }],
+  };
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  const team = addTeamFolders(undefined, [{ path: "C:/R/wts/one", view: "C:/r" }, { path: "C:/r/wts/two", view: "C:/r" }, { path: "C:/r/wts/two", view: "C:/r" }]);
+  expect(team).toEqual([{ path: "C:/R/wts/one", view: "C:/r" }, { path: "C:/r/wts/two", view: "C:/r" }]); // each once
+  // a path already there takes the new grid; a new one is put at the end
+  expect(addTeamFolders(team, [{ path: "C:/r/wts/two", view: "C:/x" }, { path: "C:/r/wts/three", view: "C:/r" }])).toEqual([
+    { path: "C:/R/wts/one", view: "C:/r" },
+    { path: "C:/r/wts/two", view: "C:/x" },
+    { path: "C:/r/wts/three", view: "C:/r" },
+  ]);
+  const paths = teamFoldersOf(team).map((t) => t.path);
+  const shown = withoutTeamMade(lists, paths, same);
+  expect(shown.p1.map((w) => w.path)).toEqual(["C:/r", "C:/r/wts/mine"]);
+  expect(shown.p2).toEqual(lists.p2);
+  // a main checkout is never hidden, even if its path was recorded
+  expect(withoutTeamMade(lists, ["C:/r"], same).p1.map((w) => w.path)).toEqual(["C:/r", "C:/r/wts/one", "C:/r/wts/two", "C:/r/wts/mine"]);
+  // nothing recorded, or a damaged setting: the lists are untouched
+  expect(withoutTeamMade(lists, teamFoldersOf(undefined).map((t) => t.path), same)).toBe(lists);
+  expect(teamFoldersOf("C:/r/wts/one")).toEqual([]);
+  expect(teamFoldersOf([{ path: "C:/r/wts/one", view: "C:/r" }, 3, null, { view: "C:/r" }])).toEqual([{ path: "C:/r/wts/one", view: "C:/r" }]);
+});
+
+test("DT-C274: an older record of bare paths still hides its worktrees but maps to no grid", () => {
+  const old = ["C:/r/wts/one", { path: "C:/r/wts/two", view: "C:/r" }];
+  expect(teamFoldersOf(old)).toEqual([{ path: "C:/r/wts/one", view: null }, { path: "C:/r/wts/two", view: "C:/r" }]);
+  expect(teamViewOf({ [TEAM_WORKTREES_SETTING]: old }, "c:\\R\\wts\\two")).toBe("C:/r");
+  expect(teamViewOf({ [TEAM_WORKTREES_SETTING]: old }, "C:/r/wts/one")).toBeUndefined();
+  expect(teamViewOf({ [TEAM_WORKTREES_SETTING]: old }, "C:/r/wts/mine")).toBeUndefined();
+  expect(teamViewOf({}, "C:/r/wts/two")).toBeUndefined();
+  expect(teamViewOf({ [TEAM_WORKTREES_SETTING]: old }, null)).toBeUndefined();
+  // a bare path is written back as a bare path when the record is rewritten
+  expect(addTeamFolders(old, [{ path: "C:/r/wts/three", view: "C:/r" }])).toEqual([...old, { path: "C:/r/wts/three", view: "C:/r" }]);
+});
+
+test("DT-C274 (Row 794-c): the record on disk is kept under the window's latest one", () => {
+  const disk = [{ path: "C:/r/wts/other", view: "C:/r" }, { path: "C:/r/wts/one", view: "C:/old" }];
+  const latest = [{ path: "C:/r/wts/one", view: "C:/r" }];
+  expect(mergedTeamFolders(disk, latest)).toEqual([{ path: "C:/r/wts/other", view: "C:/r" }, { path: "C:/r/wts/one", view: "C:/r" }]);
+  expect(mergedTeamFolders(null, latest)).toEqual(latest);
+  expect(mergedTeamFolders(disk, undefined)).toEqual(disk);
+});
+
+test("DT-C274: a moved folder takes its records along, as the worktree and as the grid", () => {
+  const rec = [{ path: "C:/r/wts/one", view: "C:/r" }, "C:/r/wts/two", { path: "D:/q/wts/x", view: "D:/q" }];
+  expect(movedTeamFolders(rec, "C:/r/wts/one", "C:/r/wts/uno")).toEqual([{ path: "C:/r/wts/uno", view: "C:/r" }, "C:/r/wts/two", { path: "D:/q/wts/x", view: "D:/q" }]);
+  expect(movedTeamFolders(rec, "C:/r", "C:/s")).toEqual([{ path: "C:/r/wts/one", view: "C:/s" }, "C:/r/wts/two", { path: "D:/q/wts/x", view: "D:/q" }]);
+  expect(movedTeamFolders(rec, "C:/r/wts/two", "C:/r/wts/dos")).toEqual([{ path: "C:/r/wts/one", view: "C:/r" }, "C:/r/wts/dos", { path: "D:/q/wts/x", view: "D:/q" }]);
+  expect(movedTeamFolders(rec, "E:/none", "E:/else")).toBeNull(); // nothing named: nothing written
+});
+
+test("DT-C274: worktrees no longer listed leave the record; one recorded while the scan ran stays", () => {
+  const rec = [{ path: "C:/r/wts/one", view: "C:/r" }, { path: "C:/r/wts/two", view: "C:/r" }];
+  expect(prunedTeamFolders(rec, ["C:/r", "C:/r/wts/one", "C:/r/wts/two"])).toBeNull(); // all listed: nothing written
+  expect(prunedTeamFolders(rec, ["C:/r", "C:/R/wts/one"])).toEqual([{ path: "C:/r/wts/one", view: "C:/r" }]);
+  // "two" was made after the scan began: it is not in this scan, but stays
+  expect(prunedTeamFolders(rec, ["C:/r", "C:/r/wts/one"], [{ path: "C:/r/wts/one", view: "C:/r" }])).toBeNull();
+  expect(prunedTeamFolders(undefined, [])).toBeNull();
+});
+
+test("DT-C274: a team worktree is shown in the sidebar again when its grid is empty and nothing runs in it", () => {
+  const rec = [{ path: "C:/r/wts/one", view: "C:/r" }, { path: "C:/r/wts/two", view: "C:/r" }, "C:/q/wts/old"];
+  // the grid has panes: all stay hidden (a bare path has no grid; it stays hidden while something runs in it)
+  expect(hiddenTeamFolders(rec, ["C:/r", "C:/q/wts/old"])).toEqual(["C:/r/wts/one", "C:/r/wts/two", "C:/q/wts/old"]);
+  // the grid is closed but a pane still runs in "two" (moved elsewhere): only "two" stays hidden
+  expect(hiddenTeamFolders(rec, ["C:/r/wts/two"])).toEqual(["C:/r/wts/two"]);
+  // nothing open: every one is stranded and shown again
+  expect(hiddenTeamFolders(rec, [])).toEqual([]);
+});
+
+test("DT-C274 (TERM-045): a session counts under a folder when it runs there or is shown in its grid, once", () => {
+  const sessions = [
+    { cwd: "C:/r/wts/one", view: "C:/r" }, // a team agent: runs in its worktree, shown in C:/r
+    { cwd: "C:/r", view: undefined },
+    { cwd: "C:/r/wts/two", view: "C:/r/wts/two" },
+    { cwd: "D:/q", view: null },
+    { cwd: null },
+  ];
+  expect(sessionsUnder(["C:/r"], sessions)).toBe(3); // "one" counted once, though both its folders are under C:/r
+  expect(sessionsUnder(["C:/r/wts/one"], sessions)).toBe(1);
+  expect(sessionsUnder(["D:/q"], sessions)).toBe(1);
+  expect(sessionsUnder(["E:/none"], sessions)).toBe(0);
+  // the old count by cwd alone missed the team agent shown in C:/s
+  expect(sessionsUnder(["C:/s"], [{ cwd: "C:/r/wts/one", view: "C:/s" }])).toBe(1);
+});
+
+// DT-C274: a command-line file of a team worktree opens once its team's grid is shown (select() shows that grid).
+test("cliFileShown: a team worktree's file is ready in its team's grid or in the worktree itself", async () => {
+  const { cliFileShown, selectView } = await import("./rows");
+  const settings = { teamWorktrees: [{ path: "C:\\r\\wts\\wt1", view: "C:\\r" }] };
+  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\r")).toBe(true);
+  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\r\\wts\\wt1")).toBe(true);
+  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\other")).toBe(false);
+  expect(cliFileShown({}, "C:\\r\\wts\\wt1", "C:\\r")).toBe(false);
+  // selectView: the team's grid while it has panes; none once it is empty (a stranded worktree)
+  expect(selectView(settings, [{ key: 1, cwd: "C:\\r\\wts\\wt1", view: "C:\\r" }], "C:\\r\\wts\\wt1")).toBe("C:\\r");
+  expect(selectView(settings, [], "C:\\r\\wts\\wt1")).toBeUndefined();
 });

@@ -20,9 +20,10 @@ import { resumedFields, type ResumePlan } from "../sessions/resume";
 import { saveChanged } from "../settings/saveChanged";
 import { openDefaultTabs } from "../setup/DefaultTabs";
 import { trustedSetup } from "../setup/TrustPrompt";
-import { cellsOf, freeCell, MAX_PANES } from "../terminal/grid";
+import { cellsOf, freeCell, groupOf, MAX_PANES } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
-import { panesIn } from "../workspaces";
+import { panesIn, sameDir, viewOf } from "../workspaces";
+import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
@@ -36,6 +37,21 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   } = s;
   const { settingsRef } = p;
   const lineupsOf = (s: Record<string, unknown>) => (s[LAST_LINEUP_KEY] ?? {}) as Record<string, Lineup>;
+  // DT-C274: the worktrees an own-folder team launch made and the grid they are shown in, kept so the sidebar leaves
+  // them out and anything opened in one lands in that grid (projects/rows.ts). Row 794-c: laid over the disk copy
+  // and the latest settings, as rememberLineup is, so a record another window wrote meanwhile is kept.
+  const rememberTeamFolders = (add: { path: string; view: string }[]) => {
+    const record = (disk: unknown) => {
+      const { was, next } = applySetting(settingsRef, TEAM_WORKTREES_SETTING, addTeamFolders(mergedTeamFolders(disk, settingsRef.current[TEAM_WORKTREES_SETTING]), add));
+      setSettings(next);
+      return saveChanged(was, next);
+    };
+    // The record lands at once (the sidebar hides the worktrees as the team appears), then again over the disk copy.
+    record(undefined).catch((err) => setNotice(String(err)));
+    void invoke<Record<string, unknown>>("get_settings")
+      .then((disk) => record(disk?.[TEAM_WORKTREES_SETTING]))
+      .catch((err) => setNotice(String(err)));
+  };
   const rememberLineup = (batch: number) => {
     const wait = late.pendingLineup.current[batch];
     if (!wait) return;
@@ -99,10 +115,14 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // terminal seat stays in the chooser's folder. Off (the default), nothing is made.
       const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
       const makes = separate && picked.some(Boolean);
+      // DT-C274: two or more AI seats in worktrees of their own are a team: one grid in the chooser's folder, the
+      // worktrees recorded. One AI seat is no team: its worktree is a workspace of its own, as before.
+      const team = makes && picked.filter(Boolean).length >= 2;
       if (makes && !pid) throw new Error("Add a project first: an agent needs a project folder to work in.");
       // SESS-008: the seats that land in the chooser's own grid, with the cells already there (the chooser's own
-      // cell gives its place), stay within MAX_PANES, as a chooser or a split does.
-      const landing = makes ? picked.filter((a) => a === null).length : seats.length;
+      // cell gives its place), stay within MAX_PANES, as a chooser or a split does. DT-C274: an own-folder team
+      // lands there whole too (each agent runs in its worktree, all are shown in the chooser's grid).
+      const landing = makes && !team ? picked.filter((a) => a === null).length : seats.length;
       if (cellsOf(panesIn(panes.filter((p) => p.key !== key), place)).length + landing > MAX_PANES) {
         setNotice(`A workspace holds up to ${MAX_PANES} panes.`);
         return;
@@ -119,14 +139,21 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
           continue;
         }
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
+        // DT-C274: a team worktree is recorded the moment it is made, so its row never shows in the sidebar (not even
+        // while its setup runs). A launch that then fails or is cancelled leaves the record; a stranded one is shown
+        // as a plain workspace (select) and pruned once the folder is gone.
+        if (team && place) rememberTeamFolders([{ path: wt.path, view: place }]);
         madeNew.push({ cwd: wt.path, branch: wt.branch });
         kept.push({ cwd: wt.path, branch: wt.branch });
         places.push({ cwd: wt.path, branch: wt.branch });
       }
       const batch = key;
+      // The chooser's cell, where a team worktree's Setup tab waits until its agent lands.
+      const chooserGroup = inGrid ? groupOf(chooser) : undefined;
       await settleSetups(madeNew, setupMode(repo?.mode), repo?.wait === true, {
         line: (dir) => trustedSetup(dir),
-        open: (dir, branch, line, where) => new Promise<void>((done) => late.startSetup(dir, branch, line, where, false, () => done())),
+        // DT-C274: a team worktree's Setup tab is shown in the team's grid (a tab of the chooser's cell until its agent lands).
+        open: (dir, branch, line, where) => new Promise<void>((done) => late.startSetup(dir, branch, line, where, false, () => done(), team ? place : undefined, chooserGroup)),
         say: (m) => setupTrouble.push(m),
       });
       for (const id of new Set(picked.flatMap((a) => (a ? [a.id] : [])))) await pretrust(id, picked.map((a, i) => (a?.id === id ? places[i].cwd : null)), seatTell);
@@ -151,9 +178,12 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         const k = nextKey.current++;
         const title = s.title?.trim() || (s.role && s.role[0].toUpperCase() + s.role.slice(1)) || undefined;
         const { cwd, branch } = places[i];
+        // DT-C274: an own-folder team is one grid: every pane of the lineup is shown in the chooser's folder. An
+        // untitled agent there is called after its worktree by tabName (apartName), below its session's own name.
+        const shown = team ? { view: place } : {};
         return a && line
-          ? { key: k, cwd, branch, agent: paneMark(a, line), agentId: a.id, program: line.program ?? a.program, args: line.args, env: line.env, title, batch, typed: line.typed ?? undefined }
-          : { key: k, cwd, branch, agent: "shell", program: null, args: [], title, batch };
+          ? { key: k, cwd, branch, ...shown, agent: paneMark(a, line), agentId: a.id, program: line.program ?? a.program, args: line.args, env: line.env, title, batch, typed: line.typed ?? undefined }
+          : { key: k, cwd, branch, ...shown, agent: "shell", program: null, args: [], title, batch };
       });
       // A grid chooser closed while the Start was under way takes the launch with it: nothing lands and the focus
       // stays where the user put it (it would name a pane that is not there).
@@ -163,9 +193,18 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         return;
       }
       if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", makes ? "separate" : "shared", seats) };
-      // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018).
-      setPanes((ps) => (inGrid ? ps.flatMap((p) => (p.key === key ? made : [p])) : [...ps, ...made]));
-      for (const n of madeNew) void openTabs(n.cwd, n.branch); // PROJ-034
+      // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018). DT-C274: a team
+      // worktree's Setup tab, waiting in the chooser's cell, joins its agent's cell.
+      setPanes((ps) => {
+        const landed = inGrid ? ps.flatMap((p) => (p.key === key ? made : [p])) : [...ps, ...made];
+        if (!team) return landed;
+        const agentIn = (p: Pane) => made.find((m) => m.agentId && sameDir(m.cwd, p.cwd));
+        return landed.map((p) => {
+          const owner = p.setupScript && p.view === place ? agentIn(p) : undefined;
+          return owner ? { ...p, group: groupOf(owner) } : p;
+        });
+      });
+      for (const n of madeNew) void openTabs(n.cwd, n.branch, team ? place : undefined); // PROJ-034, beside its agent in the team grid (DT-C274)
       // VIEW-021: a preset started from the Agents rail stays the selected session once it runs.
       setAgentSel((sel) => (sel === key ? made[0].key : sel));
       if (!inGrid) {
@@ -174,7 +213,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         setPage(null);
       }
       setToast(made.length === 1 ? "Starting 1 session" : `Starting ${made.length} sessions`);
-      setActiveDir(made[0].cwd);
+      setActiveDir(team ? place : made[0].cwd);
       setFocused(made[0].key);
       setRefresh((n) => n + 1);
       seatsSettled = true;
@@ -214,14 +253,16 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     void renameOnFirstPrompt(dir, prompt, settings);
     const line = await invoke<StartLine>("agent_start_line", { id: agent.id, extra, prompt });
     const key = nextKey.current++;
-    const pane: Pane = { key, cwd: dir, branch, agent: paneMark(agent, line), agentId: agent.id, ...startFields(line, agent.program, dispatch, run), title };
+    const view = teamViewOf(settingsRef.current, dir); // DT-C274: a team worktree's panes are shown in its team's grid
+    const at = view === undefined ? dir : view;
+    const pane: Pane = { key, cwd: dir, ...(view === undefined ? {} : { view }), branch, agent: paneMark(agent, line), agentId: agent.id, ...startFields(line, agent.program, dispatch, run), title };
     // TERM-007: an empty pane in that workspace takes the session; else it gets a cell of its own.
     setPanes((ps) => {
-      const free = freeCell(cellsOf(panesIn(ps, dir)));
+      const free = freeCell(cellsOf(panesIn(ps, at)));
       return free ? ps.map((p) => (p === free ? pane : p)) : [...ps, pane];
     });
     if (show) {
-      setActiveDir(dir);
+      setActiveDir(at);
       setFocused(key);
     }
     return key;
@@ -240,12 +281,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
     const key = nextKey.current++;
     const line = plan.line;
-    const pane: Pane = { key, cwd: dir, branch: panesIn(panes, dir)[0]?.branch ?? null, agent: paneMark(agent, line), agentId: agent.id, ...resumedFields(id), ...startFields(line, agent.program) };
+    // DT-C274: a session of a team worktree resumes in its team's grid; the branch is the one a pane running there has.
+    const view = teamViewOf(settingsRef.current, dir);
+    const at = view === undefined ? dir : view;
+    const pane: Pane = { key, cwd: dir, ...(view === undefined ? {} : { view }), branch: panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null, agent: paneMark(agent, line), agentId: agent.id, ...resumedFields(id), ...startFields(line, agent.program) };
     setPanes((ps) => {
-      const free = freeCell(cellsOf(panesIn(ps, dir)));
+      const free = freeCell(cellsOf(panesIn(ps, at)));
       return free ? ps.map((p) => (p === free ? pane : p)) : [...ps, pane];
     });
-    setActiveDir(dir);
+    setActiveDir(at);
     setFocused(key);
     return true;
   };
@@ -258,13 +302,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
     const pane = key === null ? undefined : panes.find((p) => p.key === key);
     if (!pane) return resumeIn(s.agent, plan, s.id);
-    if (pane.cwd !== null) setActiveDir(pane.cwd);
+    const at = viewOf(pane); // DT-C274: the grid the pane is shown in
+    if (at !== null) setActiveDir(at);
     setFocused(pane.key);
   };
   // PROJ-034: kolux.yaml's default tabs open beside the new workspace's first pane (its setup first, when it has one).
-  const openTabs = (dir: string, branch: string | null) => {
+  // DT-C274: `view`, the grid a team worktree is shown in; its tabs join its agent's cell there.
+  const openTabs = (dir: string, branch: string | null, view?: string | null) => {
     const root = projects.find((p) => p.id === late.projectOf(dir))?.path;
-    return root ? openDefaultTabs(root, dir, branch, { nextKey, setPanes, setTabColors, say: setNotice }) : Promise.resolve();
+    return root ? openDefaultTabs(root, dir, branch, { nextKey, setPanes, setTabColors, say: setNotice }, view) : Promise.resolve();
   };
   // PROJ-033: a workspace made outside the composer runs its setup script in a background tab.
   const runSetup = (dir: string, branch: string | null) =>
@@ -364,7 +410,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       return;
     }
     const prompt = launch?.prompt ?? `A git action in this workspace failed. Find the cause, fix it, and finish the action.\n\nGit said:\n${output}`;
-    void startIn(a, activeDir, panesIn(panes, activeDir)[0]?.branch ?? null, prompt, true, launch?.extra ?? []);
+    void startIn(a, activeDir, panes.find((p) => sameDir(p.cwd, activeDir))?.branch ?? null, prompt, true, launch?.extra ?? []);
   };
   const projectFor = (projectId: string | null): string | null => projectId ?? late.projectOf(panes.find((p) => p.key === focused)?.cwd ?? null) ?? projects[0]?.id ?? null;
 
@@ -382,7 +428,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     try {
       // The agent's own start line (its options, permission mode and unpicked model default).
       if (singleFolder()) {
-        const branch = panesIn(panes, proj.path)[0]?.branch ?? null;
+        const branch = panes.find((p) => sameDir(p.cwd, proj.path))?.branch ?? null;
         if ((await startIn(agent, proj.path, branch, "", true, savedArgs(agent.id))) === null) return;
       } else {
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
