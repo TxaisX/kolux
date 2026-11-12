@@ -94,6 +94,17 @@ release checkout 4.3 GB, this worktree none.
 4. Right-click anywhere on text that is not an input shows **no menu at all**, so there is no
    right-click Copy in the preview, the chat, the diff cards or the PDF view.
 
+## Settings pass (appended after the commit below)
+
+A dedicated pass over `src/settings/` found a P1 the whole wave had missed: **Settings >
+Terminal > "Removing a started session" does nothing.** The control writes a key whose only
+reader, `removePlan` (`src/terminal/remove.ts:41`), has no non-test callers; the live path
+(`src/terminal/paneActions.ts:112`) always asks. Filed to c3-terminal with a choice: wire it or
+tell me to delete the control. Nine more settings findings (search mounts every matched page in
+full, the branch-prefix field calls the back end per keystroke, two duplicate number-field
+widgets, four saves that skip the shared turn, five dead exports, four untested pages) are in
+`AUDIT-o1-tools.md` section 4.11, N-44..N-53.
+
 ## Next round (top 3, in this order)
 
 1. Delete the web pane, my half: move `notePdf.ts` to `editor/`, add `src/open/openExternal.ts`,

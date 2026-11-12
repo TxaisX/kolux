@@ -339,3 +339,29 @@ lane can act on today.
 | c3-terminal | `20261112-1147-right-sidebar-polls-behind-settings.md` | the right panel keeps polling behind a full-page screen (`Right.tsx:62` ignores `fullPage`) | **new** |
 
 Everything else this pass found is either already filed by the 11:05 batch or is mine to fix.
+
+## 4.11 Settings pass (added after the first commit of this section)
+
+A dedicated pass over `src/settings/` (82 source files, 10.2k lines) found one P1 and nine more
+items. This closes the gap noted in 4.7.
+
+| # | Finding | Severity | State | Evidence | Fix | Cost |
+|---|---|---|---|---|---|---|
+| N-44 | **The "Removing a started session" setting does nothing.** The control writes `removeStartedSession`; the only reader chain is `readRemove` → `removePlan` (`terminal/remove.ts:41`), and `removePlan` has **zero non-test callers**. The real path (`terminal/paneActions.ts:112`) always asks, by design, and never reads settings. So choosing "Stop without asking" still asks. | **P1** | CONFIRMED | `TerminalPage.tsx:277-284` writes it; `grep removePlan src` → only `remove.ts:41`; `paneActions.ts:105-113` builds its question from `removeShortcutAsk` | either branch on `removePlan(settings, kind)` in `removeSession` (c3-terminal's file), or delete the control so the UI stops promising it | 30-45 min wired / 5 min deleted |
+| N-45 | Settings **search mounts every matching page in full**, heavy work included: `ClaudeSetupPage` runs a full `claude_setup` disk scan, `TerminalPage` builds a real xterm sample, `GitPage` calls `scm_gh_budget` + `branch_prefix_check`, `AutoPrSettings` calls `project_list` plus one `workspace_list` per project. Typing "claude" costs a full setup scan to show a heading. | P2 | CONFIRMED | `SettingsPage.tsx:468` (`hits.pages.map(<PageBody …/>)`), `ClaudeSetupPage.tsx:400`, `TerminalPage.tsx:41-53`, `autoPr.tsx:99-102` | pass a `searching` flag and let the heavy cards skip their load while a search runs | 2-3 h |
+| N-46 | The branch-prefix sample re-checks over IPC on **every keystroke** (the effect depends on the live input text). | P2 | CONFIRMED | `GitPage.tsx:188` with `typed = draft ?? settings.branchPrefixCustom` | wrap `typed` in the existing `useSettled` (`editor/settledQuery.ts`) | 15 min |
+| N-47 | The same clamped-number draft field exists twice, nearly line for line (`DelayField` and `MinutesField`). | P2 | CONFIRMED | `GeneralPage.tsx:171`, `ExperimentalCard.tsx:8` | one `NumberDraftField` | 30 min |
+| N-48 | Two copies of the "typed number, commit on Enter/blur/leave" control. | P2 | CONFIRMED | `TerminalPage.tsx:62` (`NumberField`), `InputCards.tsx:28` (`Lines`) | export `NumberField` and use it in `InputCards` | 30 min |
+| N-49 | Four settings-write paths bypass the shared save turn (`saveInTurn`), so they can interleave with a page save and skip `tidySettings` (SET-035). | P2 | CONFIRMED | `useSettings.ts:33`, `SettingsPage.tsx:169`, `ClaudeAccounts.tsx:115`, `AppearancePage.tsx:592` | export `patchSettings(patch)` that hops onto `saveInTurn`; use it at the three call sites | 1 h |
+| N-50 | Dead in full: `pickers.ts` (4 exports, test-only) plus five loose dead exports — `NEUTRAL` (`customTheme.ts:16`), `hasChanges` (`terminalImportRead.ts:40`), `autoSaver` and `hiddenWhitespace` (`editorPrefs.ts:55,59`), `openInItems` (`openIn.ts:62`, re-implemented at `scm/openWith.ts:13`). | P3 | CONFIRMED | grep across `src/` excluding tests | delete `pickers.ts` + test and the five exports (extends F-11) | 20 min |
+| N-51 | `usageReads` is read by the panes but nothing in the app writes it — an orphan key only editable by hand in `settings.json`. | P3 | CONFIRMED | `usage/meter.ts:113`; no Settings control, no Rust writer | drop the `READS_FIELD` branch, keep `percentMode` | 10 min |
+| N-52 | Real logic with no adjacent test: `CustomThemeEditor.tsx` (293, save/rename/duplicate/delete/import), `NotificationsPage.tsx` (187, volume draft + test flow), `ShortcutsPage.tsx` (208, the global key-recording capture), `GeneralPage.tsx` (360, no adjacent test at all). | P3 | CONFIRMED | only `__cards__/*` reach parts of `GeneralPage` | start with `ShortcutsPage` recording (it intercepts keys globally) | ~3 h |
+| N-53 | The shortcuts list is re-filtered per area group on every render, with no debounce on the query. | P3 | CONFIRMED | `ShortcutsPage.tsx:33`, `:144` inside `AREAS.map` | two `useMemo`s (filtered rows, group-by-area) + `useSettled` | 15 min |
+
+Largest settings files: `AppearancePage.tsx` 624, `SettingsPage.tsx` 488, `ClaudeSetupPage.tsx`
+435, `importSchemes.ts` 429, `GeneralPage.tsx` 360.
+
+**N-44 needs a cross-lane answer:** the control is mine (`TerminalPage.tsx`), the reader is
+c3-terminal's (`terminal/remove.ts`, `terminal/paneActions.ts`). Filed as
+`_shared/bugs/c3-terminal/20261112-1205-remove-started-session-setting-is-dead.md` — wire it, or
+tell me to delete the control.
