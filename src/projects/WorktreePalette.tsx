@@ -195,7 +195,7 @@ export function paletteRows(items: PaletteItem[], query: string, recent: string[
     const intent = words.length === 1 && it.number !== undefined && words[0] === String(it.number) ? 5 : words.length > 0 && fold(it.label).trim() === words.join(" ") ? 4 : hit.tier;
     const used = it.dir ? recent.findIndex((d) => sameDir(d, it.dir!)) : -1;
     const row: Row = { ...it, spans: hit.spans, off: it.needs === "worktree" && !hasWorktree };
-    // Sections not in SECTIONS (Commands, Accounts, Browser...) list after the named ones, so an empty query's Enter never runs a command.
+    // Sections not in SECTIONS (Commands, Accounts...) list after the named ones, so an empty query's Enter never runs a command.
     const named = SECTIONS.indexOf(it.section as (typeof SECTIONS)[number]);
     const section = named < 0 ? SECTIONS.length : named;
     scored.push({ row, key: words.length === 0 ? [-section, used < 0 ? -1e9 : -used, -i] : [hit.own ? 1 : 0, intent, it.section === "Open tabs" ? 1 : 0, used < 0 ? -1e9 : -used, -i] });

@@ -6,9 +6,9 @@ const pane = (key: number, extra: Record<string, unknown> = {}) => ({ key, agent
 
 test("VIEW-088: a pane holding the session's id is the live one, even a retained or hidden one", () => {
   expect(livePane([pane(1), pane(2, { session: "sess-1" }), pane(3, { session: "sess-2" })], s, null)).toBe(2);
-  // Another agent's pane with the same id text is not it; a browser tab or chooser is never it.
+  // Another agent's pane with the same id text is not it; a diff tab or chooser is never it.
   expect(livePane([{ key: 1, agent: "codex", session: "sess-1" }], s, null)).toBeNull();
-  expect(livePane([pane(1, { session: "sess-1", kind: "browser" }), pane(2, { session: "sess-1", seats: [] })], s, null)).toBeNull();
+  expect(livePane([pane(1, { session: "sess-1", kind: "diff" }), pane(2, { session: "sess-1", seats: [] })], s, null)).toBeNull();
 });
 
 test("VIEW-088: without an id, an unambiguous first prompt finds the pane; two candidates or none do not", () => {

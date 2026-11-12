@@ -313,7 +313,7 @@ export function IntegrationsPanel({ onCheck }: { onCheck: () => void }) {
 }
 
 /** ONB-024: the setup an Explore Kolux stop carries, right on the stop. Usage and the skill stops
- *  (orchestration, browser) read live facts, so they are their own components (LiveStopCards.tsx). */
+ *  (orchestration) read live facts, so they are their own components (LiveStopCards.tsx). */
 export function StopSetup({ stop, taskSource }: { stop: string; taskSource: boolean | null }) {
   const { settings, save, error } = useSettings();
   // The writer mode the switch had before it was turned off, so turning it on again puts that back.

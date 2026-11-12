@@ -19,7 +19,7 @@ export type TourStep = {
   /** The real control is what to click, so there is no Next. */
   noNext?: boolean;
 };
-export type TourId = "tasks" | "automations" | "parallel" | "grid" | "board" | "browser";
+export type TourId = "tasks" | "automations" | "parallel" | "grid" | "board";
 export type Tour = {
   id: TourId;
   name: string;
@@ -35,20 +35,17 @@ export type Tour = {
 /** Every step target in the order it is tried. */
 export const targetsOf = (s: TourStep): string[] => [s.target, ...(s.alt ?? [])];
 
-/** The split button of the focused terminal pane (browser panes have no split). */
+/** The split button of the focused terminal pane. */
 /** ONB-012: the grid tour's three targets: the running session, its status dot in the sidebar and
  *  the results entry (the sidebar marks it data-results, VIEW-114 hunk; a missing target is skipped). */
-export const GRID_PANE = ".pane.focused:not(.browser)";
+export const GRID_PANE = ".pane.focused";
 export const GRID_STATUS = ".sb-list .dot.live";
 export const GRID_RESULTS = "[data-results]";
-export const FOCUSED_SPLIT = ".pane.focused:not(.browser) .pane-head button[title^='Split right']";
+export const FOCUSED_SPLIT = ".pane.focused .pane-head button[title^='Split right']";
 
-/** ONB-033: the board and browser pane. */
+/** ONB-033: the board. */
 export const BOARD_LANE = ".board .lane";
 export const BOARD_CARD = ".board .pane";
-export const BROWSER_PANE = ".pane.browser";
-export const BROWSER_COOKIES_HINT = ".pane.browser [data-go=import-cookies]";
-export const BROWSER_COOKIES_ROW = "[role=menuitem][data-go=import-cookies]";
 export const SIDEBAR_SHOW = "button[title='Show sidebar']";
 
 /** ONB-033, the surfaces Kolux has today (the grid tour starts from the first run's end, T-208-b). */
@@ -100,18 +97,6 @@ export const TOURS: Tour[] = [
     steps: [
       { target: BOARD_LANE, side: "bottom", en: { title: "Watch work move", body: "Each column is a state: Needs you, Working, Done, Stopped or Idle. A card moves as its agent's state changes." }, ko: { title: "작업 지켜보기", body: "각 열은 에이전트의 상태입니다. 상태가 바뀌면 카드가 열 사이를 옮겨 갑니다." } },
       { target: BOARD_CARD, alt: [".board"], side: "right", en: { title: "Move cards through the lanes", body: "A card follows its agent from lane to lane until it is done." }, ko: { title: "카드를 단계별로 옮기기", body: "카드는 에이전트를 따라 끝날 때까지 열 사이를 이동합니다." } },
-    ],
-  },
-  {
-    id: "browser",
-    name: "Browser",
-    trigger: BROWSER_PANE + " .pane-head",
-    // Three steps always, even while the cookie step has nothing to point at yet.
-    count: 3,
-    steps: [
-      { target: BROWSER_PANE + " [data-go=annotate]", side: "bottom", en: { title: "Grab an element", body: "Turn on Annotate, then click anything on the page to grab it for an agent." }, ko: { title: "요소 잡기", body: "주석을 켠 뒤 페이지의 아무 곳이나 클릭해 에이전트에게 넘길 요소를 잡습니다." } },
-      { target: BROWSER_PANE + " .notes-tray", alt: [BROWSER_PANE + " [data-go=annotate]"], side: "top", en: { title: "Annotate it", body: "Write what should change on each grabbed element, then send the notes to an agent." }, ko: { title: "주석 달기", body: "잡은 요소마다 바꿀 내용을 적고 노트를 에이전트에게 보냅니다." } },
-      { target: BROWSER_COOKIES_HINT, alt: [BROWSER_COOKIES_ROW], side: "bottom", en: { title: "Stay logged in", body: "Import your cookies so the browser pane is already signed in to your sites." }, ko: { title: "로그인 유지", body: "쿠키를 가져오면 브라우저 창이 이미 사이트에 로그인된 상태가 됩니다." } },
     ],
   },
 ];
@@ -261,7 +246,7 @@ export function lookAt(w: Want, l: Look): "start" | "wait" | "drop" | "miss" {
 export const gaveUp = (w: Want) => w.tries >= (w.limit ?? (w.forced ? 4 * FIRST_TARGET_TRIES : FIRST_TARGET_TRIES));
 
 /** ONB-032: the settings key that switches off the feature a tour belongs to; `false` there holds the tour back. */
-export const OWNER_SWITCH: Partial<Record<TourId, string>> = { board: "boardView", browser: "browserPane", tasks: "tasksPage", automations: "automationsPage" };
+export const OWNER_SWITCH: Partial<Record<TourId, string>> = { board: "boardView", tasks: "tasksPage", automations: "automationsPage" };
 export const ownerOff = (settings: Record<string, unknown> | null, id: TourId): boolean => {
   const key = OWNER_SWITCH[id];
   return !!key && settings !== null && settings[key] === false;
