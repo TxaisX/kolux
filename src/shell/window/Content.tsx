@@ -135,7 +135,7 @@ export default function WindowContent() {
               root={activeDir}
               what="changed file"
               load={() => invoke<{ path: string; staged: boolean; code: string }[]>("git_changes", { root: activeDir }).then((cs) => ({ items: cs.map((c): Pick => ({ path: c.path, staged: c.staged, tag: c.staged ? "Staged" : c.code === "?" ? "Untracked" : "Unstaged" })), capped: false }))}
-              onPick={(f) => openDiff(f.path, !!f.staged)}
+              onPick={(f) => openDiff(f.path, !!f.staged, false, undefined, undefined, activeDir)}
               onClose={() => setPicking(null)}
             />
           )}

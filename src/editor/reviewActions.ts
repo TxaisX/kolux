@@ -13,7 +13,7 @@ import type { AgentState } from "../projects/rows";
 import { bracketed } from "../terminal/paste";
 import { draftKey, feedbackMessage, startFeedback, stillPending } from "../terminal/planReview";
 import { tabName } from "../terminal/tabName";
-import { panesIn, sameDir } from "../workspaces";
+import { sameDir } from "../workspaces";
 import { markSent, noteBlocks } from "./diffNotes";
 import { notesMarkdown } from "./notes";
 import { invoke } from "@tauri-apps/api/core";
@@ -146,7 +146,7 @@ export function reviewActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     if (!a) return "That agent is not installed, so nothing was sent. The notes are kept.";
     if (activeDir === null) return "Open a workspace first. The notes are kept.";
     try {
-      await openIn(a, activeDir, panesIn(panes, activeDir)[0]?.branch ?? null, notesMarkdown(notes), true);
+      await openIn(a, activeDir, panes.find((p) => sameDir(p.cwd, activeDir))?.branch ?? null, notesMarkdown(notes), true);
     } catch (err) {
       return `${a.name} did not start, so the notes are kept: ${String(err)}`;
     }

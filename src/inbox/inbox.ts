@@ -5,7 +5,7 @@
 import { paneState, type AgentState } from "../projects/rows";
 
 export type Group = "needs" | "waiting" | "done" | "stopped";
-export type Source = { key: number; agent: string; title: string; branch: string | null; cwd: string | null; state: AgentState; interrupted: boolean; running: boolean; changed: number; finishedAt: number | null };
+export type Source = { key: number; agent: string; title: string; branch: string | null; cwd: string | null; view?: string | null; state: AgentState; interrupted: boolean; running: boolean; changed: number; finishedAt: number | null };
 /** `exited` (T-035-b): the question or permission is still open but the agent's terminal is gone. */
 /** `state` "stopped" (DT-C52): an agent whose program has exited, as the Board and the Tower show it. */
 export type Item = Omit<Source, "finishedAt" | "running" | "interrupted" | "changed" | "state"> & { state: AgentState | "stopped"; group: Group; label: string; when: number; exited: boolean };
@@ -26,9 +26,9 @@ const NEEDS: Partial<Record<AgentState, string>> = { permission: "Permission", w
 
 /** T-608: one pane as the Inbox reads it: its one status (board/chip.ts paneStatus), else what its program
  *  says (an agent works until it ends). `stamp` is when its state last moved. */
-export function sourceOf(p: { key: number; agent: string; branch: string | null; cwd: string | null }, title: string, status: AgentState | undefined, running: boolean | undefined, stamp?: { at: number; interrupted: boolean }): Source {
+export function sourceOf(p: { key: number; agent: string; branch: string | null; cwd: string | null; view?: string | null }, title: string, status: AgentState | undefined, running: boolean | undefined, stamp?: { at: number; interrupted: boolean }): Source {
   const state = status ?? paneState(p.agent, running);
-  return { key: p.key, agent: p.agent, title, branch: p.branch, cwd: p.cwd, state, interrupted: stamp?.interrupted ?? false, running: running !== false, changed: stamp?.at ?? 0, finishedAt: state === "done" ? (stamp?.at ?? null) : null };
+  return { key: p.key, agent: p.agent, title, branch: p.branch, cwd: p.cwd, ...(p.view !== undefined ? { view: p.view } : {}), state, interrupted: stamp?.interrupted ?? false, running: running !== false, changed: stamp?.at ?? 0, finishedAt: state === "done" ? (stamp?.at ?? null) : null };
 }
 
 export function inboxItems(sources: Source[], now: number): Item[] {

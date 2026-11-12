@@ -13,7 +13,7 @@ import { applyAppearance, readAppearance } from "../theme";
 import { readSettingsInto } from "./settingsRead";
 import { onlyWindowState } from "../settings/settingsSync";
 import { sharedRead } from "../settings/sharedRead";
-import { sameDir } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
@@ -86,9 +86,9 @@ export function useWindowStart({ activeDir, agentPass, focused, installedIds, ne
     const show = (e: Event) => {
       // T-242 (BROW-067): the Preview button names its tab "Preview host:port".
       const { url, title } = openDetail((e as CustomEvent<OpenInBrowser>).detail);
-      const here = panes.find((p) => p.key === focused && sameDir(p.cwd, activeDir));
+      const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
       const key = nextKey.current++;
-      setPanes((ps) => [...ps, { key, cwd: activeDir, branch: here?.branch ?? null, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "browser", url, title }]);
+      setPanes((ps) => [...ps, { key, cwd: activeDir, branch: here?.view !== undefined ? (panes.find((p) => sameDir(p.cwd, activeDir))?.branch ?? null) : (here?.branch ?? null), group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "browser", url, title }]);
       setFocused(key);
     };
     window.addEventListener(OPEN_IN_BROWSER, show);

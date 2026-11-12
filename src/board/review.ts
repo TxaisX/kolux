@@ -8,14 +8,15 @@ import { sameDir } from "../workspaces";
  *  (`changed`, the detail's git count; null while unread). */
 export const canReview = (laneOrGroup: string, changed: number | null = null): boolean => laneOrGroup === "done" || (laneOrGroup === "stopped" && (changed ?? 0) > 0);
 
-type Tab = { key: number; cwd: string | null; branch: string | null; kind?: string; group?: number };
+type Tab = { key: number; cwd: string | null; view?: string | null; branch: string | null; kind?: string; group?: number };
 
 /** T-609: where the review opens for pane `key`: its cell's All Changes tab of the same worktree comes to the
  *  front (EDIT-029 keeps one per cell), else a new one opens in that cell, on the pane's worktree and branch.
  *  Null for a pane that is gone or has no folder. */
-export function reviewTab(panes: Tab[], key: number): { focus: number } | { open: { cwd: string; branch: string | null; group: number } } | null {
+export function reviewTab(panes: Tab[], key: number): { focus: number } | { open: { cwd: string; view?: string | null; branch: string | null; group: number } } | null {
   const p = panes.find((x) => x.key === key);
   if (!p?.cwd) return null;
   const open = panes.find((x) => x.kind === "changes" && groupOf(x) === groupOf(p) && sameDir(x.cwd, p.cwd));
-  return open ? { focus: open.key } : { open: { cwd: p.cwd, branch: p.branch, group: groupOf(p) } };
+  // DT-C274: a pane shown in another folder's grid (an own-folder team) keeps that grid for its review.
+  return open ? { focus: open.key } : { open: { cwd: p.cwd, ...(p.view !== undefined ? { view: p.view } : {}), branch: p.branch, group: groupOf(p) } };
 }

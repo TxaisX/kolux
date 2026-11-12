@@ -8,6 +8,8 @@ import { sessionNameFor } from "../sessions/tabTitles";
 import { launchedName } from "../status/credit";
 import { IDLE, followedTitle, type Identity } from "./shellMarks";
 import { VOCAB } from "./status";
+import { folderName } from "../projects/model";
+import { sameDir } from "../workspaces";
 import type { Badge } from "./tabs";
 
 /** What a tab is called: the seat's title, the agent, the browser page's title, or "Terminal N". */
@@ -23,7 +25,12 @@ export function tabName(p: Pane, titles: Record<number, string>, label?: string,
   if (label) return label;
   const chooser = chooserTabName(p); // T-577: "New session" until something starts in it
   if (chooser) return chooser;
-  return followedTitle(p.title?.trim() ? p.title : sessionNameFor(p.key), live[p.key] ?? IDLE, p.agent !== "shell" ? programWord(p.agent) : launchedName(p) ?? `Terminal ${p.key}`);
+  return followedTitle(p.title?.trim() ? p.title : (sessionNameFor(p.key) ?? apartName(p)), live[p.key] ?? IDLE, p.agent !== "shell" ? programWord(p.agent) : launchedName(p) ?? `Terminal ${p.key}`);
+}
+/** DT-C274: an agent shown in another folder's grid (an own-folder team's) with no name of its own or of its session
+ *  is called after the folder it runs in, so the team's panes in the one grid are told apart. */
+export function apartName(p: Pick<Pane, "cwd" | "view" | "agent" | "kind">): string | undefined {
+  return !p.kind && p.agent !== "shell" && p.cwd !== null && p.view !== undefined && !sameDir(p.view, p.cwd) ? folderName(p.cwd) : undefined;
 }
 /** TERM-055: the one badge a tab carries beside its agent icon; its look and hover text come from the vocabulary (STAT-052). */
 export function TabBadge({ kind }: { kind: Badge }) {

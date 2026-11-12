@@ -5,7 +5,7 @@
 import { stripOn } from "../settings/general";
 import { moveToTab, tidyWeights } from "../shell/tidy";
 import { handOver, movedKeys } from "./handover";
-import { sameDir } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 import { DIVIDER_DONE, DRAG_ATTR, dragWeights, gapAt, tracks } from "./dividers";
 import { cellsOf, columnsFor, rowsFor, zoomedGroup } from "./grid";
 import { waitingInGrid } from "./tabs";
@@ -14,7 +14,7 @@ import type { Screens } from "../chrome/useScreens";
 
 export function paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, setFocused, setPanes, setWeights, settings, stacked, statusOf, terminals, weights, zoom }: Pick<WindowState, "activeDir" | "activeTab" | "dragRef" | "panes" | "setActiveTab" | "setFocused" | "setPanes" | "setWeights" | "settings" | "stacked" | "statusOf" | "weights" | "zoom"> & Pick<Screens, "terminals">) {
   const cells = cellsOf(panes);
-  const shown = cells.filter((c) => sameDir(c.panes[0].cwd, activeDir));
+  const shown = cells.filter((c) => sameDir(viewOf(c.panes[0]), activeDir)); // DT-C274: by the grid a cell is shown in
   const zoomed = terminals ? zoomedGroup(zoom, shown.map((c) => c.group)) : null;
   const gridCount = zoomed === null ? shown.length : 1;
   // TERM-010: the grid's column and row weights, even until a divider is dragged; a drag starts on

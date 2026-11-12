@@ -8,11 +8,12 @@ import { reloadAsk } from "../../keys/commands";
 import { noteUse } from "../../onboarding/features";
 import WorktreePalette, { dirMark, dirMonitoring } from "../../projects/WorktreePalette";
 import { workItem } from "../../projects/model";
+import { movedTeamFolders, TEAM_WORKTREES_SETTING } from "../../projects/rows";
 import { SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { tabName } from "../../terminal/tabName";
 import { pasteHosts } from "../../tasks/pasteHosts";
 import { openInBrowser } from "../../browser/openIn";
-import { sameDir } from "../../workspaces";
+import { sameDir, viewOf } from "../../workspaces";
 import { AboutPanel } from "../../lazy/pages";
 import { LinkAskHost } from "../../lazy/pages";
 import TabSearch from "../TabSearch";
@@ -36,7 +37,7 @@ export default function WindowDialogs() {
   const {
     paletteItems, panes, activeDir, setAsking, asking, dropPanes, guard, quitAsk, quitting, setQuitAsk, reloadAsking,
     setReloadAsk, switcher, titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt, boardOpen, setBoardOpen, setPanes,
-    setActiveDir, setRefresh,
+    setActiveDir, setRefresh, saveSetting, settingsRef,
   } = useWindow();
   return (
     <>
@@ -59,8 +60,11 @@ export default function WindowDialogs() {
       {/* STAT-039 (T-110-b): after the first work renamed a branch, asks before the folder follows; a moved folder's panes and the list follow it. */}
       <FolderRenameAsk
         onMoved={(from, to) => {
-          setPanes((ps) => ps.map((p) => (sameDir(p.cwd, from) ? { ...p, cwd: to } : p)));
+          setPanes((ps) => ps.map((p) => (sameDir(p.cwd, from) || (p.view != null && sameDir(p.view, from)) ? { ...p, ...(sameDir(p.cwd, from) ? { cwd: to } : {}), ...(p.view != null && sameDir(p.view, from) ? { view: to } : {}) } : p))); // DT-C274: a team grid's folder follows too
           setActiveDir((d) => (sameDir(d, from) ? to : d));
+          // DT-C274: the team record follows the move, as the worktree and as the grid it is shown in.
+          const team = movedTeamFolders(settingsRef.current[TEAM_WORKTREES_SETTING], from, to);
+          if (team) saveSetting(TEAM_WORKTREES_SETTING, team);
           setRefresh((n) => n + 1);
         }}
       />
@@ -123,7 +127,7 @@ function PaletteHost() {
         atOf={(d) => {
           const row = Object.entries(rowStates).find(([x]) => sameDir(x, d))?.[1];
           // STAT-024: the radio mark when the folder's working panes only watch background work.
-          const watching = dirMonitoring(panes.filter((p) => sameDir(p.cwd, d)).map((p) => ({ state: hook[p.key], monitoring: turn[p.key]?.monitoring })));
+          const watching = dirMonitoring(panes.filter((p) => sameDir(viewOf(p), d)).map((p) => ({ state: hook[p.key], monitoring: turn[p.key]?.monitoring })));
           const mark = dirMark(row?.state ?? null, [...unreadDirs].some((x) => sameDir(x, d)), watching);
           return mark ? { mark, since: row?.changed ?? 0 } : null;
         }}

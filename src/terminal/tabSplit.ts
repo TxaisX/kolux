@@ -1,7 +1,7 @@
 // TERM-049 (T-102-c): Split Right / Split Down on the tab menu, and the close set of a split cell.
 import { cellsOf, groupOf, MAX_PANES, splitIndex, columnsFor, type Tabbed } from "./grid";
 import { rehome } from "./rearrange";
-import { sameDir } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 
 /**
  * TERM-049: Split Right / Split Down on a tab menu moves the tab out of its cell into a cell of its
@@ -11,7 +11,7 @@ import { sameDir } from "../workspaces";
 export function splitTabOut<P extends Tabbed & { cwd: string | null }>(panes: P[], key: number, dir: "right" | "down"): { panes: P[]; stack: boolean } | null {
   const me = panes.find((p) => p.key === key);
   if (!me) return null;
-  const mine = cellsOf(panes.filter((p) => sameDir(p.cwd, me.cwd)));
+  const mine = cellsOf(panes.filter((p) => sameDir(viewOf(p), viewOf(me)))); // its grid (DT-C274)
   const cell = mine.find((c) => c.group === groupOf(me));
   if (!cell || cell.panes.length < 2 || mine.length >= MAX_PANES) return null;
   const stack = dir === "down" && mine.length === 1; // as splitPane: only a lone cell split down stacks
@@ -31,7 +31,7 @@ export function splitTabOut<P extends Tabbed & { cwd: string | null }>(panes: P[
 export function splitMenuState<P extends Tabbed & { cwd: string | null }>(panes: P[], key: number): { enabled: boolean; why: string | null } {
   const me = panes.find((p) => p.key === key);
   if (!me) return { enabled: false, why: "that tab is gone" };
-  const mine = cellsOf(panes.filter((p) => sameDir(p.cwd, me.cwd)));
+  const mine = cellsOf(panes.filter((p) => sameDir(viewOf(p), viewOf(me)))); // its grid (DT-C274)
   const cell = mine.find((c) => c.group === groupOf(me));
   if (!cell || cell.panes.length < 2) return { enabled: false, why: "this tab is alone in its pane" };
   if (mine.length >= MAX_PANES) return { enabled: false, why: `a workspace holds up to ${MAX_PANES} panes` };
