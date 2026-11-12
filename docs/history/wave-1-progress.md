@@ -184,3 +184,54 @@ new pane by data-key, first-run dialog closed via Skip).
 ### Bugs
 Opened: o2-tests/1400 (feature-map marker), c3-terminal/1410 (usePackLoaded jsdom).
 Closed: o2-tests/1331 (smoke flow 6 Grok). Open after this round: P0 1, P1 5, P2 6.
+
+## Round 5 (2026-11-12, coordinator)
+
+### Merges into integrate/wave-1
+- lane/c3-terminal (clean, twice): 4446d52d removes the web pane's Rust side (23 browser_*.rs modules,
+  the `kolux browser` CLI verbs; icon/update HTTP client and URL policy kept in net.rs, WebView2 args in
+  webview_args.rs, crash watch + PDF print in webview_engine.rs; renamed browser_tower->tower_window,
+  browser_pdf->pdf_export, browser_preview->html_preview, browser_crash->engine_crash, command names
+  unchanged). Then 6fa43c7a (pane Agent type gains grok and opencode; usePackLoaded test on fakeDom,
+  closes bug 1410) and 48b9bb41 (zoom shortcut titles drop "Browser").
+- c2-agents, o1-tools, o2-tests, o3-rune: no new commits since round 4 (c2, o1 and o3 wrote round-6
+  handoffs: Settings `useSearching()` guard, `usePrPoll`, Rune final no-go numbers).
+
+### Coordinator fixes (gate files nobody else owns)
+- scripts/privacy-audit.test.mjs: the icon-client allow + pin moved browser.rs -> net.rs with identical
+  counts; the page-script XMLHttpRequest exemption dropped with the page script (DT-C278).
+- docs/guide/safety.md: "Browser tabs: what pages may do" replaced by "Project icons from the web";
+  marker repointed (browser.rs -> net.rs, web_icon.rs) and moved.
+- COMPAT.md: a "Retired 2026-11-12 (DT-C275)" note over the browser contracts (CLI verbs, BROW-* rows,
+  browser shortcuts). Tables kept as history.
+
+### Gate (logs: _shared/logs/c1-gate/r5/)
+- `npx tsc --noEmit` -> exit 0 (also after the second c3 merge).
+- `pnpm check` -> exit 1 at guide-check: feature-map.md marker (o2-tests/1400, open since round 4).
+  Run alone after it: invoke-contract FAILED, `browser_go` still invoked from src/browser/useBrowserChords.ts
+  (P1 o1-tools/1415: delete src/browser/). workflow-check and kolux-memory tests pass.
+- `npx vitest run --no-fsModuleCache` -> `Test Files 2 failed | 890 passed (892)`,
+  `Tests 2 failed | 6602 passed (6604)`: invoke-contract.test.mjs (same browser_go cause) and
+  src/privacy/hosts.test.ts (stale `example.com` placeholder; P1 o3-rune/1420). The round-4 jsdom
+  load error is gone.
+- `cargo test` under `. scripts/test-env.ps1`: lib `2939 passed; 1 failed; 9 ignored` in 518 s on a
+  loaded PC; the failure (status::p81_a_deny_settle...) passes alone. `--test '*'`: 20 binaries,
+  247 passed, 0 failed. Lib count fell from 3183 with the browser modules' tests.
+- Merge kept, not reverted: both red tests are stale references in other lanes' files to code goal 0
+  told c3 to delete; reverting would undo the web pane removal.
+- Smoke (`--port 1430 --cdp 9341 --temp G:/Temp/kolux-rs-smoke-c1 --offscreen`) on e86e8e28:
+  `smoke: 6/6 flows passed` (flow 5 report-only, savedLayout bytes until T-184). Flow 6: Claude Code,
+  Codex, Grok, OpenCode and a blank terminal all took input. evidence/smoke-r5.txt (local).
+
+### Decisions
+DT-C278: the privacy audit's icon-client pin follows the code from browser.rs to net.rs.
+
+### Bugs
+Opened: o1-tools/1415 (delete src/browser/; invoke-contract red), o3-rune/1420 (hosts.test.ts stale
+example.com). Seen closed by lanes this round: c3-terminal/1320 (Grok/OpenCode pane type, c3 half;
+paneMark half filed to c2 as 1900), c3-terminal/1410 (jsdom). Progress noted on c1-coord/1105 x2.
+Open after this round: P0 0, P1 4, P2 6 (lane-lock bug closed by Txais).
+Noted: the external kolux-cli and computer-use skill descriptions now say Kolux has no built-in browser.
+Txais decided (~14:10), recorded as DT-C279: Rune no-go for this wave (spike and findings kept;
+re-measure after the native terminal is proven); lane lock added to lane-loop.ps1; external skill
+text no longer mentions a built-in browser.
