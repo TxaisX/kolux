@@ -84,3 +84,13 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# A "try my change" build that runs like the installed app but builds in minutes, not the release's
+# 20 (full LTO, one codegen unit). Releases keep [profile.release]. `cargo build --profile local`.
+[profile.local]
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+incremental = true
+opt-level = 2
+strip = false
