@@ -57,13 +57,13 @@ try {
   const panes = () => app.shown(TERM);
 
   /** Real mouse press at the first on-screen match of `sel`; returns where it pressed, or null. */
-  const press = async (sel) => {
+  const press = async (sel, button = "left") => {
     const at = await app.evalJs(
       `(() => { const e = [...document.querySelectorAll(${JSON.stringify(sel)})].find(x => x.offsetParent !== null); if (!e) return null; const b = e.getBoundingClientRect(); return [Math.round(b.x + b.width / 2), Math.round(b.y + b.height / 2)]; })()`,
     );
     if (!at) return null;
-    await ws.send("Input.dispatchMouseEvent", { type: "mousePressed", x: at[0], y: at[1], button: "left", clickCount: 1 });
-    await ws.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: at[0], y: at[1], button: "left", clickCount: 1 });
+    await ws.send("Input.dispatchMouseEvent", { type: "mousePressed", x: at[0], y: at[1], button, clickCount: 1 });
+    await ws.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: at[0], y: at[1], button, clickCount: 1 });
     return at;
   };
 

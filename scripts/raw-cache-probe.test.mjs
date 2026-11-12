@@ -25,6 +25,7 @@ describe("Vite ?raw transform cache", () => {
   });
 
   test("the fixture is a plain text file (the detector's own assumption)", () => {
-    expect(onDisk()).toMatch(/^raw-cache-probe-v\d+\n$/);
+    // A Windows autocrlf checkout writes this fixture with CRLF; both ends are the same plain text.
+    expect(onDisk()).toMatch(/^raw-cache-probe-v\d+\r?\n$/);
   });
 });

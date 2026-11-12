@@ -31,8 +31,8 @@ appear in the sidebar). Rows are reached with the mouse and the keyboard; every 
 |---|---|---|---|---|---|
 | Add project button | `src/projects/ProjectsPanel.tsx:2520` (`data-testid="sidebar-add-project"`) | open the add menu: clone, open a folder, start a new one | opens the add form (`adding` state) | `live-pass` | `live-latency` (round 4): `startPlain()` clicks it in every live run and the add form opened |
 | Add by path → folder field | `ProjectsPanel.tsx:2582` (`data-testid="add-project-folder-input"`) | take a path, Enter adds it as a project | `addPath(pathDraft)` on Enter | `live-pass` | `live-latency` (round 4): typed a repo path, Enter, and the workspace opened with a pane |
-| Folder row | `ProjectsPanel.tsx:2315` (`.sb-main`), click target `:2316` (`button.branch`) | select the workspace; its sessions show in the grid | selects it: the picked row carries `sel` (`isSelected`), and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
-| Session row | `ProjectsPanel.tsx:243` (`.sess[role=button]`) | click selects that session's pane; one row per session | selects the pane | `check-exists` | `scripts/evidence/smoke.mjs` flow 7 (six sessions → one folder row, no `.pane-row`) |
+| Folder row | `ProjectsPanel.tsx:2313-2321` (`div.proj.folder`, `data-testid="sidebar-folder"`) | select the workspace; its sessions show in the grid | selects it: the row carries `sel` and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
+| Session row | `ProjectsPanel.tsx:1750-1777` (`sessionRows`, `data-testid="sidebar-session"`) | click selects that session's pane; one row per session | selects the pane | `live-pass` | `scripts/evidence/smoke.mjs` flow 7 (round 6): six sessions in one workspace → one folder row + six session rows, no `.pane-row`, clicking the folder shows all six panes, and a restart kept all six |
 | Folder row menu | `src/projects/menu.ts:54-59` | New workspace, Review changes (git folders), Project settings, Remove project… | the four items, Review disabled when the folder is not a repo | `code` | `menu.ts:54-59`; `live-GIT-038`/`live-EDIT-029` open All Changes through "Review changes" |
 | Session row menu | `menu.ts:68-98` | Delete, Sleep/Wake, Move to status, Set parent…, Details…, Review changes, Open in (Explorer/editors/Terminal), Move up/down, Hide from the sidebar, Developer (Alt) | all of the above, with the main checkout limited to New workspace + Remove project | `code` | `menu.ts:68-98` |
 | Status submenu | `menu.ts:74` | list the workspace's statuses plus Edit statuses… | lists them; edit opens the editor (`ProjectsPanel.tsx:1420`) | `code` | `menu.ts:74`, `ProjectsPanel.tsx:1420` |
@@ -122,6 +122,14 @@ Round 5 adds `scripts/prove/live-controls.mjs` (`run-all --only controls`), thre
 real mouse press each: the sidebar folder row, Expand/Restore, and Split right. It also caught what a menu-driven test
 cannot: pressing Expand on a solo pane does nothing by design, so the check splits first and asserts 2 panes → 1 → 2.
 
+Round 6 re-ran the two smoke flows that were unproven: **flow 6** now starts all four agent types (Claude Code, Codex,
+Grok, OpenCode) plus a blank terminal, each proving it took a typed line, and **flow 7** now proves six sessions in one
+workspace, one folder row, six session rows, no `.pane-row`, and a restart that keeps all six. The smoke's own setup
+also closes the first-run dialog the way a user would (corner close → Skip). The new `rightclick` helper in
+`scripts/evidence/cdp.mjs` is ready for the sidebar's row menus; the first real right-click on the folder row did not
+open the menu under the harness's off-screen pointer, so that row stays `code` until a later run drives it.
+
 Three controls are `pending` on their owner lane, not on this lane: the sidebar's worktree rows (Goal 0 item 4,
 `c2-agents`), the chooser's agent-must-start-a-terminal path (Goal 0 item 5, `c2-agents`), and the pane header's
 Context-used ring (Goal 0, `c3-terminal`).
+<!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts at 080e4346 -->

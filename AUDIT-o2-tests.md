@@ -201,8 +201,8 @@ fresh command covers it.
 | P2 `smoke.mjs` missing Session/Sidebar flows (queued bug) | **fixed** | flows 6 and 7, stand-ins in `smoke-standins.mjs` (+6 tests), order `1,2,3,4,6,7,5` |
 | P2 hardcoded `9290`/`1470`, `PROVE_PORT=` overrides | **fixed** | `live-SET-004`, `live-T-647`, `live-T-655`, `live-audit-1` read the env; `live-p0` and `live-artifacts` use `||=` |
 | P2 prove scripts writing `ROOT/evidence/` on import | **partial** | `evidence()` now honours `PROVE_EVIDENCE` and `PROVE_NO_EVIDENCE=1`; the main-guard wrapping of 7 entry points is **open** |
-| P2 `Process.MainWindowHandle` / window at `(0,0)` | **open** | `live-T-643:62`, `live-audit-1:109` untouched |
-| P2 `live-APP-050` external `oplock-hold.exe` | **open** | untouched |
+| P2 `Process.MainWindowHandle` / window at `(0,0)` | **fixed (round 6)** | `live-T-643:62` and `live-audit-1:109` now import `WIN_PS` + `waitAppWindow` from `app-launch.mjs` and park at `-32000,-32000`; no `MainWindowHandle` remains in either proof. |
+| P2 `live-APP-050` external `oplock-hold.exe` | **fixed (round 6)** | `HOLDER` now resolves to `scripts/prove/oplock-hold/target/release/oplock-hold.exe`; the proof builds it with `cargo build --release --manifest-path scripts/prove/oplock-hold/Cargo.toml` when missing. |
 | P2 `run-all` 4-pattern drift warning | **fixed** | `srcSelectorTokens()` reads `src/` once, `selectorDrift()`/`warningsFor()` flag selectors no `src/` file mentions; warnings went from 0 to 8 real ones (7 Source Control, 1 filename noise), and `.pane-row` is caught |
 | P2 coverage matrix hand-written | **fixed** | `scripts/stress/coverage.mjs` generates `tests/coverage.md`: 237 user-facing guide tasks, 91 named by a test (38.4%); 113 card areas, 31 with a live check |
 | P2 thin `data-testid` surface | **open (cross-lane)** | filed to `c1-coord`: the sidebar workspace row needs `data-testid`; the rule is in the new bug file |
