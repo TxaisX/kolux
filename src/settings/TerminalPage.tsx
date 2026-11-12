@@ -17,6 +17,7 @@ import { currentTerminal, TERMINAL_EVENT } from "../theme";
 import { FontField } from "./AppearancePage";
 import { Segmented } from "./GeneralPage";
 import { InputCard, PowerShellCard } from "./InputCards";
+import NativeTerminalCard from "./NativeTerminalCard";
 import { detectPlatform } from "../keys/keymap";
 import { readLook } from "./general";
 import TerminalImport from "./TerminalImport";
@@ -232,6 +233,7 @@ export default function TerminalPage() {
       )}
       {settings && <TerminalImport settings={settings} save={save} />}
       {settings && <InputCard settings={settings} platform={platform} onSave={save} />}
+      {settings && <NativeTerminalCard settings={settings} platform={platform} onSave={save} />}
       {settings && (
         <section className="conn-card" data-section="keys">
           <h2 className="conn-name">Keys in terminals</h2>
