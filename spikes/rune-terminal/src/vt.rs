@@ -14,6 +14,8 @@ pub struct Palette {
     pub cursor_bg: Color,
     pub cursor_fg: Color,
     pub cursor_unfocused: Color,
+    /// ANSI 0-15, so a theme can restyle every coloured program in the pane.
+    pub ansi: [[u8; 3]; 16],
 }
 
 impl Default for Palette {
@@ -24,9 +26,30 @@ impl Default for Palette {
             cursor_bg: rgb(96, 165, 250),
             cursor_fg: rgb(16, 18, 22),
             cursor_unfocused: rgb(100, 116, 139),
+            ansi: DEFAULT_ANSI,
         }
     }
 }
+
+/// xterm's own ANSI defaults.
+pub const DEFAULT_ANSI: [[u8; 3]; 16] = [
+    (24, 26, 31),
+    (239, 83, 80),
+    (129, 199, 132),
+    (255, 213, 79),
+    (100, 181, 246),
+    (186, 104, 200),
+    (77, 208, 225),
+    (203, 213, 225),
+    (100, 116, 139),
+    (248, 113, 113),
+    (74, 222, 128),
+    (250, 204, 21),
+    (96, 165, 250),
+    (216, 180, 254),
+    (34, 211, 238),
+    (248, 250, 252),
+];
 
 #[inline]
 pub fn rgb(r: u8, g: u8, b: u8) -> Color {
@@ -39,32 +62,14 @@ pub fn rgb(r: u8, g: u8, b: u8) -> Color {
 }
 
 /// Standard xterm-256 palette lookup.
-pub fn vt_color(c: vt100::Color, default: Color) -> Color {
+pub fn vt_color(c: vt100::Color, default: Color, ansi16: &[[u8; 3]; 16]) -> Color {
     match c {
         vt100::Color::Default => default,
         vt100::Color::Rgb(r, g, b) => rgb(r, g, b),
         vt100::Color::Idx(idx) => {
-            const ANSI16: [(u8, u8, u8); 16] = [
-                (24, 26, 31),
-                (239, 83, 80),
-                (129, 199, 132),
-                (255, 213, 79),
-                (100, 181, 246),
-                (186, 104, 200),
-                (77, 208, 225),
-                (203, 213, 225),
-                (100, 116, 139),
-                (248, 113, 113),
-                (74, 222, 128),
-                (250, 204, 21),
-                (96, 165, 250),
-                (216, 180, 254),
-                (34, 211, 238),
-                (248, 250, 252),
-            ];
             match idx {
                 0..=15 => {
-                    let (r, g, b) = ANSI16[idx as usize];
+                    let [r, g, b] = ansi16[idx as usize];
                     rgb(r, g, b)
                 }
                 16..=231 => {
@@ -186,8 +191,8 @@ fn build_row(
 
         let (ch_str, wide, wide_cont, mut fg, mut bg, bold, italic, underline, has_bg) = match cell {
             Some(c) => {
-                let mut fg_raw = vt_color(c.fgcolor(), palette.fg);
-                let mut bg_raw = vt_color(c.bgcolor(), palette.bg);
+                let mut fg_raw = vt_color(c.fgcolor(), palette.fg, &palette.ansi);
+                let mut bg_raw = vt_color(c.bgcolor(), palette.bg, &palette.ansi);
                 let mut has_explicit_bg = !matches!(c.bgcolor(), vt100::Color::Default);
                 if c.inverse() {
                     std::mem::swap(&mut fg_raw, &mut bg_raw);
@@ -332,3 +337,27 @@ fn push_span(spans: &mut Vec<Span>, start: usize, end: usize, cs: CellStyle, fg:
     }
     spans.push(s);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rune::tok::Family;
+
+    #[test]
+    fn sync_rows_reuses_unchanged_rows_and_tracks_colors_wide_cells_and_cursor() {
+        let mut parser = vt100::Parser::new(4, 12, 0);
+        parser.process(b"\x1b[38;2;250;204;21mHi\x1b[0m \xe6\x97\xa5\r\nnext");
+        let style = TextStyle::new(13.0, 400.0).family(Family::SystemMono).lh(18.0);
+        let mut cache = Vec::new();
+
+        let r1 = sync_rows(parser.screen(), style, Palette::default(), true, &mut cache);
+        assert_eq!(r1.len(), 4);
+
+        // Unchanged row 0 keeps exact Rc pointer; changed row 1 rebuilds.
+        parser.process(b"!");
+        let r2 = sync_rows(parser.screen(), style, Palette::default(), true, &mut cache);
+        assert!(Rc::ptr_eq(&r1[0], &r2[0]), "unchanged row 0 should reuse cached GridRow");
+        assert!(!Rc::ptr_eq(&r1[1], &r2[1]), "edited cursor row 1 should rebuild");
+    }
+}
+

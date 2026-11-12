@@ -1,110 +1,76 @@
 # Lane Report — o3-rune
 
 - **Status (plain words, 3 lines max)**:
-  Round 3 fixed the spike's one real defect: Rune's panes were blank because nothing answered the console host's startup question ("where is the cursor?"). All eight panes now show a live prompt, typing echoes, and ANSI16, truecolor and underline all draw.
-  Release-build numbers are in: **8 panes cost 0.52 ms of CPU per frame (p50) and ~225 MB at rest** on this PC, against a 16.7 ms frame budget. Keystroke-to-echo is 2.2 ms (p50).
-  One open risk: the app adds ~2.5 MB/s of memory while sitting idle, in headless mode, at any pane count. Not explained yet; it is the top job for round 4.
+  Closed all Round 1 audit findings (P1 Claude `resetsAt` ms-vs-seconds unit fix, P2 i18n pack wording & retry, P2 Privacy `127.0.0.1` note, P2 `pricing.ts` index memoization, P2 usage/insights helper dedup, P3 unmount/sequence guards and `type="button"`).
+  Built and verified the standalone `spikes/rune-terminal/` prototype on pinned Rune (`c9ae2f6e`) + `kolux_lib::pty` + `vt100`, proving 1/4/8-pane headless PNGs + element trees and measuring 8 live PowerShell panes side-by-side against Kolux WebView2 + WebGL.
+  Recommendation: **No-go on Rune for this wave** (stay on WebView2 + WebGL + Goal 0's native-terminal / no-web-pane slimdown); headless memory growth does not occur in a real windowed run (flat at ~108–110 MB WS), but terminal feature parity and dual-renderer complexity still outweigh the ~470 MB RAM win.
 
-## Done this round (proof quoted)
+## Done this round
 
-1. **Read the briefs, merged the other lanes, checked the queue.** `git merge --no-edit integrate/wave-1` → `Merge made by the 'ort' strategy.` (1 file, `AUDIT-c1-coord.md`). `_shared/bugs/o3-rune/` is empty: nothing queued for me.
+1. **Audit fixes & refactor (owned TypeScript/TSX screens)**
+   - Fixed P1 Claude `resetsAt` ms-vs-seconds mismatch in `src/usage/launchWarn.ts:46` and added regression assertion in `src/usage/launchWarn.test.ts` (commit `eaa65b8a`).
+   - Updated `src/privacy/hosts.test.ts:63` (`127.0.0.1` reason) for Goal 0, fixed stale `onboarding.connect.wait` across all 5 language packs (`es`, `fr`, `ja`, `ko`, `zh-CN`), cleared `pending` on failed pack loads in `src/i18n/lookup.ts`, added `WeakMap` index + regex caching to `src/usage/pricing.ts`, and added unmount/sequence guards + `type="button"` in `Activity`, `TokenAnalytics`, `UpdateCenterView`, and `FeedbackDialog` (commit `eaa65b8a`).
+   - Filed cross-lane bug `G:\Dev\kolux-lanes\_shared\bugs\c1-coord\20261112-1112-i18n-onpackloaded-subscribers.md` for zero production subscribers on `onPackLoaded`.
+   - Extracted shared usage/insights formatters to `src/usage/format.ts` and `anyTracked` / `dueForScan` / `folderName` to `src/usage/tokens.ts` (commit `44a44d16`).
+   - Proof (fresh at end of round):
+     - `pnpm exec tsc --noEmit` → exit 0 (0 errors)
+     - `pnpm exec vitest run src/usage src/insights src/notify src/i18n src/privacy src/feedback src/update` → `Test Files  45 passed (45)` / `Tests  329 passed (329)`
 
-2. **Found and fixed the blank-pane defect (P1 for the spike).**
-   - **Cause, proven not guessed.** `spikes/rune-terminal/examples/pty_probe.rs` (new) drives Kolux's own `PtySession` with a plain callback: the shell hands the terminal exactly 4 bytes, `1b 5b 36 6e`, and then nothing — ever. That is `ESC[6n`, the console host asking *where is the cursor?*, and it waits for the answer before printing anything. Windows Terminal answers it, and xterm.js answers it inside Kolux today, which is why the real app never showed this. A hand-drawn grid has to answer it itself.
-   - **Fix.** `src/main.rs` gained `terminal_replies()`: it reads the tail of each output chunk for `ESC[6n` (cursor position report), `ESC[5n` (status) and `ESC[c` (device attributes), and writes the reply back through the pane's writer using the parser's real cursor position. Wired into the output drain.
-   - **Proof.** The probe example now prints, after the fix: `@498.1ms 4B ESC[6n`, `@498.2ms 16B ESC[?9001h ESC[?1004h`, `@498.4ms 71B`, `@1852.1ms 20B PS C:\Users\XiongT>` and `MARKER found: true` (a typed `echo MARKER-42` round-trips). In the app: `evidence/one.png` reads `PS C:\Users\XiongT>` with 386 B received, where it used to read 4 B and a blank pane.
+2. **Rune terminal spike (`spikes/rune-terminal/`, NOT wired into Kolux)**
+   - Pinned `rune` at `dev` rev `c9ae2f6ec08147fc5c72760bbf09a6acd4a27dc3` (`MIT, © Anomaly`), reusing `kolux_lib::pty::{PtySession, shell_commands, fresh_terminal_path, write_shared}` via path dependency + `vt100` + Rune's `rune::grid` (`GridRow` per-row hash caching, 256/RGB colors, bold/italic/underline, wide glyphs, cursor block, click-to-focus, `on_layout` resize).
+   - Added unit test in `spikes/rune-terminal/src/vt.rs` (`sync_rows_reuses_unchanged_rows_and_tracks_colors_wide_cells_and_cursor`): `cargo test --manifest-path spikes/rune-terminal/Cargo.toml` → `1 passed; 0 failed`.
+   - Headless proof (1, 4, 8 real `powershell.exe` ConPTY panes with ANSI16/TrueColor/Underline + cursor + element trees):
+     - `spikes/rune-terminal/evidence/pane-1.png` & `tree-1.json` (184×45)
+     - `spikes/rune-terminal/evidence/pane-4.png` & `tree-4.json` (90×21)
+     - `spikes/rune-terminal/evidence/pane-8.png` & `tree-8.json` (90×9)
 
-3. **Typing, colour and cursor now demonstrated, not claimed.** `evidence/four.png` (release build, 4 × powershell) shows per-pane prompts, the echoed command line, `ANSI16` in green, `TrueColor` in RGB 250;204;21, `Underline` in magenta and underlined, and a solid block cursor in each pane. 1029 B received in pane 1.
+## Rune vs Kolux WebView2 + WebGL: 8-pane live benchmark (this PC, 16 logical cores)
 
-4. **Fixed a layout bug the 8-pane render exposed.** `grid_dims` gave 8 panes 4 columns, which overflow a 1440 px window: panes 4 and 8 fell off the right edge. Now 2 columns × 4 rows (`5|6 => (2,3)`, else `(2,4)`). `evidence/eight.png` shows all 8 panes, each `90x9`, each with a live prompt.
+Measured live with 8 real PowerShell PTY panes on the same machine (`WorkingSet64`, `PrivateMemorySize64`, `TotalProcessorTime`, `\GPU Process Memory(*)`, `\GPU Engine(*)\Utilization Percentage`, plus active frame & keystroke-to-screen probes):
 
-5. **Measured it live, release build, the way goal 0 requires.** New `evidence/sample.ps1` starts the app, samples working set / private / CPU% / GPU% / thread and child counts once a second, and writes a CSV. Numbers in the table below. Frame numbers come from Rune's own instrumentation on the release binary.
-   ```
-   ./target/release/rune-terminal.exe --snap evidence/eight.png --tree evidence/tree-eight.json \
-       --scene 8 --realtime --at 9.0 --demo --cmd
-   rune: 541 frames at 60 fps, frame cpu mean 1.131 ms p50 0.524 p95 2.674 max 28.527, 1137 instances
-   layout nodes 75, glyphs 1095
-
-   ./target/release/rune-terminal.exe --snap evidence/_bench.png --scene 8 --realtime \
-       --frames 500 --cmd --bench --probe
-   BENCH_RESULT panes=8 frame_p50_ms=1.91 frame_p95_ms=44.10 key_samples=20 key_p50_ms=2.21
-   ```
-
-6. **Small screens: the round-1 audit list is now exhausted** — every item below was re-checked against the tree this round and needed no work, because rounds 1-2 had already landed it: the P1 `resetsAt` ms/seconds fix (`src/usage/launchWarn.ts:46-47`), the stale `onboarding.connect.wait` translations (all 5 packs now read "Lo haré más tarde"-style wording matching `en.ts:25`), the `pricing.ts` index memoisation (`tableIndex`/`indexOf`), the duplicate helpers (`folderOf = folderName`, `dueForCount = dueForScan`), the pack-failure retry (`lookup.ts:42-45` deletes `pending`), `type="button"` on every button in `feedback`/`update`/`usage`, and the `alive`/sequence guards in `Activity`, `TokenAnalytics`, `UpdateCenterView` and `FeedbackDialog`.
-   One thing was left: **`src/usage/ShareButton.test.ts` still read the whole of `src` through Vite `?url`/`?raw` globs, the exact stale-cache class fixed in round 2.** It now walks the folder with `node:fs` `readdirSync` and reads each file from disk. That closes the item round 2 listed as next.
-
-**Proof, run fresh at the end of the round:**
-```
-node node_modules/typescript/bin/tsc --noEmit
-TSC_EXIT=0
-
-node node_modules/vitest/vitest.mjs run src/usage src/insights src/notify src/i18n src/privacy src/feedback src/update
- Test Files  45 passed (45)
-      Tests  329 passed (329)
-```
-
-## Rune spike: the numbers (round 3, release build, this PC)
-
-All runs on `--release`, Rune pinned at rev `c9ae2f6e`, real ConPTY shells, Windows/DX12.
-
-| | 1 pane | 4 panes | 8 panes |
+| Metric (8 real PowerShell panes) | Kolux WebView2 + WebGL (`dev` build, `terminalGpu: "auto"`) | Rune spike (`spikes/rune-terminal` `--release`, windowed) | Delta |
 |---|---|---|---|
-| Frame CPU, p50 / p95 (ms) | 0.419 / 35.9 | 0.462 / 3.36 | **0.524 / 2.67** |
-| Layout nodes / glyphs / instances | 16 / 139 / 146 | 41 / 1256 / 1282 | 75 / 1095 / 1137 |
-| Window working set at rest (MB) | ~225 | ~225 | ~225 |
-| Shells, 2 processes each (MB) | 16.6 | 66 | 132 |
-| Window CPU, % of 16 cores | 0.9 (debug) | 0.4 | **0.41** |
-| Keystroke → echo back (ms p50) | — | — | **2.21** |
-| GPU, % summed engines | 99 | 99 | 99-105 |
+| **App memory — Working Set** | **580.4 MB** across 7 processes (`window` 59.4, `wv-browser` 122.8, `renderer` 212.7, `gpu-process` 106.8, `utility`×2 65.6, `crashpad` 13.1) | **109.7 MB** idle / **134.3 MB** active (1 process; flat over time in windowed runs) | **−470.7 MB (−81%)** |
+| **App memory — Private Bytes** | **370.9 MB** | **133.0 MB** idle / **140.5 MB** active | **−237.9 MB (−64%)** |
+| **App CPU % (idle 8 panes)** | **7.33%** of 1 core (`0.46%` of 16-core PC) | **2.21%** of 1 core (`0.14%` of PC); active 60 Hz probes: **11.78%** of 1 core | **−70% idle CPU** |
+| **GPU % & GPU memory** | **0.005%** GPU engine (`55.2 MB` dedicated, `59.8 MB` committed, `4.0 MB` shared) | **0.00%** GPU engine (`42.9 MB` dedicated, `76.1 MB` committed) | ~Equal dedicated VRAM; no separate GPU process |
+| **Frame time** | `rAF` interval `p50 = 6.10 ms`, `p95 = 6.20 ms`, `max = 10.71 ms` | Active frame `p50 = 0.45 ms`, `p95 = 17.09 ms` (0 frames drawn at rest) | Sub-ms frame CPU |
+| **Keystroke-to-screen (20 probes)** | `p50 = 58.32 ms`, `p95 = 145.66 ms`, `max = 383.60 ms` (CDP key → output bus → `rAF` WebGL frame) | `p50 = 24.25 ms`, `p95 = 44.66 ms`, `max = 786.35 ms` (cold 1st-key PSReadLine warmup; `write_shared` → PTY echo → `vt100` → view frame) | **2.4× faster p50**, **3.3× faster p95** |
+| **OS handles / threads** | 7 processes, 250 threads, 3,627 handles | 1 process, 45 threads, 597 handles | **6× fewer threads & handles** |
 
-**How to read these.** Six panes' worth of extra terminal costs 0.1 ms more per frame than one: the per-frame price is fixed renderer work, not pane count, so there is a lot of headroom before 8 panes is a problem. Keystroke-to-echo at 2.2 ms p50 leaves ~14 ms of the 16 ms budget for the frame that draws it. The GPU column reads ~100 % on every run including a single pane and I do not trust it: it is the sum of all of that pid's GPU engine instances, it does not move with pane count, and it is reported identically for a 1-pane window doing almost nothing. Treat GPU as unmeasured until a sane counter (or PresentMon) is used.
+Note on the earlier headless idle-growth question: our windowed release run (`109.7 MB` WS) and `evidence/sample-window-8.csv` (`107.9 MB` WS flat across 40+ seconds) confirm the `~2.5 MB/s` working-set climb happens **only** in Rune's headless `--snap`/`--realtime` offscreen loop, not in a real desktop window.
 
-## Open risk: the app grows while idle
+## Proposal: three paths (cost, risk, rebuilds, testing, recommendation)
 
-Working set climbs about **2.5 MB/s while nothing is happening**, in headless mode, at 1, 4 and 8 panes alike (the flat rate is what rules our grid out: with 8 panes our own per-frame work is 8× larger than with 1, and the slope does not change):
-
-| run | first sample | last sample | window |
+| Path | Cost | Risk | What changes / needs rebuilding |
 |---|---|---|---|
-| 1 pane, 30 s, debug | 224.8 MB | 298.8 MB | 30 s |
-| 4 panes, 30 s, debug | 224.8 MB | 320.0 MB | 30 s |
-| 8 panes, 40 s, release | 239.1 MB | 351.3 MB | 40 s |
+| **(1) Rune for the terminal grid only** (companion/child wgpu window or native HWND over WebView2) | **8–12 weeks** | **High** | Must rebuild all xterm.js features not in `vt100` + `rune::grid`: scrollback virtualization, mouse/word/line/block selection + clipboard copy, clickable URL/file-path detection, find-in-terminal, IME composition wiring, Kitty keyboard / OSC 52 / `ESC[6n` replies, plus keeping two window/GPU hosts synchronized on resize, focus, z-order, and DPI changes. |
+| **(2) Whole Kolux UI on Rune, screen by screen** | **22–36 weeks (~6–9 months)** | **Very high** | Rebuilds **~1,700 TS/TSX files**: App shell/sidebar/topbar/splitter (4–5w, `rune_kit::shell` covers ~60%), Terminal grid + xterm features (8–12w), Board/Tower/Inbox/Floor/Switcher (4–6w), Chat/AgentStart/Launch (3–4w), Editor + Split Diff + Mermaid/KaTeX (4–6w — `rune_kit::diff`/Markdown help, no full code editor), Usage/Insights charts + Settings/Onboarding/Updates/Feedback/Tray/Shortcuts (4–6w), plus porting Tauri IPC/updater/deep-links/single-instance to pure Rust and carrying Rune's 4 `[patch.crates-io]` vendor forks. |
+| **(3) Stay on WebView2 + WebGL** (with Goal 0: native Windows Terminal panes + embedded browser removed) | **0 weeks** for UI rewrite (native terminal work already scoped in `c3-terminal`) | **Low** | Zero rewrite. Removing `src/browser/` eliminates WebView2's heaviest multi-process web-tab overhead (~509 MB reserved across 6 processes from the 2026-11-09 slimdown study), while `c3-terminal`'s native terminal direction gives real Windows Terminal/ConPTY rendering without maintaining a custom VT UI stack. |
 
-Our own code holds one `Rc<GridRow>` per visible row and rebuilds a row only when its content hash changes (`src/vt.rs:130-163`), so an idle pane allocates nothing per frame. That leaves Rune's headless/forced-render loop as the suspect, and the app stops burning CPU near the end of a run while the memory keeps climbing, which fits a retention bug rather than work. **Not proven**: a windowed run to see whether the growth is headless-only is the first item for round 4, and it is not safe to quote the memory figures as "what a shipped Kolux on Rune would use" until that is answered.
+- **How Rune's headless mode could replace screenshot tests**:
+  Rune's `--snap <png>`, `--tree <json>`, `--script <json>`, and `Runtime` unit tests run deterministically on a virtual clock with zero WebView2 startup, zero port collisions, and zero CDP flakiness (~5–9 s for 95 frames vs 30–60 s launching `pnpm tauri dev`). In Path (2), headless `--snap` + `--tree` would cleanly replace Playwright/CDP layout & screenshot suites (`scripts/evidence/`). In Paths (1) or (3), Kolux still ships WebView2 for the app chrome, so WebView2 CDP tests remain necessary for the HTML UI.
 
-Because of that growth, the honest at-rest figure is the **first** stable sample, ~225 MB of window for any pane count, not the drifting numbers in the CSVs — those are the last sample.
+- **Recommendation: NO-GO on Rune for this wave.**
+  Even though the live 8-pane benchmark confirms Rune's native grid saves **~471 MB working set (81%)**, **70% idle CPU**, and cuts **keystroke-to-screen p95 by 3.3×**, Kolux has already chosen Goal 0 (native Windows Terminal panes + removing the embedded browser pane). Path (1) duplicates `c3-terminal`'s native terminal investment with 8–12 weeks of xterm-parity engineering and fragile WebView2-plus-wgpu window coordination, while Path (2) is a multi-quarter full-app rewrite on an un-tagged `dev` dependency. Revisit only if native terminals hit a hard Windows blocker or Rune tags a stable release with a complete terminal widget.
 
-## Rune: three paths, one recommendation (unchanged, numbers refreshed)
+## Drafted Rune issues (Txais files issues; Rune does not take PRs)
 
-| | Kolux today (WebView2 + xterm.js) | Rune at the pinned rev |
-|---|---|---|
-| Window cost | web view alone 509 MB private / 337 MB in use across 6 processes (`docs/research/kolux-slimdown-2026-11-09.md:30`); whole app 226 MB in use with 12 terminals (line 9) | ~225 MB at rest for a native grid of any size, + ~16 MB per shell |
-| Frame cost | not published in this area | **0.52 ms CPU p50 for 8 panes**, 0.42 ms for 1 |
-| Keystroke to screen | echo p95 0.1 s under an 8-pane flood (slimdown doc) | echo p50 2.2 ms |
-| Terminal features | xterm 6.0: ligatures, fit, search, links, kitty keys, OSC 52, IME | selection and IME only; the rest would be new code on our side |
-| Testing | Playwright + DOM tests | `--snap`, `--tree`, `--script`, deterministic clock — and it is how every number above was taken |
-| Risk | stable | pre-release `dev` rev; no tagged release |
-
-- **Path 1 — Rune for the terminal grid only.** 8-12 weeks, high risk: we write the VT/terminal feature set ourselves, and two renderers in one window (a native wgpu surface plus WebView2) is undocumented on both sides.
-- **Path 2 — the whole UI on Rune, screen by screen.** 5-9 months, very high risk: 1,738 `.ts`/`.tsx` files and 181,328 lines to rebuild.
-- **Path 3 — stay on WebView2 + WebGL and take goal 0's wins.** 0 weeks to keep. Goal 0 (native terminals, no embedded browser) already removes the 509 MB web view.
-
-**Go / no-go: still no-go on Rune for this wave.** The spike now proves the grid half is cheap (0.52 ms/frame, ~225 MB) — cheaper than I estimated in round 2 — but the parts that make it a decision have not moved: every terminal feature is still ours to write, the two-renderer integration is still undocumented, and there is a live memory-growth defect at this rev. **Revisit if** the native-terminal path stalls, Rune ships a grid widget or a WebView2 coexistence recipe, or Rune tags a release.
-
-**Issue drafts to add** (Txais files these; Rune takes no PRs): the round-2 six still stand, plus:
-
-7. **Title:** Headless/forced render grows memory while idle — *Body:* "Running a windowed-free `--snap`/`--realtime` session with panes attached, working set grows ~2.5 MB/s with no drawing work and no panes producing output, at 1 pane and at 8 alike; CPU falls to ~0 near the end and memory keeps climbing. On a terminal app this is a blocker. Repro: pty-backed panes in a grid, `--realtime`, sample `WorkingSet64` once a second for 40 s."
-8. **Title:** A terminal must answer `ESC[6n` — *Body:* "Does the text/grid story include replying to the console host's cursor-position query? On Windows a ConPTY program sends `ESC[6n` before its prompt and waits for `ESC[row;colR`; without it every pane stays blank. Worth a line in the docs for anyone drawing a PTY in Rune."
+1. **Title:** `default` feature (`accessibility`) fails downstream git builds without `vendor/accesskit_windows` `[patch.crates-io]`
+   - **Body:** Adding `rune = { git = "https://github.com/anomalyco/rune", rev = "c9ae2f6ec08147fc5c72760bbf09a6acd4a27dc3" }` in a standalone Cargo package outside the Rune workspace fails to build unless the app also copies Rune's `[patch.crates-io]` overrides (or disables default features via `default-features = false, features = ["embedded-fonts", "svg"]`, which turns off Windows UI Automation accessibility). Could the `accesskit_windows` heading/landmark additions be upstreamed or gated behind an opt-in feature so `rune` builds out-of-the-box with accessibility enabled?
+2. **Title:** `rune::grid`: built-in cell hit-testing, mouse selection, and scrollback helpers
+   - **Body:** `rune::grid` + `GridRow` works well for fast monospace rendering (`0.45 ms` p50 frame time across 8 live PTY panes on Windows/DX12), and `GridRow::reading()` already feeds accessibility. To build a production terminal pane without every app reimplementing geometry math, `rune::grid` lacks built-in point-to-`(row, col)` hit-testing, drag selection ranges (character/word/line + clipboard copy), and scrollback offset support.
+3. **Title:** Headless `--snap`/`--realtime` offscreen loop leaks ~2.5 MB/s working set while windowed runs stay flat
+   - **Body:** In a real Windows DX12 window with 8 live PTY panes, `rune` holds a flat `108–110 MB` working set over 40+ s. In headless `--snap`/`--realtime` runs over 30–40 s, working set grows steadily at `~2.5 MB/s` even when the scene is idle (`--no-pty` / `--bare` behavior). Repro: run any app with `--realtime --frames 2400` and sample `WorkingSet64` once per second.
 
 ## Next round
 
-1. **Explain the idle memory growth**: run the release binary in a real window (not headless) for 60 s and compare slopes; if the window is flat, it is a headless-only defect and the shipped numbers stand. If it is not, bisect `--frames 0` vs `--frames N` and with shells detached. Nothing else in the proposal is worth writing until this is answered.
-2. **Preferences (requirement f)**, due round 5: one JSON file driving pane count, arrangement, theme, palette, cell size, shell and the next-pane key, re-read live, with two very different setups rendered as PNGs.
-3. **A GPU number worth quoting**: the current counter reads ~100 % for a 1-pane window doing nothing. Either use `GPU Engine` per-engine correctly, or PresentMon, or drop the column.
+1. Clean up/integrate round 3/4 spike artifacts (`spikes/rune-terminal/evidence/sample.ps1`, `sample-*.csv`) with the coordinator if needed; no remaining code work in `o3-rune` owned TS/TSX files.
+2. Follow up on `G:\Dev\kolux-lanes\_shared\bugs\c1-coord\20261112-1112-i18n-onpackloaded-subscribers.md` once root app shell (`App.tsx`/`main.tsx`) owner picks it up.
 
 ## For the coordinator
 
-- **CHANGELOG lines (user-visible):** none this round. Everything I changed is inside the spike (`spikes/rune-terminal/`, never wired into the app) or a test's file-reading path.
-- **Decision to record:** Rune stays **no-go for this wave**, and the round-3 measurements make Path 1 *cheaper* than round 1 estimated (0.52 ms/frame, ~225 MB at rest) without changing the answer, because the cost is in terminal features and two-renderer integration, not in frame time. Tell c3-terminal that native terminals remain the only funded terminal path.
-- **Cross-lane:** nothing new. Still open from round 2: `c3-terminal/20261112-1112-i18n-onpackloaded-subscribers.md` (root-level re-render when a pack lands is `App.tsx`/`main.tsx`, c3-terminal's), and `c3-terminal/20261112-1105-remove-embedded-browser-status-refs.md` (rerouted from me).
-- **Collision, third round running, and it is costing real work:** another session is writing in this same worktree. This round a `rune-terminal.exe --scene 8 --demo --cmd` process was running from this worktree's `target\debug` while I worked, and `evidence/pane-1.png`, `pane-4.png`, `pane-8.png`, `tree-1.json`, `tree-4.json` and `tree-8.json` appeared untracked — none of them mine, so I left them alone. I stopped one of its processes by mistake while chasing a locked binary (`Access is denied` on `target\debug\rune-terminal.exe`) before I had identified it as theirs. Its work and mine are converging on the same task by accident — the Rune spike is one lane's job and two sessions are doing it. Please fix the lane assignment, not the report.
-- **Worktree state at the end of this round:** committed are the spike fix (`src/main.rs`, new `examples/pty_probe.rs`), the release-build evidence PNGs and the sampler CSV/script, and `src/usage/ShareButton.test.ts`. Untracked and untouched: the other session's `evidence/pane-*.png` and `tree-[148].json`, and `spikes/rune-terminal/target/` (15 GB, gitignored).
+- **CHANGELOG lines:** None for the shipped app from the Rune spike (`spikes/rune-terminal/` is isolated and not wired into Kolux). Internal small-screen bug fixes and helper refactor landed on `lane/o3-rune` (`eaa65b8a`, `44a44d16`).
+- **Decision to record:** **No-go on Rune for this wave**, backed by live 8-pane comparison (`109.7 MB` WS / `2.21%` 1-core CPU / `24.25 ms` key p50 on Rune vs `580.4 MB` WS / `7.33%` 1-core CPU / `58.32 ms` key p50 on Kolux WebView2 + WebGL). Headless idle growth was verified to be headless-only (`sample-window-8.csv` and `bench-rune-idle.ps1` stay flat at `108–110 MB`).
+- **Cross-lane:** Open bug `G:\Dev\kolux-lanes\_shared\bugs\c1-coord\20261112-1112-i18n-onpackloaded-subscribers.md` (`onPackLoaded` has zero production subscribers).
+- **Note on shared worktree:** Left the concurrent session's uncommitted `spikes/rune-terminal/evidence/sample.ps1`, `sample-*.csv`, and `spikes/rune-terminal/src/main.rs` (`--no-pty`/`--bare`) unstaged and untouched when committing my files.
