@@ -43,7 +43,8 @@ export function claudeFigures(limits: ClaudeLimit[]): ProviderUsage | undefined 
   if (!limits.length) return undefined;
   const win = (kind: string) => {
     const l = limits.find((x) => x.kind === kind);
-    return l ? { usedPercent: l.usedPercent, resetsAt: l.resetsAt, windowMins: null } : null;
+    // ClaudeLimit.resetsAt arrives in Unix ms (hooks.rs), while UsageWindow.resetsAt / resetWords() take Unix seconds.
+    return l ? { usedPercent: l.usedPercent, resetsAt: l.resetsAt == null ? null : Math.round(l.resetsAt / 1000), windowMins: null } : null;
   };
   return { name: "Claude", fiveHour: win("five_hour"), weekly: win("seven_day") };
 }

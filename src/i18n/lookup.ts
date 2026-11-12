@@ -34,11 +34,15 @@ export function loadPack(lang: Language = locale()): Promise<Pack> {
   if (!p) {
     p = load().then(
       (pack) => {
+        pending.delete(lang);
         packs.set(lang, pack);
         listeners.forEach((f) => f(lang));
         return pack;
       },
-      () => ({}),
+      () => {
+        pending.delete(lang);
+        return {};
+      },
     );
     pending.set(lang, p);
   }

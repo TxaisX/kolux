@@ -90,7 +90,7 @@ function OverviewPanel({ usage, today, onTrack }: { usage: Usage; today: Date; o
         <p className="conn-detail">See how many tokens your agents used and what that would cost. {WHY}</p>
         <div className="btn-row">
           {(["claude", "codex"] as Provider[]).map((p) => (
-            <button key={p} className="btn" onClick={() => onTrack(p, true)}>
+            <button key={p} type="button" className="btn" onClick={() => onTrack(p, true)}>
               {`Enable ${NAMES[p]}`}
             </button>
           ))}
@@ -254,7 +254,7 @@ export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTra
     <div className="ta">
       <div className="ta-head">
         <Segmented label="Usage analytics" options={PICKS} value={pick} onPick={onPick} />
-        <button className="btn" disabled={busy || shown.length === 0} title={shown.length ? undefined : "Nothing to refresh: token tracking is off"} onClick={onRefresh}>
+        <button type="button" className="btn" disabled={busy || shown.length === 0} title={shown.length ? undefined : "Nothing to refresh: token tracking is off"} onClick={onRefresh}>
           {busy ? "Refreshing…" : "Refresh"}
         </button>
       </div>
@@ -309,6 +309,13 @@ export default function TokenAnalytics() {
   const [pick, setPick] = useState<Pick>("overview");
   const [scanning, setScanning] = useState<Provider[]>([]);
   const scanned = useRef(new Set<Provider>());
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
 
   const scan = useCallback((ps: Provider[]) => {
@@ -317,9 +324,9 @@ export default function TokenAnalytics() {
       setScanning((s) => [...s, p]);
       note(`scan:${p}`, null);
       invoke<Saved>("token_usage_scan", { provider: p })
-        .then((saved) => setUsage((u) => (u ? { ...u, [p]: saved } : u)))
-        .catch((e) => note(`scan:${p}`, scanFailedNote(p, e)))
-        .finally(() => setScanning((s) => s.filter((x) => x !== p)));
+        .then((saved) => mounted.current && setUsage((u) => (u ? { ...u, [p]: saved } : u)))
+        .catch((e) => mounted.current && note(`scan:${p}`, scanFailedNote(p, e)))
+        .finally(() => mounted.current && setScanning((s) => s.filter((x) => x !== p)));
     }
   }, [note]);
 
@@ -328,20 +335,25 @@ export default function TokenAnalytics() {
     // "Retrying…" and ignores presses meanwhile, so a read that fails again the same way still shows it ran.
     setLoading(true);
     invoke<Usage>("token_usage")
-      .then((u) => { setUsage(u); setLoadError(""); }, (e) => setLoadError(String(e)))
-      .finally(() => setLoading(false));
+      .then((u) => { if (mounted.current) { setUsage(u); setLoadError(""); } }, (e) => mounted.current && setLoadError(String(e)))
+      .finally(() => mounted.current && setLoading(false));
   }, []);
   useEffect(load, [load]);
   useEffect(() => {
+    let alive = true;
     // Kolux scope: the registered projects, their own workspaces folders and the global one.
     // usage-status.md:10: when the list cannot be read the scope falls back to every local use and says so,
     // instead of reading "No use inside Kolux" for good.
     Promise.all([invoke<Array<{ path: string; workspacesDir?: string | null }>>("project_list"), invoke<{ dir: string }>("workspaces_place_get")])
-      .then(([projects, place]) => setFilters((f) => ({ ...f, roots: [...projects.flatMap((p) => [p.path, p.workspacesDir ?? ""]), place.dir].filter(Boolean) })))
+      .then(([projects, place]) => alive && setFilters((f) => ({ ...f, roots: [...projects.flatMap((p) => [p.path, p.workspacesDir ?? ""]), place.dir].filter(Boolean) })))
       .catch((e) => {
+        if (!alive) return;
         setFilters((f) => ({ ...f, scope: "all" }));
         note("scope", scopeFailedNote(e));
       });
+    return () => {
+      alive = false;
+    };
   }, [note]);
   // Saved figures are drawn first; each tracked provider the picked panel shows is rescanned once.
   useEffect(() => {
@@ -352,10 +364,11 @@ export default function TokenAnalytics() {
     note("track", null);
     invoke("token_tracking_set", { provider: p, on })
       .then(() => {
+        if (!mounted.current) return;
         setUsage((u) => (u ? { ...u, tracking: { ...u.tracking, [p]: on } } : u));
         if (on) scanned.current.delete(p);
       })
-      .catch((e) => note("track", trackFailedNote(p, on, e)));
+      .catch((e) => mounted.current && note("track", trackFailedNote(p, on, e)));
   };
 
   // usage-status.md:18: one `today` per load of the figures, not a new Date on every render (it broke the card's memo).

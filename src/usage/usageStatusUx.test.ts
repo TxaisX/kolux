@@ -41,11 +41,12 @@ test("usage-status.md:3: a token_usage failure draws the error and a Retry butto
   expect(analyticsSource).toContain("onClick={busy ? undefined : onRetry}");
   // the flag is set for the read and cleared however it ends
   expect(analyticsSource).toMatch(/setLoading\(true\);\s*invoke<Usage>\("token_usage"\)/);
-  expect(analyticsSource).toContain(".finally(() => setLoading(false))");
+  // cleared on the still-mounted component only, so a read that ends after unmount does not warn
+  expect(analyticsSource).toContain(".finally(() => mounted.current && setLoading(false))");
   expect(busy).toContain(loadFailedText("db locked"));
   expect(analyticsSource).toContain("<LoadFailed error={loadError} onRetry={load} busy={loading} />");
   // Retry keeps the error on screen until the read works, instead of blanking the panel while it runs
-  expect(analyticsSource).toContain("then((u) => { setUsage(u); setLoadError(\"\"); }");
+  expect(analyticsSource).toContain("then((u) => { if (mounted.current) { setUsage(u); setLoadError(\"\"); }");
   expect(analyticsSource).not.toMatch(/setLoadError\(""\);\s*invoke/);
 });
 
@@ -70,7 +71,7 @@ test("usage-status.md:10: a failed rescan and an unreadable project list are nam
   expect(scanFailedNote("codex", "timeout")).toBe("Could not rescan Codex's logs (timeout); the figures shown are the last saved ones.");
   expect(scopeFailedNote("offline")).toContain("every local use is shown");
   expect(analyticsSource).toContain("scanFailedNote(p, e)");
-  expect(analyticsSource).toMatch(/\.catch\(\(e\) => \{\s*setFilters\(\(f\) => \(\{ \.\.\.f, scope: "all" \}\)\);\s*note\("scope", scopeFailedNote\(e\)\);/);
+  expect(analyticsSource).toMatch(/\.catch\(\(e\) => \{\s*if \(!alive\) return;\s*setFilters\(\(f\) => \(\{ \.\.\.f, scope: "all" \}\)\);\s*note\("scope", scopeFailedNote\(e\)\);/);
 });
 
 test("usage-status.md:7: the Share on X button uses the shared .btn class, which has CSS", () => {

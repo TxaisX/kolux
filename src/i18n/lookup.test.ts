@@ -42,11 +42,14 @@ test("T-210-b SET-017: a pack loads only when its language is needed, and any te
   expect(t("glossary.worktree.plain")).toBe("workspace");
 });
 
-test("T-210-b SET-017: a pack that fails to load leaves English showing", async () => {
-  registerPack("ko", () => Promise.reject(new Error("pack file missing")));
+test("T-210-b SET-017: a pack that fails to load leaves English showing and allows a later retry", async () => {
+  let attempt = 0;
+  registerPack("ko", () => (++attempt === 1 ? Promise.reject(new Error("pack file missing")) : Promise.resolve({ "glossary.shell.plain": "터미널" })));
   applyLanguage("ko");
   await expect(loadPack("ko")).resolves.toEqual({});
   expect(t("connect.codex")).toBe(EN["connect.codex"]);
+  await expect(loadPack("ko")).resolves.toEqual({ "glossary.shell.plain": "터미널" });
+  expect(t("glossary.shell.plain")).toBe("터미널");
 });
 
 test("T-210-b SET-017: product and provider names pass through as values, untranslated", () => {
