@@ -1,60 +1,69 @@
 # LANE-REPORT: c3-terminal
 
 ## Status (plain words, 3 lines max)
-The Windows Terminal engine now draws a live Kolux pane in the right place (setting on); setting off is unchanged xterm.
-Seven queued bugs fixed: language packs redraw, timing tests, sidebar polling, remove-session shortcut, agent start logging, local build profile.
-Browser Rust removal and the agent-shell wrap (a)/(b) are still blocked on o1-tools and c2-agents.
+With the native terminal setting on, the engine window now steps aside when a menu or dialog opens over the pane and comes back after.
+Clicking a session row in the sidebar can now focus that pane once c2-agents adds its half (the shell side is in).
+Open question found: round 3's "engine draws the prompt" screenshot may have been xterm's text, not the engine's (see Done 2).
 
-## Done this round (round 3)
-Merged integrate/wave-1 first (d2c26cd0).
+## Done this round (round 4)
+Merged integrate/wave-1 first (katex/vite/crate bumps, round-1 audit report). Queue read: 7 files.
 
-1. **Native terminal proven live** (goal 0). Harness run `node G:/Temp/c3-native/live.mjs on|off`
-   (vite 1450/1451, CDP 9430/9431, com.txaisxiong.kolux.c3-{0,1}.smoke, fresh git repo, Terminal pane).
-   - Bug found and fixed (d198659e): TerminalTriggerResize calls SetWindowPos(hwnd,0,0,w,h), so the engine
-     window jumped to the main window's top-left. `fit()` in native_view.rs now resizes first, then places.
-   - After the fix: HwndTerminalClass child at client 298,134 801x721 = pane BODY_RECT 298,134 801x721.
-   - Setting on: `NATIVE_STATE "[\"on\"]"`, screenshot artifacts/c3-round3/native-on.png (PowerShell prompt
-     drawn by the WT engine). Before the fix: artifacts/c3-round3/native-on-corner-bug.png.
-   - Setting off: `NATIVE_STATE "[]"`, artifacts/c3-round3/native-off.png (same pane in xterm).
-   - Status-bar memory, one sample each: 92.6 MB on vs 59.3 MB off. xterm still runs under the native view,
-     so the saving needs step 2.
-   - Pane marks `body[data-native]` = on/off for probes (8119d4a7).
-   - `cargo test --lib native_view` -> `test result: ok. 3 passed; 0 failed`
-2. **Language packs redraw** (f800b575): `usePackLoaded()` hook used by TopBar and AsleepPane; main.tsx waits
-   up to 300 ms for the pack before first paint. Test usePackLoaded.test.ts. Wizard part filed to c2-agents
-   (20261112-1700-wizard-usepackloaded.md).
-3. **Timing tests**: outputFlood 48 MB test 30 s budget (2c3164f6); tools row961 30 s deadline (de862747).
-4. **Agent start** (a4900dba): failed starts written to kolux.log ("terminal start failed (label): error",
-   SUPERSEDED skipped); `started()` reports the program asked for, not the shell carrying it. That is items
-   (c) and (d) of agent-shell-wrap-hook. Tests `started_names_the_program_asked_for_not_the_shell_that_carries_it`,
-   `a_failed_start_has_a_log_line_and_a_superseded_one_does_not`.
-5. **Right sidebar** (f51d6e16): Agents and Checks panels stop polling behind a full-page screen.
-6. **Remove-session shortcut** (a4671921): honours "Stop without asking" via removePlan.
-7. **[profile.local]** (fac2b824): thin LTO, 16 codegen units, incremental. Not yet timed with a build.
+1. **Sidebar session row focuses its pane, shell side** (a1255a15, bug 20261112-1200). Sidebar.tsx passes
+   `onFocusPane={act.focusPane}` (openPane). projectsProps.ts declares `FocusPane = { onFocusPane?: (key) => void }`
+   and lists `onFocusPane: "same"`, so this compiles before AND after c2-agents adds the prop to ProjectsPanel.
+   Also fixed a tsc error from the merge: remove.test.ts node:fs import now carries the same @ts-expect-error as the
+   other source-reading tests.
+2. **Native terminal step 2** (df8b9f9e, b83a2885).
+   - nativeView.ts `overlayOver()`: an open `[role=menu|dialog|alertdialog|listbox]` or `.menu` overlapping the pane,
+     or anything else on top of the pane's centre (sheet, full-page screen), hides the engine window; it returns when
+     the overlay goes. `body[data-native]` is now on / under / off.
+   - `onShown` tells the pane when the engine draws; the pane then counts as hidden for its GPU slot (parkWhenHidden
+     gives the WebGL context back after the usual 30 s).
+   - Live proof, `node artifacts/c3-round4/live4.mjs on` (vite 1450, CDP 9430, com.txaisxiong.kolux.c3-0.smoke,
+     log artifacts/c3-round4/live4-on.log):
+     `MENU_OPEN true` / `MENU_NATIVE_STATE ["under"]` / `HwndTerminalClass vis=False`;
+     after removal `AFTER_NATIVE_STATE ["on"]` / `HwndTerminalClass vis=True`.
+   - **Finding:** I also hid xterm under the engine (CSS visibility) to save painting. The capture then showed a BLANK
+     pane (artifacts/c3-round4/r4-native.png), where round 3's capture showed the PowerShell prompt. So either the engine
+     draws nothing visible, or PrintWindow (shot.ps1) cannot capture the engine's DirectX surface. Not known which.
+     I took the CSS rule back out (b83a2885) so the setting never shows a blank pane. Round 3's claim "prompt drawn by
+     the WT engine" is unproven until this is settled.
+   - Also seen: after the overlay test the engine window measured 1621x873 while the pane layout had changed to 6
+     panes in the capture; needs a second look next round.
+3. **Refactor** (e6f8f65a): the pane's link wiring (term-N handles, web/file links, OSC 8, link click, link-menu
+   right-click, ~105 lines) moved from TerminalPane.tsx's mount effect to `paneLinks.ts` `wireLinks()`, cleanup returned.
+   TerminalPane.tsx 2172 -> 2073 lines. PaneMenu.test T-710 now reads paneLinks.ts for the moved line.
+
+Checked, nothing to do:
+- "Context used" ring (top work 2): already gone; UsageReadout.tsx header says removed 2026-11-12; no ContextGauge left.
+- GPU drawing (top work 3): panes already default to WebGL with a clean fallback (renderer.ts attachRenderer:
+  WebGL2 not software -> GPU; context loss -> DOM; 12-context pool, park after 30 s hidden). The 8-pane CPU/GPU/frame
+  measurement is still not done.
+
+Blocked (unchanged): browser Rust removal and repointing my src/browser imports both need o1-tools' commit 30830263
+(adds src/open/openExternal.ts) merged into integrate/wave-1; it is not there yet. Agent-shell wrap (a)/(b) needs
+c2's agent_shell.rs (2d4bd3cc) merged; also not there yet.
 
 Proof:
 - `npx tsc --noEmit` -> no output (clean)
-- `npx vitest run src/terminal src/shell src/sleep src/chrome src/look` -> `Test Files 204 passed (204)  Tests 1243 passed (1243)`
-- `npx vitest run src/terminal/remove.test.ts src/shell/window src/terminal/__cards__` -> `46 passed, 142 tests passed`
-- `cargo test --lib` -> `test result: ok. 3166 passed; 0 failed`
-- `cargo test` integration: tests/cards_10.rs safe009-safe015 fail because tests/scratch_root requires
-  USERPROFILE to point at a scratch root (environmental, not touched this round).
-- `cargo clippy --lib` -> no warnings, no errors
-
-Bug files moved to _shared/bugs/done/: i18n packs, timing tests, right sidebar, remove-started-session, local profile.
+- `npx vitest run src/terminal src/shell src/chrome src/keys src/status src/look src/sleep` ->
+  `Test Files 246 passed (246)  Tests 1517 passed (1517)`
+- `npx vitest run src/settings/__cards__/SET-001-005.test.ts src/settings/__cards__/SET-028.test.ts` -> `12 passed`
+- No Rust touched this round.
 
 ## Next round
-1. Native terminal step 2: skip xterm drawing for native panes (the memory saving), hide the native window
-   under menus/dialogs/full-page screens, theme and font via TerminalSetTheme, focus and keyboard routing.
-2. Browser Rust removal once o1-tools merges src/browser/ removal: keep the net helpers (net.rs, move
-   tower_window_open), the tower window, pdf and preview.
-3. Agent-shell wrap (a)/(b) once c2's agent_shell.rs exists; then terminal visual bugs and the 8-pane GPU measurement.
+1. Settle whether the engine draws on screen: capture with a screen copy (CopyFromScreen/DXGI), not PrintWindow, or
+   type into the pane and read the engine's buffer. If it draws, hide xterm under it (one CSS line, see b83a2885). If not,
+   look at z-order against WebView2's own child window and at the feed path. Then the 1621x873 size after the overlay.
+2. As soon as integrate/wave-1 has o1-tools' 30830263 and c2's 2d4bd3cc: repoint the browser imports
+   (list in bug 20261112-1215), cut browser*.rs down per bugs 1143/1601, and land agent-shell wrap (a)/(b).
+3. 8-pane GPU measurement (CPU %, GPU %, frame time, keystroke-to-screen), then the next TerminalPane split.
 
 ## For the coordinator
-- CHANGELOG: "Interface text in other languages now appears without needing a restart."
-- CHANGELOG: "Removing a session from the keyboard now respects 'Stop without asking'."
-- CHANGELOG (experimental): "Terminal panes can be drawn by the Windows Terminal engine (setting terminalNative, off by default)."
-- DECISIONS row: "2026-11-12: native view is positioned after TerminalTriggerResize because the engine moves its window to (0,0)."
-- Reply to c2-agents on agent-shell-wrap-hook: (c) logging and (d) logical program name landed in a4900dba; (a)/(b) wait for agent_shell.rs.
-- Still to decide: shipping Microsoft.Terminal.Control.dll (MIT) in the bundle plus THIRD-PARTY-NOTICES. Today it loads only from KOLUX_TERMINAL_CONTROL_DLL.
-- Screenshots are in artifacts/c3-round3/ (local, not committed).
+- Please merge lane/o1-tools 30830263 and lane/c2-agents 2d4bd3cc into integrate/wave-1; three of my queued bugs wait on them.
+- Reply to c2-agents (bug 20261112-1200): shell side landed in a1255a15. ProjectsPanel can now add
+  `onFocusPane?: (key: number) => void` to its Props and call it from openSession; projectsProps already lists it.
+- CHANGELOG (experimental): "With the native terminal setting on, menus and dialogs now show over terminal panes."
+- DECISIONS row: "2026-11-12: native terminal is unproven on screen; xterm keeps painting under the engine until a
+  screen capture shows the engine's own text."
+- Evidence is in artifacts/c3-round4/ (local, not committed).
