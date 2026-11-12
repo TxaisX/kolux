@@ -229,9 +229,12 @@ mod win {
     fn fit(id: u32, hwnd: usize, term: usize, r: Rect) -> Result<(u16, u16), String> {
         let e = engine()?;
         let mut dims = TilSize { x: 0, y: 0 };
+        // TerminalTriggerResize sizes the engine's window with SetWindowPos(.., 0, 0, w, h, 0), which also moves it to
+        // the parent's top-left corner (seen live, round 3: the pane drew over the sidebar). So it runs first and the
+        // window is put on the pane's spot after it.
         unsafe {
-            SetWindowPos(hwnd as Hwnd, HWND_TOP, r.x, r.y, r.w.max(1), r.h.max(1), SWP_NOACTIVATE | SWP_SHOWWINDOW);
             (e.trigger_resize)(term as *mut c_void, r.w.max(1), r.h.max(1), &mut dims);
+            SetWindowPos(hwnd as Hwnd, HWND_TOP, r.x, r.y, r.w.max(1), r.h.max(1), SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
         let (cols, rows) = (dims.x.clamp(1, u16::MAX as i32) as u16, dims.y.clamp(1, u16::MAX as i32) as u16);
         if let Some(app) = APP.get() {
