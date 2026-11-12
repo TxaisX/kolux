@@ -10,6 +10,16 @@ test("EDIT-020 (T-132-b): the rail lists only this file's notes, by source line 
   expect(railNotes([], "C:/w/a.md")).toEqual([]);
 });
 
+test("N-11: a note made through one WSL share name sits beside the file opened through the other", () => {
+  const all = [note("\\\\wsl$\\Ubuntu\\home\\x\\a.md", 4, 1), note("\\\\wsl$\\Ubuntu\\home\\x\\A.md", 5, 2), note("\\\\wsl$\\Ubuntu\\home\\y\\a.md", 6, 3)];
+  // Either share name, either slash kind, either distro case: one file.
+  expect(railNotes(all, "\\\\wsl.localhost\\ubuntu\\home\\x\\a.md").map((n) => n.line)).toEqual([4]);
+  // Linux keeps its letter case, so a.md and A.md stay two files (as Linux does).
+  expect(railNotes(all, "\\\\wsl$\\Ubuntu\\home\\x\\A.md").map((n) => n.line)).toEqual([5]);
+  // A file that reaches a Windows drive through the distribution's /mnt is that drive's file.
+  expect(railNotes([note("\\\\wsl$\\Ubuntu\\mnt\\c\\w\\a.md", 7, 1)], "C:\\w\\a.md").map((n) => n.line)).toEqual([7]);
+});
+
 test("EDIT-020 (T-132-b): cards sit beside their text, and ones that would overlap are pushed down in order", () => {
   const out = placeRail([
     { id: "a", top: 100, height: 50 },

@@ -1,16 +1,18 @@
 // EDIT-020 (T-132-b): the margin rail beside a rich Markdown note. A review note sits beside the text
 // it quotes; notes that would overlap are pushed down so each one stays readable, in source order.
 import { editedText } from "./diffNotes";
+import { keyOf } from "./buffers";
 import type { Note } from "./notes";
 
 /** One rail card: where its quoted text sits (px from the top of the document) and its height. */
 export type RailItem = { id: string; top: number; height: number };
 
 /** The notes that belong on this file's rail, in the order of their source lines then the time
- * they were made. Paths compare with either slash and without letter case (Windows). */
+ * they were made. Paths compare as buffers.ts keys them (audit N-11): a Windows path without letter
+ * case or slash kind, and a WSL path either share name by its Linux path, so a note made through
+ * `\\wsl$\<distro>` still sits beside the file opened as `\\wsl.localhost\<distro>`. */
 export function railNotes(notes: Note[], path: string): Note[] {
-  const key = (p: string) => p.replace(/\\/g, "/").toLowerCase();
-  return notes.filter((n) => key(n.path) === key(path)).sort((a, b) => a.line - b.line || a.time - b.time);
+  return notes.filter((n) => keyOf(n.path) === keyOf(path)).sort((a, b) => a.line - b.line || a.time - b.time);
 }
 
 /** Each card's final top: as close to its text as it can be, never above the one before it plus a
