@@ -511,9 +511,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (key !== indexed.current) index.current(list, owner, names);
     indexed.current = key;
   };
-  // GIT-027 / GIT-028: every shown workspace's pull request, polled in the background: the visible
-  // workspace first, one gh call per GitHub project, a round every few minutes while the window is
-  // shown (backing off after failures, waiting out a rate limit), and again on focus when stale.
+  // GIT-027 / GIT-028: the folders whose pull requests usePrPoll reads in the background.
   const pollPaths = Object.values(worktrees).flat().filter((w) => w.isMain).map((w) => w.path); // the folders the sidebar shows; a worktree has no row
   const goneFolders = useMissingFolders(pollPaths); // PROJ-086
   // T-609: the changed-file count on the cards, read from git while the cards show it (look/cardChanges.ts).
