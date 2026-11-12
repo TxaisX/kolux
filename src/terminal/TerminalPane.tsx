@@ -53,6 +53,7 @@ import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
 import { currentText, optionsOf, paneOptionsOf, scrollbackRows, TEXT_EVENT } from "./text";
 import { blinkRest } from "./blinkRest";
+import { bindNative } from "./nativeView";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
@@ -408,6 +409,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     };
   }, [cwd, hidden, focused]);
   const idRef = useRef<number | null>(null);
+  // NATIVE-TERMINAL.md: with the experimental `terminalNative` setting on, the Windows Terminal engine draws
+  // this pane in a native window kept over the pane body (nativeView.ts). Read once per mount.
+  const hiddenNow = useRef(hidden);
+  hiddenNow.current = hidden;
+  useEffect(() => {
+    if (!currentInput().native || !host.current) return;
+    return bindNative(host.current, () => idRef.current, () => hiddenNow.current);
+  }, []);
   // APP-052: the run of the terminal service this pane's terminal belongs to; its typing carries it.
   const serviceRef = useRef<ServiceInfo | null>(null);
   const isHidden = useRef(hidden);

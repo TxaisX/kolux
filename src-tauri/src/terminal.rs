@@ -16,6 +16,7 @@ mod flood;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
 mod output_channel;
+pub(crate) mod native_view;
 mod output_frame;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
@@ -1029,6 +1030,11 @@ fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
     OUTPUT_BATCH.get_or_init(|| {
         let app = app.clone();
         output_batch::Batcher::new(output_batch::WINDOW, output_batch::FLUSH_BYTES, Box::new(move |items| {
+            // Native terminal (NATIVE-TERMINAL.md): a pane drawn by the Windows Terminal engine gets its
+            // output here too; the web view still gets it, so xterm's buffer, search and chat keep working.
+            for item in &items {
+                native_view::feed(item.id, &item.data);
+            }
             // Flood memory (DT-C244): through each subscribed web view's channel; the event only when none is.
             // Raw output (DT-C246): on the channel the batch is one binary frame, no base64 and no JSON.
             if !OUTPUT_READERS.send_raw(|| output_frame::encode(&items), |label| app.get_webview(label).is_some()) {
@@ -2318,6 +2324,32 @@ fn shell_hook_dir(base: &std::path::Path) -> std::path::PathBuf {
         h = h.wrapping_mul(0x0100_0000_01b3);
     }
     base.join(format!("{h:016x}"))
+}
+
+
+/// Native terminal (NATIVE-TERMINAL.md): where the Windows Terminal engine was found, or why it was not.
+#[tauri::command]
+pub fn native_term_available() -> Result<String, String> {
+    native_view::available()
+}
+
+/// Native terminal: draws terminal `id` with the Windows Terminal engine over `rect` (physical pixels in
+/// the window's client area), fits the session to the engine's grid and returns that grid.
+#[tauri::command]
+pub fn native_term_attach(app: AppHandle, window: tauri::WebviewWindow, id: u32, rect: native_view::Rect) -> Result<(u16, u16), String> {
+    native_view::attach(&app, &window, id, rect)
+}
+
+/// Native terminal: moves the view to `rect`, or hides it when `rect` is left out.
+#[tauri::command]
+pub fn native_term_place(id: u32, rect: Option<native_view::Rect>) -> Result<Option<(u16, u16)>, String> {
+    native_view::place(id, rect)
+}
+
+/// Native terminal: removes the view; the session goes on and xterm draws it again.
+#[tauri::command]
+pub fn native_term_detach(id: u32) {
+    native_view::detach(id)
 }
 
 #[cfg(test)]
