@@ -1,64 +1,60 @@
 # LANE-REPORT: c3-terminal
 
 ## Status (plain words, 3 lines max)
-The pane header no longer shows the dead "Context used" ring and percentage.
-Kolux can now draw a pane with the real Windows Terminal engine, behind a setting that is off by default;
-it is built and unit-tested but not yet seen working in the live app.
+The Windows Terminal engine now draws a live Kolux pane in the right place (setting on); setting off is unchanged xterm.
+Seven queued bugs fixed: language packs redraw, timing tests, sidebar polling, remove-session shortcut, agent start logging, local build profile.
+Browser Rust removal and the agent-shell wrap (a)/(b) are still blocked on o1-tools and c2-agents.
 
-## Done this round (round 2)
-Round 1 ended before writing its reports (no AUDIT, no NATIVE-TERMINAL.md, no LANE-REPORT). Its spike in
-spikes/native-terminal had run and succeeded, so this round wrote the recommendation from that evidence.
+## Done this round (round 3)
+Merged integrate/wave-1 first (d2c26cd0).
 
-1. **Removed "Context used"** (brief item 2). ContextGauge deleted from UsageReadout.tsx, the `context` prop
-   removed from TerminalPane, Pane.tsx and terminalProps.ts, its CSS removed, contextGauge.test.ts and the
-   USAGE-001 card test deleted, TERM-019 card now checks the header's token readout. Tokens, plan figures and
-   cost (USAGE-034) kept: they are fed by the same status-line reading, which the card meter also uses.
-   - `npx tsc --noEmit` -> no output (clean)
-   - `npx vitest run src/terminal src/shell/window src/look` -> `Test Files 137 passed (137)  Tests 911 passed (911)`
-2. **NATIVE-TERMINAL.md** written: options (a) reparent WT/conhost, (b) WT XAML control, (c) our ConPTY +
-   WT engine (HwndTerminal). Recommendation: (c).
-3. **Native terminal, first build (behind `terminalNative`, default off)** (goal 0).
-   - Rust `src-tauri/src/terminal/native_view.rs`: loads Microsoft.Terminal.Control.dll at run time, one
-     child window per pane over the web view, output teed from the output batcher, typing back to the
-     session, session resized to the engine's grid. Commands `native_term_available/attach/place/detach`
-     registered in lib.rs. Cargo.toml: windows-sys feature `Win32_System_LibraryLoader` added.
-   - Pane `src/terminal/nativeView.ts` (+ test): follows the pane body's size/position, hides with the
-     pane, detaches on unmount, falls back to xterm when the engine is missing. Wired in TerminalPane.
-   - Setting `terminalNative` in inputPrefs.ts.
+1. **Native terminal proven live** (goal 0). Harness run `node G:/Temp/c3-native/live.mjs on|off`
+   (vite 1450/1451, CDP 9430/9431, com.txaisxiong.kolux.c3-{0,1}.smoke, fresh git repo, Terminal pane).
+   - Bug found and fixed (d198659e): TerminalTriggerResize calls SetWindowPos(hwnd,0,0,w,h), so the engine
+     window jumped to the main window's top-left. `fit()` in native_view.rs now resizes first, then places.
+   - After the fix: HwndTerminalClass child at client 298,134 801x721 = pane BODY_RECT 298,134 801x721.
+   - Setting on: `NATIVE_STATE "[\"on\"]"`, screenshot artifacts/c3-round3/native-on.png (PowerShell prompt
+     drawn by the WT engine). Before the fix: artifacts/c3-round3/native-on-corner-bug.png.
+   - Setting off: `NATIVE_STATE "[]"`, artifacts/c3-round3/native-off.png (same pane in xterm).
+   - Status-bar memory, one sample each: 92.6 MB on vs 59.3 MB off. xterm still runs under the native view,
+     so the saving needs step 2.
+   - Pane marks `body[data-native]` = on/off for probes (8119d4a7).
    - `cargo test --lib native_view` -> `test result: ok. 3 passed; 0 failed`
-   - `cargo clippy --lib` -> no warnings in native_view (and no errors)
-   - `npx vitest run src/terminal src/shell/window` -> 126 of 127 files passed while a Rust build ran in
-     parallel; the one failure (outputFlood.test.ts, a 48 MB timing test) passed alone:
-     `npx vitest run src/terminal/outputFlood.test.ts` -> `Tests 2 passed (2)`
-   - **Not yet proven live.** A harness run (vite 1450, CDP 9343, com.txaisxiong.kolux.c3.smoke) launched
-     the app with the setting on, but the fresh profile opened with no terminal pane (`.pane-body` count 0),
-     so nothing was attached. No before/after screenshot yet.
-4. **GPU drawing** (brief item 3): checked, not changed. Panes already use WebGL by default
-   (TerminalPane.tsx attachRenderer + inputPrefs preferGpu: WebGL2 unless the GPU is a software renderer),
-   with a DOM fallback and context-loss handling in renderer.ts. Measurement with 8 panes not done.
-5. Bug files sent to o1-tools: the settings toggle for `terminalNative`; the hand-off for removing the
-   browser's Rust side once src/browser/ is gone.
+2. **Language packs redraw** (f800b575): `usePackLoaded()` hook used by TopBar and AsleepPane; main.tsx waits
+   up to 300 ms for the pack before first paint. Test usePackLoaded.test.ts. Wizard part filed to c2-agents
+   (20261112-1700-wizard-usepackloaded.md).
+3. **Timing tests**: outputFlood 48 MB test 30 s budget (2c3164f6); tools row961 30 s deadline (de862747).
+4. **Agent start** (a4900dba): failed starts written to kolux.log ("terminal start failed (label): error",
+   SUPERSEDED skipped); `started()` reports the program asked for, not the shell carrying it. That is items
+   (c) and (d) of agent-shell-wrap-hook. Tests `started_names_the_program_asked_for_not_the_shell_that_carries_it`,
+   `a_failed_start_has_a_log_line_and_a_superseded_one_does_not`.
+5. **Right sidebar** (f51d6e16): Agents and Checks panels stop polling behind a full-page screen.
+6. **Remove-session shortcut** (a4671921): honours "Stop without asking" via removePlan.
+7. **[profile.local]** (fac2b824): thin LTO, 16 codegen units, incremental. Not yet timed with a build.
+
+Proof:
+- `npx tsc --noEmit` -> no output (clean)
+- `npx vitest run src/terminal src/shell src/sleep src/chrome src/look` -> `Test Files 204 passed (204)  Tests 1243 passed (1243)`
+- `npx vitest run src/terminal/remove.test.ts src/shell/window src/terminal/__cards__` -> `46 passed, 142 tests passed`
+- `cargo test --lib` -> `test result: ok. 3166 passed; 0 failed`
+- `cargo test` integration: tests/cards_10.rs safe009-safe015 fail because tests/scratch_root requires
+  USERPROFILE to point at a scratch root (environmental, not touched this round).
+- `cargo clippy --lib` -> no warnings, no errors
+
+Bug files moved to _shared/bugs/done/: i18n packs, timing tests, right sidebar, remove-started-session, local profile.
 
 ## Next round
-1. Live proof of the native terminal: harness run that opens a shell pane (cdp: new tab), then capture.
-   Probe script draft at G:\Temp\c3-native\probe.ps1 (its Add-Type failed: fix the C# lambdas for the
-   PowerShell 5 compiler, or use shot.ps1 with the main window's pid). Engine DLL for the run:
-   `KOLUX_TERMINAL_CONTROL_DLL=spikes/native-terminal/_pkg/x/runtimes/win-x64/native/Microsoft.Terminal.Control.dll`
-   (the 300 MB `_pkg` is local only, not committed).
-2. Native terminal step 2: skip xterm drawing for native panes (that is where the memory saving comes from),
-   hide the native view under menus/dialogs, theme/font via TerminalSetTheme.
-3. Terminal visual bugs (brief item 1) with the stress generators; then the audit round 1 never wrote,
-   then splitting TerminalPane.tsx (2,170 lines).
+1. Native terminal step 2: skip xterm drawing for native panes (the memory saving), hide the native window
+   under menus/dialogs/full-page screens, theme and font via TerminalSetTheme, focus and keyboard routing.
+2. Browser Rust removal once o1-tools merges src/browser/ removal: keep the net helpers (net.rs, move
+   tower_window_open), the tower window, pdf and preview.
+3. Agent-shell wrap (a)/(b) once c2's agent_shell.rs exists; then terminal visual bugs and the 8-pane GPU measurement.
 
 ## For the coordinator
-- CHANGELOG: "The pane header no longer shows the 'Context used' ring and percentage, which never received a
-  real figure. Token, plan and cost figures stay."
-- CHANGELOG (when proven): "Experimental: draw terminal panes with the Windows Terminal engine (setting
-  terminalNative)."
-- DECISIONS row: "2026-11-12: USAGE-001 (header context ring) removed at Txais's direction: it never picked up a
-  real figure. USAGE-034 readout kept."
-- DECISIONS row: "2026-11-12: native terminal path = keep Kolux's ConPTY, draw with Microsoft.Terminal.Control.dll
-  (HwndTerminal) in child windows, behind terminalNative, default off (NATIVE-TERMINAL.md)."
-- Dependency to decide: shipping Microsoft.Terminal.Control.dll (MIT, NuGet CI.Microsoft.Terminal.Wpf
-  1.25.260303002, about 2-3 MB per arch) in the bundle plus a THIRD-PARTY-NOTICES entry.
-- Feature cards: USAGE-001 card test deleted; feature-index entry for USAGE-001 should be marked removed.
+- CHANGELOG: "Interface text in other languages now appears without needing a restart."
+- CHANGELOG: "Removing a session from the keyboard now respects 'Stop without asking'."
+- CHANGELOG (experimental): "Terminal panes can be drawn by the Windows Terminal engine (setting terminalNative, off by default)."
+- DECISIONS row: "2026-11-12: native view is positioned after TerminalTriggerResize because the engine moves its window to (0,0)."
+- Reply to c2-agents on agent-shell-wrap-hook: (c) logging and (d) logical program name landed in a4900dba; (a)/(b) wait for agent_shell.rs.
+- Still to decide: shipping Microsoft.Terminal.Control.dll (MIT) in the bundle plus THIRD-PARTY-NOTICES. Today it loads only from KOLUX_TERMINAL_CONTROL_DLL.
+- Screenshots are in artifacts/c3-round3/ (local, not committed).
