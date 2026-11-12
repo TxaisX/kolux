@@ -39,6 +39,14 @@ describe("rows of the menu", () => {
   it("outside text there is no menu at all", () => {
     expect(editMenuItems({ kind: "none", hasSelection: true, platform: "win32", suggestions: ["a"] })).toEqual([]);
   });
+  it("N-07: text selected outside a field gets Copy and only Copy", () => {
+    const rows = editMenuItems({ kind: "none", hasSelection: true, plainSelection: true, platform: "win32" });
+    expect(rows.map((r) => r.id)).toEqual(["copy"]);
+    expect(rows[0].action).toEqual({ kind: "copy" });
+    expect(rows[0].shortcut).toBe("Ctrl+C");
+    // No selection, no menu: there would be nothing to copy.
+    expect(editMenuItems({ kind: "none", hasSelection: false, plainSelection: true, platform: "win32" })).toEqual([]);
+  });
   it("cut and copy are greyed out with nothing selected", () => {
     const rows = editMenuItems({ kind: "editable", hasSelection: false, platform: "win32" });
     expect(rows.filter((r) => r.disabled).map((r) => r.id)).toEqual(["cut", "copy"]);

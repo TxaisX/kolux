@@ -34,6 +34,7 @@ export default function PortsItem({ active, workspaces }: Props) {
   const wasOpen = useRef(false);
   // The row key of a Stop that was pressed with keyboard focus on it: when that row disappears focus would fall to the page body.
   const stopFocus = useRef<string | null>(null);
+  const scanned = useRef<string | null>(null); // the workspace the list on screen belongs to
   const latest = useRef({ active, workspaces });
   latest.current = { active, workspaces };
 
@@ -59,13 +60,21 @@ export default function PortsItem({ active, workspaces }: Props) {
   }, [view.rows, open]);
 
   useEffect(() => {
-    if (active === null) return setView({ rows: [], error: null });
+    if (active === null) {
+      scanned.current = null;
+      return setView({ rows: [], error: null });
+    }
     let live = true;
     const scan = () =>
       invoke<PortRow[]>("ports_list", { workspaces: latest.current.workspaces, active })
         .then((rows) => live && setView((v) => afterScan(v, { rows })))
         .catch((err) => live && setView((v) => afterScan(v, { error: String(err) })));
-    setView({ rows: [], error: null });
+    // N-17: only a different workspace clears the list. Opening or closing the popover kept clearing it, so the
+    // count dropped to nothing on a click and a failed scan threw away the last good list it says it still shows.
+    if (scanned.current !== active) {
+      scanned.current = active;
+      setView({ rows: [], error: null });
+    }
     void scan();
     const t = setInterval(scan, open ? OPEN_MS : CLOSED_MS);
     return () => {

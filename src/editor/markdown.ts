@@ -10,7 +10,7 @@ import { createEmptyHistoryState, registerHistory } from "@lexical/history";
 import { ListItemNode, ListNode, registerCheckList, registerList } from "@lexical/list";
 import { LinkNode } from "@lexical/link";
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
-import { $convertToMarkdownString, CHECK_LIST, registerMarkdownShortcuts, TRANSFORMERS, type Transformer } from "@lexical/markdown";
+import { CHECK_LIST, registerMarkdownShortcuts, TRANSFORMERS, type Transformer } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { overfullRow, registerTable, TABLE, TABLE_NODES } from "./richTable";
 import { registerListKeys } from "./richFormat";
@@ -19,6 +19,7 @@ import { registerCodeColour } from "./richCodeColour";
 import { createSlash, type SlashView } from "./slashMenu";
 import { createWiki, type WikiView } from "./wikiPopup";
 import { $importFlowing, DETAILS_NODES, looseCodeRows, makeDetails, withoutSections } from "./richDetails";
+import { $exportMarkdown } from "./mdExport";
 
 // Cycle 3 (first load): the rule itself is in ./mdFiles, so the window's shortcut router can ask
 // whether a tab is a note without loading this module and everything Lexical registers here.
@@ -103,7 +104,7 @@ export function roundTrip(md: string): string | null {
   try {
     const ed = createEditor({ namespace: "kolux-md-check", nodes: NODES, onError: fail });
     ed.update(() => $importFlowing(md, MD), { discrete: true });
-    return ed.getEditorState().read(() => $convertToMarkdownString(MD));
+    return ed.getEditorState().read(() => $exportMarkdown(MD));
   } catch {
     return null;
   }
@@ -178,7 +179,7 @@ export function mountRich(el: HTMLElement, md: string, onEdit: (md: string, prev
     editor.registerCommand(PASTE_COMMAND, (event) => refusePaste(event, onRefuse, last.length), COMMAND_PRIORITY_CRITICAL),
     editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves, tags }) => {
       if (dirtyElements.size === 0 && dirtyLeaves.size === 0) return; // the caret moved, nothing more
-      const now = editorState.read(() => $convertToMarkdownString(MD));
+      const now = editorState.read(() => $exportMarkdown(MD));
       if (now === last) return;
       const prev = last;
       last = now;

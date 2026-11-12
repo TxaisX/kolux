@@ -47,6 +47,8 @@ export type EditItem = {
 export type EditMenuInput = {
   kind: FieldKind;
   hasSelection: boolean;
+  /** Text selected in ordinary, non-editable text (a preview, a chat message, a diff): Copy is all it can do. */
+  plainSelection?: boolean;
   /** False only when the clipboard is known to hold no text; unknown keeps Paste usable. */
   clipboardHasText?: boolean;
   /** Spelling suggestions the platform supplied; they sit at the top. */
@@ -58,7 +60,9 @@ export const shortcutLabel = (letter: string, platform: Platform): string =>
   platform === "darwin" ? `\u2318${letter.toUpperCase()}` : `Ctrl+${letter.toUpperCase()}`;
 
 export function editMenuItems(i: EditMenuInput): EditItem[] {
-  if (i.kind === "none") return [];
+  // N-07: text selected in something that is not a field gets Copy and nothing else. Kolux hides the web
+  // view's own menu, so without this row there is no way to copy from a preview, chat or a diff by mouse.
+  if (i.kind === "none") return i.plainSelection && i.hasSelection ? [{ id: "copy", name: "Copy", shortcut: shortcutLabel("c", i.platform), disabled: false, group: 1, action: { kind: "copy" } }] : [];
   const out: EditItem[] = [];
   if (i.kind === "editable") {
     (i.suggestions ?? []).forEach((word, n) => out.push({ id: `suggest-${n}`, name: word, disabled: false, group: 0, action: { kind: "suggest", word } }));
