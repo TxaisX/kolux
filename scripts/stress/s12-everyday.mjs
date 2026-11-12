@@ -1,8 +1,8 @@
 // S12 everyday: what Kolux costs on an ordinary working day, shells included, so a before and an after build can be compared on the
 // whole footprint and not only on the window and web view (S11). One pass:
-//   6 shell panes, each running a light ticker (one short line every 2 s, like a log tail or a watch), 3 embedded browser tabs on a
-//   small page on this machine's network address (hidden behind a terminal tab, as S11 phase f), the window on screen (off-screen but
-//   not minimised, so the page is visible), then the window minimised for --hidden seconds (120 by default).
+//   6 shell panes, each running a light ticker (one short line every 2 s, like a log tail or a watch), the window on screen (off-screen
+//   but not minimised, so the page is visible), then the window minimised for --hidden seconds (120 by default). The three embedded
+//   browser tabs this used to open retired with the web pane (Goal 0, Txais 2026-11-12).
 // Phases: v (window shown; settle --settle s, then a --window s sample) and m (minimised; the sample is the last --window s of the stay).
 // Per phase it records, per process role, working set and private bytes (Win32_Process PrivatePageCount):
 //   the app's own processes from footprint() (window, terminal service when present, web view browser/renderer/gpu/utility/crashpad,
@@ -14,9 +14,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FOOTPRINT_ROLES, PAGE_STATS_JS, TERM, addProjectAndOpen, fmt, footprint, gitInit, memByRole, removeTemp, seedOnboardingDone, seedProfile, showWindow, slash, snapshot, typeInto } from "./lib.mjs";
-import { startPageServer } from "./s11-footprint.mjs";
 
-export const title = "everyday footprint (6 shells with light output, 3 hidden browser tabs, window shown, then minimised)";
+export const title = "everyday footprint (6 shells with light output, window shown, then minimised)";
 export const seed = (app, settings) => {
   const base = seedProfile(app, settings);
   return () => {
@@ -102,7 +101,7 @@ function aggregate(runs) {
       }
     }
     const cpu = median(ps.map((p) => p.cpuCorePct));
-    return [{ id, title: ps[0].title, repeats: ps.length, rows, spread, cpuCorePct: cpu, page: { visibility: ps.map((p) => p.page.visibility).join(", "), jsHeapUsedMB: median(ps.map((p) => p.page.jsHeapUsedMB)), canvases: median(ps.map((p) => p.page.canvases)) }, tabRates: ps.map((p) => p.tabRates) }];
+    return [{ id, title: ps[0].title, repeats: ps.length, rows, spread, cpuCorePct: cpu, page: { visibility: ps.map((p) => p.page.visibility).join(", "), jsHeapUsedMB: median(ps.map((p) => p.page.jsHeapUsedMB)), canvases: median(ps.map((p) => p.page.canvases)) } }];
   });
 }
 const col = (s, w) => String(s).padStart(w);
@@ -117,7 +116,6 @@ function table(phases) {
       const s = ph.spread[r];
       L.push(`   ${r.padEnd(20)}${col(fmt(x.n, 1), 6)}${col(fmt(x.wsMB, 1), 9)}${col(fmt(x.privMB, 1), 9)}   ${ph.repeats > 1 ? `${fmt(s.wsMB[0], 0)}-${fmt(s.wsMB[1], 0)} | ${fmt(s.privMB[0], 0)}-${fmt(s.privMB[1], 0)}` : ""}`);
     }
-    L.push(`   hidden browser tab page ticks/s per repeat (about 1 awake, 0 suspended): ${ph.tabRates.map((r) => `[${r.map((x) => fmt(x, 2)).join(" ")}]`).join(" ")}`);
     L.push("");
   }
   return L;
@@ -141,7 +139,7 @@ function compareLines(before, now) {
   return L;
 }
 
-async function onePass(ctx, rep, server) {
+async function onePass(ctx, rep) {
   const { launch, checks } = ctx;
   const sfx = REPEAT > 1 ? ` (repeat ${rep}/${REPEAT})` : "";
   const app = await launch("s12", { terminalGpu: "auto" }); // the shipped default renderer
@@ -166,23 +164,6 @@ async function onePass(ctx, rep, server) {
   const fed = [0, 1, 2, 3, 4, 5].filter((k) => existsSync(`${stopFile}.${k}.started`)).length;
   checks.add(`6 panes each run the light ticker${sfx}`, "6 of 6", `${fed} of 6`, fed === 6);
 
-  // Three browser tabs, then the terminal tab of their cell brought forward so all three are hidden (as S11 phase f).
-  const ids = [0, 1, 2].map((n) => `r${rep}t${n}`);
-  const browsers = async () => Number(unwrap(await app.evalJs(`document.querySelectorAll("section.pane.browser").length`)));
-  for (let n = 0; n < 3; n++) {
-    await app.evalJs(`(window.dispatchEvent(new CustomEvent("kolux-open-in-browser", { detail: { url: ${JSON.stringify(`${server.base}/page?id=${ids[n]}`)}, title: "bench ${n}" } })), null)`);
-    await app.waitFor(`browser tab ${n + 1}`, async () => (await browsers()) === n + 1, 20000);
-    await app.waitFor(`browser tab ${n + 1}'s page to run`, async () => (server.hits.get(ids[n])?.length ?? 0) >= 2, 30000);
-  }
-  unwrap(await app.evalJs(`(() => { const strips = [...document.querySelectorAll(".tabs")]; const t = strips.find((e) => e.parentElement && e.parentElement.querySelector("section.pane.browser")) ?? strips.find((e) => e.querySelectorAll('[role="tab"]').length >= 4); if (!t) return "no tab strip"; t.querySelector('[role="tab"]').dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); return "pressed"; })()`));
-  let hidden = true;
-  try {
-    await app.waitFor("all three browser tabs hidden", async () => unwrap(await app.evalJs(`[...document.querySelectorAll("section.pane.browser")].every((e) => e.offsetParent === null)`)), 10000, 250);
-  } catch {
-    hidden = false;
-  }
-  checks.add(`3 browser tabs open and hidden behind a terminal tab${sfx}`, "3, hidden", `${await browsers()}, ${hidden ? "hidden" : "NOT hidden"}`, hidden && (await browsers()) === 3);
-
   const phases = [];
   const sample = async (id, ttl) => {
     const s0 = await snapshot(app);
@@ -192,15 +173,14 @@ async function onePass(ctx, rep, server) {
     const s1 = await snapshot(app);
     const page = unwrap(await app.evalJs(PAGE_STATS_JS));
     const rows = rowsOf(fp, paneRoles([s0, s1]));
-    const tabRates = ids.map((t) => server.rate(t, t0, t1));
-    phases.push({ id, title: ttl, rows, cpuCorePct: fp.perRole.total.cpuCorePct, page, tabRates, procs: fp.procs });
+    phases.push({ id, title: ttl, rows, cpuCorePct: fp.perRole.total.cpuCorePct, page, procs: fp.procs });
     console.log(`  phase ${id}${sfx}: Kolux total WS ${fmt(rows["Kolux total"].wsMB, 1)} MB, private ${fmt(rows["Kolux total"].privMB, 1)} MB (app ${fmt(rows["app total"].privMB, 1)}, shells ${fmt(rows.shells.privMB, 1)}, console hosts ${fmt(rows["console hosts"].privMB, 1)}); workload ${fmt(rows["workload (ticker)"].privMB, 1)} MB; ${page.visibility}`);
     checks.add(`phase ${id}: 6 shells and 6 console hosts found${sfx}`, "6 + 6", `${fmt(rows.shells.n, 1)} + ${fmt(rows["console hosts"].n, 1)}`, rows.shells.n >= 6 && rows["console hosts"].n >= 6);
     return page;
   };
   console.log(`  phase v${sfx}: window shown; settle ${SETTLE_S} s, sample ${WINDOW_S} s`);
   await app.sleep(SETTLE_S * 1000);
-  const pv = await sample("v", "window shown (off-screen, not minimised): 6 shells with light output, 3 hidden browser tabs");
+  const pv = await sample("v", "window shown (off-screen, not minimised): 6 shells with light output");
   checks.add(`phase v: the page is visible while sampled${sfx}`, "visible", String(pv.visibility), pv.visibility === "visible");
 
   const mini = await showWindow(app, 6).catch((e) => `failed: ${e.message.slice(0, 100)}`);
@@ -218,8 +198,6 @@ async function onePass(ctx, rep, server) {
 export async function run(ctx) {
   const { checks, opts, sha } = ctx;
   ctx.fileTag = TAG ? `-${TAG}` : "";
-  const server = await startPageServer();
-  checks.note(`browser-tab page: ${server.exemptLoopback ? "loopback (exempt from suspension)" : "this machine's network address"}`);
   const runs = [];
   try {
     for (let rep = 1; rep <= REPEAT; rep++) {
@@ -228,10 +206,10 @@ export async function run(ctx) {
         if (closed) checks.add(`app closes by its own path and leaves no process behind (repeat ${rep - 1}/${REPEAT})`, "0 survivors", closed[1], closed[0]);
         removeTemp(ctx.app.temp);
       }
-      runs.push(await onePass(ctx, rep, server));
+      runs.push(await onePass(ctx, rep));
     }
   } finally {
-    server.close();
+    // nothing to close: the app is closed by the ctx
   }
   const phases = aggregate(runs);
   const doc = { schema: 1, sha, when: new Date().toISOString(), window_s: WINDOW_S, settle_s: SETTLE_S, hidden_s: HIDDEN_S, repeat: runs.length, build: ctx.buildKind, buildKind: /^release/.test(ctx.buildKind) ? "release" : "debug", phases, runs };

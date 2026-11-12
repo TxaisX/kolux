@@ -1,3 +1,4 @@
+// retired: it watches git traces while the Source Control panel sits open; that panel was removed by T-644, and the GIT-001/004 fixtures it also runs are retired
 // LIVE proof, GIT-007 box 2 (spec/11): an unpublished branch left open for ten minutes -> git traces show no repeating remote checks.
 // One launch: GIT_TRACE2 points at a folder, so every git process the app (and its shells) starts leaves a trace file. While the ten
 // minutes run, the same launch also proves GIT-001 boxes 2+3 and GIT-004 boxes 2+3 (their own scripts' run functions), then the app

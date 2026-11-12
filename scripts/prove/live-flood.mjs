@@ -224,12 +224,13 @@ async function boot() {
   const t = await typeInto('input[aria-label="project folder"]', REPO);
   if (t !== "typed") throw new Error(`project folder field: ${t}`);
   await P.key("Enter", { code: "Enter", vk: 13, text: String.fromCharCode(13) });
-  await waitFor(async () => (await countVis(TERM)) >= 1 || (await exists("section.pane.chooser .chooser-foot")), 30000, 300);
-  if ((await exists("section.pane.chooser select")) && !(await countVis(TERM))) {
-    // The session chooser of a new project: setup only (not a row under test), the value is set the React way.
-    await P.ev(`(() => { for (const sel of document.querySelectorAll("section.pane.chooser select")) { const o = [...sel.options].find((x) => x.text.trim() === "Terminal"); if (!o) continue; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, o.value); sel.dispatchEvent(new Event("change", { bubbles: true })); } })()`);
-    await waitFor(() => exists("section.pane.chooser .chooser-foot button.btn.primary:not(:disabled)"), 20000);
-    await clickEl("section.pane.chooser .chooser-foot button.btn.primary");
+  await waitFor(async () => (await countVis(TERM)) >= 1 || (await exists('[data-testid="chooser-pane"]')), 30000, 300);
+  if ((await exists('[data-testid="chooser-pane"]')) && !(await countVis(TERM))) {
+    // The session chooser of a new project: setup only (not a row under test). Every seat takes its Terminal button,
+    // then Start: the seat dropdowns it used to set are gone (ChooserPane draws a row of agent buttons now).
+    await P.ev(`(() => { let n = 0; for (const b of document.querySelectorAll('[data-testid^="seat-"][data-testid$="-agents"] [data-testid="seat-agent-terminal"]')) { b.click(); n++; } return n; })()`);
+    await waitFor(() => exists('[data-testid="chooser-start"]:not(:disabled)'), 60000);
+    await clickEl('[data-testid="chooser-start"]:not(:disabled)');
   }
   await waitFor(async () => (await countVis(TERM)) >= 1, 30000, 300);
   await sleep(1500);

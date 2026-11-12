@@ -1,3 +1,4 @@
+// retired: it opens an inline diff by clicking a file in the Source Control panel (removed by T-644); the same diff is reachable from the All Changes file rows and needs rewriting there
 // LIVE proof, EDIT-027 boxes 1+2 (spec/12): a diff opens inline; two columns -> side by side; F7 lands the caret on the next change;
 // a change made in a terminal shows up in the open diff without reopening it.
 import { reporter, startPlain, finish, sleep, poll, checker, editRepo, clickTab, clickScm, openScm, tabs, vis, cmOf, typeInTerminal } from "./live-edit-common.mjs";

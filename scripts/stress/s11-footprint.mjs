@@ -5,12 +5,10 @@
 // CPU (% of one core and % of the whole machine, averaged over the window) and GPU process memory; per phase also the page's JS heap,
 // canvas count and document.visibilityState. Phases (each: a settle period, then a sampling window):
 //   a idle, 1 shell pane   b 6 idle panes   c 6 panes each printing ~20 lines/s   d 12 idle panes, window minimized (runs after e)   e 12 idle panes
-//   f 12 panes + 3 embedded browser tabs (a page on this machine's network address, so the loopback exemption does not apply) hidden by
-//     switching to a terminal tab
-// d and f are hidden phases: a short sample 10 s after the hide ("early", before the 30 s / 60 s give-back timers of DT-C229, DT-C236, DT-C237)
+// d is a hidden phase: a short sample 10 s after the hide ("early", before the 30 s / 60 s give-back timers of DT-C229, DT-C236, DT-C237)
 // for contrast, then the settle runs until --settle-hidden seconds after the hide and the sampling window follows (so it sees the state
-// after the memory-LOW point at 60 s and the browser-tab suspension at 60 s). The page in f counts its own timer ticks on the local
-// server (1 per second per tab while awake, 0 once the page is suspended): "hidden tab page ticks/s" in the report.
+// after the memory-LOW point at 60 s).
+// The old phase f (three embedded browser tabs on a page served from this machine) retired with the web pane: Goal 0, Txais 2026-11-12.
 // Build: the debug dev build by default (pnpm tauri dev, the web view loads the vite dev server); --release runs the shipped build
 // (pnpm tauri build --no-bundle, see lib.mjs). The build kind is in the json ("build", "buildKind") and the txt.
 // --repeat N runs the whole scenario N times, each on a fresh app launch, and reports the MEDIAN per metric (min and max beside it);
@@ -20,13 +18,11 @@
 //          --compare <before.json> (prints per-phase deltas of the medians against a BEFORE run)
 //          --tag <text> (appended to the json/txt file names, e.g. release-after, so a second run does not overwrite the first).
 // This scenario measures only; its checks are "ran to the end, the panes were there, the app's processes were found".
-import { createServer } from "node:http";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import { FOOTPRINT_ROLES, PAGE_STATS_JS, TERM, addProjectAndOpen, fmt, footprint, gitInit, removeTemp, seedOnboardingDone, seedProfile, nudgeWindow, restoreWindow, showWindow, slash, typeInto } from "./lib.mjs";
 
-export const title = "app footprint (idle, 6 panes, streaming, 12 panes, minimized, hidden browser tabs)";
+export const title = "app footprint (idle, 6 panes, streaming, 12 panes, minimized)";
 // The first-run wizard is marked done in the seed (see seedOnboardingDone): idle numbers must not include its pulsing dots.
 export const seed = (app, settings) => {
   const base = seedProfile(app, settings);
@@ -110,7 +106,6 @@ function aggregate(runs) {
       const e = aggFp(ps.map((p) => p.early.fp));
       out.early = { fp: e.fp, spread: e.spread, page: aggPage(ps.map((p) => p.early.page)) };
     }
-    if (ps.every((p) => p.tabs)) out.tabs = { url: ps[0].tabs.url, exemptLoopback: ps[0].tabs.exemptLoopback, earlyRates: ps.map((p) => p.tabs.earlyRates), mainRates: ps.map((p) => p.tabs.mainRates), targets: ps.map((p) => p.tabs.targets) };
     out.procs = ps.map((p) => p.fp.procs); // per process rows of each repeat (pid, role, mean WS / private MB, CPU, GPU)
     return [out];
   });
@@ -145,9 +140,7 @@ function table(phases) {
       block(ph.early.fp, ph.early.page, `   ${ph.id}) early sample, ${EARLY_AT_S}-${EARLY_AT_S + EARLY_S} s after the hide (before the give-back timers)`, ph.early.spread, ph.repeats);
       L.push(`   page: canvases ${ph.early.page.canvases}`);
     }
-    if (ph.tabs) {
-      L.push(`   hidden tab page ticks/s (3 tabs, one bracket per repeat; about 1.00 awake, 0 suspended): ${EARLY_AT_S}-${EARLY_AT_S + EARLY_S} s after the hide ${rates(ph.tabs.earlyRates)}; in the main window ${rates(ph.tabs.mainRates)}${ph.tabs.exemptLoopback ? "  (loopback page: exempt from suspension by design)" : ""}`);
-      L.push(`   page targets in the web view while sampled: ${ph.tabs.targets.join(", ")}`);
+    if (ph.procs) {
       L.push(`   per process in the last repeat (pid, role, WS MB, private MB, CPU % of a core, GPU ded MB):`);
       for (const p of ph.procs[ph.procs.length - 1].filter((q) => q.role === "renderer" || q.role === "gpu-process")) L.push(`      ${String(p.pid).padStart(7)} ${p.role.padEnd(12)}${col(fmt(p.wsMB, 1), 8)}${col(fmt(p.privMB, 1), 8)}${col(fmt(p.cpuCorePct, 2), 7)}${col(fmt(p.gpuDedMB, 1), 8)}`);
     }
@@ -190,39 +183,8 @@ function compareLines(before, now) {
   return L;
 }
 
-// ---------- a page on this machine's network address for the embedded browser tabs (no internet) ----------
-// The tab suspension (DT-C237) spares loopback pages, so the page is served on the machine's own non-loopback IPv4 address (bound to that
-// address only). It counts its own timer ticks: the page asks /tick?id=<tab> once a second; a suspended page stops asking.
-export function lanAddress() {
-  for (const list of Object.values(networkInterfaces())) for (const a of list ?? []) if (a.family === "IPv4" && !a.internal && !a.address.startsWith("169.254.")) return a.address;
-  return null;
-}
-export async function startPageServer() {
-  const host = lanAddress() ?? "127.0.0.1";
-  const hits = new Map(); // tab id -> [ms of each tick]
-  const html = `<!doctype html><meta charset="utf-8"><title>bench page</title><body style="font:16px sans-serif;background:#fff;color:#111"><h1>bench page</h1><p>A small static page for the footprint benchmark.</p><script>const id = new URLSearchParams(location.search).get("id");setInterval(() => fetch("/tick?id=" + id).catch(() => {}), 1000);</script>`;
-  const server = createServer((req, res) => {
-    // Only this machine may ask: the address is on the local network for the length of the run, so other hosts get 403.
-    const peer = (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
-    if (peer !== host && peer !== "127.0.0.1") return void res.writeHead(403).end();
-    const u = new URL(req.url ?? "/", "http://x");
-    if (u.pathname === "/tick") {
-      const id = u.searchParams.get("id") ?? "";
-      if (!/^r\d{1,3}t[0-2]$/.test(id)) return void res.writeHead(400).end(); // only the bench tabs' ids, so the map cannot grow
-      if (!hits.has(id)) hits.set(id, []);
-      hits.get(id).push(Date.now());
-      res.writeHead(204).end();
-    } else if (u.pathname === "/page") {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }).end(html);
-    } else res.writeHead(404).end();
-  });
-  await new Promise((ok, bad) => (server.once("error", bad), server.listen(0, host, ok)));
-  const port = server.address().port;
-  return { base: `http://${host}:${port}`, exemptLoopback: host.startsWith("127."), hits, rate: (id, t0, t1) => (hits.get(id) ?? []).filter((t) => t >= t0 && t < t1).length / ((t1 - t0) / 1000), close: () => server.close() };
-}
-
 // ---------- one pass through the phases on a fresh app ----------
-async function onePass(ctx, rep, server) {
+async function onePass(ctx, rep) {
   const { launch, checks, opts } = ctx;
   const sfx = REPEAT > 1 ? ` (repeat ${rep}/${REPEAT})` : "";
   const app = await launch("s11", { terminalGpu: "auto" }); // the shipped default (the stress profile otherwise forces the DOM renderer)
@@ -269,7 +231,7 @@ async function onePass(ctx, rep, server) {
     verify(id, expectPanes, fp, page);
   };
   // Hidden phases: a short sample EARLY_AT_S after the hide for contrast, then the settle runs to SETTLE_HIDDEN_S after the hide, then the window.
-  const measureHidden = async (id, ttl, expectPanes, hiddenAt, tabs) => {
+  const measureHidden = async (id, ttl, expectPanes, hiddenAt) => {
     console.log(`  phase ${id}${sfx}: ${ttl}; early sample at ${EARLY_AT_S} s, settle to ${SETTLE_HIDDEN_S} s after the hide, sample ${WINDOW_S} s`);
     await sleepUntil(hiddenAt + EARLY_AT_S * 1000);
     const e0 = Date.now();
@@ -286,10 +248,6 @@ async function onePass(ctx, rep, server) {
     // A page that changes its mind in the middle of the stay is a disturbed run: thrown away and redone.
     if (id === "d" && page.visibility !== epage.visibility) throw new Error(`phase d: the page read ${epage.visibility} early and ${page.visibility} at the end of the hidden stay`);
     const ph = { id, title: ttl, fp, page, early: { fp: efp, page: epage } };
-    if (tabs) {
-      const targets = await (await fetch(`http://127.0.0.1:${opts.cdp}/json`)).json().catch(() => []);
-      ph.tabs = { url: server.base, exemptLoopback: server.exemptLoopback, earlyRates: tabs.map((t) => server.rate(t, e0, e1)), mainRates: tabs.map((t) => server.rate(t, m0, m1)), targets: targets.filter((x) => x.type === "page").length };
-    }
     phases.push(ph);
     report(id, fp, page);
     verify(id, expectPanes, fp, page);
@@ -346,43 +304,12 @@ async function onePass(ctx, rep, server) {
     await app.sleep(1000);
   }
   checks.note(`after the restore${sfx}: document.visibilityState = ${vis}`);
-  // Not fatal: opening the browser tabs below brings the page back (checked there).
-
-
-  // f: three browser tabs on the local page, then a terminal tab brought forward so all three are hidden.
-  const ids = [0, 1, 2].map((n) => `r${rep}t${n}`);
-  const browsers = async () => Number(unwrap(await app.evalJs(`document.querySelectorAll("section.pane.browser").length`)));
-  for (let n = 0; n < 3; n++) {
-    const url = `${server.base}/page?id=${ids[n]}`;
-    await app.evalJs(`(window.dispatchEvent(new CustomEvent("kolux-open-in-browser", { detail: { url: ${JSON.stringify(url)}, title: "bench ${n}" } })), null)`);
-    await app.waitFor(`browser tab ${n + 1}`, async () => (await browsers()) === n + 1, 20000);
-    await app.waitFor(`browser tab ${n + 1}'s page to run`, async () => (server.hits.get(ids[n])?.length ?? 0) >= 2, 30000);
-  }
-  {
-    const vNow = unwrap(await app.evalJs("document.visibilityState"));
-    if (vNow !== "visible") throw new Error(`the page reads ${vNow} with the browser tabs open; phase f would measure a window nobody sees`);
-  }
-  // The tab strip of the cell that holds the browser tabs: its first tab is the terminal; a press on it (the tab's own mousedown handler) brings it forward.
-  const pressed = unwrap(await app.evalJs(`(() => { const strips = [...document.querySelectorAll(".tabs")]; const t = strips.find((e) => e.parentElement && e.parentElement.querySelector("section.pane.browser")) ?? strips.find((e) => e.querySelectorAll('[role="tab"]').length >= 4); if (!t) return "no tab strip"; t.querySelector('[role="tab"]').dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); return "pressed"; })()`));
-  hiddenAt = Date.now();
-  let away = "hidden";
-  try {
-    await app.waitFor("all three browser tabs hidden", async () => unwrap(await app.evalJs(`[...document.querySelectorAll("section.pane.browser")].every((e) => e.offsetParent === null)`)), 10000, 250);
-  } catch {
-    away = `NOT hidden (${pressed})`;
-  }
-  const nTabs = await browsers();
-  checks.add(`phase f: 3 browser tabs open and hidden behind a terminal tab${sfx}`, "3 tabs, all hidden", `${nTabs} tabs, ${away}`, nTabs === 3 && away === "hidden");
-  const phf = await measureHidden("f", `12 shell panes + 3 hidden browser tabs${server.exemptLoopback ? " (loopback page: exempt from suspension)" : ""}`, 12, hiddenAt, ids);
-  checks.note(`phase f${sfx}: hidden tab page ticks/s ${EARLY_AT_S}-${EARLY_AT_S + EARLY_S} s after the hide [${phf.tabs.earlyRates.map((x) => x.toFixed(2)).join(" ")}], in the main window [${phf.tabs.mainRates.map((x) => x.toFixed(2)).join(" ")}] (about 1 awake, 0 suspended)`);
   return phases;
 }
 
 export async function run(ctx) {
   const { checks, opts, sha } = ctx;
   ctx.fileTag = TAG ? `-${TAG}` : "";
-  const server = await startPageServer();
-  checks.note(`browser-tab page: ${server.base}${server.exemptLoopback ? " (no non-loopback address found: the page is exempt from suspension)" : ""}`);
   const runs = [];
   const discarded = []; // attempts thrown away and redone: kept in the JSON and shown as a check
   try {
@@ -397,7 +324,7 @@ export async function run(ctx) {
       for (let attempt = 1; attempt <= 2 && !done; attempt++) {
         const mark = checks.list.length;
         try {
-          runs.push(await onePass(ctx, rep, server));
+          runs.push(await onePass(ctx, rep));
           done = true;
         } catch (e) {
           if (attempt === 1) {
@@ -416,11 +343,11 @@ export async function run(ctx) {
       if (!done) break;
     }
   } finally {
-    server.close();
+    // nothing to close: the app is closed by the ctx
   }
   checks.add("no repeat needed a second attempt (a discarded attempt is listed in the JSON)", "0", discarded.length, discarded.length === 0, discarded.length > 0);
   const phases = aggregate(runs);
-  const doc = { schema: 2, discarded, sha, when: new Date().toISOString(), window_s: WINDOW_S, settle_s: SETTLE_S, settle_hidden_s: SETTLE_HIDDEN_S, early_at_s: EARLY_AT_S, early_s: EARLY_S, repeat: runs.length, repeat_asked: REPEAT, build: ctx.buildKind, buildKind: /^release/.test(ctx.buildKind) ? "release" : "debug", phases, runs: runs.map((r) => r.map(({ id, title: t, fp, page, early, tabs }) => ({ id, title: t, fp, page, early, tabs }))) };
+  const doc = { schema: 2, discarded, sha, when: new Date().toISOString(), window_s: WINDOW_S, settle_s: SETTLE_S, settle_hidden_s: SETTLE_HIDDEN_S, early_at_s: EARLY_AT_S, early_s: EARLY_S, repeat: runs.length, repeat_asked: REPEAT, build: ctx.buildKind, buildKind: /^release/.test(ctx.buildKind) ? "release" : "debug", phases, runs: runs.map((r) => r.map(({ id, title: t, fp, page, early }) => ({ id, title: t, fp, page, early }))) };
   mkdirSync(join(opts.root, "evidence"), { recursive: true });
   const jsonFile = join(opts.root, "evidence", `stress-s11-${sha}${ctx.fileTag}.json`);
   writeFileSync(jsonFile, JSON.stringify(doc, null, 1));
