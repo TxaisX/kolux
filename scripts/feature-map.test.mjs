@@ -20,13 +20,14 @@ const walk = (dir, out = []) => {
   return out;
 };
 
-test("the feature map exists and still covers the three screens it started with", () => {
+test("the feature map exists and still covers the screens it has mapped", () => {
   const md = readFileSync(MAP, "utf8");
-  for (const screen of ["## 1. Sidebar", "## 2. New session chooser", "## 3. Pane header"]) {
-    assert.ok(md.includes(screen), `feature-map.md lost its "${screen.slice(3)}" section`);
+  // Section NUMBERS are allowed to change (round 4 inserted the latency section and renumbered); the sections are not.
+  for (const screen of ["Sidebar", "New session chooser", "Pane header", "Latency", "Counts"]) {
+    assert.ok(new RegExp(`^## \\d+\\. ${screen}\\b`, "m").test(md), `feature-map.md lost its "${screen}" section`);
   }
   // The verdict legend and the counts table are what make the map readable; a rewrite that drops them is a regression.
-  for (const part of ["How to read a row", "live-pass", "check-exists", "pending", "## 5. Counts"]) {
+  for (const part of ["How to read a row", "live-pass", "live-fail", "check-exists", "pending"]) {
     assert.ok(md.includes(part), `feature-map.md lost "${part}"`);
   }
 });
