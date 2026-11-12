@@ -23,7 +23,7 @@ const CLIENTS = [/\bfetch\(\s*["'`]https?:/, /XMLHttpRequest/, /sendBeacon/, /ne
 const ALLOWED = {
   "src-tauri/src/artifacts.rs": [/\breqwest::/], // the script CDNs, when saving an artifact for offline use
   "src-tauri/src/resources/provider_net.rs": [/\breqwest::/], // T-547: the Kimi and MiniMax balance check, only when the user presses Check now with a key they added
-  "src-tauri/src/browser.rs": [/\breqwest::/], // the open page's own site icon (APP-070: sites the user opens in the browser pane)
+  "src-tauri/src/net.rs": [/\breqwest::/], // project and site icons (APP-070); moved here from browser.rs when the web pane was removed (2026-11-12)
   "src-tauri/src/update.rs": [/tauri_plugin_updater/], // GitHub Releases
   "src-tauri/src/lib.rs": [/tauri_plugin_updater/],
   "src-tauri/src/cli/mod.rs": [TCP_CONNECT], // kolux-dev talking to the app on 127.0.0.1
@@ -34,12 +34,12 @@ const ALLOWED = {
 // other fetch in the same file is still caught (an ALLOWED entry would pass the whole file).
 // A whole-file reqwest pass covers one client only: a second builder in the same file fails the audit.
 const ONE_CLIENT = { "src-tauri/src/artifacts.rs": "reqwest::Client::builder(", "src-tauri/src/resources/provider_net.rs": "reqwest::Client::builder(" };
-// browser.rs (council FIX-4, Ruling 1): its icon clients both come from one builder line, kept as
+// net.rs (council FIX-4, Ruling 1; was browser.rs until the web pane went): its icon clients both come from one builder line, kept as
 // exact text with the public-only lookup and no proxy, and from exactly three calls of the function
 // that holds it; any other way of making a client (a bare constructor, an imported Client, the
 // one-shot get) is counted too, so a second client written any of the ways the second test lists fails the audit.
 const PINNED = {
-  "src-tauri/src/browser.rs": [
+  "src-tauri/src/net.rs": [
     ["reqwest::Client::builder().timeout(Duration::from_secs(8)).redirect(policy).no_proxy().dns_resolver(resolver).build()", 1],
     [/\b(?:Client|ClientBuilder)\s*::\s*(?:builder|new|default)\s*\(|\breqwest\s*::\s*(?:blocking\s*::\s*)?get\s*\(/g, 1],
     ["icon_client_for(", 3],
@@ -55,8 +55,6 @@ const PINNED = {
   "src-tauri/src/labels.rs": [[TCP_CONNECT_ALL, 1]],
 };
 const EXACT = {
-  // browser.rs:285 the page script wraps the open PAGE's own XHR (offline/intercept/extra headers); it opens no connection of its own, so the page's requests stay "the sites you open in the browser pane"
-  "src-tauri/src/browser.rs": /\bXMLHttpRequest\.prototype\b/g,
   "src-tauri/src/agent_hooks/vendors.rs": /\bfetch\(`http:\/\/127\.0\.0\.1:\$\{port\}\/amp`/g, // the Amp status plugin posting to Kolux on 127.0.0.1
 };
 
@@ -119,8 +117,8 @@ test("app070: a spaced TcpStream :: connect is flagged like the plain spelling",
   }
 });
 
-test("app070: a second network client in browser.rs fails the audit in each listed form", () => {
-  const rel = "src-tauri/src/browser.rs";
+test("app070: a second network client in net.rs fails the audit in each listed form", () => {
+  const rel = "src-tauri/src/net.rs";
   const full = fs.readFileSync(path.join(root, rel), "utf8");
   const real = shipped(full);
   expect(pinnedProblems(rel, real)).toEqual([]);
