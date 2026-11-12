@@ -1,30 +1,32 @@
 # LANE-REPORT: c2-agents
 
 ## Status (plain words, 3 lines max)
-Round 1 (audit only) done: all three top bugs are traced to a root cause with a fix design; 37 findings in AUDIT-c2-agents.md.
-No code changed. Claude's "won't start" is most likely its folder-trust question defaulting to "No, exit"; Grok's account is at its weekly limit.
-Round 2 starts the fixes.
+Sidebar fix proven in the real app: one folder row, its 6 sessions under it, no worktree rows; "synced" no longer runs into the branch name.
+The "start agents through your own shell" code is finished and tested on our side; it goes live once c3-terminal plugs it into the pane start.
+Smaller wins: one git process fewer per sidebar status read, one shared folder-compare rule, five dead helpers gone, git.rs tests split out.
 
-## Done this round
-- Merged integrate/wave-1: `git merge --no-edit integrate/wave-1` -> "Already up to date." Bug queue `_shared/bugs/c2-agents/` empty.
-- Wrote AUDIT-c2-agents.md (four read-only audit agents; launch path, sidebar/projects, Rust git/scm/github, onboarding/tasks/board/inbox/floor/tower).
-- Filed bugs: c3-terminal `20261112-1600-agent-shell-wrap-hook.md` (hook point + logical program + spawn-error logging),
-  c3-terminal and o1-tools `20261112-1601-keep-browser-tower-rs.md`, o1-tools `20261112-1602-browser-pane-callers-in-c2.md`.
-- Side effect to know: an auditor ran `grok -- version`, which opened a real Grok session and sent "version" as a prompt;
-  it was killed by timeout and showed "You hit your weekly limit". No other live agent use.
+## Done this round (round 3)
+- Start: `git merge --no-edit integrate/wave-1` merged cleanly (npm patch bumps + AUDIT-c1-coord.md). Queue: browser-removal bug was already fixed by round 2 (70d1f42c); moved to `_shared/bugs/done/` with fixed-by.
+- Round 2 left its LANE-REPORT un-updated. Round 2 commits for the record: bug 3 chooser (482afcdc), audit 16/17/18/21 (5d587fe1), browser removal 15/32/33 (70d1f42c), bug 2 sidebar + audit 5-9 (da20db33), audit 36 (004b7ce6).
+- Bug 1 (agents start through the user's shell), c2 side: 2d4bd3cc. `agent_shell.rs` is now declared from agents.rs (`crate::agents::agent_shell`), so lib.rs (c3-owned) is untouched; c3 bug file updated with the new path.
+  Proof: `cargo test --lib agent` -> `test result: ok. 349 passed; 0 failed; 1 ignored`. `cargo clippy --lib --tests`: no warnings in agents.rs/agent_shell.rs.
+- Bug 2 proof (sidebar): harness run, vite 1440 / CDP 9420 / com.txaisxiong.kolux.c2-0, scratch repo, 4 Claude stand-ins in own folders + 2 terminals.
+  `artifacts/round3/sidebar-6-sessions.png`: 1 folder row, 6 session rows, 0 worktree rows; folder row "sbproof | main | synced", synced = rgb(1,200,143) green. DOM dump `artifacts/round3/sidebar-dump.json`, script `artifacts/round3/sidebar-proof.mjs`.
+- Folder row "mainsynced" spacing (found by the proof run): ProjectsPanel.tsx gives the folder row's push tag a 6 px gap (styles.css is c3's). Proof: rerun `artifacts/round3/folder-row-gap-after.png` shows "main  synced" with a gap (DOM: `"text": "sbproof | main | synced"`, push `hint push good` rgb(1, 200, 143)); that rerun's sessions did not start because a leftover "Report a crash" dialog from the earlier harness run covered Start, so the 6-session shot stays the first run's; `npx vitest run src/projects/__cards__/VIEW-051.test.ts` -> 5 passed.
+- Audit 19 (c37be95c): workspaces.ts `dirKey` exported; parentDrop/model/deleting/scanView use it. New `src/projects/pathKeys.test.ts` (3 tests). `npx vitest run src/projects src/workspaces` -> `Test Files 75 passed (75)`, `Tests 417 passed (417)`; `npx tsc --noEmit` clean.
+- Audit 29 (db16923c): deleted notesToShow, linkLabel, isRoot, fullOnHover, runningUnder + their tests (grep: declaration and own test only). `npx vitest run src/projects` -> `Tests 408 passed (408)`.
+- Audit 22 (53c8b371): `Git::detect` keeps the first `git --version`; one git process fewer per status read. `cargo test --lib git::` -> 83 passed; `cargo test --lib scm` -> 169 passed.
+- Refactor: git.rs tests moved to git_tests.rs (git.rs 4513 -> 2346 lines). Proof: `cargo test --lib git::` -> `test result: ok. 83 passed; 0 failed` (same 83 as before the move).
+- Closed without change: audit 11 (`grok --help`: `--reasoning-effort ... [aliases: --effort]`, so `--effort` works); audit 35 (the `Command::new("powershell")` hits are inside tests only).
 
 ## Next round (top 3)
-1. Bug 1: log start failures (agents.rs:779) and the skipped pre-trust reason + pane notice (~2 h, may fix the symptom);
-   move Claude's inline `--agents` JSON to a file; add src-tauri/src/agent_shell.rs + per-agent/per-OS tests;
-   wire once c3-terminal lands the terminal.rs:1133 hook. Proof: harness screenshots of 5 agents at their prompt.
-2. Bug 2: sidebar folders only (ProjectsPanel.tsx:2266 + launchActions.ts:120/433), keep green "synced" on the folder row. Proof: screenshot of 6 sessions, one folder row.
-3. Bug 3: sheetStart (seats.ts:355) leaves folder mode unset unless the user picked it (~45 min, tests).
-Then P2 quick wins: scm.rs spawn_blocking x3 (20 min), upgrade.rs panic guard, Grok --reasoning-effort.
+1. Bug 1 go-live: once c3-terminal lands the hook (`_shared/bugs/c3-terminal/20261112-1600-agent-shell-wrap-hook.md`), take harness screenshots of Claude Code, Grok, Codex, OpenCode and Terminal reaching their prompts; measure new-session-to-prompt time (goal: shell ready < 300 ms).
+2. Refactor splits from AUDIT-c2-agents.md: scm.rs tests out (5792 lines), projects.rs tests out (6921), then ProjectsPanel.tsx (useWorktreeScan, usePrPoll).
+3. Audit 12 (up to 4 PATH walks per agent pane, session-start speed) and audit 20 (panel-level test of worktree hiding), audit 34 (timers while hidden).
 
 ## For the coordinator
-- No CHANGELOG lines this round (audit only).
-- Decision wanted: shell-wrap on Windows uses Windows PowerShell 5.1 when pwsh is absent and loads the user's profile
-  (matches "as if typed"); falls back to direct start if ExecutionPolicy is Restricted/AllSigned. OK?
-- Cross-lane: c3-terminal must land the terminal.rs:1133 / pty_service.rs:240 hook and the logical-program change for bug 1.
-- Not owned by c2, needs an owner: src/keys/useWindowKeys.ts and src/status/useStatusSurfaces.ts browser-pane references (filed to o1-tools).
-- If bug 3 needs src/terminal/paneActions.ts:93 changed after all, c2 will file it; plan is to fix inside src/launch/seats.ts only.
+- CHANGELOG: "The sidebar shows each workspace folder with its sessions under it, never worktree rows (proven with 6 sessions)." / "Sidebar folder row: the push state no longer runs into the branch name." / "Faster sidebar refresh: one fewer git process per status read."
+- Cross-lane, still open: c3-terminal must wire `crate::agents::agent_shell::via_shell` at terminal.rs spawn + pty_service fallback, keep the logical program for marks, and log terminal_spawn failures (bug file has exact lines). If c3 prefers `crate::agent_shell`, it may move the `mod` line into lib.rs.
+- Decision still wanted (from round 1): agents started through Windows PowerShell 5.1 when PowerShell 7 is absent, with the user's profile loaded. OK?
+- Audit 27 (two FEATURED agent lists: dropdown leads with claude/codex/grok; install list adds opencode) needs a product call: should OpenCode lead the New session dropdown? Left as is.
+- Harness tip for other lanes: set `COREPACK_HOME` to the real corepack cache, or pnpm hangs on a download prompt under the scratch HOME.
