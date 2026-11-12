@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { headerLabels, HINT_MAX, overflows } from "./headers";
+import { headerLabels, HINT_MAX } from "./headers";
 
 test("a name no other project has shows the folder name alone", () => {
   const l = headerLabels([
@@ -41,9 +41,4 @@ test("a long path fragment is shortened in the middle and keeps the full text", 
   expect(l.a.hintCut).toContain("…");
   expect(l.b.hintCut).toContain("…");
   expect(l.a.hintCut).not.toBe(l.b.hintCut);
-});
-
-test("a label counts as shortened only when its text really overflows", () => {
-  expect(overflows(120, 100)).toBe(true);
-  expect(overflows(100, 100)).toBe(false);
 });

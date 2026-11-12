@@ -19,6 +19,3 @@ export function headerLabels(projects: Named[]): Record<string, HeaderLabel> {
   );
 }
 
-/** Text really overflows its box only when it needs more room than the box has. */
-export const overflows = (scrollWidth: number, clientWidth: number): boolean => scrollWidth > clientWidth;
-
