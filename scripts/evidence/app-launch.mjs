@@ -536,10 +536,24 @@ export function createApp(opts) {
     if (ATTACH || KEEP) return null;
     let closeReport = null;
     if (app.pid && (await alive(app.pid))) {
-      const { tree, how, survivors } = await closeAndCount(app.pid);
-      const ok = survivors.length === 0;
-      closeReport = [ok, `${how}; pre-close tree ${tree.length} (${byName(tree)}); survivors ${survivors.length} (${byName(survivors)})`];
-      await killAll(survivors);
+      try {
+        const { tree, how, survivors } = await closeAndCount(app.pid);
+        const ok = survivors.length === 0;
+        closeReport = [ok, `${how}; pre-close tree ${tree.length} (${byName(tree)}); survivors ${survivors.length} (${byName(survivors)})`];
+        await killAll(survivors);
+      } catch (err) {
+        // The app did not exit by its own path (a frozen page never answers the close request): end this run's own
+        // app tree and count what is left, so a failed close never leaves an app behind. The pid is the one this
+        // run started — app.pid — never a process-name scan.
+        const tree = await treeOf(app.pid).catch(() => []);
+        await run("taskkill", ["/PID", String(app.pid), "/T", "/F"]).catch(() => {});
+        const survivors = await survivorsOf(tree).catch(() => []);
+        closeReport = [
+          false,
+          `close by the app's own path failed (${err?.message ?? err}); ended this run's own app tree (taskkill /PID ${app.pid} /T /F); survivors ${survivors.length} (${byName(survivors)})`,
+        ];
+        await killAll(survivors);
+      }
     }
     app.pid = null;
     if (app.dev?.pid) await run("taskkill", ["/PID", String(app.dev.pid), "/T", "/F"]).catch(() => {});
