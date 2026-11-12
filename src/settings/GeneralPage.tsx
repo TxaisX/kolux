@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { screens } from "../chrome/TopBar";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
-import { useDraft } from "./useDraft";
+import { NumberDraftField } from "./NumberDraftField";
 import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook, shownFirst, stripOn, type Look } from "./general";
 import { REVIEW_FIELD, reviewOn } from "../editor/notes";
 import { CONFIRM_DELETE_KEY, confirmDelete } from "../automations/model";
@@ -168,22 +168,7 @@ function EditorCard({ settings, onSave }: { settings: Record<string, unknown>; o
 
 /** The auto-save delay box: the typed text stays as typed (so 3000 can be entered digit by digit). A pause saves only a finished delay in range; leaving the box clamps and saves what is there (SET-036). */
 function DelayField({ value, onSave }: { value: number; onSave: (v: number) => Promise<boolean> }) {
-  // Resolves to the stored text, so on leaving a clamped value shows as stored (typed "5", box shows "200").
-  const { props, draft } = useDraft(
-    String(value),
-    async (text) => {
-      const v = delayFromText(text);
-      if (v === null) return false;
-      return v === value || (await onSave(v)) !== false ? String(v) : false;
-    },
-    (text) => String(delayFromText(text)) === text, // in range and in normal form: nothing for the box to rewrite
-  );
-  // An empty or unreadable box goes back to the saved delay when the user leaves it.
-  const onBlur = async () => {
-    await draft.leave();
-    if (delayFromText(draft.state().text) === null) draft.discard();
-  };
-  return <input className="field" type="number" aria-label="Auto-save delay" min={DELAY.min} max={DELAY.max} step={100} {...props} onBlur={onBlur} />;
+  return <NumberDraftField value={value} parse={delayFromText} onSave={onSave} label="Auto-save delay" min={DELAY.min} max={DELAY.max} step={100} />;
 }
 
 /** SET-039: the apps every Open in menu lists, from presets or by name and command. */
