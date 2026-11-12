@@ -802,14 +802,14 @@ pub fn agent_start_line(app: tauri::AppHandle, store: tauri::State<'_, std::sync
     // the refusal names the agent.
     let name = agent_name(&id);
     let find = program_finder();
-    let built = launch_line_with(&settings, &id, &extra, &prompt, picked.unwrap_or(false), start, |p| find(p).is_some_and(|f| crate::pty::through_cmd(&f)), |p| find(p).is_some_and(|f| crate::agents::agent_shell::is_script_shim(&f)))
+    let built = launch_line_with(&settings, &id, &extra, &prompt, picked.unwrap_or(false), start, |p| find(p).is_some_and(|f| crate::pty::through_cmd(&f)), |p| find(p).is_some_and(|f| crate::agents::agent_shell::is_script_shim(&f)), |p| find(p).is_some())
         .map_err(|e| named(&name, e))
         .and_then(|line| command_check(&name, line.program.as_deref(), &find).map(|()| line));
     // c2-agents finding 1: a start that fails before any pane exists is written to kolux.log (agent,
     // program, where it resolved, why), so "Grok never started" leaves a trace. No arguments: they may
     // carry the prompt.
     if let Err(e) = &built {
-        let program = command_override(&settings, &id).map(str::to_string).or_else(|| installed_program(&id)).unwrap_or_default();
+        let program = command_override(&settings, &id).map(str::to_string).or_else(|| installed_program_with(&id, |p| find(p).is_some())).unwrap_or_default();
         let line = start_failure_line(&id, &program, find(&program).as_deref(), e);
         match tauri::Manager::path(&app).app_data_dir() {
             Ok(dir) => crate::diag::write(&dir, &line),
@@ -869,15 +869,16 @@ fn json_without_spaces(v: &serde_json::Value) -> String {
 /// a GitHub title with `"` and `&` could run a command, and it ends the line at the first line break.
 #[cfg(test)]
 fn launch_line(settings: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool, start: Start<'_>, via_cmd: impl Fn(&str) -> bool) -> Result<StartLine, String> {
-    launch_line_with(settings, id, extra, prompt, picked, start, via_cmd, |_| false)
+    launch_line_with(settings, id, extra, prompt, picked, start, via_cmd, |_| false, |p| find_program(p).is_some())
 }
 
 /// `launch_line`, also told whether the program resolves to a script shim (`shim`: `.cmd`, `.bat`,
-/// `.ps1`). An agent started through the user's shell (`agent_shell`) that resolves to one takes a
-/// prompt its shell could split or rewrite (`agent_shell::shim_safe`) typed in once it is ready.
+/// `.ps1`) and whether a catalogue name is installed (`found`, see `installed_program_with`).
+/// An agent started through the user's shell (`agent_shell`) that resolves to a shim takes a prompt its shell
+/// could split or rewrite (`agent_shell::shim_safe`) typed in once it is ready.
 #[allow(clippy::too_many_arguments)]
-fn launch_line_with(settings: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool, start: Start<'_>, via_cmd: impl Fn(&str) -> bool, shim: impl Fn(&str) -> bool) -> Result<StartLine, String> {
-    let program = command_override(settings, id).map(str::to_string).or_else(|| installed_program(id));
+fn launch_line_with(settings: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool, start: Start<'_>, via_cmd: impl Fn(&str) -> bool, shim: impl Fn(&str) -> bool, found: impl Fn(&str) -> bool) -> Result<StartLine, String> {
+    let program = command_override(settings, id).map(str::to_string).or_else(|| installed_program_with(id, found));
     let cmd = program.as_deref().is_some_and(via_cmd);
     let shell_shim = program.as_deref().is_some_and(|p| crate::agents::agent_shell::wraps(p) && shim(p)) && !crate::agents::agent_shell::shim_safe(prompt.trim());
     let typed = !prompt.trim().is_empty() && (cmd || shell_shim);
@@ -893,9 +894,15 @@ fn launch_line_with(settings: &serde_json::Value, id: &str, extra: &[String], pr
 /// installed, else its first name (as `catalogue` lists it). `terminal::terminal_listed_session` runs the
 /// agent's sessions command by it too (T-066-e).
 pub(crate) fn installed_program(id: &str) -> Option<String> {
-    let (_, _, programs, _) = CATALOGUE.iter().find(|e| e.0 == id)?;
     let dirs = search_dirs();
-    programs.iter().find(|p| find_in(&dirs, p).is_some()).or(programs.first()).map(|p| p.to_string())
+    installed_program_with(id, |p| find_in(&dirs, p).is_some())
+}
+
+/// `installed_program`, asking `found` whether a name is installed (an agent start passes its shared
+/// `program_finder`, so the search path is read once per start).
+fn installed_program_with(id: &str, found: impl Fn(&str) -> bool) -> Option<String> {
+    let (_, _, programs, _) = CATALOGUE.iter().find(|e| e.0 == id)?;
+    programs.iter().find(|p| found(p)).or(programs.first()).map(|p| p.to_string())
 }
 
 // ---------------------------------------------------------------- an agent that will not start (SESS-005)
@@ -1385,17 +1392,17 @@ X=1" } } });
         let none = serde_json::json!({});
         let shim = |_: &str| true;
         // A script shim (an npm codex.ps1) and a prompt PowerShell 5.1 or cmd.exe would split: typed in.
-        let risky = launch_line_with(&none, "codex", &[], "fix \"the\" bug", true, Start::Fresh, |_| false, shim).unwrap();
+        let risky = launch_line_with(&none, "codex", &[], "fix \"the\" bug", true, Start::Fresh, |_| false, shim, |p| find_program(p).is_some()).unwrap();
         assert_eq!(risky.typed.as_deref(), Some("fix \"the\" bug"));
         assert!(!risky.args.iter().any(|a| a.contains("the")));
         // A plain prompt stays on the line; so does any prompt for a real program (claude.exe, grok.exe).
-        let plain = launch_line_with(&none, "codex", &[], "fix the bug", true, Start::Fresh, |_| false, shim).unwrap();
+        let plain = launch_line_with(&none, "codex", &[], "fix the bug", true, Start::Fresh, |_| false, shim, |p| find_program(p).is_some()).unwrap();
         assert_eq!((plain.typed, plain.args.last().map(String::as_str)), (None, Some("fix the bug")));
-        let exe = launch_line_with(&none, "grok", &[], "-say \"hi\" & go", true, Start::Fresh, |_| false, |_| false).unwrap();
+        let exe = launch_line_with(&none, "grok", &[], "-say \"hi\" & go", true, Start::Fresh, |_| false, |_| false, |p| find_program(p).is_some()).unwrap();
         assert_eq!(exe.typed, None);
         assert_eq!(&exe.args[exe.args.len() - 2..], &["--".to_string(), "-say \"hi\" & go".to_string()][..]);
         // The team setup stays for a Claude shim (only cmd.exe drops it).
-        let claude = launch_line_with(&none, "claude", &[], "say \"hi\"", true, Start::Fresh, |_| false, shim).unwrap();
+        let claude = launch_line_with(&none, "claude", &[], "say \"hi\"", true, Start::Fresh, |_| false, shim, |p| find_program(p).is_some()).unwrap();
         assert!(claude.args.contains(&"--agents".to_string()) && claude.typed.is_some());
     }
 
