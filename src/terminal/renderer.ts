@@ -96,7 +96,12 @@ const slotFreed = (pool: GpuPool) => {
 export const GPU_FIELD = "terminalGpu";
 export const gpuOn = (settings: Record<string, unknown>): boolean => settings[GPU_FIELD] !== false;
 
-export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeWebgl: () => A, preferGpu = true, pool: GpuPool = gpuPool): RendererChoice {
+/**
+ * Bug 1155 (new terminal latency): making a WebGL context costs ~70 ms on this PC, and a new pane paid it before its
+ * first frame and before its shell was asked to start. With `startPlain` the pane starts on the plain renderer and the
+ * GPU path loads on the caller's `wake()`, after the first paint; nothing has been printed yet, so the swap is unseen.
+ */
+export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeWebgl: () => A, preferGpu = true, pool: GpuPool = gpuPool, startPlain = false): RendererChoice {
   const listeners: Array<(reason: string) => void> = [];
   const notify = (reason: string) => listeners.forEach((l) => l(reason));
   const onFallback = (l: (reason: string) => void) => {
@@ -152,7 +157,8 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
     pool.live++;
     return true;
   };
-  load();
+  if (startPlain) parked = !refused;
+  else load();
   return {
     get mode(): RendererMode {
       return addon ? "webgl" : "dom";
@@ -182,6 +188,18 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
       waiting = false;
       drop();
     },
+  };
+}
+
+/** Runs `fn` once the next frame has been painted (a frame callback, then a task after it); returns a cancel. */
+export function afterPaint(fn: () => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const frame = requestAnimationFrame(() => {
+    timer = setTimeout(fn, 0);
+  });
+  return () => {
+    cancelAnimationFrame(frame);
+    if (timer !== undefined) clearTimeout(timer);
   };
 }
 
