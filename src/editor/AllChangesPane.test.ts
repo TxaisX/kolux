@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { baseCall, entryKey, estimate, openStatus, Section, sidesCall, statusGate, tagOf, WAIT_OVER, type Entry } from "./AllChangesPane";
+import { baseCall, entryKey, estimate, listSignature, openStatus, Section, sidesCall, statusGate, tagOf, WAIT_OVER, type Entry } from "./AllChangesPane";
 import { readyStore } from "./sectionWindow";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, acLayoutOf, emptyStatus } from "../scm/model";
 
@@ -161,5 +161,24 @@ describe("UX-D: the live Changes tab stages from its section headers", () => {
   it("disables the button while another git action runs", () => {
     const out = html(e({}), { onStage: () => undefined, stageBusy: true });
     expect(out).toMatch(/<button[^>]*disabled[^>]*aria-label="Stage a.ts"|<button[^>]*aria-label="Stage a.ts"[^>]*disabled/);
+  });
+});
+
+describe("N-05: a watcher tick that found nothing new keeps the list it drew", () => {
+  it("gives two readings of the same change the same signature, however the arrays were built", () => {
+    const a = [e({ path: "C:/r/a.ts" }), e({ path: "C:/r/b.ts", staged: true, code: "A", lines: null, binary: true })];
+    expect(listSignature(a)).toBe(listSignature(a.map((x) => ({ ...x }))));
+    expect(listSignature([])).toBe("");
+  });
+  it("changes the signature when anything drawn from the entry changes", () => {
+    const before = e({});
+    for (const after of [e({ stamp: "y" }), e({ code: "A" }), e({ lines: 11 }), e({ staged: true }), e({ clash: "UU" }), e({ from: "C:/r/old.ts" }), e({ binary: true })]) {
+      expect(listSignature([after])).not.toBe(listSignature([before]));
+    }
+    // A file that left and one that joined change it too, and so does the order (the tree draws in it).
+    expect(listSignature([before])).not.toBe(listSignature([before, e({ path: "C:/r/b.ts" })]));
+    expect(listSignature([before, e({ path: "C:/r/b.ts" })])).not.toBe(listSignature([e({ path: "C:/r/b.ts" }), before]));
+    // Two files whose fields would run together in a plain concat stay apart.
+    expect(listSignature([e({ path: "C:/r/ab.ts" })])).not.toBe(listSignature([e({ path: "C:/r/a.ts", code: "Mb" })]));
   });
 });

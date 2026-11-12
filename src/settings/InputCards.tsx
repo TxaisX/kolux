@@ -1,12 +1,10 @@
 // Settings > Terminal & sessions, the drawing and input controls of SET-022 / SET-025 (T-247-d) and the
 // PowerShell version of SET-026. The values are read and corrected by terminal/inputPrefs.ts; panes follow a
 // save at once (terminal/inputWire.ts). TerminalPage places the two cards.
-import { useEffect, useState } from "react";
-import { useLeaveSave } from "./leave";
 import type { Platform } from "../keys/actions";
-import { clampNumber } from "../terminal/text";
 import { FULL_SCREEN_SCROLL, INPUT_FIELDS, osc52Save, readInput, shellCardShown, type Auto } from "../terminal/inputPrefs";
 import { Segmented } from "./GeneralPage";
+import { NumberField } from "./NumberField";
 
 type Save = (patch: Record<string, unknown>) => void;
 const AUTO_OPTIONS: Array<{ id: Auto; label: string }> = [
@@ -26,20 +24,7 @@ function Switch({ label, checked, onChange }: { label: string; checked: boolean;
 
 /** A typed number corrected on Enter or leaving the field. */
 function Lines({ value, onSave }: { value: number; onSave: (n: number) => void }) {
-  const [typed, setTyped] = useState(String(value));
-  useEffect(() => setTyped(String(value)), [value]);
-  const commit = () => {
-    const n = clampNumber(typed, FULL_SCREEN_SCROLL.min, FULL_SCREEN_SCROLL.max, value);
-    setTyped(String(n));
-    if (n !== value) onSave(n);
-  };
-  useLeaveSave(() => typed !== String(value) && commit()); // SET-036: changing page or closing keeps what was typed
-  return (
-    <label className="num-field">
-      <span>Full-screen scroll speed (lines per step)</span>
-      <input type="number" min={FULL_SCREEN_SCROLL.min} max={FULL_SCREEN_SCROLL.max} value={typed} onChange={(e) => setTyped(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
-    </label>
-  );
+  return <NumberField label="Full-screen scroll speed (lines per step)" value={value} min={FULL_SCREEN_SCROLL.min} max={FULL_SCREEN_SCROLL.max} onSave={onSave} />;
 }
 
 /** SET-022 / SET-025: ligatures, GPU drawing, and the mouse, pointer and key rules. */

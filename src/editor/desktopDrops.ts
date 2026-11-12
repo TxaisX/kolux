@@ -6,17 +6,21 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { keyOf } from "./buffers";
 
 /** A drop of more files than this is refused (DECISIONS default; the card gives no number). */
 export const MAX_DROP_FILES = 50;
 /** A drop of more bytes than this is refused; sizes are only known where a caller can read them. */
 export const MAX_DROP_BYTES = 1024 * 1024 * 1024;
 
-/** The dropped paths without blanks or repeats (Windows paths compare without letter case or slash kind). */
+/** The dropped paths without blanks or repeats, compared as buffers.ts keys them (audit N-11): Windows
+ *  paths without letter case or slash kind, and one WSL file under either share name. Each path is kept
+ *  as it was dropped. */
 export function cleanPaths(paths: string[]): string[] {
   const seen = new Set<string>();
   return paths.filter((p) => {
-    const key = p.trim().replace(/\\/g, "/").toLowerCase();
+    const trimmed = p.trim();
+    const key = trimmed ? keyOf(trimmed) : "";
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;

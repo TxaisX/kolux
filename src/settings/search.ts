@@ -2,7 +2,7 @@
 // index rather than on the drawn pages: each section names its page, its title and everyday
 // words, so a plain term finds a technical setting. The drift test checks every section here is
 // still drawn as `data-section` on its page.
-import { createContext } from "react";
+import { createContext, useContext } from "react";
 import { agents } from "../keys/actions";
 import { LANGUAGES } from "../language";
 import { PAGES, type PageId } from "./pages";
@@ -148,6 +148,12 @@ export const searchRepos = <P extends { name: string; path: string }>(raw: strin
 
 /** While a search runs: the Appearance folds that hold a match (null when no search runs). */
 export const SearchFolds = createContext<Set<string> | null>(null);
+
+/** True while a search draws the page (audit N-45): a card that fills itself from a disk scan or a
+ *  terminal it builds skips that work and says the value shows when the page is opened, so typing in
+ *  the search box costs the index lookup rather than one scan per keystroke. */
+export const SearchRun = createContext(false);
+export const useSearching = () => useContext(SearchRun);
 
 /** A style rule that hides the sections of a drawn page that hold no match. */
 export function hideRule(hits: Hits): string {

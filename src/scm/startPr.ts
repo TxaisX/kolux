@@ -64,3 +64,26 @@ export const dismiss = (book: ErrorBook, dir: string): ErrorBook => {
 
 /** The hint beside the review link. Kolux draws no web pages (Goal 0), so the review opens in the system browser, every click. */
 export const REVIEW_HINT = "Opens in your browser";
+
+/** What the empty state draws, as one answer: the reason it cannot start (null for none), whether to say
+ *  it is still checking, the create button's label (null for no button) and whether the combined action
+ *  shows. PrStart.tsx draws exactly this, so the panel's gating is covered by a plain test (audit N-20). */
+export type OfferUi = { hint: string | null; checking: boolean; create: string | null; oneClick: boolean };
+export function offerUi(i: {
+  offer: Offer;
+  lookup: ReviewLookup | undefined;
+  failed: boolean;
+  draft: boolean;
+  linked: boolean;
+  hasStatus: boolean;
+  canStart: boolean;
+  wantsOneClick: boolean;
+  running: boolean;
+}): OfferUi {
+  return {
+    hint: i.draft || i.linked ? null : blockHint(i.offer, i.lookup),
+    checking: i.offer.kind === "check" && !i.failed,
+    create: i.draft ? null : i.offer.kind === "push-create" ? (i.offer.push === "publish" ? "Publish branch and create pull request" : "Push and create pull request") : i.offer.kind === "create" ? "Create pull request" : null,
+    oneClick: i.hasStatus && !i.draft && i.canStart && !i.running && i.wantsOneClick && i.offer.kind === "blocked",
+  };
+}

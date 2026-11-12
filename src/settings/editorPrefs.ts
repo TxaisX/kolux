@@ -51,25 +51,3 @@ export function allChangesStart(s: Record<string, unknown> | null, keys: { split
 /** A patch that changes one preference only, so the editor and diff word wraps never move together. */
 export const prefPatch = <K extends keyof EditorPrefs>(key: K, value: EditorPrefs[K]) => ({ [EDITOR_FIELDS[key]]: key === "autoSaveDelay" ? clampDelay(value) : value });
 
-/** A changed line pair the diff hides while whitespace display is off: only spaces or tabs moved. */
-export const hiddenWhitespace = (before: string, after: string, show: boolean) => !show && before !== after && before.replace(/\s+/g, "") === after.replace(/\s+/g, "");
-
-/** Auto-save: each edit restarts the wait; the file is written `delay` ms after typing stops.
- *  Returns null when auto-save is off. `flush` writes a pending save at once (closing the file). */
-export function autoSaver(prefs: EditorPrefs, write: () => void): { edit: () => void; flush: () => void } | null {
-  if (!prefs.autoSave) return null;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const flush = () => {
-    if (timer === null) return;
-    clearTimeout(timer);
-    timer = null;
-    write();
-  };
-  return {
-    edit: () => {
-      if (timer !== null) clearTimeout(timer);
-      timer = setTimeout(flush, prefs.autoSaveDelay);
-    },
-    flush,
-  };
-}

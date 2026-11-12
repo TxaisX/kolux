@@ -74,7 +74,7 @@ if (!args.has("--no-build")) {
   const build = spawnSync(
     "npx",
     ["tauri", "build", "--no-bundle", "--no-sign", "--ci", "--config", confFile],
-    { cwd: repo, stdio: "inherit", shell: isWindows, env: { ...process.env, ...profile, CARGO_TARGET_DIR: targetDir } },
+    { cwd: repo, stdio: "inherit", shell: isWindows, windowsHide: true, env: { ...process.env, ...profile, CARGO_TARGET_DIR: targetDir } },
   );
   rmSync(scratch, { recursive: true, force: true });
   const secs = Math.round((Date.now() - started) / 1000);
@@ -92,8 +92,9 @@ if (!existsSync(exe)) {
 say(`built ${new Date(statSync(exe).mtimeMs).toLocaleString()}`);
 if (args.has("--no-launch")) process.exit(0);
 
-// Started detached so the terminal comes back; the app keeps running on its own.
-const child = spawn(exe, [], { detached: true, stdio: "ignore", cwd: repo });
+// Started detached so the terminal comes back; the app keeps running on its own. windowsHide keeps the
+// launcher from flashing a console window; the app draws its own window.
+const child = spawn(exe, [], { detached: true, stdio: "ignore", cwd: repo, windowsHide: true });
 child.unref();
 say(`started ${exe}`);
 say(`its settings: ${isWindows ? join(process.env.APPDATA ?? "", LOCAL_ID) : join("/Users", user, "Library/Application Support", LOCAL_ID)}`);

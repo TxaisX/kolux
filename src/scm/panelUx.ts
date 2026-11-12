@@ -1,6 +1,7 @@
 // UX audit D (ux7): the small pure rules the Checks tab pieces share, kept out of the components so they can be tested
 // without a screen: why a reply is unavailable, a per-row pending/error book, the clipboard write that says whether
 // it worked, the words for a link that would not open, and the pull request drafts kept per folder.
+import { openExternal } from "../open/openExternal";
 
 /** The tooltip and hint for a thread that cannot take a reply, or null when it can. */
 export const replyBlock = (t: { comments: { db_id: number | null }[] }): string | null => (t.comments[0]?.db_id != null ? null : "GitHub gave no id for this thread's first comment, so it cannot be replied to here. Open the pull request to reply.");
@@ -12,6 +13,19 @@ export const REFRESH = "Refresh";
 
 /** What a link that did not open says. */
 export const openLinkFailed = (err: unknown): string => `The page could not be opened: ${String(err)}`;
+
+/**
+ * Opens a link in the system browser and answers the note to show, or null when it opened. Every
+ * panel's link goes through here, so a refusal is worded once and no call site can drop it.
+ */
+export const openInBrowser = async (url: string, open: (url: string) => Promise<unknown> = openExternal): Promise<string | null> => {
+  try {
+    await open(url);
+    return null;
+  } catch (err) {
+    return openLinkFailed(err);
+  }
+};
 
 /** Which rows are mid-action, and the error each last stopped on. Immutable, so React state can hold it. */
 export type RowBook = { pending: readonly string[]; errors: Readonly<Record<string, string>> };

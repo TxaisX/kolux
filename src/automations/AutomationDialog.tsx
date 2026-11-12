@@ -86,12 +86,6 @@ function TimeBox({ label, value, lo, hi, twoDigits, onValue }: { label: string; 
   );
 }
 
-/** AUTO-010: whether a run's new worktree runs the project setup, or null when the choice is not
- * offered: only a new worktree per run, in a project known to have a setup. */
-export function setupChoice(mode: "existing" | "new-per-run", hasSetup: boolean | null, chosen: boolean): boolean | null {
-  return mode === "new-per-run" && hasSetup === true ? chosen : null;
-}
-
 /** Whether any field the form submits differs from what the dialog opened with: closing then asks first. */
 export const unsaved = (first: Record<string, unknown>, now: Record<string, unknown>): boolean => [...new Set([...Object.keys(first), ...Object.keys(now)])].some((k) => JSON.stringify(first[k]) !== JSON.stringify(now[k]));
 
@@ -120,10 +114,9 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   const [prompt, setPrompt] = useState(editing?.prompt ?? start?.prompt ?? "");
   const [provider, setProvider] = useState(editing?.provider ?? "claude");
   const [projectId, setProjectId] = useState(editing?.projectId ?? projects[0]?.id ?? "");
-  const mode = "existing" as const;
+  // A run continues in a worktree that exists (the new-worktree-per-run form went with the worktree
+  // removal); the back end still takes the three fields, so the saved input says so plainly (audit N-28).
   const [workspace, setWorkspace] = useState(editing?.workspace ?? "");
-  const base = "";
-  const runSetup = false;
   const [reuse, setReuse] = useState(editing?.reuseSession ?? false);
   const [grace, setGrace] = useState(editing?.missedRunGraceMinutes ?? start?.graceMinutes ?? 0);
   const [precheck, setPrecheck] = useState(editing?.precheck ?? "");
@@ -185,7 +178,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   const [folder, setFolder] = useState(editing?.workspace ?? "");
   // Closing with any changed field asks first; a press and release that do not both land on the scrim do not close it.
   const [leaving, setLeaving] = useState(false);
-  const fields = () => ({ name, prompt, provider, projectId, mode, workspace, base, runSetup, reuse, grace, precheck, limit, form, zone, starts, where, folder });
+  const fields = () => ({ name, prompt, provider, projectId, workspace, reuse, grace, precheck, limit, form, zone, starts, where, folder });
   const first = useRef(fields());
   const seeded = useRef(false);
   const workspaceNow = useRef(workspace);
@@ -273,7 +266,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
         });
       return;
     }
-    const input = { id: editing?.id, requestId, name, prompt, provider, projectId, workspaceMode: mode, workspace, baseBranch: "", runSetup: false, reuseSession: reuse, missedRunGraceMinutes: grace, precheck, precheckTimeoutSeconds: limit, schedule, trigger: timed ? undefined : { kind: "event", event: starts } };
+    const input = { id: editing?.id, requestId, name, prompt, provider, projectId, workspaceMode: "existing" as const, workspace, baseBranch: "", runSetup: false, reuseSession: reuse, missedRunGraceMinutes: grace, precheck, precheckTimeoutSeconds: limit, schedule, trigger: timed ? undefined : { kind: "event", event: starts } };
     invoke<Automation>("automation_save", { input })
       .then((a) => {
         noteUse("automations");

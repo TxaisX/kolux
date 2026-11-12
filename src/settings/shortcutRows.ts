@@ -6,7 +6,9 @@ import { labelParts, parseChord, type Keymap } from "../keys/keymap";
 import type { NativeChord } from "../chrome/chromeItems";
 import { systemCapturedChord, systemCaptureWarning } from "../keys/systemCapture";
 
-export const AREAS: Record<Scope, string> = { global: "General", tabs: "Tabs", terminal: "Terminal", browser: "Browser", editor: "Editor", explorer: "File explorer", settings: "Settings" };
+// Goal 0: the "browser" area went with the web pane, and its scope went with it (c3-terminal), so this is
+// exactly the scopes the keymap still knows. A scope with no commands draws no area on the page.
+export const AREAS: Record<Scope, string> = { global: "General", tabs: "Tabs", terminal: "Terminal", editor: "Editor", explorer: "File explorer", settings: "Settings" };
 export type Badge = "Modified" | "Unassigned" | "Disabled" | "Conflicts";
 export type Filter = "all" | "modified" | "unassigned" | "conflicting";
 export const FILTERS: Array<[Filter, string]> = [["all", "All"], ["modified", "Modified"], ["unassigned", "Unassigned"], ["conflicting", "Conflicting"]];

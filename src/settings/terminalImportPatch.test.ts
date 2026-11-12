@@ -1,7 +1,7 @@
 // TERM-099 (T-307): what saving a Ghostty import writes, and which theme files the page asks for.
 import { describe, expect, it } from "vitest";
 import { ghosttyThemeNames, importGhostty, MAX_CUSTOM, type GhosttyFileIn } from "./importSchemes";
-import { ghosttyPatch, hasChanges, pickedSchemes, previewLines, saveChecked, warpRows } from "./terminalImportRead";
+import { ghosttyPatch, pickedSchemes, previewLines, saveChecked, warpRows } from "./terminalImportRead";
 
 const file = (text: string): GhosttyFileIn => ({ label: "config", text });
 const THEMES: Record<string, string> = { Day: "background = ffffff\nforeground = 000000\n", Night: "background = 000000\nforeground = ffffff\n" };
@@ -23,7 +23,6 @@ describe("ghosttyPatch", () => {
     expect(plan.added).toEqual(["Night", "Day"]);
     expect(patch).toMatchObject({ terminalFontSize: 14, terminalScheme: "custom:Night", terminalSchemeLight: "custom:Day" });
     expect((patch.terminalCustomSchemes as Array<{ name: string }>).map((s) => s.name)).toEqual(["Mine", "Night", "Day"]);
-    expect(hasChanges(r)).toBe(true);
   });
 
   it("a scheme refused at the cap is not chosen, and settings alone leave the schemes untouched", () => {
@@ -34,7 +33,6 @@ describe("ghosttyPatch", () => {
     expect(patch).toEqual({ terminalCursorStyle: "bar" });
     const plain = ghosttyPatch(full, importGhostty([file("font-size = 12\n")], read));
     expect(plain.patch).toEqual({ terminalFontSize: 12 });
-    expect(hasChanges(importGhostty([file("# nothing\n")], read))).toBe(false);
   });
 });
 

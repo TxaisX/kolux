@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Project, Worktree } from "../projects/model";
 import { useSettings } from "./useSettings";
+import { useSearching } from "./search";
 
 export type AutoPrDefault = "github" | "on" | "off";
 export type Choice = "default" | "on" | "off";
@@ -113,13 +114,16 @@ export async function loadEntries(): Promise<Entry[]> {
 export default function AutoPrSettings() {
   const { settings, save } = useSettings();
   const [known, setKnown] = useState<Entry[]>([]);
+  // Audit N-45: a search draws this page for its headings only, so the project and workspace lists wait.
+  const searching = useSearching();
   useEffect(() => {
+    if (searching) return;
     let live = true;
     loadEntries().then((e) => live && setKnown(e), () => {});
     return () => {
       live = false;
     };
-  }, []);
+  }, [searching]);
   if (!settings) return null;
   const value = readAutoPr(settings);
   return <AutoPrView value={value} entries={entriesFor(known, value)} save={(next) => save({ autoPr: next })} />;

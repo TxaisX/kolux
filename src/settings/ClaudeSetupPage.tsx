@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Project } from "../projects/model";
+import { useSearching } from "./search";
 
 export type FileRef = { scope: string; label: string; path: string };
 export type SettingRow = { key: string; value: string; scope: string; path: string; also: string[] };
@@ -380,8 +381,11 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [tries, setTries] = useState(0); // T-742: Retry reads the setup again
+  // Audit N-45: a search draws this page for its headings only, so the disk scan waits until it is opened.
+  const searching = useSearching();
 
   useEffect(() => {
+    if (searching) return;
     invoke<Project[]>("project_list")
       .then((list) => {
         setProjects(list);
@@ -392,8 +396,9 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
         }
       })
       .catch(() => setProjects([]));
-  }, []);
+  }, [searching]);
   useEffect(() => {
+    if (searching) return;
     let live = true;
     setData(null);
     setError("");
@@ -403,7 +408,7 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
     return () => {
       live = false;
     };
-  }, [workspace, tries]);
+  }, [workspace, tries, searching]);
   const pick = (path: string) => {
     setWorkspace(path);
     try {
@@ -419,17 +424,23 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
   return (
     <div style={{ minWidth: 0 }}>
       <div className="settings-sub">How Claude Code is set up here. Read-only, except the shared section: open a file to change it.</div>
-      <label className="field" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
-        <span>Workspace</span>
-        <select aria-label="workspace" value={workspace} onChange={(e) => pick(e.target.value)} style={{ minWidth: 0, maxWidth: "100%" }}>
-          <option value="">None (user and managed files only)</option>
-          {projects.map((pr) => (
-            <option key={pr.id} value={pr.path}>{pr.displayName || pr.name}</option>
-          ))}
-          {workspace && !projects.some((pr) => pr.path === workspace) && <option value={workspace}>{workspace}</option>}
-        </select>
-      </label>
-      <ClaudeSetupView data={data} error={error} open={open} notice={notice} retry={() => setTries((n) => n + 1)} />
+      {searching ? (
+        <p className="conn-detail">The files Claude Code reads here, and which one wins, show when you open this page.</p>
+      ) : (
+        <>
+          <label className="field" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
+            <span>Workspace</span>
+            <select aria-label="workspace" value={workspace} onChange={(e) => pick(e.target.value)} style={{ minWidth: 0, maxWidth: "100%" }}>
+              <option value="">None (user and managed files only)</option>
+              {projects.map((pr) => (
+                <option key={pr.id} value={pr.path}>{pr.displayName || pr.name}</option>
+              ))}
+              {workspace && !projects.some((pr) => pr.path === workspace) && <option value={workspace}>{workspace}</option>}
+            </select>
+          </label>
+          <ClaudeSetupView data={data} error={error} open={open} notice={notice} retry={() => setTries((n) => n + 1)} />
+        </>
+      )}
     </div>
   );
 }

@@ -13,7 +13,6 @@ vi.mock("@tauri-apps/api/core", () => ({
   },
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
-vi.mock("../browser/openIn", () => ({ openInBrowser: () => {} }));
 
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};

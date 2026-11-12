@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./AutoPrStatus.css";
 import { enabledFor, realAutoPorts, runAutoPr, type AutoRemote } from "./autoPr";
-import { openLinkFailed } from "./panelUx";
+import { openInBrowser } from "./panelUx";
 import { LOCAL_ONLY_TEXT, LocalOnlyGlyph } from "./LocalOnlyIcon";
 import { dismissOneClick, oneClickRuns, stepWord, useOneClickAll, type Run } from "./oneClick";
 
@@ -66,7 +66,7 @@ export function AutoPrRow({ run }: { run: Run }) {
             onClick={(e) => {
               e.preventDefault();
               setOpenErr(null);
-              invoke("open_external", { url: run.pr?.url }).catch((err) => setOpenErr(openLinkFailed(err)));
+              void openInBrowser(run.pr!.url).then((failed) => failed && setOpenErr(failed));
             }}
           >
             {`#${run.pr.number}`}

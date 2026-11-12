@@ -76,9 +76,8 @@ describe("CHAT-019 ranking", () => {
 });
 
 describe("CHAT-019 commands, skills and mentions", () => {
-  it("the session's own command list replaces the built-in one", () => {
-    expect(commandsFor("claude", ["/foo", "bar"]).map((c) => c.insert)).toEqual(["/foo", "/bar"]);
-    expect(commandsFor("claude", []).length).toBeGreaterThan(10);
+  it("each agent's built-in command list, and none for an agent with none", () => {
+    expect(commandsFor("claude").length).toBeGreaterThan(10);
     expect(commandsFor("omp")).toEqual([]);
   });
   it("skills are grouped project, personal, built-in, plugin and use $ in Codex", () => {

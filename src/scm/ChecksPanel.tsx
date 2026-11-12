@@ -7,14 +7,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Refresh } from "../chrome/icons";
 import { fixChecks } from "../agentstart/host";
-import { openExternal } from "../open/openExternal";
 import { useSettings } from "../settings/useSettings";
 import GhBanner, { classify } from "../tasks/GhBanner";
 import CommentsPanel from "./CommentsPanel";
 import ConflictPanel from "./ConflictPanel";
 import PrStart from "./PrStart";
 import StackMap from "./StackMap";
-import { REFRESH, RERUN, openLinkFailed, stackKey, stillCurrent } from "./panelUx";
+import { REFRESH, RERUN, openInBrowser, stackKey, stillCurrent } from "./panelUx";
 import "./scmUx.css";
 import { checkIdOf, type CheckRef } from "./checkCard";
 import { REVIEW_HINT } from "./startPr";
@@ -43,7 +42,7 @@ export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props
   const [rerunning, setRerunning] = useState<string | null>(null); // the check whose rerun is still being asked for
   const { settings, save } = useSettings();
   /** A link that will not open says so in the note, never silently. */
-  const openOut = (url: string) => void openExternal(url).catch((err) => setNote({ text: openLinkFailed(err), error: true }));
+  const openOut = (url: string) => void openInBrowser(url).then((failed) => failed && setNote({ text: failed, error: true }));
   const rerun = (c: Check) => {
     if (rerunning !== null) return;
     setNote(null);

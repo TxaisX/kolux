@@ -4,7 +4,8 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import AutomationsPage, { HermesRuns, type Data, type HermesState } from "./AutomationsPage";
+import AutomationsPage, { type Data } from "./AutomationsPage";
+import { HermesRuns, type HermesState } from "./AutomationDetail";
 
 type Initial = NonNullable<Parameters<typeof AutomationsPage>[0]["initial"]>;
 const render = (initial: Initial, o: { projects?: { id: string; name: string; path: string }[]; onClose?: () => void } = {}) =>

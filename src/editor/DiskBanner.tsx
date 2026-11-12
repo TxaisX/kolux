@@ -13,7 +13,7 @@ import { codeHighlighting, editorMode } from "./syntax";
 import { MergeView } from "@codemirror/merge";
 import { baseName } from "./buffers";
 import { goneText } from "./diskChange";
-import { look } from "./EditorPane";
+import { look } from "./editorTheme";
 
 export function GoneNotice({ path }: { path: string }) {
   return (
