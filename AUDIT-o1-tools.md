@@ -389,3 +389,24 @@ tell me to delete the control.
 | N-20 | FIXED `4d02b88a`: the empty state's gating is `startPr.offerUi` (block reason, checking line, create label, one-click), tested for every branch in `startPr.test.ts`; `PrStart.test.ts` and `CommentsPanel.test.ts` render both panels (React server snapshot added to `prDraft`/`oneClick` so a panel can render without a DOM). The `act()` → `rowError` wire stays covered by `panelUx.test.ts`: no DOM environment exists for a click. | `startPr.ts`, `PrStart.tsx` |
 | N-14 | FIXED `93809bb1`: `look` (the CodeMirror theme) moved to `src/editor/editorTheme.ts`, so the diff, All Changes and the disk banner no longer import the 900-line EditorPane for a style object (the build's cycle warning). | `editorTheme.ts` (new) |
 | N-18 | Still open: two `git status` reads per Checks-tab open, as round 3 recorded. | — |
+
+## Round 5 closures (2026-11-12)
+
+| # | State | Where |
+|---|---|---|
+| N-19 | FIXED `a6aacc4a`: `panelUx.openInBrowser` is the one road for a panel link; ChecksPanel, StackMap and AutoPrStatus call it with their own note sink, so a refusal is worded once and cannot be dropped. A test drives both answers (opened → no note, refused → the words). | `src/scm/panelUx.ts` + 3 panels |
+| N-46 | FIXED `a6aacc4a`: the branch-prefix sample follows `useSettled(typed)`, so Rust is asked about the prefix after a pause in typing, not on every keystroke. | `src/settings/GitPage.tsx` |
+| N-49 | FIXED `9d3f7e6b`: `useSettings.patchSettings(patch)` exports the page save's own turn (read, merge into disk, tidy, read back); the setup card's resume switch, a Claude account's upkeep and the appearance flush use it. Three tests hold the merge, the tidy and the rejection. | `src/settings/useSettings.ts`, `SettingsPage.tsx`, `ClaudeAccounts.tsx`, `AppearancePage.tsx` |
+| N-27 | FIXED `fd34fe85`: the composer's `commands` prop and the `reported` half of `commandsFor`/`menuFor` are gone — nothing ever passed them, so the session-command list was reachable only from a test. | `src/chat/MessageBox.tsx`, `complete.ts` |
+| N-28 | FIXED `fd34fe85`: the automation dialog's `mode`/`base`/`runSetup` constants and `setupChoice` are gone; the saved input still says `existing`, `""`, `false`, so the back end sees what it saw. | `src/automations/AutomationDialog.tsx` |
+| N-32 | FIXED `fd34fe85`: a Hermes/OpenClaw row action reads the automation list once (`refresh` already ends in `load`). | `src/automations/AutomationsPage.tsx` |
+| N-39 | FIXED `8e12541c`: `Detail` and `HermesRuns` moved to `AutomationDetail.tsx`; the page is 761 → 529 lines, and the tests import `HermesRuns` from its new home. | `AutomationDetail.tsx` (new) |
+| N-21 | FIXED `b783c5d7`: `scanWhileShown` stops the 3 s folder walk while the window is hidden and scans at once when it comes back; a scan failure is named once instead of swallowed. Three tests with fake timers. | `src/artifacts/ArtifactsPage.tsx` |
+| N-40 | CLOSED earlier: neither General nor Terminal offers a link switch any more; the Terminal text says web links open in the user's own browser (verified by grep this round). | `src/settings/TerminalPage.tsx:222` |
+| N-41 | CLOSED earlier: `browserSearchSessionUrl` appears nowhere in `src/`. | grep |
+| N-44 | CLOSED by c3-terminal `a4671921`: `removeSession` consults `removePlan`, so "Stop without asking" is honoured. The control stays. | bug file in `_shared/bugs/done/` |
+
+Still open after this round, in order: N-45 (settings search mounts every matching page — 2-3 h), N-30
+(tests for five IPC-heavy components — 2 h), N-52/N-53 (settings tests, shortcuts list filtering), N-29
+(chat re-render), N-47/N-48 (the two duplicate number fields), N-50 (dead exports), N-24, N-22, N-25, N-10,
+N-12, N-42/N-43 (closed in round 4 / verified), N-37, N-38, N-31, N-33, N-34, N-35, N-36.

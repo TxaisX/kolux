@@ -1,60 +1,72 @@
-# Lane o1-tools — Round 4 Report
+# Lane o1-tools — Round 5 Report
 
 ## Status
 
-Both queued bugs are fixed, so the merged gate's two red marks in my files are gone (tsc on
-`shortcutRows.ts`, the `windowsHide` check on `scripts/local-run.mjs`). Five audit findings closed:
-one shared disk-stamp poll for every editor tab, a cheap comparison on the All Changes watcher tick,
-one path key across the editor, a tested answer behind the Checks panel's empty state, and the
-CodeMirror theme moved out of the 900-line pane.
+Eight more audit findings are closed: every panel link opens through one helper, the prefix sample
+and the Artifacts folder walk stop asking on every keystroke/tick, settings writes made from code
+join the page save's turn, and three dead plumbing paths (chat commands, worktree-per-run, a double
+list read) are gone. The automation page also lost 232 lines to a new detail module. Both queued bugs
+are closed and my queue is empty.
 
 ## Done this round
 
-### 1. Queued bugs (both done, files moved to `_shared/bugs/done/`)
+### 1. Queued bug (queue now empty)
 
 | Bug | Result |
 |---|---|
-| `20261112-1250-shortcutrows-browser-scope-tsc` | **fixed** (`5f4b9ba5`). The `browser` row in `AREAS` could not be hidden by a type assertion once c3-terminal removed the scope (TS2353 is an excess-property check, which a cast does not silence). The row is gone and the map is `Record<Scope, string>` with exactly the live scopes; `shortcutRows.test.ts` counts 128 rows (136 − the 8 browser commands). |
-| `20261112-1305-local-run-spawns-windowshide` | **fixed** (`5f4b9ba5`). `windowsHide: true` on both spawns in `scripts/local-run.mjs` (the `tauri build` and the detached launch). `npx vitest run scripts/nowin-spawns.test.mjs` → 2 passed. |
+| `20261112-1251-shortcutrows-browser-scope` | Already fixed in round 4 (`5f4b9ba5`); re-verified this round (`tsc exit: 0`) and moved to `_shared/bugs/done/` with the `fixed-by` line. |
 
 ### 2. Audit findings (highest severity first)
 
 | # | Fix | Commit |
 |---|---|---|
-| N-05 (P2) | `All Changes` no longer `JSON.stringify`s every file's old and new text on each watcher tick. `listSignature` reads only what the pane draws plus the per-file `stamp` Rust sends, which changes whenever the change does; a tick that finds the same signature keeps the list. Two tests: same change → same signature however the array was built; any drawn field, the order, or the membership → different. | `f3497eaa` |
-| N-03 (P2) | One disk-stamp poll for every visible editor tab. Before: N tabs → N `file_stamps` calls per 2 s, each running `fence.allow` (which lists the worktrees under the fence mutex). After: one call per 2 s for all of them, one interval, one window focus listener; a tab coming forward is still checked at once. The gone/EDIT-032 wording stays per tab, on the rare null answer. Five tests, including "three watchers → one call" and "the answer lines up with the paths". | `01e62fad` |
-| N-11 (P3) | `buffers.ts` `keyOf` is now the only path key in the editor: `rail.ts` (WSL notes never matched their file — the real bug), `desktopDrops.ts` (a drop with two spellings of one file opened it twice) and `closeGuard.ts` (an open file under another spelling was missed, so its empty note could be deleted). `noteLinks.ts` already used it. WSL test added. | `a2c071d7` |
-| N-20 (P2) | The Checks panel's empty state draws from `startPr.offerUi` — the block reason, the "checking" line, the create button's wording and the one-click — so ten plain tests cover the gating that used to be inline conditionals with no test. New `PrStart.test.ts` renders the panel (nothing to click, says "checking", asks Rust nothing during render) and `CommentsPanel.test.ts` renders the hidden tab. `useSyncExternalStore` got React's server snapshot in `prDraft.ts` and `oneClick.ts`, which is what makes a panel renderable without a DOM. The `act()` → `rowError` wire stays covered at the model level (`panelUx.test.ts`): a click cannot be driven here. | `4d02b88a` |
-| N-14 (P3) | `look` (the CodeMirror theme, ~20 lines) moved to `src/editor/editorTheme.ts`. The diff, All Changes and the disk banner each imported the 933-line `EditorPane` for that one object — the cycle the build warned about. | `93809bb1` |
+| N-19 (P2) | `panelUx.openInBrowser(url, open?)` returns the note to show or null. ChecksPanel, StackMap and AutoPrStatus each keep their own sink but share the road and the words, so a refused link cannot be swallowed by one panel and worded differently by another. New test drives both answers. | `a6aacc4a` |
+| N-46 (P2) | The branch-prefix sample runs on `useSettled(typed)`: Rust is asked after a 150 ms pause, not on every keystroke (it was one IPC call per character typed into the custom-prefix box). | `a6aacc4a` |
+| N-49 (P2) | `patchSettings(patch)` in `useSettings.ts` is the page save's own turn: read the disk copy, merge, `tidySettings`, write, read back. The setup card's resume switch, Claude account upkeep and the appearance flush used to read-merge-write on their own, so they could interleave with a page save and skip the tidy (SET-035). Three tests: it merges rather than replaces, it tidies, and a failure rejects so the caller still takes its switch back. | `9d3f7e6b` |
+| N-27 (P2) | Deleted the composer's `commands` prop and the `reported` half of `commandsFor`/`menuFor`: nothing ever passed them, so a session's own command list was reachable only from a test. | `fd34fe85` |
+| N-28 (P2) | Deleted the automation dialog's `mode`, `base`, `runSetup` constants and `setupChoice` — the last of the "new worktree per run" plumbing. The saved input still carries `workspaceMode: "existing"`, `baseBranch: ""`, `runSetup: false`, so the back end sees exactly what it saw. | `fd34fe85` |
+| N-32 (P3) | A Hermes/OpenClaw row action reads the automation list once: `refresh()` already ends in `load()`, so the `act()` wrapper was a second read per click. | `fd34fe85` |
+| N-39 (P3) | `Detail` and `HermesRuns` moved to `AutomationDetail.tsx` (props only, no cycle): `AutomationsPage.tsx` 761 → **529** lines, 238 in the new file. The page test imports `HermesRuns`/`HermesState` from the new module. | `8e12541c` |
+| N-21 (P2) | `scanWhileShown` (exported, tested) starts the Artifacts folder scan at once and every 3 s while the page is shown, and stops it while the window is hidden; the first scan runs on return. A failed scan is now named once instead of swallowed, so a folder Kolux cannot read no longer looks idle. Three fake-timer tests. | `b783c5d7` |
 
-## Proof (run fresh after the last change, `93809bb1`)
+### 3. Findings verified closed (no code needed)
 
-- `npx tsc --noEmit` → `tsc exit: 0`, no output.
-- `npx vitest run src/editor src/scm src/settings src/ports src/artifacts src/automations src/skills src/chat src/open scripts/nowin-spawns.test.mjs`
-  → `Test Files  321 passed (321) · Tests  2807 passed (2807)`.
-- `npx vitest run scripts/nowin-spawns.test.mjs` alone → `2 passed`.
-- `git merge --no-edit integrate/wave-1` merged clean (115 files) at the top of the round.
-- No UI screenshot: every change this round is logic behind a panel (polls, comparisons, path keys,
-  gating rules) and each has a test; no dev instance was started, so nothing is claimed about pixels.
+N-40 (no link switch on General or Terminal; the Terminal text says the user's own browser),
+N-41 (`browserSearchSessionUrl` gone from `src/`), N-44 (c3-terminal `a4671921` wired
+`removePlan`, so the "Removing a started session" setting is honoured).
+
+## Proof (run fresh after the last change, `b783c5d7`)
+
+- `node node_modules/typescript/bin/tsc --noEmit` → no output, `tsc exit: 0`.
+- `npx vitest run src/editor src/scm src/settings src/ports src/artifacts src/automations src/skills src/chat src/open src/editmenu scripts/nowin-spawns.test.mjs`
+  → `Test Files  326 passed (326) · Tests  2836 passed (2836)`.
+- `npx vitest run src/scm` alone → `45 passed (45) · 375 tests`; `src/settings` alone → `103 passed · 549 tests`;
+  `src/automations src/chat` → `44 passed · 467 tests`; `src/artifacts` → `7 passed · 41 tests`.
+- `git merge --no-edit integrate/wave-1` merged clean (2 files: CHANGELOG, wave-1-progress) at the top of the round.
+- No UI screenshot: every change is behind a panel (a link helper, a settle timer, a save turn, a scan
+  timer, removed plumbing), each has a test or a tsc proof, and no dev instance was started, so nothing
+  is claimed about pixels.
 
 ## Next round
 
-1. **N-09**: `frontMatter.ts` is 777 lines and 90% a gap-placement engine; split `richPlacement.ts`.
-2. **N-23 / N-39**: `scm/model.ts` (686) has three clean seams; `automations/AutomationsPage.tsx` (760)
-   can lose `Detail` and `HermesRuns` to `AutomationDetail.tsx`.
-3. **The feature walk** the lane brief asks for (item 2) is still not done: nobody has walked my
-   screens against `docs/guide/feature-index.md` with the app running. It needs a `pnpm local` build
-   and one harness instance; do it before more refactoring.
+1. **N-45**: settings search mounts every matching page in full (a `claude_setup` disk scan for typing
+   "claude"). Pass a `searching` flag so the heavy cards skip their load. Biggest remaining P2 in my area.
+2. **The feature walk** (lane brief item 2) is still not done: nobody has walked my screens against
+   `docs/guide/feature-index.md` with the app running. It needs one `pnpm local` launch and one harness
+   instance — do it before more refactoring.
+3. **N-30 / N-52**: a fake-DOM test for one IPC-heavy component (start with `ShortcutsPage`'s global key
+   capture, which intercepts keys everywhere).
 
 ## For the coordinator
 
 - **CHANGELOG lines:**
-  - "Editor tabs share one disk check, so a window full of open files asks Rust once per two seconds instead of once per tab."
-  - "Notes and dragged files match their file however its path is spelled, including inside a WSL distribution."
-  - "The Checks tab says why it cannot offer a pull request, in one tested place, and no longer offers anything before it knows the branch's state."
-- **DECISIONS row requested (small):** the editor's path key is `buffers.ts` `keyOf` and nothing else
-  normalises paths in `src/editor`. Cost, stated: a Linux file inside WSL keeps its letter case, so
-  `a.md` and `A.md` stay two files (as Linux does).
-- **Nothing needed from another lane this round.** The two bug files I was sent are closed.
-- **Round 3's dependency ask still stands:** `src/editor` is green on Lexical 0.53, the bump is
-  c1-coord's call (`_shared/bugs/c1-coord/20261112-1310-lexical-053-verified-take-the-bump.md`).
+  - "A link in any Checks panel opens in your own browser through one path, so a refusal is never silent."
+  - "Settings written from code (resume setup, Claude account upkeep, appearance) now take the same turn as a page save and are tidied the same way."
+  - "The Artifacts folder scan pauses while the window is hidden, and says why when a folder cannot be read."
+  - "The custom branch-prefix sample checks after you pause typing instead of on every keystroke."
+- **No DECISIONS row requested this round** (round 4's `keyOf` row still stands).
+- **Nothing needed from another lane.** My bug queue is empty.
+- **Not mine, found while working:** N-51 (`usageReads` is read by the panes but nothing in the app
+  writes it — an orphan key only editable by hand) lives in `src/usage/`, which this lane does not own.
+  Worth a bug to c1-coord or whoever holds `src/usage/`.
+- **Round 3's dependency ask still stands** (informational): `src/editor` is green on Lexical 0.53.
