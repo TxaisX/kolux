@@ -210,3 +210,28 @@ fresh command covers it.
 | P3 `smoke.mjs` over 800 lines | **partial** | stand-ins + their tests extracted (`smoke-standins.mjs`); 809 lines now, the `--self-test` block is the next seam |
 | P2 stale Vite `?raw` cache (queued bug, o3-rune) | **open** | documented in `scripts/evidence/README.md`; the `?raw` swap and the CI cache clear are others' files |
 | P1 smoke setup "could not focus add-project-folder-input" (queued bug, c1-coord) | **fixed by inspection** | `focusField()` retries 5 s on the first on-screen match; suffix rule documented in `scripts/evidence/README.md`; needs a live confirm on the merged branch |
+
+## 6. Round 4 (2026-11-12): the app finally ran — what that proved, and what it broke
+
+The worktree got a Rust build (`cargo build --bins`, 4 m 17 s, 6.2 GB target) and the harness ran for real for the
+first time. Two things came out of it: a P0 in this lane's own harness that no amount of reading had found, and the
+three goal-0 latency numbers.
+
+| Finding | Severity | Status | Detail |
+|---|---|---|---|
+| `TID` used 13x in `scripts/prove/live-common.mjs`, declared nowhere | **P0** | **fixed** | `startPlain()` threw `ReferenceError: TID is not defined` on its first line, so **every live proof in the wave would have failed at start-up** the moment anyone launched the app. The round-2 table above claimed this map was added; it was not in the file. Now a real `export const TID` map with the `src/` line each id comes from, plus `scripts/harness-imports.test.mjs` (4 tests) which fails on a name used as a namespace but never declared or imported. Proof the rule catches it: the same rule run over `git show d35a70d0:scripts/prove/live-common.mjs` reports `UNDECLARED TID`, and over the fixed file it is clean. |
+| 41 proofs run their body at module level (7 were named in round 1) | P2 | **closed as a rule** | Only an *imported* proof can hurt: importing one for a helper launches an app. `live-SESS-004`, `live-SESS-018`, `live-GIT-001`, `live-GIT-004` are the imported ones and all four have the `pathToFileURL(process.argv[1])` guard. The new test makes that a rule: an imported proof that calls `startPlain`/`startProve` must carry the guard. |
+| `Process.MainWindowHandle` in `scripts/evidence/shot.ps1:20`, `type.ps1:62` | P2 | **fixed** | Both now enumerate windows for the pid and take class `Tauri Window` + title `Kolux`, with `MainWindowHandle` kept only as a fallback. Discovery also had to change: the harness parks the window at `-32000,-32000`, so `MainWindowTitle` is empty and the old `Where MainWindowTitle -like "Kolux*"` found nothing — the process is now found by name too. **Proven live:** `shot.ps1 -Out G:/Temp/o2-shot-test.png -ProcessId 28380` → `saved … (1416 x 889) pid 28380`, and without `-ProcessId` → `saved … (1936 x 1048) pid 28380`. `type.ps1` shares the code and parses, but was not exercised: it posts input into whatever app is in front, and this lane will not do that to a run in progress. |
+| No latency check existed (Goal 0, item 7) | P1 (goal 0) | **built** | `scripts/prove/live-latency.mjs`, run through `run-all --only latency`. In-page `performance.now()` from the real DOM event to the thing the user sees, so the CDP transport is outside both ends. Round-4 numbers (this PC, five other lanes running, four runs): keystroke → character **3.2-4.8 ms** median, max 8.3 warm (target 16, PASS); click → visible response **6.6-10.1 ms** median (target 50, PASS); new session → ready prompt **612-1645 ms** (target 300, **FAIL**), split into Kolux's own part (pane drawn) 156-375 ms and the shell's own start 647-1270 ms. Filed to `c2-agents`: `_shared/bugs/c2-agents/20261112-1155-new-session-latency-1050ms.md`. |
+| `run-all` leaves the app running when a check's start-up times out | P2 | **open, filed** | After a launch timeout the app (pid 3792) and its WebView2 children survived, and the next run then failed on the same ports. `_shared/bugs/o2-tests/20261112-1210-run-all-leaves-app-on-timeout.md`. |
+| Stale Vite `?raw` cache (queued bug 20261112-1118) | P2 | **workaround + detector** | `npx vitest run --no-fsModuleCache` is the one-flag workaround (vitest 5.1.0); `scripts/raw-cache-probe.test.mjs` is the detector (a `?raw` import must equal `readFileSync` of the same file). **Could not reproduce** the reported failure with a warm single-file cache, so this is insurance, not a confirmed fix; the `?raw` → `node:fs` swaps stay with the owning lanes. |
+
+Still open in this lane, in the order worth doing:
+
+1. **P2** `live-APP-050` still needs `G:/Temp/live-v9/oplock-target/release/oplock-hold.exe`, a prebuilt binary outside the
+   repo, while `scripts/prove/oplock-hold/` holds its source. Build it in-repo (release) and point `HOLDER` at
+   `scripts/prove/oplock-hold/target/release/oplock-hold.exe`; ~10 min plus one build.
+2. **P3** `shot`/`rawKey` duplicated across proofs — `ctx.shot()`/`ctx.rawKey()` exist in `live-common.mjs`; each script
+   that rolls its own should import them. Mechanical, ~20 scripts.
+3. **P3** `smoke.mjs` 809 lines: the `--self-test` block is the next clean seam.
+4. **Cross-lane** thin `data-testid` surface: the sidebar workspace row still has no test id, so proofs match `.sb-main`.
