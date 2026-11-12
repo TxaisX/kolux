@@ -27,7 +27,7 @@ export const formatCount = (n: number, incomplete = false): string => `${Math.ma
 /** The folder's age as "3d"; nothing when the time is unknown. */
 export const ageOf = (row: SpaceRow, now: number): string => (row.modified > 0 ? relativeTime(new Date(row.modified * 1000).toISOString(), now) : "");
 
-/** Only a linked worktree that nothing is using (open browser, running agent) can be deleted here. */
+/** Only a linked worktree that nothing is using (a running agent or an open tab) can be deleted here. */
 export const deletable = (row: SpaceRow, active: ReadonlySet<string>): boolean => row.reclaimable && !row.isMain && !active.has(row.path);
 
 /** What deleting would give back: linked worktrees only, never the main checkout. */
@@ -64,7 +64,7 @@ export function selectedForDelete(selected: string[], rows: SpaceRow[], active: 
     const row = rows.find((r) => r.path === path);
     if (!row) skipped.push({ path, why: "It is no longer listed" });
     else if (row.isMain) skipped.push({ path, why: "The main checkout cannot be deleted" });
-    else if (active.has(path)) skipped.push({ path, why: "It is in use: a browser is open or an agent is running" });
+    else if (active.has(path)) skipped.push({ path, why: "It is in use: a tab is open or an agent is running" });
     else go.push(row);
   }
   return { go, skipped };

@@ -52,9 +52,9 @@ export default function FeedbackDialog() {
   // Each send and each open takes a new number; a result from an older send (the box was closed and opened
   // again while it ran) is ignored, so it cannot close the new box or wipe its draft.
   const seq = useRef(0);
+  const openSeq = useRef(0);
   const [shots, setShots] = useState<Shot[]>([]);
   const [refused, setRefused] = useState<string[]>([]);
-  const [crash, setCrash] = useState(false);
   const previews = useMemo(() => shots.map((x) => URL.createObjectURL(new Blob([x.bytes as BlobPart], { type: MIME[x.kind] }))), [shots]);
   useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
 
@@ -62,15 +62,19 @@ export default function FeedbackDialog() {
   const pick = async (files: FileList | null) => {
     if (!files?.length) return;
     const read = await Promise.all([...files].map(async (f) => ({ name: f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) })));
-    const r = addImages(shots, read, crash);
+    const r = addImages(shots, read, s.crash);
     setShots(r.shots);
     setRefused(r.refused);
   };
 
   useEffect(() => {
+    let alive = true;
     const open = (text: string, crash: boolean) => {
-      setCrash(crash);
-      void readFacts().then((facts) => dispatch({ t: "open", facts, text }));
+      const mine = ++openSeq.current;
+      void readFacts().then((facts) => {
+        if (!alive || mine !== openSeq.current) return;
+        dispatch({ t: "open", facts, text, crash });
+      });
     };
     const on = (e: Event) => {
       takeParked();
@@ -81,7 +85,10 @@ export default function FeedbackDialog() {
     // The box's code is read when first needed, so the request that asked for it may have gone out before this listener existed.
     const early = takeParked();
     if (early) open(early.text, early.crash);
-    return () => window.removeEventListener(EVENT, on);
+    return () => {
+      alive = false;
+      window.removeEventListener(EVENT, on);
+    };
   }, []);
 
   // The cursor starts above the block, where the user types.
@@ -117,8 +124,8 @@ export default function FeedbackDialog() {
       const mine = ++seq.current;
       dispatch({ t: "send" });
       // the copy starts inside the click, while the page may still write to the clipboard
-      const bundle = crash ? copyCrashBundle(() => invoke<string>("diag_bundle"), (t) => navigator.clipboard.writeText(t)) : null;
-      const copied = !crash && shots.length ? copyFirst(shots[0]) : Promise.resolve(false);
+      const bundle = s.crash ? copyCrashBundle(() => invoke<string>("diag_bundle"), (t) => navigator.clipboard.writeText(t)) : null;
+      const copied = !s.crash && shots.length ? copyFirst(shots[0]) : Promise.resolve(false);
       invoke("open_external", { url: r.url }).then(
         async () => {
           if (mine !== seq.current) return;
@@ -194,7 +201,7 @@ export default function FeedbackDialog() {
         <label className="auto-radio">
           <input type="checkbox" checked={s.anonymous} onChange={(e) => dispatch({ t: "anon", on: e.target.checked })} /> Submit anonymously (leave my GitHub name out)
         </label>
-        {crash ? (
+        {s.crash ? (
           <span className="muted">{CRASH_BUNDLE_HINT}</span>
         ) : (
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
@@ -205,7 +212,7 @@ export default function FeedbackDialog() {
           {shots.map((x, i) => (
             <span key={`${x.name}-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               <img src={previews[i]} alt={x.name} title={x.name} style={{ height: 36, borderRadius: 4 }} />
-              <button className="btn" aria-label={`Remove ${x.name}`} title={`Remove ${x.name}`} onClick={() => setShots(shots.filter((_, j) => j !== i))}>
+              <button type="button" className="btn" aria-label={`Remove ${x.name}`} title={`Remove ${x.name}`} onClick={() => setShots(shots.filter((_, j) => j !== i))}>
                 <Close size={11} />
               </button>
             </span>
@@ -225,11 +232,11 @@ export default function FeedbackDialog() {
         )}
         <div className="auto-dialog-foot">
           <span className="muted">Everything under the line is added for you.</span>
-          <button className="btn" onClick={dismiss}>
+          <button type="button" className="btn" onClick={dismiss}>
             Cancel
           </button>
           {/* aria-disabled, not disabled: the button keeps the keyboard while the page opens; send() ignores a second press */}
-          <button className="btn primary" aria-disabled={s.sending || undefined} onClick={send}>
+          <button type="button" className="btn primary" aria-disabled={s.sending || undefined} onClick={send}>
             {s.sending ? "Opening…" : "Open on GitHub"}
           </button>
         </div>

@@ -12,7 +12,7 @@ export const OTHER = "other";
 const agentOf = (p: Session): string | undefined => p.agentId ?? p.seats?.[0]?.agent ?? undefined;
 
 /** VIEW-015: a rail row is an AI session or a preset waiting to start; plain shells, choosers with
- *  no agent picked, and editor / browser tabs are never listed. */
+ *  no agent picked, and editor and other non-terminal tabs are never listed. */
 export const listed = (p: Session): boolean => !p.kind && (p.seats ? agentOf(p) !== undefined : p.program !== null);
 
 /** T-809 (P4a-12): the rail lists AI sessions only, so it says where the plain shells are: how many are open and that they live on the Terminals screen. Empty when there are none. */
@@ -44,7 +44,7 @@ export function pickSession<S extends Session>(groups: Group<S>[], current: numb
  * or text, else the brief's task text, never the wrapper); else the folder it works in, else its number. */
 export const sessionLabel = (p: Pick<Session, "key" | "title" | "cwd">, task?: string): string => p.title || task?.trim() || (p.cwd ? folderName(p.cwd) : "") || `Session ${p.key}`;
 
-/** VIEW-024: the Board's cards, one per terminal pane in tab-group order; editor and browser tabs get none. */
+/** VIEW-024: the Board's cards, one per terminal pane in tab-group order; editor and other non-terminal tabs get none. */
 export const cardPanes = <P extends { key: number; kind?: string }>(panes: P[]): P[] => panes.filter((p) => !p.kind);
 
 /** VIEW-017: a rail row's status, one of the fixed status words with its tone and tip. */

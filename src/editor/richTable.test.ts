@@ -37,11 +37,12 @@ const key = (ed: LexicalEditor, cmd: LexicalCommand<KeyboardEvent> | LexicalComm
   ed.update(() => void ed.dispatchCommand(cmd as LexicalCommand<KeyboardEvent>, { shiftKey, preventDefault: () => (prevented = true) } as unknown as KeyboardEvent), { discrete: true });
   return prevented;
 };
-/** Puts the caret at the end of cell (row r, column c). */
+/** Puts the caret at the end of cell (row r, column c). No type argument on getChildAtIndex: Lexical 0.53 dropped it. */
 const caret = (ed: LexicalEditor, r: number, c: number) =>
   run(ed, () => {
     const t = $getRoot().getChildren().find($isTableNode)!;
-    ((t as unknown as ElementNode).getChildAtIndex(r) as unknown as ElementNode).getChildAtIndex<ElementNode>(c)!.selectEnd();
+    const row = (t as unknown as ElementNode).getChildAtIndex(r) as unknown as ElementNode;
+    (row.getChildAtIndex(c) as unknown as ElementNode).selectEnd();
   });
 const where = (ed: LexicalEditor) => ed.getEditorState().read(() => { const a = $tableAt(); return a && [a.r, a.c]; });
 

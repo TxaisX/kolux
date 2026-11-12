@@ -40,6 +40,7 @@ export default function UpdateCenterView() {
   // T-600: counts the user's own clicks that open the card (Check for updates, the status-bar item, the
   // card's expand); only a new one moves the keyboard to the card.
   const [clicks, clicked] = useReducer((n: number) => n + 1, 0);
+  const mounted = useRef(true);
 
   const download = (info: UpdateInfo) => {
     // A requested check that finds the update already downloading shows that download.
@@ -49,10 +50,12 @@ export default function UpdateCenterView() {
     invoke<UpdateInfo>("update_download").then(
       (done) => {
         downloading.current = null;
+        if (!mounted.current) return;
         dispatch({ type: "ready", info: { ...done, notes: done.notes.length ? done.notes : info.notes } });
       },
       (e) => {
         downloading.current = null;
+        if (!mounted.current) return;
         dispatch({ type: "downloadFailed", info, message: String(e), offline: !navigator.onLine });
       },
     );
@@ -92,7 +95,10 @@ export default function UpdateCenterView() {
 
   useEffect(() => {
     let alive = true;
-    const offs: Array<() => void> = [];
+    mounted.current = true;
+    const offs: Array<() => void> = [() => {
+      mounted.current = false;
+    }];
     void invoke<Status>("update_status").then((st) => {
       if (!alive) return;
       status.current = st;
@@ -266,7 +272,7 @@ export default function UpdateCenterView() {
           {tipVisible(s) && (
             <div className="upd-tip" role="note">
               {RESTART_TIP}
-              <button className="ib" title="Got it" onClick={() => dispatch({ type: "tipDismiss" })}>
+              <button type="button" className="ib" title="Got it" onClick={() => dispatch({ type: "tipDismiss" })}>
                 <Close size={11} />
               </button>
             </div>
@@ -294,10 +300,10 @@ export default function UpdateCenterView() {
               </span>
               <span className="upd-title">{title}</span>
               {pct !== null && <span className="upd-pct">{pct}%</span>}
-              <button className="ib" title={s.collapsed ? "Expand" : "Collapse (Esc)"} onClick={(e) => (e.stopPropagation(), s.collapsed ? expand() : dispatch({ type: "collapse" }))}>
+              <button type="button" className="ib" title={s.collapsed ? "Expand" : "Collapse (Esc)"} onClick={(e) => (e.stopPropagation(), s.collapsed ? expand() : dispatch({ type: "collapse" }))}>
                 {s.collapsed ? "▴" : "▾"}
               </button>
-              <button className="ib" title="Dismiss" onClick={(e) => (e.stopPropagation(), dispatch({ type: "dismiss" }))}>
+              <button type="button" className="ib" title="Dismiss" onClick={(e) => (e.stopPropagation(), dispatch({ type: "dismiss" }))}>
                 <Close size={11} />
               </button>
             </div>
@@ -324,7 +330,7 @@ export default function UpdateCenterView() {
                 {p.kind === "ready" && <div className="upd-next">It also installs by itself the next time you quit.</div>}
                 {label && (
                   <div className="upd-actions">
-                    <button className={`btn ${action === "restart" || action === "download" ? "primary" : ""}`} disabled={restarting} onClick={act}>
+                    <button type="button" className={`btn ${action === "restart" || action === "download" ? "primary" : ""}`} disabled={restarting} onClick={act}>
                       {label}
                     </button>
                   </div>

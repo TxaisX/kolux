@@ -51,5 +51,4 @@ test('(c) every Escape hint in a tooltip says "Esc", the keycap the keymap draws
   expect(app.filter(([, s]) => /title="[^"]*\(Escape\)"/.test(s)).map(([p]) => p)).toEqual([]);
   expect(labelParts("Escape", "win32")).toEqual(["Esc"]);
   expect(src["../artifacts/ArtifactsPage.tsx"]).toContain('title="Close (Esc)"');
-  expect(src["../browser/GrabSheet.tsx"]).toContain('title="Back to the page (Esc)"');
 });

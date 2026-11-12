@@ -41,7 +41,11 @@ let last: Counts | null = null;
 export default function Activity() {
   const [counts, setCounts] = useState<Counts | null>(last);
   useEffect(() => {
-    invoke<Counts>("activity_counts").then((c) => setCounts((last = c)), () => setCounts(last));
+    let alive = true;
+    invoke<Counts>("activity_counts").then((c) => alive && setCounts((last = c)), () => alive && setCounts(last));
+    return () => {
+      alive = false;
+    };
   }, []);
   // The first read of a session: the card's frame is drawn at once and filled when the counts arrive.
   return counts ? <ActivityView counts={counts} /> : <section className="conn-card" data-activity="loading" aria-busy="true" />;

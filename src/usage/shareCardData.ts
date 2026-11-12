@@ -4,6 +4,7 @@
 // canvas and handed to the clipboard. Pure functions, so the figures, the words and the drawing are
 // all testable without a window.
 import { locale } from "../language";
+import { compactCount, formatDayMedium as dayText } from "./format";
 import { estimate } from "./pricing";
 import { byModel, daily, localDay, NAMES, rangeStart, tokensOf, type Provider, type Range, type Row } from "./tokens";
 
@@ -36,8 +37,6 @@ export function costText(usd: number, priced: boolean, loc: string = locale()): 
   return new Intl.NumberFormat(loc, { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(usd);
 }
 
-const dayText = (day: string, loc: string) => new Date(`${day}T12:00:00`).toLocaleDateString(loc, { dateStyle: "medium" });
-
 /** The card for one provider's rows, already narrowed to the panel's range and scope. */
 export function cardOf(provider: Provider, rows: Row[], range: Range, today: Date, loc: string = locale()): CardData {
   const first = range === "all" ? rows.reduce((m, r) => (r.day < m ? r.day : m), localDay(today)) : rangeStart(range, today);
@@ -50,7 +49,7 @@ export function cardOf(provider: Provider, rows: Row[], range: Range, today: Dat
     providerName: NAMES[provider],
     rangeLabel: RANGE_WORDS[range],
     dates: `${dayText(first, loc)} – ${dayText(localDay(today), loc)}`,
-    tokens: new Intl.NumberFormat(loc, { notation: "compact", maximumFractionDigits: 1 }).format(total),
+    tokens: compactCount(total, loc),
     cost: costText(est.usd, priced, loc) + (partial ? "+" : ""),
     partial,
     topModel: byModel(provider, rows)[0]?.model ?? null,

@@ -4,10 +4,23 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import ShareButton, { SHARE_X_LABEL } from "./ShareButton";
 
-// Vite lists the files, so no Node types are needed: names from the lazy glob, text from the eager one.
+// The files are read from disk, not through Vite's `?url`/`?raw` globs: a stale transform cache
+// can serve the pre-change copy and fail this test on correct code (the same class of false
+// failure fixed in usageStatusUx.test.ts). No Node types are needed: the module comes off process.
+type Fs = {
+  readdirSync(p: URL, o: { withFileTypes: true }): Array<{ name: string; isDirectory(): boolean }>;
+  readFileSync(p: URL, enc: string): string;
+};
+const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): Fs } }).process.getBuiltinModule("node:fs");
+/** Every file under src/, as `/src/<path>` with forward slashes. */
+const walk = (rel: string): string[] =>
+  nodeFs.readdirSync(new URL(rel, SRC), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${rel}${e.name}/`) : [`/src/${rel}${e.name}`]));
+const SRC = new URL("../", import.meta.url);
 // The whole of src, not just assets and usage: a logo in chrome/icons.tsx or a file in any folder counts (review 52195201 AFTER 3).
-const names = Object.keys(import.meta.glob("/src/**/*.*", { query: "?url", import: "default" }));
-const texts = import.meta.glob("/src/**/*.{ts,tsx,css,svg}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const names = walk("");
+const texts: Record<string, string> = Object.fromEntries(
+  names.filter((f) => /\.(ts|tsx|css|svg)$/.test(f)).map((f) => [f, nodeFs.readFileSync(new URL(f.slice("/src/".length), SRC), "utf8")]),
+);
 /** An X or Twitter logo by file name, in either word order (x-logo, logo-x, x_mark, icon.x, twitter...). */
 const X_NAME = /(^|[/_.-])(x[-_]?(logo|mark|icon|brand)|(logo|mark|icon|brand)[-_]?x|twitter|tweet)([/_.-]|$)/i;
 /** The X glyph path start as the simple-icons set draws it and as X's own brand kit draws it, and the old image host. */

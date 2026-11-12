@@ -8,14 +8,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { locale } from "../language";
 import { openSettings } from "../settings/pages";
 import { NAMES, type Usage } from "./tokens";
+import { compactCount as compact, usd2 as money } from "./format";
 import { dueForScan, workspaceName, workspaceSpend, type SpendDay, type SpendFigure, type WorkspaceSpend as SpendFigures } from "./workspaceRibbon";
 
 // Owner change 2026-11-07: live. The scan is incremental (only a log that grew is read again), so the
 // ribbon recounts every 15 seconds while the window is shown and the running session's spend moves.
 const REFRESH_MS = 15_000;
 const SCAN_MS = 15_000;
-const compact = (n: number) => new Intl.NumberFormat(locale(), { notation: "compact", maximumFractionDigits: 1 }).format(n);
-const money = (usd: number) => new Intl.NumberFormat(locale(), { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(usd);
 
 /** "≈ $4.20", "≥ $4.20" when a model has no price, "n/a" when none of them has one. */
 export function costText(f: SpendFigure): string {

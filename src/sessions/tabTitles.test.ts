@@ -12,7 +12,7 @@ test("VIEW-093: only an agent pane that reports a session is asked", () => {
   expect(askable({ key: 1, agent: "claude", session: "s" })).toBe(true);
   expect(askable({ key: 1, agent: "shell", session: "s" })).toBe(false);
   expect(askable({ key: 1, agent: "claude" })).toBe(false);
-  expect(askable({ key: 1, agent: "claude", session: "s", kind: "browser" })).toBe(false);
+  expect(askable({ key: 1, agent: "claude", session: "s", kind: "diff" })).toBe(false);
   expect(askable({ key: 1, agent: "claude", session: "s", seats: [] })).toBe(false);
 });
 

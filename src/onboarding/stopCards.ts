@@ -1,7 +1,7 @@
 // ONB-024: the setup card an Explore Kolux stop carries, as pure rules. tasks and PR view show
 // GitHub, agent statuses shows a keep-the-computer-awake switch, ship shows the commit message
-// writer, usage shows which agents are connected (T-321-c), and the orchestration and browser stops
-// show the skill their feature needs with the installer command to set it up (T-321-c).
+// writer, usage shows which agents are connected (T-321-c), and the orchestration stop
+// shows the skill its feature needs with the installer command to set it up (T-321-c).
 import { awakeMode, type AwakeMode } from "../launch/KeepAwakeCard";
 import { hooksOn } from "./hooksOn";
 import { WRITER_COMMAND_KEY, writerOf, type Writer } from "../scm/generate";
@@ -28,11 +28,9 @@ export type UsageFacts = { claude: ClaudeFacts | null; codex: CodexFacts | null;
 /** `homeSkills` is the skill names found in an agent's own folder, null until the scan arrives. */
 export type StopFacts = { taskSource: boolean | null; settings: Record<string, unknown> | null; usage?: UsageFacts | null; homeSkills?: string[] | null };
 
-/** The Kolux skill each skill stop needs: orchestration teaches agents to hand work to others, the
- *  browser stop needs the CLI skill that teaches the browser commands. */
+/** The Kolux skill each skill stop needs: orchestration teaches agents to hand work to others. */
 export const STOP_SKILLS: Readonly<Record<string, { skill: string; label: string; about: string }>> = {
   orchestration: { skill: "orchestration", label: "Orchestration skill", about: "Lets one agent hand work to others and wait for their results." },
-  browser: { skill: "kolux-cli", label: "Kolux CLI skill", about: "Teaches your agents every kolux command, including the ones that drive the browser pane." },
 };
 
 /** Claude counts as connected through a managed account, the 1-year key, or the rate-limit data Claude Code

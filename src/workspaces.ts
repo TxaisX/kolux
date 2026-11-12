@@ -11,9 +11,9 @@ export type PaneLike = { key: number; cwd: string | null; view?: string | null }
 /** DT-C274: the folder whose grid shows the pane: its `view` when it has one, else the folder it runs in. */
 export const viewOf = (p: { cwd: string | null; view?: string | null }): string | null => (p.view !== undefined ? p.view : p.cwd);
 
-// One spelling per folder: backslashes, no trailing slash, any case, "." and ".." worked out
-// (USAGE-017: a path that climbs out of a folder is not inside it).
-const trim = (p: string) => {
+/** One spelling per folder: backslashes, no trailing slash, any case, "." and ".." worked out
+ *  (USAGE-017: a path that climbs out of a folder is not inside it). The key for a folder in a set or map. */
+export const dirKey = (p: string): string => {
   const out: string[] = [];
   for (const part of p.replace(/\//g, "\\").toLowerCase().split("\\")) {
     if (part === "..") {
@@ -23,23 +23,23 @@ const trim = (p: string) => {
   return out.join("\\").replace(/\\+$/, "");
 };
 
-/** Same folder, whichever slash style or trailing slash either side uses. */
 /** PROJ-021: the name typed for the workspace a pane runs in, exactly as typed; nothing for a folder with no typed name. */
 export function nameOf(names: Record<string, string>, cwd: string | null): string | undefined {
   if (!cwd) return undefined;
   return Object.entries(names).find(([dir]) => sameDir(dir, cwd))?.[1];
 }
 
+/** Same folder, whichever slash style or trailing slash either side uses. */
 export function sameDir(a: string | null, b: string | null): boolean {
   if (a === null || b === null) return a === b;
-  return trim(a) === trim(b);
+  return dirKey(a) === dirKey(b);
 }
 
 /** Is `path` the folder `root` or inside it? */
 export function underDir(path: string | null, root: string): boolean {
   if (path === null) return false;
-  const p = trim(path);
-  const r = trim(root);
+  const p = dirKey(path);
+  const r = dirKey(root);
   return p === r || p.startsWith(r + "\\");
 }
 

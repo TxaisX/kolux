@@ -4,7 +4,7 @@
 // when it is the workspace or inside it, so a session in a subfolder counts toward its workspace
 // and a session in another folder does not.
 import { estimate } from "./pricing";
-import { localDay, PROVIDERS, rangeStart, tokensOf, type Provider, type Row, type Usage } from "./tokens";
+import { anyTracked, dueForScan, folderName, localDay, PROVIDERS, rangeStart, tokensOf, type Provider, type Row, type Usage } from "./tokens";
 import { underDir } from "../workspaces";
 
 /** Tokens and their estimated cost; `partial` is a floor because some model has no published price. */
@@ -55,11 +55,8 @@ const figureOf = (provider: Provider, rows: Row[]): SpendFigure => {
 const dayKeys = (today: Date, span: number): string[] =>
   Array.from({ length: span }, (_, i) => localDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - (span - 1 - i))));
 
-/** The last folder of a path, whichever slash style it uses; "" for no path. */
-export function workspaceName(dir: string | null | undefined): string {
-  const parts = (dir ?? "").replace(/[\\/]+$/, "").split(/[\\/]+/).filter(Boolean);
-  return parts[parts.length - 1] ?? "";
-}
+/** The last folder of a path, whichever slash style it uses; "" for none. */
+export const workspaceName = folderName;
 
 /** Owner change 2026-11-07: Kolux keeps a repo's worktrees under `…/workspaces/<repo>/<name>`, so a
  *  session in a worktree that was since removed (git no longer lists it) still counts toward its repo. */
@@ -89,7 +86,7 @@ function rowsIn(usage: Usage, dir: string, worktrees: string[]): Array<{ provide
 
 /** The workspace's figures, split into all time, today and the last seven days, with a daily gauge series. */
 export function workspaceSpend(usage: Usage, dir: string, today: Date, span = 14, worktrees: string[] = []): WorkspaceSpend {
-  const tracked = PROVIDERS.some((p) => usage.tracking[p]);
+  const tracked = anyTracked(usage);
   const day = localDay(today);
   const from = rangeStart("7", today);
   const keys = dayKeys(today, span);
@@ -145,6 +142,4 @@ export function workspaceSpend(usage: Usage, dir: string, today: Date, span = 14
 
 /** Tracked providers whose saved count is missing or older than `maxAge`: the strip asks for an
  *  incremental rescan. A failed scan is left out, so a missing logs folder is not retried every minute. */
-export function dueForScan(usage: Usage, now: number, maxAge: number): Provider[] {
-  return PROVIDERS.filter((p) => usage.tracking[p] && !usage[p]?.error && now - (usage[p]?.scannedAt ?? 0) > maxAge);
-}
+export { dueForScan };

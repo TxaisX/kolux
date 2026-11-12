@@ -62,6 +62,11 @@ export const TABLE: Entry[] = [
 ];
 
 const CLAUDE_TIERS = "opus|sonnet|haiku|fable|mythos";
+const CLAUDE_VER_RE = new RegExp(`^claude-(${CLAUDE_TIERS})-(\\d+)(?:-(\\d{1,2}))?$`);
+const CLAUDE_REV_RE = new RegExp(`^claude-(\\d+)(?:-(\\d))?-(${CLAUDE_TIERS})$`);
+const GPT_RE = /^gpt-(\d+)(?:\.(\d+))?(?:-([a-z]+))?$/;
+const O_RE = /^o(\d+)(?:-([a-z]+))?$/;
+const CLAUDE_ALIAS_RE = new RegExp(`^(?:claude-)?(${CLAUDE_TIERS})$`);
 
 /** Drops what never changes the price: a provider prefix, a context tag, a release date, an effort ending. */
 function base(model: string): string {
@@ -76,43 +81,107 @@ function base(model: string): string {
 
 /** A model's family and version, for releases the table does not list. */
 function family(id: string): { family: string; ver: number[] } | null {
-  let m = id.match(new RegExp(`^claude-(${CLAUDE_TIERS})-(\\d+)(?:-(\\d{1,2}))?$`));
+  let m = id.match(CLAUDE_VER_RE);
   if (m) return { family: m[1], ver: [+m[2], +(m[3] ?? 0)] };
-  m = id.match(new RegExp(`^claude-(\\d+)(?:-(\\d))?-(${CLAUDE_TIERS})$`));
+  m = id.match(CLAUDE_REV_RE);
   if (m) return { family: m[3], ver: [+m[1], +(m[2] ?? 0)] };
-  m = id.match(/^gpt-(\d+)(?:\.(\d+))?(?:-([a-z]+))?$/);
+  m = id.match(GPT_RE);
   if (m) return { family: `gpt-${m[3] ?? ""}`, ver: [+m[1], +(m[2] ?? 0)] };
-  m = id.match(/^o(\d+)(?:-([a-z]+))?$/);
+  m = id.match(O_RE);
   if (m) return { family: `o-${m[2] ?? ""}`, ver: [+m[1], 0] };
   return null;
 }
 
 const cmp = (a: number[], b: number[]) => a[0] - b[0] || a[1] - b[1];
 
+type Hit = { id: string; inferred: boolean };
+type ProviderIndex = {
+  byId: Map<string, Entry[]>;
+  byFamily: Map<string, Array<{ id: string; ver: number[] }>>;
+  cache: Map<string, Hit | null>;
+};
+
+const tableIndex = new WeakMap<Entry[], Map<Provider, ProviderIndex>>();
+
+function indexOf(table: Entry[], provider: Provider): ProviderIndex {
+  let byProvider = tableIndex.get(table);
+  if (!byProvider) {
+    byProvider = new Map();
+    tableIndex.set(table, byProvider);
+  }
+  let idx = byProvider.get(provider);
+  if (idx) return idx;
+
+  const byId = new Map<string, Entry[]>();
+  const byFamily = new Map<string, Array<{ id: string; ver: number[] }>>();
+  for (const e of table) {
+    if (e.provider !== provider) continue;
+    let entries = byId.get(e.id);
+    if (!entries) {
+      entries = [];
+      byId.set(e.id, entries);
+      const f = family(e.id);
+      if (f) {
+        let list = byFamily.get(f.family);
+        if (!list) {
+          list = [];
+          byFamily.set(f.family, list);
+        }
+        list.push({ id: e.id, ver: f.ver });
+      }
+    }
+    entries.push(e);
+  }
+  for (const entries of byId.values()) {
+    if (entries.length > 1) entries.sort((a, b) => b.from.localeCompare(a.from));
+  }
+  for (const list of byFamily.values()) {
+    if (list.length > 1) list.sort((a, b) => cmp(b.ver, a.ver));
+  }
+
+  idx = { byId, byFamily, cache: new Map() };
+  byProvider.set(provider, idx);
+  return idx;
+}
+
 /** The table id a model is priced as, and whether that was a guess. */
-function resolve(provider: Provider, model: string, table: Entry[]): { id: string; inferred: boolean } | null {
-  const ids = [...new Set(table.filter((e) => e.provider === provider).map((e) => e.id))];
+function resolve(idx: ProviderIndex, model: string): Hit | null {
+  const cached = idx.cache.get(model);
+  if (cached !== undefined) return cached;
+
+  let hit: Hit | null = null;
   const exact = base(model);
-  if (ids.includes(exact)) return { id: exact, inferred: false };
-  // Variants (codex, max) are reduced to the base model; a bare alias takes its tier's newest price.
-  const s = exact.replace(/-codex(?=-|$)/, "").replace(/-max(?=-|$)/, "");
-  if (ids.includes(s)) return { id: s, inferred: true };
-  const alias = s.match(new RegExp(`^(?:claude-)?(${CLAUDE_TIERS})$`));
-  const want = alias ? { family: alias[1], ver: [Infinity, Infinity] } : family(s);
-  if (!want) return null;
-  // The nearest known release at or below this one: a newer point release takes its family's
-  // current price, an unknown older one never borrows a newer price.
-  const known = ids.map((id) => ({ id, f: family(id) })).filter((k) => k.f && k.f.family === want.family && cmp(k.f.ver, want.ver) <= 0);
-  known.sort((a, b) => cmp(b.f!.ver, a.f!.ver));
-  return known.length ? { id: known[0].id, inferred: true } : null;
+  if (idx.byId.has(exact)) {
+    hit = { id: exact, inferred: false };
+  } else {
+    // Variants (codex, max) are reduced to the base model; a bare alias takes its tier's newest price.
+    const s = exact.replace(/-codex(?=-|$)/, "").replace(/-max(?=-|$)/, "");
+    if (idx.byId.has(s)) {
+      hit = { id: s, inferred: true };
+    } else {
+      const alias = s.match(CLAUDE_ALIAS_RE);
+      const want = alias ? { family: alias[1], ver: [Infinity, Infinity] } : family(s);
+      if (want) {
+        // The nearest known release at or below this one: a newer point release takes its family's
+        // current price, an unknown older one never borrows a newer price.
+        const list = idx.byFamily.get(want.family);
+        const found = list?.find((k) => cmp(k.ver, want.ver) <= 0);
+        if (found) hit = { id: found.id, inferred: true };
+      }
+    }
+  }
+
+  idx.cache.set(model, hit);
+  return hit;
 }
 
 /** The price for a model on a local day, or null when Kolux has none. */
 export function priceOf(provider: Provider, model: string, day: string, table: Entry[] = TABLE): (Entry & { inferred: boolean }) | null {
-  const hit = resolve(provider, model, table);
+  const idx = indexOf(table, provider);
+  const hit = resolve(idx, model);
   if (!hit) return null;
-  const dated = table.filter((e) => e.provider === provider && e.id === hit.id && e.from <= day).sort((a, b) => b.from.localeCompare(a.from));
-  return dated.length ? { ...dated[0], inferred: hit.inferred } : null;
+  const entry = idx.byId.get(hit.id)?.find((e) => e.from <= day);
+  return entry ? { ...entry, inferred: hit.inferred } : null;
 }
 
 export type Cost = { usd: number; priced: boolean; inferred: boolean };

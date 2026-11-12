@@ -1,15 +1,19 @@
-// BROW-001 / BROW-005: an address the app shows in a browser tab, and the event that asks the window's
-// browser pane for it. Kept apart from BrowserPane.tsx, which draws the whole page bar and its menus,
-// so the panes, the checks list and the shortcut router can ask for a page without carrying the browser
-// pane into the first frame (cycle 3, first load). No DOM beyond the one window event.
+// Goal 0 (Txais, 2026-11-12): Kolux draws no web pages of its own, so an address opens in the user's
+// own browser (src/open/openExternal.ts). This module is what is left of the pane's address plumbing:
+// the terminal panes, the window and the shortcut router still import these three names, so they keep
+// working, and every one of them now opens the system browser. c3-terminal moves those imports to
+// openExternal; then this file goes with them. No DOM, no webview, no browser IPC.
+import { openExternal } from "../open/openExternal";
 
-/** The window event that opens an address in a browser tab (shell/WindowView.tsx listens for it). */
+/** The old window event, kept only so the window's listener still has a name to compare. Nothing sends it. */
 export const OPEN_IN_BROWSER = "kolux-open-in-browser";
 
 export type OpenInBrowser = string | { url: string; title: string };
 
-/** Asks the window to show `url` in a browser tab; `title` names the tab until the page gives its own. */
-export const openInBrowser = (url: string, title?: string) => window.dispatchEvent(new CustomEvent<OpenInBrowser>(OPEN_IN_BROWSER, { detail: title === undefined ? url : { url, title } }));
+/** Opens `url` in the system browser. `_title` named the old in-app tab; there is no tab to name now. */
+export const openInBrowser = (url: string, _title?: string) => {
+  void openExternal(url);
+};
 
 /** The address and title of an `OpenInBrowser`, whichever shape was sent. */
 export const openDetail = (d: OpenInBrowser): { url: string; title?: string } => (typeof d === "string" ? { url: d } : d);

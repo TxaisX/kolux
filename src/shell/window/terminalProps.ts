@@ -59,7 +59,6 @@ export const sameTerminal = sameProps<TerminalProps>({
   keySettings: sameSettings, // read through a ref by the key handler, never while drawing
   crew: "data",
   stop: "data",
-  context: "same",
   onBell: "same",
   unread: "same",
   onPty: "same",

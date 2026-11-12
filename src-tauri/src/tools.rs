@@ -699,7 +699,8 @@ mod tests {
         let line = "0123456789012345678901234567890123456789";
         let win = format!("@echo off\nfor /L %%i in (1,1,3000) do @echo {line}\n");
         let unix = format!("i=0\nwhile [ $i -lt 3000 ]; do echo {line}; i=$((i+1)); done\n");
-        match probe_script("big", &win, &unix, Duration::from_secs(8)) {
+        // generous deadline: under machine load the 8 s one reported Hung
+        match probe_script("big", &win, &unix, Duration::from_secs(30)) {
             Ran::Exited(true, out) => assert!(out.len() > 64_000, "kept {} bytes", out.len()),
             other => panic!("expected Exited(true, ..), got {other:?}"),
         }
