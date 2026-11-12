@@ -3,7 +3,6 @@
 import type { Pane } from "../../App";
 
 const WHAT: Record<NonNullable<Pane["kind"]>, string> = {
-  browser: "browser page",
   editor: "file",
   diff: "diff",
   changes: "changes view",

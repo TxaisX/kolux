@@ -3,21 +3,19 @@
 import { invoke } from "@tauri-apps/api/core";
 import { looksLikePath, rememberEntry, webAddress, type Row } from "../terminal/newTabEntry";
 
-/** `kind: "browser"` is a web address that opens in the system browser (the embedded pane is gone). The name stays
- *  until src/shell/window/Pane.tsx, the consumer, calls `openWebAddress` instead of the pane opener and the kind
- *  can be renamed (bug o1-tools 20261112-1130). */
-export type EntryTarget = { kind: "browser"; url: string } | { kind: "file"; path: string } | { kind: "tab"; key: number };
+/** `kind: "web"` is a web address that opens in the system browser. */
+export type EntryTarget = { kind: "web"; url: string } | { kind: "file"; path: string } | { kind: "tab"; key: number };
 
 /** Open a web address in the system browser. */
 export const openWebAddress = (url: string): Promise<unknown> => invoke("open_external", { url });
 
 /** What running a row opens, or null when a remembered entry is no longer a web address or a path. */
 export function entryTarget(row: Row): EntryTarget | null {
-  if (row.kind === "url") return { kind: "browser", url: row.url };
+  if (row.kind === "url") return { kind: "web", url: row.url };
   if (row.kind === "file") return { kind: "file", path: row.path };
   if (row.kind === "tab") return { kind: "tab", key: row.key };
   const url = webAddress(row.value);
-  if (url) return { kind: "browser", url };
+  if (url) return { kind: "web", url };
   return looksLikePath(row.value) ? { kind: "file", path: row.value } : null;
 }
 

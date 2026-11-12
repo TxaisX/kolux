@@ -31,7 +31,7 @@ appear in the sidebar). Rows are reached with the mouse and the keyboard; every 
 |---|---|---|---|---|---|
 | Add project button | `src/projects/ProjectsPanel.tsx:2520` (`data-testid="sidebar-add-project"`) | open the add menu: clone, open a folder, start a new one | opens the add form (`adding` state) | `live-pass` | `live-latency` (round 4): `startPlain()` clicks it in every live run and the add form opened |
 | Add by path → folder field | `ProjectsPanel.tsx:2582` (`data-testid="add-project-folder-input"`) | take a path, Enter adds it as a project | `addPath(pathDraft)` on Enter | `live-pass` | `live-latency` (round 4): typed a repo path, Enter, and the workspace opened with a pane |
-| Folder row | `ProjectsPanel.tsx:2315` (`.sb-main`) | select the workspace; its sessions show in the grid | selects (`onSelect`) | `code` | `ProjectsPanel.tsx:243` reads `button.branch` / `.sess[role=button]` |
+| Folder row | `ProjectsPanel.tsx:2315` (`.sb-main`), click target `:2316` (`button.branch`) | select the workspace; its sessions show in the grid | selects it: the picked row carries `sel` (`isSelected`), and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
 | Session row | `ProjectsPanel.tsx:243` (`.sess[role=button]`) | click selects that session's pane; one row per session | selects the pane | `check-exists` | `scripts/evidence/smoke.mjs` flow 7 (six sessions → one folder row, no `.pane-row`) |
 | Folder row menu | `src/projects/menu.ts:54-59` | New workspace, Review changes (git folders), Project settings, Remove project… | the four items, Review disabled when the folder is not a repo | `code` | `menu.ts:54-59`; `live-GIT-038`/`live-EDIT-029` open All Changes through "Review changes" |
 | Session row menu | `menu.ts:68-98` | Delete, Sleep/Wake, Move to status, Set parent…, Details…, Review changes, Open in (Explorer/editors/Terminal), Move up/down, Hide from the sidebar, Developer (Alt) | all of the above, with the main checkout limited to New workspace + Remove project | `code` | `menu.ts:68-98` |
@@ -71,8 +71,8 @@ One header per terminal pane, drawn by `src/terminal/TerminalPane.tsx`.
 | Usage readout | `TerminalPane.tsx:1857` (`HeaderUsage`) | context/token use when the agent reports it | shown when a usage readout exists | `code` | `TerminalPane.tsx:1857` |
 | **Context used ring** | `TerminalPane.tsx:1857` (`ContextGauge`, the fallback when there is no readout) | Goal 0: this ring is being removed | still drawn for every pane with no usage readout | `pending c3-terminal` | `TerminalPane.tsx:1857` |
 | Pane menu (⋯) | `TerminalPane.tsx:1858-1869` (`title="Pane menu"`) | open the pane's menu at the button | opens `PaneMenu` at the button's corner | `live-pass` | `live-latency` (round 4): three real mouse presses (CDP `Input.dispatchMouseEvent`, not `element.click()`) each opened a `[role=menu]`, and each was timed for the click target |
-| Expand / restore | `TerminalPane.tsx:1870-1879` | fill the grid with this pane; restore the others | toggles `expanded`; disabled when the pane is alone | `code` | `TerminalPane.tsx:1870-1879` |
-| Split right | `TerminalPane.tsx:1881` (`data-testid="pane-split-right"`) | split the pane, new pane on the right | `onSplit("right")` | `code` | `TerminalPane.tsx:1881` |
+| Expand / restore | `TerminalPane.tsx:1870-1879` (`title^="Expand:"` / `title^="Restore:"`) | fill the grid with this pane; restore the others | toggles `expanded`; the tip says "the only pane already fills the grid" and the press is a no-op when the pane is alone | `live-pass` | `live-controls` (round 5): split first, then a real press on Expand took the grid from **2 panes to 1** and the button became `Restore: the other panes come back (Ctrl+Shift+Enter)`; a press on Restore brought **2** back |
+| Split right | `TerminalPane.tsx:1881` (`data-testid="pane-split-right"`) | split the pane, new pane on the right | `onSplit("right")`; the new shell prints its prompt | `live-pass` | `live-controls` (round 5): a real press took the grid 1 → 2 panes, and the new pane's last buffer line was `PS G:\Temp\…\CTRL> ` |
 | New session (+) | `TerminalPane.tsx:1885-1897` (`pane-new-session`) | menu of agents to start in a new pane | opens the menu under the button | `live-pass` | `live-latency` (round 4): opened the menu and started a pane from it; the new pane is also the 300 ms latency target |
 | **"Blank terminal" item in the + menu** | `src/launch/PlusMenu.tsx:206-214` (`.name` = "Blank terminal") | start a plain shell, no agent | opens a new pane running the user's shell | `live-pass` | `live-latency` (round 4). Note for the map: the item is labelled **"Blank terminal"**, not "Terminal"; a separate "Terminal…" submenu (`PlusMenu.tsx:214-230`) appears only when more than one shell is installed |
 | Close | `TerminalPane.tsx:1898` | close the pane, asking first when a program runs | `close()`; the tip names the rule | `code` | `TerminalPane.tsx:1898` |
@@ -109,14 +109,18 @@ test names today.
 
 | Screen | Controls mapped | `live-pass` | `live-fail` | `check-exists` | `code` | `pending` | Bug filed |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Sidebar | 10 | 2 | 0 | 0 | 7 | 1 | 0 |
+| Sidebar | 10 | 3 | 0 | 0 | 6 | 1 | 0 |
 | New session chooser | 14 | 3 | 0 | 0 | 10 | 1 | 0 |
-| Pane header | 10 | 3 | 0 | 0 | 6 | 1 | 0 |
+| Pane header | 10 | 5 | 0 | 0 | 4 | 1 | 0 |
 | Latency targets (section 4) | 3 | 2 | 1 | 0 | 0 | 0 | 1 |
-| **Total** | **37** | **10** | **1** | **0** | **23** | **3** | **1** |
+| **Total** | **37** | **13** | **1** | **0** | **20** | **3** | **1** |
 
 Round 4 moved 7 controls from `code`/`check-exists` to `live-pass` by really driving them (the latency run adds a pane
 header row: the "Blank terminal" menu item), and added the three latency targets, one of which fails.
+
+Round 5 adds `scripts/prove/live-controls.mjs` (`run-all --only controls`), three more controls moved to `live-pass` by a
+real mouse press each: the sidebar folder row, Expand/Restore, and Split right. It also caught what a menu-driven test
+cannot: pressing Expand on a solo pane does nothing by design, so the check splits first and asserts 2 panes → 1 → 2.
 
 Three controls are `pending` on their owner lane, not on this lane: the sidebar's worktree rows (Goal 0 item 4,
 `c2-agents`), the chooser's agent-must-start-a-terminal path (Goal 0 item 5, `c2-agents`), and the pane header's

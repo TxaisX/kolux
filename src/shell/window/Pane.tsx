@@ -1,11 +1,10 @@
 // Cycle 3 (the WindowView split): one pane's body, moved out of shell/WindowView.tsx as it was: the
-// browser page (T-012-a), the editor, diff, all-changes and preview tabs (EDIT-001..), the chooser
+// editor, diff, all-changes and preview tabs (EDIT-001..), the chooser
 // (SESS-007) and the terminal with every signal it reports and every action its header offers
 // (TERM-013, TERM-042, TERM-045, TERM-106, STAT-050, ACCT-023). A pane's key is still the key of its
 // terminal, so a layout change never remounts it (TERM-017).
 import type { Pane } from "../../App";
 import { keyOf } from "../../editor/buffers";
-import { sendTargets } from "../../editor/notes";
 import { forget, hooksMuted, promptReturned } from "../../board/chip";
 import { touchRunTab } from "../../automations/runTab";
 import { BELL_NOTE } from "../../terminal/bellNote";
@@ -40,8 +39,7 @@ import { DiffPane } from "../../lazy/panes";
 import { AllChangesPane } from "../../lazy/panes";
 import { PreviewPane } from "../../lazy/panes";
 import { CheckPane } from "../../lazy/panes";
-import { BrowserPane } from "../../lazy/panes";
-import { openInBrowser } from "../../browser/openIn";
+import { openExternal } from "../../open/openExternal";
 
 /** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
 const LostPane = deferred(() => import("./LostPane"));
@@ -49,11 +47,11 @@ const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
 
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {
-    terminals, settingsOpen, board, focused, closePane, setFocused, settings, agentsScreen, titles, liveIds, notes,
-    setNotes, notesFor, putNote, dropNotes, openDiff, openFile, followLink, pasteInto, restoredKeys, projects,
+    terminals, board, focused, closePane, setFocused, settings, agentsScreen, titles, liveIds, notes,
+    setNotes, notesFor, putNote, dropNotes, openDiff, openFile, followLink, restoredKeys, projects,
     projectOf, expanded, setExpanded, chipFor, columnOf, answer, reviewChanges, plan, accountSwitcher,
     context, agents, defaultId, setDefault, launching, launch, addChooser, savedName, labelOf, planLine,
-    setDirty, ptys, unreadPanes, hook, hookRef, turn, crew, setNeeds, stamp, setStamp, setRunning, runRef,
+    setDirty, ptys, unreadPanes, hook, hookRef, turn, crew, setNeeds, setStamp, setRunning, runRef,
     liveRef, muteRef, setGuess, setLiveIds, setHook, setPanes, exitedPrompt, afterSetup, noticed, report, runTabs,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
@@ -142,7 +140,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     expand: () => expandPane(p.key),
     rename: (name: string | undefined) => renamePane(p.key, name),
     sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", undefined, { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
-    entry: (t: EntryTarget) => (t.kind === "browser" ? openInBrowser(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
+    entry: (t: EntryTarget) => (t.kind === "web" ? void openExternal(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
     shell: (sh: ShellEntry) => void newTab({ shell: sh }), // TERM-043: the plus menu's shell choice, a tab like the New tab menu's
     copyId: (what: "session" | "terminal" | "pane") => copyId(p, what),
     findHandle: (h: string) => findHandle(h),
@@ -159,25 +157,6 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     noticePrimary: () => noticeFor(p)?.onPrimary(),
     noticeSecondary: () => noticeFor(p)?.onSecondary?.(),
   });
-  if (p.kind === "browser") {
-    return (
-      <BrowserPane
-        key={p.key}
-        id={p.key}
-        url={p.url ?? p.path}
-        title={titles[p.key]}
-        hidden={!terminals || settingsOpen || p.key !== active}
-        focused={p.key === focused}
-        onFocus={() => setFocused(p.key)}
-        onClose={() => closePane(p.key)}
-        cwd={p.cwd}
-        // BROW-037: notes go to an agent pane in the tab's own worktree, by the review-notes paste path.
-        targets={() => sendTargets(panes, (x) => x.cwd !== null && p.cwd !== null && sameDir(x.cwd, p.cwd) && ptys.current[x.key] !== undefined, stamp, Date.now(), (x) => tabName(x, titles))}
-        onSend={(key, text) => pasteInto(key, text)}
-        restored={restoredKeys.current.has(p.key)}
-      />
-    );
-  }
   if (p.kind === "editor" && p.path) {
     return (
       <EditorPane
@@ -251,7 +230,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       identityBefore={liveRef.current[p.key]}
       resumed={p.resumed}
       onOpenFile={act.openFile}
-      onOpenLink={openInBrowser}
+      onOpenLink={(url: string) => void openExternal(url)}
       linksOpenInKolux={settings.linksOpenInKolux === true}
       gpu={gpuOn(settings)}
       card={board ? { expanded: expanded === p.key, onToggle: act.toggleCard, chip: chipFor(p), column: columnOf(p), onAnswer: act.answer, onReview: act.review, meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}

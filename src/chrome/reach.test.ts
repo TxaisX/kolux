@@ -114,11 +114,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "tag"],
   ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["board/WorkspaceBoard.tsx", "Workspace statuses", "tag"],
-  ["browser/BrowserPane.tsx", "Import from Google Chrome", "tag"],
-  ["browser/BrowserPane.tsx", "Open an outside address?", "tag"],
-  ["browser/BrowserPane.tsx", "leaveText(leave).question", "tag"],
-  ["browser/DrawCanvas.tsx", "Draw on the page", "tag"],
-  ["browser/GrabSheet.tsx", "Grabbed element", "tag"],
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chrome/Ask.tsx", "title", "hook"],
@@ -333,12 +328,6 @@ test("T-714: every aria-modal dialog is in the table and keeps Tab inside it the
   expect(modal.map((d) => key(d.file, d.label)).sort()).toEqual(TRAPS.map(([f, l]) => key(f, l)).sort());
   const wrong = TRAPS.filter(([f, l, how]) => !traps(modal.find((d) => key(d.file, d.label) === key(f, l))!, how)).map(([f, l, how]) => `${key(f, l)}: ${how}`);
   expect(wrong).toEqual([]);
-});
-
-test("T-708: the browser's two asks take focus only in the focused pane (BROW-001)", () => {
-  const browser = SRC["/src/browser/BrowserPane.tsx"];
-  expect(browser.match(/onClick=\{\(\) => set(Outbound|Leave)\(null\)\}/g)).toHaveLength(2);
-  for (const what of ["Outbound", "Leave"]) expect(browser).toMatch(new RegExp(`autoFocus=\\{focused\\} onClick=\\{\\(\\) => set${what}\\(null\\)\\}`));
 });
 
 test("T-708: every role=dialog / alertdialog element is in the table and closes on Escape the way it says", () => {

@@ -283,7 +283,7 @@ test("DT-C230 amended: the stages are the ones named, by source", () => {
   expect(marks("./pages.tsx", "warm: 1")).toEqual(["HelpSheet", "ChooserPane"]);
   expect(marks("./pages.tsx", "warm: 2")).toEqual(["SettingsPage", "InboxView", "WorkspaceBoard", "AgentsPanel", "Explorer"]);
   expect(marks("./pages.tsx", "warm: 3")).toEqual(["PlanSheet"]); // imports the Markdown preview: far too big for stage 1
-  expect(marks("./panes.tsx", "warm: 3")).toEqual(["EditorPane", "BrowserPane"]);
+  expect(marks("./panes.tsx", "warm: 3")).toEqual(["EditorPane"]);
   expect(marks("../shell/window/Dialogs.tsx", "prefetch: true")).toEqual(["TabMenu"]); // the tab menu keeps the older spelling: stage 1
   expect(marks("./pages.tsx", "prefetch: true")).toEqual([]);
   // DT-C252: the Settings pages' own code is read in the last stage too.

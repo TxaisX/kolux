@@ -23,8 +23,14 @@ export function composeTarget(projects: readonly Proj[], lists: readonly (readon
 }
 
 const quote = (v: string) => v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-/** The project's own New workspace button in the sidebar (the project row carries its path as its title). */
-export const plusFor = (p: Proj): string => `.proj[title="${quote(p.path)}"] button[title^='New workspace']`;
+/** The project's folder row in the sidebar (the row carries the project's path as its title). Clicking it
+ *  shows that folder, so the New session button after it starts the agent there. The per-project
+ *  "New workspace" button is gone (Txais 2026-11-12: the sidebar never shows worktrees). */
+export const folderRowFor = (p: Proj): string => `.proj[title="${quote(p.path)}"]`;
+/** The sidebar's New session button (it opens the agent menu for the folder showing). */
+export const NEW_SESSION = "button.sb-new";
+/** What the step clicks, in order, to open the New session menu on a project. */
+export const plusFor = (p: Proj): readonly string[] => [folderRowFor(p), NEW_SESSION];
 /** The sidebar's Add project button. */
 export const ADD_PROJECT = "button[title^='Add project']";
 
@@ -45,10 +51,10 @@ export function composerRequests(hands: Hands) {
     reset: () => void (epoch += 1),
     async open(target: Target): Promise<"opened" | "asked" | "stale" | "gone"> {
       const mine = epoch;
-      const selector = target.kind === "ask" ? ADD_PROJECT : plusFor(target.project);
+      const selectors = target.kind === "ask" ? [ADD_PROJECT] : plusFor(target.project);
       for (let i = 0; i < COMPOSER_TRIES; i++) {
         if (mine !== epoch) return "stale";
-        if (hands.onScreen() && hands.click(selector)) return target.kind === "ask" ? "asked" : "opened";
+        if (hands.onScreen() && selectors.every((s) => hands.click(s))) return target.kind === "ask" ? "asked" : "opened";
         await hands.wait(COMPOSER_WAIT_MS);
       }
       return mine !== epoch ? "stale" : "gone";

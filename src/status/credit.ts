@@ -15,7 +15,7 @@ import { titleOwner } from "./titleOwner";
 /** The parts of a pane's record that say what was launched in it. */
 export type LaunchRecord = { agent: string; agentId?: string; program?: string | null; kind?: string; seats?: unknown };
 
-/** The catalogue agent launched in a pane: its catalogue id, else its own agent, else the agent its program runs; null for a plain shell, a browser or other non-terminal tab, and a kit's multi-seat tab. */
+/** The catalogue agent launched in a pane: its catalogue id, else its own agent, else the agent its program runs; null for a plain shell, an editor or other non-terminal tab, and a kit's multi-seat tab. */
 export function launchedAgent(p: LaunchRecord): string | null {
   if (p.kind || p.seats) return null;
   if (p.agentId) return p.agentId;

@@ -19,14 +19,13 @@ import type { LayoutReport } from "../terminal/useLayoutReport";
 import type { useWizard } from "../onboarding/useWizard";
 import type { useAgentEvents } from "../status/useAgentStatus";
 import type { useWindowStart } from "./useWindowStart";
-import type { useBrowserChords } from "../browser/useBrowserChords";
 import type { useAgentSleep } from "../sleep/useAgentSleep";
 import type { Pane } from "../App";
 import type { SendTarget } from "../editor/notes";
 
 export type WindowBag = WindowState & WindowLate & WindowSave & Plumbing & WindowChrome & Screens & LaunchActions & PaneActions & ReviewActions &
   WorkspaceActions & CliBridge & StatusSurfaces & PaneGrid & RailAndTower & LayoutReport & ReturnType<typeof useWizard> &
-  ReturnType<typeof useWindowStart> & ReturnType<typeof useBrowserChords> & Pick<ReturnType<typeof useAgentEvents>, "noticed"> & ReturnType<typeof useAgentSleep> & {
+  ReturnType<typeof useWindowStart> & Pick<ReturnType<typeof useAgentEvents>, "noticed"> & ReturnType<typeof useAgentSleep> & {
     /** EDIT-020: the agents the Send menu offers, while it is open. */
     reviewTargets: SendTarget[];
     /** SAFE-002: the pane whose plan the sheet shows. */

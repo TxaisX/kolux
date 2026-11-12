@@ -9,7 +9,7 @@ describe("TERM-037 continue and fork", () => {
     expect(canContinue(P())).toBe(true);
     expect(canContinue(P({ session: undefined }))).toBe(false);
     expect(canContinue(P({ agent: "terminal" }))).toBe(false);
-    expect(canContinue(P({ kind: "browser" }))).toBe(false);
+    expect(canContinue(P({ kind: "editor" }))).toBe(false);
     expect(canContinue(P({ seats: [] }))).toBe(false);
     expect(sessionActions(P({ agent: "gemini" }))).toEqual([]);
     expect(sessionActions(P()).map((a) => a.id)).toEqual(["continueSession", "forkSession", "copyContext"]);

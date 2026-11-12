@@ -19,7 +19,7 @@ import { spawn } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createApp } from "../evidence/app-launch.mjs";
+import { createApp, ps } from "../evidence/app-launch.mjs";
 
 export const ROOT = fileURLToPath(new URL("../../", import.meta.url)).replace(/[\\/]+$/, "");
 export const MAX_INSTANCES = 10;
@@ -51,6 +51,96 @@ export function allocateSlots(instances = 4, tempRoot = "G:/Temp/o2-run-all") {
     throw new RangeError(`--instances must be between 1 and ${MAX_INSTANCES}, got ${instances}`);
   }
   return Array.from({ length: n }, (_, i) => slotConfig(i, tempRoot));
+}
+
+// ---------- the slot's own app: found by its CDP port, ended only when it is ours ----------
+// The queued bug (2026-11-12 12:10): a check whose start-up failed left its app running, because closeApp()
+// throws when a frozen page never answers the close request, and every caller swallows that error. The app is
+// also no longer a descendant of the check's node process by then (cargo/tauri dev exit and the app's parent pid
+// goes stale), so `taskkill /T` on the check cannot reach it. The app is therefore found by the one thing no other
+// app has: this slot's `--remote-debugging-port` in its WebView2 command line.
+/** Parses the table `listProcesses()` asks PowerShell for: `pid|ppid|name|commandLine`, one process per line.
+ *  Only the first three fields are split, so a `|` inside a command line cannot shift them. */
+export function parseProcessTable(text) {
+  return String(text ?? "")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(\d+)\|(\d+)\|([^|]*)\|([\s\S]*)$/);
+      return m ? { pid: Number(m[1]), ppid: Number(m[2]), name: m[3].trim(), cmd: m[4] } : null;
+    })
+    .filter(Boolean);
+}
+
+/** The app pids a slot owns: for every process whose command line carries this slot's CDP port, the nearest
+ *  `kolux.exe` ancestor. The port is the slot's alone (one lane, one slot, one run), so an app this run did not
+ *  start — Txais's installed Kolux, another lane's slot — never matches. Never a process-name scan. */
+export function slotAppPids(processes, cdp) {
+  const byPid = new Map(processes.map((p) => [p.pid, p]));
+  const owns = (p) => String(p.cmd ?? "").includes(`--remote-debugging-port=${cdp}`);
+  const pids = new Set();
+  for (const p of processes.filter(owns)) {
+    let cur = p;
+    for (let hops = 0; cur && hops < 12; hops++) {
+      if (String(cur.name ?? "").toLowerCase() === "kolux.exe") {
+        pids.add(cur.pid);
+        break;
+      }
+      cur = byPid.get(cur.ppid);
+    }
+  }
+  return [...pids];
+}
+
+/** The whole process table with command lines, in one PowerShell call. */
+export const listProcesses = async () =>
+  parseProcessTable(
+    await ps(
+      `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine } | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)|$($_.Name)|$($_.CommandLine)" }`,
+    ),
+  );
+
+const taskkill = (pid) =>
+  new Promise((res) => {
+    try {
+      const c = spawn("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+      c.on("exit", () => res(true));
+      c.on("error", () => res(false));
+    } catch {
+      res(false);
+    }
+  });
+
+/** Ends every app this slot still has running (a check that could not close its own app, or one the timeout
+ *  interrupted) and returns the pids it ended. Only this slot's CDP port qualifies; nothing is killed otherwise.
+ *  A vite this slot's dead check left listening on its own port is ended the same way, by the port's owner pid. */
+export async function endSlotOrphans(slot, log = () => {}) {
+  const ended = [];
+  let procs;
+  try {
+    procs = await listProcesses();
+  } catch (e) {
+    log(`orphan sweep: the process table could not be read (${e?.message ?? e})`);
+    return ended;
+  }
+  const pids = slotAppPids(procs, slot.cdp);
+  if (pids.length > 0) log(`orphan sweep: ending ${pids.length} app process(es) this slot still had running (CDP ${slot.cdp}): pid ${pids.join(", ")}`);
+  for (const pid of pids) {
+    await taskkill(pid);
+    ended.push(pid);
+  }
+  // The check's own vite (a node.exe listening on this slot's port) is the other half of the same orphan: left
+  // listening, it makes the next run on the slot fail with the port in use.
+  const vitePid = await ps(
+    `$c = Get-NetTCPConnection -LocalPort ${slot.port} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+     if ($c) { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)" -ErrorAction SilentlyContinue; if ($p -and $p.Name -eq 'node.exe') { $p.ProcessId } }`,
+  ).catch(() => "");
+  if (vitePid && /^\d+$/.test(vitePid.trim())) {
+    log(`orphan sweep: ending the vite this slot left listening on port ${slot.port}: pid ${vitePid.trim()}`);
+    await taskkill(vitePid.trim());
+    ended.push(Number(vitePid.trim()));
+  }
+  return ended;
 }
 
 export function parseArgs(argv) {
@@ -411,6 +501,8 @@ async function runSingleCheck(entry, slot, opts, outDir) {
 
   // Defensive slot port cleanup if the check crashed before closing its own dev/app processes.
   await app.forceStop().catch(() => {});
+  // The queued bug's fix: whatever the check could not close, end it now — by this slot's CDP port only.
+  const orphansEnded = await endSlotOrphans(slot).catch(() => []);
 
   const durationMs = Date.now() - startMs;
   const parsed = parseProveOutput(stdout, stderr, exitCode, timedOut);
@@ -428,6 +520,7 @@ async function runSingleCheck(entry, slot, opts, outDir) {
     identifier: slot.identifier,
     exitCode,
     durationMs,
+    orphansEnded: orphansEnded.length,
     ...parsed,
     screenshots,
     logFile,
@@ -454,6 +547,9 @@ export function formatSummaryMarkdown({ runAt, sha, opts, slots, results, skippe
     `- **Instances**: ${opts.instances} (Vite ${slots[0].port}-${slots[slots.length - 1].port}, CDP ${slots[0].cdp}-${slots[slots.length - 1].cdp})`,
     `- **Total duration**: ${(totalMs / 1000).toFixed(1)} s`,
     `- **Counts**: ${counts.passed} PASS, ${counts.failed} FAIL, ${counts.notTested} NOT-TESTED, ${counts.timedOut} TIMEOUT, ${counts.skipped} SKIPPED (total ${counts.total})`,
+    ...(results.reduce((n, r) => n + (r.orphansEnded ?? 0), 0) > 0
+      ? [`- **Processes ended by the slot sweep**: ${results.reduce((n, r) => n + (r.orphansEnded ?? 0), 0)} (a check that could not close its own app or vite; found by its slot's CDP port and Vite port, never by name)`]
+      : []),
     ``,
     `## Slots`,
     ``,
