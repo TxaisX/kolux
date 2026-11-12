@@ -19,7 +19,13 @@ if (match === "list" || !match) {
   for (const t of targets) console.log(t.type, "|", t.title, "|", t.url);
   process.exit(0);
 }
-const pick = (m) => targets.find((t) => t.type === "page" && (m === "main" ? /localhost:14\d\d|tauri\.localhost/.test(t.url) : (t.url + " " + t.title).includes(m)));
+// The app's own page is the localhost dev page (vite) or the tauri.localhost page a release build serves. The port is
+// whatever the harness passed: PROVE_PORT / VITE_PORT when set (o2-tests slots run on 1500-1590, prove on 1470), else
+// any localhost port, so a hardcoded 14xx can never make "main" miss the page.
+const MAIN_PORT = process.env.CDP_MAIN_PORT || process.env.PROVE_PORT || process.env.VITE_PORT || "";
+const isMain = (url) =>
+  (MAIN_PORT ? new RegExp(`localhost:${MAIN_PORT}(?:[/?#]|$)|tauri\\.localhost`).test(url) : /localhost:\d+|tauri\.localhost/.test(url));
+const pick = (m) => targets.find((t) => t.type === "page" && (m === "main" ? isMain(t.url) : (t.url + " " + t.title).includes(m)));
 const target = pick(match);
 if (!target) { console.error("no target matching", match); for (const t of targets) console.error(" ", t.type, t.title, t.url); process.exit(2); }
 

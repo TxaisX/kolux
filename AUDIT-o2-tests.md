@@ -181,3 +181,32 @@ Method: `git merge --no-edit integrate/wave-1` → `git rev-list --count lane/o2
 3. **Run `node scripts/stress/run-all.mjs --instances 4` live**, add missing live checks for `o2-tests.md` priority items (6-session workspace grid + restart, 5 agent types, terminal resize/tab-switch/flood drawing, no `ContextGauge` in header) and top coverage gaps (Settings search/Shortcuts, Explorer CRUD, All Changes commit, Tower/Floor/Agents/Automations/Skills, CLI commands), and file bugs with screenshots to owning lanes.
 4. **Fix the `.pane-row` dead selector** (section 3, P1) in `pane-states.mjs`, `live-ORCH-016`, `live-SET-027`, `live-T-640`, `live-T-643`, and make `pane-states.test.mjs` assert its selectors exist in `src/`.
 5. **Replace the 4-pattern drift heuristic** in `run-all.mjs:130-134` with a `src/`-derived selector set, and generate `tests/coverage.md` from the feature-index scan so round reports quote counts instead of prose.
+
+---
+
+## 5. Round 2 (2026-11-12): what was fixed, what is left
+
+Ledger for section 1–4. Every line was re-checked on the round-2 branch; "fixed" means the code changed and a test or a
+fresh command covers it.
+
+| Finding | Status | Where it landed |
+|---|---|---|
+| P1 `startPlain()` chooser `select`, `openClaude()` `button.newtab` | **fixed** | `live-common.mjs`: `TID` test-id map, chooser seat buttons + `chooser-start`, `pane-new-session` + `new-session-menu`. Added `addProjectByPath()` / `openNewSession()` helpers. |
+| P1 `cdp.mjs` + `stress/lib.mjs` port regex | **fixed** | `cdp.mjs` matches `CDP_MAIN_PORT`/`PROVE_PORT`/`VITE_PORT` then any localhost port; `perfSession()` matches `localhost:\d+` |
+| P1 `live-common` hardcoded `BASE`/`LOGS`/identifier | **fixed** | one `env()` reads `PROVE_PORT/CDP/BASE/LOGS/IDENTIFIER/SUFFIX`; `LIVE_BASE`/`LIVE_LOGS` now alias it; both `createApp` calls use `ENV.*`; `run-all.mjs` sets `PROVE_SUFFIX` |
+| P1 Source Control live proofs (10 scripts) | **open** | untouched: they target the panel T-644 removed. Next round: rewrite onto All Changes or retire. `run-all.mjs` now flags all seven in its summary. |
+| P1 removed `button.newtab` / add-project selectors | **fixed** (newtab, chooser) | `live-EDIT-041`, `live-TERM-023`, `live-TERM-041`, `live-VIEW-001`, `live-VIEW-017`, `live-flood`; `.sb-foot` and `live-audit-1`/`live-T-544`/`live-T-640`/`live-T-643` add-project paths **open** |
+| P1 Goal 0 browser proofs and stress phases | **fixed** | nine proofs + `live-browser-common.mjs` deleted, helpers moved to `live-common.mjs`, `live-checks` b7 removed, s11 phase f and s12's three tabs removed, `run-all` category `retired-browser` |
+| P1 `.pane-row` dead class (section 3) | **fixed** | `pane-states.mjs` fallback removed, `live-ORCH-016`, `live-SET-027`, `live-T-640`, `live-T-643` updated, `pane-states.test.mjs` asserts the reader's selectors exist in `src/` and that `pane-row` stays gone |
+| P2 `smoke.mjs` missing Session/Sidebar flows (queued bug) | **fixed** | flows 6 and 7, stand-ins in `smoke-standins.mjs` (+6 tests), order `1,2,3,4,6,7,5` |
+| P2 hardcoded `9290`/`1470`, `PROVE_PORT=` overrides | **fixed** | `live-SET-004`, `live-T-647`, `live-T-655`, `live-audit-1` read the env; `live-p0` and `live-artifacts` use `||=` |
+| P2 prove scripts writing `ROOT/evidence/` on import | **partial** | `evidence()` now honours `PROVE_EVIDENCE` and `PROVE_NO_EVIDENCE=1`; the main-guard wrapping of 7 entry points is **open** |
+| P2 `Process.MainWindowHandle` / window at `(0,0)` | **open** | `live-T-643:62`, `live-audit-1:109` untouched |
+| P2 `live-APP-050` external `oplock-hold.exe` | **open** | untouched |
+| P2 `run-all` 4-pattern drift warning | **fixed** | `srcSelectorTokens()` reads `src/` once, `selectorDrift()`/`warningsFor()` flag selectors no `src/` file mentions; warnings went from 0 to 8 real ones (7 Source Control, 1 filename noise), and `.pane-row` is caught |
+| P2 coverage matrix hand-written | **fixed** | `scripts/stress/coverage.mjs` generates `tests/coverage.md`: 237 user-facing guide tasks, 91 named by a test (38.4%); 113 card areas, 31 with a live check |
+| P2 thin `data-testid` surface | **open (cross-lane)** | filed to `c1-coord`: the sidebar workspace row needs `data-testid`; the rule is in the new bug file |
+| P3 duplicated helpers (`shot`, `rawKey`, `dismissFirstRun`, `checker`) | **partial** | `targets`/`TODAY`/`evidence` consolidated into `live-common.mjs` (the `live-browser-common` split they lived in is gone); `shot`/`rawKey` still duplicated |
+| P3 `smoke.mjs` over 800 lines | **partial** | stand-ins + their tests extracted (`smoke-standins.mjs`); 809 lines now, the `--self-test` block is the next seam |
+| P2 stale Vite `?raw` cache (queued bug, o3-rune) | **open** | documented in `scripts/evidence/README.md`; the `?raw` swap and the CI cache clear are others' files |
+| P1 smoke setup "could not focus add-project-folder-input" (queued bug, c1-coord) | **fixed by inspection** | `focusField()` retries 5 s on the first on-screen match; suffix rule documented in `scripts/evidence/README.md`; needs a live confirm on the merged branch |

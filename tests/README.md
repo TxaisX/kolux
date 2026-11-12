@@ -63,3 +63,31 @@ Results are written to:
 - `artifacts/test-runs/<date-time>/summary.json` (machine-readable report)
 - `artifacts/test-runs/<date-time>/logs/<check>.log`
 - `artifacts/test-runs/<date-time>/screenshots/<check>__<shot>.png`
+
+## 6. Coverage and selector drift (added round 2, 2026-11-12)
+
+```powershell
+# Regenerate tests/coverage.md: which guide tasks any test names, and which feature-card areas have a live check.
+node scripts/stress/coverage.mjs
+```
+
+`run-all.mjs` reads `src/` once per run and compares every check's selectors against the classes and `data-testid`
+values the app really declares (`srcSelectorTokens` / `selectorDrift`). A check whose selector matches nothing in
+`src/` shows a `selector(s) no src/ file mentions` warning in the summary instead of a clean row. That is how the dead
+`.pane-row` class was caught: five checks queried it for three rounds, all of them silently unmatched.
+
+Checks that drive the embedded browser pane are retired: the pane is gone (Goal 0, Txais 2026-11-12), and a script that
+still queries `section.pane.browser` is classified `retired-browser` and never runs.
+
+## 7. The two smoke flows this runner does not cover (`scripts/evidence/smoke.mjs`)
+
+`smoke.mjs` is the fast end-to-end gate, and it now has seven flows. Flow 6 starts every agent type from the New
+session menu (Claude Code, Codex, Grok, OpenCode through stand-ins in `scripts/evidence/smoke-standins.mjs`, then a
+blank terminal) and proves each pane took input by reading back a line it echoed to a file. Flow 7 puts six or more
+sessions in one workspace and asserts the sidebar keeps one folder row (and no `.pane-row`), that clicking the row
+brings the grid back, and that a restart keeps every pane.
+
+```powershell
+# The two session/sidebar flows only, on this lane's own ports and identifier:
+node scripts/evidence/smoke.mjs --only 6,7 --port 1500 --cdp 9350 --identifier com.txaisxiong.kolux.o2-smoke --temp G:/Temp/o2-smoke
+```
