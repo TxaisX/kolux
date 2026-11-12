@@ -1,0 +1,135 @@
+# Audit: o2-tests (`scripts/prove/`, `scripts/evidence/`, `scripts/stress/`, `tests/`)
+
+Round 1 audit (2026-11-12). No app code or existing harness scripts were modified in Round 1; built `scripts/stress/run-all.mjs` (+ `run-all.test.mjs`) and `tests/README.md` as specified by the lane brief.
+
+---
+
+## 1. Findings (by severity)
+
+### P1 · CONFIRMED · `scripts/prove/live-common.mjs:355-370` & `144-150` — `startPlain()` and `openClaude()` use removed UI selectors
+- **What is wrong**:
+  1. `startPlain()` (lines 358–366) expects `section.pane.chooser select` when a newly added project opens the Launch Chooser. `src/launch/ChooserPane.tsx` replaced `<select>` dropdowns with tile buttons (`[data-testid="seat-1-agents"] [data-testid="seat-agent-terminal"]` and `[data-testid="chooser-start"]`, as seen in `scripts/evidence/smoke.mjs:242-248` and `src/launch/ChooserPane.tsx:542`). Every `startPlain()` call times out or leaves the chooser unsubmitted.
+  2. `openClaude()` (lines 144–150) clicks `button.newtab` and waits for `[role="menu"][aria-label="New tab"]`. Neither exists in `src/` (`src/terminal/TerminalPane.tsx:1887` uses `data-testid="pane-new-session"` and `aria-label="New session"`).
+- **The fix**: Update `startPlain()` to use `[data-testid="seat-1-agents"] [data-testid="seat-agent-terminal"]` + `[data-testid="chooser-start"]` (matching `smoke.mjs:242-248`), and update `openClaude()` to use `[data-testid="terminal-pane"].focused [data-testid="pane-new-session"]` and `aria-label="New session"`.
+- **Cost**: ~0.5 day (unblocks ~60 `live-*.mjs` scripts).
+
+### P1 · CONFIRMED · `scripts/evidence/cdp.mjs:22` & `scripts/stress/lib.mjs:335` — Hardcoded Vite port regex `/localhost:14\d\d/` breaks o2-tests ports `1500-1590`
+- **What is wrong**: `cdp.mjs:22` (`pick("main")`) and `scripts/stress/lib.mjs:335` (`perfSession()`) match only `/localhost:14\d\d|tauri\.localhost/`. Any harness running on `o2-tests` slots (`1500-1590`, CDP `9350-9359`) fails with `no target matching main`.
+- **The fix**: Match `process.env.VITE_PORT` / `process.env.PROVE_PORT` when set, or broaden the regex to `/localhost:\d+|tauri\.localhost/`.
+- **Cost**: ~1 hour.
+
+### P1 · CONFIRMED · `scripts/prove/live-common.mjs:19-25, 74, 247-248, 296` — Hardcoded shared `BASE`, `LOGS`, and `identifier` break parallel runs
+- **What is wrong**: `live-common.mjs` hardcodes `BASE = "G:/Temp/live-v15"`, `LOGS = "G:/Temp/live-v15-logs"`, and `identifier: "com.txaisxiong.kolux.prove"` (with `suffix: ".prove"`), ignoring `PROVE_IDENTIFIER`, `PROVE_BASE`, and `PROVE_LOGS`. Under `run-all.mjs --instances 4`, parallel workers write to the same `LOGS` directory and fail `app-launch.mjs:446` suffix validation if `com.txaisxiong.kolux.o2-<n>` is passed without `.prove`.
+- **The fix**: Read `PROVE_BASE`, `PROVE_LOGS`, `PROVE_IDENTIFIER`, and `PROVE_SUFFIX` from `process.env` with safe defaults, and support optional `--attach` reuse so `run-all.mjs` slots do not conflict.
+- **Cost**: ~0.5 day.
+
+### P1 · CONFIRMED · 10 `live-*.mjs` scripts and `scripts/stress/s10-git-load.mjs` target the removed Source Control sidebar (`T-644`)
+- **What is wrong**: `T-644` removed Source Control from `RightSidebar.tsx:37` (`folderTabs.test.ts:19`), yet these scripts still click `[role="tab"]` with `"Source Control"` or query `.sidebar.scm` / `.scm-row`:
+  - `scripts/prove/live-edit-common.mjs:34` (`openScm`), `scripts/prove/live-git-common.mjs:10-45` (`SCM`, `ensurePanel`, `scmReading`)
+  - `scripts/prove/live-EDIT-027.mjs:17`, `live-EDIT-029.mjs:17`
+  - `scripts/prove/live-GIT-001.mjs:15`, `live-GIT-003.mjs:16`, `live-GIT-004.mjs:14`, `live-GIT-007.mjs` (imports `run001`/`run003`), `live-GIT-037.mjs:13`, `live-GIT-038.mjs:27`
+  - `scripts/stress/s10-git-load.mjs:188-192`
+- **The fix**: Rewrite the git/diff live proofs around the current All Changes pane (`AllChangesPane.tsx`) and `kolux diff` CLI bridge (`scripts/stress/lib.mjs:23`), or retire tests for the removed sidebar panel.
+- **Cost**: ~1.5 days.
+
+### P1 · CONFIRMED · 9 `live-*.mjs` scripts still use removed `button.newtab` or `.sb-foot button[title^="Add a project by path"]`
+- **What is wrong**:
+  - Removed `button.newtab` / `aria-label="New tab"`: `scripts/prove/live-EDIT-041.mjs:47-49`, `live-TERM-023.mjs:26-28`, `live-TERM-041.mjs:22-27`, `live-VIEW-001.mjs:36-38`, `live-VIEW-017.mjs:17-19`, `live-common.mjs:145-147`.
+  - Removed `.sb-foot button[title^="Add a project by path"]`: `scripts/prove/live-audit-1.mjs:72`, `live-T-544.mjs:360-361`, `live-T-640.mjs:37`, `live-T-643.mjs:40`.
+  - Removed `section.pane.chooser select`: `scripts/prove/live-flood.mjs:228-230`.
+- **The fix**: Centralize `openNewSession(app, agentLabel)` and `addProjectByPath(app, repo)` in `live-common.mjs` using `data-testid` selectors (`sidebar-add-project`, `add-project-by-path`, `add-project-folder-input`, `pane-new-session`, `new-session-menu`, `seat-agent-*`) and import them across all prove scripts.
+- **Cost**: ~0.5 day.
+
+### P1 · CONFIRMED · Goal 0 (Embedded Browser Removal): 10 prove scripts, 2 stress scenarios, and 1 IPC guard entry depend on the web pane
+- **What is wrong**: Txais directed removing the embedded browser pane (`src/browser/` and its Rust backend). In `o2-tests`-owned files:
+  - `scripts/prove/live-BROW.mjs` (entire script tests `section.pane.browser`)
+  - `scripts/prove/live-browser-939.mjs`, `live-browser-954.mjs`, `live-browser-977.mjs`, `live-browser-common.mjs` (Note: `live-SET-001.mjs:7`, `live-SET-004.mjs:10`, `live-SET-027.mjs:9` import `targets`/`evidence`/`TODAY` from `live-browser-common.mjs` even though they do not test the browser!)
+  - `scripts/prove/live-T-323-proxy.mjs`, `live-T-656.mjs`, `live-T-657.mjs`, `live-T-659.mjs`, `live-T-661.mjs`
+  - `scripts/prove/live-checks.mjs:102-138` (`b7` tests `.pane.browser` + `browser_diagnose`)
+  - `scripts/stress/s11-footprint.mjs:352-385` (phase `f`: opens 3 `section.pane.browser` tabs via `kolux-open-in-browser`) and `scripts/stress/s12-everyday.mjs:169-222` (3 hidden browser tabs)
+  - `scripts/evidence/app-launch.mjs:100` & `app-launch.test.mjs:24` (`browser_download_reveal` in `IPC_BLOCK`)
+- **The fix**: Once `o1-tools` removes `src/browser/` and `c3-terminal` removes Rust browser IPC: move shared `targets()`/`evidence()` helpers out of `live-browser-common.mjs` into `live-common.mjs`, delete the embedded-browser `live-*` scripts, remove phase `f` / browser tabs from `s11-footprint.mjs` and `s12-everyday.mjs`, remove `b7` from `live-checks.mjs`, and add a live check for the replacement ("open in system browser" action).
+- **Cost**: ~0.5 day (after `o1-tools` / `c3-terminal` land).
+
+### P2 · CONFIRMED · `scripts/evidence/smoke.mjs` misses priority Session & Sidebar checks (queued bug)
+- **What is wrong**: Queued bug `G:\Dev\kolux-lanes\_shared\bugs\o2-tests\20261112-1100-smoke-missing-session-sidebar-flows.md` from `c1-coord`: `smoke.mjs` flows 1–5 do not test (a) starting Claude Code, Grok, Codex, OpenCode, and Terminal from New session and accepting input (stand-ins), nor (b) that a multi-session workspace shows only the folder row in the sidebar.
+- **The fix**: Add Flows 6 & 7 (or integrate into `smoke.mjs` and `run-all.mjs` preset) in Round 2.
+- **Cost**: ~0.5 day.
+
+### P2 · CONFIRMED · 12 prove scripts hardcode ports `9290`/`1470`/`1492`/`1493`/`9291` or override `PROVE_PORT`/`PROVE_CDP`
+- **What is wrong**:
+  - `live-p0.mjs:13-14` and `live-artifacts.mjs:13-14` unconditionally overwrite `process.env.PROVE_PORT` and `process.env.PROVE_CDP`, colliding if scheduled on different slots or on `1492`/`1493` when `c1`/`o3` or another run is active.
+  - `live-audit-1.mjs:24-25`, `live-SET-001.mjs:24`, `live-SET-004.mjs:59`, `live-T-647.mjs:60`, `live-T-655.mjs:65`, `live-claude-common.mjs:50-51,69-70`, `live-browser-common.mjs:54`, `live-BROW.mjs:29` hardcode `9290` or `1470` instead of reading `process.env.PROVE_CDP` / `PROVE_PORT`.
+  - `live-flood.mjs:24` sets `process.env.CARGO_TARGET_DIR ||= "G:/Temp/live-verify-t5/target"`, risking cross-checkout target mismatches.
+- **The fix**: Change unconditional assignments to `process.env.PROVE_PORT ||= ...` (and let `run-all.mjs` always inject slot ports), read `PROVE_PORT`/`PROVE_CDP` in all direct CDP `fetch()` calls, and drop stale `G:/Temp/live-verify-t5/target` override in `live-flood.mjs`.
+- **Cost**: ~0.5 day.
+
+### P2 · CONFIRMED · 9 prove scripts write directly into `ROOT/evidence/` and/or run unconditionally on import
+- **What is wrong**: `live-962.mjs`, `live-audit-1.mjs`, `live-SET-027.mjs`, `live-T-544.mjs`, `live-T-647.mjs`, `live-T-655.mjs`, `live-T-656.mjs`, `live-T-657.mjs`, `live-T-659.mjs`, `live-T-661.mjs`, `live-BROW.mjs`, `live-browser-939/954/977.mjs` mutate `evidence/` in the git working tree on every run, and several (`live-p0.mjs`, `live-artifacts.mjs`, `live-T-640.mjs`, `live-T-643.mjs`, `live-flood.mjs`, `live-TERM-004.mjs`, etc.) execute at top-level without an `import.meta.url` main guard.
+- **The fix**: Gate `ROOT/evidence/` writes behind `--write-evidence` (defaulting output to `PROVE_LOGS` / `artifacts/test-runs/`), and wrap standalone entrypoints in `isMain` guards.
+- **Cost**: ~0.5 day.
+
+### P2 · CONFIRMED · `scripts/prove/live-T-643.mjs:62` & `live-audit-1.mjs:109` use `Process.MainWindowHandle` and move windows onto `(0, 0)`
+- **What is wrong**: `app-launch.mjs:47-49` documents that `Process.MainWindowHandle` points to tao's hidden `"Tao Thread Event Target"` window once minimized/hidden, and `SetWindowPos(..., 0, 0, ...)` puts the test window visibly over the user's primary monitor instead of off-screen (`-32000, -32000`).
+- **The fix**: Reuse `WIN_PS` (`[V11]::AppWindow($pid)`) from `app-launch.mjs` and keep `x = -32000, y = -32000` (or use CDP `Emulation.setDeviceMetricsOverride` as `live-T-647.mjs` does).
+- **Cost**: ~1 hour.
+
+### P2 · PLAUSIBLE · `scripts/prove/live-APP-050.mjs:13` references external prebuilt `G:/Temp/live-v9/oplock-target/release/oplock-hold.exe`
+- **What is wrong**: `oplock-hold` crate exists in-repo at `scripts/prove/oplock-hold/`, but `live-APP-050.mjs:13` points at a stale absolute path `G:/Temp/live-v9/oplock-target/release/oplock-hold.exe` outside the repo/slot scratch dir.
+- **The fix**: Build or locate `oplock-hold.exe` inside `TEMP` (via `cargo build --manifest-path scripts/prove/oplock-hold/Cargo.toml`) if missing.
+- **Cost**: ~1 hour.
+
+### P3 · CONFIRMED · Duplicated helpers across `scripts/prove/` and `scripts/stress/`
+- **What is wrong**:
+  - `poll()` is defined separately in `live-edit-common.mjs:42` and re-exported/re-implemented vs `waitFor` in `app-launch.mjs:22`.
+  - `checker()` is defined in `live-views-dom.mjs:33` while other scripts (`live-TERM-*`, `live-962.mjs`, `live-T-640.mjs`, `live-T-643.mjs`) each write ad-hoc `const check = ...` arrays that bypass `guardRow()` in `app-launch.mjs:178`.
+  - `shot()` and `rawKey()` are duplicated across `live-common.mjs:401-434`, `live-claude-common.mjs:49-83`, and `live-browser-common.mjs:54-73`.
+  - `dismissFirstRun()` is duplicated in `live-common.mjs:272` and `scripts/stress/lib.mjs:209`.
+- **The fix**: Consolidate shared CDP screenshot, `rawKey`, `dismissFirstRun`, and `checker` into `app-launch.mjs` / `live-common.mjs` in Round 2.
+- **Cost**: ~0.5 day.
+
+### P3 · CONFIRMED · File size audit (none over 800 lines, 1 close)
+- **What is wrong**: No file owned by `o2-tests` exceeds 800 lines (`scripts/evidence/smoke.mjs` is 766 lines; `scripts/prove/update-rig.mjs` is 686 lines; `scripts/prove/live-flood.mjs` is 659 lines). `smoke.mjs` will cross ~800 lines once flows 6–7 (queued bug) are added in Round 2.
+- **The fix**: Split `smoke.mjs` flows into `scripts/evidence/smoke-flows.mjs` when adding the new session & sidebar flows in Round 2.
+- **Cost**: ~2 hours.
+
+---
+
+## 2. `docs/guide/feature-index.md` Coverage Audit
+
+Total rows in `docs/guide/feature-index.md`: **406**
+- `internal`: **18**
+- Explicitly marked `Removed` (T-568 kits): **5**
+- Embedded-browser rows (slated for Goal 0 removal): **9**
+- Active user-facing non-browser features: **374**
+
+### Existing live script & card-test inventory
+- `src/**/__cards__/*.test.ts`: **116** unit/component card test files
+- `scripts/prove/live-*.mjs`: **106** files (**67** stand-in live checks, **15** real-Claude checks, **9** deprecated browser checks, **11** helpers, **2** installed-only checks, **2** attach subcommands)
+- `scripts/stress/s*.mjs`: **14** stress scenarios (S1–S8, S10–S14, plus `run-all.mjs`)
+- `scripts/evidence/smoke.mjs`: **5** smoke flows (missing session-launch & sidebar-only-folders flows)
+
+### Coverage gaps by guide area (active user-facing features without dedicated live checks)
+
+| Guide area | Feature rows | Live scripts touching area | Key missing live coverage (priority for Round 2) |
+|---|---:|---|---|
+| **Getting started** | 43 (5 removed) | `live-T-640`, `live-T-643`, `live-T-647`, `live-audit-1`, `live-team-grid` | **Launch each agent type** (Claude Code, Grok, Codex, OpenCode, Terminal) and verify input; **seat count 1 -> 2+ defaults to Own folder**; Onboarding wizard 4 screens + Skip; Getting Started guide ring & CLI check; contextual tours; File/Edit/View/Window/Help menu bar |
+| **Terminals** | 33 | `live-TERM-*` (12), `live-flood`, `s1`, `s2`, `s6`, `s13`, `s14` | **No "Context used" ring in pane header** (once `c3-terminal` removes `ContextGauge`); pane resize / tab switch / flood / sleep-wake drawing integrity assertion; default shell fallback notice (`T-104-c`); multi-line paste confirmation (`T-151-b`); Ctrl+F find & Ctrl+K clear; Shift+Enter / Ctrl+click link |
+| **Projects and folders** | 74 | `live-PROJ-*` (7), `live-GIT-*` (7), `live-team-grid` | **6 sessions in one workspace -> sidebar shows ONLY folder row, clicking shows 6-pane grid, restart preserves all 6**; clone repo / init plain folder as Git; project setup scripts & `.bat`/conda clean env (`T-110-a`); GitHub Tasks page / PR preview / Checks panel (`T-127`, `T-229..232`, `T-314-a`); workspace sleep & inline rename (`T-217-a`) |
+| **Board, Agents and Inbox** | 83 | `live-VIEW-*` (11), `live-AUTO-011`, `live-ORCH-*` (3), `live-STAT-*` (2), `live-SUBAGENT-418`, `live-USAGE-007` | Tower screen (`T-546`); Floor timeline (`T-260`); Agents chat view & thought folding (`T-027`, `T-325..327`); Automations list filter/run/pause/delete & cron/event triggers (`T-085`, `T-086`, `T-192`); Resource Manager memory & kill (`T-037`, `T-287-b`); Skills freshness & install/update (`T-196`, `T-243`); usage 80%/95% alerts & cache countdown |
+| **Settings** | 57 | `live-SET-*` (3), `live-T-323-proxy` | Settings global search (`T-246`); Shortcuts page record/add/disable/clash detection (`T-096`); Appearance light/dark/system, per-screen theme, Warp/Ghostty scheme import (`T-054`, `T-146-c`, `T-148`, `T-323`); Terminal font/cursor/scroll/bell live update (`T-144`); Notifications toggles (`T-133`); Confirmations restore card (`T-247`); Language picker (`T-210-a`); Accounts & Connect cards (`T-092`, `T-138`) |
+| **Files and browser** | 26 (6 browser) | `live-EDIT-*` (7), `live-artifacts` | Markdown rich editor vs source view (`T-093-b`); Explorer create/rename/delete/copy/paste/drag (`T-094-b`, `T-094-b2`); All Changes diff view + commit box + compare-with-base (`T-033-c/g`, `T-093-d`) — replacing broken Source Control tests; line review notes & copy-with-line-numbers (`T-034`, `T-132`); open-in-system-browser replacement (Goal 0) |
+| **Command line** | 39 | `live-CLI-*` (3), `live-T-659` | `kolux status` busy/stale/timeout (`T-076`); `kolux terminal show/read/send/wait/close` (`T-079-b`, `T-185-b`); `kolux worker-start/show/release/stop` (`T-089-c`, `T-129-c`); `kolux project list`, `kolux account add/list` (`T-141`); `kolux diagnostics memory` (`T-287`); typo suggestions & JSON exit codes (`T-160`, `T-197-a`) |
+| **Safety** | 27 (2 browser) | `live-SAFE-*` (5), `live-p0` | UNC share & control-char path refusal (`T-060`, `T-062-a`); Explorer/All Changes path traversal fence (`T-154-b/c`); secret masking in Protected actions (`T-059-b`); diagnostic log scrubbing (`T-064-a`); workspace delete & dirty-tab guard (`T-055`, `T-057`) |
+| **Troubleshooting** | 6 | `live-APP-050`, `live-APP-052`, `live-TERM-106-service` | Interrupted skill delete recovery (`T-284`); startup/background error resilience (`T-286`); sleep/wake recovery live assertion (`T-166`) |
+
+---
+
+## 3. Round 2 Action Plan
+
+1. **Fix `scripts/evidence/smoke.mjs`** (queued bug `20261112-1100`): add flows for launching all 5 session types (Claude Code, Grok, Codex, OpenCode, Terminal) with stand-ins + verifying sidebar shows only the folder row for a multi-session grid.
+2. **Unblock `run-all.mjs` across all 67 stand-in checks**:
+   - Fix `cdp.mjs:22` and `stress/lib.mjs:335` port matching (`1500-1590`).
+   - Fix `live-common.mjs` (`startPlain` chooser tiles, `openClaude` `pane-new-session`, `PROVE_BASE`/`PROVE_LOGS`/`PROVE_IDENTIFIER` env support, `addProjectByPath` helper).
+   - Fix `live-*.mjs` stale selectors (`button.newtab`, `.sb-foot`, `Source Control`) and hardcoded `9290`/`1470` ports and `ROOT/evidence/` writes.
+3. **Run `node scripts/stress/run-all.mjs --instances 4` live**, add missing live checks for `o2-tests.md` priority items (6-session workspace grid + restart, 5 agent types, terminal resize/tab-switch/flood drawing, no `ContextGauge` in header) and top coverage gaps (Settings search/Shortcuts, Explorer CRUD, All Changes commit, Tower/Floor/Agents/Automations/Skills, CLI commands), and file bugs with screenshots to owning lanes.
