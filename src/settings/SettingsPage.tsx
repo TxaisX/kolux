@@ -28,7 +28,7 @@ import { markGuide } from "../onboarding/guide";
 import { clearReadFailure, connectFailed, firstAiConnected, readFailed } from "../onboarding/firstRun";
 import { useKeymap } from "../keys/KeymapContext";
 import { matchEvent } from "../keys/keymap";
-import { hideRule, MAX_REPOS_DRAWN, MAX_SEARCH, SearchFolds, searchRepos } from "./search";
+import { hideRule, MAX_REPOS_DRAWN, MAX_SEARCH, SearchFolds, SearchRun, searchRepos, useSearching } from "./search";
 import { useSettled } from "../editor/settledQuery";
 import { useSearchHits } from "./useSearchHits";
 import { idleLater, pageWarmer, type Loader } from "./pageWarm";
@@ -217,6 +217,9 @@ export function ClaudeCard({ onConnected = () => {} }: { onConnected?: (on: bool
 
 /** One page's settings; Settings draws one, a search draws each page that holds a match. */
 function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project; onSaved: (p: Project) => void; active?: string }) {
+  // Audit N-45: the usage page reads the agents' logs, which is the heaviest read in Settings, so a
+  // search draws its headings and leaves the reading for the page itself.
+  const searching = useSearching();
   return (
     <>
       {page === "general" && <GeneralPage />}
@@ -263,13 +266,19 @@ function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project;
       )}
       {page === "usage" && (
         <>
-          <div data-section="activity">
-            <Activity />
-          </div>
-          <div data-section="tokens">
-            <p className="settings-sub">What your agents used, read from the logs they keep on this computer.</p>
-            <TokenAnalytics />
-          </div>
+          {searching ? (
+            <p className="conn-detail">Your activity and token use show when you open this page.</p>
+          ) : (
+            <>
+              <div data-section="activity">
+                <Activity />
+              </div>
+              <div data-section="tokens">
+                <p className="settings-sub">What your agents used, read from the logs they keep on this computer.</p>
+                <TokenAnalytics />
+              </div>
+            </>
+          )}
         </>
       )}
       {page === "safety" && <SafetyPage />}
@@ -461,18 +470,20 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
             </header>
             {hits ? (
               <SearchFolds.Provider value={folds}>
-                <style>{hideRule(hits)}</style>
-                {hits.refused && <p className="conn-detail warn">That search is too long: {MAX_SEARCH} characters at most.</p>}
-                {!hits.refused && hits.pages.length === 0 && repoHits.length === 0 && <p className="conn-detail">No setting matches.</p>}
-                {hits.pages.map((h) => (
-                  <div key={h.page} className="settings-found" data-page={h.page}>
-                    <h2 className="settings-found-title">{PAGES[h.page]}</h2>
-                    <Suspense fallback={null}>
-                      <PageBody page={h.page} onSaved={saved} active={active} />
-                    </Suspense>
-                  </div>
-                ))}
-                {repoHits.length <= MAX_REPOS_DRAWN ? repoHits.map((p) => <RepoPage key={p.id} project={p} onSaved={saved} />) : <p className="conn-detail">{repoHits.length} repositories match; pick one on the left.</p>}
+                <SearchRun.Provider value>
+                  <style>{hideRule(hits)}</style>
+                  {hits.refused && <p className="conn-detail warn">That search is too long: {MAX_SEARCH} characters at most.</p>}
+                  {!hits.refused && hits.pages.length === 0 && repoHits.length === 0 && <p className="conn-detail">No setting matches.</p>}
+                  {hits.pages.map((h) => (
+                    <div key={h.page} className="settings-found" data-page={h.page}>
+                      <h2 className="settings-found-title">{PAGES[h.page]}</h2>
+                      <Suspense fallback={null}>
+                        <PageBody page={h.page} onSaved={saved} active={active} />
+                      </Suspense>
+                    </div>
+                  ))}
+                  {repoHits.length <= MAX_REPOS_DRAWN ? repoHits.map((p) => <RepoPage key={p.id} project={p} onSaved={saved} />) : <p className="conn-detail">{repoHits.length} repositories match; pick one on the left.</p>}
+                </SearchRun.Provider>
               </SearchFolds.Provider>
             ) : (
               <Suspense fallback={null}>
