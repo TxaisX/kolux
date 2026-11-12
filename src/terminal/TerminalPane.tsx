@@ -412,8 +412,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // this pane in a native window kept over the pane body (nativeView.ts). Read once per mount.
   const hiddenNow = useRef(hidden);
   hiddenNow.current = hidden;
-  // While the engine draws the pane, xterm is under it: it stops painting (styles.css [data-native="on"])
-  // and counts as hidden for its GPU slot, which it gives back after the usual wait (parkWhenHidden).
+  // While the engine draws the pane, xterm is under it and counts as hidden for its GPU slot, which it gives
+  // back after the usual wait (parkWhenHidden). xterm keeps painting: round 4 could not yet prove on screen that
+  // the engine draws the text itself (LANE-REPORT.md), so xterm stays the visible fallback.
   const nativeOn = useRef(false);
   useEffect(() => {
     if (!currentInput().native || !host.current) return;

@@ -5,7 +5,7 @@
 // spot: it follows the pane body's size and position, hides it while the pane is hidden, and removes it
 // when the pane goes. A native window always sits above the web page, so it steps aside (xterm shows
 // through) while a menu, dialog or full-page screen overlaps the pane; `onShown` tells the pane whether
-// the engine is drawing now, so xterm can stop painting and give its GPU slot back meanwhile.
+// the engine is drawing now, so xterm can give its GPU slot back meanwhile.
 import { invoke } from "@tauri-apps/api/core";
 
 export type NativeRect = { x: number; y: number; w: number; h: number };
