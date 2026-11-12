@@ -5,7 +5,7 @@ import { PROJECT_COMMANDS, PROJECT_COMMAND_EVENT, isProjectCommand, runProjectCo
 import { restoreField } from "./draft";
 import { menuGaps, menuMove, rowMenu } from "./menu";
 import { stepRow, stepSiblings } from "./order";
-import { closeAddOnEscape, closingNote, freshGroupToDrop, mayRestoreDraft, rowKey, runningUnder, sleepPlan } from "./rows";
+import { closeAddOnEscape, closingNote, freshGroupToDrop, mayRestoreDraft, rowKey, sleepPlan } from "./rows";
 import { begin, scanToStop } from "./scanView";
 
 describe("row keys: only the row answers", () => {
@@ -104,11 +104,6 @@ describe("Escape on the Add project form", () => {
 });
 
 describe("sleeping and the running terminals it closes", () => {
-  it("counts terminals in or under the folders, case and slash blind", () => {
-    const bs = String.fromCharCode(92); // a Windows spelling of the folder
-    expect(runningUnder(["C:" + bs + "w" + bs + "ws" + bs + "fix"], ["c:/w/ws/fix/src", "C:/w/ws/fixer", "C:/other"])).toBe(1);
-    expect(runningUnder([], ["C:/a"])).toBe(0);
-  });
   it("words the note by count and is empty for none", () => {
     expect(closingNote(0)).toBe("");
     expect(closingNote(1)).toBe(" 1 terminal is still running and will be closed.");

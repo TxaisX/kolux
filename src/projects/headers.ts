@@ -22,7 +22,3 @@ export function headerLabels(projects: Named[]): Record<string, HeaderLabel> {
 /** Text really overflows its box only when it needs more room than the box has. */
 export const overflows = (scrollWidth: number, clientWidth: number): boolean => scrollWidth > clientWidth;
 
-/** The hover title of a label: the full text when the label is cut (by the page's own ellipsis or by `middle`), else nothing. */
-export function fullOnHover(full: string, shown: string, boxOverflows: boolean): string | undefined {
-  return boxOverflows || shown !== full ? full : undefined;
-}

@@ -251,13 +251,6 @@ export function sleepPlan(asleep: string[], ws: { path: string; parent?: string 
   return { next, paths: ws.map((x) => x.path).filter((d) => next.includes(pathKey(d)) && !asleep.includes(pathKey(d))) };
 }
 
-/** How many of these running terminals (by folder) sit in or under any of the given workspaces. */
-export function runningUnder(roots: string[], cwds: string[]): number {
-  const key = pathKey;
-  const under = (c: string) => roots.some((p) => key(c) === key(p) || key(c).startsWith(key(p) + "/"));
-  return cwds.filter(under).length;
-}
-
 /** TERM-045 / DT-C274: how many of `sessions` are under `roots`, counting a session once when the folder it runs in
  *  or the folder whose grid shows it is under one (an own-folder team's agents close with their grid's folder). */
 export function sessionsUnder(roots: string[], sessions: { cwd: string | null; view?: string | null }[]): number {
