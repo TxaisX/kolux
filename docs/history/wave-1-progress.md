@@ -141,3 +141,46 @@ c3-terminal (b4b3de62), o1-tools (67cc47b7), o2-tests (3968453f), o3-rune (93e9e
 Opened: o1-tools x2 (shortcutRows browser scope + its tests; local-run windowsHide), o2-tests x2
 (smoke shared temp folder; flow 6 Grok). Closed: lexical 0.53 bump, web-pane cards and ownership.
 Open after this round: P0 1, P1 7, P2 4.
+
+## Round 4 (2026-11-12, coordinator)
+
+Other lanes have run ahead to their round 6; this is the coordinator's fourth rotation.
+
+### Merges (all clean)
+lane/c2-agents (11 commits), lane/o1-tools (23), lane/o2-tests (1), lane/o3-rune (3) into
+integrate/wave-1, ending at 06ee585d. lane/c3-terminal had no new commits (its worktree holds the
+Rust browser_*.rs deletions staged but uncommitted).
+
+### What each lane shipped
+- c2-agents: Floor page and Tower window pause while hidden and catch up when shown; ProjectsPanel's
+  PR poll moved to src/projects/usePrPoll.ts (same calls); scm tests split into scm_tests.rs.
+- o1-tools: Settings search no longer runs each page's mount-time reads (new `SearchRun` context +
+  `useSearching()` in src/settings/search.ts); NumberField / NumberDraftField replace duplicate
+  number boxes; six dead exports and pickers.ts removed; shortcutRows `browser` scope gone (tsc green).
+- o2-tests: smoke flows 6 and 7 pass live (new pane found by newest data-key; first-run dialog closed
+  via corner close -> Skip); CDP right-click helper; live-APP-050 builds its own oplock holder.
+- o3-rune: 10,000-row scrollback probe (~59 fps, ~0.11 ms CPU a frame, 121 MB); GPU measured per
+  engine (3D under 1 %). Final recommendation: Rune no-go for this wave.
+- c3-terminal: nothing committed since round 3.
+
+### Gate on 06ee585d (logs: _shared/logs/c1-gate/r4/)
+- `npx tsc --noEmit` -> exit 0.
+- `pnpm check` -> exit 1 at guide-check only: feature-map.md edited after its marker 080e4346
+  (P2 to o2-tests). license, plan, glossary, workflow, invoke-contract pass.
+- `npx vitest run --no-fsModuleCache` -> `Test Files 892 passed (892)`, `Tests 6604 passed (6604)`,
+  exit 1 on one unhandled error: src/shell/usePackLoaded.test.ts needs jsdom, which is not installed
+  (P1 to c3-terminal; fails alone too).
+- `cargo test` -> lib `3183 passed; 0 failed; 9 ignored`; cards_10 34 failed on the real-home guard
+  because the run lacked scratch homes. Re-run under `. scripts/test-env.ps1` with `--test '*'`:
+  20 binaries, 247 passed, 0 failed. Round 3's cargo run stopped at the lib binary and never reached
+  the integration tests, so this is the first full Rust pass of the wave. Use test-env from now on.
+- Smoke (`--port 1430 --cdp 9341 --temp G:/Temp/kolux-rs-smoke-c1 --offscreen`):
+  `smoke: 6/6 flows passed` (flow 5 report-only, still FAIL on savedLayout bytes until T-184).
+
+### Decisions
+DT-C277: harness conventions from o2-tests (cleanup by debug port, retire a proof by header, find a
+new pane by data-key, first-run dialog closed via Skip).
+
+### Bugs
+Opened: o2-tests/1400 (feature-map marker), c3-terminal/1410 (usePackLoaded jsdom).
+Closed: o2-tests/1331 (smoke flow 6 Grok). Open after this round: P0 1, P1 5, P2 6.

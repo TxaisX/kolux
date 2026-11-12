@@ -5,29 +5,27 @@ LANE-REPORT.md on the integration branch and every lane's round-start merge woul
 add/add conflict with its own report. It persists on disk in this worktree. See AUDIT-c1-coord.md #0.
 
 ## Status (plain words, 3 lines max)
-The Floor page and the detached Tower window no longer read or redraw while the window is hidden; the Floor catches up the moment it is shown.
-The sidebar's pull-request polling now lives in its own small file; the sidebar file is about 50 lines shorter, behaviour unchanged.
-Last round of the wave: no queued bugs for this lane; the Grok/OpenCode smoke run still waits on c3's pane-type fix.
+Four lanes merged clean (c3 had nothing committed). Type check green; live smoke 6/6 (was 4/6); Rust tests fully green for the first time (integration tests need scratch homes).
+Still red: pnpm check on one feature-map marker (o2) and vitest exit 1 from one jsdom test that cannot start (c3), though all 6604 tests pass.
 
-## Done this round (round 6)
-- Start: `git merge --no-edit integrate/wave-1` clean (CHANGELOG + wave-1-progress). Bug queue empty. Handoffs read: only c1-coord r3 mentions c2 (tsc red on o1's shortcutRows.ts, not ours). c3 bug 20261112-1320-grok-opencode-panes-read-as-shell.md still open in c3's queue, so smoke flow 6 was not rerun.
-- Audit 34 (78bd4c6f): FloorView skips its 5 s `activity_timeline` read while `document.hidden` and reads once on `visibilitychange` to shown; TowerWindow's 1 s clock stops redrawing while hidden. New test "audit 34: no Floor re-reads while the window is hidden..." (hidden 20 s -> 0 reads; shown -> 1 read at once, then every 5 s).
-  `npx vitest run src/floor src/tower` -> `Test Files 9 passed (9)`, `Tests 78 passed (78)`.
-  Demo.tsx (150 ms) left as is: while hidden its loop returns the same frame, so React skips the redraw. Guides.tsx 1 s check only runs while a dialog blocks a guide step; left.
-- Refactor (a7d28e4a, 1e9a34de): the pull-request background poll moved unchanged from ProjectsPanel.tsx into src/projects/usePrPoll.ts (2909 -> 2861 lines).
-  `npx vitest run src/projects src/launch src/scm` -> `Test Files 147 passed (147)`, `Tests 953 passed (953)`; after the comment tidy `npx vitest run src/projects` -> `Tests 407 passed (407)`.
-- Closed with no change: audit 20 (covered by VIEW-051 box 3 panel test: 6 agents in 3 worktrees -> 1 folder row, 6 session rows, 0 worktree rows; plus rows.test.ts prunedTeamFolders/hiddenTeamFolders). Audit 30 (CardFacts.agents = 0 is Txais's 2026-11-12 call: the card leaves out the agent count; the field lives in src/look, not ours).
-- `npx tsc --noEmit` -> only `src/settings/shortcutRows.ts(9,102) ... 'browser' does not exist in type 'Record<Scope, string>'` (o1-tools, already queued).
-- useWorktreeScan split NOT done: sweepWorktrees touches setMessage, teamRef, onSettingRef, index, setPushedBy, scanned/unseen refs and three setters; it needs a state object passed in, not a clean move.
+## Done this round (round 4, 2026-11-12)
+Logs: G:\Dev\kolux-lanes\_shared\logs\c1-gate4- Merges, all clean: lane/c2-agents, lane/o1-tools e1cbed90, lane/o2-tests f613f6e3, lane/o3-rune 06ee585d. lane/c3-terminal: 0 new commits.
+- Merged gate on 06ee585d:
+  - `npx tsc --noEmit` -> `tsc exit 0`.
+  - `pnpm check` -> exit 1: `guide-check: docs/guide/feature-map.md changed after its marker commit 080e4346` (P2 o2-tests/20261112-1400). Other steps OK.
+  - `npx vitest run --no-fsModuleCache` -> `Test Files  892 passed (892)` / `Tests  6604 passed (6604)` / exit 1: `Cannot find package 'jsdom'` for src/shell/usePackLoaded.test.ts; alone: same (P1 c3-terminal/20261112-1410).
+  - `cargo test --manifest-path src-tauri/Cargo.toml` -> lib `test result: ok. 3183 passed; 0 failed; 9 ignored`; cards_10 `34 failed` (no scratch home). Re-run `. .\scripts	est-env.ps1; cargo test ... --test '*'` -> exit 0, 20 binaries, 247 passed, 0 failed (cargo-tests-scratch.txt).
+  - Smoke: `node scripts/evidence/smoke.mjs --port 1430 --cdp 9341 --identifier com.txaisxiong.kolux.c1.smoke --temp G:/Temp/kolux-rs-smoke-c1 --offscreen` -> `smoke: 6/6 flows passed` (flow 5 report-only FAIL on savedLayout). evidence/smoke-r4.txt (local).
+- DECISIONS DT-C277 (o2 harness conventions). CHANGELOG: 3 lines (Floor/Tower pause while hidden; Settings search no longer reads pages; shortcut list filter).
+- Bugs: closed o2-tests/1331 (flow 6 Grok) to done/; opened o2-tests/1400, c3-terminal/1410; routing note _shared/bugs/c1-coord/README-routing-r4.md.
+- History round 4, WAVE-STATUS rewritten, handoff _shared/handoff/c1-coord-r4.md.
 
-## Next round (top 3)
-1. Once c3 adds grok/opencode to the pane Agent type: rerun smoke flow 6 on lane ports, expect 5/5; measure New session -> agent prompt time.
-2. useWorktreeScan out of ProjectsPanel.tsx (pass a small state bag), then remaining files over 800 lines per AUDIT-c2-agents.md.
-3. Audit 25 (one bounded-process runner for git.rs/scm.rs/scm_writers.rs), audit 31 (stale #[allow(dead_code)]).
+## Next round
+1. Re-merge; confirm o2's marker move and c3's jsdom fix turn check and vitest green. Run cargo under scripts/test-env.ps1 (whole run, not just --test '*').
+2. When c3 commits the browser_*.rs deletion: drop privacy-audit browser.rs rows + app070 test, repoint glossary "Tab", keep browser_tower.rs, clear COMPAT.md/docs/architecture; close the two 1105 bugs.
+3. Round 6 is the final merge into main (only after a fully green gate, never push). Record Txais's answers if he replies.
 
 ## For the coordinator
-- CHANGELOG: "The Floor page and the Tower window stop working in the background while Kolux is hidden, and catch up as soon as it is shown."
-- c3-terminal: 20261112-1320-grok-opencode-panes-read-as-shell.md still blocks the 5-agent smoke proof (Grok pane reads as data-agent="shell").
-- o1-tools: tsc red on shortcutRows.ts is still open on the merged branch.
-- Decisions still wanted: (1) agents start through Windows PowerShell 5.1 when PowerShell 7 is absent, with the user's profile loaded; (2) should OpenCode lead the New session dropdown?
-- Token ledger refreshed: all-time 17.75B tokens, $4,638.92 API-equivalent; recorded pay-per-token spend (OpenCode) $78.06.
+- Txais decisions pending (WAVE-STATUS): Rune no-go recommended; lane lock in the launcher; external skills text.
+- c2 decisions asked, not yet recorded (need Txais): agents start through Windows PowerShell 5.1 when PowerShell 7 is absent; should OpenCode lead the New session dropdown.
+- Flow 7 in smoke-r4 said "9 sessions ... clicking the folder shows 8 panes" yet passed: ask o2 whether the flow should require equal counts.

@@ -17,6 +17,9 @@
 - The Ports list keeps its entries and count when its popover opens or closes, and the Checks tab follows the worktree you are in.
 - Typing in a long note no longer redraws its preview on every key, and the Explorer stays quicker in big folders.
 - Starting an agent is faster: Kolux looks up the agent's program once instead of up to three times (67 ms down to 18 ms on the test PC).
+- The Floor page and the Tower window stop working in the background while Kolux is hidden, and catch up as soon as it is shown.
+- Searching Settings no longer reads every page it finds: the Claude setup scan, the GitHub budget, the shell list and the sample terminal, each project's workspace list and the usage log scan now wait until you open the page.
+- The shortcut list in Settings filters once per change instead of once per group on every redraw.
 - For trying changes: `pnpm local` builds and starts Kolux in a few minutes beside the installed app, with no installer.
 - Under the hood: library updates. Math in previews uses KaTeX 0.19.0 (its makers flagged 0.18.11 as a bad release); Markdown reader marked 18.2.0, build tools Vite 8.3.8 and its React plugin 6.3.0, diagram layout cytoscape 3.35.0; on the Rust side the window library wry 0.57.2, notifications plugin 2.8.1, zip 9.5.1 and small fixes in crc32fast, errno, jiff, rustls-pki-types and sqlite-wasm-rs. The rich editor moves to Lexical 0.53; notes still save exactly what you typed.
 
