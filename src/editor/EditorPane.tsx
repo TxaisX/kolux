@@ -53,7 +53,8 @@ import { drafts, restoreFrom, worktreeOf } from "./drafts";
 import { readForOpen } from "./openText";
 import { confirmed } from "./fileMoved";
 import { richBlocker, richBlockerSince, richChange, splitFront } from "./frontMatter";
-import { bannerUp, beginSave, canUndo, checkOnce, endSave, forget, holdRestored, keep, POLL_MS, readFresh, reloadNow, remember, setBanner as markBanner, UNDO_TOAST_MS, type Io, type Stamp, type UndoEntry } from "./diskChange";
+import { bannerUp, beginSave, canUndo, checkOnce, endSave, forget, holdRestored, keep, readFresh, reloadNow, remember, setBanner as markBanner, UNDO_TOAST_MS, type Io, type Stamp, type UndoEntry } from "./diskChange";
+import { watchStamp } from "./stampPoll";
 import { CompareView, DiskBanner, GoneNotice, UndoToast } from "./DiskBanner";
 import { isMarkdown, mountRich } from "./markdown";
 import { minimap } from "./minimap";
@@ -432,27 +433,38 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
     let busy = false;
     let alive = true;
     const raised = (stamp: Stamp | null) => alive && setMoved((m) => (m && m.stamp?.mtime === stamp?.mtime && m.stamp?.size === stamp?.size ? m : { stamp }));
-    const check = () => {
+    // EDIT-032: a file that is gone is said so (a failed look at a file that is still there is not).
+    const ioSeen = (s: Stamp | null): Io => ({
+      ...io.current,
+      stamp: () => {
+        if (s) {
+          setGone(false);
+          return Promise.resolve(s);
+        }
+        return invoke<string>("path_kind", { path }).then(
+          (k) => {
+            setGone(k === "missing");
+            return null;
+          },
+          () => null,
+        );
+      },
+    });
+    const check = (s: Stamp | null) => {
       if (busy) return;
       busy = true;
-      void checkOnce(path, io.current, raised)
+      void checkOnce(path, ioSeen(s), raised)
         .then(
           (v) => alive && v !== "banner" && setMoved(null),
           () => undefined,
         )
         .finally(() => (busy = false));
     };
-    check();
-    // ponytail: each poll's file_stamps runs fence.allow, which lists worktrees about every 4 s
-    // (TREES_FRESH 3 s) under the fence mutex while an agent-worktree file is open (council MERGE 33
-    // A3, folded into the MERGE 29 A1 fence fast path by origin record); the upgrade is that fast
-    // path, or a fence decision cached per open tab, not a slower poll.
-    const timer = window.setInterval(check, POLL_MS);
-    window.addEventListener("focus", check);
+    // N-03: one stamp poll for every visible tab, not one per tab (see stampPoll.ts).
+    const off = watchStamp(path, check);
     return () => {
       alive = false;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", check);
+      off();
     };
   }, [path, hidden, ready, readOnly]);
   useEffect(() => {
