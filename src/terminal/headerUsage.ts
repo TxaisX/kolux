@@ -56,13 +56,12 @@ export function readoutOf(r: (ContextReading & { costUsd?: number }) | undefined
 // widest (status mark, vendor mark, a readable title, the program word, the status word, the
 // pane buttons); the rest are the readout's own pieces.
 const BASE = 400;
-const RING = 46;
 const TOKENS = 90;
 const PLAN = 52;
 const COUNTDOWN = 66;
 const COST = 56;
 /** The header width at which a pane with a reading, two plan windows and a cost shows everything. */
-export const FULL_WIDTH = BASE + RING + TOKENS + 2 * PLAN + 2 * COUNTDOWN + COST;
+export const FULL_WIDTH = BASE + TOKENS + 2 * PLAN + 2 * COUNTDOWN + COST;
 
 export type Pieces = { tokens: boolean; plan: boolean; countdowns: boolean; cost: boolean };
 
@@ -71,10 +70,11 @@ export type Pieces = { tokens: boolean; plan: boolean; countdowns: boolean; cost
  * countdowns, then the plan figures, then the tokens, so the ring and percentage always remain.
  * A piece with nothing to show takes no room. Unmeasured (undefined) shows everything there is. */
 export function piecesFor(width: number | undefined, have: { tokens: boolean; windows: number; cost: boolean }): Pieces {
-  // The card: a pane with no plan figures shows only the gauge (Decisions made for Txais, FIX-5).
+  // The card: a pane with no plan figures shows no readout (Decisions made for Txais, FIX-5; the
+  // context gauge it used to keep was removed on 2026-11-12).
   if (have.windows === 0) return { tokens: false, plan: false, countdowns: false, cost: false };
   if (width === undefined) return { tokens: have.tokens, plan: have.windows > 0, countdowns: have.windows > 0, cost: have.cost };
-  let need = BASE + RING;
+  let need = BASE;
   const fits = (more: number) => {
     need += more;
     return width >= need;
@@ -94,16 +94,13 @@ function resetClock(at: number, now: Date): string {
   return d.toDateString() === now.toDateString() ? time : `${d.toLocaleDateString(locale(), { weekday: "short" })} ${time}`;
 }
 
-/** The hover: the gauge's line, then one line per window, "5-hour: 34% used, resets 3:40 PM". */
-export function hoverLines(base: string, windows: PlanWindow[], left: boolean, now: Date = new Date()): string[] {
-  return [
-    base,
-    ...windows.map((w) => {
-      const f = planFigure(w, left).text;
-      const reset = w.resetsAt === null ? "reset time unknown" : `resets ${resetClock(w.resetsAt, now)}`;
-      return `${w.name}: ${f} ${left ? "left" : "used"}, ${reset}`;
-    }),
-  ];
+/** The hover: one line per window, "5-hour: 34% used, resets 3:40 PM". */
+export function hoverLines(windows: PlanWindow[], left: boolean, now: Date = new Date()): string[] {
+  return windows.map((w) => {
+    const f = planFigure(w, left).text;
+    const reset = w.resetsAt === null ? "reset time unknown" : `resets ${resetClock(w.resetsAt, now)}`;
+    return `${w.name}: ${f} ${left ? "left" : "used"}, ${reset}`;
+  });
 }
 
 /** USAGE-034: the countdowns tick at least every 30 s without a new turn. Returns the stop function. */

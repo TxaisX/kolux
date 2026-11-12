@@ -18,6 +18,7 @@ import { usePlan } from "../usage/plan";
 import { APP_MENU_FAILED, popAppMenu } from "./useChrome";
 import { chromeLayout } from "./titleHeader";
 import { t } from "../i18n/lookup";
+import { usePackLoaded } from "../shell/usePackLoaded";
 import { useSettings } from "../settings/useSettings";
 import { readStatusBar, usagePills } from "./statusItems";
 import { AgentsPanel, Explorer, InboxView, TowerView, WorkspaceBoard } from "../lazy/pages";
@@ -50,6 +51,7 @@ export const bellTarget = (screen: Screen, before: Screen): Screen => (screen ==
 export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, needsYou = 0, onNotice }: TopBarProps) {
   // The screen the bell returns to when the Inbox is closed: the one that was showing before it opened.
   const before = useRef<Screen>("terminals");
+  usePackLoaded();
   if (screen !== "inbox") before.current = screen;
   const [maximized, setMaximized] = useState(false);
   // USAGE-008 / VIEW-008: a pill per provider, only with a weekly figure (or Codex's refused

@@ -54,7 +54,7 @@ import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, insertBef
 import { closeOne, pinQuestion, stripOrderOf } from "./pin";
 import { cancelHandOver, handOver, movedKeys } from "./handover";
 import { dropCell, dropTab, type Zone } from "./rearrange";
-import { classify, shellInAgentPane } from "./remove";
+import { classify, removePlan, shellInAgentPane } from "./remove";
 import { returnTab } from "./tabClose";
 import { forgetColors } from "./tabColor";
 import { tabName, type StartLine } from "./tabName";
@@ -109,6 +109,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const id = ptys.current[t.key];
     const busy = t.chooser || id === undefined ? false : ((await invoke<boolean[]>("terminal_busy", { ids: [id] }).catch(() => [false]))[0] ?? false);
     const kind = t.chooser ? "unstarted" : classify(pane, busy, running[t.key], shellInAgentPane.has(t.key)); // T-151-c: an ended agent pane reads as ended; a still-starting one (undefined) as running; an agent pane running a shell as a shell
+    // TERM-003: "Stop without asking" (Settings > Terminal) stops a started session straight away; otherwise it asks.
+    if (removePlan(settings, kind) === "stop") return dropPanes([t.key]);
     if (!asking) setAsking({ keys: [t.key], ...removeShortcutAsk(tabName(pane, titles), kind) }); // at most one question per press
   };
   // TERM-040 / TERM-041: a new tab joins the focused pane's cell (or opens its own cell) and

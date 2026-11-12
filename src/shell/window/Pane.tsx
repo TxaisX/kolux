@@ -19,7 +19,7 @@ import { tabName } from "../../terminal/tabName";
 import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { onRunning } from "../../inbox/exitedPrompt";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
-import { capOn, claudeOf, codexOf, contextFill, meterOf, readsLeft } from "../../usage/meter";
+import { capOn, claudeOf, codexOf, meterOf, readsLeft } from "../../usage/meter";
 import { nameOf, sameDir, viewOf } from "../../workspaces";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
@@ -264,7 +264,6 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       args={p.args}
       env={p.env}
       stop={turn[p.key]?.stop}
-      context={context[p.key] ? contextFill(context[p.key], capOn(settings)) : null}
       usage={p.agent === "shell" ? undefined : readoutOf(context[p.key], capOn(settings), readsLeft(settings))}
       focused={p.key === focused}
       onFocus={act.focus}
