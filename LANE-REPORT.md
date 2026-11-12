@@ -1,15 +1,15 @@
 # Lane Report — o3-rune
 
 - **Status (plain words, 3 lines max)**:
-  Round 1 audit is done and the six audit fixes that were sitting uncommitted in this worktree are verified green (typecheck 0 errors, 327 area tests pass). Rune was read end to end: it has no terminal support at all, but it does have IME, clipboard, selection, monospace text and a full headless snapshot/tree/script harness. Recommendation is **no-go on Rune for this wave** — native Windows terminals (goal 0) buy the same memory win sooner and cheaper; the numbers and three paths are below.
+  Round 1 audit is done: the six audit fixes that were uncommitted in this worktree are now committed by this lane and verified green (typecheck 0 errors, 327 area tests pass). Rune was read end to end: it has no terminal support at all, but it does have IME, clipboard, selection, monospace text and a full headless snapshot/tree/script harness. Recommendation is **no-go on Rune for this wave** — native Windows terminals (goal 0) buy the same memory win sooner and cheaper; the numbers and three paths are below.
 
 ## Done this round (proof quoted)
 
 1. **Read the briefs, merged nothing, checked the bug queue.** `git rev-list --count lane/o3-rune..integrate/wave-1` → `0` (nothing to merge). `G:\Dev\kolux-lanes\_shared\bugs\o3-rune\` → empty. `node_modules` present.
 
-2. **Verified the tree this round inherited.** Six audit fixes (P1 Claude `resetsAt` ms→s, P2 `hosts.test.ts` wording, P2 stale `onboarding.connect.wait` in 5 packs, P2 `pricing.ts` index + memo, P3 `lookup.ts` pack retry, P3 unmount guards) were uncommitted in the worktree when this round started; they were written by an earlier session in this lane, not by this audit.
-   - `node node_modules/typescript/bin/tsc --noEmit` → `TSC_EXIT=0`
-   - `node node_modules/vitest/vitest.mjs run src/usage src/insights src/notify src/i18n src/privacy src/feedback src/update` → `Tests  327 passed (327)` / `Test Files  45 passed (45)`, exit 0
+2. **Verified the tree this round inherited.** Six audit fixes (P1 Claude `resetsAt` ms→s, P2 `hosts.test.ts` wording, P2 stale `onboarding.connect.wait` in 5 packs, P2 `pricing.ts` index + memo, P3 `lookup.ts` pack retry, P3 unmount guards) were uncommitted in the worktree when this round started; they were written by an earlier session in this lane, not by this audit. That session committed them during this round (`eaa65b8a` fixes, `44a44d16` refactor moving the shared formatters to `src/usage/format.ts`), so the worktree is clean now.
+   - Before its refactor: `node node_modules/typescript/bin/tsc --noEmit` → `TSC_EXIT=0`; area suite → `Tests  327 passed (327)`, exit 0.
+   - After its refactor, re-run fresh: `node node_modules/typescript/bin/tsc --noEmit` → `TSC_EXIT=0`; `node node_modules/vitest/vitest.mjs run src/usage src/insights src/notify src/i18n src/privacy src/feedback src/update` → `Tests  327 passed (327)`, exit 0 (11:14).
 
 3. **Fixed the one thing that was actually broken in the tests:** two source-text assertions in `src/usage/usageStatusUx.test.ts` still expected the pre-guard source. Updated to `.finally(() => mounted.current && setLoading(false))` and to the `if (!alive) return;` guard in the scope `catch`. That file then passed on its own: `Test Files 1 passed (1)` / `Tests 9 passed (9)`.
 
@@ -78,6 +78,6 @@ This is Rune's strongest argument and it is independent of the terminal question
 - **CHANGELOG:** nothing user-visible this round (audit + tests only).
 - **Decision to record:** Rune is **no-go for wave 1**; keep WebView2 + WebGL and put the memory effort into goal 0 (native terminals, no embedded browser). Revisit on the three triggers above. My recommendation is to tell c3-terminal that Rune is not a competing path, so its native-terminal research is the only terminal path being funded.
 - **Cross-lane:** two bug files filed — `c1-coord/20261112-1118-two-sessions-one-lane-worktree.md` and `o2-tests/20261112-1118-stale-vite-cache-fails-source-text-tests.md`.
-- **Collision this round:** a second agent session was live in `G:\Dev\kolux-lanes\o3-rune` while this round ran (it wrote `src/usage/pricing.ts`, `Activity.tsx`, `UpdateCenterView.tsx`, `TokenAnalytics.tsx` and filed a c1-coord bug at 11:12). I did not revert or commit its files; the six fixes it wrote are verified green above. If the wave re-runs round 1, that is why. Fix in the harness is in the bug file (per-lane lock file + round number on disk).
-- **Uncommitted by design:** the 13 source/test files that session changed are still uncommitted in the worktree; only `AUDIT-o3-rune.md`, `LANE-REPORT.md` and the two bug files are mine this round.
+- **Collision this round:** a second agent session was live in `G:\Dev\kolux-lanes\o3-rune` while this round ran (it wrote `src/usage/pricing.ts`, `Activity.tsx`, `UpdateCenterView.tsx`, `TokenAnalytics.tsx`, filed a c1-coord bug at 11:12, then committed `eaa65b8a` + `44a44d16` and started an untracked `spikes/` directory). I did not revert or commit its files. If the wave re-runs round 1, that is why. Fix in the harness is in the bug file (per-lane lock file + round number on disk).
+- **Worktree state when this round ended:** clean, apart from the other session's untracked `spikes/`. My commit `bd06e656` carries only `AUDIT-o3-rune.md` and `LANE-REPORT.md`; the two bug files live in `_shared/bugs/`.
 - **`src/styles.css:1014-1036`:** the eager `.upd-*` rules are still duplicated by `src/update/update.css`; not mine to edit.
