@@ -1,6 +1,6 @@
 # Audit: o2-tests (`scripts/prove/`, `scripts/evidence/`, `scripts/stress/`, `tests/`)
 
-Round 1 audit (2026-11-12). No app code or existing harness scripts were modified in Round 1; built `scripts/stress/run-all.mjs` (+ `run-all.test.mjs`) and `tests/README.md` as specified by the lane brief.
+Round 1 audit (2026-11-12). No app code or existing harness scripts were modified in Round 1; built `scripts/stress/run-all.mjs` (+ `run-all.test.mjs`) and `tests/README.md` as specified by the lane brief. A second Round 1 session added the verification pass in section 3 (measured coverage, selector-drift and structural-integrity scans).
 
 ---
 
@@ -125,7 +125,53 @@ Total rows in `docs/guide/feature-index.md`: **406**
 
 ---
 
-## 3. Round 2 Action Plan
+## 3. Round 1 verification pass (second session, 2026-11-12)
+
+Method: `git merge --no-edit integrate/wave-1` → `git rev-list --count lane/o2-tests..integrate/wave-1` = **0** (branch already current). Three static scans then run over the merged tree: selector/testid drift (`data-testid` + class tokens in `scripts/**` vs `src/**`), feature-index coverage, and syntax/import integrity of every harness `.mjs`. Scans lived outside the repo (`G:/Temp/o2-scan/`) because this round is audit-only.
+
+### Baseline (measured, not eyeballed)
+- Harness `.mjs` files: **160**. Syntax errors: **0**. Broken relative imports: **0** (the 6 reported hits are string literals inside test fixtures: `scripts/bundle-budget.test.mjs`, `scripts/stress/run-all.test.mjs:59,63`). So the failures below are semantic (dead selectors), not structural.
+- `data-testid` in `src/`: **36 occurrences across 19 files** (~45 feature areas exist). Stable selector surface is thin; most checks lean on classes, roles and text.
+- Distinct class tokens referenced by the harness: **391**; **105** of them do not appear anywhere in `src/`.
+- `src` test files: **901**; feature-card tests: **116** files / **114** distinct card ids. Live checks: **106** files / **70** distinct ids. Both a card test and a live check: **24**. Card ids with no live check: **90**. Live ids with no card test: **46**.
+- `scripts/evidence/smoke.mjs` still has flows 1–5 only (flow 3 already rewritten onto Explorer after T-644) → the queued smoke bug stands.
+- False positive to ignore later: `seat-agent-claude` (used by `live-team-grid.mjs`) is real — `src/launch/ChooserPane.tsx:536` builds it as `seat-agent-${a.id}`.
+
+### New findings
+
+### P1 · CONFIRMED · `.pane-row` no longer exists — 5 live checks and a shared helper query a dead class
+- **What is wrong**: the sidebar session row is `button.branch, .sess[role=button]` today (`src/projects/ProjectsPanel.tsx:243`); `pane-row` appears nowhere in `src/` (grep over all `.tsx/.css/.html`). Still queried at `scripts/prove/pane-states.mjs:8` (`".sess.pane-row[data-pane]"`), `live-ORCH-016.mjs:11` (`.pane-row[data-agent*=...]`), `live-SET-027.mjs`, `live-T-640.mjs`, `live-T-643.mjs`, `pane-states.test.mjs`. `pane-states.mjs` is imported by `live-T-544.mjs:14`, so its sidebar-row fallback never matches. Those five checks cannot pass; `pane-states.test.mjs` still passes because it only tests the pure part, which makes the dead selector look covered.
+- **The fix**: replace `.pane-row[data-pane]` / `.pane-row[data-agent]` with `.sess[role=button][data-pane]` (keep `data-pane` / `data-agent` if `ProjectsPanel` still emits them — verify first), and add a static selector-drift assertion to `pane-states.test.mjs` that fails when a selector it relies on is absent from `src/`.
+- **Cost**: ~2 hours.
+
+### P2 · CONFIRMED · `run-all.mjs` under-reports selector drift (4 hardcoded patterns vs 105 dead class tokens)
+- **What is wrong**: `scripts/stress/run-all.mjs:130-134` warns only on `PROVE_PORT=/PROVE_CDP=`, `9290|1470`, and `button.newtab|chooser select|Source Control|aria-label="New tab"`. The scans above put the real drift at 105 class tokens, including `.pane-row` (5 checks), `.cm-merge-b` (`live-EDIT-027.mjs`, diff view), `.sb-foot` is fine (still in `src/styles.css`). A check whose selectors are dead is reported as "no warnings", so the runner's summary overstates health.
+- **The fix**: derive the pattern list from `src/` at run time — extract `data-testid` literals and `className` tokens from `src/`, then flag any selector token in a prove script that is not in that set; keep a small allowlist for CDP method names and file extensions.
+- **Cost**: ~3 hours.
+
+### P2 · CONFIRMED · Coverage is 15.8% of the feature index by id, and the card/live sets barely overlap
+- **What is wrong**: of **387** user-facing rows in `docs/guide/feature-index.md`, only **61** task ids appear in any test or live check at all. Of **114** card areas, **90** have no live check; **46** live checks cover ids with no card test; only **24** ids have both. The previous section's gap table was written by hand and overstates coverage ("live-PROJ-* (7)" reads as area coverage for 74 rows).
+- **The fix**: make the coverage matrix a generated artefact (one scan, committed as `tests/coverage.md`, regenerated by the runner) so "checked / passing / failing" counts in `LANE-REPORT.md` are numbers, not prose. Then work the 90 card ids without live checks in priority order (TERM-*, SESS-*, SET-*, VIEW-*, AUTO-*, ACCT-*).
+- **Cost**: ~0.5 day for the generator; the checks themselves are Round 2+ work.
+
+### P2 · CONFIRMED · Testability surface is the root cause of the whole stale-selector cluster
+- **What is wrong**: 36 `data-testid` occurrences for ~45 feature areas means new UI has no stable hook, so every harness author reaches for a class name and the class gets renamed (`newtab` → `pane-new-session`, `pane-row` → `.sess`). This has now cost at least three separate fix rounds in this lane.
+- **The fix (cross-lane)**: ask `c1-coord` to adopt a rule — every interactive element the guides describe gets a `data-testid`, added by the lane that owns the component, and `run-all.mjs` fails a check that depends on a non-testid selector for a clickable element. Harness side alone cannot fix this.
+- **Cost**: ~1 day spread across lanes; zero for `o2-tests` beyond the checker.
+
+### P3 · CONFIRMED · `live-common.mjs` hardcodes the same paths twice inside one file
+- **What is wrong**: `BASE`/`LOGS` at `scripts/prove/live-common.mjs:24-25` and `LIVE_BASE`/`LIVE_LOGS` at `:247-248` are the same two literals under two names (`G:/Temp/live-v15`, `G:/Temp/live-v15-logs`), and both `createApp` calls (`:74`, `:296`) hardcode `identifier: "com.txaisxiong.kolux.prove"` with `suffix: ".prove"`. Fixing the env plumbing in Round 2 has to touch both copies or the halves diverge.
+- **The fix**: one `env()` accessor (`PROVE_BASE`, `PROVE_LOGS`, `PROVE_IDENTIFIER`, `PROVE_SUFFIX` with defaults) referenced by both entry points, and delete `LIVE_*`.
+- **Cost**: ~1 hour, inside the already-planned P1 fix.
+
+### P3 · CONFIRMED · Proof for Round 1 (commands and last lines)
+- `node node_modules/typescript/bin/tsc --noEmit` → exit 0, no output. (`npx` is broken in this shell — it resolves to `wsl.exe` — so binaries are called through `node` directly.)
+- `node node_modules/vitest/vitest.mjs run scripts/stress/run-all.test.mjs scripts/evidence/app-launch.test.mjs scripts/prove/pane-states.test.mjs` → `Test Files  3 passed (3)` / `Tests  53 passed (53)`.
+- `node scripts/stress/run-all.mjs --dry-run --instances 4 --out G:/Temp/o2-dryrun-r1` → `run-all: 67 queued, 39 skipped across 4 instance slot(s) (dry-run)`; summary showed slots Vite `1500-1530`, CDP `9350-9353`, identifiers `com.txaisxiong.kolux.o2-0..3`.
+
+---
+
+## 4. Round 2 Action Plan
 
 1. **Fix `scripts/evidence/smoke.mjs`** (queued bug `20261112-1100`): add flows for launching all 5 session types (Claude Code, Grok, Codex, OpenCode, Terminal) with stand-ins + verifying sidebar shows only the folder row for a multi-session grid.
 2. **Unblock `run-all.mjs` across all 67 stand-in checks**:
@@ -133,3 +179,5 @@ Total rows in `docs/guide/feature-index.md`: **406**
    - Fix `live-common.mjs` (`startPlain` chooser tiles, `openClaude` `pane-new-session`, `PROVE_BASE`/`PROVE_LOGS`/`PROVE_IDENTIFIER` env support, `addProjectByPath` helper).
    - Fix `live-*.mjs` stale selectors (`button.newtab`, `.sb-foot`, `Source Control`) and hardcoded `9290`/`1470` ports and `ROOT/evidence/` writes.
 3. **Run `node scripts/stress/run-all.mjs --instances 4` live**, add missing live checks for `o2-tests.md` priority items (6-session workspace grid + restart, 5 agent types, terminal resize/tab-switch/flood drawing, no `ContextGauge` in header) and top coverage gaps (Settings search/Shortcuts, Explorer CRUD, All Changes commit, Tower/Floor/Agents/Automations/Skills, CLI commands), and file bugs with screenshots to owning lanes.
+4. **Fix the `.pane-row` dead selector** (section 3, P1) in `pane-states.mjs`, `live-ORCH-016`, `live-SET-027`, `live-T-640`, `live-T-643`, and make `pane-states.test.mjs` assert its selectors exist in `src/`.
+5. **Replace the 4-pattern drift heuristic** in `run-all.mjs:130-134` with a `src/`-derived selector set, and generate `tests/coverage.md` from the feature-index scan so round reports quote counts instead of prose.
