@@ -413,9 +413,17 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // this pane in a native window kept over the pane body (nativeView.ts). Read once per mount.
   const hiddenNow = useRef(hidden);
   hiddenNow.current = hidden;
+  // While the engine draws the pane, xterm is under it: it stops painting (styles.css [data-native="on"])
+  // and counts as hidden for its GPU slot, which it gives back after the usual wait (parkWhenHidden).
+  const nativeOn = useRef(false);
   useEffect(() => {
     if (!currentInput().native || !host.current) return;
-    return bindNative(host.current, () => idRef.current, () => hiddenNow.current);
+    return bindNative(host.current, () => idRef.current, () => hiddenNow.current, invoke, 250, {
+      onShown: (on) => {
+        nativeOn.current = on;
+        parking.current?.hidden(hiddenNow.current || on);
+      },
+    });
   }, []);
   // APP-052: the run of the terminal service this pane's terminal belongs to; its typing carries it.
   const serviceRef = useRef<ServiceInfo | null>(null);
@@ -425,7 +433,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // frame is drawn (a layout effect, so the first visible frame is whole: TERM-103).
   const parking = useRef<ReturnType<typeof parkWhenHidden> | null>(null);
   useLayoutEffect(() => {
-    parking.current?.hidden(hidden);
+    parking.current?.hidden(hidden || nativeOn.current);
   }, [hidden]);
   // T-765: a tab that comes back catches up at once, without waiting for the next output chunk.
   useEffect(() => {

@@ -660,6 +660,9 @@ input { font: inherit; }
 .btn.primary:hover:not(:disabled) { background: var(--fg); opacity: 0.9; }
 .btn.primary:disabled { background: transparent; color: var(--fg-icon-dim); border-color: var(--button-border); }
 .pane-body .xterm { height: 100%; }
+/* Native terminal (nativeView.ts): while the Windows Terminal engine draws the pane, xterm underneath stops
+   painting; "under" (a menu or dialog is over the pane, the engine stepped aside) shows it again. */
+.pane-body[data-native="on"] .xterm-screen { visibility: hidden; }
 @keyframes spin { to { transform: rotate(360deg); } }
 /* STAT-052: every working spinner turns 12 frames a second on the document's clock (Spinner in
    icons.tsx lines them up), and holds still when the system asks for reduced motion. */
