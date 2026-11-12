@@ -1,7 +1,9 @@
+mod prefs;
 mod vt;
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -10,16 +12,13 @@ use kolux_lib::pty::{PtySession, SharedWriter, fresh_terminal_path, shell_comman
 use rune::tok::{Family, TextStyle, type_};
 use rune::{AppSpec, Cx, El, GridRow, Key, KeyEvent, Tx, Waker, col, el, grid, row, text};
 
+use prefs::{Prefs, Resolved};
 use vt::{Palette, rgb, sync_rows};
 
 const DEFAULT_COLS: u16 = 80;
 const DEFAULT_ROWS: u16 = 24;
-const CELL_PAD_X: f32 = 8.0;
-const CELL_PAD_Y: f32 = 6.0;
 const HEADER_H: f32 = 24.0;
 const STATUS_H: f32 = 24.0;
-const GRID_GAP: f32 = 6.0;
-const OUTER_PAD: f32 = 8.0;
 
 #[derive(Clone, Copy)]
 struct ProbeSample {
@@ -112,52 +111,119 @@ impl BenchState {
 }
 
 struct AppState {
-    pane_count: usize,
-    active: usize,
     panes: Vec<Pane>,
+    active: usize,
     queue: Arc<Mutex<VecDeque<Msg>>>,
     waker: Option<Waker>,
+    /// Everything the user can change, live, from one file (or from the flags below when no file
+    /// is given).
+    prefs: Resolved,
+    prefs_path: Option<PathBuf>,
+    /// Set when a file is on the command line, so `--scene N` and `--panes N` stop overriding it.
+    prefs_locked: bool,
+    prefs_error: Option<String>,
+    prefs_note: Option<String>,
+    watcher: prefs::Watcher,
     mono_style: TextStyle,
     cell_w: f32,
     cell_h: f32,
     palette: Palette,
-    demo_banner: bool,
     fast_cmd: bool,
+    no_pty: bool,
     bench: BenchState,
+}
+
+impl AppState {
+    fn pane_count(&self) -> usize {
+        self.prefs.raw.layout.panes
+    }
 }
 
 impl Default for AppState {
     fn default() -> Self {
         let args = rune::extra_args();
-        let pane_count = arg_value(&args, "--panes")
-            .and_then(|v| v.parse::<usize>().ok())
-            .filter(|&n| matches!(n, 1 | 2 | 4 | 6 | 8))
-            .unwrap_or(4);
-        let demo_banner = args.iter().any(|a| a == "--demo");
+        let mut prefs = Prefs::default();
+        if let Some(n) = arg_value(&args, "--panes").and_then(|v| v.parse::<usize>().ok()).filter(|&n| (1..=32).contains(&n)) {
+            prefs.layout.panes = n;
+        }
+        if args.iter().any(|a| a == "--no-banner") {
+            prefs.layout.banner = false;
+        }
         let fast_cmd = args.iter().any(|a| a == "--cmd");
+        let no_pty = args.iter().any(|a| a == "--no-pty");
         let bench = args.iter().any(|a| a == "--bench");
         let probe = args.iter().any(|a| a == "--probe");
 
-        let mono_style = TextStyle::new(13.0, 400.0)
-            .family(Family::SystemMono)
-            .lh(18.0);
-        let measured = rune::text::advance("MMMMMMMMMM", mono_style) / 10.0;
-        let cell_w = if measured.is_finite() && measured > 2.0 { measured } else { 7.8 };
-        let cell_h = mono_style.line_px();
+        // A prefs file on the command line is loaded before the first frame. A file that will not
+        // parse must not take the window down: the built-in defaults stay live and the reason is
+        // shown in the status bar, and the watcher keeps trying.
+        let prefs_path = arg_value(&args, "--prefs").map(PathBuf::from);
+        let mut prefs_error = None;
+        let resolved = match &prefs_path {
+            Some(path) => match Prefs::load(path).and_then(|p| p.resolve()) {
+                Ok(r) => r,
+                Err(e) => {
+                    println!("PREFS_ERROR {e}");
+                    prefs_error = Some(e);
+                    prefs.resolve().expect("built-in prefs always resolve")
+                }
+            },
+            None => prefs.resolve().expect("built-in prefs always resolve"),
+        };
 
-        Self {
-            pane_count,
-            active: 0,
+        let mut state = Self {
             panes: Vec::new(),
+            active: 0,
             queue: Arc::new(Mutex::new(VecDeque::new())),
             waker: None,
-            mono_style,
-            cell_w,
-            cell_h,
+            prefs: resolved,
+            watcher: prefs::Watcher::new(prefs_path.clone()),
+            prefs_locked: prefs_path.is_some(),
+            prefs_path,
+            prefs_error,
+            prefs_note: None,
+            mono_style: TextStyle::new(13.0, 400.0),
+            cell_w: 7.8,
+            cell_h: 18.0,
             palette: Palette::default(),
-            demo_banner,
             fast_cmd,
+            no_pty,
             bench: BenchState::new(bench, probe),
+        };
+        state.apply_prefs();
+        state
+    }
+}
+
+impl AppState {
+    /// Keeps the preferences file under watch while the app runs, and asks for a frame a few
+    /// times a second so an idle window still notices an edit (a window with nothing drawing gets
+    /// no poll otherwise).
+    fn prefs_watch_tick(&mut self, tx: &mut Tx) -> bool {
+        if self.prefs_path.is_none() {
+            return false;
+        }
+        tx.wake_after(Duration::from_millis(400));
+        self.watcher.changed(Instant::now())
+    }
+
+    /// Everything derived from the preferences: metrics, palette, banner. Cheap enough to redo on
+    /// every live reload.
+    fn apply_prefs(&mut self) {
+        let font = &self.prefs.raw.font;
+        self.mono_style = TextStyle::new(font.size, 400.0).family(Family::SystemMono).lh(font.line_height);
+        let measured = rune::text::advance("MMMMMMMMMM", self.mono_style) / 10.0;
+        self.cell_w = if font.cell_width > 0.0 {
+            font.cell_width
+        } else if measured.is_finite() && measured > 2.0 {
+            measured
+        } else {
+            7.8
+        };
+        self.cell_h = self.mono_style.line_px();
+        self.palette = self.prefs.palette;
+        for pane in &mut self.panes {
+            pane.rows_cache.borrow_mut().clear();
         }
     }
 }
@@ -169,13 +235,34 @@ fn arg_value<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
 fn spawn_panes(s: &mut AppState, waker: Waker) {
     s.waker = Some(waker.clone());
     let path_env = fresh_terminal_path(std::env::var_os("PATH"));
-    let count = s.pane_count.max(1);
+    let count = s.pane_count().max(1);
+    let banner = s.prefs.raw.layout.banner;
+    let shell = s.prefs.raw.shell.clone();
     s.panes = (0..count)
         .map(|i| Pane::new(i, DEFAULT_COLS, DEFAULT_ROWS))
         .collect();
 
+    // `--no-pty`: a static grid with no shells, so a memory run can separate the render/readback
+    // loop from the pty plumbing.
+    if s.no_pty {
+        for (i, pane) in s.panes.iter_mut().enumerate() {
+            let banner = format!(
+                "Pane {} (no pty)\r\n\x1b[1;36mrune-terminal\x1b[0m \x1b[32mANSI16\x1b[0m \x1b[38;2;250;204;21mTrueColor\x1b[0m\r\n",
+                i + 1
+            );
+            pane.parser.process(banner.as_bytes());
+            pane.title = format!("Pane {} · static", i + 1);
+        }
+        return;
+    }
+
     for i in 0..count {
-        let mut cmds = if s.fast_cmd {
+        let mut cmds = if let Some(program) = &shell.program {
+            // The preferences name the program: `cargo` panes (shell.program = "wsl.exe").
+            let mut c = portable_pty::CommandBuilder::new(program);
+            c.args(&shell.args);
+            vec![c]
+        } else if s.fast_cmd {
             let mut c = portable_pty::CommandBuilder::new("cmd.exe");
             c.args(["/k", "chcp.com", "65001", ">nul"]);
             vec![c]
@@ -194,6 +281,9 @@ fn spawn_panes(s: &mut AppState, waker: Waker) {
             c.env("PATH", &path_env);
             c.env("TERM", "xterm-256color");
             c.env("COLORTERM", "truecolor");
+            for (k, v) in &shell.env {
+                c.env(k.as_str(), v.as_str());
+            }
         }
 
         let q_out = Arc::clone(&s.queue);
@@ -226,10 +316,10 @@ fn spawn_panes(s: &mut AppState, waker: Waker) {
                     .unwrap_or(&prog)
                     .to_string();
                 let writer = session.writer().ok();
-                if s.demo_banner {
+                if banner {
                     if let Some(w) = &writer {
                         let cmd = if short.to_ascii_lowercase().contains("cmd") {
-                            format!("echo Pane {} [%CD%] \x1b[1;36mrune-terminal\x1b[0m \x1b[32mANSI\x1b[0m \x1b[38;2;250;204;21mRGB\x1b[0m\r", i + 1)
+                            format!("echo Pane {} rune-terminal ANSI RGB\x1b[0m\r", i + 1)
                         } else {
                             format!(
                                 "Write-Host \"Pane {} $([char]27)[1;36mrune-terminal$([char]27)[0m $([char]27)[32mANSI16$([char]27)[0m $([char]27)[38;2;250;204;21mTrueColor$([char]27)[0m $([char]27)[4;35mUnderline$([char]27)[0m\"\r",
@@ -351,6 +441,10 @@ fn poll_pty(s: &mut AppState, _clock: f64, tx: &mut Tx) -> bool {
         }
     }
 
+    if s.prefs_watch_tick(tx) {
+        reload_prefs(s, tx);
+    }
+
     if s.bench.probe_enabled {
         if let Some(due) = s.bench.next_probe_at {
             if now >= due && s.bench.pending_probe.is_none() && s.bench.probes_sent < s.bench.probes_target {
@@ -378,6 +472,51 @@ fn poll_pty(s: &mut AppState, _clock: f64, tx: &mut Tx) -> bool {
     }
 
     changed
+}
+
+/// Re-reads the preferences file and applies it to the live window. A file that does not parse
+/// leaves the last good preferences running and shows the error; the watcher keeps trying, so
+/// fixing the typo is enough to recover.
+fn reload_prefs(s: &mut AppState, tx: &mut Tx) {
+    let Some(path) = s.prefs_path.clone() else { return };
+    match Prefs::load(&path).and_then(|p| p.resolve()) {
+        Ok(resolved) => {
+            let want = resolved.raw.layout.panes;
+            s.prefs = resolved;
+            s.prefs_error = None;
+            s.active = s.active.min(want.saturating_sub(1));
+            s.apply_prefs();
+            s.prefs_note = Some(format!(
+                "{} · {} pane{} · {}",
+                path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+                want,
+                if want == 1 { "" } else { "s" },
+                s.prefs.raw.theme.name
+            ));
+            println!(
+                "PREFS_RELOAD file={} panes={} columns={} theme={} font={}/{} shell={} gap={}",
+                path.display(),
+                want,
+                s.prefs.raw.layout.columns,
+                s.prefs.raw.theme.name,
+                s.prefs.raw.font.size,
+                s.prefs.raw.font.line_height,
+                s.prefs.raw.shell.program.clone().unwrap_or_else(|| "kolux-default".into()),
+                s.prefs.raw.layout.gap
+            );
+            if want != s.panes.len() {
+                if let Some(w) = s.waker.clone() {
+                    spawn_panes(s, w);
+                }
+            }
+            tx.wake_after(Duration::ZERO);
+        }
+        Err(err) => {
+            s.prefs_error = Some(err.clone());
+            println!("PREFS_ERROR {err}");
+            tx.wake_after(Duration::ZERO);
+        }
+    }
 }
 
 fn percentile(sorted: &[f64], p: f64) -> f64 {
@@ -462,16 +601,26 @@ fn key_to_vt(ev: &KeyEvent) -> Option<Vec<u8>> {
     }
 }
 
-fn on_key(s: &mut AppState, ev: &KeyEvent, _tx: &mut Tx) -> bool {
-    // Ctrl+Tab cycles panes; Alt+1..8 focuses pane N directly.
-    if ev.mods.ctrl && matches!(ev.key, Key::Tab) && !s.panes.is_empty() {
-        s.active = if ev.mods.shift {
-            (s.active + s.panes.len() - 1) % s.panes.len()
-        } else {
-            (s.active + 1) % s.panes.len()
-        };
+fn on_key(s: &mut AppState, ev: &KeyEvent, tx: &mut Tx) -> bool {
+    // Every binding here comes from the user's preferences file (Rune chord syntax).
+    if s.prefs.keys.reload.matches(ev) {
+        reload_prefs(s, tx);
         return true;
     }
+    if s.prefs.keys.quit.matches(ev) {
+        tx.close_window();
+        return true;
+    }
+    if !s.panes.is_empty() && s.prefs.keys.next_pane.matches(ev) {
+        s.active = (s.active + 1) % s.panes.len();
+        return true;
+    }
+    if !s.panes.is_empty() && s.prefs.keys.prev_pane.matches(ev) {
+        s.active = (s.active + s.panes.len() - 1) % s.panes.len();
+        return true;
+    }
+    // Alt+1..8 always jumps straight to a pane: one key, one pane, kept out of the file so a user
+    // can never bind it to something that leaves them unable to reach a pane.
     if ev.mods.alt {
         if let Key::Text(t) = &ev.key {
             if let Ok(n) = t.parse::<usize>() {
@@ -501,29 +650,17 @@ fn on_key(s: &mut AppState, ev: &KeyEvent, _tx: &mut Tx) -> bool {
     false
 }
 
-fn grid_dims(count: usize) -> (usize, usize) {
-    // Columns first, rows second: kept at two columns past four panes because four columns of an
-    // 80-column pane overflow a 1440 px window and the right-hand panes fall off the edge.
-    match count {
-        0 | 1 => (1, 1),
-        2 => (2, 1),
-        3 | 4 => (2, 2),
-        5 | 6 => (2, 3),
-        _ => (2, 4),
-    }
-}
+fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
+    // Uncoloured text (most terminal cells) takes the theme's ink, so a light theme gets dark
+    // glyphs instead of the window's white default.
+    cx.foreground(s.palette.fg);
+    cx.caption_color(s.prefs.colors.text_dim);
+    let c = s.prefs.colors;
+    let layout = &s.prefs.raw.layout;
+    let pad_x = s.prefs.raw.font.pad_x;
+    let pad_y = s.prefs.raw.font.pad_y;
 
-fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
-    let bg_app = rgb(11, 13, 16);
-    let bg_header = rgb(22, 25, 31);
-    let bg_header_active = rgb(29, 36, 48);
-    let border_idle = rgb(39, 44, 54);
-    let border_active = rgb(96, 165, 250);
-    let text_dim = rgb(148, 163, 184);
-    let text_bright = rgb(241, 245, 249);
-    let accent = rgb(96, 165, 250);
-
-    let (cols_n, rows_n) = grid_dims(s.panes.len());
+    let (cols_n, rows_n) = layout.grid(s.panes.len());
     let mut rows_els = Vec::with_capacity(rows_n);
 
     for r_idx in 0..rows_n {
@@ -551,7 +688,7 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                     .px(8.0)
                     .align(rune::Align::Center)
                     .gap(6.0)
-                    .fill(if is_active { bg_header_active } else { bg_header })
+                    .fill(if is_active { c.header_active_bg } else { c.header_bg })
                     .child(
                         el()
                             .size(7.0, 7.0)
@@ -559,7 +696,7 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                             .fill(if pane.exited.is_some() {
                                 rgb(248, 113, 113)
                             } else if is_active {
-                                accent
+                                c.border_active
                             } else {
                                 rgb(74, 222, 128)
                             }),
@@ -567,13 +704,13 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                     .child(
                         text(&pane.title)
                             .font(type_::LABEL)
-                            .color(if is_active { text_bright } else { text_dim }),
+                            .color(if is_active { c.text } else { c.text_dim }),
                     )
                     .child(rune::spacer())
                     .child(
                         text(format!("{}x{}", pane.cols, pane.rows))
                             .font(type_::MONO_CAPTION)
-                            .color(text_dim),
+                            .color(c.text_dim),
                     );
 
                 let viewport = el()
@@ -582,12 +719,12 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                     .min_w(0.0)
                     .grow(1.0)
                     .min_h(0.0)
-                    .padding(CELL_PAD_Y)
-                    .px(CELL_PAD_X)
+                    .padding(pad_y)
+                    .px(pad_x)
                     .fill(s.palette.bg)
                     .on_layout(move |st: &mut AppState, rect: [f32; 4]| {
-                        let inner_w = (rect[2] - CELL_PAD_X * 2.0).max(cell_w * 16.0);
-                        let inner_h = (rect[3] - CELL_PAD_Y * 2.0).max(cell_h * 4.0);
+                        let inner_w = (rect[2] - pad_x * 2.0).max(cell_w * 16.0);
+                        let inner_h = (rect[3] - pad_y * 2.0).max(cell_h * 4.0);
                         let new_cols = (inner_w / cell_w).floor() as u16;
                         let new_rows = (inner_h / cell_h).floor() as u16;
                         if let Some(p) = st.panes.get_mut(pane_idx) {
@@ -602,7 +739,7 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                             .h(pane.rows as f32 * cell_h),
                     );
 
-                let card = col()
+                let mut card = col()
                     .key(format!("pane-{pane_idx}"))
                     .grow(1.0)
                     .min_w(0.0)
@@ -610,16 +747,19 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                     .min_h(0.0)
                     .radius(6.0)
                     .clip_rounded(6.0)
-                    .border(if is_active { 1.5 } else { 1.0 }, if is_active { border_active } else { border_idle })
+                    .border(
+                        if is_active { 1.5 } else { 1.0 },
+                        if is_active { c.border_active } else { c.border_idle },
+                    )
                     .fill(s.palette.bg)
                     .focusable(true)
                     .on_press(move |st: &mut AppState| {
                         st.active = pane_idx;
-                    })
-                    .child(header)
-                    .child(viewport);
-
-                row_panes.push(card);
+                    });
+                if layout.header {
+                    card = card.child(header);
+                }
+                row_panes.push(card.child(viewport));
             }
         }
         rows_els.push(
@@ -629,7 +769,7 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
                 .min_w(0.0)
                 .grow(1.0)
                 .min_h(0.0)
-                .gap(GRID_GAP)
+                .gap(layout.gap)
                 .children(row_panes),
         );
     }
@@ -639,6 +779,16 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
         .get(s.active)
         .map(|p| format!("{} · {}x{} · {} B", p.title, p.cols, p.rows, p.bytes_in))
         .unwrap_or_default();
+    let origin = match (&s.prefs_path, &s.prefs_error) {
+        (_, Some(err)) => format!("prefs error: {err}"),
+        (Some(path), None) => format!("prefs: {}", path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()),
+        (None, None) => "prefs: built-in".to_string(),
+    };
+    let error_shown = s.prefs_error.is_some();
+    let hint = s.prefs_note.clone().unwrap_or_else(|| {
+        format!("{} focus · {} next", s.prefs.keys.reload, s.prefs.keys.next_pane)
+    });
+
     let status = row()
         .key("status-bar")
         .w_full()
@@ -646,47 +796,91 @@ fn view(s: &AppState, _cx: &mut Cx<AppState>) -> El {
         .px(8.0)
         .align(rune::Align::Center)
         .gap(12.0)
-        .fill(bg_header)
+        .fill(c.header_bg)
         .radius(4.0)
         .child(
-            text(format!("Kolux Rune Terminal Spike · {} pane{}", s.panes.len(), if s.panes.len() == 1 { "" } else { "s" }))
-                .font(type_::LABEL)
-                .color(text_bright),
+            text(format!(
+                "Kolux Rune Terminal Spike · {} pane{}",
+                s.panes.len(),
+                if s.panes.len() == 1 { "" } else { "s" }
+            ))
+            .font(type_::LABEL)
+            .color(c.text),
         )
-        .child(text(active_info).font(type_::MONO_CAPTION).color(text_dim))
+        .child(text(active_info).font(type_::MONO_CAPTION).color(c.text_dim))
         .child(rune::spacer())
         .child(
-            text("Click pane or Ctrl+Tab / Alt+1..8 to focus")
-                .font(type_::LABEL)
-                .color(text_dim),
-        );
+            text(origin)
+                .font(type_::MONO_CAPTION)
+                .color(if error_shown { rgb(248, 113, 113) } else { c.text_dim }),
+        )
+        .child(text(hint).font(type_::LABEL).color(c.text_dim));
 
-    col()
+    let mut root = col()
         .key("root")
         .w_full()
         .h_full()
-        .padding(OUTER_PAD)
-        .gap(GRID_GAP)
-        .fill(bg_app)
+        .padding(layout.outer_pad)
+        .gap(layout.gap)
+        .fill(c.app_bg)
         .child(
             col()
                 .key("pane-grid")
                 .w_full()
                 .grow(1.0)
                 .min_h(0.0)
-                .gap(GRID_GAP)
+                .gap(layout.gap)
                 .children(rows_els),
-        )
-        .child(status)
+        );
+    if layout.status_bar {
+        root = root.child(status);
+    }
+    root
+}
+
+/// The smallest possible app: no poll, no pty, no panes. Used to attribute the headless memory
+/// growth to Rune's own loop rather than to this app's frame work.
+fn bare_view(_s: &AppState, _cx: &mut Cx<AppState>) -> El {
+    col()
+        .key("root")
+        .w_full()
+        .h_full()
+        .fill(rgb(11, 13, 16))
+        .child(row().key("bare-bar").w_full().h(24.0).fill(rgb(22, 25, 31)))
+        .child(text("bare").font(type_::LABEL).color(rgb(241, 245, 249)))
+}
+
+/// `--scene N` sets the pane count only when no preferences file was given: a file owns its own
+/// pane count, so a user's layout is never overridden by a flag.
+fn set_scene_panes(s: &mut AppState, n: usize) {
+    if !s.prefs_locked {
+        s.prefs.raw.layout.panes = n;
+    }
+}
+
+fn scene1(s: &mut AppState) {
+    set_scene_panes(s, 1);
+}
+
+fn scene4(s: &mut AppState) {
+    set_scene_panes(s, 4);
+}
+
+fn scene8(s: &mut AppState) {
+    set_scene_panes(s, 8);
 }
 
 fn main() {
+    if std::env::args().any(|a| a == "--bare") {
+        rune::run(AppSpec::<AppState> {
+            scenes: &[("1", scene1)],
+            families: ("Inter", "ui-monospace"),
+            ..AppSpec::new("Rune Bare Spike", (1440.0, 900.0), AppState::default, bare_view)
+        });
+        return;
+    }
     rune::run(AppSpec::<AppState> {
-        scenes: &[
-            ("1", |s| s.pane_count = 1),
-            ("4", |s| s.pane_count = 4),
-            ("8", |s| s.pane_count = 8),
-        ],
+        scenes: &[("1", scene1), ("4", scene4), ("8", scene8)],
         families: ("Inter", "ui-monospace"),
         setup: Some(spawn_panes),
         poll: Some(poll_pty),

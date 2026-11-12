@@ -7,7 +7,7 @@ use std::rc::Rc;
 use rune::color::srgb_decode;
 use rune::{Color, GridRow, Span, TextStyle};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Palette {
     pub bg: Color,
     pub fg: Color,
@@ -33,22 +33,22 @@ impl Default for Palette {
 
 /// xterm's own ANSI defaults.
 pub const DEFAULT_ANSI: [[u8; 3]; 16] = [
-    (24, 26, 31),
-    (239, 83, 80),
-    (129, 199, 132),
-    (255, 213, 79),
-    (100, 181, 246),
-    (186, 104, 200),
-    (77, 208, 225),
-    (203, 213, 225),
-    (100, 116, 139),
-    (248, 113, 113),
-    (74, 222, 128),
-    (250, 204, 21),
-    (96, 165, 250),
-    (216, 180, 254),
-    (34, 211, 238),
-    (248, 250, 252),
+    [24, 26, 31],
+    [239, 83, 80],
+    [129, 199, 132],
+    [255, 213, 79],
+    [100, 181, 246],
+    [186, 104, 200],
+    [77, 208, 225],
+    [203, 213, 225],
+    [100, 116, 139],
+    [248, 113, 113],
+    [74, 222, 128],
+    [250, 204, 21],
+    [96, 165, 250],
+    [216, 180, 254],
+    [34, 211, 238],
+    [248, 250, 252],
 ];
 
 #[inline]
@@ -283,24 +283,21 @@ fn build_row(
             0
         };
         let flags = u8::from(bold) | (u8::from(italic) << 1) | (u8::from(underline) << 2);
-        let styled = fg_tag != 0 || flags != 0;
         let cs = CellStyle { fg_tag, bg_tag: 0, flags };
 
-        if styled {
-            match active_span {
-                Some((start, prev_cs, prev_fg)) if prev_cs == cs && prev_fg == fg => {
-                    let _ = start;
-                }
-                Some((start, prev_cs, prev_fg)) => {
-                    push_span(&mut spans, start, byte_start, prev_cs, prev_fg);
-                    active_span = Some((byte_start, cs, fg));
-                }
-                None => {
-                    active_span = Some((byte_start, cs, fg));
-                }
+        // Every run gets a span, even a plain one: without it the cells draw in the window's
+        // default ink (white), which is unreadable on a user's light theme.
+        match active_span {
+            Some((start, prev_cs, prev_fg)) if prev_cs == cs && prev_fg == fg => {
+                let _ = start;
             }
-        } else if let Some((start, prev_cs, prev_fg)) = active_span.take() {
-            push_span(&mut spans, start, byte_start, prev_cs, prev_fg);
+            Some((start, prev_cs, prev_fg)) => {
+                push_span(&mut spans, start, byte_start, prev_cs, prev_fg);
+                active_span = Some((byte_start, cs, fg));
+            }
+            None => {
+                active_span = Some((byte_start, cs, fg));
+            }
         }
     }
 
