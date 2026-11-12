@@ -150,11 +150,32 @@ pub fn catalogue() -> Vec<AgentInfo> {
 /// Finds `name` the way the command line does, on the PATH and then in the usual install folders.
 /// `None` when nothing runnable matches.
 pub fn find_program(name: &str) -> Option<PathBuf> {
+    find_program_in(&search_dirs(), name)
+}
+
+/// `find_program` against folders already read: a path is checked as it is, a bare name is looked
+/// up in `dirs`.
+fn find_program_in(dirs: &[PathBuf], name: &str) -> Option<PathBuf> {
     let candidate = Path::new(name);
     if candidate.components().count() > 1 {
         return runnable(candidate).then(|| candidate.to_path_buf());
     }
-    find_in(&search_dirs(), name)
+    find_in(dirs, name)
+}
+
+/// c2 audit 12: one agent start asks where its program lives up to three times (run through cmd?
+/// a script shim? found at all?). This reads the search path once and walks it once per name.
+fn program_finder() -> impl Fn(&str) -> Option<PathBuf> {
+    let dirs = search_dirs();
+    let seen = std::cell::RefCell::new(std::collections::HashMap::<String, Option<PathBuf>>::new());
+    move |name: &str| {
+        if let Some(hit) = seen.borrow().get(name) {
+            return hit.clone();
+        }
+        let hit = find_program_in(&dirs, name);
+        seen.borrow_mut().insert(name.to_string(), hit.clone());
+        hit
+    }
 }
 
 /// Finds `name` in `dirs`, in order. On Windows each PATHEXT ending is tried (`claude` matches
@@ -780,15 +801,16 @@ pub fn agent_start_line(app: tauri::AppHandle, store: tauri::State<'_, std::sync
     // SESS-005: a line that cannot be put together is refused here, before any pane is made, and
     // the refusal names the agent.
     let name = agent_name(&id);
-    let built = launch_line_with(&settings, &id, &extra, &prompt, picked.unwrap_or(false), start, |p| find_program(p).is_some_and(|f| crate::pty::through_cmd(&f)), |p| find_program(p).is_some_and(|f| crate::agents::agent_shell::is_script_shim(&f)))
+    let find = program_finder();
+    let built = launch_line_with(&settings, &id, &extra, &prompt, picked.unwrap_or(false), start, |p| find(p).is_some_and(|f| crate::pty::through_cmd(&f)), |p| find(p).is_some_and(|f| crate::agents::agent_shell::is_script_shim(&f)))
         .map_err(|e| named(&name, e))
-        .and_then(|line| command_check(&name, line.program.as_deref(), find_program).map(|()| line));
+        .and_then(|line| command_check(&name, line.program.as_deref(), &find).map(|()| line));
     // c2-agents finding 1: a start that fails before any pane exists is written to kolux.log (agent,
     // program, where it resolved, why), so "Grok never started" leaves a trace. No arguments: they may
     // carry the prompt.
     if let Err(e) = &built {
         let program = command_override(&settings, &id).map(str::to_string).or_else(|| installed_program(&id)).unwrap_or_default();
-        let line = start_failure_line(&id, &program, find_program(&program).as_deref(), e);
+        let line = start_failure_line(&id, &program, find(&program).as_deref(), e);
         match tauri::Manager::path(&app).app_data_dir() {
             Ok(dir) => crate::diag::write(&dir, &line),
             Err(_) => eprintln!("kolux-rs: {line}"),
@@ -1067,6 +1089,41 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn program_finder_answers_as_find_program_does() {
+        let find = program_finder();
+        for name in ["git", "no-such-program-kolux-xyz", "claude", "codex"] {
+            assert_eq!(find(name), find_program(name), "{name}");
+            assert_eq!(find(name), find_program(name), "{name}, asked again");
+        }
+        let here = std::env::current_exe().unwrap();
+        assert_eq!(find(here.to_str().unwrap()), Some(here.clone()), "a full path is checked as it is");
+    }
+
+    /// c2 audit 12 timing: three lookups the old way (search path read and walked each time) against
+    /// the shared finder. `cargo test --lib program_finder_timing -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn program_finder_timing() {
+        let rounds = 20;
+        let t = std::time::Instant::now();
+        for _ in 0..rounds {
+            for _ in 0..3 {
+                let _ = find_program("claude");
+            }
+        }
+        let old = t.elapsed() / rounds;
+        let t = std::time::Instant::now();
+        for _ in 0..rounds {
+            let find = program_finder();
+            for _ in 0..3 {
+                let _ = find("claude");
+            }
+        }
+        let new = t.elapsed() / rounds;
+        println!("per start: old {old:?}, shared finder {new:?}");
+    }
 
     fn temp_dir(tag: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("kolux-rs-agents-{tag}-{}", std::process::id()));
