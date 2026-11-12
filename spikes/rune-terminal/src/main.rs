@@ -1,4 +1,5 @@
 mod prefs;
+mod scrollback;
 mod vt;
 
 use std::cell::RefCell;
@@ -124,18 +125,59 @@ struct AppState {
     prefs_error: Option<String>,
     prefs_note: Option<String>,
     watcher: prefs::Watcher,
-    mono_style: TextStyle,
+    /// One per pane: metrics, ink and palette. A pane may differ from the rest (`pane_overrides`).
+    looks: Vec<PaneLook>,
+    fast_cmd: bool,
+    no_pty: bool,
+    /// `--scrollback N`: the history-probe scene instead of the pty grid (see `scrollback.rs`).
+    hist: Option<scrollback::Scrollback>,
+    bench: BenchState,
+}
+
+/// A pane's resolved drawing recipe: what `PaneLook::from` measured out of one `prefs::Look`.
+#[derive(Clone)]
+struct PaneLook {
+    style: TextStyle,
     cell_w: f32,
     cell_h: f32,
     palette: Palette,
-    fast_cmd: bool,
-    no_pty: bool,
-    bench: BenchState,
+    text: rune::Color,
+    text_dim: rune::Color,
+    accent: rune::Color,
+}
+
+impl PaneLook {
+    fn new(look: &prefs::Look) -> Self {
+        let font = &look.font;
+        let style = TextStyle::new(font.size, 400.0).family(Family::SystemMono).lh(font.line_height);
+        let measured = rune::text::advance("MMMMMMMMMM", style) / 10.0;
+        let cell_w = if font.cell_width > 0.0 {
+            font.cell_width
+        } else if measured.is_finite() && measured > 2.0 {
+            measured
+        } else {
+            7.8
+        };
+        Self {
+            cell_w,
+            cell_h: style.line_px(),
+            style,
+            palette: look.palette,
+            text: look.text,
+            text_dim: look.text_dim,
+            accent: look.border_active,
+        }
+    }
 }
 
 impl AppState {
     fn pane_count(&self) -> usize {
         self.prefs.raw.layout.panes
+    }
+
+    /// Pane `idx`'s look, falling back to the first when the two counts disagree for a frame.
+    fn look(&self, idx: usize) -> &PaneLook {
+        self.looks.get(idx).or_else(|| self.looks.first()).expect("prefs always resolve to one look")
     }
 }
 
@@ -143,7 +185,7 @@ impl Default for AppState {
     fn default() -> Self {
         let args = rune::extra_args();
         let mut prefs = Prefs::default();
-        if let Some(n) = arg_value(&args, "--panes").and_then(|v| v.parse::<usize>().ok()).filter(|&n| (1..=32).contains(&n)) {
+        if let Some(n) = arg_value(args, "--panes").and_then(|v| v.parse::<usize>().ok()).filter(|&n| (1..=32).contains(&n)) {
             prefs.layout.panes = n;
         }
         if args.iter().any(|a| a == "--no-banner") {
@@ -153,11 +195,15 @@ impl Default for AppState {
         let no_pty = args.iter().any(|a| a == "--no-pty");
         let bench = args.iter().any(|a| a == "--bench");
         let probe = args.iter().any(|a| a == "--probe");
+        let scrollback = arg_value(args, "--scrollback")
+            .and_then(|v| v.parse::<usize>().ok())
+            .filter(|&n| (100..=1_000_000).contains(&n));
+        let stream = !args.iter().any(|a| a == "--no-stream");
 
         // A prefs file on the command line is loaded before the first frame. A file that will not
         // parse must not take the window down: the built-in defaults stay live and the reason is
         // shown in the status bar, and the watcher keeps trying.
-        let prefs_path = arg_value(&args, "--prefs").map(PathBuf::from);
+        let prefs_path = arg_value(args, "--prefs").map(PathBuf::from);
         let mut prefs_error = None;
         let resolved = match &prefs_path {
             Some(path) => match Prefs::load(path).and_then(|p| p.resolve()) {
@@ -182,15 +228,24 @@ impl Default for AppState {
             prefs_path,
             prefs_error,
             prefs_note: None,
-            mono_style: TextStyle::new(13.0, 400.0),
-            cell_w: 7.8,
-            cell_h: 18.0,
-            palette: Palette::default(),
+            looks: Vec::new(),
             fast_cmd,
             no_pty,
+            hist: None,
             bench: BenchState::new(bench, probe),
         };
         state.apply_prefs();
+        if let Some(n) = scrollback {
+            let look = state.look(0).clone();            state.hist = Some(scrollback::Scrollback::new(n, &look, stream));
+            println!(
+                "SCROLLBACK rows={} cols={} cell={:.2}x{:.2} stream={}",
+                n,
+                state.hist.as_ref().map(|h| h.count()).unwrap_or(0),
+                look.cell_w,
+                look.cell_h,
+                stream
+            );
+        }
         state
     }
 }
@@ -207,23 +262,24 @@ impl AppState {
         self.watcher.changed(Instant::now())
     }
 
-    /// Everything derived from the preferences: metrics, palette, banner. Cheap enough to redo on
-    /// every live reload.
+    /// Everything derived from the preferences: one look per pane (metrics, ink, palette). Cheap
+/// enough to redo on every live reload.
     fn apply_prefs(&mut self) {
-        let font = &self.prefs.raw.font;
-        self.mono_style = TextStyle::new(font.size, 400.0).family(Family::SystemMono).lh(font.line_height);
-        let measured = rune::text::advance("MMMMMMMMMM", self.mono_style) / 10.0;
-        self.cell_w = if font.cell_width > 0.0 {
-            font.cell_width
-        } else if measured.is_finite() && measured > 2.0 {
-            measured
-        } else {
-            7.8
-        };
-        self.cell_h = self.mono_style.line_px();
-        self.palette = self.prefs.palette;
+        self.looks = self.prefs.looks.iter().map(PaneLook::new).collect();
         for pane in &mut self.panes {
             pane.rows_cache.borrow_mut().clear();
+        }
+    }
+
+    /// Re-resolves the in-memory preferences after a flag or scene changed them, so the looks
+    /// match the pane count.
+    fn refresh_looks(&mut self) {
+        match self.prefs.raw.resolve() {
+            Ok(r) => {
+                self.prefs = r;
+                self.apply_prefs();
+            }
+            Err(e) => self.prefs_error = Some(e),
         }
     }
 }
@@ -234,10 +290,15 @@ fn arg_value<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
 
 fn spawn_panes(s: &mut AppState, waker: Waker) {
     s.waker = Some(waker.clone());
+    // The scrollback probe draws rows, not shells: no pty, so its memory number is the list.
+    if s.hist.is_some() {
+        return;
+    }
     let path_env = fresh_terminal_path(std::env::var_os("PATH"));
     let count = s.pane_count().max(1);
     let banner = s.prefs.raw.layout.banner;
-    let shell = s.prefs.raw.shell.clone();
+    // A pane may name its own shell (`pane_overrides`); the rest take the grid's.
+    let shells: Vec<prefs::Shell> = (0..count).map(|i| s.prefs.raw.shell_for(i).clone()).collect();
     s.panes = (0..count)
         .map(|i| Pane::new(i, DEFAULT_COLS, DEFAULT_ROWS))
         .collect();
@@ -256,7 +317,7 @@ fn spawn_panes(s: &mut AppState, waker: Waker) {
         return;
     }
 
-    for i in 0..count {
+    for (i, shell) in shells.iter().enumerate().take(count) {
         let mut cmds = if let Some(program) = &shell.program {
             // The preferences name the program: `cargo` panes (shell.program = "wsl.exe").
             let mut c = portable_pty::CommandBuilder::new(program);
@@ -347,9 +408,9 @@ fn spawn_panes(s: &mut AppState, waker: Waker) {
         println!(
             "BENCH_INIT pid={} panes={} cell_w={:.2} cell_h={:.2}",
             std::process::id(),
-            count,
-            s.cell_w,
-            s.cell_h
+            s.pane_count(),
+            s.look(0).cell_w,
+            s.look(0).cell_h
         );
     }
 }
@@ -445,6 +506,21 @@ fn poll_pty(s: &mut AppState, _clock: f64, tx: &mut Tx) -> bool {
         reload_prefs(s, tx);
     }
 
+    // The history probe streams a row a frame and keeps the frame loop going by itself; with
+    // `--bench` it reports its own frame numbers after ten seconds.
+    if let Some(hist) = &mut s.hist {
+        if hist.tick() {
+            changed = true;
+        }
+        if s.bench.enabled {
+            tx.wake_after(Duration::from_millis(16));
+            if !s.bench.reported && s.bench.started_at.elapsed() >= Duration::from_secs(10) {
+                s.bench.reported = true;
+                report_bench(&s.bench);
+            }
+        }
+    }
+
     if s.bench.probe_enabled {
         if let Some(due) = s.bench.next_probe_at {
             if now >= due && s.bench.pending_probe.is_none() && s.bench.probes_sent < s.bench.probes_target {
@@ -494,7 +570,7 @@ fn reload_prefs(s: &mut AppState, tx: &mut Tx) {
                 s.prefs.raw.theme.name
             ));
             println!(
-                "PREFS_RELOAD file={} panes={} columns={} theme={} font={}/{} shell={} gap={}",
+                "PREFS_RELOAD file={} panes={} columns={} theme={} font={}/{} shell={} gap={} overrides={}",
                 path.display(),
                 want,
                 s.prefs.raw.layout.columns,
@@ -502,7 +578,8 @@ fn reload_prefs(s: &mut AppState, tx: &mut Tx) {
                 s.prefs.raw.font.size,
                 s.prefs.raw.font.line_height,
                 s.prefs.raw.shell.program.clone().unwrap_or_else(|| "kolux-default".into()),
-                s.prefs.raw.layout.gap
+                s.prefs.raw.layout.gap,
+                s.prefs.raw.layout.pane_overrides.len(),
             );
             if want != s.panes.len() {
                 if let Some(w) = s.waker.clone() {
@@ -651,9 +728,12 @@ fn on_key(s: &mut AppState, ev: &KeyEvent, tx: &mut Tx) -> bool {
 }
 
 fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
-    // Uncoloured text (most terminal cells) takes the theme's ink, so a light theme gets dark
-    // glyphs instead of the window's white default.
-    cx.foreground(s.palette.fg);
+    // The history probe replaces the pane grid entirely: same window, same prefs, one list.
+    if let Some(hist) = &s.hist {
+        return hist.view(s);
+    }
+    // Uncoloured text takes the first pane's ink until the pane loop sets its own.
+    cx.foreground(s.look(0).palette.fg);
     cx.caption_color(s.prefs.colors.text_dim);
     let c = s.prefs.colors;
     let layout = &s.prefs.raw.layout;
@@ -669,16 +749,22 @@ fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
             let idx = r_idx * cols_n + c_idx;
             if let Some(pane) = s.panes.get(idx) {
                 let is_active = idx == s.active;
+                // Pane `idx` may carry its own ink, palette and cell metrics.
+                let lk = s.look(idx);
+                let style = lk.style;
+                let palette = lk.palette;
+                let cell_w = lk.cell_w;
+                let cell_h = lk.cell_h;
+                let accent = lk.accent;
+                cx.foreground(palette.fg);
                 let mut cache = pane.rows_cache.borrow_mut();
                 let grid_rows = sync_rows(
                     pane.parser.screen(),
-                    s.mono_style,
-                    s.palette,
+                    style,
+                    palette,
                     is_active,
                     &mut cache,
                 );
-                let cell_w = s.cell_w;
-                let cell_h = s.cell_h;
                 let pane_idx = pane.id;
 
                 let header = row()
@@ -696,7 +782,7 @@ fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
                             .fill(if pane.exited.is_some() {
                                 rgb(248, 113, 113)
                             } else if is_active {
-                                c.border_active
+                                accent
                             } else {
                                 rgb(74, 222, 128)
                             }),
@@ -704,13 +790,13 @@ fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
                     .child(
                         text(&pane.title)
                             .font(type_::LABEL)
-                            .color(if is_active { c.text } else { c.text_dim }),
+                            .color(if is_active { lk.text } else { lk.text_dim }),
                     )
                     .child(rune::spacer())
                     .child(
                         text(format!("{}x{}", pane.cols, pane.rows))
                             .font(type_::MONO_CAPTION)
-                            .color(c.text_dim),
+                            .color(lk.text_dim),
                     );
 
                 let viewport = el()
@@ -721,7 +807,7 @@ fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
                     .min_h(0.0)
                     .padding(pad_y)
                     .px(pad_x)
-                    .fill(s.palette.bg)
+                    .fill(palette.bg)
                     .on_layout(move |st: &mut AppState, rect: [f32; 4]| {
                         let inner_w = (rect[2] - pad_x * 2.0).max(cell_w * 16.0);
                         let inner_h = (rect[3] - pad_y * 2.0).max(cell_h * 4.0);
@@ -749,9 +835,9 @@ fn view(s: &AppState, cx: &mut Cx<AppState>) -> El {
                     .clip_rounded(6.0)
                     .border(
                         if is_active { 1.5 } else { 1.0 },
-                        if is_active { c.border_active } else { c.border_idle },
+                        if is_active { accent } else { c.border_idle },
                     )
-                    .fill(s.palette.bg)
+                    .fill(palette.bg)
                     .focusable(true)
                     .on_press(move |st: &mut AppState| {
                         st.active = pane_idx;
@@ -855,6 +941,7 @@ fn bare_view(_s: &AppState, _cx: &mut Cx<AppState>) -> El {
 fn set_scene_panes(s: &mut AppState, n: usize) {
     if !s.prefs_locked {
         s.prefs.raw.layout.panes = n;
+        s.refresh_looks();
     }
 }
 
