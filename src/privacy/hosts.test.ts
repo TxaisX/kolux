@@ -60,7 +60,7 @@ const CONNECTS: Record<string, string> = {
 
 /** An address in the code that is not a connection the app makes, and why. */
 const NOT_A_CONNECTION: Record<string, string> = {
-  "127.0.0.1": "this computer: the browser pane's own preview and port probe",
+  "127.0.0.1": "this computer: local agent hook callbacks",
   "kolux-artifact.localhost": "the app's own scheme for showing a saved artifact",
   "git-scm.com": "words in an error message; the person decides whether to open it",
   "avatars.": "the start of the GitHub Enterprise picture host, built from the repository's own host",

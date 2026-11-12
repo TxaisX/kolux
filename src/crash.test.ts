@@ -46,7 +46,7 @@ describe("reportCrash / ReportButton", () => {
     expect(got[0]).toContain("Error: Error: bad");
   });
   it("the button reads Report", () => {
-    expect(renderToStaticMarkup(createElement(ReportButton, { error: new Error("x"), request: () => {} }))).toBe('<button class="btn">Report</button>');
+    expect(renderToStaticMarkup(createElement(ReportButton, { error: new Error("x"), request: () => {} }))).toBe('<button type="button" class="btn">Report</button>');
   });
 });
 

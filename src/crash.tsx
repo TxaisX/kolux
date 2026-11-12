@@ -35,7 +35,7 @@ export function reportCrash(error: unknown, request: (text: string, crash?: bool
 /** The Report button on the crash screen. */
 export function ReportButton({ error, request }: { error: unknown; request?: (text: string, crash?: boolean) => void }) {
   return (
-    <button className="btn" onClick={() => reportCrash(error, request)}>
+    <button type="button" className="btn" onClick={() => reportCrash(error, request)}>
       Report
     </button>
   );

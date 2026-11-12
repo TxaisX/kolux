@@ -32,9 +32,12 @@ test("the shortest window with a figure is the one checked: a busy week behind a
 });
 
 test("Claude's read limits feed the warning as its 5-hour and weekly windows; no limits give no figures", () => {
-  const u = claudeFigures([{ kind: "seven_day", usedPercent: 40, resetsAt: null }, { kind: "five_hour", usedPercent: 91, resetsAt: at(14) }]);
+  const u = claudeFigures([{ kind: "seven_day", usedPercent: 40, resetsAt: null }, { kind: "five_hour", usedPercent: 91, resetsAt: at(14) * 1000 }]);
   expect(u?.fiveHour?.usedPercent).toBe(91);
+  expect(u?.fiveHour?.resetsAt).toBe(at(14));
   expect(u?.weekly?.usedPercent).toBe(40);
-  expect(launchWarnings(["claude"], { claude: u }, now)[0]).toContain("Claude has used 91% of its 5-hour window");
+  const line = launchWarnings(["claude"], { claude: u }, now)[0];
+  expect(line).toContain("Claude has used 91% of its 5-hour window");
+  expect(line).toMatch(/resets today/);
   expect(claudeFigures([])).toBeUndefined();
 });
