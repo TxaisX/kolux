@@ -45,12 +45,14 @@ export function bindNative(body: HTMLElement, id: () => number | null, hidden: (
         if (want === null) return;
         await call("native_term_attach", { id: now, rect: want });
         attached = now;
+        body.dataset.native = "on";
       } else {
         await call("native_term_place", { id: now, rect: want });
       }
       shown = want;
     } catch (e) {
       failed = true; // no engine, or too many native panes: the pane stays on xterm
+      body.dataset.native = "off";
       console.warn("native terminal off for this pane:", e);
     } finally {
       busy = false;
@@ -64,5 +66,6 @@ export function bindNative(body: HTMLElement, id: () => number | null, hidden: (
     watch?.disconnect();
     clearInterval(timer);
     if (attached !== null) void call("native_term_detach", { id: attached }).catch(() => {});
+    delete body.dataset.native;
   };
 }
