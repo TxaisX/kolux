@@ -111,11 +111,16 @@ pub fn run(store: &Store, now: u64) -> Result<Report, String> {
     Ok(report)
 }
 
+/// The store's messages (`read` already refused mail that is not a record). A message that is not
+/// a record must not panic at startup (indexing a non-object `Value` mutably panics), so such
+/// entries are dropped: nothing could read them anyway, and the backup keeps the original text.
 fn messages(mail: &mut Value) -> &mut Vec<Value> {
     if !mail["messages"].is_array() {
         mail["messages"] = json!([]);
     }
-    mail["messages"].as_array_mut().expect("just made a list")
+    let list = mail["messages"].as_array_mut().expect("just made a list");
+    list.retain(Value::is_object);
+    list
 }
 
 fn extras(m: &mut Value) -> &mut Map<String, Value> {
@@ -312,6 +317,19 @@ mod tests {
         let again = run(&store, 2_000).unwrap();
         assert_eq!(again, Report { from: CURRENT, to: CURRENT, ..Report::default() });
         assert_eq!(Mail::load(&store), m);
+        drop(store);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_corrupt_mail_store_upgrades_without_a_panic() {
+        let (store, dir) = fresh("corrupt");
+        // Messages that are not records are dropped instead of panicking.
+        let mail = json!({ "messages": ["junk", 7, { "id": "msg-1", "kind": "question" }] });
+        store.set_all(&[(super::super::KEY, &mail.to_string())]).unwrap();
+        let r = run(&store, 1).unwrap();
+        assert_eq!(r.to, CURRENT);
+        assert!(r.steps[0].contains("1 message(s)"), "{}", r.steps[0]);
         drop(store);
         let _ = std::fs::remove_dir_all(dir);
     }
