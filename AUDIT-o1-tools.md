@@ -365,3 +365,16 @@ Largest settings files: `AppearancePage.tsx` 624, `SettingsPage.tsx` 488, `Claud
 c3-terminal's (`terminal/remove.ts`, `terminal/paneActions.ts`). Filed as
 `_shared/bugs/c3-terminal/20261112-1205-remove-started-session-setting-is-dead.md` — wire it, or
 tell me to delete the control.
+
+## Round 3 closures (2026-11-12)
+
+| # | State | Where |
+|---|---|---|
+| N-01 | CLOSED by round 2: `htmlPreview.ts` opens the served address through `src/open/openExternal.ts`. | verified this round |
+| N-15 | CLOSED by round 2: `ChecksPanel.tsx:156` runs `openOut(pr.url)` → `openExternal`. | verified this round |
+| N-16 | FIXED `d5d771ea`: `PrStart` follows `watchStatus(dir)`, re-renders when the readiness answer goes stale, and reads once when nothing answers. | `src/scm/PrStart.tsx` |
+| N-07 | FIXED `a5703046`: a text selection outside a field gets a Copy-only row; `runEdit` copies without focusing. | `src/editmenu/editMenuModel.ts`, `EditMenuHost.tsx` |
+| N-04 | FIXED `979ecaf7`: the preview draws from the settled text (300 ms). | `src/editor/PreviewPane.tsx` |
+| N-17 | FIXED `4b76b9e6`: the ports list is cleared only by a change of workspace. | `src/ports/PortsItem.tsx` |
+| N-06 | FIXED `93f9719e`: the tree passes are memoised on what they read. | `src/editor/Explorer.tsx` |
+| N-18 | NOT fixed: still two `git status` reads per Checks-tab open (Rust `scm_pr_checks` + the panel's seed read). The seed read stays because `scm_watch` sends no first status (its first read is after the 30 s safety tick). | `PrStart.tsx` + `src-tauri/src/scm_watch.rs:725` |
