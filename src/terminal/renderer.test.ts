@@ -612,3 +612,20 @@ describe("DT-C245 quietSelection", () => {
     expect(quietSelection({ _core: { _selectionService: { refresh() {} } } })).toBeNull();
   });
 });
+
+test("bug 1155: a pane that starts plain loads nothing until woken, then takes the GPU path", () => {
+  const loaded: unknown[] = [];
+  const pool = { live: 0, max: 4 };
+  const choice = attachRenderer({ loadAddon: (a) => loaded.push(a) }, fakeWebgl, true, pool, true);
+  expect(choice.mode).toBe("dom");
+  expect(loaded).toHaveLength(0);
+  expect(pool.live).toBe(0);
+  expect(choice.wake()).toBe("webgl");
+  expect(loaded).toHaveLength(1);
+  expect(pool.live).toBe(1);
+});
+
+test("bug 1155: starting plain with the GPU switched off stays plain when woken", () => {
+  const choice = attachRenderer({ loadAddon: () => {} }, fakeWebgl, false, { live: 0, max: 4 }, true);
+  expect(choice.wake()).toBe("dom");
+});

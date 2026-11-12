@@ -29,7 +29,7 @@ import { xtermLogger } from "./xtermLogger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
+import { afterPaint, attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
 import { handedOver, takeOver } from "./handover";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
@@ -568,8 +568,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     if (import.meta.env.DEV) (el as DevHost).__koluxTerm = term;
     // TERM-092 / TERM-093 / TERM-094 / TERM-096: the pane's links (paneLinks.ts).
     const unlinks = wireLinks(term, el, { handle: handleRef, open: openRef, keys, linkOpen: linkOpenRef, setFlash, setLinkHint, setLinkMenu });
-    const choice = attachRenderer<WebglAddon>(term, () => new WebglAddon(), gpu && preferGpu(currentInput().gpu, probeGpu())); // SET-022: the GPU setting (automatic, on, off)
+    // SET-022: the GPU setting (automatic, on, off). Bug 1155: the pane starts plain and loads the GPU path after its first paint.
+    const choice = attachRenderer<WebglAddon>(term, () => new WebglAddon(), gpu && preferGpu(currentInput().gpu, probeGpu()), undefined, true);
     setRenderer(choice.mode);
+    const gpuSoon = afterPaint(() => {
+      if (choice.mode === "webgl" || choice.wake() !== "webgl") return;
+      term.refresh(0, Math.max(0, term.rows - 1)); // a renderer swap needs a full repaint
+      setRenderer("webgl");
+    });
     choice.onFallback(() => setRenderer("dom"));
     quietSelection(term); // DT-C245: no selection redraw per scrolled line while nothing is selected
     fit.fit();
@@ -1362,6 +1368,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       if (id !== null && killsOnUnmount(gen) && !handed) invoke("terminal_kill", { id }).catch(() => {});
       parking.current?.stop();
       parking.current = null;
+      gpuSoon();
       choice.dispose();
       pasting.detach();
       shots();
