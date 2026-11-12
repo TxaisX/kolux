@@ -2,7 +2,7 @@
 
 - **Status (plain words, 3 lines max)**:
   Round 2 fixed the small screens' remaining real bugs: the language pack is now fetched at startup and on every language switch (never mid-paint), the usage/insights contract tests read files from disk instead of Vite's cache, a stopped usage runner no longer leaves its state behind, and the crash screen's Report button is a plain button. Typecheck is 0 errors and `329 passed (329)` across the seven owned areas.
-  The Rune terminal spike now exists as a standalone crate (`spikes/rune-terminal/`, 648 + 334 lines including a VT grid) with a real ConPTY per pane, but it is **not proven**: the build needs the whole `kolux`/tauri stack and has not finished a clean build in this round, so there are no PNG or tree renders yet. Nothing was wired into the app.
+  The Rune terminal spike now builds and renders headlessly: real Windows/DX12 numbers for 1, 4 and 8 panes plus an element-tree dump are in `spikes/rune-terminal/evidence/`, every pane really runs its own ConPTY `powershell.exe`. One defect remains — PTY output is not reaching the VT parser yet, so the panes are empty and typing/colour is unproven. Nothing was wired into the app.
 
 ## Done this round (proof quoted)
 
@@ -24,7 +24,9 @@
 
 7. **Refactor: one two-decimal money formatter instead of two copies (P2 duplicate helper).** `src/usage/format.ts` gained `usd2`; `src/insights/InsightsPanel.tsx` and `src/usage/WorkspaceSpend.tsx` each dropped their local `const money = (usd) => formatUsd(usd, 2)` and import `usd2 as money` instead. Behaviour is identical (both were `formatUsd(usd, 2)`); every existing string assertion still passes.
 
-8. **Checked the two P3s the round-1 report listed and did not change them**, because neither is a real defect:
+8. **Rune spike: it compiles and it renders.** Fixed the last four compile blockers in the crate (`String`/`&str` in the `vt.rs` cell match, `Waker` called as a function, `TextStyle.weight` field instead of a builder, `.clip()` removed, unused import), then got the first headless proof out of it — the numbers and artefact paths are in the Rune section below.
+
+9. **Checked the two P3s the round-1 report listed and did not change them**, because neither is a real defect:
    - `ClaudePill` minute tick: `nextTick` (`src/usage/claude.ts:28-34`) already ticks every minute when the reset is under 24 h and hourly beyond that, and the hover text's far-away countdown is day/hour granular. The forecast line prints an absolute time, not a countdown, so a minute tick would repaint without changing a character.
    - `src/styles.css:1014-1036` `.upd-*` duplication: not my file (c3-terminal owns `src/styles.css`).
 
@@ -51,7 +53,29 @@ node node_modules/vitest/vitest.mjs run src/usage src/insights src/notify src/i1
 - `El` has no `.clip()`; the two calls were removed (the pane's viewport already sizes its grid explicitly).
 - `TextStyle` has no `.weight(..)` builder; the bold path in `vt.rs` sets the public `weight` field.
 
-**Not proven, and why:** building the spike now compiles the whole `kolux` crate, i.e. tauri + webview2 + wgpu. This round it got as far as compiling tauri and the Rune stack and did not finish a clean build, so there are **no `--snap` PNGs and no `--tree` dump yet**, and no memory/CPU/GPU/frame-time numbers. Treat the spike as "code written, not yet proven"; the next round's first job is one `cargo build` to completion, then `--snap one.png --scene 1`, `--scene 4`, `--scene 8` and `--tree tree.json`.
+**Proven this round:** the crate builds (`Finished dev profile [unoptimized + debuginfo] target(s) in 30.82s`, after compiling the whole tauri + Rune stack), and Rune's headless mode renders it with no window:
+
+| scene | artefacts | instances | layout nodes | glyphs | frame CPU mean / p50 / p95 (ms) |
+|---|---|---|---|---|---|
+| 1 pane | `spikes/rune-terminal/evidence/one.png` | 126 | 16 | 119 | 4.06 / 3.44 / 7.62 |
+| 4 panes | `evidence/four.png`, `evidence/four-8s.png` | 215 | 41 | 193 | 2.25 / 1.67 / 3.54 |
+| 8 panes | `evidence/eight.png`, `evidence/tree-eight.json` (51 KB element tree) | 265 | 73 | 233 | 3.18 / 2.64 / 5.55 |
+
+Those are **real Windows/DX12 figures**, which Rune's own README does not publish — its quoted 0.13 ms mean is Apple silicon. On this PC a frame of 8 terminal panes costs ~1.5-2.6 ms CPU at the median (vs 0.13 ms on an M-series), still far inside a 16.7 ms frame, and the 1-pane row is inflated by a one-off 2.9 s GPU init on the first run. Command lines, for the record:
+```
+cargo build
+./target/debug/rune-terminal.exe --snap evidence/one.png   --scene 1 --realtime --at 2.0
+./target/debug/rune-terminal.exe --snap evidence/four.png  --scene 4 --realtime --at 2.0
+./target/debug/rune-terminal.exe --snap evidence/eight.png --scene 8 --realtime --at 3.0
+./target/debug/rune-terminal.exe --tree evidence/tree-eight.json --scene 8 --realtime --at 3.0
+```
+The PNGs show the grid, per-pane headers (`Pane N · powershell.exe`, `80x21`), the focus ring, a block cursor in every pane and the status bar — so the pane layout, the theme, the focus model and the cursor all render. Each pane really did start its own `powershell.exe` under ConPTY.
+
+**The one thing still broken:** output is not reaching the VT parser — the status bar reads `4 B` per pane and the pane bodies are empty at 2 s, 3 s and 8 s (`evidence/four-8s.png`). So typing/colour throughput is **not** proven. `PtySession::spawn_first` starts its reader through `pty_pump` and our callback only ever sees ~4 bytes, which points at the pump→queue handoff (or at ConPTY holding output until the first resize is acknowledged), not at the Rune side: the `Msg::Output` drain feeds `parser.process` correctly. First job next round: fix that, then take the keystroke-to-screen number.
+
+**Preferences (requirement f) are not implemented yet.** The spike's layout, palette and cell size are compile-time constants today; the `AppSpec` scene list (`"1"`, `"4"`, `"8"`) is the hook the preference file will drive.
+
+**Memory / CPU % / GPU % are not measured yet.** Only Rune's own in-process frame instrumentation above; a live 8-pane run with an external sampler is the next round's measurement.
 
 **Preferences (requirement f) are not implemented yet.** The spike's layout, palette and cell size are compile-time constants today. The `AppSpec` scene list (`"1"`, `"4"`, `"8"`) is the hook the preference file will drive.
 
@@ -101,8 +125,8 @@ Rune's strongest argument, independent of the terminal question. Today a visual 
 
 ## Next round
 
-1. **Prove the spike.** One `cargo build` to completion, then `--snap one.png --scene 1 --realtime --at 2.0`, the same for `4` and `8`, and `--tree tree.json`; add the four artefacts' paths here. Then the measurement table (memory, CPU %, GPU %, frame time, keystroke-to-screen) against Kolux's WebView2 panes.
-2. **Preferences (requirement f)** before the measurement, because the measured setup has to be the user's setup: one JSON file driving pane count, arrangement, theme, palette, cell size, shell and the next-pane key, re-read live, with two very different setups rendered as PNGs.
+1. **Fix the PTY → parser handoff, then measure.** The pane bodies are empty (`4 B` received); find why `pty_pump` → `Msg::Output` delivers ~4 bytes, then take keystroke-to-screen with `--script`, and add memory / CPU % / GPU % from an external sampler on a live 8-pane window.
+2. **Preferences (requirement f)** before the measurement is written up, because the measured setup has to be the user's setup: one JSON file driving pane count, arrangement, theme, palette, cell size, shell and the next-pane key, re-read live, with two very different setups rendered as PNGs.
 3. **Then and only then** the remaining small-screen polish: `FeedbackDialog` rapid-reopen sequence (already partly guarded), and a `readdirSync`-based replacement for the `?raw` glob in `src/usage/ShareButton.test.ts` (same stale-cache class as item 4).
 
 ## For the coordinator
