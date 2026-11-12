@@ -1,7 +1,7 @@
 // LIVE proof, GIT-038 boxes 1+2 (spec/11): 10 changed files -> All Changes has 10 sections, the scroll position at the seventh survives
 // a tab switch; Side by side and Whitespace change the layout and the change markers at once.
 import { pathToFileURL } from "node:url";
-import { reporter, startPlain, finish, sleep, poll, checker, reviewRepo, clickTab, openScm, vis } from "./live-git-common.mjs";
+import { reporter, startPlain, finish, sleep, poll, checker, reviewRepo, clickTab, openAllChanges, acCount, vis } from "./live-git-common.mjs";
 
 const AC = vis(".all-changes");
 const names = (app) => app.evalJs(`[...${AC}.querySelectorAll(".ac-section")].map(s=>s.querySelector(".ac-name").textContent)`);
@@ -21,13 +21,10 @@ async function bringToTop(app, name) {
 
 export async function run038(ctx, { check, log }) {
   const { app } = ctx;
-  await openScm(app);
-  await sleep(2000);
-  const changed = await poll(async () => { const n = await app.evalJs(`document.querySelectorAll(".scm-row").length`); return n === 10 ? n : null; }, 20000, 700);
-  log(`Source Control rows: ${changed}`);
-  await app.evalJs(`[...document.querySelectorAll(".rside button")].find(b=>b.getAttribute("aria-label")==="All changes"||b.title==="All changes").click()`);
+  await openAllChanges(app);
   await sleep(2500);
   const v0 = await view(app);
+  const counted = await acCount(app);
   // Collect every section name by walking down the windowed list.
   const seen = new Set(await names(app));
   for (let i = 0; i < 40; i++) {
@@ -39,7 +36,7 @@ export async function run038(ctx, { check, log }) {
   await sleep(800);
   const order = [...seen];
   log(`All Changes: ${JSON.stringify(v0)}; sections seen while scrolling (${order.length}): ${JSON.stringify(order)}`);
-  check("box 1: 10 files changed and All Changes holds 10 sections (tag and the section names)", changed === 10 && /^10 files/.test(v0?.tag ?? "") && order.length === 10, JSON.stringify({ changed, tag: v0?.tag, n: order.length }));
+  check("box 1: 10 files changed and All Changes holds 10 sections (tag and the section names)", counted.count === 10 && /^10 files/.test(v0?.tag ?? "") && order.length === 10, JSON.stringify({ ...counted, n: order.length }));
   const seventh = order[6];
   const placed = await bringToTop(app, seventh);
   const v1 = await view(app);

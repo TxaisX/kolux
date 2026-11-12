@@ -91,6 +91,7 @@ export function parseArgs(argv) {
  *   attach         - attaches to an already-running installed app (live-installed / live-checks)
  *   installed      - requires pre-installed %LOCALAPPDATA%\Kolux\kolux.exe or --exe arg
  *   real-claude    - requires real signed-in Claude account A (uses AI quota)
+ *   retired        - its header carries `// retired: <reason>`: the screen it drove is gone, so it never runs
  *   retired-browser- tests the embedded browser pane that Goal 0 removed (kept as a guard, never runs)
  *   standin        - self-contained live check runnable with stand-in agents (no AI quota)
  */
@@ -107,6 +108,12 @@ export function classifyProveScript(filename, source) {
   }
   if (filename === "live-T-544.mjs" || filename === "live-T-816-nowin.mjs") {
     return { category: "installed", runnableByDefault: false, reason: "requires installed or explicit --exe build" };
+  }
+  // A check whose screen no longer exists is retired by marking its header, so the summary counts it instead of
+  // reporting a red row for a feature that was removed on purpose. `// retired: <reason>` must sit in the header.
+  const retired = /^\s*\/\/\s*retired:\s*(.+)$/m.exec(source.slice(0, 800));
+  if (retired) {
+    return { category: "retired", runnableByDefault: false, reason: `retired: ${retired[1].trim()}` };
   }
   if (/from\s+["']\.\/live-claude-common\.mjs["']/.test(source) || /\bstartProve\s*\(/.test(source)) {
     return { category: "real-claude", runnableByDefault: false, reason: "requires real Claude sign-in / AI quota" };
@@ -213,6 +220,10 @@ export function shouldRun(entry, opts) {
     return { run: false, skipReason: entry.reason };
   }
   if (entry.category === "real-claude" && !opts.includeRealClaude) {
+    return { run: false, skipReason: entry.reason };
+  }
+  if (entry.category === "retired") {
+    // The screen this check drove is gone (`// retired:` in its header): it has nothing left to check and never runs.
     return { run: false, skipReason: entry.reason };
   }
   if (entry.category === "retired-browser") {

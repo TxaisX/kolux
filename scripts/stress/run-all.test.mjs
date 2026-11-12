@@ -74,6 +74,19 @@ test("a script that still drives the removed embedded browser pane never runs", 
   assert.equal(shouldRun(entry, parseArgs([])).run, false);
 });
 
+test("a `// retired:` header skips the script and carries its reason into the summary", () => {
+  const source = '// LIVE proof, GIT-001 (spec/11): the Source Control panel persists.\n// retired: the right-sidebar Source Control panel was removed by T-644\nimport { x } from "./live-git-common.mjs";\n';
+  const entry = classifyProveScript("live-GIT-001.mjs", source);
+  assert.equal(entry.category, "retired");
+  assert.equal(entry.runnableByDefault, false);
+  assert.equal(entry.reason, "retired: the right-sidebar Source Control panel was removed by T-644");
+  assert.equal(shouldRun(entry, parseArgs([])).run, false);
+  assert.equal(shouldRun(entry, parseArgs([])).skipReason, entry.reason);
+  // The marker only counts in the header: a mention deeper in a live check must not retire it.
+  const body = 'import { x } from "./live-common.mjs";\n'.repeat(40) + "// retired: something in a fixture\n";
+  assert.equal(classifyProveScript("live-SESS-004.mjs", body).category, "standin");
+});
+
 test("selectorDrift flags a class no src/ file mentions and leaves the real ones alone", () => {
   const known = new Set(["sess", "pane", "terminal-pane", "pane-new-session"]);
   const source = [

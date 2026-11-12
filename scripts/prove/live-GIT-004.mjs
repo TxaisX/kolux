@@ -1,3 +1,4 @@
+// retired: it types into the Source Control panel's commit box, which moved to All Changes when T-644 removed that panel
 // LIVE proof, GIT-004 boxes 2+3 (spec/11): a half-written commit message survives switching to another workspace and back;
 // a pre-commit hook that exits 1 makes the notice say "blocked" and show what the hook printed.
 // Also run inside live-GIT-007.mjs (same fixture, one launch).

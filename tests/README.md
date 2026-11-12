@@ -91,3 +91,33 @@ brings the grid back, and that a restart keeps every pane.
 # The two session/sidebar flows only, on this lane's own ports and identifier:
 node scripts/evidence/smoke.mjs --only 6,7 --port 1500 --cdp 9350 --identifier com.txaisxiong.kolux.o2-smoke --temp G:/Temp/o2-smoke
 ```
+
+## 8. Retired checks (added round 3, 2026-11-12)
+
+When the screen a live check drove is gone, do not delete the file and do not leave it running red: put
+`// retired: <why>` as the **first line** of the script. `classifyProveScript()` (`scripts/stress/run-all.mjs`) then
+files it as `retired`, `shouldRun()` never runs it, and the summary lists it under "Skipped checks" with the reason.
+The marker only counts in the header (first 800 characters), so a check that merely mentions the word stays live.
+
+Seven proofs are retired this way, all because T-644 removed the right-sidebar Source Control panel they drove:
+`live-GIT-001`, `live-GIT-003`, `live-GIT-004`, `live-GIT-007`, `live-GIT-037`, `live-GIT-040`, `live-EDIT-027`.
+The replacement surface is All Changes: open it with `openAllChanges(app)` from `scripts/prove/live-edit-common.mjs`
+(the project row's menu → "Review changes") and count changed files with `acCount(app)`, as `live-EDIT-029` and
+`live-GIT-038` now do. Rewriting the seven onto All Changes is queued for round 4, with a running app.
+
+## 9. The feature map (`docs/guide/feature-map.md`, added round 3)
+
+Goal 0, item 6. The map lists every control by screen with what it should do, what it does now, a verdict and its
+proof. `scripts/feature-map.test.mjs` keeps it honest: the three mapped screens must stay, and every
+`data-testid="…"` the map quotes must still be declared in `src/`. Run it with the rest of the harness tests:
+
+```powershell
+node node_modules/vitest/vitest.mjs run scripts/
+```
+
+## 10. `?raw` contract tests and the Vite cache (added round 3)
+
+`tests/raw-contract-imports.md` lists all 75 test files that assert on source text read through Vite's `?raw`,
+grouped by area with the owning lane. Those transforms are cached, so a stale entry can fail a correct file or pass a
+changed one. Delete `node_modules/.vite` before a full-suite run until every area reads its file with `node:fs`
+(queued bug `20261112-1118`; the CI half is filed to `c1-coord`).
