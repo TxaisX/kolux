@@ -1404,9 +1404,14 @@ impl Terminals {
         Some(PaneRun { agent: m.agent, started, wrote: m.last_output.is_some(), alive: !inner.ended.contains(id), home_env: m.home_env.clone(), cwd: m.cwd.clone() })
     }
 
-    /// ACCT-046: the program session `id` actually started.
+    /// ACCT-046: the program session `id` actually started: the shell that came up for a shell pane, and the
+    /// program asked for (`claude`, not the shell that may carry it) for a program pane, so the window waits
+    /// on that program's marks and not on a shell's prompt that never comes.
     pub fn started(&self, id: u32) -> Option<String> {
-        self.inner.lock().ok()?.sessions.get(&id).map(|s| s.program().to_string())
+        let inner = self.inner.lock().ok()?;
+        let session = inner.sessions.get(&id)?;
+        let asked = inner.marks.get(&id).map(|m| m.program.as_str()).filter(|p| !p.is_empty() && !is_shell_program(p));
+        Some(asked.unwrap_or_else(|| session.program()).to_string())
     }
 
     /// CLI-024: what session `id` wrote after `cursor` (none for an open session that wrote nothing yet).
@@ -2089,6 +2094,25 @@ pub fn terminal_reap_pane(terminals: tauri::State<'_, Terminals>, pane_key: u32)
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminals>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, cols: u16, rows: u16, cwd: Option<String>, start: Option<String>, program: Option<String>, args: Option<Vec<String>>, env: Option<Vec<(String, String)>>, pane_key: Option<u32>, account: Option<String>) -> Result<Spawned, String> {
+    let label = program.as_deref().map(str::trim).filter(|p| !p.is_empty()).unwrap_or("shell").to_string();
+    let log_dir = app.path().app_data_dir().ok();
+    let result = spawn_unlogged(app, terminals, store, cols, rows, cwd, start, program, args, env, pane_key, account).await;
+    // c2-agents (d): a start that failed leaves a line in kolux.log, so "the agent never started" has a trace.
+    if let (Err(e), Some(d)) = (&result, &log_dir) {
+        if let Some(line) = start_failed_line(&label, e) {
+            crate::diag::write(d, &line);
+        }
+    }
+    result
+}
+
+/// The kolux.log line for a failed start (none for a start superseded by a newer one: that is no failure).
+fn start_failed_line(label: &str, error: &str) -> Option<String> {
+    (error != SUPERSEDED).then(|| format!("terminal start failed ({label}): {error}"))
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, cols: u16, rows: u16, cwd: Option<String>, start: Option<String>, program: Option<String>, args: Option<Vec<String>>, env: Option<Vec<(String, String)>>, pane_key: Option<u32>, account: Option<String>) -> Result<Spawned, String> {
     // The window sends a launch line, not a process table: a launch that needs more than this is
     // a bug, and the IPC boundary must not be a way to build one from a compromised page.
     if args.as_ref().is_some_and(|a| a.len() > MAX_SPAWN_ARGS) {
@@ -2355,6 +2379,28 @@ pub fn native_term_detach(id: u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// c2-agents agent-shell (c): a program carried by a shell reports the program asked for, not the shell;
+    /// a plain shell pane still reports the shell that came up.
+    #[test]
+    fn started_names_the_program_asked_for_not_the_shell_that_carries_it() {
+        let t = Terminals::default();
+        t.fake_session(7, "C:/w", Some("claude"));
+        assert_eq!(t.started(7).as_deref(), Some("claude"));
+        t.fake_session(8, "C:/w", None);
+        let shell = t.started(8).unwrap();
+        assert_ne!(shell, "claude");
+        t.fake_session(9, "C:/w", Some("powershell"));
+        assert_ne!(t.started(9).as_deref(), Some("claude"));
+        assert_eq!(t.started(99), None);
+    }
+
+    /// c2-agents agent-shell (d): a failed start is logged with its program; a superseded one is not.
+    #[test]
+    fn a_failed_start_has_a_log_line_and_a_superseded_one_does_not() {
+        assert_eq!(start_failed_line("grok", "grok was not found on this PC").as_deref(), Some("terminal start failed (grok): grok was not found on this PC"));
+        assert_eq!(start_failed_line("claude", SUPERSEDED), None);
+    }
 
     /// T-184-b: quitting ends the panes the window runs and leaves the service's running, after
     /// recording how much of each one's output the window drew (by its id in the service).
