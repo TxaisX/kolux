@@ -106,3 +106,34 @@ Baseline checks on Round 1 start:
   2. Reuse Kolux's PTY configuration (`portable-pty = "0.9"`, Windows shell chain / `fresh_terminal_path` / ConPTY sizing; evaluate direct path dep on `kolux_lib` vs extracting/mirroring `pty.rs` so the spike doesn't pull `tauri` + `webview2-com` if unnecessary).
   3. Add a Rust VT parser (`vt100` or `alacritty_terminal`) mapping grid rows/cells (fg/bg RGB/ANSI colours, bold/underline, cursor position) into Rune `El` panes (`Family::Mono`, `rich(line, spans)` + cursor rect) arranged in a 1 / 4 / 8-pane grid with keyboard input (`on_key` / `on_physical_input` -> PTY writer) and `AppSpec::poll` + `Waker` for live PTY output.
   4. Verify headlessly with `--snap` (1, 4, 8 panes) and `--tree`, then benchmark 8 panes live side-by-side against Kolux's WebView2 + xterm.js panes (memory, CPU %, GPU %, frame time, keystroke-to-screen) and write the 3-path proposal + any Rune issue drafts in `LANE-REPORT.md`.
+
+### 2a. Rune capability check (round 1, second pass — CONFIRMED by reading the pinned tree)
+- **No terminal support of any kind.** A scan of all 1,572 `.rs`/`.toml` files under `crates/`, `examples/` and `demo/` at rev `c9ae2f6` finds no PTY, no VT/ANSI parser, no alacritty/vte dependency (the one match is an unrelated `image_zoom.rs` test). A Rune terminal pane is 100% new code on Kolux's side.
+- **What Rune does have** (so the spike is not blocked on the framework):
+  - IME composition (`Ime::Commit`, `ime_cursor`, `set_ime`) — `crates/rune/README.md` around the text-input section.
+  - Clipboard: text, CF_HTML on Windows, PNG images through `arboard`.
+  - Text selection (`El::selection_group`, `Runtime::text_selection()`), monospace family (`Family::Mono`), DirectWrite / Windfoil / ClearType rasterisation on Windows.
+  - Scroll viewports with virtualisation (`.virtualize` + `.growth`) — the shape a scrollback needs.
+  - Headless tooling: `--snap`, `--tree`, `--script`, `--frames`, `--trace`, `--video`, `--keys`, `--pointer`, deterministic virtual clock, `rune::tooling::headless_run()` readable from inside the app.
+- **Rune's own published performance figures** (Apple silicon, headless at 2×, from its README): 10.9 MB binary (9.3 MB stripped), frame CPU mean 0.13 ms / p95 0.29 ms over 180 frames of the Settings example, 174 instances in one draw call. **No Windows figures exist.** Treat these as Rune's numbers, not Kolux's; the round-2 spike must measure Windows.
+- **What Kolux would have to match** (the real cost of a Rune terminal): the terminal area is 170 files — `src/terminal/TerminalPane.tsx` (2,169 lines), `paneActions.ts` (45 KB), plus `find`, `links`, `linkMenu`, `paste`, `copy`, `kittyKeys` (kitty keyboard protocol), `osc52`, `shellMarks`, `reattach`, `sessionFork`, `screenshotPaste`, `renderer`, `palette`, and xterm 6.0 with `addon-webgl`, `addon-ligatures`, `addon-fit`.
+
+### 2b. [P2] CONFIRMED — a stale Vite transform cache makes the source-text tests fail on correct code
+- **Where**: `node_modules/.vite/vitest` (cache), hit by the `?raw` imports in `src/usage/usageStatusUx.test.ts:17-18` and similar contract tests across the area.
+- **What is wrong**: several tests assert on the *text* of a `.tsx` file (`import src from "./X.tsx?raw"`). After source files change, the cache can still serve the pre-change text, so the suite fails with "expected ... to contain `.finally(() => mounted.current && setLoading(false))`" while the file on disk plainly contains it. It cost this round two full-suite runs (~80 s) and nearly a wrong "the fix is broken" conclusion.
+- **Evidence**: full area suite failed twice on `usageStatusUx.test.ts:44` and `:73`; the file on disk contained the expected text (`Get-FileHash` unchanged across 20 s); after deleting `node_modules/.vite/vitest` the same suite passed: `Tests 327 passed (327)`, exit 0.
+- **Fix**: make the contract tests robust rather than cache-dependent — read the file with `node:fs` (the pattern already used for `src/styles.css` in the same file, `usageStatusUx.test.ts:20-21`) instead of `?raw`, or have CI clear `node_modules/.vite` before the run. Owned by o2-tests for the CI half; the `?raw` → `readFileSync` swap is inside o3-rune.
+- **Cost**: ~20 min for the `?raw` swap in this area, ~5 min for a CI cache clear.
+
+---
+
+## 3. Status of the round-1 findings (as the tree stands at the end of round 1)
+
+Fixes for six findings were found uncommitted in the worktree (written by an earlier/parallel session in this lane, not by this round's audit): P1 `launchWarn` ms→s, P2 `hosts.test.ts` wording, P2 stale `onboarding.connect.wait` in 5 packs, P2 `pricing.ts` index + memo, P3 `lookup.ts` retry, P3 unmount guards in `Activity` / `TokenAnalytics` / `UpdateCenterView` plus `type="button"`.
+
+Verified on that tree, this round:
+- `node node_modules/typescript/bin/tsc --noEmit` → exit 0.
+- `node node_modules/vitest/vitest.mjs run src/usage src/insights src/notify src/i18n src/privacy src/feedback src/update` → `Tests 327 passed (327)`, exit 0 (after the cache clear in 2b).
+- One stale assertion pair in `src/usage/usageStatusUx.test.ts` was updated to the guarded source (`.finally(() => mounted.current && setLoading(false))`, and the `alive` guard in the scope `catch`), which is the only code edit this round made.
+
+Still open after round 1: P2 i18n preload (`onPackLoaded` has no production subscriber), P2 duplicated helpers between `src/usage/` and `src/insights/`, P3 tooltip tick, P3 `.upd-*` CSS duplication (not owned), and 2b above.
