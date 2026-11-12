@@ -2334,7 +2334,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <span className="name" title={p.displayName ? p.name : undefined}>{projectLabel(p)}{labels[p.id]?.hint && <span className="sb-name-hint" title={labels[p.id].hint ?? undefined}>{labels[p.id].hintCut}</span>}</span>
             {folder && <span className="hint" title={main.path}>{worktreeLabel(main)}</span>}
-            {folder && pushTag(main)}
+            {/* The branch and push hints sit side by side in the folder row; styles.css spaces them only in session rows. */}
+            {folder && <span className="push-gap" style={{ marginLeft: 6, flex: "none" }}>{pushTag(main)}</span>}
             <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
               <Gear />
             </button>
