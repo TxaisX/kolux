@@ -12,7 +12,7 @@ import { movedTeamFolders, TEAM_WORKTREES_SETTING } from "../../projects/rows";
 import { SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { tabName } from "../../terminal/tabName";
 import { pasteHosts } from "../../tasks/pasteHosts";
-import { openInBrowser } from "../../browser/openIn";
+import { openExternal } from "../../open/openExternal";
 import { sameDir, viewOf } from "../../workspaces";
 import { AboutPanel } from "../../lazy/pages";
 import { LinkAskHost } from "../../lazy/pages";
@@ -153,7 +153,7 @@ function PaletteHost() {
         onClose={() => setPaletteOpen(false)}
         linked={linkedPrs(settings[SCM_LINKED_PR_KEY])}
         hosts={pasteHosts(linkedPrs(settings[SCM_LINKED_PR_KEY]))}
-        onItem={openInBrowser}
+        onItem={(url: string) => void openExternal(url)}
       />
   );
 }

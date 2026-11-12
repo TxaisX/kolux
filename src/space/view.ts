@@ -14,7 +14,7 @@ export type Batch = { items: Done[]; summary: string };
 /** The branch when it has one, else the folder's name. */
 export const labelOf = (row: SpaceRow): string => row.branch ?? folderName(row.path);
 
-/** The paths of the listed worktrees that a pane is open in (any pane: a browser, an agent or a shell). */
+/** The paths of the listed worktrees that a pane is open in (any pane: a tab, an agent or a shell). */
 export const activeOf = (rows: SpaceRow[], openDirs: string[]): Set<string> => new Set(rows.filter((r) => openDirs.some((d) => sameDir(d, r.path))).map((r) => r.path));
 
 /** The state column: the main checkout, in use, deletable, or kept (nothing Kolux may reclaim). */
@@ -66,7 +66,7 @@ export const chosenVisible = (selected: string[], shown: SpaceRow[], rows: Space
 /** Why a row's checkbox is off, or null when it can be ticked. */
 export function whyNotDeletable(row: SpaceRow, active: ReadonlySet<string>): string | null {
   if (row.isMain) return "The main checkout cannot be deleted";
-  if (active.has(row.path)) return "In use: a browser is open or an agent is running";
+  if (active.has(row.path)) return "In use: a tab is open or an agent is running";
   if (!row.reclaimable) return "Kept: nothing Kolux may reclaim here";
   return deletable(row, active) ? null : "Cannot be deleted";
 }

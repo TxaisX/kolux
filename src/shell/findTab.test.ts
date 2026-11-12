@@ -43,9 +43,8 @@ describe("TERM-053 results", () => {
   });
 });
 
-it("palette.md:13: the tab search lists browser pages as well as terminal tabs, and nothing else", () => {
+it("palette.md:13: the tab search lists the open tabs, and nothing else", () => {
   expect(isTabRow({ section: "Open tabs" })).toBe(true);
-  expect(isTabRow({ section: "Browser pages" })).toBe(true);
   expect(isTabRow({ section: "Projects" })).toBe(false);
   expect(dialogsSource).toContain("<TabSearch tabs={() => paletteItems().filter(isTabRow)} />");
 });

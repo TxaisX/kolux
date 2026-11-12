@@ -4,11 +4,11 @@ import windowKeys from "../keys/useWindowKeys.ts?raw";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, tabByNumber, typeOf, type TabInfo } from "./tabCycle";
 
 const T = (key: number, kind?: string): TabInfo => ({ key, ...(kind ? { kind } : {}) });
-// terminal 1, browser 2, terminal 3, editor 4, terminal 5
-const strip = [T(1), T(2, "browser"), T(3), T(4, "editor"), T(5)];
+// terminal 1, diff 2, terminal 3, editor 4, terminal 5
+const strip = [T(1), T(2, "diff"), T(3), T(4, "editor"), T(5)];
 
 describe("TERM-051 cycling", () => {
-  it("next of the same type skips browser tabs", () => {
+  it("next of the same type skips other tabs", () => {
     expect(cycleTab(strip, 1, 1, "same")).toBe(3);
     expect(cycleTab(strip, 3, 1, "same")).toBe(5);
     expect(cycleTab(strip, 5, 1, "same")).toBe(1); // wraps
@@ -21,7 +21,7 @@ describe("TERM-051 cycling", () => {
     expect(cycleTab(strip, 4, 1, "same")).toBeNull(); // the only editor
   });
   it("follows the strip's order after a drag reorder", () => {
-    const dragged = [T(3), T(1), T(5), T(2, "browser"), T(4, "editor")];
+    const dragged = [T(3), T(1), T(5), T(2, "diff"), T(4, "editor")];
     expect(cycleTab(dragged, 3, 1, "all")).toBe(1);
     expect(cycleTab(dragged, 1, 1, "same")).toBe(5);
   });

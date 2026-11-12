@@ -7,11 +7,11 @@ type CountedPane = { key: number; cwd: string | null; agent: string; agentId?: s
 /** What a pane's shell marks say about its running program (TERM-058): the title it set. */
 type LiveTitle = { title: string | null };
 
-/** Whether a pane is one agent seat the sidebar counts: a shell, a browser tab and a kit's multi-seat tab are not. */
+/** Whether a pane is one agent seat the sidebar counts: a shell, a non-terminal tab and a kit's multi-seat tab are not. */
 export function countsAsAgent(p: CountedPane): boolean {
   // SESS-040: an agent launched in a pane counts by its launch record, so Cursor, MiMo or Pi (which
   // carry no vendor mark of their own) count as well as Claude and Codex.
-  return p.cwd !== null && p.kind !== "browser" && !p.seats && launchedAgent(p) !== null;
+  return p.cwd !== null && !p.seats && launchedAgent(p) !== null;
 }
 
 /**
