@@ -14,7 +14,7 @@ actions, cookies, storage, request interception, logs, emulation, dialogs, the c
 mouse), through a local endpoint that only Kolux's own tools can reach. Computer use (agents
 driving other desktop apps) and the browser settings page are dropped by default.
 
-Tier counts: P0 7 · P1 36 · P2 11 · H 0 · X 0 · D 13
+Tier counts: P0 0 · P1 36 · P2 11 · H 7 · X 0 · D 13
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes ·
 04 Agent status, hooks & notifications · 05 Views & navigation · 08 Orchestration · 10 Plan review &
 protected actions · 11 Git, source control & review · 12 Editor & files · 16 Onboarding & guidance ·
@@ -24,7 +24,7 @@ protected actions · 11 Git, source control & review · 12 Editor & files · 16 
 ## Cards
 
 ### BROW-001 · Open a browser tab next to the terminals
-Tier: P0 · Pushed: 1 · State at 0.15.0: live-unverified
+Tier: H · Pushed: 1 · State at 0.15.0: retired 2026-11-12 (web pane removed, DT-C275; links open in the system browser)
 User does: in a worktree, presses Mod+Shift+B or uses the new-tab control to add a browser tab.
 User sees: a tab titled New Tab appears in whichever split currently has focus and is selected
   straight away; its address bar already holds the cursor with the contents selected, so the first
@@ -42,7 +42,7 @@ Compat: keyboard command for a new browser tab, default Mod+Shift+B on every pla
 Source: D-13-001
 
 ### BROW-002 · Browser pages survive switching away and back
-Tier: P0 · Pushed: 1 · State at 0.15.0: live-unverified
+Tier: H · Pushed: 1 · State at 0.15.0: retired 2026-11-12 (web pane removed, DT-C275; links open in the system browser)
 User does: leaves a browser tab for a terminal, another browser tab or another worktree, then
   returns.
 User sees: the page is untouched: same scroll position, partly typed form fields, sign-in and
@@ -58,7 +58,7 @@ Compat: —
 Source: D-13-002
 
 ### BROW-003 · Address bar goes to a site or searches the web
-Tier: P0 · Pushed: 1 · State at 0.15.0: live-unverified
+Tier: H · Pushed: 1 · State at 0.15.0: retired 2026-11-12 (web pane removed, DT-C275; links open in the system browser)
 User does: types or pastes into the address bar and presses Enter, or presses Mod+L to jump there.
 User sees: text shaped like a domain opens that site over HTTPS; words and phrases become a web
   search; local development addresses open over plain HTTP; a pasted absolute path to a file on
@@ -89,7 +89,7 @@ Compat: keyboard command for focusing the address bar, default Mod+L (command id
 Source: D-13-003
 
 ### BROW-005 · Back, forward, reload and stop
-Tier: P0 · Pushed: 1 · State at 0.15.0: live-unverified
+Tier: H · Pushed: 1 · State at 0.15.0: retired 2026-11-12 (web pane removed, DT-C275; links open in the system browser)
 User does: uses the toolbar arrows and the reload button, or their shortcuts.
 User sees: back and forward are dimmed when there is no history in that direction; while a page
   loads the reload button turns into Stop with a spinner, and it turns back into Reload once the
@@ -115,7 +115,7 @@ Compat: keyboard commands browser.back (Mac Mod+[, other platforms Alt+Left), br
 Source: D-13-005
 
 ### BROW-051 · The agent page-control endpoint answers only Kolux's own tools
-Tier: P0 · Pushed: 5 · State at 0.15.0: live
+Tier: H · Pushed: 5 · State at 0.15.0: retired 2026-11-12 (web pane removed, DT-C275; links open in the system browser)
 User does: nothing; agents use the address that Kolux gives them.
 User sees: no website and no other machine can reach the local endpoint that agents use to drive
   browser tabs.
@@ -136,7 +136,7 @@ Compat: —
 Source: D-13-051
 
 ### BROW-008 · Pages that fail to load get a recovery overlay
-Tier: P0 · Pushed: 9 · State at 0.15.0: live-unverified
+Tier: H · Pushed: 9 · State at 0.15.0: retired 2026-11-12 (web pane removed, DT-C275; links open in the system browser)
 User does: opens an address that cannot load (server down, bad certificate, unknown host).
 User sees: an overlay on the pane that explains the problem in plain language and offers Retry,
   plus a switch to HTTPS or Open Externally when those make sense.
@@ -159,7 +159,7 @@ Compat: —
 Source: D-13-008
 
 ### BROW-009 · Crashed pages recover by themselves
-Tier: P0 · Pushed: 9 · State at 0.15.0: live-unverified
+Tier: H · Pushed: 9 · State at 0.15.0: retired 2026-11-12 (web pane removed, DT-C275; links open in the system browser)
 User does: carries on working while the process behind a page crashes or disappears.
 User sees: the tab reloads in place, or is rebuilt when a reload cannot work; if recovery fails, an
   error stays on screen until the user retries from the toolbar.
