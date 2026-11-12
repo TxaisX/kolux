@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invoke(...a) }));
-vi.mock("./buffers", () => ({ textOf: () => "", diskOf: () => "" }));
+vi.mock("./buffers", () => ({ textOf: () => "", diskOf: () => "", keyOf: (p: string) => p.replace(/\\/g, "/").toLowerCase() }));
 
 import { nameKey } from "./NamePrompt";
 import { COPY_FAILED, COPY_OK, sendThrew } from "./ReviewNotes";

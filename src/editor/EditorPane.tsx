@@ -55,6 +55,7 @@ import { confirmed } from "./fileMoved";
 import { richBlocker, richBlockerSince, richChange, splitFront } from "./frontMatter";
 import { bannerUp, beginSave, canUndo, checkOnce, endSave, forget, holdRestored, keep, readFresh, reloadNow, remember, setBanner as markBanner, UNDO_TOAST_MS, type Io, type Stamp, type UndoEntry } from "./diskChange";
 import { watchStamp } from "./stampPoll";
+import { look } from "./editorTheme";
 import { CompareView, DiskBanner, GoneNotice, UndoToast } from "./DiskBanner";
 import { isMarkdown, mountRich } from "./markdown";
 import { minimap } from "./minimap";
@@ -186,19 +187,6 @@ export function StaleNotice({ path, onDone, onToast }: { path: string; onDone: (
 const lang = new Compartment();
 const minimapping = new Compartment(); // T-316-b: the minimap beside the text, off unless Settings > General turns it on
 const wrapping = new Compartment(); // EDIT-006: word wrap, on unless the setting or Alt+Z turned it off
-export const look = EditorView.theme(
-  {
-    "&": { height: "100%", background: "var(--pane-bg)", color: "var(--fg)", fontSize: "13px" },
-    // TERM-097 / SET-018: the editor font, which is the terminal font unless set on its own.
-    ".cm-scroller": { fontFamily: "var(--editor-font, var(--mono-font))", lineHeight: "1.5" },
-    ".cm-gutters": { background: "var(--pane-bg)", color: "var(--fg-faint)", border: "none" },
-    // See-through, so the selection drawn under the text still shows on the caret's line.
-    ".cm-activeLine, .cm-activeLineGutter": { background: "color-mix(in srgb, var(--row-selected) 45%, transparent)" },
-    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": { background: "color-mix(in srgb, var(--line-focus) 90%, transparent) !important" },
-    "&.cm-focused": { outline: "none" },
-    ".cm-cursor": { borderLeftColor: "var(--fg)" },
-  },
-);
 
 /** `readOnly`: typing changes nothing (SKILL-012 previews a kit result this way). */
 type Props = { id: number; path: string; root?: string | null; readOnly?: boolean; /** EDIT-026: a log tab that keeps adding lines as the file grows (give it readOnly too). */ follow?: boolean; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onDirty?: (dirty: boolean) => void; onToast?: (text: string) => void; jump?: { line: number; at: number; col?: number }; onLink?: LinkHandler; /** EDIT-020: the Markdown review notes, shown in a rail beside the rich view. */ notes?: Note[]; onRemoveNote?: (n: Note) => void; /** A rail card edited in place: the note and its new text. */ onEditNote?: (n: Note, text: string) => void };
