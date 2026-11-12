@@ -174,10 +174,21 @@ const pickLayout = (n) => click(tid(`layout-count-${n}`));
 // the old new-tab button is gone; a pane's header has a "New session" plus that opens the same agent menu. A shown terminal
 // pane takes the focus first, so the plus belongs to a pane a user sees, and the new session joins that pane's cell.
 const newTab = async (label) => {
+  const before = await count(TERM);
   await focusPane(TERM, 0, XTERM_INPUT);
   await click(`${TERM}.focused ${tid("pane-new-session")}`);
   await waitFor("the New session menu", () => exists(tid("new-session-menu")), 5000);
+  // An agent past the first three lives under "Show more agents" (the 29-agent menu); open it first.
+  const has = (re) => evalJs(`(() => { const m = document.querySelector(${JSON.stringify(tid("new-session-menu"))}); return !!m && [...m.querySelectorAll('[role="menuitem"]')].some((x) => ${re.toString()}.test((x.querySelector(".name") ?? x).textContent || "")); })()`);
+  if (!(await has(label))) {
+    await clickWhere(`${tid("new-session-menu")} [role="menuitem"]`, /^\s*Show more agents/i);
+    await waitFor("the more agents submenu", () => has(label), 5000);
+  }
   await clickWhere(`${tid("new-session-menu")} [role="menuitem"]`, label);
+  await waitFor(`a pane after ${label}`, async () => (await count(TERM)) > before, 30000);
+  // The new pane's key is the largest one in the grid; the agent's own type is not a reliable selector
+  // (Grok and OpenCode panes read as "shell" in the app's own header, so data-agent is not "grok").
+  return evalJs(`(() => { const ps = [...document.querySelectorAll(${JSON.stringify(TERM)})]; return String(Math.max(...ps.map((p) => Number(p.dataset.key)))); })()`);
 };
 const read = (file) => (existsSync(file) ? readFileSync(file, "utf8") : null);
 const bytes = (file) => (existsSync(file) ? readFileSync(file) : null);
@@ -238,7 +249,15 @@ async function setup() {
   const before = await count(TERM);
   log(`zero panes after launch: ${before === 0 ? "PASS" : "FAIL"} (${before} ${TERM})`);
   if (!ATTACH && before !== 0) throw new Error(`a fresh profile opened with ${before} pane(s); T-543-b wants none until a workspace is opened`);
-  if (await exists(tid("onboarding-dialog"))) log("WARN a first-run dialog is open; the flows may not reach the grid");
+  if (await exists(tid("onboarding-dialog"))) {
+    // A first-run dialog covers the grid and its menu; close it the way a user would before the flows.
+    // The corner close asks "Skip setup?" first, so the answer is the Skip button, not a click on the close.
+    await click(`${tid("onboarding-dialog")} button[aria-label="Close setup"]`);
+    await waitFor("the skip-setup question", () => exists(tid("ask-dialog")), 5000);
+    await click(tid("ask-confirm"));
+    await waitFor("the first-run dialog to close", async () => !(await exists(tid("onboarding-dialog"))), 5000);
+    log("closed the first-run dialog");
+  }
   await click(tid("sidebar-add-project"));
   await waitFor("the add-by-path link", () => exists(tid("add-project-by-path")), 5000);
   await click(tid("add-project-by-path"));
@@ -422,10 +441,9 @@ async function flow6() {
   const took = [];
   try {
     for (const agent of AGENTS) {
-      const sel = `${TERM}[data-agent*="${agent.id}"]`;
-      const before = await count(sel);
-      await newTab(new RegExp(`^\\s*${agent.label}\\s*$`));
-      await waitFor(`a ${agent.label} pane`, async () => (await count(sel)) > before, 30000);
+      const key = await newTab(new RegExp(`^\\s*${agent.label}\\s*$`));
+      const sel = `${TERM}[data-key="${key}"]`;
+      await waitFor(`a ${agent.label} pane`, () => exists(sel), 30000);
       const mark = `smoke6-${agent.id}-${Date.now().toString(36)}`;
       await focusPane(sel, 0, XTERM_INPUT);
       await cdp("insert", mark, "enter");
@@ -433,10 +451,9 @@ async function flow6() {
       took.push(`${agent.label} echoed "${mark}"`);
     }
     // A blank terminal is the menu's own row for a plain shell; it proves input by writing a file, as flow 1 does.
-    const shells = await count(TERM);
     const out = join(marks, "flow6-terminal.txt");
-    await newTab(/^\s*Blank terminal\s*$/);
-    await waitFor("a blank terminal pane", async () => (await count(TERM)) > shells, 30000);
+    const key = await newTab(/^\s*Blank terminal\s*$/);
+    await waitFor("a blank terminal pane", () => exists(`${TERM}[data-key="${key}"]`), 30000);
     await shellWrites(0, `'smoke6-terminal' | Set-Content '${slash(out)}'`, out, "the blank terminal to write its file");
     took.push(`Blank terminal wrote ${out}`);
   } finally {
@@ -462,11 +479,14 @@ async function flow7() {
   const grid = await waitFor("the six-pane grid", async () => ((await shown(TERM)) >= 6 ? shown(TERM) : null), 20000);
   const dead = await count("aside.sidebar .pane-row");
   if (dead > 0) throw new Error(`the sidebar still renders ${dead} .pane-row element(s); a workspace row is .sess[role=button] now`);
-  const rows = await count("aside.sidebar .sess[role=button]");
-  if (rows !== 1) throw new Error(`the sidebar lists ${rows} workspace rows for one workspace with ${panes} sessions; it should list the folder row only`);
-  await click("aside.sidebar .sess[role=button]");
+  // Txais 2026-11-12: the sidebar lists the workspace folder row and its sessions under it (never worktrees).
+  const folders = await count(`${tid("sidebar-folder")}`);
+  if (folders !== 1) throw new Error(`the sidebar lists ${folders} folder rows for one workspace with ${panes} sessions; it should list the folder row once`);
+  const sessions = await count(`${tid("sidebar-session")}`);
+  if (sessions < panes) throw new Error(`the sidebar lists ${sessions} session rows for ${panes} sessions; it should list every session under the folder`);
+  await click(tid("sidebar-folder"));
   const back = await waitFor("every pane again", async () => ((await shown(TERM)) >= grid ? shown(TERM) : null), 20000);
-  const said = `${panes} sessions in one workspace: the sidebar lists the folder row only (no .pane-row, no per-session row), clicking it shows ${back} panes`;
+  const said = `${panes} sessions in one workspace: the sidebar lists the folder row and ${sessions} session rows (no .pane-row), clicking the folder shows ${back} panes`;
   if (ATTACH) return `${said} (attach mode: no restart)`;
   await relaunch();
   const kept = await waitFor(`the ${panes} panes after the restart`, async () => ((await count(TERM)) >= panes ? count(TERM) : null), 90000, 500);

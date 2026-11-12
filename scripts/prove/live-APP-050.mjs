@@ -2,15 +2,20 @@
 // The stall is a REAL blocked write: scripts/prove/oplock-hold holds a batch oplock on <profile>/logs/kolux.log and never
 // acknowledges the break, so the app's next open of that file (diag::write, which the quit path calls) blocks.
 // The app is asked to quit with the window close (what the X button sends); its pid is timed until it is gone.
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { reporter, startPlain, finish, sleep, LIVE_LOGS } from "./live-common.mjs";
+import { join } from "node:path";
+import { ROOT, reporter, startPlain, finish, sleep, LIVE_LOGS } from "./live-common.mjs";
 import { checker } from "./live-views-dom.mjs";
 
 // --control: no holder (baseline quit time). --probe: also open kolux.log from a second process first (this itself triggers the oplock break).
 const CONTROL = process.argv.includes("--control");
 const PROBE = process.argv.includes("--probe");
-const HOLDER = "G:/Temp/live-v9/oplock-target/release/oplock-hold.exe";
+// The holder's source is in this repo; build it once instead of pointing at a prebuilt binary outside the repo.
+const HOLDER = join(ROOT, "scripts", "prove", "oplock-hold", "target", "release", "oplock-hold.exe");
+if (!CONTROL && !existsSync(HOLDER)) {
+  execFileSync("cargo", ["build", "--release", "--manifest-path", join(ROOT, "scripts", "prove", "oplock-hold", "Cargo.toml")], { stdio: "inherit", windowsHide: true });
+}
 const QUIT_DEADLINE_S = 15; // lifecycle::quit_deadline(): max(15 s, 5 s final save + 3 s webview wait + 2 s)
 const FINAL_SAVE_S = 5; // final_save::QUIT_DEADLINE
 const WATCH_S = CONTROL ? 30 : 75; // how long the exit is waited for before the holder is released

@@ -39,6 +39,6 @@ test("every data-testid the feature map quotes is still declared in src/", () =>
   const src = walk(join(ROOT, "src"))
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
-  const missing = quoted.filter((id) => !src.includes(`data-testid="${id}"`));
+  const missing = quoted.filter((id) => !src.includes(`data-testid="${id}"`) && !new RegExp(`data-testid=\\{[^}]*?"${id}"`).test(src));
   assert.deepEqual(missing, [], `feature-map.md quotes test ids src/ no longer declares: ${missing.join(", ")}`);
 });
