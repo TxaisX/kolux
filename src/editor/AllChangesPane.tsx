@@ -60,6 +60,11 @@ const CEILING = 560; // px, the most a text section may take before it scrolls i
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp|ico|svg)$/i;
 
 export const entryKey = (e: Entry) => `${e.staged ? "s" : "u"}|${e.path}`;
+/** Everything drawn from a list of entries, as one short string: the file, its side, its code, its size
+ *  and the stamp Rust sends, which changes whenever the change does. A watcher tick that finds the same
+ *  signature keeps the list it drew, so the UI thread does not stringify every file's old and new text
+ *  on each tick (audit N-05). */
+export const listSignature = (es: Entry[]) => es.map((e) => `${entryKey(e)}|${e.code}|${e.lines ?? "-"}|${e.binary ? "b" : "t"}|${e.clash ?? ""}|${e.from ?? ""}|${e.stamp}`).join("\n");
 /** The height a section reserves before it draws, so the scroll does not jump. */
 export const estimate = (e: Entry) => {
   const n = e.lines ?? 0;
@@ -183,7 +188,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           if (!alive) return;
           setBase(base);
           setError(null);
-          setEntries((old) => (old && JSON.stringify(old) === JSON.stringify(es) ? old : es));
+          setEntries((old) => (old && listSignature(old) === listSignature(es) ? old : es));
         },
         (err) => alive && setError(String(err)),
       );
