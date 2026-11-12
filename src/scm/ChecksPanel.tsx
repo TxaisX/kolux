@@ -7,7 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Refresh } from "../chrome/icons";
 import { fixChecks } from "../agentstart/host";
-import { openInBrowser } from "../browser/openIn";
+import { openExternal } from "../open/openExternal";
 import { useSettings } from "../settings/useSettings";
 import GhBanner, { classify } from "../tasks/GhBanner";
 import CommentsPanel from "./CommentsPanel";
@@ -17,7 +17,7 @@ import StackMap from "./StackMap";
 import { REFRESH, RERUN, openLinkFailed, stackKey, stillCurrent } from "./panelUx";
 import "./scmUx.css";
 import { checkIdOf, type CheckRef } from "./checkCard";
-import { reviewHint, reviewWhere } from "./startPr";
+import { REVIEW_HINT } from "./startPr";
 import { CHECKS_POLL_MS, CHECKS_UNLINKED_KEY, checksSummary, panelBody, reusableNoPr, reuseNoPr, showing, stillRunning, unlinkedPrs, withUnlinkedPr, type PrChecks } from "./checks";
 import { prStateWord } from "./model";
 import { recordChecks } from "./prSearch";
@@ -42,9 +42,8 @@ export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
   const [rerunning, setRerunning] = useState<string | null>(null); // the check whose rerun is still being asked for
   const { settings, save } = useSettings();
-  const inKolux = settings?.linksOpenInKolux === true;
   /** A link that will not open says so in the note, never silently. */
-  const openOut = (url: string) => void invoke("open_external", { url }).catch((err) => setNote({ text: openLinkFailed(err), error: true }));
+  const openOut = (url: string) => void openExternal(url).catch((err) => setNote({ text: openLinkFailed(err), error: true }));
   const rerun = (c: Check) => {
     if (rerunning !== null) return;
     setNote(null);
@@ -151,17 +150,16 @@ export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props
                 href={pr.url}
                 data-review-link
                 title={`${pr.title ?? ""}
-${reviewHint(inKolux)}`.trim()}
+${REVIEW_HINT}`.trim()}
                 onClick={(e) => {
                   e.preventDefault();
-                  if (reviewWhere(e, inKolux) === "kolux") openInBrowser(pr.url);
-                  else openOut(pr.url);
+                  openOut(pr.url);
                 }}
               >
                 #{pr.number} {pr.title}
               </a>
               <span className="sb-hint" data-review-hint>
-                {reviewHint(inKolux)}
+                {REVIEW_HINT}
               </span>
               <button className="btn" data-unlink title="Hide this pull request from the Checks tab until you link it again" onClick={unlink}>
                 Unlink

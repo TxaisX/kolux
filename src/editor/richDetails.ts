@@ -14,6 +14,7 @@ import {
   $getSelection,
   $isRangeSelection,
   ElementNode,
+  $isElementNode,
   type EditorConfig,
   type LexicalNode,
   type RangeSelection,
@@ -129,7 +130,9 @@ export function $insertDetails(title = "Section"): boolean {
   if (top.isEmpty() && top.getType() === "paragraph") top.replace(d);
   else top.insertAfter(d);
   if (!d.getNextSibling()) d.insertAfter($createParagraphNode());
-  const t = d.getFirstChild<SummaryNode>()?.getFirstChild();
+  // No type argument on getFirstChild: Lexical 0.53 dropped it, and $isElementNode narrows the same way.
+  const first = d.getFirstChild();
+  const t = first && $isElementNode(first) ? first.getFirstChild() : first;
   if (t && "select" in t) (t as ReturnType<typeof $createTextNode>).select(0, title.length);
   return true;
 }
