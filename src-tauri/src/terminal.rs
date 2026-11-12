@@ -1113,7 +1113,7 @@ impl Terminals {
     /// Starts a pane. With no `program` it runs the user's shell; with one (an agent such as
     /// `claude`) it runs that program directly with `args`, in `cwd`.
     #[allow(clippy::too_many_arguments)]
-    pub fn spawn(&self, app: AppHandle, cols: u16, rows: u16, cwd: Option<String>, program: Option<String>, args: Vec<String>, own_env: Vec<(String, String)>, env: Vec<(String, String)>, pane_key: Option<u32>, ticket: Option<u64>, shell: Option<(String, Vec<String>)>, per_worktree_history: bool) -> Result<u32, String> {
+    pub fn spawn(&self, app: AppHandle, cols: u16, rows: u16, cwd: Option<String>, program: Option<String>, args: Vec<String>, own_env: Vec<(String, String)>, env: Vec<(String, String)>, pane_key: Option<u32>, ticket: Option<u64>, shell: Option<(String, Vec<String>)>, per_worktree_history: bool, agent_settings: Option<&serde_json::Value>) -> Result<u32, String> {
         // TERM-115: a pane's Ctrl+C must reach its program. Windows hands "ignore Ctrl+C" down to
         // every child a process starts, and this app is itself started with CREATE_NEW_PROCESS_GROUP
         // (by `kolux-dev`, and by the dev runner), so its shells never saw the interrupt: the pty got
@@ -1136,7 +1136,9 @@ impl Terminals {
         // ACCT-046: a program runs as asked; a shell pane has a line of fallbacks behind the
         // chosen default shell (SET-026), when there is one.
         let mut commands = match program.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
-            Some(p) => vec![program_command(p, &args, cwd.as_deref())],
+            // Goal 0 item 5: a credited agent starts inside the user's own shell, as if typed there
+            // (crate::agents::agent_shell); a shell, an unknown program or no settings run as asked.
+            Some(p) => vec![agent_settings.and_then(|s| crate::agents::agent_shell::via_shell(p, &args, cwd.as_deref(), s)).unwrap_or_else(|| program_command(p, &args, cwd.as_deref()))],
             None => shell_commands(cwd.as_deref(), shell),
         };
         // APP-041: each session's start and end go to the app's own log (no arguments: they may carry secrets).
@@ -2144,12 +2146,13 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     let env_own = env.unwrap_or_default();
     let pinned = resumed.is_some();
     #[allow(clippy::type_complexity)]
-    let (env, cap, account, hooks_on, plain, per_worktree_history): (Vec<(String, String)>, bool, Option<String>, bool, Option<serde_json::Value>, bool) = {
+    let (env, cap, account, hooks_on, plain, per_worktree_history, agent_settings): (Vec<(String, String)>, bool, Option<String>, bool, Option<serde_json::Value>, bool, Option<serde_json::Value>) = {
         let store = store.lock().map_err(|e| e.to_string())?;
         let settings = store.settings();
         // SET-026: a plain new terminal opens in the chosen default shell; the search for it on
         // PATH runs after the lock is let go (council), with the settings read here.
         let plain = program.is_none().then(|| settings.clone());
+        let agent_settings = program.is_some().then(|| settings.clone());
         let used = codex.then(|| account.clone().or_else(|| crate::codex_accounts::active_account(&store).map(|a| a.id))).flatten();
         let codex_home = resumed.or_else(|| crate::codex_accounts::active_home(&store));
         let token = crate::secrets::read_setting(&store, crate::claude_key::TOKEN_FIELD).ok().flatten();
@@ -2170,7 +2173,7 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
             .map(|(k, v)| (k.to_string(), v))
             .into_iter()
             .collect();
-        (env, crate::cap::on(&settings), used, crate::hooks::agent_hooks::switch::on(&settings), plain, crate::shell_history::enabled(&settings))
+        (env, crate::cap::on(&settings), used, crate::hooks::agent_hooks::switch::on(&settings), plain, crate::shell_history::enabled(&settings), agent_settings)
     };
     let shell = plain.and_then(|s| crate::pty::default_shell(&s));
     // ACCT-024: on a managed Claude account, the user's own settings may not sign the pane in.
@@ -2225,7 +2228,7 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     // session once the spawn succeeded (cli.rs fix8_d).
     // T-690: the run this pane belongs to, read before the environment is handed over.
     let run = crate::automations::run_in(&env_own);
-    let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history))?;
+    let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history, agent_settings.as_ref()))?;
     // AUTO-012: an automation run dispatched to this worktree for this agent is followed here.
     if let Some(dir) = dir {
         crate::automations::follow(&app, |s| crate::automations::claim(s, id, pane_key, &dir, agent, run.as_deref(), crate::automations::now_ms()));
