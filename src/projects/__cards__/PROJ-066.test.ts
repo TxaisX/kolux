@@ -1,5 +1,5 @@
 // PROJ-066 box 2: deleting a workspace leaves none of its tabs anywhere (open panes of every kind,
-// the active-tab map, the saved layout a restart would read back).
+// the saved layout a restart would read back).
 import { expect, test } from "vitest";
 import { activeAfterRemove, focusIn, panesIn, withoutDir } from "../../workspaces";
 import { layoutOf, restoreLayout } from "../../terminal/layout";
@@ -11,16 +11,15 @@ const pane = (key: number, cwd: string | null, extra: Record<string, unknown> = 
 test("deleting a workspace removes its terminals, agent, editor, diff and preview tabs from the panes, the layout and the saved copy", () => {
   const panes = [
     pane(1, null),
-    pane(2, W, { group: 2 }),
-    pane(3, W + "\\sub\\deeper", { group: 3 }), // a terminal opened in a folder inside it
-    { ...pane(4, W, { group: 4 }), agent: "claude" as const, agentId: "claude", program: "claude" },
-    pane(5, W, { group: 5, kind: "editor", path: W + "\\README.md" }),
-    pane(6, W, { group: 6, kind: "diff", path: "a.ts", staged: false }),
-    pane(7, W, { group: 7, kind: "preview" }),
-    pane(8, B, { group: 8 }),
-    pane(9, B, { group: 9, kind: "editor", path: B + "\\x.ts" }),
+    pane(2, W),
+    pane(3, W + "\\sub\\deeper"), // a terminal opened in a folder inside it
+    { ...pane(4, W), agent: "claude" as const, agentId: "claude", program: "claude" },
+    pane(5, W, { kind: "editor", path: W + "\\README.md" }),
+    pane(6, W, { kind: "diff", path: "a.ts", staged: false }),
+    pane(7, W, { kind: "preview" }),
+    pane(8, B),
+    pane(9, B, { kind: "editor", path: B + "\\x.ts" }),
   ];
-  const activeTab = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9 };
   expect(panesIn(panes, W).map((p) => p.key)).toEqual([2, 4, 5, 6, 7]); // before: the workspace has tabs
 
   const left = withoutDir(panes, W);
@@ -28,10 +27,9 @@ test("deleting a workspace removes its terminals, agent, editor, diff and previe
   expect(left.some((p) => p.cwd !== null && p.cwd.toLowerCase().startsWith(W.toLowerCase()))).toBe(false);
   expect(panesIn(left, W)).toEqual([]);
 
-  // The layout written down for the next start holds none of them either, nor their active-tab entries.
-  const saved = layoutOf(left, activeTab, 8, B, {});
+  // The layout written down for the next start holds none of them either.
+  const saved = layoutOf(left, 8, B, {});
   expect(saved.panes.map((p) => p.key)).toEqual([1, 8, 9]);
-  expect(Object.keys(saved.activeTab).map(Number).sort()).toEqual([1, 8, 9]);
   expect(JSON.stringify(saved)).not.toContain("doomed");
   const back = restoreLayout(JSON.parse(JSON.stringify(saved)))!;
   expect(back.panes.map((p) => p.key)).toEqual([1, 8, 9]);
@@ -47,13 +45,12 @@ test("switching A to B and back shows A's very same terminals and tabs, in the s
   const A = "C:\\ws\\app\\alpha";
   const B = "C:\\ws\\app\\beta";
   const panes = [
-    pane(1, A, { group: 1 }),
-    { ...pane(2, A, { group: 2 }), agent: "claude" as const, agentId: "claude", program: "claude" },
-    pane(3, A, { group: 3, kind: "editor", path: A + "\\main.rs" }),
-    pane(4, B, { group: 4 }),
-    pane(5, B, { group: 5, kind: "preview" }),
+    pane(1, A),
+    { ...pane(2, A), agent: "claude" as const, agentId: "claude", program: "claude" },
+    pane(3, A, { kind: "editor", path: A + "\\main.rs" }),
+    pane(4, B),
+    pane(5, B, { kind: "preview" }),
   ];
-  const activeTab = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 };
   const before = panesIn(panes, A);
   expect(before.map((p) => p.key)).toEqual([1, 2, 3]);
 
@@ -66,7 +63,6 @@ test("switching A to B and back shows A's very same terminals and tabs, in the s
   back.forEach((p, i) => expect(p).toBe(before[i]));
   expect(back.map((p) => [p.key, (p as { kind?: string }).kind ?? "terminal", p.agent])).toEqual([[1, "terminal", "shell"], [2, "terminal", "claude"], [3, "editor", "shell"]]);
   expect(focusIn(panes, A, 2)).toBe(2); // a focused pane of A stays focused
-  expect(activeTab).toEqual({ 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 });
   // Spelling the folder another way (slashes, case, trailing slash) still finds the same panes.
   expect(panesIn(panes, "c:/WS/app/alpha/").map((p) => p.key)).toEqual([1, 2, 3]);
 });

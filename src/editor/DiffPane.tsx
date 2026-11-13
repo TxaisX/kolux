@@ -51,6 +51,7 @@ export const diffStart = (p: EditorPrefs) => ({ split: p.diffView === "split", w
 import { diffNav } from "../keys/handles";
 import { Menu, MenuCheckboxItem } from "../ui/Menu";
 import { Dialog } from "../ui/Dialog";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 export { diffNav };
 
 type Sides = { original: string; modified: string };
@@ -561,9 +562,11 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       )}
       {!embedded && (
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="Diff">
           <FileCode size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{name}</span>
         <span className="preview-tag">{staged ? "Staged" : "Unstaged"}</span>
         {dirty && <span className="unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}

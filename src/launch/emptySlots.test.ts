@@ -17,7 +17,7 @@ const chooser = (key: number, cwd = "C:/p"): P => ({ key, cwd, seats: [{}] });
 const shell = (key: number, cwd = "C:/p"): P => ({ key, cwd });
 const grid = (cells: P[][], focused: number, over: Partial<{ board: boolean; zoomed: number | null }> = {}) => ({
   terminals: true, board: false, agentsScreen: false, zoomed: null, activeDir: "C:/p", focused,
-  cells: cells.map((panes) => ({ panes })), activeOf: (c: { panes: P[] }) => c.panes[c.panes.length - 1].key, ...over,
+  cells: cells.map((panes) => ({ panes })), ...over,
 });
 
 test("one chooser, or none, keeps its full sheet: no slots", () => {
@@ -25,9 +25,9 @@ test("one chooser, or none, keeps its full sheet: no slots", () => {
   expect(gridSheet(grid([[shell(1)], [chooser(2)]], 1))).toBeNull();
 });
 
-test("only front tabs of this workspace's grid count; Board and a zoomed cell have no slots", () => {
+test("only this workspace's grid counts; Board and a zoomed cell have no slots", () => {
   expect(gridSheet(grid([[chooser(3)], [chooser(4, "C:/other")]], 0)), "another workspace's chooser").toBeNull();
-  expect(gridSheet(grid([[chooser(3)], [chooser(4), shell(5)]], 0)), "a chooser behind a terminal tab").toBeNull();
+  expect(gridSheet(grid([[chooser(3)], [shell(5)]], 0)), "a terminal is no chooser").toBeNull();
   const two = [[chooser(3)], [chooser(4)]];
   expect(gridSheet(grid(two, 0))).toBe(3);
   expect(gridSheet(grid(two, 0, { board: true }))).toBeNull();

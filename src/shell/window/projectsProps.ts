@@ -8,11 +8,7 @@ import type ProjectsPanel from "../../projects/ProjectsPanel";
 import { sameProps } from "./stable";
 import { sameSettings } from "./terminalProps";
 
-/** The sidebar's handle to focus one pane from its session row (bug 20261112-1200). Named here so the shell can
- * hand it over before ProjectsPanel declares it; once the panel lists it the intersection is the same type. */
-export type FocusPane = { onFocusPane?: (key: number) => void };
-
-export type ProjectsProps = ComponentProps<typeof ProjectsPanel> & FocusPane;
+export type ProjectsProps = ComponentProps<typeof ProjectsPanel>;
 
 /** True when the project list would draw the same: React.memo's comparator for ProjectsPanel. */
 export const sameProjects = sameProps<ProjectsProps>({
@@ -61,5 +57,4 @@ export const sameProjects = sameProps<ProjectsProps>({
   onSkills: "same",
   onPending: "same",
   onSetup: "same",
-  onFocusPane: "same", // a stable caller (Sidebar.tsx act.focusPane)
 }, "projects");

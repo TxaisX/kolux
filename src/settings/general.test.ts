@@ -3,7 +3,7 @@ import { durableOnly, lastWriter, openPageAt, readLook, saveLayout, savedFirst, 
 import type { SavedLayout } from "../terminal/layout";
 
 test("VIEW-107: a failed layout save is retried once, then only the durable part is saved", async () => {
-  const l: SavedLayout = { panes: [{ key: 1, cwd: "C:/a", branch: null, agent: "shell", program: null, args: [] }], activeTab: { 0: 1 }, focused: 1, activeDir: "C:/a", stacked: { "C:/a": true } };
+  const l: SavedLayout = { panes: [{ key: 1, cwd: "C:/a", branch: null, agent: "shell", program: null, args: [] }], focused: 1, activeDir: "C:/a", stacked: { "C:/a": true } };
   const ok = vi.fn(async () => {});
   expect(await saveLayout(l, ok, 0)).toBe("saved");
   expect(ok).toHaveBeenCalledTimes(1);
@@ -13,7 +13,7 @@ test("VIEW-107: a failed layout save is retried once, then only the durable part
   const twice = vi.fn().mockRejectedValueOnce(new Error("busy")).mockRejectedValueOnce(new Error("busy")).mockResolvedValue(undefined);
   expect(await saveLayout(l, twice, 0)).toBe("durable");
   expect(twice).toHaveBeenLastCalledWith(durableOnly(l));
-  expect(durableOnly(l)).toEqual({ panes: l.panes, activeTab: {}, focused: 0, activeDir: "C:/a", stacked: {} });
+  expect(durableOnly(l)).toEqual({ panes: l.panes, focused: 0, activeDir: "C:/a", stacked: {} });
   const never = vi.fn(async () => {
     throw new Error("unreadable");
   });

@@ -46,7 +46,7 @@ vi.mock("./settings/menuWheel", () => ({ installMenuWheel: () => {} }));
 
 // The tabs written down at the last quit: a Claude tab with a session to resume, a shell, a Codex tab.
 const tab = (key: number, agent: "claude" | "codex" | "shell", extra: Record<string, unknown> = {}) => ({ key, cwd: "C:/w/app", branch: "main", agent, program: null, args: [] as string[], ...extra });
-const SAVED = JSON.parse(JSON.stringify(layoutOf([tab(1, "claude", { agentId: "claude", session: "s-1" }), tab(2, "shell"), tab(3, "codex", { agentId: "codex", session: "thr_3" })], { 0: 3 }, 3, "C:/w/app", {})));
+const SAVED = JSON.parse(JSON.stringify(layoutOf([tab(1, "claude", { agentId: "claude", session: "s-1" }), tab(2, "shell"), tab(3, "codex", { agentId: "codex", session: "thr_3" })], 3, "C:/w/app", {})));
 
 type El = { key: string | null; props: { children?: El; initial?: Record<string, unknown>; layout?: SavedLayout | null; read?: boolean; late?: SavedLayout | null } };
 /** The App element inside StrictMode and ScreenBoundary. */

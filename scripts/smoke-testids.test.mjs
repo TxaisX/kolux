@@ -59,10 +59,12 @@ test("flow 6 starts every agent the New session menu offers, from that menu", ()
 });
 
 test("flow 7 asserts the sidebar's real folder row and that the removed pane-row class stays gone", () => {
-  // The folder row is data-testid="sidebar-folder" and its sessions are "sidebar-session" (src/projects/ProjectsPanel.tsx);
-  // pane-row was removed and four live checks still queried it, so this keeps the smoke from ever re-adopting it.
+  // The folder row is data-testid="sidebar-folder" (src/projects/ProjectsPanel.tsx); since PR #255 the sidebar has no
+  // session rows, and the smoke asserts that no "sidebar-session" row is drawn. pane-row was removed and four live
+  // checks still queried it, so this keeps the smoke from ever re-adopting it.
   expect(smoke).toContain("sidebar-folder");
   expect(smoke).toContain("sidebar-session");
+  expect(src).not.toContain("sidebar-session");
   expect(smoke).toContain(".pane-row");
   expect(src).not.toContain("pane-row");
 });

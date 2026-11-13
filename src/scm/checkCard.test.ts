@@ -127,6 +127,6 @@ test("the tab shows the check's name and no path, has no copy-path or rename ite
   expect(tabName(pane, {})).toBe("lint");
   expect(tabName({ ...pane, check: undefined }, {})).toBe("Check");
   expect(tabMenu("check").map((m) => m.id)).toEqual(["close"]);
-  expect(layoutOf([pane], {}, 5, "C:\\w\\proj", {}).panes).toEqual([]);
+  expect(layoutOf([pane], 5, "C:\\w\\proj", {}).panes).toEqual([]);
   expect(scopesFor({ screen: "terminals", kind: "check", inTree: false })).toEqual(["global", "tabs"]);
 });

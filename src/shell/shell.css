@@ -23,8 +23,6 @@ html[data-pane-density="compact"] .pane-head .title { font-weight: 500; }
 .about-row dt { color: var(--fg-muted); }
 .about-row dd { margin: 0; color: var(--fg); }
 
-/* TERM-133: the small dot of a colour-coded tab (tabStyle sets --tab-dot on the tab). */
-.tab[style*="--tab-dot"]::before { content: ""; flex: none; width: 7px; height: 7px; margin-right: -1px; border-radius: 50%; background: var(--tab-dot); }
 
 /* T-302-b: Projects panel extras */
 .sb-float { position: relative; height: 0; overflow: visible; z-index: 3; }

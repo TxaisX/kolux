@@ -24,12 +24,14 @@ test("app048: today's restoreLayout reads the v0.1.5 saved layout back as the pa
   const layout = restoreLayout(settings[LAYOUT_FIELD]);
   expect(layout).not.toBeNull();
   expect(layout!.panes).toEqual([
-    { ...base, key: 1, cwd: "C:/fixture/alpha", agent: "claude", agentId: "claude", program: "claude", session: "5b0f6c1e-7a52-4c1d-9e0b-3f2a8d4c6b71", account: null, title: "alpha main", group: 1, pinned: true, color: "blue" },
-    { ...base, key: 2, cwd: "C:/fixture/alpha", agent: "shell", title: "README.md", group: 1, kind: "editor", path: "C:/fixture/alpha/README.md" },
-    { ...base, key: 3, cwd: "C:/fixture/alpha", agent: "shell", title: "main.rs", group: 1, kind: "editor", path: "C:/fixture/alpha/src/main.rs" },
-    { ...base, key: 4, cwd: "C:/fixture/beta", agent: "shell", title: "beta shell", group: 4, color: "green" },
+    { ...base, key: 1, cwd: "C:/fixture/alpha", agent: "claude", agentId: "claude", program: "claude", session: "5b0f6c1e-7a52-4c1d-9e0b-3f2a8d4c6b71", account: null, title: "alpha main", pinned: true, color: "blue" },
+    { ...base, key: 2, cwd: "C:/fixture/alpha", agent: "shell", title: "README.md", kind: "editor", path: "C:/fixture/alpha/README.md" },
+    { ...base, key: 3, cwd: "C:/fixture/alpha", agent: "shell", title: "main.rs", kind: "editor", path: "C:/fixture/alpha/src/main.rs" },
+    { ...base, key: 4, cwd: "C:/fixture/beta", agent: "shell", title: "beta shell", color: "green" },
   ]);
-  expect(layout!.activeTab).toEqual({ 1: 3, 4: 4 });
+  // One session per cell (2026-11-12): alpha's cell of three tabs (1, 2, 3) reopens as three cells of their own, in
+  // its strip's order, and which tab it showed in front (3) is read past: every tab is in view, and 3 keeps the focus.
+  expect(layout).not.toHaveProperty("activeTab");
   expect(layout!.focused).toBe(3);
   expect(layout!.activeDir).toBe("C:/fixture/alpha");
   expect(layout!.stacked).toEqual({ "C:/fixture/beta": true });

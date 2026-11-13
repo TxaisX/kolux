@@ -26,6 +26,7 @@ import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
 import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 import { Select } from "../ui/Select";
 import { Dialog } from "../ui/Dialog";
 
@@ -327,6 +328,8 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         </header>
       ) : (
       <header className="pane-head">
+        <HeadGrip />
+        <HeadMarks />
         <span className="title">Session {number}</span>
         <span className="word">Choose what to run</span>
         <span className="right">

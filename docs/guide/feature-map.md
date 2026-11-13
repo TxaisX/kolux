@@ -24,15 +24,16 @@ Proof is either a check name (`scripts/prove/live-*.mjs`, `scripts/evidence/smok
 
 ## 1. Sidebar
 
-Two kinds of row: a workspace **folder** row, and the UI **session** rows under it (Goal 0, item 4 — worktrees never
-appear in the sidebar). Rows are reached with the mouse and the keyboard; every row has a right-click menu.
+One kind of row: the workspace **folder** row (Goal 0, item 4: worktrees never appear in the sidebar; PR #255, owner
+decision 2026-11-12: no session rows either, since every session is in the folder's grid). Rows are reached with the
+mouse and the keyboard; every row has a right-click menu.
 
 | Control | Where | What it should do | What it does now | Verdict | Proof |
 |---|---|---|---|---|---|
 | Add project button | `src/projects/ProjectsPanel.tsx:2520` (`data-testid="sidebar-add-project"`) | open the add menu: clone, open a folder, start a new one | opens the add form (`adding` state) | `live-pass` | `live-latency` (round 4): `startPlain()` clicks it in every live run and the add form opened |
 | Add by path → folder field | `ProjectsPanel.tsx:2582` (`data-testid="add-project-folder-input"`) | take a path, Enter adds it as a project | `addPath(pathDraft)` on Enter | `live-pass` | `live-latency` (round 4): typed a repo path, Enter, and the workspace opened with a pane |
 | Folder row | `ProjectsPanel.tsx:2313-2321` (`div.proj.folder`, `data-testid="sidebar-folder"`) | select the workspace; its sessions show in the grid | selects it: the row carries `sel` and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
-| Session row | `ProjectsPanel.tsx:1750-1777` (`sessionRows`, `data-testid="sidebar-session"`) | click selects that session's pane; one row per session | selects the pane | `live-pass` | `scripts/evidence/smoke.mjs` flow 7 (round 6): six sessions in one workspace → one folder row + six session rows, no `.pane-row`, clicking the folder shows all six panes, and a restart kept all six |
+| Session row | removed (PR #255, owner decision 2026-11-12, `docs/plans/clean-ui-one-session-per-cell.md`) | no session rows under a folder: every session is a cell of the folder's grid, and clicking the folder shows that grid | the panel draws folder rows only: no sidebar-session test id and no `[data-session]` element | `code` | `src/projects/__cards__/VIEW-051.test.ts` (no session row, drawn or hidden); `scripts/evidence/smoke.mjs` flow 7 asserts one folder row and no session rows for six sessions |
 | Folder row menu | `src/projects/menu.ts:54-59` | New workspace, Review changes (git folders), Project settings, Remove project… | the four items, Review disabled when the folder is not a repo | `code` | `menu.ts:54-59`; `live-GIT-038`/`live-EDIT-029` open All Changes through "Review changes" |
 | Session row menu | `menu.ts:68-98` | Delete, Sleep/Wake, Move to status, Set parent…, Details…, Review changes, Open in (Explorer/editors/Terminal), Move up/down, Hide from the sidebar, Developer (Alt) | all of the above, with the main checkout limited to New workspace + Remove project | `code` | `menu.ts:68-98` |
 | Status submenu | `menu.ts:74` | list the workspace's statuses plus Edit statuses… | lists them; edit opens the editor (`ProjectsPanel.tsx:1420`) | `code` | `menu.ts:74`, `ProjectsPanel.tsx:1420` |
@@ -109,11 +110,11 @@ test names today.
 
 | Screen | Controls mapped | `live-pass` | `live-fail` | `check-exists` | `code` | `pending` | Bug filed |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Sidebar | 10 | 3 | 0 | 0 | 6 | 1 | 0 |
+| Sidebar | 10 | 2 | 0 | 0 | 7 | 1 | 0 |
 | New session chooser | 14 | 3 | 0 | 0 | 10 | 1 | 0 |
 | Pane header | 10 | 5 | 0 | 0 | 4 | 1 | 0 |
 | Latency targets (section 4) | 3 | 2 | 1 | 0 | 0 | 0 | 1 |
-| **Total** | **37** | **13** | **1** | **0** | **20** | **3** | **1** |
+| **Total** | **37** | **12** | **1** | **0** | **21** | **3** | **1** |
 
 Round 4 moved 7 controls from `code`/`check-exists` to `live-pass` by really driving them (the latency run adds a pane
 header row: the "Blank terminal" menu item), and added the three latency targets, one of which fails.
@@ -129,7 +130,11 @@ also closes the first-run dialog the way a user would (corner close → Skip). T
 `scripts/evidence/cdp.mjs` is ready for the sidebar's row menus; the first real right-click on the folder row did not
 open the menu under the harness's off-screen pointer, so that row stays `code` until a later run drives it.
 
+PR #255 (owner decision 2026-11-12) removed the sidebar's session rows: the folder row is the only row, and flow 7 now
+asserts one folder row and no session rows. The Session row is `code` (the card test proves none is drawn) until the
+smoke runs again in the real window.
+
 Three controls are `pending` on their owner lane, not on this lane: the sidebar's worktree rows (Goal 0 item 4,
 `c2-agents`), the chooser's agent-must-start-a-terminal path (Goal 0 item 5, `c2-agents`), and the pane header's
 Context-used ring (Goal 0, `c3-terminal`).
-<!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts at 6801c25d -->
+<!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/projects/__cards__/VIEW-051.test.ts at 45518be0 -->

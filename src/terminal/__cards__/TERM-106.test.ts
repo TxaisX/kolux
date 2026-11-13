@@ -13,19 +13,18 @@ test("a tab closed on purpose is not in the layout written before the crash, and
   const written: unknown[] = [];
   const writer = layoutWriter((l) => written.push(JSON.parse(JSON.stringify(l))), 400, { set: (f) => (timers.push({ f }), timers.length), clear: () => {} });
   let panes = [shell(1, null), shell(2, "C:\\w\\a"), shell(3, "C:\\w\\a")];
-  writer.set(layoutOf(panes, { 1: 1, 2: 2, 3: 3 }, 3, "C:\\w\\a", {}));
+  writer.set(layoutOf(panes, 3, "C:\\w\\a", {}));
   timers.pop()!.f(); // the quiet moment passes: the three tabs are written down
   expect((written[0] as { panes: { key: number }[] }).panes.map((p) => p.key)).toEqual([1, 2, 3]);
 
   // the user closes tab 3 (focused) on purpose; focus moves to its neighbour, as dropPanes does
   panes = panes.filter((p) => p.key !== 3);
-  writer.set(layoutOf(panes, { 1: 1, 2: 2 }, 2, "C:\\w\\a", {}));
+  writer.set(layoutOf(panes, 2, "C:\\w\\a", {}));
   timers.pop()!.f(); // written; then the app crashes
   expect(written).toHaveLength(2);
 
   const back = restoreLayout(written[1])!;
   expect(back.panes.map((p) => p.key)).toEqual([1, 2]);
-  expect(back.activeTab).toEqual({ 1: 1, 2: 2 });
   expect(back.focused).toBe(2);
   expect(JSON.stringify(written[1])).not.toContain('"key":3');
 });

@@ -1,46 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cellKeys, splitMenuState, splitTabOut } from "./tabSplit";
-import { cellsOf } from "./grid";
-import { colorOf, forgetColors, setTabColor, tabMenuHead, tabStyle, TAB_COLORS } from "./tabColor";
-
-type P = { key: number; cwd: string | null; group?: number };
-const p = (key: number, group?: number, cwd: string | null = "/w"): P => ({ key, cwd, ...(group === undefined ? {} : { group }) });
-const shape = (panes: P[]) => cellsOf(panes).map((c) => c.panes.map((x) => x.key));
-
-describe("TERM-049 split items", () => {
-  const strip = [p(1), p(2, 1), p(3, 1)];
-  it("Split Right moves the tab into a cell of its own beside its old one", () => {
-    const r = splitTabOut(strip, 3, "right") as { panes: P[]; stack: boolean };
-    expect(shape(r.panes)).toEqual([[1, 2], [3]]);
-    expect(r.stack).toBe(false);
-  });
-  it("Split Down on a lone cell makes a stacked pair", () => {
-    const r = splitTabOut(strip, 2, "down") as { panes: P[]; stack: boolean };
-    expect(shape(r.panes)).toEqual([[1, 3], [2]]);
-    expect(r.stack).toBe(true);
-  });
-  it("the group's root can leave without dragging the others with it", () => {
-    const r = splitTabOut(strip, 1, "right") as { panes: P[]; stack: boolean };
-    expect(shape(r.panes)).toEqual([[2, 3], [1]]);
-    expect(new Set(cellsOf(r.panes).map((c) => c.group)).size).toBe(2);
-  });
-  it("lands before the next cell, not at the end", () => {
-    const r = splitTabOut([p(1), p(2, 1), p(3)], 2, "right") as { panes: P[]; stack: boolean };
-    expect(shape(r.panes)).toEqual([[1], [2], [3]]);
-  });
-  it("is off for a tab alone in its cell, and for a full workspace", () => {
-    expect(splitTabOut([p(1), p(2)], 1, "right")).toBeNull();
-    expect(splitMenuState([p(1), p(2)], 1).enabled).toBe(false);
-    expect(splitMenuState(strip, 2)).toEqual({ enabled: true, why: null });
-    const full = [...Array.from({ length: 24 }, (_, i) => p(i + 1)), p(25, 1)];
-    expect(splitMenuState(full, 25).enabled).toBe(false);
-    expect(splitTabOut(full, 25, "right")).toBeNull();
-  });
-  it("cellKeys lists every tab of the cell for one close question", () => {
-    expect(cellKeys(strip, 3)).toEqual([1, 2, 3]);
-    expect(cellKeys(strip, 99)).toEqual([]);
-  });
-});
+import { bulkCloses } from "./pin";
+import { colorOf, forgetColors, setTabColor, tabMenuHead } from "./tabColor";
 
 describe("TERM-049 Tab Color and menu head", () => {
   it("sets, replaces and clears a colour; the same pick toggles it off", () => {
@@ -53,18 +13,28 @@ describe("TERM-049 Tab Color and menu head", () => {
     expect(setTabColor({ 4: "red" }, 4, null)).toEqual({});
     expect(setTabColor({}, 4, "mauve")).toEqual({});
   });
-  it("forgets closed tabs and styles a coloured one", () => {
+  it("forgets closed tabs", () => {
     expect(forgetColors({ 1: "red", 2: "blue" }, [1])).toEqual({ 2: "blue" });
-    expect((tabStyle({ 1: "red" }, 1) as Record<string, string>)["--tab-dot"]).toBe(TAB_COLORS.find((c) => c.id === "red")!.css);
-    expect(tabStyle({}, 1)).toBeUndefined();
   });
   it("heads the menu: Change Title for terminals, Pin, Tab Color, then the splits", () => {
     const ids = (kind: string | undefined) => tabMenuHead(kind, false, { enabled: true, why: null }).map((e) => e.id);
     expect(ids(undefined)).toEqual(["rename", "pin", "color", "splitRight", "splitDown"]);
     expect(ids("editor")).toEqual(["pin", "color", "splitRight", "splitDown"]);
     expect(tabMenuHead("diff", true, { enabled: false, why: "x" })[0]).toEqual({ id: "pin", label: "Unpin tab" });
-    const off = tabMenuHead(undefined, false, { enabled: false, why: "alone" })[4];
-    expect(off).toMatchObject({ id: "splitDown", disabled: true, why: "alone" });
+    const off = tabMenuHead(undefined, false, { enabled: false, why: "full" })[4];
+    expect(off).toMatchObject({ id: "splitDown", disabled: true, why: "full" });
+  });
+});
+
+// One session per cell (2026-11-12): a terminal's tab menu items live in its Pane menu, the bulk closes among them.
+describe("TERM-044 the Pane menu's bulk closes", () => {
+  it("offers only the rows that would close a pane besides this one, pinned panes spared", () => {
+    const names = (order: number[], key: number, pinned: number[] = []) => bulkCloses(order, key, new Set(pinned)).map((r) => [r.name, r.keys]);
+    expect(names([1, 2, 3], 2)).toEqual([["Close Others", [1, 3]], ["Close to the Right", [3]], ["Close to the Left", [1]], ["Close All", [1, 2, 3]]]);
+    expect(names([1, 2, 3], 1)).toEqual([["Close Others", [2, 3]], ["Close to the Right", [2, 3]], ["Close All", [1, 2, 3]]]);
+    expect(names([1, 2, 3], 2, [1, 3])).toEqual([]); // the others are pinned, and Close All would be Close Pane again
+    expect(names([7], 7)).toEqual([]); // a lone pane: Close Pane is all there is
+    expect(bulkCloses([1, 2], 1, new Set()).every((r) => r.id.startsWith("close-") && r.title.length > 0)).toBe(true);
   });
 });
 

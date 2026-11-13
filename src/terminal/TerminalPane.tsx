@@ -9,6 +9,8 @@ import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
+import PaneGrip from "./PaneGrip";
+import { HeadMarks } from "./TabMarks";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
@@ -226,8 +228,9 @@ type Props = {
   dragCell?: { onStart: () => void; onEnd: () => void };
   /** TERM-035: Equalize in the pane menu; given only while the grid holds more than one pane. */
   onEqualize?: () => void;
-  /** TERM-016: Move to Tab in the pane menu. */
-  onMoveToTab?: () => void;
+  /** One session per cell: the tab menu's own items, now in the Pane menu: Pin Tab (TERM-046), Tab Color… (TERM-133)
+   *  and the grid's bulk closes (TERM-044), each closing `keys` through `onCloseKeys` (asked first, TERM-045). */
+  tab?: { pinned: boolean; onPin: () => void; onColor: (at: { x: number; y: number }) => void; closes: { id: string; name: string; title?: string; keys: number[] }[]; onCloseKeys: (keys: number[]) => void };
   /** TERM-013: the grid's expand: `on` while this pane's cell fills the grid; `can` is false for a lone classic pane. */
   expand?: { on: boolean; can: boolean; toggle: () => void };
   /** VIEW-026: on the Board this pane is a card; expanded shows the live terminal inside it. */
@@ -271,7 +274,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, tab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -1682,36 +1685,15 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           openMenu(e.clientX, e.clientY);
         }}
       >
-        {dragCell && (
-          <span
-            className="pane-grip"
-            role="img"
-            aria-label="Drag to move this pane"
-            title="Drag to move this pane"
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("text/plain", title);
-              dragCell.onStart();
-            }}
-            onDragEnd={dragCell.onEnd}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-              <circle cx="4" cy="3" r="1" />
-              <circle cx="8" cy="3" r="1" />
-              <circle cx="4" cy="6" r="1" />
-              <circle cx="8" cy="6" r="1" />
-              <circle cx="4" cy="9" r="1" />
-              <circle cx="8" cy="9" r="1" />
-            </svg>
-          </span>
-        )}
+        {dragCell && <PaneGrip name={title} onStart={dragCell.onStart} onEnd={dragCell.onEnd} />}
         <span className={`st ${tone || "idle"}`} role="img" data-testid="pane-status-dot" aria-label={`status: ${word}`} data-tip={[explain, drawing].filter(Boolean).join(" · ")}>
           <StatusGlyph glyph={glyph} size={glyph === "spinner" ? 11 : 12} />
         </span>
         <span className="agent-mark" title={agentLabel}>
           {shellIcon === "shell" ? <VendorMark agent={shown} size={13} /> : <ShellMark icon={shellIcon} />}
         </span>
+        {/* One session per cell (2026-11-12): what the pane's tab showed (TabMarks.tsx). */}
+        <HeadMarks />
         {naming && onRename ? (
           <NameField
             value={title}
@@ -1894,11 +1876,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             ],
             onSplit,
             onEqualize,
-            onMoveToTab,
             onExpand,
             onSetTitle: onRename && (() => setNaming(true)),
             hasTitle: custom,
             onClearTitle: onRename && (() => onRename(undefined)),
+            pinned: tab?.pinned,
+            onPin: tab?.onPin,
+            onColor: tab && (() => tab.onColor({ x: menuAt.left, y: menuAt.top })),
+            closes: tab?.closes.map((x) => ({ id: x.id, name: x.name, title: x.title, run: () => tab.onCloseKeys(x.keys) })),
             copyIds: onCopyId ? COPY_IDS.filter(([what]) => sessionKnown || what !== "session").map(([what, label]) => ({ id: what, name: label, run: () => onCopyId(what) })) : [],
             onDiagnostics: () => void copyDiagnostics(),
             onClose: onClose && close,

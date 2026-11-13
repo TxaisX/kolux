@@ -75,7 +75,7 @@ function windowState(start: Pane[]) {
     },
   };
 }
-const shell = (key: number, cwd: string, group?: number): Pane => ({ key, cwd, branch: "b", agent: "shell", program: null, args: [], group });
+const shell = (key: number, cwd: string): Pane => ({ key, cwd, branch: "b", agent: "shell", program: null, args: [] });
 
 describe("PROJ-034 opening the default tabs in a new workspace", () => {
   it("picks the palette colour nearest a file colour, and none for a bad one", () => {
@@ -86,22 +86,23 @@ describe("PROJ-034 opening the default tabs in a new workspace", () => {
     expect(nearestTabColor(null)).toBeNull();
   });
 
-  it("makes one shell tab per default tab, the command typed ahead and the title kept", () => {
+  it("makes one shell tab per default tab, each a cell of its own, the command typed ahead and the title kept", () => {
     let n = 10;
     const out = tabPanes([tab("Dev", "pnpm dev", "#E00"), tab(null, "tail -f log"), tab(null, null)], "C:/w", "main", () => n++);
-    expect(out.panes.map((p) => [p.key, p.title, p.typed, p.group ?? p.key, p.agent, p.cwd])).toEqual([
-      [10, "Dev", "pnpm dev", 10, "shell", "C:/w"],
-      [11, "tail", "tail -f log", 10, "shell", "C:/w"],
-      [12, "Terminal", undefined, 10, "shell", "C:/w"],
+    expect(out.panes.map((p) => [p.key, p.title, p.typed, p.agent, p.cwd])).toEqual([
+      [10, "Dev", "pnpm dev", "shell", "C:/w"],
+      [11, "tail", "tail -f log", "shell", "C:/w"],
+      [12, "Terminal", undefined, "shell", "C:/w"],
     ]);
+    expect(out.panes.some((p) => "group" in p)).toBe(false);
     expect(out.colors).toEqual({ 10: "red" });
   });
 
-  it("opens the tabs beside the workspace's first pane and colours them", async () => {
-    const { w, deps } = windowState([shell(1, "C:/other"), shell(2, "C:/w", 2)]);
+  it("opens the tabs in the cells right after the workspace's first pane and colours them", async () => {
+    const { w, deps } = windowState([shell(1, "C:/other"), shell(2, "C:/w"), shell(3, "C:/w")]);
     const r = fakeRust([tab("Dev", "pnpm dev", "#0af"), tab("Logs", null)], null);
     await openDefaultTabs("C:/r", "C:/w", "b", { ...deps, invoke: r.invoke });
-    expect(w.panes.map((p) => [p.key, p.group ?? p.key, p.title])).toEqual([[1, 1, undefined], [2, 2, undefined], [100, 2, "Dev"], [101, 2, "Logs"]]);
+    expect(w.panes.map((p) => [p.key, p.title])).toEqual([[1, undefined], [2, undefined], [100, "Dev"], [101, "Logs"], [3, undefined]]);
     expect(w.colors).toEqual({ 100: "blue" });
     expect(w.said).toEqual([]);
   });

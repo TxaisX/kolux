@@ -92,6 +92,7 @@ import { pasteGuard } from "./paste";
 // Cycle 3 (first load): the two latches the window's Mod+S and Copy Context call live in keys/handles.ts
 // now, so the shortcut router holds them without loading this pane; filled here while a tab is open.
 import { copiers, editors } from "../keys/handles";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 export { copiers, editors };
 
 /** EDIT-003 (T-073-a, T-073-c): Mod+S for an editor tab or an unstaged diff tab. The write carries
@@ -767,9 +768,11 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
   return (
     <section style={tocShown ? (tocVar(tocWidth) as CSSProperties) : undefined} className={`pane editor${focused ? " focused" : ""}${tocShown ? " toc-open" : ""}${railShown ? " rail-open" : ""}`} hidden={hidden} aria-label={`${name} pane`} data-testid="editor-pane" onMouseDown={onFocus} onKeyDownCapture={onKeys} onPasteCapture={pastePicture} data-kind="editor" data-key={id}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="File">
           <FileIcon name={name} size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{name}</span>
         {dirty && <span className="unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}
         <span className="path" title={path}>

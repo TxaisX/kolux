@@ -6,6 +6,7 @@ const invoke = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 import type { Pane } from "../App";
 import { closedRecord, createClosedPanes, folderKind, paneFor, placement } from "./reopenTab";
+import { insertAfter } from "../terminal/grid";
 
 const pane = (key: number, cwd: string | null = "G:\\Dev\\x", extra: Partial<Pane> = {}): Pane => ({ key, cwd, branch: null, agent: "shell", program: null, args: [], ...extra });
 const dirs = (...ok: string[]) => async (p: string) => (ok.includes(p) ? "dir" : "missing");
@@ -86,25 +87,31 @@ test("tabs without a program of their own (editor, seats) are not remembered", (
 });
 
 test("what a reopened tab runs is kept, what only belonged to the old session is not", () => {
-  const rec = closedRecord(pane(5, "G:\\a", { agentId: "claude", program: "claude", args: ["--x"], env: [["A", "b"]], title: "T", word: "claude", session: "s1", resumed: true, typed: "go", ask: "q", group: 4 }));
+  const rec = closedRecord(pane(5, "G:\\a", { agentId: "claude", program: "claude", args: ["--x"], env: [["A", "b"]], title: "T", word: "claude", session: "s1", resumed: true, typed: "go", ask: "q" }));
   expect(rec).toMatchObject({ cwd: "G:\\a", agentId: "claude", program: "claude", args: ["--x"], env: [["A", "b"]], title: "T", word: "claude" });
-  const back = paneFor(rec!, 12, 7);
-  expect(back).toMatchObject({ key: 12, group: 7, agentId: "claude" });
+  const back = paneFor(rec!, 12);
+  expect(back).toMatchObject({ key: 12, agentId: "claude" });
   expect(back.session).toBeUndefined();
   expect(back.typed).toBeUndefined();
   expect(back.ask).toBeUndefined();
 });
 
-test("the tab returns to the focused cell when it is in the same folder, else to a cell of its own", () => {
-  const ps = [pane(1, "G:\\a"), pane(2, "G:\\a", { group: 1 }), pane(3, "G:\\b")];
-  expect(placement(ps, 2, "G:\\a")).toBe(1);
+// One session per cell (2026-11-12): the tab comes back in a cell of its own, right after the focused pane.
+test("the tab returns beside the focused pane when it is in the same folder, else to the grid's last cell", () => {
+  const ps = [pane(1, "G:\\a"), pane(2, "G:\\a"), pane(3, "G:\\b")];
+  expect(placement(ps, 2, "G:\\a")).toBe(2);
   expect(placement(ps, 3, "G:\\a")).toBeUndefined();
   expect(placement(ps, 1, "G:\\z")).toBeUndefined();
+  const back = insertAfter(ps, placement(ps, 1, "G:\\a"), pane(9, "G:\\a"));
+  expect(back.map((p) => p.key)).toEqual([1, 9, 2, 3]);
 });
 
-test("a workspace already showing the most cells takes the tab into its first cell", () => {
+test("a tab closed on purpose always comes back: a full grid grows past its cap for it", () => {
   const ps = Array.from({ length: 24 }, (_, i) => pane(i + 1, "G:\\a"));
-  expect(placement(ps, 99, "G:\\a")).toBe(1);
+  expect(placement(ps, 99, "G:\\a")).toBeUndefined();
+  const back = insertAfter(ps, placement(ps, 5, "G:\\a"), pane(99, "G:\\a"));
+  expect(back).toHaveLength(25);
+  expect(back.map((p) => p.key).slice(4, 7)).toEqual([5, 99, 6]);
 });
 
 test("after-list 383: the folder check asks path_kind for a folder only, so a folder under no project still counts as there", async () => {

@@ -25,7 +25,7 @@ export default function WindowSidebar() {
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest,
     setScreen, setProjects, setOwner, setNames, leftWidth, setDragLeft,
     agentsScreen, groups, selected, saved, classic, chipFor, ringOf, footer, setAgentSel, setFocused, addPreset, closePane,
-    workerNames, ptys, panes, dirty, openPane,
+    workerNames, ptys, panes, dirty,
   } = useWindow();
   // PKG-2: the project list skips a render when nothing it shows changed (projectsProps.ts). What it runs from its
   // handlers and effects keeps one identity: the window's deeds (store.tsx), and the closures below as callers that
@@ -45,8 +45,6 @@ export default function WindowSidebar() {
       setPage((p) => (screen === "terminals" && p === next ? null : next));
     },
     renameTaken: () => setRenameRequest(0),
-    // A session row opens its folder's grid and focuses that pane (paneActions.openPane).
-    focusPane: (key: number) => openPane(key),
     artifacts: () => setScreen("artifacts"),
     skills: () => toggleSkills(screen, setScreen),
     index: (list: Project[], dirs: Record<string, string>, typed: Record<string, string>) => {
@@ -73,7 +71,6 @@ export default function WindowSidebar() {
           onSetting={deeds.saveSetting}
           activeDir={activeDir}
           onSelect={act.select}
-          onFocusPane={act.focusPane}
           onRemoved={deeds.removed}
           onRemovedAll={deeds.removedAll}
           onSleep={deeds.removedAll}

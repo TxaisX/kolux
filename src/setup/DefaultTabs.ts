@@ -5,7 +5,7 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Pane } from "../App";
-import { cellsOf } from "../terminal/grid";
+import { insertAfter } from "../terminal/grid";
 import { TAB_COLORS, setTabColor, type TabColors } from "../terminal/tabColor";
 import { panesIn, sameDir } from "../workspaces";
 import { askTrust, trusted, type TrustAnswer, type TrustAsk } from "./TrustPrompt";
@@ -45,14 +45,13 @@ export function nearestTabColor(hex: string | null): string | null {
   return TAB_COLORS.reduce((best, c) => (dist(c.css) < dist(best.css) ? c : best)).id;
 }
 
-/** The shell panes for `tabs`, joining cell `group` as tabs: title as the file gave it (or tabTitle's words), the command typed once the shell is up. */
-export function tabPanes(tabs: SharedTab[], dir: string, branch: string | null, nextKey: () => number, group?: number): { panes: Pane[]; colors: Record<number, string> } {
+/** The shell panes for `tabs`, one cell each (one session per cell): title as the file gave it (or tabTitle's words), the command typed once the shell is up. */
+export function tabPanes(tabs: SharedTab[], dir: string, branch: string | null, nextKey: () => number): { panes: Pane[]; colors: Record<number, string> } {
   const panes: Pane[] = [];
   const colors: Record<number, string> = {};
   for (const t of tabs) {
     const key = nextKey();
-    const g = group ?? panes[0]?.key;
-    panes.push({ key, cwd: dir, branch, agent: "shell", program: null, args: [], title: tabTitle(t), typed: t.command ?? undefined, group: g });
+    panes.push({ key, cwd: dir, branch, agent: "shell", program: null, args: [], title: tabTitle(t), typed: t.command ?? undefined });
     const color = nearestTabColor(t.color);
     if (color) colors[key] = color;
   }
@@ -69,9 +68,11 @@ type OpenDeps = {
   ask?: (a: TrustAsk) => Promise<TrustAnswer>;
 };
 
-/** PROJ-034: opens kolux.yaml's default tabs in the new workspace `dir` of the repository at `root`, beside its first pane, without taking focus. Never throws: a failure is said, not raised.
- *  DT-C274: `view` is the grid a team worktree is shown in: the tabs run in `dir`, are shown there, and join the cell of
- *  the pane that runs in `dir` (its agent), so the team's grid gains tabs, not cells. */
+/** PROJ-034: opens kolux.yaml's default tabs in the new workspace `dir` of the repository at `root`, in the cells right
+ *  after its first pane (one session per cell), without taking focus. Never throws: a failure is said, not raised. The
+ *  file asked for them, so a full grid takes them anyway (grid.ts MAX_PANES).
+ *  DT-C274: `view` is the grid a team worktree is shown in: the tabs run in `dir`, are shown there, and follow the pane
+ *  that runs in `dir` (its agent). */
 export async function openDefaultTabs(root: string, dir: string, branch: string | null, deps: OpenDeps, view?: string | null): Promise<void> {
   try {
     const { tabs, refused } = await defaultTabs(root, dir, deps.invoke, deps.ask);
@@ -80,11 +81,10 @@ export async function openDefaultTabs(root: string, dir: string, branch: string 
     const made = tabPanes(tabs, dir, branch, () => deps.nextKey.current++);
     deps.setPanes((ps) => {
       if (view !== undefined) {
-        const mine = cellsOf(panesIn(ps, view)).find((c) => c.panes.some((p) => sameDir(p.cwd, dir)))?.group;
-        return [...ps, ...made.panes.map((p) => ({ ...p, view, ...(mine === undefined ? {} : { group: mine }) }))];
+        const mine = panesIn(ps, view).find((p) => sameDir(p.cwd, dir))?.key;
+        return insertAfter(ps, mine, ...made.panes.map((p) => ({ ...p, view })));
       }
-      const group = cellsOf(panesIn(ps, dir))[0]?.group;
-      return [...ps, ...(group === undefined ? made.panes : made.panes.map((p) => ({ ...p, group })))];
+      return insertAfter(ps, panesIn(ps, dir)[0]?.key, ...made.panes);
     });
     deps.setTabColors((m) => Object.entries(made.colors).reduce((acc, [k, id]) => setTabColor(acc, Number(k), id), m));
   } catch (err) {

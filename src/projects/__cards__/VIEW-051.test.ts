@@ -79,8 +79,9 @@ test("box 2: running or stopped, a worktree's row shows no agent count (DT-C274)
   expect(counts(none)).toEqual([]);
 });
 
-// Txais (2026-11-12): the sidebar lists workspace folders and their UI sessions, never worktrees. A team started with
-// "Own folder for each AI" runs each agent in a worktree of its own; those agents are session rows under the folder.
+// Txais (2026-11-12, PR #255): the sidebar lists workspace folders only: no worktree rows and no session rows, since
+// every session is in the folder's grid. A team started with "Own folder for each AI" runs each agent in a worktree of
+// its own; the folder row stands for all of them.
 const agentWt = (n: number) => ({ path: `C:/w/ws/agent${n}`, branch: `agent${n}`, head: `c${n}c${n}c${n}c`, isMain: false, hidden: false, number: null, comment: "" });
 const handMade = { ...agentWt(9), path: "C:/w/ws/by-hand", branch: "by-hand" };
 const six: Session[] = [1, 2, 3].flatMap((n) => [
@@ -97,26 +98,27 @@ function visible(n: FakeNode, out: FakeNode[] = []): FakeNode[] {
 }
 const team = { teamWorktrees: [1, 2, 3].map((n) => ({ path: `C:/w/ws/agent${n}`, view: "C:/w/app" })) };
 
-test("box 3: a folder whose 6 agents run in 3 worktrees shows one folder row, 6 session rows and no worktree rows", async () => {
+test("box 3: a folder whose 6 agents run in 3 worktrees shows one folder row, no session rows and no worktree rows", async () => {
   h.wt = [wt, agentWt(1), agentWt(2), agentWt(3), handMade];
   const c = await panel(six, team);
   const seen = visible(c);
   expect(seen.filter((n) => cls(n).includes("proj") && cls(n).includes("folder"))).toHaveLength(1);
-  const sessions = seen.filter((n) => n.attrs["data-session"] !== undefined);
-  expect(sessions.map((n) => n.textContent.trim())).toEqual(["Claude 1", "Codex 1", "Claude 2", "Codex 2", "Claude 3", "Codex 3"]);
+  expect(find(c, (n) => n.attrs["data-session"] !== undefined || n.attrs["data-testid"] === "sidebar-session"), "no session row, drawn or hidden").toEqual([]);
+  expect(seen.some((n) => /Claude 1|Codex 3/.test(n.textContent) && n.childNodes.length === 0), "no session title anywhere in the list").toBe(false);
   expect(seen.filter((n) => n.attrs["data-worktree"] !== undefined), "no worktree row draws, made for agents or by hand").toEqual([]);
   expect(find(c, (n) => n.attrs["data-worktree"] === "by-hand").length, "the hand-made one is only kept out of sight in the page").toBe(1);
   expect(seen.filter((n) => n.attrs["data-path"] !== undefined).map((n) => n.attrs["data-path"])).toEqual(["C:/w/app"]);
 });
 
-test("box 3: the folder row keeps its green status text, and a session click opens the grid it is shown in", async () => {
+test("box 3: the folder row keeps its green status text, and a click on it opens the folder's grid, where its sessions are", async () => {
   h.wt = [wt, agentWt(1)];
   const c = await panel(six.slice(0, 2));
-  const row = find(c, (n) => n.attrs["data-session"] === "10")[0];
+  const row = find(c, (n) => n.attrs["data-testid"] === "sidebar-folder")[0];
+  expect(row.textContent).toContain("synced");
   const { click } = await import("../../tasks/fakeDom");
   await click(c, row);
   expect(selected).toEqual(["C:/w/app"]);
-  expect(find(c, (n) => n.attrs["data-session"] !== undefined)).toHaveLength(2);
+  expect(find(c, (n) => n.attrs["data-session"] !== undefined)).toEqual([]);
 });
 
 test("box 4: Pinned and the grouped lists hold folders only, never a worktree", async () => {
@@ -129,5 +131,5 @@ test("box 4: Pinned and the grouped lists hold folders only, never a worktree", 
   await unmount();
   const grouped = await panel(six.slice(0, 2), { workspaceGroupBy: "status" });
   expect(visible(grouped).filter((n) => n.attrs["data-worktree"] !== undefined).map((n) => n.attrs["data-path"])).toEqual(["C:/w/app"]);
-  expect(find(grouped, (n) => n.attrs["data-session"] !== undefined)).toHaveLength(2);
+  expect(find(grouped, (n) => n.attrs["data-session"] !== undefined)).toEqual([]);
 });

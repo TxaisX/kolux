@@ -55,6 +55,9 @@ Acceptance:
         hovering shows the context and plan wording. (T-040-a, by a posted report)
   - [x] A Codex tab that has plan figures but no context reading → no ring. (T-040-a)
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the ring sits in the pane header, before the title, and still shows only once a context reading
+    exists.
 Source: D-06-003
 
 ### USAGE-004 · Agents view shows rings per session and a plan footer

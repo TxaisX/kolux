@@ -9,17 +9,19 @@ const shell = (key: number, cwd: string | null, extra: Record<string, unknown> =
 test("proj067: what is written down is each started tab, stripped to what a restart can rebuild", () => {
   const panes = [
     shell(1, null),
-    { ...shell(2, "C:\\w\\a"), agent: "claude" as const, agentId: "claude", program: "claude", args: ["--prompt", "do the thing"], env: [["X", "1"]], typed: "do", task: "t", account: "acct-1", title: "Claude", group: 2 },
+    { ...shell(2, "C:\\w\\a"), agent: "claude" as const, agentId: "claude", program: "claude", args: ["--prompt", "do the thing"], env: [["X", "1"]], typed: "do", task: "t", account: "acct-1", title: "Claude" },
     shell(3, "C:\\w\\a", { seats: [{}] }), // a chooser never started
-    shell(4, "C:\\w\\b", { kind: "editor", path: "C:\\w\\b\\README.md", group: 4 }),
+    shell(4, "C:\\w\\b", { kind: "editor", path: "C:\\w\\b\\README.md" }),
     shell(5, "C:\\w\\b", { kind: "changes", path: "C:\\w\\b" }),
   ];
-  const l = layoutOf(panes, { 1: 1, 2: 2, 4: 4, 9: 3 }, 2, "C:\\w\\a", { "C:\\w\\b": true });
+  const l = layoutOf(panes, 2, "C:\\w\\a", { "C:\\w\\b": true });
   expect(l.panes.map((p) => p.key)).toEqual([1, 2, 3, 4, 5]);
   expect(l.panes[2]).toEqual({ key: 3, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [], chooser: true }); // an unstarted chooser keeps its place as an empty chooser
-  expect(l.panes[1]).toEqual({ key: 2, cwd: "C:\\w\\a", branch: null, agent: "claude", agentId: "claude", program: "claude", args: [], account: "acct-1", title: "Claude", group: 2 });
-  expect(l.panes[3]).toEqual({ key: 4, cwd: "C:\\w\\b", branch: null, agent: "shell", program: null, args: [], group: 4, kind: "editor", path: "C:\\w\\b\\README.md" });
-  expect(l.activeTab).toEqual({ 1: 1, 2: 2, 4: 4, 9: 3 });
+  expect(l.panes[1]).toEqual({ key: 2, cwd: "C:\\w\\a", branch: null, agent: "claude", agentId: "claude", program: "claude", args: [], account: "acct-1", title: "Claude" });
+  expect(l.panes[3]).toEqual({ key: 4, cwd: "C:\\w\\b", branch: null, agent: "shell", program: null, args: [], kind: "editor", path: "C:\\w\\b\\README.md" });
+  // One session per cell (2026-11-12): a tab's cell is never written down, nor which tab a cell showed.
+  expect(l.panes.some((p) => "group" in p)).toBe(false);
+  expect(l).not.toHaveProperty("activeTab");
   expect(l.focused).toBe(2);
   expect(l.activeDir).toBe("C:\\w\\a");
   expect(l.stacked).toEqual({ "C:\\w\\b": true });
@@ -40,25 +42,23 @@ test("proj067: a damaged entry is dropped and the other tabs still come back", (
       { ...shell(6, "C:\\w\\a"), kind: "diff", path: "x.ts", staged: true, group: 6, title: 7 },
       shell(6, "C:\\w\\c"), // a repeated key: the first one stands
     ],
-    activeTab: { 1: 1, 6: 6, 7: 3, 8: "x" },
     focused: 3, // the dropped one
     activeDir: "C:\\w\\a",
     stacked: { "C:\\w\\a": true, "C:\\w\\b": "yes" },
   };
   const l = restoreLayout(saved)!;
   expect(l.panes.map((p) => p.key)).toEqual([1, 6]);
-  expect(l.panes[1]).toEqual({ key: 6, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [], group: 6, kind: "diff", path: "x.ts", staged: true });
-  expect(l.activeTab).toEqual({ 1: 1, 6: 6 });
+  expect(l.panes[1]).toEqual({ key: 6, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [], kind: "diff", path: "x.ts", staged: true });
   expect(l.focused).toBe(6); // the first tab of the active workspace
   expect(l.stacked).toEqual({ "C:\\w\\a": true });
   expect(restoreLayout(null)).toBeNull();
   expect(restoreLayout("{}")).toBeNull();
   expect(restoreLayout({ panes: ["x", 1] })).toBeNull();
-  expect(restoreLayout({ panes: [shell(1, null)], focused: "1", activeDir: 5 })).toEqual({ panes: [shell(1, null)], activeTab: {}, focused: 1, activeDir: null, stacked: {} });
+  expect(restoreLayout({ panes: [shell(1, null)], focused: "1", activeDir: 5 })).toEqual({ panes: [shell(1, null)], focused: 1, activeDir: null, stacked: {} });
 });
 
 test("proj067: the active workspace and tab come back when they still exist, else the tabs in a gone folder go", () => {
-  const l = restoreLayout({ panes: [shell(1, null), shell(2, "C:\\w\\a"), shell(3, "C:\\w\\b"), shell(4, "C:\\w\\b")], activeTab: { 1: 1, 2: 2, 3: 4 }, focused: 4, activeDir: "C:\\w\\b", stacked: {} })!;
+  const l = restoreLayout({ panes: [shell(1, null), shell(2, "C:\\w\\a"), shell(3, "C:\\w\\b"), shell(4, "C:\\w\\b")], focused: 4, activeDir: "C:\\w\\b", stacked: {} })!;
   const same = stillThere(l, () => true);
   expect(same).toEqual(l);
   expect(same.activeDir).toBe("C:\\w\\b");
@@ -67,24 +67,23 @@ test("proj067: the active workspace and tab come back when they still exist, els
   expect(gone.panes.map((p) => p.key)).toEqual([1, 2]);
   expect(gone.activeDir).toBeNull();
   expect(gone.focused).toBe(1); // the home tab, since the active workspace is gone
-  expect(gone.activeTab).toEqual({ 1: 1, 2: 2 });
 });
 
 test("acct063: two saved tabs holding one session resume it once (the newest keeps it); a fork is not resumed as its source", () => {
   const agent = (key: number, extra: Record<string, unknown>) => ({ key, cwd: "C:\\w\\a", branch: "main", agent: "claude" as const, agentId: "claude", program: "claude", args: [], ...extra });
-  const saved = { panes: [agent(2, { session: "s-1" }), agent(5, { session: "s-1" }), agent(6, { forkOf: "s-1" }), agent(7, { session: "s-1", forkOf: "s-1" })], activeTab: {}, focused: 2, activeDir: null, stacked: {} };
+  const saved = { panes: [agent(2, { session: "s-1" }), agent(5, { session: "s-1" }), agent(6, { forkOf: "s-1" }), agent(7, { session: "s-1", forkOf: "s-1" })], focused: 2, activeDir: null, stacked: {} };
   const back = restoreLayout(saved)!;
   // key 2 and key 5 held the same session; key 7 is a fork that wrongly carries its source's id
   expect(back.panes.map((p) => [p.key, p.session, p.forkOf])).toEqual([[2, undefined, undefined], [5, "s-1", undefined], [6, undefined, "s-1"], [7, undefined, "s-1"]]);
   // the fork record is written down with the tab
-  expect(layoutOf([agent(6, { forkOf: "s-1", session: "s-9" })], {}, 6, null, {}).panes[0]).toMatchObject({ forkOf: "s-1", session: "s-9" });
+  expect(layoutOf([agent(6, { forkOf: "s-1", session: "s-9" })], 6, null, {}).panes[0]).toMatchObject({ forkOf: "s-1", session: "s-9" });
 });
 
 test("sess030: an agent tab with a known session comes back resumed, one without comes back at its prompt, never in a picker", () => {
   const claude = { key: 2, cwd: "C:\\w\\a", branch: "main", agent: "claude" as const, agentId: "claude", program: "claude", args: ["--dangerously-skip-permissions", "fix the build"], session: "11111111-aaaa" };
   const codex = { key: 3, cwd: "C:\\w\\a", branch: "main", agent: "codex" as const, agentId: "codex", program: null, args: ["--full-auto"], session: "thr_22" };
   const fresh = { key: 4, cwd: "C:\\w\\a", branch: "main", agent: "claude" as const, agentId: "claude", program: "claude", args: ["hello"] };
-  const l = layoutOf([shell(1, null), claude, codex, fresh], { 1: 1, 2: 4 }, 4, "C:\\w\\a", {});
+  const l = layoutOf([shell(1, null), claude, codex, fresh], 4, "C:\\w\\a", {});
   // The session id is written down; the one-off opening arguments are not.
   expect(l.panes.map((p) => [p.key, p.args, p.session])).toEqual([[1, [], undefined], [2, [], "11111111-aaaa"], [3, [], "thr_22"], [4, [], undefined]]);
   const back = restoreLayout(JSON.parse(JSON.stringify(l)))!;
@@ -92,7 +91,7 @@ test("sess030: an agent tab with a known session comes back resumed, one without
   expect(back.panes.map((p) => [p.key, p.args])).toEqual([[1, []], [2, []], [3, []], [4, []]]);
   expect(back.panes[1].session).toBe("11111111-aaaa");
   // A damaged session id is no session: the tab comes back at its prompt, not in the pick-a-session screen.
-  const odd = restoreLayout({ panes: [{ ...l.panes[1], session: 7 }], activeTab: {}, focused: 2, activeDir: null, stacked: {} })!;
+  const odd = restoreLayout({ panes: [{ ...l.panes[1], session: 7 }], focused: 2, activeDir: null, stacked: {} })!;
   expect(odd.panes[0].args).toEqual([]);
   expect(odd.panes[0].session).toBeUndefined();
 });
@@ -111,7 +110,7 @@ test("T-066-c: the restore loop asks for an agent line only for an agent tab, ne
 test("after723: a layout saved with a pane split in before an older one comes back in the same order, so a relaunch writes the same layout", () => {
   // Split Right of pane 1 puts the new, higher key 3 between 1 and 2: the key order is not the screen order.
   const panes = [shell(1, "C:/w/a"), shell(3, "C:/w/a"), shell(2, "C:/w/a")];
-  const l = layoutOf(panes, {}, 3, "C:/w/a", {});
+  const l = layoutOf(panes, 3, "C:/w/a", {});
   expect(l.panes.map((p) => p.key)).toEqual([1, 3, 2]);
   const back = restoreLayout(JSON.parse(JSON.stringify(l)))!;
   expect(back.panes.map((p) => p.key)).toEqual([1, 3, 2]);
@@ -122,7 +121,7 @@ test("after723: a layout saved with a pane split in before an older one comes ba
 
 test("after100: pinned tabs and tab colours are saved with the layout and come back after a restart", () => {
   const panes = [shell(1, "C:/w/a"), shell(2, "C:/w/a"), shell(3, "C:/w/a")];
-  const l = layoutOf(panes, {}, 1, "C:/w/a", {}, { pinned: new Set([2, 99]), colors: { 2: "red", 3: "teal", 1: "no-such-colour", 99: "blue" } });
+  const l = layoutOf(panes, 1, "C:/w/a", {}, { pinned: new Set([2, 99]), colors: { 2: "red", 3: "teal", 1: "no-such-colour", 99: "blue" } });
   expect(l.panes.map((p) => [p.key, p.pinned, p.color])).toEqual([[1, undefined, undefined], [2, true, "red"], [3, undefined, "teal"]]);
   const back = restoreLayout(JSON.parse(JSON.stringify(l)))!;
   expect(back).toEqual(l);
@@ -130,7 +129,7 @@ test("after100: pinned tabs and tab colours are saved with the layout and come b
   expect([...marks.pinned]).toEqual([2]);
   expect(marks.colors).toEqual({ 2: "red", 3: "teal" });
   // A saved layout from before has neither, and a colour that is no longer in the palette is dropped on its own.
-  expect(layoutOf(panes, {}, 1, "C:/w/a", {}).panes[0]).not.toHaveProperty("pinned");
+  expect(layoutOf(panes, 1, "C:/w/a", {}).panes[0]).not.toHaveProperty("pinned");
   const old = restoreLayout({ panes: [shell(1, "C:/w/a", { color: "mauve", pinned: "yes" }), shell(2, "C:/w/a", { pinned: false, color: 4 })] })!;
   expect(old.panes.map((p) => [p.pinned, p.color])).toEqual([[undefined, undefined], [undefined, undefined]]);
 });
@@ -141,7 +140,7 @@ test("ux-fix-1: nine panes, four running shells and five empty choosers, come ba
     ...[5, 6, 7, 8].map((k) => shell(k, "C:\w\a", { seats: [{ agent: null, model: null }] })),
     shell(9, "C:\w\a", { agentId: "codex", seats: [{ agent: "codex", model: null }] }),
   ];
-  const saved = layoutOf(panes, {}, 1, "C:\w\a", {});
+  const saved = layoutOf(panes, 1, "C:\w\a", {});
   expect(saved.panes.map((p) => p.key)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   const back = restoreLayout(JSON.parse(JSON.stringify(saved)))!;
   expect(back).toEqual(saved); // the next save writes the same layout
@@ -184,7 +183,7 @@ test("T-066-e (review): a listed id is a guess until the agent names its own: th
   expect(guessed[0]).toMatchObject({ session: S1, sessionListed: true });
   expect(guessed[1].session).toBeUndefined();
   // Never written down: a restored tab really runs that id, so it is a hook-grade id then.
-  expect(layoutOf(guessed, {}, 2, "C:\\w\\a", {}).panes[0]).not.toHaveProperty("sessionListed");
+  expect(layoutOf(guessed, 2, "C:\\w\\a", {}).panes[0]).not.toHaveProperty("sessionListed");
   // Asked again: its own guess is left out of its ask (so the same or a newer id can come back) but stays in `taken` for the others.
   expect(panesWantingListedSession(guessed)).toEqual({ asks: [{ key: 2, agent: "cursor", folder: "C:\\w\\a", own: S1 }, { key: 3, agent: "cursor", folder: "C:\\w\\a" }], taken: [S1] });
   // A newer listed id (the one the agent created meanwhile) replaces the guess; the same id again changes nothing.
@@ -207,7 +206,7 @@ test("T-066-e (review): a listed id is a guess until the agent names its own: th
 // C26-R3-01: a window drawn before the saved tabs came back takes them by the side. The tabs opened while it
 // waited stay exactly where they are, so their terminals are never unmounted; a key already drawn is not doubled.
 test("c26r301: the saved tabs join a drawn window without dropping the tab opened during the wait", () => {
-  const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf([shell(1, "C:\\w\\a"), shell(2, "C:\\w\\a", { seats: [{}] })], { 0: 1 }, 1, "C:\\w\\a", {}))))!;
+  const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf([shell(1, "C:\\w\\a"), shell(2, "C:\\w\\a", { seats: [{}] })], 1, "C:\\w\\a", {}))))!;
   const waiting = { ...shell(1_000_000, "C:\\w\\b"), agent: "claude" as const };
   const joined = joinSaved([waiting], late);
   expect(joined.map((p) => p.key)).toEqual([1_000_000, 1, 2]);
@@ -219,7 +218,7 @@ test("c26r301: the saved tabs join a drawn window without dropping the tab opene
 // A second slow start: the saved layout already holds keys from the wait range (tabs opened during the first wait).
 // The next tab opened after the join must not take a joined tab's key.
 test("after a late join, the next key is past every saved tab", () => {
-  const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf([shell(1, "C:\\w\\a"), shell(1_000_001, "C:\\w\\a")], {}, 1, "C:\\w\\a", {}))))!;
+  const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf([shell(1, "C:\\w\\a"), shell(1_000_001, "C:\\w\\a")], 1, "C:\\w\\a", {}))))!;
   let next = 1_000_000;
   const waiting = shell(next++, "C:\\w\\b");
   const keys = joinSaved([waiting], late).map((p) => p.key);
@@ -236,7 +235,7 @@ test("after a late join, the next key is past every saved tab", () => {
 test("c26r301: a slow start keeps the saved pins and tab colours, and the layout it writes keeps them", () => {
   const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf(
     [shell(1, "C:\\w\\a"), shell(2, "C:\\w\\a"), shell(3, "C:\\w\\a")],
-    { 0: 1 }, 1, "C:\\w\\a", {},
+    1, "C:\\w\\a", {},
     { pinned: new Set([1]), colors: { 2: "red" } },
   ))))!;
   // The window as a slow start drew it: one tab opened during the wait, no marks of its own.
@@ -245,7 +244,7 @@ test("c26r301: a slow start keeps the saved pins and tab colours, and the layout
   expect([...marks.pinned]).toEqual([1]);
   expect(marks.colors).toEqual({ 2: "red" });
   // What useWindowSave writes once the answer lands: the saved marks on the saved tabs, the wait tab still there.
-  const written = layoutOf(joinSaved([waiting], late), { 0: 1_000_000 }, 1_000_000, "C:\\w\\b", {}, marks);
+  const written = layoutOf(joinSaved([waiting], late), 1_000_000, "C:\\w\\b", {}, marks);
   expect(written.panes.map((p) => [p.key, p.pinned ?? false, p.color ?? null])).toEqual([
     [1_000_000, false, null],
     [1, true, null],
@@ -266,7 +265,7 @@ test("dtc27: a fresh start brings agent tabs back as plain shells in their folde
       { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "changes", path: "C:/x" },
       { key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true },
     ],
-    activeTab: { 0: 1 }, focused: 1, activeDir: "C:/a", stacked: {},
+    focused: 1, activeDir: "C:/a", stacked: {},
   });
   expect(l.panes[0]).toEqual({ key: 1, cwd: "C:/a", branch: "main", agent: "shell", program: null, args: [], title: "Fix it", pinned: true });
   expect(l.panes[1]).toEqual({ key: 2, cwd: "C:/b", branch: null, agent: "shell", program: null, args: [] });
@@ -276,14 +275,14 @@ test("dtc27: a fresh start brings agent tabs back as plain shells in their folde
     { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "changes", path: "C:/x" },
     { key: 6, cwd: "C:/e", branch: null, agent: "shell", program: null, args: [], title: "Setup" },
   ]);
-  const saved = layoutOf([{ key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true }], {}, 6, "C:/e", {});
+  const saved = layoutOf([{ key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true }], 6, "C:/e", {});
   expect(freshShells(restoreLayout(saved)!).panes[0].program).toBeNull();
   expect(l.panes.some(restoreAsks)).toBe(false);
 });
 
 test("DT-C274: a team pane's view folder is saved and restored, and a missing view folder drops the pane", () => {
   const panes = [shell(1, "C:/r"), shell(2, "C:/r/wts/one", { view: "C:/r" }), shell(3, "C:/r/wts/two", { view: "C:/r" })];
-  const l = layoutOf(panes, {}, 2, "C:/r", {});
+  const l = layoutOf(panes, 2, "C:/r", {});
   expect(l.panes.map((p) => p.view)).toEqual([undefined, "C:/r", "C:/r"]);
   const back = restoreLayout(JSON.parse(JSON.stringify(l)))!;
   expect(back).toEqual(l);

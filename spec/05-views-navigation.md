@@ -369,6 +369,9 @@ Acceptance:
   - [x] Close a tab → its worktree's count drops. (cards; evidence/cards-VIEW-051.txt)
 Compat: —
   Amended 2026-11-02 (DT-C83, wave UI A.2): the sidebar lists projects, workspaces and groups with their live counts; terminals are tabs in the main area and no longer rows here.
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the sidebar lists folder rows only, with no session rows under them (every session is a cell of
+    the folder's grid), as DT-C83 had it; a folder row keeps its counts and clicking it shows its grid.
 Source: D-05-051
 
 ### VIEW-005 · The app reopens on the screen and page you left
@@ -575,6 +578,8 @@ Acceptance:
   - [ ] Hover a non-active row, press → delete flow for the hovered workspace.
   - [ ] Terminal tab active, press → its title becomes editable.
 Compat: keybinding ids workspace.delete, tab.rename
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): rename opens the name field in the focused pane's header.
 Source: D-05-048
 
 ### VIEW-053 · Show or hide sleeping workspaces

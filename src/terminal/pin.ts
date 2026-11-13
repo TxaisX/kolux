@@ -1,7 +1,10 @@
-// TERM-046: pinned tabs. Pure: the strip order, the tab menu, the bulk-close set and the close
+// TERM-046: pinned tabs. Pure: the grid order, the tab menu, the bulk-close set and the close
 // question for a pinned tab; App.tsx keeps the pinned keys and asks. ponytail: pinned keys are a
-// Set in window state (not saved), like the strip order itself.
-import { groupOf } from "./grid";
+// Set in window state, saved with the layout (after-list #100).
+// One session per cell (2026-11-12): a "tab" is a pane in its own cell, so the order the close rows and the tab keys
+// measure is the grid's. A pinned pane keeps its cell (the grid is never reordered by a pin); the pin keeps it out of
+// bulk closes and middle-click and asks before it closes.
+import { sameDir, viewOf } from "../workspaces";
 import { tabMenu } from "./tabs";
 import { closeSet, type Which } from "./tabClose";
 
@@ -13,12 +16,12 @@ export const pinAsks = (settings: Record<string, unknown>): boolean => settings[
 /** Pinned tabs sit first, each group keeping its own order. */
 export const orderPinnedFirst = (order: number[], pinned: Set<number>): number[] => [...order.filter((k) => pinned.has(k)), ...order.filter((k) => !pinned.has(k))];
 
-/** C06-R1-01: the strip as the user sees it for the cell holding pane `key`: that cell's tabs, pinned
- *  first. Every row that measures a side of a tab (the close rows, Select Tab 1-9) measures this, never
- *  the pane array, or a pinned tab's "Close to the left" closes a tab drawn on its right. */
-export const stripOrderOf = (panes: readonly { key: number; group?: number }[], key: number, pinned: Set<number>): number[] => {
+/** C06-R1-01: the order as the user sees it around pane `key`: the panes of its grid (DT-C274: by `viewOf`), cell by
+ *  cell. Every row that measures a side of a pane (the close rows, Select Tab 1-9) measures this, so "Close to the left"
+ *  closes the cells drawn before it. */
+export const gridOrderOf = (panes: readonly { key: number; cwd: string | null; view?: string | null }[], key: number): number[] => {
   const p = panes.find((x) => x.key === key);
-  return p ? orderPinnedFirst(panes.filter((x) => groupOf(x) === groupOf(p)).map((x) => x.key), pinned) : [];
+  return p ? panes.filter((x) => sameDir(viewOf(x), viewOf(p))).map((x) => x.key) : [];
 };
 
 export type PinMenuItem = { id: "rename" | "pin" | "close"; label: string; keys?: string; disabled?: boolean };
@@ -42,6 +45,17 @@ export function editorCloseSet(order: readonly number[], panes: readonly { key: 
   };
   return order.filter((k) => isEditor(k) && !pinned.has(k));
 }
+
+/** TERM-044, one session per cell: the grid's bulk closes as the Pane menu offers them, only the ones that would close
+ *  something besides the pane itself (Close Pane is its own row). Pinned panes are spared, as in every bulk close. */
+const BULK: readonly (readonly [Exclude<Which, "one">, string])[] = [
+  ["others", "Close Others"],
+  ["right", "Close to the Right"],
+  ["left", "Close to the Left"],
+  ["all", "Close All"],
+];
+export const bulkCloses = (order: number[], key: number, pinned: Set<number>): { id: string; name: string; title: string; keys: number[] }[] =>
+  BULK.map(([which, name]) => ({ id: `close-${which}`, name, title: "Closes these panes of this grid, asking first if a program is running; pinned panes stay", keys: bulkCloseSet(order, key, which, pinned) })).filter((r) => r.keys.length > 0 && !(r.keys.length === 1 && r.keys[0] === key));
 
 /** Middle-click never closes a pinned tab. */
 export const middleClickCloses = (key: number, pinned: Set<number>): boolean => !pinned.has(key);
