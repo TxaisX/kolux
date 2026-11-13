@@ -285,13 +285,13 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | skills | 1 | 0 | 0 | 0 | 4 | 0 | 2 | 19 | 1 |
 | space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
-| switcher | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 4 | 1 |
+| switcher | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 4 | 0 |
 | tasks | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 41 | 2 |
 | terminal | 5 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 7 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **13** | **10** | **4** | **3** | **40** | **42** | **57** | **646** | **30** |
+| **Total** | **13** | **9** | **4** | **3** | **40** | **42** | **57** | **646** | **29** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -341,10 +341,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### skills
 
 - [ ] `src/skills/SkillUpdate.tsx`: Dialog :141
-
-### switcher
-
-- [ ] `src/switcher/AccountSwitcher.tsx`: Menu :133
 
 ### tasks
 

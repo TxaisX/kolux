@@ -102,8 +102,12 @@ export type MenuBoxProps = {
   children: ReactNode;
 };
 
-/** The first row a menu can act on (a row that is off stays focusable in Base UI, so it is skipped by its aria-disabled). */
-const firstRow = (box: HTMLElement | null) => Array.from(box?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []).find((r) => r.getAttribute("aria-disabled") !== "true") ?? null;
+/** The row focus starts on: in a list of choices the ticked one (the account in use), else the first row a menu can act
+ *  on (a row that is off stays focusable in Base UI, so it is skipped by its aria-disabled). */
+const firstRow = (box: HTMLElement | null) => {
+  const rows = Array.from(box?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []).filter((r) => r.getAttribute("aria-disabled") !== "true");
+  return rows.find((r) => r.getAttribute("role") === "menuitemradio" && r.getAttribute("aria-checked") === "true") ?? rows[0] ?? null;
+};
 
 export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
   // Where focus goes back to when the menu closes: what had it when the menu opened (the button, or the list a
