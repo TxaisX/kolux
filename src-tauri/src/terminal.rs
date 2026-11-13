@@ -2630,7 +2630,7 @@ mod tests {
         // No default shell chosen is the usual case; it must not rule the warm shell out (it did: the folder
         // never got one, so every new terminal started cold with the setting on).
         assert!(warm_like(None, &[], &[]));
-        assert!(!warm_like(Some("claude"), &[], &[]));
+        assert!(!warm_like(Some("node"), &[], &[]));
         assert!(!warm_like(None, &["-NoLogo".to_string()], &[]));
         assert!(!warm_like(None, &[], &[("A".to_string(), "1".to_string())]));
     }
