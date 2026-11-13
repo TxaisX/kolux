@@ -97,7 +97,10 @@ useMenuFocus(moreMenu, menu !== null, () => setMenu(null));
 </Menu>
 ```
 
-Picking a row closes the menu by itself, so the `setMenu(null)` before the action goes away.
+Picking a row closes the menu by itself, so the `setMenu(null)` before the action goes away. A menu puts focus on a
+row as it opens (the ticked one in a list of choices, such as the account switcher's, else the first row that can act),
+so the keyboard is in the list at once (T-720), and gives focus back to what had it when it closes, even when the menu
+leaves the page together with its owner.
 
 ### ContextMenu (migrated: `projects/HideableRow.tsx`, the sidebar's Automations and Skills rows)
 
@@ -116,7 +119,7 @@ Picking a row closes the menu by itself, so the `setMenu(null)` before the actio
 </ContextMenu>
 ```
 
-### Popover (wrapper built; no exemplar, see "What is left")
+### Popover (migrated: `ports/PortsItem.tsx`, the status bar's Ports list)
 
 ```tsx
 // before (ports/PortsItem.tsx shape)
@@ -254,7 +257,7 @@ right-click handler or `aria-haspopup` button that opens a popup, which stays wh
 **Checkbox** stay native inputs (see above); **Tooltip** counts every `title=` prop, Kolux components' own included, and
 a plain hover hint can stay a `title`.
 
-Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTerminalCard.*`. Leave those for last.
+The sites still listed, and why each is left for now, are under "What is left, and why" after the checklist.
 
 <!-- SITES:START -->
 | Folder | Dialog | Menu | Tabs | Select | Opener | Switch | Checkbox | Tooltip | To do |
@@ -369,3 +372,38 @@ Not popups, so not counted (a dialog or menu role on an element no src/ui wrappe
 - `src/settings/ConnectGrid.tsx` (conn-more-list): a list that opens in place under its summary (a <details>), not over the card
 - `src/editor/ReviewNotes.tsx` (Send the notes to): a list that opens in place in the review tray, not over it
 <!-- SITES:END -->
+
+## What is left, and why
+
+Not reached in this PR. Only the first item needs something the wrappers lack; the rest need more than a swap, noted
+here for whoever moves them:
+
+- `terminal/TerminalPane.tsx`, four `.pane-ask` questions: drawn inside their pane and covering only it, so the other
+  panes stay usable. A src/ui Dialog is drawn on the body over the whole window; these need the pane's box as their
+  viewport (a pane-scoped layer), which the wrappers do not have yet.
+- `terminal/PlanSheet.tsx` (the plan review sheet) and `onboarding/Tours.tsx` (a tour card beside the control it points
+  at, with a ring around it): non-modal. `Dialog modal={false}` fits, but a press outside must not close them (their
+  `onClose` has to ignore `"outside"`), and the tour places itself from its target's box.
+- `terminal/PaneMenu.tsx`, the terminal's right-click menu: its keyboard tests (T-710 menu keys, T-720 Tab and Escape
+  handing focus back into the pane under StrictMode) are written against this menu on the fake DOM and move to a real
+  DOM with it.
+- `editmenu/EditMenuHost.tsx`, the text-field menu: waits up to 300 ms for the engine's spelling suggestions, and a
+  press on a row moves no focus, so the field's selection is kept for Cut and Copy.
+- `editor/DiffPane.tsx` and `editor/ReviewNotes.tsx`: review-note boxes at the clicked line, with a text field. A Dialog
+  that places itself (as `shell/AboutPanel.tsx`) or a point anchor for `Popover` would do.
+- `launch/PlusMenu.tsx`: a search box with its own arrow keys, rows with a second Make-default button, and More and
+  shells lists that open inside the menu.
+- `scm/SourceControlPanel.tsx`, "File actions": `FileOpenWith`'s edit-apps form (a Select and two text fields) opens
+  inside the menu, where the menu's arrow keys and typeahead would also see the keys typed into it. The form moves out
+  of the menu, or the menu becomes a Popover.
+- From #255, left for last as planned: `shell/window/TabMenuView.tsx` (the tab menu, with a group of colour swatches),
+  `shell/window/Grid.tsx` (the per-cell tab strip, whose tabs are dragged between cells), `shell/window/Content.tsx`
+  (stand-in tabs for workspaces being made, which never take focus) and the sidebar row menu in
+  `projects/ProjectsPanel.tsx` (its tablist is behind `NOT_BUILT = false` and never drawn).
+- Whole-window flows, each wanting a run-through of its own: `settings/SettingsPage.tsx` (Settings is a full-window
+  dialog with its own Tab trap, under every settings card's popups; a modal Base UI dialog makes everything outside it
+  inert), `onboarding/Wizard.tsx` (first run, with the window's drag strip in its backdrop), `onboarding/Guides.tsx`
+  (Getting Started, which plays a closing animation before it goes, and Explore with its vertical tab rail) and `skills/SkillUpdate.tsx` (focus goes to the Install panel, the Review
+  button's replacement, More actions or the page heading, and is taken back when the Stop button leaves).
+- `editor/CodeLabel.tsx` and `tasks/ProjectsView.tsx` stay native selects: they are inline editors that go away on
+  blur, and a Base UI select's list takes focus when it opens.
