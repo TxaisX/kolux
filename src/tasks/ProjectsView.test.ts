@@ -1,10 +1,11 @@
+// @vitest-environment happy-dom
 // T-314-d (GIT-056): the Projects table's assignee and issue-type cells are the issue's own fields
 // (edited on the issue through pr_assignees and github_issue_type_set, never through the project), and
 // a row of a repository that is not open in Kolux offers to add it through the clone dialog.
-// The real table on the small DOM in fakeDom.ts, with the commands mocked and recorded.
+// The real table on a real DOM (the clone dialog it opens is a src/ui Dialog), with the commands mocked and recorded.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, fire, FakeNode as Node, find, installDom, mount, settle, typeInto, until, withText } from "./fakeDom";
+import { click, type FakeDocument, type FakeNode, fire, find, installDom, mount, settle, typeInto, until, withText } from "./realDom";
 import type { Project } from "./projects";
 
 const h = vi.hoisted(() => ({
@@ -125,7 +126,7 @@ describe("T-314-d Projects table: the issue's own fields", () => {
     const pick = find(c, (n) => n.localName === "select" && n.attrs["aria-label"] === "Type")[0];
     await until(() => sent("github_issue_types").length > 0, "the types");
     expect(sent("github_issue_types")[0].args).toEqual({ host: "github.com", repo: "acme/app" });
-    Object.getOwnPropertyDescriptor(Node.prototype, "value")!.set!.call(pick, "Task");
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(pick), "value")!.set!.call(pick, "Task");
     await fire(c, "change", pick);
     await until(() => sent("github_issue_type_set").length > 0, "the type call");
     expect(sent("github_issue_type_set")[0].args).toEqual({ host: "github.com", repo: "acme/app", number: 7, name: "Task" });

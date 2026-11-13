@@ -307,14 +307,10 @@ test("UX2: the delete words name Hermes or OpenClaw for their jobs and the run h
   expect(deleteWords(undefined).title).toBe("Delete this automation?");
 });
 
-import { closesOnScrim, holdWhile, joinNotes } from "./model";
+import { holdWhile, joinNotes } from "./model";
 
-test("UX-T671: the scrim closes the dialog only when the press and the release were both on it", () => {
-  expect(closesOnScrim(true, true)).toBe(true);
-  expect(closesOnScrim(true, false)).toBe(false); // pressed on the scrim, released inside the dialog
-  expect(closesOnScrim(false, true)).toBe(false); // pressed inside, released on the scrim
-  expect(closesOnScrim(false, false)).toBe(false);
-});
+// UX-T671's "a drag out of the dialog onto the scrim does not close it" is the src/ui Dialog's now: Base UI's
+// "intentional" outside press closes on a click, and a press that starts inside and ends outside is not one.
 
 test("UX-T671: Refresh shows the failed ask and the failed list read together, not only the last", () => {
   const ask = "Hermes and OpenClaw could not be asked again: offline";

@@ -261,7 +261,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | agents | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 |
 | artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 |
-| automations | 1 | 1 | 1 | 0 | 1 | 1 | 1 | 14 | 3 |
+| automations | 0 | 1 | 1 | 0 | 1 | 1 | 1 | 14 | 2 |
 | board | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 7 | 0 |
 | chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
@@ -271,7 +271,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
-| launch | 1 | 1 | 0 | 0 | 2 | 0 | 2 | 32 | 2 |
+| launch | 0 | 1 | 0 | 0 | 2 | 0 | 2 | 32 | 1 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
 | onboarding | 4 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 5 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
@@ -286,19 +286,18 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 4 | 1 |
-| tasks | 2 | 0 | 2 | 2 | 0 | 0 | 3 | 41 | 6 |
-| terminal | 6 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 8 |
+| tasks | 0 | 0 | 2 | 2 | 0 | 0 | 3 | 41 | 4 |
+| terminal | 5 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 7 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **21** | **24** | **8** | **14** | **41** | **42** | **57** | **646** | **67** |
+| **Total** | **16** | **24** | **8** | **14** | **41** | **42** | **57** | **646** | **62** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### automations
 
 - [ ] `src/automations/AutomationDetail.tsx`: Tabs :97
-- [ ] `src/automations/AutomationDialog.tsx`: Dialog :312
 - [ ] `src/automations/AutomationsPage.tsx`: Menu :484
 
 ### chat
@@ -320,7 +319,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### launch
 
-- [ ] `src/launch/ChooserPane.tsx`: Dialog :56
 - [ ] `src/launch/PlusMenu.tsx`: Menu :144
 
 ### onboarding
@@ -363,15 +361,12 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### tasks
 
-- [ ] `src/tasks/NewIssueDialog.tsx`: Dialog :138
 - [ ] `src/tasks/ProjectsView.tsx`: Select :45, Select :57
 - [ ] `src/tasks/PullRequestPage.tsx`: Tabs :306
-- [ ] `src/tasks/TaskDialog.tsx`: Dialog :144
 - [ ] `src/tasks/TasksPage.tsx`: Tabs :314
 
 ### terminal
 
-- [ ] `src/terminal/ForkDialog.tsx`: Dialog :23
 - [ ] `src/terminal/LinkActionMenu.tsx`: Menu :67
 - [ ] `src/terminal/PaneMenu.tsx`: Menu :166
 - [ ] `src/terminal/PlanSheet.tsx`: Dialog :50

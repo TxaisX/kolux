@@ -6,7 +6,6 @@
 // The clock time is an hour box, a minute box and AM or PM (AUTO-003); Custom shows the line, its
 // five field chips and a status line that reads it back in words (AUTO-002); the header and the
 // empty page offer the starter templates (AUTO-006).
-import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -14,9 +13,10 @@ import Ask from "../chrome/Ask";
 import { noteUse } from "../onboarding/features";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { folderName, type Project, type Worktree } from "../projects/model";
-import { closesOnScrim, defaultForm, EVENT_CHOICES, findNext, hermesEdit, hermesSchedule, scheduleChanged, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
+import { defaultForm, EVENT_CHOICES, findNext, hermesEdit, hermesSchedule, scheduleChanged, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
 import { clampBox, cronWords, fieldNames, from12, nudge, templates, to12, toPreset, weekdayNames, type Template } from "./timetable";
 import { Select } from "../ui/Select";
+import { Dialog } from "../ui/Dialog";
 
 type Props = {
   projects: Project[];
@@ -184,8 +184,6 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   const seeded = useRef(false);
   const workspaceNow = useRef(workspace);
   workspaceNow.current = workspace;
-  const downOnScrim = useRef(false);
-  const upOnScrim = useRef(false);
   const wanted = useRef(projectId);
   wanted.current = projectId;
   const close = () => (unsaved(first.current, fields()) ? setLeaving(true) : onClose());
@@ -223,16 +221,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
     box.setSelectionRange(at, at + findQuery.length);
   };
   const keys = (e: KeyboardEvent) => {
-    trapTab(e);
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      // Escape shuts the find bar before it shuts the dialog.
-      if (findOpen) {
-        setFindOpen(false);
-        editor.current?.focus();
-      } else close();
-    } else if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
+    if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       setFindOpen(true);
       window.setTimeout(() => find.current?.select(), 0);
@@ -293,23 +282,23 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   const hits = findQuery ? prompt.toLowerCase().split(findQuery.toLowerCase()).length - 1 : 0;
   const choices = providers.map((p) => ({ ...p, name: agents.find((a) => a.id === p.id)?.name ?? p.name }));
 
+  // A src/ui Dialog: Tab stays inside, Escape shuts the find bar before the dialog, a click outside closes it (close()
+  // asks first when there are unsaved changes), and Ctrl+F opens the find bar.
   return (
-    <div
-      className="scrim"
-      onMouseDown={(e) => {
-        downOnScrim.current = e.target === e.currentTarget;
-        upOnScrim.current = false;
-      }}
-      onMouseUp={(e) => {
-        upOnScrim.current = e.target === e.currentTarget;
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && closesOnScrim(downOnScrim.current, upOnScrim.current)) close();
-        downOnScrim.current = false;
-        upOnScrim.current = false;
-      }}
-    >
-      <div className="auto-dialog" role="dialog" aria-modal="true" tabIndex={-1} aria-label={editing ? `Edit ${editing.name}` : "New Automation"} onKeyDown={keys}>
+    <>
+      <Dialog
+        onClose={(why) => {
+          if (why === "escape" && findOpen) {
+            setFindOpen(false);
+            editor.current?.focus();
+          } else close();
+        }}
+        label={editing ? `Edit ${editing.name}` : "New Automation"}
+        className="auto-dialog"
+        viewport="scrim"
+        tabIndex={-1}
+        onKeyDown={keys}
+      >
         <div className="auto-dialog-head">
           <h2>{editing ? "Edit automation" : "New Automation"}</h2>
           {!editing && (
@@ -511,7 +500,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
-      </div>
+      </Dialog>
       {leaving && (
         <Ask
           title="Discard your changes?"
@@ -525,6 +514,6 @@ export default function AutomationDialog({ projects, agents, editing, template, 
           }}
         />
       )}
-    </div>
+    </>
   );
 }

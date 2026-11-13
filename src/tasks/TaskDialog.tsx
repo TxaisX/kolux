@@ -6,7 +6,6 @@
 // GIT-047 (T-231-c): an issue can be closed (completed, not planned, duplicate), reopened and commented on.
 // T-232-c: the description is drawn as markdown (MarkdownView.tsx, never HTML), assignees can be added and
 // removed, a workspace can be started or resumed from here, and a pull request opens its full page.
-import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Close } from "../chrome/icons";
@@ -19,6 +18,7 @@ import { type Edit, withAssignees, withLabels } from "./edits";
 import { duplicateQuery, eventLine, issueNumber, type Task, type TaskDetail, type TaskLabel, type TaskPage, taskKind } from "./model";
 import type { Person } from "./repoFacts";
 import { Select } from "../ui/Select";
+import { Dialog } from "../ui/Dialog";
 
 const FRESH_MS = 15_000;
 
@@ -140,114 +140,121 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
   const state = edit?.state ?? detail?.state ?? task.state;
   const assignees = withAssignees(detail?.assignees ?? task.assignees, edit);
   return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={box} tabIndex={-1} className="auto-dialog task-dialog" role="dialog" aria-modal="true" aria-label={`${taskKind(task)} ${task.title}`} onKeyDown={(e) => (trapTab(e), e.key === "Escape" && draft === null && onClose())}>
-        <div className="auto-dialog-head">
-          <h2>
-            <span className={`task-state ${task.kind} ${state}`}>{task.draft ? "draft" : state}</span> {detail?.title || task.title}
-          </h2>
-          <span className="tasks-kind">
-            {taskKind(task)} · {task.repo}
-          </span>
-          {onPage && (
-            <button className="btn" onClick={onPage}>
-              Open full page
-            </button>
-          )}
-          {work && (
-            <button className="btn" onClick={work.run}>
-              {work.label}
-            </button>
-          )}
-          <a className="btn" href={task.url} target="_blank" rel="noreferrer">
-            Open on GitHub
-          </a>
-          <button className="ib" title="Close" aria-label="Close" onClick={onClose}>
-            <Close />
+    <Dialog
+      // Escape closes it unless the description is being edited (that Escape is the editor's); a click outside closes it.
+      onClose={(why) => (why !== "escape" || draft === null) && onClose()}
+      label={`${taskKind(task)} ${task.title}`}
+      viewport="scrim"
+      initialFocus={box}
+      boxRef={box}
+      tabIndex={-1}
+      className="auto-dialog task-dialog"
+    >
+      <div className="auto-dialog-head">
+        <h2>
+          <span className={`task-state ${task.kind} ${state}`}>{task.draft ? "draft" : state}</span> {detail?.title || task.title}
+        </h2>
+        <span className="tasks-kind">
+          {taskKind(task)} · {task.repo}
+        </span>
+        {onPage && (
+          <button className="btn" onClick={onPage}>
+            Open full page
           </button>
-        </div>
-        {error && (
-          <div className="note warn" role="status">
-            {error}
-          </div>
         )}
-        <div className="auto-dialog-body">
-          <div className="auto-dialog-main task-main">
-            <div className="task-sect">
-              <span className="task-cap">Description</span>
-              {draft === null ? (
-                <button className="btn" disabled={!detail} onClick={() => setDraft(detail?.body ?? "")}>
-                  Edit
-                </button>
-              ) : (
-                <>
-                  <button className="btn primary" disabled={busy} onClick={save}>
-                    Save
-                  </button>
-                  <button className="btn" disabled={busy} onClick={() => setDraft(null)}>
-                    Cancel
-                  </button>
-                </>
-              )}
-            </div>
-            {draft !== null ? (
-              <MentionField className="task-body-edit" label="Description" value={draft} onChange={setDraft} people={people} />
+        {work && (
+          <button className="btn" onClick={work.run}>
+            {work.label}
+          </button>
+        )}
+        <a className="btn" href={task.url} target="_blank" rel="noreferrer">
+          Open on GitHub
+        </a>
+        <button className="ib" title="Close" aria-label="Close" onClick={onClose}>
+          <Close />
+        </button>
+      </div>
+      {error && (
+        <div className="note warn" role="status">
+          {error}
+        </div>
+      )}
+      <div className="auto-dialog-body">
+        <div className="auto-dialog-main task-main">
+          <div className="task-sect">
+            <span className="task-cap">Description</span>
+            {draft === null ? (
+              <button className="btn" disabled={!detail} onClick={() => setDraft(detail?.body ?? "")}>
+                Edit
+              </button>
             ) : (
-              <div className="task-body" data-task-body>
-                {view === "loading" ? "Loading…" : view === "failed" ? (
-                  <span role="alert">
-                    This could not be read from GitHub.{" "}
-                    <button className="btn" onClick={retry}>
-                      Retry
-                    </button>
-                  </span>
-                ) : detail?.body ? <Markdown text={detail.body} /> : <span className="muted">No description.</span>}
-              </div>
+              <>
+                <button className="btn primary" disabled={busy} onClick={save}>
+                  Save
+                </button>
+                <button className="btn" disabled={busy} onClick={() => setDraft(null)}>
+                  Cancel
+                </button>
+              </>
             )}
-            <span className="task-cap">Timeline</span>
-            <ul className="task-timeline">
-              {(detail?.events ?? []).map((e, i) => (
-                <li key={i} className={e.kind}>
-                  <span className="task-line">{eventLine(e)}</span>
-                  <span className="tasks-when">{e.at.slice(0, 10)}</span>
-                </li>
-              ))}
-              {detail && detail.events.length === 0 && <li className="muted">Nothing has happened yet.</li>}
-            </ul>
-            {task.kind === "issue" && <IssueActions host={host} task={task} state={state} title={detail?.title || task.title} onDone={readBack} onShow={onShowState} onUndo={onUndoState} />}
           </div>
-          <div className="auto-dialog-side">
-            <span className="task-cap">Labels</span>
-            <div className="task-labels">
-              {have.map((l) => (
-                <span key={l.name} className="tasks-label" style={l.color ? { borderColor: `#${l.color}` } : undefined}>
-                  {l.color && <i style={{ background: `#${l.color}` }} />}
-                  {l.name}
-                  <button className="task-x" title={`Remove ${l.name}`} aria-label={`Remove label ${l.name}`} onClick={() => labels([], [l.name])}>
-                    ×
+          {draft !== null ? (
+            <MentionField className="task-body-edit" label="Description" value={draft} onChange={setDraft} people={people} />
+          ) : (
+            <div className="task-body" data-task-body>
+              {view === "loading" ? "Loading…" : view === "failed" ? (
+                <span role="alert">
+                  This could not be read from GitHub.{" "}
+                  <button className="btn" onClick={retry}>
+                    Retry
                   </button>
                 </span>
-              ))}
-              {have.length === 0 && <span className="muted">None</span>}
+              ) : detail?.body ? <Markdown text={detail.body} /> : <span className="muted">No description.</span>}
             </div>
-            <Select label="Add a label" value="" onChange={(v) => v && labels([v], [])} options={[{ value: "", label: more.length ? "Add a label…" : "No more labels" }, ...more.map((l) => ({ value: l.name, label: l.name }))]} className="field" disabled={more.length === 0} />
-            <span className="task-cap">Assignees</span>
-            <div className="task-labels">
-              {assignees.map((a) => (
-                <span key={a} className="tasks-who">
-                  @{a}
-                  <button className="task-x" title={`Unassign ${a}`} aria-label={`Unassign ${a}`} onClick={() => assign([], [a])}>
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <input className="field" aria-label="Assign someone" placeholder="Assign someone…" value={who} onChange={(e) => setWho(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && who.trim()) { const a = who.trim().replace(/^@/, ""); setWho(""); assign([a], []); } }} />
-            {assignees.length === 0 && <span className="muted">No one</span>}
+          )}
+          <span className="task-cap">Timeline</span>
+          <ul className="task-timeline">
+            {(detail?.events ?? []).map((e, i) => (
+              <li key={i} className={e.kind}>
+                <span className="task-line">{eventLine(e)}</span>
+                <span className="tasks-when">{e.at.slice(0, 10)}</span>
+              </li>
+            ))}
+            {detail && detail.events.length === 0 && <li className="muted">Nothing has happened yet.</li>}
+          </ul>
+          {task.kind === "issue" && <IssueActions host={host} task={task} state={state} title={detail?.title || task.title} onDone={readBack} onShow={onShowState} onUndo={onUndoState} />}
+        </div>
+        <div className="auto-dialog-side">
+          <span className="task-cap">Labels</span>
+          <div className="task-labels">
+            {have.map((l) => (
+              <span key={l.name} className="tasks-label" style={l.color ? { borderColor: `#${l.color}` } : undefined}>
+                {l.color && <i style={{ background: `#${l.color}` }} />}
+                {l.name}
+                <button className="task-x" title={`Remove ${l.name}`} aria-label={`Remove label ${l.name}`} onClick={() => labels([], [l.name])}>
+                  ×
+                </button>
+              </span>
+            ))}
+            {have.length === 0 && <span className="muted">None</span>}
           </div>
+          <Select label="Add a label" value="" onChange={(v) => v && labels([v], [])} options={[{ value: "", label: more.length ? "Add a label…" : "No more labels" }, ...more.map((l) => ({ value: l.name, label: l.name }))]} className="field" disabled={more.length === 0} />
+          <span className="task-cap">Assignees</span>
+          <div className="task-labels">
+            {assignees.map((a) => (
+              <span key={a} className="tasks-who">
+                @{a}
+                <button className="task-x" title={`Unassign ${a}`} aria-label={`Unassign ${a}`} onClick={() => assign([], [a])}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <input className="field" aria-label="Assign someone" placeholder="Assign someone…" value={who} onChange={(e) => setWho(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && who.trim()) { const a = who.trim().replace(/^@/, ""); setWho(""); assign([a], []); } }} />
+          {assignees.length === 0 && <span className="muted">No one</span>}
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

@@ -112,8 +112,6 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 //   exempt:  why Escape is not this dialog's to take
 //   layer:   a src/ui wrapper whose useLayer catches Escape on the window (Kolux's stack, ahead of Base UI)
 const DIALOGS: [file: string, label: string, how: string][] = [
-  ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "tag"],
-  ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["editor/DiffPane.tsx", "pop.note ? \"Edit review note\" : \"Add review note\"", "inner"],
@@ -140,10 +138,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["status/manage.tsx", "End ${name}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/manage.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/ResourceManager.tsx", "bulkQ.label", "in-ui"],
-  ["tasks/NewIssueDialog.tsx", "New issue", "tag"],
-  ["tasks/TaskDialog.tsx", "${taskKind(task)} ${task.title}", "tag"],
   ["terminal/BackgroundSessions.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
-  ["terminal/ForkDialog.tsx", "Fork Agent Session", "tag"],
   ["terminal/PlanSheet.tsx", "Review the plan for ${title}", "inner"],
   ["terminal/TerminalPane.tsx", "notice.title", "tag"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "tag"],
@@ -273,16 +268,11 @@ function closes(d: Found, how: string, all: Found[]): boolean {
 // own onKeyDown, a focus hook (useDialogFocus / trapDialog) on its ref, or its own Tab code. A new aria-modal
 // dialog fails until it is listed with its trap.
 const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = [
-  ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "trapTab"],
-  ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "trapTab"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
   ["onboarding/Wizard.tsx", "Get started with Kolux", "trapTab"],
   ["settings/SettingsPage.tsx", "Settings", "trapTab"], // T-732
   ["skills/SkillUpdate.tsx", "Update Kolux skills", "own"],
-  ["tasks/NewIssueDialog.tsx", "New issue", "trapTab"],
-  ["tasks/TaskDialog.tsx", "${taskKind(task)} ${task.title}", "trapTab"],
-  ["terminal/ForkDialog.tsx", "Fork Agent Session", "trapTab"],
   ["terminal/TerminalPane.tsx", "notice.title", "trapTab"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "trapTab"],
   ["terminal/TerminalPane.tsx", "The shell ended", "trapTab"],
