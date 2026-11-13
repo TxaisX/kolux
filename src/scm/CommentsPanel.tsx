@@ -33,6 +33,7 @@ import {
   type Review,
   type Thread,
 } from "./review";
+import { Menu, MenuItem } from "../ui/Menu";
 
 type Props = { dir: string; url: string; visible: boolean; extra?: (t: Thread) => ReactNode };
 type Mode = "groups" | "time";
@@ -97,6 +98,8 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
   // Which cards are mid-action, and the error each last stopped on, so a failure sits next to the card it came from.
   const [book, setBook] = useState<RowBook>(emptyBook);
   const [picking, setPicking] = useState<string | null>(null);
+  // The reactions row the open picker hangs from: it opens under the row's left edge, as it did inside the row.
+  const pickFrom = useRef<HTMLElement | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   // GIT-031: threads queued for the agent, and the ones just delivered (waiting for the one combined reply)
@@ -205,26 +208,19 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
           {emojiOf(r.content)} {r.count}
         </button>
       ))}
-      <button className="cm-react add" aria-label="Add a reaction" title="Add a reaction" disabled={c.db_id === null || rowBusy(book, c.id)} onClick={() => setPicking(picking === c.id ? null : c.id)}>
+      <button className="cm-react add" aria-label="Add a reaction" title="Add a reaction" aria-haspopup="menu" aria-expanded={picking === c.id} disabled={c.db_id === null || rowBusy(book, c.id)} onClick={(e) => ((pickFrom.current = e.currentTarget.parentElement), setPicking(picking === c.id ? null : c.id))}>
         +
       </button>
+      {/* The picker is a src/ui Menu in its own look, under the reactions row: the arrow keys move between the
+          reactions, Escape and a click outside close it. */}
       {picking === c.id && (
-        <span className="cm-picker" role="menu">
+        <Menu open onClose={() => setPicking(null)} label="Reactions" anchor={pickFrom} plain className="cm-picker">
           {REACTION_CHOICES.map((r) => (
-            <button
-              key={r.content}
-              role="menuitem"
-              title={r.label}
-              aria-label={r.label}
-              onClick={() => {
-                setPicking(null);
-                if (c.db_id !== null) void act(reactKind(inThread), String(c.db_id), r.content, c.id).catch(() => {});
-              }}
-            >
+            <MenuItem key={r.content} className="" title={r.label} aria-label={r.label} onClick={() => c.db_id !== null && void act(reactKind(inThread), String(c.db_id), r.content, c.id).catch(() => {})}>
               {r.emoji}
-            </button>
+            </MenuItem>
           ))}
-        </span>
+        </Menu>
       )}
     </div>
   );

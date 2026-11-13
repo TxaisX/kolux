@@ -44,7 +44,7 @@ import { notePrinted } from "./printedAddresses";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
-import { fromThisService, needsSize, orphanOf, reattach, type Attach, type Reattached, type ServiceInfo } from "./reattach";
+import { fromThisService, needsSize, orphanOf, reattach, startedOf, warmAskOf, warmSnapshot, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
 import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { frameOutputs, type FrameOutput } from "./frame";
@@ -54,7 +54,7 @@ import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
 import { currentText, optionsOf, paneOptionsOf, scrollbackRows, TEXT_EVENT } from "./text";
 import { blinkRest } from "./blinkRest";
-import { bindNative } from "./nativeView";
+import { bindNative, nativeLook } from "./nativeView";
 import { wireLinks } from "./paneLinks";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
@@ -256,6 +256,9 @@ const tauriService = {
   attach: (paneKey: number, generation: number) => invoke<Attach>("terminal_attach", { paneKey, generation }),
 };
 
+/** The service a pane asks its terminal from: with a warm ask, `terminal_attach` carries it. */
+const serviceFor = (warm: WarmAsk | null) => (warm === null ? tauriService : { ...tauriService, attach: (paneKey: number, generation: number) => invoke<Attach>("terminal_attach", { paneKey, generation, warm }) });
+
 // TERM-113: panes that are not on screen at mount (background tabs of a restored layout) start one
 // after another, a short beat apart, so the shown tab's programs get the first spawns and come up
 // usable first. ponytail: a timer ladder, not a queue; the visible panes never wait.
@@ -415,16 +418,32 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // this pane in a native window kept over the pane body (nativeView.ts). Read once per mount.
   const hiddenNow = useRef(hidden);
   hiddenNow.current = hidden;
-  // While the engine draws the pane, xterm is under it and counts as hidden for its GPU slot, which it gives
-  // back after the usual wait (parkWhenHidden). xterm keeps painting: round 4 could not yet prove on screen that
-  // the engine draws the text itself (LANE-REPORT.md), so xterm stays the visible fallback.
+  // While the engine draws the pane, xterm stops drawing under it: its screen is taken out of the page (it
+  // still takes the output, so search, chat and restore keep working) and it counts as hidden for its GPU
+  // slot, which it gives back after the usual wait (parkWhenHidden). The engine draws with the pane's own
+  // colours, font and cursor, and follows a theme or text change; the session runs at the engine's grid, and
+  // xterm keeps that grid, so a menu over the pane (the engine steps aside) shows the same lines.
   const nativeOn = useRef(false);
+  const refit = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!currentInput().native || !host.current) return;
     return bindNative(host.current, () => idRef.current, () => hiddenNow.current, invoke, 250, {
       onShown: (on) => {
         nativeOn.current = on;
+        const screen = termRef.current?.element;
+        if (screen) screen.style.display = on ? "none" : "";
         parking.current?.hidden(hiddenNow.current || on);
+        if (!on) refit.current?.();
+      },
+      look: () => {
+        const font = termFont();
+        const text = currentText();
+        return nativeLook(currentTerminal(), font.fontFamily, font.fontSize, text.cursor, text.blink);
+      },
+      lookEvents: [TERMINAL_EVENT, TEXT_EVENT],
+      onGrid: (cols, rows) => {
+        const term = termRef.current;
+        if (term && (term.cols !== cols || term.rows !== rows)) term.resize(cols, rows);
       },
     });
   }, []);
@@ -1030,7 +1049,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       const start = async (prog: string | null, argv: readonly string[], keepInView: boolean, back: Reattached | null = null) => {
         try {
           // APP-052: a terminal this run of the service still runs for the pane (the window reloaded) is taken back, not started again.
-          const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: prog, account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
+          const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: startedOf(back, prog), account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
           setStarted(ran);
           // A shell taken back after a reload is past its prompt, and a fallback shell without hooks
           // (ACCT-046) prints no mark: neither is held.
@@ -1141,7 +1160,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // APP-052: the pane asks the terminal service for its terminal first and waits for the service
         // to answer, up to a hard limit; no answer or too old a service fails the pane in plain words.
         // A pane without a key (nothing saved for it) has no terminal to ask for.
-        const back = number === undefined ? null : await reattach(tauriService, number, serviceRef.current);
+        // Kept-warm shell (setting on): a new plain shell takes its folder's warm shell, answered as attached.
+        const warmAsk = warmAskOf({ on: currentInput().warmShell, key: number, restored, moved, program, args, env, typed, agent, account, cwd }, term.cols, term.rows);
+        const back = number === undefined ? null : await reattach(serviceFor(warmAsk), number, serviceRef.current);
         const orphan = orphanOf(back, alive, handed);
         if (orphan !== null) invoke("terminal_kill", { id: orphan }).catch(() => {});
         if (!alive) return;
@@ -1176,6 +1197,17 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // TERM-088: the program whose history was just replayed is gone unless the service still runs it (attached);
         // what it left on (mouse capture first) is turned off, so a plain drag selects again in the new shell.
         if (keepInView && back?.kind !== "attached") term.write(resetAfterExit(modeView(term.modes), term.buffer.active.type === "alternate"));
+        // Kept-warm shell: the warm shell printed its prompt before this pane existed; its snapshot draws it and
+        // sets the floor, so the chunks after it are drawn once. The terminal queries in it (the console host's
+        // cursor question, which the service answered, and any other) are left out (warmSnapshot).
+        if (warmAsk !== null && back?.kind === "attached") {
+          const snap = await invoke<LiveSnapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
+          if (!alive) return;
+          if (snap) {
+            resync.took(snap.id, snap);
+            applySnapshot(term, warmSnapshot(decodeOutput(snap.data)));
+          }
+        }
         await start(program, args, keepInView, back);
       } catch (err) {
         fail(err);
@@ -1185,6 +1217,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const resize = () => {
       // A hidden pane has no size; fitting it would shrink the program's terminal to nothing.
       if (el.clientWidth === 0 || el.clientHeight === 0) return;
+      // NATIVE-TERMINAL.md: the engine fits the session to its own grid while it draws the pane.
+      if (nativeOn.current) return;
       fit.fit();
       // TERM-010 (and the size rule of the full-screen card): while a divider is dragged the pane
       // redraws at each size but the program hears only the final one, when the drag ends.
@@ -1192,6 +1226,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       const id = idRef.current;
       if (id !== null && !ended) invoke("terminal_resize", { id, cols: term.cols, rows: term.rows }).catch(() => {});
     };
+    refit.current = resize;
     const observer = new ResizeObserver(resize);
     observer.observe(el);
     window.addEventListener(DIVIDER_DONE, resize);

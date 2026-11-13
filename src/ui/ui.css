@@ -8,7 +8,9 @@
 .ui-tip-positioner { z-index: calc(var(--z-top) + 3); }
 .ui-tip { position: static; transform: none; }
 .ui-select { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: default; }
-.ui-select-box { display: grid; flex: 1 1 auto; min-width: 0; }
+/* A native select draws its text 4 px in from its own padding; the closed control does the same (the before and after
+   shots, evidence/PR254-select-*.png). */
+.ui-select-box { display: grid; flex: 1 1 auto; min-width: 0; margin-inline-start: 4px; }
 .ui-select-box > * { grid-area: 1 / 1; min-width: 0; }
 .ui-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Every label stacked unseen in one cell: the control is as wide as its longest option where nothing sets its width. */

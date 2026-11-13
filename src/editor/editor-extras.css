@@ -135,8 +135,10 @@
 .table-ctl:hover { background: var(--row-selected); border-color: var(--fg-muted); }
 .table-ctx { position: fixed; z-index: calc(var(--z-pane) + 2); min-width: 150px; padding: 4px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); font: 12px var(--ui-font); }
 .table-ctx-item { text-align: left; padding: 4px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
-.table-ctx-item:hover:not(:disabled) { background: var(--row-selected); }
-.table-ctx-item:disabled { opacity: 0.45; cursor: default; }
+.table-ctx-item:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--row-selected); }
+/* A src/ui menu row that is off stays focusable for the keyboard (aria-disabled), so it is not :disabled. */
+.table-ctx-item:disabled, .table-ctx-item[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.ui-positioner > .table-ctx { position: static; }
 .code-label { position: fixed; z-index: calc(var(--z-pane) + 1); width: 140px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); font: 11px var(--ui-font); opacity: 0.85; }
 .code-label:hover, .code-label:focus { opacity: 1; }
 .rich-draw { position: fixed; z-index: var(--z-pane); max-height: 40vh; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }

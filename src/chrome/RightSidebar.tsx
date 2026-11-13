@@ -10,7 +10,6 @@
 // while the rest of the window keeps running (VIEW 056 rest). The Agents, Search and folder-workspace
 // tabs are T-146-g.
 import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
-import { menuStep } from "../terminal/LinkActionMenu";
 import { NARROW_PX } from "../shell/window/narrow";
 import { Menu, MenuItem } from "../ui/Menu";
 import { Tab, TabList, TabPanel, Tabs } from "../ui/Tabs";
@@ -71,9 +70,6 @@ export function splitTabs<T extends { id: string; label: string }>(tabs: T[], ac
 }
 
 /** T-146-b: the tab to show: the remembered one when it is offered here, else the first offered. */
-/** The tab a key moves to from the one at `at` of `count`: Left and Right wrap, Home and End jump; null for any other key. */
-export const tabStep = (count: number, at: number, key: string): number | null => key === "ArrowRight" ? menuStep(count, at, "ArrowDown") : key === "ArrowLeft" ? menuStep(count, at, "ArrowUp") : key === "Home" || key === "End" ? menuStep(count, at, key) : null;
-
 export const pickTab = (remembered: RightTab, offered: RightTab[]): RightTab | null => (offered.includes(remembered) ? remembered : (offered[0] ?? null));
 
 /** VIEW 056 rest: a panel whose code throws (or fails to load) is caught here; the notice says so

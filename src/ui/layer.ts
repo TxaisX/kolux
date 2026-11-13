@@ -15,9 +15,13 @@ export type CloseWhy = "escape" | "outside" | "other";
 
 /** While `open`, the popup drawn into `box` is the newest layer: Escape anywhere runs `onClose("escape")` (read fresh
  *  each render). */
-export function useLayer(open: boolean, onClose: (why: CloseWhy) => void, box?: RefObject<Element | null>): void {
+export function useLayer(open: boolean, onClose: (why: CloseWhy) => void, box?: RefObject<Element | null>, fieldEscape?: () => boolean): void {
   const close = useRef(onClose);
   close.current = onClose;
+  // A field in the popup that uses Escape itself (a search box holding text clears it): while this says so, the key is
+  // left to the field, and the next Escape closes the popup.
+  const field = useRef(fieldEscape);
+  field.current = fieldEscape;
   useEffect(() => {
     if (!open) return;
     // A popup inside a hidden pane (panes stay mounted while another is shown) leaves the keys alone.
@@ -29,7 +33,7 @@ export function useLayer(open: boolean, onClose: (why: CloseWhy) => void, box?: 
     const note = (e: Event) => void (composing = (e as KeyboardEvent).isComposing || (e as KeyboardEvent).keyCode === 229);
     window.addEventListener("keydown", note, { capture: true });
     const stopNote = () => window.removeEventListener("keydown", note, { capture: true });
-    const stop = watchEscape(window, () => close.current("escape"), () => isTopModal(modal) && !composing);
+    const stop = watchEscape(window, () => close.current("escape"), () => isTopModal(modal) && !composing && !field.current?.());
     return () => {
       stop();
       stopNote();

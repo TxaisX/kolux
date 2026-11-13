@@ -2,19 +2,19 @@
 // Rust side, which looks each agent's program up on the PATH and in the usual install folders;
 // only agents that were found are offered, the rest stay out of sight (SESS-001). The default
 // agent is listed first with its shortcut beside it, when one is bound; every other row has a
-// "default" button that makes that agent the default. Drawn as a fixed popover with a click-away
-// backdrop, so it is never clipped by the pane or sidebar card it opens from. SESS-009: Claude Code,
+// "default" button that makes that agent the default. Drawn as a src/ui Popover at the caller's fixed
+// numbers, so it is never clipped by the pane or sidebar card it opens from; a press outside closes it. SESS-009: Claude Code,
 // Codex and Grok lead and the rest fold behind "Show more agents" (folded again on each open); the
 // search box reaches every installed agent; a blank-terminal row and "Manage agents" sit at the foot.
 // SESS-039: opened from a pane with a worktree folder, it also offers "Open in <editor>" for each
 // outside editor installed (editors.ts). TERM-042: with `entry` the menu opens with an entry box for a
 // URL, a file or an open tab; TERM-043: on a local Windows client a "Terminal" row opens the shell choice.
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import { watchEscape } from "../switcher/accounts";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { restoreFocus } from "../shell/paletteCaps";
 import { menuStep } from "../terminal/LinkActionMenu";
 import VendorMark, { type Agent } from "../chrome/VendorMark";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Popover } from "../ui/Popover";
+import type { Place } from "../ui/base";
 import AgentMark from "../marks/AgentMark";
 import { Kbd, useLabel } from "../keys/KeymapContext";
 import { agents as AGENT_NAMES } from "../keys/actions";
@@ -65,7 +65,8 @@ type Props = {
   /** "Manage agents": Settings > Agents. */
   onManage?: () => void;
   busy?: boolean;
-  style?: CSSProperties;
+  /** Where it opens: fixed window numbers for its edges (the pane's + button, the sidebar's foot). */
+  style?: Place;
   /** SESS-003: agents are installed but every one is switched off. */
   allOff?: boolean;
   /** SESS-002: where the agent search stands, and a way to look again. */
@@ -108,7 +109,8 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
   const bound = useLabel("tab.newAgent").length > 0;
   // UX audit F3: Enter in the search box starts nothing while the agent search has failed (the rows are disabled too).
   const first = () => (shown[0] ? !busy && !pass?.error && onPick(shown[0]) : terminalRow && onTerminal?.());
-  // UX audit F1: Esc closes the menu wherever focus is (a short list has no search box), and focus goes in on open and back on close.
+  // UX audit F1: Esc closes the menu wherever focus is (a short list has no search box; the layer's), and focus goes in
+  // on open and back on close.
   const menuBox = useRef<HTMLDivElement>(null);
   // The opener is whatever had focus when the menu first rendered, before the search box's autoFocus takes it.
   const opener = useRef((typeof document === "undefined" ? null : document.activeElement) as HTMLElement | null);
@@ -117,7 +119,6 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
     const el = document.activeElement;
     return el instanceof HTMLInputElement && !!menuBox.current?.contains(el) && el.value !== "";
   };
-  useEffect(() => watchEscape(window, onClose, () => !typing()), [onClose]);
   // Arrow keys, Home and End walk the enabled rows (the search box keeps its own arrows for text).
   const arrows = (e: KeyboardEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).tagName === "INPUT") return;
@@ -127,9 +128,10 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
     e.preventDefault();
     rows[to]?.focus();
   };
+  // Focus goes to the first box (the entry box, else the search box), else the first row that can act.
+  const firstFocus = () => menuBox.current?.querySelector<HTMLElement>("input") ?? menuBox.current?.querySelector<HTMLElement>("button:not(:disabled)") ?? true;
   useEffect(() => {
-    if (!menuBox.current?.contains(opener.current) && !menuBox.current?.querySelector("input")) menuBox.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
-    // Only when focus was lost with the menu: a chooser the menu just opened keeps the focus it took.
+    // Back to the opener only when focus was lost with the menu: a chooser the menu just opened keeps the focus it took.
     return () =>
       queueMicrotask(() => {
         const a = document.activeElement;
@@ -139,147 +141,143 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
   // With no default the new-agent shortcut opens the first agent listed (SET-027).
   const opens = shown.find((a) => a.id === defaultId) ?? (defaultId === "" ? shown[0] : undefined);
   return (
-    <OutOfFlow>
-      <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
-      <div className="menu" role="menu" aria-label="New session" data-testid="new-session-menu" style={style} ref={menuBox} onKeyDown={arrows}>
-        <div className="menu-title">New session</div>
-        {target && (
-          <div className="menu-hint">
-            Starting in <b>{target}</b>
-          </div>
-        )}
-        {entry && <NewTabEntryBox tabs={entry.tabs} onRun={entry.onRun} />}
-        {installed > 3 && (
-          <input
-            className="field menu-search"
-            placeholder="Search agents"
-            aria-label="Search agents"
-            autoFocus={!entry}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.stopPropagation();
-                e.preventDefault();
-                setQuery("");
-              }
-              if (e.key === "Enter") first();
-            }}
-          />
-        )}
-        {found !== null && found.length === 0 && !terminalRow && <div className="menu-hint">No installed agent matches.</div>}
-        {pass?.error ? (
-          <div className="menu-hint warn" role="alert">
-            Kolux could not look for agents ({pass.error}). Nothing can start until a search succeeds.
-          </div>
-        ) : (pass ? !pass.done : agents.length === 0) ? (
-          <div className="menu-hint">Looking for agents…</div>
-        ) : allOff ? (
-          <div className="menu-hint">No agent is switched on. Turn one on in agent settings.</div>
-        ) : (
-          agents.length > 0 &&
-          installed === 0 && <div className="menu-hint">No agent found. Kolux looked for {agents.map((a) => a.program).join(", ")} on the PATH and in the usual install folders.</div>
-        )}
-        {shown.map((a) => (
-          <div className="menu-row" key={a.id}>
-            <button role="menuitem" className="menu-item" data-testid={`new-session-item-${a.id}`} disabled={busy || !!pass?.error} onClick={() => onPick(a)} title={`Start ${a.name} (${a.path}) in a new pane inside a fresh workspace`}>
-              <span className="agent-mark">
-                <VendorMark agent={markFor(a.id)} size={13} />
-              </span>
-              <span className="name">{a.name}</span>
-              <span className="muted">{a.path?.split(/[\\/]/).pop()}</span>
-              {a.id === defaultId && <span className="menu-chip">Default</span>}
-              {a === opens && bound && <Kbd id="tab.newAgent" />}
-            </button>
-            {a.id !== defaultId && onSetDefault && (
-              <button role="menuitem" className="menu-default" title={`Make ${a.name} the default agent`} onClick={() => onSetDefault(a.id)}>
-                Set as default
-              </button>
-            )}
-          </div>
-        ))}
-        {found === null && folded.length > 0 && (
-          <button role="menuitem" className="menu-item muted menu-more" aria-expanded={more} onClick={() => setMore((m) => !m)}>
-            <span className="name">{more ? "Show fewer agents" : `Show more agents (${folded.length})`}</span>
+    <Popover open onClose={() => onClose()} label="New session" data-testid="new-session-menu" place={style} boxRef={menuBox} initialFocus={firstFocus} finalFocus={false} fieldEscape={typing} onKeyDown={arrows}>
+      <div className="menu-title">New session</div>
+      {target && (
+        <div className="menu-hint">
+          Starting in <b>{target}</b>
+        </div>
+      )}
+      {entry && <NewTabEntryBox tabs={entry.tabs} onRun={entry.onRun} />}
+      {installed > 3 && (
+        <input
+          className="field menu-search"
+          placeholder="Search agents"
+          aria-label="Search agents"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              e.preventDefault();
+              setQuery("");
+            }
+            if (e.key === "Enter") first();
+          }}
+        />
+      )}
+      {found !== null && found.length === 0 && !terminalRow && <div className="menu-hint">No installed agent matches.</div>}
+      {pass?.error ? (
+        <div className="menu-hint warn" role="alert">
+          Kolux could not look for agents ({pass.error}). Nothing can start until a search succeeds.
+        </div>
+      ) : (pass ? !pass.done : agents.length === 0) ? (
+        <div className="menu-hint">Looking for agents…</div>
+      ) : allOff ? (
+        <div className="menu-hint">No agent is switched on. Turn one on in agent settings.</div>
+      ) : (
+        agents.length > 0 &&
+        installed === 0 && <div className="menu-hint">No agent found. Kolux looked for {agents.map((a) => a.program).join(", ")} on the PATH and in the usual install folders.</div>
+      )}
+      {shown.map((a) => (
+        <div className="menu-row" key={a.id}>
+          <button className="menu-item" data-testid={`new-session-item-${a.id}`} disabled={busy || !!pass?.error} onClick={() => onPick(a)} title={`Start ${a.name} (${a.path}) in a new pane inside a fresh workspace`}>
+            <span className="agent-mark">
+              <VendorMark agent={markFor(a.id)} size={13} />
+            </span>
+            <span className="name">{a.name}</span>
+            <span className="muted">{a.path?.split(/[\\/]/).pop()}</span>
+            {a.id === defaultId && <span className="menu-chip">Default</span>}
+            {a === opens && bound && <Kbd id="tab.newAgent" />}
           </button>
-        )}
-        {terminalRow && (
-          <button role="menuitem" className="menu-item" onClick={onTerminal} title="A plain shell with no agent">
+          {a.id !== defaultId && onSetDefault && (
+            <button className="menu-default" title={`Make ${a.name} the default agent`} onClick={() => onSetDefault(a.id)}>
+              Set as default
+            </button>
+          )}
+        </div>
+      ))}
+      {found === null && folded.length > 0 && (
+        <button className="menu-item muted menu-more" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+          <span className="name">{more ? "Show fewer agents" : `Show more agents (${folded.length})`}</span>
+        </button>
+      )}
+      {terminalRow && (
+        <button className="menu-item" onClick={onTerminal} title="A plain shell with no agent">
+          <span className="agent-mark">
+            <VendorMark agent="shell" size={13} />
+          </span>
+          <span className="name">Blank terminal</span>
+        </button>
+      )}
+      {shellChoices.length > 1 && (
+        <>
+          <button className="menu-item" aria-haspopup="menu" aria-expanded={shellsOpen} onClick={() => setShellsOpen((o) => !o)} title="Pick which shell the new terminal runs">
             <span className="agent-mark">
               <VendorMark agent="shell" size={13} />
             </span>
-            <span className="name">Blank terminal</span>
+            <span className="name">Terminal…</span>
+            <span aria-hidden="true">{shellsOpen ? "▾" : "▸"}</span>
           </button>
-        )}
-        {shellChoices.length > 1 && (
-          <>
-            <button role="menuitem" className="menu-item" aria-haspopup="menu" aria-expanded={shellsOpen} onClick={() => setShellsOpen((o) => !o)} title="Pick which shell the new terminal runs">
-              <span className="agent-mark">
-                <VendorMark agent="shell" size={13} />
-              </span>
-              <span className="name">Terminal…</span>
-              <span aria-hidden="true">{shellsOpen ? "▾" : "▸"}</span>
-            </button>
-            {shellsOpen &&
-              shellChoices.map((sh) => (
-                <button key={sh.id} role="menuitem" className="menu-item menu-sub" onClick={() => onShell?.(sh)} title={`New terminal: ${sh.program}`}>
-                  <span className="agent-mark">
-                    <ShellGlyph program={sh.program} />
-                  </span>
-                  <span className="name">{sh.name}</span>
-                </button>
-              ))}
-          </>
-        )}
-        {onChoose && (
-          <button role="menuitem" className="menu-item" onClick={onChoose} title="Open a pane that asks which AI, model or terminal to run, and how many">
-            <span className="agent-mark" aria-hidden="true">
-              ?
-            </span>
-            <span className="name">Choose what to run…</span>
-          </button>
-        )}
-        {dir && outside.length > 0 && (
-          <>
-            <div className="menu-title">This folder</div>
-            {outside.map((e) => (
-              <button
-                key={`open-${e.id}`}
-                role="menuitem"
-                className="menu-item"
-                title={openTitle(e, dir)}
-                onClick={() => {
-                  setOpenError(null);
-                  openIn(e.id, dir).then(onClose, (err) => setOpenError(String(err)));
-                }}
-              >
-                <span className="agent-mark" aria-hidden="true">
-                  {e.id === "vscode" && <AgentMark id="vscode" size={13} />}
+          {shellsOpen &&
+            shellChoices.map((sh) => (
+              <button key={sh.id} className="menu-item menu-sub" onClick={() => onShell?.(sh)} title={`New terminal: ${sh.program}`}>
+                <span className="agent-mark">
+                  <ShellGlyph program={sh.program} />
                 </span>
-                <span className="name">{openLabel(e)}</span>
+                <span className="name">{sh.name}</span>
               </button>
             ))}
-            {openError && (
-              <div className="menu-hint warn" role="alert">
-                {openError}
-              </div>
-            )}
-          </>
-        )}
-        {onManage && (
-          <button role="menuitem" className="menu-item muted" onClick={onManage}>
-            <span className="name">Manage agents</span>
-          </button>
-        )}
-        {onRefresh && (
-          <button role="menuitem" className="menu-item muted" disabled={pass?.looking} onClick={onRefresh} title="Look for installed agent CLIs again">
-            {pass?.looking ? "Looking for agents…" : "Refresh agents"}
-          </button>
-        )}
-        <button role="menuitem" className="menu-item muted" onClick={onClose}>
-          Cancel
+        </>
+      )}
+      {onChoose && (
+        <button className="menu-item" onClick={onChoose} title="Open a pane that asks which AI, model or terminal to run, and how many">
+          <span className="agent-mark" aria-hidden="true">
+            ?
+          </span>
+          <span className="name">Choose what to run…</span>
         </button>
-      </div>
-    </OutOfFlow>
+      )}
+      {dir && outside.length > 0 && (
+        <>
+          <div className="menu-title">This folder</div>
+          {outside.map((e) => (
+            <button
+              key={`open-${e.id}`}
+             
+              className="menu-item"
+              title={openTitle(e, dir)}
+              onClick={() => {
+                setOpenError(null);
+                openIn(e.id, dir).then(onClose, (err) => setOpenError(String(err)));
+              }}
+            >
+              <span className="agent-mark" aria-hidden="true">
+                {e.id === "vscode" && <AgentMark id="vscode" size={13} />}
+              </span>
+              <span className="name">{openLabel(e)}</span>
+            </button>
+          ))}
+          {openError && (
+            <div className="menu-hint warn" role="alert">
+              {openError}
+            </div>
+          )}
+        </>
+      )}
+      {onManage && (
+        <button className="menu-item muted" onClick={onManage}>
+          <span className="name">Manage agents</span>
+        </button>
+      )}
+      {onRefresh && (
+        <button className="menu-item muted" disabled={pass?.looking} onClick={onRefresh} title="Look for installed agent CLIs again">
+          {pass?.looking ? "Looking for agents…" : "Refresh agents"}
+        </button>
+      )}
+      <button className="menu-item muted" onClick={onClose}>
+        Cancel
+      </button>
+    </Popover>
   );
 }

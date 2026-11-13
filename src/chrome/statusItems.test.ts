@@ -45,10 +45,11 @@ test("T-710: Shift+F10 / the Menu key on a focused status-bar item opens the ite
   const menu = find(container, (n) => n.getAttribute("role") === "menu")[0];
   expect(menu.getAttribute("aria-label")).toBe("Status bar items");
   expect(menu.classList.contains("status-menu")).toBe(true);
-  // It opens upward from the point, 4 px above it (the popup has no size on this test page, so its corner is the point).
+  // It opens upward where it always did: its bottom edge 4 px above the point, its left edge at the point but never
+  // nearer than 240 px to the window's right edge (this test window is 1024 x 768).
   const at = menu.parentElement.style;
-  await until(() => at.transform !== "", "the menu placed");
-  expect(at.transform).toBe("translate(1000px, 696px)");
+  expect([window.innerWidth, window.innerHeight]).toEqual([1024, 768]);
+  expect([at.left, at.bottom, at.transform]).toEqual(["784px", "72px", "none"]);
   // An item is a ticked checkbox row, and ticking one keeps the menu open for the next.
   const memory = byText(menu, "span", "Resource Manager")[0].closest('[role="menuitemcheckbox"]');
   expect(memory.getAttribute("aria-checked")).toBe("true");

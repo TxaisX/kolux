@@ -12,14 +12,13 @@
 // path can be copied. Part 2: Mod+C then Mod+V copies the selection into the highlighted folder (a taken
 // name gets " copy"), dragging rows moves them into the folder under the pointer (the tree scrolls near its
 // edges), and files dropped in from the desktop are copied there; each of these undoes too.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { ChevronDown, Close, EyeOff, FolderPlus, Funnel, Plus, Refresh, Rocket, Search } from "../chrome/icons";
-import { clampMenu, useMenuKeys } from "./menuNav";
-import { menuRoom, useMenuFocus } from "../chrome/dialogFocus";
-import { fitIn, fromKeys } from "../terminal/PaneMenu";
+import { ContextMenu, Menu, MenuItem } from "../ui/Menu";
+import { fromKeys } from "../terminal/PaneMenu";
 import { DOTFILES_KEY, IGNORED_KEY, filterRows, folderGlob, hidesDotfiles, rowMenu, sameNodes, withDotfiles, withoutDotfiles, withoutIgnored } from "./explorerView";
 import { MAX_DROP_BYTES, projectDrop, refuseDrop } from "./desktopDrops";
 import FileIcon from "./FileIcon";
@@ -36,7 +35,6 @@ import { withChord } from "../terminal/PaneMenu";
 import { explorerSearchKey } from "../keys/useWindowKeys";
 import { announceMoves } from "./fileMoved";
 import { EditorPane } from "../lazy/panes";
-import OutOfFlow from "../chrome/OutOfFlow";
 
 /** PKG-1: the editor's code is read late after start (stage 3); a pointer or the keyboard reaching the file list is the
  *  intent to open one, so its code starts loading then and the click finds it there. */
@@ -175,7 +173,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     window.setTimeout(() => box.current?.focus());
   };
   // EDIT-043: the Open in menu (null while closed) and the last launch that failed.
-  const [openTargets, setOpenTargets] = useState<{ list: Target[]; x: number; y: number } | null>(null);
+  const [openTargets, setOpenTargets] = useState<{ list: Target[] } | null>(null);
   const [openErr, setOpenErr] = useState<string | null>(null);
   // T-323-b: a file row's menu also lists the Open in apps (read from the settings when the menu opens).
   const [fileApps, setFileApps] = useState<App[]>([]);
@@ -758,20 +756,8 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     const seen = at && at.top >= list.top && at.bottom <= list.bottom; // wholly in view: a clipped row would put the menu past the tree
     rowContext(e, r.node.path, dirRow(r.node), seen ? at.left + 16 : e.clientX, seen ? at.bottom : e.clientY);
   };
-  // T-720: the row menu takes focus, moves with the arrows, closes on Escape or Tab and gives focus back to the list.
-  // It opens at its row and moves up or left only as far as its measured size needs (the "Open in" rows arrive later).
-  const menuBox = useRef<HTMLDivElement>(null);
-  useMenuFocus(menuBox, !!menu, () => setMenu(null));
-  useLayoutEffect(() => {
-    const el = menuBox.current;
-    if (!el || !menu) return;
-    el.style.maxHeight = "";
-    const r = el.getBoundingClientRect();
-    const top = fitIn(menu.y, r.height, window.innerHeight);
-    el.style.top = `${top}px`;
-    el.style.left = `${fitIn(menu.x, r.width, window.innerWidth)}px`;
-    el.style.maxHeight = `${menuRoom({ top, bottom: 0 }, window.innerHeight, false)}px`;
-  }, [menu, fileApps.length]);
+  // T-720: the row menu is a src/ui ContextMenu at its row: it takes focus, moves with the arrows, closes on Escape or Tab
+  // and gives focus back to the list, and it moves up or left only as far as it must to stay in the window.
   useEffect(() => {
     if (!menu || menu.dir) return;
     let live = true;
@@ -817,7 +803,8 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const last = Math.min(rows.length, Math.ceil((scroll + height) / ROW) + SPARE);
   const name = baseName(root.replace(/[\\/]+$/, "")) || root;
   const wsl = asking?.some(isWsl);
-  const { box: openMenu, remember: rememberOpener } = useMenuKeys(!!openTargets, () => setOpenTargets(null));
+  // The Open in menu: a src/ui Menu hanging from its button.
+  const openButton = useRef<HTMLButtonElement>(null);
   return (
     <aside className="explorer" hidden={hidden} aria-label="Explorer">
       <header className="explorer-head">
@@ -828,7 +815,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         <button className={`ib${searching ? " on" : ""}`} onClick={() => (searching ? closeSearch() : (setSearching(true), startSearch()))} aria-pressed={searching} title="Search file contents (Ctrl+Shift+F)" aria-label="Search file contents">
           <Search size={12} />
         </button>
-        <button className="ib" onClick={(e) => { rememberOpener(e.currentTarget); const r = e.currentTarget.getBoundingClientRect(); if (openTargets) setOpenTargets(null); else void loadTargets().then((list) => setOpenTargets({ list, x: r.left, y: r.bottom + 4 })); }} aria-expanded={!!openTargets} aria-haspopup="menu" title="Open this folder in another app" aria-label="Open in">
+        <button ref={openButton} className="ib" onClick={() => { if (openTargets) setOpenTargets(null); else void loadTargets().then((list) => setOpenTargets({ list })); }} aria-expanded={!!openTargets} aria-haspopup="menu" title="Open this folder in another app" aria-label="Open in">
           <Rocket size={12} />
         </button>
         <button className="ib" onClick={refresh} disabled={refreshing} aria-busy={refreshing} title="Refresh the tree" aria-label="Refresh the tree">
@@ -862,36 +849,30 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
           <Close size={12} />
         </button>
       </header>
-      {openTargets && (
-        <OutOfFlow>
-        <div className="menu-backdrop" onClick={() => setOpenTargets(null)} onContextMenu={(e) => (e.preventDefault(), setOpenTargets(null))} />
-        <div ref={openMenu} className="menu open-in-menu" role="menu" aria-label="Open in" style={clampMenu(openTargets.x, openTargets.y, 240, 40 + openTargets.list.length * 28, window.innerWidth, window.innerHeight)}>
-          {openTargets.list.map((t) => (
-            <button key={t.label} role="menuitem" className="menu-item" onClick={() => (setOpenTargets(null), setOpenErr(null), void openIn(root, t).catch((err) => setOpenErr(`${t.label} did not open: ${err}`)))}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        </OutOfFlow>
-      )}
-      {menu && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onClick={() => setMenu(null)} onContextMenu={(e) => (e.preventDefault(), setMenu(null))} />
-          <div ref={menuBox} className="menu row-menu" role="menu" aria-label={`Actions for ${baseName(menu.path)}`} style={{ left: menu.x, top: menu.y }}>
+      <Menu open={openTargets !== null} onClose={() => setOpenTargets(null)} label="Open in" anchor={openButton} offset={4} className="open-in-menu">
+        {openTargets?.list.map((t) => (
+          <MenuItem key={t.label} onClick={() => (setOpenErr(null), void openIn(root, t).catch((err) => setOpenErr(`${t.label} did not open: ${err}`)))}>
+            {t.label}
+          </MenuItem>
+        ))}
+      </Menu>
+      <ContextMenu at={menu} onClose={() => setMenu(null)} label={menu ? `Actions for ${baseName(menu.path)}` : "Actions"} className="row-menu">
+        {menu && (
+          <>
             {withExtraMenu(rowMenu({ isDir: menu.dir, hasTerminal: !!onOpenTerminal, canProject: menu.dir && menu.path !== root && projectDrop.add !== null }), { isDir: menu.dir, isOpen: open.has(menu.path), single: sel.size <= 1, log: isLog(menu.path) }).map((id) => (
-              <button key={id} role="menuitem" className="menu-item" onClick={() => runMenu(id, menu.path, menu.dir)}>
+              <MenuItem key={id} onClick={() => runMenu(id, menu.path, menu.dir)}>
                 {menuLabel(id)}
-              </button>
+              </MenuItem>
             ))}
             {!menu.dir &&
               fileApps.map((a) => (
-                <button key={"open-in:" + a.label} role="menuitem" className="menu-item" data-row-action="open-in" onClick={() => (setMenu(null), setOpenErr(null), void openFileIn(root, menu.path, a).catch((err) => setOpenErr(`${a.label} did not open: ${err instanceof Error ? err.message : err}`)))}>
+                <MenuItem key={"open-in:" + a.label} data-row-action="open-in" onClick={() => (setOpenErr(null), void openFileIn(root, menu.path, a).catch((err) => setOpenErr(`${a.label} did not open: ${err instanceof Error ? err.message : err}`)))}>
                   Open in {a.label}
-                </button>
+                </MenuItem>
               ))}
-          </div>
-        </OutOfFlow>
-      )}
+          </>
+        )}
+      </ContextMenu>
       {openErr && (
         <div className="notice load-failed" role="alert">
           {openErr}

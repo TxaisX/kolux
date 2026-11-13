@@ -27,6 +27,9 @@ const env = () => {
     identifier,
     // createApp only wipes a profile whose identifier carries the suffix, so the suffix follows the identifier.
     suffix: process.env.PROVE_SUFFIX || identifier.slice(identifier.lastIndexOf(".")) || ".prove",
+    // How long a launch may take to show the app page over CDP (build included). A machine that already built the
+    // app sets it lower, so a page that never comes fails the run in minutes instead of half an hour.
+    buildMinutes: Math.max(1, Number(process.env.PROVE_BUILD_MINUTES) || 30),
   };
 };
 export const ENV = env();
@@ -102,7 +105,7 @@ export async function startProve(id, opts) {
   const TEMP = `${BASE}/run-${id}`;
   const repo = `${BASE}/work/${id}`;
   const settingsFile = `${TEMP}/tmp/claude-config/settings.json`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: ENV.identifier, temp: TEMP, suffix: ENV.suffix, offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: ENV.identifier, temp: TEMP, suffix: ENV.suffix, offscreen: true, buildMinutes: ENV.buildMinutes, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
   const { profile } = app.paths;
   // A fresh run folder: only a folder this lane made (it carries the marker) is wiped.
   if (existsSync(TEMP)) {
@@ -343,7 +346,7 @@ export async function startPlain(id, opts) {
   const { log } = opts.report;
   const TEMP = `${LIVE_BASE}/run-${id}`;
   const repo = `${LIVE_BASE}/work/${id}`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: ENV.identifier, temp: TEMP, suffix: ENV.suffix, offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: ENV.identifier, temp: TEMP, suffix: ENV.suffix, offscreen: true, buildMinutes: ENV.buildMinutes, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
   const { profile } = app.paths;
   if (existsSync(TEMP)) {
     if (!existsSync(join(TEMP, ".prove-run"))) throw new Error(`${TEMP} exists without the prove marker`);

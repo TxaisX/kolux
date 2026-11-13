@@ -1,32 +1,7 @@
-// UX audit skills-automations.md:19 (Skills half): the keyboard side of the Skills page menus. Focus goes to
-// the first item when a menu opens, the arrow keys (menuStep, the link menu's stepping) move between items, and
-// focus goes back to the button that opened it. The rules are plain functions so a test can drive them.
-import { menuStep } from "../terminal/LinkActionMenu";
+// UX audit skills-automations.md:19 (Skills half): where focus goes when a Skills page menu or dialog closes. The menus
+// themselves are src/ui Menus (their keys and focus are Base UI's); these rules are what the page adds, as plain
+// functions so a test can drive them.
 import { restoreFocus } from "../shell/paletteCaps";
-
-export type Item = { disabled?: boolean; focus: () => void };
-
-const ITEMS = '[role^="menuitem"]';
-const enabled = (menu: ParentNode): HTMLElement[] => Array.from(menu.querySelectorAll<HTMLElement>(ITEMS)).filter((i) => !(i as HTMLButtonElement).disabled);
-
-/** The item that takes focus after `key` (null: not a menu key). `at` is the focused item's place, -1 for none. */
-export function stepTo<T extends Item>(items: T[], at: number, key: string): T | null {
-  const to = menuStep(items.length, at, key);
-  return to === null ? null : items[to];
-}
-
-/** A ref callback for a menu's box: focuses its first enabled item as the menu appears. */
-export const focusFirst = (menu: HTMLElement | null): void => void (menu && enabled(menu)[0]?.focus());
-
-/** onKeyDown for a menu's box: arrows, Home and End move between its enabled items. */
-export function onMenuKey(e: { key: string; currentTarget: ParentNode; preventDefault: () => void; stopPropagation: () => void }): void {
-  const items = enabled(e.currentTarget);
-  const next = stepTo(items, items.indexOf(document.activeElement as HTMLElement), e.key);
-  if (!next) return;
-  e.preventDefault();
-  e.stopPropagation();
-  next.focus();
-}
 
 /** Focus was lost when a menu closed (its item left the page) rather than moved on to a dialog or field. */
 export const focusLost = (active: unknown, body: unknown): boolean => !active || active === body;

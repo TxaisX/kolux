@@ -3,7 +3,7 @@
 // ceiling (scripts/bundle-budget.mjs). The wrappers next to this file are the public face; each draws its closed
 // state without Base UI and hands over to what is here when it opens (or, for a tab strip, as soon as this arrives).
 // Escape and stacking stay Kolux's (layer.ts, called by the wrappers); focus, aria and click-outside are Base UI's.
-import type { CSSProperties, HTMLAttributes, ReactElement, ReactNode, RefObject } from "react";
+import { useEffect, useRef, type CSSProperties, type HTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactElement, type ReactNode, type RefObject } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
@@ -38,6 +38,10 @@ function onAnchor(anchor: RefObject<Element | null> | Element | null | undefined
 const why = (reason: string): CloseWhy => (reason === "outside-press" ? "outside" : "other");
 
 type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
+/** A menu or popover with no room on its side opens on the other side; with no room along it, it slides back into the
+ *  window (shift), as Kolux's hand-placed menus did (left = min(x, window width - menu width)), rather than turning
+ *  its alignment round. */
+const AVOID = { side: "flip", align: "shift" } as const;
 type Side = "top" | "bottom" | "left" | "right";
 type Align = "start" | "center" | "end";
 
@@ -86,6 +90,7 @@ export type MenuBoxProps = {
   label: string;
   anchor?: RefObject<Element | null> | Element | null;
   at?: { x: number; y: number } | null;
+  place?: Place | null;
   side: Side;
   align: Align;
   offset: number;
@@ -98,11 +103,59 @@ export type MenuBoxProps = {
   children: ReactNode;
 };
 
-export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
+/** A box at fixed window numbers (`place`), its left and bottom edges where the site puts them: Base UI's own placement
+ *  is snapped to whole device pixels, which moves a box of fractional height by a fraction of a pixel. */
+export type Place = { left?: number; right?: number; top?: number; bottom?: number };
+const placed = ({ left, right, top, bottom }: Place): CSSProperties => ({ position: "fixed", transform: "none", willChange: "auto", left: left ?? "auto", right: right ?? "auto", top: top ?? "auto", bottom: bottom ?? "auto" });
+
+/** The row focus starts on: in a list of choices the ticked one (the account in use), else the first row a menu can act
+ *  on (a row that is off stays focusable in Base UI, so it is skipped by its aria-disabled). */
+const firstRow = (box: HTMLElement | null) => {
+  const rows = Array.from(box?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []).filter((r) => r.getAttribute("aria-disabled") !== "true");
+  return rows.find((r) => r.getAttribute("role") === "menuitemradio" && r.getAttribute("aria-checked") === "true") ?? rows[0] ?? null;
+};
+
+export function MenuBox({ popup, onClose, label, anchor, at, place, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
+  // Where focus goes back to when the menu closes: what had it when the menu opened (the button, or the list a
+  // right-click menu was opened on), as Kolux's menus always did. The menu is taken off the page at once when it closes
+  // (its owner stops drawing it), which Base UI's own hand-back does not follow, so it is done here once the menu is gone,
+  // and only when focus went with it: focus a picked row has moved on (a dialog it opened) stays there.
+  const opener = useRef<Element | null>(null);
+  if (opener.current === null) opener.current = document.activeElement;
+  useEffect(
+    () => () => {
+      const to = opener.current;
+      queueMicrotask(() => {
+        const now = document.activeElement;
+        if ((!now || now === document.body) && to instanceof HTMLElement && to.isConnected) to.focus();
+      });
+    },
+    [],
+  );
+  // Kolux's menus put focus on their first row as they open (T-720), so the keyboard is in the list at once, a right-click
+  // menu opened with Shift+F10 included; Base UI would focus the box and wait for an arrow key. This waits, frame by
+  // frame (about half a second at most), for Base UI to have drawn the rows and taken focus into the menu, then hands it
+  // to the first row. Focus already on a row is left where it is.
+  useEffect(() => {
+    let frame = 0;
+    let tries = 30;
+    const step = () => {
+      const box = popup.current;
+      const row = firstRow(box);
+      const at = document.activeElement;
+      if (box && at && box.contains(at) && at.closest('[role^="menuitem"]')) return;
+      // Base UI has taken focus into the menu: onto the box, or one of the focus guards it puts around it.
+      if (row && box && at && (box.parentElement?.contains(at) || at.hasAttribute("data-base-ui-focus-guard") || at.getAttribute("data-type") === "inside")) return row.focus();
+      if (--tries > 0) frame = requestAnimationFrame(step);
+      else row?.focus();
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [popup]);
   return (
     <Menu.Root open onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Menu.Portal container={layerHost()}>
-        <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
+        <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed" style={place ? placed(place) : undefined}>
           <Menu.Popup ref={popup} className={plain ? className : className ? `menu ${className}` : "menu"} aria-label={label} style={style} finalFocus={finalFocus as never} {...p}>
             {children}
           </Menu.Popup>
@@ -112,7 +165,20 @@ export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset
   );
 }
 
-export type ItemProps = { className?: string; title?: string; disabled?: boolean; onClick?: () => void; closeOnClick?: boolean; children: ReactNode; "data-testid"?: string; "aria-label"?: string; "aria-busy"?: boolean };
+export type ItemProps = {
+  className?: string;
+  title?: string;
+  disabled?: boolean;
+  onClick?: () => void;
+  closeOnClick?: boolean;
+  children: ReactNode;
+  "data-testid"?: string;
+  "aria-label"?: string;
+  "aria-busy"?: boolean;
+  /** A row that is one choice of several (the Skills page's agent filter): menuitemradio with aria-checked. */
+  role?: "menuitem" | "menuitemradio";
+  "aria-checked"?: boolean;
+};
 
 export const MenuItemBox = ({ className = "menu-item", onClick, ...p }: ItemProps) => <Menu.Item nativeButton render={<button type="button" />} className={className} onClick={() => onClick?.()} {...p} />;
 
@@ -126,7 +192,9 @@ export type PopoverBoxProps = {
   popup: RefObject<HTMLDivElement | null>;
   onClose: (why: CloseWhy) => void;
   label: string;
-  anchor: RefObject<Element | null>;
+  anchor?: RefObject<Element | null>;
+  at?: { x: number; y: number } | null;
+  place?: Place | null;
   side: Side;
   align: Align;
   offset: number;
@@ -134,16 +202,18 @@ export type PopoverBoxProps = {
   style?: CSSProperties;
   modal: boolean | "trap-focus";
   initialFocus?: Focus;
+  finalFocus?: Focus;
+  onKeyDown?: (e: ReactKeyboardEvent<HTMLDivElement>) => void;
   "data-testid"?: string;
   children: ReactNode;
 };
 
-export function PopoverBox({ popup, onClose, label, anchor, side, align, offset, className, style, modal, initialFocus, children, ...p }: PopoverBoxProps) {
+export function PopoverBox({ popup, onClose, label, anchor, at, place, side, align, offset, className, style, modal, initialFocus, finalFocus, children, ...p }: PopoverBoxProps) {
   return (
     <Popover.Root open modal={modal} onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Popover.Portal container={layerHost()}>
-        <Popover.Positioner className="ui-positioner" anchor={anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
-          <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={anchor as RefObject<HTMLElement | null>} {...p}>
+        <Popover.Positioner className="ui-positioner" anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed" style={place ? placed(place) : undefined}>
+          <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={(finalFocus ?? (anchor as RefObject<HTMLElement | null> | undefined) ?? true) as never} {...p}>
             {children}
           </Popover.Popup>
         </Popover.Positioner>

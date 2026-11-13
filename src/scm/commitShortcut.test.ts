@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 ﻿// C10-R2-01: Ctrl+Enter commits only from the commit message box. The panel's key handler used to
 // sit on its root, so the shortcut fired from every text box in the panel: a handoff note, a pull
 // request description. A key pressed in any of those is that field's own, and writes no commit.
 import { act, createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, click, find, fire, installDom, mount, settle, typeInto } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, click, find, fire, installDom, mount, settle, typeInto } from "../tasks/realDom";
 import type { Status } from "./model";
 import panelSrc from "./SourceControlPanel.tsx?raw";
 import prStartSrc from "./PrStart.tsx?raw";
@@ -48,7 +49,6 @@ let unmount: () => Promise<void> = async () => {};
 beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
-  Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout, innerWidth: 1200, innerHeight: 800 });
   h.calls = [];
   h.onStatus = null;
 });
@@ -108,8 +108,7 @@ test("Ctrl+Enter in the handoff note commits nothing, and the typed message wait
 test("Ctrl+Enter in the pull request description commits nothing staged while it is open", async () => {
   const c = await panel(clean);
   const remote = find(c, (n) => n.localName === "button" && n.attrs.title === "Remote actions")[0];
-  remote.getBoundingClientRect = () => ({ left: 0, top: 0, right: 200, bottom: 20, width: 200, height: 20, x: 0, y: 0 });
-  await click(c, remote);
+  await click(c, remote); // the Remote actions menu, a src/ui Menu
   await settle(20);
   const item = find(c, (n) => n.attrs["data-action"] === "pr")[0];
   expect(item, "the remote menu offers Create pull request").toBeTruthy();

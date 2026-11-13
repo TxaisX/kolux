@@ -97,6 +97,7 @@ import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { FILE_MANAGER, loadTargets, openIn } from "../editor/openIn";
+import { Select } from "../ui/Select";
 
 /** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
@@ -1138,14 +1139,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         </div>
       )}
       {p && <Picker key={`parent-${p.id}`} name="Parent" value={parentLabel(p)} items={parentItems(p)} onPick={(k) => setParentDraft(k || null)} onEmptyEnter={() => setParentDraft(null)} />}
-      <select aria-label="agent" className="field" value={agentDraft} onChange={(e) => setAgentDraft(e.target.value)}>
-        <option value="">{promptDraft.trim() && fallbackAgent ? `${fallbackAgent.name} (default)` : "No agent: a terminal"}</option>
-        {installed.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
+      <Select label="agent" value={agentDraft} onChange={(v) => setAgentDraft(v)} options={[
+        { value: "", label: promptDraft.trim() && fallbackAgent ? `${fallbackAgent.name} (default)` : "No agent: a terminal" },
+        ...installed.map((a) => ({ value: a.id, label: a.name })),
+      ]} className="field" />
       <textarea aria-label="note" className="field multi grow" placeholder="note: the first prompt for the agent (optional)" value={promptDraft} onChange={(e) => setPromptDraft(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setCreating(null)} />
       <button className="link" aria-expanded={advanced || existing || prList !== null} onClick={() => setAdvanced(!(advanced || existing || prList !== null))}>
         {advanced || existing || prList !== null ? "Hide advanced" : "Advanced…"}
@@ -1174,16 +1171,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <Picker key={`pr-${p?.id ?? ""}`} name="Pull request" value={prDraft ? `#${prDraft.number} ${prDraft.title}` : "pick a pull request"} items={(q) => prItems(prList, q)} onPick={(k) => setPrDraft(prList.find((x) => String(x.number) === k) ?? null)} startOpen={!prDraft} />
           )}
           <label>Setup</label>
-          <select aria-label="setup policy" className="field" value={setupSkip ? "skip" : "run"} onChange={(e) => setSetupSkip(e.target.value === "skip")}>
-            <option value="run">Run the project's setup script (kolux.yaml)</option>
-            <option value="skip">Skip setup</option>
-          </select>
+          <Select label="setup policy" value={setupSkip ? "skip" : "run"} onChange={(v) => setSetupSkip(v === "skip")} options={[{ value: "run", label: "Run the project's setup script (kolux.yaml)" }, { value: "skip", label: "Skip setup" }]} className="field" />
           {!setupSkip && (
-            <select aria-label="setup opens in" className="field" value={setupWhere} onChange={(e) => ((whereTouched.current = true), setSetupWhere(e.target.value as SetupWhere))}>
-              <option value="tab">Setup in a new tab</option>
-              <option value="right">Setup in a split to the right</option>
-              <option value="down">Setup in a split below</option>
-            </select>
+            <Select label="setup opens in" value={setupWhere} onChange={(v) => ((whereTouched.current = true), setSetupWhere(v as SetupWhere))} options={[
+              { value: "tab", label: "Setup in a new tab" },
+              { value: "right", label: "Setup in a split to the right" },
+              { value: "down", label: "Setup in a split below" },
+            ]} className="field" />
           )}
           {!setupSkip && setupWhere === "tab" && (
             <label className="check">
@@ -1511,10 +1505,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             {s.label}
           </div>
           <div className="vis-row">
-          <select aria-label={`default for ${s.label}`} className="field" value={s.global ? "show" : "hide"} onChange={(e) => setVis(null, s.key, e.target.value === "show")}>
-            <option value="hide">Hidden</option>
-            <option value="show">Shown</option>
-          </select>
+          <Select label={`default for ${s.label}`} value={s.global ? "show" : "hide"} onChange={(v) => setVis(null, s.key, v === "show")} options={[{ value: "hide", label: "Hidden" }, { value: "show", label: "Shown" }]} className="field" />
           {s.root && (
             <button className="ib" title={`Stop treating ${s.root} as its own source`} onClick={() => removeRoot(s.root!)}>
               <Close size={11} />
@@ -1551,11 +1542,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             {s.label}
           </div>
           <div className="vis-row">
-          <select aria-label={`${p.name}: ${s.label}`} className="field" value={s.own === null ? "global" : s.own ? "show" : "hide"} onChange={(e) => setVis(p.id, s.key, e.target.value === "global" ? null : e.target.value === "show")}>
-            <option value="global">As global: {showWord(s.global)}</option>
-            <option value="hide">Hidden</option>
-            <option value="show">Shown</option>
-          </select>
+          <Select label={`${p.name}: ${s.label}`} value={s.own === null ? "global" : s.own ? "show" : "hide"} onChange={(v) => setVis(p.id, s.key, v === "global" ? null : v === "show")} options={[{ value: "global", label: `As global: ${showWord(s.global)}` }, { value: "hide", label: "Hidden" }, { value: "show", label: "Shown" }]} className="field" />
           {s.own !== null && (
             <button className="btn" title={`Back to the global choice (${showWord(s.global)})`} onClick={() => setVis(p.id, s.key, null)}>
               Reset
@@ -2287,14 +2274,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <label>Base ref</label>
               <input aria-label="project base ref" className="field" placeholder="the default branch Git reports" value={projectBaseDraft} onChange={(e) => setProjectBaseDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveProject(p)} />
               <label>Group</label>
-              <select aria-label="project group" className="field" value={groups.groups.some((g) => g.id === groups.members[p.id]) ? groups.members[p.id] : ""} onChange={(e) => putInGroup(p, e.target.value)}>
-                <option value="">None: top level</option>
-                {groups.groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
+              <Select label="project group" value={groups.groups.some((g) => g.id === groups.members[p.id]) ? groups.members[p.id] : ""} onChange={(v) => putInGroup(p, v)} options={[{ value: "", label: "None: top level" }, ...groups.groups.map((g) => ({ value: g.id, label: g.name }))]} className="field" />
               <label>Header colour</label>
               <HeaderColourPicker settings={settings} kind="p" id={p.id} onSetting={onSetting} />
               <IconPicker value={icons[p.id]} name={p.name} onSet={(icon) => setIcon(p, icon)} onProblem={(text) => say("warn", text)} />
@@ -2369,14 +2349,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       <label>Group name</label>
       <input aria-label="group name" className="field" value={groupName} onChange={(e) => setGroupName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGroup(g)} autoFocus />
       <label>Inside</label>
-      <select aria-label="group inside" className="field" value={groupParent} onChange={(e) => setGroupParent(e.target.value)}>
-        <option value="">Nothing: top level</option>
-        {groupChoices(groups, g.id).map((x) => (
-          <option key={x.id} value={x.id}>
-            {x.name}
-          </option>
-        ))}
-      </select>
+      <Select label="group inside" value={groupParent} onChange={(v) => setGroupParent(v)} options={[{ value: "", label: "Nothing: top level" }, ...groupChoices(groups, g.id).map((x) => ({ value: x.id, label: x.name }))]} className="field" />
       <label>Header colour</label>
       <HeaderColourPicker settings={settings} kind="g" id={g.id} onSetting={onSetting} />
       {dropGroup ? (
@@ -2544,10 +2517,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <label>Workspaces folder{place.fromEnv && rootDraft === place.dir ? " (from KOLUX_WORKSPACES_DIR)" : ""}</label>
               <input aria-label="workspaces folder" className="field" list="used-dirs" value={rootDraft} onChange={(e) => setRootDraft(e.target.value)} onKeyDown={rootKey} onBlur={() => rootDraft !== place.dir && saveRoot()} />
               <label>Layout</label>
-              <select aria-label="workspaces layout" className="field" value={flatDraft ? "flat" : "nested"} onChange={(e) => setFlatDraft(e.target.value === "flat")}>
-                <option value="nested">Nested: a folder per project</option>
-                <option value="flat">Flat: all side by side</option>
-              </select>
+              <Select label="workspaces layout" value={flatDraft ? "flat" : "nested"} onChange={(v) => setFlatDraft(v === "flat")} options={[{ value: "nested", label: "Nested: a folder per project" }, { value: "flat", label: "Flat: all side by side" }]} className="field" />
               <div className="btn-row">
                 <button className="btn" onMouseDown={(e) => e.preventDefault()} onClick={() => saveRoot()} disabled={rootDraft === place.dir && flatDraft === place.flat}>
                   Save
@@ -2581,19 +2551,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {filterOpen && (
             <div className="sb-form" data-filter>
               <label>Group by</label>
-              <select aria-label="group by" className="field" value={groupBy} onChange={(e) => onSetting(GROUP_SETTING, e.target.value)}>
-                <option value="project">Project</option>
-                <option value="none">None: one flat list</option>
-                <option value="status">Status</option>
-                <option value="pr">Pull request</option>
-              </select>
+              <Select label="group by" value={groupBy} onChange={(v) => onSetting(GROUP_SETTING, v)} options={[
+                { value: "project", label: "Project" },
+                { value: "none", label: "None: one flat list" },
+                { value: "status", label: "Status" },
+                { value: "pr", label: "Pull request" },
+              ]} className="field" />
               <label>Sort</label>
-              <select aria-label="sort" className="field" value={sortBy} onChange={(e) => onSetting(SORT_SETTING, e.target.value)}>
-                <option value="smart">Smart: what needs you first</option>
-                <option value="name">Name</option>
-                <option value="activity">Recent: latest activity first</option>
-                <option value="manual">Manual: drag rows into your own order</option>
-              </select>
+              <Select label="sort" value={sortBy} onChange={(v) => onSetting(SORT_SETTING, v)} options={[
+                { value: "smart", label: "Smart: what needs you first" },
+                { value: "name", label: "Name" },
+                { value: "activity", label: "Recent: latest activity first" },
+                { value: "manual", label: "Manual: drag rows into your own order" },
+              ]} className="field" />
               <label className="check">
                 <input type="checkbox" checked={hideAuto} onChange={(e) => onSetting(HIDE_AUTOMATION_SETTING, e.target.checked)} /> Hide workspaces made by automations
               </label>

@@ -191,6 +191,10 @@ fn write_settings(app: &tauri::AppHandle, store: &Mutex<Store>, change: impl FnO
     if before != after {
         resume::switched(app, after);
     }
+    // Kept-warm shell: switched off, the warm shells end now, not at the next terminal start.
+    if let Some(t) = app.try_state::<Terminals>() {
+        t.warm_setting(&value);
+    }
     // Views that depend on a setting (the lapsed sign-in notice, ACCT-012) read again.
     let _ = tauri::Emitter::emit(app, "settings-saved", payload);
     Ok(())

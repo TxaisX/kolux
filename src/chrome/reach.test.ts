@@ -114,32 +114,25 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 const DIALOGS: [file: string, label: string, how: string][] = [
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
-  ["editor/DiffPane.tsx", "pop.note ? \"Edit review note\" : \"Add review note\"", "inner"],
-  ["editor/ReviewNotes.tsx", "Add review note", "inner"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "tag"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
   ["onboarding/Guides.tsx", "Tip", "window"],
   ["onboarding/Guides.tsx", "Agent status hooks", "exempt: a docked tip, not modal; Not now closes it"],
-  ["onboarding/Tours.tsx", "${tour.name} tour", "window"],
   ["onboarding/Wizard.tsx", "Get started with Kolux", "window"],
   ["projects/AddProject.tsx", "Stop copying?", "in-ui"],
   ["projects/CleanupDialog.tsx", "Clean up workspaces in ${project.name}", "tag"],
   ["projects/CleanupDialog.tsx", "Confirm removal", "parent"],
-  ["projects/WorktreePalette.tsx", "Go to / Run a command", "inner"],
   ["recovery/RecoveryMount.tsx", "Graphics", "exempt: the graphics fallback needs one of its two answers"],
   ["scm/PrStart.tsx", "Create pull request", "tag"],
   ["scm/SourceControlPanel.tsx", "Create pull request", "tag"],
   ["scm/SourceControlPanel.tsx", "asking.title ?? \"Resolve conflicts with an agent\"", "tag"],
   ["scm/StackMap.tsx", "Confirm the stack merge", "tag"],
   ["settings/SettingsPage.tsx", "Settings", "window"],
-  ["shell/TabSearch.tsx", "Search open tabs", "inner"],
-  ["skills/SkillsPage.tsx", "Skill folders", "window"],
   ["skills/SkillUpdate.tsx", "Update Kolux skills", "tag"],
   ["status/manage.tsx", "End ${name}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/manage.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/ResourceManager.tsx", "bulkQ.label", "in-ui"],
   ["terminal/BackgroundSessions.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
-  ["terminal/PlanSheet.tsx", "Review the plan for ${title}", "inner"],
   ["terminal/TerminalPane.tsx", "notice.title", "tag"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "tag"],
   ["terminal/TerminalPane.tsx", "The shell ended", "tag"],
@@ -236,7 +229,8 @@ function handler(d: Found): string {
 function focuses(d: Found): boolean {
   if (/autoFocus/.test(d.tag) || FOCUS.test(d.body.slice(d.tag.length))) return true;
   // r.current?.focus(), or const el = r.current; ... el.focus()
-  return [...d.body.matchAll(/\bref=\{(\w+)\}/g)].some(([, r]) => new RegExp(`\\b${r}\\.current\\??\\.focus\\(|= ${r}\\.current;[^]{0,200}?\\.focus\\(`).test(d.src));
+  // (a src/ui Select names its control with controlRef)
+  return [...d.body.matchAll(/\b(?:ref|controlRef)=\{(\w+)\}/g)].some(([, r]) => new RegExp(`\\b${r}\\.current\\??\\.focus\\(|= ${r}\\.current;[^]{0,200}?\\.focus\\(`).test(d.src));
 }
 function closes(d: Found, how: string, all: Found[]): boolean {
   const ref = /\bref=\{(\w+)\}/.exec(d.tag)?.[1];
@@ -258,7 +252,7 @@ function closes(d: Found, how: string, all: Found[]): boolean {
       return /addEventListener\("keydown"|watchEscape\(window/.test(d.src) && ESCAPE.test(d.src);
     case "layer":
       // base.tsx draws the popup; the wrapper that mounts it (Popover.tsx) holds the layer for the same ref
-      return /ref=\{popup\}/.test(d.tag) && d.file === "ui/base.tsx" && /useLayer\(open, onClose, popup\)/.test(SRC["/src/ui/Popover.tsx"]);
+      return /ref=\{popup\}/.test(d.tag) && d.file === "ui/base.tsx" && /useLayer\(open, onClose, popup(, fieldEscape)?\)/.test(SRC["/src/ui/Popover.tsx"]);
     default:
       return how.startsWith("exempt: ");
   }

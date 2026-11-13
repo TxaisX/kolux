@@ -697,6 +697,7 @@ input { font: inherit; }
 .autos-table td:first-child .dot.live { background: var(--dot-live); }
 .autos-act { position: relative; width: 34px; text-align: right; }
 .autos-menu { position: absolute; right: 8px; top: 28px; min-width: 150px; }
+.ui-positioner > .autos-menu { position: static; }
 .autos-detail { flex: 1 1 45%; min-height: 0; overflow: auto; padding: 12px 14px; border-top: 1px solid var(--line); }
 .autos-detail-head { display: flex; align-items: center; gap: 10px; }
 .autos-detail h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg); }
@@ -1101,6 +1102,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .diff-body > .cm-mergeView .cm-editor { height: auto; }
 .diff-actions { position: relative; display: inline-flex; }
 .diff-menu { position: absolute; top: 28px; right: 0; }
+.ui-positioner > .diff-menu { position: static; }
 .diff-menu .check { width: 14px; flex: none; color: var(--fg); }
 
 /* EDIT-029: All Changes. Sections stack in one scroll; each text diff stops at a ceiling and
@@ -1327,6 +1329,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .skills-anchor { position: relative; }
 .skills-pop { position: absolute; top: calc(100% + 4px); left: 0; }
 .skills-pop.right { left: auto; right: 0; }
+.ui-positioner > .skills-pop { position: static; }
 .skills-head .skills-pop { top: 40px; right: 12px; }
 .skills-pop .tick { width: 12px; color: var(--done); }
 .btn.on { border-color: var(--line-focus); }

@@ -3,7 +3,7 @@
 // There is no jsdom, so the page is a small stand-in: a window that keeps its listeners, a document with an active
 // element, and boxes that answer the two selector queries the helper makes.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FOCUSABLE, MENU_ROWS, menuRoom, tabStep, tabTarget, trapDialog, trapMenu, trapTab } from "./dialogFocus";
+import { FOCUSABLE, MENU_ROWS, menuRoom, tabStep, tabTarget, trapMenu, trapTab } from "./dialogFocus";
 
 type Fake = { name: string; isConnected: boolean; focus: () => void };
 type Handler = (e: Record<string, unknown>) => void;
@@ -61,40 +61,6 @@ test("tabStep always lands on a neighbour, wrapping at both ends (C16-R2-01)", (
   expect([tabStep(items, "outside", false), tabStep(items, "outside", true), tabStep([], "x", false)]).toEqual(["a", "c", null]);
 });
 
-test("a dialog: focus moves in, Tab and Shift+Tab stay inside, Escape closes from anywhere and focus goes back", () => {
-  const opener = el("opener");
-  active = opener;
-  const cancel = el("cancel");
-  const confirm = el("confirm");
-  const onClose = vi.fn();
-  const stop = trapDialog(box([cancel, confirm]), onClose, () => cancel as unknown as HTMLElement);
-  expect(active, "focus moved in").toBe(cancel);
-
-  const fwd = press("Tab");
-  expect(fwd.defaultPrevented, "middle: the browser steps on").toBe(false);
-  active = confirm;
-  const wrap = press("Tab");
-  expect(wrap.defaultPrevented).toBe(true);
-  expect(active, "Tab from the last control wraps to the first").toBe(cancel);
-  const back = press("Tab", { shiftKey: true });
-  expect(back.defaultPrevented).toBe(true);
-  expect(active, "Shift+Tab from the first wraps to the last").toBe(confirm);
-  active = body; // a click on the dialog's text drops focus on the page
-  press("Tab");
-  expect(active, "Tab from outside lands in the dialog").toBe(cancel);
-
-  active = body; // Escape still works after focus was lost
-  const esc = press("Escape");
-  expect(onClose).toHaveBeenCalledTimes(1);
-  expect(esc.stopped, "the terminal underneath never gets the Escape").toBe(true);
-
-  stop();
-  expect(active, "focus returns to what had it").toBe(opener);
-  expect(handlers, "both listeners removed").toHaveLength(0);
-  press("Escape");
-  expect(onClose).toHaveBeenCalledTimes(1);
-});
-
 test("T-714: trapTab, the trap alone as an onKeyDown: wraps at both ends, leaves the middle, other keys and a Tab an inner dialog wrapped", () => {
   const first = el("first");
   const mid = el("mid");
@@ -122,17 +88,6 @@ test("T-714: trapTab, the trap alone as an onKeyDown: wraps at both ends, leaves
   key("Tab", { defaultPrevented: true });
   expect(active, "a Tab a dialog inside it already wrapped is left alone").toBe(last);
   expect(key("Escape").defaultPrevented, "Escape stays the dialog's own").toBe(false);
-});
-
-test("a dialog gives focus back only when nobody else took it", () => {
-  const opener = el("opener");
-  active = opener;
-  const cancel = el("cancel");
-  const stop = trapDialog(box([cancel]), () => {}, () => cancel as unknown as HTMLElement);
-  const other = el("somewhere else");
-  active = other; // the confirm opened another surface that took the keyboard
-  stop();
-  expect(active).toBe(other);
 });
 
 test("a menu: focus on the first row, arrows wrap between rows, Escape closes it before the terminal and focus goes back", () => {
@@ -163,20 +118,11 @@ test("a menu: focus on the first row, arrows wrap between rows, Escape closes it
   expect(active).toBe(trigger);
 });
 
-test("a popup in a hidden pane leaves Tab, Escape and the arrows alone", () => {
+test("a menu in a hidden pane leaves the arrows alone", () => {
   let hidden = false;
   const ok = el("ok");
   const b = Object.assign(box([ok], [ok]), { closest: (sel: string) => (sel === "[hidden]" && hidden ? {} : null) });
   const onClose = vi.fn();
-  const stopDialog = trapDialog(b, onClose);
-  hidden = true;
-  const other = el("field");
-  active = other;
-  expect(press("Tab").defaultPrevented, "Tab is not trapped by a hidden dialog").toBe(false);
-  expect(press("Escape").stopped, "Escape goes on to whatever is shown").toBe(false);
-  expect(onClose).not.toHaveBeenCalled();
-  stopDialog();
-  hidden = false;
   const stopMenu = trapMenu(b, onClose);
   hidden = true;
   active = ok;

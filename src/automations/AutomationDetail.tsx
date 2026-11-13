@@ -6,6 +6,7 @@ import { folderName } from "../projects/model";
 import type { Usage } from "../usage/tokens";
 import { ago, graceWord, precheckWord, rowActions, runActions, runStep, startedBy, statusWord, triggerLabel, upcoming, whereItRuns, type Automation, type Run, type RunAction } from "./model";
 import { totalUsage } from "./usage";
+import { Tab, TabList, TabPanel, Tabs } from "../ui/Tabs";
 
 export type DetailProps = { a: Automation; running?: boolean; onEdit?: () => void; onDelete?: () => void; runs: Run[]; runsError?: string; now: number; usage: Usage | null; agent: string; tab: "overview" | "runs"; onTab: (t: "overview" | "runs") => void; onRun: () => void; onToggle: () => void; live?: (r: Run) => boolean; onView?: (r: Run) => void; onResume?: (r: Run) => void; onCancel?: (r: Run) => void; onRetry: () => void };
 export function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, usage, agent, tab, onTab, onRun, onToggle, live, onView, onResume, onCancel, onRetry }: DetailProps) {
@@ -94,14 +95,17 @@ export function Detail({ a, running = false, onEdit, onDelete, runs, runsError, 
           This automation cannot run: {a.problem}. Run now is blocked and timed runs are logged as skipped until it is fixed.
         </div>
       )}
-      <div className="autos-tabs" role="tablist" aria-label="Automation views">
+      {/* A src/ui tab set: the strip has one tab stop and the arrow keys move between Overview and Runs. Both panels
+          stay on the page, the closed one hidden, so the runs list keeps its place. */}
+      <Tabs value={tab} onValue={onTab}>
+      <TabList className="autos-tabs" label="Automation views">
         {(["overview", "runs"] as const).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} className="btn" onClick={() => onTab(t)}>
+          <Tab key={t} value={t} selected={tab === t} className="btn">
             {t === "overview" ? "Overview" : "Runs"}
-          </button>
+          </Tab>
         ))}
-      </div>
-      <div role="tabpanel" aria-label="Overview" hidden={tab !== "overview"}>
+      </TabList>
+      <TabPanel value="overview" label="Overview" hidden={tab !== "overview"}>
         <dl className="autos-facts">
           <dt>Timetable or trigger</dt>
           <dd>{triggerLabel(a)}</dd>
@@ -148,8 +152,8 @@ export function Detail({ a, running = false, onEdit, onDelete, runs, runsError, 
             {unfolded ? "Fold the prompt" : "Show the whole prompt"}
           </button>
         )}
-      </div>
-      <div role="tabpanel" aria-label="Runs" hidden={tab !== "runs"}>
+      </TabPanel>
+      <TabPanel value="runs" label="Runs" hidden={tab !== "runs"}>
       {a.source === "hermes" && a.jobId ? (
         <HermesRuns jobId={a.jobId} show={tab === "runs"} />
       ) : runsError ? (
@@ -187,7 +191,8 @@ export function Detail({ a, running = false, onEdit, onDelete, runs, runsError, 
           ))}
         </ol>
       )}
-      </div>
+      </TabPanel>
+      </Tabs>
     </section>
   );
 }

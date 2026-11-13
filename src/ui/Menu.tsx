@@ -5,7 +5,7 @@
 import { useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useLayer, type CloseWhy } from "./layer";
 import { useBase } from "./part";
-import type { ItemProps } from "./base";
+import type { ItemProps, Place } from "./base";
 import "./ui.css";
 
 type Side = "top" | "bottom" | "left" | "right";
@@ -22,6 +22,9 @@ export type MenuProps = {
   anchor?: RefObject<Element | null> | Element | null;
   /** Or a point on screen: a context menu opens where the mouse was. */
   at?: Point | null;
+  /** Or fixed window numbers for the box's left and bottom edges, for a menu that opens upward exactly where it always
+   *  did (the status bar's): Base UI's placement snaps to device pixels and keeps the box on screen; this does neither. */
+  place?: Place | null;
   side?: Side;
   align?: Align;
   /** Pixels between the anchor and the menu. */

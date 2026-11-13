@@ -1,7 +1,9 @@
 // UX audit lane E2: the small behaviour changes on the launch and agents screens.
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+// The plus menu is a src/ui Popover, drawn only on a real DOM; what it holds is read here through a stand-in.
+vi.mock("../ui/Popover", async () => (await import("../tasks/popoverStandIn")).popoverModule);
 import AgentsRail from "../agents/AgentsRail";
 import ChooserPane, { holdsTyping, selfInstallHint, sheetKey } from "./ChooserPane";
 import PlusMenu, { type AgentInfo } from "./PlusMenu";
@@ -127,9 +129,9 @@ test("F6: each notice's buttons name their notice for a screen reader", () => {
   expect(html).toContain('aria-label="Dismiss: No AI program found on this computer"');
 });
 
-test("F1: the plus menu's extra buttons are menu items", () => {
+test("F1: the plus menu's extra buttons are buttons in it, walked by the arrow keys with the rows", () => {
   const html = renderToString(createElement(PlusMenu, { agents: [claude, agent("codex", { installed: true, path: "/c" })], defaultId: "claude", onPick() {}, onSetDefault() {}, onClose() {} }));
-  expect(html).toContain('role="menuitem" class="menu-default"');
+  expect(html).toContain('<button class="menu-default"');
 });
 
 test("F4/F6: the Agents rail marks the picked session, and its empty text covers 'nothing installed'", () => {

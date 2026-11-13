@@ -97,7 +97,10 @@ useMenuFocus(moreMenu, menu !== null, () => setMenu(null));
 </Menu>
 ```
 
-Picking a row closes the menu by itself, so the `setMenu(null)` before the action goes away.
+Picking a row closes the menu by itself, so the `setMenu(null)` before the action goes away. A menu puts focus on a
+row as it opens (the ticked one in a list of choices, such as the account switcher's, else the first row that can act),
+so the keyboard is in the list at once (T-720), and gives focus back to what had it when it closes, even when the menu
+leaves the page together with its owner.
 
 ### ContextMenu (migrated: `projects/HideableRow.tsx`, the sidebar's Automations and Skills rows)
 
@@ -116,7 +119,7 @@ Picking a row closes the menu by itself, so the `setMenu(null)` before the actio
 </ContextMenu>
 ```
 
-### Popover (wrapper built; no exemplar, see "What is left")
+### Popover (migrated: `ports/PortsItem.tsx`, the status bar's Ports list)
 
 ```tsx
 // before (ports/PortsItem.tsx shape)
@@ -126,6 +129,11 @@ useEffect(() => (open ? watchEscape(window, close) : undefined), [open]);
 // after
 <Popover open={open} onClose={close} label="Ports" anchor={button} side="top" className="ports-menu">...</Popover>
 ```
+
+To keep a box exactly where it was, a site may pass the old numbers: `Popover at={{ x, y }}` hangs it from the point the
+old code computed (the Ports list keeps its 380 px of room at the window's right edge), and `Menu place={{ left, bottom }}`
+puts an upward menu's edges at fixed window numbers (the status bar's items menu). Base UI's own placement keeps 8 px from
+the window's edge and snaps the box to whole device pixels, which moved both a little in the before and after shots.
 
 ### Tabs (migrated: the right sidebar's tab strip)
 
@@ -249,130 +257,96 @@ It counts matching source lines. **To do** is the sum of the Dialog, Menu, Tabs 
 popups, tab strips and native selects, and it reaches zero when the migration is done. A role inside a selector string
 (`'[role="dialog"]'`, a query for any open dialog) or a comment is not counted, nor is an element that carries a dialog
 role but is not a popup (the list under the checklist: the chat's permission and question cards, and questions asked in
-place inside the surface that asked them). The other columns are for reference and stay above zero: **Opener** is the
+place inside the surface that asked them). Two more named lists are counted in their columns but are not to do: the
+selects kept native on purpose (inline editors that close on blur), and the lines PR #255 removes or moves onto src/ui
+itself (the per-cell tab strip and the tab menu). The other columns are for reference and stay above zero: **Opener** is the
 right-click handler or `aria-haspopup` button that opens a popup, which stays when the popup moves; **Switch** and
 **Checkbox** stay native inputs (see above); **Tooltip** counts every `title=` prop, Kolux components' own included, and
 a plain hover hint can stay a `title`.
 
-Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTerminalCard.*`. Leave those for last.
+The sites still listed, and why each is left for now, are under "What is left, and why" after the checklist.
 
 <!-- SITES:START -->
 | Folder | Dialog | Menu | Tabs | Select | Opener | Switch | Checkbox | Tooltip | To do |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | agents | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 |
 | artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 |
-| automations | 0 | 1 | 1 | 0 | 1 | 1 | 1 | 14 | 2 |
+| automations | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 14 | 0 |
 | board | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 7 | 0 |
-| chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
+| chat | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
-| editor | 2 | 6 | 0 | 1 | 8 | 0 | 4 | 128 | 9 |
+| editor | 0 | 0 | 0 | 1 | 6 | 0 | 4 | 128 | 0 |
 | feedback | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
-| launch | 0 | 1 | 0 | 0 | 2 | 0 | 2 | 32 | 1 |
+| launch | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 32 | 0 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
-| onboarding | 4 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 5 |
+| onboarding | 3 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 4 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
-| projects | 1 | 1 | 1 | 10 | 7 | 0 | 19 | 75 | 13 |
+| projects | 0 | 1 | 1 | 0 | 7 | 0 | 19 | 75 | 2 |
 | recovery | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
-| scm | 0 | 5 | 0 | 1 | 4 | 0 | 5 | 98 | 6 |
+| scm | 0 | 0 | 0 | 0 | 5 | 0 | 5 | 98 | 0 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
-| settings | 1 | 1 | 1 | 0 | 0 | 30 | 10 | 43 | 3 |
+| settings | 1 | 0 | 0 | 0 | 0 | 30 | 10 | 43 | 1 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
-| shell | 1 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 4 |
-| skills | 2 | 3 | 0 | 0 | 4 | 0 | 2 | 19 | 5 |
+| shell | 0 | 1 | 1 | 0 | 2 | 0 | 1 | 24 | 0 |
+| skills | 1 | 0 | 0 | 0 | 4 | 0 | 2 | 19 | 1 |
 | space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
-| switcher | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 4 | 1 |
-| tasks | 0 | 0 | 2 | 2 | 0 | 0 | 3 | 41 | 4 |
-| terminal | 5 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 7 |
+| switcher | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 4 | 0 |
+| tasks | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 41 | 0 |
+| terminal | 4 | 1 | 0 | 0 | 4 | 0 | 0 | 29 | 5 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **16** | **24** | **8** | **14** | **41** | **42** | **57** | **646** | **62** |
+| **Total** | **9** | **4** | **3** | **3** | **39** | **42** | **57** | **646** | **14** |
+
+To do: 14. Native on purpose: 3. Removed by #255: 2.
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
-
-### automations
-
-- [ ] `src/automations/AutomationDetail.tsx`: Tabs :97
-- [ ] `src/automations/AutomationsPage.tsx`: Menu :484
-
-### chat
-
-- [ ] `src/chat/ChatText.tsx`: Menu :117
 
 ### editmenu
 
 - [ ] `src/editmenu/EditMenuHost.tsx`: Menu :153
 
-### editor
-
-- [ ] `src/editor/CodeLabel.tsx`: Select :50
-- [ ] `src/editor/DiffPane.tsx`: Menu :517, Dialog :621
-- [ ] `src/editor/Explorer.tsx`: Menu :868, Menu :880
-- [ ] `src/editor/PreviewPane.tsx`: Menu :238
-- [ ] `src/editor/ReviewNotes.tsx`: Dialog :71, Menu :150
-- [ ] `src/editor/TableControls.tsx`: Menu :113
-
-### launch
-
-- [ ] `src/launch/PlusMenu.tsx`: Menu :144
-
 ### onboarding
 
 - [ ] `src/onboarding/Guides.tsx`: Dialog :177, Dialog :269, Tabs :279
-- [ ] `src/onboarding/Tours.tsx`: Dialog :130
 - [ ] `src/onboarding/Wizard.tsx`: Dialog :117
 
 ### projects
 
-- [ ] `src/projects/ProjectsPanel.tsx`: Select :1141, Select :1177, Select :1182, Select :1514, Select :1554, Select :2329, Select :2412, Tabs :2531, Select :2587, Select :2624, Select :2631, Menu :2735
-- [ ] `src/projects/WorktreePalette.tsx`: Dialog :303
-
-### scm
-
-- [ ] `src/scm/CommentsPanel.tsx`: Menu :212
-- [ ] `src/scm/SourceControlPanel.tsx`: Menu :881, Menu :906, Select :1110, Menu :1284, Menu :1312
+- [ ] `src/projects/ProjectsPanel.tsx`: Tabs :2504, Menu :2705
 
 ### settings
 
-- [ ] `src/settings/ConnectGrid.tsx`: Menu :54
-- [ ] `src/settings/RoutingPage.tsx`: Tabs :52
 - [ ] `src/settings/SettingsPage.tsx`: Dialog :402
-
-### shell
-
-- [ ] `src/shell/TabSearch.tsx`: Dialog :48
-- [ ] `src/shell/window/Content.tsx`: Tabs :203
-- [ ] `src/shell/window/Grid.tsx`: Tabs :101
-- [ ] `src/shell/window/TabMenuView.tsx`: Menu :29
 
 ### skills
 
 - [ ] `src/skills/SkillUpdate.tsx`: Dialog :141
-- [ ] `src/skills/SkillsPage.tsx`: Menu :181, Menu :236, Dialog :279, Menu :394
-
-### switcher
-
-- [ ] `src/switcher/AccountSwitcher.tsx`: Menu :133
-
-### tasks
-
-- [ ] `src/tasks/ProjectsView.tsx`: Select :45, Select :57
-- [ ] `src/tasks/PullRequestPage.tsx`: Tabs :306
-- [ ] `src/tasks/TasksPage.tsx`: Tabs :314
 
 ### terminal
 
-- [ ] `src/terminal/LinkActionMenu.tsx`: Menu :67
 - [ ] `src/terminal/PaneMenu.tsx`: Menu :166
-- [ ] `src/terminal/PlanSheet.tsx`: Dialog :50
 - [ ] `src/terminal/TerminalPane.tsx`: Dialog :1952, Dialog :1981, Dialog :2028, Dialog :2055
 
-Not popups, so not counted (a dialog role on an element no src/ui wrapper fits):
+Native on purpose, counted in their column but not to do:
+
+- `src/editor/CodeLabel.tsx` (Code language): the code block's language, laid over the editor; it goes on blur
+- `src/tasks/ProjectsView.tsx` (issue_type): a cell editor that commits on change and cancels on blur
+- `src/tasks/ProjectsView.tsx` (single_select): a cell editor that commits on change and cancels on blur
+
+Removed by #255, counted in their column but not to do (2 lines):
+
+- `src/shell/window/Grid.tsx` Tabs :101
+- `src/shell/window/TabMenuView.tsx` Menu :29
+  - `src/shell/window/Grid.tsx`: the per-cell tab strip, which #255 removes
+  - `src/shell/window/TabMenuView.tsx`: the tab menu, which #255 moves onto a src/ui ContextMenu
+
+Not popups, so not counted (a dialog, menu or tab role on an element no src/ui wrapper fits):
 
 - `src/chat/PermissionCard.tsx` (askTitle(card.tool)): a card in the chat
 - `src/chat/QuestionCard.tsx` (Question from the agent): a card in the chat
@@ -391,4 +365,30 @@ Not popups, so not counted (a dialog role on an element no src/ui wrapper fits):
 - `src/update/UpdateCenterView.tsx` (Updates): the update card, docked in a corner; Escape folds it
 - `src/onboarding/Guides.tsx` ("Tip"): a tip card docked in a corner, aria-modal false
 - `src/onboarding/Guides.tsx` (Agent status hooks): a tip card docked in a corner, aria-modal false
+- `src/settings/ConnectGrid.tsx` (conn-more-list): a list that opens in place under its summary (a <details>), not over the card
+- `src/editor/ReviewNotes.tsx` (Send the notes to): a list that opens in place in the review tray, not over it
+- `src/shell/window/Content.tsx` (Workspaces being created): placeholders for workspaces Git is still making: nothing to pick, so not a tab set
 <!-- SITES:END -->
+
+## What is left, and why
+
+Not reached in this PR. Only the first item needs something the wrappers lack; the rest need more than a swap, noted
+here for whoever moves them:
+
+- `terminal/TerminalPane.tsx`, four `.pane-ask` questions: drawn inside their pane and covering only it, so the other
+  panes stay usable. A src/ui Dialog is drawn on the body over the whole window; these need the pane's box as their
+  viewport (a pane-scoped layer), which the wrappers do not have yet.
+- `terminal/PaneMenu.tsx`, the terminal's right-click menu: its keyboard tests (T-710 menu keys, T-720 Tab and Escape
+  handing focus back into the pane under StrictMode) are written against this menu on the fake DOM and move to a real
+  DOM with it.
+- `editmenu/EditMenuHost.tsx`, the text-field menu: waits up to 300 ms for the engine's spelling suggestions, and a
+  press on a row moves no focus, so the field's selection is kept for Cut and Copy.
+- From #255, left for last as planned: `shell/window/TabMenuView.tsx` (the tab menu, with a group of colour swatches),
+  `shell/window/Grid.tsx` (the per-cell tab strip, whose tabs are dragged between cells), `shell/window/Content.tsx`
+  (stand-in tabs for workspaces being made, which never take focus) and the sidebar row menu in
+  `projects/ProjectsPanel.tsx` (its tablist is behind `NOT_BUILT = false` and never drawn).
+- Whole-window flows, each wanting a run-through of its own: `settings/SettingsPage.tsx` (Settings is a full-window
+  dialog with its own Tab trap, under every settings card's popups; a modal Base UI dialog makes everything outside it
+  inert), `onboarding/Wizard.tsx` (first run, with the window's drag strip in its backdrop), `onboarding/Guides.tsx`
+  (Getting Started, which plays a closing animation before it goes, and Explore with its vertical tab rail) and `skills/SkillUpdate.tsx` (focus goes to the Install panel, the Review
+  button's replacement, More actions or the page heading, and is taken back when the Stop button leaves).

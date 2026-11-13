@@ -2,8 +2,10 @@
 // markdown, one block per section; each block takes comments, a note sits at the foot, and the
 // two answers are Approve and Request changes. SAFE-006: a plan cut to fit says so; SAFE-007: once
 // the pane stops waiting on this plan, the sheet says the prompt closed and both answers go dead.
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { renderMarkdown } from "../editor/PreviewPane";
+import { Dialog } from "../ui/Dialog";
+import type { CloseWhy } from "../ui/layer";
 import { canRequest, planSections, sectionQuote, type PlanDraft } from "./planReview";
 
 type Props = {
@@ -32,11 +34,9 @@ export default function PlanSheet({ title, plan, draft, onDraft, onApprove, onRe
     if (sending) onCancel?.();
     onClose();
   };
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && !e.isComposing && close();
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [onClose, onCancel, sending]);
+  // The sheet sits beside the terminal, which stays usable while it is open: a press outside it does not close it.
+  // Escape does (src/ui's layer, from anywhere), and Close.
+  const dismiss = (why: CloseWhy) => why !== "outside" && close();
   const add = (i: number) => {
     const s = sections[i];
     if (!text.trim()) return;
@@ -47,7 +47,7 @@ export default function PlanSheet({ title, plan, draft, onDraft, onApprove, onRe
   const range = (s: { start: number; end: number }) => (s.start === s.end ? `Line ${s.start}` : `Lines ${s.start}-${s.end}`);
   const count = draft.comments.length;
   return (
-    <aside className="plan-sheet" role="dialog" aria-label={`Review the plan for ${title}`}>
+    <Dialog modal={false} onClose={dismiss} label={`Review the plan for ${title}`} className="plan-sheet" initialFocus={false}>
       <header className="plan-sheet-head">
         <h3>Review the plan</h3>
         <span className="muted">{title}</span>
@@ -119,6 +119,6 @@ export default function PlanSheet({ title, plan, draft, onDraft, onApprove, onRe
           </button>
         </div>
       </footer>
-    </aside>
+    </Dialog>
   );
 }

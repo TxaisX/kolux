@@ -2,7 +2,9 @@
 // comes first with its shortcut when one is bound, the others get a "default" button.
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+// The plus menu is a src/ui Popover, drawn only on a real DOM; what it holds is read here through a stand-in.
+vi.mock("../ui/Popover", async () => (await import("../tasks/popoverStandIn")).popoverModule);
 import { KeymapContext } from "../keys/KeymapContext";
 import { resolve } from "../keys/keymap";
 import PlusMenu, { markFor, programWord, shellWord, type AgentInfo } from "./PlusMenu";
@@ -11,8 +13,9 @@ const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude"
 const codex: AgentInfo = { id: "codex", name: "Codex", program: "codex", args: ["--sandbox", "workspace-write", "--ask-for-approval", "never"], installed: true, path: "C:\\Users\\me\\AppData\\Roaming\\npm\\codex.cmd" };
 const gemini: AgentInfo = { id: "gemini", name: "Gemini CLI", program: "gemini", args: [], installed: false, path: null };
 
+/** Every button the menu draws (its rows, each row's Set as default, and the foot), in order. */
 function items(html: string): string[] {
-  return html.split("</button>").filter((chunk) => chunk.includes('role="menuitem"'));
+  return html.split("</button>").filter((chunk) => chunk.includes("<button"));
 }
 
 const render = (props: Partial<Parameters<typeof PlusMenu>[0]>, keybindings: Record<string, string[]> = {}) => {
@@ -23,7 +26,7 @@ const render = (props: Partial<Parameters<typeof PlusMenu>[0]>, keybindings: Rec
 
 test("only installed agents are offered, the default first, and a missing one is not listed", () => {
   const html = render({});
-  expect(html).toContain('role="menu"');
+  expect(html).toContain('role="dialog" aria-label="New session"');
   const rows = items(html);
   const claudeRow = rows.find((r) => r.includes("Claude Code"));
   const codexRow = rows.find((r) => r.includes("Codex"));

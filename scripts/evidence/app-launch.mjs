@@ -8,7 +8,7 @@
 //   app.pid, app.exePath             // set by launch() / relaunch()
 //   await app.closeApp()             // graceful close, orphan scan, cleanup; returns [ok, note] or null
 import { spawn, execFile } from "node:child_process";
-import { mkdirSync, openSync, writeFileSync } from "node:fs";
+import { mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -383,7 +383,22 @@ export function createApp(opts) {
 
   // T-560: the config the app is started with. It never carries window entries, because tauri dev compiles this
   // config into the debug exe; --offscreen moves the window at run time.
-  app.config = () => ({ identifier: IDENTIFIER, build: { devUrl: `http://localhost:${PORT}`, beforeDevCommand: `pnpm exec vite --port ${PORT} --strictPort` } });
+  // PROVE_CDP_IN_CONFIG=1 is the one exception: the WebView2 on GitHub's windows-latest runner (156.0.4314.58,
+  // 2026-11) started the app's web view with only the arguments the app passes and ignored
+  // WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS (and the same flag as a WebView2 policy), so nothing listened on the
+  // debugging port. Then the windows are copied from tauri.conf.json unchanged except for the port in their
+  // additionalBrowserArgs, which lib.rs hands to recovery::browser_args. A non-empty value takes the place of
+  // BASE_ARGS there, so it starts with BASE_ARGS' own flags and the web view runs as usual plus the port.
+  const windowsWithPort = () =>
+    JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8")).app.windows.map((w) => ({
+      ...w,
+      additionalBrowserArgs: `${w.additionalBrowserArgs ?? "--disable-features=msWebOOUI,msPdfOOUI"} --remote-debugging-port=${CDP}`,
+    }));
+  app.config = () => ({
+    identifier: IDENTIFIER,
+    build: { devUrl: `http://localhost:${PORT}`, beforeDevCommand: `pnpm exec vite --port ${PORT} --strictPort` },
+    ...(process.env.PROVE_CDP_IN_CONFIG === "1" ? { app: { windows: windowsWithPort() } } : {}),
+  });
   app.pageUp = pageUp;
   app.moveWindow = moveWindow;
 
