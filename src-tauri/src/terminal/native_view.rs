@@ -57,6 +57,35 @@ impl Look {
     }
 }
 
+/// What the engine hands back minus its answers to the cursor question (ESC [ row ; col R). The pane's xterm takes
+/// the same output and answers that question itself, so the engine's answer is a second one, and the console host
+/// passes an answer nobody waits for on to the shell as a key: F3, which PowerShell takes as "search for the next
+/// key typed" (on GitHub's windows-latest runner the first line typed into a native pane lost its first letter).
+/// Typed keys never look like this: the engine sends them in win32-input-mode (ESC [ .. _), which ConPTY turns on.
+pub(crate) fn without_cursor_reports(text: &str) -> String {
+    let b = text.as_bytes();
+    let mut out = String::with_capacity(text.len());
+    let (mut i, mut from) = (0, 0);
+    while i < b.len() {
+        if b[i] == 0x1b && b.get(i + 1) == Some(&b'[') {
+            let digits = |at: usize| b[at..].iter().take_while(|c| c.is_ascii_digit()).count();
+            let row = digits(i + 2);
+            if row > 0 && b.get(i + 2 + row) == Some(&b';') {
+                let col = digits(i + 3 + row);
+                if col > 0 && b.get(i + 3 + row + col) == Some(&b'R') {
+                    out.push_str(&text[from..i]);
+                    i += 4 + row + col;
+                    from = i;
+                    continue;
+                }
+            }
+        }
+        i += 1;
+    }
+    out.push_str(&text[from..]);
+    out
+}
+
 /// Bytes held back from the previous chunk because they end mid-character. Output arrives in chunks cut
 /// anywhere, but the engine takes UTF-16 text, so a character split across two chunks waits for its tail.
 pub(crate) fn take_text(pending: &mut Vec<u8>, chunk: &[u8]) -> String {
@@ -278,6 +307,10 @@ mod win {
             }
             String::from_utf16_lossy(std::slice::from_raw_parts(data, n))
         };
+        let text = super::without_cursor_reports(&text);
+        if text.is_empty() {
+            return;
+        }
         let Some(id) = super::SLOTS.lock().ok().and_then(|s| s.id_at(slot)) else { return };
         let Some(app) = APP.get().cloned() else { return };
         std::thread::spawn(move || {
@@ -473,6 +506,18 @@ mod win {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_engines_cursor_answers_stay_out_of_the_session_and_keys_go_through() {
+        assert_eq!(without_cursor_reports("\x1b[1;1R"), "");
+        assert_eq!(without_cursor_reports("\x1b[12;80R\x1b[3;4R"), "");
+        assert_eq!(without_cursor_reports("a\x1b[1;1Rb"), "ab");
+        // win32-input-mode keys (G down, G up) and other sequences are left alone.
+        let keys = "\x1b[71;34;71;1;8;1_\x1b[71;34;71;0;8;1_";
+        assert_eq!(without_cursor_reports(keys), keys);
+        assert_eq!(without_cursor_reports("\x1b[I\x1b[?1;2c\x1b[1R\x1b[;1R"), "\x1b[I\x1b[?1;2c\x1b[1R\x1b[;1R");
+        assert_eq!(without_cursor_reports("dir\r"), "dir\r");
+    }
 
     #[test]
     fn a_character_split_across_chunks_waits_for_its_tail() {
