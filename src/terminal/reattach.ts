@@ -61,3 +61,14 @@ export function needsSize(back: Reattached | null): boolean {
 export function fromThisService(generation: number | undefined, service: ServiceInfo | null): boolean {
   return generation === undefined || service === null || generation === service.generation;
 }
+
+/** Kept-warm shell: what a new plain-shell pane asks for alongside its reattach (null: ask as before). */
+export type WarmAsk = { cwd: string; cols: number; rows: number };
+
+/** Kept-warm shell: a new pane may take its folder's warm shell only when it would start exactly that: the
+ *  default shell in the folder with nothing added, no command typed in at the first prompt (the warm shell's
+ *  prompt has passed) and no terminal of its own to take back. */
+export function warmAskOf(p: { on: boolean; key: number | undefined; restored: boolean; moved: boolean; program: string | null; args: readonly string[]; env: readonly unknown[] | undefined; typed: string | undefined; agent: string; account: string | null | undefined; cwd: string | null }, cols: number, rows: number): WarmAsk | null {
+  const plain = p.program === null && p.args.length === 0 && !p.env?.length && p.typed === undefined && p.agent === "shell" && !p.account;
+  return p.on && p.key !== undefined && !p.restored && !p.moved && plain && p.cwd ? { cwd: p.cwd, cols, rows } : null;
+}

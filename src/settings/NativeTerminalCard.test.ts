@@ -15,8 +15,18 @@ test("NATIVE-TERMINAL: the switch is on the Terminal page for Windows only", () 
   const h = html({}, "win32");
   expect(h).toContain("Draw panes with the Windows Terminal engine (experimental)");
   expect(h).toContain("Microsoft.Terminal.Control.dll");
-  expect(html({}, "linux")).toBe("");
-  expect(html({}, "darwin")).toBe("");
+  expect(html({}, "linux")).not.toContain("Windows Terminal engine");
+  expect(html({}, "darwin")).not.toContain("Windows Terminal engine");
+});
+
+test("kept-warm shell: off by default, on every platform, its cost in the label, and it saves the field the panes read", () => {
+  const label = "Keep a shell ready per folder: new terminals open in about 0.3 s, uses about 56 MB per open folder";
+  for (const p of ["win32", "linux", "darwin"] as const) {
+    expect(html({}, p)).toContain(label);
+    expect(checked(html({}, p), "Keep a shell ready")).toBe(false);
+  }
+  expect(checked(html({ terminalWarmShell: true }, "win32"), "Keep a shell ready")).toBe(true);
+  expect(checked(html({ terminalWarmShell: "true" }, "win32"), "Keep a shell ready")).toBe(false);
 });
 
 test("NATIVE-TERMINAL: it starts off and shows the saved value", () => {

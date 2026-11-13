@@ -1,6 +1,6 @@
 // APP-052 (T-075): a pane takes its terminal back from the run of the service that owns it, over a fake service.
 import { describe, expect, it } from "vitest";
-import { type Attach, fromThisService, LIMIT_MS, needsSize, orphanOf, reattach, type ServiceInfo } from "./reattach";
+import { type Attach, fromThisService, LIMIT_MS, needsSize, orphanOf, reattach, type ServiceInfo, warmAskOf } from "./reattach";
 
 /** A fake terminal service: `down` failed answers before it comes up, then `info`; attach answers from `answers`. */
 function fake(info: ServiceInfo, answer: Partial<Attach> = {}, down = 0) {
@@ -155,5 +155,25 @@ describe("DT-C248 review: the size goes to a terminal taken back", () => {
     expect(needsSize({ kind: "fresh", service: run })).toBe(false);
     expect(needsSize({ kind: "replaced", service: run })).toBe(false);
     expect(needsSize(null)).toBe(false);
+  });
+});
+
+describe("kept-warm shell", () => {
+  const base = { on: true, key: 4, restored: false, moved: false, program: null, args: [], env: undefined, typed: undefined, agent: "shell", account: undefined, cwd: "C:/work/a" };
+  it("a new plain shell in a folder asks for the folder's warm shell at its size", () => {
+    expect(warmAskOf(base, 120, 30)).toEqual({ cwd: "C:/work/a", cols: 120, rows: 30 });
+  });
+  it("never with the setting off, and never for anything a warm shell is not", () => {
+    expect(warmAskOf({ ...base, on: false }, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, key: undefined }, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, restored: true }, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, moved: true }, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, program: "claude" } as never, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, args: ["-NoLogo"] } as never, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, env: [["A", "1"]] } as never, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, typed: "claude" } as never, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, agent: "codex" }, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, account: "work" } as never, 80, 24)).toBeNull();
+    expect(warmAskOf({ ...base, cwd: null } as never, 80, 24)).toBeNull();
   });
 });
