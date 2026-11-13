@@ -1,10 +1,11 @@
+// @vitest-environment happy-dom
 // FIX-2 (stand-in review FIX-SOON 1 and AFTER 5): the Tasks page's two-host wiring, proven on the
 // page itself. Two GitHub hosts answer the search; a row from the second host must carry that host
 // into its dialog, its full page, workspace start, the merge gate and the resume lookup. The
 // commands are a mocked invoke that records every call (the real page, the small DOM in fakeDom.ts).
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { byLabel, byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "./fakeDom";
+import { byLabel, byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "./realDom";
 import type { Task } from "./model";
 import type { PrPageData } from "./prModel";
 
@@ -145,14 +146,15 @@ describe("FIX-2 the Tasks page uses the host each row came from", () => {
     world(twoHosts);
     const c = await open();
     await rows(c, "Fix the lib");
-    const paste = byLabel(c, "input", "Paste a GitHub address")[0];
+    // The field is looked up each time: going back to Tasks draws the list, and the field, again.
+    const paste = () => byLabel(c, "input", "Paste a GitHub address")[0];
     const reason = (url: string) => async () => {
-      await typeInto(c, paste, url);
+      await typeInto(c, paste(), url);
       await until(() => sent("pr_threads").length > 0, "the page");
       await settle();
       const text = c.textContent;
       const merge = byText(c, "button", "Merge...").length;
-      await click(c, find(c, (n) => n.localName === "button" && n.attrs["title"] === "Back to Tasks")[0]);
+      await click(c, byLabel(c, "button", "Back to Tasks")[0]);
       h.calls.length = 0;
       return { text, merge };
     };

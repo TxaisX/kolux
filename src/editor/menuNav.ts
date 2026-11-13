@@ -1,6 +1,5 @@
-// Keyboard and placement for the editor's popup menus (the Explorer's Open-in menu, the diff's actions menu, the
-// preview's Send menu, the note actions menu): while a menu is open, Escape closes it and hands focus back to the button
-// that opened it, and the arrow keys, Home and End move between its rows. Escape goes through watchEscape (capture
+// Keyboard for the review notes' Send menu (the editor's other menus are src/ui Menus): while it is open, Escape
+// closes it and hands focus back to the button that opened it, and the arrow keys, Home and End move between its rows. Escape goes through watchEscape (capture
 // phase, stops the key, so an agent pane behind the menu is not interrupted); the rows are stepped with the terminal
 // link menu's menuStep. The opener is remembered by the caller BEFORE the state change that opens the menu: React
 // applies autoFocus during the commit, ahead of any effect, so reading document.activeElement from an effect would find
@@ -9,11 +8,6 @@ import { useEffect, useRef, type RefObject } from "react";
 import { watchEscape } from "../switcher/accounts";
 import { restoreFocus } from "../shell/paletteCaps";
 import { menuStep } from "../terminal/LinkActionMenu";
-
-/** The viewport-safe left/top for a menu of about `w` by `h` that wants to open at `x`,`y`. */
-export function clampMenu(x: number, y: number, w: number, h: number, vw: number, vh: number): { left: number; top: number } {
-  return { left: Math.max(8, Math.min(x, vw - w - 8)), top: Math.max(8, Math.min(y, vh - h - 8)) };
-}
 
 type Row = { focus: () => void };
 type Target = Pick<EventTarget, "addEventListener" | "removeEventListener">;

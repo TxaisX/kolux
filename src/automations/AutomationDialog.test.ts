@@ -2,10 +2,14 @@
 // the keep-going note, and Save stays off until the project's worktrees are read (AUTO-005).
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import AutomationDialog, { saveHint, unsaved, WorktreeError } from "./AutomationDialog";
 import { canDo, EVENT_CHOICES, hermesSchedule, rowActions, type Automation } from "./model";
 import { templates } from "./timetable";
+import { selectIn } from "../tasks/selectHtml";
+
+// The dialog is a src/ui Dialog, drawn only on a real DOM; what it shows is read here through a stand-in.
+vi.mock("../ui/Dialog", async () => (await import("../tasks/dialogStandIn")).dialogModule);
 
 const projects = [{ id: "p1", name: "shop", path: "C:\\src\\shop", base: "main" }];
 const render = (editing: Automation | null) => renderToString(createElement(AutomationDialog, { projects, agents: [], editing, onClose: () => {}, onSaved: () => {} }));
@@ -14,7 +18,7 @@ test("a new automation opens on Monday to Friday with Save held until the worktr
   const html = render(null);
   expect(html).toContain("New Automation");
   expect(html).toContain("keeps running on this timetable until you pause it");
-  expect(html).toMatch(/<option value="weekdays" selected="">Monday to Friday/);
+  expect(selectIn(html, "Timetable")?.chosen).toBe("Monday to Friday");
   expect(html).toMatch(/<button class="btn primary" disabled=""[^>]*>Save/);
   expect(html).toContain('aria-modal="true"');
 });
@@ -44,7 +48,7 @@ test("the clock time is an hour box, a minute box and AM or PM; hourly keeps onl
   const html = render(null);
   expect(html).toContain('aria-label="Hour"');
   expect(html).toContain('aria-label="Minute"');
-  expect(html).toMatch(/<option value="AM" selected="">AM/);
+  expect(selectIn(html, "AM or PM")?.chosen).toBe("AM");
   expect(html).toContain('value="9"');
   const hourly = render({ id: "a", name: "u", prompt: "p", provider: "claude", projectId: "p1", enabled: true, form: { preset: "hourly", time: "00:15", day: null, custom: "" } });
   expect(hourly).not.toContain('aria-label="Hour"');
@@ -62,30 +66,30 @@ test("a custom line shows the five field chips (AUTO-002)", () => {
 test("a template fills the new automation's form and the header offers the templates again (AUTO-006)", () => {
   const html = renderToString(createElement(AutomationDialog, { projects, agents: [], editing: null, template: templates[3], onClose: () => {}, onSaved: () => {} }));
   expect(html).toContain('value="Hourly upkeep"');
-  expect(html).toMatch(/<option value="hourly" selected="">/);
+  expect(selectIn(html, "Timetable")?.chosen).toBe("Every hour");
   expect(html).toContain('value="15"');
   expect(html).toContain("Templates");
   // T-192-b: the template's grace window is filled in too (30 minutes for hourly upkeep).
-  expect(html).toMatch(/<option value="30" selected="">Start it up to 30 minutes late/);
+  expect(selectIn(html, "If Kolux was away at the time")?.chosen).toBe("Start it up to 30 minutes late");
 });
 
 test("a precheck command and its 1, 2, 5 or 10 minute limit, run only ahead of timed runs (AUTO-008)", () => {
   const fresh = render(null);
   expect(fresh).toContain("Precheck command");
-  expect(fresh).toMatch(/<option value="60" selected="">1 minute/);
+  expect(selectIn(fresh, "Precheck time limit")?.chosen).toBe("1 minute");
   expect(fresh).toContain("never ahead of Run now");
   const html = render({ id: "a", name: "u", prompt: "p", provider: "claude", projectId: "p1", enabled: true, precheck: "git diff --quiet", precheckTimeoutSeconds: 300, form: { preset: "hourly", time: "00:15", day: null, custom: "" } });
   expect(html).toContain('value="git diff --quiet"');
-  expect(html).toMatch(/<option value="300" selected="">5 minutes/);
+  expect(selectIn(html, "Precheck time limit")?.chosen).toBe("5 minutes");
 });
 
 test("AUTO-004: an automation started by an event opens on Event with no timetable to fill in", () => {
   const html = render({ id: "auto-2", name: "Review PRs", prompt: "review it", provider: "claude", projectId: "p1", enabled: true, workspaceMode: "existing", trigger: { kind: "event", event: "pr-opened" } });
-  expect(html).toMatch(/<option value="pr-opened" selected="">When a pull request opens/);
+  expect(selectIn(html, "Starts")?.chosen).toBe("When a pull request opens");
   expect(html).not.toContain("Time zone");
   expect(html).toContain("keeps running on each event until you pause it");
   // A new one starts on a timetable.
-  expect(render(null)).toMatch(/<option value="schedule" selected="">On a timetable/);
+  expect(selectIn(render(null), "Starts")?.chosen).toBe("On a timetable");
 });
 
 test("AUTO-010: no setup choice is offered anywhere in the dialog (new-worktree-per-run is gone)", () => {
@@ -104,16 +108,16 @@ test("T-192-c: the keep-one-session choice shows for every automation and reopen
 test("T-085-f: the dialog offers pull request opens, checks fail and an agent finishes, each with its own note", () => {
   const fresh = render(null);
   for (const [value, label] of [["pr-opened", "When a pull request opens"], ["checks-failed", "When checks fail"], ["agent-finished", "When an agent finishes"]]) {
-    expect(fresh).toContain(`<option value="${value}">${label}</option>`);
+    expect(selectIn(fresh, "Starts")?.offered, value).toContain(label);
   }
   expect(EVENT_CHOICES.map((c) => c.value)).toEqual(["pr-opened", "checks-failed", "agent-finished"]);
   const row = (event: "pr-opened" | "checks-failed" | "agent-finished"): Automation => ({ id: "auto-3", name: "On event", prompt: "look", provider: "claude", projectId: "p1", enabled: true, workspaceMode: "existing", trigger: { kind: "event", event } });
   const red = render(row("checks-failed"));
-  expect(red).toMatch(/<option value="checks-failed" selected="">When checks fail/);
+  expect(selectIn(red, "Starts")?.chosen).toBe("When checks fail");
   expect(red).toContain("go from pending to failing");
   expect(red).not.toContain("Time zone");
   const done = render(row("agent-finished"));
-  expect(done).toMatch(/<option value="agent-finished" selected="">When an agent finishes/);
+  expect(selectIn(done, "Starts")?.chosen).toBe("When an agent finishes");
   expect(done).toContain("finishes its turn");
   expect(done).not.toContain("go from pending to failing");
   expect(render(row("pr-opened"))).toContain("A pull request opened from one of this project");
@@ -125,7 +129,7 @@ const hermesJob: Automation = { id: "hermes:j1", jobId: "j1", source: "hermes", 
 test("T-193-b a new automation offers the Kolux / Hermes switch, on Kolux with the agent settings", () => {
   const html = render(null);
   expect(html).toContain("Runs in");
-  expect(html).toMatch(/<option value="kolux" selected="">Kolux/);
+  expect(selectIn(html, "Runs in")?.chosen).toBe("Kolux");
   expect(html).toContain("Hermes");
   expect(html).toContain("Precheck command");
   expect(html).toContain("Continue in the session");
@@ -139,7 +143,7 @@ test("T-193-b a Hermes job opens on Hermes with its own name, prompt and timetab
   expect(html).toContain('value="Nightly digest"');
   expect(html).toContain("summarise the inbox");
   expect(html).toContain("Cron timetable");
-  expect(html).toMatch(/<option value="daily" selected="">/);
+  expect(selectIn(html, "Cron timetable")?.chosen).toBe("Every day");
   expect(html).toContain("Hermes keeps this job");
   expect(html).not.toContain("Runs in");
   for (const gone of [">Agent<", "Continue in the session", "Precheck command", "Precheck time limit", "When a pull request opens", "If Kolux was away", "Workspace", "Work folder", "Time zone"]) expect(html).not.toContain(gone);
@@ -148,9 +152,9 @@ test("T-193-b a Hermes job opens on Hermes with its own name, prompt and timetab
 test("T-193-b editing a Hermes job with a cron line the presets cannot say opens it in Custom, not on the default timetable", () => {
   const job: Automation = { ...hermesJob, trigger: { kind: "schedule", cron: "*/30 * * * *", timezone: "UTC" }, form: { preset: "custom", time: "", day: null, custom: "*/30 * * * *" } };
   const html = render(job);
-  expect(html).toMatch(/<option value="custom" selected="">/);
+  expect(selectIn(html, "Cron timetable")?.chosen).toBe("Custom (cron or RRULE)");
   expect(html).toContain('value="*/30 * * * *"');
-  expect(html).not.toMatch(/<option value="weekdays" selected="">/);
+  expect(selectIn(html, "Cron timetable")?.chosen).not.toBe("Monday to Friday");
 });
 
 test("T-193-b a Hermes job whose timetable is not cron shows it as text and offers no timetable fields to change", () => {

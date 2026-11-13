@@ -1,8 +1,9 @@
+// @vitest-environment happy-dom
 // UX audit (tasks.md rows 5-7 and 17): the task dialog tells a failed load and lets you retry, keeps an
 // unsaved description for the next time it opens, and labels its close and remove buttons.
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { byLabel, byText, click, type FakeDocument, installDom, mount, settle, typeInto, until } from "./fakeDom";
+import { byLabel, byText, click, type FakeDocument, installDom, mount, settle, typeInto, until } from "./realDom";
 import type { Task, TaskDetail } from "./model";
 
 const h = vi.hoisted(() => ({ calls: [] as string[], answers: {} as Record<string, unknown> }));

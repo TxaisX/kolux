@@ -1,10 +1,11 @@
+// @vitest-environment happy-dom
 // T-599 (F08-onboarding-look-misc.1; APP-042, PROJ-089): the crash screen never reloads while a report is being
 // written. The watch in recovery.rs reloads a page that sends no heartbeat for STALL (20 s); the crash screen replaces
 // App, and with it RecoveryMount's heartbeat. The real ScreenBoundary, its Report button and the Send Feedback box run
 // on the small DOM under fake timers; `reloaded` applies the watch's rule (Interface::tick, Live phase) to the beats sent.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, FakeNode, find, installDom, mount } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, type FakeNode, find, installDom, mount } from "../tasks/realDom";
 
 const h = vi.hoisted(() => ({ beats: [] as number[] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -35,17 +36,6 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
   const dom = installDom();
   doc = dom.doc;
-  const bus: Record<string, ((e: unknown) => void)[]> = {};
-  Object.assign(dom.win, {
-    setInterval,
-    clearInterval,
-    setTimeout,
-    clearTimeout,
-    addEventListener: (t: string, f: (e: unknown) => void) => void (bus[t] ??= []).push(f),
-    removeEventListener: (t: string, f: (e: unknown) => void) => void (bus[t] = (bus[t] ?? []).filter((x) => x !== f)),
-    dispatchEvent: (e: { type: string }) => void (bus[e.type] ?? []).slice().forEach((f) => f(e)),
-  });
-  Object.assign(FakeNode.prototype, { setSelectionRange() {} });
   vi.spyOn(console, "error").mockImplementation(() => {}); // React reports the render error the boundary catches
   h.beats = [];
   broken = true;

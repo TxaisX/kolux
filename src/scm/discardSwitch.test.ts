@@ -1,10 +1,11 @@
+// @vitest-environment happy-dom
 // T-615 (F04-projects-scm.3): "Discard N changes?" only ever discards in the workspace it was asked in.
 // The real Source Control panel on the small DOM, backend mocked: three rows are picked in workspace A
 // and the bulk question opens; the panel then switches to workspace B (a shortcut, or an agent's
 // file-open, can do that while the question is up). Nothing may be discarded in B.
 import { act, createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle } from "../tasks/realDom";
 import type { Status } from "./model";
 
 const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[], status: null as unknown }));

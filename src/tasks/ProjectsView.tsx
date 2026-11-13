@@ -11,6 +11,7 @@ import { Refresh } from "../chrome/icons";
 import type { Project as KoluxProject } from "../projects/model";
 import Timeline from "./RoadmapTimeline";
 import { chosenDefault, applyAssignees, applyCellEdit, assigneeChange, cellEditable, cloneAddress, cellKey, cellText, endSave, isSaving, newBook, readBackFresh, readBackLost, readBackStart, sendEdit, settleEdit, type Saving, startSave, GROUPABLE, groupItems, labelChange, openingView, parseProjectRef, type Project, projectHostRefused, type ProjectField, type ProjectItem, projectKey, type ProjectRef, pushRecent, refsFrom, type Scope, scopeItems, sortItems, togglePin, viewLabel, viewSupport, viewUrl } from "./projects";
+import { Select } from "../ui/Select";
 
 type Settings = Record<string, unknown> | null;
 type Save = (patch: Record<string, unknown>) => Promise<unknown> | void;
@@ -409,35 +410,27 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
         <>
           <div className="projects-bar">
             <strong>{project.title}</strong>
-            <select className="field" aria-label="View" value={view ?? ""} onChange={(e) => pickView(Number(e.target.value))}>
-              {project.views.map((v) => (
-                <option key={v.number} value={v.number}>
-                  {viewLabel(v)}
-                </option>
-              ))}
-            </select>
+            <Select className="field" label="View" value={view === null ? "" : String(view)} onChange={(v) => pickView(Number(v))} options={project.views.map((v) => ({ value: String(v.number), label: viewLabel(v) }))} />
             {current && viewSupport(current.layout) !== "unsupported" && (
               <>
-                {viewSupport(current.layout) === "table" && <select className="field" aria-label="Group by" value={groupField?.id ?? ""} onChange={(e) => setGroup(e.target.value)}>
-                  <option value="">No grouping</option>
-                  {columns
-                    .filter((f) => GROUPABLE.has(f.kind))
-                    .map((f) => (
-                      <option key={f.id} value={f.id}>
-                        Group by {f.name}
-                      </option>
-                    ))}
-                </select>}
-                <select
+                {viewSupport(current.layout) === "table" && <Select
                   className="field"
-                  aria-label="Repositories"
+                  label="Group by"
+                  value={groupField?.id ?? ""}
+                  onChange={(v) => setGroup(v)}
+                  options={[{ value: "", label: "No grouping" }, ...columns.filter((f) => GROUPABLE.has(f.kind)).map((f) => ({ value: f.id, label: `Group by ${f.name}` }))]}
+                />}
+                <Select
+                  className="field"
+                  label="Repositories"
                   value={scope.mode}
-                  onChange={(e) => setScope(e.target.value === "chosen" ? { mode: "chosen", repos: chosenDefault(repos, inKolux) } : { mode: e.target.value as "all" | "kolux" })}
-                >
-                  <option value="all">All repositories</option>
-                  <option value="kolux">Repositories open in Kolux</option>
-                  <option value="chosen">Chosen repositories</option>
-                </select>
+                  onChange={(v) => setScope(v === "chosen" ? { mode: "chosen", repos: chosenDefault(repos, inKolux) } : { mode: v as "all" | "kolux" })}
+                  options={[
+                    { value: "all", label: "All repositories" },
+                    { value: "kolux", label: "Repositories open in Kolux" },
+                    { value: "chosen", label: "Chosen repositories" },
+                  ]}
+                />
               </>
             )}
             <span className="autos-gap" />

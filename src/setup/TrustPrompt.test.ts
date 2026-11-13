@@ -1,6 +1,8 @@
+// @vitest-environment happy-dom
+// The prompt's dialog is the shared Ask (a src/ui AlertDialog), so the tests that draw it open it on a real DOM.
 import { afterEach, describe, expect, it } from "vitest";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { act, createElement } from "react";
+import { installDom, mount, settle } from "../tasks/realDom";
 import TrustPrompt, { TRUST_MEMORY } from "./TrustDialog";
 import { answerFirst, askTrust, hostMounted, otherDialog, trusted, trustedSetup, trustWords, waiting, type TrustAnswer, type TrustAsk } from "./TrustPrompt";
 import { issueCommand } from "./IssueCommand";
@@ -27,13 +29,14 @@ afterEach(() => {
 });
 
 describe("49-ux2 the trust prompt says what is remembered", () => {
-  it("shows the memory line beside Run hooks and Don't run", () => {
-    hostMounted(true);
+  it("shows the memory line beside Run hooks and Don't run", async () => {
+    installDom();
+    const m = await mount(createElement(TrustPrompt));
     void askTrust({ kind: "setup", script: "pnpm i", changed: false, project: "p" });
-    const html = renderToStaticMarkup(createElement(TrustPrompt));
-    expect(html).toContain(TRUST_MEMORY.replace("'", "&#x27;"));
-    answerFirst("skip");
-    hostMounted(false);
+    await settle();
+    expect(document.body.textContent).toContain(TRUST_MEMORY);
+    await act(async () => answerFirst("skip"));
+    await m.unmount();
   });
 });
 
@@ -108,22 +111,44 @@ describe("SAFE-025 / STAT-056 the trust prompt", () => {
     expect(changed.lead).toContain("changed since you trusted it");
   });
 
-  it("shows exactly the script that would run, the always-trust box, and Don't run / Run hooks", () => {
-    hostMounted(true);
-    void askTrust(ASK);
-    const html = renderToStaticMarkup(createElement(TrustPrompt));
-    expect(html).toContain("pnpm install\necho &lt;done&gt;");
-    expect(html).toContain("Always trust this repository&#x27;s kolux.yaml");
-    expect(html).toContain("Don&#x27;t run");
-    expect(html).toContain("Run hooks");
-    expect(html).toContain('role="alertdialog"');
-    expect(html).not.toContain("checked");
-    answerFirst("skip");
-    expect(renderToStaticMarkup(createElement(TrustPrompt))).toBe("");
+  it("shows exactly the script that would run, the always-trust box, and Don't run / Run hooks", async () => {
+    installDom();
+    const m = await mount(createElement(TrustPrompt));
+    const answered = askTrust(ASK);
+    await settle();
+    const box = document.querySelector('[role="alertdialog"]')!;
+    expect(box, "the prompt is up").not.toBeNull();
+    expect(box.querySelector("pre")!.textContent).toBe("pnpm install\necho <done>");
+    expect(box.textContent).toContain("Always trust this repository's kolux.yaml");
+    expect([...box.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Don't run", "Run hooks"]);
+    expect(box.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(false);
+    // SAFE-025: it sits above the dialog it was raised from, through classes of its own (its box is in a portal).
+    expect(box.classList.contains("trust-ask")).toBe(true);
+    expect(box.closest(".ask-backdrop")!.classList.contains("trust-layer")).toBe(true);
+    // Its own box arriving on the page is not another dialog: the prompt stays up, unanswered.
+    expect(waiting()).toBe(1);
+    await act(async () => answerFirst("skip"));
+    expect(await answered).toBe("skip");
+    await settle();
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    await m.unmount();
+  });
+
+  it("a dialog opened over the prompt counts as Don't run", async () => {
+    installDom();
+    const m = await mount(createElement(TrustPrompt));
+    const answered = askTrust(ASK);
+    await settle();
+    expect(waiting()).toBe(1);
+    const other = document.createElement("div");
+    other.setAttribute("role", "dialog");
+    await act(async () => void document.body.appendChild(other));
+    expect(await answered).toBe("skip");
+    await m.unmount();
   });
 
   it("only a dialog opened over the prompt counts as replacing it, not the prompt's own or a non-element", () => {
-    const el = (dialog: boolean, inside: unknown[] = []) => ({ matches: () => dialog, querySelector: () => (inside.length ? inside[0] : null), contains: (n: unknown) => inside.includes(n) });
+    const el = (dialog: boolean, inside: unknown[] = []) => ({ matches: () => dialog, querySelectorAll: () => inside, contains: (n: unknown) => inside.includes(n) });
     const own = el(true);
     const mine = el(false, [own]);
     const text = { nodeType: 3 };
@@ -131,5 +156,7 @@ describe("SAFE-025 / STAT-056 the trust prompt", () => {
     expect(otherDialog([el(false)] as unknown as Node[], mine as unknown as Element)).toBe(false);
     expect(otherDialog([el(true)] as unknown as Node[], mine as unknown as Element)).toBe(true);
     expect(otherDialog([el(false, [{}])] as unknown as Node[], mine as unknown as Element)).toBe(true);
+    // a layer that holds only the prompt's own box (its portal) is not another dialog
+    expect(otherDialog([el(false, [mine])] as unknown as Node[], mine as unknown as Element)).toBe(false);
   });
 });

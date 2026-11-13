@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { AutoPrView, choiceOf, entriesFor, readAutoPr, withChoice } from "./autoPr";
 import { enabledFor } from "../scm/autoPr";
+import { selectIn } from "../tasks/selectHtml";
 
 describe("T-654 automatic pull request settings", () => {
   it("reads a missing or odd value as the GitHub default", () => {
@@ -35,6 +36,6 @@ describe("T-654 automatic pull request settings", () => {
     expect(html).toContain("On for every repository");
     expect(html.indexOf("recommended")).toBeLessThan(html.indexOf("On for every repository"));
     expect(html).toContain("Use default");
-    expect(html).toMatch(/aria-label="automatic pull requests for alpha"[^>]*>.*<option value="off" selected="">Off/);
+    expect(selectIn(html, "automatic pull requests for alpha")).toEqual({ chosen: "Off", offered: ["Use default", "On", "Off"] });
   });
 });

@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import { CACHE_LENGTH, CACHE_ON, cacheDue, cacheMinutes, cacheShown } from "./cache";
 import { CacheTimerView } from "./CacheTimer";
 import { CachePick } from "../settings/AgentsPage";
+import { selectIn } from "../tasks/selectHtml";
 
 const html = (e: ReturnType<typeof createElement>) => renderToString(e).replace(/<!-- -->/g, "");
 
@@ -58,6 +59,5 @@ test("T-265 SET-059: the Agents page switch and its length", () => {
   expect(off).toContain("disabled");
   const on = html(createElement(CachePick, { minutes: 60, onPick: () => {} }));
   expect(on).toContain('checked=""');
-  expect(on).toContain("5 minutes");
-  expect(on).toContain('value="60" selected=""');
+  expect(selectIn(on, "Cache length")).toEqual({ chosen: "1 hour", offered: ["5 minutes", "1 hour"] });
 });

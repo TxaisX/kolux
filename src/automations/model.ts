@@ -397,10 +397,6 @@ export function deleteWords(a: { name: string; source?: string } | undefined): {
   return { title, body: "Its run history goes with it." };
 }
 
-/** A click on the dialog's scrim closes it only when the press and the release both landed on the scrim:
- *  a press on the scrim released inside the dialog (or the other way round) is a drag, not a dismissal. */
-export const closesOnScrim = (pressedOnScrim: boolean, releasedOnScrim: boolean): boolean => pressedOnScrim && releasedOnScrim;
-
 /** Notes shown together on the page: the ones that are set, in order, as one line each separated by a space; null when none. */
 export function joinNotes(...notes: (string | null | undefined)[]): string | null {
   const said = notes.filter((n): n is string => !!n);

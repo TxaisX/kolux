@@ -2,6 +2,7 @@
 // panes. On Windows and WSL the help says teammates always run in-process and the picker has no
 // Agent Teams entry; the choice is kept for when the same profile runs elsewhere.
 import { effectiveMode, pickableModes, teamsMode, TEAMS_MODE_KEY, TEAMS_MODE_LABEL, type TeamsHost } from "./teams";
+import { Select } from "../ui/Select";
 
 type Props = {
   settings: Record<string, unknown>;
@@ -15,13 +16,7 @@ export default function TeamsModeCard({ settings, save, host }: Props) {
   return (
     <section className="conn-card" data-section="agent-teams">
       <h2 className="conn-name">Claude Agent Teams</h2>
-      <select aria-label="Agent Teams mode" className="field" value={mode} onChange={(e) => save({ [TEAMS_MODE_KEY]: e.target.value })}>
-        {pickableModes(mode).map((m) => (
-          <option key={m} value={m}>
-            {TEAMS_MODE_LABEL[m]}
-          </option>
-        ))}
-      </select>
+      <Select label="Agent Teams mode" value={mode} onChange={(v) => save({ [TEAMS_MODE_KEY]: v })} options={pickableModes(mode).map((m) => ({ value: m, label: TEAMS_MODE_LABEL[m] }))} className="field" />
       <p className="conn-detail">
         When on, the agent picker offers Claude Agent Teams: Claude Code starts as a team lead that can spawn teammates, inside the same session. Native panes, with teammates as panes beside the lead, is not built yet: for now it runs teammates in-process too. It needs Claude Code and the Kolux command line installed.
       </p>

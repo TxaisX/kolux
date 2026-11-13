@@ -4,14 +4,14 @@
 // running keep their account (ACCT-017) until the person accepts the prompt that offers to move a Codex
 // pane (ACCT-023). With no managed account yet it is the top bar's "Connect an AI" route into
 // Settings > Accounts & keys, where accounts are still added, signed in again and removed.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed } from "../ipc/commands";
 import { listen } from "@tauri-apps/api/event";
-import { activeOf, buttonText, groupsOf, pickAccount, watchEscape, type ClaudeSwitchView, type CodexSwitchView, type Group, type Provider } from "./accounts";
+import { activeOf, buttonText, groupsOf, pickAccount, type ClaudeSwitchView, type CodexSwitchView, type Group, type Provider } from "./accounts";
 import { openSettings } from "../settings/pages";
 import "./switcher.css";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Menu, MenuItem, MenuTitle } from "../ui/Menu";
 
 /** Both views, re-read when either provider's accounts change; the same events Settings listens to. */
 export function useAccountSwitcher(): { groups: Group[]; active: { claude: string | null; codex: string | null }; stale: boolean; loaded: boolean; read: () => void; pick: (provider: Provider, id: string | null) => Promise<string | null> } {
@@ -83,12 +83,14 @@ type ViewProps = {
   onClose: () => void;
   onPick: (provider: Provider, id: string | null) => void;
   onAccounts?: () => void;
+  /** The pill the menu hangs from (the mount holds it, so this view stays a plain function of its props). */
+  pill?: RefObject<HTMLButtonElement | null>;
 };
 
 /** C17-R5-01: the one top-bar route to Accounts & keys, present before any account exists. */
 const openAccounts = () => openSettings("accounts", "connections");
 
-export function AccountSwitcherView({ groups, open, error = null, ready = true, failed = false, onRetry = () => {}, onOpen, onClose, onPick, onAccounts = openAccounts }: ViewProps) {
+export function AccountSwitcherView({ groups, open, error = null, ready = true, failed = false, onRetry = () => {}, onOpen, onClose, onPick, onAccounts = openAccounts, pill }: ViewProps) {
   // C17-R5-01: nothing is drawn until the first read answers, so a launch never flashes "Connect an AI"
   // at a user who has accounts. A first read that failed says so and offers the retry, rather than
   // claiming there is no account.
@@ -112,6 +114,7 @@ export function AccountSwitcherView({ groups, open, error = null, ready = true, 
   return (
     <>
       <button
+        ref={pill}
         type="button"
         className="acct-switch"
         title="Choose the account new panes use"
@@ -125,35 +128,32 @@ export function AccountSwitcherView({ groups, open, error = null, ready = true, 
         <span className="acct-switch-text">{buttonText(groups)}</span>
         <span aria-hidden="true">▾</span>
       </button>
-      {open && (
-        <OutOfFlow>
-          {/* T-620: the menu is drawn inside the top bar's drag region; "false" keeps clicks on it from moving the window. */}
-          <div className="menu-backdrop" onClick={onClose} aria-hidden="true" data-tauri-drag-region="false" />
-          <EscapeWatch onClose={onClose} />
-          <div className="menu acct-menu" role="menu" aria-label="Accounts for new panes" style={open} data-tauri-drag-region="false">
-            {groups.map((g) => (
-              <div key={g.provider} role="group" aria-label={`${g.name} accounts`}>
-                <div className="menu-title">{g.name}</div>
-                {g.choices.map((c) => (
-                  <button key={c.id ?? "default"} role="menuitemradio" aria-checked={c.active} className="menu-item" disabled={g.busy} autoFocus={c.active} title={c.active ? `New ${g.name} panes use this account` : `Use this account for new ${g.name} panes`} onClick={() => (c.active ? onClose() : onPick(g.provider, c.id))}>
-                    <span className="name">{c.label}</span>
-                    {c.trouble && <span className="acct-trouble">{c.trouble}</span>}
-                    <span className="acct-check" aria-hidden="true">{c.active ? "✓" : ""}</span>
-                  </button>
-                ))}
-                {g.busy && <div className="menu-hint">A sign-in is running. Finish or cancel it in Settings first.</div>}
-                {g.note && <div className="menu-hint">{g.note}</div>}
-              </div>
+      {/* A src/ui Menu hanging from the pill, right edges lined up: Escape closes it wherever focus is (a running
+          sign-in can turn every row off) and stops there, so a focused agent pane never sees it. A row stays open when
+          picked: the menu closes once the switch has gone through, and a failed switch shows its words in it. It is
+          drawn on the body, outside the top bar's drag region, so a click on it never moves the window (T-620). */}
+      <Menu open={open !== null} onClose={onClose} label="Accounts for new panes" anchor={pill} align="end" offset={4} className="acct-menu">
+        {groups.map((g) => (
+          <div key={g.provider} role="group" aria-label={`${g.name} accounts`}>
+            <MenuTitle>{g.name}</MenuTitle>
+            {g.choices.map((c) => (
+              <MenuItem key={c.id ?? "default"} role="menuitemradio" aria-checked={c.active} disabled={g.busy} closeOnClick={false} title={c.active ? `New ${g.name} panes use this account` : `Use this account for new ${g.name} panes`} onClick={() => (c.active ? onClose() : onPick(g.provider, c.id))}>
+                <span className="name">{c.label}</span>
+                {c.trouble && <span className="acct-trouble">{c.trouble}</span>}
+                <span className="acct-check" aria-hidden="true">{c.active ? "✓" : ""}</span>
+              </MenuItem>
             ))}
-            <div className="menu-hint">Panes already running keep their account, until you accept the prompt to move one.</div>
-            {error && (
-              <div className="menu-hint acct-error" role="alert">
-                {error}
-              </div>
-            )}
+            {g.busy && <div className="menu-hint">A sign-in is running. Finish or cancel it in Settings first.</div>}
+            {g.note && <div className="menu-hint">{g.note}</div>}
           </div>
-        </OutOfFlow>
-      )}
+        ))}
+        <div className="menu-hint">Panes already running keep their account, until you accept the prompt to move one.</div>
+        {error && (
+          <div className="menu-hint acct-error" role="alert">
+            {error}
+          </div>
+        )}
+      </Menu>
     </>
   );
 }
@@ -164,8 +164,10 @@ export default function AccountSwitcher() {
   const [open, setOpen] = useState<{ top: number; left: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const close = useCallback(() => setOpen(null), []);
+  const pill = useRef<HTMLButtonElement>(null);
   return (
     <AccountSwitcherView
+      pill={pill}
       groups={groups}
       ready={loaded}
       failed={!loaded && stale}
@@ -182,12 +184,4 @@ export default function AccountSwitcher() {
       }
     />
   );
-}
-
-/** FIX-1/FIX-2: while the menu is open (this component is only mounted then), Escape closes it wherever
- *  focus is and stops there, so a focused terminal or agent pane never sees it. The old handler sat on
- *  the menu and only fired with focus inside it; with every row disabled (a sign-in running) nothing took focus. */
-export function EscapeWatch({ onClose }: { onClose: () => void }) {
-  useEffect(() => watchEscape(window, onClose), [onClose]);
-  return null;
 }

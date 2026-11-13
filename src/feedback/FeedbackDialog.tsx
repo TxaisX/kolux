@@ -9,7 +9,8 @@ import type { FeedbackFacts } from "../settings/privacy";
 import { copyCrashBundle, CRASH_BUNDLE_HINT } from "./crashBundle";
 import { addImages, clipboardNote, MAX_IMAGES, MIME, type Shot } from "./images";
 import { Close } from "../chrome/icons";
-import { closed, issue, NOTE_POS, reduce, restoreFocus, tabTarget, typedText } from "./model";
+import { closed, issue, NOTE_POS, reduce, typedText } from "./model";
+import { Dialog } from "../ui/Dialog";
 
 import { FEEDBACK_EVENT as EVENT, requestFeedback, takeParked } from "./request";
 
@@ -91,21 +92,21 @@ export default function FeedbackDialog() {
     };
   }, []);
 
-  // The cursor starts above the block, where the user types.
   useEffect(() => {
     if (!s.open) return;
     sending.current = false;
     seq.current++;
-    const prev = document.activeElement as HTMLElement | null;
+  }, [s.open]);
+  // The cursor starts above the block, where the user types. The box is a src/ui Dialog, drawn after this component's
+  // effects run, so this is its initialFocus; closing (or sending) hands the keyboard back to whatever opened it.
+  const caret = () => {
     const el = box.current;
     if (el) {
-      el.focus();
       const end = typedText(el.value).length;
       el.setSelectionRange(end, end);
     }
-    // Closing (or sending) hands the keyboard back to whatever opened the box.
-    return () => void restoreFocus(prev);
-  }, [s.open]);
+    return el;
+  };
 
   // The note after a send fades on its own.
   useEffect(() => {
@@ -164,83 +165,73 @@ export default function FeedbackDialog() {
       </div>
     ) : null;
   }
+  // APP-037: the box is modal (a src/ui Dialog): Tab never leaves it, Escape and a click outside close it.
   return (
-    <div className="scrim" onMouseDown={dismiss}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Send feedback"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") dismiss();
-          else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send();
-          else if (e.key === "Tab") {
-            // APP-037: the box is modal; Tab never leaves it.
-            const items = [...e.currentTarget.querySelectorAll<HTMLElement>("textarea, input:not([hidden]), button:not([disabled])")];
-            const to = tabTarget(items.length, items.indexOf(document.activeElement as HTMLElement), e.shiftKey);
-            if (to >= 0) {
-              e.preventDefault();
-              items[to].focus();
-            }
-          }
-        }}
-        style={{ width: "min(640px, calc(100vw - 48px))", display: "flex", flexDirection: "column", gap: 10, padding: "16px 18px", background: "var(--pane-bg)", border: "1px solid var(--line-focus)", borderRadius: 12, boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)", color: "var(--fg)" }}
-      >
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Send feedback</h2>
-        <p className="conn-detail" style={{ margin: 0 }}>
-          Write what happened or what you would like. Paths and secrets are removed before anything is filled in. Your browser opens GitHub's new-issue page; you read it there and submit it yourself, the app sends nothing.
-        </p>
-        <textarea
-          ref={box}
-          className="field auto-prompt"
-          aria-label="Your feedback"
-          style={{ minHeight: 220 }}
-          value={s.draft}
-          onChange={(e) => dispatch({ t: "type", draft: e.target.value })}
-        />
-        <label className="auto-radio">
-          <input type="checkbox" checked={s.anonymous} onChange={(e) => dispatch({ t: "anon", on: e.target.checked })} /> Submit anonymously (leave my GitHub name out)
-        </label>
-        {s.crash ? (
-          <span className="muted">{CRASH_BUNDLE_HINT}</span>
-        ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-          <button type="button" className="btn" onClick={() => fileInput.current?.click()}>
-            Add screenshot
-          </button>
-          <input ref={fileInput} type="file" multiple accept={Object.values(MIME).join(",")} hidden aria-label="Add screenshots" onChange={(e) => { void pick(e.target.files); e.target.value = ""; }} />
-          {shots.map((x, i) => (
-            <span key={`${x.name}-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <img src={previews[i]} alt={x.name} title={x.name} style={{ height: 36, borderRadius: 4 }} />
-              <button type="button" className="btn" aria-label={`Remove ${x.name}`} title={`Remove ${x.name}`} onClick={() => setShots(shots.filter((_, j) => j !== i))}>
-                <Close size={11} />
-              </button>
-            </span>
-          ))}
-          <span className="muted">Up to {MAX_IMAGES} images; the first is put on the clipboard for you to paste.</span>
-        </div>
-        )}
-        {refused.map((m) => (
-          <p key={m} role="alert" className="conn-detail" style={{ margin: 0, color: "var(--danger)" }}>
-            {m}
-          </p>
+    <Dialog
+      onClose={dismiss}
+      label="Send feedback"
+      viewport="scrim"
+      initialFocus={caret}
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send();
+      }}
+      style={{ width: "min(640px, calc(100vw - 48px))", display: "flex", flexDirection: "column", gap: 10, padding: "16px 18px", background: "var(--pane-bg)", border: "1px solid var(--line-focus)", borderRadius: 12, boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)", color: "var(--fg)" }}
+    >
+      <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Send feedback</h2>
+      <p className="conn-detail" style={{ margin: 0 }}>
+        Write what happened or what you would like. Paths and secrets are removed before anything is filled in. Your browser opens GitHub's new-issue page; you read it there and submit it yourself, the app sends nothing.
+      </p>
+      <textarea
+        ref={box}
+        className="field auto-prompt"
+        aria-label="Your feedback"
+        style={{ minHeight: 220 }}
+        value={s.draft}
+        onChange={(e) => dispatch({ t: "type", draft: e.target.value })}
+      />
+      <label className="auto-radio">
+        <input type="checkbox" checked={s.anonymous} onChange={(e) => dispatch({ t: "anon", on: e.target.checked })} /> Submit anonymously (leave my GitHub name out)
+      </label>
+      {s.crash ? (
+        <span className="muted">{CRASH_BUNDLE_HINT}</span>
+      ) : (
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+        <button type="button" className="btn" onClick={() => fileInput.current?.click()}>
+          Add screenshot
+        </button>
+        <input ref={fileInput} type="file" multiple accept={Object.values(MIME).join(",")} hidden aria-label="Add screenshots" onChange={(e) => { void pick(e.target.files); e.target.value = ""; }} />
+        {shots.map((x, i) => (
+          <span key={`${x.name}-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <img src={previews[i]} alt={x.name} title={x.name} style={{ height: 36, borderRadius: 4 }} />
+            <button type="button" className="btn" aria-label={`Remove ${x.name}`} title={`Remove ${x.name}`} onClick={() => setShots(shots.filter((_, j) => j !== i))}>
+              <Close size={11} />
+            </button>
+          </span>
         ))}
-        {s.error && (
-          <p role="alert" className="conn-detail" style={{ margin: 0, color: "var(--danger)" }}>
-            {s.error}
-          </p>
-        )}
-        <div className="auto-dialog-foot">
-          <span className="muted">Everything under the line is added for you.</span>
-          <button type="button" className="btn" onClick={dismiss}>
-            Cancel
-          </button>
-          {/* aria-disabled, not disabled: the button keeps the keyboard while the page opens; send() ignores a second press */}
-          <button type="button" className="btn primary" aria-disabled={s.sending || undefined} onClick={send}>
-            {s.sending ? "Opening…" : "Open on GitHub"}
-          </button>
-        </div>
+        <span className="muted">Up to {MAX_IMAGES} images; the first is put on the clipboard for you to paste.</span>
       </div>
-    </div>
+      )}
+      {refused.map((m) => (
+        <p key={m} role="alert" className="conn-detail" style={{ margin: 0, color: "var(--danger)" }}>
+          {m}
+        </p>
+      ))}
+      {s.error && (
+        <p role="alert" className="conn-detail" style={{ margin: 0, color: "var(--danger)" }}>
+          {s.error}
+        </p>
+      )}
+      <div className="auto-dialog-foot">
+        <span className="muted">Everything under the line is added for you.</span>
+        <button type="button" className="btn" onClick={dismiss}>
+          Cancel
+        </button>
+        {/* aria-disabled, not disabled: the button keeps the keyboard while the page opens; send() ignores a second press */}
+        <button type="button" className="btn primary" aria-disabled={s.sending || undefined} onClick={send}>
+          {s.sending ? "Opening…" : "Open on GitHub"}
+        </button>
+      </div>
+    </Dialog>
   );
 }

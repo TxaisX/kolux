@@ -3,6 +3,7 @@
 // runs replays asked for through replayTour (the help menu). The rules live in tour.ts.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Dialog } from "../ui/Dialog";
 import { markGuide, type GuideRecord } from "./guide";
 import { usePulseRest } from "../chrome/pulseRest";
 import { restingLoop, wakeOnChange } from "./followLoop";
@@ -36,7 +37,8 @@ const blocked = () => [...document.querySelectorAll("[role=dialog]")].some((d) =
 
 const SPLIT_KEY = (e: KeyboardEvent) => e.shiftKey && (e.ctrlKey || e.altKey) && e.key.toLowerCase() === "d";
 
-function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i: number) => void; onEnd: (how: "done" | "skipped" | "lost") => void }) {
+/** One tour on screen (exported for its real-DOM test). */
+export function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i: number) => void; onEnd: (how: "done" | "skipped" | "lost") => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [geo, setGeo] = useState<{ t: Rect; p: Placed } | null>(null);
   const step = tour.steps[at];
@@ -96,18 +98,6 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
     };
   }, [tour, at]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Escape is Skip, before any page shortcut sees it.
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.isComposing) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      onEnd("skipped");
-    };
-    window.addEventListener("keydown", key, true);
-    return () => window.removeEventListener("keydown", key, true);
-  }, [onEnd]);
-
   // A step without Next moves on when its real control is clicked.
   useEffect(() => {
     if (!step.noNext) return;
@@ -127,7 +117,20 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
   return (
     <>
       {tour.ring && geo && <div ref={ring} className={ringRest ? "tour-ring resting" : "tour-ring"} style={{ left: geo.t.left - 4, top: geo.t.top - 4, width: geo.t.width + 8, height: geo.t.height + 8 }} aria-hidden="true" />}
-      <div ref={box} className="tour" role="dialog" aria-modal="false" aria-label={`${tour.name} tour`} data-tour={tour.id} style={geo ? { left: geo.p.left, top: geo.p.top, ...(geo.p.width ? { width: geo.p.width } : {}) } : { visibility: "hidden", left: 0, top: 0 }}>
+      {/* A src/ui Dialog that is not modal: the window stays usable (a step can ask for a click on a real control), so a
+          press outside never ends the tour. Escape is Skip, caught by the layer before any page shortcut sees it. Focus
+          goes to Next when the step has one, else stays where it is, and is not moved back when the tour ends. */}
+      <Dialog
+        modal={false}
+        onClose={(why) => why === "escape" && onEnd("skipped")}
+        label={`${tour.name} tour`}
+        className="tour"
+        boxRef={box}
+        initialFocus={() => box.current?.querySelector<HTMLElement>("[data-tour-next]") ?? false}
+        finalFocus={false}
+        data-tour={tour.id}
+        style={geo ? { left: geo.p.left, top: geo.p.top, ...(geo.p.width ? { width: geo.p.width } : {}) } : { visibility: "hidden", left: 0, top: 0 }}
+      >
         {arrow && <span className={`tour-arrow ${geo!.p.side}`} style={arrow} aria-hidden="true" />}
         <h3>{w.title}</h3>
         <p>{w.body}</p>
@@ -161,13 +164,13 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
             </button>
           ) : (
             !step.noNext && (
-              <button className="btn primary" onClick={() => (next === null ? onEnd("done") : onAt(next))} autoFocus>
+              <button className="btn primary" data-tour-next onClick={() => (next === null ? onEnd("done") : onAt(next))}>
                 {next === null ? "Done" : "Next"}
               </button>
             )
           )}
         </div>
-      </div>
+      </Dialog>
     </>
   );
 }

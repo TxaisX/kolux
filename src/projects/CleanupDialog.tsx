@@ -30,6 +30,7 @@ import {
 } from "./cleanup";
 import { canStart, finished, lossKinds, namedList, removeOne, runBulk, summary, unchecked, type Item } from "./bulkRemove";
 import { askText } from "../editor/closeGuard";
+import { Select } from "../ui/Select";
 type Props = {
   project: { id: string; name: string };
   onClose: () => void;
@@ -147,36 +148,28 @@ export default function CleanupDialog({ project, onClose, onRemoved, onKept, par
       {scan?.error && <span className="note warn">{scan.error}</span>}
       <div className="btn-row" data-cleanup-view>
         <input type="search" aria-label="search workspaces" autoFocus placeholder="Search" value={view.query} onChange={(e) => pick("query", e.target.value)} />
-        <select aria-label="Git state" value={view.git} onChange={(e) => pick("git", e.target.value as CleanupView["git"])}>
-          <option value="any">Any Git state</option>
-          <option value="merged">Merged</option>
-          <option value="unmerged">Unmerged commits</option>
-          <option value="changes">Uncommitted changes</option>
-          <option value="clean">Clean</option>
-          <option value="missing">Folder gone</option>
-        </select>
-        <select aria-label="activity" value={view.activity} onChange={(e) => pick("activity", e.target.value as CleanupView["activity"])}>
-          <option value="any">Any activity</option>
-          <option value="active">Terminal open</option>
-          <option value="idle">Idle a week or more</option>
-          <option value="never">Never visited</option>
-        </select>
-        <select aria-label="size" value={view.size} onChange={(e) => pick("size", e.target.value as CleanupView["size"])}>
-          <option value="any">Any size</option>
-          <option value="large">500 MB or more</option>
-          <option value="small">Under 500 MB</option>
-        </select>
-        <select aria-label="safety" value={view.safety} onChange={(e) => pick("safety", e.target.value as CleanupView["safety"])}>
-          <option value="any">Any</option>
-          <option value="safe">Ticked by default</option>
-          <option value="unsafe">Needs a look</option>
-        </select>
-        <select aria-label="sort by" value={view.sort} onChange={(e) => pick("sort", e.target.value as CleanupView["sort"])}>
-          <option value="scan">Scan order</option>
-          <option value="name">Name</option>
-          <option value="size">Size</option>
-          <option value="idle">Idle time</option>
-        </select>
+        <Select label="Git state" value={view.git} onChange={(v) => pick("git", v as CleanupView["git"])} options={[
+          { value: "any", label: "Any Git state" },
+          { value: "merged", label: "Merged" },
+          { value: "unmerged", label: "Unmerged commits" },
+          { value: "changes", label: "Uncommitted changes" },
+          { value: "clean", label: "Clean" },
+          { value: "missing", label: "Folder gone" },
+        ]} className="" />
+        <Select label="activity" value={view.activity} onChange={(v) => pick("activity", v as CleanupView["activity"])} options={[
+          { value: "any", label: "Any activity" },
+          { value: "active", label: "Terminal open" },
+          { value: "idle", label: "Idle a week or more" },
+          { value: "never", label: "Never visited" },
+        ]} className="" />
+        <Select label="size" value={view.size} onChange={(v) => pick("size", v as CleanupView["size"])} options={[{ value: "any", label: "Any size" }, { value: "large", label: "500 MB or more" }, { value: "small", label: "Under 500 MB" }]} className="" />
+        <Select label="safety" value={view.safety} onChange={(v) => pick("safety", v as CleanupView["safety"])} options={[{ value: "any", label: "Any" }, { value: "safe", label: "Ticked by default" }, { value: "unsafe", label: "Needs a look" }]} className="" />
+        <Select label="sort by" value={view.sort} onChange={(v) => pick("sort", v as CleanupView["sort"])} options={[
+          { value: "scan", label: "Scan order" },
+          { value: "name", label: "Name" },
+          { value: "size", label: "Size" },
+          { value: "idle", label: "Idle time" },
+        ]} className="" />
         <button className="btn" aria-label="sort direction" onClick={() => pick("desc", !view.desc)}>
           {directionLabel(view.sort, view.desc)}
         </button>

@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMenuKeys } from "./menuNav";
 import { Close } from "../chrome/icons";
+import { Dialog } from "../ui/Dialog";
 import { baseName } from "./buffers";
 import { notesMarkdown, type Note, type Picked, type SendTarget, type StartChoice } from "./notes";
 
@@ -33,6 +34,7 @@ type Props = {
 
 export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, onClear, targets, menu, onMenu, onSend, starters = [], onStart }: Props) {
   const [text, setText] = useState("");
+  const noteField = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [sure, setSure] = useState(false); // the X asks once before it drops every note
@@ -67,8 +69,10 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
     );
   return (
     <>
+      {/* A src/ui Dialog that is not modal, placed under the picked text: the editor stays usable and a press outside
+          leaves the note open, as before; Escape and Cancel drop it. Focus starts in the note. */}
       {picked && (
-        <div className="review-pop" role="dialog" aria-label="Add review note" style={{ left: Math.min(picked.x, window.innerWidth - 340), top: Math.min(picked.y + 6, window.innerHeight - 220) }}>
+        <Dialog modal={false} onClose={(why) => why !== "outside" && onCancel()} label="Add review note" className="review-pop" initialFocus={noteField} style={{ left: Math.min(picked.x, window.innerWidth - 340), top: Math.min(picked.y + 6, window.innerHeight - 220) }}>
           <div className="review-where">
             {baseName(picked.draft.path)} line {picked.draft.line}
           </div>
@@ -77,11 +81,10 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
             className="field multi"
             aria-label="review note"
             placeholder="Note for the agent"
-            autoFocus
+            ref={noteField}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onCancel();
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) add();
             }}
           />
@@ -93,7 +96,7 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
               Cancel
             </button>
           </div>
-        </div>
+        </Dialog>
       )}
       {notes.length > 0 && (
         <div className="review-tray" role="region" aria-label="Review notes">

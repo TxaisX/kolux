@@ -5,6 +5,7 @@ import { RECIPE_ACTIONS, RECIPES_KEY, REPO_AI_KEY, migrateRecipes, recipeProblem
 import { typedRepoId } from "../scm/repoId";
 import { SCM_AI_HIDDEN_KEY, aiControlsShown } from "../scm/rules";
 import { ResetButton } from "./SafetyRules";
+import { Select } from "../ui/Select";
 
 type Props = { settings: Record<string, unknown>; save: (patch: Record<string, unknown>) => unknown };
 const BLANK: Recipe = { agent: null, args: "", template: "" };
@@ -63,11 +64,7 @@ export default function AiRecipesSection({ settings, save }: Props) {
         {Object.keys(modes).map((r) => (
           <li key={r}>
             <span className="name">{r}</span>{" "}
-            <select aria-label={`AI actions for ${r}`} className="field" value={repoAiMode(settings, r)} onChange={(e) => void save({ [REPO_AI_KEY]: withRepoAi(settings, r, e.target.value as RepoAiMode) })}>
-              {MODES.map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
+            <Select label={`AI actions for ${r}`} value={repoAiMode(settings, r)} onChange={(v) => void save({ [REPO_AI_KEY]: withRepoAi(settings, r, v as RepoAiMode) })} options={MODES.map(([v, l]) => ({ value: v, label: l }))} className="field" />
           </li>
         ))}
       </ul>

@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-640: every row in the left pane can be removed or hidden from a right-click menu and a hover X.
 // The real ProjectsPanel on the small DOM, with the backend mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { OWN_FOLDERS_FIELD, setOwnFolders } from "./singleFolder";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle } from "../tasks/realDom";
 
 // DT-C273: own folders are the default now; these tests cover one folder per project.
 beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
@@ -41,7 +42,7 @@ beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
-  Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
+  Object.assign(doc, { visibilityState: "visible", hidden: false });
   h.calls = [];
   h.settings = {};
 });

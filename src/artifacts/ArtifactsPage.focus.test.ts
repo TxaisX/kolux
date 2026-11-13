@@ -1,8 +1,9 @@
-// The Remove confirm's focus on the small DOM: backing out (Cancel or Escape) hands focus back to the "x" that opened it,
+// @vitest-environment happy-dom
+// The Remove confirm's focus on a real DOM (happy-dom; the confirm is Base UI's AlertDialog): backing out (Cancel or Escape) hands focus back to the "x" that opened it,
 // and a removal hands it to the next row, else the previous, else the search box. Cancel leaves the row where it was.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FakeNode as Node, click, fire, find, installDom, mount, settle, until, type FakeDocument, type FakeNode } from "../tasks/fakeDom";
+import { click, fire, find, installDom, mount, settle, until, type FakeDocument, type FakeNode } from "../tasks/realDom";
 
 const h = vi.hoisted(() => ({ lib: [] as { id: string; title: string; added: number }[], removed: [] as string[] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -25,7 +26,14 @@ beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
-  Object.assign(Node.prototype, { isConnected: true, focus() { focused.push(this); } });
+  // every focus call is noted and still made (Base UI moves focus in and back on the real DOM)
+  if (!("noted" in HTMLElement.prototype.focus)) {
+    const real = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = Object.assign(function (this: HTMLElement, o?: FocusOptions) {
+      focused.push(this);
+      return real.call(this, o);
+    }, { noted: true });
+  }
   focused.length = 0;
   h.removed = [];
   h.lib = [{ id: "a", title: "First", added: 3 }, { id: "b", title: "Second", added: 2 }, { id: "c", title: "Third", added: 1 }];

@@ -1,17 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { clampMenu, restoreIfLost, wireMenuKeys } from "./menuNav";
-
-describe("popup menu placement", () => {
-  it("keeps a menu that fits where it was asked for", () => {
-    expect(clampMenu(100, 50, 200, 80, 1000, 800)).toEqual({ left: 100, top: 50 });
-  });
-  it("pulls a menu back from the right and bottom edges", () => {
-    expect(clampMenu(950, 790, 200, 80, 1000, 800)).toEqual({ left: 792, top: 712 });
-  });
-  it("never leaves the top-left corner either", () => {
-    expect(clampMenu(-30, -5, 200, 80, 1000, 800)).toEqual({ left: 8, top: 8 });
-  });
-});
+import { restoreIfLost, wireMenuKeys } from "./menuNav";
 
 const key = (name: string) => Object.assign(new Event("keydown", { cancelable: true }), { key: name });
 
@@ -107,12 +95,13 @@ describe("restoreIfLost", () => {
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
 const src = (f: string) => nodeFs.readFileSync(new URL(f, import.meta.url), "utf8");
 
-describe("every editor popup menu uses the one hook", () => {
+describe("the editor popup menus", () => {
   it("takes checkbox rows too (the diff menu's rows are menuitemcheckbox)", () => {
     expect(src("./menuNav.ts")).toContain(`'[role^="menuitem"]'`);
   });
-  it("the diff and Open-in menus remember their opener from the click that opens them", () => {
-    expect(src("./DiffPane.tsx")).toContain("onClick={(e) => (remember(e.currentTarget), setMenu((m) => !m))}");
-    expect(src("./Explorer.tsx")).toContain("onClick={(e) => { rememberOpener(e.currentTarget);");
+  it("the diff, note and Open-in menus are src/ui Menus hanging from their buttons (their keys and hand-back are the wrapper's)", () => {
+    expect(src("./DiffPane.tsx")).toMatch(/<Menu open=\{menu\} onClose=\{\(\) => setMenu\(false\)\} label="Diff actions" anchor=\{menuButton\}/);
+    expect(src("./PreviewPane.tsx")).toMatch(/<Menu open=\{menu\} onClose=\{\(\) => setMenu\(false\)\} label="Note actions" anchor=\{menuButton\}/);
+    expect(src("./Explorer.tsx")).toMatch(/<Menu open=\{openTargets !== null\} onClose=\{\(\) => setOpenTargets\(null\)\} label="Open in" anchor=\{openButton\}/);
   });
 });

@@ -1,8 +1,11 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { CodexView } from "./CodexCard";
 import { CodexAccountsView, codexTrouble } from "./CodexAccounts";
+
+// The question is the shared Ask, drawn only on a real DOM; its words are read here through a stand-in.
+vi.mock("../chrome/Ask", async (real) => ({ ...(await real<object>()), default: (await import("../tasks/askStandIn")).AskStandIn }));
 
 const off: CodexView = { accounts: [], active: null, systemDefault: "signed-out", signingIn: null, inBrowser: false, deviceLink: null, deviceCode: null, attention: null, drifted: [], missing: [], settingsWarning: null };
 const kim = { id: "c1", email: "kim@example.com", home: "h1", lastSignIn: 1, signInError: false };

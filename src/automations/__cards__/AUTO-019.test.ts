@@ -28,7 +28,8 @@ const mountPage = (settings: Record<string, unknown>, automation: object = pause
 };
 type Page = ReturnType<typeof mountPage>;
 const callsOf = (cmd: string) => h.calls.filter(([c]) => c === cmd);
-const menuItem = (tree: El, label: string) => find(tree, (e) => e.props?.role === "menuitem" && textOf(e) === label);
+// The row menu is a src/ui Menu: a row is a MenuItem, found by its text, with the onClick it was given.
+const menuItem = (tree: El, label: string) => find(tree, (e) => typeof e.props?.onClick === "function" && e.props?.title !== "Quick actions" && textOf(e) === label);
 const openMenu = (p: Page) => {
   find(p.render(), (e) => e.type === "button" && e.props.title === "Quick actions").props.onClick({ stopPropagation() {} });
   return p.render();

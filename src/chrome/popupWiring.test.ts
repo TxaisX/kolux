@@ -1,5 +1,7 @@
 // UX lane A: the popups are wired to the shared keyboard helper (dialogFocus.ts, proved in dialogFocus.test.ts).
 // renderToString attaches no refs and runs no effects, so the hooks are spied on: each popup must ask for them.
+import sidebarSrc from "./RightSidebar.tsx?raw";
+import statusSrc from "./StatusBar.tsx?raw";
 import { beforeEach, expect, test, vi } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
@@ -10,45 +12,28 @@ const useDialogFocus = vi.fn();
 const useMenuFocus = vi.fn();
 vi.mock("./dialogFocus", () => ({ useDialogFocus: (...a: unknown[]) => useDialogFocus(...a), useMenuFocus: (...a: unknown[]) => useMenuFocus(...a) }));
 
-import Ask from "./Ask";
 import StatusBar from "./StatusBar";
-import RightSidebar, { tabStep } from "./RightSidebar";
+import RightSidebar from "./RightSidebar";
 
 beforeEach(() => {
   useDialogFocus.mockClear();
   useMenuFocus.mockClear();
 });
 
-test("the confirmation dialog traps focus: Escape runs Cancel, and Cancel is the control that gets focus", () => {
-  const onCancel = vi.fn();
-  renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Delete", onConfirm: () => {}, onCancel }));
-  expect(useDialogFocus).toHaveBeenCalledTimes(1);
-  const [, close, initial] = useDialogFocus.mock.calls[0] as [unknown, () => void, () => unknown];
-  close();
-  expect(onCancel).toHaveBeenCalledTimes(1);
-  expect(typeof initial).toBe("function");
-});
+// The confirmation dialog (chrome/Ask) is src/ui's AlertDialog now: its focus and Escape are proved on a real DOM in Ask.test.ts.
 
-test("the status bar's right-click menu and the More tabs menu use the menu keys too", () => {
+test("the status bar's right-click menu and the More tabs menu have the menu keys from Base UI (src/ui), not the hand-rolled helper", () => {
   renderToString(createElement(StatusBar, { terminals: 0 }));
-  expect(useMenuFocus).toHaveBeenCalledTimes(1);
   renderToString(createElement(RightSidebar, { tab: "explorer", width: 300, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
-  expect(useMenuFocus).toHaveBeenCalledTimes(2);
+  expect(useMenuFocus).not.toHaveBeenCalled();
+  expect(statusSrc).toMatch(/<Menu open=\{menu !== null\} onClose=\{\(\) => setMenu\(null\)\} label="Status bar items" at=\{menu\}/);
+  expect(sidebarSrc).toMatch(/<Menu open onClose=\{\(\) => setMenu\(false\)\} label="More tabs" anchor=\{moreButton\}/);
+  // statusItems.test.ts opens the status bar's menu on a real DOM.
 });
 
 test("chrome.md:15: only the open right-sidebar tab is a tab stop, and the body is its tab panel", () => {
   const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
-  expect(html).toMatch(/role="tab"[^>]*aria-selected="true"[^>]*tabindex="0"[^>]*>Insights</);
-  expect(html).toMatch(/role="tab"[^>]*aria-selected="false"[^>]*tabindex="-1"[^>]*>Explorer</);
+  expect(html).toMatch(/tabindex="0"[^>]*role="tab"[^>]*aria-selected="true"[^>]*>Insights</);
+  expect(html).toMatch(/tabindex="-1"[^>]*role="tab"[^>]*aria-selected="false"[^>]*>Explorer</);
   expect(html).toContain('role="tabpanel"');
-});
-
-test("tabStep: Left and Right wrap around the tabs, Home and End jump, other keys do nothing", () => {
-  expect(tabStep(3, 0, "ArrowRight")).toBe(1);
-  expect(tabStep(3, 2, "ArrowRight")).toBe(0);
-  expect(tabStep(3, 0, "ArrowLeft")).toBe(2);
-  expect(tabStep(3, 1, "Home")).toBe(0);
-  expect(tabStep(3, 1, "End")).toBe(2);
-  expect(tabStep(3, 1, "ArrowDown"), "Down is not a tab key").toBeNull();
-  expect(tabStep(3, 1, "a")).toBeNull();
 });

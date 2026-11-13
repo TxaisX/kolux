@@ -38,6 +38,6 @@ test("a default pick that was not sent keeps the pick and says why", () => {
   expect(sent).toEqual(["/model default"]);
   // The control, from the state the pick left behind: still Agent default, with the note under it.
   const shown = ModelControls(model(m.render()).props as never);
-  expect(find(shown, (e) => e.type === "select" && e.props["aria-label"] === "Model").props.value).toBe("default");
+  expect(find(shown, (e) => e.props.label === "Model" && Array.isArray(e.props.options)).props.value).toBe("default");
   expect(textOf(shown)).toContain(MODEL_NOT_SENT);
 });

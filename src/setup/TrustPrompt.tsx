@@ -70,12 +70,15 @@ export function hostMounted(on: boolean): void {
 
 const DIALOG = '[role="dialog"],[role="alertdialog"],[aria-modal="true"]';
 /** A dialog opened over the prompt: one among the newly `added` nodes (or inside one) that is not
- *  the prompt's own. A dialog already open underneath (the New Workspace dialog) does not count. */
+ *  the prompt's own. A dialog already open underneath (the New Workspace dialog) does not count. The prompt's box is
+ *  added inside a layer of its own (a portal), so a node that only holds the prompt's box does not count either. */
 export function otherDialog(added: Iterable<Node> | ArrayLike<Node>, mine: Element | null): boolean {
+  const own = (d: Element) => !!mine && (mine === d || mine.contains(d));
   for (const n of Array.from(added)) {
     const el = n as Element;
-    if (typeof el.matches !== "function" || (mine && (mine === el || mine.contains(el)))) continue;
-    if (el.matches(DIALOG) || el.querySelector(DIALOG)) return true;
+    if (typeof el.matches !== "function" || own(el)) continue;
+    if (el.matches(DIALOG)) return true;
+    if (Array.from(el.querySelectorAll(DIALOG)).some((d) => !own(d))) return true;
   }
   return false;
 }

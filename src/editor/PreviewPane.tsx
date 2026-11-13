@@ -15,7 +15,7 @@ import { hideFrontFor, splitFront } from "./frontMatter";
 import { FrontMatterBlock } from "../shell/MdViewControls";
 import { frontControl } from "../shell/mdView";
 import { mdPrefs, setMdPrefs } from "../shell/mdPrefs";
-import { useMenuKeys } from "./menuNav";
+import { Menu, MenuItem } from "../ui/Menu";
 import { followClick, inertClick, type LinkHandler } from "./linkClicks";
 import { drawDiagrams, esc, loadRenderers, renderNote, watchRenderers } from "./diagrams";
 import { filterDataPictures } from "./notePictures";
@@ -27,7 +27,6 @@ import { useKeymap } from "../keys/KeymapContext";
 import { withChord } from "../terminal/PaneMenu";
 import { labelOf, matchEvent } from "../keys/keymap";
 import "./editor-extras.css";
-import OutOfFlow from "../chrome/OutOfFlow";
 
 type Props = { id: number; path: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; worktree?: string | null; onLink?: LinkHandler };
 
@@ -87,7 +86,8 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
   const [toc, setToc] = useState(false);
   // EDIT-018: the actions menu and the line saying how the PDF export went.
   const [menu, setMenu] = useState(false);
-  const { box: menuBox, remember } = useMenuKeys(menu, () => setMenu(false));
+  // The Note actions menu: a src/ui Menu hanging from its dots button (the arrow keys, Escape and the focus hand-back are its own).
+  const menuButton = useRef<HTMLButtonElement>(null);
   const exporting = useRef(false); // a second Export while one runs would print the note twice
   const [pdfLine, setPdfLine] = useState<string | null>(null);
   const page = useRef<HTMLDivElement>(null);
@@ -224,24 +224,14 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
         )}
         <span className="right">
           <span className="diff-actions">
-            <button className="ib" aria-haspopup="menu" aria-expanded={menu}
-              onClick={(e) => {
-                remember(e.currentTarget); // before the menu opens: its first row takes focus at once
-                setMenu((m) => !m);
-              }}
-              title="Note actions" aria-label="Note actions">
+            <button ref={menuButton} className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Note actions" aria-label="Note actions">
               <Dots size={12} />
             </button>
-            {menu && (
-              <OutOfFlow>
-                <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
-                <div ref={menuBox} className="menu diff-menu" role="menu" aria-label="Note actions">
-                  <button role="menuitem" className="menu-item" onClick={() => void exportPdf()}>
-                    <span className="name">Export to PDF...</span>
-                  </button>
-                </div>
-              </OutOfFlow>
-            )}
+            <Menu open={menu} onClose={() => setMenu(false)} label="Note actions" anchor={menuButton} align="end" offset={4} className="diff-menu">
+              <MenuItem onClick={() => void exportPdf()}>
+                <span className="name">Export to PDF...</span>
+              </MenuItem>
+            </Menu>
           </span>
           <button className="ib" onClick={onClose} title={withChord("Close tab", labelOf(keymap, "tab.close"))} aria-label="Close tab">
             <Close size={12} />

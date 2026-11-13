@@ -2,7 +2,9 @@
 // a search reaches every installed agent, ranked name > alias > initials > command name.
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+// The plus menu is a src/ui Popover, drawn only on a real DOM; what it holds is read here through a stand-in.
+vi.mock("../ui/Popover", async () => (await import("../tasks/popoverStandIn")).popoverModule);
 import { agentRows, searchAgents, wantsTerminal } from "./agents";
 import PlusMenu, { type AgentInfo } from "./PlusMenu";
 

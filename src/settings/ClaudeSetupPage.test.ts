@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import ClaudeSetupPage, { ClaudeSetupView, PRECEDENCE, sizeOf, type ClaudeSetup } from "./ClaudeSetupPage";
+import { selectIn } from "../tasks/selectHtml";
 
 const data: ClaudeSetup = {
   configDir: "C:/Users/a/.claude",
@@ -82,9 +83,9 @@ test("T-651: the tab opens on the workspace in the window, not the last pick", (
   (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => (k === "kolux.claudeTabWorkspace" ? "C:/old" : null), setItem: () => {} };
   try {
     const h = renderToString(createElement(ClaudeSetupPage, { active: "C:/open" }));
-    expect(h).toContain('value="C:/open"');
+    expect(selectIn(h, "workspace")?.chosen).toBe("C:/open");
     expect(h).not.toContain("C:/old");
-    expect(renderToString(createElement(ClaudeSetupPage))).toContain('value="C:/old"');
+    expect(selectIn(renderToString(createElement(ClaudeSetupPage)), "workspace")?.chosen).toBe("C:/old");
   } finally {
     (globalThis as { localStorage?: unknown }).localStorage = was;
   }

@@ -4,6 +4,7 @@
 import { useMemo } from "react";
 import type { ProjectField, ProjectItem } from "./projects";
 import { barPlace, dayString, defaultTimeline, itemSpan, monthTicks, timelineFields, timelineRange, todayNumber } from "./timeline";
+import { Select } from "../ui/Select";
 
 export default function Timeline({ fields, items, saved, onPick }: { fields: ProjectField[]; items: ProjectItem[]; saved: unknown; onPick: (pick: { start: string; end: string }) => void }) {
   const pick = defaultTimeline(fields, saved);
@@ -41,13 +42,7 @@ export default function Timeline({ fields, items, saved, onPick }: { fields: Pro
         {(["start", "end"] as const).map((which) => (
           <label key={which} className="tasks-filter">
             <span>{which === "start" ? "Starts at" : "Ends at"}</span>
-            <select className="field" aria-label={which === "start" ? "Start field" : "End field"} value={pick[which]} onChange={(e) => choose(which, e.target.value)}>
-              {usable.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
+            <Select label={which === "start" ? "Start field" : "End field"} value={pick[which]} onChange={(v) => choose(which, v)} options={usable.map((f) => ({ value: f.id, label: f.name }))} className="field" />
           </label>
         ))}
         <span className="tasks-count">

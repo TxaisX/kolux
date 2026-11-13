@@ -3,8 +3,13 @@
 // with its runs below.
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import AutomationsPage, { type Data } from "./AutomationsPage";
+
+// The delete question is the shared Ask and the row menu a src/ui Menu, both drawn only on a real DOM; what they show
+// is read here through stand-ins.
+vi.mock("../chrome/Ask", async (real) => ({ ...(await real<object>()), default: (await import("../tasks/askStandIn")).AskStandIn }));
+vi.mock("../ui/Menu", async () => (await import("../tasks/menuStandIn")).menuModule);
 import { HermesRuns, type HermesState } from "./AutomationDetail";
 
 type Initial = NonNullable<Parameters<typeof AutomationsPage>[0]["initial"]>;
@@ -180,12 +185,12 @@ test("UX2: a failing action reads as an alert, a good one as a status", () => {
   expect(render({ data: many, note: { text: "fine" } })).toMatch(/class="note ok" role="status">fine/);
 });
 
-test("UX2: an open row menu has a backdrop to click outside of, and the dots say it is expanded", () => {
+test("UX2: an open row menu is a menu (a click outside closes it, as src/ui's Menu does) and the dots say it is expanded", () => {
   const html = render({ data: many, menu: "auto-1" });
-  expect(html).toContain('class="menu-backdrop"');
+  expect(html).toMatch(/role="menu" aria-label="Actions for Nightly checks" class="menu autos-menu"/);
   expect(html).toContain('aria-expanded="true"');
   const shut = render({ data: many });
-  expect(shut).not.toContain("menu-backdrop");
+  expect(shut).not.toContain('role="menu"');
   expect(shut).not.toContain('aria-expanded="true"');
 });
 

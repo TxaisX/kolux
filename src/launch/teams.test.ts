@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 import type { AgentInfo } from "./PlusMenu";
 import { effectiveMode, teamsEntry, teamsMode, withTeams, type TeamsHost } from "./teams";
 import TeamsModeCard from "./TeamsModeCard";
+import { selectIn } from "../tasks/selectHtml";
 
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "/usr/local/bin/claude" };
 const codex: AgentInfo = { id: "codex", name: "Codex", program: "codex", args: [], installed: true, path: "/usr/local/bin/codex" };
@@ -51,12 +52,11 @@ test("on Windows and WSL teammates always run in-process", () => {
 test("the Settings card shows the three choices, the saved one picked, and the Windows note", () => {
   const html = renderToString(createElement(TeamsModeCard, { settings: { agentTeamsMode: "native" }, save: () => {}, host: { windows: true, wsl: false, cli: null } }));
   expect(html).toContain("Claude Agent Teams");
-  for (const label of ["Off", "In-process", "Native panes"]) expect(html).toContain(`>${label}</option>`);
-  expect(html).toMatch(/<option value="native" selected="">Native panes/);
+  expect(selectIn(html, "Agent Teams mode")).toEqual({ chosen: "Native panes", offered: ["Off", "In-process", "Native panes"] });
   expect(html).toContain("On Windows Agent Teams is not offered in the picker, and teammates always run in-process");
   expect(html).toContain("Native panes acts as In-process here");
   const fresh = renderToString(createElement(TeamsModeCard, { settings: {}, save: () => {}, host: linux }));
-  expect(fresh).toMatch(/<option value="off" selected="">Off/);
+  expect(selectIn(fresh, "Agent Teams mode")?.chosen).toBe("Off");
   expect(fresh).not.toContain("On Windows");
 });
 

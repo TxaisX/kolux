@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -30,5 +31,8 @@ export default defineConfig(() => ({
     // LOOP.md section 1: the PC is shared with live agents; never more than two workers.
     maxWorkers: 2,
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.mjs"],
+    // A test on happy-dom (DT-C280) resolves packages as a web page does, and the ligatures add-on names a `main` file it
+    // does not ship (only its `module` file exists). Exactly that name, so its own subpaths still resolve as before.
+    alias: [{ find: /^@xterm\/addon-ligatures$/, replacement: fileURLToPath(new URL("./node_modules/@xterm/addon-ligatures/lib/addon-ligatures.mjs", import.meta.url)) }],
   },
 }));

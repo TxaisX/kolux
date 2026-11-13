@@ -4,8 +4,10 @@ import { expect, test, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
+// The menu is a src/ui Menu, drawn only on a real DOM; what it offers is read here through a stand-in.
+vi.mock("../ui/Menu", async () => (await import("../tasks/menuStandIn")).menuModule);
 
-import { AccountSwitcherView, EscapeWatch } from "./AccountSwitcher";
+import { AccountSwitcherView } from "./AccountSwitcher";
 import { groupsOf } from "./accounts";
 import { OPEN_SETTINGS } from "../settings/pages";
 
@@ -83,7 +85,7 @@ test("T-548: the 1-year key note shows under the Claude rows", () => {
 
 // FIX-1 (council d2 stand-in review, AFTER 3 and 1): the view has no hooks of its own, so the tree it returns
 // can be walked and a row's click handler called, which static HTML cannot do.
-type Props = { role?: string; title?: string; onClick?: () => void; onClose?: () => void; children?: ReactNode };
+type Props = { role?: string; title?: string; label?: string; open?: boolean; onClick?: () => void; onClose?: () => void; children?: ReactNode };
 const walk = (node: ReactNode, out: Array<ReactElement<Props>> = []): Array<ReactElement<Props>> => {
   Children.forEach(node, (child) => {
     if (!isValidElement<Props>(child)) return;
@@ -122,16 +124,19 @@ test("FIX-1: clicking a row that is not in use asks onPick for that provider and
   expect(onPick).toHaveBeenCalledTimes(3);
 });
 
-test("FIX-1: the open menu carries the Escape watcher even when every row is disabled, and the shut menu does not", () => {
+test("FIX-1: the open menu answers Escape even when every row is disabled, and the shut menu does not", () => {
+  // The menu is a src/ui Menu: while open, its layer catches Escape on the window whatever its rows' state (proved on
+  // a real DOM in src/ui/ui.dom.test.tsx); here, that it is open with this onClose, and shut with the pill shut.
   const onClose = vi.fn();
   const busy = groupsOf({ ...claude, signingIn: "c9" }, { ...codex, signingIn: "x9" });
   const els = tree(busy, { top: 0, left: 0 }, noop, onClose);
   expect(rowsOf(els).length).toBe(4);
   expect(html(busy).match(/disabled/g)?.length).toBe(4);
-  const watch = els.filter((e) => e.type === EscapeWatch);
-  expect(watch).toHaveLength(1);
-  expect(watch[0].props.onClose).toBe(onClose);
-  expect(tree(busy, null).filter((e) => e.type === EscapeWatch)).toHaveLength(0);
+  const menu = els.filter((e) => e.props.label === "Accounts for new panes");
+  expect(menu).toHaveLength(1);
+  expect(menu[0].props.open).toBe(true);
+  expect(menu[0].props.onClose).toBe(onClose);
+  expect(tree(busy, null).filter((e) => e.props.label === "Accounts for new panes")[0]?.props.open).toBe(false);
 });
 function html(groups: ReturnType<typeof groupsOf>) {
   return view(groups, { top: 0, left: 0 });

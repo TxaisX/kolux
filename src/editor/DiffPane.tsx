@@ -49,8 +49,8 @@ export const diffStart = (p: EditorPrefs) => ({ split: p.diffView === "split", w
 // Cycle 3 (first load): the change stepper the window's F7 calls lives in keys/handles.ts now, so the
 // shortcut router holds it without loading this pane; filled here while a diff tab is open.
 import { diffNav } from "../keys/handles";
-import { useMenuKeys } from "./menuNav";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Menu, MenuCheckboxItem } from "../ui/Menu";
+import { Dialog } from "../ui/Dialog";
 export { diffNav };
 
 type Sides = { original: string; modified: string };
@@ -223,7 +223,8 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
     setSpaces(s.spaces);
   }, [settings === null]);
   const [menu, setMenu] = useState(false);
-  const { box: menuBox, remember } = useMenuKeys(menu, () => setMenu(false));
+  // The Diff actions menu: a src/ui Menu hanging from its dots button (the arrow keys, Escape and the focus hand-back are its own).
+  const menuButton = useRef<HTMLButtonElement>(null);
   const [changes, setChanges] = useState(0);
   const [onDisk, setOnDisk] = useState(false); // EDIT-025: a preview is offered only while the file still exists
   useEffect(() => {
@@ -249,6 +250,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
   const ready = sides !== null && !asking;
   const prefs = useRef(prefsReader(() => invoke<Record<string, unknown>>("get_settings"))).current;
   const [pop, setPop] = useState<Pop | null>(null);
+  const noteField = useRef<HTMLTextAreaElement>(null);
   const noteRef = useRef({ notes, onDeleteNote, onSaveNote, canNote: !!onSaveNote });
   noteRef.current = { notes, onDeleteNote, onSaveNote, canNote: !!onSaveNote };
   // The bin on a note card deletes at once; the note is kept here for a few seconds so Undo can put it back.
@@ -508,24 +510,19 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
   const step = (dir: 1 | -1) => diffNav.get(id)?.(dir);
   const actionsMenu = (
     <span className="diff-actions">
-      <button className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={(e) => (remember(e.currentTarget), setMenu((m) => !m))} title="Diff actions" aria-label="Diff actions">
+      <button ref={menuButton} className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Diff actions" aria-label="Diff actions">
         <Dots size={12} />
       </button>
-      {menu && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
-          <div ref={menuBox} className="menu diff-menu" role="menu">
-            <button role="menuitemcheckbox" aria-checked={spaces} className="menu-item" onClick={() => ((touched.current = true), setSpaces((v) => !v))}>
-              <span className="check">{spaces ? "✓" : ""}</span>
-              <span className="name">Show whitespace changes</span>
-            </button>
-            <button role="menuitemcheckbox" aria-checked={wrap} className="menu-item" onClick={() => ((touched.current = true), setWrap((v) => !v))}>
-              <span className="check">{wrap ? "✓" : ""}</span>
-              <span className="name">Wrap lines</span>
-            </button>
-          </div>
-        </OutOfFlow>
-      )}
+      <Menu open={menu} onClose={() => setMenu(false)} label="Diff actions" anchor={menuButton} align="end" offset={4} className="diff-menu">
+        <MenuCheckboxItem checked={spaces} onCheckedChange={() => ((touched.current = true), setSpaces((v) => !v))}>
+          <span className="check">{spaces ? "✓" : ""}</span>
+          <span className="name">Show whitespace changes</span>
+        </MenuCheckboxItem>
+        <MenuCheckboxItem checked={wrap} onCheckedChange={() => ((touched.current = true), setWrap((v) => !v))}>
+          <span className="check">{wrap ? "✓" : ""}</span>
+          <span className="name">Wrap lines</span>
+        </MenuCheckboxItem>
+      </Menu>
     </span>
   );
   const layoutSwitch = (
@@ -615,34 +612,32 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       )}
       {ready && !changes && <div className="notice md-banner" role="status">{against === "head" ? "Nothing uncommitted in this file." : `No ${staged ? "staged" : "unstaged"} changes in this file right now.`}</div>}
       <div ref={host} className="pane-body diff-body" />
+      {/* A src/ui Dialog that places itself at the line, over a menu backdrop as before: a press outside, Escape and
+          Cancel close it; focus starts in the note and goes back where it was. */}
       {pop && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onMouseDown={() => setPop(null)} />
-          <div className="diff-note-pop" role="dialog" aria-label={pop.note ? "Edit review note" : "Add review note"} style={{ left: Math.max(8, Math.min(pop.x, window.innerWidth - 336)), top: Math.max(8, Math.min(pop.y + 12, window.innerHeight - 190)) }}>
-            <div className="what">{`${pop.note ? "Edit the note on" : "Note on"} ${where({ id: "", path: "", text: "", staged: false, line: pop.line, end: pop.end, side: pop.side === "old" ? "old" : undefined })}`}</div>
-            <textarea
-              autoFocus
-              aria-label="review note"
-              className="field multi"
-              value={pop.text}
-              placeholder="What should change here?"
-              onChange={(e) => setPop({ ...pop, text: e.target.value, refused: false })}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setPop(null);
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) savePop();
-              }}
-            />
-            {pop.refused && <div className="note error">A note needs some text. To remove it, use the bin on its card.</div>}
-            <div className="btn-row">
-              <button className="btn primary" onClick={savePop} disabled={!pop.note && !pop.text.trim()}>
-                {pop.note ? "Save" : "Add note"}
-              </button>
-              <button className="btn" onClick={() => setPop(null)}>
-                Cancel
-              </button>
-            </div>
+        <Dialog onClose={() => setPop(null)} label={pop.note ? "Edit review note" : "Add review note"} className="diff-note-pop" backdrop="menu-backdrop" initialFocus={noteField} style={{ left: Math.max(8, Math.min(pop.x, window.innerWidth - 336)), top: Math.max(8, Math.min(pop.y + 12, window.innerHeight - 190)) }}>
+          <div className="what">{`${pop.note ? "Edit the note on" : "Note on"} ${where({ id: "", path: "", text: "", staged: false, line: pop.line, end: pop.end, side: pop.side === "old" ? "old" : undefined })}`}</div>
+          <textarea
+            ref={noteField}
+            aria-label="review note"
+            className="field multi"
+            value={pop.text}
+            placeholder="What should change here?"
+            onChange={(e) => setPop({ ...pop, text: e.target.value, refused: false })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) savePop();
+            }}
+          />
+          {pop.refused && <div className="note error">A note needs some text. To remove it, use the bin on its card.</div>}
+          <div className="btn-row">
+            <button className="btn primary" onClick={savePop} disabled={!pop.note && !pop.text.trim()}>
+              {pop.note ? "Save" : "Add note"}
+            </button>
+            <button className="btn" onClick={() => setPop(null)}>
+              Cancel
+            </button>
           </div>
-        </OutOfFlow>
+        </Dialog>
       )}
     </Shell>
   );

@@ -4,7 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { beginNote, rows, step, type Io, type Template } from "./templates";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Dialog } from "../ui/Dialog";
 
 /** The line shown while the template list is still being read: only once it has taken a moment (the usual answer is
  *  instant and opens the blank note, which should not flash a message), and never once the list is up. */
@@ -61,30 +61,28 @@ export default function TemplatePicker({ root, onOpen, onError, onClose }: Props
     io.make(root, path).then(onOpen, (err) => onError(String(err)));
   };
   return (
-    <OutOfFlow>
-      <div className="menu-backdrop" onMouseDown={onClose} />
-      <div className="menu note-picker" role="dialog" aria-label="Start a note from a template">
-        <div
-          className="picker-list"
-          role="listbox"
-          tabIndex={0}
-          ref={(el) => el?.focus()}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") onClose();
-            else if (e.key === "Enter") choose(list[at]?.path ?? null);
-            else if (e.key === "ArrowDown" || e.key === "ArrowUp") setAt((i) => step(i, e.key, list.length));
-            else return;
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          {list.map((r, i) => (
-            <button key={r.path ?? "blank"} role="option" aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onMouseEnter={() => setAt(i)} onClick={() => choose(r.path)}>
-              <span className="name">{r.label}</span>
-            </button>
-          ))}
-        </div>
+    // src/ui Dialog: focus starts on the list, Tab stays inside, Escape and a click outside close it.
+    <Dialog onClose={onClose} label="Start a note from a template" className="menu note-picker" backdrop="menu-backdrop">
+      <div
+        className="picker-list"
+        role="listbox"
+        tabIndex={0}
+        ref={(el) => el?.focus()}
+        onKeyDown={(e) => {
+          // Escape is the dialog's (caught on the window before it gets here).
+          if (e.key === "Enter") choose(list[at]?.path ?? null);
+          else if (e.key === "ArrowDown" || e.key === "ArrowUp") setAt((i) => step(i, e.key, list.length));
+          else return;
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        {list.map((r, i) => (
+          <button key={r.path ?? "blank"} role="option" aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onMouseEnter={() => setAt(i)} onClick={() => choose(r.path)}>
+            <span className="name">{r.label}</span>
+          </button>
+        ))}
       </div>
-    </OutOfFlow>
+    </Dialog>
   );
 }

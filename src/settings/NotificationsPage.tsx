@@ -11,6 +11,7 @@ import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
 import { useLeaveSave } from "./leave";
 import { MASTER_FIELD, masterOn, testOutcome } from "../status/notifyMaster";
+import { Select } from "../ui/Select";
 
 type Result = { shown: boolean; blocked: boolean };
 
@@ -107,13 +108,7 @@ export function NotificationsView({ settings, onSave }: { settings: Record<strin
         <h2 className="conn-name">Sound</h2>
         <div className="look-select">
           <span>Sound</span>
-          <select aria-label="Notification sound" value={n.sound} onChange={(e) => onSave({ [SOUND_FIELD]: e.target.value as Sound })}>
-            {SOUNDS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+          <Select label="Notification sound" value={n.sound} onChange={(v) => onSave({ [SOUND_FIELD]: v as Sound })} options={SOUNDS.map((s) => ({ value: s.id, label: s.label }))} className="" />
         </div>
         {n.sound === "custom" && (
           <div className="look-select">

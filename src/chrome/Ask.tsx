@@ -3,8 +3,10 @@
 // Escape always cancels. The don't-ask-again tick lives in this dialog alone: it is handed over
 // only with a confirm, and the next prompt (a new dialog) starts unticked. With `confirm` null it
 // only explains, with a single OK (ACCT-015's Disconnect when nothing can be disconnected).
-import { useRef, useState, type ReactNode } from "react";
-import { useDialogFocus } from "./dialogFocus";
+// Drawn with src/ui's AlertDialog (Base UI): the focus trap, the hand-back and the click outside are Base UI's; Escape
+// is Kolux's layer (caught on the window before the terminal underneath sees it).
+import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { AlertDialog } from "../ui/Dialog";
 
 /** What a key press in the dialog does: Escape cancels; Enter on Confirm is blocked unless the
  * prompt opts in; anything else (Enter on Cancel included) does what the focused control does. */
@@ -32,13 +34,18 @@ type Props = {
   locked?: boolean;
   onConfirm: (dontAskAgain: boolean) => void;
   onCancel: () => void;
+  /** Extra classes on the box and on the full-window layer that centres it. The dialog is drawn in a portal on the
+   *  body, so a caller styles it through these, never through a class on an element around the call site. */
+  className?: string;
+  layer?: string;
+  /** The dialog box, for a caller that must tell its own dialog from another (the trust prompt). */
+  boxRef?: RefObject<HTMLDivElement | null>;
 };
 
-export default function Ask({ title, body, confirm, enter = false, dontAsk = false, cancel: cancelText = "Cancel", safe = false, locked = false, onConfirm, onCancel }: Props) {
+export default function Ask({ title, body, confirm, enter = false, dontAsk = false, cancel: cancelText = "Cancel", safe = false, locked = false, onConfirm, onCancel, className, layer, boxRef }: Props) {
   const [tick, setTick] = useState(false);
   const cancel = useRef<HTMLButtonElement>(null);
   const ok = useRef<HTMLButtonElement>(null);
-  const box = useRef<HTMLDivElement>(null);
   // C28-R1-01: while locked the three back-outs (Keep, Escape, a click outside) all land here and go nowhere.
   // The control is still focusable and named: focus starts on Keep (below) and a greyed button that cannot be
   // reached would strand the keyboard outside the dialog.
@@ -46,52 +53,48 @@ export default function Ask({ title, body, confirm, enter = false, dontAsk = fal
     if (!locked) onCancel();
   };
   // Cancel holds focus when it opens; Tab stays inside; Escape works from anywhere (not only from a focused control);
-  // focus goes back to what had it when the dialog closes. useDialogFocus reads onClose fresh each render, so the
-  // lock is seen as soon as `locked` turns true.
-  useDialogFocus(box, backOut, () => cancel.current);
+  // focus goes back to what had it when the dialog closes. The layer reads onClose fresh each render, so the lock is
+  // seen as soon as `locked` turns true.
   return (
-    <div className="ask-backdrop" onMouseDown={backOut}>
-      <div
-        ref={box}
-        className="ask"
-        role="alertdialog"
-        data-testid="ask-dialog"
-        aria-modal="true"
-        aria-label={title}
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          const what = askKey(e.key, e.target === ok.current, enter);
-          if (what !== "pass") e.preventDefault();
-          if (what === "cancel") backOut();
-        }}
-      >
-        <h2 className="ask-title">{title}</h2>
-        <div className="ask-body" data-testid="ask-body">
-          {body}
-        </div>
-        {dontAsk && (
-          <label className="check ask-check">
-            <input type="checkbox" checked={tick} onChange={(e) => setTick(e.target.checked)} /> Don&apos;t ask again
-          </label>
-        )}
-        <div className="btn-row">
-          {confirm === null ? (
-            <button ref={cancel} className="btn primary" onClick={backOut}>
-              OK
-            </button>
-          ) : (
-            <>
-              <button ref={cancel} className="btn" data-testid="ask-cancel" aria-disabled={locked || undefined} onClick={backOut}>
-                {cancelText}
-              </button>
-              <button ref={ok} className={safe ? "btn primary" : "btn danger"} data-testid="ask-confirm" onClick={() => onConfirm(tick)}>
-                {confirm}
-              </button>
-            </>
-          )}
-        </div>
+    <AlertDialog
+      onClose={backOut}
+      label={title}
+      className={className ? `ask ${className}` : "ask"}
+      viewport={layer ? `ask-backdrop ${layer}` : "ask-backdrop"}
+      boxRef={boxRef}
+      initialFocus={cancel}
+      data-testid="ask-dialog"
+      onKeyDown={(e) => {
+        // Keys typed in the dialog stop here, so the page around it (a pane's own keys) never sees them.
+        e.stopPropagation();
+        if (askKey(e.key, e.target === ok.current, enter) === "block") e.preventDefault();
+      }}
+    >
+      <h2 className="ask-title">{title}</h2>
+      <div className="ask-body" data-testid="ask-body">
+        {body}
       </div>
-    </div>
+      {dontAsk && (
+        <label className="check ask-check">
+          <input type="checkbox" checked={tick} onChange={(e) => setTick(e.target.checked)} /> Don&apos;t ask again
+        </label>
+      )}
+      <div className="btn-row">
+        {confirm === null ? (
+          <button ref={cancel} className="btn primary" onClick={backOut}>
+            OK
+          </button>
+        ) : (
+          <>
+            <button ref={cancel} className="btn" data-testid="ask-cancel" aria-disabled={locked || undefined} onClick={backOut}>
+              {cancelText}
+            </button>
+            <button ref={ok} className={safe ? "btn primary" : "btn danger"} data-testid="ask-confirm" onClick={() => onConfirm(tick)}>
+              {confirm}
+            </button>
+          </>
+        )}
+      </div>
+    </AlertDialog>
   );
 }

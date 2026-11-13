@@ -1,9 +1,12 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { CHECKLIST_CHANGED, chordFires, clearReadFailure, closer, readFailed, connectFailed, escapeLeaves, firstAiConnected, firstConnection, firstFolderAgent, leaveKey, milestone, oneClick, openAt, reopenWizard, SCREENS, STATUSES_FAILED, wizardCloser, type Outcome } from "./firstRun";
 import { WizardView, sessionChoices } from "./Wizard";
 import { jargon } from "../glossary";
+
+// The question is the shared Ask, drawn only on a real DOM; its words are read here through a stand-in.
+vi.mock("../chrome/Ask", async (real) => ({ ...(await real<object>()), default: (await import("../tasks/askStandIn")).AskStandIn }));
 
 const view = (at: number, more: Record<string, unknown> = {}) =>
   renderToString(createElement(WizardView, { at, connected: false, ping: true, hooks: true, onHooks() {}, onPing() {}, onBack() {}, onMain() {}, onSecondary() {}, onPickFolder() {}, ...more }));

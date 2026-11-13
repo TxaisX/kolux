@@ -3,7 +3,6 @@
 // Without this a question asked from a dialog that stays mounted underneath it (the workspace delete question
 // asking about unsaved text) lost Tab and Escape to the dialog below the scrim. Dialogs join in mount order;
 // an entry leaves with its dialog, so no stale top is left behind.
-import { useEffect, type RefObject } from "react";
 
 /** An open dialog's place in the stack. `shown` is false while its pane is hidden (panes stay mounted). */
 export type Modal = { shown: () => boolean };
@@ -23,10 +22,4 @@ export function pushModal(modal: Modal): () => void {
 export function isTopModal(modal: Modal): boolean {
   for (let i = open.length - 1; i >= 0; i -= 1) if (open[i].shown()) return open[i] === modal;
   return false;
-}
-
-/** The place in the stack of a dialog that handles its own Tab and Escape (trapTab in its onKeyDown), while
- *  `open`: the window-level handling of a dialog under it stands down, and it answers first while it is up. */
-export function useModalSlot(box: RefObject<Partial<Element> | null>, isOpen: boolean): void {
-  useEffect(() => (isOpen ? pushModal({ shown: () => !box.current?.closest?.("[hidden]") }) : undefined), [box, isOpen]);
 }
