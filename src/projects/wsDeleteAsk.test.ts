@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 // EDIT-031: deleting a workspace with unsaved editor text asks the same Save / Don't save / Cancel
 // question a closing tab gets, and Cancel removes nothing and drops no drafts. The real ProjectsPanel
 // and the window's own close guard on the small DOM, with the backend mocked.
@@ -5,7 +6,7 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { useCloseGuard } from "../editor/CloseDialog";
 import type { GuardPane } from "../editor/closeGuard";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/realDom";
 import { sameDir } from "../workspaces";
 import ProjectsPanel from "./ProjectsPanel";
 import CleanupDialog from "./CleanupDialog";

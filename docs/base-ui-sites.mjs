@@ -6,10 +6,10 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 const ROOT = join(process.cwd(), "src");
-// One line per pattern; a line that matches is one site. Ask is the shared confirm dialog: each <Ask is a call site
-// that moves to <AlertDialog> when chrome/Ask.tsx does.
+// One line per pattern; a line that matches is one site. Ask, the shared confirm dialog, is drawn with <AlertDialog>
+// (chrome/Ask.tsx), so its call sites are not counted.
 const PRIMITIVES = [
-  ["Dialog", /\brole="(alert)?dialog"|<Ask\b/],
+  ["Dialog", /\brole="(alert)?dialog"/],
   ["Menu", /\brole="menu"/],
   ["ContextMenu", /\bonContextMenu=/],
   ["Popover", /\baria-haspopup="(dialog|true)"/],

@@ -20,7 +20,7 @@ The API reference for the pinned version ships in the package:
 | Hand-rolled pattern today | Wrapper | Notes |
 |---|---|---|
 | `role="dialog"` box + `useDialogFocus` / `trapDialog` / `trapTab` + `.ask-backdrop` or `.menu-backdrop` | `Dialog` | `viewport="ask-backdrop"` for a centred dialog, `backdrop="menu-backdrop"` for one that places itself |
-| `<Ask>` and every `role="alertdialog"` | `AlertDialog` | not migrated yet, see "Blocker: the test DOM" |
+| `<Ask>` and every `role="alertdialog"` | `AlertDialog` | `chrome/Ask.tsx` is one; a test that opens it runs on happy-dom (`src/tasks/realDom.ts`) |
 | `.menu role="menu"` opened from a button + `useMenuFocus` / `trapMenu` | `Menu` + `MenuItem` / `MenuCheckboxItem` / `MenuTitle` | `anchor={buttonRef}`, `align="end"` to line up with the button's right edge |
 | `onContextMenu` → `.menu` at `{left: e.clientX, top: e.clientY}` | `ContextMenu` | `at={{x, y}}`; flips when there is no room |
 | `.menu role="dialog"` hanging from a status-bar item + `watchEscape` + `restoreFocus` | `Popover` | non-modal by default; focus returns to `anchor` |
@@ -57,7 +57,7 @@ The wrappers only give the sites one shape: `checked`, `onChange(boolean)` and t
 
 The old panel did not trap Tab and did not hand focus back. Base UI now does both.
 
-### AlertDialog (for `chrome/Ask.tsx`, not yet migrated)
+### AlertDialog (migrated: `chrome/Ask.tsx`, so every `<Ask>` call site)
 
 ```tsx
 // before (Ask.tsx)
@@ -67,10 +67,15 @@ The old panel did not trap Tab and did not hand focus back. Base UI now does bot
 // with useDialogFocus(box, backOut, () => cancel.current)
 
 // after
-<AlertDialog onClose={backOut} label={title} className="ask" viewport="ask-backdrop" initialFocus={cancel} onKeyDown={(e) => askKey(e.key, onConfirm, enter)}>
+<AlertDialog onClose={backOut} label={title} className="ask" viewport="ask-backdrop" initialFocus={cancel} data-testid="ask-dialog"
+  onKeyDown={(e) => { e.stopPropagation(); if (askKey(e.key, e.target === ok.current, enter) === "block") e.preventDefault(); }}>
   ...
 </AlertDialog>
 ```
+
+A test written on the fake DOM that opens an Ask moves to a real one with two lines: `// @vitest-environment happy-dom`
+at the top and `../tasks/realDom` in place of `../tasks/fakeDom` (same helpers; `mount` hands back the body, so a search
+finds the portal). Stubs of focus, `isConnected` or a window listener list become real focus and real events.
 
 ### Menu (migrated: the right sidebar's "More" menu)
 
@@ -234,38 +239,38 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | agents | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 5 |
 | agentstart | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| artifacts | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 8 |
-| automations | 5 | 3 | 0 | 0 | 1 | 1 | 1 | 13 | 14 | 38 |
+| artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 7 |
+| automations | 3 | 3 | 0 | 0 | 1 | 1 | 1 | 13 | 14 | 36 |
 | board | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 9 |
 | chat | 2 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 13 | 19 |
-| chrome | 1 | 1 | 2 | 1 | 0 | 1 | 1 | 0 | 22 | 29 |
+| chrome | 0 | 1 | 2 | 1 | 0 | 1 | 1 | 0 | 22 | 28 |
 | editmenu | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 |
-| editor | 11 | 6 | 4 | 0 | 0 | 0 | 4 | 4 | 128 | 157 |
+| editor | 6 | 6 | 4 | 0 | 0 | 0 | 4 | 4 | 128 | 152 |
 | feedback | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 4 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 3 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 4 |
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 8 |
 | launch | 1 | 1 | 0 | 1 | 0 | 0 | 2 | 3 | 32 | 40 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 3 | 5 |
-| onboarding | 8 | 1 | 0 | 0 | 1 | 6 | 2 | 1 | 9 | 28 |
+| onboarding | 7 | 1 | 0 | 0 | 1 | 6 | 2 | 1 | 9 | 27 |
 | ports | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 3 | 5 |
-| projects | 16 | 1 | 6 | 0 | 1 | 0 | 19 | 17 | 75 | 135 |
+| projects | 8 | 1 | 6 | 0 | 1 | 0 | 19 | 17 | 75 | 127 |
 | recovery | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 |
-| scm | 6 | 5 | 2 | 0 | 0 | 0 | 5 | 6 | 98 | 122 |
+| scm | 4 | 5 | 2 | 0 | 0 | 0 | 5 | 6 | 98 | 120 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 16 | 22 |
-| settings | 8 | 1 | 0 | 0 | 1 | 30 | 10 | 27 | 43 | 120 |
-| setup | 2 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 4 |
-| shell | 8 | 1 | 2 | 0 | 2 | 0 | 1 | 0 | 24 | 38 |
-| skills | 6 | 3 | 0 | 1 | 0 | 0 | 2 | 0 | 19 | 31 |
-| space | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 4 | 8 |
+| settings | 3 | 1 | 0 | 0 | 1 | 30 | 10 | 27 | 43 | 115 |
+| setup | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 3 |
+| shell | 3 | 1 | 2 | 0 | 2 | 0 | 1 | 0 | 24 | 33 |
+| skills | 2 | 3 | 0 | 1 | 0 | 0 | 2 | 0 | 19 | 27 |
+| space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 4 | 7 |
 | status | 4 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 9 | 14 |
 | switcher | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 5 |
-| tasks | 3 | 0 | 0 | 0 | 2 | 0 | 3 | 14 | 41 | 63 |
+| tasks | 2 | 0 | 0 | 0 | 2 | 0 | 3 | 14 | 41 | 62 |
 | terminal | 7 | 2 | 3 | 0 | 0 | 0 | 0 | 0 | 29 | 41 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 4 |
-| update | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 6 |
+| update | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 5 |
 | usage | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 13 | 15 |
-| **Total** | **99** | **29** | **20** | **4** | **8** | **42** | **57** | **92** | **646** | **997** |
+| **Total** | **61** | **29** | **20** | **4** | **8** | **42** | **57** | **92** | **646** | **959** |
 
 ### agents
 
@@ -277,13 +282,13 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 
 ### artifacts
 
-- [ ] `src/artifacts/ArtifactsPage.tsx`: Tooltip :240, Dialog :467, Tooltip :468, Tooltip :482, Tooltip :502, Tooltip :517, Tooltip :541, Tooltip :557
+- [ ] `src/artifacts/ArtifactsPage.tsx`: Tooltip :240, Tooltip :468, Tooltip :482, Tooltip :502, Tooltip :517, Tooltip :541, Tooltip :557
 
 ### automations
 
 - [ ] `src/automations/AutomationDetail.tsx`: Switch :68, Tooltip :72, Tabs :97
-- [ ] `src/automations/AutomationDialog.tsx`: Dialog :311, Select :358, Select :375, Select :385, Checkbox :397, Select :399, Select :412, Select :432, Select :443, Select :464, Select :502, Select :523, Tooltip :564, Dialog :570, Tooltip :571
-- [ ] `src/automations/AutomationsPage.tsx`: Dialog :200, Menu :200, Dialog :208, Menu :208, Dialog :295, Tooltip :295, Tooltip :337, Select :346, Select :351, Tooltip :368, Tooltip :371, Tooltip :379, Tooltip :461, Tooltip :473, Menu :493, Tooltip :496
+- [ ] `src/automations/AutomationDialog.tsx`: Dialog :311, Select :358, Select :375, Select :385, Checkbox :397, Select :399, Select :412, Select :432, Select :443, Select :464, Select :502, Select :523, Tooltip :564, Tooltip :571
+- [ ] `src/automations/AutomationsPage.tsx`: Dialog :200, Menu :200, Dialog :208, Menu :208, Tooltip :295, Tooltip :337, Select :346, Select :351, Tooltip :368, Tooltip :371, Tooltip :379, Tooltip :461, Tooltip :473, Menu :493, Tooltip :496
 - [ ] `src/automations/RunsDashboard.tsx`: Select :99, Tooltip :107, Tooltip :174, Tooltip :175
 
 ### board
@@ -304,9 +309,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 ### chrome
 
 - [ ] `src/chrome/AppLookCard.tsx`: Switch :39
-- [ ] `src/chrome/Ask.tsx`: Dialog :57, Checkbox :75
+- [ ] `src/chrome/Ask.tsx`: Checkbox :72
 - [ ] `src/chrome/LayoutStrip.tsx`: Tooltip :33, Tooltip :44
-- [ ] `src/chrome/RightSidebar.tsx`: Tooltip :179, Tooltip :188, Tooltip :200
+- [ ] `src/chrome/RightSidebar.tsx`: Tooltip :180, Tooltip :189, Tooltip :201
 - [ ] `src/chrome/StatusBar.tsx`: ContextMenu :70, Tooltip :72, Tooltip :80, Popover :87, Tooltip :87, Tooltip :95, Tooltip :101, ContextMenu :110, Menu :111, Tooltip :122
 - [ ] `src/chrome/TopBar.tsx`: Tooltip :96, Tooltip :111, Tooltip :114, Tooltip :117, Tooltip :134, Tooltip :139, Tooltip :142, Tooltip :147, Tooltip :154, Tooltip :157, Tooltip :160
 
@@ -317,7 +322,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 ### editor
 
 - [ ] `src/editor/AddProjectRow.tsx`: Tooltip :49
-- [ ] `src/editor/AllChangesPane.tsx`: Tooltip :376, Tooltip :383, Select :387, Tooltip :387, Tooltip :392, Tooltip :395, Tooltip :399, Checkbox :400, Tooltip :402, Checkbox :403, Tooltip :413, Tooltip :422, Tooltip :428, Tooltip :431, Tooltip :446, Tooltip :449, Tooltip :453, Tooltip :467, Dialog :472, Tooltip :472, Dialog :473, Tooltip :473, Tooltip :481, Tooltip :511, Tooltip :636, Checkbox :639, Tooltip :639, Tooltip :640, Tooltip :643, Tooltip :647, Tooltip :652, Tooltip :657
+- [ ] `src/editor/AllChangesPane.tsx`: Tooltip :376, Tooltip :383, Select :387, Tooltip :387, Tooltip :392, Tooltip :395, Tooltip :399, Checkbox :400, Tooltip :402, Checkbox :403, Tooltip :413, Tooltip :422, Tooltip :428, Tooltip :431, Tooltip :446, Tooltip :449, Tooltip :453, Tooltip :467, Tooltip :472, Tooltip :473, Tooltip :481, Tooltip :511, Tooltip :636, Checkbox :639, Tooltip :639, Tooltip :640, Tooltip :643, Tooltip :647, Tooltip :652, Tooltip :657
 - [ ] `src/editor/ChangeTree.tsx`: Checkbox :44, Tooltip :44, Tooltip :45, Tooltip :48
 - [ ] `src/editor/CloseDialog.tsx`: Dialog :101
 - [ ] `src/editor/CodeLabel.tsx`: Select :50, Tooltip :53
@@ -326,7 +331,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/editor/DiskBanner.tsx`: Tooltip :30, Tooltip :33, Tooltip :36, Tooltip :50, Tooltip :53, Tooltip :89, Tooltip :92, Tooltip :95
 - [ ] `src/editor/DrawPanel.tsx`: Tooltip :53
 - [ ] `src/editor/EditorPane.tsx`: Tooltip :152, Tooltip :173, Tooltip :770, Tooltip :774, Tooltip :775, Tooltip :780, Tooltip :794, Tooltip :804, Tooltip :811, Tooltip :816, Tooltip :823, Tooltip :826, Tooltip :832, Tooltip :846
-- [ ] `src/editor/Explorer.tsx`: Tooltip :825, Tooltip :828, Tooltip :831, Tooltip :834, Tooltip :837, Tooltip :843, Tooltip :849, Tooltip :852, Tooltip :855, Tooltip :858, Tooltip :861, ContextMenu :867, Menu :868, ContextMenu :879, Menu :880, Dialog :912, Tooltip :913, Tooltip :933, ContextMenu :951, ContextMenu :977, Tooltip :978, Tooltip :992
+- [ ] `src/editor/Explorer.tsx`: Tooltip :825, Tooltip :828, Tooltip :831, Tooltip :834, Tooltip :837, Tooltip :843, Tooltip :849, Tooltip :852, Tooltip :855, Tooltip :858, Tooltip :861, ContextMenu :867, Menu :868, ContextMenu :879, Menu :880, Tooltip :913, Tooltip :933, ContextMenu :951, ContextMenu :977, Tooltip :978, Tooltip :992
 - [ ] `src/editor/FilePicker.tsx`: Dialog :104
 - [ ] `src/editor/ImageCanvas.tsx`: Tooltip :92, Tooltip :95, Tooltip :98, Tooltip :101, Tooltip :104
 - [ ] `src/editor/ImageView.tsx`: Tooltip :47, Tooltip :51, Tooltip :56, Tooltip :68, Tooltip :73
@@ -334,7 +339,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/editor/NamePrompt.tsx`: Dialog :79
 - [ ] `src/editor/NoteRail.tsx`: Tooltip :80, Tooltip :92, Tooltip :136
 - [ ] `src/editor/NoteTools.tsx`: Tooltip :111, Tooltip :114, Tooltip :120, Tooltip :123, Tooltip :126, Tooltip :173, Tooltip :191
-- [ ] `src/editor/NotebookView.tsx`: Dialog :157, Tooltip :158, Dialog :172, Tooltip :173, Select :193
+- [ ] `src/editor/NotebookView.tsx`: Tooltip :158, Tooltip :173, Select :193
 - [ ] `src/editor/PdfView.tsx`: Tooltip :244, Tooltip :248, Tooltip :253, Tooltip :265, Tooltip :270, Tooltip :283, Tooltip :286, Tooltip :289, Tooltip :292
 - [ ] `src/editor/PreviewPane.tsx`: Tooltip :207, Tooltip :212, Tooltip :216, Tooltip :221, Tooltip :232, Menu :238, Tooltip :246
 - [ ] `src/editor/ReviewNotes.tsx`: Dialog :71, Tooltip :118, Menu :150, Tooltip :191
@@ -383,7 +388,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/onboarding/SidebarStart.tsx`: Tooltip :45, Tooltip :54
 - [ ] `src/onboarding/StepPanels.tsx`: Switch :145, Select :150, Switch :346, Checkbox :364, Switch :365
 - [ ] `src/onboarding/Tours.tsx`: Dialog :130
-- [ ] `src/onboarding/Wizard.tsx`: Dialog :117, Tooltip :122, Tooltip :127, Switch :151, Switch :176, Dialog :216, Tooltip :217
+- [ ] `src/onboarding/Wizard.tsx`: Dialog :117, Tooltip :122, Tooltip :127, Switch :151, Switch :176, Tooltip :217
 
 ### ports
 
@@ -395,14 +400,14 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/projects/AttachedTabs.tsx`: Tooltip :17
 - [ ] `src/projects/CacheTimer.tsx`: Tooltip :10, Tooltip :15
 - [ ] `src/projects/CleanupDialog.tsx`: Dialog :133, Select :150, Select :158, Select :164, Select :169, Select :174, Tooltip :197, Checkbox :198, Checkbox :206, Dialog :222, Checkbox :247, Tooltip :274
-- [ ] `src/projects/FolderRenameAsk.tsx`: Dialog :15, Tooltip :16, Dialog :25, Tooltip :26
+- [ ] `src/projects/FolderRenameAsk.tsx`: Tooltip :16, Tooltip :26
 - [ ] `src/projects/HideableRow.tsx`: ContextMenu :17
 - [ ] `src/projects/IconPicker.tsx`: Tooltip :28
 - [ ] `src/projects/ImportSetup.tsx`: Dialog :17
 - [ ] `src/projects/KeptBranches.tsx`: Checkbox :62
 - [ ] `src/projects/MessageNote.tsx`: Tooltip :17
 - [ ] `src/projects/Picker.tsx`: Tooltip :26, Tooltip :66
-- [ ] `src/projects/ProjectsPanel.tsx`: Tooltip :1133, Select :1141, Checkbox :1166, Checkbox :1170, Select :1177, Select :1182, Checkbox :1190, Checkbox :1212, Tooltip :1419, Tooltip :1507, Tooltip :1510, Select :1514, Tooltip :1519, Tooltip :1547, Tooltip :1550, Select :1554, Tooltip :1560, Tooltip :1586, Tooltip :1590, Tooltip :1715, ContextMenu :1887, Tooltip :1893, Tooltip :1898, Tooltip :1926, Tooltip :1937, Tooltip :1942, Tooltip :1947, Tooltip :1956, Tooltip :1969, Tooltip :1981, Tooltip :1994, Tooltip :2006, Tooltip :2018, Dialog :2031, Tooltip :2032, Dialog :2094, Tooltip :2095, Dialog :2141, Tooltip :2142, Dialog :2157, Tooltip :2158, Checkbox :2202, Checkbox :2208, Tooltip :2233, Tooltip :2267, ContextMenu :2280, Tooltip :2287, Tooltip :2288, Tooltip :2291, Tooltip :2294, Dialog :2299, Tooltip :2300, ContextMenu :2309, Tooltip :2310, Select :2329, Tooltip :2340, Tooltip :2380, Tooltip :2386, Tooltip :2389, Select :2412, Dialog :2423, Tooltip :2424, Checkbox :2430, ContextMenu :2461, Tooltip :2462, Tooltip :2470, Tooltip :2473, Tooltip :2508, Tooltip :2512, Tooltip :2515, Tooltip :2518, Tooltip :2522, Tabs :2531, Tooltip :2535, Select :2587, Tooltip :2598, Checkbox :2609, Select :2624, Select :2631, Checkbox :2638, Checkbox :2641, Checkbox :2645, Checkbox :2649, Checkbox :2658, ContextMenu :2733, Menu :2735, Tooltip :2781, Tooltip :2820, Tooltip :2824, Tooltip :2829, Tooltip :2834
+- [ ] `src/projects/ProjectsPanel.tsx`: Tooltip :1133, Select :1141, Checkbox :1166, Checkbox :1170, Select :1177, Select :1182, Checkbox :1190, Checkbox :1212, Tooltip :1419, Tooltip :1507, Tooltip :1510, Select :1514, Tooltip :1519, Tooltip :1547, Tooltip :1550, Select :1554, Tooltip :1560, Tooltip :1586, Tooltip :1590, Tooltip :1715, ContextMenu :1887, Tooltip :1893, Tooltip :1898, Tooltip :1926, Tooltip :1937, Tooltip :1942, Tooltip :1947, Tooltip :1956, Tooltip :1969, Tooltip :1981, Tooltip :1994, Tooltip :2006, Tooltip :2018, Tooltip :2032, Tooltip :2095, Tooltip :2142, Tooltip :2158, Checkbox :2202, Checkbox :2208, Tooltip :2233, Tooltip :2267, ContextMenu :2280, Tooltip :2287, Tooltip :2288, Tooltip :2291, Tooltip :2294, Tooltip :2300, ContextMenu :2309, Tooltip :2310, Select :2329, Tooltip :2340, Tooltip :2380, Tooltip :2386, Tooltip :2389, Select :2412, Tooltip :2424, Checkbox :2430, ContextMenu :2461, Tooltip :2462, Tooltip :2470, Tooltip :2473, Tooltip :2508, Tooltip :2512, Tooltip :2515, Tooltip :2518, Tooltip :2522, Tabs :2531, Tooltip :2535, Select :2587, Tooltip :2598, Checkbox :2609, Select :2624, Select :2631, Checkbox :2638, Checkbox :2641, Checkbox :2645, Checkbox :2649, Checkbox :2658, ContextMenu :2733, Menu :2735, Tooltip :2781, Tooltip :2820, Tooltip :2824, Tooltip :2829, Tooltip :2834
 - [ ] `src/projects/ScanRepos.tsx`: Dialog :107, Tooltip :132, Checkbox :133, Tooltip :169
 - [ ] `src/projects/StartGit.tsx`: Dialog :30, Tooltip :43, Checkbox :49, Tooltip :64
 - [ ] `src/projects/WorktreePalette.tsx`: Dialog :302, Select :328, Select :336, Tooltip :352, Tooltip :370
@@ -426,7 +431,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/scm/LocalOnlyIcon.tsx`: Tooltip :17
 - [ ] `src/scm/OneClickNotice.tsx`: Tooltip :32, Tooltip :44
 - [ ] `src/scm/PrStart.tsx`: Dialog :279, Tooltip :284, Checkbox :299, Tooltip :303
-- [ ] `src/scm/SourceControlPanel.tsx`: Tooltip :322, Tooltip :328, Tooltip :586, ContextMenu :587, Tooltip :599, Tooltip :604, Tooltip :610, Tooltip :616, Tooltip :639, Tooltip :643, Tooltip :652, Tooltip :658, Dialog :687, Tooltip :687, Tooltip :694, Select :699, Tooltip :699, Tooltip :708, Tooltip :712, Tooltip :716, Tooltip :720, Tooltip :723, Tooltip :734, Checkbox :760, Tooltip :801, Tooltip :819, Tooltip :831, Tooltip :837, Tooltip :853, Tooltip :860, Tooltip :866, Tooltip :878, Menu :886, Tooltip :895, Menu :911, Tooltip :920, Tooltip :935, Tooltip :951, Tooltip :955, Tooltip :963, Tooltip :968, Tooltip :972, Tooltip :976, Dialog :1041, Checkbox :1056, Tooltip :1065, Tooltip :1093, Tooltip :1097, Dialog :1106, Select :1115, Checkbox :1124, Tooltip :1145, Tooltip :1148, Tooltip :1151, Tooltip :1154, Tooltip :1208, Tooltip :1225, ContextMenu :1243, Tooltip :1250, Tooltip :1255, Menu :1289, Menu :1317, Dialog :1346, Tooltip :1347
+- [ ] `src/scm/SourceControlPanel.tsx`: Tooltip :322, Tooltip :328, Tooltip :586, ContextMenu :587, Tooltip :599, Tooltip :604, Tooltip :610, Tooltip :616, Tooltip :639, Tooltip :643, Tooltip :652, Tooltip :658, Tooltip :687, Tooltip :694, Select :699, Tooltip :699, Tooltip :708, Tooltip :712, Tooltip :716, Tooltip :720, Tooltip :723, Tooltip :734, Checkbox :760, Tooltip :801, Tooltip :819, Tooltip :831, Tooltip :837, Tooltip :853, Tooltip :860, Tooltip :866, Tooltip :878, Menu :886, Tooltip :895, Menu :911, Tooltip :920, Tooltip :935, Tooltip :951, Tooltip :955, Tooltip :963, Tooltip :968, Tooltip :972, Tooltip :976, Dialog :1041, Checkbox :1056, Tooltip :1065, Tooltip :1093, Tooltip :1097, Dialog :1106, Select :1115, Checkbox :1124, Tooltip :1145, Tooltip :1148, Tooltip :1151, Tooltip :1154, Tooltip :1208, Tooltip :1225, ContextMenu :1243, Tooltip :1250, Tooltip :1255, Menu :1289, Menu :1317, Tooltip :1347
 - [ ] `src/scm/StackMap.tsx`: Checkbox :139, Dialog :151
 - [ ] `src/scm/WriterPicker.tsx`: Select :63, Select :87
 
@@ -438,7 +443,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 
 ### settings
 
-- [ ] `src/settings/AccountRow.tsx`: Tooltip :35, Dialog :65, Tooltip :66
+- [ ] `src/settings/AccountRow.tsx`: Tooltip :35, Tooltip :66
 - [ ] `src/settings/AgentCredentials.tsx`: Select :89, Checkbox :107
 - [ ] `src/settings/AgentsPage.tsx`: Switch :48, Switch :80, Select :152, Select :166, Select :174, Switch :212, Switch :244, Select :252
 - [ ] `src/settings/AiRecipesSection.tsx`: Checkbox :55, Select :66, Tooltip :74
@@ -446,13 +451,12 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/settings/ClaudeAccounts.tsx`: Tooltip :57, Tooltip :66, Switch :99
 - [ ] `src/settings/ClaudeSetupPage.tsx`: Tooltip :64, Tooltip :86, Tooltip :107, Tooltip :134, Tooltip :138, Tooltip :189, Tooltip :203, Tooltip :218, Tooltip :244, Tooltip :259, Tooltip :262, Tooltip :275, Tooltip :283, Tooltip :293, Tooltip :319, Tooltip :320, Tooltip :321, Tooltip :330, Select :433
 - [ ] `src/settings/CodexAccounts.tsx`: Tooltip :58, Tooltip :67
-- [ ] `src/settings/CodexCard.tsx`: Dialog :234
 - [ ] `src/settings/ConnectGrid.tsx`: Menu :54
 - [ ] `src/settings/CustomThemeEditor.tsx`: Tooltip :59, Tooltip :60, Tooltip :63, Tooltip :274
 - [ ] `src/settings/ExperimentalCard.tsx`: Switch :19
 - [ ] `src/settings/GeneralPage.tsx`: Checkbox :52, Checkbox :56, Switch :125, Switch :141, Select :207, Switch :289
 - [ ] `src/settings/GitPage.tsx`: Select :71, Switch :98, Switch :109, Switch :121, Select :134, Switch :140, Switch :180
-- [ ] `src/settings/GrokCard.tsx`: Dialog :161, Dialog :241
+- [ ] `src/settings/GrokCard.tsx`: Dialog :161
 - [ ] `src/settings/InputCards.tsx`: Switch :19
 - [ ] `src/settings/NativeTerminalCard.tsx`: Switch :35
 - [ ] `src/settings/NotificationsPage.tsx`: Switch :73, Switch :85, Switch :90, Switch :98, Select :110, Switch :169
@@ -460,9 +464,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/settings/RepoSetup.tsx`: Select :93, Checkbox :136, Select :141
 - [ ] `src/settings/RoutingPage.tsx`: Tabs :51, Tooltip :53, Tooltip :61, Select :86, Select :97
 - [ ] `src/settings/SafetyPage.tsx`: Switch :73, Switch :89
-- [ ] `src/settings/SafetyRules.tsx`: Tooltip :112, Dialog :115, Tooltip :115, Select :157, Switch :171, Select :193
+- [ ] `src/settings/SafetyRules.tsx`: Tooltip :112, Tooltip :115, Select :157, Switch :171, Select :193
 - [ ] `src/settings/SchemePicker.tsx`: Tooltip :41
-- [ ] `src/settings/SettingsPage.tsx`: Switch :121, Dialog :204, Dialog :386, Dialog :402, Tooltip :467
+- [ ] `src/settings/SettingsPage.tsx`: Switch :121, Dialog :386, Dialog :402, Tooltip :467
 - [ ] `src/settings/SetupPolicyRow.tsx`: Select :15
 - [ ] `src/settings/ShortcutsPage.tsx`: Select :109, Tooltip :174, Tooltip :177
 - [ ] `src/settings/TerminalImport.tsx`: Checkbox :141, Checkbox :148
@@ -471,18 +475,18 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 
 ### setup
 
-- [ ] `src/setup/TrustDialog.tsx`: Dialog :38, Tooltip :39, Checkbox :52
+- [ ] `src/setup/TrustDialog.tsx`: Tooltip :39, Checkbox :52
 - [ ] `src/setup/TrustPrompt.tsx`: Dialog :71
 
 ### shell
 
-- [ ] `src/shell/ConfirmClear.tsx`: Tooltip :12, Dialog :15, Tooltip :15
+- [ ] `src/shell/ConfirmClear.tsx`: Tooltip :12, Tooltip :15
 - [ ] `src/shell/LinkAskDialog.tsx`: Dialog :1, Dialog :23
-- [ ] `src/shell/ProjectsExtras.tsx`: Tooltip :21, Tooltip :26, Checkbox :40, Tooltip :57, Tooltip :60, Tooltip :66, Dialog :163, Tooltip :164, Tooltip :173, Tooltip :204
+- [ ] `src/shell/ProjectsExtras.tsx`: Tooltip :21, Tooltip :26, Checkbox :40, Tooltip :57, Tooltip :60, Tooltip :66, Tooltip :164, Tooltip :173, Tooltip :204
 - [ ] `src/shell/TabSearch.tsx`: Dialog :48
 - [ ] `src/shell/WindowView.tsx`: Tooltip :32
 - [ ] `src/shell/window/Content.tsx`: Tooltip :73, Tooltip :192, Tabs :203, Tooltip :205
-- [ ] `src/shell/window/Dialogs.tsx`: Dialog :47, Tooltip :48, Dialog :75, Dialog :87
+- [ ] `src/shell/window/Dialogs.tsx`: Tooltip :48
 - [ ] `src/shell/window/Grid.tsx`: Tabs :101, ContextMenu :151, Tooltip :165, Tooltip :171, Tooltip :177
 - [ ] `src/shell/window/Notices.tsx`: Tooltip :24
 - [ ] `src/shell/window/Pane.tsx`: Tooltip :269
@@ -495,11 +499,11 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/skills/SkillPill.tsx`: Tooltip :10
 - [ ] `src/skills/SkillUpdate.tsx`: Dialog :141
 - [ ] `src/skills/SkillUpdateNotice.tsx`: Tooltip :39
-- [ ] `src/skills/SkillsPage.tsx`: Tooltip :157, Tooltip :167, Menu :181, Tooltip :186, Tooltip :200, Menu :236, Popover :273, Dialog :279, Tooltip :288, Tooltip :299, Checkbox :373, Tooltip :377, Tooltip :388, Menu :394, Tooltip :396, Tooltip :407, Dialog :417, Tooltip :418, Tooltip :426, Tooltip :436, Dialog :451, Tooltip :452, Dialog :482, Tooltip :483, Dialog :498, Tooltip :498
+- [ ] `src/skills/SkillsPage.tsx`: Tooltip :157, Tooltip :167, Menu :181, Tooltip :186, Tooltip :200, Menu :236, Popover :273, Dialog :279, Tooltip :288, Tooltip :299, Checkbox :373, Tooltip :377, Tooltip :388, Menu :394, Tooltip :396, Tooltip :407, Tooltip :418, Tooltip :426, Tooltip :436, Tooltip :452, Tooltip :483, Tooltip :498
 
 ### space
 
-- [ ] `src/space/SpaceView.tsx`: Tooltip :132, Select :141, Checkbox :148, Checkbox :178, Tooltip :178, Tooltip :181, Dialog :205, Tooltip :206
+- [ ] `src/space/SpaceView.tsx`: Tooltip :132, Select :141, Checkbox :148, Checkbox :178, Tooltip :178, Tooltip :181, Tooltip :206
 
 ### status
 
@@ -516,7 +520,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/tasks/MarkdownView.tsx`: Tooltip :12
 - [ ] `src/tasks/NewIssueDialog.tsx`: Dialog :137, Tooltip :140, Select :146, Tooltip :153
 - [ ] `src/tasks/ProjectsView.tsx`: Select :44, Select :56, Tooltip :285, Tooltip :298, Tooltip :301, Tooltip :315, Tooltip :361, Select :412, Select :421, Select :431, Tooltip :452, Checkbox :461
-- [ ] `src/tasks/PullRequestPage.tsx`: Tooltip :219, Tooltip :259, Tooltip :274, Tabs :305, Tooltip :340, Tooltip :385, Tooltip :393, Tooltip :402, Tooltip :414, Select :423, Select :435, Dialog :447, Tooltip :448, Tooltip :482, Checkbox :502
+- [ ] `src/tasks/PullRequestPage.tsx`: Tooltip :219, Tooltip :259, Tooltip :274, Tabs :305, Tooltip :340, Tooltip :385, Tooltip :393, Tooltip :402, Tooltip :414, Select :423, Select :435, Tooltip :448, Tooltip :482, Checkbox :502
 - [ ] `src/tasks/RoadmapTimeline.tsx`: Select :44, Tooltip :67, Tooltip :73, Tooltip :79, Tooltip :81
 - [ ] `src/tasks/TaskDialog.tsx`: Dialog :143, Tooltip :164, Tooltip :216, Tooltip :225, Select :232, Tooltip :245, Select :303, Tooltip :322
 - [ ] `src/tasks/TasksPage.tsx`: Select :48, Tooltip :65, Tooltip :78, Tooltip :84, Checkbox :85, Tabs :313, Select :337, Tooltip :352, Tooltip :368, Select :370, Tooltip :388, Tooltip :394, Tooltip :406, Tooltip :454, Tooltip :472, Tooltip :498, Tooltip :499, Tooltip :528
@@ -538,7 +542,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 
 ### update
 
-- [ ] `src/update/UpdateCenterView.tsx`: Tooltip :275, Dialog :283, Tooltip :303, Tooltip :306, Dialog :373, Tooltip :373
+- [ ] `src/update/UpdateCenterView.tsx`: Tooltip :275, Dialog :283, Tooltip :303, Tooltip :306, Tooltip :373
 
 ### usage
 

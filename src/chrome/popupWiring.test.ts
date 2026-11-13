@@ -11,7 +11,6 @@ const useDialogFocus = vi.fn();
 const useMenuFocus = vi.fn();
 vi.mock("./dialogFocus", () => ({ useDialogFocus: (...a: unknown[]) => useDialogFocus(...a), useMenuFocus: (...a: unknown[]) => useMenuFocus(...a) }));
 
-import Ask from "./Ask";
 import StatusBar from "./StatusBar";
 import RightSidebar, { tabStep } from "./RightSidebar";
 
@@ -20,15 +19,7 @@ beforeEach(() => {
   useMenuFocus.mockClear();
 });
 
-test("the confirmation dialog traps focus: Escape runs Cancel, and Cancel is the control that gets focus", () => {
-  const onCancel = vi.fn();
-  renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Delete", onConfirm: () => {}, onCancel }));
-  expect(useDialogFocus).toHaveBeenCalledTimes(1);
-  const [, close, initial] = useDialogFocus.mock.calls[0] as [unknown, () => void, () => unknown];
-  close();
-  expect(onCancel).toHaveBeenCalledTimes(1);
-  expect(typeof initial).toBe("function");
-});
+// The confirmation dialog (chrome/Ask) is src/ui's AlertDialog now: its focus and Escape are proved on a real DOM in Ask.test.ts.
 
 test("the status bar's right-click menu uses the menu keys too; the More tabs menu has them from Base UI (src/ui)", () => {
   renderToString(createElement(StatusBar, { terminals: 0 }));

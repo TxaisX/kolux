@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 // W201 B2: the unsaved question opens over the workspace delete question, which stays mounted under it while
 // the caller awaits the answer. The question must take the keyboard from that dialog: Tab stays inside it, the
 // first Escape closes only it, and the delete question answers again once it is gone. The page is the small
@@ -8,7 +9,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { useCloseGuard } from "../editor/CloseDialog";
 import type { GuardPane } from "../editor/closeGuard";
 import { FOCUSABLE } from "../chrome/dialogFocus";
-import { type FakeDocument, FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/realDom";
 import { sameDir } from "../workspaces";
 import ProjectsPanel from "./ProjectsPanel";
 import { namesOf, panesInDirs, unsavedInDirs } from "./wsUnsaved";
