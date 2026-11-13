@@ -1,0 +1,31 @@
+PR #254 (Base UI): before and after shots of one popup of each kind, from a browser harness, not the app window.
+
+How they were taken
+- A small Vite page drew the real components from each worktree's own src/: before = wave-1's front end (82f3643e;
+  the later #253 merge changed no front-end file), after = this branch. Same page, same data, same viewport.
+- The Tauri IPC was stood in (window.__TAURI_INTERNALS__): ports_list answers two ports, process_memory a fixed figure,
+  everything else null. The theme is the app's default (applyAppearance(cachedAppearance())).
+- Playwright Chromium, viewport 900 x 600, deviceScaleFactor 2 (1800 x 1200 px), colorScheme dark. Each shot waits
+  1.5 s (Base UI is read at the first idle moment, as in the app), opens the popup, waits 0.8 s, moves the mouse away.
+- Opening: dialog = an Ask open on mount; menu = right-click on the status bar at (700, 588); popover = a click on the
+  status bar's Ports item; select = Settings > Git's branch prefix select, closed; tabs = the right sidebar's strip.
+- Diff: every pixel compared in a canvas (any change in R, G or B counts). A diff image paints the changed pixels
+  magenta over a dimmed copy of the after shot; none is written when nothing changed.
+
+Results (changed pixels of 2,160,000)
+- dialog   (chrome/Ask, AlertDialog):            0          0.000 %   identical
+- tabs     (right sidebar, Tabs):                0          0.000 %   identical
+- select   (Git > branch prefix, closed Select): 156        0.007 %   the chevron is Kolux's own small arrow, not the web
+                                                                       view's (the first run, 1,796 px, also had the label
+                                                                       4 px left of a native select's; the control now
+                                                                       indents it the same, src/ui/ui.css)
+- menu     (status bar items, Menu at a point):  107,763    4.989 %   the same box, rows and first-row focus ring,
+                                                                       3 px further right: the old menu kept 240 px
+                                                                       clear for a 229 px box, src/ui keeps 8 px from
+                                                                       the window's edge
+- popover  (Ports, Popover above its button):    111,440    5.159 %   the same box and rows, 33 px further right: the old
+                                                                       box kept 380 px clear for a 338 px list, src/ui
+                                                                       keeps 8 px from the window's edge
+
+Not shot: Tooltip (no call site uses the src/ui Tooltip; the hover hints stay title attributes) and Switch (switches
+stay native inputs on purpose, see docs/base-ui-migration.md).
