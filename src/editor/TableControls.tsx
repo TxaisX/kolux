@@ -1,25 +1,15 @@
 // EDIT-011 (T-234-b): draws the hover controls of a table (a plus between two rows or columns, a cross on
 // the one under the pointer) and the right-click menu for a cell. The geometry and the edits are in
 // tableHover.ts and richTable.ts. The controls sit in the strip outside the table so they never cover a cell.
+// The cell menu is a src/ui context menu: it closes on Escape or a press outside it (read as a pointerdown, which
+// Tauri's drag script leaves alone on the top bar, T-620) and hands focus back to the editor.
 import { useEffect, useState } from "react";
 import type { LexicalEditor } from "lexical";
 import { runTableEdit, tablesOf } from "./richTable";
 import { hoverControls, menuEdits, type Control, type Geo } from "./tableHover";
+import { ContextMenu, MenuItem } from "../ui/Menu";
 
 const SIZE = 18;
-
-/** The cell menu closes on a press anywhere outside it (the menu stops its own presses) and on Escape.
- *  Presses are read as pointerdown: Tauri's drag script stops the mousedown of a press on the top bar,
- *  which is a drag region end to end (T-620), so a mousedown listener here would miss those presses. */
-export function watchMenuClose(win: Pick<Window, "addEventListener" | "removeEventListener">, close: () => void): () => void {
-  const esc = (e: KeyboardEvent) => e.key === "Escape" && close();
-  win.addEventListener("pointerdown", close);
-  win.addEventListener("keydown", esc);
-  return () => {
-    win.removeEventListener("pointerdown", close);
-    win.removeEventListener("keydown", esc);
-  };
-}
 
 /** Why a cell-menu row is greyed out, so the grey is not a mystery (null when the row is on). */
 export function whyDisabled(label: string, disabled: boolean): string | undefined {
@@ -88,8 +78,6 @@ export default function TableControls({ editor }: { editor: LexicalEditor | null
     };
   }, [editor]);
 
-  useEffect(() => (menu ? watchMenuClose(window, () => setMenu(null)) : undefined), [menu]);
-
   const run = (e: Parameters<typeof runTableEdit>[1]) => {
     if (editor) runTableEdit(editor, e);
     setShown(null);
@@ -109,15 +97,13 @@ export default function TableControls({ editor }: { editor: LexicalEditor | null
             {c.kind === "add" ? "+" : "×"}
           </button>
         ))}
-      {menu && (
-        <div className="table-ctx" role="menu" aria-label="Table" style={{ left: Math.min(menu.x, window.innerWidth - 170), top: Math.min(menu.y, window.innerHeight - 200) }} onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => (e.stopPropagation(), e.preventDefault())}>
-          {menu.items.map((it) => (
-            <button key={it.label} type="button" role="menuitem" className="table-ctx-item" disabled={it.disabled} title={whyDisabled(it.label, it.disabled)} onClick={() => run(it.edit)}>
-              {it.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <ContextMenu at={menu && { x: menu.x, y: menu.y }} onClose={() => setMenu(null)} label="Table" plain className="table-ctx">
+        {menu?.items.map((it) => (
+          <MenuItem key={it.label} className="table-ctx-item" disabled={it.disabled} title={whyDisabled(it.label, it.disabled)} onClick={() => run(it.edit)}>
+            {it.label}
+          </MenuItem>
+        ))}
+      </ContextMenu>
     </>
   );
 }

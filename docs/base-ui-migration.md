@@ -266,7 +266,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
-| editor | 2 | 1 | 0 | 1 | 6 | 0 | 4 | 128 | 4 |
+| editor | 2 | 0 | 0 | 1 | 6 | 0 | 4 | 128 | 3 |
 | feedback | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
@@ -287,11 +287,11 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 4 | 0 |
 | tasks | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 41 | 2 |
-| terminal | 5 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 7 |
+| terminal | 5 | 1 | 0 | 0 | 4 | 0 | 0 | 29 | 6 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **13** | **9** | **4** | **3** | **40** | **42** | **57** | **646** | **29** |
+| **Total** | **13** | **7** | **4** | **3** | **39** | **42** | **57** | **646** | **27** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -308,7 +308,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/editor/CodeLabel.tsx`: Select :50
 - [ ] `src/editor/DiffPane.tsx`: Dialog :617
 - [ ] `src/editor/ReviewNotes.tsx`: Dialog :71
-- [ ] `src/editor/TableControls.tsx`: Menu :113
 
 ### launch
 
@@ -348,7 +347,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### terminal
 
-- [ ] `src/terminal/LinkActionMenu.tsx`: Menu :67
 - [ ] `src/terminal/PaneMenu.tsx`: Menu :166
 - [ ] `src/terminal/PlanSheet.tsx`: Dialog :50
 - [ ] `src/terminal/TerminalPane.tsx`: Dialog :1952, Dialog :1981, Dialog :2028, Dialog :2055
