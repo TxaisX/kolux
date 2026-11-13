@@ -119,7 +119,7 @@ There is no analytics, telemetry, or crash upload endpoint. WebView2 performs it
 
 ## Update trust
 
-The app checks `https://github.com/TxaisX/kolux/releases/latest/download/latest.json` (`src-tauri/src/update.rs:24`). The public key is compiled into the build from `KOLUX_RS_RELEASE_PUBKEY`; a release build without a key refuses to update (`src-tauri/src/update.rs:25-31`, `:53-76`).
+The app checks `https://github.com/TxaisX/kolux/releases/latest/download/latest.json` (`src-tauri/src/update.rs:24`). The public key is compiled into the build from `KOLUX_RELEASE_PUBKEY`; a release build without a key refuses to update (`src-tauri/src/update.rs:25-31`, `:53-76`).
 
 The update path verifies:
 
@@ -129,7 +129,7 @@ The update path verifies:
 
 See `src-tauri/src/update.rs:243-380` and `src-tauri/src/resources/update_guard.rs:1-23`, `:125-200`.
 
-The weak point is key custody. Trust is one build-time public key. There is no published rotation or revocation list in the current code. The release signing key lives at `~/.kolux-rs/release-signing/kolux-rs.key` and is used by `scripts/release.mjs`; the release workflow can also hold it as a GitHub secret for the signing step only. A compromised signing key can produce an installer and manifest that every installed copy accepts. The installer itself is not Authenticode-signed today, so SmartScreen warns on first install.
+The weak point is key custody. Trust is one build-time public key. There is no published rotation or revocation list in the current code. The release signing key lives at `~/.kolux/release-signing/kolux.key` and is used by `scripts/release.mjs`; the release workflow can also hold it as a GitHub secret for the signing step only. A compromised signing key can produce an installer and manifest that every installed copy accepts. The installer itself is not Authenticode-signed today, so SmartScreen warns on first install.
 
 ## Data at rest
 

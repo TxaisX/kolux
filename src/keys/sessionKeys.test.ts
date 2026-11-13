@@ -16,7 +16,7 @@ import { afterAll, expect, test } from "vitest";
 import { chordsOf, matchEvent, resolve, type KeyLike } from "./keymap";
 import { actions } from "./actions";
 
-const home = mkdtempSync(join(tmpdir(), "kolux-rs-sessionkeys-"));
+const home = mkdtempSync(join(tmpdir(), "kolux-sessionkeys-"));
 afterAll(() => rmSync(home, { recursive: true, force: true }));
 
 const key = (k: Partial<KeyLike>): KeyLike => ({ key: "", code: "", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...k });

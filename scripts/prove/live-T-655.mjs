@@ -26,7 +26,7 @@ const TEMP = `${LIVE_BASE}/run-${ID}`;
 const FLAG = `${TEMP}/go.flag`;
 const BRANCH = "feature/auto-pr-proof";
 const win = (p) => p.replace(/\//g, "\\");
-const hook = win(`${TEMP}/home/.kolux-rs/agent-hooks/claude.cmd`);
+const hook = win(`${TEMP}/home/.kolux/agent-hooks/claude.cmd`);
 let ctx;
 let ok = false;
 const skipped = [];

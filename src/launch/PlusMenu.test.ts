@@ -149,7 +149,7 @@ test("after776 TERM-042: the entry box is in the menu only when the window can r
 });
 
 test("T-692 (E2): the menu names the project a new session starts in, and says nothing when none is given", () => {
-  expect(render({ target: "kolux-rs" })).toContain("Starting in <b>kolux-rs</b>");
+  expect(render({ target: "kolux" })).toContain("Starting in <b>kolux</b>");
   expect(render({})).not.toContain("Starting in");
 });
 

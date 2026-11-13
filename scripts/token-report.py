@@ -45,12 +45,12 @@ LEDGER = Path(__file__).resolve().parent.parent / "docs" / "history" / "token-us
 TX_PROJECT = "G--Dev-Projects-Txais-Brain"
 TX_KOLUX_SESSIONS = {
     "6d0018f4",  # build remaining tasks / "what is left in this build now?"
-    "d134e328",  # Opus orchestrator routing for Kolux RS
+    "d134e328",  # Opus orchestrator routing for Kolux
     "4845f59c",  # continued build session
     "9da075e7",  # build coordinator cross-session
     "c03d3fa2",  # kolux-pane-memory-merge
     "63a401df",  # Kolux crash report 0.1.0 + workspace UI work
-    "f5418839",  # reclaim old Kolux / install kolux-rs
+    "f5418839",  # reclaim old Kolux / install Kolux
     "8ac2ad36",  # Kolux crash report 0.1.1
     "c508234f",  # Kolux install status
     "e7eca09a",  # kolux rx cmd popup fix
@@ -125,8 +125,9 @@ def claude_location(project: str) -> str:
         return "velvet-ray worktree"
     if "kolux-writer" in project:
         return "temp writer dirs"
-    if project == "G--Dev-kolux-rs":
-        return "kolux-rs direct"
+    # The developer's folder is G:\Dev\kolux-rs today and will become G:\Dev\kolux; accept both Claude project folders.
+    if project in ("G--Dev-kolux-rs", "G--Dev-kolux"):
+        return "kolux direct"
     if project == TX_PROJECT:
         return "Txais Brain orchestration"
     return project
@@ -370,8 +371,8 @@ def scan_opencode(db: Path):
             location = "hazel-nautilus worktree"
         elif "capricorn" in directory:
             location = "capricorn worktree"
-        elif directory.lower().replace("\\", "/").endswith("g:/dev/kolux-rs"):
-            location = "kolux-rs direct"
+        elif directory.lower().replace("\\", "/").endswith(("g:/dev/kolux-rs", "g:/dev/kolux")):
+            location = "kolux direct"
         elif "kolux" in directory.lower():
             location = "other Kolux dir"
         else:

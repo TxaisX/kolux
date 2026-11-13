@@ -10,7 +10,7 @@ beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 test("SET-033: a repository's base branch shows, and the workspaces folder is gone in one-folder mode", () => {
   const p = { id: "p1", name: "app", path: "C:/src/app" };
-  const html = renderToString(createElement(RepoView, { project: p, globalDir: "C:/Users/me/kolux-rs/workspaces", onSave: () => {} }));
+  const html = renderToString(createElement(RepoView, { project: p, globalDir: "C:/Users/me/kolux/workspaces", onSave: () => {} }));
   expect(html).toContain("New workspaces start from");
   expect(html).toContain('placeholder="the default branch"');
   expect(html).not.toContain("Workspaces folder");

@@ -127,7 +127,7 @@ function startMenuLink() {
 }
 const configLine = () => {
   try {
-    return readFileSync(join(DATA[0], "logs", "kolux.log"), "utf8").split(/\r?\n/).filter((l) => /kolux-rs: config: /.test(l)).pop() ?? "(no config line yet)";
+    return readFileSync(join(DATA[0], "logs", "kolux.log"), "utf8").split(/\r?\n/).filter((l) => /kolux(-rs)?: config: /.test(l)).pop() ?? "(no config line yet)";
   } catch {
     return "(no kolux.log)";
   }

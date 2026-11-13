@@ -120,11 +120,11 @@ test("owner change 2026-11-06: a missing or stale count is refreshed; a failed o
 
 test("owner change 2026-11-07: a workspace counts its git worktrees and Kolux's worktree folders for the repo, not another repo's", async () => {
   const { inWorkspace } = await import("./workspaceRibbon");
-  const dir = "G:\\Dev\\kolux-rs";
-  expect(inWorkspace("G:\\Dev\\kolux-rs\\src", dir)).toBe(true);
+  const dir = "G:\\Dev\\kolux";
+  expect(inWorkspace("G:\\Dev\\kolux\\src", dir)).toBe(true);
   expect(inWorkspace("G:\\Temp\\opencode\\kolux-opt", dir, ["G:/Temp/opencode/kolux-opt"])).toBe(true);
-  expect(inWorkspace("C:\\Users\\me\\kolux-rs\\workspaces\\kolux-rs\\gone-worktree", dir)).toBe(true);
-  expect(inWorkspace("C:\\Users\\me\\kolux-rs\\workspaces\\Txais-Brain\\dusky-marlin", dir)).toBe(false);
-  expect(inWorkspace("G:\\Dev\\kolux-rs-other", dir)).toBe(false);
+  expect(inWorkspace("C:\\Users\\me\\kolux\\workspaces\\kolux\\gone-worktree", dir)).toBe(true);
+  expect(inWorkspace("C:\\Users\\me\\kolux\\workspaces\\Txais-Brain\\dusky-marlin", dir)).toBe(false);
+  expect(inWorkspace("G:\\Dev\\kolux-other", dir)).toBe(false);
   expect(inWorkspace("", dir)).toBe(false);
 });

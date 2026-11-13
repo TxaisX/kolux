@@ -55,13 +55,13 @@ jobs:
           PUB: ${{ secrets.KOLUX_RELEASE_PUBKEY }}
         run: |
           mkdir -p "$RUNNER_TEMP/signing"
-          printf '%s' "$PUB" > "$RUNNER_TEMP/signing/kolux-rs.key.pub"
+          printf '%s' "$PUB" > "$RUNNER_TEMP/signing/kolux.key.pub"
       - name: Build and smoke-test
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           KOLUX_RELEASE_CHECKOUT: ${{ runner.temp }}/release-checkout
-          KOLUX_RELEASE_KEY: ${{ runner.temp }}/signing/kolux-rs.key
+          KOLUX_RELEASE_KEY: ${{ runner.temp }}/signing/kolux.key
         run: node scripts/release.mjs --build-only --repo "$GITHUB_WORKSPACE"
       # The private key exists only for this step: written just before tauri signer runs, deleted when
       # the step ends however it ends.
@@ -71,7 +71,7 @@ jobs:
           KEY: ${{ secrets.KOLUX_RELEASE_KEY }}
           GH_TOKEN: ${{ github.token }}
           KOLUX_RELEASE_CHECKOUT: ${{ runner.temp }}/release-checkout
-          KOLUX_RELEASE_KEY: ${{ runner.temp }}/signing/kolux-rs.key
+          KOLUX_RELEASE_KEY: ${{ runner.temp }}/signing/kolux.key
           KOLUX_RELEASE_KEY_PASSWORD: ${{ secrets.KOLUX_RELEASE_KEY_PASSWORD }}
         run: |
           trap 'rm -f "$KOLUX_RELEASE_KEY"' EXIT

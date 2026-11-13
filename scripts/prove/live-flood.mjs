@@ -203,7 +203,7 @@ async function boot() {
   }
   mkdirSync(TEMP, { recursive: true });
   writeFileSync(join(TEMP, ".prove-run"), "made by scripts/prove/live-flood.mjs\n");
-  writeFileSync(join(TEMP, ".kolux-rs-scratch"), "");
+  writeFileSync(join(TEMP, ".kolux-scratch"), "");
   const skillMd = (n) => `---\nname: ${n}\ndescription: A throwaway skill for the live verify run\n---\nDo nothing.\n`;
   await mkRepo(REPO, { "big.txt": BIG, "notes.txt": "flood1 line one\nflood1 line two\n", "src/app.js": "console.log(1)\n", ".claude/skills/flood1-skill/SKILL.md": skillMd("flood1-skill") });
   for (const base of [join(TEMP, "home", ".claude"), join(TEMP, "tmp", "claude-config")]) { mkdirSync(join(base, "skills", "flood1-user"), { recursive: true }); writeFileSync(join(base, "skills", "flood1-user", "SKILL.md"), skillMd("flood1-user")); }

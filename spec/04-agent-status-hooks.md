@@ -273,7 +273,7 @@ Rules: reports without the right token are refused; reports carrying only the co
   cards, tabs and the Agents view comes from.
   (Kolux, T-039-b: Kolux's `statusLine` command is a bash line, since Claude Code runs the
   status line through a POSIX shell on Windows too; it saves the report to a temp file, posts it
-  through `~/.kolux-rs/agent-hooks/claude-status.cmd` with the hook token and pane identity to
+  through `~/.kolux/agent-hooks/claude-status.cmd` with the hook token and pane identity to
   the endpoint's `/claude-status` route, then runs the status line the user had before Kolux,
   saved once to `claude-status-prev.sh`, from the same file. The report's fields are Claude
   Code's: `context_window.used_percentage` (else `total_input_tokens` over

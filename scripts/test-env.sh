@@ -8,7 +8,7 @@ root="${KRS_SCRATCH_ROOT:-${TMPDIR:-/tmp}/krs-scratch.$(od -An -N6 -tx1 /dev/ura
 [ -n "$KRS_SCRATCH_ROOT" ] || mkdir -m 700 "$root" || return 1
 export KRS_SCRATCH_ROOT="$root"
 export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
-mkdir -p "$root/home" "$root/claude-config" "$root/codex" "$root/tmp" && : > "$root/.kolux-rs-scratch"
+mkdir -p "$root/home" "$root/claude-config" "$root/codex" "$root/tmp" && : > "$root/.kolux-scratch"
 export USERPROFILE="$root/home" HOME="$root/home" CLAUDE_CONFIG_DIR="$root/claude-config" CODEX_HOME="$root/codex" TMPDIR="$root/tmp"
 export XDG_CONFIG_HOME="$root/home/.config" XDG_DATA_HOME="$root/home/.local/share" XDG_CACHE_HOME="$root/home/.cache" XDG_STATE_HOME="$root/home/.local/state"
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME"

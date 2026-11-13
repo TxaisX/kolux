@@ -29,7 +29,7 @@ The root is `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resources/recovery.
 | `memory-last.json` | JSON | The last memory figure. |
 | `safe-graphics.json` | JSON | The safe-graphics latch. |
 
-Hook scripts are outside the profile, in `~/.kolux-rs/agent-hooks` (`src-tauri/src/hooks.rs:30-36`). The release checkout and the signing key also live under `~/.kolux-rs` (`scripts/release.mjs:35-37`).
+Hook scripts are outside the profile, in `~/.kolux/agent-hooks` (`src-tauri/src/hooks.rs:30-36`). The release checkout and the signing key also live under `~/.kolux` (`scripts/release.mjs:35-37`).
 
 ## The state store
 
@@ -85,7 +85,7 @@ These files are the reason a pane or a shell can outlive a restart. They are als
 
 Kolux can manage more than one Claude or Codex sign-in. Each account gets its own home under `claude-accounts/<id>/` or `codex-accounts/<id>/` (`src-tauri/src/claude_accounts.rs:37`, `src-tauri/src/codex_accounts.rs:32`). A pane launched on that account gets the matching home in its environment. Kolux does not overwrite the user's own `~/.claude` or `~/.codex` homes for managed accounts.
 
-Hook installs do write into the agent's own settings, because that is how an agent reports status. Each install keeps a `.bak-kolux` copy beside the file and removes only the entries it wrote. The hook scripts themselves live in `~/.kolux-rs/agent-hooks`.
+Hook installs do write into the agent's own settings, because that is how an agent reports status. Each install keeps a `.bak-kolux` copy beside the file and removes only the entries it wrote. The hook scripts themselves live in `~/.kolux/agent-hooks`.
 
 ## Artifacts and browser data
 

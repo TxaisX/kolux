@@ -10,7 +10,7 @@
 //   node scripts/prove/update-rig.mjs clean                     uninstall the scratch installs and remove their profiles
 //
 // Identities (the real pair they stand in for is in parentheses; T-790 moves the first to the second):
-//   proof-rs  "Kolux Proof RS"  com.txaisxiong.kolux-proof-rs   (Kolux RS / com.txaisxiong.kolux-rs, 0.1.10)
+//   proof-rs  "Kolux Proof RS"  com.txaisxiong.kolux-proof-rs   (the old-name build, com.txaisxiong.kolux-rs, 0.1.10)
 //   proof     "Kolux Proof"     com.txaisxiong.kolux-proof      (Kolux / com.txaisxiong.kolux, 0.1.11)
 //
 // Everything lives under G:\Temp\ready-identity-rig (RIG_BASE overrides it). The app's own profile is placed
@@ -18,7 +18,7 @@
 // identifiers' folders and nothing else. The installer puts <install>\bin on the user's PATH the way the real
 // one does; the uninstaller (run by `clean`) takes that entry off again.
 //
-// A release build reads its feed address at build time (update.rs RELEASE_ENDPOINT, KOLUX_RS_RELEASE_ENDPOINT),
+// A release build reads its feed address at build time (update.rs RELEASE_ENDPOINT, KOLUX_RELEASE_ENDPOINT),
 // so the installers built here point at http://127.0.0.1:<RIG_PORT>/latest.json and carry the scratch public key.
 import { execFile, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
@@ -152,7 +152,7 @@ export function build(id, version) {
   const resources = { [slash(join(ROOT, "src-tauri", "cli", "kolux.cmd"))]: "bin/kolux.cmd", [slash(join(target, "kolux-cli.exe"))]: "bin/kolux.exe" }; // T-790: the CLI is built as kolux-cli, shipped as bin/kolux.exe
   const conf = join(BASE, "build", `${id}-${version}.conf.json`);
   writeFileSync(conf, JSON.stringify({ version, productName: ident.productName, identifier: ident.identifier, ...(ident.mainBinaryName ? { mainBinaryName: ident.mainBinaryName } : {}), bundle: { resources }, plugins: { updater: { pubkey: pubkey(), dangerousInsecureTransportProtocol: true } } }, null, 2));
-  const env = cleanEnv({ KOLUX_RS_RELEASE_PUBKEY: pubkey(), KOLUX_RS_RELEASE_ENDPOINT: `http://127.0.0.1:${PORT}/latest.json`, CARGO_BUILD_JOBS: "4" });
+  const env = cleanEnv({ KOLUX_RELEASE_PUBKEY: pubkey(), KOLUX_RELEASE_ENDPOINT: `http://127.0.0.1:${PORT}/latest.json`, CARGO_BUILD_JOBS: "4" });
   log(`build: ${ident.productName} ${version} (${ident.identifier}), feed http://127.0.0.1:${PORT}/latest.json`);
   if (!existsSync(join(target, "kolux-cli.exe"))) sh("cargo", ["build", "--release", "--features", "release-cli", "--bin", "kolux-cli"], { cwd: join(ROOT, "src-tauri"), env, shim: true, echo: true });
   sh("pnpm", ["tauri", "build", "--bundles", "nsis", "--config", conf], { cwd: ROOT, env, shim: true, echo: true });
@@ -253,7 +253,7 @@ function scratchHome() {
   const codex = join(HOME, "codex-home");
   const tmp = join(BASE, "tmp");
   for (const d of [join(HOME, "AppData", "Roaming"), join(HOME, "AppData", "Local"), claude, codex, tmp]) mkdirSync(d, { recursive: true });
-  for (const d of [claude, codex]) writeFileSync(join(d, ".kolux-rs-scratch"), "T-785 update rig scratch home; never a real agent home\n");
+  for (const d of [claude, codex]) writeFileSync(join(d, ".kolux-scratch"), "T-785 update rig scratch home; never a real agent home\n");
   return { claude, codex, tmp };
 }
 export function appEnv() {

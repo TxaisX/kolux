@@ -464,7 +464,7 @@ export function createApp(opts) {
     await prepare?.();
     mkdirSync(claudeConfig, { recursive: true });
     // T-152-b (2): a dev run writes a Claude settings file only below this scratch marker.
-    writeFileSync(join(claudeConfig, ".kolux-rs-scratch"), "");
+    writeFileSync(join(claudeConfig, ".kolux-scratch"), "");
     mkdirSync(codexHome, { recursive: true });
     mkdirSync(local, { recursive: true });
     const cfg = join(TEMP, "tauri.dev.json");

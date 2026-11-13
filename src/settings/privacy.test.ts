@@ -79,6 +79,6 @@ test("t634: the statement names SmartScreen, which checks pages and downloads in
   expect(row?.when).toMatch(/pages you open .*files you download.*name, size and fingerprint/);
 });
 
-test("UX-audit: feedback and crash reports open the new-issue page of this project, kolux-rs", () => {
+test("UX-audit: feedback and crash reports open the new-issue page of this project, kolux", () => {
   expect(FEEDBACK_REPO).toBe("https://github.com/TxaisX/kolux/issues/new");
 });

@@ -6,7 +6,7 @@
 #
 # The scratch root (default G:/Temp/hooks-t152c/proof, refused outside G:/Temp/) is wiped and gets:
 #   tmp/                 TEMP and TMP for the exe (a temp folder that holds the home is refused as scratch)
-#   tmp/claude-config/   CLAUDE_CONFIG_DIR, with the .kolux-rs-scratch marker and the copy as settings.json
+#   tmp/claude-config/   CLAUDE_CONFIG_DIR, with the .kolux-scratch marker and the copy as settings.json
 #   tmp/codex/           CODEX_HOME, seeded with {"hooks":{}}
 #   home/                USERPROFILE and HOME (APPDATA and LOCALAPPDATA below it)
 #   profile/             KOLUX_APP_DIR, the Kolux profile the CLI saves the switch in
@@ -20,11 +20,11 @@ case "$ROOT" in G:/Temp/?*) ;; *) echo "refusing scratch root $ROOT (it must be 
 
 rm -rf "$ROOT"
 mkdir -p "$ROOT/tmp/claude-config" "$ROOT/tmp/codex" "$ROOT/home/AppData/Roaming" "$ROOT/home/AppData/Local" "$ROOT/profile"
-: > "$ROOT/tmp/claude-config/.kolux-rs-scratch"
+: > "$ROOT/tmp/claude-config/.kolux-scratch"
 cp "$INPUT" "$ROOT/tmp/claude-config/settings.json"
 printf '{"hooks":{}}' > "$ROOT/tmp/codex/hooks.json"
 FILE="$ROOT/tmp/claude-config/settings.json"
-HOOKS="$ROOT/home/.kolux-rs/agent-hooks"
+HOOKS="$ROOT/home/.kolux/agent-hooks"
 
 W=$(cygpath -w "$ROOT")
 export TEMP="$W\\tmp" TMP="$W\\tmp" CLAUDE_CONFIG_DIR="$W\\tmp\\claude-config" CODEX_HOME="$W\\tmp\\codex"
@@ -37,7 +37,7 @@ cat > "$ROOT/count.js" <<'JS'
 const fs = require("fs"), crypto = require("crypto");
 const [, , file, input, mode] = process.argv;
 const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
-const mine = (s) => typeof s === "string" && s.replace(/\\/g, "/").includes(".kolux-rs/agent-hooks");
+const mine = (s) => typeof s === "string" && /\.kolux(-rs)?\/agent-hooks/.test(s.replace(/\\/g, "/"));
 if (mode === "target") {
   // The folder name Kolux keys this settings file's slot to: sha256 of the resolved path, 16 hex.
   console.log(sha("\\\\?\\" + fs.realpathSync.native(file)).slice(0, 16));
@@ -48,7 +48,7 @@ const hooks = v.hooks || {}, events = Object.keys(hooks);
 const groups = events.flatMap((e) => hooks[e]);
 const cmds = groups.flatMap((g) => g.hooks || []);
 const isMine = (g) => (g.hooks || []).some((h) => mine(h.command) || [].concat(h.args || []).some(mine));
-console.log(`${file}: sha256 ${sha(bytes)} bytes ${bytes.length} top-level keys ${Object.keys(v).length} events ${events.length} (${events.join(",")}) groups ${groups.length} hook commands ${cmds.length} .kolux-rs entries ${cmds.filter((h) => mine(h.command)).length} skillOverrides ${Object.keys(v.skillOverrides || {}).length} statusLine is Kolux's ${mine(v.statusLine && v.statusLine.command)}`);
+console.log(`${file}: sha256 ${sha(bytes)} bytes ${bytes.length} top-level keys ${Object.keys(v).length} events ${events.length} (${events.join(",")}) groups ${groups.length} hook commands ${cmds.length} .kolux entries ${cmds.filter((h) => mine(h.command)).length} skillOverrides ${Object.keys(v.skillOverrides || {}).length} statusLine is Kolux's ${mine(v.statusLine && v.statusLine.command)}`);
 const theirs = Object.entries(u.hooks || {}).flatMap(([e, gs]) => gs.map((g) => [e, JSON.stringify(g)]));
 const kept = theirs.filter(([e, g]) => (hooks[e] || []).some((h) => JSON.stringify(h) === g));
 console.log(`pre-existing hook groups still in place, unchanged: ${kept.length} of ${theirs.length} (events: ${[...new Set(theirs.map(([e]) => e))].join(",")})`);
@@ -74,7 +74,7 @@ run() {
   echo "  --- kolux-dev agent hooks $1"
   "$EXE" agent hooks "$1" --json > "$ROOT/out.json" 2> "$ROOT/err.txt"
   echo "    exit $?"
-  grep -a "kolux-rs:" "$ROOT/err.txt" | sed 's/^/    /'
+  grep -aE "kolux(-rs)?:" "$ROOT/err.txt" | sed 's/^/    /'
   echo "    reply: $(tr -d '\r\n' < "$ROOT/out.json")"
 }
 

@@ -22,7 +22,7 @@ test("title patterns are recognised for MiMo, Pi-style agents and Cursor (SESS-0
   expect([...titleNames("Cursor Agent")]).toEqual(["cursor"]);
   expect([...titleNames("cursor-agent ⠋ editing")]).toEqual(["cursor"]);
   // Pi and the agents built the Pi way (oh-my-pi) share the Pi title: either may own it.
-  expect([...titleNames("π - kolux-rs")].sort()).toEqual(["omp", "pi"]);
+  expect([...titleNames("π - kolux")].sort()).toEqual(["omp", "pi"]);
   expect([...titleNames("pi ⠙ working")].sort()).toEqual(["omp", "pi"]);
   expect([...titleNames("oh-my-pi")]).toEqual(["omp"]);
   expect([...titleNames("✳ Claude Code")]).toEqual(["claude"]);
@@ -38,7 +38,7 @@ test("the busy state credits the launched agent; a title naming another agent cl
   expect(titleCredit("cursor", "⠋ Cursor Agent")).toEqual({ agent: "cursor", state: "working", named: true });
   // MiMo's spinner with no name in it still belongs to MiMo: it was launched there.
   expect(titleCredit("mimo-code", "⠙ thinking")).toEqual({ agent: "mimo-code", state: "working", named: false });
-  expect(titleCredit("pi", "π ⠹ kolux-rs")).toEqual({ agent: "pi", state: "working", named: true });
+  expect(titleCredit("pi", "π ⠹ kolux")).toEqual({ agent: "pi", state: "working", named: true });
   // Cursor running a Claude model may print the model in its title: a model name alone names nobody (STAT-033), so it stays Cursor's.
   expect(titleCredit("cursor", "Claude Sonnet ⠋ working")).toEqual({ agent: "cursor", state: "working", named: false });
   // Marks that conflict claim nothing.

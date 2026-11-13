@@ -23,7 +23,7 @@ const { mkdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } =
 const ROOT = "G:/Temp/cards-v3/edit12";
 const dir = `${ROOT}/ts-${Date.now()}`;
 mkdirSync(dir, { recursive: true });
-writeFileSync(`${dir}/.kolux-rs-scratch`, "");
+writeFileSync(`${dir}/.kolux-scratch`, "");
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const stampOf = (p: string): Stamp => {
