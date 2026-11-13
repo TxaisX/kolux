@@ -2240,6 +2240,14 @@ pub struct WarmAsk {
     pub rows: u16,
 }
 
+/// Kept-warm shell: can a warm shell stand in for this start? Only a plain terminal: no program, no arguments
+/// and nothing added to its environment. The shell itself is not asked for here: with no default shell chosen
+/// (`default_shell` is None, the usual case) a warm shell runs the system's own, the same as the terminal would,
+/// and `claim_warm` checks the two match.
+fn warm_like(program: Option<&str>, args: &[String], env: &[(String, String)]) -> bool {
+    program.is_none() && args.is_empty() && env.is_empty()
+}
+
 /// Kept-warm shell: starts `dir`'s next warm shell off the caller's thread (a shell start takes about 0.8 s),
 /// unless one is ready or starting. A plain shell without a pane: no key, no hooks identity, no history file.
 fn keep_warm(app: &AppHandle, terminals: &Terminals, dir: String, cols: u16, rows: u16, shell: Option<(String, Vec<String>)>, per_worktree_history: bool) {
@@ -2404,7 +2412,7 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     let agent = program.as_deref().and_then(crate::tools::credited_program);
     let dir = cwd.clone();
     // Kept-warm shell: only a plain new terminal (the default shell, nothing added) is one a warm shell can stand in for.
-    let warm_like = program.is_none() && args.is_empty() && env_own.is_empty() && shell.is_some();
+    let warmable = warm_like(program.as_deref(), &args, &env_own);
     let warm_shell = shell.clone();
     // T-172-e: a worker start puts its dispatch id in the first session's environment; the start that is
     // waiting for it learns which session that is (only a start still waiting is told).
@@ -2414,7 +2422,7 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     // T-690: the run this pane belongs to, read before the environment is handed over.
     let run = crate::automations::run_in(&env_own);
     let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history, agent_settings.as_ref()))?;
-    if warm_like {
+    if warmable {
         let on = store.lock().map(|s| warm_on(&s.settings())).unwrap_or(false);
         match &dir {
             Some(d) if on => keep_warm(&app, terminals.inner(), d.clone(), cols, rows, warm_shell, per_worktree_history),
@@ -2615,6 +2623,16 @@ mod tests {
         assert_eq!(idle_warm(&warm, &dirs), vec![warm_key("C:/work/b")]);
         dirs.remove(&1);
         assert_eq!(idle_warm(&warm, &dirs).len(), 2);
+    }
+
+    #[test]
+    fn a_plain_terminal_can_take_a_warm_shell_with_or_without_a_chosen_default_shell() {
+        // No default shell chosen is the usual case; it must not rule the warm shell out (it did: the folder
+        // never got one, so every new terminal started cold with the setting on).
+        assert!(warm_like(None, &[], &[]));
+        assert!(!warm_like(Some("claude"), &[], &[]));
+        assert!(!warm_like(None, &["-NoLogo".to_string()], &[]));
+        assert!(!warm_like(None, &[], &[("A".to_string(), "1".to_string())]));
     }
 
     #[test]
