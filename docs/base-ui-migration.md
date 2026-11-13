@@ -276,7 +276,7 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | chat | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
-| editor | 2 | 0 | 0 | 1 | 6 | 0 | 4 | 128 | 2 |
+| editor | 0 | 0 | 0 | 1 | 6 | 0 | 4 | 128 | 0 |
 | feedback | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
@@ -301,20 +301,15 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **11** | **6** | **3** | **3** | **39** | **42** | **57** | **646** | **18** |
+| **Total** | **9** | **6** | **3** | **3** | **39** | **42** | **57** | **646** | **16** |
 
-To do: 18. Native on purpose: 3. Removed by #255: 2.
+To do: 16. Native on purpose: 3. Removed by #255: 2.
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### editmenu
 
 - [ ] `src/editmenu/EditMenuHost.tsx`: Menu :153
-
-### editor
-
-- [ ] `src/editor/DiffPane.tsx`: Dialog :617
-- [ ] `src/editor/ReviewNotes.tsx`: Dialog :71
 
 ### launch
 
@@ -396,8 +391,6 @@ here for whoever moves them:
   DOM with it.
 - `editmenu/EditMenuHost.tsx`, the text-field menu: waits up to 300 ms for the engine's spelling suggestions, and a
   press on a row moves no focus, so the field's selection is kept for Cut and Copy.
-- `editor/DiffPane.tsx` and `editor/ReviewNotes.tsx`: review-note boxes at the clicked line, with a text field. A Dialog
-  that places itself (as `shell/AboutPanel.tsx`) or a point anchor for `Popover` would do.
 - `launch/PlusMenu.tsx`: a search box with its own arrow keys, rows with a second Make-default button, and More and
   shells lists that open inside the menu.
 - `scm/SourceControlPanel.tsx`, "File actions": `FileOpenWith`'s edit-apps form (a Select and two text fields) opens

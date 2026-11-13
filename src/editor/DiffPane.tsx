@@ -50,7 +50,7 @@ export const diffStart = (p: EditorPrefs) => ({ split: p.diffView === "split", w
 // shortcut router holds it without loading this pane; filled here while a diff tab is open.
 import { diffNav } from "../keys/handles";
 import { Menu, MenuCheckboxItem } from "../ui/Menu";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Dialog } from "../ui/Dialog";
 export { diffNav };
 
 type Sides = { original: string; modified: string };
@@ -250,6 +250,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
   const ready = sides !== null && !asking;
   const prefs = useRef(prefsReader(() => invoke<Record<string, unknown>>("get_settings"))).current;
   const [pop, setPop] = useState<Pop | null>(null);
+  const noteField = useRef<HTMLTextAreaElement>(null);
   const noteRef = useRef({ notes, onDeleteNote, onSaveNote, canNote: !!onSaveNote });
   noteRef.current = { notes, onDeleteNote, onSaveNote, canNote: !!onSaveNote };
   // The bin on a note card deletes at once; the note is kept here for a few seconds so Undo can put it back.
@@ -611,34 +612,32 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       )}
       {ready && !changes && <div className="notice md-banner" role="status">{against === "head" ? "Nothing uncommitted in this file." : `No ${staged ? "staged" : "unstaged"} changes in this file right now.`}</div>}
       <div ref={host} className="pane-body diff-body" />
+      {/* A src/ui Dialog that places itself at the line, over a menu backdrop as before: a press outside, Escape and
+          Cancel close it; focus starts in the note and goes back where it was. */}
       {pop && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onMouseDown={() => setPop(null)} />
-          <div className="diff-note-pop" role="dialog" aria-label={pop.note ? "Edit review note" : "Add review note"} style={{ left: Math.max(8, Math.min(pop.x, window.innerWidth - 336)), top: Math.max(8, Math.min(pop.y + 12, window.innerHeight - 190)) }}>
-            <div className="what">{`${pop.note ? "Edit the note on" : "Note on"} ${where({ id: "", path: "", text: "", staged: false, line: pop.line, end: pop.end, side: pop.side === "old" ? "old" : undefined })}`}</div>
-            <textarea
-              autoFocus
-              aria-label="review note"
-              className="field multi"
-              value={pop.text}
-              placeholder="What should change here?"
-              onChange={(e) => setPop({ ...pop, text: e.target.value, refused: false })}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setPop(null);
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) savePop();
-              }}
-            />
-            {pop.refused && <div className="note error">A note needs some text. To remove it, use the bin on its card.</div>}
-            <div className="btn-row">
-              <button className="btn primary" onClick={savePop} disabled={!pop.note && !pop.text.trim()}>
-                {pop.note ? "Save" : "Add note"}
-              </button>
-              <button className="btn" onClick={() => setPop(null)}>
-                Cancel
-              </button>
-            </div>
+        <Dialog onClose={() => setPop(null)} label={pop.note ? "Edit review note" : "Add review note"} className="diff-note-pop" backdrop="menu-backdrop" initialFocus={noteField} style={{ left: Math.max(8, Math.min(pop.x, window.innerWidth - 336)), top: Math.max(8, Math.min(pop.y + 12, window.innerHeight - 190)) }}>
+          <div className="what">{`${pop.note ? "Edit the note on" : "Note on"} ${where({ id: "", path: "", text: "", staged: false, line: pop.line, end: pop.end, side: pop.side === "old" ? "old" : undefined })}`}</div>
+          <textarea
+            ref={noteField}
+            aria-label="review note"
+            className="field multi"
+            value={pop.text}
+            placeholder="What should change here?"
+            onChange={(e) => setPop({ ...pop, text: e.target.value, refused: false })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) savePop();
+            }}
+          />
+          {pop.refused && <div className="note error">A note needs some text. To remove it, use the bin on its card.</div>}
+          <div className="btn-row">
+            <button className="btn primary" onClick={savePop} disabled={!pop.note && !pop.text.trim()}>
+              {pop.note ? "Save" : "Add note"}
+            </button>
+            <button className="btn" onClick={() => setPop(null)}>
+              Cancel
+            </button>
           </div>
-        </OutOfFlow>
+        </Dialog>
       )}
     </Shell>
   );

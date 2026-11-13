@@ -114,8 +114,6 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 const DIALOGS: [file: string, label: string, how: string][] = [
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
-  ["editor/DiffPane.tsx", "pop.note ? \"Edit review note\" : \"Add review note\"", "inner"],
-  ["editor/ReviewNotes.tsx", "Add review note", "inner"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "tag"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
   ["onboarding/Guides.tsx", "Tip", "window"],
