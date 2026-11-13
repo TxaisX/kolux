@@ -2,7 +2,7 @@
 import { expect, test } from "vitest";
 import { chordsOf, resolve } from "../../keys/keymap";
 import { focusIn, panesIn } from "../../workspaces";
-import { cellsOf, columnsFor, neighbourTab, rowsFor } from "../grid";
+import { cellsOf, columnsFor, rowsFor } from "../grid";
 
 type P = { key: number; cwd: string };
 const pane = (key: number, cwd = "C:\\w"): P => ({ key, cwd });
@@ -30,8 +30,7 @@ test("box 2: closing the only pane in a tab closes that tab, other workspaces ke
   expect(panesIn(rest, "C:\\w")).toEqual([]);
   expect(cellsOf(panesIn(rest, "C:\\w"))).toEqual([]);
   expect(panesIn(rest, "C:\\other").map((p) => p.key)).toEqual([2]);
-  // a lone tab in a cell: no neighbour to hand over to, the cell goes
-  expect(neighbourTab([1], 1)).toBeNull();
+  // one session per cell (2026-11-12): the pane was its cell, so the cell goes with it
 });
 
 test("Mod+W closes the focused pane on every platform", () => {

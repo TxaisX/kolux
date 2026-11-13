@@ -1,39 +1,31 @@
 // The pane grid's arithmetic (TERM-001, TERM-004, TERM-006, TERM-040): how many cells a workspace
-// may hold, how they tile, what a resize adds or drops, where a split lands, and which panes share
-// a cell as tabs. Pure, so it is tested without a browser; the window applies the plan.
+// may hold, how they tile, what a resize adds or drops, where a split or a new pane lands. Pure, so it
+// is tested without a browser; the window applies the plan.
+// Owner decision 2026-11-12 (docs/plans/clean-ui-one-session-per-cell.md): one session per cell. A cell
+// holds exactly one pane and there is no tab strip; a pane that used to open as a tab beside the focused
+// one now takes the cell right after it (insertAfter). A cell's id is its pane's key.
 import { MAX_SESSIONS } from "../launch/seats";
-import type { PaneLike } from "../workspaces";
 
-/** TERM-040: panes with the same group share one grid cell as tabs; a pane without one is its own cell. */
-export type Tabbed = PaneLike & { group?: number };
+export const groupOf = (p: { key: number }): number => p.key;
 
-export const groupOf = (p: { key: number; group?: number }): number => p.group ?? p.key;
-
-/** The grid cells, in the order their first pane appears. */
-export function cellsOf<P extends Tabbed>(panes: P[]): { group: number; panes: P[] }[] {
-  const cells: { group: number; panes: P[] }[] = [];
-  for (const p of panes) {
-    const g = groupOf(p);
-    const cell = cells.find((c) => c.group === g);
-    if (cell) cell.panes.push(p);
-    else cells.push({ group: g, panes: [p] });
-  }
-  return cells;
+/** The grid cells in pane order, one pane each. The `group` and the one-pane list keep the shape the grid,
+ *  the zoom and the Board read; a cell never holds a second pane. */
+export function cellsOf<P extends { key: number }>(panes: P[]): { group: number; panes: P[] }[] {
+  return panes.map((p) => ({ group: p.key, panes: [p] }));
 }
 
 /** VIEW-026: one Board card at a time shows its live terminal; the same card again collapses it. */
 export const toggleCard = (expanded: number | null, key: number): number | null => (expanded === key ? null : key);
 
-/** The tab that takes over when `key` closes: the one after it, else the one before, else none. */
-export function neighbourTab(keys: number[], key: number): number | null {
-  const i = keys.indexOf(key);
-  const rest = keys.filter((k) => k !== key);
-  return i < 0 ? null : (rest[Math.min(i, rest.length - 1)] ?? null);
-}
-
 /** TERM-001: a workspace holds at least one pane, and every seat one launch can ask for
- * (SESS-013) fits: the strip's free field is not limited to the quick counts. */
+ * (SESS-013) fits: the strip's free field is not limited to the quick counts.
+ * One session per cell: the cap is on what a person adds (a new pane, a split, a file, a diff, a terminal from the
+ * command line), refused with a toast at the cap. What comes back or opens on its own (a restored layout, a reopened
+ * tab, kolux.yaml's default tabs, a setup tab) is never dropped for it, so such a grid can hold more for a while. */
 export const MAX_PANES = MAX_SESSIONS;
+
+/** Whether the grid of panes `inGrid` (one workspace's) has room for one more cell a person asks for. */
+export const hasRoom = (inGrid: readonly unknown[]): boolean => inGrid.length < MAX_PANES;
 
 export function clampCount(n: number): number {
   const whole = Math.floor(n);
@@ -85,6 +77,13 @@ export function insertBefore<P>(panes: P[], next: P | undefined, pane: P): P[] {
   return i < 0 ? [...panes, pane] : [...panes.slice(0, i), pane, ...panes.slice(i)];
 }
 
+/** One session per cell: panes opened beside pane `prev` (by key) take the cells right after it, in order, so they land
+ *  next to the pane they were opened from; with no such pane they go last. Every other pane keeps its place (TERM-017). */
+export function insertAfter<P extends { key: number }>(panes: P[], prev: number | undefined, ...added: P[]): P[] {
+  const i = prev === undefined ? -1 : panes.findIndex((p) => p.key === prev);
+  return i < 0 ? [...panes, ...added] : [...panes.slice(0, i + 1), ...added, ...panes.slice(i + 1)];
+}
+
 /** TERM-005: the pane counts a new workspace may start with, and the setting that holds the pick. */
 export const PANE_COUNTS = [1, 2, 4, 6, 9, 12];
 export const DEFAULT_PANES_FIELD = "defaultPaneCount";
@@ -93,9 +92,9 @@ export const DEFAULT_PANES_FIELD = "defaultPaneCount";
  * and always 1 in the classic look. */
 export const seedCount = (saved: unknown, classic: boolean): number => (classic || !PANE_COUNTS.includes(Number(saved)) ? 1 : Number(saved));
 
-/** TERM-007: the first cell that is free for a new session: a lone pane that has not started
+/** TERM-007: the first cell that is free for a new session: a pane that has not started
  * (a chooser). None when every cell holds a session. */
-export function freeCell<P extends Tabbed & { seats?: unknown }>(cells: { panes: P[] }[]): P | undefined {
+export function freeCell<P extends { key: number; seats?: unknown }>(cells: { panes: P[] }[]): P | undefined {
   return cells.find((c) => c.panes.length === 1 && c.panes[0].seats)?.panes[0];
 }
 

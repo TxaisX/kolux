@@ -1,6 +1,6 @@
 // The pane grid's arithmetic (TERM-001, TERM-004, TERM-006, TERM-040, VIEW-026), pure so it runs without a browser.
 import { expect, test } from "vitest";
-import { blocking, cellsOf, clampCount, columnsFor, insertBefore, MAX_PANES, neighbourTab, resizePlan, rowsFor, splitIndex, toggleCard, freeCell, PANE_COUNTS, seedCount, canExpand, toggleZoom, zoomedGroup } from "./grid";
+import { blocking, cellsOf, clampCount, columnsFor, hasRoom, insertAfter, insertBefore, MAX_PANES, resizePlan, rowsFor, splitIndex, toggleCard, freeCell, PANE_COUNTS, seedCount, canExpand, toggleZoom, zoomedGroup } from "./grid";
 
 const started = (key: number) => ({ key, started: true });
 const empty = (key: number) => ({ key, started: false });
@@ -89,26 +89,31 @@ test("TERM-004/006: inserting before a pane keeps every other pane in place", ()
   expect(insertBefore(panes, panes[1], fresh).map((p) => p.key)).toEqual([1, 9, 2, 3, 4]);
 });
 
-test("TERM-040: panes sharing a group make one cell of tabs, in first-seen order", () => {
-  const panes = [
-    { key: 1, cwd: null },
-    { key: 2, cwd: null, group: 1 },
-    { key: 3, cwd: null },
-    { key: 4, cwd: null, group: 3 },
-    { key: 5, cwd: null, group: 1 },
-  ];
+// Owner decision 2026-11-12 (PR #255): one session per cell. No pane shares a cell, whatever an old layout said.
+test("TERM-040: every pane is a cell of its own, in pane order, named by its key", () => {
+  const panes = [{ key: 1, cwd: null }, { key: 2, cwd: null, group: 1 }, { key: 3, cwd: null }, { key: 5, cwd: null }];
   const cells = cellsOf(panes);
-  expect(cells.map((c) => c.group)).toEqual([1, 3]);
-  expect(cells[0].panes.map((p) => p.key)).toEqual([1, 2, 5]);
-  expect(cells[1].panes.map((p) => p.key)).toEqual([3, 4]);
+  expect(cells.map((c) => c.group)).toEqual([1, 2, 3, 5]);
+  expect(cells.every((c) => c.panes.length === 1)).toBe(true);
+  expect(cells.map((c) => c.panes[0])).toEqual(panes);
 });
 
-test("TERM-040/014: closing a tab hands over to the next one, else the previous, and the last closes the cell", () => {
-  expect(neighbourTab([1, 2, 3], 2)).toBe(3);
-  expect(neighbourTab([1, 2, 3], 3)).toBe(2);
-  expect(neighbourTab([1, 2, 3], 1)).toBe(2);
-  expect(neighbourTab([7], 7)).toBeNull();
-  expect(neighbourTab([1, 2], 9)).toBeNull();
+test("TERM-040: a pane opened beside another takes the cell right after it; with none it goes last", () => {
+  const panes = [{ key: 1 }, { key: 2 }, { key: 3 }];
+  expect(insertAfter(panes, 1, { key: 9 }).map((p) => p.key)).toEqual([1, 9, 2, 3]);
+  expect(insertAfter(panes, 3, { key: 9 }).map((p) => p.key)).toEqual([1, 2, 3, 9]);
+  expect(insertAfter(panes, undefined, { key: 9 }).map((p) => p.key)).toEqual([1, 2, 3, 9]);
+  expect(insertAfter(panes, 42, { key: 9 }).map((p) => p.key)).toEqual([1, 2, 3, 9]);
+  expect(insertAfter(panes, 2, { key: 8 }, { key: 9 }).map((p) => p.key)).toEqual([1, 2, 8, 9, 3]);
+  // every pane that was there is the same object, in the same order (TERM-017)
+  const after = insertAfter(panes, 1, { key: 9 });
+  expect(after.filter((p) => p.key !== 9).every((p, i) => p === panes[i])).toBe(true);
+});
+
+test("TERM-001: a grid has room for one more pane a person asks for until it holds MAX_PANES", () => {
+  expect(hasRoom(Array.from({ length: MAX_PANES - 1 }))).toBe(true);
+  expect(hasRoom(Array.from({ length: MAX_PANES }))).toBe(false);
+  expect(hasRoom(Array.from({ length: MAX_PANES + 12 }))).toBe(false); // a restored layout can hold more
 });
 
 test("VIEW-026: expanding a Board card shows its terminal, expanding it again or another card collapses it", () => {
@@ -154,9 +159,7 @@ test("TERM-005: a new workspace starts with the saved pane count, 1 when unset o
 test("TERM-007: a new session fills the first empty pane, and none when every cell has a session", () => {
   const shell = { key: 1, cwd: "a" };
   const chooser = { key: 2, cwd: "a", seats: [] };
-  const tabbed = [{ key: 3, cwd: "a", group: 3, seats: [] }, { key: 4, cwd: "a", group: 3 }];
   expect(freeCell(cellsOf([shell, chooser]))).toBe(chooser);
-  expect(freeCell(cellsOf([shell, ...tabbed]))).toBeUndefined();
   expect(freeCell(cellsOf([shell]))).toBeUndefined();
 });
 

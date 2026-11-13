@@ -2,7 +2,7 @@
 // (a shell running a program reads busy, an idle shell does not) is src-tauri/tests/cards_03.rs term045_box1_*.
 import { expect, test } from "vitest";
 import { asksBeforeClose, busyCheck, closeQuestion } from "../closing";
-import { cellKeys } from "../tabSplit";
+import { bulkCloseSet, gridOrderOf } from "../pin";
 
 // MIRROR App.tsx closeTab: ids = the keys' sessions; { busy, failed } = asksBeforeClose ? busyCheck(ids, terminal_busy) : none;
 // busy === 0 closes at once, otherwise one question built from closeQuestion(name, busy, keys.length, failed).
@@ -21,9 +21,11 @@ test("box 1: a tab with a running program asks, naming the tab; an idle shell cl
   expect(await decide({}, [7], "dev server", () => Promise.reject(new Error("check failed")))).toEqual({ title: "Close “dev server”?", body: "Kolux could not check whether a program is still running in it. Closing the tab may stop one." });
 });
 
-test("box 2: a split tab with two busy panes is one check and one question, not two", async () => {
-  const panes = [{ key: 1, group: 1, cwd: "C:/w" }, { key: 2, group: 1, cwd: "C:/w" }, { key: 3, group: 3, cwd: "C:/w" }];
-  const keys = cellKeys(panes, 2); // closing the split tab closes its whole cell as one set
+// One session per cell (2026-11-12): a cell no longer holds a split of several panes; a set closed together is a bulk
+// close of the grid (Close Others from the tab menu or the Pane menu), still one check and one question.
+test("box 2: closing two busy panes together (Close Others) is one check and one question, not two", async () => {
+  const panes = [{ key: 1, cwd: "C:/w" }, { key: 2, cwd: "C:/w" }, { key: 3, cwd: "C:/w" }, { key: 4, cwd: "C:/other" }];
+  const keys = bulkCloseSet(gridOrderOf(panes, 3), 3, "others", new Set()); // the grid's others: never another workspace's
   expect(keys).toEqual([1, 2]);
   const ptys: Record<number, number> = { 1: 11, 2: 12, 3: 13 };
   const ids = keys.map((k) => ptys[k]);

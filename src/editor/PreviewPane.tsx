@@ -28,6 +28,7 @@ import { withChord } from "../terminal/PaneMenu";
 import { labelOf, matchEvent } from "../keys/keymap";
 import "./editor-extras.css";
 import OutOfFlow from "../chrome/OutOfFlow";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 
 type Props = { id: number; path: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; worktree?: string | null; onLink?: LinkHandler };
 
@@ -204,9 +205,11 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
   return (
     <section ref={section} className={`pane editor preview${focused ? " focused" : ""}${toc && hasHeadings ? " toc-open" : ""}`} hidden={hidden} aria-label={`Preview of ${name}`} onMouseDown={onFocus} onKeyDownCapture={onKeys} data-kind="preview" data-key={id} tabIndex={-1}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="Markdown preview">
           <FileCode size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{name}</span>
         <span className="preview-tag">Preview</span>
         <span className="path" title={path}>

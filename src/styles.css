@@ -377,7 +377,6 @@ input { font: inherit; }
 .needs-chip .why { color: var(--fg-muted); }
 .needs-chip:hover, .needs-chip:focus-visible { border-color: var(--focus-ring); outline: none; }
 .name-field { min-width: 0; width: 14em; max-width: 100%; padding: 1px 5px; border: 1px solid var(--line-focus); border-radius: 4px; background: var(--input-bg); color: var(--fg); font: inherit; font-size: 12px; }
-.tab .name-field { width: 10em; }
 .review-tray { position: fixed; z-index: calc(var(--z-tray) - 2); right: 16px; bottom: 36px; width: 340px; max-height: 50vh; overflow: auto; padding: 8px; background: var(--pane-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); font-size: 12.5px; }
 .review-head { display: flex; align-items: center; gap: 8px; }
 .review-send { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; }
@@ -481,19 +480,21 @@ input { font: inherit; }
 .cell[data-drop="right"] { box-shadow: inset -4px 0 0 var(--line-focus); }
 .cell[data-drop="top"] { box-shadow: inset 0 4px 0 var(--line-focus); }
 .cell[data-drop="bottom"] { box-shadow: inset 0 -4px 0 var(--line-focus); }
-.cell[data-drop="centre"], .cell[data-drop="strip"] { outline: 2px dashed var(--line-focus); outline-offset: -2px; }
-.tab[data-drop="before"] { border-left: 3px solid var(--line-focus); }
-.tab[data-drop="after"] { border-right: 3px solid var(--line-focus); }
+/* TERM-015: a pane dropped on the centre of a cell swaps places with that cell's pane. */
+.cell[data-drop="centre"] { outline: 2px dashed var(--line-focus); outline-offset: -2px; }
 .pane-grip { display: inline-flex; flex: none; cursor: grab; color: var(--fg-icon-dim); }
 /* TERM-049: Tab Color row in the tab menu */
 .menu-colors { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 4px 8px; }
 .menu-colors .name { flex: 1 0 100%; color: var(--fg-muted); }
-.menu-colors .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-subtle); padding: 0; line-height: 14px; font-size: 11px; color: var(--fg-muted); }
-.menu-colors .swatch[aria-checked="true"] { outline: 2px solid var(--line-focus); outline-offset: 1px; }
+.menu-colors .swatch { position: relative; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-subtle); padding: 0; line-height: 14px; font-size: 11px; color: var(--fg-muted); background: transparent; }
+.menu-colors .swatch.on, .menu-colors .swatch[data-highlighted] { outline: 2px solid var(--line-focus); outline-offset: 1px; }
 .menu-colors .swatch.none { background: transparent; }
+/* The swatch's colour and its name for a screen reader (the menu rows are src/ui MenuItems, which take no style). */
+.menu-colors .swatch-fill { position: absolute; inset: 0; border-radius: 50%; }
+.menu-colors .swatch-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* VIEW-026: the Board is the same cells as cards, one per pane; the panes never move in the DOM,
    so an expanded card shows the live terminal and a collapsed one only its header. */
-.grid[hidden], .board[hidden], .board .tabs { display: none; }
+.grid[hidden], .board[hidden] { display: none; }
 /* TERM-013: an expanded pane fills the whole workspace area, edge to edge. TERM-028: Classic keeps the
    older flat chrome, square panes edge to edge with only the dividers between them. */
 .grid.zoomed, .grid.classic { margin: 0; border-radius: 0; }
@@ -550,14 +551,12 @@ input { font: inherit; }
 .tab { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 6px 0 10px; border: 1px solid var(--line-subtle); border-radius: 8px; color: var(--fg-muted); white-space: nowrap; cursor: default; }
 .tab[aria-selected="true"] { background: var(--pane-bg); border-color: var(--line-focus); color: var(--fg); }
 /* TERM-055: one badge beside the agent icon; the spinner reuses the header's spin. */
-.tab .badge { display: inline-flex; flex: none; }
-.tab .badge.working { color: var(--working-icon); }
-.tab .badge.done { color: var(--done-icon); }
-.tab .badge.unread,
-.tab .badge.permission { color: var(--working-icon); }
+/* One session per cell (2026-11-12): a pane's tab marks sit in its header, before the title (terminal/TabMarks.tsx). */
+.pane-head .badge { display: inline-flex; flex: none; }
+.pane-head .badge.unread { color: var(--working-icon); }
+.pane-head .tab-pin { display: inline-flex; flex: none; color: var(--fg-muted); }
+.pane-head .tab-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 .tab .tab-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-.tab .tab-x { width: 18px; height: 18px; border-radius: 4px; color: var(--fg-muted); line-height: 1; }
-.tab .tab-x:hover { background: var(--row-selected); color: var(--fg); }
 .pane { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--pane-bg); border: 1px solid var(--line-subtle); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line-inner); overflow: hidden; }
 .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--pane-bg); border: 1px solid var(--line-subtle); border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line-inner); overflow: hidden; }
 .pane.focused { border-color: var(--line-focus); }
@@ -589,8 +588,8 @@ input { font: inherit; }
 /* BROW-005: while a page loads the reload button is Stop inside a spinner. */
 .ib.loading { position: relative; }
 .ib.loading::before { content: ""; position: absolute; inset: 4px; border: 1.5px solid var(--line-subtle); border-top-color: var(--fg); border-radius: 50%; animation: spin 0.8s linear infinite; }
-.tab .ring.warn, .meter-fill.warn { color: var(--working-icon); }
-.tab .ring.danger, .meter-fill.danger { color: var(--meter-danger); }
+.pane-head .ring.warn, .meter-fill.warn { color: var(--working-icon); }
+.pane-head .ring.danger, .meter-fill.danger { color: var(--meter-danger); }
 /* USAGE-034: the full usage readout in an agent pane's header: tokens, the two plan
    figures with countdowns, the session's cost in a cyan chip. One row, never wrapping; which pieces show is
    decided in script from the header's measured width. */
@@ -602,7 +601,7 @@ input { font: inherit; }
 .usage-fig.warn { color: var(--working-icon); }
 .usage-fig.danger { color: var(--meter-danger); }
 .usage-cost { padding: 0 6px; border-radius: 8px; font-weight: 500; color: var(--cost-fg); background: color-mix(in srgb, var(--cost-fg) 16%, transparent); }
-.tab .ring { flex: none; color: var(--gauge); }
+.pane-head .ring { flex: none; color: var(--gauge); }
 /* USAGE-002: the card's compact meter under the chip row. */
 .meter { display: flex; align-items: center; gap: 8px; padding: 0 10px 6px; font-size: 11px; color: var(--fg-muted); white-space: nowrap; }
 .meter-bar { flex: 1; min-width: 40px; height: 4px; border-radius: 2px; background: var(--gauge-track); overflow: hidden; }
@@ -1454,7 +1453,6 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .rail.classic { width: 240px; border-radius: 0; border-width: 0 1px 0 0; }
 .rail-wrap.classic { padding: 0; }
 .rail .proj .ib { opacity: 1; }
-.grid.agents .tabs { display: none; }
 /* VIEW-017: the row's status word, one of the fixed set; what needs you is amber, working green, done teal. */
 .sess .status { flex: none; font-size: 11px; color: var(--fg-muted); }
 .sess .status.attention { color: var(--working-icon); }

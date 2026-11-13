@@ -35,13 +35,19 @@ export type MenuContext = {
   onSplit?: (dir: "right" | "down") => void;
   /** Given only when the grid is split into more than one pane. */
   onEqualize?: () => void;
-  /** TERM-016: given when the pane has a neighbouring cell to fold into as a tab. */
-  onMoveToTab?: () => void;
   onExpand?: () => void;
   onSetTitle?: () => void;
   /** Clear Title appears only when the pane has a title of its own. */
   hasTitle: boolean;
   onClearTitle?: () => void;
+  /** One session per cell (2026-11-12): the tab's own items live here now. TERM-046: Pin Tab / Unpin Tab. */
+  pinned?: boolean;
+  onPin?: () => void;
+  /** TERM-133: Tab Color… opens the colour rows of the tab menu. */
+  onColor?: () => void;
+  /** TERM-044: the bulk closes of the grid (Close Others, to the Right, to the Left, All); only the ones that would
+   *  close something are given. */
+  closes?: { id: string; name: string; title?: string; run: () => void }[];
   copyIds?: { id: string; name: string; run: () => void }[];
   onDiagnostics?: () => void;
   /** Close Pane appears only when the pane can be closed. */
@@ -51,7 +57,8 @@ export type MenuContext = {
 };
 
 /** TERM-035 order: Copy, Select All, Paste; agent actions; Split Right, Split Down, Equalize, Expand / Collapse;
- * Set Title, Clear Title; copy ids; diagnostics; Clear Screen, Find; Close Pane last, apart. */
+ * Set Title, Clear Title, Pin Tab, Tab Color…; copy ids; diagnostics; Clear Screen, Find; the bulk closes and Close
+ * Pane last, apart. */
 export function paneMenuItems(c: MenuContext): MenuItem[] {
   const out: MenuItem[] = [];
   const add = (group: number, id: string, name: string, run: (() => void) | undefined, more: Partial<MenuItem> = {}) => {
@@ -65,15 +72,17 @@ export function paneMenuItems(c: MenuContext): MenuItem[] {
   add(2, "splitRight", "Split Right", split && (() => split("right")), { key: "terminal.splitRight" });
   add(2, "splitDown", "Split Down", split && (() => split("down")), { key: "terminal.splitDown" });
   add(2, "equalize", "Equalize", c.onEqualize, { key: "terminal.equalizePaneSizes", title: "Gives every pane in the grid the same size" });
-  add(2, "moveToTab", "Move to Tab", c.onMoveToTab, { title: "Moves this pane into the tab strip of the pane beside it; the program keeps running" });
   add(2, "expand", c.expanded ? "Collapse" : "Expand", c.canExpand ? c.onExpand : undefined, { key: "terminal.expandPane" });
   add(3, "setTitle", "Set Title…", c.onSetTitle, { key: "terminal.setTitle" });
   add(3, "clearTitle", "Clear Title", c.hasTitle ? c.onClearTitle : undefined, { key: "terminal.clearPaneTitle" });
+  add(3, "pin", c.pinned ? "Unpin Tab" : "Pin Tab", c.onPin, { title: c.pinned ? "Lets Close Others, Close All and a middle-click close this pane again" : "Keeps this pane out of Close Others, Close All and a middle-click, and asks before it closes" });
+  add(3, "color", "Tab Color…", c.onColor, { title: "Marks this pane's header with a colour dot" });
   for (const i of c.copyIds ?? []) add(3, i.id, i.name, i.run);
   add(3, "diagnostics", "Copy terminal diagnostics", c.onDiagnostics, { title: "A scrubbed snapshot of this pane for a bug report, to the clipboard" });
   add(4, "clear", "Clear Screen", c.onClear, { key: "terminal.clear", title: "Clears the screen and the scrollback of this pane" });
   add(4, "find", "Find…", c.onFind, { key: "terminal.search", title: "Find text in this pane's screen and scrollback" });
-  // UX audit terminal F5: the destructive item sits last, apart from the rest, so a slip of the hand lands elsewhere.
+  // UX audit terminal F5: the destructive items sit last, apart from the rest, so a slip of the hand lands elsewhere.
+  for (const x of c.closes ?? []) add(5, x.id, x.name, x.run, { danger: true, title: x.title });
   // T-717 (DT-C153): the chord shown is tab.close's, which owns Mod+W and closes the focused pane.
   add(5, "close", "Close Pane", c.onClose, { key: "tab.close", danger: true, title: "Ends the program in this pane" });
   return out;

@@ -23,7 +23,7 @@ import type { Plumbing } from "../settings/useSettingsPlumbing";
  *  every focus move, and each ask runs the agent's own program. */
 export const LISTED_ASK_AGAIN_MS = 30_000;
 
-export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings, settings, settingsRead, settingsRef, stacked, tabColors }: Pick<WindowState, "activeDir" | "activeTab" | "classic" | "dirty" | "focused" | "page" | "panes" | "pinned" | "running" | "screen" | "setHist" | "setNotice" | "setPanes" | "setScreen" | "setSettings" | "settings" | "settingsRead" | "stacked" | "tabColors"> & Pick<Plumbing, "saveSetting" | "settingsRef"> & { read: boolean }) {
+export function useWindowSave({ activeDir, classic, dirty, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings, settings, settingsRead, settingsRef, stacked, tabColors }: Pick<WindowState, "activeDir" | "classic" | "dirty" | "focused" | "page" | "panes" | "pinned" | "running" | "screen" | "setHist" | "setNotice" | "setPanes" | "setScreen" | "setSettings" | "settings" | "settingsRead" | "stacked" | "tabColors"> & Pick<Plumbing, "saveSetting" | "settingsRef"> & { read: boolean }) {
   // VIEW-011: the open page is written down, so it is shown again after a restart.
   useEffect(() => {
     if ((settings[OPEN_PAGE_FIELD] ?? null) !== page) saveSetting(OPEN_PAGE_FIELD, page);
@@ -148,7 +148,7 @@ export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, p
   };
   useEffect(() => {
     if (!read) return;
-    const l = layoutOf(panes, activeTab, focused, activeDir, stacked, { pinned, colors: tabColors });
+    const l = layoutOf(panes, focused, activeDir, stacked, { pinned, colors: tabColors });
     if (JSON.stringify(settings[LAYOUT_FIELD] ?? null) === JSON.stringify(l)) return;
     const next = { ...settingsRef.current, [LAYOUT_FIELD]: l };
     settingsRef.current = next;
@@ -157,7 +157,7 @@ export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, p
     askListedSessions();
     // C26-R3-01: `read` turns true on the late answer without a remount now, so this effect must run again for it:
     // a tab opened during the wait is written down as soon as the saved tabs are back.
-  }, [panes, activeTab, focused, activeDir, stacked, pinned, tabColors, read]);
+  }, [panes, focused, activeDir, stacked, pinned, tabColors, read]);
 
   // VIEW-046: every workspace and page shown is a stop for back and forward; a step back lands on
   // the place already current, which visit leaves alone.

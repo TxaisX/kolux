@@ -13,8 +13,9 @@ const between = (src: string, from: string, to: string) => {
   return at < 0 ? "" : src.slice(at, src.indexOf(to, at));
 };
 
-test("C09-R5-01: on the Agents screen the drawn tab is the selected session, whatever was focused", () => {
-  expect(grid).toContain("const active = mine ? (selected as number) : activeOf(c);");
+test("C09-R5-01: on the Agents screen the drawn cell is the selected session's, whatever was focused", () => {
+  // one session per cell (2026-11-12): the cell is its pane, so the selected session's cell is the one not hidden
+  expect(grid).toContain("const mine = agentsScreen && p.key === selected;");
   expect(grid).toContain("hidden={agentsScreen ? !mine :");
 });
 

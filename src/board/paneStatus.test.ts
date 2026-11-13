@@ -175,11 +175,14 @@ test("DT-C52 answer 3: Ctrl+J and the tab badges count only a permission or a qu
   expect(hooks.map(badge)).toEqual(["stopped", "stopped", "permission", "permission"]);
   // A guessed permission (title only) counts, as on the other surfaces.
   expect(needsYou(paneStatus("claude", undefined, "permission", true))).toBe(true);
-  // The window reads them so: Ctrl+J, the tab strip and the palette's tab rows take the one status, not `needs`.
+  // The window reads them so: Ctrl+J, the pane header's tab marks (one session per cell, shell/window/paneTab.ts, fed
+  // statusOf by Pane.tsx) and the palette's tab rows take the one status, not `needs`.
   const ctrlJ = app.slice(app.indexOf('case "terminals.focusNextNeedsYou"'), app.indexOf('case "tab.search"'));
   expect(ctrlJ).toMatch(/needsYou\(statusOf\(p\)\)/);
   expect(ctrlJ).not.toMatch(/needs\[/);
-  expect(app.match(/tabBadge\(p\.agent, running\[p\.key\], needsYou\(statusOf\(p\)\),/g)).toHaveLength(2);
+  expect(app.match(/tabBadge\(p\.agent, running\[p\.key\], needsYou\(statusOf\(p\)\),/g)).toHaveLength(1);
+  expect(app.match(/tabBadge\(p\.agent, w\.running\[p\.key\], needsYou\(w\.status\),/g)).toHaveLength(1);
+  expect(app).toMatch(/tabMarksOf\(p, \{[\s\S]{0,200}status: statusOf\(p\),/);
   expect(app).not.toMatch(/tabBadge\([^)]*needs\[p\.key\]/);
 });
 

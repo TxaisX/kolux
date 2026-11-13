@@ -70,18 +70,18 @@ test("T-609: Review changes opens that pane's worktree in All Changes, in the pa
   const panes = [
     { key: 1, cwd: "G:/repo", branch: "main", agent: "claude" },
     { key: 2, cwd: "G:/repo/.w/fix-login", branch: "fix-login", agent: "claude" },
-    { key: 3, cwd: "G:/repo/.w/fix-login", branch: "fix-login", agent: "shell", group: 2 },
-    { key: 4, cwd: "G:/repo", branch: "main", agent: "shell", kind: "changes", group: 1 },
+    { key: 3, cwd: "G:/repo/.w/fix-login", branch: "fix-login", agent: "shell" },
+    { key: 4, cwd: "G:/repo", branch: "main", agent: "shell", kind: "changes" },
   ];
-  // Pane 2's worktree has no All Changes tab yet: one opens there, beside pane 2, on its branch.
-  expect(reviewTab(panes, 2)).toEqual({ open: { cwd: "G:/repo/.w/fix-login", branch: "fix-login", group: 2 } });
-  // Pane 1's cell already has its All Changes tab: it comes to the front instead of a second one.
+  // Pane 2's worktree has no All Changes tab yet: one opens in the cell right after pane 2 (one session per cell), on its branch.
+  expect(reviewTab(panes, 2)).toEqual({ open: { cwd: "G:/repo/.w/fix-login", branch: "fix-login", after: 2 } });
+  // Pane 1's worktree already has its All Changes tab in this grid: it comes to the front instead of a second one.
   expect(reviewTab(panes, 1)).toEqual({ focus: 4 });
   // A pane with no folder, or one that is gone, has nothing to review.
   expect(reviewTab([{ key: 5, cwd: null, branch: null }], 5)).toBeNull();
   expect(reviewTab(panes, 99)).toBeNull();
-  // An All Changes tab of another worktree in the same cell is not taken for this one.
-  expect(reviewTab([{ key: 6, cwd: "G:/a", branch: null }, { key: 7, cwd: "G:/b", branch: null, kind: "changes", group: 6 }], 6)).toEqual({ open: { cwd: "G:/a", branch: null, group: 6 } });
+  // An All Changes tab of another worktree shown in the same grid is not taken for this one.
+  expect(reviewTab([{ key: 6, cwd: "G:/a", view: "G:/team", branch: null }, { key: 7, cwd: "G:/b", view: "G:/team", branch: null, kind: "changes" }], 6)).toEqual({ open: { cwd: "G:/a", view: "G:/team", branch: null, after: 6 } });
 });
 
 test("DT-C52 / T-609: an Inbox row Stopped because its program exited offers Review changes once its worktree holds changes", () => {

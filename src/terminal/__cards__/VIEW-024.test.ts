@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 import { cardPanes } from "../../agents/rail";
 import { cellsOf } from "../grid";
 
-type P = { key: number; cwd: string; kind?: string; group?: number };
+type P = { key: number; cwd: string; kind?: string };
 const cardsInOrder = (panes: P[]) => cellsOf(panes).flatMap((c) => cardPanes(c.panes)).map((p) => p.key);
 
 test("box 1: two tabs, one split into two panes, give three cards in tab order", () => {
@@ -13,8 +13,8 @@ test("box 1: two tabs, one split into two panes, give three cards in tab order",
   const panes: P[] = [{ key: 1, cwd: "C:/w/a" }, { key: 2, cwd: "C:/w/b" }, { key: 3, cwd: "C:/w/b" }];
   expect(cardsInOrder(panes)).toEqual([1, 2, 3]);
   expect(cardPanes(panes)).toHaveLength(3);
-  // Tab order follows the cell's first pane, not the key: a pane 4 grouped as a tab of cell 1 sits with it.
-  expect(cardsInOrder([{ key: 1, cwd: "C:/w/a" }, { key: 2, cwd: "C:/w/b" }, { key: 4, cwd: "C:/w/a", group: 1 }])).toEqual([1, 4, 2]);
+  // One session per cell (2026-11-12): the order is the panes' own, not the keys; a pane opened beside pane 1 sits with it.
+  expect(cardsInOrder([{ key: 1, cwd: "C:/w/a" }, { key: 4, cwd: "C:/w/a" }, { key: 2, cwd: "C:/w/b" }])).toEqual([1, 4, 2]);
 });
 
 test("box 2: an editor tab and a diff tab get no card", () => {

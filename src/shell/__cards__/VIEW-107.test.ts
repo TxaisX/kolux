@@ -9,13 +9,12 @@ const tab = (key: number, agent: "claude" | "codex" | "shell") => ({ key, cwd: "
 
 test("box 1: three tabs written down at quit come back as the same three tabs, in order, with the active one", () => {
   const live = [tab(1, "claude"), tab(2, "codex"), tab(3, "shell")];
-  const saved = layoutOf(live, { 0: 2 }, 2, "C:/w/app", {});
+  const saved = layoutOf(live, 2, "C:/w/app", {});
   expect(saved.panes.map((p) => p.key)).toEqual([1, 2, 3]);
   // the settings file is JSON: write it, read it back, apply the folder check main.tsx makes
   const back = stillThere(restoreLayout(JSON.parse(JSON.stringify(saved))) as NonNullable<ReturnType<typeof restoreLayout>>, () => true);
   expect(back.panes.map((p) => [p.key, p.agent, p.cwd])).toEqual([[1, "claude", "C:/w/app"], [2, "codex", "C:/w/app"], [3, "shell", "C:/w/app"]]);
   expect(back.focused).toBe(2);
-  expect(back.activeTab).toEqual({ 0: 2 });
   expect(back.activeDir).toBe("C:/w/app");
   expect(sessionOrder(back.panes).map((p) => p.key)).toEqual([1, 2, 3]);
 });

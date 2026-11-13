@@ -20,7 +20,7 @@ import { isFolderWorkspace } from "../sessions/folderTabs";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
-import { sessionDir, sessionLabel, sessionsByProject, focusPane, type FolderSession } from "./folderSessions";
+import type { FolderSession } from "./folderSessions";
 import { dialogWhere, setupMode } from "../launch/launchOrder";
 import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
@@ -109,8 +109,8 @@ type Props = {
   reveal?: number;
   /** Folders a pane is open in: those workspace rows show a live dot. */
   openDirs: string[];
-  /** VIEW-051: the window's agent and shell panes; a workspace lists its running ones as rows
-   * and counts them (the left pane no longer lists terminals as rows). */
+  /** VIEW-051: the window's agent and shell panes. The sidebar shows folders only (2026-11-12), so they are no rows:
+   *  they tell how many running sessions a sleep or a removal would close (runNote). */
   sessions?: FolderSession[];
   /** PROJ-063: each open folder's strongest agent state and when it last changed. */
   states: Record<string, RowInfo>;
@@ -1688,45 +1688,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const inList = (w: Worktree) => elsewhere(w) && !hidden(w); // the lane's listed(), renamed: main's listed is the worktree state
   // Txais (2026-11-12): Pinned and the grouped lists hold folders (main checkouts) only; a worktree never has a row.
   const pinnedEntries = everyEntry.filter((x) => x.w.isMain && pinned.has(pathKey(x.w.path)) && !hidden(x.w));
-  // The sessions of each folder: the open agent and terminal panes in it or in any worktree of it (an own-folder team's agents).
-  const ownSessions = sessionsByProject(sessions, projects.map((p) => ({ id: p.id, paths: [p.path, ...(listed[p.id] ?? []).map((w) => w.path), ...(hiddenWts[p.id] ?? []).map((w) => w.path)] })));
-  // Clicking a session shows the grid it is in, then focuses its pane.
-  const openSession = (p: Project, s: FolderSession) => {
-    const dir = sessionDir(s);
-    if (dir === null) return;
-    const w = (listed[p.id] ?? []).find((x) => same(x.path, dir));
-    if (w) show(w);
-    else onSelect(dir, null);
-    focusPane(s.key);
-  };
-  const sessionRows = (p: Project) =>
-    (ownSessions[p.id] ?? []).map((s) => {
-      const state: AgentState = s.state ?? "idle";
-      const name = sessionLabel(s);
-      return (
-        <div
-          key={`session-${s.key}`}
-          className="sess"
-          role="button"
-          tabIndex={0}
-          data-session={s.key}
-          data-testid="sidebar-session"
-          data-state={state}
-          title={[s.agent !== name ? `${name} (${s.agent})` : name, s.cwd, s.running ? null : "Exited"].filter(Boolean).join(String.fromCharCode(10))}
-          style={{ paddingLeft: 26 }}
-          onClick={() => openSession(p, s)}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter" && e.key !== " ") return;
-            e.preventDefault();
-            openSession(p, s);
-          }}
-        >
-          <span className={`dot ${state}${s.running ? " live" : ""}`} role="img" aria-label={state} data-tip={VOCAB[state].explain} />
-          <span className="name">{name}</span>
-          {!s.running && <span className="hint">exited</span>}
-        </div>
-      );
-    });
   async function sleep(w: Worktree) {
     const { next, paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
     // EDIT-031: its unsaved editor tabs are asked about first; on Cancel it stays awake with its tabs.
@@ -2254,12 +2215,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const main = list.find((w) => w.isMain);
       const others = order(list.filter((w) => !w.isMain && inList(w)).map((w) => ({ p, w })));
       const opening = creating === p.id;
-      // Txais (2026-11-12): the sidebar lists folders and their sessions, never worktrees. The project row is the folder,
-      // and clicking it shows the grid of every pane opened in that folder or in a worktree of it.
+      // Txais (2026-11-12): the sidebar lists folders only: no worktree rows and no session rows (every session is in the
+      // folder's grid). The project row is the folder, and clicking it shows the grid of every pane opened in that folder
+      // or in a worktree of it.
       const inFolder = activeDir !== null && [p.path, ...list.map((w) => w.path), ...(hiddenWts[p.id] ?? []).map((w) => w.path)].some((d) => same(activeDir, d));
       const selected = main !== undefined && (isSelected(main) || inFolder);
       const folder = main !== undefined;
-      const own = sessionRows(p);
       return (
         <div key={p.id}>
           <div
@@ -2367,11 +2328,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               parentOf={(path) => (worktrees[p.id] ?? []).find((x) => same(x.path, path))?.parent}
             />
           )}
-          {own.length > 0 && <div className="sb-sessions">{own}</div>}
           {opening && nameField(p)}
           {standIn(p)}
           {/* A worktree never has a row: its rows stay in the DOM for saved work and for the keyboard, but they
-              do not draw. What runs in one shows as a session row under the folder. */}
+              do not draw. What runs in one shows in the folder's grid. */}
           <div className="old-workspaces">
             {outsideCard({ outside: outsideOf(list), dismissed: dismissedOutside(settings).includes(p.id), collapsed: false, otherRows: others.length }).show && (
               <OutsideCard outside={outsideOf(list)} onDismiss={() => onSetting(OUTSIDE_DISMISSED_SETTING, withDismissed(settings, p.id))} />
@@ -2709,7 +2669,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                     </span>
                   </button>
                 )}
-                {!folded.has(g.title) && g.rows.map((x) => <Fragment key={x.w.path}>{row(x)}{sessionRows(x.p)}</Fragment>)}
+                {!folded.has(g.title) && g.rows.map((x) => <Fragment key={x.w.path}>{row(x)}</Fragment>)}
               </div>
             ))}
 

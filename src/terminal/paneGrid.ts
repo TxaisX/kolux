@@ -1,10 +1,9 @@
 // The pane grid's layout for this render, moved out of App.tsx as it was (cycle 2, the App.tsx split): the cells
-// and the ones shown (TERM-013 zoom), the dragged column and row weights and the divider drag (TERM-010/035),
-// Move to Tab (TERM-016), the needs strip's sessions (TERM-029) and each cell's tab on top (TERM-040).
+// and the ones shown (TERM-013 zoom), the dragged column and row weights and the divider drag (TERM-010/035)
+// and the needs strip's sessions (TERM-029). One session per cell (2026-11-12): a cell shows its one pane.
 // A plain function: it holds no hooks.
 import { stripOn } from "../settings/general";
-import { moveToTab, tidyWeights } from "../shell/tidy";
-import { handOver, movedKeys } from "./handover";
+import { tidyWeights } from "../shell/tidy";
 import { sameDir, viewOf } from "../workspaces";
 import { DIVIDER_DONE, DRAG_ATTR, dragWeights, gapAt, tracks } from "./dividers";
 import { cellsOf, columnsFor, rowsFor, zoomedGroup } from "./grid";
@@ -12,7 +11,7 @@ import { waitingInGrid } from "./tabs";
 import type { WindowState } from "../shell/windowStore";
 import type { Screens } from "../chrome/useScreens";
 
-export function paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, setFocused, setPanes, setWeights, settings, stacked, statusOf, terminals, weights, zoom }: Pick<WindowState, "activeDir" | "activeTab" | "dragRef" | "panes" | "setActiveTab" | "setFocused" | "setPanes" | "setWeights" | "settings" | "stacked" | "statusOf" | "weights" | "zoom"> & Pick<Screens, "terminals">) {
+export function paneGrid({ activeDir, dragRef, panes, setWeights, settings, stacked, statusOf, terminals, weights, zoom }: Pick<WindowState, "activeDir" | "dragRef" | "panes" | "setWeights" | "settings" | "stacked" | "statusOf" | "weights" | "zoom"> & Pick<Screens, "terminals">) {
   const cells = cellsOf(panes);
   const shown = cells.filter((c) => sameDir(viewOf(c.panes[0]), activeDir)); // DT-C274: by the grid a cell is shown in
   const zoomed = terminals ? zoomedGroup(zoom, shown.map((c) => c.group)) : null;
@@ -27,16 +26,6 @@ export function paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, s
   // TERM-035: Equalize drops the dragged weights of this folder's grid, so every column and row is the same size again.
   // TERM-008: Equalize also tidies: every dragged size of this folder goes, whatever the pane count was when it was dragged.
   const equalizePanes = () => setWeights((w) => tidyWeights(w, activeDir ?? null));
-  // TERM-016: Move to Tab folds a pane into the cell beside it. The pane changes cell, so React draws it anew
-  // (DT-C248): its key is handed over first, so the new pane takes the running terminal back instead of starting one.
-  const moveOutToTab = (key: number) => {
-    const r = moveToTab(panes, key);
-    if (!r) return;
-    handOver(movedKeys(panes, r.panes));
-    setPanes(r.panes);
-    setActiveTab((m) => ({ ...m, [r.group]: key }));
-    setFocused(key);
-  };
   const gapUnder = (g: HTMLElement, x: number, y: number) => {
     const rects = [...g.querySelectorAll<HTMLElement>(":scope > .cell:not([hidden])")].map((c) => c.getBoundingClientRect());
     const cols = tracks(rects, "x");
@@ -77,10 +66,9 @@ export function paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, s
   };
   // TERM-029: this grid's sessions waiting on a permission or a question, in grid order.
   const waiting = stripOn(settings) ? waitingInGrid(shown.flatMap((c) => c.panes.map((p) => p.key)), Object.fromEntries(panes.map((p) => [p.key, statusOf(p)]))).map((k) => panes.find((p) => p.key === k)!) : [];
-  const activeOf = (c: (typeof cells)[number]) => (c.panes.some((p) => p.key === activeTab[c.group]) ? activeTab[c.group] : c.panes[c.panes.length - 1].key);
   return {
-    cells, shown, zoomed, gridCount, gridCols, gridRows, weightKey, weightsOf, equalizePanes, moveOutToTab, gapUnder, onDividerDown, onDividerMove,
-    endDividerDrag, waiting, activeOf,
+    cells, shown, zoomed, gridCount, gridCols, gridRows, weightKey, weightsOf, equalizePanes, gapUnder, onDividerDown, onDividerMove,
+    endDividerDrag, waiting,
   };
 }
 

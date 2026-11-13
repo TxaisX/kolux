@@ -45,6 +45,7 @@ import { withChord } from "../terminal/PaneMenu";
 import { labelOf } from "../keys/keymap";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, abortLabel, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
 import { bulkPaths, commitWait, discardOne, unstagePaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 
 export type Entry = { path: string; staged: boolean; code: string; lines: number | null; binary: boolean; stamp: string; /** git's two-letter code of an unresolved conflict; such a file is listed first and drawn without a diff (T-227-d). */ clash?: string; /** P2: a staged rename's old path (scm change_entries). */ from?: string };
 /** The base a branch is measured against and the snapshot commit the sides are read from. */
@@ -373,9 +374,11 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   return (
     <section className={`pane editor all-changes${focused ? " focused" : ""}`} hidden={hidden} aria-label="All Changes" onMouseDown={onFocus} data-kind="changes" data-key={id} tabIndex={-1}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="All Changes">
           <FileCode size={13} />
         </span>
+        <HeadMarks />
         <span className="title">All Changes</span>
         <span className="preview-tag">
           <ViewedTag entries={entries ?? []} viewed={viewed} ready={ready} />

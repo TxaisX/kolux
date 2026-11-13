@@ -1,9 +1,12 @@
 // The window's pane and tab actions, moved out of App.tsx as they were (cycle 2, the App.tsx split): new tabs,
 // files, diffs and previews (TERM-040, EDIT-001/012/027), the cell count and splits (TERM-001/006/013), back
 // and forward (VIEW-046), the palette's rows (PROJ-057), the command line's terminal requests (CLI-026),
-// closing and moving tabs (TERM-014/044/045/054), Open in Code (EDIT-041). A plain function the window calls
+// closing and moving panes (TERM-014/044/045/015), Open in Code (EDIT-041). A plain function the window calls
 // each render, as the closures were made each render; what the window makes later in its render is read
 // from `late` when an action runs (shell/windowLate.ts).
+// Owner decision 2026-11-12 (one session per cell): a "tab" is a pane in a cell of its own. What used to join the
+// focused pane's cell as a tab opens in the cell right after the focused pane (grid.ts insertAfter), and a full
+// grid refuses it with a toast (grid.ts MAX_PANES).
 import type { Pane } from "../App";
 import type { WindowState } from "../shell/windowStore";
 import type { useSettingsPlumbing } from "../settings/useSettingsPlumbing";
@@ -49,15 +52,14 @@ import { teamViewOf } from "../projects/rows";
 import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
 import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
-import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
-import { closeOne, pinQuestion, stripOrderOf } from "./pin";
+import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, hasRoom, insertAfter, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
+import { closeOne, gridOrderOf, pinQuestion } from "./pin";
 import { cancelHandOver, handOver, movedKeys } from "./handover";
-import { dropCell, dropTab, type Zone } from "./rearrange";
+import { dropCell, type Zone } from "./rearrange";
 import { classify, removePlan, shellInAgentPane } from "./remove";
 import { returnTab } from "./tabClose";
 import { forgetColors } from "./tabColor";
 import { tabName, type StartLine } from "./tabName";
-import { splitTabOut } from "./tabSplit";
 import { tabBadge } from "./tabs";
 import { forgetView } from "./viewKeep";
 import { invoke } from "@tauri-apps/api/core";
@@ -68,8 +70,8 @@ const SETTINGS_WORDS: Partial<Record<PageId, string>> = { appearance: "theme dar
 
 export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, late: WindowLate) {
   const {
-    accountSwitcher, activeDir, activeTab, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
-    owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
+    accountSwitcher, activeDir, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
+    owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, runPanes, runTabs, running, screen, setActiveDir, setAgentSel, setAsking, setCreateName,
     setCreateRequest, setDeleteRequest, setDirty, setFocused, setHist, setKept, setKeptSetup, setNotice, setPage, setPanes, setPicking, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
     unreadPanes, setUnreadPanes, markDir
@@ -81,10 +83,13 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setFocused(key);
   };
 
+  // One session per cell: whether grid `dir` can take one more pane a person asks for; a full grid says so (grid.ts MAX_PANES).
+  const FULL = `A workspace holds up to ${MAX_PANES} panes.`;
+  const roomIn = (dir: string | null): boolean => hasRoom(panesIn(panes, dir)) || (setToast(FULL), false);
   // SESS-007: a pane that asks what to run, in the workspace in front. SESS-008: a grid holds
   // up to MAX_PANES.
   const addChooser = () => {
-    if (cellsOf(panesIn(panes, activeDir)).length >= MAX_PANES) return setToast(`A workspace holds up to ${MAX_PANES} panes.`);
+    if (!roomIn(activeDir)) return;
     if (!classic) {
       // SESS-018: the count and the files choice come from this project's last launch; seats start blank.
       const at: Pane = { key: 0, cwd: activeDir, branch: null, agent: "shell", program: null, args: [] };
@@ -112,7 +117,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     if (removePlan(settings, kind) === "stop") return dropPanes([t.key]);
     if (!asking) setAsking({ keys: [t.key], ...removeShortcutAsk(tabName(pane, titles), kind) }); // at most one question per press
   };
-  // TERM-040 / TERM-041: a new tab joins the focused pane's cell (or opens its own cell) and
+  // TERM-040 / TERM-041: a new tab opens in the cell right after the focused pane (one session per cell) and
   // starts in the workspace folder; an agent tab runs the agent's start line there. Outside any
   // workspace an agent has no folder to work in, so it gets a fresh worktree instead (SESS-004).
   // EDIT-035: the explorer's "Open in terminal": a shell tab beside the focused pane. A pane belongs to its worktree by its folder, so a
@@ -130,7 +135,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const at = here?.view !== undefined && here.cwd !== null && underDir(dir, here.cwd) ? besideOf(here) : { cwd: activeDir, branch: here?.view !== undefined ? (panes.find((p) => sameDir(p.cwd, activeDir))?.branch ?? null) : (here?.branch ?? null) };
     const root = at.cwd ?? activeDir;
     const rel = sameDir(dir, root) ? "" : dir.slice(root.length).replace(/^[\\/]+/, "");
-    setPanes((ps) => [...ps, { key, ...at, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], typed: rel ? `cd "${rel}"` : undefined }]);
+    if (!roomIn(activeDir)) return;
+    setPanes((ps) => insertAfter(ps, here?.key, { key, ...at, agent: "shell", program: null, args: [], typed: rel ? `cd "${rel}"` : undefined }));
     setFocused(key);
   };
   const newTab = async (what: NewTab) => {
@@ -140,13 +146,15 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       return;
     }
     if (what === "changes") {
-      // EDIT-029: one All Changes tab per cell; an open one comes to the front.
+      // EDIT-029: one All Changes tab per worktree in a grid; an open one comes to the front.
       if (!activeDir) return setToast("Open a workspace to see its changes.");
       const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
-      const same = here && panes.find((p) => p.kind === "changes" && groupOf(p) === groupOf(here));
+      const at = besideOf(here);
+      const same = panes.find((p) => p.kind === "changes" && sameDir(viewOf(p), activeDir) && sameDir(p.cwd, at.cwd));
       if (same) return setFocused(same.key);
+      if (!roomIn(activeDir)) return;
       const key = nextKey.current++;
-      setPanes((ps) => [...ps, { key, ...besideOf(here), group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "changes" }]);
+      setPanes((ps) => insertAfter(ps, here?.key, { key, ...at, agent: "shell", program: null, args: [], kind: "changes" }));
       setFocused(key);
       return;
     }
@@ -162,10 +170,11 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       return;
     }
     if (what !== null && typeof what === "object" && "shell" in what) {
-      // SESS-006: another installed shell, as a tab beside the focused pane.
+      // SESS-006: another installed shell, in the cell beside the focused pane.
       const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
+      if (!roomIn(activeDir)) return;
       const key = nextKey.current++;
-      setPanes((ps) => [...ps, { key, ...besideOf(here), group: here ? groupOf(here) : undefined, agent: "shell", program: what.shell.program, args: what.shell.args, word: what.shell.name }]);
+      setPanes((ps) => insertAfter(ps, here?.key, { key, ...besideOf(here), agent: "shell", program: what.shell.program, args: what.shell.args, word: what.shell.name }));
       setFocused(key);
       return;
     }
@@ -178,20 +187,21 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const a = what;
     if (a && activeDir === null) return launch(a, null);
     const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
+    if (!roomIn(activeDir)) return;
     const key = nextKey.current++;
-    const base = { key, ...besideOf(here), group: here ? groupOf(here) : undefined };
+    const base = { key, ...besideOf(here) };
     try {
       if (a) await pretrust(a.id, [base.cwd ?? activeDir]);
       const line = a ? await invoke<StartLine>("agent_start_line", { id: a.id, extra: savedArgs(a.id), prompt: "" }) : null;
       const pane: Pane = a && line ? { ...base, agent: paneMark(a, line), agentId: a.id, program: line.program ?? a.program, args: line.args, env: line.env, typed: line.typed ?? undefined } : { ...base, agent: "shell", program: null, args: [] };
-      setPanes((ps) => [...ps, pane]);
+      setPanes((ps) => insertAfter(ps, here?.key, pane));
       setFocused(key);
     } catch (err) {
       setNotice(String(err));
     }
   };
 
-  // EDIT-001: a file opens as a tab beside the focused pane; a file already open in that cell
+  // EDIT-001: a file opens in the cell beside the focused pane; a file already open in this grid
   // comes to the front instead of opening twice.
   // C09-R5-01: the tab is drawn in the grid, so a link in an agent reply leaves the Agents screen
   // that covers it, and closes a full page (Tasks, Automations) that covers it too; both paths
@@ -201,7 +211,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setScreen("terminals");
     setPage(null);
     const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
-    const same = here && panes.find((p) => p.kind === "editor" && groupOf(p) === groupOf(here) && keyOf(p.path ?? "") === keyOf(path) && !!p.follow === !!follow);
+    const same = panes.find((p) => p.kind === "editor" && sameDir(viewOf(p), activeDir) && keyOf(p.path ?? "") === keyOf(path) && !!p.follow === !!follow);
     // CHAT-025: a file link names a line; the pane keeps it as `jump` (the editor pane reads it once it takes that prop).
     // T-329-b: the column of path:line:column counts too (fileJump turns it into the editor's own, from 0).
     const spot = fileJump(line, column);
@@ -210,8 +220,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       if (jump) setPanes((ps) => ps.map((p) => (p.key === same.key ? { ...p, jump } : p)));
       return setFocused(same.key);
     }
+    if (!roomIn(activeDir)) return;
     const key = nextKey.current++;
-    setPanes((ps) => [...ps, { key, ...besideOf(here), group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "editor", path, jump, ...(follow ? { follow: true } : {}) }]);
+    setPanes((ps) => insertAfter(ps, here?.key, { key, ...besideOf(here), agent: "shell", program: null, args: [], kind: "editor", path, jump, ...(follow ? { follow: true } : {}) }));
     setFocused(key);
   };
   // EDIT-014: a Mod+clicked link in a note. Web links open in the system browser,
@@ -222,48 +233,52 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     if (a.kind === "file") return void missingFileToast(a.path, (ps) => invoke<unknown[]>("file_stamps", { paths: ps })).then((gone) => (gone ? setToast(gone) : a.how === "preview" ? openPreview(a.path) : openFile(a.path, a.line)));
   };
 
-  // EDIT-027: a changed file's diff opens as a tab beside the focused pane; its staged and
-  // unstaged diffs are separate tabs, and one already open in that cell comes to the front.
-  // GIT-037: a click in Source Control opens it as the cell's preview tab, which the next click
-  // reuses unless it holds unsaved edits.
+  // EDIT-027: a changed file's diff opens in a cell beside the focused pane; its staged and
+  // unstaged diffs are separate panes, and one already open in this grid comes to the front.
+  // GIT-037: a click in Source Control opens it as the grid's preview diff, which the next click
+  // reuses unless it holds unsaved edits ("New split" never reuses it).
   // DT-C274: `root`, the folder whose change it is when the caller knows it (the changed-file picker lists the shown
   // workspace's); else the diff runs where the focused pane runs (an All Changes tab of a team worktree).
   const openDiff = (path: string, staged: boolean, preview = false, line?: number, side?: "old", root?: string | null) => {
     const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
     const jump = line === undefined ? undefined : { line, at: Date.now(), ...(side ? { side } : {}) };
-    // GIT-037 (T-033-c): the cell the diff opens in follows the "Open diffs in" choice of Source Control.
-    const cell = here ? targetCell(cellsOf(panesIn(panes, activeDir)).map((c) => c.group), groupOf(here), diffSplitOf(settings[DIFF_SPLIT_KEY])) : undefined;
-    // DT-C274: where the diff runs; a team grid holds several worktrees, so a tab is reused only for the same one.
+    // GIT-037 (T-033-c): the cell the diff opens beside follows the "Open diffs in" choice of Source Control.
+    const choice = diffSplitOf(settings[DIFF_SPLIT_KEY]);
+    const cell = here ? targetCell(cellsOf(panesIn(panes, activeDir)).map((c) => c.group), groupOf(here), choice) : undefined;
+    // DT-C274: where the diff runs; a team grid holds several worktrees, so a pane is reused only for the same one.
     const at = root !== undefined && !sameDir(root, here?.cwd ?? null) ? { cwd: root, branch: panes.find((p) => sameDir(p.cwd, root))?.branch ?? null } : besideOf(here);
-    const same = cell !== undefined && panes.find((p) => p.kind === "diff" && !!p.staged === staged && groupOf(p) === cell && keyOf(p.path ?? "") === keyOf(path) && sameDir(p.cwd, at.cwd));
+    const inGrid = (p: Pane) => sameDir(viewOf(p), activeDir) && sameDir(p.cwd, at.cwd);
+    const same = panes.find((p) => p.kind === "diff" && !!p.staged === staged && inGrid(p) && keyOf(p.path ?? "") === keyOf(path));
     if (same) {
       if (jump) setPanes((ps) => ps.map((p) => (p.key === same.key ? { ...p, jump } : p)));
       return setFocused(same.key);
     }
-    const old = preview && cell !== undefined && panes.find((p) => p.kind === "diff" && p.preview && groupOf(p) === cell && !dirty[p.key] && sameDir(p.cwd, at.cwd));
+    const old = preview && choice !== "new" && panes.find((p) => p.kind === "diff" && p.preview && inGrid(p) && !dirty[p.key]);
     if (old) {
       setPanes((ps) => ps.map((p) => (p.key === old.key ? { ...p, path, staged, jump } : p)));
       return setFocused(old.key);
     }
+    if (!roomIn(activeDir)) return;
     const key = nextKey.current++;
-    setPanes((ps) => [...ps, { key, ...at, group: cell, agent: "shell", program: null, args: [], kind: "diff", path, staged, preview: preview || undefined, jump }]);
+    setPanes((ps) => insertAfter(ps, cell ?? here?.key, { key, ...at, agent: "shell", program: null, args: [], kind: "diff", path, staged, preview: preview || undefined, jump }));
     setFocused(key);
   };
 
-  // EDIT-012: Mod+Shift+V shows the file in a read-only preview tab beside it; a preview tab
-  // already in that cell is reused for the new file.
+  // EDIT-012: Mod+Shift+V shows the file in a read-only preview beside it; a preview already
+  // in this grid is reused for the new file.
   const openPreview = (path: string) => {
     const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
-    const old = here && panes.find((p) => p.kind === "preview" && groupOf(p) === groupOf(here));
+    const old = panes.find((p) => p.kind === "preview" && sameDir(viewOf(p), activeDir));
     if (old) {
       setPanes((ps) => ps.map((p) => (p.key === old.key ? { ...p, path } : p)));
       return setFocused(old.key);
     }
+    if (!roomIn(activeDir)) return;
     const key = nextKey.current++;
-    setPanes((ps) => [...ps, { key, cwd: activeDir, branch: here?.branch ?? null, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "preview", path }]);
+    setPanes((ps) => insertAfter(ps, here?.key, { key, cwd: activeDir, branch: here?.branch ?? null, agent: "shell", program: null, args: [], kind: "preview", path }));
     setFocused(key);
   };
-  // T-235-b (EDIT-030): a CI check opens as its own tab beside the focused pane. One tab per check per
+  // T-235-b (EDIT-030): a CI check opens in its own cell beside the focused pane. One tab per check per
   // worktree, found by the check's id (never its name); opening it again brings that tab forward.
   const openCheck = (check: CheckRef) => {
     const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
@@ -272,8 +287,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       setPanes((ps) => ps.map((p) => (p.key === same.key ? { ...p, check } : p)));
       return setFocused(same.key);
     }
+    if (!roomIn(activeDir)) return;
     const key = nextKey.current++;
-    setPanes((ps) => [...ps, { key, cwd: activeDir, branch: here?.branch ?? null, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "check", check }]);
+    setPanes((ps) => insertAfter(ps, here?.key, { key, cwd: activeDir, branch: here?.branch ?? null, agent: "shell", program: null, args: [], kind: "check", check }));
     setFocused(key);
   };
   // TERM-001: the layout strip sets how many cells the workspace in front holds. Growing adds
@@ -293,7 +309,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const fresh: Pane[] = Array.from({ length: add }, () => ({ key: nextKey.current++, cwd: activeDir, branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }));
     const rest = panes.filter((p) => !drop.includes(groupOf(p)));
     setPanes([...rest, ...fresh]);
-    // `drop` names cells; a cell of two chooser tabs goes whole, so the focus is checked against every pane leaving
     const leaving = panes.filter((p) => drop.includes(groupOf(p))).map((p) => p.key);
     setFocused((f) => (leaving.includes(f) ? focusIn(rest, activeDir, f) : f));
   };
@@ -409,8 +424,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   ];
   // PROJ-077: a workspace made or removed from the command line shows up like one made here;
   // the handlers are read through a ref so the one listener never goes stale.
-  // CLI-026, CLI-027: the terminal commands. A new terminal joins the worktree's last pane as a
-  // tab; unless asked to come into view it leaves that pane's shown tab and the focus as they were.
+  // CLI-026, CLI-027: the terminal commands. A new terminal opens in the cell after the worktree's last pane (one
+  // session per cell); unless asked to come into view it leaves the focus where it was. A full grid refuses it.
   const keyOfHandle = (h: string) => Number(Object.keys(ptys.current).find((k) => `term-${ptys.current[Number(k)]}` === h) ?? NaN);
   const showDir = (dir: string | null) => {
     setPage(null);
@@ -418,19 +433,19 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setActiveDir(dir);
     setScreen("terminals");
   };
-  // DT-C274: a terminal made in a team worktree is shown in its team's grid, as a tab of the cell its live agent is in.
+  // DT-C274: a terminal made in a team worktree is shown in its team's grid, in the cell after its live agent's.
   const termCreate = (c: { path: string; branch: string | null; command: string | null; title: string | null; focus: boolean; ask: string }) => {
     const view = teamViewOf(settings, c.path);
     const at = view === undefined ? c.path : view;
-    const here = cellsOf(panesIn(panes, at));
-    const mine = view === undefined ? undefined : here.find((cell) => cell.panes.some((p) => !p.kind && sameDir(p.cwd, c.path) && running[p.key] !== false));
+    const here = panesIn(panes, at);
+    if (!hasRoom(here)) {
+      cliFailed.current[c.ask] = `its workspace already holds ${MAX_PANES} panes; close one first`;
+      return;
+    }
+    const mine = view === undefined ? undefined : here.find((p) => !p.kind && sameDir(p.cwd, c.path) && running[p.key] !== false);
     const last = mine ?? here[here.length - 1];
     const key = nextKey.current++;
-    if (last && !c.focus) {
-      const on = last.panes.some((p) => p.key === activeTab[last.group]) ? activeTab[last.group] : last.panes[last.panes.length - 1].key;
-      setActiveTab((m) => ({ ...m, [last.group]: on }));
-    }
-    setPanes((ps) => [...ps, { key, cwd: c.path, ...(view === undefined ? {} : { view }), branch: c.branch, agent: "shell", program: null, args: [], typed: c.command ?? undefined, title: c.title ?? undefined, ask: c.ask, group: last?.group }]);
+    setPanes((ps) => insertAfter(ps, last?.key, { key, cwd: c.path, ...(view === undefined ? {} : { view }), branch: c.branch, agent: "shell", program: null, args: [], typed: c.command ?? undefined, title: c.title ?? undefined, ask: c.ask }));
     if (c.focus) {
       showDir(at);
       setFocused(key);
@@ -507,9 +522,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     };
   };
 
-  /** TERM-044: the tab strip's order for the cell holding pane `key`, pinned tabs first as drawn
-   *  (C06-R1-01: the close rows and Select Tab measure the strip, not the pane array). */
-  const orderOf = (key: number) => stripOrderOf(panes, key, pinned);
+  /** TERM-044 / TERM-051: the panes of the grid holding pane `key`, in grid order (one session per cell: the grid is the
+   *  "strip" the close rows, the tab cycling and Select Tab 1-9 measure). */
+  const orderOf = (key: number) => gridOrderOf(panes, key);
   // TERM-044: the closed tabs leave together; focus returns to the tab used before the active one,
   // else its right neighbour (left if it was last), never to a tab that is closing.
   const dropPanes = (keys: number[]) => {
@@ -549,32 +564,16 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
 
   const dropPane = (key: number) => dropPanes([key]);
 
-  // TERM-054: a tab dropped on a tab or a cell; TERM-015: a cell dropped on another cell. A drop that
-  // would leave the layout as it is returns nothing, so nothing happens. DT-C248: a pane that lands in
-  // another cell is drawn anew by React; its key is handed over first so its terminal keeps running.
-  const dropTabOn = (key: number, target: Parameters<typeof dropTab>[2]) => {
-    const r = dropTab(panes, key, target);
-    if (!r) return;
-    handOver(movedKeys(panes, r.panes));
-    setPanes(r.panes);
-    setActiveTab((m) => ({ ...m, [r.group]: key }));
-    setFocused(key);
-  };
+  // TERM-015: a pane dragged by its header grip onto another cell: the centre swaps the two, an outer band moves it to
+  // that side. A drop that would leave the layout as it is returns nothing, so nothing happens. Cells are keyed by their
+  // pane (one session per cell), so a move only reorders them and movedKeys finds nothing to hand over (DT-C248): no
+  // pane is drawn anew and every terminal keeps running.
   const dropCellOn = (group: number, target: { group: number; zone: Zone }) => {
     const next = dropCell(panes, group, target);
     if (!next) return;
     handOver(movedKeys(panes, next));
     setPanes(next);
-  };
-  // TERM-049: Split Right / Down on a tab's menu moves the tab into a cell of its own.
-  const splitTab = (key: number, dir: "right" | "down") => {
-    const r = splitTabOut(panes, key, dir);
-    if (!r) return;
-    handOver(movedKeys(panes, r.panes)); // DT-C248: the tab moves to a cell of its own; its terminal stays
-    setStacked((st) => ({ ...st, [activeDir ?? ""]: r.stack }));
-    setPanes(r.panes);
-    setActiveTab((m) => ({ ...m, [key]: key }));
-    setFocused(key);
+    setFocused(group);
   };
   // TERM-045: every close (keyboard, a tab's x, the pane header) asks first when a program would
   // stop; a tab's panes are checked together so a split tab asks once. Idle or switched off:
@@ -637,8 +636,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     if (!r) return;
     if ("focus" in r) return openPane(r.focus);
     const k = nextKey.current++;
-    const shownIn = viewOf(r.open); // DT-C274: a team pane's review opens in its cell of the team grid
-    setPanes((ps) => [...ps, { key: k, cwd: r.open.cwd, ...(r.open.view !== undefined ? { view: r.open.view } : {}), branch: r.open.branch, group: r.open.group, agent: "shell", program: null, args: [], kind: "changes" }]);
+    const shownIn = viewOf(r.open); // DT-C274: a team pane's review opens beside it in the team grid
+    // T-609: Kolux opens it for the pane, so a full grid is not refused (grid.ts MAX_PANES).
+    setPanes((ps) => insertAfter(ps, r.open.after, { key: k, cwd: r.open.cwd, ...(r.open.view !== undefined ? { view: r.open.view } : {}), branch: r.open.branch, agent: "shell", program: null, args: [], kind: "changes" }));
     setPage(null); // C13-R1-01: the new All Changes tab is not drawn behind a full page
     setScreen("terminals");
     if (!sameDir(shownIn, activeDir)) setActiveDir(shownIn);
@@ -646,14 +646,14 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     late.setReveal((n) => n + 1);
   };
   // The sidebar row's Review changes: workspace `dir` comes to the front on Terminals with its All Changes, an open
-  // one focused, else a new one in the cell the focus lands on there (as the Board's Review changes opens it). Shown
+  // one focused, else a new one beside the pane the focus lands on there (as the Board's Review changes opens it). Shown
   // without the starter pane a workspace with no tabs would get: All Changes is what was asked for.
   const openChangesIn = (dir: string, branch: string | null) => {
     const here = panesIn(panes, dir);
     const same = here.find((p) => p.kind === "changes");
     const at = here.find((p) => p.key === focusIn(panes, dir, focused));
     const key = same?.key ?? nextKey.current++;
-    if (!same) setPanes((ps) => [...ps, { key, cwd: dir, branch: at?.branch ?? branch, group: at ? groupOf(at) : undefined, agent: "shell", program: null, args: [], kind: "changes" }]);
+    if (!same) setPanes((ps) => insertAfter(ps, at?.key, { key, cwd: dir, branch: at?.branch ?? branch, agent: "shell", program: null, args: [], kind: "changes" }));
     showDir(dir);
     setFocused(key);
     late.setReveal((n) => n + 1);
@@ -667,7 +667,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   return {
     addShell, addChooser, removeSession, openTerminalIn, newTab, openFile, followLink, openDiff, openPreview, openCheck, setCount, expandPane, splitPane, setChooser,
     setSeats, stillThere, step, paletteItems, keyOfHandle, showDir, termCreate, termSwitch, renamePane, termRename, failedPane, restartPane, noticeFor,
-    orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges, openChangesIn,
+    orderOf, dropPanes, dropPane, dropCellOn, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges, openChangesIn,
     addPreset,
   };
 }

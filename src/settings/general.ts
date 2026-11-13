@@ -76,7 +76,7 @@ export function lastWriter<T>(write: (v: T) => void, ms = 400) {
 
 /** VIEW-107 (T-069-b): the layout's durable part, the tabs and the workspace in front; the focus,
  *  each cell's active tab and the stacking are what a fallback save leaves out. */
-export const durableOnly = (l: SavedLayout): SavedLayout => ({ panes: l.panes, activeTab: {}, focused: 0, activeDir: l.activeDir, stacked: {} });
+export const durableOnly = (l: SavedLayout): SavedLayout => ({ panes: l.panes, focused: 0, activeDir: l.activeDir, stacked: {} });
 
 /** VIEW-107 (T-069-b): writes the layout; a failed write is tried once more after `wait` ms, then the
  *  durable part alone is written. Rejects only when that last write fails too. */

@@ -17,6 +17,7 @@ import { clampZoom, fitWidthScale, forget, pageAt, readPos, recall, remember, sc
 import { pageFromText, pageTops } from "./pdfNav";
 import { destinationSpot, drawPageLayers, makeLinkService, spotOffset, webLink } from "./pdfPageLayers";
 import type { LinkHandler } from "./linkClicks";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 
 type Props = { id: number; path: string; root?: string | null; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onToast?: (text: string) => void; /** A web link in the file goes here, as a note's link does (Shift: the system browser). */ onLink?: LinkHandler };
 type LinkService = ReturnType<typeof makeLinkService>;
@@ -241,9 +242,11 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
   return (
     <section className={`pane editor pdf${focused ? " focused" : ""}`} hidden={hidden} aria-label={`${name} pane`} onMouseDown={onFocus} data-kind="editor" data-key={id}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="PDF">
           <FileIcon name={name} size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{name}</span>
         <span className="path" title={path}>
           {path}

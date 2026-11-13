@@ -13,6 +13,7 @@ import type { CheckDetail, CheckRef } from "./checkCard";
 import { asPrCheck, cardText, checkKey, fixBlockerFor, insideWorktree } from "./checkText";
 import { REFRESH, RETRY } from "./panelUx";
 import "./scmUx.css";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 
 type CardProps = {
   check: CheckRef;
@@ -177,9 +178,11 @@ export default function CheckPane({ id, check, cwd, hidden, focused, onFocus, on
   return (
     <section className={`pane editor check-pane${focused ? " focused" : ""}`} hidden={hidden} aria-label={`Check ${check.name}`} onMouseDown={onFocus} data-kind="check" data-key={id} data-check-key={checkKey(cwd, check.id)} tabIndex={-1}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="CI check">
           <CheckCircle size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{check.name}</span>
         <span className="preview-tag">Check</span>
         <span className="right">

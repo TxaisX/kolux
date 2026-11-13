@@ -3,15 +3,20 @@
 // (SESS-007) and the terminal with every signal it reports and every action its header offers
 // (TERM-013, TERM-042, TERM-045, TERM-106, STAT-050, ACCT-023). A pane's key is still the key of its
 // terminal, so a layout change never remounts it (TERM-017).
+// One session per cell (owner decision 2026-11-12): the pane's header carries what its tab did. WindowPane hands
+// every header its tab marks and drag grip (terminal/TabMarks.tsx PaneHeadContext), and a terminal's Pane menu
+// its Pin Tab, Tab Color… and the grid's bulk closes.
 import type { Pane } from "../../App";
 import { keyOf } from "../../editor/buffers";
 import { forget, hooksMuted, promptReturned } from "../../board/chip";
 import { touchRunTab } from "../../automations/runTab";
 import { BELL_NOTE } from "../../terminal/bellNote";
-import { canExpand, groupOf, toggleCard } from "../../terminal/grid";
-import { moveToTab } from "../tidy";
+import { canExpand, toggleCard } from "../../terminal/grid";
 import { readoutOf } from "../../terminal/headerUsage";
 import { showsDragHandle } from "../../terminal/rearrange";
+import { bulkCloses } from "../../terminal/pin";
+import { PaneHeadContext, type PaneHead } from "../../terminal/TabMarks";
+import { tabMarksOf } from "./paneTab";
 import { gpuOn } from "../../terminal/renderer";
 import { showsReview } from "../../terminal/planReview";
 import { tabName } from "../../terminal/tabName";
@@ -22,6 +27,7 @@ import { capOn, claudeOf, codexOf, meterOf, readsLeft } from "../../usage/meter"
 import { nameOf, sameDir, viewOf } from "../../workspaces";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
+import { useMemo } from "react";
 import { deferred } from "../../lazy/deferred";
 import SeatChooser from "./SeatChooser";
 // PKG-2: the terminal pane behind its render comparison (TerminalMemo.tsx).
@@ -45,7 +51,29 @@ import { openExternal } from "../../open/openExternal";
 const LostPane = deferred(() => import("./LostPane"));
 const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
 
-export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
+/** One pane with its header's tab marks and grip (one session per cell). A terminal draws its own grip. */
+export default function WindowPane({ pane: p }: { pane: Pane }) {
+  const { pinned, tabColors, running, unreadPanes, hook, statusOf, context, settings, plan, accountSwitcher, board, shown, dragging, setDropHint, titles } = useWindow();
+  const drag = useStableFns({ onStart: () => void (dragging.current = { cell: p.key }), onEnd: () => (dragging.current = null, setDropHint(null)) });
+  const marks = tabMarksOf(p, {
+    pinned, tabColors, running, unreadPanes, hook, status: statusOf(p), context: context[p.key], capped: capOn(settings),
+    claude: claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy),
+    codex: codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy),
+  });
+  const terminal = !p.kind && !p.seats && !p.asleep;
+  const grip = !terminal && !board && showsDragHandle(shown.length);
+  const name = tabName(p, titles);
+  const same = JSON.stringify(marks); // the marks are made fresh each render; the headers draw again only when they change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const head = useMemo<PaneHead>(() => ({ marks, grip: grip ? { name, onStart: drag.onStart, onEnd: drag.onEnd } : null }), [same, grip, name, drag.onStart, drag.onEnd]);
+  return (
+    <PaneHeadContext.Provider value={head}>
+      <PaneBody pane={p} />
+    </PaneHeadContext.Provider>
+  );
+}
+
+function PaneBody({ pane: p }: { pane: Pane }) {
   const {
     terminals, board, focused, closePane, setFocused, settings, agentsScreen, titles, liveIds, notes,
     setNotes, notesFor, putNote, dropNotes, openDiff, openFile, followLink, restoredKeys, projects,
@@ -53,7 +81,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     context, agents, defaultId, setDefault, launching, launch, addChooser, savedName, labelOf, planLine,
     setDirty, ptys, unreadPanes, hook, hookRef, turn, crew, setNeeds, setStamp, setRunning, runRef,
     liveRef, muteRef, setGuess, setLiveIds, setHook, setPanes, exitedPrompt, afterSetup, noticed, report, runTabs,
-    dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
+    dragging, setDropHint, shown, equalizePanes, gridCount, zoomed, classic, expandPane, names, pinned, setPinned, setTabMenu, orderOf, closeTab,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
     splitPane, rememberLineup, panes, activeDir, wakePane,
   } = useWindow();
@@ -133,10 +161,17 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       startWatch.seen(p.key);
     },
     split: (dir: "right" | "down") => splitPane(p.key, dir),
-    dragStart: () => void (dragging.current = { cell: groupOf(p) }),
+    dragStart: () => void (dragging.current = { cell: p.key }),
     dragEnd: () => (dragging.current = null, setDropHint(null)),
     equalize: () => equalizePanes(),
-    moveToTab: () => moveOutToTab(p.key),
+    // One session per cell: the tab's items in the Pane menu (TERM-046, TERM-133, TERM-044).
+    pin: () => setPinned((s) => {
+      const n = new Set(s);
+      if (!n.delete(p.key)) n.add(p.key);
+      return n;
+    }),
+    color: (at: { x: number; y: number }) => setTabMenu({ key: p.key, top: at.y, left: at.x, colors: true }),
+    closeKeys: (keys: number[]) => void closeTab(keys),
     expand: () => expandPane(p.key),
     rename: (name: string | undefined) => renamePane(p.key, name),
     sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", undefined, { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
@@ -169,7 +204,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         notes={notes}
         onRemoveNote={(n) => setNotes((ns) => ns.filter((x) => x !== n))}
         onEditNote={(n, text) => setNotes((ns) => ns.map((x) => (x === n ? { ...x, note: text } : x)))}
-        hidden={!terminals || p.key !== active}
+        hidden={!terminals}
         focused={p.key === focused}
         onFocus={() => setFocused(p.key)}
         onClose={() => closePane(p.key)}
@@ -188,7 +223,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         path={p.path}
         root={p.cwd}
         staged={!!p.staged}
-        hidden={!terminals || p.key !== active}
+        hidden={!terminals}
         focused={p.key === focused}
         onFocus={() => setFocused(p.key)}
         onClose={() => closePane(p.key)}
@@ -203,29 +238,29 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
   }
   if (p.kind === "changes" && p.cwd) {
     return (
-      <AllChangesPane key={p.key} id={p.key} root={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenDiff={(path, staged) => openDiff(path, staged, true)} pinnedBase={projects.find((pr) => pr.id === projectOf(p.cwd))?.base ?? null} />
+      <AllChangesPane key={p.key} id={p.key} root={p.cwd} hidden={!terminals} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenDiff={(path, staged) => openDiff(path, staged, true)} pinnedBase={projects.find((pr) => pr.id === projectOf(p.cwd))?.base ?? null} />
     );
   }
   if (p.kind === "check" && p.check && p.cwd) {
-    return <CheckPane key={p.key} id={p.key} check={p.check} cwd={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenFile={openFile} onToast={setToast} />;
+    return <CheckPane key={p.key} id={p.key} check={p.check} cwd={p.cwd} hidden={!terminals} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenFile={openFile} onToast={setToast} />;
   }
   if (p.kind === "preview" && p.path) {
     return (
-      <PreviewPane key={p.key} id={p.key} path={p.path} worktree={p.cwd} onLink={followLink} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />
+      <PreviewPane key={p.key} id={p.key} path={p.path} worktree={p.cwd} onLink={followLink} hidden={!terminals} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />
     );
   }
   if (p.seats) {
-    return <SeatChooser pane={p as Pane & { seats: NonNullable<Pane["seats"]> }} hidden={!board && p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
+    return <SeatChooser pane={p as Pane & { seats: NonNullable<Pane["seats"]> }} hidden={false} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   }
   // A restored tab that kept its kind but lost its data is a placeholder, never a live terminal (UX lane A, shell.md row 12).
-  if (p.kind) return <LostPane kind={p.kind} hidden={!terminals || p.key !== active} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
+  if (p.kind) return <LostPane kind={p.kind} hidden={!terminals} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
-  if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={!board && p.key !== active} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
+  if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={false} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
   const notice = noticeFor(p);
   return (
     <TerminalPane
       key={p.key}
-      hidden={!board && p.key !== active}
+      hidden={false}
       restored={restoredKeys.current.has(p.key)}
       identityBefore={liveRef.current[p.key]}
       resumed={p.resumed}
@@ -264,8 +299,8 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       onSplit={act.split}
       dragCell={!board && showsDragHandle(shown.length) ? { onStart: act.dragStart, onEnd: act.dragEnd } : undefined}
       onEqualize={terminals && gridCount > 1 ? act.equalize : undefined}
-      onMoveToTab={terminals && gridCount > 1 && moveToTab(panes, p.key) ? act.moveToTab : undefined}
-      expand={board ? undefined : { on: zoomed === groupOf(p), can: canExpand(shown.length, classic), toggle: act.expand }}
+      tab={{ pinned: pinned.has(p.key), onPin: act.pin, onColor: act.color, closes: bulkCloses(orderOf(p.key), p.key, pinned), onCloseKeys: act.closeKeys }}
+      expand={board ? undefined : { on: zoomed === p.key, can: canExpand(shown.length, classic), toggle: act.expand }}
       title={p.title || nameOf(names, p.cwd)}
       custom={!!p.title}
       onRename={act.rename}

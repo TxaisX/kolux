@@ -6,8 +6,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Pane } from "../App";
 import { pathForms, remember, reopen } from "../terminal/closedTabs";
-import { cellsOf, groupOf, MAX_PANES } from "../terminal/grid";
-import { panesIn, sameDir, viewOf } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 
 /** The folder check Reopen uses. Plain path_kind answers "outside" for a folder under no project, so such a tab always fell back to the shown workspace (after-list 383); folderOnly makes it say dir or missing. */
 export const folderKind = (path: string): Promise<string> => invoke<string>("path_kind", { path, folderOnly: true });
@@ -68,17 +67,15 @@ export function createClosedPanes(): ClosedPanes {
 export const closedPanes = createClosedPanes();
 
 /** The pane to add: a fresh key, the old folder (null when it had none), no session, typed line or ask. */
-export function paneFor(rec: ClosedPane, key: number, group?: number): Pane {
+export function paneFor(rec: ClosedPane, key: number): Pane {
   const { cwd, ...rest } = rec;
-  return { ...rest, key, cwd: cwd === "" ? null : cwd, group };
+  return { ...rest, key, cwd: cwd === "" ? null : cwd };
 }
 
-/** The cell the tab returns to: the focused pane's cell when it is in the same grid; a new cell of its
- * own, unless the workspace already shows the most cells it can, then the first cell. `dir` is the folder whose
- * grid the tab returns to (DT-C274: `viewOf` the closed tab). */
+/** One session per cell: the pane the tab returns beside (its cell goes right after that one): the focused pane when it
+ * is in the same grid, else none (the tab takes the grid's last cell). A tab closed on purpose always comes back, so a
+ * full grid grows past MAX_PANES for it (grid.ts). `dir` is the folder whose grid the tab returns to (DT-C274: `viewOf`
+ * the closed tab). */
 export function placement(panes: readonly Pane[], focused: number, dir: string | null): number | undefined {
-  const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), dir));
-  if (here) return groupOf(here);
-  const cells = cellsOf([...panesIn([...panes], dir)]);
-  return cells.length >= MAX_PANES ? cells[0]?.group : undefined;
+  return panes.find((p) => p.key === focused && sameDir(viewOf(p), dir))?.key;
 }

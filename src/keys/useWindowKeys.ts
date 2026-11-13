@@ -18,7 +18,7 @@ import { SHOW_SLEEPING_SETTING, showSleepingFrom } from "../projects/rows";
 import { stepZoom, type ZoomStep } from "../settings/zoom";
 import { openTabSearch } from "../shell/findTab";
 import { cycleTarget } from "../switcher/accounts";
-import { cellsOf, groupOf } from "../terminal/grid";
+import { insertAfter } from "../terminal/grid";
 import { editorCloseSet } from "../terminal/pin";
 import { nextNeedsYou } from "../terminal/status";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, type CycleMode } from "../terminal/tabCycle";
@@ -115,10 +115,10 @@ export function useWindowKeys(w: WindowBag) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const {
-        accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
+        accountSwitcher, activeDir, addChooser, agentPass, agents, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
         focused, keymap, leavePage, newTab, nextKey, notes, notesFor, openPane, openPreview, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
         right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
-        setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
+        setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setScreen, setSendMenu,
         setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
         switcherRef, terminals, toggleExplorer, unsaved
       } = bag.current;
@@ -287,7 +287,7 @@ export function useWindowKeys(w: WindowBag) {
         case "tab.nextTerminal":
         case "tab.previousTerminal":
         case "tab.selectByIndex": {
-          // TERM-051 / TERM-052: the tabs of the front cell in strip order. C01-R1-01: `hit.index` is
+          // TERM-051 / TERM-052: the panes of the front grid in grid order (one session per cell). C01-R1-01: `hit.index` is
           // already the 1-based position Alt+1..Alt+9 names; adding one selected the next tab (Alt+9, 10).
           const strip = orderOf(focused).map((k) => panes.find((x) => x.key === k)).filter((x): x is Pane => !!x);
           const to =
@@ -389,7 +389,7 @@ export function useWindowKeys(w: WindowBag) {
             if (r.kind === "terminal") {
               const key = nextKey.current++;
               const dir = viewOf({ cwd: r.pane.cwd || null, view: r.pane.view }); // DT-C274: the grid it was shown in
-              setPanes((ps) => [...ps, paneFor(r.pane, key, placement(ps, focused, dir))]);
+              setPanes((ps) => insertAfter(ps, placement(ps, focused, dir), paneFor(r.pane, key))); // one session per cell: beside the focused pane
               setScreen("terminals");
               if (!sameDir(dir, activeDir)) setActiveDir(dir);
               setFocused(key);
@@ -399,8 +399,8 @@ export function useWindowKeys(w: WindowBag) {
         }
         case "tab.closeAll": {
           // C01-R4-01: COMPAT's `tab.closeAll` is "Close all editor tabs", so the chord takes the
-          // focused strip's editor tabs through one close question and leaves every terminal
-          // tab alone. The tab menu's own "Close all" still takes the whole strip.
+          // focused grid's editor panes through one close question and leaves every terminal
+          // alone. The tab menu's own "Close all" still takes the whole grid.
           if (!inFront) return;
           const editors = editorCloseSet(orderOf(focused), panes, pinned);
           if (editors.length > 0) void closeTab(editors);
@@ -423,23 +423,22 @@ export function useWindowKeys(w: WindowBag) {
         case "terminal.setTitle":
         case "terminal.clearPaneTitle":
         case "tab.rename": {
-          // TERM-027, TERM-048: name the focused chat or terminal; in a cell with tabs, the tab
-          // strip takes the rename, else the pane header does. No default key on Windows.
+          // TERM-027, TERM-048: name the focused chat or terminal in its pane header's name field (one session per
+          // cell: the header is where a tab's name is edited too). No default key on Windows.
           const p = inFront ? panes.find((x) => x.key === focused && !x.kind) : undefined;
           if (!p) return;
           if (hit.id === "terminal.clearPaneTitle") {
             if (!p.title) return;
             renamePane(p.key, undefined);
-          } else if (hit.id === "tab.rename" && panes.filter((x) => groupOf(x) === groupOf(p)).length > 1) setRenamingTab(p.key);
-          else setAskName((m) => ({ ...m, [p.key]: (m[p.key] ?? 0) + 1 }));
+          } else setAskName((m) => ({ ...m, [p.key]: (m[p.key] ?? 0) + 1 }));
           break;
         }
         case "terminal.focusNextPane":
         case "terminal.focusPreviousPane": {
-          // TERM-012: the next or previous cell in grid order, wrapping; its tab on top takes focus.
+          // TERM-012: the next or previous cell in grid order, wrapping; its pane takes focus (one session per cell).
           if (!inFront) return;
-          const order = cellsOf(panesIn(panes, activeDir)).map(activeOf);
-          const at = cellsOf(panesIn(panes, activeDir)).findIndex((c) => c.panes.some((p) => p.key === focused));
+          const order = panesIn(panes, activeDir).map((p) => p.key);
+          const at = order.indexOf(focused);
           const t = navTarget(order.length, at, { step: hit.id === "terminal.focusNextPane" ? 1 : -1 });
           if (t === null) return;
           setFocused(order[t]);
