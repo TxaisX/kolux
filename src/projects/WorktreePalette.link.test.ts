@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-315-b (GIT-058): a GitHub link pasted into the worktree switcher opens the workspace linked to
 // it, else the item; Alt and a digit pick the numbered row. Pure helpers first, then the real
-// switcher on the small DOM in src/tasks/fakeDom.ts with the commands mocked.
+// switcher on a real DOM (the palette is a src/ui Dialog) with the commands mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/realDom";
 import type { Project, Worktree } from "./model";
 import { chordRow, pastedItems } from "./WorktreePalette";
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { onTabSearch, tabSearcher, type TabEntry } from "./findTab";
 import { leaveTabSearch } from "./tabSearchFocus";
 import { rowKeys } from "./rowKeys";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Dialog } from "../ui/Dialog";
 
 type Props = { tabs: () => TabEntry[] };
 
@@ -42,44 +42,43 @@ export default function TabSearch({ tabs }: Props) {
     setOpen(false);
     row.run();
   };
+  // A src/ui Dialog in the palette's own place: Tab stays inside, and Escape and a click outside close it through
+  // close(), which hands focus back to where the box was opened from. A picked tab leaves focus to the jump, so the
+  // Dialog hands nothing back itself (finalFocus false).
   return (
-    <OutOfFlow>
-      <div className="menu-backdrop" onMouseDown={() => close()} />
-      <div className="menu note-picker palette" role="dialog" aria-label="Search open tabs">
-        <input
-          autoFocus
-          className="picker-input"
-          placeholder="Search open tabs by name"
-          aria-label="Search open tabs"
-          role="combobox"
-          aria-expanded={rows.length > 0}
-          aria-controls="ts-l"
-          aria-activedescendant={rows[at] ? `ts-${at}` : undefined}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setAt(0);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") close();
-            else if (e.key === "Enter") go(rows[at]);
-            else if (e.key === "ArrowDown") setAt(Math.min(at + 1, rows.length - 1));
-            else if (e.key === "ArrowUp") setAt(Math.max(at - 1, 0));
-            else return;
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        />
-        <div className="picker-list" id="ts-l" role="listbox" aria-label="Open tabs">
-          {rows.map((r, i) => (
-            <button key={keys[i]} id={`ts-${i}`} role="option" tabIndex={-1} aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
-              <span className="name">{r.label}</span>
-              {r.hint && <span className="hint">{r.hint}</span>}
-            </button>
-          ))}
-        </div>
-        {query.trim() !== "" && rows.length === 0 && <div className="menu-hint">No open tab has that in its name</div>}
+    <Dialog onClose={() => close()} label="Search open tabs" className="menu note-picker palette" backdrop="menu-backdrop" finalFocus={false}>
+      <input
+        autoFocus
+        className="picker-input"
+        placeholder="Search open tabs by name"
+        aria-label="Search open tabs"
+        role="combobox"
+        aria-expanded={rows.length > 0}
+        aria-controls="ts-l"
+        aria-activedescendant={rows[at] ? `ts-${at}` : undefined}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setAt(0);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") go(rows[at]);
+          else if (e.key === "ArrowDown") setAt(Math.min(at + 1, rows.length - 1));
+          else if (e.key === "ArrowUp") setAt(Math.max(at - 1, 0));
+          else return;
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      />
+      <div className="picker-list" id="ts-l" role="listbox" aria-label="Open tabs">
+        {rows.map((r, i) => (
+          <button key={keys[i]} id={`ts-${i}`} role="option" tabIndex={-1} aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
+            <span className="name">{r.label}</span>
+            {r.hint && <span className="hint">{r.hint}</span>}
+          </button>
+        ))}
       </div>
-    </OutOfFlow>
+      {query.trim() !== "" && rows.length === 0 && <div className="menu-hint">No open tab has that in its name</div>}
+    </Dialog>
   );
 }

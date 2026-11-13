@@ -35,5 +35,6 @@ test("the focus is handed back after the box is gone, not before", () => {
 
 test("the box remembers where it was opened from and hands focus back on Escape and on a click outside", () => {
   expect(tabSearch).toContain("leaveTabSearch(from.current, false");
-  expect(tabSearch.split("close()").length - 1).toBe(2); // Escape and the backdrop
+  // Escape and a click outside both reach close() through the src/ui Dialog, which hands no focus back itself.
+  expect(tabSearch).toMatch(/<Dialog onClose=\{\(\) => close\(\)\} label="Search open tabs"[^>]*finalFocus=\{false\}>/);
 });

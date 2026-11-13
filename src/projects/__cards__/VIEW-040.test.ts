@@ -1,8 +1,9 @@
+// @vitest-environment happy-dom
 // VIEW-040 acceptance: the real worktree palette on the small DOM, rows fed through the real atOf-shaped mapping.
 // MIRROR src/App.tsx:2541 atOf(): { mark: dirMark(state, unread, watching), since: row.changed }; the decision is dirMark.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/realDom";
 import type { Project, Worktree } from "../model";
 import { dirMark, type RowAt } from "../WorktreePalette";
 
