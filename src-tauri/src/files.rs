@@ -416,7 +416,7 @@ fn rg(root: &Path) -> std::io::Result<std::process::Output> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
     }
     cmd.output()
 }
@@ -1649,7 +1649,7 @@ pub fn launch_in(dir: &Path, command: &str, path_var: Option<std::ffi::OsString>
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
     }
     cmd.spawn().map(|_| ()).map_err(|e| format!("{name} did not start: {e}"))
 }

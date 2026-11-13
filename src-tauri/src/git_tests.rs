@@ -619,7 +619,7 @@ fn t779_a_repositorys_own_fsmonitor_program_never_runs_under_kolux_git() {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        plain.creation_flags(0x0800_0000); // no console flashes up during the test either
+        plain.creation_flags(crate::winproc::no_window()); // no console flashes up during the test either
     }
     let plain_out = plain.output().unwrap();
     assert!(plain_out.status.success(), "{}", String::from_utf8_lossy(&plain_out.stderr));
@@ -676,7 +676,7 @@ fn plain_git(args: &[&str], dir: &Path) -> std::process::Output {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        plain.creation_flags(0x0800_0000); // no console flashes up during the test either
+        plain.creation_flags(crate::winproc::no_window()); // no console flashes up during the test either
     }
     plain.output().unwrap()
 }
@@ -931,7 +931,7 @@ fn t779b_a_repositorys_own_gpg_program_never_runs_under_kolux_git_log() {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        hash.creation_flags(0x0800_0000); // no console window
+        hash.creation_flags(crate::winproc::no_window()); // no console window
     }
     hash.args(["hash-object", "-t", "commit", "-w", "--literally", "--stdin"]).current_dir(&dir).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped());
     let mut child = hash.spawn().unwrap();
@@ -1774,7 +1774,7 @@ fn t779_a_forced_key_with_an_equals_sign_stays_one_key() {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            c.creation_flags(0x0800_0000);
+            c.creation_flags(crate::winproc::no_window());
         }
         let out = c.output().unwrap();
         (out.status.code(), String::from_utf8_lossy(&out.stdout).trim_end().to_string())
@@ -1840,7 +1840,7 @@ fn t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run() {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        plain.creation_flags(0x0800_0000);
+        plain.creation_flags(crate::winproc::no_window());
     }
     plain.output().unwrap();
     assert!(marker.exists(), "the premise: blanking the lossy name leaves the real key live");
@@ -1934,7 +1934,7 @@ fn t779_a_parents_own_git_environment_never_outranks_kolux() {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            c.creation_flags(0x0800_0000);
+            c.creation_flags(crate::winproc::no_window());
         }
         String::from_utf8_lossy(&c.output().unwrap().stdout).trim().to_string()
     };
@@ -1960,7 +1960,7 @@ fn t779_a_parents_own_git_environment_never_outranks_kolux() {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            c.creation_flags(0x0800_0000);
+            c.creation_flags(crate::winproc::no_window());
         }
         let out = c.output().unwrap();
         (out.status.success(), String::from_utf8_lossy(&out.stderr).to_string())

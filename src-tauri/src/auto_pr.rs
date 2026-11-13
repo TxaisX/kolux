@@ -1027,7 +1027,7 @@ mod tests {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x0800_0000); // no console window
+            cmd.creation_flags(crate::winproc::no_window()); // no console window
         }
         let out = cmd.output().unwrap();
         assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
@@ -1886,7 +1886,7 @@ mod tests {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x0800_0000); // no console window
+            cmd.creation_flags(crate::winproc::no_window()); // no console window
         }
         if cfg!(windows) {
             cmd.args(["-n", "8", "127.0.0.1"]);
@@ -2173,7 +2173,7 @@ mod tests {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x0800_0000); // no console window
+            cmd.creation_flags(crate::winproc::no_window()); // no console window
         }
         if cfg!(windows) {
             cmd.args(["-n", "8", "127.0.0.1"]);

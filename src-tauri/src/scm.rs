@@ -887,7 +887,7 @@ fn quiet(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000);
+        cmd.creation_flags(crate::winproc::no_window());
     }
     // Its own process group, so the tree kill's group signal (procs::kill_tree) has a group to end.
     #[cfg(unix)]

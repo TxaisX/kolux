@@ -377,14 +377,13 @@ pub fn system_dir() -> Option<std::path::PathBuf> {
 #[cfg(windows)]
 pub fn check_file(path: &Path) -> SignState {
     use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let Some(sys) = system_dir() else { return SignState::Unknown("Windows' system folder could not be found".into()) };
     let ps = sys.join(r"WindowsPowerShell\v1.0\powershell.exe");
     let script = "$ErrorActionPreference='Stop'; $s = Get-AuthenticodeSignature -LiteralPath $env:KOLUX_SIG_FILE; \
         $c = $s.SignerCertificate; \
         [pscustomobject]@{ status = [string]$s.Status; subject = $(if ($c) { $c.Subject } else { '' }); issuer = $(if ($c) { $c.Issuer } else { '' }); thumbprint = $(if ($c) { $c.Thumbprint } else { '' }) } | ConvertTo-Json -Compress";
     let mut cmd = std::process::Command::new(ps);
-    cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script]).env("KOLUX_SIG_FILE", path).creation_flags(CREATE_NO_WINDOW);
+    cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script]).env("KOLUX_SIG_FILE", path).creation_flags(crate::winproc::no_window());
     match bounded_output(cmd, SIGNATURE_LIMIT) {
         Some(out) => parse_report(&String::from_utf8_lossy(&out)),
         None => SignState::Unknown("the Windows signature check failed or took too long".into()),

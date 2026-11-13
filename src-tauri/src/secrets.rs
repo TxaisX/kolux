@@ -462,7 +462,7 @@ pub fn restrict_to_user(path: &Path, log_dir: &Path) {
             .args(["/inheritance:r", "/grant:r"])
             .arg(format!("{who}:(OI)(CI)F"))
             .arg("/q")
-            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+            .creation_flags(crate::winproc::no_window()) // CREATE_NO_WINDOW
             .output();
         match out {
             Ok(o) if o.status.success() => {}

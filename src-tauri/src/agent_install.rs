@@ -265,7 +265,7 @@ fn run(program: &Path, args: &[String], deadline: Instant, tail: &mut String, do
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
     }
     let mut child = cmd.spawn().map_err(|e| format!("Kolux could not start {} ({e}).", program.display()))?;
     let mut next_check = Instant::now() + EARLY_CHECK;
