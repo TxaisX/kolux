@@ -22,12 +22,12 @@ import { canLaunch, type AgentPass } from "./agents";
 import { firstSeatStart, seatStart, type SeatDefault } from "./defaultSeat";
 import { canInstall, FEATURED, featuredRows, installNoteOf, installTip, otherRows, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
-import { useDialogFocus } from "../chrome/dialogFocus";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
 import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 import { Select } from "../ui/Select";
+import { Dialog } from "../ui/Dialog";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
 function DocsLink({ agent }: { agent: AgentInfo }) {
@@ -49,35 +49,37 @@ function DocsLink({ agent }: { agent: AgentInfo }) {
 
 /** Txais 2026-11-08: the window behind a seat's Other button, listing installed agents without a button of their own. */
 function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: number; agents: AgentInfo[]; picked: string | null; onPick: (id: string) => void; onMore: () => void; onClose: () => void }) {
-  const box = useRef<HTMLDivElement>(null);
-  useDialogFocus(box, onClose); // focus on open, Tab kept inside, Escape from anywhere, focus back on close
+  // A src/ui Dialog: focus on open, Tab kept inside, Escape and a click outside close it, focus back on close.
   return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={box} className="other-agents" role="dialog" aria-modal="true" aria-label="Other AI programs">
-        <h2>Other AI programs</h2>
-        <span className="caption">{`Installed on this computer. Your pick runs in seat ${seat + 1}.`}</span>
-        {agents.length === 0 ? (
-          <span className="caption">No other AI programs are installed.</span>
-        ) : (
-          <div className="other-agents-list">
-            {agents.map((a) => (
-              <button key={a.id} className="btn agent-btn" aria-pressed={picked === a.id} onClick={() => onPick(a.id)}>
-                <VendorMark agent={markFor(a.id)} size={12} />
-                {a.name}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="btn-row">
-          <button className="btn link" onClick={onMore}>
-            Add more agents
-          </button>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
+    <Dialog
+      onClose={onClose}
+      label="Other AI programs"
+      viewport="scrim"
+      className="other-agents"
+    >
+      <h2>Other AI programs</h2>
+      <span className="caption">{`Installed on this computer. Your pick runs in seat ${seat + 1}.`}</span>
+      {agents.length === 0 ? (
+        <span className="caption">No other AI programs are installed.</span>
+      ) : (
+        <div className="other-agents-list">
+          {agents.map((a) => (
+            <button key={a.id} className="btn agent-btn" aria-pressed={picked === a.id} onClick={() => onPick(a.id)}>
+              <VendorMark agent={markFor(a.id)} size={12} />
+              {a.name}
+            </button>
+          ))}
         </div>
+      )}
+      <div className="btn-row">
+        <button className="btn link" onClick={onMore}>
+          Add more agents
+        </button>
+        <button className="btn" onClick={onClose}>
+          Cancel
+        </button>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

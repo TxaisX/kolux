@@ -2,11 +2,14 @@
 // the keep-going note, and Save stays off until the project's worktrees are read (AUTO-005).
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import AutomationDialog, { saveHint, unsaved, WorktreeError } from "./AutomationDialog";
 import { canDo, EVENT_CHOICES, hermesSchedule, rowActions, type Automation } from "./model";
 import { templates } from "./timetable";
 import { selectIn } from "../tasks/selectHtml";
+
+// The dialog is a src/ui Dialog, drawn only on a real DOM; what it shows is read here through a stand-in.
+vi.mock("../ui/Dialog", async () => (await import("../tasks/dialogStandIn")).dialogModule);
 
 const projects = [{ id: "p1", name: "shop", path: "C:\\src\\shop", base: "main" }];
 const render = (editing: Automation | null) => renderToString(createElement(AutomationDialog, { projects, agents: [], editing, onClose: () => {}, onSaved: () => {} }));

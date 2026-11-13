@@ -3,7 +3,6 @@
 // held in memory for the run. FIX-2 (council FS 1-2, AFTER 2): one create runs at a time even across
 // close and reopen, the dialog cannot be closed or edited while it runs, a draft belongs to its
 // GitHub host (shown beside Repository), and closing saves at once with typed label/assignee text.
-import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { actionError } from "./issueActions";
@@ -11,6 +10,7 @@ import { noteUse } from "../onboarding/features";
 import type { Task } from "./model";
 import { closingDraft, createBusy, createOnce, draftFrom, draftToSave, emptyDraft, type IssueDraft, names, openDraft, pickableLabels, TITLE_MAX, titleLength, lastCreateFailure, createResetsDialog, watchCreate, withRepo } from "./newIssue";
 import { Select } from "../ui/Select";
+import { Dialog } from "../ui/Dialog";
 
 /** The draft kept for this run (also one too long for settings); null after an issue is created.
  * The one-create-at-a-time flag lives next to it, in newIssue.ts (createOnce). */
@@ -62,7 +62,7 @@ export default function NewIssueDialog(p: {
       if (before?.isConnected) before.focus?.();
     };
   }, []);
-  useEffect(() => box.current?.focus(), []);
+  // The box takes focus when it opens (the Dialog's initialFocus; it is drawn after this component's effects run).
   // A create still out from an earlier opening of this dialog: wait for it, and start a fresh
   // draft when it went through.
   useEffect(
@@ -134,51 +134,59 @@ export default function NewIssueDialog(p: {
   const facts = d.repo === p.factsRepo;
   const other = start.elsewhere;
   return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div ref={box} tabIndex={-1} className="auto-dialog task-dialog" role="dialog" aria-modal="true" aria-label="New issue" aria-busy={busy} data-new-issue onKeyDown={(e) => (trapTab(e), e.key === "Escape" && close())}>
-        <div className="auto-dialog-head">
-          <h2>New issue</h2>
-          <button className="task-x" title={busy ? "Wait until the issue is created" : "Close (the draft is kept)"} disabled={busy} onClick={close}>
-            ×
-          </button>
-        </div>
-        <label>
-          Repository{" "}
-          <Select label="Repository" value={d.repo} onChange={(v) => put(withRepo(d, v))} options={p.targets.map((r) => ({ value: r, label: r }))} className="field" disabled={busy} />{" "}
-          <span className="tasks-count" data-issue-host title="The GitHub host this issue goes to">
-            on {p.host}
-          </span>
-        </label>
-        {other && !touched.current && (
-          <div className="tasks-count" data-draft-elsewhere>
-            Your unfinished draft for {other.repo} on {other.host} is kept for that host; starting one here replaces it.
-          </div>
-        )}
-        <input className="field" aria-label="Title" placeholder="Title" disabled={busy} value={d.title} onChange={(e) => edit({ ...d, title: e.target.value })} />
-        <textarea className="field" aria-label="Description" placeholder="Description (Markdown)" rows={8} disabled={busy} value={d.body} onChange={(e) => edit({ ...d, body: e.target.value })} />
-        <input className="field" aria-label="Labels" placeholder="Labels, comma separated" list="new-issue-labels" disabled={busy} value={labelText} onChange={(e) => setLabelText(e.target.value)} onBlur={() => edit({ ...d, labels: names(labelText) })} />
-        <input className="field" aria-label="Assignees" placeholder="Assignees (logins), comma separated" list="new-issue-people" disabled={busy} value={peopleText} onChange={(e) => setPeopleText(e.target.value)} onBlur={() => edit({ ...d, assignees: names(peopleText) })} />
-        <datalist id="new-issue-labels">{facts && pickableLabels(p.labels).map((l) => <option key={l} value={l} />)}</datalist>
-        <datalist id="new-issue-people">{facts && p.people.map((l) => <option key={l} value={l} />)}</datalist>
-        {titleLength(d.title) > TITLE_MAX && (
-          <div className="tasks-warn" role="alert" data-title-long>
-            GitHub titles can be at most {TITLE_MAX} characters; this one has {titleLength(d.title)}.
-          </div>
-        )}
-        {out === "too-long" && (
-          <div className="tasks-count" data-draft-memory>
-            This draft is too long to keep after Kolux closes; it is kept until then, and creating the issue still works.
-          </div>
-        )}
-        {error && (
-          <div className="tasks-warn" role="alert">
-            {error}
-          </div>
-        )}
-        <button className="btn primary" disabled={busy || !d.title.trim() || titleLength(d.title) > TITLE_MAX || !d.repo} onClick={create}>
-          {busy ? "Creating…" : "Create issue"}
+    <Dialog
+      onClose={close}
+      label="New issue"
+      viewport="scrim"
+      initialFocus={box}
+      boxRef={box}
+      tabIndex={-1}
+      className="auto-dialog task-dialog"
+      aria-busy={busy}
+      data-new-issue
+    >
+      <div className="auto-dialog-head">
+        <h2>New issue</h2>
+        <button className="task-x" title={busy ? "Wait until the issue is created" : "Close (the draft is kept)"} disabled={busy} onClick={close}>
+          ×
         </button>
       </div>
-    </div>
+      <label>
+        Repository{" "}
+        <Select label="Repository" value={d.repo} onChange={(v) => put(withRepo(d, v))} options={p.targets.map((r) => ({ value: r, label: r }))} className="field" disabled={busy} />{" "}
+        <span className="tasks-count" data-issue-host title="The GitHub host this issue goes to">
+          on {p.host}
+        </span>
+      </label>
+      {other && !touched.current && (
+        <div className="tasks-count" data-draft-elsewhere>
+          Your unfinished draft for {other.repo} on {other.host} is kept for that host; starting one here replaces it.
+        </div>
+      )}
+      <input className="field" aria-label="Title" placeholder="Title" disabled={busy} value={d.title} onChange={(e) => edit({ ...d, title: e.target.value })} />
+      <textarea className="field" aria-label="Description" placeholder="Description (Markdown)" rows={8} disabled={busy} value={d.body} onChange={(e) => edit({ ...d, body: e.target.value })} />
+      <input className="field" aria-label="Labels" placeholder="Labels, comma separated" list="new-issue-labels" disabled={busy} value={labelText} onChange={(e) => setLabelText(e.target.value)} onBlur={() => edit({ ...d, labels: names(labelText) })} />
+      <input className="field" aria-label="Assignees" placeholder="Assignees (logins), comma separated" list="new-issue-people" disabled={busy} value={peopleText} onChange={(e) => setPeopleText(e.target.value)} onBlur={() => edit({ ...d, assignees: names(peopleText) })} />
+      <datalist id="new-issue-labels">{facts && pickableLabels(p.labels).map((l) => <option key={l} value={l} />)}</datalist>
+      <datalist id="new-issue-people">{facts && p.people.map((l) => <option key={l} value={l} />)}</datalist>
+      {titleLength(d.title) > TITLE_MAX && (
+        <div className="tasks-warn" role="alert" data-title-long>
+          GitHub titles can be at most {TITLE_MAX} characters; this one has {titleLength(d.title)}.
+        </div>
+      )}
+      {out === "too-long" && (
+        <div className="tasks-count" data-draft-memory>
+          This draft is too long to keep after Kolux closes; it is kept until then, and creating the issue still works.
+        </div>
+      )}
+      {error && (
+        <div className="tasks-warn" role="alert">
+          {error}
+        </div>
+      )}
+      <button className="btn primary" disabled={busy || !d.title.trim() || titleLength(d.title) > TITLE_MAX || !d.repo} onClick={create}>
+        {busy ? "Creating…" : "Create issue"}
+      </button>
+    </Dialog>
   );
 }
