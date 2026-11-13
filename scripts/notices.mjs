@@ -62,7 +62,7 @@ function rustHalf() {
   if (!fs.existsSync(exe)) throw new Error(`cargo-about is not installed at ${exe}; see the comment at the top of scripts/notices.mjs`);
   const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "kolux-notices-")), "rust.txt");
   try {
-    execFileSync(exe, ["generate", "--locked", "--manifest-path", path.join(ROOT, "src-tauri", "Cargo.toml"), "-c", path.join(ROOT, "scripts", "notices", "about.toml"), path.join(ROOT, "scripts", "notices", "about.hbs"), "-o", tmp], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
+    execFileSync(exe, ["generate", "--locked", "--manifest-path", path.join(ROOT, "src-tauri", "Cargo.toml"), "-c", path.join(ROOT, "scripts", "notices", "about.toml"), path.join(ROOT, "scripts", "notices", "about.hbs"), "-o", tmp], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"], windowsHide: true });
     return normal(fs.readFileSync(tmp, "utf8"));
   } finally {
     fs.rmSync(path.dirname(tmp), { recursive: true, force: true });
@@ -70,7 +70,7 @@ function rustHalf() {
 }
 
 function jsHalf() {
-  const json = execFileSync("pnpm", ["licenses", "list", "--prod", "--json"], { cwd: ROOT, shell: true, maxBuffer: 64 << 20, encoding: "utf8" });
+  const json = execFileSync("pnpm", ["licenses", "list", "--prod", "--json"], { cwd: ROOT, shell: true, windowsHide: true, maxBuffer: 64 << 20, encoding: "utf8" });
   return normal(renderJs(groupJs(JSON.parse(json))));
 }
 

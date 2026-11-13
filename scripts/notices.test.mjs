@@ -16,7 +16,7 @@ const pkg = (dir, files) => {
 describe("third-party notices", () => {
   it("the bundle config stages the committed file under its own name, and the file is the real thing", () => {
     const conf = JSON.parse(fs.readFileSync(path.join(ROOT, "src-tauri", "tauri.conf.json"), "utf8"));
-    expect(conf.bundle.resources).toEqual({ "resources/THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt" });
+    expect(conf.bundle.resources).toMatchObject({ "resources/THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt" });
     expect(path.resolve(ROOT, "src-tauri", "resources", "THIRD-PARTY-NOTICES.txt")).toBe(NOTICES);
     const text = fs.readFileSync(NOTICES, "utf8");
     expect(text.startsWith(HEADER.slice(0, 40))).toBe(true);

@@ -34,8 +34,8 @@ test("HID-042: the bundle config lists no resource folder, so no art rides along
   // DT-C232: the only extra files are the licence texts the installer must carry, each named one by one (no folder, no picture).
   const resources = (conf as { bundle?: { resources?: Record<string, string> | string[] } }).bundle?.resources ?? {};
   const sources = Array.isArray(resources) ? resources : Object.keys(resources);
-  for (const f of sources) expect(f, f).toMatch(/^\.\.\/(THIRD-PARTY-NOTICES\.md|licenses\/[A-Za-z0-9.-]+\.txt)$/);
-  for (const to of Array.isArray(resources) ? [] : Object.values(resources)) expect(to, to).toMatch(/^licenses\/[A-Za-z0-9.-]+\.(md|txt)$/);
+  for (const f of sources) expect(f, f).toMatch(/^(\.\.\/(THIRD-PARTY-NOTICES\.md|licenses\/[A-Za-z0-9.-]+\.txt)|resources\/THIRD-PARTY-NOTICES\.txt)$/);
+  for (const to of Array.isArray(resources) ? [] : Object.values(resources)) expect(to, to).toMatch(/^(licenses\/[A-Za-z0-9.-]+\.(md|txt)|THIRD-PARTY-NOTICES\.txt)$/);
 });
 
 test("HID-042: the only pictures under src are vendor marks listed in NOTICE.md; the icons folder holds only app icons", () => {
