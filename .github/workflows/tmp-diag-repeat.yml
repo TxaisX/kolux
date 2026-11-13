@@ -1,0 +1,84 @@
+# TEMPORARY (PR #253), deleted before the PR is finished. On GitHub's windows-latest runner: repeats
+# diag::tests::app041_logs_rotate_past_the_file_cap_the_oldest_go_past_the_total_and_the_bundle_is_scrubbed
+# on wave-1 and on this branch's head, interleaved on one runner, alone and with the rest of diag::.
+# On Linux it fails alone on both commits; this asks whether it does on Windows too.
+# Read-only: no secrets, nothing published.
+name: tmp diag repeat
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  repeat:
+    name: Log rotation test on wave-1 and head
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      WAVE1: 82f3643e7635cece4f9220c49b7d0101174cfa67
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - name: Build each commit's lib tests
+        shell: pwsh
+        run: |
+          # One worktree per commit (each test binary keeps its own source folder), one shared target
+          # folder for the dependencies; each binary is copied out because both get the same name.
+          $bin = Join-Path $env:RUNNER_TEMP 'bin'
+          New-Item -ItemType Directory -Force -Path $bin | Out-Null
+          $env:CARGO_TARGET_DIR = Join-Path $env:RUNNER_TEMP 'target'
+          $sides = [ordered]@{ 'wave-1' = $env:WAVE1; 'head' = $env:HEAD_SHA }
+          foreach ($k in $sides.Keys) {
+            $wt = Join-Path $env:RUNNER_TEMP "wt-$k"
+            git worktree add --detach $wt $sides[$k]
+            Push-Location (Join-Path $wt 'src-tauri')
+            rustc --version
+            $exe = $null
+            cargo test --locked --lib --no-run --message-format=json | ForEach-Object {
+              if ($_ -like '{*') {
+                $j = $_ | ConvertFrom-Json
+                if ($j.reason -eq 'compiler-artifact' -and $j.target.name -eq 'kolux_lib' -and $j.profile.test -and $j.executable) { $exe = $j.executable }
+              }
+            }
+            if (-not $exe) { throw "no lib test binary for $k" }
+            Copy-Item $exe (Join-Path $bin "kolux_lib-$k.exe")
+            "BUILT $k $($sides[$k]) from $exe"
+            Pop-Location
+          }
+      - name: Repeat the test
+        timeout-minutes: 45
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          . ./scripts/test-env.ps1
+          $bin = Join-Path $env:RUNNER_TEMP 'bin'
+          $sides = [ordered]@{ 'wave-1' = $env:WAVE1; 'head' = $env:HEAD_SHA }
+          $T = 'diag::tests::app041_logs_rotate_past_the_file_cap_the_oldest_go_past_the_total_and_the_bundle_is_scrubbed'
+          $runs = [ordered]@{ alone = @(100, @($T, '--exact')); 'with diag::' = @(30, @('diag::')) }
+          $lines = @()
+          foreach ($mode in $runs.Keys) {
+            $reps, $testArgs = $runs[$mode]
+            $n = @{}; foreach ($k in $sides.Keys) { $n[$k] = @{ pass = 0; fail = 0 } }
+            $shown = 0
+            for ($i = 1; $i -le $reps; $i++) {
+              foreach ($k in $sides.Keys) {
+                Push-Location (Join-Path $env:RUNNER_TEMP "wt-$k\src-tauri")
+                $o = (& (Join-Path $bin "kolux_lib-$k.exe") @testArgs 2>&1 | Out-String)
+                $code = $LASTEXITCODE
+                Pop-Location
+                if ($o -match "(?m)^test $([regex]::Escape($T)) \.\.\. ok") { $n[$k].pass++ } else {
+                  $n[$k].fail++
+                  if ($shown -lt 3) { $shown++; "---- $mode run $i on $k failed (exit $code) ----"; $o }
+                }
+              }
+            }
+            $lines += foreach ($k in $sides.Keys) { "RESULT $mode, $T on $k ($($sides[$k])): $($n[$k].pass) passed, $($n[$k].fail) failed of $reps" }
+          }
+          $lines | Out-Host
+          $lines | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          exit 0
