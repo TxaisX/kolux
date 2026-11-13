@@ -1,0 +1,88 @@
+stress S15 (host memory (2 panes, 4 panes with 2 on hidden tabs, minimized)) at 2026-11-11T22:05:36.468Z on 53a9beb2 (G:\Dev\kolux-rs\.claude\worktrees\agent-a40236edec820d9e9)
+args: S15 --tag after --repeat 2 --port 1461 --cdp 9281 --temp G:/Temp/stress/wvmem; ran 644 s
+
+=== host memory (30 s windows; 2 run(s)) ===
+build: debug dev build (pnpm tauri dev: the web view loads the vite dev server)
+
+a) 2 panes, both shown  [shown panes 2/2, panes 2/2, canvases 5/5, visibility visible/visible, JS heap 76.4/75.8 MB, status bar 374.3/370.4 MB; 2 run(s), medians]
+   process            count  priv MB    WS MB  GPUded MB
+   window               1.0     14.4     56.8        0.0
+   wv-browser           1.0     42.4    120.7        0.0
+   renderer             1.0    178.8    233.1        0.0
+   gpu-process          1.0    120.7     97.9       55.0
+   utility              2.0     23.5     66.7        0.0
+   crashpad-handler     1.0      3.2     14.9        0.0
+   total                7.0    382.9    590.1       55.0
+
+b) early: 4 panes, 2 on hidden tabs, 10 s after the hide  [shown panes 2/2, panes 4/4, canvases 9/9, visibility visible/visible, JS heap 86.9/86.9 MB, status bar 410.3/410.6 MB; 2 run(s), medians]
+   process            count  priv MB    WS MB  GPUded MB
+   window               1.0     15.4     57.7        0.0
+   wv-browser           1.0     41.8    121.9        0.0
+   renderer             1.0    189.0    244.9        0.0
+   gpu-process          1.0    146.6    103.2       74.2
+   utility              2.0     22.9     66.5        0.0
+   crashpad-handler     1.0      3.1     12.8        0.0
+   total                7.0    418.8    607.1       74.2
+
+b) 4 panes, 2 on hidden tabs, 40 s after the hide  [shown panes 2/2, panes 4/4, canvases 5/5, visibility visible/visible, JS heap 89.6/89.6 MB, status bar 395.1/396.6 MB; 2 run(s), medians]
+   process            count  priv MB    WS MB  GPUded MB
+   window               1.0     15.4     57.8        0.0
+   wv-browser           1.0     41.7    123.0        0.0
+   renderer             1.0    186.3    241.1        0.0
+   gpu-process          1.0    125.9     98.2       58.8
+   utility              2.0     22.9     66.5        0.0
+   crashpad-handler     1.0      3.0     12.8        0.0
+   total                7.0    395.2    599.4       58.8
+
+c) early: minimized, 10 s after  [shown panes 2/2, panes 4/4, canvases 5/5, visibility hidden/hidden, JS heap 86.7/86.4 MB, status bar 383.2/379.9 MB; 2 run(s), medians]
+   process            count  priv MB    WS MB  GPUded MB
+   window               1.0     15.2     57.6        0.0
+   wv-browser           1.0     45.6    136.8        0.0
+   renderer             1.0    186.4    240.1        0.0
+   gpu-process          1.0    108.7     94.6       44.9
+   utility              2.0     22.9     66.6        0.0
+   crashpad-handler     1.0      3.0     12.7        0.0
+   total                7.0    381.7    608.4       44.9
+
+c) 4 panes, window minimized, 75 s after  [shown panes 2/2, panes 4/4, canvases 0/0, visibility hidden/hidden, JS heap 82.0/82.6 MB, status bar 379.4/377.1 MB; 2 run(s), medians]
+   process            count  priv MB    WS MB  GPUded MB
+   window               1.0     15.2     57.7        0.0
+   wv-browser           1.0     44.9     62.1        0.0
+   renderer             1.0    190.5     47.9        0.0
+   gpu-process          1.0    101.5     38.4       39.4
+   utility              2.0     22.9     29.6        0.0
+   crashpad-handler     1.0      2.9     12.7        0.0
+   total                7.0    378.0    248.4       39.4
+
+json: G:\Dev\kolux-rs\.claude\worktrees\agent-a40236edec820d9e9\evidence\stress-s15-53a9beb2-after.json
+
+PASS  a: 2 panes shown (repeat 1)
+      bar: 2
+      measured: 2
+PASS  b: 4 panes, 2 shown (repeat 1)
+      bar: 2 of 4
+      measured: 2 of 4
+PASS  c: the page is hidden while minimized (repeat 1)
+      bar: hidden
+      measured: hidden
+PASS  app closes and leaves no process behind (repeat 1)
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.5 s; pre-close tree 14 (msedgewebview2.exe x6, conhost.exe x4, powershell.exe x4); survivors 0 (none)
+PASS  a: 2 panes shown (repeat 2)
+      bar: 2
+      measured: 2
+PASS  b: 4 panes, 2 shown (repeat 2)
+      bar: 2 of 4
+      measured: 2 of 4
+PASS  c: the page is hidden while minimized (repeat 2)
+      bar: hidden
+      measured: hidden
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.5 s; pre-close tree 14 (msedgewebview2.exe x6, conhost.exe x4, powershell.exe x4); survivors 0 (none)
+
+notes:
+  - minimize (repeat 1): iconic=True
+  - minimize (repeat 2): iconic=True
+
+S15: PASS
