@@ -34,9 +34,9 @@ export default function NativeTerminalCard({ settings, platform, onSave }: { set
       <h2 className="conn-name">Faster new terminals</h2>
       <label className="conn-switch">
         <input type="checkbox" role="switch" checked={prefs.warmShell} onChange={(e) => onSave({ [INPUT_FIELDS.warmShell]: e.target.checked })} />
-        Keep a shell ready per folder: new terminals open in about 0.3 s, uses about 56 MB per open folder
+        Keep a shell ready per folder: new terminals open in about 0.3 s; each open folder keeps one more shell running
       </label>
-      <p className="conn-detail">Plain shell terminals only; agents and chosen shells start as usual. Closing a folder ends its ready shell.</p>
+      <p className="conn-detail">Plain shell terminals only; agents and chosen shells start as usual. Closing a folder ends its ready shell, and so does switching this off.</p>
     </section>
   );
   if (platform !== "win32") return warm;

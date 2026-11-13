@@ -20,7 +20,8 @@ test("NATIVE-TERMINAL: the switch is on the Terminal page for Windows only", () 
 });
 
 test("kept-warm shell: off by default, on every platform, its cost in the label, and it saves the field the panes read", () => {
-  const label = "Keep a shell ready per folder: new terminals open in about 0.3 s, uses about 56 MB per open folder";
+  // The cost is said as what runs, not as a memory figure: none was measured (NATIVE-TERMINAL.md).
+  const label = "Keep a shell ready per folder: new terminals open in about 0.3 s; each open folder keeps one more shell running";
   for (const p of ["win32", "linux", "darwin"] as const) {
     expect(html({}, p)).toContain(label);
     expect(checked(html({}, p), "Keep a shell ready")).toBe(false);

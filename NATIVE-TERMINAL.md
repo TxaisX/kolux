@@ -69,8 +69,11 @@ Run: `powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File spikes\native
   an attach never shows a blank pane and no chunk is drawn twice.
 - The font size goes to the engine as a 32-bit int. The engine's PDB gives `TerminalSetTheme(void*,
   _TerminalTheme, const wchar_t*, int fontSize, int newDpi)` (the WPF control declares it `short`); passed as
-  an i16 its upper half was whatever the register held, and a 10 pt look drew a 16 x 5 grid in a
-  1289 x 834 pane. Now the same pane is 161 x 55. The theme struct and the other entry points match the PDB.
+  an i16 its upper half was whatever the register held. On GitHub's windows-latest runner, `native_term_place`
+  for a 1289 x 834 pane with a 10 pt look answered a 16 x 5 grid before the fix (commit 34dabba0, run
+  https://github.com/TxaisX/kolux/actions/runs/43366064099, `NATIVE-looks.json` in its artifact) and 161 x 55
+  after it (commit 4cf73213, run https://github.com/TxaisX/kolux/actions/runs/43370612797, same file). The
+  theme struct and the other entry points match the PDB.
 - The engine's answers to the cursor question (ESC [ row ; col R) stay out of the session. xterm takes the
   same output and answers it already; the second answer reached PowerShell as F3 ("search for the next key
   typed"), so the first line typed into a native pane lost its first letter.
@@ -91,13 +94,30 @@ captures the engine's child window; a CDP page capture cannot see it). Windows S
 
 - Settings > Terminal > "Faster new terminals" saves `terminalWarmShell`. On, Kolux keeps one plain
   shell started per open folder; the folder's next new plain shell terminal takes it (answered through
-  `terminal_attach` as `attached`, APP-052) and a new warm shell starts in the background. Cost: about
-  56 MB per open folder. Off, terminals start exactly as before; a warm shell left from before is ended at the next terminal start.
+  `terminal_attach` as `attached`, APP-052) and a new warm shell starts in the background. Cost: one more
+  shell (and its console host) running per open folder; its memory has not been measured yet (below). Off,
+  terminals start exactly as before, and switching it off ends the warm shells when the settings are saved
+  (one still starting is called off).
 - A warm shell ends when its folder's last terminal closes, and with the app.
+- A pane takes a warm shell only when the shell was started from exactly what a new plain terminal would run
+  now: the same commands with every variable a pane gets (the default shell and its fallbacks, the TERM-120
+  PATH read fresh from the registry and the T-182 stored Path, the per-worktree history setting, the user's
+  variables), all but the session's own names (`Plan` in `terminal.rs`). Anything changed since it started (a
+  tool installed, a setting switched) ends the warm shell, and the pane starts its own.
+- Its hooks carry their own identity from the start: the pane key `hooks::WARM_PANE` (no pane has it) with the
+  warm shell's terminal id and a token minted for both. The pane that takes it is noted against that terminal id,
+  and from then on its reports (status, status line) are that pane's; a protected command typed into an agent
+  there is asked about (SAFE-009) as in any pane. The pane is told the shell it runs, so its header, icon and
+  file drops are that shell's, and the warm shell's output so far goes into the pane's history file.
+- Not with the background terminal service (`KOLUX_TERMINAL_SERVICE=1`): a warm shell would run in the
+  service, outlive the app with no pane and show in the service's session lists, so the setting does nothing
+  there.
 - On Windows the console host asks where the cursor is (ESC [6n) before the shell draws anything, and waits
   for a terminal's answer. A warm shell has no pane, so Kolux answers it (top left, as a blank screen
   would) before it offers the shell; one that does not ask within 10 s is ended instead of offered. The
-  pane that takes it leaves that answered question out of the snapshot it draws. Before this, every warm
+  pane that takes it leaves every terminal query out of the snapshot it draws (`stripQueries.ts`): that answered
+  question, and any other query the shell printed before a pane was there, which nobody answered then and
+  which xterm would answer on the redraw, typing the answer at the prompt. Before this, every warm
   shell sat at the question until a pane took it, and the setting made new terminals slower (below).
 
 ### New terminal, warm shell off vs on (measured on GitHub's windows-latest runner)
@@ -124,7 +144,18 @@ Commit 4cf73213, 2026-11-13, run https://github.com/TxaisX/kolux/actions/runs/43
 
 The runner varies from run to run: the same check on commit 90ac9724 (warm shell fix in, native cursor
 fix not yet) gave medians of 908.7 ms off and 170.8 ms on (on: 133.2 to 244.8 ms, all attached;
-https://github.com/TxaisX/kolux/actions/runs/43368955947). Both support the setting's "about 0.3 s".
+https://github.com/TxaisX/kolux/actions/runs/43368955947). Both support the setting's "about 0.3 s", for a new
+terminal opened at least 6 s after the one before it in the same folder, as every run here was: after each take
+the folder's next warm shell starts, and a new terminal that comes before it is ready starts its own shell (as
+fast as with the setting off). How short that gap can be was not measured.
+
+These runs are from before the review fixes below (commit 0986abe0 and after). A pane now also works out, before
+it takes the warm shell, what a fresh start would run (a registry read of the PATH and a shell search, which a
+fresh start does too) to compare the two, so the "on" times may be a little longer. The live check was extended
+to time that and to read the identity, the memory and the switch-off (see Running the live checks); its run on
+the runner (commit a4a99647) was refused by GitHub before it started ("recent account payments have failed or
+your spending limit needs to be increased"), as was every CI job on that push, so there are no numbers from
+after the fixes yet.
 
 Before the fix (commit 34dabba0, https://github.com/TxaisX/kolux/actions/runs/43366064099), every
 "on" run took the warm shell and was still slower, because the warm shell had not reached its prompt:
@@ -138,7 +169,10 @@ Before the fix (commit 34dabba0, https://github.com/TxaisX/kolux/actions/runs/43
 | 5 | 1215.1 ms | spawned | 2707.0 ms | attached |
 | median | 1149.1 ms | | 2707.0 ms | |
 
-The "about 56 MB per open folder" in the setting's label was not measured in this round.
+What one warm shell costs in memory has not been measured: the label used to say "about 56 MB per open
+folder", a figure nothing here measured, so it now says what runs instead ("each open folder keeps one more
+shell running"). The extended live check measures it (the processes that end when the setting is switched off,
+the warm shell and its console host, with their working sets).
 
 ### Running the live checks
 
@@ -147,10 +181,15 @@ node scripts/prove/live-native-look.mjs`, with the usual `PROVE_*` variables. Wh
 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (156.0.4314.58 on the runner did, and also the same flag as a
 WebView2 policy), set `PROVE_CDP_IN_CONFIG=1` so the debugging port goes in through the window config.
 `PROVE_BUILD_MINUTES` shortens the wait for the page on a machine that built the app beforehand.
+`live-warm-shell.mjs` also, with the setting on and untimed: prints `KOLUX_HOOK_IDENTITY` in the first pane that
+took a warm shell (it must name pane key 4294967295 and the terminal the pane was handed), checks every taken pane
+was told its shell, and `MEM_ROUNDS` times (default 3) switches the setting off and reads which processes ended
+and their working sets, with the Resource Manager's figure for the warm shell's session beside them; switching
+off must end exactly the warm shell's session within 3 s. The temporary workflow that ran it on the runner is in
+commit a4a99647 (`.github/workflows/tmp-warm-shell.yml`).
 - Limits: only plain shell terminals take it (agents, chosen shells, restored or moved panes start as
-  usual); a warm shell lacks the per-pane hook identity, so an agent typed into it by hand does not report
-  status; a warm shell may show in session lists before it is taken; a default shell change ends the old
-  warm shell at the next claim.
+  usual); a warm shell is listed with the folder's terminals in this window's own lists (the Resource Manager
+  counts its memory) before a pane takes it; none runs under the background terminal service.
 
 ## Still to do before it can default on
 
@@ -161,5 +200,6 @@ WebView2 policy), set `PROVE_CDP_IN_CONFIG=1` so the debugging port goes in thro
    and the native window.
 4. Ship the DLL (license notice in THIRD-PARTY-NOTICES.md, bundling in tauri.conf.json).
 5. Measure: 8 panes printing, memory and CPU, xterm vs native.
-6. Kept-warm shell: give a taken warm shell the pane's hook identity, and keep warm shells out of
-   session lists.
+6. Kept-warm shell: done, a taken warm shell's hooks report for its pane and none runs under the terminal
+   service. Still open: time it and measure its memory on Windows after the review fixes (the live check is
+   ready; GitHub refused the run for the account's Actions billing).
