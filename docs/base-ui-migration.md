@@ -257,7 +257,9 @@ It counts matching source lines. **To do** is the sum of the Dialog, Menu, Tabs 
 popups, tab strips and native selects, and it reaches zero when the migration is done. A role inside a selector string
 (`'[role="dialog"]'`, a query for any open dialog) or a comment is not counted, nor is an element that carries a dialog
 role but is not a popup (the list under the checklist: the chat's permission and question cards, and questions asked in
-place inside the surface that asked them). The other columns are for reference and stay above zero: **Opener** is the
+place inside the surface that asked them). Two more named lists are counted in their columns but are not to do: the
+selects kept native on purpose (inline editors that close on blur), and the lines PR #255 removes or moves onto src/ui
+itself (the per-cell tab strip and the tab menu). The other columns are for reference and stay above zero: **Opener** is the
 right-click handler or `aria-haspopup` button that opens a popup, which stays when the popup moves; **Switch** and
 **Checkbox** stay native inputs (see above); **Tooltip** counts every `title=` prop, Kolux components' own included, and
 a plain hover hint can stay a `title`.
@@ -274,7 +276,7 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | chat | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
-| editor | 2 | 0 | 0 | 1 | 6 | 0 | 4 | 128 | 3 |
+| editor | 2 | 0 | 0 | 1 | 6 | 0 | 4 | 128 | 2 |
 | feedback | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
@@ -289,17 +291,19 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
 | settings | 1 | 0 | 0 | 0 | 0 | 30 | 10 | 43 | 1 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
-| shell | 0 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 3 |
+| shell | 0 | 1 | 1 | 0 | 2 | 0 | 1 | 24 | 0 |
 | skills | 1 | 0 | 0 | 0 | 4 | 0 | 2 | 19 | 1 |
 | space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 4 | 0 |
-| tasks | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 41 | 2 |
+| tasks | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 41 | 0 |
 | terminal | 5 | 1 | 0 | 0 | 4 | 0 | 0 | 29 | 6 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **13** | **6** | **4** | **3** | **39** | **42** | **57** | **646** | **26** |
+| **Total** | **13** | **6** | **3** | **3** | **39** | **42** | **57** | **646** | **20** |
+
+To do: 20. Native on purpose: 3. Removed by #255: 2.
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -309,7 +313,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### editor
 
-- [ ] `src/editor/CodeLabel.tsx`: Select :50
 - [ ] `src/editor/DiffPane.tsx`: Dialog :617
 - [ ] `src/editor/ReviewNotes.tsx`: Dialog :71
 
@@ -335,19 +338,9 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 - [ ] `src/settings/SettingsPage.tsx`: Dialog :402
 
-### shell
-
-- [ ] `src/shell/window/Content.tsx`: Tabs :203
-- [ ] `src/shell/window/Grid.tsx`: Tabs :101
-- [ ] `src/shell/window/TabMenuView.tsx`: Menu :29
-
 ### skills
 
 - [ ] `src/skills/SkillUpdate.tsx`: Dialog :141
-
-### tasks
-
-- [ ] `src/tasks/ProjectsView.tsx`: Select :45, Select :57
 
 ### terminal
 
@@ -355,7 +348,20 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/terminal/PlanSheet.tsx`: Dialog :50
 - [ ] `src/terminal/TerminalPane.tsx`: Dialog :1952, Dialog :1981, Dialog :2028, Dialog :2055
 
-Not popups, so not counted (a dialog or menu role on an element no src/ui wrapper fits):
+Native on purpose, counted in their column but not to do:
+
+- `src/editor/CodeLabel.tsx` (Code language): the code block's language, laid over the editor; it goes on blur
+- `src/tasks/ProjectsView.tsx` (issue_type): a cell editor that commits on change and cancels on blur
+- `src/tasks/ProjectsView.tsx` (single_select): a cell editor that commits on change and cancels on blur
+
+Removed by #255, counted in their column but not to do (2 lines):
+
+- `src/shell/window/Grid.tsx` Tabs :101
+- `src/shell/window/TabMenuView.tsx` Menu :29
+  - `src/shell/window/Grid.tsx`: the per-cell tab strip, which #255 removes
+  - `src/shell/window/TabMenuView.tsx`: the tab menu, which #255 moves onto a src/ui ContextMenu
+
+Not popups, so not counted (a dialog, menu or tab role on an element no src/ui wrapper fits):
 
 - `src/chat/PermissionCard.tsx` (askTitle(card.tool)): a card in the chat
 - `src/chat/QuestionCard.tsx` (Question from the agent): a card in the chat
@@ -376,6 +382,7 @@ Not popups, so not counted (a dialog or menu role on an element no src/ui wrappe
 - `src/onboarding/Guides.tsx` (Agent status hooks): a tip card docked in a corner, aria-modal false
 - `src/settings/ConnectGrid.tsx` (conn-more-list): a list that opens in place under its summary (a <details>), not over the card
 - `src/editor/ReviewNotes.tsx` (Send the notes to): a list that opens in place in the review tray, not over it
+- `src/shell/window/Content.tsx` (Workspaces being created): placeholders for workspaces Git is still making: nothing to pick, so not a tab set
 <!-- SITES:END -->
 
 ## What is left, and why
@@ -410,5 +417,3 @@ here for whoever moves them:
   inert), `onboarding/Wizard.tsx` (first run, with the window's drag strip in its backdrop), `onboarding/Guides.tsx`
   (Getting Started, which plays a closing animation before it goes, and Explore with its vertical tab rail) and `skills/SkillUpdate.tsx` (focus goes to the Install panel, the Review
   button's replacement, More actions or the page heading, and is taken back when the Stop button leaves).
-- `editor/CodeLabel.tsx` and `tasks/ProjectsView.tsx` stay native selects: they are inline editors that go away on
-  blur, and a Base UI select's list takes focus when it opens.
