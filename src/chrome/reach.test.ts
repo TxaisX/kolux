@@ -169,7 +169,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
   // src/ui wrappers: a dialog drawn with <Dialog> / <AlertDialog> has no role literal at its call site; its Escape is
   // the wrapper's useLayer (Kolux's window-capture watchEscape), proved once for every caller in src/ui/ui.test.tsx.
-  ["ui/Popover.tsx", "label", "layer"],
+  ["ui/base.tsx", "label", "layer"],
 ];
 
 const SRC = import.meta.glob(["/src/**/*.tsx", "!/src/**/*.test.tsx", "!/src/**/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -276,7 +276,8 @@ function closes(d: Found, how: string, all: Found[]): boolean {
     case "window":
       return /addEventListener\("keydown"|watchEscape\(window/.test(d.src) && ESCAPE.test(d.src);
     case "layer":
-      return /useLayer\(open, onClose, popup\)/.test(d.src) && /ref=\{popup\}/.test(d.tag);
+      // base.tsx draws the popup; the wrapper that mounts it (Popover.tsx) holds the layer for the same ref
+      return /ref=\{popup\}/.test(d.tag) && d.file === "ui/base.tsx" && /useLayer\(open, onClose, popup\)/.test(SRC["/src/ui/Popover.tsx"]);
     default:
       return how.startsWith("exempt: ");
   }

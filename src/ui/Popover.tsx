@@ -1,9 +1,12 @@
 // A popover over Base UI's Popover, drawn as Kolux's .menu box. Non-modal by default (the window stays usable, as
 // the status bar's popovers are); focus moves in on open and back to the anchor on close. Escape is layer.ts's.
+// Base UI itself is read on demand (part.ts).
 import { useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { Popover as Base } from "@base-ui/react/popover";
 import { useLayer } from "./layer";
+import { useBase } from "./part";
 import "./ui.css";
+
+type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
 
 export type PopoverProps = {
   open: boolean;
@@ -17,22 +20,15 @@ export type PopoverProps = {
   className?: string;
   style?: CSSProperties;
   modal?: boolean | "trap-focus";
+  /** The control that takes focus on open (default: the popover itself). */
+  initialFocus?: Focus;
   "data-testid"?: string;
   children: ReactNode;
 };
 
-export function Popover({ open, onClose, label, anchor, side = "top", align = "start", offset = 4, className, style, modal = false, children, ...p }: PopoverProps) {
+export function Popover({ open, onClose, side = "top", align = "start", offset = 4, modal = false, ...p }: PopoverProps) {
   const popup = useRef<HTMLDivElement>(null);
   useLayer(open, onClose, popup);
-  return (
-    <Base.Root open={open} modal={modal} onOpenChange={(next) => !next && onClose()}>
-      <Base.Portal>
-        <Base.Positioner className="ui-positioner" anchor={anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
-          <Base.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} finalFocus={anchor as RefObject<HTMLElement | null>} {...p}>
-            {children}
-          </Base.Popup>
-        </Base.Positioner>
-      </Base.Portal>
-    </Base.Root>
-  );
+  const base = useBase(open);
+  return base && open ? <base.PopoverBox popup={popup} onClose={onClose} side={side} align={align} offset={offset} modal={modal} {...p} /> : null;
 }

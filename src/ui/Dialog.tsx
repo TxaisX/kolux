@@ -2,9 +2,10 @@
 //   viewport: a full-window layer that holds and centres the dialog (.ask-backdrop)
 //   backdrop: a layer behind a dialog that places itself (.menu-backdrop behind .about-panel)
 // Escape and stacking are Kolux's (layer.ts); focus trap, initial and final focus, aria and click-outside are Base UI's.
+// Base UI itself is read on demand (part.ts): a closed dialog costs nothing, not even its code.
 import { useRef, type HTMLAttributes, type ReactNode, type RefObject } from "react";
-import { Dialog as Base } from "@base-ui/react/dialog";
 import { useLayer } from "./layer";
+import { useBase } from "./part";
 
 type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
 
@@ -30,31 +31,11 @@ export type DialogProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "childre
   children: ReactNode;
 };
 
-export function Dialog({ open = true, onClose, label, className, viewport, backdrop, alert = false, modal = true, initialFocus, finalFocus, children, ...rest }: DialogProps) {
+export function Dialog({ open = true, onClose, alert = false, modal = true, ...p }: DialogProps) {
   const popup = useRef<HTMLDivElement>(null);
   useLayer(open, onClose, popup);
-  const box = (
-    <Base.Popup
-      ref={popup}
-      className={className}
-      role={alert ? "alertdialog" : "dialog"}
-      aria-label={label}
-      aria-modal={modal === false ? undefined : true}
-      initialFocus={initialFocus as never}
-      finalFocus={finalFocus as never}
-      {...rest}
-    >
-      {children}
-    </Base.Popup>
-  );
-  return (
-    <Base.Root open={open} modal={modal} onOpenChange={(next) => !next && onClose()}>
-      <Base.Portal>
-        {backdrop && <Base.Backdrop className={backdrop} />}
-        {viewport ? <Base.Viewport className={viewport}>{box}</Base.Viewport> : box}
-      </Base.Portal>
-    </Base.Root>
-  );
+  const base = useBase(open);
+  return base && open ? <base.DialogBox popup={popup} onClose={onClose} alert={alert} modal={modal} {...p} /> : null;
 }
 
 /** A question that needs an answer before work goes on (an alert dialog). */

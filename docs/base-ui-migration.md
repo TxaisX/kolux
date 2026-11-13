@@ -1,7 +1,9 @@
 # Moving popups, tabs and selects onto Base UI
 
 Kolux's menus, dialogs, popovers, tab sets, selects and tooltips are moving from hand-rolled code onto
-[Base UI](https://base-ui.com) (`@base-ui/react`, pinned at **1.9.0**). Base UI supplies the keyboard handling, focus
+[Base UI](https://base-ui.com) (`@base-ui/react`, pinned at **1.9.0**). Base UI is read on demand, never with the
+window's first frame: only `src/ui/base.tsx` imports it, and `src/ui/part.ts` reads that module at the first idle moment
+after the first frame, or sooner when a popup opens (see 9). Base UI supplies the keyboard handling, focus
 trapping and screen-reader wiring. The look stays Kolux's own: every wrapper draws with the existing classes
 (`.menu`, `.menu-item`, `.field`, `.ask`, `.rside-tab`, `.tip`) and theme variables. There is no new palette and no
 new motion.
@@ -174,14 +176,11 @@ The tab and its panel are now linked by `aria-controls` and `aria-labelledby`, a
 
 ## Gotchas
 
-1. **Blocker: the test DOM.** About 96 test files mount components on the hand-built fake DOM
-   (`src/tasks/fakeDom.ts`). Base UI cannot run there: it fails with `ReferenceError: HTMLElement is not defined`.
-   Any component those tests open cannot move to a wrapper until the tests run on a real DOM. The fix is
-   `happy-dom` as a dev dependency (zero bundle cost) with `// @vitest-environment happy-dom` at the top of each
-   affected test. That is a second dependency, so it is a coordinator decision. Until then, migrate only
-   components no fake-DOM test opens. To check: `grep -rl "fakeDom" src --include=*.test.* | xargs grep -l "<Name>"`.
-   This is why `chrome/Ask.tsx` (15 fake-DOM tests open it), `chrome/StatusBar.tsx` and `ports/PortsItem.tsx` are not
-   migrated yet.
+1. **The test DOM.** About 96 test files mount components on the hand-built fake DOM (`src/tasks/fakeDom.ts`). Base
+   UI's popups cannot open there (no `querySelector`, `matches` or focus). A test that opens a migrated popup runs on
+   happy-dom instead: `// @vitest-environment happy-dom` as its first line (happy-dom 21.0.4 is a devDependency, test
+   only, DT-C280). Do not switch the global environment. The fake DOM gained `Element` and `HTMLElement` only, so a tab
+   strip that hands over to Base UI (see 9) still draws there. `src/ui/ui.dom.test.tsx` is the pattern to copy.
 2. **Escape belongs to Kolux, not Base UI.** Escape also interrupts an agent's turn in the terminal underneath, so
    every Kolux popup catches it on the window in the capture phase and stops it there (`watchEscape`). The wrappers
    do this through `src/ui/layer.ts` (`useLayer`), which also pushes the popup onto `chrome/modalStack.ts`. As a
@@ -207,6 +206,13 @@ The tab and its panel are now linked by `aria-controls` and `aria-labelledby`, a
    `npx vitest run --no-fsModuleCache`.
 8. **`chrome/reach.test.ts`.** It scans for `role="dialog"` literals. A dialog moved to `<Dialog>` has no literal at its
    call site, so remove its row from `DIALOGS` / `TRAPS`. The wrapper's Escape is proved once in `src/ui/ui.test.tsx`.
+9. **Base UI is not in the first load.** Base UI and its positioning code are about 130 kB of script, and the first load
+   had about 9 kB of room under its ceiling (`scripts/bundle-budget.mjs`). So every wrapper draws its closed state
+   itself and calls Base UI (`base.tsx`, through `useBase` in `part.ts`) only when it opens: a closed dialog, menu or
+   popover draws nothing; a select draws the same `.field` button Base UI would and reads Base UI on the first press or
+   arrow key; a tab strip draws the same buttons and roles and hands over once the code is in (Base UI wraps only the
+   strip, so the panel is not drawn again); a tooltip decides itself when to show and asks Base UI only to place it.
+   Never import `@base-ui/react` outside `base.tsx`.
 
 ## Remaining call sites
 

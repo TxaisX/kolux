@@ -10,3 +10,4 @@
 .ui-select-icon { display: inline-flex; flex: none; }
 .ui-select-menu { min-width: var(--anchor-width); }
 .look-select .ui-select { height: 28px; font: inherit; }
+.ui-tabs { display: contents; }
