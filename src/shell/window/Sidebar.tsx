@@ -14,6 +14,8 @@ import { screenAfterPick, showsProjects } from "./sidebarScreens";
 import { useDeeds, useWindow } from "./store";
 import { useStableFns } from "./stable";
 import { useMemo } from "react";
+import { gridOf } from "../../workspaces";
+import { setStartDir } from "../../projects/worktreeGrid";
 import type { Page } from "../../projects/ProjectsPanel";
 import type { Project } from "../../projects/model";
 
@@ -25,13 +27,20 @@ export default function WindowSidebar() {
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest,
     setScreen, setProjects, setOwner, setNames, leftWidth, setDragLeft,
     agentsScreen, groups, selected, saved, classic, chipFor, ringOf, footer, setAgentSel, setFocused, addPreset, closePane,
-    workerNames, ptys, panes, dirty, openPane,
+    workerNames, ptys, panes, dirty, openPane, worktreeMenu,
   } = useWindow();
   // PKG-2: the project list skips a render when nothing it shows changed (projectsProps.ts). What it runs from its
   // handlers and effects keeps one identity: the window's deeds (store.tsx), and the closures below as callers that
   // run this render's version (stable.ts useStableFns).
   const deeds = useDeeds();
   const act = useStableFns({
+    // The worktree menu's session items: where new sessions of the project open (its main checkout unless a worktree is picked), and a new session there now.
+    worktreeSession: (path: string, what: "new" | "start") => {
+      const root = gridOf(path);
+      if (root === null) return;
+      setStartDir(root, path);
+      if (what === "new") addChooser();
+    },
     select: (dir: string, branch: string | null, fresh?: boolean) => {
       setScreen(screenAfterPick(screen));
       select(dir, branch, fresh);
@@ -96,6 +105,8 @@ export default function WindowSidebar() {
           onPage={act.page}
           refresh={refresh}
           createRequest={createRequest}
+          worktreeRequest={worktreeMenu}
+          onWorktreeSession={act.worktreeSession}
           createName={createName}
           deleteRequest={deleteRequest}
           renameRequest={renameRequest}

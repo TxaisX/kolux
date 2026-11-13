@@ -23,6 +23,7 @@ import { trustedSetup } from "../setup/TrustPrompt";
 import { cellsOf, freeCell, groupOf, MAX_PANES } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn, sameDir, viewOf } from "../workspaces";
+import { startDirOf } from "../projects/worktreeGrid";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
@@ -429,8 +430,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     try {
       // The agent's own start line (its options, permission mode and unpicked model default).
       if (singleFolder()) {
-        const branch = panes.find((p) => sameDir(p.cwd, proj.path))?.branch ?? null;
-        if ((await startIn(agent, proj.path, branch, "", true, savedArgs(agent.id))) === null) return;
+        const dir = startDirOf(proj.path) ?? proj.path; // the worktree picked in a pane-header menu, else the project folder
+        const branch = panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null;
+        if ((await startIn(agent, dir, branch, "", true, savedArgs(agent.id))) === null) return;
       } else {
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
         // Txais (2026-11-12): the agent's worktree is recorded with the project folder as its grid, like a team's, so its pane

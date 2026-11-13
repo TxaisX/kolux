@@ -1483,7 +1483,9 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
    the status word. 204 and 134 px are the spec's own. */
 .pane { container-type: inline-size; }
 .pane-head .title { min-width: 0; }
-@container (max-width: 510px) { .pane-head .chip { display: none; } }
+@container (max-width: 510px) { .pane-head .chip:not(.wt-chip) { display: none; } }
+/* One workspace per project: the worktree chip stays at any cell width the title can share (a narrow cell keeps its coloured dot). */
+@container (max-width: 340px) { .pane-head .wt-chip .wt-text { display: none; } }
 @container (max-width: 447px) { .pane-head .word { display: none; } }
 @container (max-width: 380px) { .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { display: none; } }
 @container (max-width: 326px) { .pane-head .right :is(.usage-readout, .meter-plan) { display: none; } }
@@ -1502,6 +1504,12 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .pane:not(.editor) .pane-head :is(.chip, .word, .status, .crew, .age, .right) { min-width: 0; overflow: hidden; }
 .pane:not(.editor) .pane-head :is(.word, .status, .crew, .age) { text-overflow: ellipsis; }
 .pane:not(.editor) .pane-head .chip { flex-shrink: 100000; }
+/* The worktree chip says which worktree a session runs in, so it is the last thing to give way: a readable label (ellipsis and a hover text when long) in a colour the same worktree wears everywhere. */
+.pane:not(.editor) .pane-head .chip.wt-chip { flex-shrink: 1; min-width: 4.5em; max-width: min(16em, 38%); height: 18px; gap: 5px; padding: 0 8px 0 6px; font-size: 12px; color: var(--fg); background: color-mix(in srgb, var(--wt) 16%, var(--chip-bg)); border: 1px solid color-mix(in srgb, var(--wt) 55%, transparent); cursor: pointer; }
+.pane-head .wt-chip:hover { background: color-mix(in srgb, var(--wt) 28%, var(--chip-bg)); }
+.pane-head .wt-chip:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 1px; }
+.pane-head .wt-chip .wt-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--wt); }
+.pane-head .wt-chip .wt-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pane:not(.editor) .pane-head .word { flex-shrink: 10000; }
 .pane:not(.editor) .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { flex-shrink: 1000; }
 .pane:not(.editor) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }
@@ -1610,3 +1618,6 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
 /* T-799 (p4a-05): with the status hooks off nothing can ask, so the master switch and every rule switch are greyed and not clickable. */
 .conn-switch[data-hooks-off], [data-hooks-off] > .conn-switch { opacity: 0.5; cursor: default; }
 .conn-switch[data-hooks-off] input, [data-hooks-off] > .conn-switch input { cursor: not-allowed; }
+/* One workspace per project: while a question or form of one worktree is open (Delete, Sleep, Details, Move, Status), only that worktree's row shows, so it can be answered. */
+.old-workspaces:has([data-wt-open]) { display: block; }
+.old-workspaces:has([data-wt-open]) > :not([data-wt-open]) { display: none; }

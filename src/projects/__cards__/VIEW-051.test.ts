@@ -14,6 +14,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "groups_get" || cmd === "activity_get" || cmd === "project_icons_list") return Promise.resolve({});
     if (cmd === "scm_pushed") return Promise.resolve([{ path: "C:/w/app", state: "synced", count: 0 }]); // the green "synced" text of the folder row
     if (cmd === "skills_scan") return Promise.resolve({ skills: [] }); // the sidebar checklist reads it
+    if (cmd === "workspace_statuses") return Promise.resolve({ list: [] }); // the worktree menu reads its status list
     return Promise.resolve(null);
   },
 }));
@@ -39,13 +40,13 @@ afterEach(async () => {
 });
 
 const selected: string[] = [];
-async function panel(sessions: Session[], settings: Record<string, unknown> = {}) {
+async function panel(sessions: Session[], settings: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) {
   const { default: ProjectsPanel } = await import("../ProjectsPanel");
   const props = {
     openDirs: ["C:/w/app"], sessions, states: {}, unread: new Set<string>(), onUnread: () => {}, settings, onSetting: () => {},
     activeDir: "C:/w/app", onSelect: (dir: string) => void selected.push(dir), onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
-    createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
+    createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {}, ...extra,
   };
   const m = await mount(createElement(ProjectsPanel, props as never), doc);
   unmount = m.unmount;
@@ -97,26 +98,26 @@ function visible(n: FakeNode, out: FakeNode[] = []): FakeNode[] {
 }
 const team = { teamWorktrees: [1, 2, 3].map((n) => ({ path: `C:/w/ws/agent${n}`, view: "C:/w/app" })) };
 
-test("box 3: a folder whose 6 agents run in 3 worktrees shows one folder row, 6 session rows and no worktree rows", async () => {
+test("box 3: a folder whose 6 agents run in 3 worktrees shows one folder row, no session rows and no worktree rows", async () => {
   h.wt = [wt, agentWt(1), agentWt(2), agentWt(3), handMade];
   const c = await panel(six, team);
   const seen = visible(c);
   expect(seen.filter((n) => cls(n).includes("proj") && cls(n).includes("folder"))).toHaveLength(1);
-  const sessions = seen.filter((n) => n.attrs["data-session"] !== undefined);
-  expect(sessions.map((n) => n.textContent.trim())).toEqual(["Claude 1", "Codex 1", "Claude 2", "Codex 2", "Claude 3", "Codex 3"]);
+  // Txais (2026-11-13): the sessions are the cells of the folder's one grid, not rows in the left ribbon.
+  expect(seen.filter((n) => n.attrs["data-session"] !== undefined)).toEqual([]);
   expect(seen.filter((n) => n.attrs["data-worktree"] !== undefined), "no worktree row draws, made for agents or by hand").toEqual([]);
   expect(find(c, (n) => n.attrs["data-worktree"] === "by-hand").length, "the hand-made one is only kept out of sight in the page").toBe(1);
   expect(seen.filter((n) => n.attrs["data-path"] !== undefined).map((n) => n.attrs["data-path"])).toEqual(["C:/w/app"]);
 });
 
-test("box 3: the folder row keeps its green status text, and a session click opens the grid it is shown in", async () => {
+test("box 3: clicking the folder row opens the grid every worktree's sessions are shown in", async () => {
   h.wt = [wt, agentWt(1)];
   const c = await panel(six.slice(0, 2));
-  const row = find(c, (n) => n.attrs["data-session"] === "10")[0];
+  const row = find(c, (n) => cls(n).includes("proj") && cls(n).includes("folder"))[0];
   const { click } = await import("../../tasks/fakeDom");
   await click(c, row);
   expect(selected).toEqual(["C:/w/app"]);
-  expect(find(c, (n) => n.attrs["data-session"] !== undefined)).toHaveLength(2);
+  expect(find(c, (n) => n.attrs["data-session"] !== undefined)).toEqual([]);
 });
 
 test("box 4: Pinned and the grouped lists hold folders only, never a worktree", async () => {
@@ -130,4 +131,26 @@ test("box 4: Pinned and the grouped lists hold folders only, never a worktree", 
   const grouped = await panel(six.slice(0, 2), { workspaceGroupBy: "status" });
   expect(visible(grouped).filter((n) => n.attrs["data-worktree"] !== undefined).map((n) => n.attrs["data-path"])).toEqual(["C:/w/app"]);
   expect(find(grouped, (n) => n.attrs["data-session"] !== undefined)).toHaveLength(2);
+});
+
+// Txais (2026-11-13): the worktree rows are gone from the ribbon, so what they offered is reached from the pane-header
+// chip: the window store hands the panel a worktreeRequest and the panel pops the same row menu at the chip.
+test("box 5: a worktree request from a pane-header chip opens that worktree's menu, with the actions its row had", async () => {
+  h.wt = [wt, agentWt(1)];
+  const c = await panel(six.slice(0, 2), team, { worktreeRequest: { path: agentWt(1).path, x: 40, y: 60, n: Date.now() } });
+  await settle(120);
+  const menu = find(c, (n) => n.attrs.role === "menu");
+  expect(menu).toHaveLength(1);
+  expect(menu[0].attrs["data-menu-for"]).toBe(agentWt(1).path);
+  const items = find(menu[0], (n) => n.attrs.role === "menuitem").map((n) => n.textContent.trim());
+  expect(items).toContain("New session here");
+  expect(items).toContain("Start new sessions here");
+  expect(items.some((t) => /delete|remove/i.test(t))).toBe(true);
+  expect(items.some((t) => /details/i.test(t))).toBe(true);
+});
+
+test("box 5: an old worktree request (the sidebar opened later) pops no menu", async () => {
+  h.wt = [wt, agentWt(1)];
+  const c = await panel(six.slice(0, 2), team, { worktreeRequest: { path: agentWt(1).path, x: 40, y: 60, n: Date.now() - 60000 } });
+  expect(find(c, (n) => n.attrs.role === "menu")).toEqual([]);
 });

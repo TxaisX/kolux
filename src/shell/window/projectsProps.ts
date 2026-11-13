@@ -48,6 +48,8 @@ export const sameProjects = sameProps<ProjectsProps>({
   refresh: "same",
   onIndex: "same",
   createRequest: "same",
+  worktreeRequest: "same",
+  onWorktreeSession: "same",
   createName: "same",
   deleteRequest: "same",
   renameRequest: "same",

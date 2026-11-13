@@ -40,7 +40,9 @@ import type { Note, Picked } from "../editor/notes";
 import { usePromptScan } from "../status/promptScan";
 import { pickWithNotice } from "../switcher/accounts";
 import type { Gap } from "../terminal/dividers";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { gridOf, setGridRoots } from "../workspaces";
+import { gridRootsOf } from "../projects/worktreeGrid";
 import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
 
 /** The settings key that remembers whether the left sidebar is shown. */
@@ -96,7 +98,10 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // The workspace the grid shows; null is the home group (panes opened in no workspace).
   // TERM-062: a half-finished double tap is forgotten when the window loses focus.
   useEffect(() => installTapReset(), []);
-  const [activeDir, setActiveDir] = useState<string | null>(layout?.activeDir ?? null);
+  // One workspace per project (Txais, 2026-11-13): the grid shown is always the project's folder, whichever of its worktrees
+  // a caller names (workspaces.ts gridOf), so what is stored is read through it below, once the project list is known.
+  const [activeRaw, setActiveRaw] = useState<string | null>(layout?.activeDir ?? null);
+  const setActiveDir = useCallback<Dispatch<SetStateAction<string | null>>>((v) => setActiveRaw((prev) => gridOf(typeof v === "function" ? v(prev) : v)), []);
   const [running, setRunning] = useState<Record<number, boolean>>({});
   // ACCT-064: the managed Codex accounts and the active one, so panes left on another are asked.
   const [codex, setCodex] = useState<{ active: string | null; accounts: CodexAccount[] }>({ active: null, accounts: [] });
@@ -172,7 +177,10 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const defaultId = defaultAgentId(settings);
   const installedIds = agents.filter((a) => a.installed).map((a) => a.id);
   const [renameRequest, setRenameRequest] = useState(0); // T-611: workspace.rename (PROJ-059) asks the sidebar to rename the workspace in front
-  const { projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(activeDir);
+  const { projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(gridOf(activeRaw));
+  setGridRoots(gridRootsOf(projects, owner)); // before anything below draws a pane's grid (module state, same answer for the same lists)
+  const activeDir = gridOf(activeRaw);
+  const [worktreeMenu, setWorktreeMenu] = useState<{ path: string; x: number; y: number; n: number } | null>(null); // the pane-header worktree chip asks the sidebar for that worktree's menu
   const [stacked, setStacked] = useState<Record<string, boolean>>(layout?.stacked ?? {}); // TERM-006: a single pane split down makes a stacked pair
   // C26-R3-01: a start whose settings answered after the 1.5 s race used to draw a second App (a changed key), and
   // React unmounted the first, killing every terminal it held. The saved tabs now join the window already drawn,
@@ -196,7 +204,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
     setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
     setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir,
-    setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
+    worktreeMenu, setWorktreeMenu, setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,
     hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, cliFailed, asking, setAsking, pinned, setPinned,
     switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,

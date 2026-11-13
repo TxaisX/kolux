@@ -8,8 +8,24 @@
 // pane before DT-C274): the pane is shown in its own folder's grid.
 export type PaneLike = { key: number; cwd: string | null; view?: string | null };
 
-/** DT-C274: the folder whose grid shows the pane: its `view` when it has one, else the folder it runs in. */
-export const viewOf = (p: { cwd: string | null; view?: string | null }): string | null => (p.view !== undefined ? p.view : p.cwd);
+// One workspace per project (Txais, 2026-11-13): every worktree of a project shows in the project folder's one grid. The
+// window hands over, from the project list, which folder each worktree belongs to; `gridOf` answers with that folder,
+// and a folder that is no worktree of anything answers as itself. Module state, set once per render of the window.
+let gridRoots: Record<string, string> = {};
+
+/** The worktree folders and the project folder whose grid each one shows in (keys through `dirKey`). */
+export function setGridRoots(roots: Record<string, string>): void {
+  const next: Record<string, string> = {};
+  for (const [dir, root] of Object.entries(roots)) next[dirKey(dir)] = root;
+  gridRoots = next;
+}
+
+/** The folder whose grid shows `dir`: the project folder for a worktree of it, else `dir` as given. */
+export const gridOf = (dir: string | null): string | null => (dir === null ? null : (gridRoots[dirKey(dir)] ?? dir));
+
+/** DT-C274: the folder whose grid shows the pane: its `view` when it has one, else the folder it runs in; a worktree
+ *  of a project shows in the project's grid (`gridOf`). */
+export const viewOf = (p: { cwd: string | null; view?: string | null }): string | null => gridOf(p.view !== undefined ? p.view : p.cwd);
 
 /** One spelling per folder: backslashes, no trailing slash, any case, "." and ".." worked out
  *  (USAGE-017: a path that climbs out of a folder is not inside it). The key for a folder in a set or map. */
@@ -45,7 +61,8 @@ export function underDir(path: string | null, root: string): boolean {
 
 /** The panes shown for a workspace (DT-C274: by the grid they are shown in, `viewOf`). */
 export function panesIn<P extends PaneLike>(panes: P[], dir: string | null): P[] {
-  return panes.filter((p) => sameDir(viewOf(p), dir));
+  const at = gridOf(dir);
+  return panes.filter((p) => sameDir(viewOf(p), at));
 }
 
 /** Keeps the focus where it is when that pane is shown, else moves it to the first shown pane. */

@@ -45,6 +45,7 @@ import { PAGES, openSettings, type PageId } from "../settings/pages";
 import { toggleSkills } from "../skills/nav";
 import { paletteRows } from "../switcher/accounts";
 import { focusIn, panesIn, sameDir, underDir, viewOf } from "../workspaces";
+import { startDirOf } from "../projects/worktreeGrid";
 import { teamViewOf } from "../projects/rows";
 import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
@@ -87,13 +88,13 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     if (cellsOf(panesIn(panes, activeDir)).length >= MAX_PANES) return setToast(`A workspace holds up to ${MAX_PANES} panes.`);
     if (!classic) {
       // SESS-018: the count and the files choice come from this project's last launch; seats start blank.
-      const at: Pane = { key: 0, cwd: activeDir, branch: null, agent: "shell", program: null, args: [] };
+      const at: Pane = { key: 0, cwd: startDirOf(activeDir), branch: null, agent: "shell", program: null, args: [] };
       const start = sheetStart(lineupsOf(settings)[late.projectOf(activeDir) ?? projectFor(null) ?? ""], inGitFor(at));
       setSheet({ ...at, key: nextKey.current++, seats: start.seats, copies: start.copies, shape: "custom" });
       return;
     }
     const key = nextKey.current++;
-    setPanes((ps) => [...ps, { key, cwd: activeDir, branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }]);
+    setPanes((ps) => [...ps, { key, cwd: startDirOf(activeDir), branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }]);
     setFocused(key);
   };
   // VIEW-036 / SESS-008: the remove-session shortcut closes the newest chooser pane in front, else the focused

@@ -17,7 +17,7 @@
 // T-022: rows carry the strongest live agent state and an unread mark (PROJ-063), the list can be
 // grouped by project, status or pull request and sorted Smart or by name (PROJ-045, PROJ-050).
 import { isFolderWorkspace } from "../sessions/folderTabs";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
 import { sessionDir, sessionLabel, sessionsByProject, focusPane, type FolderSession } from "./folderSessions";
@@ -28,8 +28,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { sameDir, underDir } from "../workspaces";
-import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, withoutTeamMade, hiddenTeamFolders, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
+import { underDir } from "../workspaces";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
@@ -164,6 +164,11 @@ type Props = {
   onIndex: (projects: Project[], owner: Record<string, string>, names: Record<string, string>) => void;
   /** Bumped by Mod+N (workspace.create): opens the name field for the project in front. */
   createRequest: number;
+  /** One workspace per project: a pane-header worktree chip asks for that worktree's menu, where its sidebar row's menu used to be
+   *  (`path` the worktree, `x`/`y` where it opens, `n` new on every ask). */
+  worktreeRequest?: { path: string; x: number; y: number; n: number } | null;
+  /** The worktree menu's session items: open a new session in that worktree, or make it where new sessions start. */
+  onWorktreeSession?: (path: string, what: "new" | "start") => void;
   /** PROJ-057: a name typed in the palette, put in the name field that createRequest opens. */
   createName?: string;
   /** Bumped by Mod+Shift+Backspace (workspace.delete): asks to delete the workspace shown (PROJ-070). */
@@ -210,7 +215,7 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
@@ -264,9 +269,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   teamRef.current = team;
   const onSettingRef = useRef(onSetting);
   onSettingRef.current = onSetting;
-  const openKey = openDirs.join("\n");
-  const teamHidden = useMemo(() => hiddenTeamFolders(team, openDirs), [team, openKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const worktrees = useMemo(() => withoutTeamMade(withoutAutomationMade(listed, hideAuto), teamHidden, sameDir), [listed, hideAuto, teamHidden]); // the ones the sidebar shows
+  // One workspace per project: no worktree draws a row, so none is filtered out here; each keeps its (hidden) row, which is where the menu and the questions of its pane-header chip answer, team-made and automation-made ones included.
+  const worktrees = listed;
   const wasActive = useRef(activeDir);
   useEffect(() => {
     if (jumpUnhides(wasActive.current, activeDir, listed, hideAuto, same)) onSetting(HIDE_AUTOMATION_SETTING, false);
@@ -1029,6 +1033,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     openCreate();
     if (createName) setName(createName);
   }, [createRequest]);
+  // One workspace per project: a pane-header worktree chip asks for its worktree's menu (the sidebar is open by then); served once per ask, as soon as the lists hold that worktree.
+  const servedWt = useRef(0);
+  useEffect(() => {
+    if (!worktreeRequest || servedWt.current === worktreeRequest.n || Date.now() - worktreeRequest.n > 5000) return; // an old ask (the sidebar was closed and opened again) is not served
+    const p = projects.find((x) => (worktrees[x.id] ?? []).some((w) => same(w.path, worktreeRequest.path)));
+    const w = p && (worktrees[p.id] ?? []).find((x) => same(x.path, worktreeRequest.path));
+    if (!p || !w) return;
+    servedWt.current = worktreeRequest.n;
+    void openMenu({ preventDefault() {}, altKey: false, clientX: worktreeRequest.x, clientY: worktreeRequest.y }, p, w, true);
+  }, [worktreeRequest, worktrees, projects]);
   useEffect(() => {
     // VIEW-048: the row under the pointer, read at key time so a row that just went away never counts
     const hovered = [...document.querySelectorAll<HTMLElement>("[data-path]:hover")].pop()?.dataset.path ?? null;
@@ -1285,7 +1299,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const screenKeys = () => [...new Set([...document.querySelectorAll(".sb-list [data-path]")].map((n) => pathKey((n as HTMLElement).dataset.path ?? "")))];
   const stepSiblingsOf = (p: Project, w: Worktree) => stepSiblings(worktrees[p.id] ?? [], w, screenKeys(), pathKey);
   // PROJ-065: right-click on a workspace row lists what can be done to it.
-  const openMenu = async (e: { preventDefault(): void; altKey: boolean; clientX: number; clientY: number }, p: Project, w: Worktree) => {
+  const wtMenu = (w: Worktree): MenuItem[] => {
+    const b = pushBadge(pushedBy[w.path]);
+    return [
+      { id: "wt:info", label: b ? `${worktreeLabel(w)} · unpushed ${b.text}` : worktreeLabel(w), disabled: true },
+      { id: "wt:new", label: "New session here" },
+      { id: "wt:start", label: w.isMain ? "New sessions start in the main checkout" : "Start new sessions here" },
+    ];
+  };
+  const openMenu = async (e: { preventDefault(): void; altKey: boolean; clientX: number; clientY: number }, p: Project, w: Worktree, wt = false) => {
     e.preventDefault();
     const { altKey: alt, clientX: x, clientY: y } = e;
     const failed = { statuses: false, editors: false };
@@ -1298,7 +1320,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const deleting = busy === "removing" && confirm?.path === w.path;
     const sibs = stepSiblingsOf(p, w);
     const at = sibs.indexOf(pathKey(w.path));
-    setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), git: !isFolderWorkspace(w.path, [w]), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 }) });
+    setMenu({ x, y, projectId: p.id, path: w.path, items: [...(wt ? wtMenu(w) : []), ...rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), git: !isFolderWorkspace(w.path, [w]), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 })] });
   };
   // A project header or a group row opens its own short list; `projectId` holds the group id for a group.
   const pop = (e: { preventDefault(): void; clientX: number; clientY: number }, id: string, items: MenuItem[], label: string) => {
@@ -1367,7 +1389,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (p && id.startsWith("proj:")) return id === "proj:new" ? setCreating(p.id) : id === "proj:settings" ? openSettings(p) : setDropProject(p.id);
     if (!m || !p || !w) return;
     try {
-      if (id === "delete") await startDelete(p, w);
+      if (id === "wt:new" || id === "wt:start") onWorktreeSession?.(w.path, id === "wt:new" ? "new" : "start");
+      else if (id === "delete") await startDelete(p, w);
       else if (id === "hide") await hide(w, true);
       else if (id === "sleep") trySleep(w);
       else if (id === "wake") wake(w);
@@ -1871,6 +1894,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const asked = new Set<string>(); // T-729: a pinned row can render twice (the copies setting); its prompts mount once
   const row = ({ p, w }: Entry, depth = 0, kids = false) => {
     const asking = confirm?.path === w.path;
+    // One workspace per project: a worktree has no visible row, but while a question or form of its own is open (Delete, Sleep, Details, Move, Status) its row shows, alone, so it can be answered (styles.css .old-workspaces).
+    const wtForm = [confirm?.path, batch?.root, sleepAsk?.path, statusesOf?.path, detailsOf?.path, moving, forgetAsk?.path, renaming].some((o) => !!o && same(o, w.path));
     // EDIT-031: the delete question names the files whose unsaved text would go with the workspace.
     const dirtyNames = asking ? unsavedIn([w.path]) : [];
     const batchNames = batch?.root === w.path ? unsavedIn(batch.order) : [];
@@ -1884,7 +1909,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const up = w.parent ? (worktrees[p.id] ?? []).find((x) => !x.isMain && same(x.path, w.parent as string)) : undefined;
     const first = !asked.has(pathKey(w.path)) && !!asked.add(pathKey(w.path));
     return (
-      <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path} onContextMenu={(e) => !(e.target as Element).closest?.(".sb-form, .ask-backdrop, input, textarea") && void openMenu(e, p, w)}>
+      <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path} data-wt-open={wtForm ? "" : undefined} onContextMenu={(e) => !(e.target as Element).closest?.(".sb-form, .ask-backdrop, input, textarea") && void openMenu(e, p, w)}>
         <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} data-testid="sidebar-workspace" role="button" tabIndex={0} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => {
           const what = rowKey(e.key, e.target === e.currentTarget);
           if (what) e.preventDefault();
@@ -2259,7 +2284,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const inFolder = activeDir !== null && [p.path, ...list.map((w) => w.path), ...(hiddenWts[p.id] ?? []).map((w) => w.path)].some((d) => same(activeDir, d));
       const selected = main !== undefined && (isSelected(main) || inFolder);
       const folder = main !== undefined;
-      const own = sessionRows(p);
       return (
         <div key={p.id}>
           <div
@@ -2367,7 +2391,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               parentOf={(path) => (worktrees[p.id] ?? []).find((x) => same(x.path, path))?.parent}
             />
           )}
-          {own.length > 0 && <div className="sb-sessions">{own}</div>}
           {opening && nameField(p)}
           {standIn(p)}
           {/* A worktree never has a row: its rows stay in the DOM for saved work and for the keyboard, but they
