@@ -64,6 +64,29 @@ describe("stripQueries", () => {
     for (const k of kept) expect(strip(k), JSON.stringify(k)).toBe(k);
   });
 
+  it("keeps CSI > Pp n: modifyOtherKeys and the like switched off is a setting, not a query", () => {
+    for (const k of [`${E}[>4n`, `${E}[>1n`, `${E}[>n`]) expect(strip(`a${k}b`), JSON.stringify(k)).toBe(`a${k}b`);
+  });
+
+  it("keeps the set part of an OSC that also asks, and drops only the question", () => {
+    // OSC 4 and 5 take index;spec pairs: the second colour is set, the first one asked
+    expect(strip(`${E}]4;1;?;2;#ff0000${ST}`)).toBe(`${E}]4;2;#ff0000${ST}`);
+    expect(strip(`${E}]4;2;#ff0000;1;?\x07`)).toBe(`${E}]4;2;#ff0000\x07`);
+    expect(strip(`${E}]5;0;?;1;#00ff00${ST}`)).toBe(`${E}]5;1;#00ff00${ST}`);
+    // OSC 10 to 19 run on to the next colour per field: asking the foreground and setting the background
+    expect(strip(`${E}]10;?;#000000\x07`)).toBe(`${E}]11;#000000\x07`);
+    expect(strip(`${E}]10;#ffffff;?;#00ff00${ST}`)).toBe(`${E}]10;#ffffff${ST}${E}]12;#00ff00${ST}`);
+    // kitty's colour stack: key=? asks, key=value sets
+    expect(strip(`${E}]21;foreground=?;background=#000000${ST}`)).toBe(`${E}]21;background=#000000${ST}`);
+  });
+
+  it("catches an OSC query ended by ESC alone, which xterm.js takes as its end, and keeps what follows", () => {
+    expect(strip(`a${E}]11;?${E}[31mred`)).toBe(`a${E}[31mred`);
+    expect(strip(`${E}]10;?${E}${E}[0m`)).toBe(`${E}${E}[0m`);
+    const title = `${E}]0;title${E}[31m`;
+    expect(strip(title)).toBe(title);
+  });
+
   it("leaves a sequence cut off at the end as it is, for the live output to finish", () => {
     for (const cut of [`PS> ${E}`, `PS> ${E}[6`, `PS> ${E}]11;?`, `PS> ${E}P$q"p`]) expect(strip(cut)).toBe(cut);
   });
