@@ -58,3 +58,206 @@ PENDING on Txais's PC (Windows):
   2. Same with the old app still running during the update, and with the old uninstaller cancelled (B2:
      install stops, nothing changed).
   3. cargo test (full) and cargo clippy --all-targets -- -D warnings on Windows.
+
+Windows run 2026-11-09 (tree scratch/0.1.11-proofs f28c3fd1 = eef0cd34 + SCRATCH T-790-tauri-conf.patch)
+  old side: built from tag v0.1.10 (75be2b46) in a detached throwaway worktree, as scratch identity proof-rs 0.1.0
+    (node scripts/prove/update-rig.mjs build proof-rs 0.1.0 -> exit 0, signed, version resource 0.1.0).
+    Scaffold in that tree, disclosed: rig scripts copied in; CLI bin renamed to kolux; src-tauri/src/update.rs
+    RELEASE_ENDPOINT pointed at the rig's loopback feed http://127.0.0.1:9377/latest.json (v0.1.10 hardcodes GitHub).
+    Worktree removed afterwards (git worktree remove --force -> exit 0).
+  new side: node scripts/prove/update-rig.mjs build proof 0.1.1 (this tree) -> exit 0, signed, version resource 0.1.1.
+  harness: scratchpad prove-790-live.mjs U,V,C (imports this tree's update-rig.mjs unchanged; installs /S on the hidden
+    desktop) -> exit 0, "result: 1/4 passed; failed: U run | V run | C run". Log: evidence/T-790-windows-run-2026-11-09.log
+  S  silent: PASS. Default-desktop watcher 3283 polls, 0 visible proof windows, 0 focus takes.
+  1. live update proof (old identity + project + managed Claude account + Codex account -> signed update -> new
+     identity on the NEW folder, one Apps entry, one PATH entry, shortcuts, old profile intact): NOT RUN (harness).
+     Old 0.1.0 installed (exit 0, Apps ["Kolux Proof RS"], Start-menu + Desktop .lnk created) and launched hidden,
+     but setup timed out after 40 s "waiting for a Terminal choice": the harness's selector does not match the
+     v0.1.10 seat chooser. No update was attempted, so no product verdict. Accounts were never seeded.
+  2a. old app running during the update: NOT RUN. Aborted at reset: the old app from run U had not exited yet
+     (scratch PIDs 27328, 30256 under G:\Temp\ready-identity-rig\install; both had exited by the time of clean).
+  2b. old uninstaller cancelled: NOT RUN. Same abort as 2a.
+  S3 (Start-menu and desktop shortcuts after the update): NOT RUN (needs item 1). Source reading still says the /UPDATE
+     path creates no new shortcuts, only re-targets existing ${PRODUCTNAME}.lnk; the live run has to settle it.
+  S9 (old side from v0.1.10): old installer DID build from v0.1.10; not exercised past launch.
+  3. cargo test/clippy on Windows: NOT RUN, outside this brief.
+  clean: node scripts/prove/update-rig.mjs clean -> exit 0. Afterwards: no "Kolux Proof*" Apps entry, no scratch PATH
+     entry, no "Kolux Proof*.lnk" in Start menu or on the Desktop, G:\Temp\ready-identity-rig\install gone,
+     %LOCALAPPDATA%\Kolux Proof never created. Txais's Kolux RS (PIDs 20892, 20840), its Apps entry and its PATH entry unchanged.
+  next: fix the harness's v0.1.10 chooser selector (probe the old page's DOM once over CDP), wait for the old app to
+     exit between runs, then re-run U,V,C.
+
+Windows run 2026-11-09 (2) (same tree and builds as the run above; old = v0.1.10 as proof-rs 0.1.0, new = proof 0.1.1)
+  harness fixes (scratchpad prove-790-live.mjs + new close-main.ps1; this tree's update-rig.mjs and hidden-desktop.ps1
+    unchanged): v0.1.10 seat chooser is a <select>, picked through the native value setter + change event; launch keeps
+    hidden-desktop.ps1 -Wait running so the desktop handle outlives the app's desktop attach (closing it right after
+    CreateProcess killed the app silently); quit posts WM_CLOSE only to the pid's "Tauri Window" (posting it to the Tao
+    event-target window too never ended the app; "SetThreadDesktop failed: 170" = ERROR_BUSY, harmless, PostMessage works
+    without it); kills only after re-checking the image path is under G:\Temp\ready-identity-rig; the updater-run install
+    resolves %LOCALAPPDATA% to the rig's scratch home (appEnv), so the new folder is home\AppData\Local\Kolux Proof; V judges
+    PATH after the new app's first start (user PATH 1843-1882 chars > NSIS 1024, so the T-594 hand-off file applies);
+    reset removes the scratch "remembered install folder" keys HKCU\Software\txaisxiong\Kolux Proof[ RS] (InstallDirRegKey
+    survives a plain uninstall and steered run 4's update into install-kolux); hang diagnostics added to U.
+  commands (scratchpad): node prove-790-live.mjs P | U,V,C (run 3) | U,V (run 4) | U,V,C (run 5) | U (run 6), all exit 0.
+    Logs: evidence/T-790-windows-run-2026-11-09-2.log
+  UAC Input Indicator / UAC_InputIndicatorOverlayWnd windows: owned by msedgewebview2.exe (and, in run 6, by the NSIS
+    uninstaller), created on the hidden desktop kolux-proof-rig only; never on the default desktop (watcher 0). Harmless.
+  S  silent: PASS every run. Watcher polls / visible proof windows / focus takes: P 231/0/0; run 3 1030/0/0;
+     run 4 1804/0/0; run 5 1688/0/0; run 6 2852/0/0.
+  1. live update (U): FAIL - one PASS-path run, then a product hang.
+     run 3 (updater path completed):
+       "U pop-up: "A new Kolux version is out on GitHub. Version 0.1.1. Later Update now"; feed hits GET /latest.json,
+        GET /Kolux Proof_0.1.1_x64-setup.exe" / "U restart question answered: clicked" / "app 3324 exited with code 0"
+       "U new page version {"ok":"0.1.1"}; exe ["G:\Temp\ready-identity-rig\home\AppData\Local\Kolux Proof\kolux.exe"]"
+       U1 one Apps entry PASS ["Kolux Proof"]; U2 PATH PASS [...home\AppData\Local\Kolux Proof\bin]; U4 panes PASS layout
+       "2" ["shell","shell"]; U5 Claude account PASS; U6 Codex account PASS; U7 new folder PASS; U9 old folder removed PASS.
+       U3 shortcuts FAIL: "shortcuts now ["C:\...\Start Menu\Programs\Kolux Proof RS.lnk"]" - G:\Desktop\Kolux Proof
+         RS.lnk was deleted and no "Kolux Proof.lnk" was created anywhere (FINDING A).
+       U8 old profile byte-identical FAIL: "19 files at ...\com.txaisxiong.kolux-proof-rs"; which files differ was not logged
+         in run 3 (detail logging added later, but runs 5 and 6 never reached U8). UNKNOWN whether product or the old
+         terminal service writing after the hash.
+     runs 5 and 6 (same harness, clean reset): update stalls, the new app never comes back (FINDING B):
+       "U run: FAIL aborted: ... CreateProcess failed: 2" after 120 s + 180 s waits;
+       "U diag: scratch processes ["...Kolux Proof RS-0.1.1-installer.exe" /P /UPDATE /R /ARGS",
+        "...\install\uninstall.exe" /P _?=G:\Temp\ready-identity-rig\install"]";
+       dialog text read on the hidden desktop: uninstaller "Uninstallation Aborted" / "Uninstall was not completed
+        successfully." / "Failed to kill Kolux Proof RS. Please close it first then try again" with a Close button;
+        new installer "Installing" / "Execute: "G:\Temp\ready-identity-rig\install\uninstall.exe" /P _?=...\install".
+       "U diag: folders ... old true [bin,kolux-dev.exe,kolux-rs.exe,uninstall.exe]; Apps entries ["Kolux Proof RS"]"
+     run 4: the update completed but went to install-kolux (stale InstallDirRegKey from run 3's V/C, a rig artifact,
+       fixed in reset); not counted.
+  2a. old app running during the update (V): PASS (run 5, repeated from run 4):
+       "V installer exit 0 (pid 4040; exit 0); old app alive false; entries ["Kolux Proof"]; PATH []; PATH hand-off file
+        true; user PATH length 1843; new kolux.exe true; old uninstall.exe false"
+       "V new app after the update opened with {"layout":"2","panes":["shell","shell"],"projects":[]}; PATH after its first
+        start ["G:\Temp\ready-identity-rig\install-kolux\bin"]; hand-off file now false"
+       "V1 ... PASS clean update: old app closed by the installer, one entry, one PATH entry"; "V2 old profile intact: PASS"
+  2b. old uninstaller cancelled (C): PASS (run 5, repeated from run 3):
+       "C installer exit 2 (pid 32796; exit 2); entries ["Kolux Proof RS"] -> ["Kolux Proof RS"]; PATH [...\install\bin]
+        -> [...\install\bin]; new folder []"; C1 exit 2 PASS; C2 PASS; C3 old folder identical PASS; C4 PATH and shortcuts
+        PASS; C5 old profile byte-identical PASS 14 files.
+  FINDING A (S3, shortcuts lost on the updater rename path): the /UPDATE install skips shortcut creation (generated
+    installer.nsi update-mode branch) and KOLUX_RETIRE_OLD runs the old uninstaller without /UPDATE, which deletes the old
+    "Kolux Proof RS" shortcuts. Result: after the in-app update the user has no Desktop or Start-menu shortcut for Kolux.
+    (The Start-menu RS .lnk survived in run 3 only because the rig redirects USERPROFILE, so the old uninstaller looked in
+    the scratch home's Start Menu; it is a stale leftover, removed in clean.)
+  FINDING B (update stalls in passive mode): the updater starts the new installer with /P /UPDATE /R. KOLUX_RETIRE_OLD runs
+    the old v0.1.10 uninstaller with /P. In 2 of 4 updater runs (5, 6) that uninstaller's running-app check failed
+    ("Failed to kill Kolux Proof RS") while the old app was still exiting (app exit 17:12:15, uninstaller up by 17:12:16),
+    and in passive mode the uninstaller then waits on an "Uninstallation Aborted" page for a Close click; the new installer
+    waits in ExecWait behind it. On a real desktop the user would see a stuck setup window plus an aborted-uninstall window,
+    and no Kolux running. Which process Restart Manager could not stop: UNKNOWN (details list not read). Txais's own
+    kolux-rs.exe (pids 20892, 20840) was not touched (checked after run 6).
+  next: product fix for A and B (not in this brief); then re-run U to read U8's file list.
+  clean: node scripts/prove/update-rig.mjs clean -> exit 0; then removed the empty scratch-home folder
+    G:\Temp\ready-identity-rig\home\AppData\Local\Kolux Proof and the scratch key HKCU\Software\txaisxiong\Kolux Proof RS
+    (both left by run 6; rig clean covers neither). Afterwards: Apps entries "Kolux*" = only "Kolux RS"; no PATH entry with
+    ready-identity-rig or "Kolux Proof"; no "Kolux Proof*.lnk" in the real Start menu, real Desktop or scratch home; no
+    process under G:\Temp\ready-identity-rig; Txais's kolux-rs.exe pids 20892 and 20840 (started 06:37:03) running, his
+    "Kolux RS" Apps entry, remembered-folder key and PATH entry present.
+
+Windows run 2026-11-09 (3) (product fix for findings A and B; tree = rel-0.1.11-proofs with the ready-update
+installer-hooks.nsh copied in byte-identical; old = v0.1.10 as proof-rs 0.1.0, built 07:41; new = proof 0.1.1, rebuilt
+18:25:07 with the final hooks: "Kolux Proof_0.1.1_x64-setup.exe (12354424 bytes), signed; version resource says 0.1.1")
+  fix (src-tauri/installer-hooks.nsh, KOLUX_RETIRE_OLD and NSIS_HOOK_POSTINSTALL):
+    B1 KOLUX_OLD_WAIT: before the old uninstaller runs, every .exe in the old folder and its bin folder is registered with
+       Restart Manager (full paths, never by name) and the installer waits until none runs: up to 10 s, then RmShutdown
+       (force), 60 s in all. The old v0.1.10 uninstaller now always runs /S (was /P in passive mode), so a failure ends it
+       with exit 2 instead of an "Uninstallation Aborted" page waiting for a click.
+    B2 retry: a stopped old uninstaller (non-zero exit) is run again while its kolux-rs.exe is still in place, 3 runs in
+       all, each after the wait and 2 s apart. Fail-closed unchanged: after the third stop the existing /SD IDOK message,
+       KOLUX_RESTORE, Abort.
+    A  before the old uninstaller runs, note whether "<name> RS.lnk" is on the Desktop / in the Start menu; after a
+       successful retire, each one it took away is made again as "<name>.lnk" -> $INSTDIR\<main>.exe (working folder
+       $INSTDIR, icon from the exe, SetLnkAppUserModelId), as the template makes its own; never with /NS.
+  compile + hook tests: npx vitest run scripts/installer-notice.test.mjs -> "Test Files 1 passed (1) / Tests 3 passed (3)";
+    the rig build (makensis inside tauri build) -> exit 0.
+  harness changes (scratch prove-790-live.mjs): the old copy now installs under the rig's scratch-home environment
+    (R.appEnv()), as the app and its updater-run installer do; run (3)-1 installed it with the real environment, so its
+    Start-menu .lnk sat in the real Start menu and U3 failed there. Added U8b (old profile minus state.db-shm), a dialog /
+    installer detail-list dump on the hidden desktop, and a probe mode X.
+  U (updater path) on the build with B1 + A only (17:49-18:04): runs 1-8.
+    run 1: U3 FAIL (harness environment, above), all else as below.
+    runs 2, 3, 5, 6, 8: "U new page version {"ok":"0.1.1"}", U1-U7 PASS, U3 PASS with shortcuts: Kolux Proof.lnk in the
+      scratch-home Start menu and "G:\Desktop\Kolux Proof.lnk".
+    run 4: STALL. 17:52:04 old app ended; the new installer (/P /UPDATE /R) still up at 17:57:10 with a second
+      "#32770 / Kolux Proof Setup" window, old folder intact [bin,kolux-dev.exe,kolux-rs.exe,uninstall.exe], Apps entry
+      "Kolux Proof RS" kept: the old uninstaller had stopped and the fail-closed message waited for OK (in /P, /SD does not
+      apply; on a real desktop the user sees it and clicks OK; nothing changed).
+    run 7: installer ended and the new app came back by itself, then "timed out after 60000 ms waiting for the app page
+      over CDP (fetch failed)": rig attach, not a stall.
+  probe X (18:06-18:07): RM right after "kolux-rs.exe --uninstall-path" exits: 12/12 "getlist 0" (nothing running); 8
+    install + /S uninstall cycles of v0.1.10 with nothing running: exit codes [0,0,0,0,0,0,0,0]. Earlier rig resets saw
+    "uninstall G:\Temp\ready-identity-rig\install: exit 2" 3 times (16:47:42, 16:48:31, 17:11:53) with "settle: no
+    process left under the scratch folders". So the v0.1.10 uninstaller stops now and then with no old program running;
+    what its Restart Manager check saw: UNKNOWN. Hence B2.
+  U on the final build (B1 + B2 + A), runs 9-15:
+    runs 9, 10, 11, 12, 13 (five in a row) and 15: "U new page version {"ok":"0.1.1"}", U1 U2 U3 U4 U5 U6 U7 U8b U9 PASS,
+      "S silent run: PASS 0 visible proof windows, 0 focus takes on the default desktop".
+      Old app ended -> new page: 10 s, 74 s, 73 s, 8 s, 27 s, -, 9 s. Run 13 detail list at its last read:
+      "Execute: ...\install\uninstall.exe /S _?=...\install" with the old uninstaller's own kolux-rs.exe (its
+      --uninstall-path step) running: the old uninstaller itself took ~20 s. Where runs 10 and 11 spent 74 s: UNKNOWN
+      (no detail capture in those runs).
+    run 14: B2 seen working: detail list "The old uninstaller stopped (exit code 2); trying again", installer ended 5.4 s
+      after the old app; the new app came back from the new folder; then the same rig CDP attach timeout as run 7, so
+      U1-U9 were not read for this run.
+    U8 (byte-identical old profile) FAILS in every run, always the same one file: ["state.db-shm: changed"]. state.db-shm
+      is SQLite's WAL index (shared-memory file), not data; the new app's first start opens the old state.db read-only for
+      VACUUM INTO (profile_move.rs:160) and SQLite updates the index on any open. U8b: the other 18 files byte-identical,
+      PASS in every run that reached it.
+  V (new installer /S /UPDATE while the old app runs) 18:31-18:32: V1 PASS "clean update: old app closed by the installer,
+    one entry, one PATH entry"; V2 PASS old profile intact.
+  C (old uninstaller stand-in exits 1) 18:33-18:34: "C installer exit 2"; C1-C5 PASS (old entry, folder, PATH, shortcuts,
+    profile unchanged; new folder empty); with B2 the stand-in ran 3 times before the stop. "result: 8/8 passed".
+  watcher: every run "visible proof windows: 0", "proof programs that held the keyboard focus: 0".
+  clean: node scripts/prove/update-rig.mjs clean -> exit 0 (removed the proof profiles, the leftover "Kolux Proof" Apps
+    entry and the scratch PATH entries); the leftover scratch-home install (run 15) uninstalled with its own uninstaller on
+    the hidden desktop (exit 0), then its folder (uninstall.exe only) removed; HKCU\Software\txaisxiong\Kolux Proof
+    (-> G:\Temp\ready-identity-rig\home\AppData\Local\Kolux Proof) and \Kolux Proof RS (-> G:\Temp\ready-identity-rig\install)
+    removed. verify-clean.ps1: Apps entries Kolux* = "Kolux RS" only; remembered folder "Kolux RS" only; no PATH entry
+    with the rig; no "Kolux Proof*.lnk"; no process under the rig; rig and scratch-home install folders gone; Txais's
+    kolux-rs.exe pids 20892 and 20840 (started 06:37:03) running.
+  open: run 4's dialog text was not captured (the dump came later); the U8 -shm touch; the rig's CDP attach after a fast
+    update (runs 7, 14); KOLUX_PATH_APP_REMOVE's CheckIfAppIsRunning "${MAINBINARYNAME}.exe" with a relative path (also
+    in v0.1.10); the installer-hooks change needs an independent review before commit.
+Windows run 2026-11-09 (4): review changes (APPROVE WITH CHANGES, no P0/P1) applied to installer-hooks.nsh and proved
+  changes: P2-1 the fail-closed stop puts the old bin back on the PATH (KoluxOldHadPath = 1: KOLUX_PATH_ADD with $INSTDIR
+    pointed at the old folder; KOLUX_PATH_ADD saves R0-R9 and adds only when missing); comments reworded (cause not
+    established; Restart Manager by full path, never by name; the retry note quotes runs (3)-4 and (3)-14); stop message
+    "${PRODUCTNAME} could not replace ${PRODUCTNAME} RS, so nothing was changed. Open ${PRODUCTNAME} RS again; its next
+    update check offers this update again." (MB_OK, /SD IDOK); P3-1 the forced RmShutdown only while the old exe is
+    there, with the program count in its detail line.
+  run (4)-Q found: after Abort, /P left the "Installation Aborted / Setup was not completed successfully." page open
+    (Back/Next/Cancel) 26 s after OK was pressed. Abort is now SetErrorLevel 2 + Quit (the template's own WebView2-failure
+    exit): the installer ends at once with exit 2.
+  run (4)-R found: after RmShutdown(force) returns 0 the same Restart Manager session still lists the ended process
+    (status 2), so the wait ran its full 60 s: "before: getlist 0 need 1 [pid 24272 type 0 status 1 ... name 'Kolux Proof
+    RS'] | RmShutdown(force) 0 after 143 ms | after: getlist 0 need 1 [pid 24272 type 0 status 2 ...]", scratch processes
+    after: []. The leftover was the old app's kolux-rs.exe child that outlives a quit. This was the 60-74 s update delay of
+    runs (3) and the 71 s C/C2 runs. The wait now ends when the forced shutdown returns 0.
+  build: node scripts/prove/update-rig.mjs build proof 0.1.1 -> exit 0, "20:06:05 build: G:\Temp\ready-identity-rig\build\
+    Kolux Proof_0.1.1_x64-setup.exe (12355217 bytes), signed; version resource says 0.1.1"; vitest
+    scripts/installer-notice.test.mjs "Test Files 1 passed (1) / Tests 3 passed (3)".
+  C (stand-in exits 1) 20:06-20:07: "C installer exit 2"; C1-C5 PASS; with the 1882-char user PATH the old folder gains
+    kolux-path-pending.txt (the PATH hand-off file), everything else byte-identical.
+  C2 (stand-in runs <old app> --uninstall-path, then exits 2) 20:07: "C2 installer exit 2 after 16916 ms" (71165 ms before
+    the wait fix); stand-in 3 runs, the first "--uninstall-path exit 0; exiting 2"; scratch PATH [install\bin] -> [];
+    C2-1..C2-5 PASS; "C2-6 old bin back on the user PATH: PASS added by the old app when it opened (hand-off file now
+    false)".
+  Q (/P, stand-in fails, OK clicked on the hidden desktop): box text as above; "Q box answered at +6252 ms; installer
+    ended"; "Q installer exit 2"; "Q +7515 ms windows []"; Q1, Q2 PASS. "result: 14/14 passed".
+  U x2 (real updater, /P): new page {"ok":"0.1.1"} both runs; U1-U7, U8b, U9 PASS; U3 shortcuts PASS (scratch-home
+    Start-menu Kolux Proof.lnk and G:\Desktop\Kolux Proof.lnk); old app ended -> new page 9 s (20:08:33 -> 20:08:42) and
+    9 s (20:09:07 -> 20:09:16), was 74 s and 13 s; U8 FAIL as before (state.db-shm only).
+  watcher: every run "visible proof windows: 0", "proof programs that held the keyboard focus: 0" (polls 728, 233, 237).
+  harness: its "installer ran N ms" figure stops early (it waits on *Kolux Proof_0.1.1*, the updater runs
+    tmp\Kolux Proof RS-0.1.1-updater-*\Kolux Proof RS-0.1.1-installer.exe); the old-app-ended -> new-page times above are
+    the measure to use.
+  clean: node scripts/prove/update-rig.mjs clean -> exit 0; the scratch-home new install uninstalled with its own
+    uninstaller on the hidden desktop (exit 0), its folder (uninstall.exe only) removed; HKCU\Software\txaisxiong\Kolux
+    Proof and \Kolux Proof RS (both pointing into the rig) removed; standin.log removed. verify-clean.ps1: Apps entries
+    Kolux* = "Kolux RS" only; remembered folder "Kolux RS" only; no PATH entry with the rig (user PATH 1843 chars,
+    Kolux RS\bin kept); no Kolux Proof*.lnk; no process under the rig; rig and scratch-home install folders gone; Txais's
+    kolux-rs.exe pids 20892 and 20840 (started 06:37:03) running.
+  open: the U8 -shm touch; KOLUX_PATH_APP_REMOVE's CheckIfAppIsRunning with a relative path (also in v0.1.10); not
+    committed.

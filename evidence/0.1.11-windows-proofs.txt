@@ -1,0 +1,19 @@
+0.1.11 Windows-only proofs: silent smoke (checklist item 3)
+date: 2026-11-09
+tree: scratch/0.1.11-proofs f28c3fd1 (eef0cd34 + SCRATCH T-790-tauri-conf.patch)
+command (whole smoke on a private desktop "kolux-smoke", nothing on Txais's screen):
+  hidden-desktop.ps1 -Desktop kolux-smoke -Wait -> cmd /c node scripts/evidence/smoke.mjs --port 1461 --cdp 9261
+    --identifier com.txaisxiong.kolux.proofs011.smoke --temp G:/Temp/kolux-proofs011-smoke --timeout 50
+  watched by scripts/prove/visible-windows.ps1 on the default desktop
+result: exit 0 after 405 s; "smoke: 4/4 flows passed (flow 5 report-only until T-184 is ticked in PLAN.md: FAIL)"
+  flow 1 PASS  grid 4 -> 6, all 3 shells kept their PTY (marker echoed)
+  flow 2 PASS  Mod+S wrote notes.txt (42 bytes)
+  flow 3 PASS  Explorer Delete asked first ("Move notes.txt to the trash?"); after Cancel the file is byte-identical
+  flow 4 PASS  Claude pane dot "status: Working"; hook went into the scratch claude-config only
+  flow 5 FAIL [report-only, T-184 not ticked]  settings.json not byte-identical after relaunch (2205 -> 2064, key savedLayout);
+               same report-only failure as the 0.1.10 smoke (smoke-38958f00.txt: 2157 -> 2020, savedLayout). Not a 0.1.11 regression.
+               quit survivors 0; storm 10 relaunches, stalled 0, survivors 0
+watcher: 3181 polls of the default desktop; visible proof windows 0; focus takes 0
+full output: evidence/smoke-f28c3fd1.txt
+earlier attempt: rustc crashed (0xc0000409 STATUS_STACK_BUFFER_OVERRUN) under parallel load while compiling; environmental,
+  re-run alone built in 1m55s and is the run above. That attempt's watcher also showed 0 visible windows, 0 focus takes.

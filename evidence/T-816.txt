@@ -1,0 +1,84 @@
+T-816 no-popup check, Windows run 2026-11-09, tree scratch/0.1.11-proofs f28c3fd1
+build: (src-tauri) TAURI_CONFIG={"identifier":"com.txaisxiong.kolux-rs.ready-nowin","build":{"devUrl":"http://localhost:1447"}} cargo build --bin kolux -> exit 0; exe copied to G:\Temp\ready-nowin-exe\kolux.exe
+command: node scripts/prove/live-T-816-nowin.mjs --exe G:/Temp/ready-nowin-exe/kolux.exe --label after
+  (itself wrapped in hidden-desktop.ps1 -Desktop kolux-t816, watched by visible-windows.ps1 on the default desktop)
+  -> exit 0 after 90 s; default-desktop watcher: 701 polls, visible proof windows 0, focus takes 0
+counting scope: the probe counts only windows owned by its own process tree on its private desktop, so Txais's
+  running Kolux RS (C:\Users\XiongT\AppData\Local\Kolux RS\kolux-rs.exe) cannot be in the count.
+result: VISIBLE CONSOLE WINDOWS FROM KOLUX CHILDREN: 0 (162 child processes, 29 windows seen)
+gap: step "start an agent seat" FAILED in the script: it clicks button.newtab, which no longer exists anywhere in src/
+  (the seat now shows featured-agent buttons). Deterministic selector drift, not load. So agent-seat launch was NOT
+  covered by this run; grok.exe/powershell.exe under kolux.exe were seen (agent detection), with no visible console.
+  Covered: start-up, add project, plain terminal + typed command, font list, resource sample.
+  Not covered (as the checklist already says): search, reveal/open, git panels, Codex usage, automations.
+----- script output -----
+
+=== T-816 window probe (after) ===
+exe: G:/Temp/ready-nowin-exe/kolux.exe
+ok   page up
+ok   add project by path
+ok   start a plain terminal: seat buttons: Claude Code, Codex, OpenCode, Grok, Terminal, Other…
+ok   type a command in the terminal
+FAIL start an agent seat: nothing to click at button.newtab
+ok   font list: 261 families
+ok   resource sample
+probe done: 489 samples, 162 child processes, 29 windows, 0 visible console windows
+samples: 489 over 25 s (every 20 ms); child processes seen: 162; windows seen: 29
+VISIBLE CONSOLE WINDOWS FROM KOLUX CHILDREN: 0
+child processes by program:
+   56 x conhost.exe (from git.exe)
+   50 x git.exe (from kolux.exe)
+    6 x bash.exe (from bash.exe)
+    5 x msedgewebview2.exe (from msedgewebview2.exe)
+    4 x gh.exe (from kolux.exe)
+    4 x conhost.exe (from gh.exe)
+    4 x sleep.exe (from ?)
+    2 x NETSTAT.EXE (from kolux.exe)
+    2 x conhost.exe (from NETSTAT.EXE)
+    2 x conhost.exe (from powershell.exe)
+    2 x powershell.exe (from kolux.exe)
+    2 x sleep.exe (from bash.exe)
+    1 x msedgewebview2.exe (from kolux.exe)
+    1 x icacls.exe (from kolux.exe)
+    1 x conhost.exe (from icacls.exe)
+    1 x conhost.exe (from bash.exe)
+    1 x timeout.exe (from ?)
+    1 x timeout.exe (from timeout.exe)
+    1 x bash.exe (from ?)
+    1 x cmd.exe (from kolux.exe)
+    1 x conhost.exe (from cmd.exe)
+    1 x grok.exe (from kolux.exe)
+    1 x powershell.exe (from cmd.exe)
+    1 x conhost.exe (from grok.exe)
+    1 x powershell.exe (from grok.exe)
+    1 x cmd.exe (from powershell.exe)
+    1 x conhost.exe (from kolux.exe)
+    1 x node.exe (from powershell.exe)
+    1 x git.exe (from node.exe)
+    1 x cscript.exe (from node.exe)
+    1 x conhost.exe (from cscript.exe)
+    1 x git.exe (from powershell.exe)
+    1 x git-remote-https.exe (from git.exe)
+    1 x git.exe (from git.exe)
+    1 x grep.exe (from bash.exe)
+window classes seen:
+    7 x IME
+    2 x Chrome_WidgetWin_0
+    2 x CiceroUIWndFrame
+    2 x MSCTFIME UI
+    1 x Tauri Window
+    1 x Tao Thread Event Target (visible)
+    1 x crashpad_SessionEndWatcher
+    1 x Base_PowerMessageWindow
+    1 x CicLoaderWndClass
+    1 x Touch Tooltip Window
+    1 x UAC_InputIndicatorOverlayWnd (visible)
+    1 x UAC Input Indicator
+    1 x UAC Input Indicator (visible)
+    1 x Chrome_WidgetWin_1
+    1 x tray_icon_app
+    1 x Tauri Window (visible)
+    1 x WorkerW
+    1 x PseudoConsoleWindow
+    1 x WSH-Timer
+    1 x GDI+ Hook Window Class
