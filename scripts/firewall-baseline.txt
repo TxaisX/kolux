@@ -2,9 +2,16 @@
 # One line per hit: "file [rule] match". scripts/firewall-check.ps1 -Baseline fails only on hits not listed here.
 # Regenerate with -WriteBaseline only in a coordinator-reviewed spec commit; never to let a builder hit pass.
 # Written 2026-10-13: 53 hit(s).
+# Added 2026-11-13: six COMPAT.md hits from the DT-C275 retirement note (Kolux's own retired command and card names, kept as history).
 COMPAT.md [inline-code] contextCap200k
 COMPAT.md [inline-code] hooks.json
 COMPAT.md [inline-code] hooks/list
+COMPAT.md [inline-code] BROW-*
+COMPAT.md [inline-code] browser.*
+COMPAT.md [inline-code] browser_export_pdf
+COMPAT.md [inline-code] browser_pick_pdf_path
+COMPAT.md [inline-code] browser_preview
+COMPAT.md [inline-code] tower_window_open
 spec/01-projects-worktrees.md [inline-code] evidence/T-013-fix-b-header.png
 spec/03-terminals-panes.md [inline-code] evidence/T-010-fix-paste.png
 spec/03-terminals-panes.md [inline-code] src/terminal/paste.test.ts
