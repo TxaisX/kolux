@@ -146,7 +146,7 @@ function pathOf(calls) {
 // The pane key a kept-warm shell's hooks carry until a pane takes it (src-tauri hooks.rs WARM_PANE, u32::MAX).
 const WARM_PANE = 4294967295;
 // What the sample pane's shell prints: its hooks identity, decoded (PowerShell; the runner's default shell).
-const SHOW_IDENTITY = "[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:KOLUX_HOOK_IDENTITY))";
+const SHOW_IDENTITY = "[Text.UTF8Encoding]::new().GetString([Convert]::FromBase64String($env:KOLUX_HOOK_IDENTITY))";
 const SAMPLE_INDEX = `[...document.querySelectorAll(${JSON.stringify(TERM)})].filter((e) => e.offsetParent !== null).indexOf(document.querySelector('[data-warm-sample="1"]'))`;
 // The app's own Resource Manager figures (resources.rs): each session's process tree, the app's own tree.
 const RESOURCES = `window.__TAURI_INTERNALS__.invoke("resources").then((r) => JSON.stringify({ app: r.app.bytes, sessions: r.sessions.map((s) => ({ id: s.id, pid: s.pid, bytes: s.bytes, committed: s.committed, processes: s.processes })) }))`;
