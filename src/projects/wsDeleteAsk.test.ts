@@ -275,9 +275,11 @@ test("Remove project asks about every editor tab it closes, hidden workspaces in
   expect(guardAsk(c)).toBeDefined(); // the unsaved question comes before anything is removed
   expect(guardAsk(c).textContent).toContain("README.md"); // the project's own folder is asked about
   expect(guardAsk(c).textContent).toContain("c.ts"); // and the workspaces inside it, which close too
-  expect(guardAsk(c).textContent).toContain("e.ts"); // a hidden workspace is not listed, but its tabs close too
-  expect(guardAsk(c).textContent).not.toContain("d.ts"); // one outside it stays open, so it is not asked about
+  // P2-2: the project's one grid holds its worktrees' sessions, so removing it closes them too, hidden ones and ones outside its folder included
+  expect(guardAsk(c).textContent).toContain("d.ts"); // a worktree outside the folder: its tab closes, so it is asked about
+  expect(guardAsk(c).textContent).toContain("These 4 files"); // README.md, c.ts, d.ts and the hidden workspace's e.ts
   expect(projAsk(c).textContent).toContain("editor tabs close"); // and the question says the tabs close too
+  expect(projAsk(c).textContent).toContain("the ones in its other worktrees too"); // worktree sessions included
   expect(h.calls).not.toContain("project_remove");
   await click(c, byText(guardAsk(c), "button", "Cancel")[0]);
   await settle(80);

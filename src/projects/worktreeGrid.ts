@@ -2,7 +2,7 @@
 // grid. This is the pure part: which project folder a worktree's grid is, the colour that tells one worktree's
 // sessions from another's, the label the pane header wears, and where a new session opens. No React, no invoke.
 import { TAB_COLORS } from "../terminal/tabColor";
-import { dirKey, sameDir } from "../workspaces";
+import { dirKey, sameDir, viewOf } from "../workspaces";
 import { folderName } from "./model";
 
 /** Each worktree folder (the project's own folder left out) and the project folder whose grid shows it. */
@@ -96,3 +96,57 @@ export const startDirOf = (root: string | null): string | null => (root === null
 
 /** Forget every pick (a test, a window reset). */
 export const clearStartDirs = (): void => starts.clear();
+
+
+/** A removed worktree is no longer a place new sessions can start: a pick naming it (or a folder inside it) is dropped. */
+export function forgetStartDirs(removed: string[]): void {
+  for (const [root, dir] of [...starts]) if (removed.some((r) => dirKey(dir) === dirKey(r) || dirKey(dir).startsWith(dirKey(r) + "\\"))) starts.delete(root);
+}
+
+/** The folder the focused pane works in, for what acts on files and Git (Explorer, quick open, changes, Checks, a new
+ *  preview or check pane): its own folder, which is its worktree when it runs in one. The grid's folder (`activeDir`)
+ *  only says which panes are shown, so with the project's one grid it would always be the main checkout. */
+export function focusDirOf(panes: { key: number; cwd: string | null; view?: string | null }[], focused: number, activeDir: string | null): string | null {
+  const p = panes.find((x) => x.key === focused && sameDir(viewOf(x), activeDir));
+  return p?.cwd ?? activeDir;
+}
+
+// What the window knows of which worktree belongs to which project, kept so that it does not depend on the sidebar being
+// open: written to the settings, read at start, and only ever added to by a scan (an empty or failed scan removes nothing).
+export const GRID_MAP_SETTING = "worktreeGrids";
+export type GridMap = { roots: string[]; worktrees: Record<string, string> };
+export const EMPTY_GRID_MAP: GridMap = { roots: [], worktrees: {} };
+
+/** The saved map, or an empty one when nothing (or something unusable) was saved. */
+export function readGridMap(settings: Record<string, unknown>): GridMap {
+  const v = settings[GRID_MAP_SETTING] as Partial<GridMap> | undefined;
+  if (!v || typeof v !== "object") return EMPTY_GRID_MAP;
+  const roots = Array.isArray(v.roots) ? v.roots.filter((r): r is string => typeof r === "string") : [];
+  const worktrees: Record<string, string> = {};
+  if (v.worktrees && typeof v.worktrees === "object") for (const [d, r] of Object.entries(v.worktrees)) if (typeof r === "string") worktrees[d] = r;
+  return { roots, worktrees };
+}
+
+export const sameGridMap = (a: GridMap, b: GridMap): boolean => JSON.stringify(a) === JSON.stringify(b);
+
+/** The known map plus what the project list now says. A project list that is empty (not loaded yet, or a failed scan)
+ *  changes nothing; a worktree is forgotten only when its project is no longer in a list that has projects. */
+export function mergeGridMap(prev: GridMap, projects: { id: string; path: string }[], owner: Record<string, string>): GridMap {
+  const roots = projects.length > 0 ? projects.map((p) => p.path) : prev.roots;
+  const keep = new Set(roots.map(dirKey));
+  const found = new Map<string, [string, string]>();
+  for (const [d, r] of Object.entries(prev.worktrees)) if (projects.length === 0 || keep.has(dirKey(r))) found.set(dirKey(d), [d, r]);
+  for (const [d, r] of Object.entries(gridRootsOf(projects, owner))) found.set(dirKey(d), [d, r]);
+  const worktrees: Record<string, string> = {};
+  for (const [d, r] of [...found.values()].sort(([x], [y]) => (dirKey(x) < dirKey(y) ? -1 : 1))) worktrees[d] = r;
+  const next = { roots, worktrees };
+  return sameGridMap(prev, next) ? prev : next;
+}
+
+/** Two maps as one: every project folder and worktree either knows. */
+export function unionGridMaps(a: GridMap, b: GridMap): GridMap {
+  const roots = [...new Set([...a.roots, ...b.roots])];
+  const worktrees = { ...a.worktrees, ...b.worktrees };
+  const next = { roots, worktrees };
+  return sameGridMap(a, next) ? a : next;
+}

@@ -42,7 +42,9 @@ import { pickWithNotice } from "../switcher/accounts";
 import type { Gap } from "../terminal/dividers";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { gridOf, setGridRoots } from "../workspaces";
-import { gridRootsOf } from "../projects/worktreeGrid";
+import { EMPTY_GRID_MAP, GRID_MAP_SETTING, focusDirOf, mergeGridMap, readGridMap, sameGridMap, unionGridMaps, type GridMap } from "../projects/worktreeGrid";
+import { scanGridOwners } from "../projects/gridScan";
+import type { Project } from "../projects/model";
 import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
 
 /** The settings key that remembers whether the left sidebar is shown. */
@@ -177,9 +179,40 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const defaultId = defaultAgentId(settings);
   const installedIds = agents.filter((a) => a.installed).map((a) => a.id);
   const [renameRequest, setRenameRequest] = useState(0); // T-611: workspace.rename (PROJ-059) asks the sidebar to rename the workspace in front
+  // P1-2: which worktree belongs to which project is kept in the settings and read here, before the sidebar (which is not
+  // always open, and may find nothing) says anything; a scan only adds to it. The grid a pane is shown in follows from it.
+  const gridMap = useRef<GridMap>(EMPTY_GRID_MAP);
+  const gridSaved = useRef<unknown>(undefined);
+  if (gridSaved.current !== settings[GRID_MAP_SETTING]) {
+    gridSaved.current = settings[GRID_MAP_SETTING];
+    gridMap.current = unionGridMaps(gridMap.current, readGridMap(settings));
+  }
+  setGridRoots(gridMap.current.worktrees, gridMap.current.roots);
   const { projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(gridOf(activeRaw));
-  setGridRoots(gridRootsOf(projects, owner)); // before anything below draws a pane's grid (module state, same answer for the same lists)
+  const [startScan, setStartScan] = useState<{ projects: Project[]; owner: Record<string, string> } | null>(null);
+  const gridIn = useRef<unknown[]>([]);
+  if (gridIn.current[0] !== projects || gridIn.current[1] !== owner || gridIn.current[2] !== startScan) {
+    gridIn.current = [projects, owner, startScan];
+    let next = mergeGridMap(gridMap.current, projects, owner);
+    if (startScan) next = mergeGridMap(next, startScan.projects, startScan.owner);
+    gridMap.current = next;
+    setGridRoots(next.worktrees, next.roots); // before anything below draws a pane's grid (module state, same answer for the same lists)
+  }
   const activeDir = gridOf(activeRaw);
+  const workDir = focusDirOf(panes, focused, activeDir); // P1-1: the folder the focused pane works in; activeDir only says which grid is shown
+  useEffect(() => {
+    if (!settingsRead || (sidebarOpen && readGridMap(settings).roots.length > 0)) return;
+    let live = true;
+    scanGridOwners().then((r) => live && setStartScan(r), () => {});
+    return () => void (live = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsRead]);
+  useEffect(() => {
+    if (!settingsRead || sameGridMap(gridMap.current, readGridMap(settings))) return;
+    const map = gridMap.current;
+    setSettings((s) => ({ ...s, [GRID_MAP_SETTING]: map }));
+    void saveChanged({}, { [GRID_MAP_SETTING]: map }).catch(() => {});
+  }, [settingsRead, settings, projects, owner, startScan]);
   const [worktreeMenu, setWorktreeMenu] = useState<{ path: string; x: number; y: number; n: number } | null>(null); // the pane-header worktree chip asks the sidebar for that worktree's menu
   const [stacked, setStacked] = useState<Record<string, boolean>>(layout?.stacked ?? {}); // TERM-006: a single pane split down makes a stacked pair
   // C26-R3-01: a start whose settings answered after the 1.5 s race used to draw a second App (a changed key), and
@@ -203,7 +236,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
     setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
-    setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir,
+    setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, workDir,
     worktreeMenu, setWorktreeMenu, setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,
     hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, cliFailed, asking, setAsking, pinned, setPinned,

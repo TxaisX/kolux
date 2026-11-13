@@ -732,7 +732,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // The folders asked about are the open panes' own, not the sidebar's rows: a worktree hidden by hand
   // or made by an automation is not listed, but its panes close all the same.
   const removeProject = async (p: Project) => {
-    const closed = openDirs.filter((d) => underDir(d, p.path));
+    // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
+    const folders = [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
+    const closed = openDirs.filter((d) => folders.some((r) => underDir(d, r)));
     if (!(await onAskUnsaved(closed))) return;
     try {
       const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });
@@ -2322,7 +2324,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {dropProject === p.id && (
             <Ask
               title="Remove project"
-              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</>}
+              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</>}
               confirm={`Remove ${p.name}`}
               cancel="Keep it"
               onConfirm={() => removeProject(p)}
