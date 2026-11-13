@@ -233,7 +233,8 @@ function handler(d: Found): string {
 function focuses(d: Found): boolean {
   if (/autoFocus/.test(d.tag) || FOCUS.test(d.body.slice(d.tag.length))) return true;
   // r.current?.focus(), or const el = r.current; ... el.focus()
-  return [...d.body.matchAll(/\bref=\{(\w+)\}/g)].some(([, r]) => new RegExp(`\\b${r}\\.current\\??\\.focus\\(|= ${r}\\.current;[^]{0,200}?\\.focus\\(`).test(d.src));
+  // (a src/ui Select names its control with controlRef)
+  return [...d.body.matchAll(/\b(?:ref|controlRef)=\{(\w+)\}/g)].some(([, r]) => new RegExp(`\\b${r}\\.current\\??\\.focus\\(|= ${r}\\.current;[^]{0,200}?\\.focus\\(`).test(d.src));
 }
 function closes(d: Found, how: string, all: Found[]): boolean {
   const ref = /\bref=\{(\w+)\}/.exec(d.tag)?.[1];

@@ -1,6 +1,6 @@
-// Keyboard focus for the chrome's popups. A dialog (useDialogFocus) takes focus when it opens, keeps Tab and
-// Shift+Tab inside, closes on Escape from anywhere and hands focus back to where it came from. A menu
-// (useMenuFocus) does the same without the Tab trap and adds the arrow keys. Escape is caught on the window in the
+// Keyboard focus for the hand-rolled popups that are still here (most popups are src/ui wrappers now): trapTab keeps
+// Tab and Shift+Tab inside a dialog that handles its own keys, and a menu (useMenuFocus) takes focus on its first row,
+// answers the arrow keys, closes on Escape from anywhere and hands focus back to where it came from. Escape is caught on the window in the
 // capture phase and stopped there (switcher/accounts watchEscape), because Escape is also the key that interrupts
 // an agent's turn in the terminal underneath. A popup opened over another one takes those keys from it while it is
 // up (modalStack): only the top dialog wraps Tab and answers Escape.
@@ -80,11 +80,6 @@ function wrapTab(box: Box, e: Pick<KeyboardEvent, "key" | "shiftKey" | "preventD
  * on its text keeps focus in it and the key still reaches it. */
 export const trapTab = (e: ReactKeyboardEvent<Element>) => e.defaultPrevented || wrapTab(e.currentTarget, e);
 
-/** A modal dialog's keyboard: see the file header. Tab and Shift+Tab wrap inside `box`. Returns the stop. */
-export function trapDialog(box: Box, onClose: () => void, initial?: () => HTMLElement | null): () => void {
-  return openPopup(box, onClose, initial ?? (() => null), (e) => wrapTab(box, e));
-}
-
 /** The height a menu may take: the room from its top to the window's bottom, or from the window's top to its bottom when it opens upward. */
 export const menuRoom = (r: { top: number; bottom: number }, windowHeight: number, upward: boolean): number =>
   Math.max(80, (upward ? r.bottom : windowHeight - r.top) - 8);
@@ -115,16 +110,6 @@ export function trapMenu(box: Box, onClose: () => void): () => void {
     all[to].focus();
   };
   return openPopup(box, onClose, () => rows()[0] ?? null, onArrow);
-}
-
-/** Hook form of trapDialog for the dialog drawn into `box` while `open` (default: always, for a dialog that is only mounted while shown).
- * `initial` picks the control that gets focus (default: the first focusable). */
-export function useDialogFocus(box: RefObject<HTMLElement | null>, onClose: () => void, initial?: () => HTMLElement | null, open = true) {
-  const close = useRef(onClose);
-  close.current = onClose;
-  const pick = useRef(initial);
-  pick.current = initial;
-  useEffect(() => (open && box.current ? trapDialog(box.current, () => close.current(), () => pick.current?.() ?? null) : undefined), [box, open]);
 }
 
 /** Hook form of trapMenu for the menu drawn into `box` while `open`. */
