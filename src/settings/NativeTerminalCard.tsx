@@ -2,7 +2,8 @@
 // Off by default and Windows only. The switch saves `terminalNative`, which src/terminal/inputPrefs.ts
 // reads and TerminalPane hands to the engine; panes opened before the change keep xterm. When the
 // engine is missing the card says why, read from the same command the pane calls, so the switch is
-// never on with nothing behind it.
+// never on with nothing behind it. The kept-warm shell switch sits below it on every platform: off by
+// default, it saves `terminalWarmShell`, and its label says what it costs.
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Platform } from "../keys/actions";
@@ -14,7 +15,8 @@ type Save = (patch: Record<string, unknown>) => void;
 type Engine = { ok: boolean; text: string };
 
 export default function NativeTerminalCard({ settings, platform, onSave }: { settings: Record<string, unknown>; platform: Platform; onSave: Save }) {
-  const on = readInput(settings, platform).native;
+  const prefs = readInput(settings, platform);
+  const on = prefs.native;
   const [engine, setEngine] = useState<Engine | null>(null);
   useEffect(() => {
     if (platform !== "win32") return;
@@ -27,8 +29,19 @@ export default function NativeTerminalCard({ settings, platform, onSave }: { set
       alive = false;
     };
   }, [platform]);
-  if (platform !== "win32") return null;
+  const warm = (
+    <section className="conn-card" data-section="warm-shell">
+      <h2 className="conn-name">Faster new terminals</h2>
+      <label className="conn-switch">
+        <input type="checkbox" role="switch" checked={prefs.warmShell} onChange={(e) => onSave({ [INPUT_FIELDS.warmShell]: e.target.checked })} />
+        Keep a shell ready per folder: new terminals open in about 0.3 s; each open folder keeps one more shell running
+      </label>
+      <p className="conn-detail">Plain shell terminals only; agents and chosen shells start as usual. Closing a folder ends its ready shell, and so does switching this off.</p>
+    </section>
+  );
+  if (platform !== "win32") return warm;
   return (
+    <>
     <section className="conn-card" data-section="native">
       <h2 className="conn-name">Terminal drawing engine</h2>
       <label className="conn-switch">
@@ -39,5 +52,7 @@ export default function NativeTerminalCard({ settings, platform, onSave }: { set
       {engine && !engine.ok && <p className="conn-detail">This computer does not have the engine, so panes keep drawing the usual way: {engine.text}</p>}
       {engine?.ok && on && <p className="conn-detail">Engine found at {engine.text}.</p>}
     </section>
+    {warm}
+    </>
   );
 }
