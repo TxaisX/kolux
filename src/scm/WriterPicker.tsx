@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { WRITER_COMMAND_KEY, WRITER_EFFORT_KEY, WRITER_KEY, writerName, writerOf } from "./generate";
 import { listFor, rememberPatch, rememberedLists, sourceNote } from "../settings/writerModels";
 import { agentChoices, agentPatch, effortsFor, modelMode, modelPatch, pickerHint, type WriterOptions } from "./writerPick";
+import { Select } from "../ui/Select";
 
 type Props = { settings: Record<string, unknown>; save: (patch: Record<string, unknown>) => unknown };
 
@@ -47,16 +48,12 @@ export default function WriterPicker({ settings, save }: Props) {
     <>
       <div className="look-select">
         <span>Written by</span>
-        <select aria-label="commit message writer" className="field" value={stored === "custom" || stored === "off" ? String(stored) : (agent ?? "claude")} onChange={(e) => void save(e.target.value === "custom" || e.target.value === "off" ? { [WRITER_KEY]: e.target.value } : agentPatch(e.target.value))}>
-          {agentChoices(installed, agent ?? "claude").map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-              {a.installed ? "" : " (not installed)"}
-            </option>
-          ))}
-          <option value="custom">Custom command</option>
-          <option value="off">Off: no generate button</option>
-        </select>
+        <Select
+          label="commit message writer"
+          value={stored === "custom" || stored === "off" ? String(stored) : (agent ?? "claude")}
+          onChange={(v) => void save(v === "custom" || v === "off" ? { [WRITER_KEY]: v } : agentPatch(v))}
+          options={[...agentChoices(installed, agent ?? "claude").map((a) => ({ value: a.id, label: `${a.name}${a.installed ? "" : " (not installed)"}` })), { value: "custom", label: "Custom command" }, { value: "off", label: "Off: no generate button" }]}
+        />
       </div>
       {agent !== null && (
         <>
