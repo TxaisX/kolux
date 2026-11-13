@@ -1,0 +1,226 @@
+# TEMPORARY (PR #253), deleted before the PR is finished. On GitHub's windows-latest runner:
+# counts console-host (conhost.exe) starts during one full `cargo test` on wave-1 and on this
+# branch, and re-runs each test that failed there alone, on both commits, to tell a flaky or
+# pre-existing failure from one this branch caused. Read-only: no secrets, nothing published.
+name: tmp console hosts
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: Console hosts on ${{ matrix.side }}
+    runs-on: windows-latest
+    timeout-minutes: 170
+    strategy:
+      fail-fast: false
+      matrix:
+        side: [wave-1, branch]
+    env:
+      SIDE: ${{ matrix.side }}
+      WAVE1: 82f3643e7635cece4f9220c49b7d0101174cfa67
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # Tests to repeat even when they pass in the full run: "<cargo target args>|<test name>;...".
+      EXTRA_TESTS: ""
+      ALONE_REPS: "20"
+      FULL_REPS: "3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check out the measured commit
+        shell: pwsh
+        run: |
+          $sha = if ($env:SIDE -eq 'wave-1') { $env:WAVE1 } else { $env:HEAD_SHA }
+          git checkout --detach --force $sha
+          git log -1 --format='MEASURED COMMIT %H %s'
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 12
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: pnpm install --frozen-lockfile
+      - name: Build the tests
+        working-directory: src-tauri
+        shell: pwsh
+        run: |
+          . ../scripts/test-env.ps1
+          cargo test --locked --no-run
+      - name: Full cargo test with a conhost.exe watch
+        timeout-minutes: 60
+        working-directory: src-tauri
+        shell: pwsh
+        run: |
+          $tmp = $env:RUNNER_TEMP
+          $csv = Join-Path $tmp 'starts.csv'
+          $stop = Join-Path $tmp 'watch.stop'
+          $ready = Join-Path $tmp 'watch.ready'
+          $watcher = Join-Path $tmp 'watch.ps1'
+          $log = Join-Path $tmp 'full-run.log'
+          # The watcher runs in its own pwsh and writes every process start (WMI Win32_ProcessStartTrace,
+          # kernel trace, so short-lived processes are not missed) with its parent pid to a CSV.
+          @'
+          param([string]$Out, [string]$Stop, [string]$Ready)
+          Register-CimIndicationEvent -Query 'SELECT * FROM Win32_ProcessStartTrace' -SourceIdentifier kstart | Out-Null
+          $w = [System.IO.StreamWriter]::new($Out)
+          $w.WriteLine('ticks,name,pid,ppid')
+          Set-Content -Path $Ready -Value 'ready'
+          $until = $null
+          while ($true) {
+            $null = Wait-Event -SourceIdentifier kstart -Timeout 1
+            foreach ($e in @(Get-Event -SourceIdentifier kstart -ErrorAction SilentlyContinue)) {
+              $n = $e.SourceEventArgs.NewEvent
+              $t = $n.TIME_CREATED
+              if (-not $t) { $t = $e.TimeGenerated.ToUniversalTime().ToFileTimeUtc() }
+              $w.WriteLine(('{0},{1},{2},{3}' -f $t, $n.ProcessName, $n.ProcessID, $n.ParentProcessID))
+              Remove-Event -EventIdentifier $e.EventIdentifier
+            }
+            $w.Flush()
+            if (-not $until -and (Test-Path $Stop)) { $until = (Get-Date).AddSeconds(10) }
+            if ($until -and (Get-Date) -gt $until) { break }
+          }
+          $w.Close()
+          '@ | Set-Content -Path $watcher
+          # Cross-check from the kernel's own record: Security event 4688 (process creation).
+          auditpol /set /subcategory:"{0CCE922B-69AE-11D9-BED3-505054503030}" /success:enable
+          wevtutil sl Security /ms:1073741824
+          Add-Type -Namespace K -Name Con -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint GetConsoleProcessList(uint[] ids, uint n);'
+          $ids = [uint32[]]::new(64)
+          "CONSOLE this step shares a console with $([K.Con]::GetConsoleProcessList($ids, 64)) process(es) (0 = no console)"
+          $wp = Start-Process pwsh -ArgumentList '-NoProfile', '-File', $watcher, '-Out', $csv, '-Stop', $stop, '-Ready', $ready -PassThru -WindowStyle Hidden
+          $deadline = (Get-Date).AddSeconds(90)
+          while (-not (Test-Path $ready) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 200 }
+          if (-not (Test-Path $ready)) { 'RESULT the WMI watcher did not start; counts below are empty' }
+          Start-Sleep -Seconds 5
+          $i0 = [DateTime]::UtcNow; Start-Sleep -Seconds 60; $i1 = [DateTime]::UtcNow
+          . ../scripts/test-env.ps1
+          $t0 = [DateTime]::UtcNow
+          cargo test --locked --no-fail-fast 2>&1 | Tee-Object -FilePath $log
+          $rc = $LASTEXITCODE
+          $t1 = [DateTime]::UtcNow
+          New-Item -ItemType File -Path $stop | Out-Null
+          $null = $wp.WaitForExit(300000)
+          $rows = if (Test-Path $csv) { @(Import-Csv $csv) } else { @() }
+          $I0 = [uint64]$i0.ToFileTimeUtc(); $I1 = [uint64]$i1.ToFileTimeUtc(); $T0 = [uint64]$t0.ToFileTimeUtc(); $T1 = [uint64]$t1.ToFileTimeUtc()
+          $idle = @($rows | Where-Object { $_.name -ieq 'conhost.exe' -and [uint64]$_.ticks -ge $I0 -and [uint64]$_.ticks -lt $I1 }).Count
+          $win = $rows | Where-Object { [uint64]$_.ticks -ge $T0 -and [uint64]$_.ticks -le $T1 } | Sort-Object { [uint64]$_.ticks }
+          # Descendants of this step's shell (cargo, the test binaries and every child they start), in
+          # start order; a pid reused by an unrelated process leaves the tree.
+          $tree = [System.Collections.Generic.HashSet[int]]::new(); [void]$tree.Add($PID)
+          $names = @{}
+          $by = @{}
+          $all = 0; $allT = 0; $con = 0; $conT = 0; $git = 0; $gitT = 0
+          foreach ($r in $win) {
+            $p = [int]$r.pid; $pp = [int]$r.ppid
+            $in = $tree.Contains($pp)
+            if ($in) { [void]$tree.Add($p) } else { [void]$tree.Remove($p) }
+            $all++; if ($in) { $allT++ }
+            if ($r.name -ieq 'git.exe') { $git++; if ($in) { $gitT++ } }
+            if ($r.name -ieq 'conhost.exe') {
+              $con++
+              if ($in) {
+                $conT++
+                $parent = if ($names.ContainsKey($pp)) { $names[$pp] } else { 'step shell' }
+                # WMI gives the kernel's 15-character image name; a test binary's hash suffix is cut short.
+                $parent = $parent -replace '-[0-9a-f]+(\.exe)?$', '-<hash>'
+                $by[$parent] = 1 + [int]$by[$parent]
+              }
+            }
+            $names[$p] = $r.name
+          }
+          try {
+            $from = $t0.ToString('yyyy-MM-ddTHH:mm:ss.fffZ'); $to = $t1.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+            $xp = "*[System[(EventID=4688) and TimeCreated[@SystemTime>='$from' and @SystemTime<='$to']]]"
+            $ev = @(Get-WinEvent -LogName Security -FilterXPath $xp -ErrorAction Stop)
+            $audit = "$(@($ev | Where-Object { "$($_.Properties[5].Value)" -like '*\conhost.exe' }).Count) conhost.exe of $($ev.Count) process creations"
+          } catch { $audit = "not available: $($_.Exception.Message)" }
+          $tests = Select-String -Path $log -Pattern '^test result:' | ForEach-Object { $_.Line }
+          $summary = @(
+            "RESULT side=$env:SIDE commit=$(git rev-parse HEAD) date=$($t0.ToString('yyyy-MM-dd'))",
+            "RESULT cargo test exit $rc, wall $([int]($t1 - $t0).TotalSeconds) s",
+            "RESULT conhost.exe starts during the run (WMI): $con total, $conT from the cargo test process tree",
+            "RESULT conhost.exe starts in a 60 s idle sample before the run: $idle",
+            "RESULT process starts during the run: $all total, $allT in the cargo test tree; git.exe $git total, $gitT in the tree",
+            "RESULT Security 4688 cross-check during the run: $audit",
+            "RESULT conhost parents in the tree: $(($by.GetEnumerator() | Sort-Object Value -Descending | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ', ')"
+          ) + ($tests | ForEach-Object { "RESULT $_" })
+          $summary | Out-Host
+          $summary | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          # Failing tests by target, for the repeat step.
+          $cur = $null; $failNames = @(); $inFail = $false; $failed = [System.Collections.Generic.List[string]]::new()
+          foreach ($line in Get-Content $log) {
+            if ($line -match '^\s+Running (unittests )?(\S+) \(') {
+              $src = $Matches[2] -replace '\\', '/'
+              $cur = if ($src -eq 'src/lib.rs') { '--lib' } elseif ($src -match '^tests/(.+)\.rs$') { "--test $($Matches[1])" } elseif ($src -match '^src/bin/(.+)\.rs$') { "--bin $($Matches[1])" } elseif ($src -eq 'src/main.rs') { '--bin kolux' } else { $null }
+            }
+            if ($line -match '^\s*Doc-tests') { $cur = $null }
+            if ($line -eq 'failures:') { $inFail = $true; $failNames = @() }
+            elseif ($inFail -and $line -match '^    (\S+)$') { $failNames += $Matches[1] }
+            elseif ($line -match '^test result:') {
+              if ($cur) { foreach ($n in $failNames) { $failed.Add("$cur|$n") } }
+              $inFail = $false; $failNames = @()
+            }
+          }
+          "RESULT failing tests: $(if ($failed.Count) { $failed -join '; ' } else { 'none' })" | Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          ($failed -join ';') | Set-Content -Path (Join-Path $tmp 'failed.txt')
+      - name: Repeat each failing test alone and in its full binary, on both commits
+        if: always()
+        timeout-minutes: 100
+        working-directory: src-tauri
+        shell: pwsh
+        run: |
+          $tmp = $env:RUNNER_TEMP
+          $list = @()
+          $ff = Join-Path $tmp 'failed.txt'
+          if (Test-Path $ff) { $list += ((Get-Content $ff -Raw) -split ';') }
+          $list += ($env:EXTRA_TESTS -split ';')
+          $list = @($list | ForEach-Object { "$_".Trim() } | Where-Object { $_ } | Select-Object -Unique | Select-Object -First 12)
+          if (-not $list.Count) { 'RESULT nothing to repeat'; exit 0 }
+          # Many failures (a broken environment rather than one flaky test) get fewer repeats each.
+          $alone = if ($list.Count -gt 4) { 5 } else { [int]$env:ALONE_REPS }
+          . ../scripts/test-env.ps1
+          $mine = git rev-parse HEAD
+          $other = if ($env:SIDE -eq 'wave-1') { $env:HEAD_SHA } else { $env:WAVE1 }
+          $out = [System.Collections.Generic.List[string]]::new()
+          foreach ($sha in @($mine, $other)) {
+            git checkout --detach --force $sha
+            cargo test --locked --no-run 2>&1 | Select-Object -Last 3
+            foreach ($item in $list) {
+              $tgt, $name = $item -split '\|', 2
+              $targs = @($tgt -split ' ')
+              $pass = 0; $fail = 0
+              for ($i = 1; $i -le $alone; $i++) {
+                $o = (& cargo test --locked @targs -- $name --exact 2>&1 | Out-String)
+                if ($LASTEXITCODE -eq 0 -and $o -match 'test result: ok\. 1 passed') { $pass++ } else {
+                  $fail++
+                  if ($fail -le 2) { "---- alone run $i of $name on $sha failed ----"; ($o -split "`n" | Select-Object -Last 60) -join "`n" }
+                }
+              }
+              $out.Add("RESULT alone $name ($tgt) on $sha : $pass passed, $fail failed of $alone")
+            }
+            # The whole binary, as the full run had it: a test that only fails under load shows here.
+            foreach ($tgt in @($list | ForEach-Object { ($_ -split '\|', 2)[0] } | Select-Object -Unique)) {
+              $targs = @($tgt -split ' ')
+              $names = @($list | Where-Object { ($_ -split '\|', 2)[0] -eq $tgt } | ForEach-Object { ($_ -split '\|', 2)[1] })
+              $ok = @{}; foreach ($n in $names) { $ok[$n] = 0 }
+              for ($i = 1; $i -le [int]$env:FULL_REPS; $i++) {
+                $o = (& cargo test --locked @targs 2>&1 | Out-String)
+                $out.Add("RESULT full $tgt run $i on $sha : $((($o -split "`n") | Where-Object { $_ -match '^test result:' }) -join ' / ')")
+                foreach ($n in $names) {
+                  if ($o -match "(?m)^test $([regex]::Escape($n)) \.\.\. ok") { $ok[$n]++ } else {
+                    $m = [regex]::Match($o, "(?s)---- $([regex]::Escape($n)) stdout ----.{0,3000}")
+                    if ($m.Success) { "---- full $tgt run $i, $n on $sha failed ----"; $m.Value }
+                  }
+                }
+              }
+              foreach ($n in $names) { $out.Add("RESULT in full $tgt, $n on $sha : passed $($ok[$n]) of $($env:FULL_REPS)") }
+            }
+          }
+          $out | Out-Host
+          $out | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
