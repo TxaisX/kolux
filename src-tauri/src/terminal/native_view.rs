@@ -187,7 +187,10 @@ mod win {
     type TriggerResizeFn = unsafe extern "system" fn(*mut c_void, i32, i32, *mut TilSize) -> i32;
     type RegisterWriteFn = unsafe extern "system" fn(*mut c_void, WriteCb);
     type DestroyFn = unsafe extern "system" fn(*mut c_void);
-    type SetThemeFn = unsafe extern "system" fn(*mut c_void, TerminalTheme, *const u16, i16, i32);
+    // The font size is a 32-bit int in the engine (its PDB: `TerminalSetTheme(void*, _TerminalTheme, const wchar_t*,
+    // int fontSize, int newDpi)`), though the WPF control declares it short. Passed as i16 its upper half was
+    // whatever the register held, and the engine drew text many times too big (seen on GitHub's windows-latest).
+    type SetThemeFn = unsafe extern "system" fn(*mut c_void, TerminalTheme, *const u16, i32, i32);
     type DpiChangedFn = unsafe extern "system" fn(*mut c_void, i32);
     struct Engine {
         set_theme: SetThemeFn,
@@ -343,7 +346,7 @@ mod win {
                 cursor_style: look.cursor_style,
                 color_table: look.table,
             };
-            (e.set_theme)(term as *mut c_void, theme, font.as_ptr(), look.size, dpi as i32);
+            (e.set_theme)(term as *mut c_void, theme, font.as_ptr(), i32::from(look.size), dpi as i32);
             dpi
         })
     }
