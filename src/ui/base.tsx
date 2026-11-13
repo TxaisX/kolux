@@ -3,7 +3,7 @@
 // ceiling (scripts/bundle-budget.mjs). The wrappers next to this file are the public face; each draws its closed
 // state without Base UI and hands over to what is here when it opens (or, for a tab strip, as soon as this arrives).
 // Escape and stacking stay Kolux's (layer.ts, called by the wrappers); focus, aria and click-outside are Base UI's.
-import type { CSSProperties, HTMLAttributes, ReactElement, ReactNode, RefObject } from "react";
+import { useEffect, useRef, type CSSProperties, type HTMLAttributes, type ReactElement, type ReactNode, type RefObject } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
@@ -102,7 +102,46 @@ export type MenuBoxProps = {
   children: ReactNode;
 };
 
+/** The first row a menu can act on (a row that is off stays focusable in Base UI, so it is skipped by its aria-disabled). */
+const firstRow = (box: HTMLElement | null) => Array.from(box?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []).find((r) => r.getAttribute("aria-disabled") !== "true") ?? null;
+
 export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
+  // Where focus goes back to when the menu closes: what had it when the menu opened (the button, or the list a
+  // right-click menu was opened on), as Kolux's menus always did. The menu is taken off the page at once when it closes
+  // (its owner stops drawing it), which Base UI's own hand-back does not follow, so it is done here once the menu is gone,
+  // and only when focus went with it: focus a picked row has moved on (a dialog it opened) stays there.
+  const opener = useRef<Element | null>(null);
+  if (opener.current === null) opener.current = document.activeElement;
+  useEffect(
+    () => () => {
+      const to = opener.current;
+      queueMicrotask(() => {
+        const now = document.activeElement;
+        if ((!now || now === document.body) && to instanceof HTMLElement && to.isConnected) to.focus();
+      });
+    },
+    [],
+  );
+  // Kolux's menus put focus on their first row as they open (T-720), so the keyboard is in the list at once, a right-click
+  // menu opened with Shift+F10 included; Base UI would focus the box and wait for an arrow key. This waits, frame by
+  // frame (about half a second at most), for Base UI to have drawn the rows and taken focus into the menu, then hands it
+  // to the first row. Focus already on a row is left where it is.
+  useEffect(() => {
+    let frame = 0;
+    let tries = 30;
+    const step = () => {
+      const box = popup.current;
+      const row = firstRow(box);
+      const at = document.activeElement;
+      if (box && at && box.contains(at) && at.closest('[role^="menuitem"]')) return;
+      // Base UI has taken focus into the menu: onto the box, or one of the focus guards it puts around it.
+      if (row && box && at && (box.parentElement?.contains(at) || at.hasAttribute("data-base-ui-focus-guard") || at.getAttribute("data-type") === "inside")) return row.focus();
+      if (--tries > 0) frame = requestAnimationFrame(step);
+      else row?.focus();
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [popup]);
   return (
     <Menu.Root open onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Menu.Portal container={layerHost()}>

@@ -1103,6 +1103,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .diff-body > .cm-mergeView .cm-editor { height: auto; }
 .diff-actions { position: relative; display: inline-flex; }
 .diff-menu { position: absolute; top: 28px; right: 0; }
+.ui-positioner > .diff-menu { position: static; }
 .diff-menu .check { width: 14px; flex: none; color: var(--fg); }
 
 /* EDIT-029: All Changes. Sections stack in one scroll; each text diff stops at a ceiling and

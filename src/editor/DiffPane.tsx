@@ -49,7 +49,7 @@ export const diffStart = (p: EditorPrefs) => ({ split: p.diffView === "split", w
 // Cycle 3 (first load): the change stepper the window's F7 calls lives in keys/handles.ts now, so the
 // shortcut router holds it without loading this pane; filled here while a diff tab is open.
 import { diffNav } from "../keys/handles";
-import { useMenuKeys } from "./menuNav";
+import { Menu, MenuCheckboxItem } from "../ui/Menu";
 import OutOfFlow from "../chrome/OutOfFlow";
 export { diffNav };
 
@@ -223,7 +223,8 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
     setSpaces(s.spaces);
   }, [settings === null]);
   const [menu, setMenu] = useState(false);
-  const { box: menuBox, remember } = useMenuKeys(menu, () => setMenu(false));
+  // The Diff actions menu: a src/ui Menu hanging from its dots button (the arrow keys, Escape and the focus hand-back are its own).
+  const menuButton = useRef<HTMLButtonElement>(null);
   const [changes, setChanges] = useState(0);
   const [onDisk, setOnDisk] = useState(false); // EDIT-025: a preview is offered only while the file still exists
   useEffect(() => {
@@ -508,24 +509,19 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
   const step = (dir: 1 | -1) => diffNav.get(id)?.(dir);
   const actionsMenu = (
     <span className="diff-actions">
-      <button className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={(e) => (remember(e.currentTarget), setMenu((m) => !m))} title="Diff actions" aria-label="Diff actions">
+      <button ref={menuButton} className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Diff actions" aria-label="Diff actions">
         <Dots size={12} />
       </button>
-      {menu && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
-          <div ref={menuBox} className="menu diff-menu" role="menu">
-            <button role="menuitemcheckbox" aria-checked={spaces} className="menu-item" onClick={() => ((touched.current = true), setSpaces((v) => !v))}>
-              <span className="check">{spaces ? "✓" : ""}</span>
-              <span className="name">Show whitespace changes</span>
-            </button>
-            <button role="menuitemcheckbox" aria-checked={wrap} className="menu-item" onClick={() => ((touched.current = true), setWrap((v) => !v))}>
-              <span className="check">{wrap ? "✓" : ""}</span>
-              <span className="name">Wrap lines</span>
-            </button>
-          </div>
-        </OutOfFlow>
-      )}
+      <Menu open={menu} onClose={() => setMenu(false)} label="Diff actions" anchor={menuButton} align="end" offset={4} className="diff-menu">
+        <MenuCheckboxItem checked={spaces} onCheckedChange={() => ((touched.current = true), setSpaces((v) => !v))}>
+          <span className="check">{spaces ? "✓" : ""}</span>
+          <span className="name">Show whitespace changes</span>
+        </MenuCheckboxItem>
+        <MenuCheckboxItem checked={wrap} onCheckedChange={() => ((touched.current = true), setWrap((v) => !v))}>
+          <span className="check">{wrap ? "✓" : ""}</span>
+          <span className="name">Wrap lines</span>
+        </MenuCheckboxItem>
+      </Menu>
     </span>
   );
   const layoutSwitch = (

@@ -266,7 +266,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
-| editor | 2 | 6 | 0 | 1 | 8 | 0 | 4 | 128 | 9 |
+| editor | 2 | 2 | 0 | 1 | 6 | 0 | 4 | 128 | 5 |
 | feedback | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
@@ -291,7 +291,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **15** | **16** | **4** | **14** | **42** | **42** | **57** | **646** | **49** |
+| **Total** | **15** | **12** | **4** | **14** | **40** | **42** | **57** | **646** | **45** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -306,9 +306,7 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### editor
 
 - [ ] `src/editor/CodeLabel.tsx`: Select :50
-- [ ] `src/editor/DiffPane.tsx`: Menu :517, Dialog :621
-- [ ] `src/editor/Explorer.tsx`: Menu :868, Menu :880
-- [ ] `src/editor/PreviewPane.tsx`: Menu :238
+- [ ] `src/editor/DiffPane.tsx`: Dialog :617
 - [ ] `src/editor/ReviewNotes.tsx`: Dialog :71, Menu :150
 - [ ] `src/editor/TableControls.tsx`: Menu :113
 
