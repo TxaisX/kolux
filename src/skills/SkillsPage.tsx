@@ -13,13 +13,14 @@ import { locale } from "../language";
 import Ask from "../chrome/Ask";
 import { overlayShowing } from "../chrome/fullPage";
 import SkillUpdate from "./SkillUpdate";
-import { focusFirst, focusLost, onMenuKey, returnFocus } from "./menuFocus";
+import { focusLost, returnFocus } from "./menuFocus";
 import { INSTALL_DETAIL, SKILLS_SHOW_EVENT } from "./skillBarStore";
 import SkillPill from "./SkillPill";
 import { pillFor, type Load } from "./skillBar";
 import type { Checked } from "./updateNotice";
 import { AGENT_FILTERS, COPIED, COPY_FAILED, MAX_DELETE, ROW_ACTIONS, actionBlocked, INSTALL_ITEM, installBlocked, pageEscape, pageOverlay, seenBy, NO_DESCRIPTION, NO_FILTERS, QUERY_LIMIT, SOURCES, dateText, deleteBlocked, eligible, filtersOn, keepChosen, outcomeText, pickOf, rootState, shortPath, sourceCounts, sumUp, viewOf, visible, whyNot, type Done, type Filters, type Planned, type RowAction, type Scan, type Skill } from "./skills";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Menu, MenuItem } from "../ui/Menu";
+import { Popover } from "../ui/Popover";
 
 type Asking = { kind: "confirm"; plan: Planned[] } | { kind: "done"; done: Done[] } | { kind: "error"; text: string };
 
@@ -39,6 +40,9 @@ export default function SkillsPage({ workspace, onClose }: Props) {
   // UX audit skills-automations.md:19: a menu takes focus when it opens and gives it back to its button when it closes.
   const opener = useRef<HTMLElement | null>(null);
   const opens = (e: { currentTarget: HTMLElement }) => void (opener.current = e.currentTarget);
+  // The menus and the folders popover are src/ui's: each hangs from the button that opened it, takes focus, answers
+  // the arrow keys and Escape (before the page's own Escape), and gives focus back to that button.
+  const foldersButton = useRef<HTMLButtonElement>(null);
   /** SKILL-022: the chosen rows' paths while choosing skills to delete; null otherwise. */
   const [picking, setPicking] = useState<string[] | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
@@ -175,39 +179,22 @@ export default function SkillsPage({ workspace, onClose }: Props) {
         >
           <Dots size={14} />
         </button>
-        {open === "more" && (
-          <OutOfFlow>
-            <div className="menu-backdrop" onClick={() => setOpen(null)} />
-            <div className="menu skills-pop right" role="menu" aria-label="More actions" ref={focusFirst} onKeyDown={onMenuKey}>
-              <button
-                className="menu-item"
-                role="menuitem"
-                disabled={installBlocked(scan) !== null}
-                title={installBlocked(scan) ?? undefined}
-                onClick={() => {
-                  // Back to the button first, so the dialog gives focus back to it when it closes.
-                  opener.current?.focus();
-                  setOpen(null);
-                  window.dispatchEvent(new CustomEvent(SKILLS_SHOW_EVENT, { detail: INSTALL_DETAIL }));
-                }}
-              >
-                <span className="name">{INSTALL_ITEM}</span>
-              </button>
-              <button
-                className="menu-item"
-                role="menuitem"
-                disabled={deleteBlocked(scan, view) !== null}
-                title={deleteBlocked(scan, view) ?? undefined}
-                onClick={() => {
-                  setPicking([]);
-                  setOpen(null);
-                }}
-              >
-                <span className="name">Delete skills</span>
-              </button>
-            </div>
-          </OutOfFlow>
-        )}
+        <Menu open={open === "more"} onClose={() => setOpen(null)} label="More actions" anchor={opener} align="end" offset={4} className="skills-pop right">
+          <MenuItem
+            disabled={installBlocked(scan) !== null}
+            title={installBlocked(scan) ?? undefined}
+            onClick={() => {
+              // Back to the button first, so the dialog gives focus back to it when it closes.
+              opener.current?.focus();
+              window.dispatchEvent(new CustomEvent(SKILLS_SHOW_EVENT, { detail: INSTALL_DETAIL }));
+            }}
+          >
+            <span className="name">{INSTALL_ITEM}</span>
+          </MenuItem>
+          <MenuItem disabled={deleteBlocked(scan, view) !== null} title={deleteBlocked(scan, view) ?? undefined} onClick={() => setPicking([])}>
+            <span className="name">Delete skills</span>
+          </MenuItem>
+        </Menu>
       </header>
 
       <div className="skills-bar">
@@ -230,28 +217,14 @@ export default function SkillsPage({ workspace, onClose }: Props) {
           <button className={`btn${f.agent !== "all" ? " on" : ""}`} aria-haspopup="menu" aria-expanded={open === "agent"} aria-label={f.agent === "all" ? "Filter by agent" : `Filter by agent: ${agentLabel}`} onClick={(e) => (opens(e), setOpen(open === "agent" ? null : "agent"))}>
             <Funnel size={12} /> {f.agent === "all" ? "Filter by agent" : agentLabel}
           </button>
-          {open === "agent" && (
-            <OutOfFlow>
-              <div className="menu-backdrop" onClick={() => setOpen(null)} />
-              <div className="menu skills-pop" role="menu" aria-label="Filter by agent" ref={focusFirst} onKeyDown={onMenuKey}>
-                {AGENT_FILTERS.map((a) => (
-                  <button
-                    key={a.id}
-                    className="menu-item"
-                    role="menuitemradio"
-                    aria-checked={f.agent === a.id}
-                    onClick={() => {
-                      setF({ ...f, agent: a.id });
-                      setOpen(null);
-                    }}
-                  >
-                    <span className="tick">{f.agent === a.id ? "✓" : ""}</span>
-                    <span className="name">{a.label}</span>
-                  </button>
-                ))}
-              </div>
-            </OutOfFlow>
-          )}
+          <Menu open={open === "agent"} onClose={() => setOpen(null)} label="Filter by agent" anchor={opener} offset={4} className="skills-pop">
+            {AGENT_FILTERS.map((a) => (
+              <MenuItem key={a.id} role="menuitemradio" aria-checked={f.agent === a.id} onClick={() => setF({ ...f, agent: a.id })}>
+                <span className="tick">{f.agent === a.id ? "✓" : ""}</span>
+                <span className="name">{a.label}</span>
+              </MenuItem>
+            ))}
+          </Menu>
         </div>
         <div className="skills-chips" role="group" aria-label="Where skills come from">
           {SOURCES.map((s) => {
@@ -270,31 +243,26 @@ export default function SkillsPage({ workspace, onClose }: Props) {
           </button>
         )}
         <div className="skills-anchor">
-          <button className="btn" aria-haspopup="dialog" aria-expanded={open === "folders"} onClick={() => setOpen(open === "folders" ? null : "folders")}>
+          <button ref={foldersButton} className="btn" aria-haspopup="dialog" aria-expanded={open === "folders"} onClick={() => setOpen(open === "folders" ? null : "folders")}>
             Skill folders
           </button>
-          {open === "folders" && (
-            <OutOfFlow>
-              <div className="menu-backdrop" onClick={() => setOpen(null)} />
-              <div className="menu skills-pop right skills-folders" role="dialog" aria-label="Skill folders">
-                <div className="menu-title">Folders scanned</div>
-                {(scan?.roots ?? []).map((r, i) => (
-                  <div key={i} className={`skills-root ${r.state}`}>
-                    <div className="label">
-                      <span className="name">{r.label}</span>
-                      <span className="state">{rootState(r)}</span>
-                    </div>
-                    {r.path && r.source !== "bundled" && (
-                      <div className="path" title={r.path}>
-                        {shortPath(r.path, 56)}
-                      </div>
-                    )}
+          <Popover open={open === "folders"} onClose={() => setOpen(null)} label="Skill folders" anchor={foldersButton} side="bottom" align="end" offset={4} className="skills-pop right skills-folders">
+            <div className="menu-title">Folders scanned</div>
+            {(scan?.roots ?? []).map((r, i) => (
+              <div key={i} className={`skills-root ${r.state}`}>
+                <div className="label">
+                  <span className="name">{r.label}</span>
+                  <span className="state">{rootState(r)}</span>
+                </div>
+                {r.path && r.source !== "bundled" && (
+                  <div className="path" title={r.path}>
+                    {shortPath(r.path, 56)}
                   </div>
-                ))}
-                {!scan && <div className="menu-hint">Not scanned yet.</div>}
+                )}
               </div>
-            </OutOfFlow>
-          )}
+            ))}
+            {!scan && <div className="menu-hint">Not scanned yet.</div>}
+          </Popover>
         </div>
         <button className="btn" title="Scan every folder again" onClick={() => load(true)} disabled={scanning} aria-busy={scanning}>
           <Refresh size={12} className={scanning ? "spin" : undefined} /> {scanning ? "Scanning…" : "Refresh"}
@@ -389,16 +357,16 @@ export default function SkillsPage({ workspace, onClose }: Props) {
                       <Dots size={12} />
                     </button>
                     {rowMenu === s.path && (
-                      <OutOfFlow>
-                        <div className="menu-backdrop" onClick={() => setRowMenu(null)} />
-                        <div className="menu skills-pop right" role="menu" aria-label={`Actions for ${s.name}`} ref={focusFirst} onKeyDown={onMenuKey}>
+                      // A click in the menu crosses the portal up the React tree: it stops here, short of the row.
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <Menu open onClose={() => setRowMenu(null)} label={`Actions for ${s.name}`} anchor={opener} align="end" offset={4} className="skills-pop right">
                           {ROW_ACTIONS.map((a) => (
-                            <button key={a.id} className="menu-item" role="menuitem" disabled={actionBlocked(s, a.id) != null} title={actionBlocked(s, a.id) ?? undefined} onClick={() => act(s, a.id)}>
+                            <MenuItem key={a.id} disabled={actionBlocked(s, a.id) != null} title={actionBlocked(s, a.id) ?? undefined} onClick={() => act(s, a.id)}>
                               <span className="name">{a.label}</span>
-                            </button>
+                            </MenuItem>
                           ))}
-                        </div>
-                      </OutOfFlow>
+                        </Menu>
+                      </span>
                     )}
                   </div>
                 </div>

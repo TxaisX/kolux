@@ -2,7 +2,7 @@
 // the Install entry, the Update dialog's keys, focus and Stop, and the menus' keyboard rules.
 import { expect, test } from "vitest";
 import { DELETE_NONE_ELIGIBLE, DELETE_SCAN_FAILED, INSTALL_NO_SKILLS, dialogKey, dialogStep, deleteBlocked, installBlocked, pageEscape, pageOverlay, showStep, stopRun, tabWrap, viewOf, type Scan, type Skill } from "./skills";
-import { focusLost, focusStranded, returnFocus, stepTo, stillHeld } from "./menuFocus";
+import { focusLost, focusStranded, returnFocus, stillHeld } from "./menuFocus";
 
 // src has no node types; the builtin comes through process.getBuiltinModule (as noticeMount.test.ts does).
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: string, enc: string): string } } }).process.getBuiltinModule("node:fs");
@@ -131,18 +131,6 @@ test("Stop reports the app's refusal instead of dropping it", async () => {
   expect(await stopRun(() => Promise.reject("plain text"))).toBe("plain text");
 });
 
-test("menu arrows step through the enabled items with wrapping; Home and End jump; a menu with none does nothing", () => {
-  const item = (name: string) => ({ name, focus: () => undefined });
-  const [a, b, c] = [item("a"), item("b"), item("c")];
-  expect(stepTo([a, b, c], -1, "ArrowDown")).toBe(a);
-  expect(stepTo([a, b, c], 2, "ArrowDown")).toBe(a);
-  expect(stepTo([a, b, c], 0, "ArrowUp")).toBe(c);
-  expect(stepTo([a, b, c], 1, "End")).toBe(c);
-  expect(stepTo([a, b, c], 1, "Home")).toBe(a);
-  expect(stepTo([a, b, c], 1, "x")).toBeNull();
-  expect(stepTo([], 0, "ArrowDown")).toBeNull();
-});
-
 test("focus counts as lost only when nothing, or the page body, has it", () => {
   const body = {};
   expect(focusLost(null, body)).toBe(true);
@@ -167,5 +155,6 @@ test("the pages use these rules: dialog box is focusable and wired to the key ru
   expect(page).toContain("pageOverlay([asking, details]");
   expect(page).toContain("returnFocus(opener.current");
   expect(page).toContain("deleteBlocked(scan, view)");
-  expect(page.split("ref={focusFirst} onKeyDown={onMenuKey}").length - 1).toBe(3); // More, Filter by agent, row menus
+  // More, Filter by agent and the row menus are src/ui Menus: their keys and focus are Base UI's (src/ui/ui.dom.test.tsx).
+  expect(page.match(/<Menu (open|open=\{[^}]*\}) onClose=/g)).toHaveLength(3);
 });

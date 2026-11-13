@@ -133,7 +133,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["scm/StackMap.tsx", "Confirm the stack merge", "tag"],
   ["settings/SettingsPage.tsx", "Settings", "window"],
   ["shell/TabSearch.tsx", "Search open tabs", "inner"],
-  ["skills/SkillsPage.tsx", "Skill folders", "window"],
   ["skills/SkillUpdate.tsx", "Update Kolux skills", "tag"],
   ["status/manage.tsx", "End ${name}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/manage.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],

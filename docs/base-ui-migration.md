@@ -282,7 +282,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | settings | 1 | 1 | 0 | 0 | 0 | 30 | 10 | 43 | 2 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
 | shell | 1 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 4 |
-| skills | 2 | 3 | 0 | 0 | 4 | 0 | 2 | 19 | 5 |
+| skills | 1 | 0 | 0 | 0 | 4 | 0 | 2 | 19 | 1 |
 | space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 4 | 1 |
@@ -291,7 +291,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **16** | **19** | **4** | **14** | **42** | **42** | **57** | **646** | **53** |
+| **Total** | **15** | **16** | **4** | **14** | **42** | **42** | **57** | **646** | **49** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -346,7 +346,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### skills
 
 - [ ] `src/skills/SkillUpdate.tsx`: Dialog :141
-- [ ] `src/skills/SkillsPage.tsx`: Menu :181, Menu :236, Dialog :279, Menu :394
 
 ### switcher
 

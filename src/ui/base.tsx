@@ -38,6 +38,10 @@ function onAnchor(anchor: RefObject<Element | null> | Element | null | undefined
 const why = (reason: string): CloseWhy => (reason === "outside-press" ? "outside" : "other");
 
 type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
+/** A menu or popover with no room on its side opens on the other side; with no room along it, it slides back into the
+ *  window (shift), as Kolux's hand-placed menus did (left = min(x, window width - menu width)), rather than turning
+ *  its alignment round. */
+const AVOID = { side: "flip", align: "shift" } as const;
 type Side = "top" | "bottom" | "left" | "right";
 type Align = "start" | "center" | "end";
 
@@ -102,7 +106,7 @@ export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset
   return (
     <Menu.Root open onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Menu.Portal container={layerHost()}>
-        <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
+        <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed">
           <Menu.Popup ref={popup} className={plain ? className : className ? `menu ${className}` : "menu"} aria-label={label} style={style} finalFocus={finalFocus as never} {...p}>
             {children}
           </Menu.Popup>
@@ -112,7 +116,20 @@ export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset
   );
 }
 
-export type ItemProps = { className?: string; title?: string; disabled?: boolean; onClick?: () => void; closeOnClick?: boolean; children: ReactNode; "data-testid"?: string; "aria-label"?: string; "aria-busy"?: boolean };
+export type ItemProps = {
+  className?: string;
+  title?: string;
+  disabled?: boolean;
+  onClick?: () => void;
+  closeOnClick?: boolean;
+  children: ReactNode;
+  "data-testid"?: string;
+  "aria-label"?: string;
+  "aria-busy"?: boolean;
+  /** A row that is one choice of several (the Skills page's agent filter): menuitemradio with aria-checked. */
+  role?: "menuitem" | "menuitemradio";
+  "aria-checked"?: boolean;
+};
 
 export const MenuItemBox = ({ className = "menu-item", onClick, ...p }: ItemProps) => <Menu.Item nativeButton render={<button type="button" />} className={className} onClick={() => onClick?.()} {...p} />;
 
@@ -142,7 +159,7 @@ export function PopoverBox({ popup, onClose, label, anchor, side, align, offset,
   return (
     <Popover.Root open modal={modal} onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Popover.Portal container={layerHost()}>
-        <Popover.Positioner className="ui-positioner" anchor={anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
+        <Popover.Positioner className="ui-positioner" anchor={anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed">
           <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={anchor as RefObject<HTMLElement | null>} {...p}>
             {children}
           </Popover.Popup>

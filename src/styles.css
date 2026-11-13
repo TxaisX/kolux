@@ -1329,6 +1329,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .skills-anchor { position: relative; }
 .skills-pop { position: absolute; top: calc(100% + 4px); left: 0; }
 .skills-pop.right { left: auto; right: 0; }
+.ui-positioner > .skills-pop { position: static; }
 .skills-head .skills-pop { top: 40px; right: 12px; }
 .skills-pop .tick { width: 12px; color: var(--done); }
 .btn.on { border-color: var(--line-focus); }
