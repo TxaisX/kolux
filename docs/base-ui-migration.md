@@ -266,7 +266,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
-| editor | 2 | 2 | 0 | 1 | 6 | 0 | 4 | 128 | 5 |
+| editor | 2 | 1 | 0 | 1 | 6 | 0 | 4 | 128 | 4 |
 | feedback | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
@@ -277,9 +277,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
 | projects | 0 | 1 | 1 | 10 | 7 | 0 | 19 | 75 | 12 |
 | recovery | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
-| scm | 0 | 1 | 0 | 1 | 5 | 0 | 5 | 98 | 2 |
+| scm | 0 | 1 | 0 | 0 | 5 | 0 | 5 | 98 | 1 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
-| settings | 1 | 1 | 0 | 0 | 0 | 30 | 10 | 43 | 2 |
+| settings | 1 | 0 | 0 | 0 | 0 | 30 | 10 | 43 | 1 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
 | shell | 0 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 3 |
 | skills | 1 | 0 | 0 | 0 | 4 | 0 | 2 | 19 | 1 |
@@ -291,7 +291,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **13** | **12** | **4** | **14** | **40** | **42** | **57** | **646** | **43** |
+| **Total** | **13** | **10** | **4** | **13** | **40** | **42** | **57** | **646** | **40** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -307,7 +307,7 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 - [ ] `src/editor/CodeLabel.tsx`: Select :50
 - [ ] `src/editor/DiffPane.tsx`: Dialog :617
-- [ ] `src/editor/ReviewNotes.tsx`: Dialog :71, Menu :150
+- [ ] `src/editor/ReviewNotes.tsx`: Dialog :71
 - [ ] `src/editor/TableControls.tsx`: Menu :113
 
 ### launch
@@ -326,11 +326,10 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### scm
 
-- [ ] `src/scm/SourceControlPanel.tsx`: Select :1073, Menu :1247
+- [ ] `src/scm/SourceControlPanel.tsx`: Menu :1247
 
 ### settings
 
-- [ ] `src/settings/ConnectGrid.tsx`: Menu :54
 - [ ] `src/settings/SettingsPage.tsx`: Dialog :402
 
 ### shell
@@ -358,7 +357,7 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/terminal/PlanSheet.tsx`: Dialog :50
 - [ ] `src/terminal/TerminalPane.tsx`: Dialog :1952, Dialog :1981, Dialog :2028, Dialog :2055
 
-Not popups, so not counted (a dialog role on an element no src/ui wrapper fits):
+Not popups, so not counted (a dialog or menu role on an element no src/ui wrapper fits):
 
 - `src/chat/PermissionCard.tsx` (askTitle(card.tool)): a card in the chat
 - `src/chat/QuestionCard.tsx` (Question from the agent): a card in the chat
@@ -377,4 +376,6 @@ Not popups, so not counted (a dialog role on an element no src/ui wrapper fits):
 - `src/update/UpdateCenterView.tsx` (Updates): the update card, docked in a corner; Escape folds it
 - `src/onboarding/Guides.tsx` ("Tip"): a tip card docked in a corner, aria-modal false
 - `src/onboarding/Guides.tsx` (Agent status hooks): a tip card docked in a corner, aria-modal false
+- `src/settings/ConnectGrid.tsx` (conn-more-list): a list that opens in place under its summary (a <details>), not over the card
+- `src/editor/ReviewNotes.tsx` (Send the notes to): a list that opens in place in the review tray, not over it
 <!-- SITES:END -->

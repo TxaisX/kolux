@@ -29,7 +29,7 @@ const REFERENCE = [
   ["Checkbox", /type="checkbox"(?![^>]*role="switch")/],
   ["Tooltip", /\btitle=[{"]|<Tip\b/],
 ];
-// Elements that carry a dialog role but are not popups, so no src/ui wrapper fits them: a card in the chat stream (its
+// Elements that carry a dialog or menu role but are not popups, so no src/ui wrapper fits them: a card in the chat stream (its
 // Escape interrupts the agent, reach.test.ts calls them exempt), a question or form drawn in place inside the surface
 // that asked it, which a modal Base UI dialog would lift out of its row, and a card docked in a corner of the window
 // that is not opened over anything (its Escape folds or dismisses it). File and the label text on the line or the next
@@ -52,6 +52,8 @@ const NOT_POPUPS = [
   ["update/UpdateCenterView.tsx", "Updates", "the update card, docked in a corner; Escape folds it"],
   ["onboarding/Guides.tsx", "\"Tip\"", "a tip card docked in a corner, aria-modal false"],
   ["onboarding/Guides.tsx", "Agent status hooks", "a tip card docked in a corner, aria-modal false"],
+  ["settings/ConnectGrid.tsx", "conn-more-list", "a list that opens in place under its summary (a <details>), not over the card"],
+  ["editor/ReviewNotes.tsx", "Send the notes to", "a list that opens in place in the review tray, not over it"],
 ];
 
 const files = [];
@@ -75,7 +77,7 @@ for (const f of files.sort()) {
     for (const [kind, re] of MIGRATE) {
       if (!re.test(text)) continue;
       const near = [text, lines[i + 1] ?? "", lines[i + 2] ?? ""].join("\n");
-      if (kind === "Dialog" && NOT_POPUPS.some(([file, label]) => file === rel && near.includes(label))) continue;
+      if ((kind === "Dialog" || kind === "Menu") && NOT_POPUPS.some(([file, label]) => file === rel && near.includes(label))) continue;
       sites.push({ folder, file: rel, line: i + 1, kind, todo: true });
     }
     for (const [kind, re] of REFERENCE) if (re.test(text)) sites.push({ folder, file: rel, line: i + 1, kind, todo: false });
@@ -97,7 +99,7 @@ if (!process.argv.includes("--counts")) {
     for (const s of sites.filter((s) => s.folder === d && s.todo)) byFile.set(s.file, [...(byFile.get(s.file) ?? []), `${s.kind} :${s.line}`]);
     for (const [file, list] of byFile) out.push(`- [ ] \`src/${file}\`: ${list.join(", ")}`);
   }
-  out.push("", "Not popups, so not counted (a dialog role on an element no src/ui wrapper fits):", "");
+  out.push("", "Not popups, so not counted (a dialog or menu role on an element no src/ui wrapper fits):", "");
   for (const [file, label, why] of NOT_POPUPS) out.push(`- \`src/${file}\` (${label}): ${why}`);
 }
 console.log(out.join("\n"));
