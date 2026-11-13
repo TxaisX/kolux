@@ -337,6 +337,36 @@ pub fn identity(header: &str) -> Option<(u32, Option<u32>)> {
     Some((pane, terminal))
 }
 
+/// Kept-warm shell (terminal.rs `keep_warm`): a shell started before any pane has it. Its hooks carry this pane key,
+/// which no pane has (the window counts its pane keys up from 1), with the warm shell's own terminal id and a token
+/// minted for both (T-793), so an agent typed into it reports and is asked about protected commands like any other.
+/// The pane that takes the shell is noted under its terminal id (`warm_taken`), and the shell's reports are that
+/// pane's from then on (`reporting_pane`).
+pub const WARM_PANE: u32 = u32::MAX;
+
+/// Kept-warm shell: the pane that took each warm shell, by the warm shell's terminal id.
+static WARM_TAKEN: Mutex<std::collections::BTreeMap<u32, u32>> = Mutex::new(std::collections::BTreeMap::new());
+
+/// Kept-warm shell: pane `pane_key` took warm shell `terminal`.
+pub fn warm_taken(terminal: u32, pane_key: u32) {
+    WARM_TAKEN.lock().unwrap_or_else(PoisonError::into_inner).insert(terminal, pane_key);
+}
+
+/// Terminal `terminal` ended: a warm shell's pane hears nothing more from that id (ids are reused).
+pub fn warm_ended(terminal: u32) {
+    WARM_TAKEN.lock().unwrap_or_else(PoisonError::into_inner).remove(&terminal);
+}
+
+/// The pane a proven identity reports for: its own pane key, or for a warm shell's identity the pane that took the
+/// shell. None for a warm shell no pane has taken: there is no pane to tell, but its protected commands are still
+/// asked about (the reply is worked out from the request alone, SAFE-009).
+pub fn reporting_pane(pane_key: u32, terminal: Option<u32>) -> Option<u32> {
+    if pane_key != WARM_PANE {
+        return Some(pane_key);
+    }
+    WARM_TAKEN.lock().unwrap_or_else(PoisonError::into_inner).get(&terminal?).copied()
+}
+
 /// The hook version an identity header was written with (T-167-b); none for an older header without one.
 pub fn identity_version(header: &str) -> Option<u32> {
     let raw = base64::engine::general_purpose::STANDARD.decode(header.trim()).ok()?;
@@ -414,6 +444,8 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
     if proven(req, token).is_none() {
         return (403, None);
     }
+    // Kept-warm shell: answered (200) with nothing to raise until a pane takes it; the reply still asks (SAFE-009).
+    let Some(pane_key) = reporting_pane(pane_key, terminal) else { return (200, None) };
     let Ok(event) = serde_json::from_slice::<Value>(&req.body) else { return (400, None) };
     let (agent, event) = match req.path.as_str() {
         "/claude" => (crate::status::Agent::Claude, event),
@@ -493,6 +525,8 @@ pub fn usage(req: &Request, token: &str) -> Result<Usage, u16> {
     if proven(req, token).is_none() {
         return Err(403);
     }
+    // Kept-warm shell: a status line from a warm shell no pane has taken is taken (200) and shown nowhere.
+    let pane_key = reporting_pane(pane_key, terminal).ok_or(200u16)?;
     let v: Value = serde_json::from_slice(&req.body).map_err(|_| 400u16)?;
     // At most 200 characters of the id, like the other fields this route passes on (marks FIX-2).
     let session = v["session_id"].as_str().map(str::trim).filter(|s| !s.is_empty()).map(|s| trim(s, 200)).zip(terminal).map(|(s, t)| format!("{s}@{t}"));
@@ -2437,6 +2471,32 @@ Content-Length: {}
 
     /// What the agent side allows the whole hook (COMPAT 3.1: one and a half seconds in all).
     const LIMIT: Duration = Duration::from_millis(1500);
+
+    /// Kept-warm shell (review fix 1): its hooks carry `WARM_PANE` with the shell's own terminal id. Before any pane
+    /// takes it, a hook is answered and raises nothing, and a protected command still gets its ask (SAFE-009); once a
+    /// pane takes it, its reports and its status line are that pane's; once it ends, nothing reaches that pane again.
+    #[test]
+    fn a_warm_shells_hooks_ask_before_a_pane_has_it_and_report_for_the_pane_that_took_it() {
+        let terminal = 58_401;
+        let id = ident(WARM_PANE, terminal);
+        let tk = signed("tok", &id);
+        let event = r#"{"hook_event_name":"PermissionRequest","tool_name":"Write"}"#;
+        let status_line = || usage(&post("/claude-status", Some(&tk), &id, r#"{"session_id":"warm"}"#), "tok").map(|u| u.pane_key);
+        let req = post("/claude", Some(&tk), &id, event);
+        assert_eq!(gate(&req, "tok"), None, "its own token proves it");
+        let before = answer(&req, "tok");
+        assert_eq!((before.0, before.1.is_none()), (200, true));
+        assert_eq!(status_line(), Err(200));
+        let port = line_with(|| Arc::new(json!({})), |_| {});
+        let (body, _) = hook(port, WARM_PANE, &shell("git push --force origin main"));
+        assert!(body.contains(r#""permissionDecision":"ask""#), "a warm shell no pane has taken still asks: {body}");
+        warm_taken(terminal, 58_402);
+        assert_eq!(answer(&req, "tok").1.map(|s| (s.pane_key, s.terminal)), Some((58_402, Some(terminal))));
+        assert_eq!(status_line(), Ok(58_402));
+        assert_eq!(reporting_pane(7, Some(terminal)), Some(7), "any other pane's identity is its own");
+        warm_ended(terminal);
+        assert!(answer(&req, "tok").1.is_none());
+    }
 
     #[test]
     fn t583_a_hook_is_answered_inside_its_limit_while_other_connections_send_nothing() {
