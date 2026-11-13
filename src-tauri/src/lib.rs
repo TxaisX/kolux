@@ -66,6 +66,7 @@ mod names;
 mod newproject;
 mod notebook_run;
 mod notifications;
+mod notices;
 mod onboarding;
 pub mod orchestration;
 mod foreground;
@@ -640,6 +641,7 @@ pub fn run() {
             }
             let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             app_info,
+            notices::third_party_notices,
             edit_menu::edit_menu_ready,
             get_settings,
             settings_patch,
