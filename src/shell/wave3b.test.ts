@@ -2,8 +2,7 @@
 // before any change. G1 palette filters, G5 the Explorer shortcut, G6 the find bar, S24 the tab menu.
 import { type FunctionComponent, act, createElement, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
-import type { Project, Worktree } from "../projects/model";
+import { FakeNode, byLabel, click, find, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
 import { stripOrderOf } from "../terminal/pin";
 import { TAB_COLORS } from "../terminal/tabColor";
 
@@ -29,35 +28,9 @@ async function show<P extends object>(type: FunctionComponent<P>, props: P) {
   await settle();
   return m.container as FakeNode;
 }
-const chips = (c: FakeNode) => find(c, (n) => n.attrs.class === "palette-chip").map((n) => n.attrs["aria-label"]);
 
-describe("G1 (not reproduced): the palette's filter selects add a chip, then go back to their prompt", () => {
-  const w = (path: string, branch: string) => ({ path, branch, head: "abc1234", isMain: false, hidden: false, number: null, comment: "" }) as unknown as Worktree;
-  beforeEach(() => {
-    h.lists = { p1: [w("C:/w/app", "main"), w("C:/w/fix", "fix")] };
-  });
-  it("picking a repository or a kind adds its chip, the picked entry leaves the list, and the chip removes it again", async () => {
-    const { default: WorktreePalette } = await import("../projects/WorktreePalette");
-    const project = { id: "p1", name: "app", path: "C:/w/app" } as unknown as Project;
-    const c = await show(WorktreePalette, { projects: [project], items: [], prOf: () => null, recent: [], scope: [], hasWorktree: true, onWorktree: () => {}, onCreate: () => {}, onClose: () => {} });
-    const repo = byLabel(c, "select", "Filter by repository")[0];
-    await until(() => repo.options.length > 1, "the repository options");
-    expect(repo.options[0].textContent).toBe("+ Repository");
-    repo.value = repo.options[1].value;
-    await fire(c, "change", repo);
-    await until(() => chips(c).length === 1, "the repository chip");
-    expect(chips(c)).toEqual(["Remove the filter Repository: app"]);
-    expect(byLabel(c, "select", "Filter by repository")[0].options.map((o) => o.value)).toEqual([""]);
-    const kind = byLabel(c, "select", "Filter by kind")[0];
-    kind.value = "Workspaces";
-    await fire(c, "change", kind);
-    await until(() => chips(c).length === 2, "the kind chip");
-    expect(chips(c)[1]).toBe("Remove the filter Kind: Workspaces");
-    expect(byLabel(c, "select", "Filter by kind")[0].options.map((o) => o.value)).not.toContain("Workspaces");
-    await click(c, find(c, (n) => n.attrs["aria-label"] === "Remove the filter Kind: Workspaces")[0]);
-    expect(chips(c)).toEqual(["Remove the filter Repository: app"]);
-  });
-});
+// G1 (the palette's filter selects add a chip, then go back to their prompt) runs on a real DOM in
+// projects/WorktreePalette.filters.test.ts: the filters are src/ui Selects, whose lists open only there.
 
 describe("G5 (reproduced only with the content search open): Ctrl+Shift+E is a toggle", () => {
   it("a press with focus inside the open Explorer hides it; any other press shows and focuses it", () => {

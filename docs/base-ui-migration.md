@@ -267,21 +267,21 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | editor | 2 | 6 | 0 | 1 | 8 | 0 | 4 | 128 | 9 |
-| feedback | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 1 |
+| feedback | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 0 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
 | launch | 1 | 1 | 0 | 0 | 2 | 0 | 2 | 32 | 2 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
-| onboarding | 6 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 7 |
+| onboarding | 4 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 5 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
-| projects | 6 | 1 | 1 | 10 | 7 | 0 | 19 | 75 | 18 |
+| projects | 1 | 1 | 1 | 10 | 7 | 0 | 19 | 75 | 13 |
 | recovery | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
-| scm | 3 | 5 | 0 | 1 | 4 | 0 | 5 | 98 | 9 |
+| scm | 0 | 5 | 0 | 1 | 4 | 0 | 5 | 98 | 6 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
-| settings | 2 | 1 | 1 | 0 | 0 | 30 | 10 | 43 | 4 |
+| settings | 1 | 1 | 1 | 0 | 0 | 30 | 10 | 43 | 3 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
-| shell | 2 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 5 |
+| shell | 1 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 4 |
 | skills | 2 | 3 | 0 | 0 | 4 | 0 | 2 | 19 | 5 |
 | space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
@@ -289,9 +289,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tasks | 2 | 0 | 2 | 2 | 0 | 0 | 3 | 41 | 6 |
 | terminal | 6 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 8 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
-| update | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 1 |
+| update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **36** | **24** | **8** | **14** | **41** | **42** | **57** | **646** | **82** |
+| **Total** | **22** | **24** | **8** | **14** | **41** | **42** | **57** | **646** | **68** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -318,10 +318,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/editor/ReviewNotes.tsx`: Dialog :71, Menu :150
 - [ ] `src/editor/TableControls.tsx`: Menu :113
 
-### feedback
-
-- [ ] `src/feedback/FeedbackDialog.tsx`: Dialog :170
-
 ### launch
 
 - [ ] `src/launch/ChooserPane.tsx`: Dialog :56
@@ -329,18 +325,13 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### onboarding
 
-- [ ] `src/onboarding/Guides.tsx`: Dialog :177, Dialog :269, Tabs :279, Dialog :488, Dialog :562
+- [ ] `src/onboarding/Guides.tsx`: Dialog :177, Dialog :269, Tabs :279
 - [ ] `src/onboarding/Tours.tsx`: Dialog :130
 - [ ] `src/onboarding/Wizard.tsx`: Dialog :117
 
 ### projects
 
-- [ ] `src/projects/AddProject.tsx`: Dialog :120
-- [ ] `src/projects/CleanupDialog.tsx`: Dialog :134
-- [ ] `src/projects/ImportSetup.tsx`: Dialog :17
 - [ ] `src/projects/ProjectsPanel.tsx`: Select :1141, Select :1177, Select :1182, Select :1514, Select :1554, Select :2329, Select :2412, Tabs :2531, Select :2587, Select :2624, Select :2631, Menu :2735
-- [ ] `src/projects/ScanRepos.tsx`: Dialog :107
-- [ ] `src/projects/StartGit.tsx`: Dialog :30
 - [ ] `src/projects/WorktreePalette.tsx`: Dialog :303
 
 ### recovery
@@ -350,19 +341,16 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### scm
 
 - [ ] `src/scm/CommentsPanel.tsx`: Menu :212
-- [ ] `src/scm/PrStart.tsx`: Dialog :279
-- [ ] `src/scm/SourceControlPanel.tsx`: Menu :881, Menu :906, Dialog :1036, Dialog :1101, Select :1110, Menu :1284, Menu :1312
+- [ ] `src/scm/SourceControlPanel.tsx`: Menu :881, Menu :906, Select :1110, Menu :1284, Menu :1312
 
 ### settings
 
 - [ ] `src/settings/ConnectGrid.tsx`: Menu :54
-- [ ] `src/settings/GrokCard.tsx`: Dialog :161
 - [ ] `src/settings/RoutingPage.tsx`: Tabs :52
 - [ ] `src/settings/SettingsPage.tsx`: Dialog :402
 
 ### shell
 
-- [ ] `src/shell/LinkAskDialog.tsx`: Dialog :23
 - [ ] `src/shell/TabSearch.tsx`: Dialog :48
 - [ ] `src/shell/window/Content.tsx`: Tabs :203
 - [ ] `src/shell/window/Grid.tsx`: Tabs :101
@@ -393,10 +381,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/terminal/PlanSheet.tsx`: Dialog :50
 - [ ] `src/terminal/TerminalPane.tsx`: Dialog :1952, Dialog :1981, Dialog :2028, Dialog :2055
 
-### update
-
-- [ ] `src/update/UpdateCenterView.tsx`: Dialog :283
-
 Not popups, so not counted (a dialog role on an element no src/ui wrapper fits):
 
 - `src/chat/PermissionCard.tsx` (askTitle(card.tool)): a card in the chat
@@ -409,4 +393,11 @@ Not popups, so not counted (a dialog role on an element no src/ui wrapper fits):
 - `src/status/ResourceManager.tsx` (bulkQ.label): asked in place, in the Resource Manager
 - `src/terminal/BackgroundSessions.tsx` (`End ${what}`): asked in place, in the Resource Manager
 - `src/recovery/RecoveryMount.tsx` (Graphics): a notice strip in the window
+- `src/projects/CleanupDialog.tsx` (`Clean up workspaces in ${project.name}`): a form drawn in place in the sidebar (.sb-form)
+- `src/scm/PrStart.tsx` (Create pull request): a form drawn in place in Source Control (.scm-ask)
+- `src/scm/SourceControlPanel.tsx` (Create pull request): a form drawn in place in Source Control (.scm-ask)
+- `src/scm/SourceControlPanel.tsx` (Resolve conflicts with an agent): a form drawn in place in Source Control (.scm-ask)
+- `src/update/UpdateCenterView.tsx` (Updates): the update card, docked in a corner; Escape folds it
+- `src/onboarding/Guides.tsx` ("Tip"): a tip card docked in a corner, aria-modal false
+- `src/onboarding/Guides.tsx` (Agent status hooks): a tip card docked in a corner, aria-modal false
 <!-- SITES:END -->

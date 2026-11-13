@@ -4,7 +4,7 @@
 // and the Connect cards' headline/detail lines. A banned word found there fails `pnpm test`.
 // ponytail: a syntax scan, so text built far from the JSX (a helper in another file) is only
 // caught when that file is listed here.
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 // TypeScript 7 ships no JS compiler API, so the syntax scan uses the 6.x package (kept for this test only).
 import ts from "typescript6";
 import { renderToString } from "react-dom/server";
@@ -13,6 +13,9 @@ import { BANNED, GLOSSARY, jargon, CONNECT } from "./glossary";
 import { windowFiles } from "./shell/windowSource";
 import { AddProjectView } from "./projects/AddProject";
 import StartGit from "./projects/StartGit";
+
+// The dialog is a src/ui Dialog, drawn only on a real DOM; what it shows is read here through a stand-in.
+vi.mock("./ui/Dialog", async () => (await import("./tasks/dialogStandIn")).dialogModule);
 
 /** In-scope screens: onboarding, Add Project, the folder-without-Git dialog, the launcher, the landing notices, the sidebar, the Connect cards, error toasts. */
 const BASE_SCREENS = import.meta.glob(

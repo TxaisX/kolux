@@ -1,11 +1,12 @@
-// T-675 (DT-C111; APP-037, APP-038): the Send Feedback box on the small DOM, with the back end stood in. Each test
+// @vitest-environment happy-dom
+// T-675 (DT-C111; APP-037, APP-038): the Send Feedback box (a src/ui Dialog) on a real DOM, with the back end stood in. Each test
 // fails when its line in FeedbackDialog.tsx is reverted: one page per send however often Open on GitHub is pressed,
 // the keyboard goes back to what opened the box, Add screenshot is a real button, and a send that was still running
 // when the box was closed and opened again cannot close the new box or wipe its draft.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { MARK } from "./model";
-import { byLabel, byText, click, type FakeDocument, FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
+import { byLabel, byText, click, type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/realDom";
 
 const back = vi.hoisted(() => ({ opened: [] as string[], hold: false, pending: [] as (() => void)[] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -25,34 +26,16 @@ let doc: FakeDocument;
 let root: FakeNode;
 let opener: FakeNode;
 let unmount: () => Promise<void> = async () => {};
-const proto = FakeNode.prototype as unknown as Record<string, unknown>;
-const realFocus = FakeNode.prototype.focus;
 const filePicks: FakeNode[] = [];
+const realClick = HTMLInputElement.prototype.click;
 
 beforeEach(async () => {
   const dom = installDom();
   doc = dom.doc;
-  const bus = new Map<string, Set<(e: Event) => void>>();
-  Object.assign(dom.win, {
-    setTimeout: (...a: Parameters<typeof setTimeout>) => globalThis.setTimeout(...a),
-    clearTimeout: (h: number) => globalThis.clearTimeout(h),
-    addEventListener: (t: string, f: (e: Event) => void) => void (bus.get(t) ?? bus.set(t, new Set()).get(t)!).add(f),
-    removeEventListener: (t: string, f: (e: Event) => void) => void bus.get(t)?.delete(f),
-    dispatchEvent: (e: Event) => (bus.get(e.type)?.forEach((f) => f(e)), true),
-  });
-  Object.defineProperty(globalThis, "navigator", { value: { platform: "Win32", userAgent: "node" }, configurable: true });
-  FakeNode.prototype.focus = function (this: FakeNode) {
-    doc.activeElement = this;
-  };
-  Object.defineProperty(FakeNode.prototype, "isConnected", {
-    configurable: true,
-    get(this: FakeNode) {
-      return doc.documentElement.contains(this);
-    },
-  });
-  proto.setSelectionRange = () => {};
-  proto.click = function (this: FakeNode) {
-    filePicks.push(this);
+  // A file input's click opens the system's file picker: here it only counts.
+  HTMLInputElement.prototype.click = function (this: HTMLInputElement) {
+    if (this.type === "file") filePicks.push(this);
+    else realClick.call(this);
   };
   Object.assign(back, { opened: [], hold: false, pending: [] });
   filePicks.length = 0;
@@ -67,10 +50,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await unmount();
   unmount = async () => {};
-  FakeNode.prototype.focus = realFocus;
-  delete (FakeNode.prototype as unknown as Record<string, unknown>).isConnected;
-  delete proto.setSelectionRange;
-  delete proto.click;
+  HTMLInputElement.prototype.click = realClick;
 });
 
 const dialog = () => find(root, (n) => n.attrs.role === "dialog")[0] ?? null;
@@ -81,7 +61,7 @@ async function open(text: string) {
   await act(async () => requestFeedback(text));
   await until(() => dialog() !== null, "the feedback box to open");
 }
-const escape = () => fire(root, "keydown", textarea(), { key: "Escape" });
+const escape = () => fire(root, "keydown", document.activeElement ?? textarea(), { key: "Escape" });
 
 test("T-675 feedback: a double press of Open on GitHub opens one page; the button says Opening… and keeps the keyboard", async () => {
   back.hold = true;
@@ -100,10 +80,10 @@ test("T-675 feedback: a double press of Open on GitHub opens one page; the butto
 
 test("T-675 feedback: closing the box hands the keyboard back to what opened it", async () => {
   await open("Focus check");
-  expect(doc.activeElement).toBe(textarea()); // the cursor starts in the box
+  await until(() => doc.activeElement === textarea(), "the cursor in the box");
   await escape();
   expect(dialog()).toBeNull();
-  expect(doc.activeElement).toBe(opener);
+  await until(() => doc.activeElement === opener, "focus back on the opener");
 });
 
 test("T-675 feedback: Add screenshot is a real button that opens the file picker; a picked image is attached and its remove button names it", async () => {
@@ -172,7 +152,9 @@ test("C04-R4-01: a backdrop click while Opening… ends the send; the text is ke
   back.hold = true;
   await open("Backdrop path");
   await click(root, sendButton());
-  await fire(root, "mousedown", find(root, (n) => n.attrs.class === "scrim")[0]);
+  // A press outside the box, as the mouse sends it (Base UI reads the press, the click ends it).
+  const scrim = find(root, (n) => n.attrs.class === "scrim")[0];
+  for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) await fire(root, type, scrim);
   await act(async () => back.pending.shift()?.());
   await settle(20);
   expect(find(root, (n) => n.attrs.role === "status")).toHaveLength(0);
@@ -186,7 +168,7 @@ test("T-695 feedback (G3): opened with no text, the box holds the details block,
   expect(box.attrs["aria-label"]).toBe("Your feedback");
   expect(box.hasAttribute("disabled")).toBe(false);
   expect(box.hasAttribute("readonly")).toBe(false);
-  expect(doc.activeElement).toBe(box); // the cursor starts in the box
+  await until(() => doc.activeElement === box, "the cursor in the box");
   expect(box.value.startsWith(MARK)).toBe(true); // never empty: the details block sits under the (empty) typed text
   await typeInto(root, box, "Typed by hand" + box.value);
   expect(textarea().value.startsWith("Typed by hand" + MARK)).toBe(true);

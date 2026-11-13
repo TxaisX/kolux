@@ -1,7 +1,10 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import ImportSetup, { refusedLine, type SetupImport } from "./ImportSetup";
+
+// The dialog is a src/ui Dialog, drawn only on a real DOM; what it shows is read here through a stand-in.
+vi.mock("../ui/Dialog", async () => (await import("../tasks/dialogStandIn")).dialogModule);
 
 const noop = () => {};
 const offer: SetupImport = { file: "conductor.json", setup: "pnpm i", teardown: "./archive.sh", refused: null };

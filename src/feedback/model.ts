@@ -91,20 +91,6 @@ export function reduce(s: State, a: Act): State {
   }
 }
 
-/** Which of `count` controls takes focus when Tab (Shift+Tab: `shift`) leaves control `at` (-1: none): focus wraps at both ends. */
-export function tabTarget(count: number, at: number, shift: boolean): number {
-  if (count <= 0) return -1;
-  if (at < 0) return shift ? count - 1 : 0;
-  return (at + (shift ? count - 1 : 1)) % count;
-}
-
 /** Where the "sent" note sits: bottom-right, 40px up. The update card and notice take the bottom-left at the same 40px
  *  (update/update.css), above the 24px status bar, so the two never overlap and neither covers the bar. */
 export const NOTE_POS = { right: 16, bottom: 40 } as const;
-
-/** Puts focus back on what had it before the box opened, when that is still on the page. */
-export function restoreFocus(prev: { isConnected: boolean; focus: () => void } | null): boolean {
-  if (!prev || !prev.isConnected) return false;
-  prev.focus();
-  return true;
-}

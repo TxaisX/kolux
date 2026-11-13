@@ -64,12 +64,16 @@ test("box 2: typing a key, pressing Cancel and reopening the same dialog shows a
   expect(find(tree, (e) => e.type === "input").props.value).toBe("");
   expect(find(tree, (e) => e.type === "button" && e.props.type === "submit").props.disabled).toBe(true);
   expect(everyString(tree).some((s) => s.includes(KEY))).toBe(false);
-  // Escape cancels the same way, and stops there so Settings under the dialog stays open (T-565).
+  // Escape cancels the same way: the dialog is a src/ui Dialog, whose layer catches Escape on the window and stops it
+  // there, so Settings under the dialog stays open (T-565; proved on a real DOM in SettingsPage.escape.test.ts). Keys
+  // typed in it stop at its box.
   find(tree, (e) => e.type === "input").props.onChange({ target: { value: KEY } });
   tree = page.render();
+  const box = find(tree, (e) => e.props.label === "Use an xAI API key");
   const stop = vi.fn();
-  find(tree, (e) => e.props.onKeyDown).props.onKeyDown({ key: "Escape", stopPropagation: stop });
+  box.props.onKeyDown({ key: "a", stopPropagation: stop });
   expect(stop).toHaveBeenCalledTimes(1);
+  box.props.onClose("escape");
   tree = page.render({ ...props, open: true });
   expect(find(tree, (e) => e.type === "input").props.value).toBe("");
 });
