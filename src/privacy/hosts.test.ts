@@ -65,7 +65,6 @@ const NOT_A_CONNECTION: Record<string, string> = {
   "git-scm.com": "words in an error message; the person decides whether to open it",
   "avatars.": "the start of the GitHub Enterprise picture host, built from the repository's own host",
   host: "a placeholder in a code comment or doc string",
-  "example.com": "a placeholder in a doc string",
 };
 
 test("t791: every host the app's code can reach has a row in the Privacy list, or a stated reason", () => {

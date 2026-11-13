@@ -26,7 +26,7 @@ export const LABELS = [
   ["Session", "src/launch/ChooserPane.tsx"],
   ["Fork", "src/terminal/ForkDialog.tsx"],
   ["Pane", "src/floor/FloorView.tsx"],
-  ["Tab", "src/browser/BrowserPane.tsx"],
+  ["Tab", "src/terminal/PaneMenu.tsx"],
   ["Layout", "src/chrome/LayoutStrip.tsx"],
   ["Seat", "src/launch/ChooserPane.tsx"],
   ["Shape", "src/launch/ChooserPane.tsx"],

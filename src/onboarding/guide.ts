@@ -288,9 +288,6 @@ export const withRecord = (seen: ReadonlySet<string>, kept: ReadonlySet<string>,
   kept: new Set([...kept, ...g.tried]),
 });
 
-/** Kept only so src/browser/BrowserPane.tsx still compiles: remove when src/browser is deleted. */
-export const notePage = (_url: string | null | undefined): void => {};
-
 // ---- ONB-029: the command palette tip's one-time demo ----
 
 /** The palette's keys as the tip shows them: the user's binding, or the default when unassigned. */
