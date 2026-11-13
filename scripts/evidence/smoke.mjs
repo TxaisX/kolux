@@ -479,14 +479,15 @@ async function flow7() {
   const grid = await waitFor("the six-pane grid", async () => ((await shown(TERM)) >= 6 ? shown(TERM) : null), 20000);
   const dead = await count("aside.sidebar .pane-row");
   if (dead > 0) throw new Error(`the sidebar still renders ${dead} .pane-row element(s); a workspace row is .sess[role=button] now`);
-  // Txais 2026-11-12: the sidebar lists the workspace folder row and its sessions under it (never worktrees).
+  // Txais 2026-11-12 (PR #255): the sidebar lists the workspace folder row only: no session rows, no worktrees.
   const folders = await count(`${tid("sidebar-folder")}`);
   if (folders !== 1) throw new Error(`the sidebar lists ${folders} folder rows for one workspace with ${panes} sessions; it should list the folder row once`);
-  const sessions = await count(`${tid("sidebar-session")}`);
-  if (sessions < panes) throw new Error(`the sidebar lists ${sessions} session rows for ${panes} sessions; it should list every session under the folder`);
+  // A removed id, so it is spelled out here rather than through tid(): smoke-testids checks every tid() is still in src/.
+  const sessions = await count('[data-testid="sidebar-session"], aside.sidebar [data-session]');
+  if (sessions > 0) throw new Error(`the sidebar lists ${sessions} session rows for ${panes} sessions; it should list the folder only (every session is in its grid)`);
   await click(tid("sidebar-folder"));
   const back = await waitFor("every pane again", async () => ((await shown(TERM)) >= grid ? shown(TERM) : null), 20000);
-  const said = `${panes} sessions in one workspace: the sidebar lists the folder row and ${sessions} session rows (no .pane-row), clicking the folder shows ${back} panes`;
+  const said = `${panes} sessions in one workspace: the sidebar lists the folder row and no session rows (no .pane-row), clicking the folder shows ${back} panes`;
   if (ATTACH) return `${said} (attach mode: no restart)`;
   await relaunch();
   const kept = await waitFor(`the ${panes} panes after the restart`, async () => ((await count(TERM)) >= panes ? count(TERM) : null), 90000, 500);
