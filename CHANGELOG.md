@@ -2,17 +2,20 @@
 
 ## Unreleased
 
-- **New session: pick each seat's AI from a grid of tiles.** Claude Code, Codex, OpenCode, Grok, Terminal and Other sit in a 3-wide grid, each with a large logo and its name underneath.
-- OpenCode and Grok now show their own logos (from each company's official brand kit), and the Codex logo is drawn as large as the others.
+## 0.1.15
+
 - **A team of agents works in one screen.** Start two or more AIs with "Own folder for each AI" and they all open side by side in one grid on the project, each still in its own folder on its own branch. Their folders are not listed in the sidebar. They show up again once no agent is using them, so you can clean them up. After a restart the team comes back in the same grid.
-- Sidebar rows are easier to read: the white "1 working" count no longer sits on top of the green status, and the second line says just "Working" or "Needs you" instead of "1 agent · Working".
 - **Web pages open in your own browser.** Kolux no longer draws web pages itself, which uses far less memory and leaves room to run more agents at once. Links in terminals, ports, review links and HTML previews open in Chrome or your default browser.
+- **Terminal text stays readable.** Fixed a bug where open terminals could suddenly show the wrong letters after another terminal opened, took a big paste, or the PC woke from sleep. Every open terminal now redraws its letters right away.
+- **The memory number is about Kolux itself.** The figure in the status bar now counts only Kolux's own window and the browser engine inside it, not the agents or shells running in your panes, so it shows what Kolux itself costs.
+- **Third-party notices in About.** About Kolux has a "Third-party notices" button that lists the licences of the open-source code Kolux is built with.
+- The last "Kolux RS" names are gone: Kolux's settings names (`KOLUX_…`; the old `KOLUX_RS_…` names still work), the hook files it adds for each AI and its log lines all say Kolux now. An upgrade removes the old-named hook file, so hooks do not run twice.
+- Experimental: Settings › Terminal has a switch (Windows only, off by default) that draws panes with the Windows Terminal engine. Those panes now use your Kolux colour theme, font, font size and screen scaling, and change when you change them. Menus and dialogs show over them.
+- Sidebar rows are easier to read: the white "1 working" count no longer sits on top of the green status, and the second line says just "Working" or "Needs you" instead of "1 agent · Working".
 - The sidebar lists each workspace folder with its sessions under it; the folders Kolux makes for each agent no longer appear there. Clicking a session row brings its pane forward.
 - New sessions start the agent inside your own shell, the way you would type `claude` yourself, and a start that fails is written to Kolux's log with the program it tried to run.
 - The pane header no longer shows the "Context used" ring and percentage.
 - A saved language other than English is in place from the first frame, instead of switching after start-up.
-- Experimental: a native terminal setting (off by default) draws panes with the Windows Terminal engine; menus and dialogs show over those panes.
-- Settings › Terminal has a switch for the native Windows Terminal engine (experimental, Windows only, off by default).
 - Right-click › Copy works on text you selected outside a text field.
 - The Ports list keeps its entries and count when its popover opens or closes, and the Checks tab follows the worktree you are in.
 - Typing in a long note no longer redraws its preview on every key, and the Explorer stays quicker in big folders.
@@ -23,7 +26,13 @@
 - The shortcut list in Settings filters once per change instead of once per group on every redraw.
 - For trying changes: `pnpm local` builds and starts Kolux in a few minutes beside the installed app, with no installer.
 - The `kolux` command line drops its web page commands (go to a page, list tabs, set cookies and the like) along with the web pane; saving a page as PDF, HTML previews and the Tower window keep working.
+- Under the hood: Kolux has started moving its controls to Base UI 1.9.0, a library that handles keyboard use and screen readers for menus, lists and dialogs. The first ones moved are the right sidebar's tabs, the sidebar's hide menu, the Git page's author picker and the About window. They look and work the same.
 - Under the hood: library updates. Math in previews uses KaTeX 0.19.0 (its makers flagged 0.18.11 as a bad release); Markdown reader marked 18.2.0, build tools Vite 8.3.8 and its React plugin 6.3.0, diagram layout cytoscape 3.35.0; on the Rust side the window library wry 0.57.2, notifications plugin 2.8.1, zip 9.5.1 and small fixes in crc32fast, errno, jiff, rustls-pki-types and sqlite-wasm-rs. The rich editor moves to Lexical 0.53; notes still save exactly what you typed.
+
+## 0.1.14
+
+- **New session: pick each seat's AI from a grid of tiles.** Claude Code, Codex, OpenCode, Grok, Terminal and Other sit in a 3-wide grid, each with a large logo and its name underneath.
+- OpenCode and Grok now show their own logos (from each company's official brand kit), and the Codex logo is drawn as large as the others.
 
 ## 0.1.13
 
