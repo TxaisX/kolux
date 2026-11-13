@@ -1,6 +1,13 @@
 # Clean UI: folders-only sidebar, one session per grid cell
 
-Status: not started. Owner decision 2026-11-12.
+Status: done in PR #255 (DECISIONS.md DT-C281). Owner decision 2026-11-12.
+
+What landed, by the scope below: `Grid.tsx` draws one pane per cell and no strip, in either look; the tab's marks
+(Tab Color dot, pin, unread bell, context ring) and the drag grip are in every pane header
+(`terminal/TabMarks.tsx`); a terminal's Pane menu carries Pin Tab, Tab Color… and the grid's bulk closes, and any other
+pane's header opens the tab menu on `src/ui`; `layout.ts oneCellEach` spreads an old cell's tabs into cells of their
+own (tested on layouts written by v0.1.1, v0.1.14 and wave-1, `terminal/layoutMigration.test.ts`); the sidebar draws
+folder rows only. The cards this changes are amended in `spec/`.
 
 ## What the owner asked for
 
