@@ -119,7 +119,9 @@ test("nativeLook: the pane's theme, first font family in points and cursor shape
   expect(look.font).toBe("Cascadia Mono");
   expect(look.size).toBe(10);
   expect(look.cursorStyle).toBe(6);
-  expect(nativeLook({}, "monospace", 16, "block", true)).toMatchObject({ font: "Cascadia Mono", size: 12, cursorStyle: 0 });
+  // a blinking block is the engine's blinking block (1), not its own default (0)
+  expect(nativeLook({}, "monospace", 16, "block", true)).toMatchObject({ font: "Cascadia Mono", size: 12, cursorStyle: 1 });
+  expect(nativeLook({}, "Fira Code", 13, "block", undefined).cursorStyle).toBe(1);
   expect(nativeLook({}, "Fira Code", 13, "block", false).cursorStyle).toBe(2);
   expect(nativeLook({}, "Fira Code", 13, "underline", true).cursorStyle).toBe(3);
   expect(nativeLook({}, "Fira Code", 13, "underline", false).cursorStyle).toBe(4);

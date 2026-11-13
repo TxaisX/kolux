@@ -59,13 +59,14 @@ export function nativeLook(colours: object, fontFamily: string | undefined, font
   const theme = colours as Record<string, unknown>;
   const names = [...TABLE, ...TABLE.map((n) => "bright" + n[0].toUpperCase() + n.slice(1))];
   const background = colorref(str(theme.background), 0x0c0c0c);
-  const shape = cursorStyle === "bar" ? 5 : cursorStyle === "underline" ? 3 : 0;
+  // The engine's cursor styles: 1 blinking block, 2 steady block, 3 and 4 underline, 5 and 6 bar (0 is its own default).
+  const shape = cursorStyle === "bar" ? 5 : cursorStyle === "underline" ? 3 : 1;
   const font = (fontFamily ?? "").split(",").map((f) => f.trim().replace(/^["']|["']$/g, "")).find((f) => f && !/^(monospace|ui-monospace)$/i.test(f)) ?? "Cascadia Mono";
   return {
     background,
     foreground: colorref(str(theme.foreground), 0xcccccc),
     selection: colorref(str(theme.selectionBackground), 0x804020, str(theme.background)),
-    cursorStyle: blink === false ? shape + 1 + (shape === 0 ? 1 : 0) : shape,
+    cursorStyle: blink === false ? shape + 1 : shape,
     table: names.map((n, i) => colorref(str(theme[n]), colorref(CAMPBELL[i], 0))),
     font,
     size: Math.max(4, Math.round((fontSize ?? 13) * 0.75)),

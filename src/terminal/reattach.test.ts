@@ -1,6 +1,9 @@
 // APP-052 (T-075): a pane takes its terminal back from the run of the service that owns it, over a fake service.
 import { describe, expect, it } from "vitest";
-import { type Attach, fromThisService, LIMIT_MS, needsSize, orphanOf, reattach, type ServiceInfo, warmAskOf, warmSnapshot } from "./reattach";
+import { type Attach, fromThisService, LIMIT_MS, needsSize, orphanOf, reattach, type ServiceInfo, startedOf, warmAskOf, warmSnapshot } from "./reattach";
+import { dropText, shellKind } from "./drop";
+import { shellIconOf } from "./shellChoice";
+import { shellWord } from "../launch/PlusMenu";
 
 /** A fake terminal service: `down` failed answers before it comes up, then `info`; attach answers from `answers`. */
 function fake(info: ServiceInfo, answer: Partial<Attach> = {}, down = 0) {
@@ -181,12 +184,37 @@ describe("kept-warm shell", () => {
 describe("kept-warm shell: the snapshot a pane draws when it takes a warm shell", () => {
   const text = (b: Uint8Array) => new TextDecoder().decode(b);
   const bytes = (s: string) => new TextEncoder().encode(s);
-  it("on Windows leaves out the cursor question the service already answered, once, and keeps the prompt", () => {
-    expect(text(warmSnapshot(bytes("\x1b[6nPS C:\\work> "), "win32"))).toBe("PS C:\\work> ");
-    expect(text(warmSnapshot(bytes("\x1b[?9001h\x1b[6nPS> \x1b[6n"), "win32"))).toBe("\x1b[?9001hPS> \x1b[6n");
-    expect(text(warmSnapshot(bytes("PS> "), "win32"))).toBe("PS> ");
+  it("leaves out every query in it, on every platform, and keeps the prompt and the modes the shell turned on", () => {
+    expect(text(warmSnapshot(bytes("\x1b[6nPS C:\\work> ")))).toBe("PS C:\\work> ");
+    // review fix 6: before, only the first ESC[6n went, and only on Windows; the second one here was answered on the redraw
+    expect(text(warmSnapshot(bytes("\x1b[?9001h\x1b[6nPS> \x1b[6n")))).toBe("\x1b[?9001hPS> ");
+    expect(text(warmSnapshot(bytes("\x1b[c\x1b]11;?\x07\x1b[?u$ ")))).toBe("$ ");
+    expect(text(warmSnapshot(bytes("PS> ")))).toBe("PS> ");
   });
-  it("elsewhere draws it as it is: no console host asked anything", () => {
-    for (const p of ["linux", "darwin"]) expect(text(warmSnapshot(bytes("\x1b[6n$ "), p))).toBe("\x1b[6n$ ");
+});
+
+describe("kept-warm shell: a pane that takes one looks and behaves as one that started the same shell", () => {
+  const pwsh = "C:\\Program Files\\PowerShell\\7\\pwsh.exe";
+  it("the attach answer carries the shell the warm shell runs; a reload's answer carries none", async () => {
+    const warm = fake(run, { state: "attached", id: 9, program: pwsh });
+    expect(await reattach(warm.service, 3, null, LIMIT_MS, clock())).toEqual({ kind: "attached", id: 9, service: run, program: pwsh });
+    const reload = fake(run, { state: "attached", id: 9 });
+    expect(await reattach(reload.service, 3, null, LIMIT_MS, clock())).toEqual({ kind: "attached", id: 9, service: run });
+  });
+  it("names that shell as started, so the header, icon and file drops match a fresh pane of that shell", () => {
+    const taken = startedOf({ kind: "attached", id: 9, service: run, program: pwsh }, null);
+    // what terminal_spawn answers for a fresh plain pane that started the same shell
+    const fresh = pwsh;
+    expect(taken).toBe(fresh);
+    expect([shellWord(taken!), shellIconOf(taken), shellKind(taken)]).toEqual(["PowerShell 7", "pwsh", "powershell"]);
+    const paths = ["C:\\work\\a$b%c!d.txt"];
+    expect(dropText(paths, shellKind(taken))).toEqual(dropText(paths, shellKind(fresh)));
+    expect(dropText(paths, shellKind(taken)).refused).toBe(0);
+    // before the fix the pane named nothing: the generic header and icon, and the drop refused as "other"
+    expect([shellIconOf(null), shellKind(null), dropText(paths, shellKind(null)).refused]).toEqual(["shell", "other", 1]);
+  });
+  it("a terminal taken back after a reload still names the program the pane asked for", () => {
+    expect(startedOf({ kind: "attached", id: 9, service: run }, "claude")).toBe("claude");
+    expect(startedOf({ kind: "attached", id: 9, service: run }, null)).toBeNull();
   });
 });

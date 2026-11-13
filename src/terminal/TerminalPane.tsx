@@ -42,7 +42,7 @@ import { notePrinted } from "./printedAddresses";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
-import { fromThisService, needsSize, orphanOf, reattach, warmAskOf, warmSnapshot, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
+import { fromThisService, needsSize, orphanOf, reattach, startedOf, warmAskOf, warmSnapshot, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
 import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { frameOutputs, type FrameOutput } from "./frame";
@@ -1046,7 +1046,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       const start = async (prog: string | null, argv: readonly string[], keepInView: boolean, back: Reattached | null = null) => {
         try {
           // APP-052: a terminal this run of the service still runs for the pane (the window reloaded) is taken back, not started again.
-          const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: prog, account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
+          const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: startedOf(back, prog), account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
           setStarted(ran);
           // A shell taken back after a reload is past its prompt, and a fallback shell without hooks
           // (ACCT-046) prints no mark: neither is held.
@@ -1195,14 +1195,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // what it left on (mouse capture first) is turned off, so a plain drag selects again in the new shell.
         if (keepInView && back?.kind !== "attached") term.write(resetAfterExit(modeView(term.modes), term.buffer.active.type === "alternate"));
         // Kept-warm shell: the warm shell printed its prompt before this pane existed; its snapshot draws it and
-        // sets the floor, so the chunks after it are drawn once. The console host's cursor question in it was
-        // already answered by the service, so it is left out (warmSnapshot).
+        // sets the floor, so the chunks after it are drawn once. The terminal queries in it (the console host's
+        // cursor question, which the service answered, and any other) are left out (warmSnapshot).
         if (warmAsk !== null && back?.kind === "attached") {
           const snap = await invoke<LiveSnapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
           if (!alive) return;
           if (snap) {
             resync.took(snap.id, snap);
-            applySnapshot(term, warmSnapshot(decodeOutput(snap.data), keys.current.platform));
+            applySnapshot(term, warmSnapshot(decodeOutput(snap.data)));
           }
         }
         await start(program, args, keepInView, back);
