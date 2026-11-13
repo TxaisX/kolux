@@ -91,31 +91,41 @@ is still seen, and logged every start with its parent. After a 60 s idle sample 
 run when its parent chain leads back to that shell. Windows records the console client as the parent
 of a host it starts for a new console, so each host below is listed under the program that got it.
 
-Run 43354413717, 2026-11-13 03:02 to 03:30 UTC:
+Two passes, each with a fresh runner per commit: run 43354413717 (03:02 to 03:30 UTC) and run
+43360734166 (03:55 to 04:24 UTC), both on 2026-11-13. The second pass's "after" commit, 7316e378, has
+the same Rust code as 324b328a plus the pinned toolchain; that pass also counted Security event 4688
+(the kernel's own process-creation audit record) over the same window.
 
-| Full `cargo test` | Commit | New conhost.exe in the run | From cargo's process tree | git.exe starts | Lib tests | Wall time |
+| Full `cargo test` | Commit | New conhost.exe in the run | From cargo's process tree | git.exe starts | Lib tests (all 0 fail, 9 ignored) | Wall time |
 |---|---|---|---|---|---|---|
-| Before (wave-1) | 82f3643e | 16,267 | 16,265 | 36,686 | 2,940 pass, 0 fail, 9 ignored, 1,482 s | about 1,658 s |
-| After (this branch) | 324b328a | 60 | 58 | 36,686 | 2,941 pass, 0 fail, 9 ignored, 1,313 s | about 1,477 s |
+| Pass 1, before (wave-1) | 82f3643e | 16,267 | 16,265 | 36,686 | 2,940 pass, 1,482 s | about 1,658 s |
+| Pass 1, after (this branch) | 324b328a | 60 | 58 | 36,686 | 2,941 pass, 1,313 s | about 1,477 s |
+| Pass 2, before (wave-1) | 82f3643e | 16,272 | 16,267 | 36,690 | 2,940 pass, 904 s | 1,053 s |
+| Pass 2, after (this branch) | 7316e378 | 61 | 59 | 36,690 | 2,941 pass, 1,312 s | 1,477 s |
 
-Every other test binary passed in both runs. The idle sample before each run saw no new conhost.exe.
+Every other test binary passed in all four runs, and no idle sample saw a new conhost.exe. Event
+4688 agreed with the WMI trace exactly: 16,272 conhost.exe and 36,690 git.exe among 54,947 process
+starts before, 61 and 36,690 among 38,752 after. The run times went one way in the first pass and
+the other way in the second: on a runner they vary by more than this change, so no time is claimed.
 
-Where the hosts in cargo's tree came from (the program each was started for):
+Where the hosts in cargo's tree came from in pass 1 (the program each was started for); pass 2 only
+differs where noted:
 
-- Before: git.exe 15,757, cmd.exe 266, attrib.exe 73, powershell.exe 31, gh.exe 29, taskkill.exe 29,
-  python.exe 9, icacls.exe 8, PING.EXE 5, sh.exe 1, and 57 started by the test binaries themselves
-  (the lib tests 28, cards_07 17, cards_03 8, cards_19 3, cards_02 1).
-- After: the same 57 from the test binaries, and 1 for cmd.exe.
+- Before: git.exe 15,757 (pass 2: 15,759), cmd.exe 266, attrib.exe 73, powershell.exe 31, gh.exe 29,
+  taskkill.exe 29, python.exe 9, icacls.exe 8, PING.EXE 5, sh.exe 1, and 57 started by the test
+  binaries themselves (the lib tests 28, cards_07 17, cards_03 8, cards_19 3, cards_02 1).
+- After: the same 57 from the test binaries, and 1 for cmd.exe (pass 2: 1 for cmd.exe and 1 for
+  gh.exe).
 
 The 57 a test binary starts itself are the pseudo consoles of the PTY tests (ConPTY's host is a child
 of the process that creates the pseudo console), which this change leaves alone on purpose; that
-confirms the guess under "Spawn sites". All the others but one (for a cmd.exe) are gone: 16,265
-down to 58 per full run.
-The kernel trace sees every start, which the 5 ms snapshots above could not: the full suite starts
-git.exe 36,686 times, and before this change 15,757 of them got a console host of their own.
+confirms the guess under "Spawn sites". All the others but one or two are gone: 16,265 down to 58,
+and 16,267 down to 59, per full run. The kernel trace sees every start, which the 5 ms snapshots
+above could not: the full suite starts git.exe about 36,690 times, and before this change about
+15,760 of them got a console host of their own.
 
 ## Still open
 
-- `git.exe` itself starts thousands of times per run (36,686 in a full `cargo test` on the runner;
-  git is the thing under test). That is Defender scan cost no console flag can remove; cutting it
-  means fewer git calls per test, a larger change than this fix.
+- `git.exe` itself starts thousands of times per run (about 36,690 in a full `cargo test` on the
+  runner; git is the thing under test). That is Defender scan cost no console flag can remove;
+  cutting it means fewer git calls per test, a larger change than this fix.
