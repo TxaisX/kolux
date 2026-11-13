@@ -165,7 +165,7 @@ fn fix2_every_spawn_hides_its_console() {
     let spaced = ["Command", "\n        ::new("].concat();
     let bad = format!("fn a() {{\n    let c = std::process::{new}\"x\");\n}}\nfn b() {{\n    let c = {spaced}\"y\");\n}}\n// {new}\"z\") in a comment\n");
     assert_eq!(bare_spawns(&bad), vec![2, 5]);
-    let good = format!("fn a() {{\n    let mut c = {new}\"x\");\n    c.creation_flags(0x0800_0000);\n}}\n");
+    let good = format!("fn a() {{\n    let mut c = {new}\"x\");\n    c.creation_flags(crate::winproc::no_window());\n}}\n");
     assert!(bare_spawns(&good).is_empty());
     // The files that start programs for source control and gh: none opens a console window.
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
@@ -2749,7 +2749,7 @@ fn plain(args: &[&str], dir: &Path) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        c.creation_flags(0x0800_0000);
+        c.creation_flags(crate::winproc::no_window());
     }
     let out = c.output().unwrap();
     assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
@@ -2782,7 +2782,7 @@ fn index_list(dir: &Path) -> String {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        ls.creation_flags(0x0800_0000); // no console window
+        ls.creation_flags(crate::winproc::no_window()); // no console window
     }
     let out = ls.args(["ls-files", "-s"]).current_dir(dir).output().unwrap();
     String::from_utf8_lossy(&out.stdout).to_string()

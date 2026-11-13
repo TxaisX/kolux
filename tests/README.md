@@ -16,7 +16,7 @@ Requirements for running the parallel live test suite (`node scripts/stress/run-
 ## 2. Installed Toolchain & Runtimes
 
 - **Microsoft Edge WebView2 Runtime** (Evergreen, system-wide or per-user; pre-installed on Windows 11, must be installed on Windows Server / fresh Windows 10 VMs).
-- **Rust toolchain**: `stable` MSVC (`x86_64-pc-windows-msvc`) with `cargo`, `rustc`, and Visual Studio C++ Build Tools (MSVC linker + Windows SDK).
+- **Rust toolchain**: the release pinned in `rust-toolchain.toml`, MSVC (`x86_64-pc-windows-msvc`) with `cargo`, `rustc`, and Visual Studio C++ Build Tools (MSVC linker + Windows SDK).
 - **Node.js**: `>= 24` (matches `package.json` `engines.node`).
 - **pnpm**: `12.x` (`corepack enable` or `pnpm/action-setup` v6+).
 - **Git for Windows**: `git` on `PATH` (used by `run-all.mjs`, `live-common.mjs`, and Kolux's workspace/git flows).

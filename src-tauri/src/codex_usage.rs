@@ -229,7 +229,7 @@ pub(crate) fn app_server(program: &Path, home: &Path) -> std::io::Result<Child> 
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: never a Codex window on screen
+        cmd.creation_flags(crate::winproc::no_window()); // never a Codex window on screen
     }
     cmd.spawn()
 }

@@ -1317,8 +1317,7 @@ fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, Str
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000; // no console flashes up behind the app
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.creation_flags(crate::winproc::no_window());
     }
     // GIT-070: on macOS and Linux git leads its own process group, so stopping a stalled read
     // (procs::kill_tree's group signal) also ends the hooks, diff tools and pagers it started.
@@ -1592,7 +1591,7 @@ pub(crate) fn move_back(trash: &Path, dest: &Path) -> Result<(), String> {
 #[cfg(windows)]
 fn hide_folder(p: &Path) {
     use std::os::windows::process::CommandExt;
-    let _ = std::process::Command::new("attrib").arg("+h").arg(p).creation_flags(0x0800_0000).output();
+    let _ = std::process::Command::new("attrib").arg("+h").arg(p).creation_flags(crate::winproc::no_window()).output();
 }
 #[cfg(not(windows))]
 fn hide_folder(_: &Path) {}

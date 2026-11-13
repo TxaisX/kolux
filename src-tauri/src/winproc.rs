@@ -3,7 +3,8 @@
 //! On Windows a program without a window of its own (Kolux's release build has none) that starts a
 //! console program gets a black console window for it unless the start asks for none. Every child
 //! Kolux starts that is not a terminal pane goes through [`command`] (or [`quiet`] for a command
-//! built elsewhere), which sets CREATE_NO_WINDOW. Terminal panes are different: they run in a
+//! built elsewhere), which asks for no console window of its own ([`no_window`]: the child shares
+//! Kolux's console when it has one, else gets a hidden one). Terminal panes are different: they run in a
 //! pseudo console (the PTY path in `pty.rs`), which never opens a window, and they are not started
 //! through `std::process::Command` at all.
 //!
@@ -12,16 +13,35 @@
 use std::ffi::OsStr;
 use std::process::Command;
 
-/// CREATE_NO_WINDOW: the child gets no console window (its output pipes still work).
+/// CREATE_NO_WINDOW: the child gets a new console with no window (its output pipes still work).
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-/// Makes `cmd` start without a console window; nothing on other systems.
+/// The creation flag that keeps a child from opening a console window: CREATE_NO_WINDOW when this
+/// program has no console of its own (the release app), 0 when it has one (a test binary or a debug
+/// build run from a terminal, a pane's pseudo console). A child that shares the console it is started
+/// from shows no window and costs no console host (`conhost.exe`); CREATE_NO_WINDOW always makes a
+/// new hidden console, so a start-per-test suite paid one host per child (about 1,700 in one run of
+/// the lib tests, each scanned by Defender). Decided once: nothing here attaches or frees a console.
+#[cfg(windows)]
+pub fn no_window() -> u32 {
+    use std::sync::OnceLock;
+    static FLAG: OnceLock<u32> = OnceLock::new();
+    *FLAG.get_or_init(|| {
+        let mut ids = [0u32; 1];
+        // SAFETY: `ids` is a live one-element buffer and the count passed is its length; the call
+        // returns 0 when this process has no console.
+        let attached = unsafe { windows_sys::Win32::System::Console::GetConsoleProcessList(ids.as_mut_ptr(), 1) };
+        if attached == 0 { CREATE_NO_WINDOW } else { 0 }
+    })
+}
+
+/// Makes `cmd` start without a console window of its own; nothing on other systems.
 pub fn quiet(cmd: &mut Command) -> &mut Command {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.creation_flags(no_window());
     }
     cmd
 }
@@ -143,6 +163,17 @@ mod tests {
         assert_eq!(unhidden_spawns("x.rs", &url), vec![2], "a URL's // is not a comment");
     }
 
+    /// A program with a console shares it with its children (no new console host per child); one
+    /// without asks for a hidden console. Either way no window opens.
+    #[cfg(windows)]
+    #[test]
+    fn no_window_shares_an_existing_console_and_hides_a_new_one() {
+        let mut ids = [0u32; 1];
+        // SAFETY: `ids` is a live one-element buffer and the count passed is its length.
+        let attached = unsafe { windows_sys::Win32::System::Console::GetConsoleProcessList(ids.as_mut_ptr(), 1) } != 0;
+        assert_eq!(no_window(), if attached { 0 } else { CREATE_NO_WINDOW });
+    }
+
     #[test]
     fn t816_command_hides_its_console_on_windows() {
         let c = command("kolux-rs-no-such-program");
@@ -156,7 +187,7 @@ mod tests {
     }
 
     /// T-816: no new program starts without hiding its console. Every production `Command::new` in
-    /// `src-tauri/src` either sets CREATE_NO_WINDOW itself or goes through `winproc`.
+    /// `src-tauri/src` either sets its creation flags itself (from `winproc::no_window()`) or goes through `winproc`.
     #[test]
     fn t816_every_production_spawn_hides_its_console() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");

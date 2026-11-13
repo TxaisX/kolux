@@ -3541,7 +3541,7 @@ pub fn listed_session(program: &std::path::Path, src: &session_id::Source, folde
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: a layout save never flashes a console
+        cmd.creation_flags(crate::winproc::no_window()); // a layout save never flashes a console
     }
     let mut child = cmd.spawn().ok()?;
     let mut out = child.stdout.take()?;
@@ -3575,7 +3575,7 @@ pub fn listed_session(program: &std::path::Path, src: &session_id::Source, folde
                 #[cfg(windows)]
                 {
                     use std::os::windows::process::CommandExt;
-                    let _ = std::process::Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
+                    let _ = std::process::Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(crate::winproc::no_window()).output();
                 }
                 let _ = child.kill();
                 let _ = child.wait();
