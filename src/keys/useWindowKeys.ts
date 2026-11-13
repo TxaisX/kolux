@@ -120,7 +120,7 @@ export function useWindowKeys(w: WindowBag) {
         right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
         setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
         setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
-        switcherRef, terminals, toggleExplorer, unsaved
+        switcherRef, terminals, toggleExplorer, unsaved, workDir
       } = bag.current;
       // SET-009: while Settings > Shortcuts records a chord, the press is the recorder's alone.
       if (recording.on) return;
@@ -322,9 +322,10 @@ export function useWindowKeys(w: WindowBag) {
           // GIT-041 (T-034-b): the Markdown notes go through the Send menu; a workspace's line notes
           // are pasted into its agent at once.
           if (!reviewOn(settings)) return;
-          const how = sendRoute(true, notes.length, activeDir === null ? 0 : notesFor(activeDir).length);
+          // Line notes are kept under the folder their pane runs in, so a worktree's are read and sent from the focused pane's folder.
+          const how = sendRoute(true, notes.length, workDir === null ? 0 : notesFor(workDir).length);
           if (how === "menu") setSendMenu(true);
-          else if (how === "lines" && activeDir !== null) void sendNotes(activeDir).then((why) => setToast(why ?? "The review notes were sent to the agent."));
+          else if (how === "lines" && workDir !== null) void sendNotes(workDir).then((why) => setToast(why ?? "The review notes were sent to the agent."));
           else setToast(NOTHING_TO_SEND);
           break;
         }

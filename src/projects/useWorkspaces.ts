@@ -9,7 +9,8 @@ import type { Page } from "./ProjectsPanel";
 import type { PendingCreate, Project, SetupLine, SetupWhere } from "./model";
 import { EMPTY_HISTORY } from "./nav";
 import { cellsOf, DEFAULT_PANES_FIELD, groupOf, MAX_PANES, seedCount } from "../terminal/grid";
-import { activeAfterRemove, focusIn, panesIn, sameDir, withoutDir } from "../workspaces";
+import { activeAfterRemove, focusIn, gridOf, panesIn, sameDir, withoutDir } from "../workspaces";
+import { forgetStartDirs, startDirOf } from "./worktreeGrid";
 import { readLook } from "../settings/general";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { emptySeat } from "../launch/seats";
@@ -101,11 +102,11 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
     setActiveDir(at);
     if (screen === "artifacts" || screen === "skills") setScreen("terminals");
     const shown = panesIn(panes, at);
-    const mine = view === undefined ? undefined : shown.find((p) => sameDir(p.cwd, dir) && !p.kind);
+    const mine = sameDir(gridOf(at), dir) ? undefined : shown.find((p) => sameDir(p.cwd, dir) && !p.kind); // a worktree's own grid is its project's: its session in that grid is the one focused
     if (mine) setFocused(mine.key);
     else if (shown.length > 0) setFocused((f) => focusIn(panes, at, f));
     else {
-      const made = startPanes(dir, branch, fresh ? seedCount(settings[DEFAULT_PANES_FIELD], readLook(settings) === "classic") : 1, () => nextKey.current++, prefill && { seat: prefill.agent ? { ...emptySeat(), ...seatStart(prefill.agent, seatDefault(settings)) } : emptySeat(), task: prefill.task }).map((p) => (view === undefined ? p : { ...p, view }));
+      const made = startPanes(startDirOf(dir) ?? dir, branch, fresh ? seedCount(settings[DEFAULT_PANES_FIELD], readLook(settings) === "classic") : 1, () => nextKey.current++, prefill && { seat: prefill.agent ? { ...emptySeat(), ...seatStart(prefill.agent, seatDefault(settings)) } : emptySeat(), task: prefill.task }).map((p) => (view === undefined ? p : { ...p, view }));
       setPanes((ps) => [...ps, ...made]);
       setFocused(made[0].key);
     }
@@ -120,6 +121,7 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   // process lives) and a tab removed earlier never comes back; several removals are one call.
   const removedAll = (paths: string[]) => {
     if (paths.length === 0) return;
+    forgetStartDirs(paths); // a worktree that is gone is no longer where new sessions start
     const without = (ps: Pane[]) => paths.reduce((x, d) => withoutDir(x, d), ps);
     const left = without(panesNow.current);
     const gone = (d: string) => paths.some((x) => sameDir(d, x));

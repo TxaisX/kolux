@@ -8,8 +8,44 @@
 // pane before DT-C274): the pane is shown in its own folder's grid.
 export type PaneLike = { key: number; cwd: string | null; view?: string | null };
 
-/** DT-C274: the folder whose grid shows the pane: its `view` when it has one, else the folder it runs in. */
-export const viewOf = (p: { cwd: string | null; view?: string | null }): string | null => (p.view !== undefined ? p.view : p.cwd);
+// One workspace per project (Txais, 2026-11-13): every worktree of a project shows in the project folder's one grid. The
+// window hands over which folder each worktree belongs to and the project folders themselves; `gridOf` answers with the
+// project folder for a worktree of it, for a folder inside a worktree and for a folder inside a project folder (the
+// longest known folder wins), and a folder that is none of those answers as itself. Module state, set by the window.
+let gridRoots: Record<string, string> = {};
+let gridAnswers = new Map<string, string>();
+let gridSig = "[]";
+
+/** The worktree folders and the project folder whose grid each one shows in, and the project folders (a folder under one
+ *  of them shows in its grid too). Keys go through `dirKey`. */
+export function setGridRoots(roots: Record<string, string>, projectFolders: string[] = []): void {
+  const next: Record<string, string> = {};
+  for (const root of projectFolders) next[dirKey(root)] = root;
+  for (const [dir, root] of Object.entries(roots)) next[dirKey(dir)] = root;
+  const sig = JSON.stringify(Object.entries(next).sort(([x], [y]) => (x < y ? -1 : 1)));
+  if (sig === gridSig) return; // the window calls this every render; the answers are kept while the lists are the same
+  gridSig = sig;
+  gridRoots = next;
+  gridAnswers = new Map();
+}
+
+/** The folder whose grid shows `dir`: the project folder for a worktree of it (or a folder inside either), else `dir` as given. */
+export const gridOf = (dir: string | null): string | null => {
+  if (dir === null) return null;
+  const k = dirKey(dir);
+  const known = gridAnswers.get(k);
+  if (known !== undefined) return known === "" ? dir : known;
+  let best: string | undefined;
+  let bestLen = -1;
+  for (const e of Object.keys(gridRoots)) if ((k === e || k.startsWith(e + "\\")) && e.length > bestLen) (best = e), (bestLen = e.length);
+  const answer = best === undefined ? "" : gridRoots[best];
+  gridAnswers.set(k, answer);
+  return answer === "" ? dir : answer;
+};
+
+/** DT-C274: the folder whose grid shows the pane: its `view` when it has one, else the folder it runs in; a worktree
+ *  of a project shows in the project's grid (`gridOf`). */
+export const viewOf = (p: { cwd: string | null; view?: string | null }): string | null => gridOf(p.view !== undefined ? p.view : p.cwd);
 
 /** One spelling per folder: backslashes, no trailing slash, any case, "." and ".." worked out
  *  (USAGE-017: a path that climbs out of a folder is not inside it). The key for a folder in a set or map. */
@@ -45,7 +81,8 @@ export function underDir(path: string | null, root: string): boolean {
 
 /** The panes shown for a workspace (DT-C274: by the grid they are shown in, `viewOf`). */
 export function panesIn<P extends PaneLike>(panes: P[], dir: string | null): P[] {
-  return panes.filter((p) => sameDir(viewOf(p), dir));
+  const at = gridOf(dir);
+  return panes.filter((p) => sameDir(viewOf(p), at));
 }
 
 /** Keeps the focus where it is when that pane is shown, else moves it to the first shown pane. */

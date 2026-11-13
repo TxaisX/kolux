@@ -45,6 +45,8 @@ export const sameTerminal = sameProps<TerminalProps>({
   usage: "data", // readoutOf makes a new object each render
   cwd: "same",
   branch: "same",
+  worktree: "data", // made fresh each render from the project list
+  onWorktree: "same",
   focused: "same",
   agent: "same",
   program: "same",

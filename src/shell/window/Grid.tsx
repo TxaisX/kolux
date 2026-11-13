@@ -18,6 +18,7 @@ import Ring from "../../usage/Ring";
 import { capOn, claudeOf, codexOf, contextFill, meterOf, meterText } from "../../usage/meter";
 import NameField from "../../terminal/NameField";
 import { sameDir, viewOf } from "../../workspaces";
+import { startDirOf } from "../../projects/worktreeGrid";
 import Pane from "./Pane";
 import { gridFrame } from "./gridFrame";
 import { tabKeyAction, tabStop } from "./tabKeys";
@@ -55,7 +56,7 @@ export default function Grid() {
           <h2>{activeDir ? folderName(activeDir) : "Terminal"}</h2>
           <p>No terminal open here.</p>
           <div className="btn-row">
-            <button className="btn" onClick={() => addShell(activeDir, null)}>
+            <button className="btn" onClick={() => addShell(startDirOf(activeDir), null)}>
               Open a shell
             </button>
             <button className="btn" onClick={addChooser}>

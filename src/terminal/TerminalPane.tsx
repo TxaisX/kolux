@@ -5,6 +5,8 @@
 import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, statusAgent, takesInband, type Crew } from "./status";
+import WorktreeChip from "../shell/WorktreeChip";
+import type { WorktreeTag } from "../projects/worktreeGrid";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
@@ -115,6 +117,10 @@ type Props = {
   name?: string;
   cwd?: string | null;
   branch?: string | null;
+  /** One workspace per project: the worktree this session runs in, as the header wears it (null for a folder with no project). */
+  worktree?: WorktreeTag | null;
+  /** The worktree chip was clicked: its folder and where the menu opens. */
+  onWorktree?: (path: string, x: number, y: number) => void;
   focused?: boolean;
   agent?: Agent;
   /** The program to run instead of the shell (an agent's command), with its arguments. */
@@ -271,7 +277,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, worktree = null, onWorktree, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -1730,7 +1736,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             {title}
           </span>
         )}
-        {chip && (
+        {chip && worktree ? (
+          <WorktreeChip tag={worktree} live={chip} onMenu={onWorktree} />
+        ) : chip && (
           <span className="chip" title={chip.tip}>
             {chip.text}
           </span>

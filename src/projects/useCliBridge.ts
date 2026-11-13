@@ -34,7 +34,7 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
         try {
           // Row 65: a file that vanished since the command looked is refused with a reason, not reported opened.
           if (f.kind === "file-open" && (await missingFileToast(f.path, (ps) => invoke<unknown[]>("file_stamps", { paths: ps })))) failed = "the file is not there (or is outside this project)";
-          else if (f.kind === "file-open") openFile(f.path);
+          else if (f.kind === "file-open") openFile(f.path, undefined, undefined, undefined, f.worktree);
           else openDiff(f.path, f.staged, false, undefined, undefined, f.worktree);
         } catch (err) {
           failed = String(err);

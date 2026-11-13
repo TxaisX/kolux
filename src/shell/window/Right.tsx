@@ -27,7 +27,7 @@ import { AgentStartHost } from "../../lazy/pages";
 export default function WindowRight() {
   const {
     right, dragWidth, setDragWidth, sidebarOpen, leftWidth, terminals, fullPage, offeredRight, settings,
-    settingsRef, setSettings, setNotice, saveRight, activeDir, projects,
+    settingsRef, setSettings, setNotice, saveRight, activeDir, workDir, projects,
     projectOf, setScreen,
     select, defaultId, openIn, panes, agents, classic, resumeOrFocus, resumeIn, wsKind, cli,
     runSetup, setRefresh, explorerOpen, explorerFocus, showRight, owner, saveSetting, shells,
@@ -59,13 +59,13 @@ export default function WindowRight() {
       {right.open && right.tab === "attached" && activeDir !== null && <AttachedWorktreesTab folder={activeDir} worktrees={wsKind.worktrees} onOpen={(path) => { setScreen("terminals"); select(path, null); }} />}
       {right.open && right.tab === "prchecks" && activeDir !== null && <FolderChecksTab folder={activeDir} worktrees={wsKind.worktrees} />}
       {/* VIEW-073: the Checks tab follows the workspace of the focused terminal. */}
-      {right.open && right.tab === "checks" && <ChecksPanel dir={activeDir} linked={activeDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[activeDir] ?? null)} visible={terminals && !fullPage} onOpenCheck={openCheck} />}
+      {right.open && right.tab === "checks" && <ChecksPanel dir={workDir} linked={workDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[workDir] ?? null)} visible={terminals && !fullPage} onOpenCheck={openCheck} />}
       {/* T-187-b / T-189-b: the dialog and helpers behind "Continue with…", "Fix with an agent" and "Start with an agent". */}
       <AgentStartHost
         agents={agents}
         defaultId={defaultId}
         saved={settings[SCM_AGENT_KEY]}
-        workspace={activeDir}
+        workspace={workDir}
         notify={(text, failed) => (failed ? setNotice(text) : setToast(text))}
         launch={async (id, dir, prompt, extra) => {
           const a = agents.find((x) => x.id === id);
@@ -81,7 +81,7 @@ export default function WindowRight() {
           return made;
         }}
       />
-      {activeDir ? <Explorer key={activeDir} root={activeDir} hidden={!explorerOpen} focusAsk={explorerFocus} onOpen={openFile} onClose={files.close} onOpenTerminal={openTerminal} onWake={files.wake} /> : explorerOpen && <AddProjectRow />}
+      {workDir ? <Explorer key={workDir} root={workDir} hidden={!explorerOpen} focusAsk={explorerFocus} onOpen={openFile} onClose={files.close} onOpenTerminal={openTerminal} onWake={files.wake} /> : explorerOpen && <AddProjectRow />}
     </RightSidebar>
   );
 }

@@ -23,6 +23,7 @@ import { trustedSetup } from "../setup/TrustPrompt";
 import { cellsOf, freeCell, groupOf, MAX_PANES } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn, sameDir, viewOf } from "../workspaces";
+import { startDirOf } from "../projects/worktreeGrid";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
@@ -32,7 +33,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
   const {
-    activeDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPage, setPanes,
+    workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPage, setPanes,
     setRefresh, setScreen, setSettings, setSheet, setTabColors, setToast, settings, sheet
   } = s;
   const { settingsRef } = p;
@@ -273,7 +274,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // C28-R5-01: the pane records the id it was resumed with, so the live guard sees the session at once.
   const resumeIn = async (agentId: string, plan: ResumePlan, id?: string) => {
     const agent = agents.find((a) => a.id === agentId);
-    const dir = plan.cwd ?? activeDir;
+    const dir = plan.cwd ?? workDir;
     if (!agent || dir === null) return setNotice(agent ? "Open a workspace first, then resume the session in it." : `${agentId} is not installed here, so its session cannot be resumed.`);
     try {
       await pretrust(agent.id, [dir]);
@@ -406,12 +407,12 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   const fixWithAI = (output: string, launch?: { agent: string; extra: string[]; prompt: string }) => {
     const id = launch?.agent ?? defaultId;
     const a = agents.find((x) => x.id === id && x.installed);
-    if (!a || activeDir === null) {
+    if (!a || workDir === null) {
       setNotice(`The ${launch ? "recipe's" : "default"} agent (${id}) is not installed.`);
       return;
     }
     const prompt = launch?.prompt ?? `A git action in this workspace failed. Find the cause, fix it, and finish the action.\n\nGit said:\n${output}`;
-    void startIn(a, activeDir, panes.find((p) => sameDir(p.cwd, activeDir))?.branch ?? null, prompt, true, launch?.extra ?? []);
+    void startIn(a, workDir, panes.find((p) => sameDir(p.cwd, workDir))?.branch ?? null, prompt, true, launch?.extra ?? []);
   };
   const projectFor = (projectId: string | null): string | null => projectId ?? late.projectOf(panes.find((p) => p.key === focused)?.cwd ?? null) ?? projects[0]?.id ?? null;
 
@@ -429,8 +430,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     try {
       // The agent's own start line (its options, permission mode and unpicked model default).
       if (singleFolder()) {
-        const branch = panes.find((p) => sameDir(p.cwd, proj.path))?.branch ?? null;
-        if ((await startIn(agent, proj.path, branch, "", true, savedArgs(agent.id))) === null) return;
+        const dir = startDirOf(proj.path) ?? proj.path; // the worktree picked in a pane-header menu, else the project folder
+        const branch = panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null;
+        if ((await startIn(agent, dir, branch, "", true, savedArgs(agent.id))) === null) return;
       } else {
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
         // Txais (2026-11-12): the agent's worktree is recorded with the project folder as its grid, like a team's, so its pane

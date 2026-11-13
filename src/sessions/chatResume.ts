@@ -4,6 +4,7 @@
 // is kept per folder, so a Claude session resumes as chat only in its own workspace; Codex keeps one
 // history, so it resumes from any workspace; remote and WSL sessions are refused.
 import { normPath, type Session } from "./model";
+import { gridOf } from "../workspaces";
 
 /** The agents the chat screen can read (the Rust side's list), split by how their history is kept. */
 const PER_FOLDER = ["claude", "openclaude", "omp"];
@@ -26,6 +27,8 @@ export function chatResumeBlock(s: Pick<Session, "agent" | "dir" | "turns">, act
   if (!PER_FOLDER.includes(s.agent) && !ANYWHERE.includes(s.agent)) return NO_CHAT_AGENT;
   if (isRemoteDir(s.dir)) return REMOTE_SESSION;
   if (activeDir === null) return NO_WORKSPACE;
-  if (PER_FOLDER.includes(s.agent) && (s.dir === null || normPath(s.dir) !== normPath(activeDir))) return OTHER_WORKSPACE;
+  // One workspace per project: a session of a linked worktree belongs to the project's grid, which is what activeDir names.
+  const own = s.dir === null ? null : gridOf(s.dir);
+  if (PER_FOLDER.includes(s.agent) && (own === null || normPath(own) !== normPath(activeDir))) return OTHER_WORKSPACE;
   return null;
 }

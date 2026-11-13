@@ -47,7 +47,7 @@ export default function WindowContent() {
   const {
     sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
     turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, setPage, runPane, openPane,
-    select, agents, settings, savePageSettings, activeDir, fromItem, cli, shown, setCount,
+    select, agents, settings, savePageSettings, activeDir, workDir, fromItem, cli, shown, setCount,
     setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
     screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
     focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, running,
@@ -111,31 +111,31 @@ export default function WindowContent() {
       {terminals && (
         <>
           {page === null && <LayoutStrip count={shown.length} onLayout={setCount} workspace={activeDir} />}
-          {picking === "file" && activeDir && (
+          {picking === "file" && workDir && (
             <FilePicker
-              root={activeDir}
+              root={workDir}
               what="file"
-              load={() => invoke<{ files: string[]; capped: boolean; source: string; rgMissing: boolean }>("file_list", { root: activeDir }).then((l) => quickOpenList(activeDir, l))}
+              load={() => invoke<{ files: string[]; capped: boolean; source: string; rgMissing: boolean }>("file_list", { root: workDir }).then((l) => quickOpenList(workDir, l))}
               onPick={(f) => openFile(f.path)}
               onClose={() => setPicking(null)}
             />
           )}
-          {picking === "template" && activeDir && <TemplatePicker root={activeDir} onOpen={openFile} onError={(m) => setToast(m)} onClose={() => setPicking(null)} />}
-          {picking === "markdown" && activeDir && (
+          {picking === "template" && workDir && <TemplatePicker root={workDir} onOpen={openFile} onError={(m) => setToast(m)} onClose={() => setPicking(null)} />}
+          {picking === "markdown" && workDir && (
             <FilePicker
-              root={activeDir}
+              root={workDir}
               what="markdown file"
-              load={() => invoke<{ files: string[]; capped: boolean }>("md_list", { root: activeDir }).then((n) => ({ items: n.files.map((path) => ({ path })), capped: n.capped }))}
+              load={() => invoke<{ files: string[]; capped: boolean }>("md_list", { root: workDir }).then((n) => ({ items: n.files.map((path) => ({ path })), capped: n.capped }))}
               onPick={(f) => openFile(f.path)}
               onClose={() => setPicking(null)}
             />
           )}
-          {picking === "change" && activeDir && (
+          {picking === "change" && workDir && (
             <FilePicker
-              root={activeDir}
+              root={workDir}
               what="changed file"
-              load={() => invoke<{ path: string; staged: boolean; code: string }[]>("git_changes", { root: activeDir }).then((cs) => ({ items: cs.map((c): Pick => ({ path: c.path, staged: c.staged, tag: c.staged ? "Staged" : c.code === "?" ? "Untracked" : "Unstaged" })), capped: false }))}
-              onPick={(f) => openDiff(f.path, !!f.staged, false, undefined, undefined, activeDir)}
+              load={() => invoke<{ path: string; staged: boolean; code: string }[]>("git_changes", { root: workDir }).then((cs) => ({ items: cs.map((c): Pick => ({ path: c.path, staged: c.staged, tag: c.staged ? "Staged" : c.code === "?" ? "Untracked" : "Unstaged" })), capped: false }))}
+              onPick={(f) => openDiff(f.path, !!f.staged, false, undefined, undefined, workDir)}
               onClose={() => setPicking(null)}
             />
           )}

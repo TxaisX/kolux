@@ -5,7 +5,7 @@
 // pane's program is up; permission, blocked, waiting and interrupted arrive with the status hooks
 // (STAT-001, T-025), and the pull-request state with GIT-025 (T-229). The rules here take them already.
 import { shortcodes } from "./model";
-import { panesIn, sameDir } from "../workspaces";
+import { gridOf, panesIn, sameDir } from "../workspaces";
 
 export type AgentState = "permission" | "blocked" | "waiting" | "interrupted" | "working" | "queued" | "done" | "idle";
 export type PrState = "open" | "draft" | "merged" | "closed" | "suppressed" | null;
@@ -87,9 +87,10 @@ export function selectView(settings: Record<string, unknown>, panes: { key: numb
 
 /** DT-C274: whether a command-line file request for worktree `dir` can open in the shown grid `active`: the worktree
  *  itself, or its team's grid when `dir` is a recorded team worktree (select() shows that grid instead; a stranded one,
- *  with no pane left in that grid, is shown as itself). */
+ *  with no pane left in that grid, is shown as itself). One workspace per project: a linked worktree of a project is
+ *  shown in the project's grid (`gridOf`), so its file is ready once that grid is in front. */
 export function cliFileShown(settings: Record<string, unknown>, dir: string, active: string | null): boolean {
-  if (sameDir(dir, active)) return true;
+  if (sameDir(dir, active) || sameDir(gridOf(dir), active)) return true;
   const view = teamViewOf(settings, dir);
   return view !== undefined && sameDir(view, active);
 }

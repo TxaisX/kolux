@@ -25,7 +25,7 @@ export const answerFailed = (e: unknown) => `Kolux could not answer the agent: $
 
 export function reviewActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, late: WindowLate) {
   const {
-    activeDir, agents, focused, hookRef, notes, panes, planDrafts, ptys, setHook, setNotes, setPlanDrafts, setReviewing, setStamp, setToast, titles, turn
+    agents, focused, hookRef, notes, panes, planDrafts, ptys, setHook, setNotes, setPlanDrafts, setReviewing, setStamp, setToast, titles, turn, workDir
   } = s;
   const { notesFor, saveNotes } = p;
   const { openIn } = la;
@@ -125,7 +125,8 @@ export function reviewActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     return null;
   };
   // EDIT-020: the agents in this worktree the Markdown and file notes can go to.
-  const inWorktree = (p: Pane) => activeDir !== null && sameDir(p.cwd, activeDir) && ptys.current[p.key] !== undefined;
+  // One workspace per project: the worktree is the focused pane's (workDir), not the project's grid folder.
+  const inWorktree = (p: Pane) => workDir !== null && sameDir(p.cwd, workDir) && ptys.current[p.key] !== undefined;
   // The chosen agent is checked again at the click; a failed delivery keeps the notes.
   const sendReview = async (key: number): Promise<string | null> => {
     const p = late.panesRef.current.find((x) => x.key === key);
@@ -144,9 +145,9 @@ export function reviewActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   const startReview = async (id: string): Promise<string | null> => {
     const a = agents.find((x) => x.id === id && x.installed);
     if (!a) return "That agent is not installed, so nothing was sent. The notes are kept.";
-    if (activeDir === null) return "Open a workspace first. The notes are kept.";
+    if (workDir === null) return "Open a workspace first. The notes are kept.";
     try {
-      await openIn(a, activeDir, panes.find((p) => sameDir(p.cwd, activeDir))?.branch ?? null, notesMarkdown(notes), true);
+      await openIn(a, workDir, panes.find((p) => sameDir(p.cwd, workDir))?.branch ?? null, notesMarkdown(notes), true);
     } catch (err) {
       return `${a.name} did not start, so the notes are kept: ${String(err)}`;
     }

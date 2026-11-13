@@ -20,6 +20,7 @@ import { onRunning } from "../../inbox/exitedPrompt";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
 import { capOn, claudeOf, codexOf, meterOf, readsLeft } from "../../usage/meter";
 import { nameOf, sameDir, viewOf } from "../../workspaces";
+import { worktreeTag } from "../../projects/worktreeGrid";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
 import { deferred } from "../../lazy/deferred";
@@ -55,7 +56,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     liveRef, muteRef, setGuess, setLiveIds, setHook, setPanes, exitedPrompt, afterSetup, noticed, report, runTabs,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
-    splitPane, rememberLineup, panes, activeDir, wakePane,
+    splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu,
   } = useWindow();
   // PKG-2: what the terminal runs from its handlers and effects, made here each render over this render's pane and
   // window, and handed over as callers with a fixed identity, so a new closure alone never redraws the pane. The
@@ -89,6 +90,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       }
     },
     needsYou: (on: boolean) => setNeeds((r) => (r[p.key] === on ? r : { ...r, [p.key]: on })),
+    worktree: (path: string, x: number, y: number) => (setSidebarOpen(true), setWorktreeMenu({ path, x, y, n: Date.now() })),
     identity: (l: Identity) => {
       // Review of PR #16: a hand-started agent quit and the prompt is back: its last word and guess go with it,
       // and (d) a late hook word from it is ignored until a new agent starts in the pane.
@@ -236,6 +238,8 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       card={board ? { expanded: expanded === p.key, onToggle: act.toggleCard, chip: chipFor(p), column: columnOf(p), onAnswer: act.answer, onReview: act.review, meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
       cwd={p.cwd}
       branch={p.branch}
+      worktree={worktreeTag(p.cwd, p.branch ?? null, { projects, owner, names })}
+      onWorktree={act.worktree}
       agent={p.agent}
       name={savedName(p) ?? labelOf(p)}
       plan={agentsScreen ? planLine(p) : undefined}
