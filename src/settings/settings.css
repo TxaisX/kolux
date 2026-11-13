@@ -144,7 +144,7 @@
 .term-fields .font-field { margin-top: 0; }
 .num-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-row); }
 .num-field > span { flex-basis: 100%; color: var(--fg-muted); font-size: 12px; }
-.num-field input, .num-field select { height: 28px; min-width: 0; padding: 0 8px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.num-field input, .num-field select, .num-field .ui-select { height: 28px; min-width: 0; padding: 0 8px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
 .num-field input { width: 6em; font-variant-numeric: tabular-nums; }
 .status-ticks { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0 30px; }
 .status-tick input { accent-color: var(--done); }

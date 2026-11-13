@@ -18,6 +18,7 @@ import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy
 import { ResetButton } from "./SafetyRules";
 import CliCard from "./CliCard";
 import ExperimentalCard from "./ExperimentalCard";
+import { Select } from "../ui/Select";
 
 /** A row of buttons that behaves as one radio group. */
 export function Segmented<T extends string>({ label, options, value, onPick, off = [] }: { label: string; options: Array<{ id: T; label: string }>; value: T; onPick: (v: T) => void; off?: T[] }) {
@@ -204,14 +205,7 @@ export function OpenInCard({ settings, onSave }: { settings: Record<string, unkn
       {left.length > 0 && (
         <label className="look-select">
           <span>Add an app</span>
-          <select className="field" aria-label="Add an Open in app" value="" onChange={(e) => put(addApp(list, left.find((p) => p.id === e.target.value)!))}>
-            <option value="">Choose an app</option>
-            {left.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <Select label="Add an Open in app" value="" onChange={(v) => put(addApp(list, left.find((p) => p.id === v)!))} options={[{ value: "", label: "Choose an app" }, ...left.map((p) => ({ value: p.id, label: p.name }))]} className="field" />
         </label>
       )}
       <div className="btn-row">

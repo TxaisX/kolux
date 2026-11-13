@@ -61,10 +61,10 @@ describe("src/ui wrappers (server render: the first frame, before Base UI is rea
     expect(html).toBe("");
   });
 
-  it("a select's closed control is the .field combobox Base UI draws, showing the chosen label", () => {
+  it("a select's closed control is the .field combobox Base UI draws, showing the chosen label, as wide as its longest option", () => {
     const html = renderToString(<Select label="commit message writer" value="b" onChange={() => {}} options={[{ value: "a", label: "Alpha" }, { value: "b", label: "Beta" }]} />);
     expect(html).toMatch(/^<button type="button" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="commit message writer" class="field ui-select">/);
-    expect(html).toMatch(/<span class="ui-select-value">Beta<\/span><span class="ui-select-icon" aria-hidden="true"><svg/);
+    expect(html).toMatch(/<span class="ui-select-box"><span class="ui-select-value">Beta<\/span><span class="ui-select-sizer" aria-hidden="true"><span>Alpha<\/span><span>Beta<\/span><\/span><\/span><span class="ui-select-icon" aria-hidden="true"><svg/);
   });
 
   it("switch and checkbox stay native inputs inside the .check label", () => {

@@ -277,9 +277,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
 | projects | 6 | 1 | 1 | 17 | 7 | 0 | 19 | 75 | 25 |
 | recovery | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
-| scm | 3 | 5 | 0 | 6 | 4 | 0 | 5 | 98 | 14 |
+| scm | 3 | 5 | 0 | 4 | 4 | 0 | 5 | 98 | 12 |
 | sessions | 0 | 0 | 0 | 4 | 0 | 0 | 2 | 16 | 4 |
-| settings | 2 | 1 | 1 | 27 | 0 | 30 | 10 | 43 | 31 |
+| settings | 2 | 1 | 1 | 0 | 0 | 30 | 10 | 43 | 4 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
 | shell | 2 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 5 |
 | skills | 2 | 3 | 0 | 0 | 4 | 0 | 2 | 19 | 5 |
@@ -291,7 +291,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 1 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **36** | **24** | **8** | **92** | **41** | **42** | **57** | **646** | **160** |
+| **Total** | **36** | **24** | **8** | **63** | **41** | **42** | **57** | **646** | **131** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -362,7 +362,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/scm/HandoffNote.tsx`: Select :94
 - [ ] `src/scm/PrStart.tsx`: Dialog :279
 - [ ] `src/scm/SourceControlPanel.tsx`: Select :699, Menu :886, Menu :911, Dialog :1041, Dialog :1106, Select :1115, Menu :1289, Menu :1317
-- [ ] `src/scm/WriterPicker.tsx`: Select :63, Select :87
 
 ### sessions
 
@@ -370,25 +369,10 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### settings
 
-- [ ] `src/settings/AgentCredentials.tsx`: Select :89
-- [ ] `src/settings/AgentsPage.tsx`: Select :152, Select :166, Select :174, Select :252
-- [ ] `src/settings/AiRecipesSection.tsx`: Select :66
-- [ ] `src/settings/AppearancePage.tsx`: Select :200, Select :313, Select :517
-- [ ] `src/settings/ClaudeSetupPage.tsx`: Select :433
 - [ ] `src/settings/ConnectGrid.tsx`: Menu :54
-- [ ] `src/settings/GeneralPage.tsx`: Select :207
-- [ ] `src/settings/GitPage.tsx`: Select :71, Select :134
 - [ ] `src/settings/GrokCard.tsx`: Dialog :161
-- [ ] `src/settings/NotificationsPage.tsx`: Select :110
-- [ ] `src/settings/RepoPage.tsx`: Select :41
-- [ ] `src/settings/RepoSetup.tsx`: Select :93, Select :141
-- [ ] `src/settings/RoutingPage.tsx`: Tabs :51, Select :86, Select :97
-- [ ] `src/settings/SafetyRules.tsx`: Select :157, Select :193
+- [ ] `src/settings/RoutingPage.tsx`: Tabs :52
 - [ ] `src/settings/SettingsPage.tsx`: Dialog :402
-- [ ] `src/settings/SetupPolicyRow.tsx`: Select :15
-- [ ] `src/settings/ShortcutsPage.tsx`: Select :109
-- [ ] `src/settings/TerminalPage.tsx`: Select :76, Select :232
-- [ ] `src/settings/autoPr.tsx`: Select :68, Select :83
 
 ### shell
 

@@ -60,15 +60,11 @@ export default function WriterPicker({ settings, save }: Props) {
           <div className="look-select">
             <span>Model</span>
             {mode === "list" ? (
-              <select aria-label="commit message model" className="field" value={writer.model ?? ""} onChange={(e) => void save(modelPatch(options, e.target.value, writer.effort))}>
-                <option value="">Default{agent === "claude" ? " (Sonnet)" : ""}</option>
-                {writer.model !== null && !options?.models.some((m) => m.id === writer.model) && <option value={writer.model}>{writer.model}</option>}
-                {options?.models.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
+              <Select label="commit message model" value={writer.model ?? ""} onChange={(v) => void save(modelPatch(options, v, writer.effort))} options={[
+                { value: "", label: `Default${agent === "claude" ? " (Sonnet)" : ""}` },
+                ...(writer.model !== null && !options?.models.some((m) => m.id === writer.model) ? [{ value: writer.model, label: writer.model }] : []),
+                ...(options?.models.map((m) => ({ value: m.id, label: m.name })) ?? []),
+              ]} className="field" />
             ) : (
               <input
                 key={writer.model ?? ""}
@@ -84,15 +80,11 @@ export default function WriterPicker({ settings, save }: Props) {
           {efforts.length > 0 && (
             <div className="look-select">
               <span>Thinking effort</span>
-              <select aria-label="commit message effort" className="field" value={writer.effort ?? ""} onChange={(e) => void save({ [WRITER_EFFORT_KEY]: e.target.value })}>
-                <option value="">Default</option>
-                {writer.effort !== null && !efforts.includes(writer.effort) && <option value={writer.effort}>{writer.effort}</option>}
-                {efforts.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
+              <Select label="commit message effort" value={writer.effort ?? ""} onChange={(v) => void save({ [WRITER_EFFORT_KEY]: v })} options={[
+                { value: "", label: "Default" },
+                ...(writer.effort !== null && !efforts.includes(writer.effort) ? [{ value: writer.effort, label: writer.effort }] : []),
+                ...efforts.map((l) => ({ value: l, label: l })),
+              ]} className="field" />
             </div>
           )}
           {(note ?? pickerHint(options)) && (

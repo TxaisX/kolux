@@ -22,6 +22,7 @@ import { useSettled } from "../editor/settledQuery";
 import { REVIEW_BOTS_KEY } from "../scm/review";
 import { botsText, parseBots } from "./reviewBots";
 import { useSearching } from "./search";
+import { Select } from "../ui/Select";
 
 const REFRESH_FIELD = "refreshBaseFirst";
 /** SET-031 / PROJ-039: branches are renamed after the work; on unless saved as false. */
@@ -68,11 +69,11 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         <h2 className="conn-name">Branch names</h2>
         <div className="look-select">
           <span>Branch prefix</span>
-          <select aria-label="branch prefix" className="field" value={mode} onChange={(e) => void save({ branchPrefix: e.target.value })}>
-            <option value="user">Git user name (or gh login)</option>
-            <option value="custom">Custom text</option>
-            <option value="none">None: the bare name</option>
-          </select>
+          <Select label="branch prefix" value={mode} onChange={(v) => void save({ branchPrefix: v })} options={[
+            { value: "user", label: "Git user name (or gh login)" },
+            { value: "custom", label: "Custom text" },
+            { value: "none", label: "None: the bare name" },
+          ]} className="field" />
         </div>
         {mode === "custom" && (
           <input
@@ -131,10 +132,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         <h2 className="conn-name">Base branch</h2>
         <div className="look-select">
           <span>Default compare base</span>
-          <select aria-label="default compare base" className="field" value={settings[SUMMARY_UPSTREAM_KEY] === true ? "upstream" : "default"} onChange={(e) => void save({ [SUMMARY_UPSTREAM_KEY]: e.target.value === "upstream" })}>
-            <option value="default">Repository default</option>
-            <option value="upstream">Branch upstream</option>
-          </select>
+          <Select label="default compare base" value={settings[SUMMARY_UPSTREAM_KEY] === true ? "upstream" : "default"} onChange={(v) => void save({ [SUMMARY_UPSTREAM_KEY]: v === "upstream" })} options={[{ value: "default", label: "Repository default" }, { value: "upstream", label: "Branch upstream" }]} className="field" />
         </div>
         <label className="conn-switch">
           <input type="checkbox" role="switch" aria-label="Refresh the base first" checked={settings[REFRESH_FIELD] === true} onChange={(e) => void save({ [REFRESH_FIELD]: e.target.checked })} />

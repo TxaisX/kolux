@@ -45,16 +45,16 @@ test("C20-R1-01: the global row saves the key the runner reads, and nothing else
   const host = SetupPolicyRow() as unknown as El;
   expect(h.calls).toContainEqual(["setup_policy_get", undefined]);
   const tree = host.type(host.props);
-  const select = all(tree).find((e) => e.props["aria-label"] === "which setup runs");
+  const select = all(tree).find((e) => e.props.label === "which setup runs");
   expect(select).toBeTruthy();
-  (select!.props.onChange as (e: unknown) => void)({ target: { value: "both" } });
+  (select!.props.onChange as (v: string) => void)("both");
   expect(h.calls).toContainEqual(["setup_policy_set", { policy: "both" }]);
   expect(h.calls.some(([cmd]) => cmd === "settings_patch"), "the row never writes settings.json").toBe(false);
 });
 
 test("C20-R1-01: the select shows the stored policy, and nothing stored is the local default", () => {
-  const select = all(SetupPolicyView({ stored: "shared", onChoose: () => {} })).find((e) => e.props["aria-label"] === "which setup runs");
+  const select = all(SetupPolicyView({ stored: "shared", onChoose: () => {} })).find((e) => e.props.label === "which setup runs");
   expect(select!.props.value).toBe("shared");
-  const resent = all(SetupPolicyView({ stored: null, onChoose: () => {} })).find((e) => e.props["aria-label"] === "which setup runs");
+  const resent = all(SetupPolicyView({ stored: null, onChoose: () => {} })).find((e) => e.props.label === "which setup runs");
   expect(resent!.props.value).toBe("local");
 });
