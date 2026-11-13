@@ -632,7 +632,7 @@ fn capture(program: &Path, args: &[String], limit: Duration) -> Result<Said, Fai
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c.creation_flags(crate::winproc::no_window());
     }
     let mut child = c.spawn().map_err(|e| Fail::Failed(format!("could not start {}: {e}", program.display())))?;
     let (tx, rx) = std::sync::mpsc::channel::<(bool, Vec<u8>)>();

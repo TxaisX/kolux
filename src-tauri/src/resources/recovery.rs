@@ -365,8 +365,7 @@ pub fn repair(path: &Path, user: &str, run: &mut dyn FnMut(&[String]) -> bool, r
 #[cfg(windows)]
 pub fn icacls(args: &[String]) -> bool {
     use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    std::process::Command::new("icacls").args(args).creation_flags(CREATE_NO_WINDOW).output().map(|o| o.status.success()).unwrap_or(false)
+    std::process::Command::new("icacls").args(args).creation_flags(crate::winproc::no_window()).output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 #[cfg(not(windows))]
