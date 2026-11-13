@@ -456,7 +456,7 @@ pub fn spawn_editor(plan: &EditorPlan) -> Result<std::process::Child, String> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        // CREATE_NEW_CONSOLE for NeoVim; CREATE_NO_WINDOW keeps a .cmd launcher's shell out of sight.
+        // CREATE_NEW_CONSOLE for NeoVim; `no_window()` keeps a .cmd launcher's shell out of sight.
         c.creation_flags(if plan.console { 0x0000_0010 } else { crate::winproc::no_window() });
     }
     c.spawn().map_err(|e| format!("could not start {}: {e}", plan.program.display()))

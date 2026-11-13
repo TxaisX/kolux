@@ -3,7 +3,8 @@
 //! On Windows a program without a window of its own (Kolux's release build has none) that starts a
 //! console program gets a black console window for it unless the start asks for none. Every child
 //! Kolux starts that is not a terminal pane goes through [`command`] (or [`quiet`] for a command
-//! built elsewhere), which sets CREATE_NO_WINDOW. Terminal panes are different: they run in a
+//! built elsewhere), which asks for no console window of its own ([`no_window`]: the child shares
+//! Kolux's console when it has one, else gets a hidden one). Terminal panes are different: they run in a
 //! pseudo console (the PTY path in `pty.rs`), which never opens a window, and they are not started
 //! through `std::process::Command` at all.
 //!
@@ -168,6 +169,7 @@ mod tests {
     #[test]
     fn no_window_shares_an_existing_console_and_hides_a_new_one() {
         let mut ids = [0u32; 1];
+        // SAFETY: `ids` is a live one-element buffer and the count passed is its length.
         let attached = unsafe { windows_sys::Win32::System::Console::GetConsoleProcessList(ids.as_mut_ptr(), 1) } != 0;
         assert_eq!(no_window(), if attached { 0 } else { CREATE_NO_WINDOW });
     }
@@ -185,7 +187,7 @@ mod tests {
     }
 
     /// T-816: no new program starts without hiding its console. Every production `Command::new` in
-    /// `src-tauri/src` either sets CREATE_NO_WINDOW itself or goes through `winproc`.
+    /// `src-tauri/src` either sets its creation flags itself (from `winproc::no_window()`) or goes through `winproc`.
     #[test]
     fn t816_every_production_spawn_hides_its_console() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");

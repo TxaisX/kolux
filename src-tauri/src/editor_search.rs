@@ -296,7 +296,7 @@ fn wsl_error_line(stderr: &str) -> Option<&str> {
 
 /// T-779 (review finding 6): built through `git::command`, so this git runs with the same guards
 /// as every other (no fsmonitor, no repository-named programs, no prompt window). T-816: `git::command`
-/// sets CREATE_NO_WINDOW itself, so no console flashes up for a search either.
+/// asks for no console window itself, so no console flashes up for a search either.
 fn git_command(root: &Path, a: &Ask) -> Command {
     let mut args: Vec<String> = ["-c", "core.quotepath=off", "grep", "-z", "-n", "--column", "-I", "--no-color", "--untracked"].iter().map(|s| s.to_string()).collect();
     if !a.match_case {
@@ -427,7 +427,7 @@ fn run(mut cmd: Command, parse: impl Fn(&str, usize) -> Option<(String, Vec<Hit>
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window());
     }
     let mut child = cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
     let (Some(out), Some(mut err)) = (child.stdout.take(), child.stderr.take()) else {

@@ -1439,7 +1439,7 @@ fn run_precheck(cmd: &str, dir: &Path, limit: std::time::Duration) -> Option<Val
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        c.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
+        c.creation_flags(crate::winproc::no_window());
     }
     let mut child = match c.spawn() {
         Ok(ch) => ch,

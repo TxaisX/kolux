@@ -50,7 +50,7 @@ Left alone:
   tests exist in `pty.rs`, `terminal.rs`, `claude_key.rs` and others); not individually traced.
 - `cli/mod.rs:377` and `pty_service.rs:769,772` (`DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`
   style flags for a detached background service): detached children take no console host.
-- `links.rs:458` keeps `CREATE_NEW_CONSOLE` for a NeoVim link, which needs a real console.
+- `links.rs:460` keeps `CREATE_NEW_CONSOLE` for a NeoVim link, which needs a real console.
 - `cli/mod.rs` `kolux claude` and `cli_accounts.rs`: spawns that deliberately share the user's
   terminal (listed in `winproc.rs`'s `ALLOWED`).
 

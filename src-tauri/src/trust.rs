@@ -314,7 +314,7 @@ pub(crate) fn test_repo_with_worktree(dir: &Path) -> (PathBuf, PathBuf) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        push.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW: no console flashes up
+        push.creation_flags(crate::winproc::no_window()); // no console flashes up
     }
     assert!(push.output().unwrap().status.success());
     crate::git::run(&["worktree", "add", "-q", "-b", "kolux-wt", &wt.to_string_lossy()], Some(&main)).unwrap();

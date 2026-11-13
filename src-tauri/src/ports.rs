@@ -364,7 +364,7 @@ pub fn netstat(fresh: bool) -> Result<String, String> {
     use std::os::windows::process::CommandExt;
     static LAST: std::sync::Mutex<Option<(std::time::Instant, String)>> = std::sync::Mutex::new(None);
     shared(&LAST, fresh, || {
-        // CREATE_NO_WINDOW: a console would flash up on every poll.
+        // No console window of its own: one would flash up on every poll.
         let out = std::process::Command::new("netstat").args(["-ano"]).creation_flags(crate::winproc::no_window()).output().map_err(|e| format!("The port scan could not start: {e}"))?;
         if !out.status.success() {
             return Err("The port scan failed: netstat did not finish".into());

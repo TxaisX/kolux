@@ -310,7 +310,7 @@ fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usi
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window());
     }
     // Its own process group, so procs::kill_tree's group signal ends the cell's children too.
     #[cfg(unix)]

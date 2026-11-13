@@ -74,7 +74,7 @@ pub fn probe(program: &str, args: &[&str], limit: Duration) -> Ran {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window());
     }
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut cmd, 0); // own group, so a hang takes the whole tree
