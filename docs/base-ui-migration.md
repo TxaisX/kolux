@@ -275,7 +275,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
 | onboarding | 4 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 5 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
-| projects | 0 | 1 | 1 | 10 | 7 | 0 | 19 | 75 | 12 |
+| projects | 0 | 1 | 1 | 0 | 7 | 0 | 19 | 75 | 2 |
 | recovery | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
 | scm | 0 | 1 | 0 | 0 | 5 | 0 | 5 | 98 | 1 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
@@ -291,7 +291,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **13** | **10** | **4** | **13** | **40** | **42** | **57** | **646** | **40** |
+| **Total** | **13** | **10** | **4** | **3** | **40** | **42** | **57** | **646** | **30** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -322,7 +322,7 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### projects
 
-- [ ] `src/projects/ProjectsPanel.tsx`: Select :1141, Select :1177, Select :1182, Select :1514, Select :1554, Select :2329, Select :2412, Tabs :2531, Select :2587, Select :2624, Select :2631, Menu :2735
+- [ ] `src/projects/ProjectsPanel.tsx`: Tabs :2504, Menu :2705
 
 ### scm
 
