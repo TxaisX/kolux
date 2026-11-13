@@ -15,6 +15,9 @@ export type WebglLike = {
 
 export type RendererHost<A extends WebglLike> = {
   loadAddon(addon: A): void;
+  /** The xterm terminal's own redraw and row count: a sibling pane whose glyphs were thrown away asks for a full repaint. */
+  refresh?(start: number, end: number): void;
+  readonly rows?: number;
 };
 
 export type RendererChoice = {
@@ -24,7 +27,9 @@ export type RendererChoice = {
   readonly waiting: boolean;
   /** Fires when a GPU pane has fallen back to the plain path after a context loss. */
   onFallback: (listener: (reason: string) => void) => void;
-  /** Throw the glyph caches away (after a paste burst or a system resume); nothing on the plain path. */
+  /** Throw the glyph caches away (after a paste burst or a system resume); nothing on the plain path.
+   *  The WebGL glyph atlas is shared by every GPU pane of the window, so every other live GPU pane
+   *  also drops its drawn cells and repaints its whole screen. */
   clearGlyphs(): void;
   /** DT-C229: give the GPU context and its pool slot back (a long-hidden pane); true if one was held.
    *  `quiet` keeps the freed slot from being offered to waiting panes (the caller takes it itself). */
@@ -55,6 +60,19 @@ export function onSlotFree(pool: GpuPool, fn: () => void): () => void {
   set.add(fn);
   return () => void set.delete(fn);
 }
+
+/** Panes of a pool whose GPU addon draws now. xterm's WebGL addon shares ONE glyph atlas between every
+ *  terminal with the same font, theme and scale, but a terminal's drawn cells keep the atlas coordinates
+ *  of the glyphs they were built from. Throwing the atlas away from one pane therefore leaves every other
+ *  live pane pointing at coordinates that now hold other glyphs (same width, wrong letters) until its
+ *  cells change. So a clear is told to every live pane of the pool. */
+type Drawer = { rebuild(): void };
+const drawersOfPool = new WeakMap<GpuPool, Set<Drawer>>();
+const drawersOf = (pool: GpuPool) => {
+  let set = drawersOfPool.get(pool);
+  if (!set) drawersOfPool.set(pool, (set = new Set()));
+  return set;
+};
 
 /** The WebGL context under an addon: xterm's addon keeps it as `_renderer._gl` (undefined if not reachable). */
 type GlInside = { _renderer?: { _gl?: { getExtension?(name: string): { loseContext?(): void } | null } | null } | null };
@@ -116,10 +134,20 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
   let parked = false;
   let waiting = false;
   let gone = false;
+  const drawers = drawersOf(pool);
+  const me: Drawer = {
+    rebuild() {
+      // The shared atlas is already empty (the pane that cleared it just wiped it, and nothing has drawn
+      // since), so this only drops this pane's drawn cells and asks for a redraw of the whole screen.
+      addon?.clearTextureAtlas?.();
+      host.refresh?.(0, Math.max(0, (host.rows ?? 1) - 1));
+    },
+  };
   const release = (quiet: boolean) => {
     const had = held;
     if (held) pool.live--;
     held = false;
+    drawers.delete(me);
     // Offered after the current task: sibling panes unmounted in the same commit give their slots
     // back first instead of a dying pane's slot going to one of them.
     if (had && !quiet) queueMicrotask(() => slotFreed(pool));
@@ -155,6 +183,7 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
     addon = made;
     held = true;
     pool.live++;
+    drawers.add(me);
     return true;
   };
   if (startPlain) parked = !refused;
@@ -168,7 +197,16 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
     },
     onFallback,
     clearGlyphs() {
-      addon?.clearTextureAtlas?.();
+      if (!addon) return;
+      addon.clearTextureAtlas?.();
+      for (const other of [...drawers]) {
+        if (other === me) continue;
+        try {
+          other.rebuild();
+        } catch {
+          /* that pane's context is going; its own loss handler takes it to the plain path */
+        }
+      }
     },
     park(quiet = false) {
       if (!addon) return false;
