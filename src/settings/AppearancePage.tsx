@@ -22,6 +22,7 @@ import { Segmented } from "./GeneralPage";
 import { CardDensityBody, SidebarLookBody } from "../look/SidebarSettings";
 import { FINISH_LABEL, FinishBody } from "../look/FinishSettings";
 import { applyLanguage, LANGUAGE_FIELD, LANGUAGES, savedLanguage, systemLanguage, type LanguageChoice } from "../language";
+import { Select } from "../ui/Select";
 
 /** T-648: the editor for the user's own themes loads when the Colour theme card draws it, not with the page. */
 const CustomThemeEditor = lazy(() => import("./CustomThemeEditor"));
@@ -197,13 +198,7 @@ export function LanguageView({ value, onPick, os = navigator.languages }: { valu
       <h2 className="conn-name">Language</h2>
       <label className="look-select">
         <span>Language</span>
-        <select aria-label="Interface language" value={value} onChange={(e) => onPick(e.target.value as LanguageChoice)}>
-          {LANGUAGES.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.id === "system" ? `System (${sys})` : l.name}
-            </option>
-          ))}
-        </select>
+        <Select label="Interface language" value={value} onChange={(v) => onPick(v as LanguageChoice)} options={LANGUAGES.map((l) => ({ value: l.id, label: l.id === "system" ? `System (${sys})` : l.name }))} className="" />
       </label>
       <p className="conn-detail">Dates, times and sorted lists follow the language. Some of Kolux's own words are machine-translated; any text a language lacks stays in English.</p>
     </section>
@@ -310,13 +305,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
         {([["termWeight", "Weight"], ["termWeightBold", "Bold weight"]] as const).map(([key, label]) => (
           <label key={key} className="look-select">
             <span>{label}</span>
-            <select aria-label={label} value={look[key]} onChange={(e) => onChange({ ...look, [key]: e.target.value as FontWeight })}>
-              {WEIGHTS.map((w) => (
-                <option key={w} value={w}>
-                  {w[0].toUpperCase() + w.slice(1)}
-                </option>
-              ))}
-            </select>
+            <Select label={label} value={look[key]} onChange={(v) => onChange({ ...look, [key]: v as FontWeight })} options={WEIGHTS.map((w) => ({ value: w, label: w[0].toUpperCase() + w.slice(1) }))} className="" />
           </label>
         ))}
         <p className="conn-detail">One size applies to every terminal, including ones already open. Changing it here or in Terminal &amp; sessions redraws them all at once; new terminals start at the same size. The default is 13 pt.</p>
@@ -514,10 +503,7 @@ export function UsagePercentPick({ value, onPick }: { value: PercentMode; onPick
     <>
       <div className="look-select">
         <span>Usage percentages</span>
-        <select aria-label="Usage percentages" className="field" value={value} onChange={(e) => onPick(percentMode(e.target.value))}>
-          <option value="used">Used</option>
-          <option value="remaining">Remaining</option>
-        </select>
+        <Select label="Usage percentages" value={value} onChange={(v) => onPick(percentMode(v))} options={[{ value: "used", label: "Used" }, { value: "remaining", label: "Remaining" }]} className="field" />
       </div>
       <p className="conn-detail">How the Agents screen's usage footer reads plan use; the top bar always shows what is left.</p>
     </>

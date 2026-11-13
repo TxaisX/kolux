@@ -8,8 +8,12 @@
 .ui-tip-positioner { z-index: calc(var(--z-top) + 3); }
 .ui-tip { position: static; transform: none; }
 .ui-select { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: default; }
+.ui-select-box { display: grid; flex: 1 1 auto; min-width: 0; }
+.ui-select-box > * { grid-area: 1 / 1; min-width: 0; }
 .ui-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Every label stacked unseen in one cell: the control is as wide as its longest option where nothing sets its width. */
+.ui-select-sizer { display: grid; height: 0; overflow: hidden; visibility: hidden; }
+.ui-select-sizer > span { grid-area: 1 / 1; white-space: nowrap; }
 .ui-select-icon { display: inline-flex; flex: none; }
 .ui-select-menu { min-width: var(--anchor-width); }
-.look-select .ui-select { height: 28px; font: inherit; }
 .ui-tabs { display: contents; }

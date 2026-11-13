@@ -9,6 +9,7 @@ import { insertError, insertPicked } from "./pictureBytes";
 import { applyFormat, applyImage, applyLink, linkAt, MORE_BLOCKS, RICH_BUTTONS, type RichAction } from "./richFormat";
 import type { Rich } from "./markdown";
 import { LINK_EVENT } from "./richKeys";
+import { Select } from "../ui/Select";
 
 const PICTURES = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif"];
 
@@ -74,23 +75,10 @@ export default function RichToolbar({ get, notePath = "", onNote }: { get: () =>
           }}
         />
       )}
-      <select
-        className="rich-more"
-        aria-label="More blocks"
-        title="More blocks"
-        value=""
-        onChange={(e) => {
-          run(e.target.value as RichAction);
+      <Select label="More blocks" value="" onChange={(v) => {
+          run(v as RichAction);
           get()?.editor.focus();
-        }}
-      >
-        <option value="">More</option>
-        {MORE_BLOCKS.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.tip}
-          </option>
-        ))}
-      </select>
+        }} options={[{ value: "", label: "More" }, ...MORE_BLOCKS.map((m) => ({ value: m.id, label: m.tip }))]} className="rich-more" title="More blocks" />
     </div>
   );
 }

@@ -29,6 +29,7 @@ import TaskDialog from "./TaskDialog";
 import { startFromItem } from "../agentstart/host";
 import { existingWorkspace, linkKey, linkedRows, workItem, type WorkItem, workLabel } from "./workStart";
 import "./tasks.css";
+import { Select } from "../ui/Select";
 
 /** GIT-043: preset, query, page and scroll survive leaving the page and coming back (app session);
  * GIT-044: the first visit of the session opens on the saved default preset. */
@@ -45,12 +46,12 @@ function FilterPicker({ k, label, query, options, onSet }: { k: FilterKey; label
     <label className={`tasks-filter${now ? " set" : ""}`} data-filter={k}>
       <span>{label}</span>
       {k === "state" ? (
-        <select className="field" value={now} onChange={(e) => onSet(k, e.target.value)} aria-label={label}>
-          <option value="">Any</option>
-          <option value="open">Open</option>
-          <option value="closed">Closed</option>
-          <option value="merged">Merged</option>
-        </select>
+        <Select label={label} value={now} onChange={(v) => onSet(k, v)} options={[
+          { value: "", label: "Any" },
+          { value: "open", label: "Open" },
+          { value: "closed", label: "Closed" },
+          { value: "merged", label: "Merged" },
+        ]} className="field" />
       ) : (
         <>
           <input className="field" list={`tasks-${k}-list`} value={text} placeholder="Anyone" aria-label={label} onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
@@ -334,21 +335,10 @@ export default function TasksPage({ repo, onStart, onResume }: { repo: { dir: st
       <div className="autos-bar">
         <h2>Tasks</h2>
         {tabs}
-        <select
-          className="field"
-          aria-label="Preset"
-          value={preset ?? ""}
-          onChange={(e) => {
-            setPreset(e.target.value);
+        <Select label="Preset" value={preset ?? ""} onChange={(v) => {
+            setPreset(v);
             go(1);
-          }}
-        >
-          {PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+          }} options={PRESETS.map((p) => ({ value: p.id, label: p.label }))} className="field" />
         <button className="btn tasks-default" aria-pressed={isDefault} disabled={isDefault || preset === null} title="Open Tasks on this preset next time" onClick={() => preset && void save({ tasksDefaultPreset: preset })}>
           {isDefault ? "Default view" : "Make default"}
         </button>
@@ -367,21 +357,13 @@ export default function TasksPage({ repo, onStart, onResume }: { repo: { dir: st
         {gh && (parent || chosenSource === "upstream") && (
           <label className="tasks-source" title="Where this fork's issues come from">
             <span>Issues from</span>
-            <select
-              className="field"
-              aria-label="Issues from"
-              value={chosenSource}
-              onChange={(e) => {
+            <Select label="Issues from" value={chosenSource} onChange={(v) => {
                 const all = { ...savedSources };
-                if (e.target.value === "upstream") all[sourceKey] = "upstream";
+                if (v === "upstream") all[sourceKey] = "upstream";
                 else delete all[sourceKey];
                 void save({ tasksIssueSource: all });
                 go(1);
-              }}
-            >
-              <option value="fork">this fork ({own})</option>
-              <option value="upstream">{parent ? `upstream (${parent})` : "upstream"}</option>
-            </select>
+              }} options={[{ value: "fork", label: `this fork (${own})` }, { value: "upstream", label: parent ? `upstream (${parent})` : "upstream" }]} className="field" />
           </label>
         )}
         {source.split && (

@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { globalChoice, globalOptions } from "./setupChoice";
+import { Select } from "../ui/Select";
 
 export function SetupPolicyView({ stored, notice, onChoose }: { stored: string | null; notice?: string | null; onChoose: (value: string) => void }) {
   const now = globalChoice(stored);
@@ -12,13 +13,7 @@ export function SetupPolicyView({ stored, notice, onChoose }: { stored: string |
       <h2 className="conn-name">Workspace setup</h2>
       <div className="look-select">
         <span>Which setup runs</span>
-        <select aria-label="which setup runs" className="field" value={now} onChange={(e) => onChoose(e.target.value)}>
-          {globalOptions().map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select label="which setup runs" value={now} onChange={(v) => onChoose(v)} options={globalOptions().map((o) => ({ value: o.value, label: o.label }))} className="field" />
       </div>
       {notice && (
         <p className="conn-detail warn" role="alert">

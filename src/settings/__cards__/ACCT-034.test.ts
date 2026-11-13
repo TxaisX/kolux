@@ -7,7 +7,7 @@ import type { AgentInfo } from "../../launch/PlusMenu";
 import RoutingPage from "../RoutingPage";
 import { routingOf, type Provider } from "../routing";
 import catalogue from "./ACCT-034.catalogue.json";
-import { find, findAll, mount, textOf, type El } from "./shallow-react";
+import { find, findAll, isSelect, mount, textOf, type El } from "./shallow-react";
 
 vi.mock("react", async (orig) => (await import("./shallow-react")).patchReact(await orig<object>()));
 
@@ -22,8 +22,8 @@ function open(start: Record<string, unknown>) {
   const page = mount(RoutingPage, props());
   return { render: () => page.render(props()), settings: () => settings };
 }
-const select = (tree: El, label: string) => find(tree, (e) => e.type === "select" && e.props["aria-label"] === label);
-const pick = (tree: El, label: string, value: string) => select(tree, label).props.onChange({ target: { value } });
+const select = (tree: El, label: string) => find(tree, isSelect(label));
+const pick = (tree: El, label: string, value: string) => select(tree, label).props.onChange(value);
 const tab = (tree: El, name: string) => find(tree, (e) => e.type === "button" && e.props.role === "tab" && textOf(e).startsWith(name));
 
 test("box 1: Claude Build set to Opus at high, then Reset Claude puts Build back to Sonnet at medium and leaves Codex alone", () => {

@@ -677,7 +677,7 @@ input { font: inherit; }
 .autos { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 8px 8px 0 1px; background: var(--pane-bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .autos-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line-subtle); flex-wrap: wrap; }
 .autos-bar h2 { margin: 0 6px 0 0; font-size: 14px; font-weight: 600; color: var(--fg); }
-.autos-bar select.field { width: auto; }
+.autos-bar select.field, .autos-bar .ui-select.field { width: auto; }
 .autos-search { position: relative; display: flex; align-items: center; width: 300px; color: var(--fg-label); }
 .autos-search svg { position: absolute; left: 8px; }
 .autos-search .field { padding-left: 28px; }
@@ -770,7 +770,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .auto-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .auto-time { display: flex; align-items: center; gap: 6px; color: var(--fg-row); }
 .auto-time .auto-box { width: 44px; text-align: center; }
-.auto-time select.field { width: 64px; }
+.auto-time select.field, .auto-time .ui-select.field { width: 64px; }
 .auto-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .auto-templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; width: 100%; max-width: 820px; margin-top: 10px; text-align: left; }
 .auto-template { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--line-subtle); border-radius: 8px; color: var(--fg); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
@@ -784,7 +784,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .routing-note { margin: 0 0 12px; font-size: 12px; color: var(--fg-muted); }
 .routing-table { width: auto; min-width: 520px; }
 .routing-table td:first-child { min-width: 120px; }
-.routing-table select.field { width: 200px; }
+.routing-table select.field, .routing-table .ui-select.field { width: 200px; }
 .routing-missing { margin-left: 4px; padding: 0 5px; border-radius: 4px; font-size: 10px; font-weight: 500; color: var(--fg-muted); background: var(--input-bg); border: 1px solid var(--line-subtle); }
 
 /* Settings: the shape of Claude's settings modal (REA of Claude Desktop 4.4212.0): the window dims,
@@ -855,7 +855,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .look-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; font-size: 13px; color: var(--fg-row); }
 /* T-707 (DT-C143): a row whose box comes first keeps its text right beside the box */
 .look-select:has(> input[type="checkbox"]:first-child) { justify-content: flex-start; }
-.look-select select { height: 28px; padding: 0 8px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.look-select select, .look-select .ui-select { height: 28px; padding: 0 8px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
 
 /* SET-004 / SET-005: a switch between light and dark shows at once, with no colour transition. */
 .no-anim, .no-anim * { transition: none !important; }
@@ -1002,7 +1002,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .scm-handoff summary .state.error { color: #f0a07a; }
 .scm-handoff .field.multi { min-height: 96px; margin-top: 6px; }
 .scm-handoff .btn-row { display: flex; gap: 6px; margin-top: 6px; }
-.scm-handoff .btn-row select { flex: 1; min-width: 0; }
+.scm-handoff .btn-row select, .scm-handoff .btn-row .ui-select { flex: 1; min-width: 0; }
 
 /* ---- update card and ready pop-up (APP-025, APP-026); placement lives in src/update/update.css ---- */
 .upd-wrap { display: flex; flex-direction: column; gap: 6px; }
@@ -1089,7 +1089,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .palette mark { background: none; color: var(--fg); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 /* VIEW-041: the palette's filter chips; VIEW-042: an action that needs an open worktree. */
 .palette-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px; }
-.palette-chips select { font-size: 12px; color: var(--fg-muted); background: none; border: 1px solid var(--line-subtle); border-radius: 6px; padding: 1px 4px; }
+.palette-chips select, .palette-chips .ui-select { font-size: 12px; color: var(--fg-muted); background: none; border: 1px solid var(--line-subtle); border-radius: 6px; padding: 1px 4px; }
 .palette-chip { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--row-selected); color: var(--fg); }
 .picker-list .menu-item.off { color: var(--fg-disabled); cursor: default; }
 .md-preview li:has(> input[type="checkbox"]) { list-style: none; margin-left: -20px; }

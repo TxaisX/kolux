@@ -19,6 +19,7 @@ import { useTeamsHost } from "../launch/teams";
 import { CAP_FIELD, capOn } from "../usage/meter";
 import { CACHE_LENGTH, CACHE_ON, cacheMinutes } from "../projects/cache";
 import { HOOKS_FIELD, hooksOn } from "../onboarding/hooksOn";
+import { Select } from "../ui/Select";
 
 const OPTIONS_FIELD = "agentOptions";
 const PERMISSIONS_FIELD = "agentPermissions";
@@ -149,36 +150,18 @@ export default function AgentsPage() {
       <SettingsError error={error} loaded onRetry={retry} />
       <section className="conn-card" data-section="default">
         <h2 className="conn-name">Default agent</h2>
-        <select aria-label="default agent" className="field" value={savedMissing ? `saved:${def}` : def} onChange={(e) => save({ [DEFAULT_AGENT_KEY]: e.target.value.replace(/^saved:/, "") })}>
-          <option value="">Auto: the first agent available</option>
-          {savedMissing && <option value={`saved:${def}`}>{nameOf(def)} (saved, not found right now)</option>}
-          {choices.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <Select label="default agent" value={savedMissing ? `saved:${def}` : def} onChange={(v) => save({ [DEFAULT_AGENT_KEY]: v.replace(/^saved:/, "") })} options={[
+          { value: "", label: "Auto: the first agent available" },
+          ...(savedMissing ? [{ value: `saved:${def}`, label: `${nameOf(def)} (saved, not found right now)` }] : []),
+          ...choices.map((a) => ({ value: a.id, label: a.name })),
+        ]} className="field" />
         <p className="conn-detail">A new agent tab opens with this agent and its options below. Switching the default agent off leaves no default.</p>
       </section>
 
       <section className="conn-card" data-section="seat-default">
         <h2 className="conn-name">Default model and effort</h2>
-        <select aria-label="default model" className="field" value={seatNow.model} onChange={(e) => save({ [DEFAULT_MODEL_KEY]: e.target.value })}>
-          <option value="">No default: pick a model for each seat</option>
-          {seatChoices.models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-        <select aria-label="default effort" className="field" value={seatNow.effort} onChange={(e) => save({ [DEFAULT_EFFORT_KEY]: e.target.value })} disabled={seatNow.model === ""}>
-          <option value="">Model default effort</option>
-          {seatChoices.efforts.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
-          ))}
-        </select>
+        <Select label="default model" value={seatNow.model} onChange={(v) => save({ [DEFAULT_MODEL_KEY]: v })} options={[{ value: "", label: "No default: pick a model for each seat" }, ...seatChoices.models.map((m) => ({ value: m.id, label: m.label }))]} className="field" />
+        <Select label="default effort" value={seatNow.effort} onChange={(v) => save({ [DEFAULT_EFFORT_KEY]: v })} options={[{ value: "", label: "Model default effort" }, ...seatChoices.efforts.map((l) => ({ value: l, label: l }))]} className="field" disabled={seatNow.model === ""} />
         <p className="conn-detail">Every new seat starts on this model and effort, and you can change either on the seat. An agent that does not offer the model starts on its own default.</p>
       </section>
 
@@ -249,10 +232,7 @@ export function CachePick({ minutes, onPick }: { minutes: number | null; onPick:
       </label>
       <div className="look-select">
         <span>Cache length</span>
-        <select aria-label="Cache length" className="field" disabled={minutes === null} value={String(minutes ?? 5)} onChange={(e) => onPick(Number(e.target.value))}>
-          <option value="5">5 minutes</option>
-          <option value="60">1 hour</option>
-        </select>
+        <Select label="Cache length" value={String(minutes ?? 5)} onChange={(v) => onPick(Number(v))} options={[{ value: "5", label: "5 minutes" }, { value: "60", label: "1 hour" }]} className="field" disabled={minutes === null} />
       </div>
     </section>
   );

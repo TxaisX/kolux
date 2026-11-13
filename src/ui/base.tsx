@@ -112,7 +112,7 @@ export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset
   );
 }
 
-export type ItemProps = { className?: string; title?: string; disabled?: boolean; onClick?: () => void; closeOnClick?: boolean; children: ReactNode; "data-testid"?: string; "aria-label"?: string };
+export type ItemProps = { className?: string; title?: string; disabled?: boolean; onClick?: () => void; closeOnClick?: boolean; children: ReactNode; "data-testid"?: string; "aria-label"?: string; "aria-busy"?: boolean };
 
 export const MenuItemBox = ({ className = "menu-item", onClick, ...p }: ItemProps) => <Menu.Item nativeButton render={<button type="button" />} className={className} onClick={() => onClick?.()} {...p} />;
 
@@ -166,16 +166,21 @@ export type SelectBoxProps = {
   disabled?: boolean;
   title?: string;
   id?: string;
+  style?: CSSProperties;
   "data-testid"?: string;
   trigger: RefObject<HTMLButtonElement | null>;
   chevron: ReactElement;
+  sizer: ReactElement;
 };
 
-export function SelectBox({ popup, open, onOpen, value, onChange, options, label, className, disabled, title, id, trigger, chevron, ...p }: SelectBoxProps) {
+export function SelectBox({ popup, open, onOpen, value, onChange, options, label, className, disabled, title, id, trigger, chevron, sizer, ...p }: SelectBoxProps) {
   return (
     <Select.Root value={value} onValueChange={(v) => v !== null && onChange(v as string)} items={options} open={open} onOpenChange={onOpen} modal={false} disabled={disabled}>
       <Select.Trigger ref={trigger} className={`${className} ui-select`} aria-label={label} title={title} id={id} {...p}>
-        <Select.Value className="ui-select-value" />
+        <span className="ui-select-box">
+          <Select.Value className="ui-select-value" />
+          {sizer}
+        </span>
         {chevron}
       </Select.Trigger>
       <Select.Portal container={layerHost()}>

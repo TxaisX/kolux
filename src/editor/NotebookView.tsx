@@ -9,6 +9,7 @@ import Ask from "../chrome/Ask";
 import { subscribe, textOf } from "./buffers";
 import { runCell, TRUST_BODY, TRUST_TITLE } from "./notebookRun";
 import { insertCell, kindOf, limited, moveCell, outputText, parseNotebook, removeCell, serialize, setKind, sourceOf, withSource, type Cell, type CellKind, type Notebook } from "./notebook";
+import { Select } from "../ui/Select";
 
 type Props = { path: string; loaded: number; hidden?: boolean; readOnly?: boolean; onText: (text: string) => void };
 
@@ -190,13 +191,7 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
             // a cell's id (format 4.5) is stable across moves; older notebooks fall back to the position
             <section key={typeof c.id === "string" ? c.id : `i${i}`} className={`nb-cell nb-k-${kindOf(c)}`} aria-label={`Cell ${i + 1}, ${kindOf(c)}`}>
               <header>
-                <select value={kindOf(c)} disabled={readOnly} aria-label={`Cell ${i + 1} type`} onChange={(e) => change(setKind(nb, i, e.target.value as CellKind))}>
-                  {KINDS.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
+                <Select label={`Cell ${i + 1} type`} value={kindOf(c)} onChange={(v) => change(setKind(nb, i, v as CellKind))} options={KINDS.map((k) => ({ value: k, label: k }))} className="" disabled={readOnly} />
                 {kindOf(c) === "code" && typeof c.execution_count === "number" && <span className="nb-n">[{c.execution_count}]</span>}
                 {!readOnly && c.cell_type === "code" && (
                   <RunButton i={i} running={running} onRun={() => void run(i)} onStop={() => void invoke("notebook_stop").catch((e) => setProblem(String(e)))} />

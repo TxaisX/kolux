@@ -261,51 +261,49 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | agents | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 |
 | artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 |
-| automations | 1 | 1 | 1 | 13 | 1 | 1 | 1 | 14 | 16 |
+| automations | 1 | 1 | 1 | 0 | 1 | 1 | 1 | 14 | 3 |
 | board | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 7 | 0 |
-| chat | 0 | 1 | 0 | 2 | 0 | 1 | 0 | 13 | 3 |
+| chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
-| editor | 2 | 6 | 0 | 4 | 8 | 0 | 4 | 128 | 12 |
+| editor | 2 | 6 | 0 | 1 | 8 | 0 | 4 | 128 | 9 |
 | feedback | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 1 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
-| launch | 1 | 1 | 0 | 3 | 2 | 0 | 2 | 32 | 5 |
+| launch | 1 | 1 | 0 | 0 | 2 | 0 | 2 | 32 | 2 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
-| onboarding | 6 | 1 | 1 | 1 | 1 | 6 | 2 | 9 | 9 |
+| onboarding | 6 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 7 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
-| projects | 6 | 1 | 1 | 17 | 7 | 0 | 19 | 75 | 25 |
+| projects | 6 | 1 | 1 | 10 | 7 | 0 | 19 | 75 | 18 |
 | recovery | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
-| scm | 3 | 5 | 0 | 6 | 4 | 0 | 5 | 98 | 14 |
-| sessions | 0 | 0 | 0 | 4 | 0 | 0 | 2 | 16 | 4 |
-| settings | 2 | 1 | 1 | 27 | 0 | 30 | 10 | 43 | 31 |
+| scm | 3 | 5 | 0 | 1 | 4 | 0 | 5 | 98 | 9 |
+| sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
+| settings | 2 | 1 | 1 | 0 | 0 | 30 | 10 | 43 | 4 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
 | shell | 2 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 5 |
 | skills | 2 | 3 | 0 | 0 | 4 | 0 | 2 | 19 | 5 |
-| space | 0 | 0 | 0 | 1 | 0 | 0 | 2 | 4 | 1 |
+| space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 4 | 1 |
-| tasks | 2 | 0 | 2 | 14 | 0 | 0 | 3 | 41 | 18 |
+| tasks | 2 | 0 | 2 | 2 | 0 | 0 | 3 | 41 | 6 |
 | terminal | 6 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 8 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 1 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **36** | **25** | **8** | **92** | **41** | **42** | **57** | **646** | **161** |
+| **Total** | **36** | **24** | **8** | **14** | **41** | **42** | **57** | **646** | **82** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### automations
 
 - [ ] `src/automations/AutomationDetail.tsx`: Tabs :97
-- [ ] `src/automations/AutomationDialog.tsx`: Dialog :311, Select :358, Select :375, Select :385, Select :399, Select :412, Select :432, Select :443, Select :464, Select :502, Select :523
-- [ ] `src/automations/AutomationsPage.tsx`: Select :346, Select :351, Menu :493
-- [ ] `src/automations/RunsDashboard.tsx`: Select :99
+- [ ] `src/automations/AutomationDialog.tsx`: Dialog :312
+- [ ] `src/automations/AutomationsPage.tsx`: Menu :484
 
 ### chat
 
 - [ ] `src/chat/ChatText.tsx`: Menu :117
-- [ ] `src/chat/ModelControls.tsx`: Select :37, Select :51
 
 ### editmenu
 
@@ -313,14 +311,11 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### editor
 
-- [ ] `src/editor/AllChangesPane.tsx`: Select :387
 - [ ] `src/editor/CodeLabel.tsx`: Select :50
 - [ ] `src/editor/DiffPane.tsx`: Menu :517, Dialog :621
 - [ ] `src/editor/Explorer.tsx`: Menu :868, Menu :880
-- [ ] `src/editor/NotebookView.tsx`: Select :193
 - [ ] `src/editor/PreviewPane.tsx`: Menu :238
 - [ ] `src/editor/ReviewNotes.tsx`: Dialog :71, Menu :150
-- [ ] `src/editor/RichToolbar.tsx`: Select :77
 - [ ] `src/editor/TableControls.tsx`: Menu :113
 
 ### feedback
@@ -329,28 +324,24 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### launch
 
-- [ ] `src/launch/ChooserPane.tsx`: Dialog :55, Select :616
-- [ ] `src/launch/KeepAwakeCard.tsx`: Select :37
+- [ ] `src/launch/ChooserPane.tsx`: Dialog :56
 - [ ] `src/launch/PlusMenu.tsx`: Menu :144
-- [ ] `src/launch/TeamsModeCard.tsx`: Select :18
 
 ### onboarding
 
 - [ ] `src/onboarding/Guides.tsx`: Dialog :177, Dialog :269, Tabs :279, Dialog :488, Dialog :562
-- [ ] `src/onboarding/HelpSheet.tsx`: Menu :63
-- [ ] `src/onboarding/StepPanels.tsx`: Select :150
 - [ ] `src/onboarding/Tours.tsx`: Dialog :130
 - [ ] `src/onboarding/Wizard.tsx`: Dialog :117
 
 ### projects
 
 - [ ] `src/projects/AddProject.tsx`: Dialog :120
-- [ ] `src/projects/CleanupDialog.tsx`: Dialog :133, Select :150, Select :158, Select :164, Select :169, Select :174
+- [ ] `src/projects/CleanupDialog.tsx`: Dialog :134
 - [ ] `src/projects/ImportSetup.tsx`: Dialog :17
 - [ ] `src/projects/ProjectsPanel.tsx`: Select :1141, Select :1177, Select :1182, Select :1514, Select :1554, Select :2329, Select :2412, Tabs :2531, Select :2587, Select :2624, Select :2631, Menu :2735
 - [ ] `src/projects/ScanRepos.tsx`: Dialog :107
 - [ ] `src/projects/StartGit.tsx`: Dialog :30
-- [ ] `src/projects/WorktreePalette.tsx`: Dialog :302, Select :328, Select :336
+- [ ] `src/projects/WorktreePalette.tsx`: Dialog :303
 
 ### recovery
 
@@ -359,37 +350,15 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### scm
 
 - [ ] `src/scm/CommentsPanel.tsx`: Menu :212
-- [ ] `src/scm/FileOpenWith.tsx`: Select :47
-- [ ] `src/scm/HandoffNote.tsx`: Select :94
 - [ ] `src/scm/PrStart.tsx`: Dialog :279
-- [ ] `src/scm/SourceControlPanel.tsx`: Select :699, Menu :886, Menu :911, Dialog :1041, Dialog :1106, Select :1115, Menu :1289, Menu :1317
-- [ ] `src/scm/WriterPicker.tsx`: Select :63, Select :87
-
-### sessions
-
-- [ ] `src/sessions/AgentsPanel.tsx`: Select :231, Select :252, Select :262, Select :272
+- [ ] `src/scm/SourceControlPanel.tsx`: Menu :881, Menu :906, Dialog :1036, Dialog :1101, Select :1110, Menu :1284, Menu :1312
 
 ### settings
 
-- [ ] `src/settings/AgentCredentials.tsx`: Select :89
-- [ ] `src/settings/AgentsPage.tsx`: Select :152, Select :166, Select :174, Select :252
-- [ ] `src/settings/AiRecipesSection.tsx`: Select :66
-- [ ] `src/settings/AppearancePage.tsx`: Select :200, Select :313, Select :517
-- [ ] `src/settings/ClaudeSetupPage.tsx`: Select :433
 - [ ] `src/settings/ConnectGrid.tsx`: Menu :54
-- [ ] `src/settings/GeneralPage.tsx`: Select :207
-- [ ] `src/settings/GitPage.tsx`: Select :71, Select :134
 - [ ] `src/settings/GrokCard.tsx`: Dialog :161
-- [ ] `src/settings/NotificationsPage.tsx`: Select :110
-- [ ] `src/settings/RepoPage.tsx`: Select :41
-- [ ] `src/settings/RepoSetup.tsx`: Select :93, Select :141
-- [ ] `src/settings/RoutingPage.tsx`: Tabs :51, Select :86, Select :97
-- [ ] `src/settings/SafetyRules.tsx`: Select :157, Select :193
+- [ ] `src/settings/RoutingPage.tsx`: Tabs :52
 - [ ] `src/settings/SettingsPage.tsx`: Dialog :402
-- [ ] `src/settings/SetupPolicyRow.tsx`: Select :15
-- [ ] `src/settings/ShortcutsPage.tsx`: Select :109
-- [ ] `src/settings/TerminalPage.tsx`: Select :76, Select :232
-- [ ] `src/settings/autoPr.tsx`: Select :68, Select :83
 
 ### shell
 
@@ -404,22 +373,17 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/skills/SkillUpdate.tsx`: Dialog :141
 - [ ] `src/skills/SkillsPage.tsx`: Menu :181, Menu :236, Dialog :279, Menu :394
 
-### space
-
-- [ ] `src/space/SpaceView.tsx`: Select :141
-
 ### switcher
 
 - [ ] `src/switcher/AccountSwitcher.tsx`: Menu :133
 
 ### tasks
 
-- [ ] `src/tasks/NewIssueDialog.tsx`: Dialog :137, Select :146
-- [ ] `src/tasks/ProjectsView.tsx`: Select :44, Select :56, Select :412, Select :421, Select :431
-- [ ] `src/tasks/PullRequestPage.tsx`: Tabs :305, Select :423, Select :435
-- [ ] `src/tasks/RoadmapTimeline.tsx`: Select :44
-- [ ] `src/tasks/TaskDialog.tsx`: Dialog :143, Select :232, Select :303
-- [ ] `src/tasks/TasksPage.tsx`: Select :48, Tabs :313, Select :337, Select :370
+- [ ] `src/tasks/NewIssueDialog.tsx`: Dialog :138
+- [ ] `src/tasks/ProjectsView.tsx`: Select :45, Select :57
+- [ ] `src/tasks/PullRequestPage.tsx`: Tabs :306
+- [ ] `src/tasks/TaskDialog.tsx`: Dialog :144
+- [ ] `src/tasks/TasksPage.tsx`: Tabs :314
 
 ### terminal
 

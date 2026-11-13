@@ -27,6 +27,7 @@ import { openSettings } from "./pages";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
 import { DENSITIES, DENSITY_FIELD, readDensity } from "../shell/paneChrome";
+import { Select } from "../ui/Select";
 
 /** TERM-119: on unless switched off; the app reads the same field when it starts a shell. */
 const SHELL_HISTORY_FIELD = "shellHistoryPerWorktree";
@@ -73,13 +74,7 @@ function WeightField({ label, value, onPick }: { label: string; value: string; o
   return (
     <label className="num-field">
       <span>{label}</span>
-      <select value={value} onChange={(e) => onPick(e.target.value)}>
-        {WEIGHTS.map((w) => (
-          <option key={w} value={w}>
-            {w === "normal" ? "Normal" : w === "bold" ? "Bold" : w}
-          </option>
-        ))}
-      </select>
+      <Select label={label} value={value} onChange={(v) => onPick(v)} options={WEIGHTS.map((w) => ({ value: w, label: w === "normal" ? "Normal" : w === "bold" ? "Bold" : w }))} className="" />
     </label>
   );
 }
@@ -229,13 +224,7 @@ export default function TerminalPage() {
           <h2 className="conn-name">Default shell</h2>
           <label className="num-field">
             <span>New terminals open in</span>
-            <select value={shellOptions.some((o) => o.id === shellChoice) ? shellChoice : "auto"} onChange={(e) => save({ [DEFAULT_SHELL_FIELD]: e.target.value })}>
-              {shellOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+            <Select label="New terminals open in" value={shellOptions.some((o) => o.id === shellChoice) ? shellChoice : "auto"} onChange={(v) => save({ [DEFAULT_SHELL_FIELD]: v })} options={shellOptions.map((o) => ({ value: o.id, label: o.name }))} className="" />
           </label>
           <p className="conn-detail">Only the shells found on this computer are listed. Open terminals keep the shell they started with.</p>
         </section>

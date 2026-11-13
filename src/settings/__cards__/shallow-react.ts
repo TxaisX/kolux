@@ -51,6 +51,9 @@ export function findAll(node: unknown, pred: (e: El) => boolean, out: El[] = [])
   }
   return out;
 }
+/** A src/ui Select, found by its label: its choices are its `options` prop and a pick is `onChange(value)`. */
+export const isSelect = (label: string) => (e: El) => Array.isArray(e.props.options) && e.props.label === label && typeof e.props.onChange === "function";
+
 export const find = (node: unknown, pred: (e: El) => boolean): El => {
   const hit = findAll(node, pred)[0];
   if (!hit) throw new Error("no such element in the rendered tree");

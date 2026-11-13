@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { GitView, namingPatch } from "./GitPage";
 import { agentChoices } from "../scm/writerPick";
+import { selectIn } from "../tasks/selectHtml";
 
 const view = (settings: Record<string, unknown>, draft = "", check: { prefix: string; refused: boolean } | null = null) =>
   renderToString(createElement(GitView, { settings, save: () => {}, draft, setDraft: () => {}, check }));
@@ -23,7 +24,7 @@ test("T-116-a-fix: a custom prefix shows its field, and a refused one warns", ()
   expect(html).toContain('aria-label="custom branch prefix"');
   expect(html).toContain('role="alert"');
   expect(html).toContain("Git does not accept");
-  expect(html).toMatch(/<option value="upstream" selected="">Branch upstream/);
+  expect(selectIn(html, "default compare base")?.chosen).toBe("Branch upstream");
 });
 
 test("T-116-b: renaming branches after the work is on by default and switches off", () => {
@@ -55,7 +56,7 @@ test("T-228-d: the writer picker lists the agents, shows model and effort for a 
   const html = view({ commitWriter: "codex", commitWriterModel: "gpt-5", commitWriterEffort: "high" });
   expect(html).toContain('aria-label="commit message writer"');
   // The writer is a src/ui Select: the closed control names the chosen agent, and its list (drawn on a press) has a row per agent.
-  expect(html).toMatch(/aria-label="commit message writer" class="field ui-select"><span class="ui-select-value">Codex</);
+  expect(html).toMatch(/aria-label="commit message writer" class="field ui-select"><span class="ui-select-box"><span class="ui-select-value">Codex</);
   const rows = agentChoices(null, "codex").map((a) => a.id);
   for (const id of ["claude", "amp", "kimi", "copilot", "pi", "cursor", "antigravity"]) expect(rows).toContain(id);
   expect(html).toContain('aria-label="commit message model"');

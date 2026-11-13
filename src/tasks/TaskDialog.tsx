@@ -18,6 +18,7 @@ import MentionField from "./MentionField";
 import { type Edit, withAssignees, withLabels } from "./edits";
 import { duplicateQuery, eventLine, issueNumber, type Task, type TaskDetail, type TaskLabel, type TaskPage, taskKind } from "./model";
 import type { Person } from "./repoFacts";
+import { Select } from "../ui/Select";
 
 const FRESH_MS = 15_000;
 
@@ -229,14 +230,7 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
               ))}
               {have.length === 0 && <span className="muted">None</span>}
             </div>
-            <select className="field" aria-label="Add a label" value="" disabled={more.length === 0} onChange={(e) => e.target.value && labels([e.target.value], [])}>
-              <option value="">{more.length ? "Add a label…" : "No more labels"}</option>
-              {more.map((l) => (
-                <option key={l.name} value={l.name}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
+            <Select label="Add a label" value="" onChange={(v) => v && labels([v], [])} options={[{ value: "", label: more.length ? "Add a label…" : "No more labels" }, ...more.map((l) => ({ value: l.name, label: l.name }))]} className="field" disabled={more.length === 0} />
             <span className="task-cap">Assignees</span>
             <div className="task-labels">
               {assignees.map((a) => (
@@ -300,11 +294,11 @@ function IssueActions({ host, task, state, title, onDone, onShow, onUndo }: { ho
       <div className="task-sect">
         {state === "open" ? (
           <>
-            <select className="field" aria-label="Close as" value={reason} disabled={busy} onChange={(e) => setReason(e.target.value)}>
-              <option value="completed">Close as completed</option>
-              <option value="not_planned">Close as not planned</option>
-              <option value="duplicate">Close as duplicate</option>
-            </select>
+            <Select label="Close as" value={reason} onChange={(v) => setReason(v)} options={[
+              { value: "completed", label: "Close as completed" },
+              { value: "not_planned", label: "Close as not planned" },
+              { value: "duplicate", label: "Close as duplicate" },
+            ]} className="field" disabled={busy} />
             {reason === "duplicate" && <input className="field" aria-label="Duplicate of" placeholder="Duplicate of #" value={dup} disabled={busy} onChange={(e) => setDup(e.target.value)} />}
             <button className="btn" disabled={busy} onClick={close}>
               Close issue

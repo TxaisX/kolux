@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { projectLabel, type Project } from "../projects/model";
 import { singleFolder } from "../projects/singleFolder";
 import RepoSetupSection from "./RepoSetup";
+import { Select } from "../ui/Select";
 
 /** What a field's draft saves: null when it says what is saved already (viewing writes nothing). */
 export function draftSave(saved: string | null | undefined, draft: string): string | null {
@@ -38,11 +39,11 @@ function OutsideField({ outside, onChoose }: { outside: Outside; onChoose: (own:
   return (
     <label className="look-select">
       <span>Workspaces made outside Kolux</span>
-      <select aria-label="Workspaces made outside Kolux" className="field" value={outsideChoice(outside)} onChange={(e) => onChoose(outsideSave(e.target.value as OutsideChoice))}>
-        <option value="global">{`Use the global choice (${outside.global ? "shown" : "hidden"})`}</option>
-        <option value="show">Show them</option>
-        <option value="hide">Hide them</option>
-      </select>
+      <Select label="Workspaces made outside Kolux" value={outsideChoice(outside)} onChange={(v) => onChoose(outsideSave(v as OutsideChoice))} options={[
+        { value: "global", label: `Use the global choice (${outside.global ? "shown" : "hidden"})` },
+        { value: "show", label: "Show them" },
+        { value: "hide", label: "Hide them" },
+      ]} className="field" />
     </label>
   );
 }

@@ -17,6 +17,7 @@ import { StatusGlyph } from "../chrome/icons";
 import OutOfFlow from "../chrome/OutOfFlow";
 import { capRows, moreLabel, moreTitle, restoreFocus } from "../shell/paletteCaps";
 import { rowKeys } from "../shell/rowKeys";
+import { Select } from "../ui/Select";
 
 /** A row the window supplies: its section, what it shows, and what Enter does. `parent` is the
  * project a row belongs to (matched after the row's own text), `dir` the folder it stands for
@@ -325,22 +326,15 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
               {chipLabel(c)} ×
             </button>
           ))}
-          <select aria-label="Filter by repository" value="" onChange={(e) => e.target.value && addChip({ field: "repo", value: e.target.value })}>
-            <option value="">+ Repository</option>
-            {repoOptions(projects, lists)
-              .filter((o) => !repoChips.some((c) => c.value === o.id))
-              .map((o) => (
-                <option key={o.id} value={o.id}>{`${o.name} (${o.count})`}</option>
-              ))}
-          </select>
-          <select aria-label="Filter by kind" value="" onChange={(e) => e.target.value && addChip({ field: "section", value: e.target.value })}>
-            <option value="">+ Kind</option>
-            {SECTIONS.filter((s) => !chips.some((c) => c.field === "section" && c.value === s)).map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <Select label="Filter by repository" value="" onChange={(v) => v && addChip({ field: "repo", value: v })} options={[
+            { value: "", label: "+ Repository" },
+            ...repoOptions(projects, lists)
+              .filter((o) => !repoChips.some((c) => c.value === o.id)).map((o) => ({ value: o.id, label: `${o.name} (${o.count})` })),
+          ]} className="" />
+          <Select label="Filter by kind" value="" onChange={(v) => v && addChip({ field: "section", value: v })} options={[
+            { value: "", label: "+ Kind" },
+            ...SECTIONS.filter((s) => !chips.some((c) => c.field === "section" && c.value === s)).map((s) => ({ value: s, label: s })),
+          ]} className="" />
         </div>
         {refused && <div className="menu-hint warn">That is too long to search; the palette takes up to {MAX_QUERY} characters.</div>}
         <div className="picker-list" role="listbox">

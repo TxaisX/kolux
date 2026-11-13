@@ -1,6 +1,7 @@
 // Native chat, the model and effort controls beside Send (CHAT-024; T-334). The rules are in controls.ts.
 import { useEffect, useRef } from "react";
 import { LAUNCH_NOTE, TERMINAL_NOTE, choicesFor, effortsFor, fastOffered, routeOf, statusOf, statusText, type Change, type Choice, type What } from "./controls";
+import { Select } from "../ui/Select";
 
 type Props = {
   agent: string;
@@ -18,7 +19,7 @@ type Props = {
 };
 
 export function ModelControls({ agent, shown, saved, changes, disabled, openPicker, onModel, onEffort, onFast }: Props) {
-  const select = useRef<HTMLSelectElement>(null);
+  const select = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (openPicker > 0) select.current?.focus();
   }, [openPicker]);
@@ -34,28 +35,30 @@ export function ModelControls({ agent, shown, saved, changes, disabled, openPick
     <div className="chat-controls" role="group" aria-label="Model and effort">
       <label className="chat-control">
         <span>Model</span>
-        <select ref={select} aria-label="Model" disabled={disabled} value={modelValue} title={note("model")} onChange={(e) => e.currentTarget.value && onModel(e.currentTarget.value)}>
-          {modelValue === "" && <option value="">{shown === null ? "Not read yet" : "Pick a model"}</option>}
-          {choices.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-              {c.id === shown ? " (in use)" : ""}
-            </option>
-          ))}
-        </select>
+        <Select
+          controlRef={select}
+          label="Model"
+          className=""
+          disabled={disabled}
+          value={modelValue}
+          title={note("model")}
+          onChange={(v) => v && onModel(v)}
+          options={[...(modelValue === "" ? [{ value: "", label: shown === null ? "Not read yet" : "Pick a model" }] : []), ...choices.map((c) => ({ value: c.id, label: `${c.label}${c.id === shown ? " (in use)" : ""}` }))]}
+        />
         {statusText(model) && <small className={`chat-control-status ${model?.status}`} role="status">{statusText(model)}</small>}
       </label>
       {efforts.length > 0 && (
         <label className="chat-control">
           <span>Effort</span>
-          <select aria-label="Effort" disabled={disabled} value={effortValue} title={note("effort")} onChange={(e) => e.currentTarget.value && onEffort(e.currentTarget.value)}>
-            {effortValue === "" && <option value="">Model default</option>}
-            {efforts.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
+          <Select
+            label="Effort"
+            className=""
+            disabled={disabled}
+            value={effortValue}
+            title={note("effort")}
+            onChange={(v) => v && onEffort(v)}
+            options={[...(effortValue === "" ? [{ value: "", label: "Model default" }] : []), ...efforts.map((l) => ({ value: l, label: l }))]}
+          />
           {routeOf(agent, "effort") === "launch" && <small className="chat-control-status">At next launch</small>}
           {statusText(effort) && <small className={`chat-control-status ${effort?.status}`} role="status">{statusText(effort)}</small>}
         </label>

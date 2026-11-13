@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Ask from "../chrome/Ask";
 import { offIds, type RuleInfo } from "./SafetyPage";
+import { Select } from "../ui/Select";
 
 export const RULES_FIELD = "protectedRules";
 export const PROJECTS_FIELD = "protectedProjects";
@@ -154,14 +155,7 @@ export function SafetyRulesView({ settings, rules, projects, scope, setScope, sa
       <p className="conn-detail">A rule of your own makes Claude ask before any command it matches. Rules for all projects apply everywhere; a project can switch any rule off for itself and add its own.</p>
       <label className="conn-detail">
         Scope{" "}
-        <select aria-label="Scope" value={scope ?? ""} onChange={(e) => setScope(e.target.value === "" ? null : e.target.value)}>
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.path} value={p.path}>
-              {p.displayName || p.name}
-            </option>
-          ))}
-        </select>
+        <Select label="Scope" value={scope ?? ""} onChange={(v) => setScope(v === "" ? null : v)} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p.path, label: p.displayName || p.name }))]} className="" />
       </label>
       {scope !== null && (
         <div data-project-switches>
@@ -190,13 +184,7 @@ export function SafetyRulesView({ settings, rules, projects, scope, setScope, sa
           void add();
         }}
       >
-        <select aria-label="Match" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
-          {KINDS.map((k) => (
-            <option key={k.kind} value={k.kind}>
-              {k.label}
-            </option>
-          ))}
-        </select>{" "}
+        <Select label="Match" value={kind} onChange={(v) => setKind(v as Kind)} options={KINDS.map((k) => ({ value: k.kind, label: k.label }))} className="" />{" "}
         <input aria-label="Pattern" placeholder={KINDS.find((k) => k.kind === kind)?.hint} value={pattern} onChange={(e) => setPattern(e.target.value)} />{" "}
         <input aria-label="Name (optional)" placeholder="Name shown to Claude (optional)" value={name} onChange={(e) => setName(e.target.value)} />{" "}
         <button type="submit" className="btn" disabled={pattern.trim() === ""}>

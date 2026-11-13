@@ -180,7 +180,7 @@ describe("Select", () => {
     await show(<Page />);
     const control = q<HTMLButtonElement>('[role="combobox"]')!;
     expect(control.getAttribute("aria-label")).toBe("writer");
-    expect(control.textContent).toBe("Alpha");
+    expect(control.querySelector(".ui-select-value")!.textContent).toBe("Alpha");
     await act(async () => control.click());
     await wait(50);
     expect(list()).not.toBeNull();
@@ -192,7 +192,9 @@ describe("Select", () => {
     expect(changed).toHaveBeenCalledWith("b");
     expect(list()).toBeNull();
     const after = q<HTMLButtonElement>('[role="combobox"]')!;
-    expect(after.textContent).toBe("Beta");
+    expect(after.querySelector(".ui-select-value")!.textContent).toBe("Beta");
+    // the unseen labels that size it are there before and after Base UI draws it
+    expect([...after.querySelectorAll(".ui-select-sizer > span")].map((x) => x.textContent)).toEqual(["Alpha", "Beta"]);
     expect(document.activeElement).toBe(after);
   });
 

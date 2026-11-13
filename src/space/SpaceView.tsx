@@ -9,6 +9,7 @@ import { folderName } from "../projects/model";
 import { askArchive } from "../setup/TrustPrompt";
 import { ageOf, deletable, formatBytes, formatCount, reclaimableBytes, selectedForDelete, treemap, visibleRows, type SortKey, type SpaceRow } from "../projects/space";
 import { activeOf, afterBatch, chosenVisible, labelOf, latest, plan, question, removeArgs, stateOf, treemapItems, whyNotDeletable, type Batch, type Pick, type Skipped } from "./view";
+import { Select } from "../ui/Select";
 
 type Props = { projectId: string | null; projectName: string; openDirs: string[] };
 // T-744: `pid` is the project the question was asked in; after a project switch it is neither shown nor run.
@@ -138,12 +139,12 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
           <div style={{ flex: "1 1 360px", minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input className="field" style={{ width: 200 }} placeholder="Search branch or folder" aria-label="Search workspaces" value={query} onChange={(e) => setQuery(e.target.value)} />
-              <select className="field" style={{ width: "auto" }} aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-                <option value="size">Biggest first</option>
-                <option value="files">Most files first</option>
-                <option value="age">Oldest first</option>
-                <option value="branch">By branch</option>
-              </select>
+              <Select label="Sort by" value={sort} onChange={(v) => setSort(v as SortKey)} options={[
+                { value: "size", label: "Biggest first" },
+                { value: "files", label: "Most files first" },
+                { value: "age", label: "Oldest first" },
+                { value: "branch", label: "By branch" },
+              ]} className="field" style={{ width: "auto" }} />
               <label style={{ fontSize: 12, display: "inline-flex", gap: 4, alignItems: "center" }}>
                 <input type="checkbox" checked={deletableOnly} onChange={(e) => setDeletableOnly(e.target.checked)} /> Deletable only
               </label>

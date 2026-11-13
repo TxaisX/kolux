@@ -28,6 +28,7 @@ import { gridSheet } from "./emptySlots";
 import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
+import { Select } from "../ui/Select";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
 function DocsLink({ agent }: { agent: AgentInfo }) {
@@ -616,14 +617,10 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                   {choiceOf(seat)?.efforts && (
                     <label className="choice">
                       Effort
-                      <select aria-label={`Seat ${i + 1}: effort`} value={seat.effort ?? ""} onChange={(e) => setSeat(i, { effort: e.currentTarget.value || undefined })}>
-                        <option value="">{choiceOf(seat)?.defaultEffort ? `Model default (${choiceOf(seat)?.defaultEffort})` : "Model default"}</option>
-                        {choiceOf(seat)?.efforts?.map((l) => (
-                          <option key={l} value={l}>
-                            {l}
-                          </option>
-                        ))}
-                      </select>
+                      <Select label={`Seat ${i + 1}: effort`} value={seat.effort ?? ""} onChange={(v) => setSeat(i, { effort: v || undefined })} options={[
+                        { value: "", label: choiceOf(seat)?.defaultEffort ? `Model default (${choiceOf(seat)?.defaultEffort})` : "Model default" },
+                        ...(choiceOf(seat)?.efforts?.map((l) => ({ value: l, label: l })) ?? []),
+                      ]} className="" />
                     </label>
                   )}
                   {choiceOf(seat)?.fast && (

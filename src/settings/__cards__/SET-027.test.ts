@@ -66,16 +66,14 @@ async function page() {
 }
 const row = (c: FakeNode, id: string) => find(c, (n) => n.attrs["data-agent"] === id)[0];
 const switchOf = (c: FakeNode, id: string) => find(row(c, id), (n) => n.localName === "input" && n.attrs.role === "switch")[0];
-const select = (c: FakeNode) => find(c, (n) => n.localName === "select" && n.attrs["aria-label"] === "default agent")[0];
-const optionTexts = (c: FakeNode) => find(select(c), (n) => n.localName === "option").map((o) => o.textContent.trim());
+// The default agent is a src/ui Select: its closed control shows the chosen label and carries every option's label
+// (unseen, to size itself as a native select does), which is what the list offers when it opens.
+const select = (c: FakeNode) => find(c, (n) => n.attrs.role === "combobox" && n.attrs["aria-label"] === "default agent")[0];
+const optionTexts = (c: FakeNode) => find(select(c), (n) => String(n.attrs.class ?? "") === "ui-select-sizer")[0].childNodes.map((o: FakeNode) => o.textContent.trim());
 const refreshButton = (c: FakeNode) => find(c, (n) => n.localName === "button" && /^(Refresh|Looking…)$/.test(n.textContent.trim()))[0];
 const chips = (c: FakeNode) => find(c, (n) => String(n.attrs.className ?? n.attrs.class ?? "") === "conn-chip").map((n) => n.textContent.trim());
-/** What React left selected in the default-agent control. */
-const picked = (c: FakeNode) => {
-  const opts = find(select(c), (n) => n.localName === "option");
-  const sel = opts.filter((o) => (o as unknown as { selected?: boolean }).selected || o.attrs.selected !== undefined);
-  return sel.map((o) => o.attrs.value ?? o.textContent.trim());
-};
+/** The choice the default-agent control shows. */
+const picked = (c: FakeNode) => find(select(c), (n) => String(n.attrs.class ?? "") === "ui-select-value").map((o) => o.textContent.trim());
 /** MIRROR App.tsx:890-892. */
 const newAgentOpens = (agents: AgentInfo[], defaultId: string) => (defaultId ? agents.find((x) => x.id === defaultId && x.installed) : agents.find((x) => x.installed));
 
@@ -95,7 +93,7 @@ test("box 1: switching off the default leaves no default on the page; a new sess
   // The page: no "default" tag on any row, and the default control sits on Auto.
   expect(chips(c)).toEqual([]);
   expect(optionTexts(c)).toEqual(["Auto: the first agent available", "Claude Code"]);
-  expect(picked(c)).toEqual([""]);
+  expect(picked(c)).toEqual(["Auto: the first agent available"]);
   expect(c.textContent).toContain("Switching the default agent off leaves no default.");
   // A new session: Codex is no longer offered, no default is set, and the first agent available is Claude.
   const offered = offeredAgents([CLAUDE, CODEX], h.settings);
@@ -113,7 +111,7 @@ test("box 2: with every CLI gone, Refresh keeps the saved default listed and rec
   h.settings = { defaultAgent: "codex" };
   h.agents = [CLAUDE, CODEX];
   const c = await page();
-  expect(picked(c)).toEqual(["codex"]);
+  expect(picked(c)).toEqual(["Codex"]);
   // Every CLI removed, then Refresh.
   h.agents = [agent("claude", "Claude Code", false), agent("codex", "Codex", false)];
   const before = h.lists;
@@ -125,14 +123,14 @@ test("box 2: with every CLI gone, Refresh keeps the saved default listed and rec
   expect(h.settings.defaultAgent).toBe("codex"); // still recorded
   expect(h.patches.some((p) => "defaultAgent" in p.set || p.remove.includes("defaultAgent"))).toBe(false); // the search wrote nothing about it
   expect(optionTexts(c)).toEqual(["Auto: the first agent available", "Codex (saved, not found right now)"]);
-  expect(picked(c)).toEqual(["saved:codex"]); // Auto is not the selected choice
+  expect(picked(c)).toEqual(["Codex (saved, not found right now)"]); // Auto is not the selected choice
   // Reinstalled: the page lists it as the default again, and the product's rules pick it for a new session.
   h.agents = [agent("claude", "Claude Code", false), CODEX];
   await click(c, refreshButton(c));
   await until(() => h.lists > before + 1, "the third search");
   await settle(80);
   expect(optionTexts(c)).toEqual(["Auto: the first agent available", "Codex"]);
-  expect(picked(c)).toEqual(["codex"]);
+  expect(picked(c)).toEqual(["Codex"]);
   expect(chips(c)).toEqual(["default"]);
   const all = [agent("claude", "Claude Code", false), CODEX];
   const offered = offeredAgents(all, h.settings);

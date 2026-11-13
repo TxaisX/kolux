@@ -9,6 +9,7 @@ import { tabStep } from "../chrome/RightSidebar";
 import { invoke } from "@tauri-apps/api/core";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { chooseModel, current, effortsFor, isCustom, resetProvider, routingOf, TIERS, withPick, type Provider } from "./routing";
+import { Select } from "../ui/Select";
 
 type Props = {
   /** The detected agents, for the not-detected mark. */
@@ -83,25 +84,11 @@ export default function RoutingPage({ agents, settings, onSettings, initial }: P
                   <tr key={t.id}>
                     <td>{t.label}</td>
                     <td>
-                      <select aria-label={`${t.label} model`} className="field" value={now.model} onChange={(e) => onSettings(withPick(settings, p.id, t.id, chooseModel(p, now, e.target.value)))}>
-                        <option value="">Provider default</option>
-                        {p.models.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.label}
-                          </option>
-                        ))}
-                      </select>
+                      <Select label={`${t.label} model`} value={now.model} onChange={(v) => onSettings(withPick(settings, p.id, t.id, chooseModel(p, now, v)))} options={[{ value: "", label: "Provider default" }, ...p.models.map((m) => ({ value: m.id, label: m.label }))]} className="field" />
                     </td>
                     <td>
                       {efforts.length > 0 && (
-                        <select aria-label={`${t.label} effort`} className="field" value={now.effort} onChange={(e) => onSettings(withPick(settings, p.id, t.id, { ...now, effort: e.target.value }))}>
-                          <option value="">Default</option>
-                          {efforts.map((level) => (
-                            <option key={level} value={level}>
-                              {level}
-                            </option>
-                          ))}
-                        </select>
+                        <Select label={`${t.label} effort`} value={now.effort} onChange={(v) => onSettings(withPick(settings, p.id, t.id, { ...now, effort: v }))} options={[{ value: "", label: "Default" }, ...efforts.map((level) => ({ value: level, label: level }))]} className="field" />
                       )}
                     </td>
                   </tr>

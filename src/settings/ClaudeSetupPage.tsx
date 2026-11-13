@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } 
 import { invoke } from "@tauri-apps/api/core";
 import type { Project } from "../projects/model";
 import { useSearching } from "./search";
+import { Select } from "../ui/Select";
 
 export type FileRef = { scope: string; label: string; path: string };
 export type SettingRow = { key: string; value: string; scope: string; path: string; also: string[] };
@@ -430,13 +431,11 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
         <>
           <label className="field" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
             <span>Workspace</span>
-            <select aria-label="workspace" value={workspace} onChange={(e) => pick(e.target.value)} style={{ minWidth: 0, maxWidth: "100%" }}>
-              <option value="">None (user and managed files only)</option>
-              {projects.map((pr) => (
-                <option key={pr.id} value={pr.path}>{pr.displayName || pr.name}</option>
-              ))}
-              {workspace && !projects.some((pr) => pr.path === workspace) && <option value={workspace}>{workspace}</option>}
-            </select>
+            <Select label="workspace" value={workspace} onChange={(v) => pick(v)} options={[
+              { value: "", label: "None (user and managed files only)" },
+              ...projects.map((pr) => ({ value: pr.path, label: pr.displayName || pr.name })),
+              ...(workspace && !projects.some((pr) => pr.path === workspace) ? [{ value: workspace, label: workspace }] : []),
+            ]} className="" style={{ minWidth: 0, maxWidth: "100%" }} />
           </label>
           <ClaudeSetupView data={data} error={error} open={open} notice={notice} retry={() => setTries((n) => n + 1)} />
         </>
