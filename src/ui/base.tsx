@@ -112,7 +112,7 @@ export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset
   );
 }
 
-export type ItemProps = { className?: string; title?: string; disabled?: boolean; onClick?: () => void; closeOnClick?: boolean; children: ReactNode; "data-testid"?: string; "aria-label"?: string };
+export type ItemProps = { className?: string; title?: string; disabled?: boolean; onClick?: () => void; closeOnClick?: boolean; children: ReactNode; "data-testid"?: string; "aria-label"?: string; "aria-busy"?: boolean };
 
 export const MenuItemBox = ({ className = "menu-item", onClick, ...p }: ItemProps) => <Menu.Item nativeButton render={<button type="button" />} className={className} onClick={() => onClick?.()} {...p} />;
 

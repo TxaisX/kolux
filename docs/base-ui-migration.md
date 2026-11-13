@@ -273,7 +273,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
 | launch | 1 | 1 | 0 | 3 | 2 | 0 | 2 | 32 | 5 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
-| onboarding | 6 | 1 | 1 | 1 | 1 | 6 | 2 | 9 | 9 |
+| onboarding | 6 | 0 | 1 | 1 | 1 | 6 | 2 | 9 | 8 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
 | projects | 6 | 1 | 1 | 17 | 7 | 0 | 19 | 75 | 25 |
 | recovery | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
@@ -291,7 +291,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 1 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **36** | **25** | **8** | **92** | **41** | **42** | **57** | **646** | **161** |
+| **Total** | **36** | **24** | **8** | **92** | **41** | **42** | **57** | **646** | **160** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -337,7 +337,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### onboarding
 
 - [ ] `src/onboarding/Guides.tsx`: Dialog :177, Dialog :269, Tabs :279, Dialog :488, Dialog :562
-- [ ] `src/onboarding/HelpSheet.tsx`: Menu :63
 - [ ] `src/onboarding/StepPanels.tsx`: Select :150
 - [ ] `src/onboarding/Tours.tsx`: Dialog :130
 - [ ] `src/onboarding/Wizard.tsx`: Dialog :117
