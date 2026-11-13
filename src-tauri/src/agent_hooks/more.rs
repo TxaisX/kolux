@@ -8,10 +8,10 @@
 //!   file is absent, the `hooks` key of `~/.factory/settings.json`, where `hooksDisabled` lives too.
 //! - Kimi Code: `[[hooks]]` tables in `~/.kimi-code/config.toml`, inside one marked block after
 //!   the user's own settings; taking the block out gives the file back byte for byte.
-//! - Copilot CLI: Kolux's own `kolux-rs.json` in `hooks` under Copilot's home (`COPILOT_HOME`).
-//! - Grok (STAT-018, `grok`): Kolux's own `kolux-rs.json` in `hooks` under Grok's home, taken away at quit.
+//! - Copilot CLI: Kolux's own `kolux.json` in `hooks` under Copilot's home (`COPILOT_HOME`).
+//! - Grok (STAT-018, `grok`): Kolux's own `kolux.json` in `hooks` under Grok's home, taken away at quit.
 //! - Devin CLI (STAT-019, `devin`): marked blocks in its commented user config (`jsonc`).
-//! - Pi (STAT-021, `pi`): Kolux's own extension file, `kolux-rs.ts`, in Pi's user extensions folder.
+//! - Pi (STAT-021, `pi`): Kolux's own extension file, `kolux.ts`, in Pi's user extensions folder.
 //! - Hermes (STAT-016, `hermes`): marked blocks in its `config.yaml` shell hooks, approved in its allowlist.
 
 use super::super::{codex_change, install_groups, script, write_atomic, write_json, write_script, Change};
@@ -58,9 +58,12 @@ const TIMEOUT: u64 = 10;
 pub const MARK: &str = "kolux_more";
 /// STAT-015: Kimi's block, opened and closed by these lines. A begin line naming Kolux under
 /// another spelling (the product's former name) is taken as the same block and replaced.
-const KIMI_BEGIN: &str = "# >>> kolux-rs status hooks (written by Kolux; Kolux takes this block out when its hooks go) >>>";
-const KIMI_BEGIN_JOINED: &str = "# >>> kolux-rs status hooks (written by Kolux; joined) >>>";
-const KIMI_END: &str = "# <<< kolux-rs status hooks <<<";
+const KIMI_BEGIN: &str = "# >>> kolux status hooks (written by Kolux; Kolux takes this block out when its hooks go) >>>";
+const KIMI_BEGIN_JOINED: &str = "# >>> kolux status hooks (written by Kolux; joined) >>>";
+const KIMI_END: &str = "# <<< kolux status hooks <<<";
+/// The block's end line before the rename to Kolux (begin and end lines are found by their
+/// "# >>> kolux" / "# <<< kolux" start, so an old block is still taken out and replaced).
+const LEGACY_KIMI_END: &str = "# <<< kolux-rs status hooks <<<";
 const MEMORY_CAP: usize = 256;
 
 /// A path the hook listener takes for one of these agents.
@@ -351,7 +354,7 @@ fn copilot_home(home: &Path) -> PathBuf {
 
 /// Kolux's own user-level hook file in Copilot's home.
 pub fn copilot_file(home: &Path) -> PathBuf {
-    copilot_home(home).join("hooks").join("kolux-rs.json")
+    copilot_home(home).join("hooks").join("kolux.json")
 }
 
 /// A Copilot hook file is Kolux's when one of its commands runs a script from Kolux's folder.
@@ -364,6 +367,7 @@ fn copilot_mine(v: &Value) -> bool {
 /// STAT-017: Kolux's file, written whole: version 1, one entry per event, no disable-all switch.
 pub fn install_copilot(home: &Path, file: &Path) -> Result<bool, String> {
     let path = write_copilot_script(home)?;
+    let dropped = super::drop_legacy(file, super::LEGACY_HOOK_FILE, remove_one_copilot);
     let text = read_opt(file)?;
     if let Some(t) = &text {
         if !serde_json::from_str::<Value>(t).is_ok_and(|v| copilot_mine(&v)) {
@@ -374,7 +378,7 @@ pub fn install_copilot(home: &Path, file: &Path) -> Result<bool, String> {
     let hooks: Map<String, Value> = COPILOT_EVENTS.iter().map(|e| (e.to_string(), json!([{ "type": "command", "bash": format!("{} {e}", quoted(&path)), "powershell": format!("{ps} {e}"), "timeoutSec": TIMEOUT }]))).collect();
     let v = json!({ "version": 1, "hooks": hooks });
     if text.as_deref().and_then(|t| serde_json::from_str::<Value>(t).ok()).as_ref() == Some(&v) {
-        return Ok(false);
+        return Ok(dropped);
     }
     if let Some(dir) = file.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}; hooks not installed", dir.display()))?;
@@ -383,8 +387,14 @@ pub fn install_copilot(home: &Path, file: &Path) -> Result<bool, String> {
     Ok(true)
 }
 
-/// Kolux's file goes; a file of the same name that is not Kolux's stays.
+/// Kolux's file goes (and its old-named one from before the rename); a file of the same name that
+/// is not Kolux's stays.
 pub fn remove_copilot(file: &Path) -> Result<bool, String> {
+    let now = remove_one_copilot(file)?;
+    Ok(super::drop_legacy(file, super::LEGACY_HOOK_FILE, remove_one_copilot) || now)
+}
+
+fn remove_one_copilot(file: &Path) -> Result<bool, String> {
     let Some(text) = read_opt(file)? else { return Ok(false) };
     if !serde_json::from_str::<Value>(&text).is_ok_and(|v| copilot_mine(&v)) {
         return Ok(false);
@@ -475,7 +485,7 @@ fn keep_copy(home: &Path, file: &Path, agent: &str, mine_already: bool) -> Resul
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}; hooks not installed", dir.display()))?;
     }
     if let Some((original, copy)) = back_up(file, &target_dir(home, file).join(BACKUP_RECORD))? {
-        eprintln!("kolux-rs: {agent} hooks: kept a copy before the first write: sha256 original {original}, backup {copy}");
+        eprintln!("kolux: {agent} hooks: kept a copy before the first write: sha256 original {original}, backup {copy}");
     }
     Ok(())
 }
@@ -875,7 +885,7 @@ fn inspect_kimi(file: &Path) -> (&'static str, Option<String>) {
             Some((s, e, _)) => {
                 let block = &t[s..e];
                 let missing: Vec<&str> = KIMI_EVENTS.iter().copied().filter(|ev| !block.contains(&format!("event = \"{ev}\""))).collect();
-                if !block.contains(KIMI_END) {
+                if !block.contains(KIMI_END) && !block.contains(LEGACY_KIMI_END) {
                     ("partial", Some("the Kolux block has lost its end line".into()))
                 } else if missing.is_empty() {
                     ("installed", None)

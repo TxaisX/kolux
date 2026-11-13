@@ -104,7 +104,7 @@ thread_local! {
 /// Tests only: an empty file to stand in for the user's global git config.
 #[cfg(test)]
 pub(crate) fn empty_global_config() -> PathBuf {
-    let path = std::env::temp_dir().join("kolux-rs-test-empty-gitconfig");
+    let path = std::env::temp_dir().join("kolux-test-empty-gitconfig");
     if std::fs::metadata(&path).map(|m| m.len() != 0).unwrap_or(true) {
         let _ = std::fs::write(&path, "");
     }
@@ -769,7 +769,7 @@ fn trust_files() -> (PathBuf, PathBuf) {
 /// Tests never read the developer's own agent files: no trust unless a test grants it.
 #[cfg(test)]
 fn trust_files() -> (PathBuf, PathBuf) {
-    TRUST_FILES.with(|f| f.borrow().clone()).unwrap_or_else(|| (std::env::temp_dir().join("kolux-rs-test-no-claude.json"), std::env::temp_dir().join("kolux-rs-test-no-codex.toml")))
+    TRUST_FILES.with(|f| f.borrow().clone()).unwrap_or_else(|| (std::env::temp_dir().join("kolux-test-no-claude.json"), std::env::temp_dir().join("kolux-test-no-codex.toml")))
 }
 
 /// Tests only: no folder is trusted on this test's thread again (after `trust_for_test`).
@@ -795,9 +795,9 @@ pub(crate) fn trust_for_test(folder: &Path) {
     let mut doc = serde_json::Map::new();
     doc.insert("projects".into(), serde_json::Value::Object(projects));
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    let file = std::env::temp_dir().join(format!("kolux-rs-test-trust-{}-{nanos}.json", std::process::id()));
+    let file = std::env::temp_dir().join(format!("kolux-test-trust-{}-{nanos}.json", std::process::id()));
     std::fs::write(&file, serde_json::Value::Object(doc).to_string()).unwrap();
-    TRUST_FILES.with(|f| *f.borrow_mut() = Some((file, std::env::temp_dir().join("kolux-rs-test-no-codex.toml"))));
+    TRUST_FILES.with(|f| *f.borrow_mut() = Some((file, std::env::temp_dir().join("kolux-test-no-codex.toml"))));
 }
 
 /// Whether `args` is a git command that talks to another repository (S4): fetch, pull, push, clone,

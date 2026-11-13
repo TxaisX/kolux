@@ -145,8 +145,8 @@ mod tests {
 
     #[test]
     fn t816_command_hides_its_console_on_windows() {
-        let c = command("kolux-rs-no-such-program");
-        assert_eq!(c.get_program(), "kolux-rs-no-such-program");
+        let c = command("kolux-no-such-program");
+        assert_eq!(c.get_program(), "kolux-no-such-program");
         #[cfg(windows)]
         {
             let out = command("cmd.exe").args(["/c", "echo", "hidden"]).output().unwrap();

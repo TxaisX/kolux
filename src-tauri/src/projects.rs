@@ -918,7 +918,7 @@ pub(crate) fn plain_folder(folder: &Path) -> Result<(), String> {
 pub fn first_commit_preview(folder: &Path) -> Result<Vec<FirstFile>, String> {
     plain_folder(folder)?;
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    let scratch = std::env::temp_dir().join(format!("kolux-rs-first-commit-{}-{nanos}", std::process::id()));
+    let scratch = std::env::temp_dir().join(format!("kolux-first-commit-{}-{nanos}", std::process::id()));
     let listed = crate::git::run(&["init", "-q", &scratch.to_string_lossy()], None).and_then(|_| {
         let git_dir = scratch.join(".git");
         crate::git::output(&["--git-dir", &git_dir.to_string_lossy(), "--work-tree", &folder.to_string_lossy(), "ls-files", "--others", "--exclude-standard", "-z"], Some(folder))
@@ -967,11 +967,16 @@ pub fn git_start(git: State<'_, Git>, store: StoreState<'_>, path: String, files
     register_project(&*store.lock().map_err(|e| e.to_string())?, found)
 }
 
-/// The default workspaces root: `kolux-rs\workspaces` in the user's home folder. A different
-/// name from the old app's folders, so the two never mix.
+/// The default workspaces root's folder in the user's home folder. A different name from the
+/// predecessor app's folders, so the two never mix.
+/// Kept under its pre-rename name on purpose: users' existing workspaces live there, and the rename
+/// table does not move it (a new name would need its own migration and a decision on `~/kolux`).
+pub const OLD_WORKSPACES_HOME: &str = "kolux-rs";
+
+/// The default workspaces root: `<OLD_WORKSPACES_HOME>\workspaces` in the user's home folder.
 pub fn default_workspaces_dir() -> PathBuf {
     let home = std::env::var(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir());
-    home.join("kolux-rs").join("workspaces")
+    home.join(OLD_WORKSPACES_HOME).join("workspaces")
 }
 
 pub const WORKSPACES_DIR_ENV: &str = "KOLUX_WORKSPACES_DIR";

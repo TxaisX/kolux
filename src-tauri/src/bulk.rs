@@ -382,7 +382,7 @@ mod tests {
     use std::path::PathBuf;
 
     fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-bulk-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-bulk-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d

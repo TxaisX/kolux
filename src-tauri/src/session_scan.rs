@@ -284,7 +284,7 @@ mod tests {
     use serde_json::json;
 
     fn tmp(tag: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-sescan-{tag}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-sescan-{tag}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d

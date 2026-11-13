@@ -922,7 +922,7 @@ mod tests {
         assert_eq!(line(chosen_then_auto(None, auto())), ["C:/PS7/pwsh.exe -NoLogo".to_string(), format!("C:/Windows/cmd.exe /k {} 65001 >nul", CMD_ARGS[1])]);
         // And the real list: a chosen shell that will not start gives way to the automatic ones.
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
-        let gone = Some(("kolux-rs-no-such-default-shell-9c1d".to_string(), vec![]));
+        let gone = Some(("kolux-no-such-default-shell-9c1d".to_string(), vec![]));
         let mut session = PtySession::spawn_first(shell_commands(None, gone), 80, 24, move |c| {
             let _ = tx.send(c.to_vec());
         }, |_| {})
@@ -930,7 +930,7 @@ mod tests {
         // Council FS 2: the pane says, in one dim line, which shell did not start and which opened.
         let first = rx.recv_timeout(Duration::from_secs(30)).expect("the fallback shell prints");
         let note = String::from_utf8_lossy(&first).to_string();
-        assert!(note.starts_with("\x1b[2mkolux-rs-no-such-default-shell-9c1d did not start; opened "), "{note:?}");
+        assert!(note.starts_with("\x1b[2mkolux-no-such-default-shell-9c1d did not start; opened "), "{note:?}");
         assert!(note.ends_with("\x1b[0m\r\n") && note.matches('\n').count() == 1, "{note:?}");
         let opened = menu_name(session.program());
         assert!(note.contains(&format!("opened {opened}")), "{note:?} names {opened}");
@@ -955,7 +955,7 @@ mod tests {
         )
         .expect("spawn shell in a pty");
 
-        session.write(b"echo kolux-rs-ok\r\n").expect("write to pty");
+        session.write(b"echo kolux-ok\r\n").expect("write to pty");
 
         let mut seen = String::new();
         let mut answered = 0;
@@ -963,7 +963,7 @@ mod tests {
         // on every chunk and only 60 s of silence fails (an idle shell is silent only when it is broken).
         let mut deadline = Instant::now() + Duration::from_secs(60);
         // The typed line is echoed once and its output printed once: wait for the second copy.
-        while seen.matches("kolux-rs-ok").count() < 2 {
+        while seen.matches("kolux-ok").count() < 2 {
             let left = deadline.saturating_duration_since(Instant::now());
             assert!(!left.is_zero(), "marker not read back; no output for 60s; saw:\n{seen}");
             if let Ok(chunk) = rx.recv_timeout(left) {
@@ -994,9 +994,9 @@ mod tests {
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
         let (exit_tx, exit_rx) = mpsc::channel::<Option<u32>>();
         let (program, args, cwd) = if cfg!(windows) {
-            ("powershell", vec!["-NoLogo".to_string(), "-Command".to_string(), "echo kolux-rs-program-marker; (Get-Location).Path".to_string()], std::env::temp_dir())
+            ("powershell", vec!["-NoLogo".to_string(), "-Command".to_string(), "echo kolux-program-marker; (Get-Location).Path".to_string()], std::env::temp_dir())
         } else {
-            ("sh", vec!["-c".to_string(), "echo kolux-rs-program-marker; pwd".to_string()], std::env::temp_dir())
+            ("sh", vec!["-c".to_string(), "echo kolux-program-marker; pwd".to_string()], std::env::temp_dir())
         };
         let cwd_text = cwd.display().to_string();
         let mut session = PtySession::spawn(
@@ -1034,7 +1034,7 @@ mod tests {
             seen.push_str(&String::from_utf8_lossy(&chunk));
         }
         assert_eq!(code, Some(0), "clean exit; output:\n{seen}");
-        assert!(seen.contains("kolux-rs-program-marker"), "the program's output reached the pane:\n{seen}");
+        assert!(seen.contains("kolux-program-marker"), "the program's output reached the pane:\n{seen}");
         let folder = cwd_text.trim_end_matches(['\\', '/']).to_lowercase();
         assert!(seen.to_lowercase().contains(&folder), "it started in the chosen folder {folder}:\n{seen}");
         session.kill();
@@ -1138,10 +1138,10 @@ mod tests {
     fn term040_a_start_folder_is_relative_or_absolute_and_a_missing_one_falls_back() {
         let ws = std::env::temp_dir();
         let ws_s = ws.to_string_lossy().into_owned();
-        let sub = ws.join("kolux-rs-t010");
+        let sub = ws.join("kolux-t010");
         std::fs::create_dir_all(&sub).unwrap();
         let sub_s = sub.to_string_lossy().into_owned();
-        assert_eq!(start_dir(&ws_s, Some("kolux-rs-t010")), sub_s);
+        assert_eq!(start_dir(&ws_s, Some("kolux-t010")), sub_s);
         assert_eq!(start_dir(&ws_s, Some(&sub_s)), sub_s);
         assert_eq!(start_dir(&ws_s, Some("no-such-folder-t010")), ws_s);
         assert_eq!(start_dir(&ws_s, None), ws_s);
@@ -1154,7 +1154,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn acct046_the_automatic_shell_order_ends_with_a_utf8_command_prompt() {
-        let comspec = std::env::temp_dir().join("kolux-rs-acct046-cmd.exe");
+        let comspec = std::env::temp_dir().join("kolux-acct046-cmd.exe");
         std::fs::write(&comspec, b"").unwrap();
         let line = |v: Vec<(PathBuf, Vec<&str>)>| v.into_iter().map(|(p, a)| format!("{} {}", p.to_string_lossy(), a.join(" "))).collect::<Vec<_>>();
         let all = |n: &str| Some(PathBuf::from(format!("C:/pf/{n}")));
@@ -1171,7 +1171,7 @@ mod tests {
     #[test]
     fn acct046_a_shell_that_will_not_start_gives_way_to_the_next() {
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
-        let mut cmds = vec![program_command("kolux-rs-no-such-shell-7f3a", &[], None)];
+        let mut cmds = vec![program_command("kolux-no-such-shell-7f3a", &[], None)];
         cmds.extend(shell_commands(None, None));
         let mut session = PtySession::spawn_first(cmds, 80, 24, move |c| {
             let _ = tx.send(c.to_vec());
@@ -1179,9 +1179,9 @@ mod tests {
         .expect("falls back to a shell that starts");
         assert!(rx.recv_timeout(Duration::from_secs(30)).is_ok(), "the fallback shell prints");
         session.kill();
-        let none = PtySession::spawn_first(vec![program_command("kolux-rs-no-such-a", &[], None), program_command("kolux-rs-no-such-b", &[], None)], 80, 24, |_| {}, |_| {});
+        let none = PtySession::spawn_first(vec![program_command("kolux-no-such-a", &[], None), program_command("kolux-no-such-b", &[], None)], 80, 24, |_| {}, |_| {});
         let err = none.err().expect("nothing starts");
-        assert!(err.contains("kolux-rs-no-such-a") && err.contains("kolux-rs-no-such-b"), "{err}");
+        assert!(err.contains("kolux-no-such-a") && err.contains("kolux-no-such-b"), "{err}");
     }
 
     /// ACCT-049: a folder that is gone or on a drive that is not there gets a message, and an
@@ -1190,7 +1190,7 @@ mod tests {
     fn acct049_start_folders_that_are_gone_unplugged_or_a_drive_root_are_refused() {
         let tmp = std::env::temp_dir();
         assert!(check_start_dir(&tmp.to_string_lossy(), true).is_ok());
-        let gone = tmp.join("kolux-rs-acct049-gone");
+        let gone = tmp.join("kolux-acct049-gone");
         assert!(check_start_dir(&gone.to_string_lossy(), false).unwrap_err().contains("no longer exists"));
         let root: PathBuf = tmp.components().take(if cfg!(windows) { 2 } else { 1 }).collect();
         assert!(check_start_dir(&root.to_string_lossy(), false).is_ok(), "a shell may open at a drive root");
@@ -1263,7 +1263,7 @@ mod tests {
 
     #[test]
     fn a_missing_program_is_refused_at_spawn() {
-        let r = PtySession::spawn(program_command("kolux-rs-no-such-program-7f3a", &[], None), 80, 24, |_| {}, |_| {});
+        let r = PtySession::spawn(program_command("kolux-no-such-program-7f3a", &[], None), 80, 24, |_| {}, |_| {});
         assert!(r.is_err());
     }
 
@@ -1292,7 +1292,7 @@ mod tests {
         // A real failed start, through the start path: the opening prompt never comes back in the error.
         #[cfg(windows)]
         {
-            let missing = crate::test_dir::temp("t663 missing").join("kolux-rs-t663-missing.exe");
+            let missing = crate::test_dir::temp("t663 missing").join("kolux-t663-missing.exe");
             let mut c = CommandBuilder::new(&missing);
             c.arg("--prompt");
             c.arg("t663 secret failed: prompt");
@@ -1322,18 +1322,18 @@ mod tests {
         assert_eq!(Some(cmd.parent().unwrap().to_path_buf()), crate::resources::update_guard::system_dir());
         let dir = crate::test_dir::temp("t660 planted");
         std::fs::write(dir.join("cmd.exe"), b"MZ").unwrap();
-        std::fs::write(dir.join("kolux-rs-t660-planted.exe"), b"MZ").unwrap();
-        std::fs::write(dir.join("kolux-rs-t660-planted.cmd"), b"@echo planted\r\n").unwrap();
+        std::fs::write(dir.join("kolux-t660-planted.exe"), b"MZ").unwrap();
+        std::fs::write(dir.join("kolux-t660-planted.cmd"), b"@echo planted\r\n").unwrap();
         let cwd = dir.to_string_lossy().into_owned();
         // A shim start goes through the system cmd.exe, never the planted one.
         let (exe, _) = start_line_on(&dir.join("x.cmd"), true);
         assert_eq!(exe, cmd.as_os_str());
         assert!(!std::path::Path::new(&exe).starts_with(&*dir));
         // A name only the pane's folder has is passed bare, unwrapped, and refused at spawn by name.
-        let planted = program_command("kolux-rs-t660-planted", &[], Some(&cwd));
-        assert_eq!(planted.get_argv()[0], "kolux-rs-t660-planted");
+        let planted = program_command("kolux-t660-planted", &[], Some(&cwd));
+        assert_eq!(planted.get_argv()[0], "kolux-t660-planted");
         let err = PtySession::spawn(planted, 80, 24, |_| {}, |_| {}).err().expect("a name found only in the pane's folder is refused");
-        assert!(err.contains("kolux-rs-t660-planted") && err.contains("not found"), "{err}");
+        assert!(err.contains("kolux-t660-planted") && err.contains("not found"), "{err}");
         // The command prompt's UTF-8 switch is Windows' own chcp, not one planted beside the project.
         assert_eq!(Path::new(CMD_ARGS[1]), system_program("chcp.com"));
         // A pane whose PATH reaches its own folder (a relative entry) still never runs a tool planted there.
@@ -1341,10 +1341,10 @@ mod tests {
         {
             use std::os::unix::fs::PermissionsExt;
             let marker = dir.join("ran");
-            let tool = dir.join("kolux-rs-t660-tool");
+            let tool = dir.join("kolux-t660-tool");
             std::fs::write(&tool, format!("#!/bin/sh\ntouch '{}'\n", marker.display())).unwrap();
             std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
-            let mut c = program_command("kolux-rs-t660-tool", &[], Some(&cwd));
+            let mut c = program_command("kolux-t660-tool", &[], Some(&cwd));
             c.env("PATH", ".");
             assert!(PtySession::spawn(c, 80, 24, |_| {}, |_| {}).is_err(), "a tool reached only through a relative PATH entry is refused");
             std::thread::sleep(Duration::from_millis(300));
@@ -1388,13 +1388,13 @@ mod tests {
         // The pane's own PATH is searched (its full-path folders): a tool only there is found.
         let own = crate::test_dir::temp("t660 pane path");
         #[cfg(windows)]
-        std::fs::copy(system_program("whoami.exe"), own.join("kolux-rs-t660-own.exe")).unwrap();
+        std::fs::copy(system_program("whoami.exe"), own.join("kolux-t660-own.exe")).unwrap();
         #[cfg(unix)]
-        std::os::unix::fs::symlink("/bin/true", own.join("kolux-rs-t660-own")).unwrap();
-        let mut c = program_command("kolux-rs-t660-own", &[], None);
+        std::os::unix::fs::symlink("/bin/true", own.join("kolux-t660-own")).unwrap();
+        let mut c = program_command("kolux-t660-own", &[], None);
         c.env("PATH", own.as_os_str());
-        assert!(resolve_bare(&c, "kolux-rs-t660-own").is_some_and(|p| p.starts_with(&*own)), "found through the pane's PATH");
-        for named in ["./kolux-rs-t660-own", "C:kolux-rs-t660-own", "C:", "kolux-rs-t660-own/", "bin\\kolux-rs-t660-own"] {
+        assert!(resolve_bare(&c, "kolux-t660-own").is_some_and(|p| p.starts_with(&*own)), "found through the pane's PATH");
+        for named in ["./kolux-t660-own", "C:kolux-t660-own", "C:", "kolux-t660-own/", "bin\\kolux-t660-own"] {
             assert!(resolve_bare(&c, named).is_none(), "{named} is never looked up");
         }
         // The automatic shells and the menu never name the planted cmd.exe.

@@ -239,7 +239,10 @@ pub(crate) fn run_fenced() -> bool {
 }
 
 /// T-580: the files that mark a scratch home (`agent_hooks::SCRATCH_MARKER`) and a smoke run's temp folder.
-const SCRATCH_MARKERS: [&str; 2] = [crate::hooks::agent_hooks::SCRATCH_MARKER, ".kolux-rs-smoke-temp"];
+/// Both markers' names before the rename count too.
+const SCRATCH_MARKERS: [&str; 4] = [crate::hooks::agent_hooks::SCRATCH_MARKER, ".kolux-smoke-temp", crate::hooks::agent_hooks::LEGACY_SCRATCH_MARKER, LEGACY_SMOKE_MARKER];
+/// The smoke run's temp marker before the rename.
+const LEGACY_SMOKE_MARKER: &str = ".kolux-rs-smoke-temp";
 
 fn has_scratch_marker(dir: &Path) -> bool {
     SCRATCH_MARKERS.iter().any(|m| dir.join(m).exists())
@@ -280,7 +283,7 @@ fn shell_path_dirs() -> Vec<PathBuf> {
             .collect();
         // STAT-004: an unreadable shell environment falls back to the inherited PATH, with a warning.
         if found.is_empty() {
-            eprintln!("kolux-rs: the shell's search path could not be read; using the inherited PATH");
+            eprintln!("kolux: the shell's search path could not be read; using the inherited PATH");
         }
         return found.iter().flat_map(|p| std::env::split_paths(p).collect::<Vec<_>>()).collect();
     }
@@ -1133,7 +1136,7 @@ mod tests {
     }
 
     fn temp_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-agents-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-agents-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -1161,8 +1164,8 @@ mod tests {
         for d in [&leaked, &smoke_bin, &plain] {
             std::fs::create_dir_all(d).unwrap();
         }
-        std::fs::write(scratch.join(".kolux-rs-scratch"), b"").unwrap();
-        std::fs::write(smoke.join(".kolux-rs-smoke-temp"), b"").unwrap();
+        std::fs::write(scratch.join(".kolux-scratch"), b"").unwrap();
+        std::fs::write(smoke.join(".kolux-smoke-temp"), b"").unwrap();
         // Only folders inside this test's root are asked, so a marker elsewhere on the PC cannot sway it.
         let inside = |a: &Path| a.starts_with(&root) && has_scratch_marker(a);
         let dirs = vec![leaked.clone(), plain.clone(), smoke_bin.clone()];
@@ -1591,7 +1594,7 @@ X=1" } } });
         let git = find_program("git").expect("git on PATH");
         assert!(git.is_file());
         assert!(git.file_stem().unwrap().to_string_lossy().eq_ignore_ascii_case("git"));
-        assert_eq!(find_program("kolux-rs-no-such-program-7f3a"), None);
+        assert_eq!(find_program("kolux-no-such-program-7f3a"), None);
         assert!(search_dirs().iter().all(|d| d.is_dir()));
     }
 
@@ -1617,7 +1620,7 @@ X=1" } } });
         assert!(!machine.contains('%'), "not expanded: {machine}");
         assert!(machine.to_lowercase().contains("system32"), "{machine}");
         assert!(registry_string(HKEY_CURRENT_USER, "Environment", "Path").is_some());
-        assert_eq!(registry_string(HKEY_CURRENT_USER, "Environment", "kolux-rs-no-such-value-7f3a"), None);
+        assert_eq!(registry_string(HKEY_CURRENT_USER, "Environment", "kolux-no-such-value-7f3a"), None);
         let shell = shell_path_dirs();
         assert!(shell.iter().any(|d| d.to_string_lossy().to_lowercase().ends_with("system32")));
         let walked = search_dirs();

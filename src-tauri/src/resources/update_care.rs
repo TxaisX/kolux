@@ -29,7 +29,7 @@ pub const KEY_ATTEMPT: &str = "update.lastAttempt";
 /// The store key of the saved compatibility-mode choice ("1" on).
 pub const KEY_COMPAT: &str = "update.compatMode";
 /// Forces the compatibility mode on ("1", "on", "true") or off ("0", "off", "false").
-pub const ENV_COMPAT: &str = "KOLUX_RS_UPDATE_COMPAT";
+pub const ENV_COMPAT: &str = "KOLUX_UPDATE_COMPAT";
 /// Attempt records older than this are ignored (APP-028).
 pub const ATTEMPT_MAX_AGE_MS: u64 = 7 * 24 * 60 * 60 * 1000;
 /// The old process is forced out this long after the installer is started (APP-029).

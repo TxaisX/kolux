@@ -817,7 +817,7 @@ mod tests {
 
     #[test]
     fn t075b_one_service_per_identifier_and_profile_and_the_lock_frees_when_it_ends() {
-        let id = format!("kolux-rs.t075b-test-{}", std::process::id());
+        let id = format!("kolux.t075b-test-{}", std::process::id());
         let real = Path::new(r"C:\Users\me\AppData\Roaming\com.x");
         let scratch = Path::new(r"G:\Temp\live-installed\home\AppData\Roaming\com.x");
         assert!(lock_name("com.x", real).starts_with("Local\\com.x.terminals-"));

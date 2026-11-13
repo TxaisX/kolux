@@ -820,7 +820,7 @@ mod tests {
 
     #[test]
     fn row267_the_conflict_check_fetches_the_base_first() {
-        let root = std::env::temp_dir().join(format!("kolux-rs-pr267-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("kolux-pr267-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let up = root.join("up");
         std::fs::create_dir_all(&up).unwrap();
@@ -1007,7 +1007,7 @@ mod tests {
 
     #[test]
     fn the_template_is_read_from_the_usual_places() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-prreview-tpl-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-prreview-tpl-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join(".github")).unwrap();
         assert!(find_template(&dir).is_none());

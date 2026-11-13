@@ -138,6 +138,23 @@ fn read_opt(file: &Path) -> Result<Option<String>, String> {
     }
 }
 
+/// Kolux's own hook file's name in Grok's and Copilot's hooks folders before the rename to Kolux.
+pub const LEGACY_HOOK_FILE: &str = "kolux-rs.json";
+
+/// Takes away the old-named sibling `legacy` of Kolux's own file `file` with `rm` (which leaves a
+/// file that is not Kolux's alone), so an upgrade does not leave two sets of hooks. Nothing happens
+/// when `file` itself has the old name; a failure is logged, never fatal. True when one went.
+fn drop_legacy(file: &Path, legacy: &str, rm: impl FnOnce(&Path) -> Result<bool, String>) -> bool {
+    if file.file_name().is_none_or(|n| n == legacy) {
+        return false;
+    }
+    let old = file.with_file_name(legacy);
+    rm(&old).unwrap_or_else(|e| {
+        eprintln!("kolux: agent hooks: old hook file {}: {e}", old.display());
+        false
+    })
+}
+
 /// Takes Kolux's hooks and status line out of Claude Code's settings. The status line the user
 /// had before Kolux comes back exactly as it was (T-152 (4): the whole slot kept in
 /// `prev`'s `.json` sibling, `null` for none; an older install kept only the command, in `prev`);
@@ -154,7 +171,7 @@ pub fn remove_claude(file: &Path, prev: &Path) -> Result<bool, String> {
 fn once_more<T>(step: impl Fn() -> Result<T, String>) -> Result<T, String> {
     match step() {
         Err(e) if e.ends_with(CHANGED) => {
-            eprintln!("kolux-rs: agent hooks: {e}; reading it again");
+            eprintln!("kolux: agent hooks: {e}; reading it again");
             step()
         }
         done => done,
@@ -266,7 +283,7 @@ pub fn back_up(file: &Path, record: &Path) -> Result<Option<(String, String)>, S
                 }
                 let now = if file.exists() { sha256(file).map_err(refuse)? } else { "missing".into() };
                 write_record(record, file, &now, &copy, &have).map_err(refuse)?;
-                eprintln!("kolux-rs: claude hooks: rebuilt the copy's record: sha256 file now {now}, kept copy {have}");
+                eprintln!("kolux: claude hooks: rebuilt the copy's record: sha256 file now {now}, kept copy {have}");
                 Ok(None)
             }
         };
@@ -291,7 +308,7 @@ pub fn back_up(file: &Path, record: &Path) -> Result<Option<(String, String)>, S
             file.display()
         ));
     }
-    let tmp = copy.with_extension("bak-kolux.kolux-rs-tmp");
+    let tmp = copy.with_extension("bak-kolux.kolux-tmp");
     let made = fs::File::create(&tmp).and_then(|mut f| f.write_all(&bytes).and_then(|_| f.sync_all())).map_err(|e| e.to_string()).and_then(|_| {
         let (a, b) = (sha256(file)?, sha256(&tmp)?);
         if a != b {
@@ -322,7 +339,7 @@ fn recorded(record: &Path, copy: &Path) -> Option<String> {
 }
 
 /// T-152-c (1): the folder holding one Claude settings file's status line slot (`STATUS_PREV` and
-/// its `.json`) and its copy's record (`BACKUP_RECORD`): `<home>\.kolux-rs\agent-hooks\targets\<the
+/// its `.json`) and its copy's record (`BACKUP_RECORD`): `<home>\.kolux\agent-hooks\targets\<the
 /// first 16 hex of the sha256 of the file's resolved path>`. Two config folders in one home never
 /// share a slot or a record, and two spellings of one folder share one.
 pub fn target_dir(home: &Path, file: &Path) -> PathBuf {
@@ -379,7 +396,7 @@ fn write_record(record: &Path, file: &Path, original: &str, copy: &Path, kept: &
 
 /// `text` written through a synced temp file and renamed over the record.
 fn write_lines(record: &Path, text: &str) -> Result<(), String> {
-    let tmp = record.with_extension("sha256.kolux-rs-tmp");
+    let tmp = record.with_extension("sha256.kolux-tmp");
     let fail = |e: std::io::Error| format!("the copy's record {}: {e}", record.display());
     if let Some(dir) = record.parent() {
         fs::create_dir_all(dir).map_err(fail)?;
@@ -458,7 +475,9 @@ pub const PRODUCTION_ID: &str = "com.txaisxiong.kolux";
 
 /// A fenced run writes a Claude settings file only when this file sits in its folder or in a
 /// folder above it, inside the temp folder (T-152-b (2)).
-pub const SCRATCH_MARKER: &str = ".kolux-rs-scratch";
+pub const SCRATCH_MARKER: &str = ".kolux-scratch";
+/// The marker's name before the rename: a scratch folder a not-yet-updated script marked still counts.
+pub const LEGACY_SCRATCH_MARKER: &str = ".kolux-rs-scratch";
 
 /// T-152-b (2): the run is fenced when it is a test or debug build (`cargo test`, `tauri dev`,
 /// `cargo test --release`), or when the profile folder (`%APPDATA%\<identifier>`, or the
@@ -567,7 +586,7 @@ pub fn scratch_only(file: &Path, scratch: &Path, home: &Path) -> Result<(), Stri
         Err(_) => return refuse(&format!(" (the home folder {} cannot be resolved)", home.display())),
     }
     let inside = file.parent().map(fs::canonicalize).and_then(Result::ok).is_some_and(|dir| {
-        dir.starts_with(&root) && dir.ancestors().take_while(|a| a.starts_with(&root) && *a != root).any(|a| a.join(SCRATCH_MARKER).is_file())
+        dir.starts_with(&root) && dir.ancestors().take_while(|a| a.starts_with(&root) && *a != root).any(|a| a.join(SCRATCH_MARKER).is_file() || a.join(LEGACY_SCRATCH_MARKER).is_file())
     });
     if inside {
         Ok(())
@@ -592,7 +611,7 @@ pub fn user_home() -> PathBuf {
 pub fn with_install_lock<T>(home: &Path, f: impl FnOnce() -> T) -> T {
     let lock = Lock::take_within(&home.join(SCRIPT_DIR), LOCK_STALE, Duration::from_secs(5));
     if let Err(e) = &lock {
-        eprintln!("kolux-rs: agent hooks: {e}");
+        eprintln!("kolux: agent hooks: {e}");
     }
     let out = f();
     drop(lock);
@@ -643,7 +662,7 @@ fn install_claude_once(file: &Path, dir: &Path, prev: &Path, hook: &str, status:
     let had: Option<Value> = text.as_deref().map(serde_json::from_str).transpose().map_err(|e| format!("{} is not JSON ({e}); hooks not installed", file.display()))?;
     // T-152-b (3): the copy is verified against its record on every install, not only the first.
     if let Some((original, copy)) = back_up(file, &dir.join(BACKUP_RECORD))? {
-        eprintln!("kolux-rs: claude hooks: kept a copy before the first write: sha256 original {original}, backup {copy}");
+        eprintln!("kolux: claude hooks: kept a copy before the first write: sha256 original {original}, backup {copy}");
     }
     // T-152 (4): the status line slot as the user had it (`null`: none), put back whole on removal,
     // and its command, which keeps running from `prev` (STAT-040). Both are saved BEFORE the
@@ -700,31 +719,48 @@ fn apply(home: &Path, profile: &Path, settings: &Value, id: &str, plan: Plan) ->
 fn detect_installed() -> (Vec<String>, bool) {
     let searched = !crate::agents::search_dirs().is_empty();
     if !searched {
-        eprintln!("kolux-rs: agent hooks: no program folder could be searched, so no hooks were installed");
+        eprintln!("kolux: agent hooks: no program folder could be searched, so no hooks were installed");
     }
     (if searched { crate::agents::catalogue().into_iter().filter(|a| a.installed).map(|a| a.id).collect() } else { Vec::new() }, searched)
 }
 
-/// At start, and whenever an agent is switched on or off: Kolux's scripts are refreshed, then
-/// each managed agent is installed, cleared or left by `plan`. Never stops the launch; each
-/// agent's outcome is returned and problems also go to stderr. `profile` is Kolux's data folder.
+/// The rename's step before any install (`hooks::migrate_script_dir`): the old script folder's files
+/// are copied into the new one, never overwriting. A failure is logged and the install goes on.
+fn migrate_scripts(home: &Path) {
+    match super::migrate_script_dir(home) {
+        Some(m) if m.files > 0 || !m.left.is_empty() => eprintln!(
+            "kolux: agent hooks: copied {} file(s) from {} into {}{}",
+            m.files,
+            m.from.display(),
+            home.join(SCRIPT_DIR).display(),
+            if m.left.is_empty() { String::new() } else { format!("; not copied: {}", m.left.join(", ")) }
+        ),
+        _ => {}
+    }
+}
+
+/// At start, and whenever an agent is switched on or off: Kolux's scripts are refreshed (the old
+/// script folder's files copied over first, `migrate_scripts`), then each managed agent is
+/// installed, cleared or left by `plan`. Never stops the launch; each agent's outcome is returned
+/// and problems also go to stderr. `profile` is Kolux's data folder.
 /// T-152-gate (STAT-002): while the status hooks switch is off it does nothing and writes nothing.
 pub fn sync(settings: &Value, profile: &Path) -> Vec<(&'static str, Result<&'static str, String>)> {
     if !switch::on(settings) {
-        eprintln!("kolux-rs: agent hooks: switched off, nothing installed or changed");
+        eprintln!("kolux: agent hooks: switched off, nothing installed or changed");
         return Vec::new();
     }
     let home = home_dir();
     let _lock = match Lock::take(&home.join(SCRIPT_DIR)) {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("kolux-rs: agent hooks: {e}");
+            eprintln!("kolux: agent hooks: {e}");
             return Vec::new();
         }
     };
+    migrate_scripts(&home);
     for refresh in [write_claude_script, write_status_script, write_codex_script, vendors::write_gemini_script, vendors::write_antigravity_script, more::write_scripts] {
         if let Err(e) = refresh(&home) {
-            eprintln!("kolux-rs: agent hook script: {e}");
+            eprintln!("kolux: agent hook script: {e}");
         }
     }
     let (installed, searched) = detect_installed();
@@ -733,8 +769,8 @@ pub fn sync(settings: &Value, profile: &Path) -> Vec<(&'static str, Result<&'sta
         .map(|(id, p)| {
             let out = apply(&home, profile, settings, id, p);
             match &out {
-                Ok(what) => eprintln!("kolux-rs: {id} hooks: {what}"),
-                Err(e) => eprintln!("kolux-rs: {id} hooks: {e}"),
+                Ok(what) => eprintln!("kolux: {id} hooks: {what}"),
+                Err(e) => eprintln!("kolux: {id} hooks: {e}"),
             }
             (id, out)
         })
@@ -752,7 +788,7 @@ fn clear_in(home: &Path, settings: &Value, profile: &Path) -> Vec<(&'static str,
     let _lock = match Lock::take(&home.join(SCRIPT_DIR)) {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("kolux-rs: agent hooks: {e}");
+            eprintln!("kolux: agent hooks: {e}");
             return Vec::new();
         }
     };

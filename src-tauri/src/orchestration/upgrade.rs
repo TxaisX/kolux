@@ -255,7 +255,7 @@ mod tests {
     use crate::orchestration::Mail;
 
     fn fresh(tag: &str) -> (Store, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-orch-upgrade-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-orch-upgrade-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         (Store::open(&dir).unwrap(), dir)
     }

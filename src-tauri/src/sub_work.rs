@@ -72,7 +72,7 @@ mod tests {
     }
 
     fn repo(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-subwork-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-subwork-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         git_in(&dir, &["init", "-q", "-b", "main"]);

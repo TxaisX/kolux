@@ -684,7 +684,7 @@ mod tests {
         assert!(!host_path(r"\\nas\projects\repo\a", &long));
         // the refusal is text only: a host that cannot exist answers at once
         let t = std::time::Instant::now();
-        let err = refuse_host(r"\\no-such-host-kolux-rs.invalid\share\a.txt", &[]).unwrap_err();
+        let err = refuse_host(r"\\no-such-host-kolux.invalid\share\a.txt", &[]).unwrap_err();
         assert!(t.elapsed() < std::time::Duration::from_millis(500));
         assert!(err.contains("another computer"), "{err}");
         assert_eq!(refuse_host(r"C:\a.txt", &[]), Ok(()));

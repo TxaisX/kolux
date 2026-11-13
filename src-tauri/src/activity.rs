@@ -270,12 +270,12 @@ fn read_or_aside<T: serde::de::DeserializeOwned>(store: &Store, key: &str, text:
     let aside = format!("{key}.corrupt-{}", now_ms());
     match store.set(&aside, text) {
         Ok(()) => {
-            eprintln!("kolux-rs: {key} could not be read ({err}); kept as {aside}, starting fresh");
+            eprintln!("kolux: {key} could not be read ({err}); kept as {aside}, starting fresh");
             if let Some(f) = fresh {
                 let _ = store.set(key, f);
             }
         }
-        Err(e) => eprintln!("kolux-rs: {key} could not be read ({err}) nor kept aside ({e})"),
+        Err(e) => eprintln!("kolux: {key} could not be read ({err}) nor kept aside ({e})"),
     }
     None
 }
@@ -885,7 +885,7 @@ mod tests {
 
     #[test]
     fn proj051_stamps_last_across_restarts_and_one_folder_has_one_key() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-activity-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-activity-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let s = Store::open(&dir).unwrap();
@@ -901,7 +901,7 @@ mod tests {
 
     #[test]
     fn proj051_keeps_only_the_most_recently_used_folders() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-activity-prune-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-activity-prune-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let s = Store::open(&dir).unwrap();
@@ -928,7 +928,7 @@ mod tests {
     /// the next touch never writes over the only copy; a second read does not copy them again.
     #[test]
     fn audit_t193_unreadable_workspace_times_are_kept_aside_before_the_key_starts_fresh() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-activity-t193w-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-activity-t193w-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let s = Store::open(&dir).unwrap();
         s.set(WORKSPACE_KEY, "{\"c:/repo\": oops").unwrap();
@@ -943,7 +943,7 @@ mod tests {
     /// audit-t193: unreadable activity counts are copied aside at start, before the first save replaces them.
     #[test]
     fn audit_t193_unreadable_counts_are_kept_aside_at_start() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-activity-t193c-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-activity-t193c-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let s = Store::open(&dir).unwrap();
         s.set(KEY, "not counts").unwrap();

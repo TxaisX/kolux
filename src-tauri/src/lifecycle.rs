@@ -841,7 +841,7 @@ mod tests {
     }
 
     fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-lifecycle-{}-{name}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-lifecycle-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d
@@ -872,7 +872,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn app001_a_second_claim_is_refused_until_the_first_copy_lets_go() {
-        let name = format!("Local\\kolux-rs-test-{}.instance", std::process::id());
+        let name = format!("Local\\kolux-test-{}.instance", std::process::id());
         let first = match claim_named(&name) {
             Claim::First(i) => i,
             Claim::Second => panic!("the first claim must win"),

@@ -240,7 +240,7 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
         Ok(bytes) => LiveBefore::Bytes(bytes),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => LiveBefore::Absent,
         Err(e) => {
-            eprintln!("kolux-rs: could not read the live sign-in {} ({:?})", creds.display(), e.kind());
+            eprintln!("kolux: could not read the live sign-in {} ({:?})", creds.display(), e.kind());
             LiveBefore::Unreadable
         }
     };
@@ -361,7 +361,7 @@ fn write_live_from_sealed(creds: &Path, sealed: &[u8]) -> bool {
 fn remove_refused_login(creds: &Path) {
     if let Err(e) = fs::remove_file(creds) {
         if e.kind() != std::io::ErrorKind::NotFound {
-            eprintln!("kolux-rs: could not delete the refused sign-in {} ({:?})", creds.display(), e.kind());
+            eprintln!("kolux: could not delete the refused sign-in {} ({:?})", creds.display(), e.kind());
         }
     }
 }
@@ -398,7 +398,7 @@ fn restore_sealed_copy(path: &Path, bytes: &[u8]) -> bool {
     match crate::files::write_bytes(path, bytes) {
         Ok(()) => true,
         Err(e) => {
-            eprintln!("kolux-rs: could not put {} back ({e})", path.display());
+            eprintln!("kolux: could not put {} back ({e})", path.display());
             false
         }
     }
@@ -408,7 +408,7 @@ fn restore_sealed_copy(path: &Path, bytes: &[u8]) -> bool {
 pub(crate) fn remove_sealed_copy(path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != std::io::ErrorKind::NotFound {
-            eprintln!("kolux-rs: could not delete the sealed copy {} ({:?})", path.display(), e.kind());
+            eprintln!("kolux: could not delete the sealed copy {} ({:?})", path.display(), e.kind());
         }
     }
 }
@@ -527,7 +527,7 @@ pub fn claude_account_sign_in(app: AppHandle, sign_ins: tauri::State<'_, SignIns
         // Row 989: a pane on this account reads its own settings.json, so it gets Kolux's hooks now; after the card is released, on this worker thread, and nothing after a failed sign-in.
         if let Some(dir) = signed_in {
             if let Ok(Err(e)) = store.lock().map(|s| s.settings()).map(|s| crate::hooks::agent_hooks::install_claude_account(&s, &profile, Path::new(&dir))) {
-                eprintln!("kolux-rs: claude account hooks: {e}");
+                eprintln!("kolux: claude account hooks: {e}");
             }
         }
     });
@@ -636,7 +636,7 @@ fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), Stri
     // Row 947: the list is already saved, so a marker that will not clear is logged and reported at the end, after the sign-in files are gone.
     let cleared = if store.get(ACTIVE_KEY).ok().flatten().as_deref() == Some(id) { store.set(ACTIVE_KEY, "").map_err(|e| e.to_string()) } else { Ok(()) };
     if let Err(e) = &cleared {
-        eprintln!("kolux-rs: could not clear the active Claude account ({e})");
+        eprintln!("kolux: could not clear the active Claude account ({e})");
     }
     Ok((gone, cleared))
 }

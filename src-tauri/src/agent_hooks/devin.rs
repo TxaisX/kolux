@@ -180,7 +180,7 @@ mod tests {
     const CANNED: &str = "// Devin user config\n{\n  /* model choice */\n  \"model\": \"swe\", // keep\n  \"read_config_from\": { \"claude\": true, },\n  \"hooks\": {\n    // my own stop hook\n    \"Stop\": [\n      { \"hooks\": [{ \"type\": \"command\", \"command\": \"notify.sh\" }] },\n    ],\n  },\n}\n";
 
     fn scratch(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-t122-devin-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-t122-devin-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
@@ -233,7 +233,7 @@ mod tests {
         assert!(remove(&home, &file).unwrap());
         assert!(!file.exists(), "a file Kolux created goes with its hooks");
         // Shapes Kolux cannot edit safely are left alone.
-        for bad in ["[1]", "{\"hooks\": []}", "{\"hooks\": {\"Stop\": {}}}", "{ /* open", "{\n// >>> kolux-rs status hooks\n\"a\": 1}"] {
+        for bad in ["[1]", "{\"hooks\": []}", "{\"hooks\": {\"Stop\": {}}}", "{ /* open", "{\n// >>> kolux status hooks\n\"a\": 1}"] {
             fs::write(&file, bad).unwrap();
             assert!(install(&home, &file).is_err(), "{bad}");
             assert_eq!(fs::read_to_string(&file).unwrap(), bad);

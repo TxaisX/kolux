@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn the_start_hook_records_them_in_the_store_and_worker_show_says_so() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-orch-restart-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-orch-restart-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Store::open(&dir).unwrap();
         at_start(&store, 1);

@@ -899,11 +899,11 @@ fn quiet(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
 }
 
 pub(crate) fn gh_program() -> Result<std::path::PathBuf, String> {
-    // Development builds only: KOLUX_DEV_GH (or the worktrees lane's KOLUX_RS_GH) names a stand-in
+    // Development builds only: KOLUX_DEV_GH (or the worktrees lane's KOLUX_GH) names a stand-in
     // gh for live proofs, since the registry's search path (which finds the real gh) comes before
     // the process PATH.
     #[cfg(debug_assertions)]
-    if let Some(p) = std::env::var_os("KOLUX_DEV_GH").or_else(|| std::env::var_os("KOLUX_RS_GH")) {
+    if let Some(p) = std::env::var_os("KOLUX_DEV_GH").or_else(|| crate::env_name::var_os("KOLUX_GH")) {
         return Ok(p.into());
     }
     crate::agents::find_program("gh").ok_or_else(|| "The GitHub CLI (gh) is not installed; install it, then run gh auth login".to_string())

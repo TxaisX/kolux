@@ -68,7 +68,7 @@ fn git038_base_entries_list_every_difference_from_the_snapshot_and_the_sides_rea
 }
 
 fn temp_repo(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("kolux-rs-git-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-git-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     run(&["init", "-q", "-b", "main"], Some(&dir)).unwrap();
@@ -95,7 +95,7 @@ fn cli018_only_commands_that_change_the_worktree_list_count_as_a_change() {
 fn cli018_adding_then_removing_a_worktree_counts_as_two_changes() {
     let git = Git::detect().unwrap();
     let repo = temp_repo("wt-count");
-    let dest = std::env::temp_dir().join(format!("kolux-rs-git-wt-count-ws-{}", std::process::id())).join("c");
+    let dest = std::env::temp_dir().join(format!("kolux-git-wt-count-ws-{}", std::process::id())).join("c");
     let _ = fs::remove_dir_all(dest.parent().unwrap());
     let mine = || THIS_THREAD_CHANGES.with(|c| c.get());
     let before = mine();
@@ -232,7 +232,7 @@ fn t315_a_failed_clone_comes_down_to_its_last_fatal_line_without_progress() {
     // A real clone into a folder that exists and is not empty.
     ISOLATED.with(|i| i.set(true));
     let src = temp_repo("t315-src");
-    let dest = std::env::temp_dir().join(format!("kolux-rs-git-t315-dest-{}", std::process::id()));
+    let dest = std::env::temp_dir().join(format!("kolux-git-t315-dest-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dest);
     fs::create_dir_all(&dest).unwrap();
     fs::write(dest.join("keep.txt"), "mine\n").unwrap();
@@ -275,7 +275,7 @@ fn merge_predictions_need_git_2_38() {
 fn detects_git_and_rejects_plain_folders() {
     let git = Git::detect().unwrap();
     assert!(git.version.starts_with("git version"));
-    let plain = std::env::temp_dir().join(format!("kolux-rs-plain-{}", std::process::id()));
+    let plain = std::env::temp_dir().join(format!("kolux-plain-{}", std::process::id()));
     fs::create_dir_all(&plain).unwrap();
     let err = git.toplevel(&plain).unwrap_err();
     assert!(err.contains("not inside a Git repository"), "{err}");
@@ -297,7 +297,7 @@ fn worktree_add_then_remove_round_trip() {
     assert!(before[0].is_main);
     assert_eq!(before[0].branch.as_deref(), Some("main"));
 
-    let dest = std::env::temp_dir().join(format!("kolux-rs-git-wt-ws-{}", std::process::id())).join("fix-login");
+    let dest = std::env::temp_dir().join(format!("kolux-git-wt-ws-{}", std::process::id())).join("fix-login");
     let _ = fs::remove_dir_all(dest.parent().unwrap());
     git.worktree_add(&repo, &dest, "fix-login", "HEAD").unwrap();
     assert!(dest.join("README.md").is_file(), "worktree folder has the files");
@@ -319,7 +319,7 @@ fn worktree_add_then_remove_round_trip() {
 
 #[test]
 fn proj074_a_deleted_workspace_goes_through_a_hidden_trash_and_can_be_moved_back() {
-    let base = std::env::temp_dir().join(format!("kolux-rs-git-trash-{}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("kolux-git-trash-{}", std::process::id()));
     let _ = fs::remove_dir_all(&base);
     let dest = base.join("big");
     fs::create_dir_all(dest.join("deep/er")).unwrap();
@@ -340,7 +340,7 @@ fn proj074_a_deleted_workspace_goes_through_a_hidden_trash_and_can_be_moved_back
 
 #[test]
 fn row128_a_trash_folder_whose_move_back_failed_is_kept_by_the_launch_sweep() {
-    let base = std::env::temp_dir().join(format!("kolux-rs-git-r128-{}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("kolux-git-r128-{}", std::process::id()));
     let _ = fs::remove_dir_all(&base);
     let dest = base.join("work");
     fs::create_dir_all(&dest).unwrap();
@@ -357,7 +357,7 @@ fn row128_a_trash_folder_whose_move_back_failed_is_kept_by_the_launch_sweep() {
 
 #[test]
 fn proj074_the_sweep_clears_confirmed_trash_of_the_exact_shape_and_nothing_else() {
-    let base = std::env::temp_dir().join(format!("kolux-rs-git-sweep-{}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("kolux-git-sweep-{}", std::process::id()));
     let _ = fs::remove_dir_all(&base);
     // row 130: only `.kolux-trash-<hex>-<hex>-<name>` counts; the old forms are left alone
     for dir in [".kolux-trash-1a-2b-otter", ".kolux-trash-1a-2c-work", ".kolux-trash-otter", "otter.kolux-trash", ".kolux-trash-zz-2b-otter", ".kolux-trash-1a-2b-", "otter", ".kolux-trash-", ".git", "trash", "keep.kolux-trash-x"] {
@@ -380,7 +380,7 @@ fn proj074_the_sweep_clears_confirmed_trash_of_the_exact_shape_and_nothing_else(
 
 #[test]
 fn row128_a_confirmed_delete_cut_short_keeps_its_mark_until_the_last_file_goes() {
-    let base = std::env::temp_dir().join(format!("kolux-rs-git-r128c-{}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("kolux-git-r128c-{}", std::process::id()));
     let _ = fs::remove_dir_all(&base);
     let trash = base.join(".kolux-trash-1-2-big");
     fs::create_dir_all(trash.join("deep")).unwrap();
@@ -394,7 +394,7 @@ fn row128_a_confirmed_delete_cut_short_keeps_its_mark_until_the_last_file_goes()
 fn row127_undoing_a_removal_puts_back_the_folder_and_gits_record_whole() {
     let git = Git::detect().unwrap();
     let repo = temp_repo("r127");
-    let dest = std::env::temp_dir().join(format!("kolux-rs-git-r127-ws-{}", std::process::id())).join("undo-me");
+    let dest = std::env::temp_dir().join(format!("kolux-git-r127-ws-{}", std::process::id())).join("undo-me");
     let _ = fs::remove_dir_all(dest.parent().unwrap());
     git.worktree_add(&repo, &dest, "undo-me", "HEAD").unwrap();
     fs::write(dest.join("work.txt"), "uncommitted work").unwrap();
@@ -421,7 +421,7 @@ fn row127_undoing_a_removal_puts_back_the_folder_and_gits_record_whole() {
 fn row110_removing_a_locked_worktree_leaves_folder_and_record_in_place() {
     let git = Git::detect().unwrap();
     let repo = temp_repo("r110");
-    let dest = std::env::temp_dir().join(format!("kolux-rs-git-r110-ws-{}", std::process::id())).join("on-usb");
+    let dest = std::env::temp_dir().join(format!("kolux-git-r110-ws-{}", std::process::id())).join("on-usb");
     let _ = fs::remove_dir_all(dest.parent().unwrap());
     git.worktree_add(&repo, &dest, "on-usb", "HEAD").unwrap();
     fs::write(dest.join("work.txt"), "work").unwrap();
@@ -444,7 +444,7 @@ fn row110_a_file_held_open_by_another_program_stops_the_removal_with_everything_
     use std::os::windows::fs::OpenOptionsExt;
     let git = Git::detect().unwrap();
     let repo = temp_repo("r110h");
-    let dest = std::env::temp_dir().join(format!("kolux-rs-git-r110h-ws-{}", std::process::id())).join("held");
+    let dest = std::env::temp_dir().join(format!("kolux-git-r110h-ws-{}", std::process::id())).join("held");
     let _ = fs::remove_dir_all(dest.parent().unwrap());
     git.worktree_add(&repo, &dest, "held", "HEAD").unwrap();
     fs::create_dir_all(dest.join("a/b")).unwrap();
@@ -492,7 +492,7 @@ fn row129_a_kept_branch_is_deleted_only_while_it_still_points_where_it_did() {
 #[test]
 fn proj074_removing_a_worktree_leaves_no_trash_and_the_row_is_gone_from_gits_list() {
     let git = Git::detect().unwrap();
-    let base = std::env::temp_dir().join(format!("kolux-rs-git-trash-wt-{}", std::process::id()));
+    let base = std::env::temp_dir().join(format!("kolux-git-trash-wt-{}", std::process::id()));
     let _ = fs::remove_dir_all(&base);
     let repo = base.join("r");
     fs::create_dir_all(&repo).unwrap();
@@ -808,7 +808,7 @@ fn t779b_a_write_through_the_folders_own_filter_is_refused_unless_the_folder_is_
     assert!(write_refusal(&["status"], Some(&dir)).is_none() && write_refusal(&["log", "-1"], Some(&dir)).is_none());
     assert!(command_checked(&["add", "-A"], Some(&dir)).is_err());
     // A linked worktree of the folder is refused to be created the same way.
-    let linked = dir.with_file_name(format!("kolux-rs-git-write-gate-linked-{}", std::process::id()));
+    let linked = dir.with_file_name(format!("kolux-git-write-gate-linked-{}", std::process::id()));
     let why = run(&["worktree", "add", "-q", "-b", "side", &linked.to_string_lossy(), "HEAD"], Some(&dir)).unwrap_err();
     assert!(why.contains("git worktree add") && why.contains("\"evil\""), "{why}");
     assert!(!linked.exists());
@@ -836,7 +836,7 @@ fn t779b_git_lfs_and_a_required_only_driver_never_block_a_write_and_trust_follow
     assert!(write_refusal(&["add", "-A"], Some(&dir)).is_none());
     // A filter of the folder's own, then a linked worktree of a trusted main checkout.
     run(&["config", "filter.evil.smudge", "cat"], Some(&dir)).unwrap();
-    let linked = dir.with_file_name(format!("kolux-rs-git-write-lfs-linked-{}", std::process::id()));
+    let linked = dir.with_file_name(format!("kolux-git-write-lfs-linked-{}", std::process::id()));
     assert!(plain_git(&["worktree", "add", "-q", "-b", "side", &linked.to_string_lossy(), "HEAD"], &dir).status.success());
     assert!(write_refusal(&["add", "-A"], Some(&linked)).is_some(), "untrusted main checkout: refused in its worktree too");
     trust_for_test(&dir);
@@ -1057,7 +1057,7 @@ fn t779c_an_embedded_dot_git_submodules_own_filter_never_runs_under_kolux_git() 
 /// Review fix 3, B2: a `.git` file naming a git folder anywhere (here outside the repository).
 #[test]
 fn t779c_a_submodule_whose_gitdir_points_outside_the_repository_is_blanked() {
-    let outside = std::env::temp_dir().join(format!("kolux-rs-git-c-outside-gitdir-{}", std::process::id()));
+    let outside = std::env::temp_dir().join(format!("kolux-git-c-outside-gitdir-{}", std::process::id()));
     let _ = fs::remove_dir_all(&outside);
     let (dir, _git_dir, marker) = submodule_with_filter("c-outside", Some(&outside));
     assert!(dir.join("sub").join(".git").is_file(), "the fixture needs a .git file");
@@ -1129,7 +1129,7 @@ fn t779c_a_capped_submodule_walk_fails_closed() {
 #[test]
 fn t779c_a_linked_modules_entry_is_followed() {
     let dir = temp_repo("c-link");
-    let real = std::env::temp_dir().join(format!("kolux-rs-git-c-link-real-{}", std::process::id()));
+    let real = std::env::temp_dir().join(format!("kolux-git-c-link-real-{}", std::process::id()));
     let _ = fs::remove_dir_all(&real);
     fs::create_dir_all(&real).unwrap();
     fs::write(real.join("config"), "[filter \"evil\"]\n\tclean = evil\n").unwrap();
@@ -1260,7 +1260,7 @@ fn exit_script(marker: &Path) -> String {
 
 /// A bare repository holding the history of `dir`, to be a remote for it.
 fn bare_copy(dir: &Path, name: &str) -> PathBuf {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-git-{name}-bare-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-git-{name}-bare-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     assert!(plain_git(&["clone", "-q", "--bare", &dir.to_string_lossy(), &bare.to_string_lossy()], dir).status.success());
     bare
@@ -1470,7 +1470,7 @@ fn t779d_the_users_own_transfer_programs_still_apply_when_the_folder_sets_the_sa
     let dir = temp_repo("d-user-net");
     let bare = bare_copy(&dir, "d-user-net");
     let (mine, theirs) = (dir.join("user-ran.txt"), dir.join("folder-ran.txt"));
-    let global = std::env::temp_dir().join(format!("kolux-rs-git-d-user-net-global-{}", std::process::id()));
+    let global = std::env::temp_dir().join(format!("kolux-git-d-user-net-global-{}", std::process::id()));
     let _ = fs::remove_file(&global);
     let global_s = global.to_string_lossy().to_string();
     for (key, value) in [("core.sshCommand", marker_program(&mine)), ("core.gitProxy", marker_script(&mine))] {
@@ -1752,7 +1752,7 @@ fn t779e_a_rewrite_rule_to_a_local_address_refuses_the_push() {
 fn t779_a_forced_key_with_an_equals_sign_stays_one_key() {
     use std::ffi::OsStr;
     let dir = temp_repo("p8-eq");
-    let marker = dir.join("..").join(format!("kolux-rs-p8-eq-pwn-{}.txt", std::process::id()));
+    let marker = dir.join("..").join(format!("kolux-p8-eq-pwn-{}.txt", std::process::id()));
     let _ = fs::remove_file(&marker);
     let program = format!("echo PWNED >> \"{}\"; cat #", marker.to_string_lossy().replace('\\', "/"));
     let odd_key = format!("filter.a.clean={program}.clean");
@@ -1822,7 +1822,7 @@ fn t779_a_forced_key_with_an_equals_sign_stays_one_key() {
 #[test]
 fn t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run() {
     let dir = temp_repo("p8-utf8");
-    let marker = dir.join("..").join(format!("kolux-rs-p8-utf8-pwn-{}.txt", std::process::id()));
+    let marker = dir.join("..").join(format!("kolux-p8-utf8-pwn-{}.txt", std::process::id()));
     let _ = fs::remove_file(&marker);
     let program = format!("echo PWNED >> \"{}\"; cat #", marker.to_string_lossy().replace('\\', "/"));
     let config = dir.join(".git").join("config");
@@ -1952,7 +1952,7 @@ fn t779_a_parents_own_git_environment_never_outranks_kolux() {
     assert_eq!(allow_protocol(Some(OsStr::new("file:https")), &[("protocol.allow".to_string(), "never".to_string())]).unwrap(), "");
     // Live: git itself refuses the file transport under the filtered list, and allows it under the parent's.
     let src = temp_repo("p8-env-src");
-    let dest = std::env::temp_dir().join(format!("kolux-rs-git-p8-env-dest-{}", std::process::id()));
+    let dest = std::env::temp_dir().join(format!("kolux-git-p8-env-dest-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dest);
     let clone = |allow: &str| {
         let mut c = Command::new("git");
@@ -2006,7 +2006,7 @@ fn t779e_a_partial_clone_read_runs_no_program_on_any_git() {
         let _ = fs::remove_dir_all(&dir);
     }
     // Live: a real partial clone whose blob is missing, with the folder's own upload-pack program.
-    let blobless = std::env::temp_dir().join(format!("kolux-rs-git-e-blobless-{}", std::process::id()));
+    let blobless = std::env::temp_dir().join(format!("kolux-git-e-blobless-{}", std::process::id()));
     let _ = fs::remove_dir_all(&blobless);
     assert!(plain_git(&["config", "--file", &bare.join("config").to_string_lossy(), "uploadpack.allowFilter", "true"], &base).status.success());
     assert!(plain_git(&["clone", "-q", "--no-checkout", "--filter=blob:none", &format!("file://{}", bare.to_string_lossy().replace('\\', "/")), &blobless.to_string_lossy()], &base).status.success());

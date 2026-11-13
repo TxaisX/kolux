@@ -5,7 +5,7 @@ use super::*;
 use std::path::PathBuf;
 
 fn temp_repo(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("kolux-rs-scm-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-scm-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     run(&["init", "-q", "-b", "main"], Some(&dir)).unwrap();
@@ -183,7 +183,7 @@ fn fix2_reveal_refuses_a_worktree_outside_every_project() {
     let dir = temp_repo("fix2-fence");
     let inside = vec![dir.to_string_lossy().into_owned()];
     assert_eq!(reveal_place(&inside, &dir.to_string_lossy(), "README.md").unwrap(), dir.join("README.md"));
-    let elsewhere = vec![std::env::temp_dir().join("kolux-rs-no-such-project").to_string_lossy().into_owned()];
+    let elsewhere = vec![std::env::temp_dir().join("kolux-no-such-project").to_string_lossy().into_owned()];
     assert!(reveal_place(&elsewhere, &dir.to_string_lossy(), "README.md").unwrap_err().contains("outside"));
     let _ = fs::remove_dir_all(&dir);
 }
@@ -217,7 +217,7 @@ fn git008_a_pull_with_split_history_and_no_policy_is_named_and_the_picked_policy
     // global or system config (Git for Windows writes pull.rebase=false there) would decide
     // the split pull on its own and the no-policy path would never run.
     crate::git::ISOLATED.with(|i| i.set(true));
-    let origin = std::env::temp_dir().join(format!("kolux-rs-scm-git008-origin-{}", std::process::id()));
+    let origin = std::env::temp_dir().join(format!("kolux-scm-git008-origin-{}", std::process::id()));
     let _ = fs::remove_dir_all(&origin);
     fs::create_dir_all(&origin).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&origin)).unwrap();
@@ -227,7 +227,7 @@ fn git008_a_pull_with_split_history_and_no_policy_is_named_and_the_picked_policy
     crate::git::trust_for_test(&a);
     run(&["remote", "add", "origin", &url], Some(&a)).unwrap();
     run(&["push", "-q", "-u", "origin", "main"], Some(&a)).unwrap();
-    let b = std::env::temp_dir().join(format!("kolux-rs-scm-git008-b-{}", std::process::id()));
+    let b = std::env::temp_dir().join(format!("kolux-scm-git008-b-{}", std::process::id()));
     let _ = fs::remove_dir_all(&b);
     run(&["clone", "-q", &url, &b.to_string_lossy()], None).unwrap();
     crate::git::trust_for_test(&b); // the second clone pushes too
@@ -330,7 +330,7 @@ fn git014_reveal_stays_inside_the_worktree_through_links_too_and_falls_back_to_t
     assert!(reveal_target(&dir, "C:/Windows/notepad.exe").is_err());
     // A junction (or symlink) inside the worktree that leads out is refused, the file under it
     // and the link itself alike, even though the path text stays inside.
-    let outside = std::env::temp_dir().join(format!("kolux-rs-scm-git014-outside-{}", std::process::id()));
+    let outside = std::env::temp_dir().join(format!("kolux-scm-git014-outside-{}", std::process::id()));
     fs::create_dir_all(&outside).unwrap();
     fs::write(outside.join("b.txt"), "private\n").unwrap();
     #[cfg(windows)]
@@ -376,7 +376,7 @@ fn git038_base_changes_measure_against_the_snapshot_not_a_base_that_moved_on() {
 
 /// Every git process (top level and children) `f` starts on this thread, as its arguments.
 fn git_argvs(f: impl FnOnce()) -> Vec<String> {
-    let trace = std::env::temp_dir().join(format!("kolux-rs-scm-argvs-{}-{:?}.json", std::process::id(), std::thread::current().id()));
+    let trace = std::env::temp_dir().join(format!("kolux-scm-argvs-{}-{:?}.json", std::process::id(), std::thread::current().id()));
     let _ = fs::remove_file(&trace);
     crate::git::TRACE2.with(|t| *t.borrow_mut() = Some(trace.clone()));
     f();
@@ -496,7 +496,7 @@ fn a_gh_call_that_hangs_gives_up_after_its_time_limit() {
 /// host gate passes that error on rather than calling the host signed out.
 #[test]
 fn fixr2_a_gh_that_never_answers_the_account_question_times_out_within_the_bound() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fixr2-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fixr2-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     // Never exits: the loop lives in the script's own process, so stopping it ends it.
@@ -573,7 +573,7 @@ fn a_neutral_check_is_not_counted_as_passed_and_one_needing_action_is_failing() 
 #[test]
 fn a_branch_without_a_pull_request_has_no_checks_rather_than_an_error() {
     // VIEW-073: gh's "no pull requests found" is the plain no-review answer.
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-checks-gh-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-checks-gh-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let got = pr_checks(&gh, &tools, "feat").unwrap();
@@ -627,7 +627,7 @@ fn stand_in_gh(dir: &Path) -> PathBuf {
 
 #[test]
 fn a_pull_request_is_made_once_after_the_branch_is_pushed_and_states_that_cannot_have_one_are_refused() {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-pr-bare-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-pr-bare-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -637,7 +637,7 @@ fn a_pull_request_is_made_once_after_the_branch_is_pushed_and_states_that_cannot
     run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
     run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
     run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-pr-gh-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-pr-gh-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let calls = || fs::read_to_string(tools.join("calls.txt")).unwrap_or_default();
@@ -698,7 +698,7 @@ fn a_pull_request_is_made_once_after_the_branch_is_pushed_and_states_that_cannot
 // T-652: the automatic flow asks for no push at all; unpushed work is refused in words, and nothing reaches the remote.
 #[test]
 fn t652_pr_create_without_push_refuses_unpushed_commits_and_pushes_nothing() {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-pr-nopush-bare-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-pr-nopush-bare-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -708,7 +708,7 @@ fn t652_pr_create_without_push_refuses_unpushed_commits_and_pushes_nothing() {
     run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
     run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
     run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-pr-nopush-gh-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-pr-nopush-gh-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let want = "The branch has commits that are not pushed yet; push first";
@@ -742,7 +742,7 @@ fn t652_pr_create_without_push_refuses_unpushed_commits_and_pushes_nothing() {
 #[test]
 fn a_pull_request_linked_by_hand_is_read_through_its_link_with_its_branch() {
     let dir = temp_repo("prlink");
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-prlink-gh-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-prlink-gh-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let pr = pr_link(&gh, &dir, "https://github.com/o/r/pull/12").unwrap();
@@ -755,13 +755,13 @@ fn a_pull_request_linked_by_hand_is_read_through_its_link_with_its_branch() {
 
 #[test]
 fn history_marks_outgoing_and_incoming_commits_and_keeps_its_labels_tidy() {
-    let empty = std::env::temp_dir().join(format!("kolux-rs-scm-hist-empty-{}", std::process::id()));
+    let empty = std::env::temp_dir().join(format!("kolux-scm-hist-empty-{}", std::process::id()));
     let _ = fs::remove_dir_all(&empty);
     fs::create_dir_all(&empty).unwrap();
     run(&["init", "-q", "-b", "main"], Some(&empty)).unwrap();
     assert!(history(&empty, 50).unwrap().is_empty(), "a repository with no commits has no history");
 
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-hist-bare-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-hist-bare-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -871,7 +871,7 @@ fn push_failures_are_sorted_by_kind() {
 
 #[test]
 fn a_failing_pre_push_hook_hands_its_output_and_files_to_an_agent_and_commit_then_pull_and_push_works() {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-hook-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-hook-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -965,7 +965,7 @@ and more
     assert!(status(&dir).unwrap().staged.is_empty());
     let _ = fs::remove_dir_all(&dir);
     // A repository with no commit yet: unstage all still works.
-    let fresh = std::env::temp_dir().join(format!("kolux-rs-scm-nohead-{}", std::process::id()));
+    let fresh = std::env::temp_dir().join(format!("kolux-scm-nohead-{}", std::process::id()));
     let _ = fs::remove_dir_all(&fresh);
     fs::create_dir_all(&fresh).unwrap();
     run(&["init", "-q", "-b", "main"], Some(&fresh)).unwrap();
@@ -983,7 +983,7 @@ and more
 
 #[test]
 fn a_push_that_hangs_comes_back_as_a_network_failure_that_says_it_timed_out() {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-hang-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-hang-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -1033,7 +1033,7 @@ fn history_flags_the_last_commit_only_when_the_cap_cut_older_ones_off() {
 /// and the common case (an upstream, in sync or ahead) starts fewer git processes.
 #[test]
 fn the_sidebar_badge_read_in_one_run_matches_the_step_by_step_read() {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-pushed1-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-pushed1-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -1064,7 +1064,7 @@ fn the_sidebar_badge_read_in_one_run_matches_the_step_by_step_read() {
     commit_file(&dir, "three.txt", "3\n");
     assert_eq!(same(&dir, "diverged"), Some(("ahead", 1)));
     // A linked worktree on its own branch with its own upstream state.
-    let linked = std::env::temp_dir().join(format!("kolux-rs-scm-pushed1-wt-{}", std::process::id()));
+    let linked = std::env::temp_dir().join(format!("kolux-scm-pushed1-wt-{}", std::process::id()));
     let _ = fs::remove_dir_all(&linked);
     run(&["worktree", "add", "-q", "-b", "side", &linked.to_string_lossy(), "origin/main"], Some(&dir)).unwrap();
     run(&["branch", "-q", "--set-upstream-to=origin/main", "side"], Some(&linked)).unwrap();
@@ -1091,7 +1091,7 @@ fn the_sidebar_badge_read_in_one_run_matches_the_step_by_step_read() {
 #[test]
 fn the_sidebar_badge_counts_unpushed_commits_and_never_calls_an_unreadable_count_synced() {
     let state = |dir: &Path| pushed(dir).map(|p| (p.state, p.count));
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-pushed-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-pushed-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -1125,7 +1125,7 @@ fn the_sidebar_badge_counts_unpushed_commits_and_never_calls_an_unreadable_count
     assert_eq!(head.head.as_deref().map(str::len), Some(40));
     run(&["switch", "-q", "feature"], Some(&dir)).unwrap();
     assert_eq!(head_of(&dir).unwrap().branch.as_deref(), Some("feature"));
-    let plain = std::env::temp_dir().join(format!("kolux-rs-scm-plain-{}", std::process::id()));
+    let plain = std::env::temp_dir().join(format!("kolux-scm-plain-{}", std::process::id()));
     fs::create_dir_all(&plain).unwrap();
     assert_eq!(head_of(&plain), None, "a plain folder has no chip");
     let _ = fs::remove_dir_all(&plain);
@@ -1135,7 +1135,7 @@ fn the_sidebar_badge_counts_unpushed_commits_and_never_calls_an_unreadable_count
 
 #[test]
 fn remote_actions_move_commits_through_a_bare_remote_and_rebased_work_offers_a_lease() {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-bare-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-bare-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -1165,7 +1165,7 @@ fn remote_actions_move_commits_through_a_bare_remote_and_rebased_work_offers_a_l
 
     // Main moves on the remote; rebasing feat onto it leaves the upstream with only
     // already-held patches, so force push with lease is the next step, not pull.
-    let other = std::env::temp_dir().join(format!("kolux-rs-scm-other-{}", std::process::id()));
+    let other = std::env::temp_dir().join(format!("kolux-scm-other-{}", std::process::id()));
     let _ = fs::remove_dir_all(&other);
     run(&["clone", "-q", &bare_url, &other.to_string_lossy()], None).unwrap();
     crate::git::trust_for_test(&other); // the second clone pushes too
@@ -1198,7 +1198,7 @@ fn remote_actions_move_commits_through_a_bare_remote_and_rebased_work_offers_a_l
     // flake), and keeps a 20 s bound only as a backstop: a hung network call would sit on
     // the OS connect timeout (about 21 s on Windows) and still trip it.
     run(&["remote", "set-url", "origin", &format!("{bare_url}-missing")], Some(&dir)).unwrap();
-    let trace = std::env::temp_dir().join(format!("kolux-rs-scm-trace2-{}.json", std::process::id()));
+    let trace = std::env::temp_dir().join(format!("kolux-scm-trace2-{}.json", std::process::id()));
     let _ = fs::remove_file(&trace);
     crate::git::TRACE2.with(|t| *t.borrow_mut() = Some(trace.clone()));
     let t = std::time::Instant::now();
@@ -1239,7 +1239,7 @@ fn remote_actions_move_commits_through_a_bare_remote_and_rebased_work_offers_a_l
 
 #[test]
 fn the_upstream_remote_is_named_whole_when_its_name_holds_a_slash() {
-    let bare = std::env::temp_dir().join(format!("kolux-rs-scm-slashremote-{}", std::process::id()));
+    let bare = std::env::temp_dir().join(format!("kolux-scm-slashremote-{}", std::process::id()));
     let _ = fs::remove_dir_all(&bare);
     fs::create_dir_all(&bare).unwrap();
     run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
@@ -1599,7 +1599,7 @@ fn t718_abort_checks_the_fence_before_git_like_stage_and_discard() {
     run(&["checkout", "-q", "main"], Some(&repo)).unwrap();
     commit_file(&repo, "README.md", "ours\n");
     assert!(run(&["merge", "other"], Some(&repo)).is_err());
-    let dir = std::env::temp_dir().join(format!("kolux-rs-scm-t718-store-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-scm-t718-store-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     let store = std::sync::Mutex::new(crate::state::Store::open(&dir).unwrap());
     let (fence, git) = (crate::fence::Fence::default(), Git::detect().unwrap());
@@ -1631,7 +1631,7 @@ fn git026_a_pull_request_link_printed_in_a_terminal_attaches_once_even_split_acr
     assert!(scan.feed(b"htt").is_empty());
     assert_eq!(scan.feed(b"ps://github.com/o/r/pull/8 "), ["https://github.com/o/r/pull/8"]);
     // The link becomes the workspace's linked pull request, once, beside other settings.
-    let dir = std::env::temp_dir().join(format!("kolux-rs-scm-git026-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-scm-git026-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     let store = crate::state::Store::open(&dir).unwrap();
     store.save_settings(&serde_json::json!({ "uiLook": "classic", "scmLinkedPrs": { "C:/other": "https://github.com/o/r/pull/1" } })).unwrap();
@@ -1647,7 +1647,7 @@ fn git026_a_pull_request_link_printed_in_a_terminal_attaches_once_even_split_acr
 
 #[test]
 fn git026_a_printed_link_survives_a_window_save_from_an_older_copy_of_the_settings() {
-    let dir = std::env::temp_dir().join(format!("kolux-rs-scm-git026-race-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-scm-git026-race-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     let store = crate::state::Store::open(&dir).unwrap();
     store.save_settings(&serde_json::json!({ "uiLook": "classic", "quietMinutes": 5 })).unwrap();
@@ -1742,7 +1742,7 @@ fn git045_nothing_is_split_for_trouble_that_is_not_about_a_repository() {
 
 #[test]
 fn t085d_the_poll_reads_each_open_pull_requests_checks_word_with_one_list_and_one_graphql_call() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-t085d-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-t085d-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let repo = tools.join("repo");
@@ -1783,7 +1783,7 @@ fn t085d_the_poll_reads_each_open_pull_requests_checks_word_with_one_list_and_on
 
 #[test]
 fn git043_tasks_search_pages_through_github_search_with_labels_assignees_and_checks() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-git043-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-git043-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let search = r#"{"total_count":1234,"incomplete_results":false,"items":[
@@ -1830,7 +1830,7 @@ fn git043_tasks_search_pages_through_github_search_with_labels_assignees_and_che
 
 #[test]
 fn git050_preview_reads_body_and_timeline_and_edits_labels_and_body_through_gh() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-git050-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-git050-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     fs::write(tools.join("issue.json"), r#"{"number":3,"title":"Crash","state":"open","body":"It crashes.","updated_at":"2026-10-10T08:00:00Z","labels":[{"name":"bug","color":"d73a4a"}],"assignees":[{"login":"txais"}]}"#).unwrap();
@@ -1902,7 +1902,7 @@ fn git018_a_custom_writer_command_takes_the_prompt_in_place_or_on_standard_input
     let long = message_prompt("D", &"x".repeat(INSTRUCTIONS_MAX * 3));
     assert!(long.matches('x').count() <= INSTRUCTIONS_MAX, "{}", long.len());
     // A command run with the prompt in its arguments gets no standard input.
-    let root = std::env::temp_dir().join(format!("kolux-rs-scm-git018-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("kolux-scm-git018-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(&root).unwrap();
     let f = if cfg!(windows) {
@@ -1934,7 +1934,7 @@ fn git017_commit_message_from_the_staged_diff_is_trimmed_cleaned_and_stoppable()
     // Fences, an announcing first line and bullets are stripped.
     assert_eq!(clean_message("Here is the commit message:\n```\n- Add the poll\n- Fix the row\n```\n"), "Add the poll\nFix the row");
     assert_eq!(clean_message("Add the poll\n\n* keeps state\n"), "Add the poll\n\nkeeps state");
-    let root = std::env::temp_dir().join(format!("kolux-rs-scm-git017-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("kolux-scm-git017-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(&root).unwrap();
     let script = |name: &str, win: &str, sh: &str| {
@@ -1980,7 +1980,7 @@ fn git017_commit_message_from_the_staged_diff_is_trimmed_cleaned_and_stoppable()
 
 #[test]
 fn git027_background_poll_asks_once_per_repository_and_stops_at_the_rate_limit() {
-    let root = std::env::temp_dir().join(format!("kolux-rs-scm-git027-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("kolux-scm-git027-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     let tools = root.join("tools");
     fs::create_dir_all(&tools).unwrap();
@@ -2066,7 +2066,7 @@ fn fix2_an_at_path_owner_is_refused_and_a_host_gh_is_not_signed_in_to_gets_no_re
         assert_eq!(pr_url_in(bad), None, "{bad}");
     }
     assert_eq!(pr_url_in("https://github.com/my-org/repo.name_2/pull/9#x").as_deref(), Some("https://github.com/my-org/repo.name_2/pull/9"));
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix2-host-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix2-host-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let url = "https://nobody.example/o/r/pull/3";
@@ -2083,7 +2083,7 @@ fn fix2_an_at_path_owner_is_refused_and_a_host_gh_is_not_signed_in_to_gets_no_re
 /// other host asks gh nothing beyond its own config, and a malformed one reaches no gh at all.
 #[test]
 fn fixb1_the_checks_panel_asks_gh_only_about_a_clean_link_on_a_signed_in_host() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fixb1-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fixb1-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let calls = || fs::read_to_string(tools.join("calls.txt")).unwrap_or_default();
@@ -2119,7 +2119,7 @@ fn fixsoon_an_enterprise_managed_user_owner_is_accepted_and_a_leading_mark_is_no
 /// or the Checks panel; gh is asked only for its own config about that host.
 #[test]
 fn fixsoon_a_valid_link_on_a_host_gh_is_not_signed_in_to_gets_no_request() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fixsoon-gate-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fixsoon-gate-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let url = "https://nobody.example/octo/repo.name/pull/3";
@@ -2153,7 +2153,7 @@ fn fixsoon_a_valid_link_on_a_host_gh_is_not_signed_in_to_gets_no_request() {
 /// asked only about its own config (the shared gate, github::host_allowed).
 #[test]
 fn fix3_a_host_that_only_echoes_the_top_level_user_gets_no_request() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix3-top-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix3-top-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let gh = if cfg!(windows) {
@@ -2194,7 +2194,7 @@ fn fix3_gh_and_the_browser_get_only_the_cleaned_link() {
     assert_eq!(open_target(" https://github.com/o/r/pull/12/files#diff-1 ").as_deref(), Ok("https://github.com/o/r/pull/12"));
     assert!(open_target("https://u@github.com/o/r/pull/12").is_err());
     assert!(open_target("https://github.com/o/r/issues/12").is_err());
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix3-clean-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix3-clean-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     let gh = stand_in_gh(&tools);
     let url = " https://github.com/o/r/pull/12/files#diff-1 ";
@@ -2213,7 +2213,7 @@ fn fix3_gh_and_the_browser_get_only_the_cleaned_link() {
 #[cfg(windows)]
 #[test]
 fn fix3_a_gh_that_times_out_is_stopped_with_everything_it_started() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix3-tree-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix3-tree-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     // gh.cmd starts a second program that would leave a mark about five seconds later.
@@ -2234,8 +2234,8 @@ fn fix3_a_gh_that_times_out_is_stopped_with_everything_it_started() {
 /// way a wait left behind by a half-done kill can be told from any other ping on the PC.
 #[cfg(windows)]
 fn processes_under(dir: &std::path::Path) -> Vec<String> {
-    let script = "$d = $env:KOLUX_RS_TEST_DIR; Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and ( ($_.ExecutablePath -and $_.ExecutablePath.IndexOf($d, [StringComparison]::OrdinalIgnoreCase) -ge 0) -or ($_.CommandLine -and $_.CommandLine.IndexOf($d, [StringComparison]::OrdinalIgnoreCase) -ge 0) ) } | ForEach-Object { $_.Name + ' ' + $_.ProcessId }";
-    let out = quiet("powershell").args(["-NoProfile", "-NonInteractive", "-Command", script]).env("KOLUX_RS_TEST_DIR", dir).output().expect("powershell did not start");
+    let script = "$d = $env:KOLUX_TEST_DIR; Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and ( ($_.ExecutablePath -and $_.ExecutablePath.IndexOf($d, [StringComparison]::OrdinalIgnoreCase) -ge 0) -or ($_.CommandLine -and $_.CommandLine.IndexOf($d, [StringComparison]::OrdinalIgnoreCase) -ge 0) ) } | ForEach-Object { $_.Name + ' ' + $_.ProcessId }";
+    let out = quiet("powershell").args(["-NoProfile", "-NonInteractive", "-Command", script]).env("KOLUX_TEST_DIR", dir).output().expect("powershell did not start");
     assert!(out.status.success(), "the process check failed, so it proves nothing: {}", String::from_utf8_lossy(&out.stderr));
     String::from_utf8_lossy(&out.stdout).lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect()
 }
@@ -2267,7 +2267,7 @@ fn fix8_fixture_waiting(tools: &std::path::Path, pings: u32) -> PathBuf {
 #[cfg(windows)]
 #[test]
 fn fix8_the_process_check_sees_a_program_under_a_folder_and_none_after_it_ends() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix8-probe-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix8-probe-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     fix8_fixture(&tools);
@@ -2297,7 +2297,7 @@ fn fix8_the_process_check_sees_a_program_under_a_folder_and_none_after_it_ends()
 #[cfg(windows)]
 #[test]
 fn fix4_a_timeout_ends_the_tree_through_the_job_and_uses_the_tree_kill_only_without_one() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix4-job-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix4-job-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let gh = fix8_fixture_waiting(&tools, 61);
@@ -2380,7 +2380,7 @@ fn fix5_without_a_job_a_finished_gh_with_a_holder_asks_only_the_leftover_kill_on
     // (a taskkill took 6.8 s under two parallel builds) still tells "answered at the limit" from
     // "waited for the holder". The holder is a copy of ping in the folder, found and ended below.
     const LIMIT: std::time::Duration = std::time::Duration::from_secs(8);
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix4-nojob-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix4-nojob-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\Windows"));
@@ -2468,7 +2468,7 @@ fn fix7_the_real_runner_runs_the_program_with_its_arguments_and_waits() {
     assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "ran");
     run_program(program, &args);
     // A program that cannot start is dropped without a panic.
-    run_program("kolux-rs-no-such-program-fix7", &["-9".to_string()]);
+    run_program("kolux-no-such-program-fix7", &["-9".to_string()]);
 }
 
 /// FIX-8 (review FIX-SOON 1): reads `kill_leftover` out of `src` and says whether its Unix block
@@ -2543,7 +2543,7 @@ fn fix4_the_grace_has_a_floor_even_when_the_limit_has_run_out() {
 #[cfg(windows)]
 #[test]
 fn fix3_a_gh_that_leaves_a_program_holding_its_output_still_answers_in_time() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix3-hold-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix3-hold-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     // gh prints its answer and exits, leaving a program that holds its output and would leave a
@@ -2580,7 +2580,7 @@ fn fix3_a_gh_that_leaves_a_program_holding_its_output_still_answers_in_time() {
 #[cfg(windows)]
 #[test]
 fn fix3_a_long_description_cannot_hang_a_gh_that_never_reads_it() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-fix3-stdin-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-fix3-stdin-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let gh = tools.join("gh.cmd");
@@ -2598,7 +2598,7 @@ fn fix3_a_long_description_cannot_hang_a_gh_that_never_reads_it() {
 
 #[test]
 fn git033_merge_state_and_actions_go_through_gh_for_the_pull_requests_own_repository() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-git033-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-git033-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let answer = r#"{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"autoMergeAllowed":true,"pullRequest":{"state":"OPEN","isDraft":false,"mergeable":"MERGEABLE","mergeStateStatus":"BLOCKED","reviewDecision":null,"isInMergeQueue":false,"isMergeQueueEnabled":false,"autoMergeRequest":{"mergeMethod":"SQUASH"},"commits":{"nodes":[{"commit":{"statusCheckRollup":{"state":"PENDING"}}}]}}}}}"#;
@@ -2650,7 +2650,7 @@ fn git033_merge_state_and_actions_go_through_gh_for_the_pull_requests_own_reposi
 
 #[test]
 fn git028_the_github_budget_reads_rest_search_and_graphql_from_gh() {
-    let tools = std::env::temp_dir().join(format!("kolux-rs-scm-git028-{}", std::process::id()));
+    let tools = std::env::temp_dir().join(format!("kolux-scm-git028-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tools);
     fs::create_dir_all(&tools).unwrap();
     let answer = r#"{"resources":{"core":{"limit":5000,"used":20,"remaining":4980,"reset":1760000000},"search":{"limit":30,"used":30,"remaining":0,"reset":1760000060},"graphql":{"limit":5000,"used":1,"remaining":4999,"reset":1760003600},"code_search":{"limit":10,"remaining":10,"reset":1}},"rate":{"limit":5000}}"#;
@@ -2679,7 +2679,7 @@ fn git028_the_github_budget_reads_rest_search_and_graphql_from_gh() {
 fn git003_discard_deletes_new_files_restores_deleted_ones_and_never_follows_a_link_out() {
     let dir = temp_repo("discard-paths");
     run(&["config", "core.symlinks", "true"], Some(&dir)).unwrap();
-    let target = std::env::temp_dir().join(format!("kolux-rs-scm-target-{}", std::process::id()));
+    let target = std::env::temp_dir().join(format!("kolux-scm-target-{}", std::process::id()));
     fs::write(&target, "keep me\n").unwrap();
     let link = |name: &str, to: &Path| {
         #[cfg(unix)]

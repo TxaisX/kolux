@@ -1002,7 +1002,7 @@ mod tests {
 
     /// A repository on `main` with one commit and local test identity.
     fn repo(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-autopr-{name}-{}", id()));
+        let dir = std::env::temp_dir().join(format!("kolux-autopr-{name}-{}", id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         run(&["init", "-q", "-b", "main"], Some(&dir)).unwrap();
@@ -1034,7 +1034,7 @@ mod tests {
     }
 
     fn bare_repo(name: &str, head: &str) -> PathBuf {
-        let bare = std::env::temp_dir().join(format!("kolux-rs-autopr-bare-{name}-{}", id()));
+        let bare = std::env::temp_dir().join(format!("kolux-autopr-bare-{name}-{}", id()));
         let _ = fs::remove_dir_all(&bare);
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", head], Some(&bare)).unwrap();
@@ -1226,7 +1226,7 @@ mod tests {
             run(&["remote", "add", "origin", url], Some(&dir)).unwrap();
             assert_eq!(remote_kind(&dir), want, "{url}");
         }
-        let not_repo = std::env::temp_dir().join(format!("kolux-rs-autopr-norepo-{}", id()));
+        let not_repo = std::env::temp_dir().join(format!("kolux-autopr-norepo-{}", id()));
         fs::create_dir_all(&not_repo).unwrap();
         assert_eq!(remote_kind(&not_repo), "none");
         cleanup(&[&dir, &not_repo]);
@@ -1324,7 +1324,7 @@ mod tests {
         let s = commit_step(&dir).unwrap();
         assert_eq!(s.kind, "skipped", "{s:?}");
         assert_eq!(push_step(&dir).unwrap().kind, "skipped");
-        let not_repo = std::env::temp_dir().join(format!("kolux-rs-autopr-guard-norepo-{}", id()));
+        let not_repo = std::env::temp_dir().join(format!("kolux-autopr-guard-norepo-{}", id()));
         fs::create_dir_all(&not_repo).unwrap();
         assert_eq!(commit_step(&not_repo).unwrap().kind, "skipped");
         assert_eq!(push_step(&not_repo).unwrap().kind, "skipped");
@@ -1336,7 +1336,7 @@ mod tests {
     #[test]
     fn t652_a_workspace_that_tracks_origin_main_commits_pushes_and_is_retargeted() {
         let (dir, bare) = with_origin("b-ws");
-        let ws = std::env::temp_dir().join(format!("kolux-rs-autopr-ws-{}", id()));
+        let ws = std::env::temp_dir().join(format!("kolux-autopr-ws-{}", id()));
         let _ = fs::remove_dir_all(&ws);
         run(&["worktree", "add", "-q", "-b", "ws", &url(&ws), "origin/main"], Some(&dir)).unwrap();
         assert_eq!(scm::status(&ws).unwrap().upstream.as_deref(), Some("origin/main"), "the premise: cut from origin/main it tracks it");
@@ -1778,7 +1778,7 @@ mod tests {
         commit_file(&dir, "a.txt", "a\n");
         assert_eq!(push_step(&dir).unwrap().kind, "done");
         // Someone else pushes to the same branch.
-        let other = std::env::temp_dir().join(format!("kolux-rs-autopr-other-{}", id()));
+        let other = std::env::temp_dir().join(format!("kolux-autopr-other-{}", id()));
         let _ = fs::remove_dir_all(&other);
         run(&["clone", "-q", &url(&bare), &other.to_string_lossy()], None).unwrap();
         for (k, v) in [("user.email", "test@example.com"), ("user.name", "Other"), ("commit.gpgsign", "false")] {
@@ -1807,7 +1807,7 @@ mod tests {
         let s = push_step(&dir).unwrap();
         assert_eq!(s.kind, "local", "{s:?}");
         assert!(s.message.contains("stay on this computer"));
-        let nowhere = std::env::temp_dir().join(format!("kolux-rs-autopr-nowhere-{}", id()));
+        let nowhere = std::env::temp_dir().join(format!("kolux-autopr-nowhere-{}", id()));
         run(&["remote", "add", "origin", &url(&nowhere)], Some(&dir)).unwrap();
         let s = push_step(&dir).unwrap();
         assert_eq!(s.kind, "failed", "{s:?}");
@@ -1846,8 +1846,8 @@ mod tests {
 
     #[test]
     fn t652_the_fence_decides_where_a_step_may_run() {
-        let inside = std::env::temp_dir().join(format!("kolux-rs-autopr-fence-in-{}", id()));
-        let outside = std::env::temp_dir().join(format!("kolux-rs-autopr-fence-out-{}", id()));
+        let inside = std::env::temp_dir().join(format!("kolux-autopr-fence-in-{}", id()));
+        let outside = std::env::temp_dir().join(format!("kolux-autopr-fence-out-{}", id()));
         for p in [&inside, &outside] {
             let _ = fs::remove_dir_all(p);
             fs::create_dir_all(p.join("sub")).unwrap();
@@ -1911,7 +1911,7 @@ mod tests {
             crate::git::untrust_for_test();
             branch(&dir, "feature");
             commit_file(&dir, "a.txt", "a\n");
-            let mark = std::env::temp_dir().join(format!("kolux-rs-autopr-s4-mark-{}-{own}", id()));
+            let mark = std::env::temp_dir().join(format!("kolux-autopr-s4-mark-{}-{own}", id()));
             let _ = fs::remove_file(&mark);
             match own {
                 "hook" => hook(&dir, "pre-push", &format!("#!/bin/sh\necho pushed >> \"{}\"\nexit 0\n", url(&mark))),
@@ -1943,7 +1943,7 @@ mod tests {
     #[test]
     fn t652_a_branch_on_origin_that_lost_its_upstream_is_linked_on_the_next_run_without_pushing() {
         let (dir, bare) = with_origin("p-relink");
-        let mark = std::env::temp_dir().join(format!("kolux-rs-autopr-relink-mark-{}", id()));
+        let mark = std::env::temp_dir().join(format!("kolux-autopr-relink-mark-{}", id()));
         let _ = fs::remove_file(&mark);
         branch(&dir, "feature");
         commit_file(&dir, "a.txt", "a\n");
@@ -2066,7 +2066,7 @@ mod tests {
     #[test]
     fn t652_a_linked_worktree_has_a_lock_of_its_own() {
         let (dir, bare) = with_origin("l-wt");
-        let ws = std::env::temp_dir().join(format!("kolux-rs-autopr-lockws-{}", id()));
+        let ws = std::env::temp_dir().join(format!("kolux-autopr-lockws-{}", id()));
         let _ = fs::remove_dir_all(&ws);
         run(&["worktree", "add", "-q", "-b", "ws", &url(&ws), "origin/main"], Some(&dir)).unwrap();
         fs::write(ws.join("w.txt"), "w\n").unwrap();

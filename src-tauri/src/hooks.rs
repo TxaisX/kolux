@@ -25,9 +25,13 @@ pub const TOKEN_HEADER: &str = "x-kolux-token";
 pub const IDENTITY_HEADER: &str = "x-kolux-pane";
 /// USAGE-021: the Claude config folder a status-line report's session runs under, if any.
 pub const CONFIG_HEADER: &str = "x-kolux-config";
-/// Kolux's own script folder under the home folder. DT-C1: not COMPAT's `~/.kolux/agent-hooks`
-/// while the old app is installed beside this one, so neither overwrites the other's scripts.
-pub const SCRIPT_DIR: &str = ".kolux-rs/agent-hooks";
+/// Kolux's own script folder under the home folder. Since the rename it is `~/.kolux/agent-hooks`,
+/// the folder the predecessor app (COMPAT) also used; its scripts have other names (`*-hook.cmd`),
+/// and `write_script` never overwrites a file Kolux did not write (DT-C1 kept them apart before).
+pub const SCRIPT_DIR: &str = ".kolux/agent-hooks";
+/// The script folder before the rename. Kept only so entries naming it are still Kolux's (replaced
+/// on install, removed on clear) and so `migrate_script_dir` can copy it over.
+pub const LEGACY_SCRIPT_DIR: &str = ".kolux-rs/agent-hooks";
 pub const CLAUDE_SCRIPT: &str = "claude.cmd";
 pub const CODEX_SCRIPT: &str = "codex.cmd";
 /// STAT-040: the script Claude Code's status line feeds, and the user's own status line command
@@ -754,7 +758,7 @@ fn queue<T: Send + 'static>(run: impl Fn(T) + Send + 'static) -> impl Fn(T) + Se
     std::thread::spawn(move || {
         for job in taken {
             if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(job))).is_err() {
-                eprintln!("kolux-rs: hooks: the work after a hook's reply failed; the next one still runs");
+                eprintln!("kolux: hooks: the work after a hook's reply failed; the next one still runs");
             }
         }
     });
@@ -785,7 +789,7 @@ fn accept(listener: TcpListener, line: Arc<Line>) {
         if busy.fetch_add(1, Ordering::SeqCst) >= MAX_IN_FLIGHT {
             busy.fetch_sub(1, Ordering::SeqCst);
             if !std::mem::replace(&mut told, true) {
-                eprintln!("kolux-rs: hooks: {MAX_IN_FLIGHT} hook connections already open; closing new ones unanswered until one ends");
+                eprintln!("kolux: hooks: {MAX_IN_FLIGHT} hook connections already open; closing new ones unanswered until one ends");
             }
             continue;
         }
@@ -800,7 +804,7 @@ fn accept(listener: TcpListener, line: Arc<Line>) {
             Ok(_) => told = false,
             Err(e) => {
                 if !std::mem::replace(&mut told, true) {
-                    eprintln!("kolux-rs: hooks: no thread for a hook connection ({e}); closing it unanswered");
+                    eprintln!("kolux: hooks: no thread for a hook connection ({e}); closing it unanswered");
                 }
             }
         }
@@ -1033,7 +1037,7 @@ pub fn status_script() -> String {
 /// line (`prev`, the command Kolux displaced, when that file exists) from the same file, so what
 /// the user had keeps drawing.
 pub fn status_command(script: &str, prev: &str) -> String {
-    format!("k=\"${{TMPDIR:-/tmp}}/kolux-rs-status-$$\"; cat >\"$k\"; \"{script}\" <\"$k\" >/dev/null 2>&1; [ -f \"{prev}\" ] && sh \"{prev}\" <\"$k\"; rm -f \"$k\"; exit 0")
+    format!("k=\"${{TMPDIR:-/tmp}}/kolux-status-$$\"; cat >\"$k\"; \"{script}\" <\"$k\" >/dev/null 2>&1; [ -f \"{prev}\" ] && sh \"{prev}\" <\"$k\"; rm -f \"$k\"; exit 0")
 }
 
 /// STAT-006: outside a Kolux pane the script leaves before reading stdin; the address comes from
@@ -1110,7 +1114,7 @@ fn script(agent: &str, route: &str, prints: bool) -> String {
         "set \"KN=%KN:,=%\"",
         "set \"KN=%KN: =%\"",
         ":name",
-        "set \"KF=%TEMP%\\kolux-rs-hook-%KOLUX_PANE_KEY%-%KN%-%RANDOM%.json\"",
+        "set \"KF=%TEMP%\\kolux-hook-%KOLUX_PANE_KEY%-%KN%-%RANDOM%.json\"",
         "if exist \"%KF%\" goto name",
         "%SystemRoot%\\System32\\more.com >\"%KF%\"",
         "if not defined KP goto spool",
@@ -1172,7 +1176,30 @@ pub fn claude_settings_file() -> PathBuf {
 }
 
 fn is_my_command(command: &str) -> bool {
-    command.replace('\\', "/").contains(SCRIPT_DIR)
+    let c = command.replace('\\', "/");
+    c.contains(SCRIPT_DIR) || c.contains(LEGACY_SCRIPT_DIR)
+}
+
+/// The rename's first start: everything in the old script folder (`LEGACY_SCRIPT_DIR`: scripts, the
+/// kept copies and their sha256 records under `targets/`, the displaced status line `*-prev.sh`) is
+/// copied into `SCRIPT_DIR` where that name is not there yet. Nothing is overwritten and the old
+/// folder is left as it was (`~/.kolux-rs` holds other data too), so a second run copies nothing.
+/// Lock files and links are not copied (`profile_move::copy_tree`). The install that follows
+/// rewrites every agent entry still naming the old folder (`is_my_command` knows both).
+pub fn migrate_script_dir(home: &Path) -> Option<crate::profile_move::Moved> {
+    let from = home.join(LEGACY_SCRIPT_DIR);
+    let md = std::fs::symlink_metadata(&from).ok()?;
+    if !md.is_dir() || crate::profile_move::is_link(&md) {
+        return None;
+    }
+    let to = home.join(SCRIPT_DIR);
+    let mut out = crate::profile_move::Moved { from: from.clone(), ..Default::default() };
+    if let Err(e) = std::fs::create_dir_all(&to) {
+        out.left.push(format!("{} ({e})", to.display()));
+        return Some(out);
+    }
+    crate::profile_move::copy_tree(&from, &to, false, &mut out);
+    Some(out)
 }
 
 fn is_mine(group: &Value) -> bool {
@@ -1332,7 +1359,7 @@ pub(crate) fn write_atomic(file: &Path, bytes: &[u8], before: Option<&str>) -> R
     if let Some(parent) = file.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    let tmp = file.with_extension("json.kolux-rs-tmp");
+    let tmp = file.with_extension("json.kolux-tmp");
     let written = std::fs::File::create(&tmp).and_then(|mut f| f.write_all(bytes).and_then(|_| f.sync_all()));
     // STAT-005: the rewritten file keeps the permissions the user's had.
     if let Ok(meta) = std::fs::metadata(file) {
@@ -1408,7 +1435,7 @@ fn codex_listing(home: &Path) -> Option<Vec<Value>> {
             let _ = s.flush();
         }
     };
-    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux-rs", "title": "Kolux", "version": env!("CARGO_PKG_VERSION") } } }));
+    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux", "title": "Kolux", "version": env!("CARGO_PKG_VERSION") } } }));
     let deadline = Instant::now() + LIST_TIMEOUT;
     let mut listing = None;
     while listing.is_none() {
@@ -1506,7 +1533,7 @@ pub(crate) fn install_codex_mirroring(home: &Path, command: &str, user: Option<&
                 changed = true;
             }
             Ok(_) => {}
-            Err(e) => eprintln!("kolux-rs: codex hooks: {e}"),
+            Err(e) => eprintln!("kolux: codex hooks: {e}"),
         }
     }
     changed |= write_codex_groups(&file, text.as_deref(), &mut hooks, command)?;
@@ -1592,10 +1619,10 @@ pub fn install_codex_home(home: &Path) {
             // T-025-e: the user's own Codex home (never the managed home itself) is copied from.
             let user = crate::trust::codex_config_file().parent().map(Path::to_path_buf).filter(|u| !same_path(&u.to_string_lossy(), &home.to_string_lossy()));
             if let Err(e) = install_codex_mirroring(home, &command, user.as_deref(), codex_listing) {
-                eprintln!("kolux-rs: codex hooks: {e}");
+                eprintln!("kolux: codex hooks: {e}");
             }
         }
-        Err(e) => eprintln!("kolux-rs: codex hook script: {e}"),
+        Err(e) => eprintln!("kolux: codex hook script: {e}"),
     }
 }
 
@@ -1700,7 +1727,7 @@ mod tests {
 
     #[test]
     fn t793_each_pane_env_carries_its_own_token_and_endpoint_file() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-t793-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-hooks-t793-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let h = Hooks { port: 5, token: "secret".into(), endpoint: dir.join(ENDPOINT_FILE) };
@@ -1733,7 +1760,7 @@ mod tests {
     /// names, whichever of the listener and the adopt step comes last.
     #[test]
     fn t793_b4_adopting_a_surviving_pane_writes_its_endpoint_file_in_either_order() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-t793-b4-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-hooks-t793-b4-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let h = Hooks { port: 7, token: "this-run".into(), endpoint: dir.join(ENDPOINT_FILE) };
@@ -2013,8 +2040,8 @@ Content-Length: {}
     fn codex_hooks_go_last_and_are_replaced_in_place() {
         let mut file = ev(r#"{"description":"mine","hooks":{
             "PreToolUse":[{"matcher":"exec_command","hooks":[{"type":"command","command":"lint.cmd"}]}],
-            "Stop":[{"hooks":[{"type":"command","command":"\"C:\\Users\\t\\.kolux-rs\\agent-hooks\\codex.cmd\"","timeout":3}]},{"hooks":[{"type":"command","command":"notify.cmd"}]}]}}"#);
-        let cmd = r#""C:\Users\t\.kolux-rs\agent-hooks\codex.cmd""#;
+            "Stop":[{"hooks":[{"type":"command","command":"\"C:\\Users\\t\\.kolux\\agent-hooks\\codex.cmd\"","timeout":3}]},{"hooks":[{"type":"command","command":"notify.cmd"}]}]}}"#);
+        let cmd = r#""C:\Users\t\.kolux\agent-hooks\codex.cmd""#;
         assert!(install_codex_hooks(&mut file, cmd));
         assert!(!install_codex_hooks(&mut file, cmd), "a second install changes nothing");
         let hooks = file["hooks"].as_object().unwrap();
@@ -2031,7 +2058,7 @@ Content-Length: {}
     #[test]
     fn trust_entries_come_from_codex_listing() {
         let file = r"C:\Users\t\.codex\hooks.json";
-        let mine = r#""C:\Users\t\.kolux-rs\agent-hooks\codex.cmd""#;
+        let mine = r#""C:\Users\t\.kolux\agent-hooks\codex.cmd""#;
         let listing = vec![
             json!({ "key": format!("{file}:stop:1:0"), "eventName": "stop", "command": mine, "currentHash": "sha256:aa", "trustStatus": "untrusted", "sourcePath": file }),
             json!({ "key": format!("{file}:stop:0:0"), "eventName": "stop", "command": "notify.cmd", "currentHash": "sha256:bb", "trustStatus": "untrusted", "sourcePath": file }),
@@ -2113,10 +2140,10 @@ Content-Length: {}
         let mut s = ev(r#"{"permissions":{"allow":["Bash"]},"hooks":{
             "PreToolUse":[{"matcher":"Bash|PowerShell","hooks":[{"type":"command","command":"node guard.js","timeout":5}]},
                           {"matcher":"*","hooks":[{"type":"command","command":"C:/Users/someone/.other-app/agent-hooks/claude-hook.cmd || echo {","timeout":10}]},
-                          {"matcher":"*","hooks":[{"type":"command","command":"C:/old/.kolux-rs/agent-hooks/claude.cmd || exit 0","timeout":10}]}],
+                          {"matcher":"*","hooks":[{"type":"command","command":"C:/old/.kolux/agent-hooks/claude.cmd || exit 0","timeout":10}]}],
             "Stop":[{"hooks":[{"type":"command","command":"C:/Users/someone/.other-app/agent-hooks/claude-hook.cmd || echo {","timeout":10}]}],
             "PreCompact":[{"hooks":[{"type":"command","command":"other"}]}]}}"#);
-        let cmd = "\"C:/Users/me/.kolux-rs/agent-hooks/claude.cmd\" || exit 0";
+        let cmd = "\"C:/Users/me/.kolux/agent-hooks/claude.cmd\" || exit 0";
         assert!(install_claude_hooks(&mut s, cmd));
         let hooks = s["hooks"].as_object().unwrap();
         for e in CLAUDE_EVENTS {
@@ -2138,12 +2165,64 @@ Content-Length: {}
     }
 
     #[test]
+    fn rename_an_entry_under_the_old_script_folder_becomes_exactly_one_new_entry() {
+        let mut s = ev(r#"{"hooks":{
+            "PreToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"\"C:/Users/me/.kolux-rs/agent-hooks/claude.cmd\" || exit 0","timeout":10}]}],
+            "Stop":[{"hooks":[{"type":"command","command":"\"C:/Users/me/.kolux-rs/agent-hooks/claude.cmd\" || exit 0","timeout":10}]}]}}"#);
+        assert!(is_my_command("\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\claude.cmd\""), "the old folder is still Kolux's");
+        let cmd = "\"C:/Users/me/.kolux/agent-hooks/claude.cmd\" || exit 0";
+        assert!(install_claude_hooks(&mut s, cmd));
+        for e in CLAUDE_EVENTS {
+            let groups = s["hooks"][e].as_array().unwrap();
+            assert_eq!(groups.len(), 1, "{e}: one entry, not an old one beside a new one");
+            assert_eq!(groups[0]["hooks"][0]["command"], cmd, "{e}");
+        }
+        assert!(!s.to_string().contains(LEGACY_SCRIPT_DIR));
+    }
+
+    #[test]
+    fn rename_the_old_script_folder_is_copied_without_overwriting_and_twice_is_the_same() {
+        use std::fs;
+        let home = std::env::temp_dir().join(format!("kolux-hookdir-move-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&home);
+        assert!(migrate_script_dir(&home).is_none(), "no old folder: nothing to do");
+        let (old, new) = (home.join(LEGACY_SCRIPT_DIR), home.join(SCRIPT_DIR));
+        fs::create_dir_all(old.join("grok-owners")).unwrap();
+        fs::write(old.join("claude.cmd"), "old claude").unwrap();
+        fs::write(old.join("grok-written.json"), "{}").unwrap();
+        fs::write(old.join("grok-owners").join("a.json"), "a").unwrap();
+        fs::write(old.join("install.lock"), "").unwrap();
+        fs::create_dir_all(&new).unwrap();
+        fs::write(new.join("claude.cmd"), "already here").unwrap();
+        fs::write(new.join("other-app.cmd"), "not ours").unwrap();
+        let first = migrate_script_dir(&home).unwrap();
+        assert!(first.left.is_empty(), "{:?}", first.left);
+        assert_eq!(fs::read_to_string(new.join("claude.cmd")).unwrap(), "already here", "never overwritten");
+        assert_eq!(fs::read_to_string(new.join("other-app.cmd")).unwrap(), "not ours", "the folder is merged into, never wiped");
+        assert_eq!(fs::read_to_string(new.join("grok-written.json")).unwrap(), "{}");
+        assert_eq!(fs::read_to_string(new.join("grok-owners").join("a.json")).unwrap(), "a");
+        assert!(!new.join("install.lock").exists(), "the lock is not carried over");
+        assert!(old.join("claude.cmd").is_file(), "the old folder is never deleted");
+        let listing = |d: &Path| {
+            let mut v: Vec<_> = fs::read_dir(d).unwrap().map(|e| e.unwrap().file_name()).collect();
+            v.sort();
+            v
+        };
+        let before = listing(&new);
+        let second = migrate_script_dir(&home).unwrap();
+        assert_eq!(second.files, 0, "a second run copies nothing");
+        assert_eq!(listing(&new), before);
+        assert_eq!(fs::read_to_string(new.join("claude.cmd")).unwrap(), "already here");
+        let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
     fn the_settings_file_keeps_its_indent_and_is_created_when_missing() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-hooks-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let file = dir.join("settings.json");
-        let x = "\"C:/u/.kolux-rs/agent-hooks/claude.cmd\" || exit 0";
-        let st = status_command("C:/u/.kolux-rs/agent-hooks/claude-status.cmd", "C:/u/.kolux-rs/agent-hooks/claude-status-prev.sh");
+        let x = "\"C:/u/.kolux/agent-hooks/claude.cmd\" || exit 0";
+        let st = status_command("C:/u/.kolux/agent-hooks/claude-status.cmd", "C:/u/.kolux/agent-hooks/claude-status-prev.sh");
         assert_eq!(install_claude(&file, x, &st).unwrap(), (true, None));
         let v: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
         assert_eq!(v["hooks"]["Stop"][0]["hooks"][0]["command"], x);
@@ -2157,11 +2236,11 @@ Content-Length: {}
         assert!(install_claude(&file, x, &st).is_err());
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "not json", "an unreadable file is left alone");
         let script = write_claude_script(&dir).unwrap();
-        assert!(script.ends_with(".kolux-rs/agent-hooks/claude.cmd") && !script.contains('\\'));
+        assert!(script.ends_with(".kolux/agent-hooks/claude.cmd") && !script.contains('\\'));
         let body = std::fs::read_to_string(&script).unwrap();
         assert!(body.starts_with("@echo off\r\n") && body.contains("curl.exe -s -m 1.5") && body.ends_with("exit /b 0\r\n"));
         let status = write_status_script(&dir).unwrap();
-        assert!(status.ends_with(".kolux-rs/agent-hooks/claude-status.cmd"));
+        assert!(status.ends_with(".kolux/agent-hooks/claude-status.cmd"));
         let text = std::fs::read_to_string(&status).unwrap();
         assert!(text.contains("%KP%/claude-status\"") && text.contains("set \"KC=%CLAUDE_CONFIG_DIR%\"") && text.contains("-H \"X-Kolux-Config: %KC%\""), "{text}");
         assert!(!text.contains(agent_hooks::saved::SPOOL_FILE), "a status-line reading is never held for later");
@@ -2172,14 +2251,14 @@ Content-Length: {}
     fn the_status_line_takes_the_slot_and_chains_the_one_it_displaced() {
         // STAT-040: Kolux's command keeps stdin in a file, posts it, then feeds the user's own
         // status line from the same file; the displaced command is handed back for that file.
-        let st = status_command("C:/u/.kolux-rs/agent-hooks/claude-status.cmd", "C:/u/.kolux-rs/agent-hooks/claude-status-prev.sh");
-        assert!(st.contains("cat >\"$k\"") && st.contains("\"C:/u/.kolux-rs/agent-hooks/claude-status.cmd\" <\"$k\"") && st.contains("sh \"C:/u/.kolux-rs/agent-hooks/claude-status-prev.sh\" <\"$k\""), "{st}");
+        let st = status_command("C:/u/.kolux/agent-hooks/claude-status.cmd", "C:/u/.kolux/agent-hooks/claude-status-prev.sh");
+        assert!(st.contains("cat >\"$k\"") && st.contains("\"C:/u/.kolux/agent-hooks/claude-status.cmd\" <\"$k\"") && st.contains("sh \"C:/u/.kolux/agent-hooks/claude-status-prev.sh\" <\"$k\""), "{st}");
         let mut s = ev(r#"{"statusLine":{"type":"command","command":"node ~/line.js","padding":0}}"#);
         assert_eq!(install_claude_status(&mut s, &st), (true, Some("node ~/line.js".into())));
         assert_eq!(s["statusLine"], json!({ "type": "command", "command": st, "padding": 0 }), "padding and the rest stay");
         assert_eq!(install_claude_status(&mut s, &st), (false, None), "a second install changes nothing");
         // A stale Kolux command (another home) is replaced and not chained; an empty slot is filled.
-        let mut stale = ev(r#"{"statusLine":{"type":"command","command":"k=1; \"C:/old/.kolux-rs/agent-hooks/claude-status.cmd\""}}"#);
+        let mut stale = ev(r#"{"statusLine":{"type":"command","command":"k=1; \"C:/old/.kolux/agent-hooks/claude-status.cmd\""}}"#);
         assert_eq!(install_claude_status(&mut stale, &st), (true, None));
         let mut none = ev(r#"{"env":{}}"#);
         assert_eq!(install_claude_status(&mut none, &st), (true, None));
@@ -2268,13 +2347,13 @@ Content-Length: {}
         // USAGE-021: the report names the config folder its session runs under; a report from a
         // different folder than the active account's is dropped, a one-window update keeps the
         // other window as it was.
-        let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nX-Kolux-Config: C:\\u\\.kolux-rs\\claude-accounts\\a\\\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+        let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nX-Kolux-Config: C:\\u\\.kolux\\claude-accounts\\a\\\r\nContent-Length: {}\r\n\r\n{body}", body.len());
         let u = usage(&parse_request(&mut raw.as_bytes()).unwrap(), "tok").unwrap();
-        assert_eq!(u.config_dir.as_deref(), Some("C:\\u\\.kolux-rs\\claude-accounts\\a\\"));
-        assert!(same_folder(Some("c:/u/.kolux-rs/claude-accounts/a"), u.config_dir.as_deref()));
+        assert_eq!(u.config_dir.as_deref(), Some("C:\\u\\.kolux\\claude-accounts\\a\\"));
+        assert!(same_folder(Some("c:/u/.kolux/claude-accounts/a"), u.config_dir.as_deref()));
         assert!(same_folder(None, None));
         assert!(!same_folder(None, u.config_dir.as_deref()), "a managed-account report while the default sign-in is active");
-        assert!(!same_folder(Some("C:/u/.kolux-rs/claude-accounts/b"), u.config_dir.as_deref()));
+        assert!(!same_folder(Some("C:/u/.kolux/claude-accounts/b"), u.config_dir.as_deref()));
         let old = vec![Limit { kind: "five_hour".into(), used_percent: 10.0, resets_at: None }, Limit { kind: "seven_day".into(), used_percent: 20.0, resets_at: Some(5) }];
         let merged = merge_limits(old.clone(), &[Limit { kind: "five_hour".into(), used_percent: 50.0, resets_at: Some(9) }]);
         assert_eq!(merged, vec![Limit { kind: "five_hour".into(), used_percent: 50.0, resets_at: Some(9) }, old[1].clone()]);
@@ -2303,7 +2382,7 @@ Content-Length: {}
 
     #[test]
     fn a_pane_gets_the_hook_variables_with_a_decodable_identity() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-env-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-hooks-env-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let h = Hooks { port: 5, token: "t".into(), endpoint: dir.join(ENDPOINT_FILE) };
         let env = h.pane_env(9, 4);
@@ -2316,19 +2395,19 @@ Content-Length: {}
     #[test]
     fn row_548_b_each_config_folder_keeps_its_own_status_line_windows() {
         use crate::state::Store;
-        let base = std::env::temp_dir().join(format!("kolux-rs-hooks-r548b-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("kolux-hooks-r548b-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(&base).unwrap();
         let store = Store::open(&base).unwrap();
         let win = |kind: &str, used: f64| Limit { kind: kind.into(), used_percent: used, resets_at: Some(9) };
-        let (a, b) = ("C:\\u\\.kolux-rs\\claude-accounts\\a\\", "c:/u/.kolux-rs/claude-accounts/b");
+        let (a, b) = ("C:\\u\\.kolux\\claude-accounts\\a\\", "c:/u/.kolux/claude-accounts/b");
         keep_limits(&store, None, &[win("five_hour", 10.0), win("seven_day", 20.0)]);
         keep_limits(&store, Some(a), &[win("five_hour", 70.0)]);
         keep_limits(&store, Some(b), &[win("five_hour", 5.0)]);
         // Another account's report no longer lands in (or merges with) the default sign-in's windows.
         assert_eq!(limits_of(&store, None), vec![win("five_hour", 10.0), win("seven_day", 20.0)]);
         assert_eq!(limits_of(&store, Some(a)), vec![win("five_hour", 70.0)]);
-        assert_eq!(limits_of(&store, Some("c:/u/.kolux-rs/claude-accounts/a")), limits_of(&store, Some(a)), "case and slash direction do not matter");
+        assert_eq!(limits_of(&store, Some("c:/u/.kolux/claude-accounts/a")), limits_of(&store, Some(a)), "case and slash direction do not matter");
         assert_eq!(limits_of(&store, Some(b)), vec![win("five_hour", 5.0)]);
         // A one-window update keeps the folder's other window; a folder never heard from has none.
         assert_eq!(keep_limits(&store, None, &[win("seven_day", 30.0)]), vec![win("five_hour", 10.0), win("seven_day", 30.0)]);
@@ -2346,13 +2425,13 @@ Content-Length: {}
     #[test]
     fn row_548_b_a_report_from_another_folder_is_kept_and_named_in_the_event() {
         use crate::state::Store;
-        let base = std::env::temp_dir().join(format!("kolux-rs-hooks-r548b-of-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("kolux-hooks-r548b-of-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(&base).unwrap();
         let store = Store::open(&base).unwrap();
         let win = |used: f64| Limit { kind: "five_hour".into(), used_percent: used, resets_at: Some(9) };
         let usage = |dir: Option<&str>, limits: Vec<Limit>| Usage { pane_key: 1, context_tokens: None, context_window: None, limits, session: None, at: None, cost_usd: None, config_dir: dir.map(String::from) };
-        let folder = "C:/u/.kolux-rs/claude-accounts/b";
+        let folder = "C:/u/.kolux/claude-accounts/b";
         // the event names the folder the report came from, and the windows are in that folder's store
         assert_eq!(keep_other(&store, &usage(Some(folder), vec![win(33.0)])), Some(json!(folder)));
         assert_eq!(limits_of(&store, Some(folder)), vec![win(33.0)]);
@@ -2369,7 +2448,7 @@ Content-Length: {}
     fn row_213_the_first_prompt_in_a_suggested_workspace_renames_its_branch_once() {
         use crate::{git::Git, projects, state::Store};
         let git = Git::detect().unwrap();
-        let base = std::env::temp_dir().join(format!("kolux-rs-hooks-r213-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("kolux-hooks-r213-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let (profile, repo, root) = (base.join("profile"), base.join("repo"), base.join("root"));
         for d in [&profile, &repo, &root] {
@@ -2574,7 +2653,7 @@ Content-Length: {}
     #[test]
     fn t583_a_protected_command_is_answered_from_the_last_settings_read_while_slow_work_holds_the_store() {
         use crate::state::Store;
-        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-t583-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-hooks-t583-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Arc::new(Mutex::new(Store::open(&dir).unwrap()));
         store.lock().unwrap().save_settings(&json!({ "protectedRules": [{ "id": "t583", "name": "Pod deletes", "kind": "starts-with", "pattern": "kubectl delete" }] })).unwrap();

@@ -1685,7 +1685,7 @@ mod tests {
     use std::cell::RefCell;
 
     fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-auto-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-auto-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d

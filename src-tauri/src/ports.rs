@@ -7,7 +7,7 @@
 //!
 //! ponytail: Windows does not hand out another process's working folder without reading its
 //! memory, so "the process's working folder" is the folder of the terminal that started it
-//! (T-226-b in kolux-rs-after.md for a real cwd read once a Win32 feature is allowed in Cargo.toml).
+//! (T-226-b in kolux-after.md for a real cwd read once a Win32 feature is allowed in Cargo.toml).
 //!
 //! A Stop ends a program, so it is licensed strictly (ports-stop, from PR #42): the row the user
 //! saw must still be the same program (its pid and start time agree three times: on the row, in a

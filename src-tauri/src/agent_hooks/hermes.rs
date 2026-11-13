@@ -44,8 +44,20 @@ pub const EVENTS: [&str; 13] = [
 ];
 /// Seconds (Hermes's unit; its default is 60).
 const TIMEOUT: u64 = 10;
-const BEGIN: &str = "# >>> kolux-rs status hooks (";
-const END: &str = "# <<< kolux-rs status hooks <<<";
+const BEGIN: &str = "# >>> kolux status hooks (";
+const END: &str = "# <<< kolux status hooks <<<";
+/// The block's lines before the rename to Kolux; an old block is still Kolux's, so it is replaced
+/// or taken out, never left beside a new one.
+const LEGACY_BEGIN: &str = "# >>> kolux-rs status hooks (";
+const LEGACY_END: &str = "# <<< kolux-rs status hooks <<<";
+
+fn begin_rest(t: &str) -> Option<&str> {
+    t.strip_prefix(BEGIN).or_else(|| t.strip_prefix(LEGACY_BEGIN))
+}
+
+fn is_end(t: &str) -> bool {
+    t == END || t == LEGACY_END
+}
 /// The status row's hint while Hermes has not approved Kolux's hooks.
 pub const CONSENT: &str = "Hermes has not approved Kolux's hooks yet; it asks once per hook on first use (or start it with --accept-hooks)";
 
@@ -125,10 +137,10 @@ pub fn blocks(text: &str) -> Result<Vec<(usize, usize)>, String> {
     for (at, l) in lines(text) {
         let t = bare(l).trim_start();
         if let Some((start, want, joined, body)) = open.as_mut() {
-            if t.starts_with(BEGIN) {
+            if begin_rest(t).is_some() {
                 return Err("a Kolux block opens inside another one; left alone".into());
             }
-            if t == END {
+            if is_end(t) {
                 if sum(body) != *want {
                     return Err("Kolux's block was edited by hand; left alone".into());
                 }
@@ -143,10 +155,10 @@ pub fn blocks(text: &str) -> Result<Vec<(usize, usize)>, String> {
             }
             continue;
         }
-        if let Some(rest) = t.strip_prefix(BEGIN) {
+        if let Some(rest) = begin_rest(t) {
             let want = rest.split_once("sum ").map(|(_, s)| s.chars().take(16).collect()).unwrap_or_default();
             open = Some((at, want, rest.contains("; joined)"), Vec::new()));
-        } else if t == END {
+        } else if is_end(t) {
             return Err("an end line of Kolux's block has no begin line; left alone".into());
         }
     }

@@ -2212,7 +2212,7 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
         let own = crate::codex_accounts::user_dir(std::env::var(crate::codex_accounts::HOME_ENV).ok().as_deref(), user.as_deref());
         if let Some(own) = own.filter(|o| o.as_path() != std::path::Path::new(home)) {
             if let Err(e) = crate::codex_accounts::sync_settings(&own, std::path::Path::new(home)) {
-                eprintln!("kolux-rs: codex settings: {e}");
+                eprintln!("kolux: codex settings: {e}");
             }
         }
         if hooks_on {
@@ -2505,7 +2505,7 @@ mod tests {
     /// T-792 (P2b-04): what a pane printed reaches its history file through the diagnostics mask.
     #[test]
     fn t792_pane_history_is_masked_on_disk() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-term-t792-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-term-t792-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let mut h = History::open(&dir, 7).unwrap();
         h.append(b"$ export ANTHROPIC_API_KEY=sk-ant-HISTSECRET1234567890\r\n");
@@ -3008,7 +3008,7 @@ mod tests {
 
     #[test]
     fn term_106_saved_output_keeps_the_newest_lines_within_the_cap_and_prunes_only_known_keys() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t068-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t068-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let mut h = History::open(&dir, 7).expect("history folder");
         let line = vec![b'x'; 1023];
@@ -3288,10 +3288,10 @@ mod tests {
 
     #[test]
     fn t548b_a_restored_claude_pane_starts_on_its_own_account() {
-        let listed = |id: &str| (id == "acct-2").then(|| "C:/u/.kolux-rs/claude-accounts/acct-2".to_string());
-        let active = || Some("C:/u/.kolux-rs/claude-accounts/acct-1".to_string());
-        assert_eq!(claude_pane_dir(Some("acct-2"), listed, active).unwrap().as_deref(), Some("C:/u/.kolux-rs/claude-accounts/acct-2"), "its own folder, not the active one's");
-        assert_eq!(claude_pane_dir(None, listed, active).unwrap().as_deref(), Some("C:/u/.kolux-rs/claude-accounts/acct-1"), "a new pane takes the active account's folder");
+        let listed = |id: &str| (id == "acct-2").then(|| "C:/u/.kolux/claude-accounts/acct-2".to_string());
+        let active = || Some("C:/u/.kolux/claude-accounts/acct-1".to_string());
+        assert_eq!(claude_pane_dir(Some("acct-2"), listed, active).unwrap().as_deref(), Some("C:/u/.kolux/claude-accounts/acct-2"), "its own folder, not the active one's");
+        assert_eq!(claude_pane_dir(None, listed, active).unwrap().as_deref(), Some("C:/u/.kolux/claude-accounts/acct-1"), "a new pane takes the active account's folder");
         assert!(claude_pane_dir(Some("gone"), listed, active).unwrap_err().contains("no longer listed"), "an account no longer listed is an error");
         let mut read = false;
         claude_pane_dir(Some("acct-2"), listed, || { read = true; active() }).unwrap();
@@ -3313,7 +3313,7 @@ mod tests {
     /// `helper` is set it also forks a helper that inherits its output and outlives it by eight seconds
     /// (an updater or daemon a real list command leaves behind).
     fn stand_in(tag: &str, name: &str, out: Option<&str>, helper: bool) -> (std::path::PathBuf, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t066e-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t066e-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("w")).unwrap();
         let fixture = dir.join(format!("{name}.out"));

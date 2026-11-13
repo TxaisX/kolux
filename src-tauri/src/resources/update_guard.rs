@@ -4,7 +4,7 @@
 //! the Windows publisher check on top: before a downloaded installer is kept as "ready", its
 //! Authenticode signature is read with Windows' own `Get-AuthenticodeSignature` (Windows
 //! PowerShell from the system folder, never one found on PATH) and compared with the running
-//! program's own signature, or with the publisher pinned into the build (`KOLUX_RS_PUBLISHER` at
+//! program's own signature, or with the publisher pinned into the build (`KOLUX_PUBLISHER` at
 //! build time). The rules, in `decide`:
 //!
 //! - An installer whose contents do not match its signature (`HashMismatch`) is always refused.
@@ -15,7 +15,7 @@
 //!   validly signed one: the minisign key has already vouched for it.
 //! - An unclear answer (the tool failed, timed out, or reported a status that is not a definite
 //!   verdict) stops that one download and is not remembered, so the next check tries again (FIX-2).
-//!   A copy built signed (`KOLUX_RS_SIGNED_BUILD=1`) that cannot read its own signature updates
+//!   A copy built signed (`KOLUX_SIGNED_BUILD=1`) that cannot read its own signature updates
 //!   nothing; a copy not built signed treats an unreadable own signature as unsigned.
 //!
 //! There is no setting, variable or argument that skips this. A refused installer is written to the
@@ -31,16 +31,32 @@ pub const KEY_REFUSED: &str = "update.refusedInstallers";
 /// The refused list keeps this many installers.
 const REFUSED_KEEP: usize = 20;
 /// The release job builds this in as `1` when it signs the copy (FIX-2 FS1).
-pub const SIGNED_BUILD: bool = match option_env!("KOLUX_RS_SIGNED_BUILD") {
+pub const SIGNED_BUILD: bool = match option_env!("KOLUX_SIGNED_BUILD") {
     Some(v) => v.len() == 1 && v.as_bytes()[0] == b'1',
-    None => false,
+    None => match LEGACY_SIGNED_BUILD {
+        Some(v) => v.len() == 1 && v.as_bytes()[0] == b'1',
+        None => false,
+    },
 };
+/// The build variables' names before the rename to Kolux (`KOLUX_RS_*`), read when the new name is
+/// unset so a release job that still sets the old name builds the same copy.
+const LEGACY_SIGNED_BUILD: Option<&str> = option_env!("KOLUX_RS_SIGNED_BUILD");
+const LEGACY_PUBLISHER: Option<&str> = option_env!("KOLUX_RS_PUBLISHER");
+const LEGACY_PUBLISHER_ISSUER: Option<&str> = option_env!("KOLUX_RS_PUBLISHER_ISSUER");
+
+/// `new` (the build variable under its new name), else `old` (its name before the rename).
+const fn either(new: Option<&'static str>, old: Option<&'static str>) -> Option<&'static str> {
+    match new {
+        Some(v) => Some(v),
+        None => old,
+    }
+}
 /// A signature read that has not answered by then is given up (FIX-2 AFTER 1).
 pub const SIGNATURE_LIMIT: Duration = Duration::from_secs(20);
 /// The publisher (certificate subject) pinned into a signed release build, if the release job set it.
 /// Unset today. TODO(signing): the release job sets it from the signing certificate's subject once
 /// Authenticode signing exists; until then a signed copy trusts its own signature's subject.
-pub const PINNED_PUBLISHER: Option<&str> = non_blank(option_env!("KOLUX_RS_PUBLISHER"));
+pub const PINNED_PUBLISHER: Option<&str> = non_blank(either(option_env!("KOLUX_PUBLISHER"), LEGACY_PUBLISHER));
 /// The marker the page reads to show the security stop card (no install button).
 pub const REFUSED_MARK: &str = "update:refused|";
 
@@ -157,11 +173,11 @@ pub fn decide(running: &SignState, installer: &SignState, pinned: Option<&str>, 
 }
 
 /// The certificate authority pinned into a signed release build, if the release job set it
-/// (`KOLUX_RS_PUBLISHER_ISSUER`, the issuer line of the signing certificate). Unset today: no
+/// (`KOLUX_PUBLISHER_ISSUER`, the issuer line of the signing certificate). Unset today: no
 /// issuer is checked. TODO(signing): set it from the real certificate once Authenticode signing exists.
-pub const PINNED_ISSUER: Option<&str> = non_blank(option_env!("KOLUX_RS_PUBLISHER_ISSUER"));
+pub const PINNED_ISSUER: Option<&str> = non_blank(either(option_env!("KOLUX_PUBLISHER_ISSUER"), LEGACY_PUBLISHER_ISSUER));
 
-/// A build env var set to nothing (`KOLUX_RS_PUBLISHER=`) is "unset", not a pin: a blank or
+/// A build env var set to nothing (`KOLUX_PUBLISHER=`) is "unset", not a pin: a blank or
 /// whitespace-only value reads as `None`.
 pub const fn non_blank(v: Option<&'static str>) -> Option<&'static str> {
     let Some(s) = v else { return None };
@@ -268,7 +284,7 @@ impl Drop for HeldCopy {
 pub fn vet(bytes: &[u8], dir: &Path, version: &str, running: &SignState, pins: Pins, signed_build: bool, check: impl Fn(&Path) -> SignState) -> Verdict {
     let safe: String = version.chars().map(|c| if c.is_ascii_alphanumeric() || c == '.' || c == '-' { c } else { '_' }).collect();
     let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
-    let file = dir.join(format!("kolux-rs-update-{safe}-{}-{nonce}.exe", std::process::id()));
+    let file = dir.join(format!("kolux-update-{safe}-{}-{nonce}.exe", std::process::id()));
     let installer = match std::fs::create_dir_all(dir).and_then(|()| HeldCopy::create_at(&file, bytes)) {
         Ok(held) => check(held.path()),
         Err(e) => SignState::Unknown(format!("the download could not be written for the check: {}", e.kind())),
@@ -364,11 +380,11 @@ pub fn check_file(path: &Path) -> SignState {
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let Some(sys) = system_dir() else { return SignState::Unknown("Windows' system folder could not be found".into()) };
     let ps = sys.join(r"WindowsPowerShell\v1.0\powershell.exe");
-    let script = "$ErrorActionPreference='Stop'; $s = Get-AuthenticodeSignature -LiteralPath $env:KOLUX_RS_SIG_FILE; \
+    let script = "$ErrorActionPreference='Stop'; $s = Get-AuthenticodeSignature -LiteralPath $env:KOLUX_SIG_FILE; \
         $c = $s.SignerCertificate; \
         [pscustomobject]@{ status = [string]$s.Status; subject = $(if ($c) { $c.Subject } else { '' }); issuer = $(if ($c) { $c.Issuer } else { '' }); thumbprint = $(if ($c) { $c.Thumbprint } else { '' }) } | ConvertTo-Json -Compress";
     let mut cmd = std::process::Command::new(ps);
-    cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script]).env("KOLUX_RS_SIG_FILE", path).creation_flags(CREATE_NO_WINDOW);
+    cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script]).env("KOLUX_SIG_FILE", path).creation_flags(CREATE_NO_WINDOW);
     match bounded_output(cmd, SIGNATURE_LIMIT) {
         Some(out) => parse_report(&String::from_utf8_lossy(&out)),
         None => SignState::Unknown("the Windows signature check failed or took too long".into()),
@@ -524,7 +540,7 @@ mod tests {
 
     #[test]
     fn vet_checks_a_temporary_copy_and_removes_it() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t293-{}-{}", std::process::id(), line!()));
+        let dir = std::env::temp_dir().join(format!("kolux-t293-{}-{}", std::process::id(), line!()));
         let seen = std::cell::RefCell::new(None);
         let v = vet(b"MZ fake installer", &dir, "1.2.3", &signed(ACME, "A"), Pins::default(), false, |p| {
             *seen.borrow_mut() = Some((p.to_path_buf(), std::fs::read(p).unwrap()));
@@ -533,7 +549,7 @@ mod tests {
         assert!(matches!(v, Verdict::Stop(_)));
         let (path, bytes) = seen.into_inner().unwrap();
         assert_eq!(bytes, b"MZ fake installer");
-        assert!(path.file_name().unwrap().to_string_lossy().starts_with("kolux-rs-update-1.2.3-"));
+        assert!(path.file_name().unwrap().to_string_lossy().starts_with("kolux-update-1.2.3-"));
         assert!(!path.exists(), "the checked copy is removed");
         // An odd version string never escapes the folder.
         let v = vet(b"x", &dir, "../../evil", &SignState::Unsigned, Pins::default(), false, |p| {
@@ -595,7 +611,7 @@ mod tests {
         assert_eq!(bounded_output(mk(30), Duration::from_millis(300)), None);
         assert!(started.elapsed() < Duration::from_secs(10), "{:?}", started.elapsed());
         assert!(bounded_output(mk(1), Duration::from_secs(20)).is_some(), "a quick answer is returned");
-        assert_eq!(bounded_output(std::process::Command::new("kolux-rs-no-such-program-fix2"), Duration::from_secs(1)), None);
+        assert_eq!(bounded_output(std::process::Command::new("kolux-no-such-program-fix2"), Duration::from_secs(1)), None);
         assert_eq!(SIGNATURE_LIMIT, Duration::from_secs(20));
     }
 
@@ -617,7 +633,7 @@ mod tests {
 
     #[test]
     fn the_signed_build_flag_is_off_unless_the_release_job_sets_it() {
-        assert!(!SIGNED_BUILD || option_env!("KOLUX_RS_SIGNED_BUILD") == Some("1"));
+        assert!(!SIGNED_BUILD || either(option_env!("KOLUX_SIGNED_BUILD"), LEGACY_SIGNED_BUILD) == Some("1"));
     }
 
     // The real Windows tool on a file that is certainly unsigned (a fresh text file). This reads a
@@ -625,7 +641,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn the_windows_tool_reports_an_unsigned_file() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t293-real-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t293-real-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("plain.txt");
         std::fs::write(&f, "not signed").unwrap();
@@ -638,7 +654,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn the_checked_copy_cannot_be_swapped_while_it_is_checked() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t293-held-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t293-held-{}", std::process::id()));
         let swapped = std::cell::RefCell::new(Vec::new());
         let v = vet(b"MZ the real bytes", &dir, "9.9.9", &SignState::Unsigned, Pins::default(), false, |p| {
             let mut tries = swapped.borrow_mut();
@@ -656,7 +672,7 @@ mod tests {
 
     #[test]
     fn a_held_copy_never_takes_over_a_file_that_is_already_there() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t293-held-new-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t293-held-new-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("planted.exe");
         std::fs::write(&f, b"planted by someone else").unwrap();
@@ -674,7 +690,7 @@ mod tests {
     // The write-then-reopen gap is safe only because of the read-back: a swap inside it is refused.
     #[test]
     fn a_copy_swapped_in_the_reopen_gap_is_refused_and_retried() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-m798-gap-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-m798-gap-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("gap.exe");
         let swap = f.clone();
@@ -694,7 +710,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn the_windows_tool_can_read_a_held_copy() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t293-held-ps-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t293-held-ps-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let bytes = std::fs::read(std::env::current_exe().unwrap()).unwrap();
         let plain = dir.join("plain.exe");

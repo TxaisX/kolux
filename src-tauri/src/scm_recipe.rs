@@ -311,9 +311,9 @@ mod tests {
     /// T-663: a template program that is not found by full path is refused, never run by its bare name.
     #[test]
     fn t663_an_unknown_template_program_is_refused() {
-        let c = Composed { program: "kolux-rs-t663-no-such-writer".into(), agent: None, args: vec![], input: None, line: String::new() };
+        let c = Composed { program: "kolux-t663-no-such-writer".into(), agent: None, args: vec![], input: None, line: String::new() };
         let err = resolve(&c).unwrap_err();
-        assert!(err.contains("kolux-rs-t663-no-such-writer") && err.contains("did not start it"), "{err}");
+        assert!(err.contains("kolux-t663-no-such-writer") && err.contains("did not start it"), "{err}");
         // The commit-message writer's own command goes through the same lookup; a relative path is named as one.
         let err = program_by_full_path("./scripts/msg.sh").unwrap_err();
         assert!(err.contains("is not a full path"), "{err}");
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn git019_worktree_values_come_from_the_repository() {
-        let tmp = std::env::temp_dir().join(format!("kolux-rs-recipe-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("kolux-recipe-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
         let g = |a: &[&str]| crate::git::run(a, Some(&tmp)).unwrap();

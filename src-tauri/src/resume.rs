@@ -135,7 +135,7 @@ fn with<T>(app: &tauri::AppHandle, f: impl FnOnce(&mut Resumes) -> T) -> Option<
     if let Some(store) = app.try_state::<std::sync::Mutex<crate::state::Store>>() {
         if let Ok(store) = store.lock() {
             if let Err(e) = save_waits(&store, &r) {
-                eprintln!("kolux-rs: resume waits not saved: {e}");
+                eprintln!("kolux: resume waits not saved: {e}");
             }
         }
     }

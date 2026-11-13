@@ -57,7 +57,7 @@ pub fn former_of(profile: &Path) -> Option<PathBuf> {
 }
 
 /// Whether `md` is a link of any kind (a symbolic link or a junction); the copy never follows one.
-fn is_link(md: &fs::Metadata) -> bool {
+pub(crate) fn is_link(md: &fs::Metadata) -> bool {
     md.file_type().is_symlink() || reparse_point(md)
 }
 
@@ -212,7 +212,7 @@ fn copy_file(from: &Path, to: &Path, out: &mut Moved) {
     }
 }
 
-fn copy_tree(from: &Path, to: &Path, top: bool, out: &mut Moved) {
+pub(crate) fn copy_tree(from: &Path, to: &Path, top: bool, out: &mut Moved) {
     let Ok(entries) = fs::read_dir(from) else {
         out.left.push(format!("{} (unreadable)", from.display()));
         return;

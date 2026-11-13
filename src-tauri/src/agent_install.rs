@@ -1221,7 +1221,7 @@ mod tests {
 
     // ---- T-580: a fenced run puts the user Path back; npm's engine refusal reads plainly ----
 
-    const LEAK: &str = r"G:\Temp\kolux-rs-live\home\AppData\Roaming\npm";
+    const LEAK: &str = r"G:\Temp\kolux-live\home\AppData\Roaming\npm";
 
     fn real_path() -> StoredValue {
         StoredValue { kind: 2, data: br"%USERPROFILE%\AppData\Local\Microsoft\WindowsApps;C:\Tools".to_vec() }

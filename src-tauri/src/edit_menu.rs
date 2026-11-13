@@ -129,7 +129,7 @@ mod imp {
                 out.push(Entry { name, label, command: kind == COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND, enabled: enabled.as_bool() });
             }
             if !LOGGED.swap(true, Ordering::Relaxed) {
-                eprintln!("kolux-rs: edit menu raw items: {}", raw.join(" "));
+                eprintln!("kolux: edit menu raw items: {}", raw.join(" "));
             }
             Ok(out)
         }
