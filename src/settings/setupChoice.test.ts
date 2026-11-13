@@ -4,6 +4,7 @@ import { renderToString } from "react-dom/server";
 import { RepoSetupView } from "./RepoSetup";
 import { SETUP_POLICY_KEY, choiceOptions, choiceSave, effectiveChoice, globalChoice, globalOptions, hasSetup, runsNote, scriptSave, trustNote, type RepoSetup } from "./setupChoice";
 import { SetupPolicyView } from "./SetupPolicyRow";
+import { selectIn } from "../tasks/selectHtml";
 
 const base: RepoSetup = { local: null, shared: null, sharedError: null, policy: null, inherited: "local", wait: false, suggestBoth: false, runError: null };
 
@@ -118,7 +119,7 @@ test("T-294-c: the row offers local, shared and both, shows the saved one, and t
   expect(globalOptions().map((o) => o.value)).toEqual(["local", "shared", "both"]);
   expect(SETUP_POLICY_KEY).toBe("setupPolicy");
   const html = renderToString(createElement(SetupPolicyView, { stored: "both", onChoose: () => {} }));
-  expect(html).toMatch(/<option value="both" selected="">/);
+  expect(selectIn(html, "which setup runs")?.chosen).toBe("Both: yours first, then kolux.yaml's");
   expect(html).toContain("Which setup runs");
   expect(choiceOptions({ ...base, inherited: globalChoice("both") })[0].label).toBe("Same as everywhere (both, yours first)");
 });

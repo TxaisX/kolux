@@ -18,6 +18,8 @@ export const sameCard = sameProps<Card>({ expanded: "same", onToggle: "same", ch
 export const sameNotice = sameProps<Notice>({ title: "same", body: "same", primary: "same", onPrimary: "same", secondary: "same", onSecondary: "same" });
 const sameExpand = sameProps<NonNullable<TerminalProps["expand"]>>({ on: "same", can: "same", toggle: "same" });
 const sameDrag = sameProps<NonNullable<TerminalProps["dragCell"]>>({ onStart: "same", onEnd: "same" });
+/** One session per cell: the tab's items in the Pane menu; the close rows are rebuilt each render, so by value. */
+const sameTab = sameProps<NonNullable<TerminalProps["tab"]>>({ pinned: "same", onPin: "same", onColor: "same", closes: "data", onCloseKeys: "same" });
 
 /** The settings fields the window rewrites as the user works (every focus and tab change saves the layout, every
  *  screen switch the screen, and the save comes back as a new settings object), which a pane never reads. */
@@ -59,7 +61,6 @@ export const sameTerminal = sameProps<TerminalProps>({
   keySettings: sameSettings, // read through a ref by the key handler, never while drawing
   crew: "data",
   stop: "data",
-  context: "same",
   onBell: "same",
   unread: "same",
   onPty: "same",
@@ -93,7 +94,7 @@ export const sameTerminal = sameProps<TerminalProps>({
   onSplit: "same",
   dragCell: sameDrag,
   onEqualize: "same",
-  onMoveToTab: "same",
+  tab: sameTab,
   expand: sameExpand,
   card: sameCard,
   account: "same",

@@ -1,8 +1,9 @@
+// @vitest-environment happy-dom
 // T-709 (DT-C145): mid-merge or mid-rebase, All Changes offers Abort behind an Ask that names what is
 // lost; scm_abort runs only after Confirm, and the button is absent when nothing is in progress.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle, until } from "../tasks/realDom";
 import { emptyStatus, type Status } from "../scm/model";
 
 const h = vi.hoisted(() => ({ status: null as unknown as Status, calls: [] as [string, unknown][], fail: false }));

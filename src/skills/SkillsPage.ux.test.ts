@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-702 (DT-C138): the earlier UI audit only ever verified the "More actions" button on the Skills page.
 // Every other control is driven here through its real handler in the mounted page, and each test asserts what
 // the person sees change (a menu, a row list, a status line, a dialog) or the app command that goes out.
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeNode, byLabel, byText, click, find, installDom, mount, settle, typeInto, until, type FakeDocument } from "../tasks/fakeDom";
+import { FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle, typeInto, until, type FakeDocument } from "../tasks/realDom";
 import { INSTALL_DETAIL, SKILLS_SHOW_EVENT } from "./skillBarStore";
 import { BLOCKED, COPIED, COPY_FAILED, DELETE_NONE_ELIGIBLE, INSTALL_NO_SKILLS, QUERY_LIMIT, type Root, type Scan, type Skill } from "./skills";
 
@@ -131,7 +132,8 @@ const toolbar = (root: Root_) => find(root, (n) => n.attrs.role === "toolbar" &&
 /** The toolbar's Refresh button, found by its title because its words change while it scans. */
 const refresh = (root: Root_) => find(root, (n) => n.localName === "button" && n.attrs.title === "Scan every folder again")[0];
 const spins = (b: Root_) => find(b, (n) => (n.attrs.class ?? "").includes("spin")).length;
-const disabled = (n: Root_) => "disabled" in n.attrs || n.disabled === true;
+// A src/ui menu row that is off stays focusable (aria-disabled), as Base UI's rows do; a page button uses disabled.
+const disabled = (n: Root_) => "disabled" in n.attrs || n.disabled === true || n.attrs["aria-disabled"] === "true";
 
 async function page(onClose: () => void = () => {}) {
   const { default: SkillsPage } = await import("./SkillsPage");
@@ -292,7 +294,9 @@ describe("T-702 Skills filters", () => {
     await click(container, button(container, "Skill folders"));
     expect(dialog(container, "Skill folders")).toBeUndefined();
     await click(container, button(container, "Skill folders"));
-    await click(container, find(container, (n) => n.attrs.class === "menu-backdrop")[0]);
+    // a press outside it, as the mouse sends it
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) await fire(container, type, document.body);
+    await settle();
     expect(dialog(container, "Skill folders")).toBeUndefined();
   });
 });

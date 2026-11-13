@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // FIX-1 (stand-in review FIX-SOON 4): the pull request page's outward-write rules, proven on the
 // page itself. The commands are a mocked invoke that records every call; the page is the real
 // component, mounted into the small stand-in DOM in fakeDom.ts and clicked like a user would.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { byLabel, byText, click, fire, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "./fakeDom";
+import { byLabel, byText, click, fire, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "./realDom";
 import { escapeStep, partialNote } from "./prPageState";
 import type { PrPageData } from "./prModel";
 

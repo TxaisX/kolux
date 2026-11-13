@@ -1,32 +1,29 @@
 // @vitest-environment node
 // UX audit findings/usage-status.md rows 3, 4, 7, 9, 10, 15, 16, 17 and 18 (the Usage side). Invented figures only.
 import { createElement } from "react";
-import { renderToStaticMarkup, renderToString } from "react-dom/server";
-import { beforeEach, expect, test, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { expect, test, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
-const useDialogFocus = vi.fn();
-vi.mock("../chrome/dialogFocus", () => ({ useDialogFocus: (...a: unknown[]) => useDialogFocus(...a) }));
 
 import { loadFailedText, scanFailedNote, scopeFailedNote, trackFailedNote } from "./analyticsNotes";
 import ShareButton from "./ShareButton";
-import ShareCard from "./ShareCard";
 import { WorkspaceSpendView } from "./WorkspaceSpend";
 import { workspaceSpend } from "./workspaceRibbon";
 import { LoadFailed, TokenAnalyticsView, figureLabel } from "./TokenAnalytics";
-import analyticsSource from "./TokenAnalytics.tsx?raw";
-import shareCardSource from "./ShareCard.tsx?raw";
 import type { Row, Usage } from "./tokens";
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
-const stylesSource = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
-
+const readSource = (p: URL): string => nodeFs.readFileSync(p, "utf8");
+// The source-text rows read the files from disk: a `?raw` import comes through Vite's transform
+// cache, which can serve the pre-change text and fail these rows on correct code.
+const stylesSource = readSource(new URL("../styles.css", import.meta.url));
+const analyticsSource = readSource(new URL("./TokenAnalytics.tsx", import.meta.url));
+const shareCardSource = readSource(new URL("./ShareCard.tsx", import.meta.url));
 const row = (day: string, p: Partial<Row> = {}): Row => ({ day, session: "s1", model: "claude-opus-4-5", cwd: "C:\\work\\app", band: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cacheWrite1h: 0, reasoning: 0, last: 0, ...p });
 const today = new Date(2026, 2, 31);
 const usage = (tracking = true): Usage => ({ tracking: { claude: tracking, codex: false }, claude: { scannedAt: 1, rows: [row("2026-03-30", { input: 1234 })], error: null }, codex: null });
 const view = (extra: Record<string, unknown> = {}, pick: "claude" | "overview" = "claude") =>
   renderToStaticMarkup(createElement(TokenAnalyticsView, { usage: usage(), pick, scanning: [], onPick: () => {}, onTrack: () => {}, onRefresh: () => {}, today, filters: { range: "30", scope: "all", roots: [] }, onFilters: () => {}, ...extra }));
-
-beforeEach(() => useDialogFocus.mockClear());
 
 test("usage-status.md:3: a token_usage failure draws the error and a Retry button, not nothing", () => {
   const html = renderToStaticMarkup(createElement(LoadFailed, { error: "db locked", onRetry: () => {} }));
@@ -41,11 +38,12 @@ test("usage-status.md:3: a token_usage failure draws the error and a Retry butto
   expect(analyticsSource).toContain("onClick={busy ? undefined : onRetry}");
   // the flag is set for the read and cleared however it ends
   expect(analyticsSource).toMatch(/setLoading\(true\);\s*invoke<Usage>\("token_usage"\)/);
-  expect(analyticsSource).toContain(".finally(() => setLoading(false))");
+  // cleared on the still-mounted component only, so a read that ends after unmount does not warn
+  expect(analyticsSource).toContain(".finally(() => mounted.current && setLoading(false))");
   expect(busy).toContain(loadFailedText("db locked"));
   expect(analyticsSource).toContain("<LoadFailed error={loadError} onRetry={load} busy={loading} />");
   // Retry keeps the error on screen until the read works, instead of blanking the panel while it runs
-  expect(analyticsSource).toContain("then((u) => { setUsage(u); setLoadError(\"\"); }");
+  expect(analyticsSource).toContain("then((u) => { if (mounted.current) { setUsage(u); setLoadError(\"\"); }");
   expect(analyticsSource).not.toMatch(/setLoadError\(""\);\s*invoke/);
 });
 
@@ -70,7 +68,7 @@ test("usage-status.md:10: a failed rescan and an unreadable project list are nam
   expect(scanFailedNote("codex", "timeout")).toBe("Could not rescan Codex's logs (timeout); the figures shown are the last saved ones.");
   expect(scopeFailedNote("offline")).toContain("every local use is shown");
   expect(analyticsSource).toContain("scanFailedNote(p, e)");
-  expect(analyticsSource).toMatch(/\.catch\(\(e\) => \{\s*setFilters\(\(f\) => \(\{ \.\.\.f, scope: "all" \}\)\);\s*note\("scope", scopeFailedNote\(e\)\);/);
+  expect(analyticsSource).toMatch(/\.catch\(\(e\) => \{\s*if \(!alive\) return;\s*setFilters\(\(f\) => \(\{ \.\.\.f, scope: "all" \}\)\);\s*note\("scope", scopeFailedNote\(e\)\);/);
 });
 
 test("usage-status.md:7: the Share on X button uses the shared .btn class, which has CSS", () => {
@@ -79,12 +77,10 @@ test("usage-status.md:7: the Share on X button uses the shared .btn class, which
   expect(html).not.toContain("usage-share");
 });
 
-test("usage-status.md:9: the Share dialog takes focus, traps Tab and restores it through the shared helper, with Escape closing it", () => {
-  const onClose = vi.fn();
-  renderToString(createElement(ShareCard, { provider: "claude", rows: [row("2026-03-30", { input: 5 })], range: "30", today, onClose }));
-  expect(useDialogFocus).toHaveBeenCalledTimes(1);
-  expect(useDialogFocus.mock.calls[0][1]).toBe(onClose);
-  expect(shareCardSource).not.toContain('"Escape"'); // the dialog's own window listener is gone
+test("usage-status.md:9: the Share dialog is the shared src/ui Dialog, which takes focus, traps Tab, restores it and closes on Escape", () => {
+  // The behaviour is proved on a real DOM in ShareCard.dom.test.tsx; here, that the dialog is the shared one.
+  expect(shareCardSource).toMatch(/<Dialog onClose=\{onClose\} label=\{`Share \$\{card\.providerName\} usage`\}/);
+  expect(shareCardSource).not.toContain('"Escape"'); // no key code of its own
 });
 
 test("usage-status.md:15: the strip ribbon's label sits on an element that can carry one (role group)", () => {

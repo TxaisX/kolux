@@ -207,6 +207,9 @@ export function installDom() {
   g.window = win;
   g.document = doc;
   g.IS_REACT_ACT_ENVIRONMENT = true;
+  // A tab strip hands over to Base UI (src/ui) once its code is read, and Base UI asks whether a node is an element
+  // with instanceof. Every element here is a FakeNode. Opening a Base UI popup needs a real DOM (happy-dom).
+  win.Element = win.HTMLElement = g.Element = g.HTMLElement = FakeNode;
   return { doc, win, store };
 }
 

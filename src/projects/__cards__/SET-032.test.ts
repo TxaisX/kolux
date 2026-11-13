@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // SET-032 acceptance (page half): the real ProjectsPanel on the small DOM. Browse hands the chosen folder to workspaces_place_set;
 // where the next worktree then lands is proven in src-tauri/tests/cards_17.rs (set032_box1/box2) on the real Rust code.
 // MIRROR: the stand-in workspaces_place_set only echoes the saved folder back; the Rust half mirrors its two settings writes (projects.rs:2359).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/realDom";
 
 const h = vi.hoisted(() => ({
   pick: null as string | null,
@@ -36,8 +37,7 @@ let unmount: () => Promise<void> = async () => {};
 beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
-  Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
-  Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
+  Object.assign(doc, { visibilityState: "visible", hidden: false });
   h.pick = null;
   h.place = { dir: "", flat: false, used: [], fromEnv: false };
   h.calls = [];

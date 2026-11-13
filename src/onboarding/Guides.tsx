@@ -23,14 +23,14 @@ import { closeOnSettings, stepAside, useDialogFocus } from "./dialogFocus";
 import { submitKeys } from "./submitKeys";
 import { defaultAgentId } from "../launch/agents";
 import {
-  caps, demoFrames, doneFrom, paletteKeys, doneId, firstOpen, forward, latest, markGuide, moveOn, nextTip, OPEN_EXPLORE, OPEN_GUIDE, guideClosed, PAGE_SHOWN, railKey, ring, STEPS, stopDone, stopOf, TWO_REPOS, withRecord, words, workflowDone, WORKFLOWS,
+  caps, demoFrames, doneFrom, paletteKeys, doneId, firstOpen, forward, latest, markGuide, moveOn, nextTip, OPEN_EXPLORE, OPEN_GUIDE, guideClosed, railKey, ring, STEPS, stopDone, stopOf, TWO_REPOS, withRecord, words, workflowDone, WORKFLOWS,
   checklistHidden, HIDE_PATCH, legacyProfile, type At, type CliStatus, type Facts, type GuideRecord, type Place, type Setup, type StepId, type TipId,
 } from "./guide";
 
 type Scan = { skills: { name: string; source: string }[] };
 
 type Read = Omit<Facts, "cli">;
-const UNREAD: Read = { workspaces: null, gitProjects: null, pageShown: false, integrations: null, notifications: null, agent: null, setupScript: null };
+const UNREAD: Read = { workspaces: null, gitProjects: null, integrations: null, notifications: null, agent: null, setupScript: null };
 
 /** ONB-015: reads what each step stands for. A project counts as git when its workspace list
  *  reads; the lasting count of git projects is kept on the profile once it reaches two. Resolves
@@ -39,7 +39,7 @@ const UNREAD: Read = { workspaces: null, gitProjects: null, pageShown: false, in
 async function readFacts(check: ReturnType<typeof latest<boolean>>, put: (f: Partial<Read>) => void, alive: () => boolean): Promise<boolean | null> {
   const [settings, g] = await Promise.all([invoke<Record<string, unknown>>("get_settings").catch(() => null), invoke<GuideRecord>("guide_get").catch(() => null)]);
   if (!alive()) return null;
-  put({ notifications: settings ? settings.notifyOnFinish !== false : null, agent: settings ? defaultAgentId(settings) : null, pageShown: !!g?.tried.includes(PAGE_SHOWN), legacy: legacyProfile(settings, g?.tried ?? null), splitCredit: splitCredit(g?.tried, g?.features) });
+  put({ notifications: settings ? settings.notifyOnFinish !== false : null, agent: settings ? defaultAgentId(settings) : null, legacy: legacyProfile(settings, g?.tried ?? null), splitCredit: splitCredit(g?.tried, g?.features) });
   put({ integrations: "checking" });
   // ONB-018: connected means signed in and the token accepted, not only a cached sign-in.
   const gh = readSeenCached(invoke).then(

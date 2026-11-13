@@ -8,6 +8,7 @@ import { Refresh, Search } from "../chrome/icons";
 import type { Usage } from "../usage/tokens";
 import { runUsage, usageWord } from "./usage";
 import { ago, dashboardRows, onScreen, outputNote, RUN_BATCH, runTiles, startedBy, statusWord, triggerLabel, type Automation, type Run, type RunFilter } from "./model";
+import { Select } from "../ui/Select";
 
 const ROW = 33; // .autos-table td: 32 px and a 1 px rule
 const filters: Array<{ value: RunFilter; label: string }> = [
@@ -96,13 +97,7 @@ export default function RunsDashboard({ runs, automations, now, error, onRefresh
           <Search />
           <input className="field" placeholder="Search automation, status, workspace" value={query} onChange={(e) => narrow(() => setQuery(e.target.value))} aria-label="Search runs" />
         </label>
-        <select className="field" aria-label="Status" value={filter} onChange={(e) => narrow(() => setFilter(e.target.value as RunFilter))}>
-          {filters.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+        <Select label="Status" value={filter} onChange={(v) => narrow(() => setFilter(v as RunFilter))} options={filters.map((f) => ({ value: f.value, label: f.label }))} className="field" />
         <span className="autos-gap" />
         <button className="ib" title="Refresh" onClick={onRefresh}>
           <Refresh />

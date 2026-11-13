@@ -4,6 +4,7 @@
 // rather than remembered.
 import { useEffect, useMemo, useRef, useState } from "react";
 import OutOfFlow from "../chrome/OutOfFlow";
+import { Dialog } from "../ui/Dialog";
 
 export type Pick = { path: string; tag?: string; staged?: boolean };
 export type Listing = { items: Pick[]; capped: boolean; note?: string };
@@ -99,9 +100,9 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
   const tipParts = tip && split({ path: tip.path });
 
   return (
-    <OutOfFlow>
-      <div className="menu-backdrop" onMouseDown={onClose} />
-      <div className="menu note-picker" role="dialog" aria-label={`Open a ${what}`}>
+    <>
+      {/* src/ui Dialog: focus starts in the filter, Tab stays inside, Escape and a click outside close it. */}
+      <Dialog onClose={onClose} label={`Open a ${what}`} className="menu note-picker" backdrop="menu-backdrop">
         <input
           autoFocus
           className="picker-input"
@@ -162,13 +163,15 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
           {list && hits.length === SHOWN && <div className="menu-hint">Showing the {filter.trim() ? "best" : "first"} {SHOWN}; type more to narrow them down.</div>}
           {list?.capped && <div className="menu-hint">The list is incomplete: only the first {list.items.length} are listed, and this workspace has more.</div>}
         </div>
-      </div>
+      </Dialog>
       {tip && tipParts && (
-        <div className="picker-tip" role="tooltip" style={tip.x < innerWidth * 0.6 ? { left: tip.x + 14, top: tip.y + 18 } : { right: innerWidth - tip.x + 6, top: tip.y + 18 }}>
-          <span className="picker-tip-folder">{root.replace(/[\\/]+$/, "") + (root.includes("\\") ? "\\" : "/") + tipParts.folder}</span>
-          <strong>{tipParts.name}</strong>
-        </div>
+        <OutOfFlow>
+          <div className="picker-tip" role="tooltip" style={tip.x < innerWidth * 0.6 ? { left: tip.x + 14, top: tip.y + 18 } : { right: innerWidth - tip.x + 6, top: tip.y + 18 }}>
+            <span className="picker-tip-folder">{root.replace(/[\\/]+$/, "") + (root.includes("\\") ? "\\" : "/") + tipParts.folder}</span>
+            <strong>{tipParts.name}</strong>
+          </div>
+        </OutOfFlow>
       )}
-    </OutOfFlow>
+    </>
   );
 }

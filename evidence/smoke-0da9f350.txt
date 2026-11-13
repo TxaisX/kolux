@@ -1,0 +1,4 @@
+pnpm smoke at 2026-11-12T21:11:11.351Z on 0da9f350 (G:\Dev\kolux-lanes\o2-tests)
+args: --only 7 --port 1500 --cdp 9350 --identifier com.txaisxiong.kolux.o2.smoke --timeout 15; T-184 ticked: false; flow 5 report-only
+PASS 7: 6 sessions in one workspace: the sidebar lists the folder row and 6 session rows (no .pane-row), clicking the folder shows 6 panes, and a restart kept 6 panes
+smoke: 1/1 flows passed

@@ -37,7 +37,7 @@ try {
   /* not a git checkout */
 }
 // A slot held for an hour counts as stale: keep the lane's slot fresh while the long scenarios run.
-const slot = slots ? join(slots, "slot.mjs") : join(root, "..", "kolux-rs-slots", "slot.mjs");
+const slot = slots ? join(slots, "slot.mjs") : join(root, "..", "kolux-slots", "slot.mjs");
 const keepSlot = existsSync(slot) ? setInterval(() => sh(process.execPath, [slot, "acquire", "stress"]).catch(() => {}), 10 * 60_000) : null;
 keepSlot?.unref();
 

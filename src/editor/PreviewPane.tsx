@@ -15,19 +15,19 @@ import { hideFrontFor, splitFront } from "./frontMatter";
 import { FrontMatterBlock } from "../shell/MdViewControls";
 import { frontControl } from "../shell/mdView";
 import { mdPrefs, setMdPrefs } from "../shell/mdPrefs";
-import { useMenuKeys } from "./menuNav";
+import { Menu, MenuItem } from "../ui/Menu";
 import { followClick, inertClick, type LinkHandler } from "./linkClicks";
 import { drawDiagrams, esc, loadRenderers, renderNote, watchRenderers } from "./diagrams";
 import { filterDataPictures } from "./notePictures";
 import { showPicturesIn } from "./pictureDom";
 import { readPicture } from "./pictureBytes";
 import { mimeOf } from "./imageFiles";
-import { bytesToDataUri, exportNotePdf, noteTitle } from "../browser/notePdf";
+import { bytesToDataUri, exportNotePdf, noteTitle } from "./notePdf";
 import { useKeymap } from "../keys/KeymapContext";
 import { withChord } from "../terminal/PaneMenu";
 import { labelOf, matchEvent } from "../keys/keymap";
 import "./editor-extras.css";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 
 type Props = { id: number; path: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; worktree?: string | null; onLink?: LinkHandler };
 
@@ -87,7 +87,8 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
   const [toc, setToc] = useState(false);
   // EDIT-018: the actions menu and the line saying how the PDF export went.
   const [menu, setMenu] = useState(false);
-  const { box: menuBox, remember } = useMenuKeys(menu, () => setMenu(false));
+  // The Note actions menu: a src/ui Menu hanging from its dots button (the arrow keys, Escape and the focus hand-back are its own).
+  const menuButton = useRef<HTMLButtonElement>(null);
   const exporting = useRef(false); // a second Export while one runs would print the note twice
   const [pdfLine, setPdfLine] = useState<string | null>(null);
   const page = useRef<HTMLDivElement>(null);
@@ -100,8 +101,19 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
     void loadRenderers();
     return watchRenderers(() => setLibs((n) => n + 1));
   }, []);
+  // N-04: the page is drawn from the note once it has settled (the editor's own preview waits 300 ms too). Drawing
+  // per keystroke re-parsed and re-sanitised the whole note on the UI thread.
+  const [settled, setSettled] = useState<string | null>(null);
+  useEffect(() => {
+    if (text === null) {
+      setSettled(null);
+      return;
+    }
+    const id = window.setTimeout(() => setSettled(text), 300);
+    return () => window.clearTimeout(id);
+  }, [text]);
   // EDIT-019 (row 94): front matter is its own block above the note, shown at first and remembered per file (VIEW-113); the page below is the body.
-  const { front, body } = useMemo(() => splitFront(text ?? ""), [text]);
+  const { front, body } = useMemo(() => splitFront(settled ?? ""), [settled]);
   // The choice is held with its path and saved on the click, so a pane moved to another file reads that file's own choice.
   const [held, setHeld] = useState({ path, hide: false });
   const hideFront = hideFrontFor(held, path, (p) => mdPrefs(p).hideFront);
@@ -110,7 +122,7 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
     setMdPrefs(path, { hideFront: !hideFront });
   };
   const frontCtl = frontControl(front, hideFront);
-  const html = useMemo(() => (text === null ? "" : renderNote(body, (md) => renderMarkdown(md, true))), [text, body, libs]);
+  const html = useMemo(() => (settled === null ? "" : renderNote(body, (md) => renderMarkdown(md, true))), [settled, body, libs]);
   useEffect(() => {
     let alive = true;
     if (page.current) void drawDiagrams(page.current, true, () => alive);
@@ -144,9 +156,9 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
 
   // GIT-042: the add-note shortcut reads the selection in the rendered page.
   useEffect(() => {
-    selections.set(id, () => domPick(document.querySelector(`.pane.preview[data-key="${id}"] .md-preview`), path, text ?? ""));
+    selections.set(id, () => domPick(document.querySelector(`.pane.preview[data-key="${id}"] .md-preview`), path, settled ?? ""));
     return () => void selections.delete(id);
-  }, [id, path, text]);
+  }, [id, path, settled]);
 
   // A preview opened from the explorer or Quick Open takes the keyboard, so Mod+F answers at once.
   useEffect(() => {
@@ -193,9 +205,11 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
   return (
     <section ref={section} className={`pane editor preview${focused ? " focused" : ""}${toc && hasHeadings ? " toc-open" : ""}`} hidden={hidden} aria-label={`Preview of ${name}`} onMouseDown={onFocus} onKeyDownCapture={onKeys} data-kind="preview" data-key={id} tabIndex={-1}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="Markdown preview">
           <FileCode size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{name}</span>
         <span className="preview-tag">Preview</span>
         <span className="path" title={path}>
@@ -213,24 +227,14 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
         )}
         <span className="right">
           <span className="diff-actions">
-            <button className="ib" aria-haspopup="menu" aria-expanded={menu}
-              onClick={(e) => {
-                remember(e.currentTarget); // before the menu opens: its first row takes focus at once
-                setMenu((m) => !m);
-              }}
-              title="Note actions" aria-label="Note actions">
+            <button ref={menuButton} className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Note actions" aria-label="Note actions">
               <Dots size={12} />
             </button>
-            {menu && (
-              <OutOfFlow>
-                <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
-                <div ref={menuBox} className="menu diff-menu" role="menu" aria-label="Note actions">
-                  <button role="menuitem" className="menu-item" onClick={() => void exportPdf()}>
-                    <span className="name">Export to PDF...</span>
-                  </button>
-                </div>
-              </OutOfFlow>
-            )}
+            <Menu open={menu} onClose={() => setMenu(false)} label="Note actions" anchor={menuButton} align="end" offset={4} className="diff-menu">
+              <MenuItem onClick={() => void exportPdf()}>
+                <span className="name">Export to PDF...</span>
+              </MenuItem>
+            </Menu>
           </span>
           <button className="ib" onClick={onClose} title={withChord("Close tab", labelOf(keymap, "tab.close"))} aria-label="Close tab">
             <Close size={12} />

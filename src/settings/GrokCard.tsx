@@ -4,7 +4,6 @@
 // and a sign-in the user already made shows as connected. Once connected the card shows Manage and
 // Disconnect (ACCT-015): Disconnect erases only the xAI key Kolux saved; the Grok CLI's own
 // sign-in is left alone and the card says how to sign out of Grok itself.
-import { trapTab } from "../chrome/dialogFocus";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { clearReadFailure, connectFailed, readFailed } from "../onboarding/firstRun";
@@ -13,6 +12,7 @@ import { AttentionNote, fixDoes, fixFor, type Attention } from "./Attention";
 import { liveCheck, OtherWays, taglineOf } from "./ConnectGrid";
 import { settleWithin } from "./pending";
 import Ask, { type Question } from "../chrome/Ask";
+import { Dialog } from "../ui/Dialog";
 
 export type GrokView = {
   connection: "cli" | "key" | "none";
@@ -139,30 +139,17 @@ export function GrokCardView({ view, pending, error, onAction }: { view: GrokVie
 export function GrokKeyDialog({ open, onSubmit, onClose }: { open: boolean; onSubmit: (key: string) => void; onClose: () => void }) {
   const [key, setKey] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (open) input.current?.focus();
-  }, [open]);
   const cancel = () => {
     setKey("");
     onClose();
   };
+  // A src/ui Dialog over Settings: the key field takes focus, Tab stays inside, Escape and a click outside cancel, and
+  // Settings under it stays open (T-565). Keys typed in it stop at the box, so Settings' own keys never see them.
   return (
-    <div
-      className="ask-backdrop"
-      hidden={!open}
-      onKeyDown={(e) => {
-        if (e.key !== "Escape") return;
-        e.stopPropagation(); // T-565: this Escape is the dialog's; Settings under it stays open
-        cancel();
-      }}
-    >
+    <Dialog open={open} onClose={cancel} label="Use an xAI API key" className="ask" viewport="ask-backdrop" initialFocus={input} tabIndex={-1} onKeyDown={(e) => e.stopPropagation()}>
+      {/* The box is the Dialog's, so the form inside it takes no box of its own. */}
       <form
-        className="ask"
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        aria-label="Use an xAI API key"
-        onKeyDown={trapTab}
+        style={{ display: "contents" }}
         onSubmit={(e) => {
           e.preventDefault();
           const k = key.trim();
@@ -182,7 +169,7 @@ export function GrokKeyDialog({ open, onSubmit, onClose }: { open: boolean; onSu
           </button>
         </div>
       </form>
-    </div>
+    </Dialog>
   );
 }
 

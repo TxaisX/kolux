@@ -17,6 +17,7 @@ import { chatResumeBlock } from "./chatResume";
 import { InFlight } from "./inflight";
 import SessionDetail from "./SessionDetail";
 import SessionFiles from "./SessionFiles";
+import { Select } from "../ui/Select";
 
 export type PanelProps = {
   /** The window's settings and the way to save one (the view options and the scope live there, so every window sees them). */
@@ -228,13 +229,7 @@ function AgentsPanelBody(props: PanelProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select className="agents-select" aria-label="Which sessions to list" value={scopePref.scope} onChange={(e) => onSave(SCOPE_KEY, chooseScope(e.target.value as Scope))}>
-          {SCOPE_LABELS.map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
-            </option>
-          ))}
-        </select>
+        <Select label="Which sessions to list" value={scopePref.scope} onChange={(v) => onSave(SCOPE_KEY, chooseScope(v as Scope))} options={SCOPE_LABELS.map(([v, l]) => ({ value: v, label: l }))} className="agents-select" />
         <button type="button" className="btn" aria-expanded={optionsOpen} title="Sort, group, hide agents, how many to list" onClick={() => setOptionsOpen(!optionsOpen)}>
           {changed > 0 ? `Options (${changed})` : "Options"}
         </button>
@@ -249,33 +244,15 @@ function AgentsPanelBody(props: PanelProps) {
         <div className="agents-options" aria-label="View options">
           <label>
             Order
-            <select className="agents-select" value={view.sort} onChange={(e) => setView({ sort: e.target.value as SortBy })}>
-              {SORT_LABELS.map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
+            <Select label="Order" value={view.sort} onChange={(v) => setView({ sort: v as SortBy })} options={SORT_LABELS.map(([v, l]) => ({ value: v, label: l }))} className="agents-select" />
           </label>
           <label>
             Group
-            <select className="agents-select" value={view.group} onChange={(e) => setView({ group: e.target.value as GroupBy })}>
-              {GROUP_LABELS.map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
+            <Select label="Group" value={view.group} onChange={(v) => setView({ group: v as GroupBy })} options={GROUP_LABELS.map(([v, l]) => ({ value: v, label: l }))} className="agents-select" />
           </label>
           <label>
             List at most
-            <select className="agents-select" value={view.depth === null ? "all" : String(view.depth)} onChange={(e) => setView({ depth: e.target.value === "all" ? null : Number(e.target.value) })}>
-              {DEPTHS.map((d) => (
-                <option key={d === null ? "all" : d} value={d === null ? "all" : String(d)}>
-                  {d === null ? "Unlimited" : `${d} per agent`}
-                </option>
-              ))}
-            </select>
+            <Select label="List at most" value={view.depth === null ? "all" : String(view.depth)} onChange={(v) => setView({ depth: v === "all" ? null : Number(v) })} options={DEPTHS.map((d) => ({ value: d === null ? "all" : String(d), label: d === null ? "Unlimited" : `${d} per agent` }))} className="agents-select" />
           </label>
           <label>
             <input type="checkbox" checked={view.hideEmpty} onChange={(e) => setView({ hideEmpty: e.target.checked })} />

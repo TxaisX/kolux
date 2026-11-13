@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-675 (DT-C111; VIEW-014): the Space page's batch delete on the small DOM, with the back end stood in. Fails when
 // SpaceView.tsx goes back to deleting every ticked row (even ones the search hides), to dropping keepBranch, or to
 // an enabled checkbox on a row that cannot be deleted.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byLabel, click, type FakeDocument, type FakeNode, find, installDom, mount, typeInto, until } from "../tasks/fakeDom";
+import { byLabel, click, type FakeDocument, type FakeNode, find, installDom, mount, typeInto, until } from "../tasks/realDom";
 import type { SpaceRow } from "../projects/space";
 
 const back = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[], rows: [] as unknown[] }));

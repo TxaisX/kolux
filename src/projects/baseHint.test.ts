@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { behindHint, hintDismissed, HINT_DISMISSED_SETTING, isBehindHint, notesToShow, REFRESH_SETTING, refreshesOnCreate } from "./baseHint";
+import { behindHint, hintDismissed, HINT_DISMISSED_SETTING, isBehindHint, REFRESH_SETTING, refreshesOnCreate } from "./baseHint";
 
 // the sentence refresh_base makes in projects.rs
 const hint = "main is 3 commits behind origin/main; update it, or turn on Refresh the base first in Settings > Git & worktrees";
@@ -14,11 +14,9 @@ test("the behind suggestion is told apart from the other notes", () => {
 
 test("create again after dismissing the hint: no hint, the other notes stay", () => {
   expect(behindHint([hint, other], {})).toBe(hint);
-  expect(notesToShow([hint, other], {})).toEqual([hint, other]);
   const dismissed = { [HINT_DISMISSED_SETTING]: true };
   expect(hintDismissed(dismissed)).toBe(true);
   expect(behindHint([hint, other], dismissed)).toBeNull();
-  expect(notesToShow([hint, other], dismissed)).toEqual([other]);
 });
 
 test("automatic updating is off unless the setting is exactly true", () => {

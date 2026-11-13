@@ -27,7 +27,8 @@ import { codeHighlighting, editorMode } from "./syntax";
 import { MergeView, unifiedMergeView } from "@codemirror/merge";
 import { ChevronDown, Close, FileCode, List } from "../chrome/icons";
 import { baseName } from "./buffers";
-import { copiers, look } from "./EditorPane";
+import { copiers } from "./EditorPane";
+import { look } from "./editorTheme";
 import { allChangesContext, type LastFocus } from "./allChangesCopy";
 import { clashesOf, withClashes } from "./changeConflicts";
 import { withoutWhitespace } from "./DiffPane";
@@ -44,6 +45,8 @@ import { withChord } from "../terminal/PaneMenu";
 import { labelOf } from "../keys/keymap";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, abortLabel, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
 import { bulkPaths, commitWait, discardOne, unstagePaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
+import { Select } from "../ui/Select";
 
 export type Entry = { path: string; staged: boolean; code: string; lines: number | null; binary: boolean; stamp: string; /** git's two-letter code of an unresolved conflict; such a file is listed first and drawn without a diff (T-227-d). */ clash?: string; /** P2: a staged rename's old path (scm change_entries). */ from?: string };
 /** The base a branch is measured against and the snapshot commit the sides are read from. */
@@ -60,6 +63,11 @@ const CEILING = 560; // px, the most a text section may take before it scrolls i
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp|ico|svg)$/i;
 
 export const entryKey = (e: Entry) => `${e.staged ? "s" : "u"}|${e.path}`;
+/** Everything drawn from a list of entries, as one short string: the file, its side, its code, its size
+ *  and the stamp Rust sends, which changes whenever the change does. A watcher tick that finds the same
+ *  signature keeps the list it drew, so the UI thread does not stringify every file's old and new text
+ *  on each tick (audit N-05). */
+export const listSignature = (es: Entry[]) => es.map((e) => `${entryKey(e)}|${e.code}|${e.lines ?? "-"}|${e.binary ? "b" : "t"}|${e.clash ?? ""}|${e.from ?? ""}|${e.stamp}`).join("\n");
 /** The height a section reserves before it draws, so the scroll does not jump. */
 export const estimate = (e: Entry) => {
   const n = e.lines ?? 0;
@@ -183,7 +191,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           if (!alive) return;
           setBase(base);
           setError(null);
-          setEntries((old) => (old && JSON.stringify(old) === JSON.stringify(es) ? old : es));
+          setEntries((old) => (old && listSignature(old) === listSignature(es) ? old : es));
         },
         (err) => alive && setError(String(err)),
       );
@@ -367,9 +375,11 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   return (
     <section className={`pane editor all-changes${focused ? " focused" : ""}`} hidden={hidden} aria-label="All Changes" onMouseDown={onFocus} data-kind="changes" data-key={id} tabIndex={-1}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="All Changes">
           <FileCode size={13} />
         </span>
+        <HeadMarks />
         <span className="title">All Changes</span>
         <span className="preview-tag">
           <ViewedTag entries={entries ?? []} viewed={viewed} ready={ready} />
@@ -378,10 +388,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           {root}
         </span>
         <span className="right ac-opts">
-          <select className="ac-mode" aria-label="Compare" title="What the changes are measured against" value={mode} onChange={(e) => setMode(e.target.value as "tree" | "base")}>
-            <option value="tree">Working tree</option>
-            <option value="base">{base ? `Branch vs ${base.against}` : "Branch vs base"}</option>
-          </select>
+          <Select label="Compare" value={mode} onChange={(v) => setMode(v as "tree" | "base")} options={[{ value: "tree", label: "Working tree" }, { value: "base", label: base ? `Branch vs ${base.against}` : "Branch vs base" }]} className="ac-mode" title="What the changes are measured against" />
           <span className="view-switch" role="group" aria-label="Layout">
             <button aria-pressed={!layout.split} onClick={() => setOver((o) => ({ ...o, split: false }))} title="Inline">
               Inline

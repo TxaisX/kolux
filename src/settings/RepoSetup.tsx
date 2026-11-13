@@ -5,6 +5,7 @@ import { clearLeft, failLeft, keepLeft, takeLeft, useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { choiceOptions, choiceSave, runsNote, scriptSave, trustedWords, trustNote, type RepoSetup } from "./setupChoice";
+import { Select } from "../ui/Select";
 
 export interface SetupActions {
   onSave: (script: string) => void;
@@ -90,13 +91,7 @@ export function RepoSetupView({ setup, notice, status, start, leftError, actions
       )}
       <div className="look-select">
         <span>Which runs</span>
-        <select aria-label="Which setup script runs" className="field" value={setup.policy ?? ""} onChange={(e) => actions.onChoice(e.target.value)}>
-          {choiceOptions(setup).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select label="Which setup script runs" value={setup.policy ?? ""} onChange={(v) => actions.onChoice(v)} options={choiceOptions(setup).map((o) => ({ value: o.value, label: o.label }))} className="field" />
       </div>
       {setup.runError && (
         <p className="conn-detail warn" role="alert" data-run-error="true">
@@ -138,12 +133,12 @@ export function RepoSetupView({ setup, notice, status, start, leftError, actions
       </label>
       <label className="check">
         Setup opens in{" "}
-        <select aria-label="Setup opens in" value={setup.mode ?? "tab"} onChange={(e) => actions.onMode?.(e.target.value)}>
-          <option value="tab">a new tab</option>
-          <option value="right">a split to the right</option>
-          <option value="down">a split below</option>
-          <option value="ask">ask for each workspace (no bulk launch)</option>
-        </select>
+        <Select label="Setup opens in" value={setup.mode ?? "tab"} onChange={(v) => actions.onMode?.(v)} options={[
+          { value: "tab", label: "a new tab" },
+          { value: "right", label: "a split to the right" },
+          { value: "down", label: "a split below" },
+          { value: "ask", label: "ask for each workspace (no bulk launch)" },
+        ]} className="" />
       </label>
       <p className="conn-detail">The New workspace dialog can still send setup to a split instead of a tab.</p>
       {leftError && (

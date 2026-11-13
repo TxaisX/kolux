@@ -1,21 +1,19 @@
 // VIEW-078: the Ports item of the status bar. It counts the ports the active workspace listens on
-// and, when clicked, lists them with the address a dev server printed, an Open button (Kolux
-// browser; Shift+Ctrl-click for the system browser) and a Stop button. Ports held by processes
-// outside the workspace are listed as external and have no Stop. A failed scan names its problem
+// and, when clicked, lists them with the address a dev server printed, an Open button (which hands
+// the address to the system browser, since Kolux no longer draws web pages) and a Stop button. Ports
+// held by processes outside the workspace are listed as external and have no Stop. A failed scan names its problem
 // and keeps the last good list. The tying of a port to a workspace, and every guard a Stop passes
 // (same program as the row, every holder the workspace's own, a known Git worktree that is no home
 // folder), happens in ports.rs; a refusal comes back as the note under the title, and a Stop that
 // ended nothing (the program was already gone, or still runs but left the port) says so there too.
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { openInBrowser } from "../browser/openIn";
-import { restoreFocus } from "../shell/paletteCaps";
-import { watchEscape } from "../switcher/accounts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { openExternal } from "../open/openExternal";
 import { chunkBytes } from "../terminal/codec";
 import { onTerminalOutput } from "../terminal/outputBus";
-import { PrintedUrls, addressText, afterScan, capNote, openAddress, openWhere, ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
+import { PrintedUrls, addressText, afterScan, capNote, openAddress,  ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
 import "./ports.css";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Popover } from "../ui/Popover";
 
 type Props = { active: string | null; workspaces: string[] };
 
@@ -31,9 +29,9 @@ export default function PortsItem({ active, workspaces }: Props) {
   const [stopping, setStopping] = useState<string[]>([]);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const wasOpen = useRef(false);
   // The row key of a Stop that was pressed with keyboard focus on it: when that row disappears focus would fall to the page body.
   const stopFocus = useRef<string | null>(null);
+  const scanned = useRef<string | null>(null); // the workspace the list on screen belongs to
   const latest = useRef({ active, workspaces });
   latest.current = { active, workspaces };
 
@@ -43,14 +41,7 @@ export default function PortsItem({ active, workspaces }: Props) {
     return () => void off.then((f) => f());
   }, [printed]);
 
-  // Escape closes the popover wherever focus is; focus goes into it on open and back to the trigger on close.
-  useEffect(() => (open ? watchEscape(window, () => setOpen(false)) : undefined), [open]);
-  useEffect(() => {
-    if (open) menu.current?.focus();
-    else if (wasOpen.current) restoreFocus(button.current, (sel) => document.querySelector<HTMLElement>(sel));
-    wasOpen.current = open;
-  }, [open]);
-
+  // The popover is src/ui's: Escape closes it wherever focus is, focus goes into it on open and back to the trigger on close.
   useEffect(() => {
     const k = stopFocus.current;
     if (k === null || !open || view.rows.some((r) => rowKey(r) === k)) return;
@@ -59,13 +50,21 @@ export default function PortsItem({ active, workspaces }: Props) {
   }, [view.rows, open]);
 
   useEffect(() => {
-    if (active === null) return setView({ rows: [], error: null });
+    if (active === null) {
+      scanned.current = null;
+      return setView({ rows: [], error: null });
+    }
     let live = true;
     const scan = () =>
       invoke<PortRow[]>("ports_list", { workspaces: latest.current.workspaces, active })
         .then((rows) => live && setView((v) => afterScan(v, { rows })))
         .catch((err) => live && setView((v) => afterScan(v, { error: String(err) })));
-    setView({ rows: [], error: null });
+    // N-17: only a different workspace clears the list. Opening or closing the popover kept clearing it, so the
+    // count dropped to nothing on a click and a failed scan threw away the last good list it says it still shows.
+    if (scanned.current !== active) {
+      scanned.current = active;
+      setView({ rows: [], error: null });
+    }
     void scan();
     const t = setInterval(scan, open ? OPEN_MS : CLOSED_MS);
     return () => {
@@ -75,7 +74,6 @@ export default function PortsItem({ active, workspaces }: Props) {
   }, [active, open]);
 
   if (active === null) return null;
-  const rect = open ? button.current?.getBoundingClientRect() : null;
   const say = (text: string, bad = false) => (setNote(text), setNoteBad(bad));
   const stop = (r: PortRow, focused: boolean) => {
     const k = rowKey(r);
@@ -94,44 +92,42 @@ export default function PortsItem({ active, workspaces }: Props) {
       })
       .finally(() => setStopping((s) => s.filter((x) => x !== k)));
   };
-  const openRow = (r: PortRow, e: MouseEvent) => {
+  const openRow = (r: PortRow) => {
     const url = openAddress(r, printed.forPort(r.port, view.rows));
-    if (openWhere(e) === "system") void invoke("open_external", { url }).catch((err) => say(String(err), true));
-    else openInBrowser(url);
+    void openExternal(url).catch((err) => say(String(err), true));
   };
+  const r = open ? button.current?.getBoundingClientRect() : undefined;
+  const at = r ? { x: Math.max(8, Math.min(r.left, window.innerWidth - 380)), y: r.top } : null;
   return (
     <>
       <button ref={button} className="item ports-open" data-item="ports" title="Ports this workspace is listening on" aria-haspopup="dialog" aria-expanded={open} onClick={() => (setNote(null), setNoteBad(false), setOpen((o) => !o))}>
         Ports {ownCount(view.rows)}
       </button>
-      {open && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div ref={menu} tabIndex={-1} className="menu ports-menu" role="dialog" aria-label="Ports" style={{ left: Math.max(8, Math.min(rect?.left ?? 8, window.innerWidth - 380)), bottom: Math.max(8, window.innerHeight - (rect?.top ?? 0) + 4), minWidth: 340 }}>
-            <div className="menu-title">Ports</div>
-            {view.error && <div className="note error">{view.error}{view.rows.length > 0 ? " Showing the last list." : ""}</div>}
-            <div role="status">{note && <div className={noteBad ? "note error" : "note"}>{note}</div>}</div>
-            {view.rows.length === 0 && !view.error && <div className="sb-hint">Nothing in this workspace is listening on a port.</div>}
-            {view.rows.map((r) => (
-              <div key={rowKey(r)} className="menu-item ports-row" data-port={r.port} data-external={r.external}>
-                <span className="name">
-                  {r.port} <span className="reason">{openAddress(r, printed.forPort(r.port, view.rows))}</span>
-                  {r.external && <span className="reason"> · external</span>}
-                </span>
-                <button className="btn" aria-label={`Open port ${r.port}`} title="Open in the Kolux browser (Shift+Ctrl-click: system browser)" onClick={(e) => openRow(r, e)}>
-                  Open
-                </button>
-                {!r.external && (
-                  <button className="btn" aria-label={`Stop port ${r.port}`} title="Stop the process listening here" aria-disabled={stopping.includes(rowKey(r)) ? true : undefined} onClick={(e) => void stop(r, document.activeElement === e.currentTarget)}>
-                    {stopping.includes(rowKey(r)) ? "Stopping…" : "Stop"}
-                  </button>
-                )}
-              </div>
-            ))}
-            {capNote(view.rows) && <div className="sb-hint">{capNote(view.rows)}</div>}
+      {/* Placed where the Ports box always was: its left edge on the button's, but never nearer than 380 px to the
+          window's right edge (the old box kept that much room for its 340 px list; the look is kept as it was). */}
+      <Popover open={open} onClose={() => setOpen(false)} label="Ports" anchor={button} at={at} side="top" align="start" offset={4} className="ports-menu" style={{ minWidth: 340 }} boxRef={menu} initialFocus={menu}>
+        <div className="menu-title">Ports</div>
+        {view.error && <div className="note error">{view.error}{view.rows.length > 0 ? " Showing the last list." : ""}</div>}
+        <div role="status">{note && <div className={noteBad ? "note error" : "note"}>{note}</div>}</div>
+        {view.rows.length === 0 && !view.error && <div className="sb-hint">Nothing in this workspace is listening on a port.</div>}
+        {view.rows.map((r) => (
+          <div key={rowKey(r)} className="menu-item ports-row" data-port={r.port} data-external={r.external}>
+            <span className="name">
+              {r.port} <span className="reason">{openAddress(r, printed.forPort(r.port, view.rows))}</span>
+              {r.external && <span className="reason"> · external</span>}
+            </span>
+            <button className="btn" aria-label={`Open port ${r.port}`} title="Open in your browser" onClick={() => openRow(r)}>
+              Open
+            </button>
+            {!r.external && (
+              <button className="btn" aria-label={`Stop port ${r.port}`} title="Stop the process listening here" aria-disabled={stopping.includes(rowKey(r)) ? true : undefined} onClick={(e) => void stop(r, document.activeElement === e.currentTarget)}>
+                {stopping.includes(rowKey(r)) ? "Stopping…" : "Stop"}
+              </button>
+            )}
           </div>
-        </OutOfFlow>
-      )}
+        ))}
+        {capNote(view.rows) && <div className="sb-hint">{capNote(view.rows)}</div>}
+      </Popover>
     </>
   );
 }

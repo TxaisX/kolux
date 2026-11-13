@@ -2,9 +2,9 @@
 // the left; the centred Agents / Board / Terminals switcher; panel toggle, search hint, bell,
 // usage pill and the window's own minimize / maximize / close on the right. The bar is the
 // window's drag region (the window has no OS title bar): T-620, a press anywhere on it that is not a
-// control moves the window ("deep"); the switcher's frame and the pop-up menus drawn inside the bar opt
-// out ("false"), so a press that just misses a segment does not move the window and a click on a
-// menu's backdrop still closes it. The search box shows the palette chord
+// control moves the window ("deep"); the switcher's frame opts out ("false"), so a press that just
+// misses a segment does not move the window. Pop-up menus (the account menu) are drawn on the body,
+// outside the bar, so a press on one never reaches the drag region. The search box shows the palette chord
 // from the keymap (T-005), so an edit to ~/.kolux/keybindings.json changes the chips.
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -18,6 +18,7 @@ import { usePlan } from "../usage/plan";
 import { APP_MENU_FAILED, popAppMenu } from "./useChrome";
 import { chromeLayout } from "./titleHeader";
 import { t } from "../i18n/lookup";
+import { usePackLoaded } from "../shell/usePackLoaded";
 import { useSettings } from "../settings/useSettings";
 import { readStatusBar, usagePills } from "./statusItems";
 import { AgentsPanel, Explorer, InboxView, TowerView, WorkspaceBoard } from "../lazy/pages";
@@ -50,6 +51,7 @@ export const bellTarget = (screen: Screen, before: Screen): Screen => (screen ==
 export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, needsYou = 0, onNotice }: TopBarProps) {
   // The screen the bell returns to when the Inbox is closed: the one that was showing before it opened.
   const before = useRef<Screen>("terminals");
+  usePackLoaded();
   if (screen !== "inbox") before.current = screen;
   const [maximized, setMaximized] = useState(false);
   // USAGE-008 / VIEW-008: a pill per provider, only with a weekly figure (or Codex's refused

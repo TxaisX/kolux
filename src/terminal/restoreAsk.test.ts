@@ -27,7 +27,6 @@ test("C24-R1-01: the layout keeps the key of a tab that could not reattach, so i
       { key: 2, cwd: "C:\\w", branch: null, agent: "claude", agentId: "claude", program: "claude", args: [] },
       { key: 3, cwd: "C:\\w", branch: null, agent: "claude", agentId: "claude", program: "claude", args: [] },
     ],
-    activeTab: { 1: 1 },
     focused: 1,
     activeDir: "C:\\w",
     stacked: {},
@@ -35,10 +34,10 @@ test("C24-R1-01: the layout keeps the key of a tab that could not reattach, so i
   const failed = 3;
   // The window's panes after the answer: kept when the rule says so, dropped by SESS-024 otherwise.
   const kept = keepsTab(timeout, true) ? saved.panes : withoutFailed(saved.panes, failed).panes;
-  const written = layoutOf(kept, saved.activeTab, saved.focused, saved.activeDir, saved.stacked);
+  const written = layoutOf(kept, saved.focused, saved.activeDir, saved.stacked);
   expect(written.panes.map((p) => p.key)).toEqual([1, 2, 3]); // today it is [1, 2], and 3's .log goes at the next start
   // The other answer is the defect, so the test says what it would have written.
-  expect(layoutOf(withoutFailed(saved.panes, failed).panes, saved.activeTab, saved.focused, saved.activeDir, saved.stacked).panes.map((p) => p.key)).toEqual([1, 2]);
+  expect(layoutOf(withoutFailed(saved.panes, failed).panes, saved.focused, saved.activeDir, saved.stacked).panes.map((p) => p.key)).toEqual([1, 2]);
 });
 
 test("C24-R1-01: the pane branches on restored, keeps the tab with a reason and a Try again, and never fails it", () => {

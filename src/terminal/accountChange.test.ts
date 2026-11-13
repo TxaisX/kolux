@@ -67,7 +67,7 @@ describe("codexSetup and setupChanged (T-139-d)", () => {
 describe("a restored pane is asked again after Kolux restarts (T-139-d)", () => {
   const pane = { key: 4, cwd: "/w", branch: null, agent: "codex" as const, program: "codex", args: [], agentId: "codex", account: "a1" };
   it("carries its account through the saved layout, so the prompt comes back with the kept choice forgotten", () => {
-    const saved = layoutOf([pane], {}, 4, "/w", {});
+    const saved = layoutOf([pane], 4, "/w", {});
     const back = restoreLayout(JSON.parse(JSON.stringify(saved)));
     const restored = back?.panes[0];
     expect(restored?.account).toBe("a1");
@@ -78,7 +78,7 @@ describe("a restored pane is asked again after Kolux restarts (T-139-d)", () => 
     expect(accountPrompt({ ...restored!, account: "gone" }, true, "b2", accounts, undefined)).toEqual({ kind: "removed", to: "b@x.com" });
   });
   it("a Codex pane with no account of its own (null) comes back as null, not unknown", () => {
-    const back = restoreLayout(JSON.parse(JSON.stringify(layoutOf([{ ...pane, account: null }], {}, 4, "/w", {}))));
+    const back = restoreLayout(JSON.parse(JSON.stringify(layoutOf([{ ...pane, account: null }], 4, "/w", {}))));
     expect(back?.panes[0].account).toBeNull();
     expect(accountPrompt(back!.panes[0], true, "a1", accounts, undefined)).toMatchObject({ kind: "changed", from: "Codex's own sign-in" });
   });

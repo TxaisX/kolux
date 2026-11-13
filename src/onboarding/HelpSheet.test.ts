@@ -1,9 +1,10 @@
-// T-695 (S33): the Help sheet drawn for real (fakeDom + React), its controls clicked. helpItems.test.ts
-// covers the list as data; this checks the sheet: what it shows, that each kind of item does its job and
-// closes the sheet (or stays open where it says so), and that Escape and the backdrop close it.
-import { createElement } from "react";
+// @vitest-environment happy-dom
+// T-695 (S33): the Help sheet (a src/ui Menu) drawn for real on a real DOM, its controls clicked. helpItems.test.ts
+// covers the list as data; this checks the sheet: what it shows, that each kind of item does its job and closes the
+// sheet (or stays open where it says so), and that Escape and a click outside close it.
+import { createElement, useRef, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, type FakeNode, find, fire, installDom, mount, until } from "../tasks/fakeDom";
+import { byText, click, type FakeNode, find, fire, installDom, mount, settle, until } from "../tasks/realDom";
 
 const spy = vi.hoisted(() => ({ calls: [] as string[], invoked: [] as [string, unknown][] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -23,19 +24,30 @@ vi.mock("../settings/pages", () => ({ openSettings: (p: string) => spy.calls.pus
 vi.mock("../feedback/request", () => ({ requestFeedback: () => spy.calls.push("feedback") }));
 vi.mock("../update/bus", () => ({ requestUpdateCheck: () => spy.calls.push("updates") }));
 
-let doc: FakeDocument;
 let root: FakeNode;
 let closed = 0;
 let unmount: () => Promise<void> = async () => {};
 
 beforeEach(async () => {
-  doc = installDom().doc;
+  installDom();
   Object.assign(spy, { calls: [], invoked: [] });
   closed = 0;
   const { default: HelpSheet } = await import("./HelpSheet");
-  const m = await mount(createElement(HelpSheet, { at: { bottom: 40, left: 8 }, onClose: () => void closed++ }), doc);
+  // The sheet hangs from the help button, which opens it as HelpMenu's does.
+  function Page() {
+    const button = useRef<HTMLButtonElement>(null);
+    const [open, setOpen] = useState(true);
+    return createElement(
+      "div",
+      null,
+      createElement("button", { ref: button, id: "help", onClick: () => setOpen(true) }, "?"),
+      open && createElement(HelpSheet, { anchor: button, onClose: () => (closed++, setOpen(false)) }),
+    );
+  }
+  const m = await mount(createElement(Page));
   unmount = m.unmount;
   root = m.container;
+  await reopen();
 });
 afterEach(async () => {
   await unmount();
@@ -43,6 +55,10 @@ afterEach(async () => {
 });
 
 const menu = () => find(root, (n) => n.attrs.role === "menu")[0];
+async function reopen() {
+  if (!menu()) await click(root, find(root, (n) => n.id === "help")[0]);
+  await until(() => !!menu(), "the help sheet");
+}
 const item = (label: string) => {
   const hit = find(root, (n) => n.attrs.role === "menuitem" && n.textContent.startsWith(label));
   expect(hit, label).toHaveLength(1);
@@ -51,13 +67,14 @@ const item = (label: string) => {
 
 test("T-695 help sheet (S33): a menu labelled Help lists Settings, the Help group and every tour by name", async () => {
   expect(menu().attrs["aria-label"]).toBe("Help");
+  expect(menu().classList.contains("menu")).toBe(true);
   const { TOURS } = await import("./tour");
   const labels = find(root, (n) => n.attrs.role === "menuitem").map((n) => n.textContent);
   expect(labels[0]).toBe("Settings");
   for (const l of ["Docs", "Changelog", "GitHub", "Milestones", "Keyboard Shortcuts", "Send Feedback", "Check for Updates", "Restart Kolux"]) item(l);
   for (const t of TOURS.filter((t) => t.id !== "grid")) item(t.name);
-  expect(byText(root, "div", "Help")).toHaveLength(1);
-  expect(byText(root, "div", "Tours")).toHaveLength(1);
+  expect(byText(menu(), "div", "Help")).toHaveLength(1);
+  expect(byText(menu(), "div", "Tours")).toHaveLength(1);
 });
 
 test("T-695 help sheet (S33): each item does its job and closes the sheet", async () => {
@@ -73,6 +90,7 @@ test("T-695 help sheet (S33): each item does its job and closes the sheet", asyn
     [tour.name, () => expect(spy.calls).toEqual(["tour:" + tour.id])],
   ];
   for (const [label, check] of cases) {
+    await reopen();
     Object.assign(spy, { calls: [], invoked: [] });
     const before = closed;
     await click(root, item(label));
@@ -88,9 +106,16 @@ test("T-695 help sheet (S33): Copy terminal diagnostics keeps the sheet open and
   expect(closed).toBe(0);
 });
 
-test("T-695 help sheet (S33): Escape and a click on the backdrop close it", async () => {
+test("T-695 help sheet (S33): Escape and a click outside close it", async () => {
   await fire(root, "keydown", item("Settings"), { key: "Escape" });
   expect(closed).toBe(1);
-  await click(root, find(root, (n) => n.attrs.class === "menu-backdrop")[0]);
+  expect(menu()).toBeUndefined();
+  await reopen();
+  const outside = document.body;
+  await fire(root, "pointerdown", outside);
+  await fire(root, "mousedown", outside);
+  await click(root, outside);
+  await settle();
   expect(closed).toBe(2);
+  expect(menu()).toBeUndefined();
 });

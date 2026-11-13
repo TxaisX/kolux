@@ -1,8 +1,9 @@
+// @vitest-environment happy-dom
 // T-737 (DT-C173): Stop says stopped only once the back end has stopped the scan; a stop that fails says why
 // and the scan keeps its Stop button.
 import { createElement } from "react";
 import { expect, test, vi } from "vitest";
-import { find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { find, fire, installDom, mount, settle } from "../tasks/realDom";
 
 // The first stop (the button) fails; the one the dialog sends as it closes succeeds.
 let stops = 0;
@@ -13,9 +14,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve(null) }));
 
 test("T-737: a Stop that fails is reported and the scan still shows Stop", async () => {
-  const { doc, win } = installDom();
-  Object.assign(doc, { querySelector: () => null, querySelectorAll: () => [] });
-  Object.assign(win, { setTimeout, clearTimeout });
+  const { doc } = installDom();
   const problems: unknown[] = [];
   const { default: ScanRepos } = await import("./ScanRepos");
   const m = await mount(createElement(ScanRepos, { root: "C:/code", onClose: () => {}, onDone: () => {}, onProblem: (e: unknown) => problems.push(e) }), doc);

@@ -16,6 +16,7 @@ import { Segmented } from "./GeneralPage";
 import { ResetButton } from "./SafetyRules";
 import { openShortcutsFileIn, shortcutsFileApps } from "./shortcutsFileOpen";
 import { AREAS, FILTERS, MAX_QUERY, filterRows, shortcutRows, type Filter, type Row } from "./shortcutRows";
+import { Select } from "../ui/Select";
 
 type Rec = { id: string; index: number };
 
@@ -30,7 +31,17 @@ export default function ShortcutsPage() {
   const policy = readPolicy(status.settings);
   const native = useNativeChords();
   const rows = useMemo(() => shortcutRows(keymap, native), [keymap, native]);
-  const shown = filterRows(rows, filter, query);
+  const shown = useMemo(() => filterRows(rows, filter, query), [rows, filter, query]);
+  // Audit N-53: the rows were re-filtered once per area group on every render; they are grouped once.
+  const groups = useMemo(() => {
+    const by = new Map<string, Row[]>();
+    for (const r of shown) {
+      const list = by.get(r.area);
+      if (list) list.push(r);
+      else by.set(r.area, [r]);
+    }
+    return by;
+  }, [shown]);
   const taps = useRef(createDoubleTap()); // SET-009: a modifier tapped twice is recorded as its own kind of shortcut
 
   // While recording, every key press belongs to the recorder: the window's shortcuts stand
@@ -96,22 +107,14 @@ export default function ShortcutsPage() {
           <button className="btn" onClick={() => show(true)}>
             Show in folder
           </button>
-          <select
-            className="field"
-            aria-label="Open file in"
+          <Select
+            label="Open file in"
             value=""
-            onChange={(e) => {
-              const app = shortcutsFileApps(status.settings).find((a) => a.label === e.target.value);
+            onChange={(v) => {
+              const app = shortcutsFileApps(status.settings).find((a) => a.label === v);
               if (app) openShortcutsFileIn(app).catch((err) => setFileNote(String(err)));
             }}
-          >
-            <option value="">Open file in...</option>
-            {shortcutsFileApps(status.settings).map((a) => (
-              <option key={a.label} value={a.label}>
-                {a.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Open file in..." }, ...shortcutsFileApps(status.settings).map((a) => ({ value: a.label, label: a.label }))]} className="field" />
           <button className="btn" onClick={() => void invoke("keybindings_reload").catch((e) => setFileNote(String(e)))}>
             Reload from disk
           </button>
@@ -141,7 +144,7 @@ export default function ShortcutsPage() {
         </div>
         {shown.length === 0 && <p className="conn-detail">No command matches.</p>}
         {Object.values(AREAS).map((area) => {
-          const group = shown.filter((r) => r.area === area);
+          const group = groups.get(area) ?? [];
           if (group.length === 0) return null;
           return (
             <div key={area} className="keys-group">

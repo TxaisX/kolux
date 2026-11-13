@@ -31,6 +31,7 @@
 .cm-picker { position: absolute; left: 0; top: 100%; z-index: 5; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line-subtle); border-radius: 6px; background: var(--surface); }
 .cm-picker button { border: 0; background: none; font-size: 15px; cursor: pointer; border-radius: 4px; }
 .cm-picker button:hover { background: rgba(128, 128, 128, 0.25); }
+.ui-positioner > .cm-picker { position: static; }
 .cm-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .cm-composer { display: flex; flex-direction: column; gap: 4px; margin: 6px 8px; }
 .cm-composer textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; resize: vertical; }

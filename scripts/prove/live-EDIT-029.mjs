@@ -1,6 +1,6 @@
 // LIVE proof, EDIT-029 boxes 1+2 (spec/12): 30 changed files -> All Changes draws sections while scrolling, the tree filters and jumps;
 // a viewed mark and the scroll position survive a tab switch.
-import { reporter, startPlain, finish, sleep, poll, checker, editRepo, clickTab, openScm, tabs, vis } from "./live-edit-common.mjs";
+import { reporter, startPlain, finish, sleep, poll, checker, editRepo, clickTab, openAllChanges, acCount, tabs, vis } from "./live-edit-common.mjs";
 
 const rep = reporter();
 const { log, lines: ev } = rep;
@@ -11,17 +11,14 @@ try {
   ctx = await startPlain("EDIT-029", { report: rep, ...editRepo() });
   const { app } = ctx;
   await sleep(3000);
-  await openScm(app);
-  await sleep(2000);
-  const changed = await app.evalJs(`document.querySelectorAll(".scm-row").length`);
-  log(`Source Control rows: ${changed}`);
-  await app.evalJs(`[...document.querySelectorAll(".rside button")].find(b=>b.getAttribute("aria-label")==="All changes"||b.title==="All changes").click()`);
+  const opened = await openAllChanges(app);
   await sleep(2500);
   const AC = vis(".all-changes");
   const state = () => app.evalJs(`(()=>{const p=${AC}; if(!p) return null; const l=p.querySelector(".ac-list"); const secs=[...p.querySelectorAll(".ac-section")]; return {tag:p.querySelector(".preview-tag")?.textContent ?? null, st:l.scrollTop, mounted:secs.length, names:secs.map(s=>s.querySelector(".ac-name").textContent), drawn:secs.filter(s=>s.querySelector(".cm-editor")).length};})()`);
   const s0 = await state();
-  log(`All Changes opened: ${JSON.stringify(s0)}`);
-  check("setup: 30 files changed and the tag says so", changed === 30 && /^30 files/.test(s0?.tag ?? ""), JSON.stringify({ changed, tag: s0?.tag }));
+  const counted = await acCount(app);
+  log(`All Changes opened (${opened}): ${JSON.stringify(s0)}`);
+  check("setup: 30 files changed and the tag says so", counted.count === 30 && /^30 files/.test(s0?.tag ?? ""), JSON.stringify(counted));
   check("sections are windowed: fewer than 30 mounted at the top", s0 && s0.mounted > 0 && s0.mounted < 30, `mounted=${s0?.mounted}`);
   await app.evalJs(`${AC}.querySelector(".ac-list").scrollTop=3000`);
   await sleep(1500);

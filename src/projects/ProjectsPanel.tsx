@@ -17,10 +17,10 @@
 // T-022: rows carry the strongest live agent state and an unread mark (PROJ-063), the list can be
 // grouped by project, status or pull request and sorted Smart or by name (PROJ-045, PROJ-050).
 import { isFolderWorkspace } from "../sessions/folderTabs";
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
-import { singleFolder } from "./singleFolder";
+import type { FolderSession } from "./folderSessions";
 import { dialogWhere, setupMode } from "../launch/launchOrder";
 import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
@@ -29,10 +29,9 @@ import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
 import { sameDir, underDir } from "../workspaces";
-import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, withoutTeamMade, hiddenTeamFolders, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, withoutTeamMade, hiddenTeamFolders, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
-import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
-import { recordPoll } from "../scm/prSearch";
+import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
@@ -74,7 +73,6 @@ import AutomationsRow from "./AutomationsRow";
 import SkillsRow from "./SkillsRow";
 import { chromeShown } from "../chrome/chromeItems";
 import { VOCAB } from "../terminal/status";
-import { onFinish, REFRESH_AFTER_MS, wantsRefresh } from "../status/finished";
 import type { AgentPass } from "../launch/agents";
 import { KeyText } from "../keys/KeymapContext";
 import { GLOSSARY } from "../glossary";
@@ -99,6 +97,7 @@ import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { FILE_MANAGER, loadTargets, openIn } from "../editor/openIn";
+import { Select } from "../ui/Select";
 
 /** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
@@ -111,9 +110,9 @@ type Props = {
   reveal?: number;
   /** Folders a pane is open in: those workspace rows show a live dot. */
   openDirs: string[];
-  /** VIEW-051: the window's agent and shell panes; a workspace lists its running ones as rows
-   * and counts them (the left pane no longer lists terminals as rows). */
-  sessions?: { key: number; agent: string; title: string; cwd: string | null; view?: string | null; running: boolean }[];
+  /** VIEW-051: the window's agent and shell panes. The sidebar shows folders only (2026-11-12), so they are no rows:
+   *  they tell how many running sessions a sleep or a removal would close (runNote). */
+  sessions?: FolderSession[];
   /** PROJ-063: each open folder's strongest agent state and when it last changed. */
   states: Record<string, RowInfo>;
   /** PROJ-063 / TERM-118: workspace paths marked unread, kept by the window; `onUnread` flips one. */
@@ -278,8 +277,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [hiddenWts, setHiddenWts] = useState<Record<string, Worktree[]>>({}); // PROJ-042: hidden by the user
   const [fresh, setFresh] = useState<Record<string, Worktree[]>>({}); // PROJ-041: made outside Kolux, not yet reviewed
   const [pushedBy, setPushedBy] = useState<Record<string, Pushed>>({}); // GIT-065: by worktree path
-  const [prBy, setPrBy] = useState<Record<string, PrState>>({}); // GIT-027: the background poll, by worktree path
-  const polled = useRef({ failures: 0, at: 0, next: 0, limited: 0 });
   const pushTag = (w: Worktree) => {
     const b = pushBadge(pushedBy[w.path]);
     return b && <span className={`hint push ${b.tone}`}>{b.text}</span>;
@@ -494,7 +491,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       onSettingRef.current(TEAM_WORKTREES_SETTING, (latest: unknown) => prunedTeamFolders(latest, found, teamAtStart) ?? undefined);
     }
     // GIT-065: the same poll keeps each row's unpushed badge current; a failed read keeps the last.
-    const shown = Object.values(next).flat().filter((w) => !w.hidden).map((w) => w.path);
+    // Txais (2026-11-12): only a folder's main checkout has a row, so only the mains are read (no git reads for a team's worktrees).
+    const shown = Object.values(next).flat().filter((w) => !w.hidden && w.isMain).map((w) => w.path);
     // One read at a time: a slow round must not pile up behind the next poll.
     if (!pushedBusy.current) {
       pushedBusy.current = true;
@@ -514,59 +512,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (key !== indexed.current) index.current(list, owner, names);
     indexed.current = key;
   };
-  // GIT-027 / GIT-028: every shown workspace's pull request, polled in the background: the visible
-  // workspace first, one gh call per GitHub project, a round every few minutes while the window is
-  // shown (backing off after failures, waiting out a rate limit), and again on focus when stale.
-  const pollPaths = Object.values(worktrees).flat().map((w) => w.path);
+  // GIT-027 / GIT-028: the folders whose pull requests usePrPoll reads in the background.
+  const pollPaths = Object.values(worktrees).flat().filter((w) => w.isMain).map((w) => w.path); // the folders the sidebar shows; a worktree has no row
   const goneFolders = useMissingFolders(pollPaths); // PROJ-086
   // T-609: the changed-file count on the cards, read from git while the cards show it (look/cardChanges.ts).
   const cardChanges = useCardChanges(pollPaths, cardDetails.shown.includes("changes"));
   const norm = (d: string) => d.replace(/[\\/]+$/, "").toLowerCase();
   const pollActive = activeDir === null ? null : (pollPaths.find((p) => norm(p) === norm(activeDir)) ?? null);
   const pollLinks = linkedPrs(settings[SCM_LINKED_PR_KEY]);
-  const pollKey = JSON.stringify([pollPaths, pollActive, pollLinks]);
-  useEffect(() => {
-    if (pollPaths.length === 0) return;
-    const st = polled.current;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let dead = false;
-    const later = (ms: number) => {
-      clearTimeout(timer);
-      st.next = Date.now() + ms;
-      timer = setTimeout(round, ms);
-    };
-    const round = () => {
-      if (document.hidden) return later(60_000);
-      invoke<PrPoll>("scm_prs_poll", { items: pollItems(pollPaths, pollActive, pollLinks) })
-        .then((answer) => {
-          if (dead) return;
-          setPrBy((prev) => mergePoll(prev, answer));
-          recordPoll(answer); // VIEW-043: the palette lists these pull requests
-          st.failures = answer.prs.some((x) => x.error !== null) ? st.failures + 1 : 0;
-          st.at = Date.now();
-          st.limited = answer.limitedUntil ?? 0;
-          later(nextDelay(st.failures, answer.limitedUntil, Date.now()));
-        })
-        .catch(() => {
-          if (dead) return;
-          st.failures += 1;
-          later(nextDelay(st.failures, null, Date.now()));
-        });
-    };
-    later(Math.max(1500, st.next - Date.now()));
-    const focus = () => {
-      if (Date.now() - st.at > STALE_MS && st.limited * 1000 < Date.now()) later(0);
-    };
-    window.addEventListener("focus", focus);
-    // STAT-038: an agent finishing in a listed workspace brings the next round forward, once per finish.
-    const off = onFinish((cwd) => wantsRefresh({ hidden: document.hidden, paths: pollPaths, cwd, limitedUntil: st.limited, now: Date.now() }) && later(REFRESH_AFTER_MS));
-    return () => {
-      dead = true;
-      clearTimeout(timer);
-      off();
-      window.removeEventListener("focus", focus);
-    };
-  }, [pollKey]);
+  const prBy = usePrPoll(pollPaths, pollActive, pollLinks); // GIT-027: the background poll, by worktree path
   // PROJ-063: a branch switched inside a workspace folder shows on its row within a few seconds.
   // PROJ-041: the same poll notices worktrees made outside Kolux, in both layouts (DT-O2).
   useEffect(() => {
@@ -1185,14 +1139,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         </div>
       )}
       {p && <Picker key={`parent-${p.id}`} name="Parent" value={parentLabel(p)} items={parentItems(p)} onPick={(k) => setParentDraft(k || null)} onEmptyEnter={() => setParentDraft(null)} />}
-      <select aria-label="agent" className="field" value={agentDraft} onChange={(e) => setAgentDraft(e.target.value)}>
-        <option value="">{promptDraft.trim() && fallbackAgent ? `${fallbackAgent.name} (default)` : "No agent: a terminal"}</option>
-        {installed.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
+      <Select label="agent" value={agentDraft} onChange={(v) => setAgentDraft(v)} options={[
+        { value: "", label: promptDraft.trim() && fallbackAgent ? `${fallbackAgent.name} (default)` : "No agent: a terminal" },
+        ...installed.map((a) => ({ value: a.id, label: a.name })),
+      ]} className="field" />
       <textarea aria-label="note" className="field multi grow" placeholder="note: the first prompt for the agent (optional)" value={promptDraft} onChange={(e) => setPromptDraft(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setCreating(null)} />
       <button className="link" aria-expanded={advanced || existing || prList !== null} onClick={() => setAdvanced(!(advanced || existing || prList !== null))}>
         {advanced || existing || prList !== null ? "Hide advanced" : "Advanced…"}
@@ -1221,16 +1171,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <Picker key={`pr-${p?.id ?? ""}`} name="Pull request" value={prDraft ? `#${prDraft.number} ${prDraft.title}` : "pick a pull request"} items={(q) => prItems(prList, q)} onPick={(k) => setPrDraft(prList.find((x) => String(x.number) === k) ?? null)} startOpen={!prDraft} />
           )}
           <label>Setup</label>
-          <select aria-label="setup policy" className="field" value={setupSkip ? "skip" : "run"} onChange={(e) => setSetupSkip(e.target.value === "skip")}>
-            <option value="run">Run the project's setup script (kolux.yaml)</option>
-            <option value="skip">Skip setup</option>
-          </select>
+          <Select label="setup policy" value={setupSkip ? "skip" : "run"} onChange={(v) => setSetupSkip(v === "skip")} options={[{ value: "run", label: "Run the project's setup script (kolux.yaml)" }, { value: "skip", label: "Skip setup" }]} className="field" />
           {!setupSkip && (
-            <select aria-label="setup opens in" className="field" value={setupWhere} onChange={(e) => ((whereTouched.current = true), setSetupWhere(e.target.value as SetupWhere))}>
-              <option value="tab">Setup in a new tab</option>
-              <option value="right">Setup in a split to the right</option>
-              <option value="down">Setup in a split below</option>
-            </select>
+            <Select label="setup opens in" value={setupWhere} onChange={(v) => ((whereTouched.current = true), setSetupWhere(v as SetupWhere))} options={[
+              { value: "tab", label: "Setup in a new tab" },
+              { value: "right", label: "Setup in a split to the right" },
+              { value: "down", label: "Setup in a split below" },
+            ]} className="field" />
           )}
           {!setupSkip && setupWhere === "tab" && (
             <label className="check">
@@ -1558,10 +1505,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             {s.label}
           </div>
           <div className="vis-row">
-          <select aria-label={`default for ${s.label}`} className="field" value={s.global ? "show" : "hide"} onChange={(e) => setVis(null, s.key, e.target.value === "show")}>
-            <option value="hide">Hidden</option>
-            <option value="show">Shown</option>
-          </select>
+          <Select label={`default for ${s.label}`} value={s.global ? "show" : "hide"} onChange={(v) => setVis(null, s.key, v === "show")} options={[{ value: "hide", label: "Hidden" }, { value: "show", label: "Shown" }]} className="field" />
           {s.root && (
             <button className="ib" title={`Stop treating ${s.root} as its own source`} onClick={() => removeRoot(s.root!)}>
               <Close size={11} />
@@ -1598,11 +1542,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             {s.label}
           </div>
           <div className="vis-row">
-          <select aria-label={`${p.name}: ${s.label}`} className="field" value={s.own === null ? "global" : s.own ? "show" : "hide"} onChange={(e) => setVis(p.id, s.key, e.target.value === "global" ? null : e.target.value === "show")}>
-            <option value="global">As global: {showWord(s.global)}</option>
-            <option value="hide">Hidden</option>
-            <option value="show">Shown</option>
-          </select>
+          <Select label={`${p.name}: ${s.label}`} value={s.own === null ? "global" : s.own ? "show" : "hide"} onChange={(v) => setVis(p.id, s.key, v === "global" ? null : v === "show")} options={[{ value: "global", label: `As global: ${showWord(s.global)}` }, { value: "hide", label: "Hidden" }, { value: "show", label: "Shown" }]} className="field" />
           {s.own !== null && (
             <button className="btn" title={`Back to the global choice (${showWord(s.global)})`} onClick={() => setVis(p.id, s.key, null)}>
               Reset
@@ -1733,6 +1673,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // PROJ-052: hide-sleeping (the show-sleeping switch), the default-branch row and the project filter.
   const hidden = (w: Worktree) => !rowShown(filters, { projectId: projectOf(w), isMain: w.isMain, branch: w.branch, asleep: asleep.includes(pathKey(w.path)) });
   const inList = (w: Worktree) => elsewhere(w) && !hidden(w); // the lane's listed(), renamed: main's listed is the worktree state
+  // Txais (2026-11-12): Pinned and the grouped lists hold folders (main checkouts) only; a worktree never has a row.
+  const pinnedEntries = everyEntry.filter((x) => x.w.isMain && pinned.has(pathKey(x.w.path)) && !hidden(x.w));
   async function sleep(w: Worktree) {
     const { next, paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
     // EDIT-031: its unsaved editor tabs are asked about first; on Cancel it stays awake with its tabs.
@@ -1891,7 +1833,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const first = !asked.has(pathKey(w.path)) && !!asked.add(pathKey(w.path));
     return (
       <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path} onContextMenu={(e) => !(e.target as Element).closest?.(".sb-form, .ask-backdrop, input, textarea") && void openMenu(e, p, w)}>
-        <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} role="button" tabIndex={0} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => {
+        <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} data-testid="sidebar-workspace" role="button" tabIndex={0} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => {
           const what = rowKey(e.key, e.target === e.currentTarget);
           if (what) e.preventDefault();
           if (what === "show") show(w);
@@ -2260,16 +2202,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const main = list.find((w) => w.isMain);
       const others = order(list.filter((w) => !w.isMain && inList(w)).map((w) => ({ p, w })));
       const opening = creating === p.id;
-      const selected = main !== undefined && isSelected(main);
-      // One folder per project: the project row is the folder, and clicking it shows every pane
-      // opened in that folder. With worktree creation off, there is no second row to select.
-      const folder = singleFolder() && main !== undefined;
+      // Txais (2026-11-12): the sidebar lists folders only: no worktree rows and no session rows (every session is in the
+      // folder's grid). The project row is the folder, and clicking it shows the grid of every pane opened in that folder
+      // or in a worktree of it.
+      const inFolder = activeDir !== null && [p.path, ...list.map((w) => w.path), ...(hiddenWts[p.id] ?? []).map((w) => w.path)].some((d) => same(activeDir, d));
+      const selected = main !== undefined && (isSelected(main) || inFolder);
+      const folder = main !== undefined;
       return (
         <div key={p.id}>
           <div
             className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}`}
             title={p.path}
             data-path={folder ? main.path : undefined}
+            data-testid={folder ? "sidebar-folder" : undefined}
             role={folder ? "button" : undefined}
             tabIndex={folder ? 0 : undefined}
             aria-current={folder && selected ? "true" : undefined}
@@ -2280,7 +2225,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               show(main);
             } : undefined}
             {...headerDrag(p.id)}
-            onContextMenu={(e) => pop(e, p.id, projectMenu(singleFolder(), folder ? { git: !isFolderWorkspace(main.path, [main]) } : undefined), "Project")}
+            onContextMenu={(e) => pop(e, p.id, projectMenu(true, folder ? { git: !isFolderWorkspace(main.path, [main]) } : undefined), "Project")}
           >
             <HeaderBadge colour={headerColourOf(settings, "p", p.id)} />
             <ProjectIcon value={icons[p.id]} name={projectLabel(p)} auto={autoIcons[p.id]} />
@@ -2289,14 +2234,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <span className="name" title={p.displayName ? p.name : undefined}>{projectLabel(p)}{labels[p.id]?.hint && <span className="sb-name-hint" title={labels[p.id].hint ?? undefined}>{labels[p.id].hintCut}</span>}</span>
             {folder && <span className="hint" title={main.path}>{worktreeLabel(main)}</span>}
+            {/* The branch and push hints sit side by side in the folder row; styles.css spaces them only in session rows. */}
+            {folder && <span className="push-gap" style={{ marginLeft: 6, flex: "none" }}>{pushTag(main)}</span>}
             <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
               <Gear />
             </button>
-            {!singleFolder() && (
-            <button className={`ib${opening ? " on" : ""}`} title="New workspace: a branch in its own folder" aria-pressed={opening} onClick={() => setCreating(opening ? null : p.id)}>
-              <Plus size={13} />
-            </button>
-            )}
             <button className="ib rm" title="Remove project: out of Kolux; its folder stays on disk" aria-label={`Remove ${projectLabel(p)}`} data-proj-x onClick={() => setDropProject(dropProject === p.id ? null : p.id)}>
               <Minus size={11} />
             </button>
@@ -2312,7 +2254,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             />
           )}
           {main && (
-            <div className={`sb-main${singleFolder() ? " old-workspaces" : ""}`} onContextMenu={(e) => void openMenu(e, p, main)}>
+            <div className="sb-main old-workspaces" onContextMenu={(e) => void openMenu(e, p, main)}>
             <button className={`branch${isSelected(main) ? " sel" : ""}`} onClick={() => show(main)} title={`Show ${main.path}`}>
               <span className={`dot ${infoOf(main).state}${isActive(main) ? " live" : ""}`} role="img" aria-label={infoOf(main).state} data-tip={VOCAB[infoOf(main).state].explain} />
               <span className="name">{worktreeLabel(main)}</span>
@@ -2332,14 +2274,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <label>Base ref</label>
               <input aria-label="project base ref" className="field" placeholder="the default branch Git reports" value={projectBaseDraft} onChange={(e) => setProjectBaseDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveProject(p)} />
               <label>Group</label>
-              <select aria-label="project group" className="field" value={groups.groups.some((g) => g.id === groups.members[p.id]) ? groups.members[p.id] : ""} onChange={(e) => putInGroup(p, e.target.value)}>
-                <option value="">None: top level</option>
-                {groups.groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
+              <Select label="project group" value={groups.groups.some((g) => g.id === groups.members[p.id]) ? groups.members[p.id] : ""} onChange={(v) => putInGroup(p, v)} options={[{ value: "", label: "None: top level" }, ...groups.groups.map((g) => ({ value: g.id, label: g.name }))]} className="field" />
               <label>Header colour</label>
               <HeaderColourPicker settings={settings} kind="p" id={p.id} onSetting={onSetting} />
               <IconPicker value={icons[p.id]} name={p.name} onSet={(icon) => setIcon(p, icon)} onProblem={(text) => say("warn", text)} />
@@ -2373,9 +2308,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               parentOf={(path) => (worktrees[p.id] ?? []).find((x) => same(x.path, path))?.parent}
             />
           )}
-          {/* One folder per project: the old worktree rows stay in the DOM for saved work and for
-              the keyboard, but they do not draw beside the folder row. */}
-          <div className={singleFolder() ? "old-workspaces" : undefined}>
+          {opening && nameField(p)}
+          {standIn(p)}
+          {/* A worktree never has a row: its rows stay in the DOM for saved work and for the keyboard, but they
+              do not draw. What runs in one shows in the folder's grid. */}
+          <div className="old-workspaces">
             {outsideCard({ outside: outsideOf(list), dismissed: dismissedOutside(settings).includes(p.id), collapsed: false, otherRows: others.length }).show && (
               <OutsideCard outside={outsideOf(list)} onDismiss={() => onSetting(OUTSIDE_DISMISSED_SETTING, withDismissed(settings, p.id))} />
             )}
@@ -2402,8 +2339,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 </div>
               </div>
             )}
-            {opening && nameField(p)}
-            {standIn(p)}
             {nestRows(others.map((x) => x.w), nest, shutKids, (ws) => ws).map((r) => row({ p, w: r.w }, r.depth, r.kids))}
           </div>
         </div>
@@ -2414,14 +2349,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       <label>Group name</label>
       <input aria-label="group name" className="field" value={groupName} onChange={(e) => setGroupName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGroup(g)} autoFocus />
       <label>Inside</label>
-      <select aria-label="group inside" className="field" value={groupParent} onChange={(e) => setGroupParent(e.target.value)}>
-        <option value="">Nothing: top level</option>
-        {groupChoices(groups, g.id).map((x) => (
-          <option key={x.id} value={x.id}>
-            {x.name}
-          </option>
-        ))}
-      </select>
+      <Select label="group inside" value={groupParent} onChange={(v) => setGroupParent(v)} options={[{ value: "", label: "Nothing: top level" }, ...groupChoices(groups, g.id).map((x) => ({ value: x.id, label: x.name }))]} className="field" />
       <label>Header colour</label>
       <HeaderColourPicker settings={settings} kind="g" id={g.id} onSetting={onSetting} />
       {dropGroup ? (
@@ -2523,11 +2451,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className="ib" title={groupBy === "project" ? "New group: sort projects into folders of their own" : "New group: only while the list is grouped by project (change it under Group and sort)"} aria-label="New group" onClick={newGroup} disabled={groupBy !== "project"}>
               <Box size={13} />
             </button>
-            {!singleFolder() && (
-            <button className="ib" title="New workspace: a branch in its own folder" aria-label="New workspace" aria-pressed={creating !== null} onClick={() => (creating === null ? openCreate() : setCreating(null))}>
-              <Plus size={13} />
-            </button>
-            )}
             {NOT_BUILT && (
               <button className="ib" title="Launch (not built yet)">
                 <Rocket size={13} />
@@ -2540,14 +2463,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         {NOT_BUILT ? (
           <div className="sb-tabs" role="tablist">
             <button role="tab" aria-selected="true">
-              {singleFolder() ? "Folders" : "Workspaces"}
+              Folders
             </button>
             <button role="tab" aria-selected="false" title="Status (not built yet)">
               Status
             </button>
           </div>
         ) : (
-          <h2 className="sb-heading">{singleFolder() ? "Folders" : "Workspaces"}</h2>
+          <h2 className="sb-heading">Folders</h2>
         )}
 
         {behind && <BehindNote text={behind} refresh={refreshesOnCreate(settings)} onRefresh={(on) => onSetting(REFRESH_SETTING, on)} onDismiss={() => (onSetting(HINT_DISMISSED_SETTING, true), setBehind(null))} />}
@@ -2594,10 +2517,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <label>Workspaces folder{place.fromEnv && rootDraft === place.dir ? " (from KOLUX_WORKSPACES_DIR)" : ""}</label>
               <input aria-label="workspaces folder" className="field" list="used-dirs" value={rootDraft} onChange={(e) => setRootDraft(e.target.value)} onKeyDown={rootKey} onBlur={() => rootDraft !== place.dir && saveRoot()} />
               <label>Layout</label>
-              <select aria-label="workspaces layout" className="field" value={flatDraft ? "flat" : "nested"} onChange={(e) => setFlatDraft(e.target.value === "flat")}>
-                <option value="nested">Nested: a folder per project</option>
-                <option value="flat">Flat: all side by side</option>
-              </select>
+              <Select label="workspaces layout" value={flatDraft ? "flat" : "nested"} onChange={(v) => setFlatDraft(v === "flat")} options={[{ value: "nested", label: "Nested: a folder per project" }, { value: "flat", label: "Flat: all side by side" }]} className="field" />
               <div className="btn-row">
                 <button className="btn" onMouseDown={(e) => e.preventDefault()} onClick={() => saveRoot()} disabled={rootDraft === place.dir && flatDraft === place.flat}>
                   Save
@@ -2631,19 +2551,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {filterOpen && (
             <div className="sb-form" data-filter>
               <label>Group by</label>
-              <select aria-label="group by" className="field" value={groupBy} onChange={(e) => onSetting(GROUP_SETTING, e.target.value)}>
-                <option value="project">Project</option>
-                <option value="none">None: one flat list</option>
-                <option value="status">Status</option>
-                <option value="pr">Pull request</option>
-              </select>
+              <Select label="group by" value={groupBy} onChange={(v) => onSetting(GROUP_SETTING, v)} options={[
+                { value: "project", label: "Project" },
+                { value: "none", label: "None: one flat list" },
+                { value: "status", label: "Status" },
+                { value: "pr", label: "Pull request" },
+              ]} className="field" />
               <label>Sort</label>
-              <select aria-label="sort" className="field" value={sortBy} onChange={(e) => onSetting(SORT_SETTING, e.target.value)}>
-                <option value="smart">Smart: what needs you first</option>
-                <option value="name">Name</option>
-                <option value="activity">Recent: latest activity first</option>
-                <option value="manual">Manual: drag rows into your own order</option>
-              </select>
+              <Select label="sort" value={sortBy} onChange={(v) => onSetting(SORT_SETTING, v)} options={[
+                { value: "smart", label: "Smart: what needs you first" },
+                { value: "name", label: "Name" },
+                { value: "activity", label: "Recent: latest activity first" },
+                { value: "manual", label: "Manual: drag rows into your own order" },
+              ]} className="field" />
               <label className="check">
                 <input type="checkbox" checked={hideAuto} onChange={(e) => onSetting(HIDE_AUTOMATION_SETTING, e.target.checked)} /> Hide workspaces made by automations
               </label>
@@ -2684,17 +2604,17 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {creating === "" && nameField(null)}
           {projects.length === 0 && !showAdd && <div className="sb-hint">No projects yet. Use the folder button above to add a project folder; one without Git can start it here.</div>}
 
-          {everyEntry.some((x) => pinned.has(pathKey(x.w.path)) && !hidden(x.w)) && (
+          {pinnedEntries.length > 0 && (
             <div data-group="Pinned" className="pinned">
               <button className="sb-group" aria-expanded={!folded.has("pinned-section")} onClick={() => toggleFold("pinned-section")}>
                 Pinned
-                <span className="count">{everyEntry.filter((x) => pinned.has(pathKey(x.w.path)) && !hidden(x.w)).length}</span>
+                <span className="count">{pinnedEntries.length}</span>
                 <span className="chev">
                   <ChevronDown size={12} />
                 </span>
               </button>
               {!folded.has("pinned-section") &&
-                nestRows(order(everyEntry.filter((x) => pinned.has(pathKey(x.w.path)) && !hidden(x.w))).map((x) => x.w), nest, shutKids, (ws) => ws).map((r) => row({ p: everyEntry.find((x) => x.w === r.w)?.p as Project, w: r.w }, r.depth, r.kids))}
+                nestRows(order(pinnedEntries).map((x) => x.w), nest, shutKids, (ws) => ws).map((r) => row({ p: everyEntry.find((x) => x.w === r.w)?.p as Project, w: r.w }, r.depth, r.kids))}
             </div>
           )}
           {groupBy === "project" && headerTree.map(drawNode)}
@@ -2704,7 +2624,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {groupBy !== "project" && projects.map(standIn)}
           {groupBy !== "project" &&
             groupRows(
-              order(everyEntry.filter((x) => inList(x.w))),
+              order(everyEntry.filter((x) => x.w.isMain && inList(x.w))),
               groupBy,
               (x) => infoOf(x.w),
               (x) => x.p.name,
@@ -2719,7 +2639,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                     </span>
                   </button>
                 )}
-                {!folded.has(g.title) && g.rows.map((x) => row(x))}
+                {!folded.has(g.title) && g.rows.map((x) => <Fragment key={x.w.path}>{row(x)}</Fragment>)}
               </div>
             ))}
 

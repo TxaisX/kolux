@@ -10,7 +10,7 @@ Kolux is a Tauri 2 app with a React and TypeScript front end and a Rust core. Th
 | Git | Current | Worktrees and source control. |
 | Node.js | 24 | CI pins Node 24. |
 | pnpm | 12 | CI pins pnpm 12. |
-| Rust | 1.90 or newer | Stable MSVC toolchain. `rust-version` in `src-tauri/Cargo.toml` is 1.90. |
+| Rust | 1.100.0 | Pinned in `rust-toolchain.toml`; rustup installs it on the first `cargo` command in the repository. MSVC toolchain. `rust-version` in `src-tauri/Cargo.toml` (1.90) is only the oldest release the code compiles with. |
 | Visual Studio | 2022 Build Tools | The Desktop development with C++ workload, including the MSVC linker and Windows SDK. |
 | WebView2 | Evergreen runtime | Windows 11 includes it. The installer can fetch it if it is missing. |
 

@@ -14,7 +14,7 @@ import { OneClickView } from "./OneClickNotice";
 import { AutoPrRow, retryBlock, rowButtons } from "./AutoPrStatus";
 import type { Run } from "./oneClick";
 import type { CheckRef } from "./checkCard";
-import { copyText, emptyBook, hideDraft, keepDraft, escapeClosesForm, openLinkFailed, replyBlock, rowBusy, rowDone, rowStart, shownDraft, stackKey, startDraft, stillCurrent, writeMayTouchDraft, type DraftBook, type PrDraft } from "./panelUx";
+import { copyText, emptyBook, hideDraft, keepDraft, escapeClosesForm, openInBrowser, openLinkFailed, replyBlock, rowBusy, rowDone, rowStart, shownDraft, stackKey, startDraft, stillCurrent, writeMayTouchDraft, type DraftBook, type PrDraft } from "./panelUx";
 
 type Click = { onClick?: () => void; [k: string]: unknown };
 function find(node: ReactNode, attr: string): ReactElement<Click> | null {
@@ -154,6 +154,12 @@ describe("row 5 and 15: the stack map draws, and a link that will not open has w
   });
   it("names the reason", () => {
     expect(openLinkFailed("no browser")).toBe("The page could not be opened: no browser");
+  });
+  it("openInBrowser says nothing when the link opened, and the same words when it would not", async () => {
+    const opened: string[] = [];
+    expect(await openInBrowser("https://x.test", (u) => (opened.push(u), Promise.resolve()))).toBe(null);
+    expect(opened).toEqual(["https://x.test"]);
+    expect(await openInBrowser("https://x.test", () => Promise.reject("the press refused"))).toBe("The page could not be opened: the press refused");
   });
 });
 

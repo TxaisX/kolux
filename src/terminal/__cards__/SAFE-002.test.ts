@@ -11,6 +11,7 @@ vi.mock("react", async (orig) => {
   return { ...patched, useMemo, default: { ...(patched as { default: object }).default, useMemo } };
 });
 vi.mock("../../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => md }));
+vi.mock("../../ui/Dialog", async () => (await import("../../tasks/dialogStandIn")).dialogModule);
 
 const plan = ["Read the code first.", "", "Then run this:", "```sh", "make build", "", "make test", "```", "", "Ship it."].join("\n");
 

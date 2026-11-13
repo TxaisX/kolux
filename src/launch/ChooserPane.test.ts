@@ -239,13 +239,29 @@ test("SESS-018: the page starts with the project's last count and files choice, 
   const start = sheetStart(last, true);
   expect(start.seats).toHaveLength(3);
   expect(start.seats.every((s) => s.agent === null && s.model === null)).toBe(true);
-  expect(start.copies).toBe("shared");
-  // No earlier launch: one blank seat and the usual default.
+  // One folder per project (the default here): nothing is carried, the default is shared.
+  expect(start.copies).toBeUndefined();
+  expect(start.copies ?? defaultCopies(3, true)).toBe("shared");
+  // No earlier launch: one blank seat and no pick, so the live seat count decides.
   const none = sheetStart(undefined, true);
   expect(none.seats).toEqual([{ agent: null, model: null }]);
-  expect(none.copies).toBe(defaultCopies(1, true));
-  // Separate copies need Git: outside it the shared folder is the only choice.
-  expect(sheetStart({ ...last, copies: "separate" }, false).copies).toBe("shared");
+  expect(none.copies).toBeUndefined();
+  // Separate copies need Git: outside it nothing carries over and the default (shared) applies.
+  expect(sheetStart({ ...last, copies: "separate" }, false).copies).toBeUndefined();
+});
+
+test("Txais 2026-11-12: raising the seat count from 1 to 2 switches to own folders unless the user picked", () => {
+  setOwnFolders({ [OWN_FOLDERS_FIELD]: true });
+  const one = { shape: "custom" as const, copies: "shared" as const, seats: [{ agent: "claude", model: null }] };
+  const start = sheetStart(one, true);
+  // 1 seat + shared is the default, not a pick: the chooser follows the count.
+  expect(start.copies).toBeUndefined();
+  expect(start.copies ?? defaultCopies(2, true)).toBe("separate");
+  // An explicit shared pick at 2+ seats is kept when raising further.
+  const pickedShared = { ...one, seats: [one.seats[0], one.seats[0]] };
+  expect(sheetStart(pickedShared, true).copies).toBe("shared");
+  // Separate at 2+ seats is the default: no pick recorded, the count decides.
+  expect(sheetStart({ ...pickedShared, copies: "separate" }, true).copies).toBeUndefined();
 });
 
 // DT-C250: one folder per project is the default; with "Own folder for each agent" on, the chooser offers the choice again.

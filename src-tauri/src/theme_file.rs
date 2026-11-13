@@ -1,5 +1,5 @@
 // T-648 (DT-C87): Export on the theme editor saves a theme file through the system's own Save dialog,
-// the same way a note is saved as a PDF (browser_pdf.rs): a command opens the dialog off the async
+// the same way a note is saved as a PDF (pdf_export.rs): a command opens the dialog off the async
 // runtime, the user picks the place, and only then is the file written. The webview never names a path.
 
 use std::path::Path;

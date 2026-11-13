@@ -8,7 +8,7 @@
 //   app.pid, app.exePath             // set by launch() / relaunch()
 //   await app.closeApp()             // graceful close, orphan scan, cleanup; returns [ok, note] or null
 import { spawn, execFile } from "node:child_process";
-import { mkdirSync, openSync, writeFileSync } from "node:fs";
+import { mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -258,9 +258,26 @@ export function createApp(opts) {
     const r = await evalJs(`(() => { const e = [...document.querySelectorAll(${JSON.stringify(sel)})].find(x => ${textRe}.test((x.querySelector(".name") ?? x).textContent || "")); if (!e) return "missing"; e.click(); return "clicked"; })()`);
     if (r !== "clicked") throw new Error(`no ${sel} whose text matches ${textRe}`);
   };
-  const focusField = async (sel) => {
-    const r = await cdp("focus", sel);
-    if (r !== "focused") throw new Error(`could not focus ${sel}: ${r}`);
+  // Focuses the first on-screen match of sel and returns "focused" once it really holds the focus.
+  // c1-coord's gate hit "not-focused" on the add-project path field with the window off-screen: the page can refuse
+  // focus for a frame while a sidebar form is still mounting, so this retries instead of failing on the first try.
+  const focusField = async (sel, ms = 5000) => {
+    const end = Date.now() + ms;
+    let last = "no attempt";
+    for (;;) {
+      last = await evalJs(`(() => {
+        const els = [...document.querySelectorAll(${JSON.stringify(sel)})];
+        if (els.length === 0) return "missing";
+        const e = els.find((x) => x.offsetParent !== null) ?? els[0];
+        e.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        e.focus();
+        if (typeof e.select === "function") e.select();
+        return document.activeElement === e ? "focused" : "not-focused";
+      })()`);
+      if (last === "focused") return last;
+      if (Date.now() > end) throw new Error(`could not focus ${sel}: ${last}`);
+      await sleep(400);
+    }
   };
   // The n-th shown pane takes the focus the way a click would (App.tsx listens for mousedown), then its text field.
   // T-545: a pane makes its input field in its mount effect, so poll for the field up to 10 s; the pane itself is never waited for.
@@ -366,7 +383,22 @@ export function createApp(opts) {
 
   // T-560: the config the app is started with. It never carries window entries, because tauri dev compiles this
   // config into the debug exe; --offscreen moves the window at run time.
-  app.config = () => ({ identifier: IDENTIFIER, build: { devUrl: `http://localhost:${PORT}`, beforeDevCommand: `pnpm exec vite --port ${PORT} --strictPort` } });
+  // PROVE_CDP_IN_CONFIG=1 is the one exception: the WebView2 on GitHub's windows-latest runner (156.0.4314.58,
+  // 2026-11) started the app's web view with only the arguments the app passes and ignored
+  // WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS (and the same flag as a WebView2 policy), so nothing listened on the
+  // debugging port. Then the windows are copied from tauri.conf.json unchanged except for the port in their
+  // additionalBrowserArgs, which lib.rs hands to recovery::browser_args. A non-empty value takes the place of
+  // BASE_ARGS there, so it starts with BASE_ARGS' own flags and the web view runs as usual plus the port.
+  const windowsWithPort = () =>
+    JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8")).app.windows.map((w) => ({
+      ...w,
+      additionalBrowserArgs: `${w.additionalBrowserArgs ?? "--disable-features=msWebOOUI,msPdfOOUI"} --remote-debugging-port=${CDP}`,
+    }));
+  app.config = () => ({
+    identifier: IDENTIFIER,
+    build: { devUrl: `http://localhost:${PORT}`, beforeDevCommand: `pnpm exec vite --port ${PORT} --strictPort` },
+    ...(process.env.PROVE_CDP_IN_CONFIG === "1" ? { app: { windows: windowsWithPort() } } : {}),
+  });
   app.pageUp = pageUp;
   app.moveWindow = moveWindow;
 
@@ -519,10 +551,24 @@ export function createApp(opts) {
     if (ATTACH || KEEP) return null;
     let closeReport = null;
     if (app.pid && (await alive(app.pid))) {
-      const { tree, how, survivors } = await closeAndCount(app.pid);
-      const ok = survivors.length === 0;
-      closeReport = [ok, `${how}; pre-close tree ${tree.length} (${byName(tree)}); survivors ${survivors.length} (${byName(survivors)})`];
-      await killAll(survivors);
+      try {
+        const { tree, how, survivors } = await closeAndCount(app.pid);
+        const ok = survivors.length === 0;
+        closeReport = [ok, `${how}; pre-close tree ${tree.length} (${byName(tree)}); survivors ${survivors.length} (${byName(survivors)})`];
+        await killAll(survivors);
+      } catch (err) {
+        // The app did not exit by its own path (a frozen page never answers the close request): end this run's own
+        // app tree and count what is left, so a failed close never leaves an app behind. The pid is the one this
+        // run started — app.pid — never a process-name scan.
+        const tree = await treeOf(app.pid).catch(() => []);
+        await run("taskkill", ["/PID", String(app.pid), "/T", "/F"]).catch(() => {});
+        const survivors = await survivorsOf(tree).catch(() => []);
+        closeReport = [
+          false,
+          `close by the app's own path failed (${err?.message ?? err}); ended this run's own app tree (taskkill /PID ${app.pid} /T /F); survivors ${survivors.length} (${byName(survivors)})`,
+        ];
+        await killAll(survivors);
+      }
     }
     app.pid = null;
     if (app.dev?.pid) await run("taskkill", ["/PID", String(app.dev.pid), "/T", "/F"]).catch(() => {});

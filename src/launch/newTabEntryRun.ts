@@ -1,16 +1,21 @@
 // TERM-042: what the new tab entry box does with a chosen row, and the entries it remembers.
 // The row model is terminal/newTabEntry.ts; this is the glue the plus menu needs.
+import { invoke } from "@tauri-apps/api/core";
 import { looksLikePath, rememberEntry, webAddress, type Row } from "../terminal/newTabEntry";
 
-export type EntryTarget = { kind: "browser"; url: string } | { kind: "file"; path: string } | { kind: "tab"; key: number };
+/** `kind: "web"` is a web address that opens in the system browser. */
+export type EntryTarget = { kind: "web"; url: string } | { kind: "file"; path: string } | { kind: "tab"; key: number };
+
+/** Open a web address in the system browser. */
+export const openWebAddress = (url: string): Promise<unknown> => invoke("open_external", { url });
 
 /** What running a row opens, or null when a remembered entry is no longer a web address or a path. */
 export function entryTarget(row: Row): EntryTarget | null {
-  if (row.kind === "url") return { kind: "browser", url: row.url };
+  if (row.kind === "url") return { kind: "web", url: row.url };
   if (row.kind === "file") return { kind: "file", path: row.path };
   if (row.kind === "tab") return { kind: "tab", key: row.key };
   const url = webAddress(row.value);
-  if (url) return { kind: "browser", url };
+  if (url) return { kind: "web", url };
   return looksLikePath(row.value) ? { kind: "file", path: row.value } : null;
 }
 

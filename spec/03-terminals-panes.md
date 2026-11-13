@@ -100,6 +100,9 @@ Acceptance:
   - [x] Asking for a start folder that does not exist opens the terminal in the workspace folder. (cards; evidence/cards-TERM-040.txt)
 Compat: keybinding commands for new terminal, new browser, new markdown and open markdown tabs
   (exact ids held back until allowlisted).
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): a new terminal, browser or markdown tab opens in the grid cell right after the focused pane,
+    focused and ready; a full grid (24 panes) refuses it with a toast.
 Source: D-03-040
 
 ### TERM-041 · New agent tab
@@ -202,6 +205,9 @@ Acceptance:
   - [x] A background tab whose agent finishes shows an unread badge until viewed. (cards; evidence/cards-TERM-055.txt)
   - [x] An idle shell tab shows only its identity icon and no badge. (cards; evidence/cards-TERM-055.txt)
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the pane header carries the tab's marks: its status dot shows working, permission and done as
+    before, and the unread bell sits before its title until the pane is viewed.
 Source: D-03-055
 
 ### TERM-118 · Bell and finish notifications
@@ -296,6 +302,8 @@ Acceptance:
   - [x] A new install shows rounded session windows with gaps. (cards; evidence/cards-TERM-028.txt)
   - [x] In the clean look, a session group holding one tab shows no tab strip. (cards live; evidence/cards-TERM-028.txt)
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): no look draws a tab strip any more; the classic look keeps its other chrome.
 Source: D-03-028
 
 ### TERM-017 · Panes keep their identity across layout changes
@@ -490,6 +498,9 @@ Acceptance:
   - [ ] Dragging pane A to the right of pane B swaps their order with output intact.
   - [ ] A tab holding a single pane shows no drag handle in its header.
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): every pane header carries the drag grip while the grid has more than one cell; dropped on another
+    cell's centre the two panes swap, on an outer band it moves to that side; the session keeps running.
 Source: D-03-015
 
 ### TERM-044 · Close tabs in bulk
@@ -510,6 +521,9 @@ Acceptance:
   - [ ] Closing the active tab returns to the tab that was used just before it.
 Compat: keybinding id tab.close, plus a command for closing all tabs (exact id held back until
   allowlisted).
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the bulk closes measure the grid (its panes in cell order) and sit in a terminal's Pane menu and
+    in the header menu of any other pane; Close tab and Close all keep their keys.
 Source: D-03-044
 
 ### TERM-049 · Tab right-click menu
@@ -534,6 +548,11 @@ Acceptance:
       five close items each do what they say and close the menu; a close item with nothing to close
       does nothing. (unit; evidence/T-696.txt)
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the tab menu is what a right-click (or Shift+F10 / the Menu key on a header button) opens on the
+    header of a pane with no Pane menu of its own (a file, diff, preview, All Changes, check or chooser); a
+    terminal's Pane menu carries Pin Tab, Tab Color... and the bulk closes; Split Right and Down open a shell
+    beside the pane; middle-click on a header closes an unpinned pane.
 Source: D-03-049
 
 ### TERM-054 · Reorder tabs by dragging
@@ -548,6 +567,8 @@ Acceptance:
   - [ ] Dragging tab 1 onto the right half of tab 3 makes it third.
   - [ ] Dropping a tab onto itself leaves the order unchanged.
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): retired with the tab strip; moving a pane is TERM-015's drag by the header grip.
 Source: D-03-054
 
 ### TERM-027 · Name a pane
@@ -589,6 +610,9 @@ Acceptance:
   - [ ] Confirming an IME candidate with Enter keeps the rename field open; Escape keeps the old
       name.
 Compat: keybinding id tab.rename.
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): a double-click on a terminal's header title, Set Title in the Pane menu, Change Title in the
+    header menu or the rename key opens the header's name field.
 Source: D-03-048
 
 ### TERM-058 · Tab titles follow the running program
@@ -661,6 +685,10 @@ Acceptance:
   - [ ] Cmd/Ctrl+W on a pinned tab shows the confirmation.
   - [ ] Middle-clicking a pinned tab leaves it open, and Close others leaves pinned tabs open.
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): Pin Tab and Unpin Tab are in a terminal's Pane menu and in the header menu of any other pane; the
+    pin icon shows in the pane header; a pinned pane keeps its cell (a pin does not reorder the grid); the
+    close question, the bulk-close and middle-click rules stand.
 Source: D-03-046
 
 ### TERM-069 · Safe multi-line paste
@@ -784,6 +812,9 @@ Acceptance:
   - [ ] Closing three tabs and pressing reopen three times brings all three back in reverse order.
   - [ ] After closing 11 tabs, reopen brings back at most the 10 most recent.
 Compat: keybinding command for reopening the last closed tab (exact id held back until allowlisted).
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): a reopened tab comes back in the cell right after the focused pane of its grid, even when that
+    grid is full.
 Source: D-03-047
 
 ### TERM-071 · Large pastes stay responsive
@@ -1098,6 +1129,8 @@ Acceptance:
   - [ ] After tabs are dragged into a new order, cycling follows the new visible order.
 Compat: keybinding commands for next and previous tab of the same type, of any type, and of
   terminals only (exact ids held back until allowlisted).
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): tab cycling and go-to-number follow the grid's cell order.
 Source: D-03-051
 
 ### TERM-052 · Go to a tab by number
@@ -1109,6 +1142,8 @@ Acceptance:
   - [ ] With 3 tabs, the 2 shortcut selects the middle tab.
   - [ ] With 3 tabs, the 5 shortcut does nothing.
 Compat: keybinding command for selecting a tab by its number (exact id held back until allowlisted).
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the number counts the panes of the grid in front, in cell order.
 Source: D-03-052
 
 ### TERM-059 · Floating workspace panel
@@ -1373,6 +1408,9 @@ Acceptance:
   - [ ] Moving a finished agent's pane out to its own tab leaves exactly one entry for that run, not
       zero and not two.
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): retired with the tab strip: every pane already has a cell of its own, so there is no tab to move
+    it into or out of.
 Source: D-03-016
 
 ### TERM-119 · Shell history per worktree
@@ -1433,6 +1471,8 @@ Acceptance:
   - [ ] With 30 tabs, dragging the thumb scrolls the tabs.
   - [ ] With only a few tabs and nothing overflowing, no scroll bar shows.
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): retired with the tab strip.
 Source: D-03-057
 
 ### TERM-102 · Minimum contrast and ligatures
@@ -1762,6 +1802,8 @@ Acceptance:
   - [ ] A new worktree opens a tab running its setup script.
   - [ ] Creating a worktree in a repo without a setup script opens no setup tab.
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the setup script's terminal opens in the cell right after the workspace's first pane.
 Source: D-03-121
 
 ### TERM-133 · Colour-code a tab
@@ -1774,6 +1816,9 @@ Acceptance:
   - [ ] Right-click a tab, Tab Color then Green: a green dot appears on that tab only.
   - [ ] Tab Color then None: the dot is gone.
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): the colour dot shows in the pane header, before its title; Tab Color is in the header menu and,
+    for a terminal, in its Pane menu.
 Source: D-03-133
 
 ### TERM-135 · First web link click asks where links open

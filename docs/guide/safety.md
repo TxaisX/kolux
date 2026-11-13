@@ -79,7 +79,7 @@ The skills scan also has a time limit of 8 seconds. A folder that runs past it s
 
 ## Local doors that stay shut to web pages
 
-Kolux runs two small listeners on your own computer, one for the command line and one for agent status hooks. Neither can be reached from the internet. Both also refuse web pages running in your browser: a request that looks like a web page request, or that arrives without the one-run secret key, is dropped or answered with an empty "not found". Browser tabs inside Kolux open only web addresses (http or https), never local files.
+Kolux runs two small listeners on your own computer, one for the command line and one for agent status hooks. Neither can be reached from the internet. Both also refuse web pages running in your browser: a request that looks like a web page request, or that arrives without the one-run secret key, is dropped or answered with an empty "not found".
 
 ## Agent status hooks
 
@@ -108,17 +108,17 @@ When Kolux is closed or does not answer in time, the Gemini and Antigravity scri
 
 Two known issues touch these files. See [Troubleshooting](troubleshooting.md#hooks-messages-and-leftovers).
 
-## Browser tabs: what pages may do
+## Project icons from the web
 
-Pages in a browser tab are not trusted. Kolux limits three things.
+Kolux has no browser of its own: web links open in your normal browser (Chrome, Edge or any other). Of the connections Kolux makes itself (listed in Settings, General, Privacy), one goes to an address a project chooses: the project's icon, when the project names a picture on the web.
 
 | Limit | What it means |
 |---|---|
-| Pages opening tabs | Pages share one allowance of 5 new tabs per 10 seconds, whether they ask for a new window or a link opens as a tab. Extra ones are dropped silently. A page that loops cannot fill your window. The allowance is shared by all pages, so a noisy page can also use up what your own clicks need for a few seconds |
-| Where a tab may go | A new tab, a redirect or a script can go only where the address box could. Links to files and to the app's own pages are refused |
-| Site icons | Kolux fetches a page's icon itself, so it caps the fetch (an image up to 256 KB, 5 redirects, 8 seconds) and refuses a redirect from https to http. A public page cannot make Kolux fetch an icon from `localhost`, a home or office network address, or a `.local` or `.lan` name unless the page is on that same host |
+| Only public https addresses | The address must be https, with no user name or password, and not `localhost`, a home or office network address, or a `.local` or `.lan` name |
+| Capped size and time | An icon may be up to 256 KB and must arrive within 8 seconds. Every redirect is checked again, and a redirect from https to http is refused |
+| No proxy, no cookies | The fetch never goes through a proxy. With a saved proxy no icon is fetched at all. No cookies are sent |
 
-One gap is known: a public name that secretly points to a local address is not caught by the icon rule. Kolux sends no cookies with the fetch, and the local hooks door still wants its secret key. See [Files and browser](files-and-browser.md).
+A public name that secretly points to a local address is caught too: the fetch does its own name lookup and drops local answers.
 
 ## Chat messages and menus
 
@@ -132,4 +132,4 @@ Nothing about your use. The list of outside connections is in Settings, General,
 
 Kolux pre-trusts a working folder it creates itself, for Claude and Codex, so an agent's first prompt is not swallowed by a "do you trust this folder" question. Only folders Kolux made are pre-trusted. Your own project folder is not, so an agent may ask that question the first time it opens there; answer it in the pane. Pre-trust for Cursor and Copilot is not built.
 
-<!-- verified against: src-tauri/src/protected.rs, src-tauri/src/hooks.rs, src-tauri/src/fence.rs, src-tauri/src/links.rs, src-tauri/src/files.rs, src-tauri/src/cli/mod.rs, src-tauri/src/trust.rs, src-tauri/src/browser.rs, src/chat/send.ts, src/chat/composer.ts, src/App.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/privacy.ts, src-tauri/src/scm.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs at c2ef69fc -->
+<!-- verified against: src-tauri/src/protected.rs, src-tauri/src/hooks.rs, src-tauri/src/fence.rs, src-tauri/src/links.rs, src-tauri/src/files.rs, src-tauri/src/cli/mod.rs, src-tauri/src/trust.rs, src-tauri/src/net.rs, src-tauri/src/web_icon.rs, src/chat/send.ts, src/chat/composer.ts, src/App.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/privacy.ts, src-tauri/src/scm.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs at 9a61802c -->

@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-744 (DT-C180, destructive.md F4): a delete question asked in one project does not survive a switch to another;
 // before, it stayed open and its Delete sent the first project's folders under the second project's id. A check or a
 // delete still running at the switch drops its answer too, so the second project never shows the first one's rows.
 import { act, createElement, useState } from "react";
 import { afterEach, expect, test, vi } from "vitest";
-import { byLabel, click, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { byLabel, click, find, installDom, mount, settle, until } from "../tasks/realDom";
 import type { SpaceRow } from "../projects/space";
 
 const back = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[], gate: null as Promise<void> | null, gateOn: "", checkFails: false }));

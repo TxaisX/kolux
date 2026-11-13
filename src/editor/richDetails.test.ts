@@ -3,10 +3,11 @@ import { $createTextNode, $getRoot, createEditor, type ElementNode, type Lexical
 import { HeadingNode, QuoteNode, registerRichText } from "@lexical/rich-text";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { LinkNode } from "@lexical/link";
-import { $convertFromMarkdownString, $convertToMarkdownString, CHECK_LIST, TRANSFORMERS, type Transformer } from "@lexical/markdown";
+import { $convertFromMarkdownString, CHECK_LIST, TRANSFORMERS, type Transformer } from "@lexical/markdown";
 import { DETAILS_NODES, makeDetails } from "./richDetails";
 import { applyFormat, applyImage, applyLink, cleanUrl, imageLink, linkAt, MORE_BLOCKS, RICH_BUTTONS } from "./richFormat";
 import { roundTrip, unsupported } from "./markdown";
+import { $exportMarkdown } from "./mdExport";
 
 const MD: Transformer[] = [makeDetails(() => MD), CHECK_LIST, ...TRANSFORMERS];
 
@@ -22,7 +23,7 @@ function editorWith(md: string, pick: "start" | "word" = "start"): LexicalEditor
 }
 const md = (e: LexicalEditor) => {
   e.update(() => {}, { discrete: true });
-  return e.getEditorState().read(() => $convertToMarkdownString(MD));
+  return e.getEditorState().read(() => $exportMarkdown(MD));
 };
 
 const SECTION = "<details>\n<summary>More</summary>\n\nInside text\n\n</details>";

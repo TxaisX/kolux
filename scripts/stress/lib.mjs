@@ -332,7 +332,9 @@ export async function typeInto(app, index, text, sel = TERM) {
 // which functions allocated it. Opened beside cdp.mjs's one-shot connections, never instead of them.
 export async function perfSession(port) {
   const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-  const target = targets.find((t) => t.type === "page" && /localhost:14\d\d|tauri\.localhost/.test(t.url));
+  // The page is on the slot's own vite port (1500-1590 for o2-tests slots, 1470 for prove), so match any localhost
+  // port rather than a hardcoded 14xx: a fixed pattern reported "no main page target" on every non-1470 slot.
+  const target = targets.find((t) => t.type === "page" && /localhost:\d+|tauri\.localhost/.test(t.url));
   if (!target) throw new Error("perfSession: no main page target");
   const ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r, j) => {

@@ -9,6 +9,8 @@ import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
+import PaneGrip from "./PaneGrip";
+import { HeadMarks } from "./TabMarks";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
@@ -16,7 +18,7 @@ import { shellIconOf, type ShellEntry } from "./shellChoice";
 import type { EntryTarget } from "../launch/newTabEntryRun";
 import { bellGate } from "./bellNote";
 import LinkActionMenu from "./LinkActionMenu";
-import { copyTextOf, destinationOf, doorOfItem, linkMenuItems, openFailed, opensMenu, planClick, type Door, type LinkItemId } from "./linkMenu";
+import { copyTextOf, destinationOf, doorOfItem, linkMenuItems, type Door, type LinkItemId } from "./linkMenu";
 import type { Chip } from "../board/chip";
 import { ChipRow } from "../board/ChipRow";
 import type { AgentState } from "../projects/rows";
@@ -29,7 +31,7 @@ import { xtermLogger } from "./xtermLogger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
+import { afterPaint, attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
 import { handedOver, takeOver } from "./handover";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
@@ -38,12 +40,11 @@ import { AUTO, autoSender, trackInputSource } from "./inputSource";
 import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
-import { notePrinted } from "../browser/preview";
+import { notePrinted } from "./printedAddresses";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
-import { claimsClick } from "./linkClick";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
-import { fromThisService, needsSize, orphanOf, reattach, type Attach, type Reattached, type ServiceInfo } from "./reattach";
+import { fromThisService, needsSize, orphanOf, reattach, startedOf, warmAskOf, warmSnapshot, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
 import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { frameOutputs, type FrameOutput } from "./frame";
@@ -53,6 +54,8 @@ import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
 import { currentText, optionsOf, paneOptionsOf, scrollbackRows, TEXT_EVENT } from "./text";
 import { blinkRest } from "./blinkRest";
+import { bindNative, nativeLook } from "./nativeView";
+import { wireLinks } from "./paneLinks";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
@@ -65,7 +68,7 @@ import { openSettings } from "../settings/pages";
 import { answerKeys, buttonsShown, canAnswer, nextPrompt } from "./permissionAnswer";
 import { Close, Dots, Expand, Plus, SplitRight, StatusGlyph } from "../chrome/icons";
 import VendorMark, { type Agent } from "../chrome/VendorMark";
-import { ContextGauge, HeaderUsage } from "./UsageReadout";
+import { HeaderUsage } from "./UsageReadout";
 import type { Readout } from "./headerUsage";
 import { meterText, shortTokens, tone as toneOf, type Meter } from "../usage/meter";
 import PlusMenu, { programWord, shellWord, type AgentInfo } from "../launch/PlusMenu";
@@ -77,7 +80,7 @@ import { answersPrompt, newlineAgent, routeKey } from "./shellKeys";
 import { INPUT_SOURCE_ACTION, KittyKeyboard, latinControl } from "./kittyKeys";
 import { heldByTerminal } from "../keys/terminalPolicy";
 import { answeredElsewhere } from "../chat/ask";
-import { allowed, clickTarget, handlesOn, hintFor, linkFor, linksIn, resolvePath, rowOf, safeLinks, type Found } from "./links";
+import { rowOf, type Found } from "./links";
 import { dropSummary, dropText, overRect, shellKind } from "./drop";
 import { decideOsc52, parseOsc52, sayOnce } from "./osc52";
 import { findIn, linesOf, nearestFrom, placeMatches, searchLater, segments, stepIndex, type BufRow, type FindOptions, type Match, type Runner } from "./find";
@@ -85,7 +88,6 @@ import FindBar from "./FindBar";
 import { stopLine, type StopInfo } from "./notify";
 import NameField from "./NameField";
 import { copyOnSelect } from "../shell/inputExtras";
-import { askLink, linkState } from "../shell/linkAsk";
 import { applyKoluxUnicode } from "../shell/unicodeWidth";
 import { afterLigatures, importLigatures } from "../shell/ligatures";
 import { markShell, runningOf, shellInAgentPane } from "./remove";
@@ -97,7 +99,7 @@ const COPY_IDS = [["session", "Copy Session ID"], ["terminal", "Copy Terminal ID
 type Status = { kind: "starting" } | { kind: "running"; id: number; account: string | null } | { kind: "ended"; code: number | null } | { kind: "failed"; error: string };
 
 /** council D2 MERGE 31 (3): the host element of a dev build carries its terminal for the evidence probes. */
-type DevHost = HTMLDivElement & { __koluxTerm?: Terminal; __koluxLinks?: (y: number) => unknown[] };
+type DevHost = HTMLDivElement & { __koluxTerm?: Terminal };
 
 /** APP-009 / T-248-a: the menu's Edit > Copy and Select All reach the focused terminal through this.
  * They are calls, never key presses: an empty selection copies nothing, and a rebound chord can't break it. */
@@ -142,10 +144,7 @@ type Props = {
   crew?: Crew;
   /** STAT-022: why the agent halted while `hook` is blocked; the header's tooltip says it. */
   stop?: StopInfo;
-  /** STAT-040: how full the agent's context is, 0 to 100, from its last status-line report;
-   * null or left out while no reading has come in yet (USAGE-001: a greyed 0%). */
-  context?: number | null;
-  /** USAGE-004: the agent's plan figures beside the gauge on the Agents screen. Shown only while `usage`
+  /** USAGE-004: the agent's plan figures in the header on the Agents screen. Shown only while `usage`
    * is left out; with it the header's full readout carries the plan figures on every screen. */
   plan?: string;
   /** USAGE-034: the pane's reading for the full usage readout (tokens against the effective window,
@@ -229,8 +228,9 @@ type Props = {
   dragCell?: { onStart: () => void; onEnd: () => void };
   /** TERM-035: Equalize in the pane menu; given only while the grid holds more than one pane. */
   onEqualize?: () => void;
-  /** TERM-016: Move to Tab in the pane menu. */
-  onMoveToTab?: () => void;
+  /** One session per cell: the tab menu's own items, now in the Pane menu: Pin Tab (TERM-046), Tab Color… (TERM-133)
+   *  and the grid's bulk closes (TERM-044), each closing `keys` through `onCloseKeys` (asked first, TERM-045). */
+  tab?: { pinned: boolean; onPin: () => void; onColor: (at: { x: number; y: number }) => void; closes: { id: string; name: string; title?: string; keys: number[] }[]; onCloseKeys: (keys: number[]) => void };
   /** TERM-013: the grid's expand: `on` while this pane's cell fills the grid; `can` is false for a lone classic pane. */
   expand?: { on: boolean; can: boolean; toggle: () => void };
   /** VIEW-026: on the Board this pane is a card; expanded shows the live terminal inside it. */
@@ -256,6 +256,9 @@ const tauriService = {
   attach: (paneKey: number, generation: number) => invoke<Attach>("terminal_attach", { paneKey, generation }),
 };
 
+/** The service a pane asks its terminal from: with a warm ask, `terminal_attach` carries it. */
+const serviceFor = (warm: WarmAsk | null) => (warm === null ? tauriService : { ...tauriService, attach: (paneKey: number, generation: number) => invoke<Attach>("terminal_attach", { paneKey, generation, warm }) });
+
 // TERM-113: panes that are not on screen at mount (background tabs of a restored layout) start one
 // after another, a short beat apart, so the shown tab's programs get the first spawns and come up
 // usable first. ponytail: a timer ladder, not a queue; the visible panes never wait.
@@ -271,7 +274,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, context, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, tab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -411,6 +414,39 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     };
   }, [cwd, hidden, focused]);
   const idRef = useRef<number | null>(null);
+  // NATIVE-TERMINAL.md: with the experimental `terminalNative` setting on, the Windows Terminal engine draws
+  // this pane in a native window kept over the pane body (nativeView.ts). Read once per mount.
+  const hiddenNow = useRef(hidden);
+  hiddenNow.current = hidden;
+  // While the engine draws the pane, xterm stops drawing under it: its screen is taken out of the page (it
+  // still takes the output, so search, chat and restore keep working) and it counts as hidden for its GPU
+  // slot, which it gives back after the usual wait (parkWhenHidden). The engine draws with the pane's own
+  // colours, font and cursor, and follows a theme or text change; the session runs at the engine's grid, and
+  // xterm keeps that grid, so a menu over the pane (the engine steps aside) shows the same lines.
+  const nativeOn = useRef(false);
+  const refit = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (!currentInput().native || !host.current) return;
+    return bindNative(host.current, () => idRef.current, () => hiddenNow.current, invoke, 250, {
+      onShown: (on) => {
+        nativeOn.current = on;
+        const screen = termRef.current?.element;
+        if (screen) screen.style.display = on ? "none" : "";
+        parking.current?.hidden(hiddenNow.current || on);
+        if (!on) refit.current?.();
+      },
+      look: () => {
+        const font = termFont();
+        const text = currentText();
+        return nativeLook(currentTerminal(), font.fontFamily, font.fontSize, text.cursor, text.blink);
+      },
+      lookEvents: [TERMINAL_EVENT, TEXT_EVENT],
+      onGrid: (cols, rows) => {
+        const term = termRef.current;
+        if (term && (term.cols !== cols || term.rows !== rows)) term.resize(cols, rows);
+      },
+    });
+  }, []);
   // APP-052: the run of the terminal service this pane's terminal belongs to; its typing carries it.
   const serviceRef = useRef<ServiceInfo | null>(null);
   const isHidden = useRef(hidden);
@@ -419,7 +455,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // frame is drawn (a layout effect, so the first visible frame is whole: TERM-103).
   const parking = useRef<ReturnType<typeof parkWhenHidden> | null>(null);
   useLayoutEffect(() => {
-    parking.current?.hidden(hidden);
+    parking.current?.hidden(hidden || nativeOn.current);
   }, [hidden]);
   // T-765: a tab that comes back catches up at once, without waiting for the next output chunk.
   useEffect(() => {
@@ -552,114 +588,16 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // evidence probes can read the scrollback cap and the buffer length (the way launchWarn.ts exposes
     // __koluxUsage). A release build has no handle.
     if (import.meta.env.DEV) (el as DevHost).__koluxTerm = term;
-    // TERM-096: a printed handle of an open terminal (term-N) is a link that opens its pane.
-    term.registerLinkProvider({
-      provideLinks(y, done) {
-        const links = safeLinks(() =>
-          handlesOn(term.buffer.active, y - 1, term.cols).flatMap(({ handle, range }) => {
-            const go = handleRef.current?.(handle);
-            return go ? [{ range, text: handle, activate: go }] : [];
-          }),
-        );
-        done(links.length > 0 ? links : undefined);
-      },
-    });
-    // TERM-092 / TERM-093: web links and file paths are links (Ctrl+click; Cmd+click on macOS); a link wrapped over
-    // rows is read as one; the hint under the pointer says where the click goes. The text work is in links.ts.
-    // TERM-092: the link under the pointer, so a Ctrl+click on it is kept from a program that tracks the mouse.
-    let hot: Found | null = null;
-    const openFound = (f: Found, e: { button: number; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }) => {
-      // ACCT-061: every link is checked before it is opened; a disallowed scheme or an odd target is ignored.
-      if (!allowed(f)) return;
-      const o = openRef.current;
-      const mac = keys.current.platform === "darwin";
-      // TERM-094: the secondary button with the modifier is the menu's (opened on the press, below); a release
-      // reaching here is ignored. TERM-135: a plain web click asks first, until that was answered.
-      const plan = planClick(f, e, mac, o.linksOpenInKolux && !!o.onOpenLink, linkState(), currentText().linkMenu);
-      if (plan === null || plan.kind === "menu") return;
-      if (plan.kind === "ask" && askLink(f.target, false, (to) => openAt(f, to === "kolux" && o.onOpenLink ? "kolux" : "system"))) return;
-      openAt(f, plan.kind === "open" ? plan.door : (clickTarget(f, e, mac, o.linksOpenInKolux && !!o.onOpenLink) ?? "system"));
-    };
-    // the one opener: a click's door, the question's answer, or a pick from the link menu (which names its door)
-    const openAt = (f: Found, door: Door) => {
-      if (!allowed(f)) return;
-      const o = openRef.current;
-      const said = (err: unknown) => setFlash(openFailed(f.target, explainError(String(err)))); // VIEW-105: a failed open says so
-      if (door === "kolux" && o.onOpenLink) o.onOpenLink(f.target);
-      else if (door === "kolux" || door === "system") invoke("open_external", { url: f.target }).catch(said);
-      else {
-        const path = resolvePath(f.target, o.cwd);
-        if (!path) setFlash(`${f.target} is a relative path and this pane has no folder`);
-        else if (o.onOpenFile) o.onOpenFile(path, f.line);
-        else invoke("open_path", { path }).catch(said);
-      }
-    };
-    const hintOf = (f: Found) => {
-      const o = openRef.current;
-      const where = f.kind === "file" ? (o.onOpenFile ? "editor" : "app") : o.linksOpenInKolux && o.onOpenLink ? "kolux" : "browser";
-      return hintFor(f, keys.current.platform === "darwin", where, currentText().linkMenu);
-    };
-    // the hint and the underline clear when the window loses focus (the pointer may never "leave" the link)
-    const blurLinks = () => {
-      setLinkHint(null);
-      term.element?.querySelector(".xterm-screen")?.dispatchEvent(new MouseEvent("mouseleave"));
-    };
-    window.addEventListener("blur", blurLinks);
-    const linksOn = (y: number) =>
-      linksIn(term.buffer.active, y - 1, term.cols).map(({ f, range }) => ({
-        range,
-        text: f.target,
-        activate: (e: MouseEvent) => openFound(f, e),
-        hover: () => ((hot = f), setLinkHint(hintOf(f))),
-        leave: () => ((hot = null), setLinkHint(null)),
-      }));
-    term.registerLinkProvider({
-      provideLinks(y, done) {
-        // ACCT-061: a scan that trips over unusual output leaves this row without links; the pane keeps working.
-        const links = safeLinks(() => linksOn(y), (err) => console.warn("link scan skipped a row", err));
-        done(links.length > 0 ? links : undefined);
-      },
-    });
-    if (import.meta.env.DEV) (el as DevHost).__koluxLinks = linksOn;
-    // a program's own OSC 8 link (file:// allowed, other schemes are not links)
-    term.options.linkHandler = {
-      allowNonHttpProtocols: true,
-      activate: (e, uri) => {
-        const f = safeLinks(() => [linkFor(uri)])[0];
-        if (f) openFound(f, e);
-      },
-      hover: (_e, uri) => {
-        const f = safeLinks(() => [linkFor(uri)])[0];
-        if (f) (hot = f), setLinkHint(hintOf(f));
-      },
-      leave: () => ((hot = null), setLinkHint(null)),
-    };
-    // TERM-092: xterm sends every unshifted press to a program that tracks the mouse; the link click is Kolux's.
-    linkOpenRef.current = openAt;
-    const claim = (e: MouseEvent) => {
-      // TERM-094: the link modifier with right-click on a link opens the link menu (a tracking program never sees it)
-      if (hot && opensMenu(e, keys.current.platform === "darwin", currentText().linkMenu)) {
-        e.preventDefault();
-        e.stopPropagation();
-        setLinkMenu({ f: hot, top: e.clientY, left: e.clientX });
-        return;
-      }
-      if (!hot || !claimsClick(e, keys.current.platform === "darwin", term.modes.mouseTrackingMode)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openFound(hot, e);
-    };
-    el.addEventListener("mousedown", claim, true);
-    // TERM-094: the right-click that opened the link menu opens neither the pane menu nor right-click paste
-    // (T-710: a keyboard contextmenu opened no link menu, so it goes on to the pane menu)
-    const menuClick = (e: MouseEvent) => {
-      if (fromKeys(e) || !hot || !opensMenu({ button: 2, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey }, keys.current.platform === "darwin", currentText().linkMenu)) return;
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    el.addEventListener("contextmenu", menuClick, true);
-    const choice = attachRenderer<WebglAddon>(term, () => new WebglAddon(), gpu && preferGpu(currentInput().gpu, probeGpu())); // SET-022: the GPU setting (automatic, on, off)
+    // TERM-092 / TERM-093 / TERM-094 / TERM-096: the pane's links (paneLinks.ts).
+    const unlinks = wireLinks(term, el, { handle: handleRef, open: openRef, keys, linkOpen: linkOpenRef, setFlash, setLinkHint, setLinkMenu });
+    // SET-022: the GPU setting (automatic, on, off). Bug 1155: the pane starts plain and loads the GPU path after its first paint.
+    const choice = attachRenderer<WebglAddon>(term, () => new WebglAddon(), gpu && preferGpu(currentInput().gpu, probeGpu()), undefined, true);
     setRenderer(choice.mode);
+    const gpuSoon = afterPaint(() => {
+      if (choice.mode === "webgl" || choice.wake() !== "webgl") return;
+      term.refresh(0, Math.max(0, term.rows - 1)); // a renderer swap needs a full repaint
+      setRenderer("webgl");
+    });
     choice.onFallback(() => setRenderer("dom"));
     quietSelection(term); // DT-C245: no selection redraw per scrolled line while nothing is selected
     fit.fit();
@@ -1111,7 +1049,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       const start = async (prog: string | null, argv: readonly string[], keepInView: boolean, back: Reattached | null = null) => {
         try {
           // APP-052: a terminal this run of the service still runs for the pane (the window reloaded) is taken back, not started again.
-          const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: prog, account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
+          const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: startedOf(back, prog), account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
           setStarted(ran);
           // A shell taken back after a reload is past its prompt, and a fallback shell without hooks
           // (ACCT-046) prints no mark: neither is held.
@@ -1222,7 +1160,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // APP-052: the pane asks the terminal service for its terminal first and waits for the service
         // to answer, up to a hard limit; no answer or too old a service fails the pane in plain words.
         // A pane without a key (nothing saved for it) has no terminal to ask for.
-        const back = number === undefined ? null : await reattach(tauriService, number, serviceRef.current);
+        // Kept-warm shell (setting on): a new plain shell takes its folder's warm shell, answered as attached.
+        const warmAsk = warmAskOf({ on: currentInput().warmShell, key: number, restored, moved, program, args, env, typed, agent, account, cwd }, term.cols, term.rows);
+        const back = number === undefined ? null : await reattach(serviceFor(warmAsk), number, serviceRef.current);
         const orphan = orphanOf(back, alive, handed);
         if (orphan !== null) invoke("terminal_kill", { id: orphan }).catch(() => {});
         if (!alive) return;
@@ -1257,6 +1197,17 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // TERM-088: the program whose history was just replayed is gone unless the service still runs it (attached);
         // what it left on (mouse capture first) is turned off, so a plain drag selects again in the new shell.
         if (keepInView && back?.kind !== "attached") term.write(resetAfterExit(modeView(term.modes), term.buffer.active.type === "alternate"));
+        // Kept-warm shell: the warm shell printed its prompt before this pane existed; its snapshot draws it and
+        // sets the floor, so the chunks after it are drawn once. The terminal queries in it (the console host's
+        // cursor question, which the service answered, and any other) are left out (warmSnapshot).
+        if (warmAsk !== null && back?.kind === "attached") {
+          const snap = await invoke<LiveSnapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
+          if (!alive) return;
+          if (snap) {
+            resync.took(snap.id, snap);
+            applySnapshot(term, warmSnapshot(decodeOutput(snap.data)));
+          }
+        }
         await start(program, args, keepInView, back);
       } catch (err) {
         fail(err);
@@ -1266,6 +1217,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const resize = () => {
       // A hidden pane has no size; fitting it would shrink the program's terminal to nothing.
       if (el.clientWidth === 0 || el.clientHeight === 0) return;
+      // NATIVE-TERMINAL.md: the engine fits the session to its own grid while it draws the pane.
+      if (nativeOn.current) return;
       fit.fit();
       // TERM-010 (and the size rule of the full-screen card): while a divider is dragged the pane
       // redraws at each size but the program hears only the final one, when the drag ends.
@@ -1273,6 +1226,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       const id = idRef.current;
       if (id !== null && !ended) invoke("terminal_resize", { id, cols: term.cols, rows: term.rows }).catch(() => {});
     };
+    refit.current = resize;
     const observer = new ResizeObserver(resize);
     observer.observe(el);
     window.addEventListener(DIVIDER_DONE, resize);
@@ -1452,6 +1406,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       if (id !== null && killsOnUnmount(gen) && !handed) invoke("terminal_kill", { id }).catch(() => {});
       parking.current?.stop();
       parking.current = null;
+      gpuSoon();
       choice.dispose();
       pasting.detach();
       shots();
@@ -1464,10 +1419,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       acks.stop();
       term.dispose();
       delete (el as DevHost).__koluxTerm;
-      delete (el as DevHost).__koluxLinks;
-      window.removeEventListener("blur", blurLinks);
-      el.removeEventListener("mousedown", claim, true);
-      el.removeEventListener("contextmenu", menuClick, true);
+      delete (el as HTMLDivElement & { __koluxLinks?: unknown }).__koluxLinks;
+      unlinks();
       pane?.removeEventListener("mousedown", unmark);
     };
   }, []);
@@ -1732,36 +1685,15 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           openMenu(e.clientX, e.clientY);
         }}
       >
-        {dragCell && (
-          <span
-            className="pane-grip"
-            role="img"
-            aria-label="Drag to move this pane"
-            title="Drag to move this pane"
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("text/plain", title);
-              dragCell.onStart();
-            }}
-            onDragEnd={dragCell.onEnd}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-              <circle cx="4" cy="3" r="1" />
-              <circle cx="8" cy="3" r="1" />
-              <circle cx="4" cy="6" r="1" />
-              <circle cx="8" cy="6" r="1" />
-              <circle cx="4" cy="9" r="1" />
-              <circle cx="8" cy="9" r="1" />
-            </svg>
-          </span>
-        )}
+        {dragCell && <PaneGrip name={title} onStart={dragCell.onStart} onEnd={dragCell.onEnd} />}
         <span className={`st ${tone || "idle"}`} role="img" data-testid="pane-status-dot" aria-label={`status: ${word}`} data-tip={[explain, drawing].filter(Boolean).join(" · ")}>
           <StatusGlyph glyph={glyph} size={glyph === "spinner" ? 11 : 12} />
         </span>
         <span className="agent-mark" title={agentLabel}>
           {shellIcon === "shell" ? <VendorMark agent={shown} size={13} /> : <ShellMark icon={shellIcon} />}
         </span>
+        {/* One session per cell (2026-11-12): what the pane's tab showed (TabMarks.tsx). */}
+        <HeadMarks />
         {naming && onRename ? (
           <NameField
             value={title}
@@ -1854,7 +1786,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
               Review plan
             </button>
           )}
-          {usage ? <HeaderUsage context={context} agent={agent} readout={usage} account={account} /> : <ContextGauge context={context} agent={agent} />}
+          {usage && <HeaderUsage agent={agent} readout={usage} account={account} />}
           <button
             className="ib"
             title="Pane menu"
@@ -1944,11 +1876,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             ],
             onSplit,
             onEqualize,
-            onMoveToTab,
             onExpand,
             onSetTitle: onRename && (() => setNaming(true)),
             hasTitle: custom,
             onClearTitle: onRename && (() => onRename(undefined)),
+            pinned: tab?.pinned,
+            onPin: tab?.onPin,
+            onColor: tab && (() => tab.onColor({ x: menuAt.left, y: menuAt.top })),
+            closes: tab?.closes.map((x) => ({ id: x.id, name: x.name, title: x.title, run: () => tab.onCloseKeys(x.keys) })),
             copyIds: onCopyId ? COPY_IDS.filter(([what]) => sessionKnown || what !== "session").map(([what, label]) => ({ id: what, name: label, run: () => onCopyId(what) })) : [],
             onDiagnostics: () => void copyDiagnostics(),
             onClose: onClose && close,
@@ -2164,5 +2099,3 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   );
 }
 
-// USAGE-001: the gauge lives with the rest of the header readout (UsageReadout.tsx); kept importable from here.
-export { ContextGauge };

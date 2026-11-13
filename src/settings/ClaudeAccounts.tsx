@@ -8,7 +8,7 @@
 // off, Kolux asks Claude Code whether the active account is still signed in (ACCT-012) and shows
 // the lapsed warnings. Kolux never renews a sign-in itself (DT-C16).
 import { useCallback, useEffect, useState } from "react";
-import { saveChanged } from "./saveChanged";
+import { patchSettings } from "./useSettings";
 import { AccountRow, AccountsReadError, signedInAt } from "./AccountRow";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -113,8 +113,7 @@ export function ClaudeAccountsView({ view, error, confirming = null, onAction }:
 
 /** Writes the upkeep switch; switching it off asks Claude Code at once whether the active account is still signed in. */
 function setUpkeep(on: boolean): Promise<void> {
-  return invoke<Record<string, unknown>>("get_settings")
-    .then((s) => saveChanged(s, { ...s, [UPKEEP_FIELD]: on }))
+  return patchSettings({ [UPKEEP_FIELD]: on })
     .then(() => (on ? undefined : invoke<void>("claude_account_check")));
 }
 

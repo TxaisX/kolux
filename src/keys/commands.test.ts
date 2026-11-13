@@ -49,7 +49,6 @@ test("T-611: the five the audit found, Force Reload and Hard Reload each do some
   // An old id kept for keybindings files that name it runs another command's code.
   expect(sameAs["sidebar.sleepingWorkspaces.toggle"]).toBe("sidebar.sleeping.toggle"); // PROJ-053 / VIEW-053
   expect(sameAs["dashboard.toggle"]).toBe("view.tower"); // VIEW-029 / HID-020: the drawer's always-on successor (OD-09)
-  expect(sameAs["browser.hardReload"]).toBe("browser.reload"); // BROW-005, as the same chord already does inside a page
   const { did, calls } = spies();
   for (const id of ["sidebar.checks.toggle", "workspace.rename", "app.forceReload"]) expect(windowCommand(id, calls), id).toBe(true);
   expect(did).toEqual(["right:checks", "rename", "reload"]);
@@ -145,22 +144,21 @@ test("T-611: Rename worktree from the palette on the Board with the sidebar coll
 test("review of PR #16: a command whose place is not open says so instead of doing nothing, and stays listed", () => {
   const map = resolve({}, "win32");
   const target = new EventTarget();
-  // Only the window's own listener is live: no browser pane, editor, explorer or Settings is open.
+  // Only the window's own listener is live: no editor, explorer or Settings is open.
   target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["global", "tabs"]));
   const notes: string[] = [];
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }), unanswered: (t: string) => void notes.push(t) };
-  runCommand("browser.reload", undefined, { ...now, scope: "browser" });
   runCommand("editor.find", undefined, { ...now, scope: "editor" });
   runCommand("view.floor", undefined, { ...now, scope: "global" }); // the window took it: no note
-  expect(notes).toEqual(["Open a browser pane first.", "Open a file in an editor tab first."]);
-  // With a browser pane listening, the same command runs there and nothing is said.
-  target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["browser"]));
-  runCommand("browser.reload", undefined, { ...now, scope: "browser" });
-  expect(notes).toHaveLength(2);
+  expect(notes).toEqual(["Open a file in an editor tab first."]);
+  // With an editor listening, the same command runs there and nothing is said.
+  target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["editor"]));
+  runCommand("editor.find", undefined, { ...now, scope: "editor" });
+  expect(notes).toHaveLength(1);
   // The palette passes the command's own scope and its note line; every command is still a row.
   const said: string[] = [];
   const rows = commandRows(map, [], (t) => void said.push(t));
-  expect(rows.some((r) => r.label === actionById.get("browser.reload")!.title)).toBe(true);
+  expect(rows.some((r) => r.label === actionById.get("editor.find")!.title)).toBe(true);
 });
 
 test("review of PR #16: Force Reload asks first when an editor holds unsaved changes, and reloads at once when none does", () => {

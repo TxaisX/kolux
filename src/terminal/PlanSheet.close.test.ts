@@ -26,10 +26,10 @@ const find = (n: ReactNode, label: string): El | null => {
   return find(e.props.children, label);
 };
 
+// The sheet is a src/ui Dialog (not modal): its Escape is the layer's and lands in the Dialog's onClose("escape"); a
+// press outside lands there as "outside" and leaves the sheet open, as the terminal beside it stays usable.
 const open = (sending: boolean) => {
   const calls: string[] = [];
-  const keys: Record<string, (e: { key: string; isComposing: boolean }) => void> = {};
-  vi.stubGlobal("window", { addEventListener: (t: string, f: (typeof keys)[string]) => (keys[t] = f), removeEventListener: () => {} });
   effects.length = 0;
   const tree = PlanSheet({
     title: "Claude 1",
@@ -43,7 +43,8 @@ const open = (sending: boolean) => {
     onCancel: () => calls.push("cancel"),
   }) as ReactNode;
   for (const f of effects) f();
-  return { calls, tree, esc: () => keys.keydown?.({ key: "Escape", isComposing: false }) };
+  const dialog = (tree as ReactElement<{ onClose: (why: string) => void }>).props;
+  return { calls, tree, esc: () => dialog.onClose("escape"), outside: () => dialog.onClose("outside") };
 };
 
 test("T-032-b: Close while a send waits cancels the send first, then closes (SAFE-004)", () => {
@@ -58,9 +59,10 @@ test("T-032-b: Esc while a send waits cancels the send first, then closes (SAFE-
   expect(s.calls).toEqual(["cancel", "close"]);
 });
 
-test("T-032-b: with nothing pending, Close and Esc only close (SAFE-004)", () => {
+test("T-032-b: with nothing pending, Close and Esc only close (SAFE-004); a press outside the sheet leaves it open", () => {
   const s = open(false);
   find(s.tree, "Close")?.props.onClick?.();
   s.esc();
+  s.outside();
   expect(s.calls).toEqual(["close", "close"]);
 });

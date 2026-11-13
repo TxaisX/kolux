@@ -56,3 +56,23 @@ test("T-694 (F12): an empty Floor says how an agent gets a lane", async () => {
   await pump(0);
   expect(m.container.textContent).toContain("No agent reported any activity in this range. An agent gets a lane here once it runs in a Kolux pane");
 });
+
+test("audit 34: no Floor re-reads while the window is hidden, one read as soon as it shows", async () => {
+  const { doc } = installDom();
+  let reads = 0;
+  const load = () => (reads++, Promise.resolve([track]));
+  const { default: FloorView } = await import("./FloorView");
+  const m = await mount(createElement(FloorView, { load }), doc);
+  unmount = m.unmount;
+  await pump(0);
+  expect(reads).toBe(1);
+  (doc as unknown as { hidden: boolean }).hidden = true;
+  await pump(20_000);
+  expect(reads).toBe(1);
+  (doc as unknown as { hidden: boolean }).hidden = false;
+  for (const l of (doc as unknown as { listeners: Record<string, { fn: () => void }[]> }).listeners.visibilitychange ?? []) l.fn();
+  await pump(0);
+  expect(reads).toBe(2);
+  await pump(5_000);
+  expect(reads).toBe(3);
+});

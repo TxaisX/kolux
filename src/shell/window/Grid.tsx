@@ -1,36 +1,28 @@
 // Cycle 3 (the WindowView split): the pane grid, moved out of shell/WindowView.tsx as it was: the
-// lanes on the Board, the empty state, one cell per group (TERM-017), the tab strip with its drag and
-// drop (TERM-015, TERM-049, TERM-054) and the pane body beside it (Pane.tsx). The grid's frame follows
-// the screen it is on (VIEW-026, TERM-013).
-import { CheckCircle, FileCode, Globe, Pin } from "../../chrome/icons";
-import VendorMark from "../../chrome/VendorMark";
-import { needsYou } from "../../board/chip";
+// lanes on the Board, the empty state, one cell per pane (TERM-017) with its drag and drop (TERM-015) and
+// the pane body (Pane.tsx). The grid's frame follows the screen it is on (VIEW-026, TERM-013).
+// Owner decision 2026-11-12 (docs/plans/clean-ui-one-session-per-cell.md): one session per cell, no per-cell tab
+// strip. What a tab did is the pane header's now: its marks (PaneTab.tsx), and here, on the cell, a middle-click
+// on the header closes an unpinned pane (TERM-049), a double-click on a terminal's title renames it (TERM-048) and a
+// right-click on a header without a Pane menu of its own opens the tab menu (TabMenuView.tsx).
 import { folderName } from "../../projects/model";
-import { creditedLive, launchedAgent } from "../../status/credit";
 import { templateOf } from "../../terminal/dividers";
-import { halfOf, zoneOf } from "../../terminal/rearrange";
-import { middleClickCloses, orderPinnedFirst } from "../../terminal/pin";
-import { tabStyle } from "../../terminal/tabColor";
-import { TabBadge, tabName } from "../../terminal/tabName";
-import { tabBadge } from "../../terminal/tabs";
-import { IDLE, shownAgent } from "../../terminal/shellMarks";
-import Ring from "../../usage/Ring";
-import { capOn, claudeOf, codexOf, contextFill, meterOf, meterText } from "../../usage/meter";
-import NameField from "../../terminal/NameField";
+import { zoneOf } from "../../terminal/rearrange";
+import { middleClickCloses } from "../../terminal/pin";
 import { sameDir, viewOf } from "../../workspaces";
 import Pane from "./Pane";
 import { gridFrame } from "./gridFrame";
-import { tabKeyAction, tabStop } from "./tabKeys";
 import { menuAnchor } from "./tabMenuStart";
 import { useWindow } from "./store";
+
+/** Whether a pointer event landed in a pane's header (not in a field or the terminal under it). */
+const onHead = (t: EventTarget | null): boolean => !!(t as Element | null)?.closest?.(".pane-head");
 
 export default function Grid() {
   const {
     board, agentsScreen, zoomed, classic, terminals, page, onDividerDown, onDividerMove, endDividerDrag,
-    weightsOf, lanes, shown, activeDir, addShell, addChooser, cells, selected, activeOf, dropHint, dragging,
-    setDropHint, dropTabOn, dropCellOn, pinned, tabColors, titles, renamingTab, closePane, setFocused,
-    setRenamingTab, setTabMenu, liveIds, running, statusOf, unreadPanes, hook, context, settings, plan,
-    accountSwitcher, labelOf, tabLabel, renamePane, dirty,
+    weightsOf, lanes, shown, activeDir, addShell, addChooser, cells, selected, dropHint, dragging,
+    setDropHint, dropCellOn, pinned, closePane, setTabMenu, setAskName,
   } = useWindow();
   const frame = gridFrame({ board, agentsScreen, zoomed, classic, terminals, pageOpen: page !== null, selected });
   return (
@@ -64,24 +56,22 @@ export default function Grid() {
           </div>
         </div>
       )}
-      {/* TERM-017: cells are keyed by group and panes by key, and a split only inserts, so a split or a close
-          never remounts a pane. A pane that changes cell is remounted (React cannot move it between parents);
-          DT-C248 hands its key over first (terminal/handover.ts), so the new mount keeps the running terminal. */}
+      {/* TERM-017: cells are keyed by their pane (one session per cell), so a split, a close or a drag only inserts,
+          drops or reorders cells: no pane is ever drawn anew and every terminal keeps running. */}
       {cells.map((c) => {
-        // VIEW-015: on the Agents screen the picked session is the one shown, whatever tab its cell had in front.
-        const mine = agentsScreen && c.panes.some((p) => p.key === selected);
-        const active = mine ? (selected as number) : activeOf(c);
-        const order = orderPinnedFirst(c.panes.map((p) => p.key), pinned); // the strip's order: pinned tabs first
+        const p = c.panes[0];
+        // VIEW-015: on the Agents screen the picked session is the one shown.
+        const mine = agentsScreen && p.key === selected;
         return (
           <div
             key={c.group}
             className="cell"
-            data-drop={dropHint?.group === c.group && !dropHint.tab ? dropHint.zone : undefined}
-            hidden={agentsScreen ? !mine : !board && (!sameDir(viewOf(c.panes[0]), activeDir) || (zoomed !== null && c.group !== zoomed))}
+            data-drop={dropHint?.group === c.group ? dropHint.zone : undefined}
+            hidden={agentsScreen ? !mine : !board && (!sameDir(viewOf(p), activeDir) || (zoomed !== null && c.group !== zoomed))}
             onDragOver={(e) => {
               if (!dragging.current) return;
               e.preventDefault();
-              setDropHint({ group: c.group, zone: zoneOf(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect(), !!(e.target as Element).closest?.(".tabs")) });
+              setDropHint({ group: c.group, zone: zoneOf(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect()) });
             }}
             onDragLeave={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropHint((h) => (h?.group === c.group ? null : h));
@@ -90,101 +80,31 @@ export default function Grid() {
               const d = dragging.current;
               if (!d) return;
               e.preventDefault();
-              const zone = zoneOf(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect(), !!(e.target as Element).closest?.(".tabs"));
+              const zone = zoneOf(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
               dragging.current = null;
               setDropHint(null);
-              if ("tab" in d) dropTabOn(d.tab, { kind: "cell", group: c.group, zone });
-              else dropCellOn(d.cell, { group: c.group, zone });
+              dropCellOn(d.cell, { group: c.group, zone });
+            }}
+            onAuxClick={(e) => {
+              // TERM-049 / TERM-046: a middle-click on the pane header closes the pane, as it closed its tab; a pinned one stays.
+              if (e.button !== 1 || !onHead(e.target) || !middleClickCloses(p.key, pinned)) return;
+              e.preventDefault();
+              closePane(p.key);
+            }}
+            onDoubleClick={(e) => {
+              // TERM-048: a double-click on a terminal's title opens its name field (the header's, as Set Title does).
+              if (p.kind || p.seats || !(e.target as Element | null)?.closest?.(".pane-head .title")) return;
+              setAskName((m) => ({ ...m, [p.key]: (m[p.key] ?? 0) + 1 }));
+            }}
+            onContextMenu={(e) => {
+              // TERM-049: a header that opened its own Pane menu (a terminal's) already took the click; any other
+              // header opens the tab menu where the pointer is.
+              if (e.defaultPrevented || !onHead(e.target)) return;
+              e.preventDefault();
+              setTabMenu({ key: p.key, ...menuAnchor(e.clientX, e.clientY, window.innerWidth, window.innerHeight) });
             }}
           >
-            {(c.panes.length > 1 || classic) && (
-              <div className="tabs" role="tablist" aria-label="Tabs">
-                {order
-                  .map((k) => c.panes.find((p) => p.key === k) as (typeof c.panes)[number])
-                  .map((p) => (
-                  <div
-                    key={p.key}
-                    role="tab"
-                    aria-selected={p.key === active}
-                    className="tab"
-                    tabIndex={tabStop(p.key, active, order)}
-                    onKeyDown={(e) => {
-                      // Arrows, Home and End move along the strip; keys typed in the rename field or on the close button stay theirs.
-                      if (e.target !== e.currentTarget) return;
-                      const act = tabKeyAction(e.key, order, p.key);
-                      if (!act) return;
-                      e.preventDefault();
-                      // Manual activation: the arrows only move focus along the strip. Enter or Space brings the tab
-                      // forward, and then its pane takes the keyboard (TERM-012), which would end an arrow walk after one step.
-                      if ("activate" in act) setFocused(act.activate);
-                      else (e.currentTarget.parentElement?.querySelectorAll<HTMLElement>(':scope > [role="tab"]')[order.indexOf(act.focus)])?.focus();
-                    }}
-                    style={tabStyle(tabColors, p.key)}
-                    data-drop={dropHint?.tab === p.key ? dropHint.half : undefined}
-                    draggable
-                    onDragStart={(e) => {
-                      // TERM-054: a tab drags along the strip, onto another cell's strip, or onto an edge band.
-                      dragging.current = { tab: p.key };
-                      e.dataTransfer.effectAllowed = "move";
-                      e.dataTransfer.setData("text/plain", tabName(p, titles));
-                    }}
-                    onDragEnd={() => (dragging.current = null, setDropHint(null))}
-                    onDragOver={(e) => {
-                      const d = dragging.current;
-                      if (!d || !("tab" in d)) return;
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDropHint({ group: c.group, tab: p.key, half: halfOf(e.clientX, e.currentTarget.getBoundingClientRect()) });
-                    }}
-                    onDrop={(e) => {
-                      const d = dragging.current;
-                      if (!d || !("tab" in d)) return;
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const half = halfOf(e.clientX, e.currentTarget.getBoundingClientRect());
-                      dragging.current = null;
-                      setDropHint(null);
-                      dropTabOn(d.tab, { kind: "tab", key: p.key, half });
-                    }}
-                    onMouseDown={() => setFocused(p.key)}
-                    onDoubleClick={() => !p.kind && setRenamingTab(p.key)}
-                    onContextMenu={(e) => {
-                      // TERM-049: the tab menu opens where the pointer is; this click never closes it.
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setTabMenu({ key: p.key, ...menuAnchor(e.clientX, e.clientY, window.innerWidth, window.innerHeight) });
-                    }}
-                    onAuxClick={(e) => {
-                      // TERM-049 / TERM-046: middle-click closes the tab; a pinned tab is exempt.
-                      if (e.button !== 1 || !middleClickCloses(p.key, pinned)) return;
-                      e.preventDefault();
-                      closePane(p.key);
-                    }}
-                  >
-                    {pinned.has(p.key) && (
-                      <span className="tab-pin" title="Pinned" data-pinned="true">
-                        <Pin size={10} />
-                      </span>
-                    )}
-                    {p.kind === "editor" || p.kind === "preview" || p.kind === "diff" || p.kind === "changes" ? <FileCode size={12} /> : p.kind === "check" ? <CheckCircle size={12} /> : p.kind === "browser" ? <Globe size={12} /> : <VendorMark agent={shownAgent(p.agent, creditedLive(launchedAgent(p), liveIds[p.key] ?? IDLE))} size={12} />}
-                    {!p.kind && !p.seats && <TabBadge kind={tabBadge(p.agent, running[p.key], needsYou(statusOf(p)), unreadPanes.has(p.key), hook[p.key])} />}
-                    {context[p.key] && <Ring percent={contextFill(context[p.key], capOn(settings))} size={10} title={meterText(meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) ?? {})} />}
-                    {renamingTab === p.key ? (
-                      <NameField value={tabName(p, titles, labelOf(p), liveIds)} label="Tab name" onSave={(name) => (setRenamingTab(null), renamePane(p.key, name))} onCancel={() => setRenamingTab(null)} />
-                    ) : (
-                      tabLabel(p)
-                    )}
-                    {dirty[p.key] && <span className="unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}
-                    <button className="tab-x" tabIndex={-1} aria-label={`Close ${tabName(p, titles)}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => closePane(p.key)}>
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {c.panes.map((p) => (
-              <Pane key={p.key} pane={p} active={active} />
-            ))}
+            <Pane pane={p} />
           </div>
         );
       })}

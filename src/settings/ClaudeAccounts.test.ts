@@ -1,10 +1,13 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { AccountsReadError } from "./AccountRow";
 import { ClaudeAccountsView, type AccountsView } from "./ClaudeAccounts";
 import { ClaudeCardView } from "./SettingsPage";
 import type { KeyStatus } from "./claudeKey";
+
+// The question is the shared Ask, drawn only on a real DOM; its words are read here through a stand-in.
+vi.mock("../chrome/Ask", async (real) => ({ ...(await real<object>()), default: (await import("../tasks/askStandIn")).AskStandIn }));
 
 const empty: AccountsView = { accounts: [], active: null, signingIn: null, inBrowser: false, attention: null, keyMode: false, upkeepLeftToClaude: true };
 const sam = { id: "a1", email: "sam@example.com", organization: "Example Org", configDir: "C:\p\claude-accounts\a1", lastSignIn: 1, stale: false };

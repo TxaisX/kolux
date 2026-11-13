@@ -30,7 +30,6 @@ const layout: SavedLayout = {
     { key: 1, cwd: "C:/w/a", branch: null, agent: "shell", program: null, args: [] },
     { key: 2, cwd: "C:/w/a", branch: null, agent: "shell", program: null, args: [] },
   ],
-  activeTab: { 1: 2 },
   focused: 2,
   activeDir: "C:/w/a",
   stacked: {},

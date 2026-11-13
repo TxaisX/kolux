@@ -39,6 +39,13 @@ function hasSelection(el: Element): boolean {
 
 /** Runs one row on the field; focus goes back first so the browser's edit commands act on it. */
 export function runEdit(el: HTMLElement, action: EditAction, onToast?: (m: string) => void): void {
+  // N-07: a selection in ordinary text is copied on its own. Focusing the element first would drop the
+  // selection, and there is no edit command to run on text the user cannot type into.
+  if (action.kind === "copy" && !isBox(el) && !el.isContentEditable) {
+    const text = window.getSelection()?.toString() ?? "";
+    if (text) void navigator.clipboard.writeText(text).catch(() => onToast?.("The text could not be copied; select it and press Ctrl+C instead"));
+    return;
+  }
   el.focus();
   switch (action.kind) {
     case "suggest":
@@ -89,14 +96,17 @@ export default function EditMenuHost({ onToast }: { onToast?: (m: string) => voi
       abandon();
       const target = e.target instanceof HTMLElement ? e.target : null;
       const kind = fieldKind(describeField(target));
-      if (!target || kind === "none") {
+      // N-07: a selection in ordinary text still gets Copy; with nothing selected the web view's own menu
+      // stays hidden and no menu is drawn.
+      const plain = target !== null && kind === "none" && hasSelection(target);
+      if (!target || (kind === "none" && !plain)) {
         e.preventDefault();
         return;
       }
       const { clientX: x, clientY: y } = e;
       const show = (suggestions: string[]) => {
         waiting = null;
-        setMenu({ x, y, target, items: editMenuItems({ kind, hasSelection: hasSelection(target), suggestions, platform }) });
+        setMenu({ x, y, target, items: editMenuItems({ kind, hasSelection: hasSelection(target), plainSelection: plain, suggestions, platform }) });
       };
       // Left alone, the engine raises its own event (which carries the suggestions) and draws no menu of its own.
       if (hooked && kind === "editable") {

@@ -23,7 +23,7 @@ import { saveChanged } from "../settings/saveChanged";
 import { useAgentStatusState } from "../status/useAgentStatus";
 import { useAccountSwitcher } from "../switcher/AccountSwitcher";
 import type { CodexAccount } from "../terminal/accountChange";
-import { groupOf, type Zoom } from "../terminal/grid";
+import { type Zoom } from "../terminal/grid";
 import { joinMarks, joinSaved, keyAfter, marksOf, reviveSaved, type Marks, type SavedLayout } from "../terminal/layout";
 import type { PendingSend, PlanDraft } from "../terminal/planReview";
 import type { Zone } from "../terminal/rearrange";
@@ -81,15 +81,8 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   panesNow.current = panes;
   useFileMoves(setPanes); // EDIT-032: editor tabs follow a renamed or moved file
   const [focused, setFocused] = useState(layout?.focused ?? 0);
-  // TERM-040: which tab each cell shows; the focused pane's tab comes to the front, and a cell
-  // whose active tab was closed falls back to its last tab.
-  const [activeTab, setActiveTab] = useState<Record<number, number>>(layout?.activeTab ?? {});
   // VIEW-015: the session picked on the Agents screen, kept across screen switches.
   const [agentSel, setAgentSel] = useState<number | null>(null);
-  useEffect(() => {
-    const p = panes.find((x) => x.key === focused);
-    if (p) setActiveTab((m) => (m[groupOf(p)] === focused ? m : { ...m, [groupOf(p)]: focused }));
-  }, [focused, panes]);
   useEffect(() => {
     recentTabs.current = [focused, ...recentTabs.current.filter((k) => k !== focused)].slice(0, 50);
   }, [focused]);
@@ -122,21 +115,23 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const ptys = useRef<Record<number, number>>({}); // TERM-045: each pane's session id
   const cliFailed = useRef<Record<string, string>>({}); // CLI-026: command-line requests the window could not open
   const [asking, setAsking] = useState<{ keys: number[]; title: string; body: string; confirm?: string } | null>(null);
-  // TERM-046: pinned tab keys live in window state, like the strip order (terminal/pin.ts).
+  // TERM-046: pinned tab keys live in window state (terminal/pin.ts).
   const [pinned, setPinned] = useState<Set<number>>(() => marksOf(layout?.panes ?? []).pinned); // after-list #100: saved with the layout
   const [switcher, setSwitcher] = useState<Switcher | null>(null); // TERM-050: the Ctrl+Tab list while Ctrl is held
   const switcherRef = useRef<Switcher | null>(null);
   switcherRef.current = switcher;
-  const [tabMenu, setTabMenu] = useState<{ key: number; top: number; left: number } | null>(null); // TERM-049: the right-clicked tab
+  // TERM-049: the tab menu of pane `key` at the pointer. One session per cell: it is the header menu of a pane with no Pane
+  // menu of its own (an editor, a diff, a chooser...); `colors` opens only its colour rows (a terminal's Pane Color…).
+  const [tabMenu, setTabMenu] = useState<{ key: number; top: number; left: number; colors?: true } | null>(null);
   const [tabColors, setTabColors] = useState<TabColors>(() => marksOf(layout?.panes ?? []).colors); // TERM-049: Tab Color, window state like pinned (terminal/tabColor.ts)
   const marksNow = useRef<Marks>({ pinned, colors: tabColors }); // C26-R3-01: the marks as they are when a late layout lands
   marksNow.current = { pinned, colors: tabColors };
-  // TERM-015 / TERM-054: what is being dragged (a tab, or a whole cell by its pane header) and where it would land.
-  const dragging = useRef<{ tab: number } | { cell: number } | null>(null);
-  const [dropHint, setDropHint] = useState<{ group: number; zone?: Zone; tab?: number; half?: "before" | "after" } | null>(null);
+  // TERM-015: the pane being dragged by its header grip, and where it would land.
+  const dragging = useRef<{ cell: number } | null>(null);
+  const [dropHint, setDropHint] = useState<{ group: number; zone: Zone } | null>(null);
   const recentTabs = useRef<number[]>([]); // TERM-044: panes focused, newest first, so a closed tab returns to the one used before it
-  // Escape, the arrows and focus for the tab menu are in window/tabMenuKeys.ts (UX lane A): it listens before a focused pane does.
-  const [titles, setTitles] = useState<Record<number, string>>({}); // browser tabs' page titles
+  // Escape, the arrows and focus for the tab menu are Base UI's and src/ui/layer.ts's (TabMenuView.tsx): Escape stops at the menu.
+  const [titles] = useState<Record<number, string>>({}); // tab titles to show instead of the program's own (none are set since the browser tabs went)
   const [liveIds, setLiveIds] = useState<Record<number, Identity>>({}); // TERM-058: terminal panes' running program, from the shell marks
   const liveRef = useRef(liveIds);
   liveRef.current = liveIds;
@@ -182,7 +177,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     if (!late || adopted.current) return;
     adopted.current = true;
     setPanes((ps) => joinSaved(ps, late));
-    setActiveTab((m) => ({ ...late.activeTab, ...m }));
     setStacked((s) => ({ ...late.stacked, ...s }));
     setFocused((f) => (panesNow.current.some((p) => p.key === f) ? f : late.focused));
     setActiveDir((d) => d ?? late.activeDir);
@@ -195,11 +189,11 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
     setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
-    setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir,
+    setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, agentSel, setAgentSel, activeDir,
     setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,
     hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, cliFailed, asking, setAsking, pinned, setPinned,
-    switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles, setTitles,
+    switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
     settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
     defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh,
@@ -221,9 +215,6 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   const [sendMenu, setSendMenu] = useState(false);
   // TERM-027: a Set Title shortcut bumps the pane's counter, which opens its name field.
   const [askName, setAskName] = useState<Record<number, number>>({});
-  // TERM-048: the tab whose name is being edited in the tab strip.
-  const [renamingTab, setRenamingTab] = useState<number | null>(null);
-  // TERM-048: the tab right-click menu, at the pointer.
   // T-597: a window drawn before the saved tabs are back (`read` false) hands out keys no saved tab holds:
   // panes attach to the terminal of their key, and the saved tabs' terminals outlive a quit (APP-052).
   // C26-R3-01: those tabs now join the saved layout when it lands, so this range keeps the two sets apart
@@ -243,7 +234,7 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   const runTabs = useRef<RunTabs>({}); // AUTO-011 (T-085-g): the agent tabs automation runs opened, and whether the user touched them
   return {
     switchAccount, weights, setWeights, dragRef, launching, setLaunching, notes, setNotes, picked, setPicked, sendMenu, setSendMenu, askName,
-    setAskName, renamingTab, setRenamingTab, nextKey, restoredKeys, runPanes, runTabs,
+    setAskName, nextKey, restoredKeys, runPanes, runTabs,
   };
 }
 

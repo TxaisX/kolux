@@ -16,7 +16,6 @@ export const answerCommand = (p: Pending): void => void (p.answered = true);
 /** Review of PR #16: what the palette says when no live place took a command, by the command's scope. */
 const NOTES: Record<string, string> = {
   editor: "Open a file in an editor tab first.",
-  browser: "Open a browser pane first.",
   explorer: "Open the file explorer first.",
   settings: "Open Settings first.",
   terminal: "Focus a terminal first.",

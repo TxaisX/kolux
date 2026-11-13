@@ -1,3 +1,4 @@
+// retired: the right-sidebar Source Control panel it drives was removed by T-644; the changed-file list and commit box now live in All Changes (covered by live-GIT-038)
 // LIVE proof, GIT-001 boxes 2+3 (spec/11): the tree view survives closing and reopening the panel; a commit typed in a terminal
 // clears the panel with no manual refresh. Also run inside live-GIT-007.mjs (same fixture, one launch).
 import { readFileSync } from "node:fs";

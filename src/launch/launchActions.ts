@@ -20,7 +20,7 @@ import { resumedFields, type ResumePlan } from "../sessions/resume";
 import { saveChanged } from "../settings/saveChanged";
 import { openDefaultTabs } from "../setup/DefaultTabs";
 import { trustedSetup } from "../setup/TrustPrompt";
-import { cellsOf, freeCell, groupOf, MAX_PANES } from "../terminal/grid";
+import { cellsOf, freeCell, insertAfter, MAX_PANES } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn, sameDir, viewOf } from "../workspaces";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
@@ -115,9 +115,10 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // terminal seat stays in the chooser's folder. Off (the default), nothing is made.
       const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
       const makes = separate && picked.some(Boolean);
-      // DT-C274: two or more AI seats in worktrees of their own are a team: one grid in the chooser's folder, the
-      // worktrees recorded. One AI seat is no team: its worktree is a workspace of its own, as before.
-      const team = makes && picked.filter(Boolean).length >= 2;
+      // DT-C274: AI seats in worktrees of their own are a team: one grid in the chooser's folder, the worktrees
+      // recorded. Txais (2026-11-12): one AI seat counts too, so its agent shows in the folder's grid and its worktree
+      // never gets a sidebar row or a grid of its own.
+      const team = makes;
       if (makes && !pid) throw new Error("Add a project first: an agent needs a project folder to work in.");
       // SESS-008: the seats that land in the chooser's own grid, with the cells already there (the chooser's own
       // cell gives its place), stay within MAX_PANES, as a chooser or a split does. DT-C274: an own-folder team
@@ -148,11 +149,11 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         places.push({ cwd: wt.path, branch: wt.branch });
       }
       const batch = key;
-      // The chooser's cell, where a team worktree's Setup tab waits until its agent lands.
-      const chooserGroup = inGrid ? groupOf(chooser) : undefined;
+      // The chooser's pane, beside which a team worktree's Setup tab waits until its agent lands.
+      const chooserGroup = inGrid ? chooser.key : undefined;
       await settleSetups(madeNew, setupMode(repo?.mode), repo?.wait === true, {
         line: (dir) => trustedSetup(dir),
-        // DT-C274: a team worktree's Setup tab is shown in the team's grid (a tab of the chooser's cell until its agent lands).
+        // DT-C274: a team worktree's Setup tab is shown in the team's grid (beside the chooser's cell until its agent lands).
         open: (dir, branch, line, where) => new Promise<void>((done) => late.startSetup(dir, branch, line, where, false, () => done(), team ? place : undefined, chooserGroup)),
         say: (m) => setupTrouble.push(m),
       });
@@ -194,15 +195,17 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       }
       if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", makes ? "separate" : "shared", seats) };
       // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018). DT-C274: a team
-      // worktree's Setup tab, waiting in the chooser's cell, joins its agent's cell.
+      // worktree's Setup tab, waiting beside the chooser's cell, moves to the cell right after its agent's (one session per cell).
       setPanes((ps) => {
         const landed = inGrid ? ps.flatMap((p) => (p.key === key ? made : [p])) : [...ps, ...made];
         if (!team) return landed;
         const agentIn = (p: Pane) => made.find((m) => m.agentId && sameDir(m.cwd, p.cwd));
-        return landed.map((p) => {
+        let out = landed;
+        for (const p of landed) {
           const owner = p.setupScript && p.view === place ? agentIn(p) : undefined;
-          return owner ? { ...p, group: groupOf(owner) } : p;
-        });
+          if (owner) out = insertAfter(out.filter((x) => x !== p), owner.key, p);
+        }
+        return out;
       });
       for (const n of madeNew) void openTabs(n.cwd, n.branch, team ? place : undefined); // PROJ-034, beside its agent in the team grid (DT-C274)
       // VIEW-021: a preset started from the Agents rail stays the selected session once it runs.
@@ -432,6 +435,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         if ((await startIn(agent, proj.path, branch, "", true, savedArgs(agent.id))) === null) return;
       } else {
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
+        // Txais (2026-11-12): the agent's worktree is recorded with the project folder as its grid, like a team's, so its pane
+        // shows in the folder's grid as a session and the worktree gets no row or grid of its own.
+        rememberTeamFolders([{ path: wt.path, view: proj.path }]);
         if ((await startIn(agent, wt.path, wt.branch, "", true, savedArgs(agent.id))) === null) return;
       }
       setRefresh((n) => n + 1);

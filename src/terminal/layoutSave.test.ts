@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SavedLayout } from "./layout";
 import { layoutWriter } from "./layoutSave";
 
-const layout = (focused: number): SavedLayout => ({ panes: [{ key: 1, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [] }, { key: 2, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [], kind: "editor", path: "C:\\w\\a\\README.md" }], activeTab: {}, focused, activeDir: "C:\\w\\a", stacked: {} });
+const layout = (focused: number): SavedLayout => ({ panes: [{ key: 1, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [] }, { key: 2, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [], kind: "editor", path: "C:\\w\\a\\README.md" }], focused, activeDir: "C:\\w\\a", stacked: {} });
 
 describe("T-075 (APP-048): the layout writer", () => {
   beforeEach(() => vi.useFakeTimers());

@@ -7,7 +7,7 @@ import { GUIDE_CLOSED } from "./guide";
 const run = (more: Partial<FirstRun> = {}): FirstRun => ({ closed: true, outcome: "completed", checklistDismissed: false, milestones: {}, ...more });
 const skipped = run({ outcome: "dismissed", checklistDismissed: true });
 const CORE: StepId[] = ["notifications", "agent", "cli", "multitask", "automate", "repos"];
-const facts = (more: Partial<Facts> = {}): Facts => ({ workspaces: [], gitProjects: 0, pageShown: false, integrations: "none", cli: false, notifications: false, agent: "", setupScript: false, ...more });
+const facts = (more: Partial<Facts> = {}): Facts => ({ workspaces: [], gitProjects: 0, integrations: "none", cli: false, notifications: false, agent: "", setupScript: false, ...more });
 
 describe("the sidebar's onboarding slot (VIEW-114)", () => {
   it("shows nothing while the record is still being read, then the checklist when it is up", () => {
@@ -34,7 +34,7 @@ describe("the sidebar's onboarding slot (VIEW-114)", () => {
   it("with every core step done the entry never shows, not even once the reads answer", () => {
     const c = checklistOf(skipped, []);
     expect(sidebarSlot(c, skipped, new Set(CORE))).toBe(null);
-    expect(sidebarSlot(c, skipped, new Set<StepId>([...CORE.slice(1), "browser", "integrations"]))).toBe("guide");
+    expect(sidebarSlot(c, skipped, new Set<StepId>([...CORE.slice(1), "integrations"]))).toBe("guide");
   });
 
   it("a finished checklist leaves the sidebar at once; once dismissed too, the entry takes it", () => {

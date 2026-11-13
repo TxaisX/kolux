@@ -12,7 +12,8 @@ import { needsOneClick, useOneClick } from "./oneClick";
 import OneClickNotice from "./OneClickNotice";
 import { draftOffered, draftPrText, draftRunning, draftSubscribe, draftVersion, readDraftGate, settleDraft, startGatedOneClick } from "./prDraft";
 import { readReview, reviewKey, reviewLines, reviewSettle, reviewShown, type ReviewSlot } from "./prFind";
-import { assess, blockHint, canStartReview, confirmed, createBlock, dismiss, errorShown, offerOf, raise, readinessKey, type ErrorBook, type Offer, type Readiness } from "./startPr";
+import { assess, canStartReview, confirmed, createBlock, dismiss, errorShown, offerOf, offerUi, raise, READINESS_TTL_MS, readinessKey, type ErrorBook, type Offer, type Readiness } from "./startPr";
+import { watchStatus } from "./watch";
 
 // `provider`/`host` come with the Checks answer (known before the lookup below), so a non-GitHub remote never shows a create action.
 type Props = { dir: string; provider?: string; host?: string | null; onCreated: (pr: Pr) => void };
@@ -31,7 +32,7 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
   const [branches, setBranches] = useState<string[]>([]); // EDIT-048: the Base box suggests from these
   const [aiOffered, setAiOffered] = useState(false); // GIT-024: the AI draft button follows the Source Control writer switches
   const [starting, setStarting] = useState<string | null>(null); // the worktree whose click is still reading the gate, before the draft is registered
-  useSyncExternalStore(draftSubscribe, draftVersion);
+  useSyncExternalStore(draftSubscribe, draftVersion, draftVersion); // the third argument: React's server snapshot, so a test can render this panel
   const [writeNote, setWriteNote] = useState<string | null>(null);
   const going = useOneClick(dir);
   const asking = useRef(dir);
@@ -69,7 +70,12 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
     if (kept) prepareComposer();
     setSeen(null);
     setWriteNote(null);
-    void check();
+    // VIEW-074 / N-16: from here the panel follows the worktree. Commit in a terminal and the offer moves
+    // on its own, instead of saying "Commit your changes first" until the user leaves the tab and returns.
+    return watchStatus(dir, (status) => {
+      if (asking.current !== dir) return;
+      setSeen({ dir, status, ready: assess(dir, status, Date.now()) });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dir]);
 
@@ -91,6 +97,35 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
   const blockedBy = lookup?.kind === "unsupported" ? createBlock(lookup.provider, lookup.host) : createBlock(provider, host);
   const offer: Offer = offerOf({ linked: !!linkedPr, blockedBy, ready: mine?.ready ?? null, key, now: Date.now() });
   const failed = errorShown(errors, dir, key ?? "status");
+  // What the empty state draws: the gating rules are in startPr.ts's offerUi, so a plain test covers them.
+  const ui = offerUi({
+    offer,
+    lookup,
+    failed: failed !== null,
+    draft: draft !== null,
+    linked: linkedPr !== null,
+    hasStatus: mine !== null,
+    canStart: canStartReview(blockedBy, !!linkedPr),
+    wantsOneClick: mine !== null && needsOneClick(mine.status),
+    running: going?.state === "running",
+  });
+
+  // VIEW-074 / N-16: the readiness answer is good for about five minutes, and only a render would notice it
+  // went stale. This one renders at that moment; the effect below then reads the branch again.
+  const answerAt = mine?.ready.at;
+  useEffect(() => {
+    if (answerAt === undefined) return;
+    const id = window.setTimeout(() => tick((n) => n + 1), Math.max(0, answerAt + READINESS_TTL_MS - Date.now()) + 25);
+    return () => window.clearTimeout(id);
+  }, [answerAt]);
+  // Nothing on screen answers for this branch and state: read it once, so the panel never sits on
+  // "Checking whether this branch is ready…" with no button, no timer and no way forward.
+  useEffect(() => {
+    if (offer.kind !== "check" || failed) return;
+    const id = window.setTimeout(() => void check(), 0);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offer.kind, key, failed]);
 
   const fail = (message: string) => {
     errors = raise(errors, dir, key ?? "status", message);
@@ -227,17 +262,17 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
           {failed}
         </div>
       )}
-      {!draft && !linkedPr && blockHint(offer, lookup) !== null && <div className="sb-hint">{blockHint(offer, lookup)}</div>}
-      {mine && !draft && canStartReview(blockedBy, !!linkedPr) && offer.kind === "blocked" && going?.state !== "running" && needsOneClick(mine.status) && (
+      {ui.hint !== null && <div className="sb-hint">{ui.hint}</div>}
+      {ui.oneClick && (
         <button className="btn primary" data-pr-one-click onClick={() => void oneClick()}>
           Commit, push and create pull request
         </button>
       )}
       <OneClickNotice dir={dir} />
-      {offer.kind === "check" && !failed && <div className="sb-hint">Checking whether this branch is ready…</div>}
-      {(offer.kind === "create" || offer.kind === "push-create") && !draft && (
+      {ui.checking && <div className="sb-hint">Checking whether this branch is ready…</div>}
+      {ui.create !== null && (
         <button className="btn primary" data-pr-open onClick={() => void open()}>
-          {offer.kind === "push-create" ? (offer.push === "publish" ? "Publish branch and create pull request" : "Push and create pull request") : "Create pull request"}
+          {ui.create}
         </button>
       )}
       {draft && (

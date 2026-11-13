@@ -1,20 +1,22 @@
 // PROJ-067: the workspaces' tabs and layout are written to the settings as they change and read
 // back at start. Only what a fresh start can rebuild is kept: a terminal tab comes back as its
 // program in its folder (an agent with its last known session resumed, SESS-030, else at its prompt),
-// a browser or editor tab as the same kind on the same path. A saved entry that cannot be read is
+// an editor tab as the same kind on the same path. A saved entry that cannot be read is
 // dropped on its own; the rest comes back. A tab whose folder is gone is dropped, and the active
 // workspace and tab return only while they still exist.
+// Owner decision 2026-11-12 (one session per cell): a layout saved while a grid cell could hold several
+// tabs comes back with each of those tabs in a cell of its own (oneCellEach); nothing is closed or lost.
 
 import type { Agent } from "../chrome/VendorMark";
-import { focusIn, panesIn } from "../workspaces";
+import { focusIn, panesIn, sameDir, viewOf } from "../workspaces";
 import { resumeId, uniqueOwners } from "../sessions/ownership";
 import { isTabColor, type TabColors } from "./tabColor";
 
 export const LAYOUT_FIELD = "savedLayout";
 
-export type PaneKind = "browser" | "editor" | "preview" | "diff" | "changes" | "check";
-const KINDS: PaneKind[] = ["browser", "editor", "preview", "diff", "changes", "check"];
-const AGENTS: Agent[] = ["claude", "codex", "shell"];
+export type PaneKind = "editor" | "preview" | "diff" | "changes" | "check";
+const KINDS: PaneKind[] = ["editor", "preview", "diff", "changes", "check"];
+const AGENTS: Agent[] = ["claude", "codex", "copilot", "cursor", "grok", "opencode", "shell"];
 
 export type SavedPane = {
   key: number;
@@ -36,6 +38,8 @@ export type SavedPane = {
   resumed?: boolean;
   account?: string | null;
   title?: string;
+  /** Only in a layout saved before one session per cell (2026-11-12): the panes of one grid cell, shown as its tabs.
+   *  restoreLayout spreads such a cell into cells of its own (oneCellEach) and drops the field; it is never written. */
   group?: number;
   kind?: PaneKind;
   path?: string;
@@ -48,7 +52,9 @@ export type SavedPane = {
   /** DT-C27: a workspace Setup tab (its program is the setup script); a fresh start opens a plain shell. */
   setupScript?: true;
 };
-export type SavedLayout = { panes: SavedPane[]; activeTab: Record<number, number>; focused: number; activeDir: string | null; stacked: Record<string, boolean> };
+/** A layout written before one session per cell also held `activeTab` (each cell's tab in front); it is read past, since
+ *  every tab now has a cell of its own and is in view. */
+export type SavedLayout = { panes: SavedPane[]; focused: number; activeDir: string | null; stacked: Record<string, boolean> };
 
 /** The window state a tab carries besides its program: which tabs are pinned and each tab's colour. */
 export type Marks = { pinned: ReadonlySet<number>; colors: TabColors };
@@ -75,7 +81,7 @@ type LivePane = Omit<SavedPane, "env"> & {
 /** What to write down: every tab, stripped to what a restart can rebuild. A chooser that was never
  *  started is kept as an empty chooser so the grid keeps its size; an agent comes back at its prompt
  *  (its arguments carried the one-off opening prompt and environment). */
-export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, focused: number, activeDir: string | null, stacked: Record<string, boolean>, marks?: Marks): SavedLayout {
+export function layoutOf(panes: LivePane[], focused: number, activeDir: string | null, stacked: Record<string, boolean>, marks?: Marks): SavedLayout {
   const kept: SavedPane[] = [];
   for (const p of panes) {
     if (p.kind === "check") continue; // T-235-b: a check tab holds the check it was opened from, which a restart cannot rebuild
@@ -89,7 +95,6 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     if (p.account !== undefined) s.account = p.account;
     if (p.title !== undefined) s.title = p.title;
     if (p.setupScript) s.setupScript = true;
-    if (p.group !== undefined) s.group = p.group;
     if (p.kind !== undefined) s.kind = p.kind;
     if (p.path !== undefined) s.path = p.path;
     if (p.staged !== undefined) s.staged = p.staged;
@@ -98,7 +103,34 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     if (isTabColor(color)) s.color = color;
     kept.push(s);
   }
-  return tidy(kept, activeTab, focused, activeDir, stacked);
+  return tidy(kept, focused, activeDir, stacked);
+}
+
+/**
+ * Owner decision 2026-11-12 (one session per cell): the panes of a layout saved while a cell could hold tabs, each in a
+ * cell of its own. A cell's tabs take the cells right after where the cell was, in the order its tab strip drew them
+ * (pinned tabs first, then the rest as saved), so they stay together and the cells around them keep their order. A tab
+ * shown in another folder's grid than its own (DT-C274) keeps that grid. The grid grows to hold them: nothing is closed
+ * or dropped, even past MAX_PANES (a grid restored above it only refuses new panes until some close). A layout with no
+ * `group` comes back as it was saved.
+ */
+export function oneCellEach(panes: SavedPane[]): SavedPane[] {
+  const cells = new Map<number, SavedPane[]>();
+  for (const p of panes) {
+    const g = p.group ?? p.key;
+    const cell = cells.get(g);
+    if (cell) cell.push(p);
+    else cells.set(g, [p]);
+  }
+  const out: SavedPane[] = [];
+  for (const cell of cells.values()) {
+    const shownIn = viewOf(cell[0]);
+    for (const p of [...cell.filter((x) => x.pinned), ...cell.filter((x) => !x.pinned)]) {
+      const { group: _cell, ...rest } = p;
+      out.push(sameDir(viewOf(rest), shownIn) ? rest : { ...rest, view: shownIn });
+    }
+  }
+  return out;
 }
 
 /** The agents whose own status hooks hand Kolux their session id, so their sessions list is never asked. */
@@ -183,7 +215,7 @@ export function restoreAsks(p: Pick<SavedPane, "agent" | "agentId" | "program" |
 /** DT-C27 (Txais, 2026-11-08: start fresh, "no ai slop"): every terminal tab that ran an agent comes
  *  back as a new plain shell in its folder, so no agent is started or resumed on its own, and a Setup
  *  tab does not run its setup script again. Plain shells,
- *  empty choosers and browser, editor and other tabs come back as saved. */
+ *  empty choosers and editor and other tabs come back as saved. */
 export function freshShells(l: SavedLayout): SavedLayout {
   const panes = l.panes.map((p) => {
     if (p.kind || p.chooser || (p.agent === "shell" && !p.agentId && !p.setupScript)) return p;
@@ -212,7 +244,7 @@ function readPane(v: unknown): SavedPane | null {
   if (o.kind !== undefined) {
     if (!KINDS.includes(o.kind as PaneKind)) return null;
     p.kind = o.kind as PaneKind;
-    if (o.kind !== "browser" && o.kind !== "changes" && !str(o.path)) return null;
+    if (o.kind !== "changes" && !str(o.path)) return null;
   }
   if (o.view !== undefined && strOrNull(o.view)) p.view = o.view;
   if (str(o.agentId)) p.agentId = o.agentId;
@@ -247,17 +279,14 @@ export function restoreLayout(value: unknown): SavedLayout | null {
     }
   }
   if (panes.length === 0) return null;
-  const activeTab: Record<number, number> = {};
-  if (o.activeTab && typeof o.activeTab === "object") {
-    for (const [g, k] of Object.entries(o.activeTab as Record<string, unknown>)) if (num(k)) activeTab[Number(g)] = k;
-  }
   const stacked: Record<string, boolean> = {};
   if (o.stacked && typeof o.stacked === "object") {
     for (const [d, s] of Object.entries(o.stacked as Record<string, unknown>)) if (typeof s === "boolean") stacked[d] = s;
   }
   // after-list #723: the panes keep the order they were saved in (a split-in pane sits before an older one, so key order is not screen order);
   // VIEW-107 (T-069-c): main.tsx asks the start lines in session (key) order instead.
-  return tidy(uniqueOwners(panes), activeTab, num(o.focused) ? o.focused : 0, strOrNull(o.activeDir) ? o.activeDir : null, stacked);
+  // One session per cell (2026-11-12): a cell saved with several tabs opens each of them in a cell of its own.
+  return tidy(uniqueOwners(oneCellEach(panes)), num(o.focused) ? o.focused : 0, strOrNull(o.activeDir) ? o.activeDir : null, stacked);
 }
 
 /** Drops the tabs whose folder is gone; the active workspace and tab come back only while they exist. DT-C274: a tab
@@ -265,16 +294,13 @@ export function restoreLayout(value: unknown): SavedLayout | null {
 export function stillThere(l: SavedLayout, exists: (dir: string) => boolean): SavedLayout {
   const panes = l.panes.filter((p) => (p.cwd === null || exists(p.cwd)) && (p.view === undefined || p.view === null || exists(p.view)));
   const activeDir = l.activeDir !== null && !exists(l.activeDir) ? null : l.activeDir;
-  return tidy(panes, l.activeTab, l.focused, activeDir, l.stacked);
+  return tidy(panes, l.focused, activeDir, l.stacked);
 }
 
-/** Keeps the bookkeeping consistent with the panes: the active tab of each cell and the focus name
- *  panes that exist (the focus falls to the first pane of the active workspace, then any pane). */
-function tidy(panes: SavedPane[], activeTab: Record<number, number>, focused: number, activeDir: string | null, stacked: Record<string, boolean>): SavedLayout {
+/** Keeps the focus on a pane that exists (it falls to the first pane of the active workspace, then any pane). */
+function tidy(panes: SavedPane[], focused: number, activeDir: string | null, stacked: Record<string, boolean>): SavedLayout {
   const keys = new Set(panes.map((p) => p.key));
-  const tabs: Record<number, number> = {};
-  for (const [g, k] of Object.entries(activeTab)) if (keys.has(k)) tabs[Number(g)] = k;
   let f = keys.has(focused) ? focused : focusIn(panes, activeDir, focused);
   if (!keys.has(f)) f = panesIn(panes, activeDir)[0]?.key ?? panes[0]?.key ?? 1;
-  return { panes, activeTab: tabs, focused: f, activeDir, stacked };
+  return { panes, focused: f, activeDir, stacked };
 }

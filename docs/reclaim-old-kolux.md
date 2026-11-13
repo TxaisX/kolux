@@ -43,7 +43,7 @@ Kolux uses them.
 - **Anything under `~\.kolux-rs`.** That is Kolux's own data, including its release signing key.
 - **Your vault notes** (Txais Brain).
 - **`G:\Temp\live-signin`.** Test account A for the live checks now lives there.
-- **This repository** (`G:\Dev\kolux-rs`). The script refuses to touch it.
+- **This repository** (`G:\Dev\kolux`, named `G:\Dev\kolux-rs` before 2026-11-11). The script refuses to touch it.
 
 ## The order
 

@@ -1,10 +1,11 @@
+// @vitest-environment happy-dom
 // T-565 (VIEW-009): Escape closes Settings wherever the keyboard was when Settings opened, and an
 // Escape a dialog inside Settings uses closes only that dialog. Settings is drawn over the panes,
 // which stay mounted: the terminal under it is stood in for by a field that, like xterm
 // (CoreBrowserTerminal.cancel), sends a key it handles to the program and stops it there.
-import { act, createElement } from "react";
+import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, FakeNode, find, installDom, mount, settle, until, withText } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, until, withText } from "../tasks/realDom";
 import type { SettingsTarget } from "./pages";
 import { FOCUSABLE } from "../chrome/dialogFocus";
 
@@ -20,108 +21,25 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}), emit: () => Promise.resolve() }));
 
-type Listener = { fn: (e: unknown) => void; capture: boolean };
 let doc: FakeDocument;
-let onWindow: Record<string, Listener[]>;
 let unmount: () => Promise<void> = async () => {};
-const realFocus = FakeNode.prototype.focus;
-/** Just enough of Element.matches for attribute selectors such as '[role="dialog"],[hidden]'. */
-function matches(n: FakeNode, sel: string) {
-  // The Tab trap's list (T-732): enabled form controls, links, and anything with a tabindex other than -1.
-  if (sel === FOCUSABLE)
-    return n.nodeType === 1 && ((/^(button|input|select|textarea)$/.test(n.localName) && !("disabled" in n.attrs) && n.attrs.type !== "hidden") || (n.localName === "a" && "href" in n.attrs) || ("tabindex" in n.attrs && n.attrs.tabindex !== "-1"));
-  return sel.split(",").some((one) => {
-    const m = /^\[([\w-]+)(?:="([^"]*)")?\]$/.exec(one.trim());
-    return !!m && n.nodeType === 1 && m[1] in n.attrs && (m[2] === undefined || n.attrs[m[1]] === m[2]);
-  });
-}
+const cleanups: (() => void)[] = [];
 beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
-  onWindow = {};
-  Object.assign(globalThis, { localStorage: dom.win.localStorage, requestAnimationFrame: () => 0, cancelAnimationFrame() {} });
-  Object.assign(dom.win, {
-    addEventListener: (t: string, fn: Listener["fn"], o?: boolean | { capture?: boolean }) => (onWindow[t] ??= []).push({ fn, capture: typeof o === "object" ? !!o.capture : !!o }),
-    removeEventListener: (t: string, fn: Listener["fn"]) => (onWindow[t] = (onWindow[t] ?? []).filter((l) => l.fn !== fn)),
-    setInterval,
-    clearInterval,
-    setTimeout,
-    clearTimeout,
-    dispatchEvent: () => true,
-  });
-  Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
-  // The keyboard goes where focus() puts it.
-  FakeNode.prototype.focus = function (this: FakeNode) {
-    doc.activeElement = this;
-  };
-  FakeNode.prototype.closest = function (this: FakeNode, sel: string) {
-    for (let n: FakeNode | null = this; n; n = n.parentNode) if (matches(n, sel)) return n;
-    return null;
-  };
-  FakeNode.prototype.querySelectorAll = function (this: FakeNode, sel: string) {
-    return find(this, (n) => n !== this && matches(n, sel));
-  };
+  Object.assign(doc, { visibilityState: "visible", hidden: false });
   h.agents = [];
 });
 afterEach(async () => {
   await unmount();
   unmount = async () => {};
-  FakeNode.prototype.focus = realFocus;
-  delete FakeNode.prototype.closest;
-  delete FakeNode.prototype.querySelectorAll;
+  for (const c of cleanups.splice(0)) c();
 });
 
-/** A key pressed where the keyboard is, sent as a browser sends it: capture listeners from the window
- *  down to the target, then bubble listeners back up; a listener that stops it ends the trip there. */
-async function press(key: string, shiftKey = false) {
-  const target = doc.activeElement;
-  const nodes: { listeners: Record<string, Listener[]> }[] = [{ listeners: onWindow }, doc];
-  const up: FakeNode[] = [];
-  for (let n: FakeNode | null = target; n; n = n.parentNode) up.unshift(n);
-  nodes.push(...up);
-  let stopped = false;
-  let now = false;
-  const ev = {
-    type: "keydown",
-    key,
-    code: key,
-    keyCode: key === "Escape" ? 27 : 0,
-    which: key === "Escape" ? 27 : 0,
-    target,
-    srcElement: target,
-    bubbles: true,
-    cancelable: true,
-    defaultPrevented: false,
-    isTrusted: true,
-    isComposing: false,
-    repeat: false,
-    ctrlKey: false,
-    altKey: false,
-    shiftKey,
-    metaKey: false,
-    timeStamp: Date.now(),
-    getModifierState: () => false,
-    preventDefault() {
-      this.defaultPrevented = true;
-    },
-    stopPropagation() {
-      stopped = true;
-    },
-    stopImmediatePropagation() {
-      stopped = now = true;
-    },
-  };
-  const run = (n: { listeners: Record<string, Listener[]> }, capture: boolean) => {
-    for (const l of [...(n.listeners.keydown ?? [])]) if (l.capture === capture && !now) l.fn(ev);
-  };
-  await act(async () => {
-    const last = nodes.length - 1;
-    for (let i = 0; i < last && !stopped; i++) run(nodes[i], true);
-    if (!stopped) run(nodes[last], true); // at the target: its capture listeners, then its others
-    if (!stopped) run(nodes[last], false);
-    for (let i = last - 1; i >= 0 && !stopped; i--) run(nodes[i], false);
-  });
-}
+/** A key pressed where the keyboard is: a real keydown at the focused element, the window's capture listeners first. */
+const press = (key: string, shiftKey = false) => fire(doc.body, "keydown", document.activeElement ?? document.body, { key, shiftKey });
+/** The browser takes the keyboard off a control that is no longer drawn. */
+const dropFocus = () => (document.activeElement as HTMLElement | null)?.blur?.();
 
 /** The focused terminal under Settings: what reaches it is what the program would get. */
 function terminal() {
@@ -186,15 +104,15 @@ test("Escape in the xAI key dialog inside Settings closes only that dialog; the 
   const way = () => withText(m.container, "button", "Use an xAI API key")[0];
   await until(() => !!way(), "the Grok card");
   await click(m.container, way());
-  const form = find(m.container, (n) => n.attrs["aria-label"] === "Use an xAI API key")[0];
-  const shown = () => !("hidden" in form.parentNode!.attrs);
+  const shown = () => find(m.container, (n) => n.attrs["aria-label"] === "Use an xAI API key" && n.attrs.role === "dialog").length === 1;
   await until(shown, "the key dialog");
-  expect(doc.activeElement.attrs["aria-label"]).toBe("xAI API key");
+  await until(() => document.activeElement?.getAttribute("aria-label") === "xAI API key", "focus on the key field");
   await press("Escape");
+  await settle();
   expect(shown()).toBe(false);
   expect(closed).not.toHaveBeenCalled();
-  // The browser takes the keyboard off a field that is no longer drawn; the next Escape leaves Settings.
-  doc.activeElement = doc.body;
+  // The next Escape leaves Settings.
+  dropFocus();
   await press("Escape");
   expect(closed).toHaveBeenCalledTimes(1);
 });
@@ -204,13 +122,16 @@ test("Escape in the xAI key dialog inside Settings closes only that dialog; the 
  *  browser's microtask checkpoint between listeners lets React take it off the page. */
 function looseDialog(parent: FakeNode, on: "window" | "self") {
   const node = doc.createElement("div");
-  Object.assign(node.attrs, { role: "dialog", "aria-modal": "true" });
+  node.setAttribute("role", "dialog");
+  node.setAttribute("aria-modal", "true");
   const field = doc.createElement("input");
   node.appendChild(field);
   parent.appendChild(node);
   const close = (e: unknown) => (e as { key: string }).key === "Escape" && node.remove();
-  if (on === "window") onWindow.keydown.push({ fn: close, capture: false });
-  else node.addEventListener("keydown", close);
+  if (on === "window") {
+    window.addEventListener("keydown", close);
+    cleanups.push(() => window.removeEventListener("keydown", close));
+  } else node.addEventListener("keydown", close);
   return { node, field, shown: () => !!node.parentNode };
 }
 
@@ -236,7 +157,7 @@ test("Escape in a dialog outside Settings with the keyboard in it (Send feedback
   await press("Escape");
   expect(box.shown()).toBe(false);
   expect(closed).not.toHaveBeenCalled();
-  doc.activeElement = doc.body;
+  dropFocus();
   await press("Escape");
   expect(closed).toHaveBeenCalledTimes(1);
 });
@@ -246,7 +167,7 @@ test("T-732: Settings is a modal dialog that keeps Tab inside: Shift+Tab from it
   const m = await open(vi.fn());
   const root = find(m.container, (n) => n.attrs.role === "dialog" && n.attrs["aria-label"] === "Settings")[0];
   expect(root.attrs["aria-modal"]).toBe("true");
-  const all = root.querySelectorAll(FOCUSABLE) as unknown as FakeNode[];
+  const all = [...root.querySelectorAll(FOCUSABLE)] as FakeNode[];
   expect(all.length).toBeGreaterThan(10);
   all[0].focus();
   await press("Tab", true);
@@ -260,7 +181,8 @@ test("a dialog of a pane under Settings (the shell ended) does not block Escape"
   const closed = vi.fn();
   await open(closed);
   const ended = doc.createElement("div");
-  Object.assign(ended.attrs, { role: "alertdialog", "aria-modal": "true" });
+  ended.setAttribute("role", "alertdialog");
+  ended.setAttribute("aria-modal", "true");
   doc.body.appendChild(ended);
   await press("Escape");
   expect(closed).toHaveBeenCalledTimes(1);

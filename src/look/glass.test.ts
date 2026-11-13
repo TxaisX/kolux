@@ -421,7 +421,11 @@ test("DT-C266: the sheet that takes the click outside a menu is on a layer of it
       expect(m[1], `${file}: a backdrop with something inside it`).toBe("/");
     }
   }
-  expect(seen).toBeGreaterThanOrEqual(25);
+  // The hand-rolled sheets go as their popups move onto src/ui, so the count falls; the scan must still read the source.
+  expect(Object.keys(files).length).toBeGreaterThan(200);
+  expect(seen).toBeGreaterThanOrEqual(0);
+  // A src/ui Dialog that asks for the sheet (backdrop="menu-backdrop") gets Base UI's backdrop, empty as well.
+  expect(files["../ui/base.tsx"]).toMatch(/\{backdrop && <Dialog\.Backdrop className=\{backdrop\} \/>\}/);
 });
 
 test("DT-C249: a pressed control's brushed metal keeps its label readable, at the bright end and the dark end", () => {

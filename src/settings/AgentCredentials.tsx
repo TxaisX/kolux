@@ -9,6 +9,7 @@ import { ResetButton } from "./SafetyRules";
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { Select } from "../ui/Select";
 
 export type CredsView = {
   sessionsHome: string;
@@ -86,10 +87,7 @@ export function AgentCredentialsView({ view, drafts, onDraft, onAction }: { view
             );
           })}
           <div className="acct-list">
-            <select className="field" aria-label="MiniMax endpoint" value={drafts["mm-endpoint"] ?? m.endpoint} onChange={(e) => onDraft("mm-endpoint", e.target.value)}>
-              <option value="overseas">Overseas</option>
-              <option value="mainland">Mainland China</option>
-            </select>
+            <Select label="MiniMax endpoint" value={drafts["mm-endpoint"] ?? m.endpoint} onChange={(v) => onDraft("mm-endpoint", v)} options={[{ value: "overseas", label: "Overseas" }, { value: "mainland", label: "Mainland China" }]} className="field" />
             <input className="field" aria-label="MiniMax group id" placeholder="Group id (optional)" value={text("mm-group", m.groupId)} onChange={(e) => onDraft("mm-group", e.target.value)} />
             <input className="field" aria-label="MiniMax usage model" placeholder="general" value={text("mm-model", m.usageModel === "general" ? "" : m.usageModel)} onChange={(e) => onDraft("mm-model", e.target.value)} />
             <input className="field" aria-label="MiniMax model names" placeholder="Model names (optional)" value={text("mm-names", m.modelNames)} onChange={(e) => onDraft("mm-names", e.target.value)} />

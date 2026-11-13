@@ -11,7 +11,6 @@ const platforms: Platform[] = ["win32", "linux", "darwin"];
 const surfaces: Array<[string, KeySurface]> = [
   ["terminal", { screen: "terminals", inTree: false }],
   ["agent", { screen: "terminals", inTree: false }],
-  ["browser", { screen: "terminals", kind: "browser", inTree: false }],
   ["editor", { screen: "terminals", kind: "editor", inTree: false }],
   ["diff", { screen: "terminals", kind: "diff", inTree: false }],
   ["preview", { screen: "terminals", kind: "preview", inTree: false }],
@@ -80,7 +79,7 @@ describe("T-717 every default chord is unique per live scope set", () => {
     ["global", "terminal", "tabs"],
     ["global", "tabs"],
     ["global", "tabs", "editor"],
-    ["browser"], ["editor"], ["explorer"], ["settings"],
+    ["editor"], ["explorer"], ["settings"],
   ];
   // "Mod" is Ctrl or Cmd, and modifier order does not matter: Mod+Shift+W and Shift+Ctrl+W are one chord on Windows.
   const norm = (chord: string, platform: Platform) => {

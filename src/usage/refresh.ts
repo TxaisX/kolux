@@ -148,6 +148,9 @@ export function runner<T>(o: RunnerOptions<T>): Runner {
       focus?.removeEventListener("focus", onFocus);
       visibility?.removeEventListener("visibilitychange", onVisible);
       if (s.inFlight) set({ ...s, inFlight: false });
+      // A stopped runner leaves nothing behind: a screen that still asks for this name reads the
+      // empty state, not the last state of a provider nothing is reading any more.
+      if (states.delete(o.name)) notify();
     },
     kick,
     state: () => s,
@@ -167,9 +170,13 @@ const subscribe = (f: () => void) => {
   return () => void subs.delete(f);
 };
 const NONE = fresh();
+/** The scheduler state a screen reads for one provider name (the empty state when nothing is reading it). */
+export function published(name: string): Sched {
+  return states.get(name) ?? NONE;
+}
 /** The scheduler state of one provider, for the error mark: failing while the last read failed. */
 export function useRefresh(name: string): Sched {
-  return useSyncExternalStore(subscribe, () => states.get(name) ?? NONE, () => NONE);
+  return useSyncExternalStore(subscribe, () => published(name), () => NONE);
 }
 
 /** Claude: the last status-line report; an empty one is nothing new, so figures already shown stay. */

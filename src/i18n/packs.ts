@@ -3,7 +3,8 @@
 // (Txais approved machine translation, 2026-10-20) and says so in its `META`; a human review pass is
 // in the after-list. Keep every key, placeholder and product name as in English.
 import type { Language } from "../language";
-import { registerPack, type Pack } from "./lookup";
+import { locale, onLanguageChange } from "../language";
+import { preload, registerPack, type Pack } from "./lookup";
 
 export type PackMeta = {
   language: Exclude<Language, "en">;
@@ -24,9 +25,13 @@ export const PACK_MODULES: Record<Exclude<Language, "en">, () => Promise<PackMod
   ko: () => import("./packs/ko"),
 };
 
-/** Makes every bundled pack available to the text lookup (nothing is fetched until its language is in force). */
+/** Makes every bundled pack available to the text lookup, then fetches the one the language in force needs. */
 export function registerBundledPacks(): void {
   for (const [lang, load] of Object.entries(PACK_MODULES) as [Exclude<Language, "en">, () => Promise<PackModule>][]) {
     registerPack(lang, () => load().then((m) => m.default));
   }
+  // Fetched now, not at the first `t()`: a pack that lands after the first paint leaves that paint in
+  // English until something else re-renders. A language picked later is fetched on the change.
+  onLanguageChange((lang) => void preload(lang));
+  void preload(locale());
 }

@@ -217,6 +217,8 @@ pub fn replay(text: &str, rows: &mut Vec<Row>, now: u64) -> usize {
         let (Some(route), Some(who), Some(_config), Some(body)) = (parts.next(), parts.next(), parts.next(), parts.next()) else { continue };
         let Some((agent, name)) = agent_of(route) else { continue };
         let Some((pane_key, terminal)) = identity(who) else { continue };
+        // A held line from a kept-warm shell names the pane that took it only while that is known (hooks::WARM_PANE).
+        let Some(pane_key) = crate::hooks::reporting_pane(pane_key, terminal) else { continue };
         let Ok(event) = serde_json::from_str::<Value>(body.trim()) else { continue };
         // T-120-b: a vendor's line holds its raw event, normalized as the listener would.
         let event = if agent == Agent::Vendor { match super::more::normalize_any(route, &event) { Some(e) => e, None => continue } } else { event };

@@ -1,6 +1,6 @@
-# Files and browser
+# Files and web pages
 
-Open, edit and review a workspace's files without leaving Kolux, and keep a web page in a tab beside your terminals. Each of these is a tab in the same grid as your terminals; open a browser tab with Ctrl+Shift+B, a note with Ctrl+Shift+M or Ctrl+Shift+O, and a file from disk with the file finder (see [Terminals](terminals.md)).
+Open, edit and review a workspace's files without leaving Kolux; web pages open in your own browser. Each file is a tab in the same grid as your terminals; open a note with Ctrl+Shift+M or Ctrl+Shift+O, and a file from disk with the file finder (see [Terminals](terminals.md)).
 
 ## Open a file
 
@@ -100,62 +100,9 @@ When Compare is set to the branch and the branch shares no history with its base
 
 Diff lines also take review notes ("What should change here?"). A note needs some text; to remove one, use the bin on its card. Staging, committing and discarding are in [Projects and folders](projects-and-worktrees.md).
 
-## Browser tabs
+## Web pages
 
-Open a web page beside your terminals, for example your app running locally: Ctrl+Shift+B.
-
-| To do this | Do this |
-|---|---|
-| Go to a site | Type in the **Address** box and press Enter |
-| Focus the address box | Ctrl+L |
-| Back, forward | Alt+Left, Alt+Right (or the buttons) |
-| Reload, stop | Ctrl+R; the Stop button while a page is loading |
-| Close the tab | Ctrl+W |
-
-What the address box understands:
-
-| You type | Kolux does |
-|---|---|
-| `https://...` or `http://...` | Opens it |
-| `localhost:3000`, an IP address such as `127.0.0.1:5173` or `192.168.1.20:5173`, or a name ending in `.localhost` | Opens it over http |
-| `example.com` (looks like a domain, no spaces) | Opens it over https |
-| Anything else | Searches the web with Google |
-| A file path, `file:`, or another kind of link such as `mailto:` | Refuses: "a browser tab opens web pages only (http or https)" |
-
-A browser tab never opens local files, so a page cannot reach the app's own tools. Pages stay loaded when you switch to another tab and back. There is no choice of search engine; the setting was removed.
-
-In a narrow browser pane (under about 360 pixels wide) the Address box folds up into a small box so the buttons keep their room. Click it (or press Ctrl+L) and it opens across the whole toolbar while you type; the buttons stay where they were, hidden under it. Click away and it folds up again.
-
-While a page is loading, the tab shows your app's colour (dark in a dark theme, light in a light theme) instead of a white flash. If you change the theme, the next page you load follows the new colour.
-
-### Find, zoom and the site icon
-
-| To do this | Do this |
-|---|---|
-| Find text on the page | Ctrl+F. A find bar opens under the toolbar. Enter goes to the next match, Shift+Enter to the previous one (the two arrow buttons do the same), Escape closes it |
-| Zoom in, out | Ctrl+= and Ctrl+-, or Ctrl with the mouse wheel (one step per wheel burst) |
-| Back to 100% | Ctrl+0 |
-
-Each browser tab keeps its own zoom. A small badge in the toolbar shows the level for a moment after each change. The steps run from 25% up to 500% (25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500). The level stays when the page reloads or moves to another site. In a browser tab these keys zoom the page, not the app. Find uses the page's own find, so a page could in principle see what you search for.
-
-The globe in a browser tab's toolbar becomes the site's own icon once Kolux has fetched it. The icon stays while you move within one site and goes when you move to another. It shows in the toolbar only; the tab strip keeps its usual mark.
-
-### Links that open new tabs
-
-A link a page opens in a new window (a `_blank` link or a script) becomes another Kolux browser tab. You can also open a link as a tab yourself:
-
-| To do this | Do this |
-|---|---|
-| Open a link in a new tab behind this one | Middle-click it, or Ctrl-click it |
-| Open it in front | Shift with either of the above |
-
-A tab opened by a page comes to the front only if the page's own tab is on screen. Only web addresses (http or https) open this way. A download link, or a link the page itself handled, is left to the page.
-
-**A limit on pages opening tabs.** To stop a page from filling your window with tabs, all browser pages share one allowance: 5 new tabs in any 10 seconds, whether they come from new-window requests or from link opens. Extra ones are quietly dropped, with no message, and the allowance fills up again as the 10 seconds pass. Because it is shared, a page that is spamming can use it up and your own real clicks in other tabs may be dropped for those seconds. An address Kolux refuses (see above) takes nothing from the allowance. A per-tab allowance and a "popups blocked" note are planned.
-
-### Site icons and the local network
-
-Kolux itself fetches a page's icon, so it keeps this narrow. An icon is accepted only if it is an image of modest size (up to 256 KB), and a fetch takes at most 5 redirects and 8 seconds. A redirect is refused if it goes from https down to http, or to somewhere the tab itself may not go. A page on the public web cannot point its icon at your own machine or home network: addresses such as `localhost`, `127.0.0.1`, `192.168...`, `10...`, names ending `.local` or `.lan`, or a plain name with no dot are refused for icons unless the page is on that same host. A page you open on `localhost` can still show its own icon. Your tab can still go to `localhost`; the rule only guards what Kolux fetches for a page.
+Kolux no longer shows web pages inside its own window (Txais, 2026-11-12: this frees memory so the PC can run more agents). A web address opens in your own browser, Chrome or whatever Windows uses by default: a link in a terminal, a port in the Ports list, a review link in Checks, an HTML preview and a link in a chat all go there. Agents use that browser for the web too.
 
 ## Artifacts
 
@@ -163,10 +110,4 @@ The Artifacts library holds only what its viewer can show in the app: **HTML pag
 
 **A link in a page asks first.** A page runs its own script, so a click that leaves the page never opens your browser by itself: Kolux shows a strip above the viewer, `Open example.com?`, naming the address's host (for a mail address, the address without any `?body=`), and the browser opens only when you click **Open** there, once, for exactly that address. Open is disabled for the first second, so a click meant for the page cannot land on it; **Cancel** closes the question, and after three Cancels in a row that page stops asking until you pick it again.
 
-## Grab an element and reload
-
-The **Grab** button in the browser tab's toolbar ("Grab an element: pick it to see its details and picture") lets you click one element on the page. A sheet then covers the page with the element's picture and its details, with **Copy details** and **Send to agent**. Escape or Close shows the page again. The key listed as "Grab Page Element" on the Shortcuts page does the same; with text selected in the page, the key copies the text instead.
-
-Ctrl+R reloads the page. "Reload Browser Page (second key)" (Ctrl+Shift+R) is a second key for the same reload, not a separate hard reload.
-
-<!-- verified against: src/editor/EditorPane.tsx, src/editor/DiskBanner.tsx, src/editor/diskChange.ts, src/editor/DiffPane.tsx, src/editor/AllChangesPane.tsx, src/scm/split.ts, src/editor/Explorer.tsx, src/editor/FilePicker.tsx, src/editor/PreviewPane.tsx, src/editor/markdown.ts, src/browser/BrowserPane.tsx, src/browser/address.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/browser/colour.ts, src/browser/browser.css, src/browser/zoom.ts, src/browser/site.ts, src-tauri/src/browser.rs, src-tauri/src/scm.rs at bc11a7f1 -->
+<!-- verified against: src/editor/EditorPane.tsx, src/editor/DiskBanner.tsx, src/editor/diskChange.ts, src/editor/DiffPane.tsx, src/editor/AllChangesPane.tsx, src/scm/split.ts, src/editor/Explorer.tsx, src/editor/FilePicker.tsx, src/editor/PreviewPane.tsx, src/editor/markdown.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/open/openExternal.ts, src-tauri/src/scm.rs at 856d46d5 -->

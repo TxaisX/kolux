@@ -28,7 +28,6 @@ export type RenameEvent = { dir: string; answer: RenameAnswer | null; error: str
 export const renameOn = (s: Record<string, unknown>): boolean => s[RENAME_KEY] !== false && autoBranchOn(s);
 
 const tried = new Set<string>();
-const errors = new Map<string, string>();
 const listeners = new Set<(e: RenameEvent) => void>();
 
 /** Hears every rename try: the answer, or the complete output of a failed one (PROJ-039). */
@@ -37,24 +36,19 @@ export function onRename(cb: (e: RenameEvent) => void): () => void {
   return () => void listeners.delete(cb);
 }
 
-/** The complete output of the last failed rename in `dir`, cleared when a later one succeeds (STAT-039). */
-export const renameError = (dir: string): string | null => errors.get(dir) ?? null;
-
 /** Forgets what was tried (all, or one folder), so a workspace made again may be renamed again. */
 export const forgetRename = (dir?: string) => {
   if (dir === undefined) {
     tried.clear();
-    errors.clear();
   } else {
     tried.delete(dir);
-    errors.delete(dir);
   }
 };
 
 /**
  * Names the branch of `dir` after `task`, once per folder. A refused rename (the answer says why)
- * counts as tried; a failed one (Git's own error) is kept as the folder's error and may be tried
- * again by a later prompt.
+ * counts as tried; a failed one (Git's own error) goes to the `onRename` listeners and may be
+ * tried again by a later prompt.
  */
 export async function renameOnFirstPrompt(dir: string, task: string, settings: Record<string, unknown>, call: typeof invoke = invoke, ports?: NamingPorts): Promise<RenameAnswer | null> {
   if (!renameOn(settings) || task.trim() === "" || tried.has(dir)) return null;
@@ -62,13 +56,11 @@ export async function renameOnFirstPrompt(dir: string, task: string, settings: R
   try {
     // Row 931: the same AI gate as the commit writer; closed means the task's own words name the branch.
     const answer = await call<RenameAnswer>("workspace_rename_on_first_prompt", { path: dir, task, writer: await namingWriter(dir, ports) });
-    errors.delete(dir);
     for (const cb of listeners) cb({ dir, answer, error: null });
     return answer;
   } catch (err) {
     tried.delete(dir);
     const text = String(err);
-    errors.set(dir, text);
     for (const cb of listeners) cb({ dir, answer: null, error: text });
     return null;
   }

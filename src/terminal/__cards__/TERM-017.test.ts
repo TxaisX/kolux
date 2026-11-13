@@ -4,12 +4,13 @@
 // function TerminalPane's "terminal-output" listener asks.
 import { expect, test } from "vitest";
 import { forPane } from "../codec";
-import { cellsOf, columnsFor, groupOf, insertBefore, splitIndex } from "../grid";
-import { dropCell, dropTab, type Zone } from "../rearrange";
-import { splitTabOut } from "../tabSplit";
+import { cellsOf, columnsFor, groupOf, insertAfter, insertBefore, splitIndex } from "../grid";
+import { dropCell, type Zone } from "../rearrange";
 
-type P = { key: number; cwd: string; group?: number };
-const ZONES: Zone[] = ["centre", "strip", "left", "right", "top", "bottom"];
+// One session per cell (owner decision 2026-11-12): the moves are a pane dragged onto another cell (every zone: the
+// centre swaps, a band moves it to that side) and a pane opened beside the focused one (insertAfter).
+type P = { key: number; cwd: string };
+const ZONES: Zone[] = ["centre", "left", "right", "top", "bottom"];
 
 function run(seed0: number) {
   let seed = seed0;
@@ -30,17 +31,14 @@ function run(seed0: number) {
       session.set(k, 100 + k);
       moves.push("split");
     } else if (kind === 1) {
-      const r = dropTab(panes, panes[rnd(panes.length)].key, { kind: "cell", group: groupOf(panes[rnd(panes.length)]), zone: ZONES[rnd(6)] });
-      if (r) panes = r.panes;
-      moves.push("dropTab");
-    } else if (kind === 2) {
-      const r = dropCell(panes, groupOf(panes[rnd(panes.length)]), { group: groupOf(panes[rnd(panes.length)]), zone: ZONES[rnd(6)] });
+      const k = next++;
+      panes = insertAfter(panes, panes[rnd(panes.length)].key, { key: k, cwd: "C:/w" });
+      session.set(k, 100 + k);
+      moves.push("beside");
+    } else {
+      const r = dropCell(panes, groupOf(panes[rnd(panes.length)]), { group: groupOf(panes[rnd(panes.length)]), zone: ZONES[rnd(5)] });
       if (r) panes = r;
       moves.push("dropCell");
-    } else {
-      const r = splitTabOut(panes, panes[rnd(panes.length)].key, rnd(2) ? "right" : "down");
-      if (r) panes = r.panes;
-      moves.push("splitOut");
     }
     // nothing was lost, duplicated or changed: every earlier pane is still there once, with its folder and its session
     for (const old of before) {
@@ -50,6 +48,7 @@ function run(seed0: number) {
     }
     expect(new Set(panes.map((p) => p.key)).size).toBe(panes.length);
     expect(cellsOf(panes).flatMap((c) => c.panes.map((p) => p.key)).sort()).toEqual(panes.map((p) => p.key).sort());
+    expect(cellsOf(panes).every((c) => c.panes.length === 1)).toBe(true); // one session per cell, after any move
     // the session map is separate state a layout change never writes to
     for (const p of panes) expect(session.get(p.key)).toBe(100 + p.key);
   }
@@ -64,7 +63,7 @@ test("box 1: after 10 random splits and moves (20 runs) each pane still has its 
     expect(panes.length).toBeGreaterThanOrEqual(2);
   }
   // the runs really did moves, not only splits
-  expect([...used].sort()).toEqual(["dropCell", "dropTab", "split", "splitOut"].sort());
+  expect([...used].sort()).toEqual(["beside", "dropCell", "split"].sort());
 });
 
 test("box 2: after splits and moves, an output event is taken by the pane that owns that session and by no other", () => {

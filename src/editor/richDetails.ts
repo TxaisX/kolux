@@ -14,12 +14,14 @@ import {
   $getSelection,
   $isRangeSelection,
   ElementNode,
+  $isElementNode,
   type EditorConfig,
   type LexicalNode,
   type RangeSelection,
   type SerializedElementNode,
 } from "lexical";
-import { $convertFromMarkdownString, $convertToMarkdownString, type MultilineElementTransformer, type Transformer } from "@lexical/markdown";
+import { $convertFromMarkdownString, type MultilineElementTransformer, type Transformer } from "@lexical/markdown";
+import { $exportMarkdown } from "./mdExport";
 
 export class SummaryNode extends ElementNode {
   static getType() {
@@ -129,7 +131,9 @@ export function $insertDetails(title = "Section"): boolean {
   if (top.isEmpty() && top.getType() === "paragraph") top.replace(d);
   else top.insertAfter(d);
   if (!d.getNextSibling()) d.insertAfter($createParagraphNode());
-  const t = d.getFirstChild<SummaryNode>()?.getFirstChild();
+  // No type argument on getFirstChild: Lexical 0.53 dropped it, and $isElementNode narrows the same way.
+  const first = d.getFirstChild();
+  const t = first && $isElementNode(first) ? first.getFirstChild() : first;
   if (t && "select" in t) (t as ReturnType<typeof $createTextNode>).select(0, title.length);
   return true;
 }
@@ -170,7 +174,7 @@ export function makeDetails(all: () => Transformer[]): MultilineElementTransform
       const kids = node.getChildren();
       const title = kids.find($isSummaryNode)?.getTextContent().replace(/[<>\n]/g, " ") ?? "";
       const body = kids.find($isBodyNode);
-      const text = body ? $convertToMarkdownString(all(), body).replace(/^\n+|\n+$/g, "") : "";
+      const text = body ? $exportMarkdown(all(), body).replace(/^\n+|\n+$/g, "") : "";
       return `<details>\n<summary>${title}</summary>\n\n${text ? text + "\n\n" : ""}</details>`;
     },
     type: "multiline-element",

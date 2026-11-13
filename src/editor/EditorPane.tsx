@@ -53,7 +53,9 @@ import { drafts, restoreFrom, worktreeOf } from "./drafts";
 import { readForOpen } from "./openText";
 import { confirmed } from "./fileMoved";
 import { richBlocker, richBlockerSince, richChange, splitFront } from "./frontMatter";
-import { bannerUp, beginSave, canUndo, checkOnce, endSave, forget, holdRestored, keep, POLL_MS, readFresh, reloadNow, remember, setBanner as markBanner, UNDO_TOAST_MS, type Io, type Stamp, type UndoEntry } from "./diskChange";
+import { bannerUp, beginSave, canUndo, checkOnce, endSave, forget, holdRestored, keep, readFresh, reloadNow, remember, setBanner as markBanner, UNDO_TOAST_MS, type Io, type Stamp, type UndoEntry } from "./diskChange";
+import { watchStamp } from "./stampPoll";
+import { look } from "./editorTheme";
 import { CompareView, DiskBanner, GoneNotice, UndoToast } from "./DiskBanner";
 import { isMarkdown, mountRich } from "./markdown";
 import { minimap } from "./minimap";
@@ -90,6 +92,7 @@ import { pasteGuard } from "./paste";
 // Cycle 3 (first load): the two latches the window's Mod+S and Copy Context call live in keys/handles.ts
 // now, so the shortcut router holds them without loading this pane; filled here while a tab is open.
 import { copiers, editors } from "../keys/handles";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 export { copiers, editors };
 
 /** EDIT-003 (T-073-a, T-073-c): Mod+S for an editor tab or an unstaged diff tab. The write carries
@@ -185,19 +188,6 @@ export function StaleNotice({ path, onDone, onToast }: { path: string; onDone: (
 const lang = new Compartment();
 const minimapping = new Compartment(); // T-316-b: the minimap beside the text, off unless Settings > General turns it on
 const wrapping = new Compartment(); // EDIT-006: word wrap, on unless the setting or Alt+Z turned it off
-export const look = EditorView.theme(
-  {
-    "&": { height: "100%", background: "var(--pane-bg)", color: "var(--fg)", fontSize: "13px" },
-    // TERM-097 / SET-018: the editor font, which is the terminal font unless set on its own.
-    ".cm-scroller": { fontFamily: "var(--editor-font, var(--mono-font))", lineHeight: "1.5" },
-    ".cm-gutters": { background: "var(--pane-bg)", color: "var(--fg-faint)", border: "none" },
-    // See-through, so the selection drawn under the text still shows on the caret's line.
-    ".cm-activeLine, .cm-activeLineGutter": { background: "color-mix(in srgb, var(--row-selected) 45%, transparent)" },
-    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": { background: "color-mix(in srgb, var(--line-focus) 90%, transparent) !important" },
-    "&.cm-focused": { outline: "none" },
-    ".cm-cursor": { borderLeftColor: "var(--fg)" },
-  },
-);
 
 /** `readOnly`: typing changes nothing (SKILL-012 previews a kit result this way). */
 type Props = { id: number; path: string; root?: string | null; readOnly?: boolean; /** EDIT-026: a log tab that keeps adding lines as the file grows (give it readOnly too). */ follow?: boolean; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onDirty?: (dirty: boolean) => void; onToast?: (text: string) => void; jump?: { line: number; at: number; col?: number }; onLink?: LinkHandler; /** EDIT-020: the Markdown review notes, shown in a rail beside the rich view. */ notes?: Note[]; onRemoveNote?: (n: Note) => void; /** A rail card edited in place: the note and its new text. */ onEditNote?: (n: Note, text: string) => void };
@@ -432,27 +422,38 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
     let busy = false;
     let alive = true;
     const raised = (stamp: Stamp | null) => alive && setMoved((m) => (m && m.stamp?.mtime === stamp?.mtime && m.stamp?.size === stamp?.size ? m : { stamp }));
-    const check = () => {
+    // EDIT-032: a file that is gone is said so (a failed look at a file that is still there is not).
+    const ioSeen = (s: Stamp | null): Io => ({
+      ...io.current,
+      stamp: () => {
+        if (s) {
+          setGone(false);
+          return Promise.resolve(s);
+        }
+        return invoke<string>("path_kind", { path }).then(
+          (k) => {
+            setGone(k === "missing");
+            return null;
+          },
+          () => null,
+        );
+      },
+    });
+    const check = (s: Stamp | null) => {
       if (busy) return;
       busy = true;
-      void checkOnce(path, io.current, raised)
+      void checkOnce(path, ioSeen(s), raised)
         .then(
           (v) => alive && v !== "banner" && setMoved(null),
           () => undefined,
         )
         .finally(() => (busy = false));
     };
-    check();
-    // ponytail: each poll's file_stamps runs fence.allow, which lists worktrees about every 4 s
-    // (TREES_FRESH 3 s) under the fence mutex while an agent-worktree file is open (council MERGE 33
-    // A3, folded into the MERGE 29 A1 fence fast path by origin record); the upgrade is that fast
-    // path, or a fence decision cached per open tab, not a slower poll.
-    const timer = window.setInterval(check, POLL_MS);
-    window.addEventListener("focus", check);
+    // N-03: one stamp poll for every visible tab, not one per tab (see stampPoll.ts).
+    const off = watchStamp(path, check);
     return () => {
       alive = false;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", check);
+      off();
     };
   }, [path, hidden, ready, readOnly]);
   useEffect(() => {
@@ -767,9 +768,11 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
   return (
     <section style={tocShown ? (tocVar(tocWidth) as CSSProperties) : undefined} className={`pane editor${focused ? " focused" : ""}${tocShown ? " toc-open" : ""}${railShown ? " rail-open" : ""}`} hidden={hidden} aria-label={`${name} pane`} data-testid="editor-pane" onMouseDown={onFocus} onKeyDownCapture={onKeys} onPasteCapture={pastePicture} data-kind="editor" data-key={id}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="File">
           <FileIcon name={name} size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{name}</span>
         {dirty && <span className="unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}
         <span className="path" title={path}>

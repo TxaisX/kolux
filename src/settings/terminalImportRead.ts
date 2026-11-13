@@ -37,8 +37,6 @@ export function ghosttyPatch(saved: CustomScheme[], r: GhosttyImport): { patch: 
 }
 
 /** True when there is something in the import to save. */
-export const hasChanges = (r: GhosttyImport) => Object.keys(r.settings).length > 0 || r.schemes.length > 0;
-
 const list = (names: string[]) => names.join(" and ");
 
 /** The lines the Ghostty preview shows. They come from the same plan that Bring in saves, so a scheme

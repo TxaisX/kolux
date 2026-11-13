@@ -7,8 +7,8 @@ import { runCli, allPaneBuffers, rowsOf, selectRow } from "./live-cli-common.mjs
 
 const cwdOf = (b) => b.text?.split("\n").find((l) => l.startsWith("CWD:"))?.slice(4).trim() ?? null;
 const workersIn = async (app, folder) => (await allPaneBuffers(app, 'section.pane[data-agent*="claude"]')).filter((b) => cwdOf(b) && norm(cwdOf(b)) === norm(folder));
-/** Sidebar pane rows of Claude (the worker's tab entries). */
-const sidebarClaude = (app) => app.evalJs(`document.querySelectorAll('.pane-row[data-agent*="claude"]').length`);
+/** Workspace rows in the sidebar: a workspace shows one folder row, not one row per pane (the pane-row class is gone). */
+const sidebarRows = (app) => app.evalJs(`document.querySelectorAll("aside.sidebar .sess[role=button]").length`);
 /** The project's main-checkout row (not a nestable worktree row). */
 const clickMain = (app) =>
   app.evalJs(`(() => { const e = document.querySelector("button.branch"); if (!e) return false; e.click(); return true; })()`);
@@ -50,17 +50,17 @@ export async function run016(ctx, { check, log }) {
   for (let cycle = 1; cycle <= 2; cycle++) {
     check(`b3 cycle ${cycle}: open the worker's workspace`, await selectRow(app, await labelNow()), `row ${await labelNow()}`);
     await sleep(2500);
-    const inside = { panes: (await workersIn(app, wpath)).length, shown: (await workersIn(app, wpath)).filter((x) => x.shown).length, sidebar: await sidebarClaude(app) };
+    const inside = { panes: (await workersIn(app, wpath)).length, shown: (await workersIn(app, wpath)).filter((x) => x.shown).length, sidebar: await sidebarRows(app) };
     const left = await clickMain(app);
     await sleep(2500);
     const away = { panes: (await workersIn(app, wpath)).length, shown: (await workersIn(app, wpath)).filter((x) => x.shown).length };
     check(`b3 cycle ${cycle}: left to the main workspace`, left && (await app.evalJs(`document.querySelector("button.branch")?.classList.contains("sel")`)) && away.shown === 0, `clicked=${left} workerShown=${away.shown}`);
     await selectRow(app, await labelNow());
     await sleep(2500);
-    const back = { panes: (await workersIn(app, wpath)).length, shown: (await workersIn(app, wpath)).filter((x) => x.shown).length, sidebar: await sidebarClaude(app) };
+    const back = { panes: (await workersIn(app, wpath)).length, shown: (await workersIn(app, wpath)).filter((x) => x.shown).length, sidebar: await sidebarRows(app) };
     counts.push({ inside, away, back });
     log(`cycle ${cycle}: inside=${JSON.stringify(inside)} away=${JSON.stringify(away)} back=${JSON.stringify(back)}`);
-    check(`b3 cycle ${cycle}: back in the workspace there is exactly one worker tab`, back.panes === 1 && back.shown === 1 && back.sidebar === 1, JSON.stringify(back));
+    check(`b3 cycle ${cycle}: back in the workspace there is exactly one worker tab and the sidebar shows one folder row`, back.panes === 1 && back.shown === 1 && back.sidebar === 1, JSON.stringify(back));
   }
   log(`screenshot b3: ${await ctx.shot("ORCH-016-b3")}`);
   log(`real agent programs under the app: ${JSON.stringify(await ctx.realAgents())}`);

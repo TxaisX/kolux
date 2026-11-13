@@ -3,6 +3,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { readAppearance } from "../theme";
 import { AppearanceView, LanguageView, UsagePercentPick } from "./AppearancePage";
+import { selectIn } from "../tasks/selectHtml";
 
 test("SET-016: Interface, Terminal and Window & Sidebar, all open at first; fonts sit in Interface", () => {
   const html = renderToString(createElement(AppearanceView, { look: readAppearance({}), onChange: () => {}, windowPart: createElement("p", null, "status switch"), windowSummary: "Status bar shown" }));
@@ -37,8 +38,7 @@ test("SET-017: the Language choice sits in Interface, names each language in its
 test("T-263 USAGE-025: the status bar section offers Usage percentages as Used or Remaining", () => {
   const html = renderToString(createElement(UsagePercentPick, { value: "remaining", onPick: () => {} })).replace(/<!-- -->/g, "");
   expect(html).toContain("Usage percentages");
-  expect(html).toContain(`<option value="used">Used</option>`);
-  expect(html).toContain(`<option value="remaining" selected="">Remaining</option>`);
+  expect(selectIn(html, "Usage percentages")).toEqual({ chosen: "Remaining", offered: ["Used", "Remaining"] });
 });
 
 test("UX-audit: the zoom note names the real interface-zoom keys, not the pane zoom ones", () => {

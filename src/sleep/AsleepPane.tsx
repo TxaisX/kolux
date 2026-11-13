@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import type { Asleep } from "./agentSleep";
 import { idleShown } from "./agentSleep";
 import { t } from "../i18n/lookup";
+import { usePackLoaded } from "../shell/usePackLoaded";
 
 export default function AsleepPane({ asleep, hidden, onWake }: { asleep: Asleep; hidden: boolean; onWake: () => void }) {
+  usePackLoaded();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (hidden) return;

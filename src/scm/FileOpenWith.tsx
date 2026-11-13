@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSettings } from "../settings/useSettings";
 import { addApp, addCustom, draftReady, moveApp, presetsLeft, readOpenIn, removeApp } from "../settings/openIn";
 import { fileApps, listPatch, openFileWith } from "./openWith";
+import { Select } from "../ui/Select";
 
 type Props = { dir: string | null; path: string; done: () => void; onError: (message: string) => void };
 
@@ -18,11 +19,11 @@ export default function FileOpenWith({ dir, path, done, onError }: Props) {
     <>
       {dir !== null &&
         fileApps(settings).map((a) => (
-          <button key={a.id} role="menuitem" className="menu-item" data-file-action={`open-${a.id}`} onClick={() => (done(), void openFileWith(dir, path, a.command).catch((e) => onError(String(e))))}>
+          <button key={a.id} className="menu-item" data-file-action={`open-${a.id}`} onClick={() => (done(), void openFileWith(dir, path, a.command).catch((e) => onError(String(e))))}>
             <span className="name">{a.label}</span>
           </button>
         ))}
-      <button role="menuitem" className="menu-item" data-file-action="edit-apps" aria-expanded={editing} onClick={() => setEditing(!editing)}>
+      <button className="menu-item" data-file-action="edit-apps" aria-expanded={editing} onClick={() => setEditing(!editing)}>
         <span className="name">{editing ? "Done editing the app list" : "Edit the app list"}</span>
       </button>
       {editing && (
@@ -44,14 +45,7 @@ export default function FileOpenWith({ dir, path, done, onError }: Props) {
             ))}
           </ul>
           {left.length > 0 && (
-            <select className="field" aria-label="Add an Open in app" value="" onChange={(e) => put(addApp(list, left.find((p) => p.id === e.target.value)!))}>
-              <option value="">Add an app</option>
-              {left.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <Select label="Add an Open in app" value="" onChange={(v) => put(addApp(list, left.find((p) => p.id === v)!))} options={[{ value: "", label: "Add an app" }, ...left.map((p) => ({ value: p.id, label: p.name }))]} className="field" />
           )}
           <input className="field" aria-label="New app name" placeholder="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           <input className="field" aria-label="New app command" placeholder="Command, e.g. code" value={draft.command} onChange={(e) => setDraft({ ...draft, command: e.target.value })} />

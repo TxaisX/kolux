@@ -12,7 +12,6 @@ const LABELS: Record<string, string> = {
   claudeOauthToken: "Claude 1-year key",
   xaiApiKey: "xAI key",
   httpProxy: "proxy address",
-  browserSearchSessionUrl: "browser search link",
   minimaxCookie: "MiniMax cookie",
   minimaxApiKey: "MiniMax key",
   moonshotApiKey: "Moonshot key",

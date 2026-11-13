@@ -27,7 +27,7 @@ fn read_fonts() -> Result<Vec<String>, String> {
             "-Command",
             "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Add-Type -AssemblyName System.Drawing; (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }",
         ]);
-        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c.creation_flags(crate::winproc::no_window());
         c
     };
     #[cfg(not(windows))]

@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { RepoView, draftSave, outsideChoice, outsideSave } from "./RepoPage";
 import { projectLabel } from "../projects/model";
+import { selectIn } from "../tasks/selectHtml";
 
 // DT-C273: own folders are the default now; these tests cover one folder per project.
 beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
@@ -53,9 +54,9 @@ test("SET-033: the repository can override whether workspaces made outside Kolux
   const p = { id: "p1", name: "app", path: "C:/src/app" };
   const shown = renderToString(createElement(RepoView, { project: p, globalDir: "", onSave: () => {}, outside: { global: true, own: null }, onOutside: () => {} }));
   expect(shown).toContain("Use the global choice (shown)");
-  expect(shown).toContain('<option value="global" selected="">');
+  expect(selectIn(shown, "Workspaces made outside Kolux")?.chosen).toBe("Use the global choice (shown)");
   const own = renderToString(createElement(RepoView, { project: p, globalDir: "", onSave: () => {}, outside: { global: true, own: false }, onOutside: () => {} }));
-  expect(own).toContain('<option value="hide" selected="">');
+  expect(selectIn(own, "Workspaces made outside Kolux")?.chosen).toBe("Hide them");
   const none = renderToString(createElement(RepoView, { project: p, globalDir: "", onSave: () => {} }));
   expect(none).not.toContain("made outside Kolux");
 });

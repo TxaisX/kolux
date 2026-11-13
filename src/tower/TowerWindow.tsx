@@ -19,7 +19,8 @@ export default function TowerWindow() {
   const [loaded, setLoaded] = useState(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    const tick = window.setInterval(() => setNow(Date.now()), 1000);
+    // Audit 34: the ages stop counting while the window is hidden and catch up within a second of showing.
+    const tick = window.setInterval(() => document.hidden || setNow(Date.now()), 1000);
     const un = listen<Snapshot>(TOWER_SNAPSHOT, (e) => (setSnap(e.payload), setLoaded(true)));
     void un.then(() => emitTo(MAIN, TOWER_READY)).catch(() => {});
     return () => {

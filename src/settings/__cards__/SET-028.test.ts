@@ -13,7 +13,7 @@ import { startFields, startTail } from "../../projects/startArgs";
 import { routingOf, type Provider } from "../routing";
 import catalogue from "./ACCT-034.catalogue.json";
 import RoutingPage from "../RoutingPage";
-import { find, findAll, mount, type El } from "./shallow-react";
+import { find, findAll, isSelect, mount, type El } from "./shallow-react";
 
 vi.mock("react", async (orig) => (await import("./shallow-react")).patchReact(await orig<object>()));
 
@@ -37,9 +37,9 @@ function open(start: Record<string, unknown>) {
   const page = mount(RoutingPage, props());
   return { render: () => page.render(props()), settings: () => settings };
 }
-const selects = (tree: El, label: string) => findAll(tree, (e) => e.type === "select" && e.props["aria-label"] === label);
-const select = (tree: El, label: string) => find(tree, (e) => e.type === "select" && e.props["aria-label"] === label);
-const pick = (tree: El, label: string, value: string) => select(tree, label).props.onChange({ target: { value } });
+const selects = (tree: El, label: string) => findAll(tree, isSelect(label));
+const select = (tree: El, label: string) => find(tree, isSelect(label));
+const pick = (tree: El, label: string, value: string) => select(tree, label).props.onChange(value);
 
 test("box 2: picking Haiku (no effort levels) for a tier removes that tier's effort picker; the other tiers keep theirs", () => {
   const app = open({});

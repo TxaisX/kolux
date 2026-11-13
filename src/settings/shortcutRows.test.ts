@@ -12,7 +12,7 @@ const ids = (r: ReturnType<typeof rows>) => r.map((x) => x.id);
 
 test("every command is listed under its area with its chords and badges", () => {
   const all = rows({ keybindings: { "zoom.reset": "Mod+Alt+9", "zoom.in": null, "view.tasks": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } });
-  expect(all.length).toBe(136); // every command (view.routing added (T-727), Source Control toggle removed, T-644), OpenCode's new-tab command included (T-572), Reopen closed tab included again (T-239), view.space added (T-146-e), Grab Page Element routed (T-240), view.automations and focus.chrome added (UX lane C); the floating workspace commands are gone with the panel
+  expect(all.length).toBe(128); // every command (view.routing added (T-727), Source Control toggle removed, T-644), OpenCode's new-tab command included (T-572), Reopen closed tab included again (T-239), view.space added (T-146-e), view.automations and focus.chrome added (UX lane C); the floating workspace commands are gone with the panel; the 8 browser commands went with the web pane (goal 0)
   expect(ids(all)).toContain("tab.reopenClosed");
   const by = (id: string) => all.find((r) => r.id === id)!;
   expect(by("terminal.clear")).toMatchObject({ area: "Terminal", labels: ["Ctrl+K"], badges: [] });
@@ -29,7 +29,7 @@ test("every command is listed under its area with its chords and badges", () => 
 
 test("filters: all, modified, unassigned, conflicting", () => {
   const all = rows({ keybindings: { "zoom.reset": "Mod+Alt+9", "zoom.in": null, "view.tasks": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } });
-  expect(filterRows(all, "all", "").length).toBe(136);
+  expect(filterRows(all, "all", "").length).toBe(128);
   expect(ids(filterRows(all, "modified", ""))).toEqual(["zoom.in", "zoom.reset"]);
   expect(filterRows(all, "unassigned", "").every((r) => r.labels.length === 0)).toBe(true);
   expect(ids(filterRows(all, "unassigned", ""))).toContain("zoom.in");
@@ -96,9 +96,6 @@ test("SET-019 (T-246-c): the interface zoom has its own keys, apart from the ter
 // AFTER row 382 (T-164-b): a command nothing runs yet is not offered as a row to rebind.
 test("commands with no handler yet are not listed, wired ones still are", () => {
   const ids = rows().map((r) => r.id);
-  expect(ids).toContain("browser.hardReload"); // T-611: it runs as Reload (keys/actions.ts sameAs)
-  expect(ids).toContain("browser.grabElement"); // T-240: the browser pane runs it
-  expect(ids).toContain("browser.find");
   expect(ids).toContain("editor.replace");
   expect(ids).toContain("editor.toggleWordWrap");
 });

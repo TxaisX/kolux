@@ -11,6 +11,7 @@ vi.mock("react", async (orig) => {
   return { ...patched, useMemo, default: { ...(patched as { default: object }).default, useMemo } };
 });
 vi.mock("../../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => md }));
+vi.mock("../../ui/Dialog", async () => (await import("../../tasks/dialogStandIn")).dialogModule);
 
 const sheet = (draft: PlanDraft) => {
   const tree = mount(PlanSheet, { title: "repo", plan: "# Plan\n\nDo it.", draft, onDraft: () => {}, onApprove: () => {}, onRequest: () => {}, onClose: () => {} }).render();

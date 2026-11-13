@@ -3,7 +3,7 @@
 // XMLHttpRequest made to throw.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { URL_CAP, type FeedbackFacts } from "../settings/privacy";
-import { block, closed, issue, MARK, NOTE_POS, reduce, restoreFocus, tabTarget, typedText, withBlock } from "./model";
+import { block, closed, issue, MARK, NOTE_POS, reduce, typedText, withBlock } from "./model";
 
 const facts: FeedbackFacts = { version: "0.1.0", platform: "Win32", release: "Windows 10.0.26200", arch: "x86_64", login: "octo-fake" };
 
@@ -173,13 +173,6 @@ test("fix1: closing the box with a report typed keeps it for the next open, a se
   expect(typedText(reduce(reduce(reduce(closed, { t: "open", facts }), { t: "close" }), { t: "open", facts }).draft)).toBe("");
 });
 
-// APP-037 review item: the box is modal, so Tab stays inside it and wraps at both ends.
-test("tab order wraps inside the box and starts at an end when nothing inside has focus", () => {
-  expect([0, 1, 2, 3].map((at) => tabTarget(4, at, false))).toEqual([1, 2, 3, 0]);
-  expect([0, 1, 2, 3].map((at) => tabTarget(4, at, true))).toEqual([3, 0, 1, 2]);
-  expect([tabTarget(4, -1, false), tabTarget(4, -1, true), tabTarget(0, 0, false)]).toEqual([0, 3, -1]);
-});
-
 test("a send in flight blocks a second one until it fails or finishes", () => {
   let s = reduce(closed, { t: "open", facts, text: "hello" });
   expect(s.sending).toBe(false);
@@ -198,15 +191,6 @@ test("C04-R4-01: a close ends the send it was waiting on and still keeps the dra
   expect(closing.sending).toBe(false); // the box never claims a send is running once it is shut
   expect(closing.open).toBe(false);
   expect(typedText(closing.draft)).toBe("hello"); // the half that was already right
-});
-
-test("focus goes back to what opened the box, only if it is still on the page", () => {
-  let n = 0;
-  expect(restoreFocus({ isConnected: true, focus: () => void n++ })).toBe(true);
-  expect(n).toBe(1);
-  expect(restoreFocus({ isConnected: false, focus: () => void n++ })).toBe(false);
-  expect(restoreFocus(null)).toBe(false);
-  expect(n).toBe(1);
 });
 
 test("the sent note sits right of the update card and above the 24px status bar", () => {

@@ -1,0 +1,21 @@
+/* src/ui: only what Base UI's own elements need to sit in Kolux's existing look. No new colours or motion. */
+/* The positioner is the element Base UI places; the popup inside keeps its .menu box. A popup's own z-index would be
+   trapped inside the positioner, so the layer goes on the positioner. */
+/* A menu, list or popover can be opened from inside a dialog, and Kolux's dialogs reach --z-top + 1 (the raised
+   guard), so every positioner sits just above that; the tour and the trust prompt stay higher. */
+.ui-positioner { z-index: calc(var(--z-top) + 2); }
+.ui-positioner > .menu { position: static; }
+.ui-tip-positioner { z-index: calc(var(--z-top) + 3); }
+.ui-tip { position: static; transform: none; }
+.ui-select { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: default; }
+/* A native select draws its text 4 px in from its own padding; the closed control does the same (the before and after
+   shots, evidence/PR254-select-*.png). */
+.ui-select-box { display: grid; flex: 1 1 auto; min-width: 0; margin-inline-start: 4px; }
+.ui-select-box > * { grid-area: 1 / 1; min-width: 0; }
+.ui-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Every label stacked unseen in one cell: the control is as wide as its longest option where nothing sets its width. */
+.ui-select-sizer { display: grid; height: 0; overflow: hidden; visibility: hidden; }
+.ui-select-sizer > span { grid-area: 1 / 1; white-space: nowrap; }
+.ui-select-icon { display: inline-flex; flex: none; }
+.ui-select-menu { min-width: var(--anchor-width); }
+.ui-tabs { display: contents; }

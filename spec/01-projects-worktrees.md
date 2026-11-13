@@ -265,6 +265,11 @@ Acceptance:
   - [x] Corrupt one tab's saved entry → the other tabs still come back. (cards; evidence/cards-PROJ-067.txt)
   - [x] Quit with workspace B active → B is active after reopening. (cards; evidence/cards-PROJ-067.txt)
 Compat: —
+  Amended 2026-11-12 (owner decision, PR #255, DT-C281: one session per grid cell, no tab strip, folders-only
+    sidebar): a layout saved while a cell could hold several tabs reopens with each tab in a cell of its own,
+    in the order the strip drew them (pinned first) where that cell was; nothing is closed or lost, even past
+    24 cells; the next write has no cell ids or tab in front (tested on layouts written by v0.1.1, v0.1.14 and
+    wave-1 themselves).
 Source: D-01-067
 
 ### PROJ-047 · Child workspaces nest under their parent

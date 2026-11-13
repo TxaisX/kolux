@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import type { NamingPorts } from "../scm/autoBranch";
-import { forgetRename, onRename, promptTarget, renameError, renameOn, renameOnFirstPrompt, type RenameAnswer } from "./renameOnWork";
+import { forgetRename, onRename, promptTarget, renameOn, renameOnFirstPrompt, type RenameAnswer } from "./renameOnWork";
 
 const openPorts: NamingPorts = { settings: async () => ({}), repo: async () => null };
 const ok: RenameAnswer = { renamed: true, reason: null, old: "tx/amber-otter", branch: "tx/fix-login", name: "Fix login", tracking: null };
@@ -68,11 +68,15 @@ describe("T-107-d: the first prompt names the branch once", () => {
       if (fail) throw new Error("fatal: cannot lock ref 'refs/heads/tx/x': is at abc but expected def");
       return ok;
     }) as never;
+    const heard: (string | null)[] = [];
+    const off = onRename((e) => void (e.dir === "C:/w/err" && heard.push(e.error)));
     expect(await renameOnFirstPrompt("C:/w/err", "fix", {}, call, openPorts)).toBeNull();
-    expect(renameError("C:/w/err")).toContain("cannot lock ref");
+    expect(heard[0]).toContain("cannot lock ref");
     fail = false;
     expect(await renameOnFirstPrompt("C:/w/err", "fix", {}, call, openPorts)).toEqual(ok);
-    expect(renameError("C:/w/err")).toBeNull();
+    expect(heard).toHaveLength(2);
+    expect(heard[1]).toBeNull();
+    off();
   });
 
   test("a status report with a prompt points at the pane's folder; one without is ignored", () => {

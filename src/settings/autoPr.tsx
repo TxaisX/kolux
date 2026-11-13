@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Project, Worktree } from "../projects/model";
 import { useSettings } from "./useSettings";
+import { useSearching } from "./search";
+import { Select } from "../ui/Select";
 
 export type AutoPrDefault = "github" | "on" | "off";
 export type Choice = "default" | "on" | "off";
@@ -64,13 +66,7 @@ export function AutoPrView({ value, entries, save }: ViewProps) {
       <p className="conn-detail">When an agent finishes a turn, Kolux commits on the workspace&apos;s branch, pushes it and opens or updates a draft pull request. It never commits on or pushes to the default branch, and it stops if it finds a likely secret or a file over 10 MB. A repository with no remote only gets commits.</p>
       <div className="look-select">
         <span>Default</span>
-        <select aria-label="automatic pull requests default" className="field" value={value.default} onChange={(e) => void save({ ...value, default: e.target.value as AutoPrDefault })}>
-          {DEFAULT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select label="automatic pull requests default" value={value.default} onChange={(v) => void save({ ...value, default: v as AutoPrDefault })} options={DEFAULT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} className="field" />
       </div>
       {entries.length > 0 && (
         <ul aria-label="automatic pull requests per workspace" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
@@ -79,13 +75,7 @@ export function AutoPrView({ value, entries, save }: ViewProps) {
               <span title={e.path} style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {e.name}
               </span>
-              <select aria-label={`automatic pull requests for ${e.name}`} className="field" style={{ flex: "none" }} value={choiceOf(value, e.path)} onChange={(ev) => void save(withChoice(value, e.path, ev.target.value as Choice))}>
-                {CHOICE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+              <Select label={`automatic pull requests for ${e.name}`} value={choiceOf(value, e.path)} onChange={(v) => void save(withChoice(value, e.path, v as Choice))} options={CHOICE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} className="field" style={{ flex: "none" }} />
             </li>
           ))}
         </ul>
@@ -113,13 +103,16 @@ export async function loadEntries(): Promise<Entry[]> {
 export default function AutoPrSettings() {
   const { settings, save } = useSettings();
   const [known, setKnown] = useState<Entry[]>([]);
+  // Audit N-45: a search draws this page for its headings only, so the project and workspace lists wait.
+  const searching = useSearching();
   useEffect(() => {
+    if (searching) return;
     let live = true;
     loadEntries().then((e) => live && setKnown(e), () => {});
     return () => {
       live = false;
     };
-  }, []);
+  }, [searching]);
   if (!settings) return null;
   const value = readAutoPr(settings);
   return <AutoPrView value={value} entries={entriesFor(known, value)} save={(next) => save({ autoPr: next })} />;

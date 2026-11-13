@@ -128,6 +128,7 @@
 .chat-permission-actions .allow { border-color: var(--accent); }
 .chat-permission-actions .deny { border-color: var(--danger); color: var(--danger); }
 .chat-browser-menu { position: fixed; z-index: calc(var(--z-pane) - 1); display: flex; flex-direction: column; min-width: 180px; max-width: min(320px, 90vw); padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 30%); }
+.ui-positioner > .chat-browser-menu { position: static; }
 .chat-browser-url { padding: 4px 8px; font-size: 11px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-browser-menu button { text-align: left; background: none; border: 0; padding: 5px 8px; font: inherit; color: var(--fg); cursor: pointer; border-radius: 6px; }
 .chat-browser-menu button:hover, .chat-browser-menu button:focus-visible { background: var(--chip-bg); }
@@ -181,8 +182,8 @@
 .chat-complete-retry { margin-left: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--chip-bg); color: var(--fg); font: inherit; cursor: pointer; }
 .chat-controls { order: 3; flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-start; font-size: 12px; }
 .chat-control { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
-.chat-control select, .chat-control button { font: inherit; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--fg); }
+.chat-control select, .chat-control .ui-select, .chat-control button { font: inherit; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--fg); }
 .chat-control button[aria-pressed="true"] { border-color: var(--accent); }
-.chat-control select:disabled, .chat-control button:disabled { color: var(--fg-faint); }
+.chat-control select:disabled, .chat-control .ui-select:disabled, .chat-control button:disabled { color: var(--fg-faint); }
 .chat-control-status { color: var(--fg-muted); }
 .chat-control-status.failed { color: var(--danger); }

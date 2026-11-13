@@ -18,8 +18,11 @@ import AiRecipesSection from "./AiRecipesSection";
 import AutoPrSettings from "./autoPr";
 import { useDraft } from "./useDraft";
 import { useLeaveSave } from "./leave";
+import { useSettled } from "../editor/settledQuery";
 import { REVIEW_BOTS_KEY } from "../scm/review";
 import { botsText, parseBots } from "./reviewBots";
+import { useSearching } from "./search";
+import { Select } from "../ui/Select";
 
 const REFRESH_FIELD = "refreshBaseFirst";
 /** SET-031 / PROJ-039: branches are renamed after the work; on unless saved as false. */
@@ -39,6 +42,8 @@ type ViewProps = {
   /** GIT-028: the GitHub API budget as last read, and how to read it again. */
   budget?: BudgetView;
   onBudget?: () => void;
+  /** Audit N-45: a search draws this page without reading the budget or checking the prefix. */
+  searching?: boolean;
 };
 
 const modeOf = (s: Record<string, unknown>) => (typeof s.branchPrefix === "string" ? s.branchPrefix : "user");
@@ -55,7 +60,7 @@ function InstructionsField({ value, onSave }: { value: string; onSave: (text: st
   return <textarea aria-label="commit message instructions" className="field multi" maxLength={2000} placeholder="Your own instructions for the message, e.g. use the imperative mood (optional)" {...props} />;
 }
 
-export function GitView({ settings, save, draft, setDraft, check, budget = { rows: null, error: null, at: 0 }, onBudget }: ViewProps) {
+export function GitView({ settings, save, draft, setDraft, check, budget = { rows: null, error: null, at: 0 }, onBudget, searching = false }: ViewProps) {
   const mode = modeOf(settings);
   const sample = prefixSample(mode, draft, check);
   return (
@@ -64,11 +69,11 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         <h2 className="conn-name">Branch names</h2>
         <div className="look-select">
           <span>Branch prefix</span>
-          <select aria-label="branch prefix" className="field" value={mode} onChange={(e) => void save({ branchPrefix: e.target.value })}>
-            <option value="user">Git user name (or gh login)</option>
-            <option value="custom">Custom text</option>
-            <option value="none">None: the bare name</option>
-          </select>
+          <Select label="branch prefix" value={mode} onChange={(v) => void save({ branchPrefix: v })} options={[
+            { value: "user", label: "Git user name (or gh login)" },
+            { value: "custom", label: "Custom text" },
+            { value: "none", label: "None: the bare name" },
+          ]} className="field" />
         </div>
         {mode === "custom" && (
           <input
@@ -127,10 +132,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         <h2 className="conn-name">Base branch</h2>
         <div className="look-select">
           <span>Default compare base</span>
-          <select aria-label="default compare base" className="field" value={settings[SUMMARY_UPSTREAM_KEY] === true ? "upstream" : "default"} onChange={(e) => void save({ [SUMMARY_UPSTREAM_KEY]: e.target.value === "upstream" })}>
-            <option value="default">Repository default</option>
-            <option value="upstream">Branch upstream</option>
-          </select>
+          <Select label="default compare base" value={settings[SUMMARY_UPSTREAM_KEY] === true ? "upstream" : "default"} onChange={(v) => void save({ [SUMMARY_UPSTREAM_KEY]: v === "upstream" })} options={[{ value: "default", label: "Repository default" }, { value: "upstream", label: "Branch upstream" }]} className="field" />
         </div>
         <label className="conn-switch">
           <input type="checkbox" role="switch" aria-label="Refresh the base first" checked={settings[REFRESH_FIELD] === true} onChange={(e) => void save({ [REFRESH_FIELD]: e.target.checked })} />
@@ -151,18 +153,24 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
       </section>
       <section className="conn-card" data-section="gh-budget">
         <h2 className="conn-name">GitHub API budget</h2>
-        {budget.rows === null && budget.error === null && <p className="conn-detail">Reading the budget{"\u2026"}</p>}
-        {budget.error && <p className="conn-detail warn">{budget.error}</p>}
-        {budget.rows?.map((b) => (
-          <p key={b.name} className={budgetLow(b) ? "conn-detail warn" : "conn-detail"} data-budget={b.name}>
-            {budgetLine(b, budget.at)}
-          </p>
-        ))}
-        <div className="btn-row">
-          <button className="btn" data-budget-refresh onClick={onBudget}>
-            Check again
-          </button>
-        </div>
+        {searching ? (
+          <p className="conn-detail">Your remaining GitHub API requests show when you open this page.</p>
+        ) : (
+          <>
+            {budget.rows === null && budget.error === null && <p className="conn-detail">Reading the budget{"\u2026"}</p>}
+            {budget.error && <p className="conn-detail warn">{budget.error}</p>}
+            {budget.rows?.map((b) => (
+              <p key={b.name} className={budgetLow(b) ? "conn-detail warn" : "conn-detail"} data-budget={b.name}>
+                {budgetLine(b, budget.at)}
+              </p>
+            ))}
+            <div className="btn-row">
+              <button className="btn" data-budget-refresh onClick={onBudget}>
+                Check again
+              </button>
+            </div>
+          </>
+        )}
       </section>
       <section className="conn-card" data-section="deleting">
         <h2 className="conn-name">Deleting workspaces</h2>
@@ -183,31 +191,37 @@ export default function GitPage() {
   const { settings, error, save, retry } = useSettings();
   const [draft, setDraft] = useState<string | null>(null);
   const [check, setCheck] = useState<PrefixCheck | null>(null);
+  // Audit N-45: a search draws this page for its headings only, so neither read runs until it is opened.
+  const searching = useSearching();
   const typed = draft ?? String(settings?.branchPrefixCustom ?? "");
+  // The sample re-checks the prefix in Rust, so it follows a pause in typing rather than every keystroke (audit N-46).
+  const settled = useSettled(typed);
   // SET-036: the custom prefix saves on leaving the field; changing page or closing must keep it too.
   useLeaveSave(() => settings && draft !== null && draft !== String(settings.branchPrefixCustom ?? "") && void save({ branchPrefixCustom: draft }));
   const mode = settings ? modeOf(settings) : null;
   useEffect(() => {
-    if (!mode) return;
+    if (!mode || searching) return;
     let live = true;
-    invoke<PrefixCheck>("branch_prefix_check", { mode, custom: typed })
+    invoke<PrefixCheck>("branch_prefix_check", { mode, custom: settled })
       .then((c) => live && setCheck(c))
       .catch(() => live && setCheck(null));
     return () => {
       live = false;
     };
-  }, [mode, typed]);
+  }, [mode, settled, searching]);
   // GIT-066 / GIT-028: the GitHub API budget, read when the page opens and on request.
   const [budget, setBudget] = useState<{ rows: Budget[] | null; error: string | null; at: number }>({ rows: null, error: null, at: 0 });
   const readBudget = () =>
     invoke<Budget[]>("scm_gh_budget")
       .then((rows) => setBudget({ rows, error: null, at: Date.now() / 1000 }))
       .catch((err) => setBudget({ rows: null, error: String(err), at: Date.now() / 1000 }));
-  useEffect(() => void readBudget(), []);
+  useEffect(() => {
+    if (!searching) void readBudget();
+  }, [searching]);
   return (
     <>
       <SettingsError error={error} loaded={settings !== null} onRetry={retry} />
-      {settings && <GitView settings={settings} save={save} draft={typed} setDraft={setDraft} check={check} budget={budget} onBudget={() => void readBudget()} />}
+      {settings && <GitView settings={settings} save={save} draft={typed} setDraft={setDraft} check={check} budget={budget} onBudget={() => void readBudget()} searching={searching} />}
     </>
   );
 }

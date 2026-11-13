@@ -43,8 +43,8 @@ describe("Explore Kolux stops carry their own setup cards (ONB-024)", () => {
     expect(writerBack(null, true)).toBe("custom");
     expect(writerBack(null, false)).toBe("claude");
   });
-  it("stops with no setup card draw nothing; usage, orchestration and browser have theirs (T-321-c)", () => {
+  it("stops with no setup card draw nothing; usage and orchestration have theirs (T-321-c)", () => {
     for (const id of ["terminal", "workspaces"]) expect(stopCard(id, f())).toBeNull();
-    for (const id of ["usage", "orchestration", "browser"]) expect(stopCard(id, f())).not.toBeNull();
+    for (const id of ["usage", "orchestration"]) expect(stopCard(id, f())).not.toBeNull();
   });
 });

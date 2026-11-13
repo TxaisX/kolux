@@ -1,12 +1,10 @@
 // Native chat, the text of the agent's replies with clickable links (CHAT-025; T-329). The rules
 // (what is a link, which files may open, which browser a click picks) are in chatLinks.ts; this
 // draws them and does the opening. A file opens only when the agent printed it recently.
-import { createContext, useContext, useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { createContext, useContext, type KeyboardEvent, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openablePath, partsOf, webClick, type LinkTarget } from "./chatLinks";
-import { menuStep } from "../terminal/LinkActionMenu";
-import { watchEscape } from "../switcher/accounts";
-import { outside, restoreWhenDismissed } from "./ux";
+import { ContextMenu, MenuItem } from "../ui/Menu";
 
 /** What the chat gives its text so a click can open things. `onOpenLink`: Kolux's own viewer for a web page (none: every
  * web link goes to the system browser); `onOpenFile`: the editor at a line (none: the system opens the file). */
@@ -79,46 +77,20 @@ export function ChatText({ text }: { text: string }) {
   );
 }
 
-/** The small choice a plain click on a web link opens: the in-app browser or the system one. Arrows move between the three
- * choices, Escape or a click outside closes it, and focus goes back to where it was. */
+/** The small choice a plain click on a web link opens: the system browser, or Cancel. It is a src/ui menu at the pointer:
+ * arrows move between the choices, Escape or a click outside closes it, and focus goes back to the link unless the pick
+ * moved it somewhere (an in-app pane keeps the focus it took). */
 export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: { x: number; y: number }; onPick: (where: "kolux" | "system") => boolean; onClose: () => void }) {
-  const box = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  close.current = onClose;
-  const picked = useRef(false);
-  useEffect(() => {
-    // Read the opener before the first choice takes focus (autoFocus would run first and be mistaken for it).
-    const prev = document.activeElement as HTMLElement | null;
-    box.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-    const offEsc = watchEscape(document, () => close.current());
-    const onDown = (e: Event) => {
-      if (outside(box.current, e.target)) close.current();
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    return () => {
-      offEsc();
-      document.removeEventListener("pointerdown", onDown, true);
-      restoreWhenDismissed(!picked.current, prev, (sel) => document.querySelector<HTMLElement>(sel));
-    };
-  }, []);
-  const pick = (where: "kolux" | "system") => {
-    // Only a pick that opened an in-app pane keeps the focus it moved; the system browser leaves
-    // nothing in the app focused, so focus goes back to the link.
-    picked.current = onPick(where);
-  };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const items = Array.from(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-    const next = menuStep(items.length, items.indexOf(document.activeElement as HTMLElement), e.key);
-    if (next === null) return;
-    e.preventDefault();
-    items[next]?.focus();
-  };
   return (
-    <div ref={box} className="chat-browser-menu" role="menu" aria-label="Open link in" style={{ left: Math.max(8, at.x), top: Math.max(8, at.y) }} onKeyDown={onKeyDown}>
+    <ContextMenu at={at} onClose={() => onClose()} label="Open link in" plain className="chat-browser-menu">
       <div className="chat-browser-url" title={url}>{url}</div>
-      <button type="button" role="menuitem" onClick={() => pick("kolux")}>Open in Kolux</button>
-      <button type="button" role="menuitem" onClick={() => pick("system")}>Open in your browser</button>
-      <button type="button" role="menuitem" onClick={onClose}>Cancel</button>
-    </div>
+      {/* No class: the rows keep the menu's own button look (chat.css), not Kolux's .menu-item. */}
+      <MenuItem className="" onClick={() => void onPick("system")}>
+        Open in your browser
+      </MenuItem>
+      <MenuItem className="" onClick={onClose}>
+        Cancel
+      </MenuItem>
+    </ContextMenu>
   );
 }

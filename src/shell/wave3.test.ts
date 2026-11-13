@@ -35,7 +35,8 @@ test("F2 + F1: the sidebar wires the one-form rule to its five forms, and Jump h
 });
 
 test("F4: with one view the sidebar shows a Folders heading, not a lone tab", () => {
-  expect(panel).toContain('<h2 className="sb-heading">{singleFolder() ? "Folders" : "Workspaces"}</h2>');
+  // c2-agents' sidebar rewrite: one view means one fixed "Folders" heading (the Workspaces wording is gone).
+  expect(panel).toContain('<h2 className="sb-heading">Folders</h2>');
   expect(panel).toMatch(/NOT_BUILT \? \(\s*<div className="sb-tabs" role="tablist">/);
 });
 

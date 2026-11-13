@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { folderResult, isRoot, worstOf, attachedTo } from "./folderWorkspace";
+import { folderResult, worstOf, attachedTo } from "./folderWorkspace";
 import { deletable, formatBytes, formatCount, reclaimableBytes, searchRows, selectedForDelete, sortRows, treemap, visibleRows, ageOf, type SpaceRow } from "./space";
 
 const row = (path: string, bytes: number, o: Partial<SpaceRow> = {}): SpaceRow => ({ path, branch: path.split("/").pop() ?? null, isMain: false, size: { bytes, files: bytes / 10, incomplete: false }, modified: 1_000_000, reclaimable: true, ...o });
@@ -74,9 +74,5 @@ describe("folder workspaces", () => {
     expect(worstOf([{ ...bad, dismissed: true }, ok])).toBe("passing");
     expect(worstOf([])).toBeNull();
     expect(folderResult("C:/f", all, (p) => (p === "C:/f/a/b" ? bad : ok))).toBe("failing");
-  });
-  it("never deletes the root folder workspace", () => {
-    expect(isRoot("c:\\proj\\", "C:/proj")).toBe(true);
-    expect(isRoot("C:/proj/sub", "C:/proj")).toBe(false);
   });
 });

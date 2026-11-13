@@ -8,7 +8,8 @@ const fields = [ti.command, ti.file_path, ti.notebook_path, ti.path, ti.pattern,
   .filter(v => typeof v === 'string');
 const norm = s => s.split('\\').join('/').toLowerCase();
 const forbidden = [
-  { re: /dev\/kolux(?![\w-])/, why: 'the old Kolux repo (G:/Dev/Kolux)' },
+  // The old repo lived at G:/Dev/Kolux/kolux. Since 2026-11-11 G:/Dev/kolux is this repo, so only the old inner folder is blocked.
+  { re: /dev\/kolux\/kolux(?![\w-])/, why: 'the old Kolux repo (G:/Dev/Kolux/kolux)' },
   { re: /kolux-scratch/, why: 'G:/Dev/kolux-scratch' },
   { re: /kolux-workspaces/, why: 'G:/Dev/kolux-workspaces' },
   { re: /nightshift-workspaces/, why: 'G:/Dev/nightshift-workspaces' },

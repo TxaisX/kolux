@@ -1,10 +1,14 @@
-// TERM-016 / TERM-054 / TERM-015 / TERM-049 (DT-C248): a pane that changes cell keeps its terminal.
+// TERM-015 (DT-C248): a pane that changes cell keeps its terminal.
 //
-// Grid.tsx draws one element per cell (keyed by group) and the panes inside it (keyed by key). React
-// cannot move a child from one parent to another, so a pane whose group changes (Move to Tab, a tab
-// dragged onto another cell, a cell folded into another, Split Right / Down on a tab) is unmounted and
-// mounted again. Before DT-C248 the unmount reaped the terminal and the new mount started a fresh one,
-// so an agent lost its conversation on every move. Now the window hands the pane's key over before it
+// Grid.tsx draws one element per cell (keyed by group) and the pane inside it (keyed by key). React
+// cannot move a child from one parent to another, so a pane whose group changes is unmounted and
+// mounted again. Since one session per cell (owner decision 2026-11-12) a cell's group is its pane's key,
+// so the moves left (a pane dragged onto another cell) only reorder cells and hand nothing over; before,
+// Move to Tab, a tab dragged onto another cell, a cell folded into another and Split Right / Down on a tab
+// all changed a pane's group. The check stays on every move, so a later change that does move a pane
+// between cells keeps its terminal.
+// Before DT-C248 the unmount reaped the terminal and the new mount started a fresh one, so an agent lost
+// its conversation on every move. Now the window hands the pane's key over before it
 // applies the layout: the unmounting pane leaves its terminal running, and the mounting pane of the
 // same key takes it back the way a pane does after a window reload (APP-052: replay the saved output,
 // then attach to the terminal the service still runs). The PTY, the program and its session stay.
@@ -18,11 +22,9 @@ import { groupOf } from "./grid";
 
 const moving = new Set<number>();
 
-type Grouped = { key: number; group?: number };
+type Grouped = { key: number };
 
-/** The keys whose cell changes between `before` and `after`: the panes React will unmount and mount again.
- *  A cell whose group id is renumbered (its first tab dragged elsewhere, rearrange.ts rehome) counts as a
- *  change for every tab left in it, since the cell element is keyed by that id. */
+/** The keys whose cell changes between `before` and `after`: the panes React will unmount and mount again. */
 export function movedKeys(before: readonly Grouped[], after: readonly Grouped[]): number[] {
   const was = new Map(before.map((p) => [p.key, groupOf(p)]));
   return after.filter((p) => was.has(p.key) && was.get(p.key) !== groupOf(p)).map((p) => p.key);

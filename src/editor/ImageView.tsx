@@ -12,6 +12,7 @@ import ImageCanvas from "./ImageCanvas";
 import { baseName } from "./buffers";
 import { mimeOf } from "./imageFiles";
 import { readPicture } from "./pictureBytes";
+import { HeadGrip, HeadMarks } from "../terminal/TabMarks"; // one session per cell: the tab's grip and marks in this header
 
 type Props = { id: number; path: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onToast?: (text: string) => void };
 
@@ -44,9 +45,11 @@ export default function ImageView({ id, path, hidden = false, focused = false, o
   return (
     <section className={`pane editor image${focused ? " focused" : ""}`} hidden={hidden} aria-label={`${name} pane`} onMouseDown={onFocus} data-kind="editor" data-key={id}>
       <header className="pane-head">
+        <HeadGrip />
         <span className="agent-mark" title="Picture">
           <FileIcon name={name} size={13} />
         </span>
+        <HeadMarks />
         <span className="title">{name}</span>
         <span className="path" title={path}>
           {path}

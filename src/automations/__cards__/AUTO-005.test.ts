@@ -27,7 +27,8 @@ const trees = [{ path: "C:\src\shop", branch: "main", isMain: true }];
 const settle = () => new Promise((r) => setTimeout(r, 5));
 const saved = { id: "auto-1", name: "Morning checks", prompt: "look", provider: "claude", projectId: "p1", enabled: true, nextRunLabel: "Monday 09:00" };
 const keyEvent = (key: string, ctrlKey = false) => ({ key, ctrlKey, metaKey: false, preventDefault() {}, stopPropagation() {} });
-const dialog = (tree: El) => find(tree, (e) => e.type === "div" && e.props.role === "dialog");
+// The dialog is a src/ui Dialog: Escape reaches it as onClose("escape") from the layer, other keys through onKeyDown.
+const dialog = (tree: El) => find(tree, (e) => e.props.className === "auto-dialog" && typeof e.props.onClose === "function");
 const saveButton = (tree: El) => find(tree, (e) => e.type === "button" && textOf(e).startsWith("Sav"));
 const callsOf = (cmd: string) => h.calls.filter(([c]) => c === cmd);
 
@@ -85,11 +86,11 @@ test("box 3: Escape shuts the find bar and the dialog stays; a second Escape shu
   dialog(tree).props.onKeyDown(keyEvent("f", true));
   tree = view.render();
   expect(findAll(tree, (e) => e.props.role === "search").length).toBe(1);
-  dialog(tree).props.onKeyDown(keyEvent("Escape"));
+  dialog(tree).props.onClose("escape");
   tree = view.render();
   expect(findAll(tree, (e) => e.props.role === "search").length).toBe(0);
   expect(closed).toBe(0);
-  expect(find(tree, (e) => e.props.role === "dialog")).toBeTruthy();
-  dialog(tree).props.onKeyDown(keyEvent("Escape"));
+  expect(dialog(tree)).toBeTruthy();
+  dialog(tree).props.onClose("escape");
   expect(closed).toBe(1);
 });

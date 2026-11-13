@@ -35,6 +35,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   },
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
+// The language-pack redraw is a real useReducer; the stand-in React above has none, and redraws are not looked at here.
+vi.mock("../shell/usePackLoaded", () => ({ usePackLoaded: () => {} }));
 
 beforeEach(() => {
   h.slots = [];

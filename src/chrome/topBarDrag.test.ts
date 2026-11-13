@@ -1,12 +1,13 @@
+// @vitest-environment happy-dom
 // T-620 (Txais 2026-10-30): the whole top bar moves the window, not one spot. These tests apply the rules of
 // Tauri's drag script (tauri 2.12, window/scripts/drag.js, isDragRegion) to every element the bar draws: a
 // press on anything a person can use (a control, a menu, an element with a press or click handler, the
 // switcher's frame) must never move the window, and a press anywhere else on the bar must. The handlers are
 // read from React's props on each node, so a clickable span or a new pop-up added to the bar later fails
-// here without this file changing.
+// here without this file changing. A real DOM (DT-C280), because the account pill opens a src/ui Menu.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, FakeNode, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, byLabel, click, find, installDom, mount, settle, until } from "../tasks/realDom";
 import { publishClaude } from "../usage/plan";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -92,11 +93,11 @@ async function mountBar(classic: boolean) {
   return { c, header: find(c, (n) => n.localName === "header")[0] };
 }
 
-/** The fake DOM has no layout; the menu buttons place their menu from their own box. */
+/** The test page has no layout; a menu button places its menu from its own box. */
 const pressMenuButton = async (c: FakeNode, title: string) => {
   const b = find(c, (n) => n.localName === "button" && n.attrs.title === title)[0];
   expect(b, `the "${title}" button is drawn`).toBeDefined();
-  b.getBoundingClientRect = () => ({ left: 8, right: 300, top: 0, bottom: 36 });
+  b.getBoundingClientRect = () => ({ x: 8, y: 0, left: 8, right: 300, top: 0, bottom: 36, width: 292, height: 36, toJSON: () => ({}) });
   await click(c, b);
   await settle();
 };
@@ -116,14 +117,18 @@ for (const classic of [false, true]) {
   });
 }
 
-test("the account menu drawn inside the bar never moves the window", async () => {
+test("the account menu is drawn outside the bar, so no press on it moves the window", async () => {
   const { c, header } = await mountBar(false);
   await pressMenuButton(c, "Choose the account new panes use");
-  const backdrops = find(header, (n) => n.attrs.class === "menu-backdrop");
-  const menus = find(header, (n) => n.attrs.role === "menu");
-  expect(backdrops.length, "the menu is open with its backdrop").toBe(1);
-  expect(menus.map((m) => m.attrs["aria-label"]).sort()).toEqual(["Accounts for new panes"]);
-  for (const part of [...backdrops, ...menus]) expect(part.attrs[DRAG], name(part)).toBe("false");
+  await until(() => byLabel(c, "div", "Accounts for new panes").length === 1, "the account menu");
+  const menu = byLabel(c, "div", "Accounts for new panes")[0];
+  expect(menu.attrs.role).toBe("menu");
+  // A src/ui Menu is drawn in the window's layer host on the body, outside the bar's drag region: drag.js finds no
+  // region above any part of it, so none needs the "false" opt-out the old in-bar menu carried.
+  expect(header.contains(menu), "the menu is not inside the bar").toBe(false);
+  const parts = [menu, ...find(menu, () => true)];
+  expect(parts.filter(drags).map(name), "presses on the menu that move the window").toEqual([]);
+  for (let el = menu.parentNode; el && el.nodeType === 1; el = el.parentNode) expect(el.attrs[DRAG], name(el)).toBeUndefined();
   const { usedThatDrag, bareThatDoNot } = audit(header);
   expect(usedThatDrag, "presses on these move the window, but a person uses them").toEqual([]);
   expect(bareThatDoNot, "presses on these should move the window").toEqual([]);

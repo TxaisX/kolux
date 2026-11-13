@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 // T-613 (F04-projects-scm.1): deleting a workspace never silently deletes commits found on no other
 // branch and on no remote. The real ProjectsPanel and the multi-select bar on the small DOM, with
 // the backend mocked: the single question names the commits and starts with Keep the branch ticked
@@ -6,7 +7,7 @@
 // keeps a branch holding such commits) instead of forcing the branch away.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle, withText } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle, withText } from "../tasks/realDom";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], checks: {} as Record<string, unknown>, kept: {} as Record<string, unknown>, hovered: "" }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -82,7 +83,7 @@ async function panel(settings: Record<string, unknown> = {}) {
 }
 const removes = () => h.calls.filter((c) => c.cmd === "workspace_remove").map((c) => c.args);
 const question = (c: FakeNode) => find(c, (n) => n.attrs.role === "alertdialog" && n.textContent.includes("and its folder?"));
-const keepBox = (c: FakeNode) => withText(c, "label", "Keep the branch")[0]?.childNodes.find((n) => n.localName === "input");
+const keepBox = (c: FakeNode) => ([...(withText(c, "label", "Keep the branch")[0]?.childNodes ?? [])] as FakeNode[]).find((n) => n.localName === "input");
 
 test("the delete question names the commits, starts with Keep the branch ticked, and is asked even with the question switched off", async () => {
   const c = await panel();
@@ -102,8 +103,7 @@ test("unticking Keep the branch is the user's own choice to delete it", async ()
   const c = await panel();
   await pressDelete();
   const box = keepBox(c)!;
-  box.checked = false; // the browser flips a checkbox before the click reaches the page
-  await click(c, box);
+  await click(c, box); // a real click flips the checkbox, then reaches the page
   await settle(20);
   expect(keepBox(c)?.checked).toBe(false);
   await click(c, byText(c, "button", "Delete")[0]);
@@ -121,7 +121,7 @@ test("a workspace with nothing to lose still skips the question when it is switc
 test("Delete all on a parent with a child sends no branch choice, so the record and the backend decide", async () => {
   h.wt = [main, fix, child];
   const c = await panel();
-  const row = find(c, (n) => n.attrs["data-path"] === fix.path)[0].childNodes.find((n) => String(n.attrs.className ?? n.attrs.class ?? "").includes("sess"))!;
+  const row = ([...find(c, (n) => n.attrs["data-path"] === fix.path)[0].childNodes] as FakeNode[]).find((n) => String(n.attrs.className ?? n.attrs.class ?? "").includes("sess"))!;
   await fire(c, "contextmenu", row, { clientX: 5, clientY: 5, altKey: false });
   await settle(60);
   await click(c, byText(c, "button", "Delete")[0]);
@@ -156,9 +156,9 @@ test("the multi-select bar sends no branch choice either, and a branch the backe
   expect(kept).toEqual([{ branch: "fix-login", commit: "c3c3c3c", projectId: "p1" }]);
 });
 
-test("T-729: a pinned workspace shown twice (pinned rows also in their group) asks in one dialog, not two", async () => {
+test("T-729 (Txais 2026-11-12): Pinned holds folders only, so a pinned worktree has one row (no copy) and asks in one dialog", async () => {
   const c = await panel({ pinnedWorkspaces: [fix.path], pinnedCopies: true });
-  expect(find(c, (n) => n.attrs["data-path"] === fix.path).length, "the row shows twice").toBe(2);
+  expect(find(c, (n) => n.attrs["data-path"] === fix.path).length, "no pinned copy of a worktree").toBe(1);
   await pressDelete();
   expect(question(c).length).toBe(1);
 });

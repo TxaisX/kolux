@@ -2,19 +2,18 @@
 // number of terminals and the agent count. Memory is asked of the Rust side every two seconds;
 // clicking it opens the Resource Manager (APP-054). VIEW-096: right-click the bar to choose its
 // items or hide it; Settings > Appearance brings it back.
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatMemory, pollWhileVisible } from "../status/memory";
 import { ResourceManager } from "../lazy/menus";
 import { Chip, Cup, Plug, Shell } from "./icons";
 import { STATUS_ITEMS } from "./statusItems";
-import { useMenuFocus } from "./dialogFocus";
 import { BAR_EVENT, SHOW_EVENT, currentBar } from "../update/bus";
 import { KeepAwakeItem, useKeepAwake } from "../launch/KeepAwakeCard";
 import PortsItem from "../ports/PortsItem";
 import SkillBarItem from "../skills/SkillBarItem";
 import { openSettings } from "../settings/pages";
-import OutOfFlow from "./OutOfFlow";
+import { Menu, MenuCheckboxItem, MenuItem, MenuTitle } from "../ui/Menu";
 
 type Props = {
   terminals: number;
@@ -35,10 +34,9 @@ type Props = {
 export default function StatusBar({ terminals, agents = 0, names = () => ({}), workspaces = [], active = null, hidden = [], onToggle, onHideBar, hooks = null, loaded }: Props) {
   const [memory, setMemory] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
-  const [menu, setMenu] = useState<{ left: number; bottom: number } | null>(null);
-  const menuBox = useRef<HTMLDivElement>(null);
-  // The right-click menu takes focus, answers the arrow keys and Escape, and gives focus back.
-  useMenuFocus(menuBox, menu !== null, () => setMenu(null));
+  // The right-clicked point; the items menu (src/ui) opens upward from it, takes focus, answers the arrow keys and
+  // Escape, and gives focus back.
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const shows = (id: string) => !hidden.includes(id);
   // TERM-122: shown only while the computer is being kept awake.
   const awake = useKeepAwake();
@@ -64,7 +62,7 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
   const onContextMenu = (e: MouseEvent) => {
     if ((e.target as Element).closest?.(".menu")) return;
     e.preventDefault();
-    setMenu({ left: Math.min(e.clientX, window.innerWidth - 240), bottom: Math.max(8, window.innerHeight - e.clientY + 4) });
+    setMenu({ x: e.clientX, y: e.clientY });
   };
   return (
     <footer className="statusbar" onContextMenu={onContextMenu}>
@@ -105,32 +103,22 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
       )}
       {shows("ports") && <PortsItem active={active} workspaces={workspaces} />}
       {shows("awake") && <KeepAwakeItem held={awake} />}
-      {menu && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onClick={() => setMenu(null)} onContextMenu={(e) => (e.preventDefault(), setMenu(null))} aria-hidden="true" />
-          <div ref={menuBox} className="menu status-menu" role="menu" aria-label="Status bar items" style={menu}>
-            <div className="menu-title">Status bar</div>
-            {STATUS_ITEMS.map((i) => (
-              <button key={i.id} role="menuitemcheckbox" aria-checked={shows(i.id)} className="menu-item" onClick={() => onToggle?.(i.id)}>
-                <span className="agent-mark">{shows(i.id) ? "✓" : ""}</span>
-                <span className="name">{i.label}</span>
-              </button>
-            ))}
-            <button
-              role="menuitem"
-              className="menu-item muted"
-              title="Settings > Appearance shows it again"
-              onClick={() => {
-                setMenu(null);
-                onHideBar?.();
-              }}
-            >
-              <span className="agent-mark" />
-              <span className="name">Hide status bar</span>
-            </button>
-          </div>
-        </OutOfFlow>
-      )}
+      {/* A ticked item stays open for the next one; Hide status bar closes it. */}
+      {/* Exactly where the menu always opened: its bottom edge 4 px above the pointer, its left edge at the pointer but
+          never nearer than 240 px to the window's right edge (room the old menu kept for its 229 px box). */}
+      <Menu open={menu !== null} onClose={() => setMenu(null)} label="Status bar items" at={menu} place={menu && { left: Math.min(menu.x, window.innerWidth - 240), bottom: Math.max(8, window.innerHeight - menu.y + 4) }} side="top" offset={4} className="status-menu">
+        <MenuTitle>Status bar</MenuTitle>
+        {STATUS_ITEMS.map((i) => (
+          <MenuCheckboxItem key={i.id} checked={shows(i.id)} onCheckedChange={() => onToggle?.(i.id)}>
+            <span className="agent-mark">{shows(i.id) ? "✓" : ""}</span>
+            <span className="name">{i.label}</span>
+          </MenuCheckboxItem>
+        ))}
+        <MenuItem className="menu-item muted" title="Settings > Appearance shows it again" onClick={() => onHideBar?.()}>
+          <span className="agent-mark" />
+          <span className="name">Hide status bar</span>
+        </MenuItem>
+      </Menu>
     </footer>
   );
 }

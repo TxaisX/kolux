@@ -8,7 +8,7 @@ import type { Screen } from "../chrome/TopBar";
 import type { Page } from "./ProjectsPanel";
 import type { PendingCreate, Project, SetupLine, SetupWhere } from "./model";
 import { EMPTY_HISTORY } from "./nav";
-import { cellsOf, DEFAULT_PANES_FIELD, groupOf, MAX_PANES, seedCount } from "../terminal/grid";
+import { DEFAULT_PANES_FIELD, insertAfter, seedCount } from "../terminal/grid";
 import { activeAfterRemove, focusIn, panesIn, sameDir, withoutDir } from "../workspaces";
 import { readLook } from "../settings/general";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
@@ -53,29 +53,35 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   // on Windows) and must see the tabs as they are then, not as they were when it was clicked.
   const panesNow = useRef(panes);
   panesNow.current = panes;
-  // PROJ-033 / SESS-037: the setup script runs in a Setup terminal of the new workspace: a tab
-  // beside its first pane, or a cell of its own to the right or below. `then` runs once it ends
-  // (the agent waiting for setup), whatever its exit code, and lands as a tab beside it.
+  // PROJ-033 / SESS-037: the setup script runs in a Setup terminal of the new workspace: in the cell
+  // beside its first pane ("tab"), or a cell of its own at the end, to the right or below. `then` runs once it
+  // ends (the agent waiting for setup), whatever its exit code, and that agent's pane moves to the cell beside it.
+  // One session per cell (2026-11-12): what used to be a tab of the first cell is the cell after it. Kolux opens the
+  // Setup terminal itself, so a full grid takes it anyway (grid.ts MAX_PANES).
   const afterSetup = useRef<Record<number, () => void>>({});
   // DT-C274: `view`, the grid a team worktree is shown in (as openDefaultTabs takes it): the Setup terminal runs in
-  // `dir`, is shown there, and is always a tab: of the cell of the pane running in `dir`, else of cell `group` (the chooser's), else of the grid's first cell.
-  const startSetup = (dir: string, branch: string | null, line: SetupLine, where: SetupWhere, show: boolean, then?: () => Promise<unknown> | void, view?: string | null, group?: number) => {
+  // `dir`, is shown there, beside the pane running in `dir`, else beside pane `beside` (the chooser), else beside the grid's first pane.
+  const startSetup = (dir: string, branch: string | null, line: SetupLine, where: SetupWhere, show: boolean, then?: () => Promise<unknown> | void, view?: string | null, beside?: number) => {
     const key = nextKey.current++;
+    const word = line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, "");
     setPanes((ps) => {
       if (view !== undefined) {
-        const shown = cellsOf(panesIn(ps, view));
-        const cell = shown.find((c) => c.panes.some((p) => sameDir(p.cwd, dir))) ?? shown.find((c) => c.group === group) ?? shown[0];
-        return [...ps, { key, cwd: dir, view, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word: line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, ""), group: cell?.group }];
+        const shown = panesIn(ps, view);
+        const near = shown.find((p) => sameDir(p.cwd, dir)) ?? shown.find((p) => p.key === beside) ?? shown[0];
+        return insertAfter(ps, near?.key, { key, cwd: dir, view, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word });
       }
-      const cells = cellsOf(panesIn(ps, dir));
-      const tab = where === "tab" || cells.length >= MAX_PANES;
-      if (!tab && where === "down" && cells.length === 1) setStacked((st) => ({ ...st, [dir]: true }));
-      return [...ps, { key, cwd: dir, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word: line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, ""), group: tab ? cells[0]?.group : undefined }];
+      const shown = panesIn(ps, dir);
+      if (where === "down" && shown.length === 1) setStacked((st) => ({ ...st, [dir]: true }));
+      return insertAfter(ps, where === "tab" ? shown[0]?.key : undefined, { key, cwd: dir, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word });
     });
     if (then)
       afterSetup.current[key] = () =>
         void Promise.resolve(then()).then((k) => {
-          if (typeof k === "number") setPanes((ps) => ps.map((p) => (p.key === k ? { ...p, group: groupOf(ps.find((x) => x.key === key) ?? p) } : p)));
+          if (typeof k !== "number" || k === key) return;
+          setPanes((ps) => {
+            const agent = ps.find((p) => p.key === k);
+            return agent ? insertAfter(ps.filter((p) => p !== agent), key, agent) : ps;
+          });
         });
     if (show) {
       setActiveDir(view === undefined ? dir : view);

@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 // W201 B2: Save on the unsaved question for an untitled note opens the name box, and that box is a dialog the
 // guard opens over the caller's delete question, which stays mounted under it. It must take the guard's raised
 // backdrop (`.ask-backdrop.guard`, one step over --z-top in styles.css), or it draws under the delete dialog and
@@ -7,7 +8,7 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { useCloseGuard } from "../editor/CloseDialog";
 import type { GuardPane } from "../editor/closeGuard";
-import { type FakeDocument, FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/realDom";
 import { sameDir } from "../workspaces";
 import ProjectsPanel from "./ProjectsPanel";
 import { namesOf, panesInDirs, unsavedInDirs } from "./wsUnsaved";

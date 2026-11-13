@@ -1,6 +1,6 @@
 // TERM-049 (T-102-c): Tab Color. A small palette, a colour per tab key kept in window state (like
-// pinned tabs, not saved with the layout), and the menu rows that pick one. Pure.
-import type { CSSProperties } from "react";
+// pinned tabs, saved with the layout since after-list #100), and the menu rows that pick one. Pure.
+// One session per cell (2026-11-12): the colour shows as a dot in the pane header (TabMarks.tsx).
 export type TabColor = { id: string; label: string; css: string };
 
 /** TERM-133: nine colours plus "none" (ten choices), in the card order; css values are theme-safe mid tones read against both backgrounds. */
@@ -34,13 +34,6 @@ export function setTabColor(colors: TabColors, key: number, id: string | null): 
 /** Drop the entries of tabs that closed. */
 export const forgetColors = (colors: TabColors, gone: number[]): TabColors => Object.fromEntries(Object.entries(colors).filter(([k]) => !gone.includes(Number(k))));
 
-/** TERM-133: the tab's small coloured dot: the colour goes to the tab as --tab-dot and shell.css draws the dot
- *  before the title; nothing for none, and the terminal's own colours are untouched. */
-export const tabStyle = (colors: TabColors, key: number): CSSProperties | undefined => {
-  const c = colorOf(colors, key);
-  return c ? ({ "--tab-dot": c.css } as CSSProperties) : undefined;
-};
-
 export type TabMenuEntry =
   | { id: "rename"; label: string }
   | { id: "pin"; label: string }
@@ -50,7 +43,8 @@ export type TabMenuEntry =
 
 /**
  * TERM-049: the entries before the close items, in the order the card lists them: Change Title
- * (only for terminal and agent tabs), pin or unpin, Tab Color, Split Right, Split Down.
+ * (only for terminal and agent tabs), pin or unpin, Tab Color, Split Right, Split Down. One session per cell
+ * (2026-11-12): a split opens a shell beside the pane, as the Pane menu's do, and is off while the grid is full.
  */
 export function tabMenuHead(kind: string | undefined, pinned: boolean, split: { enabled: boolean; why: string | null }): TabMenuEntry[] {
   const out: TabMenuEntry[] = [];

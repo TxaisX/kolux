@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-640: every row in the left pane can be removed or hidden from a right-click menu and a hover X.
 // The real ProjectsPanel on the small DOM, with the backend mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { OWN_FOLDERS_FIELD, setOwnFolders } from "./singleFolder";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle } from "../tasks/realDom";
 
 // DT-C273: own folders are the default now; these tests cover one folder per project.
 beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
@@ -41,7 +42,7 @@ beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
-  Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
+  Object.assign(doc, { visibilityState: "visible", hidden: false });
   h.calls = [];
   h.settings = {};
 });
@@ -114,6 +115,25 @@ test("one-folder mode selects the project row as the folder and hides the old wo
   expect(folder).toBeDefined();
   expect(folder.attrs["data-path"]).toBe(main.path);
   expect(find(c, (n) => hasClass(n, "old-workspaces")).length).toBeGreaterThan(0);
+  await click(c, folder);
+  expect(h.calls).toContain(`select:${main.path}`);
+});
+
+test("own-folder mode (the default) shows the same folder row: worktree rows stay out of sight and nothing offers New workspace (Txais 2026-11-12)", async () => {
+  setOwnFolders({}); // own folders on
+  const c = await panel();
+  const folder = find(c, (n) => hasClass(n, "proj") && hasClass(n, "folder"))[0];
+  expect(folder).toBeDefined();
+  expect(folder.attrs["data-path"]).toBe(main.path);
+  const hidden = find(c, (n) => hasClass(n, "old-workspaces"));
+  const inHidden = (n: FakeNode): boolean => hidden.some((h) => h === n || find(h, (x) => x === n).length > 0);
+  const wtRows = find(c, (n) => n.attrs["data-worktree"] !== undefined);
+  expect(wtRows.length).toBeGreaterThan(0);
+  expect(wtRows.every(inHidden), "every worktree row is in a hidden wrapper").toBe(true);
+  expect(find(c, (n) => String(n.attrs.title ?? "").startsWith("New workspace"))).toEqual([]);
+  await rightClick(c, folder);
+  expect(items(c)).toEqual(["Review changes", "Project settings", "Remove project…"]);
+  await fire(doc, "keydown", doc, { key: "Escape" });
   await click(c, folder);
   expect(h.calls).toContain(`select:${main.path}`);
 });
