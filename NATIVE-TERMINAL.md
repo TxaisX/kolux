@@ -144,18 +144,17 @@ Commit 4cf73213, 2026-11-13, run https://github.com/TxaisX/kolux/actions/runs/43
 
 The runner varies from run to run: the same check on commit 90ac9724 (warm shell fix in, native cursor
 fix not yet) gave medians of 908.7 ms off and 170.8 ms on (on: 133.2 to 244.8 ms, all attached;
-https://github.com/TxaisX/kolux/actions/runs/43368955947). Both support the setting's "about 0.3 s", for a new
-terminal opened at least 6 s after the one before it in the same folder, as every run here was: after each take
+https://github.com/TxaisX/kolux/actions/runs/43368955947). The setting's label says "about 0.3 s" from these
+runs: measured before the review fixes below, and for a new terminal opened at least 6 s after the one before it
+in the same folder, as every run here was. After each take
 the folder's next warm shell starts, and a new terminal that comes before it is ready starts its own shell (as
 fast as with the setting off). How short that gap can be was not measured.
 
 These runs are from before the review fixes below (commit 0986abe0 and after). A pane now also works out, before
 it takes the warm shell, what a fresh start would run (a registry read of the PATH and a shell search, which a
 fresh start does too) to compare the two, so the "on" times may be a little longer. The live check was extended
-to time that and to read the identity, the memory and the switch-off (see Running the live checks); its run on
-the runner (commit a4a99647) was refused by GitHub before it started ("recent account payments have failed or
-your spending limit needs to be increased"), as was every CI job on that push, so there are no numbers from
-after the fixes yet.
+to time that and to read the identity, the memory and the switch-off (see Running the live checks); its re-run
+on the runner is pending, so there are no numbers from after the fixes yet.
 
 Before the fix (commit 34dabba0, https://github.com/TxaisX/kolux/actions/runs/43366064099), every
 "on" run took the warm shell and was still slower, because the warm shell had not reached its prompt:
@@ -202,4 +201,4 @@ commit a4a99647 (`.github/workflows/tmp-warm-shell.yml`).
 5. Measure: 8 panes printing, memory and CPU, xterm vs native.
 6. Kept-warm shell: done, a taken warm shell's hooks report for its pane and none runs under the terminal
    service. Still open: time it and measure its memory on Windows after the review fixes (the live check is
-   ready; GitHub refused the run for the account's Actions billing).
+   ready; the run is pending).
