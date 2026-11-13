@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.16
+
 - **One grid per project, with every worktree in it.** Sessions in a project's worktrees open side by side in the project's grid, each cell labeled with a colored chip naming its worktree and branch. The sidebar lists only your project folders. Click a chip for that worktree's menu. The file tree, checks, "open beside" and review notes follow the cell you are working in, and `kolux file open` from an agent in a worktree opens there.
 - **The grid remembers which worktree belongs to which project**, so worktree sessions stay in their project's grid after a restart, even with the sidebar closed.
 
