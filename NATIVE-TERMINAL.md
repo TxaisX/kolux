@@ -188,7 +188,11 @@ off must end exactly the warm shell's session within 3 s. The temporary workflow
 commit a4a99647 (`.github/workflows/tmp-warm-shell.yml`).
 - Limits: only plain shell terminals take it (agents, chosen shells, restored or moved panes start as
   usual); a warm shell is listed with the folder's terminals in this window's own lists (the Resource Manager
-  counts its memory) before a pane takes it; none runs under the background terminal service.
+  counts its memory) before a pane takes it; none runs under the background terminal service. Hook events an
+  agent in a taken warm shell held while Kolux could not be reached (the holding file, STAT-006) are dropped when
+  they are replayed after a restart: they carry the warm identity, and which pane took that shell is known only
+  in memory (`hooks::warm_taken`). A pane that started its own shell gets them back. Events Kolux took live are
+  kept as for any pane.
 
 ## Still to do before it can default on
 
