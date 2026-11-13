@@ -1,0 +1,9 @@
+# Kolux builds with one fixed Rust release (Txais, 2026-11-13). CI used to take whatever "stable" was
+# that day, so the Rust 1.100 release (2026-11-09) brought new clippy lints overnight and turned every
+# open pull request red under `cargo clippy -- -D warnings`. rustup reads this file and installs the
+# release by itself on the first cargo command in the repository, on a PC and in CI alike.
+# To move up: change the version, fix what the newer clippy reports, and land both in one commit.
+[toolchain]
+channel = "1.100.0"
+components = ["clippy", "rustfmt"]
+profile = "minimal"
