@@ -334,15 +334,17 @@ pub fn program_like(path: &str, windows: bool) -> bool {
 
 /// `program_like` for this platform, plus the execute bit on POSIX.
 pub fn launchable(path: &Path) -> bool {
-    if program_like(&path.to_string_lossy(), cfg!(windows)) {
-        return true;
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::metadata(path).map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0).unwrap_or(false)
-    }
-    #[cfg(not(unix))]
+    program_like(&path.to_string_lossy(), cfg!(windows)) || executable_bit(path)
+}
+
+#[cfg(unix)]
+fn executable_bit(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(path).map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0).unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn executable_bit(_path: &Path) -> bool {
     false
 }
 
@@ -454,8 +456,8 @@ pub fn spawn_editor(plan: &EditorPlan) -> Result<std::process::Child, String> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        // CREATE_NEW_CONSOLE for NeoVim; CREATE_NO_WINDOW keeps a .cmd launcher's shell out of sight.
-        c.creation_flags(if plan.console { 0x0000_0010 } else { 0x0800_0000 });
+        // CREATE_NEW_CONSOLE for NeoVim; `no_window()` keeps a .cmd launcher's shell out of sight.
+        c.creation_flags(if plan.console { 0x0000_0010 } else { crate::winproc::no_window() });
     }
     c.spawn().map_err(|e| format!("could not start {}: {e}", plan.program.display()))
 }

@@ -130,7 +130,7 @@ Nobody outside the project has tested Kolux yet, so a report from a PC that is n
 
 ## Build from source
 
-Requirements: Node.js 24, pnpm 12, Rust 1.90 or newer, the Tauri Windows prerequisites (WebView2 and the MSVC build tools), and Git.
+Requirements: Node.js 24, pnpm 12, Rust (the release pinned in `rust-toolchain.toml`, which rustup installs by itself), the Tauri Windows prerequisites (WebView2 and the MSVC build tools), and Git.
 
 ```powershell
 pnpm install

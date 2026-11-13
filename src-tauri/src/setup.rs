@@ -354,7 +354,7 @@ pub fn run_archive(root: &Path, worktree: &Path, limit: std::time::Duration, tru
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // no console window
+        cmd.creation_flags(crate::winproc::no_window()); // no console window
     }
     let mut child = cmd.spawn().map_err(|e| format!("The archive script could not start: {e}"))?;
     // Everything the script starts joins a kill-on-close job, so ending it ends the whole tree,
