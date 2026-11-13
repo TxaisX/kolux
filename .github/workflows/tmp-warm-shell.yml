@@ -1,0 +1,137 @@
+# TEMPORARY (PR #252 review fixes; deleted again before the PR is finished). Runs the kept-warm shell's live check on
+# GitHub's windows-latest runner after the review fixes: "new terminal" timed with the setting off and on, the hooks
+# identity in a pane that took a warm shell, what one warm shell's processes cost, and the warm shell ending when the
+# setting goes off (scripts/prove/live-warm-shell.mjs). Numbers from here are the runner's, not the owner's PC.
+name: Temporary warm shell evidence
+
+on:
+  push:
+    branches: [fu/native-style]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tmp-warm-shell-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    name: New-terminal timings and warm shell memory (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 12
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+      - run: pnpm install --frozen-lockfile
+      - name: Screen size and session
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          try { Set-DisplayResolution -Width 1920 -Height 1080 -Force -ErrorAction Stop } catch { "Set-DisplayResolution: $_" }
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          [System.Environment]::OSVersion.VersionString
+          "step session $([System.Diagnostics.Process]::GetCurrentProcess().SessionId), interactive $([Environment]::UserInteractive), user $(whoami)"
+          query user 2>&1
+          exit 0
+      - name: Pick a debugging port outside the reserved ranges
+        shell: pwsh
+        run: |
+          $ex = netsh int ipv4 show excludedportrange protocol=tcp | Out-String
+          $ex
+          netsh int ipv4 show dynamicport tcp
+          $ranges = [regex]::Matches($ex, '(?m)^\s*(\d+)\s+(\d+)') | ForEach-Object { , @([int]$_.Groups[1].Value, [int]$_.Groups[2].Value) }
+          $pick = $null
+          foreach ($p in 9290, 9222, 19290, 29290, 39290) {
+            $reserved = @($ranges | Where-Object { $p -ge $_[0] -and $p -le $_[1] }).Count -gt 0
+            $busy = $null -ne (Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue)
+            "port $p reserved $reserved busy $busy"
+            if (-not $reserved -and -not $busy) { $pick = $p; break }
+          }
+          if (-not $pick) { throw 'no free debugging port' }
+          "PROVE_CDP=$pick" >> $env:GITHUB_ENV
+          "debugging port $pick"
+      - name: Write the watcher that runs beside each live check
+        shell: pwsh
+        run: |
+          $watch = @'
+          param([string]$logs, [string]$cdp, [string]$tag, [int]$minutes)
+          New-Item -ItemType Directory -Force $logs | Out-Null
+          $out = Join-Path $logs "watch-$tag.txt"
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot([string]$name) {
+            try {
+              $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+              $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size); $g.Dispose()
+              $bmp.Save((Join-Path $logs "$name.png"), [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose(); "screen saved as $name.png"
+            } catch { "screen capture $name failed: $($_.Exception.Message)" }
+          }
+          "watcher session $([System.Diagnostics.Process]::GetCurrentProcess().SessionId), interactive $([Environment]::UserInteractive)" | Add-Content $out
+          $end = (Get-Date).AddMinutes($minutes)
+          $n = 0
+          while ((Get-Date) -lt $end) {
+            $n++
+            $o = [System.Collections.Generic.List[string]]::new()
+            $o.Add("== $(Get-Date -Format HH:mm:ss) sample $n")
+            foreach ($k in Get-CimInstance Win32_Process -Filter "Name='kolux.exe'") {
+              $gp = Get-Process -Id $k.ProcessId -ErrorAction SilentlyContinue
+              $o.Add("kolux.exe pid $($k.ProcessId) session $($k.SessionId) window $($gp.MainWindowHandle) title '$($gp.MainWindowTitle)'")
+            }
+            $wv = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
+            $o.Add("msedgewebview2.exe x$($wv.Count)")
+            foreach ($w in $wv | Where-Object { $_.CommandLine -notmatch '--type=' }) {
+              $c = [string]$w.CommandLine
+              $o.Add("  browser pid $($w.ProcessId) parent $($w.ParentProcessId) session $($w.SessionId): $($c.Substring(0, [Math]::Min(900, $c.Length)))")
+            }
+            foreach ($l in Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in @([int]$cdp, 1470) }) {
+              $o.Add("listening $($l.LocalAddress):$($l.LocalPort) pid $($l.OwningProcess)")
+            }
+            try { $j = (Invoke-WebRequest "http://127.0.0.1:$cdp/json" -UseBasicParsing -TimeoutSec 3).Content -replace '\s+', ' '; $o.Add("port $cdp /json: $($j.Substring(0, [Math]::Min(700, $j.Length)))") } catch { $o.Add("port $cdp /json: $($_.Exception.Message)") }
+            foreach ($f in Get-ChildItem -Path (Join-Path $env:RUNNER_TEMP 'live'), (Join-Path $env:LOCALAPPDATA 'com.txaisxiong.kolux.prove') -Recurse -Filter DevToolsActivePort -ErrorAction SilentlyContinue) {
+              $o.Add("DevToolsActivePort $($f.FullName): $((Get-Content $f.FullName -ErrorAction SilentlyContinue) -join ' ')")
+            }
+            if ($n % 8 -eq 0) { $o.Add((Shot "watch-$tag-$n")) }
+            $o | Add-Content $out
+            Start-Sleep -Seconds 15
+          }
+          '@
+          Set-Content -Path (Join-Path $env:RUNNER_TEMP 'watch.ps1') -Value $watch
+      - name: Build the debug app once (the live checks start it with pnpm tauri dev)
+        working-directory: src-tauri
+        run: cargo build --locked
+      - name: New terminal with the kept-warm shell off, then on (5 runs each), then its memory
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          $env:PROVE_BASE = Join-Path $env:RUNNER_TEMP 'live'
+          $env:PROVE_LOGS = Join-Path $env:RUNNER_TEMP 'live-logs'
+          $env:PROVE_NO_EVIDENCE = '1'
+          $env:PROVE_BUILD_MINUTES = '8'
+          $env:PROVE_CDP_IN_CONFIG = '1'
+          $job = Start-Job -FilePath (Join-Path $env:RUNNER_TEMP 'watch.ps1') -ArgumentList $env:PROVE_LOGS, $env:PROVE_CDP, 'WARM', 16
+          node scripts/prove/live-warm-shell.mjs
+          "exit $LASTEXITCODE"
+          Stop-Job $job -ErrorAction SilentlyContinue
+      - name: Upload timings and logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: warm-shell-evidence
+          path: |
+            ${{ runner.temp }}/live-logs
+            ${{ runner.temp }}/live/run-*/*.log
+          if-no-files-found: warn
