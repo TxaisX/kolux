@@ -4,10 +4,11 @@
 # (scripts/prove/live-warm-shell.mjs). Screenshots, timings and logs are uploaded even when a check fails.
 # Numbers from here are the runner's, not the owner's PC.
 #
-# Second pass: in the first run the app started but its page never showed on the debugging port, so both checks
-# waited out their time limit. This pass picks a debugging port outside Windows' reserved ranges, checks that a plain
-# Edge answers on it, and runs a watcher beside each check that logs the web view's command line, the listening
-# ports, what the port answers and screen captures, so a page that never comes says why.
+# Third pass. In the first two runs the app started and drew its window, but nothing listened on the debugging port:
+# the watcher showed this runner's WebView2 (156.0.4314.58) starting the web view with only the arguments the app
+# passes, ignoring WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS and the same flag as a WebView2 policy, while a plain Edge
+# answered on the same port at once. PROVE_CDP_IN_CONFIG=1 now puts the port in the window config the check compiles
+# in (scripts/evidence/app-launch.mjs). The watcher beside each check stays, so a page that never comes says why.
 name: Temporary native pane evidence
 
 on:
@@ -69,12 +70,6 @@ jobs:
           if (-not $pick) { throw 'no free debugging port' }
           "PROVE_CDP=$pick" >> $env:GITHUB_ENV
           "debugging port $pick"
-          # The same port as a WebView2 policy for kolux.exe as well (the runner's own user hive), in case this WebView2
-          # does not take WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS from the environment the check gives the app.
-          $k = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
-          New-Item -Path $k -Force | Out-Null
-          New-ItemProperty -Path $k -Name 'kolux.exe' -Value "--remote-debugging-port=$pick" -PropertyType String -Force | Out-Null
-          "WebView2 policy for kolux.exe: $((Get-ItemProperty $k).'kolux.exe')"
       - name: Does a plain Edge answer on that port?
         shell: pwsh
         continue-on-error: true
@@ -168,6 +163,7 @@ jobs:
           $env:PROVE_LOGS = Join-Path $env:RUNNER_TEMP 'live-logs'
           $env:PROVE_NO_EVIDENCE = '1'
           $env:PROVE_BUILD_MINUTES = '8'
+          $env:PROVE_CDP_IN_CONFIG = '1'
           $job = Start-Job -FilePath (Join-Path $env:RUNNER_TEMP 'watch.ps1') -ArgumentList $env:PROVE_LOGS, $env:PROVE_CDP, 'WARM', 12
           node scripts/prove/live-warm-shell.mjs
           "exit $LASTEXITCODE"
@@ -188,6 +184,7 @@ jobs:
           $env:PROVE_LOGS = Join-Path $env:RUNNER_TEMP 'live-logs'
           $env:PROVE_NO_EVIDENCE = '1'
           $env:PROVE_BUILD_MINUTES = '6'
+          $env:PROVE_CDP_IN_CONFIG = '1'
           $env:NATIVE_ON_SCREEN = '1'
           $job = Start-Job -FilePath (Join-Path $env:RUNNER_TEMP 'watch.ps1') -ArgumentList $env:PROVE_LOGS, $env:PROVE_CDP, 'NATIVE', 8
           node scripts/prove/live-native-look.mjs
