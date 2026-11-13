@@ -1,0 +1,183 @@
+{
+  "note": "Written by scripts/layout-fixtures.mjs with the layoutOf of the commit below; do not edit by hand.",
+  "ref": "v0.1.1",
+  "commit": "20e1a0b9b3ecc83bd02a13fbb65ff7eee771d3f4",
+  "savedLayout": {
+    "panes": [
+      {
+        "key": 1,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "claude",
+        "program": "claude",
+        "args": [],
+        "agentId": "claude",
+        "session": "11111111-aaaa-4bbb-8ccc-000000000001",
+        "account": null,
+        "title": "Fix login",
+        "pinned": true,
+        "color": "blue"
+      },
+      {
+        "key": 2,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "chooser": true
+      },
+      {
+        "key": 3,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "title": "logs",
+        "color": "purple"
+      },
+      {
+        "key": 4,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "group": 4,
+        "kind": "preview",
+        "path": "C:/fixture/app/docs/guide.md"
+      },
+      {
+        "key": 5,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "codex",
+        "program": "codex",
+        "args": [],
+        "agentId": "codex",
+        "session": "thr-5",
+        "account": "work",
+        "group": 1,
+        "color": "green"
+      },
+      {
+        "key": 6,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "title": "README.md",
+        "group": 1,
+        "kind": "editor",
+        "path": "C:/fixture/app/README.md"
+      },
+      {
+        "key": 7,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "group": 1,
+        "kind": "diff",
+        "path": "C:/fixture/app/src/login.ts",
+        "staged": true
+      },
+      {
+        "key": 8,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "title": "server",
+        "group": 1,
+        "pinned": true,
+        "color": "red"
+      },
+      {
+        "key": 9,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "title": "tests",
+        "group": 4
+      },
+      {
+        "key": 10,
+        "cwd": "C:/fixture/app",
+        "branch": "main",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "group": 4,
+        "kind": "check"
+      },
+      {
+        "key": 11,
+        "cwd": "C:/fixture/lib",
+        "branch": "dev",
+        "agent": "grok",
+        "program": "grok",
+        "args": [],
+        "agentId": "grok",
+        "title": "lib agent"
+      },
+      {
+        "key": 12,
+        "cwd": "C:/fixture/lib",
+        "branch": "dev",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "group": 11,
+        "pinned": true,
+        "color": "teal"
+      },
+      {
+        "key": 13,
+        "cwd": "C:/fixture/lib",
+        "branch": "dev",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "group": 11,
+        "kind": "changes"
+      },
+      {
+        "key": 14,
+        "cwd": "C:/fixture/app-wt-1",
+        "branch": "team-1",
+        "agent": "claude",
+        "program": "claude",
+        "args": [],
+        "agentId": "claude",
+        "session": "11111111-aaaa-4bbb-8ccc-000000000014"
+      },
+      {
+        "key": 15,
+        "cwd": "C:/fixture/app-wt-1",
+        "branch": "team-1",
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "group": 14
+      }
+    ],
+    "activeTab": {
+      "1": 6,
+      "4": 9,
+      "11": 13,
+      "14": 15
+    },
+    "focused": 6,
+    "activeDir": "C:/fixture/app",
+    "stacked": {
+      "C:/fixture/lib": true
+    }
+  }
+}
