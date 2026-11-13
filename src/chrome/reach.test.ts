@@ -109,6 +109,7 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 //   wrapper: the element right around it handles the key
 //   window:  a keydown listener on the window handles Escape
 //   exempt:  why Escape is not this dialog's to take
+//   layer:   a src/ui wrapper whose useLayer catches Escape on the window (Kolux's stack, ahead of Base UI)
 const DIALOGS: [file: string, label: string, how: string][] = [
   ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
   ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "tag"],
@@ -147,7 +148,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["scm/StackMap.tsx", "Confirm the stack merge", "tag"],
   ["settings/GrokCard.tsx", "Use an xAI API key", "wrapper"],
   ["settings/SettingsPage.tsx", "Settings", "window"],
-  ["shell/AboutPanel.tsx", "About Kolux", "tag"],
   ["shell/LinkAskDialog.tsx", "w.title", "tag"],
   ["shell/TabSearch.tsx", "Search open tabs", "inner"],
   ["skills/SkillsPage.tsx", "Skill folders", "window"],
@@ -167,6 +167,9 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["terminal/TerminalPane.tsx", "The terminal did not come back", "inner"],
   ["update/UpdateCenterView.tsx", "Updates", "tag"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
+  // src/ui wrappers: a dialog drawn with <Dialog> / <AlertDialog> has no role literal at its call site; its Escape is
+  // the wrapper's useLayer (Kolux's window-capture watchEscape), proved once for every caller in src/ui/ui.test.tsx.
+  ["ui/Popover.tsx", "label", "layer"],
 ];
 
 const SRC = import.meta.glob(["/src/**/*.tsx", "!/src/**/*.test.tsx", "!/src/**/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -272,6 +275,8 @@ function closes(d: Found, how: string, all: Found[]): boolean {
       return /onKeyDown=[^]*?"Escape"/.test(d.src.slice(Math.max(0, d.at - 600), d.at));
     case "window":
       return /addEventListener\("keydown"|watchEscape\(window/.test(d.src) && ESCAPE.test(d.src);
+    case "layer":
+      return /useLayer\(open, onClose, popup\)/.test(d.src) && /ref=\{popup\}/.test(d.tag);
     default:
       return how.startsWith("exempt: ");
   }

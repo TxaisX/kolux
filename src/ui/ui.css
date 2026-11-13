@@ -1,0 +1,12 @@
+/* src/ui: only what Base UI's own elements need to sit in Kolux's existing look. No new colours or motion. */
+/* The positioner is the element Base UI places; the popup inside keeps its .menu box. A popup's own z-index would be
+   trapped inside the positioner, so the layer goes on the positioner. */
+.ui-positioner { z-index: var(--z-menu); }
+.ui-positioner > .menu { position: static; }
+.ui-tip-positioner { z-index: var(--z-top); }
+.ui-tip { position: static; transform: none; }
+.ui-select { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: default; }
+.ui-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-select-icon { display: inline-flex; flex: none; }
+.ui-select-menu { min-width: var(--anchor-width); }
+.look-select .ui-select { height: 28px; font: inherit; }
