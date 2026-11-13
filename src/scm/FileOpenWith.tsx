@@ -19,11 +19,11 @@ export default function FileOpenWith({ dir, path, done, onError }: Props) {
     <>
       {dir !== null &&
         fileApps(settings).map((a) => (
-          <button key={a.id} role="menuitem" className="menu-item" data-file-action={`open-${a.id}`} onClick={() => (done(), void openFileWith(dir, path, a.command).catch((e) => onError(String(e))))}>
+          <button key={a.id} className="menu-item" data-file-action={`open-${a.id}`} onClick={() => (done(), void openFileWith(dir, path, a.command).catch((e) => onError(String(e))))}>
             <span className="name">{a.label}</span>
           </button>
         ))}
-      <button role="menuitem" className="menu-item" data-file-action="edit-apps" aria-expanded={editing} onClick={() => setEditing(!editing)}>
+      <button className="menu-item" data-file-action="edit-apps" aria-expanded={editing} onClick={() => setEditing(!editing)}>
         <span className="name">{editing ? "Done editing the app list" : "Edit the app list"}</span>
       </button>
       {editing && (

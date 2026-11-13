@@ -94,7 +94,8 @@ describe("Escape bridge (layer.ts)", () => {
     for (const f of ["Dialog.tsx", "Menu.tsx", "Popover.tsx", "Select.tsx"]) expect(src(f), f).toMatch(/useLayer\(/);
     const layer = src("layer.ts");
     expect(layer).toMatch(/pushModal\(modal\)/);
-    expect(layer).toMatch(/watchEscape\(window, \(\) => close\.current\("escape"\), \(\) => isTopModal\(modal\) && !composing\)/);
+    // ...unless an input method is composing, or a field in the popup uses Escape itself (a search box holding text).
+    expect(layer).toMatch(/watchEscape\(window, \(\) => close\.current\("escape"\), \(\) => isTopModal\(modal\) && !composing && !field\.current\?\.\(\)\)/);
   });
 
   it("only the newest popup answers Escape, and it stops the key there", async () => {

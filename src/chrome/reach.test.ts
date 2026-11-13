@@ -252,7 +252,7 @@ function closes(d: Found, how: string, all: Found[]): boolean {
       return /addEventListener\("keydown"|watchEscape\(window/.test(d.src) && ESCAPE.test(d.src);
     case "layer":
       // base.tsx draws the popup; the wrapper that mounts it (Popover.tsx) holds the layer for the same ref
-      return /ref=\{popup\}/.test(d.tag) && d.file === "ui/base.tsx" && /useLayer\(open, onClose, popup\)/.test(SRC["/src/ui/Popover.tsx"]);
+      return /ref=\{popup\}/.test(d.tag) && d.file === "ui/base.tsx" && /useLayer\(open, onClose, popup(, fieldEscape)?\)/.test(SRC["/src/ui/Popover.tsx"]);
     default:
       return how.startsWith("exempt: ");
   }

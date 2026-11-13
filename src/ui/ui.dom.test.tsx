@@ -198,6 +198,31 @@ describe("Select", () => {
     expect(document.activeElement).toBe(after);
   });
 
+  it("inside a popover at a point, a pick keeps the popover open (the list is not a press outside it)", async () => {
+    const closed = vi.fn();
+    const changed = vi.fn();
+    await show(
+      <Popover open onClose={closed} label="File actions" at={{ x: 40, y: 50 }} side="bottom">
+        <Select label="Add an app" value="" onChange={changed} options={[{ value: "", label: "Add an app" }, { value: "code", label: "VS Code" }]} />
+      </Popover>,
+    );
+    const pop = q('[role="dialog"][aria-label="File actions"]')!;
+    expect(pop.className).toBe("menu");
+    await act(async () => q<HTMLButtonElement>('[role="combobox"]')!.click());
+    await wait(50);
+    expect(list()).not.toBeNull();
+    const option = qa('[role="option"]').find((o) => o.textContent === "VS Code")!;
+    await act(async () => {
+      option.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      option.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      option.click();
+    });
+    await wait(50);
+    expect(changed).toHaveBeenCalledWith("code");
+    expect(closed).not.toHaveBeenCalled();
+    expect(q('[role="dialog"][aria-label="File actions"]')).not.toBeNull();
+  });
+
   it("inside a dialog, Escape closes the open list and leaves the dialog up", async () => {
     const closed = vi.fn();
     await show(

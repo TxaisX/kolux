@@ -281,13 +281,13 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
-| launch | 0 | 1 | 0 | 0 | 2 | 0 | 2 | 32 | 1 |
+| launch | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 32 | 0 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
 | onboarding | 3 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 4 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
 | projects | 0 | 1 | 1 | 0 | 7 | 0 | 19 | 75 | 2 |
 | recovery | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
-| scm | 0 | 1 | 0 | 0 | 5 | 0 | 5 | 98 | 1 |
+| scm | 0 | 0 | 0 | 0 | 5 | 0 | 5 | 98 | 0 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
 | settings | 1 | 0 | 0 | 0 | 0 | 30 | 10 | 43 | 1 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
@@ -301,19 +301,15 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **9** | **6** | **3** | **3** | **39** | **42** | **57** | **646** | **16** |
+| **Total** | **9** | **4** | **3** | **3** | **39** | **42** | **57** | **646** | **14** |
 
-To do: 16. Native on purpose: 3. Removed by #255: 2.
+To do: 14. Native on purpose: 3. Removed by #255: 2.
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### editmenu
 
 - [ ] `src/editmenu/EditMenuHost.tsx`: Menu :153
-
-### launch
-
-- [ ] `src/launch/PlusMenu.tsx`: Menu :144
 
 ### onboarding
 
@@ -323,10 +319,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### projects
 
 - [ ] `src/projects/ProjectsPanel.tsx`: Tabs :2504, Menu :2705
-
-### scm
-
-- [ ] `src/scm/SourceControlPanel.tsx`: Menu :1247
 
 ### settings
 
@@ -391,11 +383,6 @@ here for whoever moves them:
   DOM with it.
 - `editmenu/EditMenuHost.tsx`, the text-field menu: waits up to 300 ms for the engine's spelling suggestions, and a
   press on a row moves no focus, so the field's selection is kept for Cut and Copy.
-- `launch/PlusMenu.tsx`: a search box with its own arrow keys, rows with a second Make-default button, and More and
-  shells lists that open inside the menu.
-- `scm/SourceControlPanel.tsx`, "File actions": `FileOpenWith`'s edit-apps form (a Select and two text fields) opens
-  inside the menu, where the menu's arrow keys and typeahead would also see the keys typed into it. The form moves out
-  of the menu, or the menu becomes a Popover.
 - From #255, left for last as planned: `shell/window/TabMenuView.tsx` (the tab menu, with a group of colour swatches),
   `shell/window/Grid.tsx` (the per-cell tab strip, whose tabs are dragged between cells), `shell/window/Content.tsx`
   (stand-in tabs for workspaces being made, which never take focus) and the sidebar row menu in

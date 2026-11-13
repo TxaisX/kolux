@@ -3,7 +3,7 @@
 // ceiling (scripts/bundle-budget.mjs). The wrappers next to this file are the public face; each draws its closed
 // state without Base UI and hands over to what is here when it opens (or, for a tab strip, as soon as this arrives).
 // Escape and stacking stay Kolux's (layer.ts, called by the wrappers); focus, aria and click-outside are Base UI's.
-import { useEffect, useRef, type CSSProperties, type HTMLAttributes, type ReactElement, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, type CSSProperties, type HTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactElement, type ReactNode, type RefObject } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
@@ -90,7 +90,7 @@ export type MenuBoxProps = {
   label: string;
   anchor?: RefObject<Element | null> | Element | null;
   at?: { x: number; y: number } | null;
-  place?: { left: number; bottom: number } | null;
+  place?: Place | null;
   side: Side;
   align: Align;
   offset: number;
@@ -105,7 +105,8 @@ export type MenuBoxProps = {
 
 /** A box at fixed window numbers (`place`), its left and bottom edges where the site puts them: Base UI's own placement
  *  is snapped to whole device pixels, which moves a box of fractional height by a fraction of a pixel. */
-const placed = ({ left, bottom }: { left: number; bottom: number }): CSSProperties => ({ position: "fixed", transform: "none", willChange: "auto", top: "auto", left, bottom });
+export type Place = { left?: number; right?: number; top?: number; bottom?: number };
+const placed = ({ left, right, top, bottom }: Place): CSSProperties => ({ position: "fixed", transform: "none", willChange: "auto", left: left ?? "auto", right: right ?? "auto", top: top ?? "auto", bottom: bottom ?? "auto" });
 
 /** The row focus starts on: in a list of choices the ticked one (the account in use), else the first row a menu can act
  *  on (a row that is off stays focusable in Base UI, so it is skipped by its aria-disabled). */
@@ -193,6 +194,7 @@ export type PopoverBoxProps = {
   label: string;
   anchor?: RefObject<Element | null>;
   at?: { x: number; y: number } | null;
+  place?: Place | null;
   side: Side;
   align: Align;
   offset: number;
@@ -200,16 +202,18 @@ export type PopoverBoxProps = {
   style?: CSSProperties;
   modal: boolean | "trap-focus";
   initialFocus?: Focus;
+  finalFocus?: Focus;
+  onKeyDown?: (e: ReactKeyboardEvent<HTMLDivElement>) => void;
   "data-testid"?: string;
   children: ReactNode;
 };
 
-export function PopoverBox({ popup, onClose, label, anchor, at, side, align, offset, className, style, modal, initialFocus, children, ...p }: PopoverBoxProps) {
+export function PopoverBox({ popup, onClose, label, anchor, at, place, side, align, offset, className, style, modal, initialFocus, finalFocus, children, ...p }: PopoverBoxProps) {
   return (
     <Popover.Root open modal={modal} onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Popover.Portal container={layerHost()}>
-        <Popover.Positioner className="ui-positioner" anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed">
-          <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={(anchor as RefObject<HTMLElement | null> | undefined) ?? true} {...p}>
+        <Popover.Positioner className="ui-positioner" anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed" style={place ? placed(place) : undefined}>
+          <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={(finalFocus ?? (anchor as RefObject<HTMLElement | null> | undefined) ?? true) as never} {...p}>
             {children}
           </Popover.Popup>
         </Popover.Positioner>

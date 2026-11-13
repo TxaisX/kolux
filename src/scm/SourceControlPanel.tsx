@@ -34,7 +34,7 @@ import { DIFF_SPLITS, type DiffSplit } from "./split";
 import { openExternal } from "../open/openExternal";
 import { HistoryLoads, acceptHistory, historyFor, type LoadedHistory } from "./history";
 import { LINES_SKIPPED_NOTE, canCommit, changeCount, cutBanner, conflictPrompt, grouped, savedFixAgent, isCommitShortcut, nextStep, remoteItems, summaryLabel, summaryRows, summaryTotal, type ActionOutcome, type Change, type CommitOutcome, type RemoteAction, type Status, type Summary, bulk, rowOrder, rowKeys, selectRows, spanRuns, type RowKey, discardAsk, type DiscardAsk, type Section, mergeActions, mergeLabel, type MergeAction, type MergeInfo, abortLabel, capped, clashWord, CONFLICT_CAP, filesWord, graph, graphLines, commitUrl, explainPrompt, type Commit, type GraphRow, prMismatch, prStateWord, scmGroups, prLooked, prRefreshDelay, PR_STALE_MS, prReason, prRowText, withPr, needsGitHub, type Pr, type PrAnswer, type PrLook, commitItems, failureTitle, discardPlan, fileTree, reviewPrompt, SECTION_CAP, tooManyLine, filterRows, fullPath } from "./model";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Popover } from "../ui/Popover";
 import { Select } from "../ui/Select";
 import { ContextMenu, Menu, MenuItem, MenuTitle } from "../ui/Menu";
 
@@ -1241,10 +1241,11 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                 ))}
               </div>
             </details>
-            {fileCtx && (
-              <OutOfFlow>
-                <div className="menu-backdrop" onClick={() => setFileCtx(null)} aria-hidden="true" />
-                <div className="menu" role="menu" aria-label="File actions" style={{ left: fileCtx.x, top: fileCtx.y }}>
+            {/* A src/ui Popover at the right-clicked point, not a Menu: besides its rows it holds the Open in list's
+                editor (fields and a select), whose keys a menu's arrows and typeahead would take. */}
+            <Popover open={fileCtx !== null} onClose={() => setFileCtx(null)} label="File actions" at={fileCtx && { x: fileCtx.x, y: fileCtx.y }} side="bottom" align="start" offset={0}>
+              {fileCtx && (
+                <>
                   <div className="menu-title">{fileCtx.path}</div>
                   {[
                     { id: "full", label: "Copy path", run: () => copy(fullPath(dir, fileCtx.path), "path") },
@@ -1254,7 +1255,6 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                   ].map((item) => (
                     <button
                       key={item.id}
-                      role="menuitem"
                       className="menu-item"
                       data-file-action={item.id}
                       onClick={() => {
@@ -1266,9 +1266,9 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                     </button>
                   ))}
                   <FileOpenWith dir={dir} path={fileCtx.path} done={() => setFileCtx(null)} onError={(m) => setErrs((e) => ({ ...e, read: m }))} />
-                </div>
-              </OutOfFlow>
-            )}
+                </>
+              )}
+            </Popover>
             {/* A src/ui ContextMenu at the right-clicked point (it flips when there is no room). */}
             <ContextMenu at={ctx} onClose={() => setCtx(null)} label="Commit actions">
               {ctx && (
