@@ -451,8 +451,8 @@ mod tests {
         let e = ends.clone();
         link.register(3, Box::new(|_: &[u8]| {}), Box::new(move |code| {
             assert_eq!(code, None, "a lost connection says nothing of how the terminal ended");
-            e.fetch_add(1, Ordering::SeqCst);
             crate::terminal::turns_end(TERM); // the exit every pane's handler runs
+            e.fetch_add(1, Ordering::SeqCst); // counted after the turn ends, so the test never reads a half-done exit
         }));
         link.flush(3);
         let go = serde_json::json!({ "hook_event_name": "UserPromptSubmit", "prompt": "go" });
