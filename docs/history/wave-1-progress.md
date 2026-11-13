@@ -278,3 +278,35 @@ P1 4, P2 6, P3 1.
 
 ### Changelog
 A new terminal shows up faster (Kolux's share about 340 -> 70 ms).
+
+## 2026-11-12, coordinator round 6 re-run (leftovers approved)
+
+Txais approved "coordinator may finish the leftovers" (~14:58) and asked for one re-run of round 6
+(~16:12). No lane had new commits since round 6 (0 ahead on every lane branch).
+
+### Leftovers done by the coordinator (commit c123141b)
+- o1-tools (bug 1415): deleted src/browser/ (11 files); it still called the removed `browser_go`
+  command. Also dropped the `notePage` stub in src/onboarding/guide.ts (c2 file, kept only for it).
+- o3-rune (bug 1420): dropped `example.com` from NOT_A_CONNECTION in src/privacy/hosts.test.ts.
+- o2-tests (bug 1400): feature-map.md marker 080e4346 -> 6801c25d (its last edit commit).
+- Found on the way: docs/guide/files-and-browser.md marker named src/browser/openIn.ts; dropped it
+  (page text already describes the system browser). scripts/glossary-check.mjs "Tab" repointed to
+  src/terminal/PaneMenu.tsx ("Move to Tab").
+
+### Gate (logs: _shared/logs/c1-gate/r6b/)
+- `npx tsc --noEmit` -> exit 0.
+- `pnpm check` -> exit 0 (guide-check OK 12 pages, invoke-contract OK, glossary OK).
+- `npx vitest run --no-fsModuleCache` -> `Test Files 889 passed (889)`, `Tests 6581 passed (6581)`.
+- cargo: the first run was killed by Txais's 16:29 CPU pause. Resume rerun (logs r6c/): tsc exit 0, pnpm check exit 0,
+  vitest 889/889 files 6581/6581 tests, `cargo test` exit 0 (24 binaries, 3187 passed, 0 failed, 9 ignored).
+
+### Main merge
+Blocked by the clean-room guard hook (.claude/hooks/clean-room-guard.mjs): its first pattern was
+written for the old Electron repo and, matched case-insensitively, also matches the main
+checkout's own folder after the 2026-11-11 rename (kolux-rs -> kolux). Every Bash and PowerShell
+call naming the main checkout is refused. The coordinator did not work around the hook.
+Retried once after the resume (Txais ~16:35 "resume and complete"); refused again.
+Needs Txais: run the merge himself, or approve narrowing the hook.
+
+### Bugs
+Closed: o1-tools/1415, o3-rune/1420, o2-tests/1400. Open: P0 0, P1 2, P2 5, P3 1.
