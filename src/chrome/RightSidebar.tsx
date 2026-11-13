@@ -9,11 +9,11 @@
 // the first offered one; and if a panel's code throws, the panel shows a plain notice with Try again
 // while the rest of the window keeps running (VIEW 056 rest). The Agents, Search and folder-workspace
 // tabs are T-146-g.
-import { Component, useEffect, useRef, useState, type ErrorInfo, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { useMenuFocus } from "./dialogFocus";
+import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { menuStep } from "../terminal/LinkActionMenu";
 import { NARROW_PX } from "../shell/window/narrow";
-import OutOfFlow from "./OutOfFlow";
+import { Menu, MenuItem } from "../ui/Menu";
+import { Tab, TabList, TabPanel, Tabs } from "../ui/Tabs";
 
 export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
@@ -164,72 +164,48 @@ export default function RightSidebar({ tab, width, max, hidden = false, offered,
   const tabs = offered ? RIGHT_TABS.filter((t) => offered.includes(t.id)) : RIGHT_TABS;
   const current = pickTab(tab, tabs.map((t) => t.id));
   const { shown, more } = splitTabs(tabs, current ?? "", width);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState(false);
   useEffect(() => {
     if (current !== null && current !== tab) onTab(current);
   }, [current, tab]);
-  // The More menu takes focus, answers the arrow keys, and Escape closes it before the terminal sees the key.
-  const moreMenu = useRef<HTMLDivElement>(null);
-  useMenuFocus(moreMenu, menu !== null, () => setMenu(null));
-  // Only the open tab is a tab stop; Left, Right, Home and End move between the tabs and open the one reached.
-  const onTabKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    const tabEls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'));
-    const to = tabStep(tabEls.length, tabEls.indexOf(document.activeElement as HTMLElement), e.key);
-    if (to === null) return;
-    e.preventDefault();
-    tabEls[to].focus();
-    onTab(shown[to].id);
-  };
+  // Base UI (src/ui): only the open tab is a tab stop and Left, Right, Home and End move between the tabs and open the
+  // one reached; the More menu takes focus, answers the arrow keys, and Escape closes it before the terminal sees it.
+  const moreButton = useRef<HTMLButtonElement>(null);
   return (
-    <aside className="rside" aria-label="Right sidebar" data-testid="right-sidebar" hidden={hidden} style={{ width }}>
+    <Tabs value={current ?? ""} onValue={(t) => onTab(t as RightTab)} render={<aside className="rside" aria-label="Right sidebar" data-testid="right-sidebar" hidden={hidden} style={{ width }} />}>
       <Grip side="right" width={width} min={RIGHT_MIN} max={max} label="Resize the right sidebar" className="rside-grip" onWidth={onWidth} />
-      <div className="rside-tabs" role="tablist" aria-label="Right sidebar tabs" onKeyDown={onTabKey}>
+      <TabList className="rside-tabs" label="Right sidebar tabs">
         {shown.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={t.id === current} tabIndex={t.id === current ? 0 : -1} data-testid={`right-tab-${t.id}`} title={t.hint} className="rside-tab" onClick={() => onTab(t.id)}>
+          <Tab key={t.id} value={t.id} selected={t.id === current} data-testid={`right-tab-${t.id}`} title={t.hint} className="rside-tab">
             {t.label}
-          </button>
+          </Tab>
         ))}
         {more.length > 0 && (
           <button
+            ref={moreButton}
             type="button"
             className="rside-tab rside-more"
             title={`More: ${more.map((t) => t.label).join(", ")}`}
             aria-haspopup="menu"
-            aria-expanded={menu !== null}
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setMenu(menu ? null : { x: Math.max(8, r.right - 230), y: r.bottom + 4 });
-            }}
+            aria-expanded={menu}
+            onClick={() => setMenu(!menu)}
           >
             More
           </button>
         )}
-      </div>
+      </TabList>
       {menu && more.length > 0 && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onClick={() => setMenu(null)} aria-hidden="true" />
-          <div ref={moreMenu} className="menu" role="menu" aria-label="More tabs" style={{ left: menu.x, top: menu.y }}>
-            {more.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="menuitem"
-                className="menu-item"
-                title={t.hint}
-                onClick={() => {
-                  setMenu(null);
-                  onTab(t.id);
-                }}
-              >
-                <span className="name">{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </OutOfFlow>
+        <Menu open onClose={() => setMenu(false)} label="More tabs" anchor={moreButton} align="end" offset={4}>
+          {more.map((t) => (
+            <MenuItem key={t.id} title={t.hint} onClick={() => onTab(t.id)}>
+              <span className="name">{t.label}</span>
+            </MenuItem>
+          ))}
+        </Menu>
       )}
-      <div className="rside-body" role="tabpanel" aria-label={tabs.find((t) => t.id === current)?.label}>
+      <TabPanel value={current ?? ""} className="rside-body" label={tabs.find((t) => t.id === current)?.label}>
         <PanelGuard tab={current ?? ""}>{children}</PanelGuard>
-      </div>
-    </aside>
+      </TabPanel>
+    </Tabs>
   );
 }
