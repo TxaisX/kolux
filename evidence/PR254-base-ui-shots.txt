@@ -19,13 +19,17 @@ Results (changed pixels of 2,160,000)
                                                                        view's (the first run, 1,796 px, also had the label
                                                                        4 px left of a native select's; the control now
                                                                        indents it the same, src/ui/ui.css)
-- menu     (status bar items, Menu at a point):  107,763    4.989 %   the same box, rows and first-row focus ring,
-                                                                       3 px further right: the old menu kept 240 px
-                                                                       clear for a 229 px box, src/ui keeps 8 px from
-                                                                       the window's edge
-- popover  (Ports, Popover above its button):    111,440    5.159 %   the same box and rows, 33 px further right: the old
-                                                                       box kept 380 px clear for a 338 px list, src/ui
-                                                                       keeps 8 px from the window's edge
+- menu     (status bar items, Menu at a point):  0          0.000 %   identical. The first shots differed by 4.989 %:
+                                                                       src/ui kept the box 8 px from the window's edge
+                                                                       where the old menu kept 240 px clear for its
+                                                                       229 px box, and Base UI snaps a placed box to
+                                                                       whole device pixels (275.5 px, not 275.703 px).
+                                                                       The menu now takes the old numbers (Menu
+                                                                       `place`: left and bottom, src/ui/base.tsx).
+- popover  (Ports, Popover above its button):    0          0.000 %   identical. The first shots differed by 5.159 %:
+                                                                       the old box kept 380 px clear for a 338 px list.
+                                                                       It now hangs from the old point (Popover `at`,
+                                                                       src/ports/PortsItem.tsx), room kept as it was.
 
 Not shot: Tooltip (no call site uses the src/ui Tooltip; the hover hints stay title attributes) and Switch (switches
 stay native inputs on purpose, see docs/base-ui-migration.md).

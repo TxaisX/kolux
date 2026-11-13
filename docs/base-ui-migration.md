@@ -130,6 +130,11 @@ useEffect(() => (open ? watchEscape(window, close) : undefined), [open]);
 <Popover open={open} onClose={close} label="Ports" anchor={button} side="top" className="ports-menu">...</Popover>
 ```
 
+To keep a box exactly where it was, a site may pass the old numbers: `Popover at={{ x, y }}` hangs it from the point the
+old code computed (the Ports list keeps its 380 px of room at the window's right edge), and `Menu place={{ left, bottom }}`
+puts an upward menu's edges at fixed window numbers (the status bar's items menu). Base UI's own placement keeps 8 px from
+the window's edge and snaps the box to whole device pixels, which moved both a little in the before and after shots.
+
 ### Tabs (migrated: the right sidebar's tab strip)
 
 ```tsx

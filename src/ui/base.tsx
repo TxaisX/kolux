@@ -90,6 +90,7 @@ export type MenuBoxProps = {
   label: string;
   anchor?: RefObject<Element | null> | Element | null;
   at?: { x: number; y: number } | null;
+  place?: { left: number; bottom: number } | null;
   side: Side;
   align: Align;
   offset: number;
@@ -102,6 +103,10 @@ export type MenuBoxProps = {
   children: ReactNode;
 };
 
+/** A box at fixed window numbers (`place`), its left and bottom edges where the site puts them: Base UI's own placement
+ *  is snapped to whole device pixels, which moves a box of fractional height by a fraction of a pixel. */
+const placed = ({ left, bottom }: { left: number; bottom: number }): CSSProperties => ({ position: "fixed", transform: "none", willChange: "auto", top: "auto", left, bottom });
+
 /** The row focus starts on: in a list of choices the ticked one (the account in use), else the first row a menu can act
  *  on (a row that is off stays focusable in Base UI, so it is skipped by its aria-disabled). */
 const firstRow = (box: HTMLElement | null) => {
@@ -109,7 +114,7 @@ const firstRow = (box: HTMLElement | null) => {
   return rows.find((r) => r.getAttribute("role") === "menuitemradio" && r.getAttribute("aria-checked") === "true") ?? rows[0] ?? null;
 };
 
-export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
+export function MenuBox({ popup, onClose, label, anchor, at, place, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
   // Where focus goes back to when the menu closes: what had it when the menu opened (the button, or the list a
   // right-click menu was opened on), as Kolux's menus always did. The menu is taken off the page at once when it closes
   // (its owner stops drawing it), which Base UI's own hand-back does not follow, so it is done here once the menu is gone,
@@ -149,7 +154,7 @@ export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset
   return (
     <Menu.Root open onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Menu.Portal container={layerHost()}>
-        <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed">
+        <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed" style={place ? placed(place) : undefined}>
           <Menu.Popup ref={popup} className={plain ? className : className ? `menu ${className}` : "menu"} aria-label={label} style={style} finalFocus={finalFocus as never} {...p}>
             {children}
           </Menu.Popup>
@@ -186,7 +191,8 @@ export type PopoverBoxProps = {
   popup: RefObject<HTMLDivElement | null>;
   onClose: (why: CloseWhy) => void;
   label: string;
-  anchor: RefObject<Element | null>;
+  anchor?: RefObject<Element | null>;
+  at?: { x: number; y: number } | null;
   side: Side;
   align: Align;
   offset: number;
@@ -198,12 +204,12 @@ export type PopoverBoxProps = {
   children: ReactNode;
 };
 
-export function PopoverBox({ popup, onClose, label, anchor, side, align, offset, className, style, modal, initialFocus, children, ...p }: PopoverBoxProps) {
+export function PopoverBox({ popup, onClose, label, anchor, at, side, align, offset, className, style, modal, initialFocus, children, ...p }: PopoverBoxProps) {
   return (
     <Popover.Root open modal={modal} onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Popover.Portal container={layerHost()}>
-        <Popover.Positioner className="ui-positioner" anchor={anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed">
-          <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={anchor as RefObject<HTMLElement | null>} {...p}>
+        <Popover.Positioner className="ui-positioner" anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} collisionAvoidance={AVOID} positionMethod="fixed">
+          <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={(anchor as RefObject<HTMLElement | null> | undefined) ?? true} {...p}>
             {children}
           </Popover.Popup>
         </Popover.Positioner>

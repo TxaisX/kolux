@@ -96,12 +96,16 @@ export default function PortsItem({ active, workspaces }: Props) {
     const url = openAddress(r, printed.forPort(r.port, view.rows));
     void openExternal(url).catch((err) => say(String(err), true));
   };
+  const r = open ? button.current?.getBoundingClientRect() : undefined;
+  const at = r ? { x: Math.max(8, Math.min(r.left, window.innerWidth - 380)), y: r.top } : null;
   return (
     <>
       <button ref={button} className="item ports-open" data-item="ports" title="Ports this workspace is listening on" aria-haspopup="dialog" aria-expanded={open} onClick={() => (setNote(null), setNoteBad(false), setOpen((o) => !o))}>
         Ports {ownCount(view.rows)}
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} label="Ports" anchor={button} side="top" align="start" offset={4} className="ports-menu" style={{ minWidth: 340 }} boxRef={menu} initialFocus={menu}>
+      {/* Placed where the Ports box always was: its left edge on the button's, but never nearer than 380 px to the
+          window's right edge (the old box kept that much room for its 340 px list; the look is kept as it was). */}
+      <Popover open={open} onClose={() => setOpen(false)} label="Ports" anchor={button} at={at} side="top" align="start" offset={4} className="ports-menu" style={{ minWidth: 340 }} boxRef={menu} initialFocus={menu}>
         <div className="menu-title">Ports</div>
         {view.error && <div className="note error">{view.error}{view.rows.length > 0 ? " Showing the last list." : ""}</div>}
         <div role="status">{note && <div className={noteBad ? "note error" : "note"}>{note}</div>}</div>

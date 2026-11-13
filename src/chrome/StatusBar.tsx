@@ -104,7 +104,9 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
       {shows("ports") && <PortsItem active={active} workspaces={workspaces} />}
       {shows("awake") && <KeepAwakeItem held={awake} />}
       {/* A ticked item stays open for the next one; Hide status bar closes it. */}
-      <Menu open={menu !== null} onClose={() => setMenu(null)} label="Status bar items" at={menu} side="top" offset={4} className="status-menu">
+      {/* Exactly where the menu always opened: its bottom edge 4 px above the pointer, its left edge at the pointer but
+          never nearer than 240 px to the window's right edge (room the old menu kept for its 229 px box). */}
+      <Menu open={menu !== null} onClose={() => setMenu(null)} label="Status bar items" at={menu} place={menu && { left: Math.min(menu.x, window.innerWidth - 240), bottom: Math.max(8, window.innerHeight - menu.y + 4) }} side="top" offset={4} className="status-menu">
         <MenuTitle>Status bar</MenuTitle>
         {STATUS_ITEMS.map((i) => (
           <MenuCheckboxItem key={i.id} checked={shows(i.id)} onCheckedChange={() => onToggle?.(i.id)}>

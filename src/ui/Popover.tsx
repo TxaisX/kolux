@@ -12,8 +12,11 @@ export type PopoverProps = {
   open: boolean;
   onClose: (why: CloseWhy) => void;
   label: string;
-  /** The button that opened it: the popover hangs from it and focus returns to it. */
-  anchor: RefObject<Element | null>;
+  /** The button that opened it: the popover hangs from it and focus returns to it (none: focus returns to what had it). */
+  anchor?: RefObject<Element | null>;
+  /** Or a point on screen it hangs from instead, for a box placed where it always was (the anchor, if any, still
+   *  toggles it and takes focus back). */
+  at?: { x: number; y: number } | null;
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
   offset?: number;
