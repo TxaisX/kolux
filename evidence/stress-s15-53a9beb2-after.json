@@ -1,0 +1,1722 @@
+{
+ "sha": "53a9beb2",
+ "when": "2026-11-11T22:05:25.990Z",
+ "build": "debug dev build (pnpm tauri dev: the web view loads the vite dev server)",
+ "window_s": 30,
+ "runs": [
+  {
+   "a": {
+    "perRole": {
+     "window": {
+      "n": 1,
+      "wsMB": 56.85598958333333,
+      "privMB": 14.4,
+      "cpuCorePct": 2.9400539638584164,
+      "cpuTotalPct": 0.18375337274115103,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 410.6666666666667,
+      "threads": 50.333333333333336
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 67.01354166666667,
+      "privMB": 23.79921875,
+      "cpuCorePct": 0.33283629779529245,
+      "cpuTotalPct": 0.020802268612205778,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 616.2,
+      "threads": 38.2
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 97.9,
+      "privMB": 120.97760416666667,
+      "cpuCorePct": 0.1109454325984308,
+      "cpuTotalPct": 0.006934089537401925,
+      "gpuDedMB": 55.12890625,
+      "gpuSharedMB": 3.72265625,
+      "gpuCommitMB": 59.4921875,
+      "gpuEngPct": 0.0026579280629571555,
+      "handles": 631.4,
+      "threads": 49
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 15.099739583333333,
+      "privMB": 3.2122395833333335,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 199.6,
+      "threads": 12
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 120.53854166666666,
+      "privMB": 42.37057291666667,
+      "cpuCorePct": 0.8875634607874464,
+      "cpuTotalPct": 0.0554727162992154,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1276.1333333333334,
+      "threads": 55.4
+     },
+     "renderer": {
+      "n": 1,
+      "wsMB": 233.59661458333332,
+      "privMB": 179.21197916666668,
+      "cpuCorePct": 1.3868179074803852,
+      "cpuTotalPct": 0.08667611921752408,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 376,
+      "threads": 29
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 591.0044270833333,
+      "privMB": 383.97161458333335,
+      "cpuCorePct": 5.658217062519971,
+      "cpuTotalPct": 0.3536385664074982,
+      "gpuDedMB": 55.12890625,
+      "gpuSharedMB": 3.72265625,
+      "gpuCommitMB": 59.4921875,
+      "gpuEngPct": 0.0026579280629571555,
+      "handles": 3510,
+      "threads": 233.93333333333334
+     }
+    },
+    "procs": [
+     {
+      "pid": 33272,
+      "role": "crashpad-handler",
+      "wsMB": 15.099739583333333,
+      "privMB": 3.2122395833333335,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 24824,
+      "role": "gpu-process",
+      "wsMB": 97.9,
+      "privMB": 120.97760416666667,
+      "cpuCorePct": 0.11094543259843079,
+      "gpuDedMB": 55.12890625,
+      "ticks": 15
+     },
+     {
+      "pid": 34068,
+      "role": "renderer",
+      "wsMB": 233.59661458333332,
+      "privMB": 179.21197916666668,
+      "cpuCorePct": 1.3868179074803848,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 31192,
+      "role": "utility",
+      "wsMB": 46.88489583333333,
+      "privMB": 16.33671875,
+      "cpuCorePct": 0.33283629779529234,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 33208,
+      "role": "utility",
+      "wsMB": 20.128645833333334,
+      "privMB": 7.4625,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 27964,
+      "role": "window",
+      "wsMB": 56.85598958333333,
+      "privMB": 14.4,
+      "cpuCorePct": 2.9400539638584156,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 8400,
+      "role": "wv-browser",
+      "wsMB": 120.53854166666666,
+      "privMB": 42.37057291666667,
+      "cpuCorePct": 0.8875634607874463,
+      "gpuDedMB": null,
+      "ticks": 15
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 76.35465335845947,
+     "jsHeapTotalMB": 77.94151020050049,
+     "canvases": 5,
+     "panes": 2,
+     "shownPanes": 2,
+     "domNodes": 442,
+     "visibility": "visible",
+     "wizard": false,
+     "statusBarMB": 374.3125
+    }
+   },
+   "b-early": {
+    "perRole": {
+     "window": {
+      "n": 1,
+      "wsMB": 57.6142578125,
+      "privMB": 15.2548828125,
+      "cpuCorePct": 2.0722811671087533,
+      "cpuTotalPct": 0.12951757294429708,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 429,
+      "threads": 54
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 66.66796875,
+      "privMB": 23.12890625,
+      "cpuCorePct": 0.5180702917771883,
+      "cpuTotalPct": 0.03237939323607427,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 615,
+      "threads": 37
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 103.171875,
+      "privMB": 146.6201171875,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 74.201171875,
+      "gpuSharedMB": 4.92578125,
+      "gpuCommitMB": 79.767578125,
+      "gpuEngPct": 0.002960681039737505,
+      "handles": 637,
+      "threads": 49
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.80859375,
+      "privMB": 3.08984375,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 190,
+      "threads": 12
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 121.4921875,
+      "privMB": 41.375,
+      "cpuCorePct": 2.0722811671087533,
+      "cpuTotalPct": 0.12951757294429708,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1273,
+      "threads": 54
+     },
+     "renderer": {
+      "n": 1,
+      "wsMB": 244.525390625,
+      "privMB": 188.439453125,
+      "cpuCorePct": 3.6264920424403186,
+      "cpuTotalPct": 0.22665575265251992,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 376,
+      "threads": 28
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 606.2802734375,
+      "privMB": 417.908203125,
+      "cpuCorePct": 8.289124668435013,
+      "cpuTotalPct": 0.5180702917771883,
+      "gpuDedMB": 74.201171875,
+      "gpuSharedMB": 4.92578125,
+      "gpuCommitMB": 79.767578125,
+      "gpuEngPct": 0.002960681039737505,
+      "handles": 3520,
+      "threads": 234
+     }
+    },
+    "procs": [
+     {
+      "pid": 33272,
+      "role": "crashpad-handler",
+      "wsMB": 12.80859375,
+      "privMB": 3.08984375,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 24824,
+      "role": "gpu-process",
+      "wsMB": 103.171875,
+      "privMB": 146.6201171875,
+      "cpuCorePct": 0,
+      "gpuDedMB": 74.201171875,
+      "ticks": 4
+     },
+     {
+      "pid": 34068,
+      "role": "renderer",
+      "wsMB": 244.525390625,
+      "privMB": 188.439453125,
+      "cpuCorePct": 3.6264920424403186,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 31192,
+      "role": "utility",
+      "wsMB": 46.421875,
+      "privMB": 15.70703125,
+      "cpuCorePct": 0.5180702917771883,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 33208,
+      "role": "utility",
+      "wsMB": 20.24609375,
+      "privMB": 7.421875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 27964,
+      "role": "window",
+      "wsMB": 57.6142578125,
+      "privMB": 15.2548828125,
+      "cpuCorePct": 2.0722811671087533,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 8400,
+      "role": "wv-browser",
+      "wsMB": 121.4921875,
+      "privMB": 41.375,
+      "cpuCorePct": 2.0722811671087533,
+      "gpuDedMB": null,
+      "ticks": 4
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 86.88965034484863,
+     "jsHeapTotalMB": 89.25474739074707,
+     "canvases": 9,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 570,
+     "visibility": "visible",
+     "wizard": false,
+     "statusBarMB": 410.34765625
+    }
+   },
+   "b": {
+    "perRole": {
+     "window": {
+      "n": 1,
+      "wsMB": 57.67109375,
+      "privMB": 15.282291666666667,
+      "cpuCorePct": 2.556100857071731,
+      "cpuTotalPct": 0.1597563035669832,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 425.8,
+      "threads": 52.4
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 66.66979166666667,
+      "privMB": 23.0484375,
+      "cpuCorePct": 0.2222696397453679,
+      "cpuTotalPct": 0.013891852484085494,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 608.6,
+      "threads": 34.53333333333333
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 98.08072916666667,
+      "privMB": 124.30364583333333,
+      "cpuCorePct": 0.16670222980902594,
+      "cpuTotalPct": 0.010418889363064121,
+      "gpuDedMB": 57.5078125,
+      "gpuSharedMB": 3.64453125,
+      "gpuCommitMB": 61.79296875,
+      "gpuEngPct": 0.0026262977280653113,
+      "handles": 628.0666666666667,
+      "threads": 48.266666666666666
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.776041666666666,
+      "privMB": 3.0278645833333333,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 186.53333333333333,
+      "threads": 10.4
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 122.85546875,
+      "privMB": 41.536458333333336,
+      "cpuCorePct": 0.6112415092997617,
+      "cpuTotalPct": 0.03820259433123511,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1268.6,
+      "threads": 52.53333333333333
+     },
+     "renderer": {
+      "n": 1,
+      "wsMB": 242.22291666666666,
+      "privMB": 187.27552083333333,
+      "cpuCorePct": 1.1669156086631816,
+      "cpuTotalPct": 0.07293222554144885,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 370,
+      "threads": 27.8
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 600.2760416666666,
+      "privMB": 394.47421875,
+      "cpuCorePct": 4.723229844589068,
+      "cpuTotalPct": 0.29520186528681674,
+      "gpuDedMB": 57.5078125,
+      "gpuSharedMB": 3.64453125,
+      "gpuCommitMB": 61.79296875,
+      "gpuEngPct": 0.0026262977280653113,
+      "handles": 3487.6,
+      "threads": 225.93333333333334
+     }
+    },
+    "procs": [
+     {
+      "pid": 33272,
+      "role": "crashpad-handler",
+      "wsMB": 12.776041666666666,
+      "privMB": 3.0278645833333333,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 24824,
+      "role": "gpu-process",
+      "wsMB": 98.08072916666667,
+      "privMB": 124.30364583333333,
+      "cpuCorePct": 0.16670222980902594,
+      "gpuDedMB": 57.5078125,
+      "ticks": 15
+     },
+     {
+      "pid": 34068,
+      "role": "renderer",
+      "wsMB": 242.22291666666666,
+      "privMB": 187.27552083333333,
+      "cpuCorePct": 1.1669156086631816,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 31192,
+      "role": "utility",
+      "wsMB": 46.42369791666667,
+      "privMB": 15.6265625,
+      "cpuCorePct": 0.2222696397453679,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 33208,
+      "role": "utility",
+      "wsMB": 20.24609375,
+      "privMB": 7.421875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 27964,
+      "role": "window",
+      "wsMB": 57.67109375,
+      "privMB": 15.282291666666667,
+      "cpuCorePct": 2.556100857071731,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 8400,
+      "role": "wv-browser",
+      "wsMB": 122.85546875,
+      "privMB": 41.536458333333336,
+      "cpuCorePct": 0.6112415092997617,
+      "gpuDedMB": null,
+      "ticks": 15
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 89.60373973846436,
+     "jsHeapTotalMB": 91.76603603363037,
+     "canvases": 5,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 778,
+     "visibility": "visible",
+     "wizard": false,
+     "statusBarMB": 395.07421875
+    }
+   },
+   "c-early": {
+    "perRole": {
+     "window": {
+      "n": 1,
+      "wsMB": 57.546875,
+      "privMB": 15.09765625,
+      "cpuCorePct": 1.8117442438297167,
+      "cpuTotalPct": 0.11323401523935729,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 422,
+      "threads": 51
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 66.744140625,
+      "privMB": 23.013671875,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 607,
+      "threads": 33.5
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 94.857421875,
+      "privMB": 109.08203125,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 44.91796875,
+      "gpuSharedMB": 3.22265625,
+      "gpuCommitMB": 48.78125,
+      "gpuEngPct": 0,
+      "handles": 612,
+      "threads": 47
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.74609375,
+      "privMB": 2.97265625,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 182,
+      "threads": 9
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 136.755859375,
+      "privMB": 45.45703125,
+      "cpuCorePct": 0.2588206062613881,
+      "cpuTotalPct": 0.016176287891336755,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1501.5,
+      "threads": 67
+     },
+     "renderer": {
+      "n": 1,
+      "wsMB": 241.734375,
+      "privMB": 188.1318359375,
+      "cpuCorePct": 0.5176412125227762,
+      "cpuTotalPct": 0.03235257578267351,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 362,
+      "threads": 28
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 610.384765625,
+      "privMB": 383.7548828125,
+      "cpuCorePct": 2.5882060626138808,
+      "cpuTotalPct": 0.16176287891336755,
+      "gpuDedMB": 44.91796875,
+      "gpuSharedMB": 3.22265625,
+      "gpuCommitMB": 48.78125,
+      "gpuEngPct": 0,
+      "handles": 3686.5,
+      "threads": 235.5
+     }
+    },
+    "procs": [
+     {
+      "pid": 33272,
+      "role": "crashpad-handler",
+      "wsMB": 12.74609375,
+      "privMB": 2.97265625,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 24824,
+      "role": "gpu-process",
+      "wsMB": 94.857421875,
+      "privMB": 109.08203125,
+      "cpuCorePct": 0,
+      "gpuDedMB": 44.91796875,
+      "ticks": 4
+     },
+     {
+      "pid": 34068,
+      "role": "renderer",
+      "wsMB": 241.734375,
+      "privMB": 188.1318359375,
+      "cpuCorePct": 0.5176412125227762,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 31192,
+      "role": "utility",
+      "wsMB": 46.498046875,
+      "privMB": 15.591796875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 33208,
+      "role": "utility",
+      "wsMB": 20.24609375,
+      "privMB": 7.421875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 27964,
+      "role": "window",
+      "wsMB": 57.546875,
+      "privMB": 15.09765625,
+      "cpuCorePct": 1.8117442438297167,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 8400,
+      "role": "wv-browser",
+      "wsMB": 136.755859375,
+      "privMB": 45.45703125,
+      "cpuCorePct": 0.2588206062613881,
+      "gpuDedMB": null,
+      "ticks": 4
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 86.73133182525635,
+     "jsHeapTotalMB": 90.52565097808838,
+     "canvases": 5,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 777,
+     "visibility": "hidden",
+     "wizard": false,
+     "statusBarMB": 383.20703125
+    }
+   },
+   "c": {
+    "perRole": {
+     "window": {
+      "n": 1,
+      "wsMB": 57.658854166666664,
+      "privMB": 15.162760416666666,
+      "cpuCorePct": 0.8326524086968881,
+      "cpuTotalPct": 0.052040775543555504,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 421,
+      "threads": 50
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 29.594270833333333,
+      "privMB": 23.176041666666666,
+      "cpuCorePct": 0.11102032115958506,
+      "cpuTotalPct": 0.006938770072474066,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 613,
+      "threads": 34.93333333333333
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 39.32890625,
+      "privMB": 101.65078125,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 39.3984375,
+      "gpuSharedMB": 2.50390625,
+      "gpuCommitMB": 43.26171875,
+      "gpuEngPct": 0,
+      "handles": 619.6,
+      "threads": 47.93333333333333
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.71484375,
+      "privMB": 2.921875,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 176,
+      "threads": 8
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 61.51354166666667,
+      "privMB": 44.71302083333333,
+      "cpuCorePct": 0.6106117663777179,
+      "cpuTotalPct": 0.038163235398607366,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1478,
+      "threads": 60.86666666666667
+     },
+     "renderer": {
+      "n": 1,
+      "wsMB": 47.51770833333333,
+      "privMB": 191.7,
+      "cpuCorePct": 1.2767336933352282,
+      "cpuTotalPct": 0.07979585583345176,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 359.8666666666667,
+      "threads": 28
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 248.328125,
+      "privMB": 379.32447916666666,
+      "cpuCorePct": 2.831018189569419,
+      "cpuTotalPct": 0.1769386368480887,
+      "gpuDedMB": 39.3984375,
+      "gpuSharedMB": 2.50390625,
+      "gpuCommitMB": 43.26171875,
+      "gpuEngPct": 0,
+      "handles": 3667.4666666666667,
+      "threads": 229.73333333333332
+     }
+    },
+    "procs": [
+     {
+      "pid": 33272,
+      "role": "crashpad-handler",
+      "wsMB": 12.71484375,
+      "privMB": 2.921875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 24824,
+      "role": "gpu-process",
+      "wsMB": 39.32890625,
+      "privMB": 101.65078125,
+      "cpuCorePct": 0,
+      "gpuDedMB": 39.3984375,
+      "ticks": 15
+     },
+     {
+      "pid": 34068,
+      "role": "renderer",
+      "wsMB": 47.51770833333333,
+      "privMB": 191.7,
+      "cpuCorePct": 1.2767336933352282,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 31192,
+      "role": "utility",
+      "wsMB": 21.297395833333333,
+      "privMB": 15.633072916666666,
+      "cpuCorePct": 0.11102032115958506,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 33208,
+      "role": "utility",
+      "wsMB": 8.296875,
+      "privMB": 7.54296875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 27964,
+      "role": "window",
+      "wsMB": 57.658854166666664,
+      "privMB": 15.162760416666666,
+      "cpuCorePct": 0.8326524086968878,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 8400,
+      "role": "wv-browser",
+      "wsMB": 61.51354166666667,
+      "privMB": 44.71302083333333,
+      "cpuCorePct": 0.6106117663777177,
+      "gpuDedMB": null,
+      "ticks": 15
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 82.0408878326416,
+     "jsHeapTotalMB": 90.79203224182129,
+     "canvases": 0,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 1054,
+     "visibility": "hidden",
+     "wizard": false,
+     "statusBarMB": 379.35546875
+    }
+   }
+  },
+  {
+   "a": {
+    "perRole": {
+     "renderer": {
+      "n": 1,
+      "wsMB": 232.53046875,
+      "privMB": 178.44973958333333,
+      "cpuCorePct": 1.1105188343994314,
+      "cpuTotalPct": 0.06940742714996447,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 375.53333333333336,
+      "threads": 29.133333333333333
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 14.703125,
+      "privMB": 3.1705729166666665,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 198,
+      "threads": 12
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 66.40703125,
+      "privMB": 23.127604166666668,
+      "cpuCorePct": 0.1665778251599147,
+      "cpuTotalPct": 0.010411114072494669,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 601.3333333333334,
+      "threads": 36
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 120.9171875,
+      "privMB": 42.497395833333336,
+      "cpuCorePct": 1.0549928926794598,
+      "cpuTotalPct": 0.06593705579246624,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1272.5333333333333,
+      "threads": 55.333333333333336
+     },
+     "window": {
+      "n": 1,
+      "wsMB": 56.75989583333333,
+      "privMB": 14.30703125,
+      "cpuCorePct": 2.7762970859985785,
+      "cpuTotalPct": 0.17351856787491116,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 408.73333333333335,
+      "threads": 50.2
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 97.92447916666667,
+      "privMB": 120.34973958333333,
+      "cpuCorePct": 0.27762970859985786,
+      "cpuTotalPct": 0.017351856787491116,
+      "gpuDedMB": 54.94140625,
+      "gpuSharedMB": 3.58203125,
+      "gpuCommitMB": 59.1640625,
+      "gpuEngPct": 0.002998586810190921,
+      "handles": 630,
+      "threads": 49
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 589.2421875,
+      "privMB": 381.90208333333334,
+      "cpuCorePct": 5.386016346837242,
+      "cpuTotalPct": 0.33662602167732764,
+      "gpuDedMB": 54.94140625,
+      "gpuSharedMB": 3.58203125,
+      "gpuCommitMB": 59.1640625,
+      "gpuEngPct": 0.002998586810190921,
+      "handles": 3486.133333333333,
+      "threads": 231.66666666666666
+     }
+    },
+    "procs": [
+     {
+      "pid": 20292,
+      "role": "crashpad-handler",
+      "wsMB": 14.703125,
+      "privMB": 3.1705729166666665,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 20044,
+      "role": "gpu-process",
+      "wsMB": 97.92447916666667,
+      "privMB": 120.34973958333333,
+      "cpuCorePct": 0.27762970859985786,
+      "gpuDedMB": 54.94140625,
+      "ticks": 15
+     },
+     {
+      "pid": 29548,
+      "role": "renderer",
+      "wsMB": 232.53046875,
+      "privMB": 178.44973958333333,
+      "cpuCorePct": 1.1105188343994314,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 32980,
+      "role": "utility",
+      "wsMB": 46.23802083333333,
+      "privMB": 15.66015625,
+      "cpuCorePct": 0.1665778251599147,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 28324,
+      "role": "utility",
+      "wsMB": 20.169010416666666,
+      "privMB": 7.467447916666667,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 36432,
+      "role": "window",
+      "wsMB": 56.75989583333333,
+      "privMB": 14.30703125,
+      "cpuCorePct": 2.7762970859985785,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 27408,
+      "role": "wv-browser",
+      "wsMB": 120.9171875,
+      "privMB": 42.497395833333336,
+      "cpuCorePct": 1.0549928926794598,
+      "gpuDedMB": null,
+      "ticks": 15
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 75.84464454650879,
+     "jsHeapTotalMB": 77.9412784576416,
+     "canvases": 5,
+     "panes": 2,
+     "shownPanes": 2,
+     "domNodes": 442,
+     "visibility": "visible",
+     "wizard": false,
+     "statusBarMB": 370.42578125
+    }
+   },
+   "b-early": {
+    "perRole": {
+     "renderer": {
+      "n": 1,
+      "wsMB": 245.3095703125,
+      "privMB": 189.5166015625,
+      "cpuCorePct": 6.24167776298269,
+      "cpuTotalPct": 0.3901048601864181,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 376,
+      "threads": 28
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.79296875,
+      "privMB": 3.06640625,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 190,
+      "threads": 12
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 66.2978515625,
+      "privMB": 22.7275390625,
+      "cpuCorePct": 0.5201398135818909,
+      "cpuTotalPct": 0.03250873834886818,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 600,
+      "threads": 35
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 122.3935546875,
+      "privMB": 42.29296875,
+      "cpuCorePct": 1.300349533954727,
+      "cpuTotalPct": 0.08127184587217044,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1269,
+      "threads": 54
+     },
+     "window": {
+      "n": 1,
+      "wsMB": 57.880859375,
+      "privMB": 15.5166015625,
+      "cpuCorePct": 2.8607689747003997,
+      "cpuTotalPct": 0.17879806091877498,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 428,
+      "threads": 54
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 103.2041015625,
+      "privMB": 146.60546875,
+      "cpuCorePct": 0.5201398135818909,
+      "cpuTotalPct": 0.03250873834886818,
+      "gpuDedMB": 74.2734375,
+      "gpuSharedMB": 5.51953125,
+      "gpuCommitMB": 80.43359375,
+      "gpuEngPct": 0.0031584713469388088,
+      "handles": 637,
+      "threads": 49
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 607.87890625,
+      "privMB": 419.7255859375,
+      "cpuCorePct": 11.443075898801599,
+      "cpuTotalPct": 0.7151922436750999,
+      "gpuDedMB": 74.2734375,
+      "gpuSharedMB": 5.51953125,
+      "gpuCommitMB": 80.43359375,
+      "gpuEngPct": 0.0031584713469388088,
+      "handles": 3500,
+      "threads": 232
+     }
+    },
+    "procs": [
+     {
+      "pid": 20292,
+      "role": "crashpad-handler",
+      "wsMB": 12.79296875,
+      "privMB": 3.06640625,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 20044,
+      "role": "gpu-process",
+      "wsMB": 103.2041015625,
+      "privMB": 146.60546875,
+      "cpuCorePct": 0.5201398135818909,
+      "gpuDedMB": 74.2734375,
+      "ticks": 4
+     },
+     {
+      "pid": 29548,
+      "role": "renderer",
+      "wsMB": 245.3095703125,
+      "privMB": 189.5166015625,
+      "cpuCorePct": 6.24167776298269,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 32980,
+      "role": "utility",
+      "wsMB": 46.0361328125,
+      "privMB": 15.2978515625,
+      "cpuCorePct": 0.5201398135818909,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 28324,
+      "role": "utility",
+      "wsMB": 20.26171875,
+      "privMB": 7.4296875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 36432,
+      "role": "window",
+      "wsMB": 57.880859375,
+      "privMB": 15.5166015625,
+      "cpuCorePct": 2.8607689747003997,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 27408,
+      "role": "wv-browser",
+      "wsMB": 122.3935546875,
+      "privMB": 42.29296875,
+      "cpuCorePct": 1.300349533954727,
+      "gpuDedMB": null,
+      "ticks": 4
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 86.86163139343262,
+     "jsHeapTotalMB": 89.0047435760498,
+     "canvases": 9,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 570,
+     "visibility": "visible",
+     "wizard": false,
+     "statusBarMB": 410.58984375
+    }
+   },
+   "b": {
+    "perRole": {
+     "renderer": {
+      "n": 1,
+      "wsMB": 240.05833333333334,
+      "privMB": 185.40260416666666,
+      "cpuCorePct": 1.0006760122393794,
+      "cpuTotalPct": 0.06254225076496121,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 371.06666666666666,
+      "threads": 27.733333333333334
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.753385416666667,
+      "privMB": 2.994010416666667,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 186,
+      "threads": 10.2
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 66.38984375,
+      "privMB": 22.7328125,
+      "cpuCorePct": 0.27796555895538316,
+      "cpuTotalPct": 0.017372847434711448,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 598.4,
+      "threads": 33.2
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 123.22864583333333,
+      "privMB": 41.91223958333333,
+      "cpuCorePct": 0.8894897886572263,
+      "cpuTotalPct": 0.05559311179107664,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1266.2,
+      "threads": 52.4
+     },
+     "window": {
+      "n": 1,
+      "wsMB": 57.876302083333336,
+      "privMB": 15.4875,
+      "cpuCorePct": 2.890841813135985,
+      "cpuTotalPct": 0.18067761332099908,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 425.2,
+      "threads": 52.6
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 98.28072916666666,
+      "privMB": 127.475,
+      "cpuCorePct": 0.3335586707464598,
+      "cpuTotalPct": 0.020847416921653737,
+      "gpuDedMB": 60.1171875,
+      "gpuSharedMB": 3.83203125,
+      "gpuCommitMB": 64.58984375,
+      "gpuEngPct": 0.0030404761674747544,
+      "handles": 628.3333333333334,
+      "threads": 47.53333333333333
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 598.5872395833334,
+      "privMB": 396.00416666666666,
+      "cpuCorePct": 5.392531843734433,
+      "cpuTotalPct": 0.3370332402334021,
+      "gpuDedMB": 60.1171875,
+      "gpuSharedMB": 3.83203125,
+      "gpuCommitMB": 64.58984375,
+      "gpuEngPct": 0.0030404761674747544,
+      "handles": 3475.2,
+      "threads": 223.66666666666666
+     }
+    },
+    "procs": [
+     {
+      "pid": 20292,
+      "role": "crashpad-handler",
+      "wsMB": 12.753385416666667,
+      "privMB": 2.994010416666667,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 20044,
+      "role": "gpu-process",
+      "wsMB": 98.28072916666666,
+      "privMB": 127.475,
+      "cpuCorePct": 0.3335586707464598,
+      "gpuDedMB": 60.1171875,
+      "ticks": 15
+     },
+     {
+      "pid": 29548,
+      "role": "renderer",
+      "wsMB": 240.05833333333334,
+      "privMB": 185.40260416666666,
+      "cpuCorePct": 1.0006760122393794,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 32980,
+      "role": "utility",
+      "wsMB": 46.128125,
+      "privMB": 15.303125,
+      "cpuCorePct": 0.27796555895538316,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 28324,
+      "role": "utility",
+      "wsMB": 20.26171875,
+      "privMB": 7.4296875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 36432,
+      "role": "window",
+      "wsMB": 57.876302083333336,
+      "privMB": 15.4875,
+      "cpuCorePct": 2.890841813135985,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 27408,
+      "role": "wv-browser",
+      "wsMB": 123.22864583333333,
+      "privMB": 41.91223958333333,
+      "cpuCorePct": 0.8894897886572263,
+      "gpuDedMB": null,
+      "ticks": 15
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 89.551926612854,
+     "jsHeapTotalMB": 92.26596927642822,
+     "canvases": 5,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 778,
+     "visibility": "visible",
+     "wizard": false,
+     "statusBarMB": 396.6484375
+    }
+   },
+   "c-early": {
+    "perRole": {
+     "renderer": {
+      "n": 1,
+      "wsMB": 238.5439453125,
+      "privMB": 184.662109375,
+      "cpuCorePct": 0.7780082987551868,
+      "cpuTotalPct": 0.04862551867219918,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 361,
+      "threads": 28
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.73046875,
+      "privMB": 2.94921875,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 182,
+      "threads": 9
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 66.4375,
+      "privMB": 22.71484375,
+      "cpuCorePct": 0.25933609958506226,
+      "cpuTotalPct": 0.01620850622406639,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 594,
+      "threads": 34
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 136.7802734375,
+      "privMB": 45.6435546875,
+      "cpuCorePct": 1.037344398340249,
+      "cpuTotalPct": 0.06483402489626557,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1499.5,
+      "threads": 67
+     },
+     "window": {
+      "n": 1,
+      "wsMB": 57.67578125,
+      "privMB": 15.21875,
+      "cpuCorePct": 1.2966804979253113,
+      "cpuTotalPct": 0.08104253112033195,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 421,
+      "threads": 51
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 94.33984375,
+      "privMB": 108.4140625,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 44.953125,
+      "gpuSharedMB": 3.31640625,
+      "gpuCommitMB": 48.91015625,
+      "gpuEngPct": 0,
+      "handles": 613,
+      "threads": 47
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 606.5078125,
+      "privMB": 379.6025390625,
+      "cpuCorePct": 3.3713692946058096,
+      "cpuTotalPct": 0.2107105809128631,
+      "gpuDedMB": 44.953125,
+      "gpuSharedMB": 3.31640625,
+      "gpuCommitMB": 48.91015625,
+      "gpuEngPct": 0,
+      "handles": 3670.5,
+      "threads": 236
+     }
+    },
+    "procs": [
+     {
+      "pid": 20292,
+      "role": "crashpad-handler",
+      "wsMB": 12.73046875,
+      "privMB": 2.94921875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 20044,
+      "role": "gpu-process",
+      "wsMB": 94.33984375,
+      "privMB": 108.4140625,
+      "cpuCorePct": 0,
+      "gpuDedMB": 44.953125,
+      "ticks": 4
+     },
+     {
+      "pid": 29548,
+      "role": "renderer",
+      "wsMB": 238.5439453125,
+      "privMB": 184.662109375,
+      "cpuCorePct": 0.7780082987551866,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 32980,
+      "role": "utility",
+      "wsMB": 46.17578125,
+      "privMB": 15.28515625,
+      "cpuCorePct": 0.2593360995850622,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 28324,
+      "role": "utility",
+      "wsMB": 20.26171875,
+      "privMB": 7.4296875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 36432,
+      "role": "window",
+      "wsMB": 57.67578125,
+      "privMB": 15.21875,
+      "cpuCorePct": 1.296680497925311,
+      "gpuDedMB": null,
+      "ticks": 4
+     },
+     {
+      "pid": 27408,
+      "role": "wv-browser",
+      "wsMB": 136.7802734375,
+      "privMB": 45.6435546875,
+      "cpuCorePct": 1.0373443983402488,
+      "gpuDedMB": null,
+      "ticks": 4
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 86.38674259185791,
+     "jsHeapTotalMB": 90.5257158279419,
+     "canvases": 5,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 777,
+     "visibility": "hidden",
+     "wizard": false,
+     "statusBarMB": 379.9296875
+    }
+   },
+   "c": {
+    "perRole": {
+     "renderer": {
+      "n": 1,
+      "wsMB": 48.27291666666667,
+      "privMB": 189.36145833333333,
+      "cpuCorePct": 1.0000355568197983,
+      "cpuTotalPct": 0.06250222230123739,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 359.8666666666667,
+      "threads": 28
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.6953125,
+      "privMB": 2.8984375,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 176,
+      "threads": 8
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 29.598177083333333,
+      "privMB": 22.643229166666668,
+      "cpuCorePct": 0.1666725928032997,
+      "cpuTotalPct": 0.010417037050206232,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 591.4666666666667,
+      "threads": 32.86666666666667
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 62.69322916666667,
+      "privMB": 45.17760416666667,
+      "cpuCorePct": 0.38890271654103264,
+      "cpuTotalPct": 0.02430641978381454,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 1473.4666666666667,
+      "threads": 60.333333333333336
+     },
+     "window": {
+      "n": 1,
+      "wsMB": 57.67135416666667,
+      "privMB": 15.167447916666667,
+      "cpuCorePct": 1.0555930877542314,
+      "cpuTotalPct": 0.06597456798463947,
+      "gpuDedMB": 0,
+      "gpuSharedMB": 0,
+      "gpuCommitMB": 0,
+      "gpuEngPct": 0,
+      "handles": 420.4,
+      "threads": 50
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 37.45729166666667,
+      "privMB": 101.42057291666667,
+      "cpuCorePct": 0,
+      "cpuTotalPct": 0,
+      "gpuDedMB": 39.44140625,
+      "gpuSharedMB": 3.19140625,
+      "gpuCommitMB": 43.3984375,
+      "gpuEngPct": 0,
+      "handles": 611.8666666666667,
+      "threads": 47
+     },
+     "total": {
+      "n": 7,
+      "wsMB": 248.38828125,
+      "privMB": 376.66875,
+      "cpuCorePct": 2.6112039539183622,
+      "cpuTotalPct": 0.16320024711989764,
+      "gpuDedMB": 39.44140625,
+      "gpuSharedMB": 3.19140625,
+      "gpuCommitMB": 43.3984375,
+      "gpuEngPct": 0,
+      "handles": 3633.0666666666666,
+      "threads": 226.2
+     }
+    },
+    "procs": [
+     {
+      "pid": 20292,
+      "role": "crashpad-handler",
+      "wsMB": 12.6953125,
+      "privMB": 2.8984375,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 20044,
+      "role": "gpu-process",
+      "wsMB": 37.45729166666667,
+      "privMB": 101.42057291666667,
+      "cpuCorePct": 0,
+      "gpuDedMB": 39.44140625,
+      "ticks": 15
+     },
+     {
+      "pid": 29548,
+      "role": "renderer",
+      "wsMB": 48.27291666666667,
+      "privMB": 189.36145833333333,
+      "cpuCorePct": 1.000035556819798,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 32980,
+      "role": "utility",
+      "wsMB": 21.493489583333332,
+      "privMB": 15.213541666666666,
+      "cpuCorePct": 0.16667259280329969,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 28324,
+      "role": "utility",
+      "wsMB": 8.1046875,
+      "privMB": 7.4296875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 36432,
+      "role": "window",
+      "wsMB": 57.67135416666667,
+      "privMB": 15.167447916666667,
+      "cpuCorePct": 1.0555930877542312,
+      "gpuDedMB": null,
+      "ticks": 15
+     },
+     {
+      "pid": 27408,
+      "role": "wv-browser",
+      "wsMB": 62.69322916666667,
+      "privMB": 45.17760416666667,
+      "cpuCorePct": 0.3889027165410326,
+      "gpuDedMB": null,
+      "ticks": 15
+     }
+    ],
+    "page": {
+     "jsHeapUsedMB": 82.55045509338379,
+     "jsHeapTotalMB": 91.04196357727051,
+     "canvases": 0,
+     "panes": 4,
+     "shownPanes": 2,
+     "domNodes": 1054,
+     "visibility": "hidden",
+     "wizard": false,
+     "statusBarMB": 377.1484375
+    }
+   }
+  }
+ ]
+}

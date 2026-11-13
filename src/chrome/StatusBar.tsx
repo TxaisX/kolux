@@ -84,7 +84,7 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
         </button>
       )}
       {shows("memory") && (
-        <button className="item res-open" title="Memory this app holds right now. Click for every session's memory and CPU" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <button className="item res-open" title="Memory Kolux itself holds right now: its window and web view, not the agents or shells in the panes. Click for every session's memory and CPU" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <Chip size={12} />
           {formatMemory(memory)}
         </button>
