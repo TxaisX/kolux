@@ -1617,6 +1617,13 @@ impl Terminals {
         lock(&self.inner).warming.remove(&warm_key(dir));
     }
 
+    /// Kept-warm shell: has session `id` printed the console host's cursor question yet (`warm_answered`)?
+    #[cfg(windows)]
+    fn asked_cursor(&self, id: u32) -> bool {
+        let mut inner = lock(&self.inner);
+        inner.snaps.get_mut(&id).is_some_and(|s| asks_cursor(s.tail.make_contiguous()))
+    }
+
     /// Kept-warm shell switched off: every warm shell ends. Nothing to do (the usual case) costs one lock.
     pub fn drop_warm(&self) {
         let gone: Vec<Taken> = {
@@ -2250,6 +2257,7 @@ fn warm_like(program: Option<&str>, args: &[String], env: &[(String, String)]) -
 
 /// Kept-warm shell: starts `dir`'s next warm shell off the caller's thread (a shell start takes about 0.8 s),
 /// unless one is ready or starting. A plain shell without a pane: no key, no hooks identity, no history file.
+/// It is offered to a pane only once `warm_answered` says it is past the console host's first question.
 fn keep_warm(app: &AppHandle, terminals: &Terminals, dir: String, cols: u16, rows: u16, shell: Option<(String, Vec<String>)>, per_worktree_history: bool) {
     if !terminals.warm_wanted(&dir) {
         return;
@@ -2257,10 +2265,53 @@ fn keep_warm(app: &AppHandle, terminals: &Terminals, dir: String, cols: u16, row
     let (app, terminals) = (app.clone(), terminals.clone());
     std::thread::spawn(move || {
         match terminals.spawn(app, cols, rows, Some(dir.clone()), None, Vec::new(), Vec::new(), Vec::new(), None, None, shell.clone(), per_worktree_history, None) {
-            Ok(id) => terminals.warm_started(&dir, id, shell),
+            Ok(id) if warm_answered(&terminals, id) => terminals.warm_started(&dir, id, shell),
+            Ok(id) => {
+                let _ = terminals.kill(id);
+                terminals.warm_failed(&dir);
+            }
             Err(_) => terminals.warm_failed(&dir),
         }
     });
+}
+
+/// The console host's question "where is the cursor?" (ESC [6n).
+#[cfg(any(windows, test))]
+const CURSOR_QUESTION: &[u8] = b"\x1b[6n";
+
+/// Does this output hold the console host's cursor question?
+#[cfg(any(windows, test))]
+fn asks_cursor(out: &[u8]) -> bool {
+    out.windows(CURSOR_QUESTION.len()).any(|w| w == CURSOR_QUESTION)
+}
+
+/// Kept-warm shell: how long a new warm shell may take to ask that question before it is ended instead of offered.
+#[cfg(windows)]
+const WARM_QUESTION_WAIT: Duration = Duration::from_secs(10);
+
+/// Kept-warm shell: on Windows the console host asks where the cursor is (ESC [6n) before the shell draws
+/// anything, and waits for the answer a pane's terminal gives. A warm shell has no pane, so it sat at that
+/// question until a pane took it and only then started its prompt: on GitHub's windows-latest runner new
+/// terminals opened later with the setting on than off (NATIVE-TERMINAL.md). So it is answered here, the way a
+/// blank screen answers it (top left), before the shell is offered; the pane that takes it leaves that one
+/// question out of what it redraws (`warmSnapshot` in reattach.ts), so it is not answered twice. False when the
+/// question did not come in time: such a shell is ended rather than offered with the question still open.
+#[cfg(windows)]
+fn warm_answered(terminals: &Terminals, id: u32) -> bool {
+    let until = Instant::now() + WARM_QUESTION_WAIT;
+    while Instant::now() < until {
+        if terminals.asked_cursor(id) {
+            return terminals.reply(id, "\x1b[1;1R").is_ok();
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    false
+}
+
+/// Elsewhere no console host stands between the shell and the pane, so there is no question to answer first.
+#[cfg(not(windows))]
+fn warm_answered(_: &Terminals, _: u32) -> bool {
+    true
 }
 
 /// DT-C248 review: what a pane still running a terminal redraws from when it is remounted in another cell:
@@ -2633,6 +2684,17 @@ mod tests {
         assert!(!warm_like(Some("node"), &[], &[]));
         assert!(!warm_like(None, &["-NoLogo".to_string()], &[]));
         assert!(!warm_like(None, &[], &[("A".to_string(), "1".to_string())]));
+    }
+
+    #[test]
+    fn a_warm_shell_waits_for_the_console_hosts_cursor_question() {
+        // What a warm shell printed on GitHub's windows-latest runner before any pane took it: the question alone,
+        // because the console host waits for its answer before the shell draws anything.
+        assert!(asks_cursor(b"\x1b[6n"));
+        assert!(asks_cursor(b"\x1b[?9001h\x1b[?1004h\x1b[6n"));
+        assert!(!asks_cursor(b""));
+        assert!(!asks_cursor(b"\x1b[6"));
+        assert!(!asks_cursor(b"PS C:\\> "));
     }
 
     #[test]

@@ -42,7 +42,7 @@ import { notePrinted } from "./printedAddresses";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
-import { fromThisService, needsSize, orphanOf, reattach, warmAskOf, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
+import { fromThisService, needsSize, orphanOf, reattach, warmAskOf, warmSnapshot, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
 import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { frameOutputs, type FrameOutput } from "./frame";
@@ -1195,13 +1195,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // what it left on (mouse capture first) is turned off, so a plain drag selects again in the new shell.
         if (keepInView && back?.kind !== "attached") term.write(resetAfterExit(modeView(term.modes), term.buffer.active.type === "alternate"));
         // Kept-warm shell: the warm shell printed its prompt before this pane existed; its snapshot draws it and
-        // sets the floor, so the chunks after it are drawn once.
+        // sets the floor, so the chunks after it are drawn once. The console host's cursor question in it was
+        // already answered by the service, so it is left out (warmSnapshot).
         if (warmAsk !== null && back?.kind === "attached") {
           const snap = await invoke<LiveSnapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
           if (!alive) return;
           if (snap) {
             resync.took(snap.id, snap);
-            applySnapshot(term, decodeOutput(snap.data));
+            applySnapshot(term, warmSnapshot(decodeOutput(snap.data), keys.current.platform));
           }
         }
         await start(program, args, keepInView, back);

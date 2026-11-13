@@ -72,3 +72,22 @@ export function warmAskOf(p: { on: boolean; key: number | undefined; restored: b
   const plain = p.program === null && p.args.length === 0 && !p.env?.length && p.typed === undefined && p.agent === "shell" && !p.account;
   return p.on && p.key !== undefined && !p.restored && !p.moved && plain && p.cwd ? { cwd: p.cwd, cols, rows } : null;
 }
+
+/** The console host's cursor question (ESC [6n). */
+const CURSOR_QUESTION = [0x1b, 0x5b, 0x36, 0x6e];
+
+/** Kept-warm shell on Windows: the service answered the console host's cursor question before it offered the
+ *  shell (terminal.rs `warm_answered`), so the pane that takes it redraws the snapshot without that one question.
+ *  xterm would answer it again, and that second answer would reach the shell at its prompt like a key press. */
+export function warmSnapshot(bytes: Uint8Array, platform: string): Uint8Array {
+  if (platform !== "win32") return bytes;
+  for (let i = 0; i + CURSOR_QUESTION.length <= bytes.length; i++) {
+    if (CURSOR_QUESTION.every((b, k) => bytes[i + k] === b)) {
+      const out = new Uint8Array(bytes.length - CURSOR_QUESTION.length);
+      out.set(bytes.subarray(0, i));
+      out.set(bytes.subarray(i + CURSOR_QUESTION.length), i);
+      return out;
+    }
+  }
+  return bytes;
+}

@@ -1,6 +1,6 @@
 // APP-052 (T-075): a pane takes its terminal back from the run of the service that owns it, over a fake service.
 import { describe, expect, it } from "vitest";
-import { type Attach, fromThisService, LIMIT_MS, needsSize, orphanOf, reattach, type ServiceInfo, warmAskOf } from "./reattach";
+import { type Attach, fromThisService, LIMIT_MS, needsSize, orphanOf, reattach, type ServiceInfo, warmAskOf, warmSnapshot } from "./reattach";
 
 /** A fake terminal service: `down` failed answers before it comes up, then `info`; attach answers from `answers`. */
 function fake(info: ServiceInfo, answer: Partial<Attach> = {}, down = 0) {
@@ -175,5 +175,18 @@ describe("kept-warm shell", () => {
     expect(warmAskOf({ ...base, agent: "codex" }, 80, 24)).toBeNull();
     expect(warmAskOf({ ...base, account: "work" } as never, 80, 24)).toBeNull();
     expect(warmAskOf({ ...base, cwd: null } as never, 80, 24)).toBeNull();
+  });
+});
+
+describe("kept-warm shell: the snapshot a pane draws when it takes a warm shell", () => {
+  const text = (b: Uint8Array) => new TextDecoder().decode(b);
+  const bytes = (s: string) => new TextEncoder().encode(s);
+  it("on Windows leaves out the cursor question the service already answered, once, and keeps the prompt", () => {
+    expect(text(warmSnapshot(bytes("\x1b[6nPS C:\\work> "), "win32"))).toBe("PS C:\\work> ");
+    expect(text(warmSnapshot(bytes("\x1b[?9001h\x1b[6nPS> \x1b[6n"), "win32"))).toBe("\x1b[?9001hPS> \x1b[6n");
+    expect(text(warmSnapshot(bytes("PS> "), "win32"))).toBe("PS> ");
+  });
+  it("elsewhere draws it as it is: no console host asked anything", () => {
+    for (const p of ["linux", "darwin"]) expect(text(warmSnapshot(bytes("\x1b[6n$ "), p))).toBe("\x1b[6n$ ");
   });
 });
