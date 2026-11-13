@@ -1,40 +1,83 @@
 // A select over Base UI's Select. The closed control is Kolux's .field box with the same chevron a native select
 // draws; the open list is a Kolux .menu with .menu-item rows (a native <select> opens the web view's own list).
 // Escape and stacking are layer.ts's: an open list inside a dialog closes alone and leaves the dialog up.
-import { useRef, useState, type ReactNode } from "react";
-import { Select as Base } from "@base-ui/react/select";
+// Base UI is read on demand (part.ts). Until it is, the closed control is drawn here as the same button Base UI draws,
+// and the first press or arrow key reads it and opens the list; a select drawn after that is Base UI's from the start.
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLayer } from "./layer";
+import { baseReady, useBase } from "./part";
 import "./ui.css";
 
 export type SelectOption = { value: string; label: ReactNode; disabled?: boolean };
 
-export function Select({ value, onChange, options, label, className = "field", disabled, title }: { value: string; onChange: (v: string) => void; options: SelectOption[]; label: string; className?: string; disabled?: boolean; title?: string }) {
+export type SelectProps = {
+  value: string;
+  onChange: (v: string) => void;
+  options: SelectOption[];
+  /** The control's accessible name. */
+  label: string;
+  /** The closed control's class (default "field", the native select's box). */
+  className?: string;
+  disabled?: boolean;
+  title?: string;
+  id?: string;
+  "data-testid"?: string;
+};
+
+const OPEN_KEYS = new Set(["ArrowDown", "ArrowUp", "Enter", " "]);
+
+const chevron = (
+  <span className="ui-select-icon" aria-hidden="true">
+    <svg width="10" height="10" viewBox="0 0 10 10">
+      <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  </span>
+);
+
+export function Select({ value, onChange, options, label, className = "field", disabled, title, id, ...p }: SelectProps) {
   const [open, setOpen] = useState(false);
+  const [woke, setWoke] = useState(baseReady);
+  const base = useBase(woke);
   const popup = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   useLayer(open, () => setOpen(false), popup);
+  // The list opened by the first press replaced the button that was pressed, so Base UI cannot hand focus back to
+  // it: on close, focus that fell to the page goes to the control.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      const now = document.activeElement;
+      if (!now || now === document.body) trigger.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open]);
+  if (base) return <base.SelectBox popup={popup} trigger={trigger} open={open} onOpen={setOpen} value={value} onChange={onChange} options={options} label={label} className={className} disabled={disabled} title={title} id={id} chevron={chevron} {...p} />;
+  const wake = () => {
+    setWoke(true);
+    setOpen(true);
+  };
   return (
-    <Base.Root value={value} onValueChange={(v) => v !== null && onChange(v as string)} items={options} open={open} onOpenChange={(next) => setOpen(next)} modal={false} disabled={disabled}>
-      <Base.Trigger className={`${className} ui-select`} aria-label={label} title={title}>
-        <Base.Value className="ui-select-value" />
-        <Base.Icon className="ui-select-icon">
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-          </svg>
-        </Base.Icon>
-      </Base.Trigger>
-      <Base.Portal>
-        <Base.Positioner className="ui-positioner" alignItemWithTrigger={false} side="bottom" align="start" sideOffset={4} collisionPadding={8}>
-          <Base.Popup ref={popup} className="menu ui-select-menu">
-            <Base.List>
-              {options.map((o) => (
-                <Base.Item key={o.value} value={o.value} disabled={o.disabled} className="menu-item">
-                  <Base.ItemText className="name">{o.label}</Base.ItemText>
-                </Base.Item>
-              ))}
-            </Base.List>
-          </Base.Popup>
-        </Base.Positioner>
-      </Base.Portal>
-    </Base.Root>
+    <button
+      ref={trigger}
+      type="button"
+      role="combobox"
+      aria-expanded={false}
+      aria-haspopup="listbox"
+      aria-label={label}
+      className={`${className} ui-select`}
+      title={title}
+      id={id}
+      disabled={disabled}
+      onClick={wake}
+      onKeyDown={(e) => {
+        if (!OPEN_KEYS.has(e.key)) return;
+        e.preventDefault();
+        wake();
+      }}
+      {...p}
+    >
+      <span className="ui-select-value">{options.find((o) => o.value === value)?.label ?? value}</span>
+      {chevron}
+    </button>
   );
 }

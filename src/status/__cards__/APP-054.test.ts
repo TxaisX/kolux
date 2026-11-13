@@ -1,9 +1,10 @@
-// APP-054 on the real ResourceManager (real grouping, formatting and End question) on the small DOM. The Rust
+// @vitest-environment happy-dom
+// APP-054 on the real ResourceManager (real grouping, formatting and End question) on a real DOM (it is a src/ui Dialog). The Rust
 // measuring (resources.rs) and Terminals::kill are stood in at the invoke boundary and proven in cards_19.rs
 // and by the in-module tests; the status-bar click that opens the popover is LIVE.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, until, withText } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, until, withText } from "../../tasks/realDom";
 import { formatMemory } from "../memory";
 
 const MB = 1024 * 1024;
@@ -27,8 +28,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   },
 }));
 
-// The small DOM has no querySelectorAll; the dialog keys (chrome/dialogFocus.ts) are proved in chrome/dialogFocus.test.ts; this card covers the rows and End.
-vi.mock("../../chrome/dialogFocus", () => ({ useDialogFocus: () => {} }));
+// The dialog keys are proved in status/resourceManagerUx.test.ts; this card covers the rows and End.
 
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};

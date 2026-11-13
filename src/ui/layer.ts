@@ -9,18 +9,30 @@ import { useEffect, useRef, type RefObject } from "react";
 import { watchEscape } from "../switcher/accounts";
 import { isTopModal, pushModal, type Modal } from "../chrome/modalStack";
 
-/** While `open`, the popup drawn into `box` is the newest layer: Escape anywhere runs `onClose` (read fresh each render). */
-export function useLayer(open: boolean, onClose: () => void, box?: RefObject<Element | null>): void {
+/** Why a popup is asked to close: Escape (caught here), a press outside it, or Base UI's own reasons (a picked row, focus
+ *  leaving a non-modal popover). A popup that steps back one level on Escape (closes a question inside it first) reads it. */
+export type CloseWhy = "escape" | "outside" | "other";
+
+/** While `open`, the popup drawn into `box` is the newest layer: Escape anywhere runs `onClose("escape")` (read fresh
+ *  each render). */
+export function useLayer(open: boolean, onClose: (why: CloseWhy) => void, box?: RefObject<Element | null>): void {
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
     if (!open) return;
     // A popup inside a hidden pane (panes stay mounted while another is shown) leaves the keys alone.
     const modal: Modal = { shown: () => !box?.current?.closest?.("[hidden]") };
+    let composing = false;
     const release = pushModal(modal);
-    const stop = watchEscape(window, () => close.current(), () => isTopModal(modal));
+    // An input method that is composing owns Escape (it drops the candidate), so the key is left to it. The note is
+    // taken first: listeners on the same target run in the order they were added.
+    const note = (e: Event) => void (composing = (e as KeyboardEvent).isComposing || (e as KeyboardEvent).keyCode === 229);
+    window.addEventListener("keydown", note, { capture: true });
+    const stopNote = () => window.removeEventListener("keydown", note, { capture: true });
+    const stop = watchEscape(window, () => close.current("escape"), () => isTopModal(modal) && !composing);
     return () => {
       stop();
+      stopNote();
       release();
     };
   }, [open, box]);

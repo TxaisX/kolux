@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 import { expect, test, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { createElement } from "react";
 import StatusBar from "./StatusBar";
 import { readStatusBar, STATUS_ITEMS, toggleItem } from "./statusItems";
-import { FakeNode, find, fire, installDom, mount, until } from "../tasks/fakeDom";
+import { byText, find, fire, installDom, mount, until } from "../tasks/realDom";
 
 test("VIEW-096: everything shows until something is hidden", () => {
   expect(readStatusBar({})).toEqual({ visible: true, hidden: [] });
@@ -34,18 +35,25 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => null }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));
 
 test("T-710: Shift+F10 / the Menu key on a focused status-bar item opens the items menu where the engine puts it", async () => {
-  const { doc, win } = installDom();
-  Object.assign(win, { setInterval, clearInterval, setTimeout, clearTimeout, innerWidth: 1200, innerHeight: 800 });
-  // The menu keys look up its rows.
-  (FakeNode.prototype as unknown as Record<string, unknown>).querySelectorAll = function (this: FakeNode) {
-    return find(this, (n) => (n.attrs.role ?? "").startsWith("menuitem"));
-  };
-  const { container } = await mount(createElement(StatusBar, { terminals: 3 }), doc);
-  const item = find(container, (n) => n.attrs.class === "item res-open")[0];
+  installDom();
+  const toggled: string[] = [];
+  const { container, unmount } = await mount(createElement(StatusBar, { terminals: 3, onToggle: (id: string) => toggled.push(id) }));
+  const item = find(container, (n) => n.getAttribute("class") === "item res-open")[0];
   // The engine raises contextmenu on the focused element, with button -1 and the element's centre.
-  await fire(container, "contextmenu", item, { button: -1, clientX: 1100, clientY: 790 });
-  await until(() => find(container, (n) => n.attrs.role === "menu").length === 1, "the items menu");
-  const menu = find(container, (n) => n.attrs.role === "menu")[0];
-  expect(menu.attrs["aria-label"]).toBe("Status bar items");
-  expect([menu.style.left, menu.style.bottom]).toEqual(["960px", "14px"]);
+  await fire(container, "contextmenu", item, { button: -1, clientX: 1000, clientY: 700 });
+  await until(() => find(container, (n) => n.getAttribute("role") === "menu").length === 1, "the items menu");
+  const menu = find(container, (n) => n.getAttribute("role") === "menu")[0];
+  expect(menu.getAttribute("aria-label")).toBe("Status bar items");
+  expect(menu.classList.contains("status-menu")).toBe(true);
+  // It opens upward from the point, 4 px above it (the popup has no size on this test page, so its corner is the point).
+  const at = menu.parentElement.style;
+  await until(() => at.transform !== "", "the menu placed");
+  expect(at.transform).toBe("translate(1000px, 696px)");
+  // An item is a ticked checkbox row, and ticking one keeps the menu open for the next.
+  const memory = byText(menu, "span", "Resource Manager")[0].closest('[role="menuitemcheckbox"]');
+  expect(memory.getAttribute("aria-checked")).toBe("true");
+  await fire(container, "click", memory);
+  expect(toggled).toEqual(["memory"]);
+  expect(find(container, (n) => n.getAttribute("role") === "menu")).toHaveLength(1);
+  await unmount();
 });

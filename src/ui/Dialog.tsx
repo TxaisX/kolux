@@ -2,9 +2,10 @@
 //   viewport: a full-window layer that holds and centres the dialog (.ask-backdrop)
 //   backdrop: a layer behind a dialog that places itself (.menu-backdrop behind .about-panel)
 // Escape and stacking are Kolux's (layer.ts); focus trap, initial and final focus, aria and click-outside are Base UI's.
+// Base UI itself is read on demand (part.ts): a closed dialog costs nothing, not even its code.
 import { useRef, type HTMLAttributes, type ReactNode, type RefObject } from "react";
-import { Dialog as Base } from "@base-ui/react/dialog";
-import { useLayer } from "./layer";
+import { useLayer, type CloseWhy } from "./layer";
+import { useBase } from "./part";
 
 type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
 
@@ -12,11 +13,11 @@ export type DialogProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "childre
   /** Default true: a dialog that is mounted only while shown needs no open state. */
   open?: boolean;
   /** Escape, a click outside, or Base UI's own close all land here. */
-  onClose: () => void;
+  onClose: (why: CloseWhy) => void;
   /** The dialog's accessible name. */
   label: string;
   /** The dialog box's class, e.g. "ask" or "menu about-panel". */
-  className: string;
+  className?: string;
   viewport?: string;
   backdrop?: string;
   /** Draw as an alert dialog: a question that needs an answer. */
@@ -27,34 +28,17 @@ export type DialogProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "childre
   initialFocus?: Focus;
   /** Where focus goes on close (default: what had it before the dialog opened). */
   finalFocus?: Focus;
+  /** The dialog box, for a caller that moves focus to it (a busy dialog whose buttons are all off). */
+  boxRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 };
 
-export function Dialog({ open = true, onClose, label, className, viewport, backdrop, alert = false, modal = true, initialFocus, finalFocus, children, ...rest }: DialogProps) {
-  const popup = useRef<HTMLDivElement>(null);
+export function Dialog({ open = true, onClose, alert = false, modal = true, boxRef, ...p }: DialogProps) {
+  const own = useRef<HTMLDivElement>(null);
+  const popup = boxRef ?? own;
   useLayer(open, onClose, popup);
-  const box = (
-    <Base.Popup
-      ref={popup}
-      className={className}
-      role={alert ? "alertdialog" : "dialog"}
-      aria-label={label}
-      aria-modal={modal === false ? undefined : true}
-      initialFocus={initialFocus as never}
-      finalFocus={finalFocus as never}
-      {...rest}
-    >
-      {children}
-    </Base.Popup>
-  );
-  return (
-    <Base.Root open={open} modal={modal} onOpenChange={(next) => !next && onClose()}>
-      <Base.Portal>
-        {backdrop && <Base.Backdrop className={backdrop} />}
-        {viewport ? <Base.Viewport className={viewport}>{box}</Base.Viewport> : box}
-      </Base.Portal>
-    </Base.Root>
-  );
+  const base = useBase(open);
+  return base && open ? <base.DialogBox popup={popup} onClose={onClose} alert={alert} modal={modal} {...p} /> : null;
 }
 
 /** A question that needs an answer before work goes on (an alert dialog). */

@@ -3,7 +3,6 @@ import { renderToString } from "react-dom/server";
 import { expect, test, vi } from "vitest";
 import { STATUSES_FAILED } from "../onboarding/firstRun";
 import { GrokCardView, GrokKeyDialog, grokDisconnect, grokHeadline, grokState, type GrokView } from "./GrokCard";
-import Ask from "../chrome/Ask";
 import { CodexCardView, codexDisconnect, codexState, type CodexView } from "./CodexCard";
 import { ClaudeCardView, claudeDisconnect } from "./SettingsPage";
 import type { KeyStatus } from "./claudeKey";
@@ -139,13 +138,7 @@ test("a connected Codex or Grok card shows Manage and Disconnect, and Disconnect
   expect(claudeDisconnect.body).toContain("1-year key");
 });
 
-test("the Disconnect question asks with Cancel, or only explains with a single OK", () => {
-  const ask = (confirm: string | null) => renderToString(createElement(Ask, { title: "t", body: "b", confirm, onConfirm: () => {}, onCancel: () => {} }));
-  expect(ask("Disconnect")).toContain(">Cancel<");
-  expect(ask("Disconnect")).toContain(">Disconnect<");
-  expect(ask(null)).toContain(">OK<");
-  expect(ask(null)).not.toContain(">Cancel<");
-});
+// The Disconnect question is chrome/Ask: Ask.test.ts proves it asks with Cancel, or only explains with a single OK.
 
 test("ACCT-035 (FIX-3): when the first read fails the Grok card still shows, named, with the read-failure line; with no error it waits blank", () => {
   const h = renderToString(createElement(GrokCardView, { view: null, pending: null, error: STATUSES_FAILED, onAction: () => {} }));

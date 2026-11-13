@@ -77,11 +77,6 @@ export function laneRange(scroll: number, viewport: number, width: number, count
   return windowRange(scroll, viewport, width + LANE_GAP, count, 1);
 }
 
-/** PROJ-085: Escape closes the board only when no popover (the status menu) is open; that one closes first. */
-export function escapeAction(popoverOpen: boolean): "close-popover" | "close-board" {
-  return popoverOpen ? "close-popover" : "close-board";
-}
-
 /** PROJ-085: the search starts empty every time the board opens. */
 export const FRESH_QUERY = "";
 

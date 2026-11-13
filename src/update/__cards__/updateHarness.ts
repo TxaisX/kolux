@@ -1,8 +1,9 @@
-// Harness for the APP-024..027 cards: the real UpdateCenter on the small DOM under fake time, the back end
-// (update_status / update_check / update_download / update_restart) stood in by a scripted feed.
+// Harness for the APP-024..027 cards: the real UpdateCenter on a real DOM (happy-dom: its Restart question is the shared
+// Ask, a src/ui dialog) under fake time, the back end (update_status / update_check / update_download / update_restart)
+// stood in by a scripted feed. A test that uses it starts with `// @vitest-environment happy-dom`.
 import { act, createElement } from "react";
 import { vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount } from "../../tasks/realDom";
 
 export type Info = { version: string; currentVersion: string; notes: string[] };
 export const T0 = Date.UTC(2026, 9, 26, 12, 0, 0);
@@ -40,22 +41,10 @@ export function online(on: boolean) {
   Object.defineProperty(globalThis, "navigator", { value: { onLine: on, platform: "Win32", userAgent: "node" }, configurable: true });
 }
 
-/** Fake time, a window that carries events and timers, and the connection up. */
+/** Fake time, the page's own window (its events and timers), and the connection up. */
 export function installUpdateDom(): FakeDocument {
   vi.useFakeTimers({ now: T0, toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
   const dom = installDom();
-  const bus = new Map<string, Set<(e: Event) => void>>();
-  Object.assign(dom.win, {
-    setTimeout: (...a: Parameters<typeof setTimeout>) => globalThis.setTimeout(...a),
-    clearTimeout: (h: number) => globalThis.clearTimeout(h),
-    setInterval: (...a: Parameters<typeof setInterval>) => globalThis.setInterval(...a),
-    clearInterval: (h: number) => globalThis.clearInterval(h),
-    addEventListener: (t: string, f: (e: Event) => void) => void (bus.get(t) ?? bus.set(t, new Set()).get(t)!).add(f),
-    removeEventListener: (t: string, f: (e: Event) => void) => void bus.get(t)?.delete(f),
-    dispatchEvent: (e: Event) => (bus.get(e.type)?.forEach((f) => f(e)), true),
-  });
-  const proto = (dom.doc.createElement("div") as FakeNode).constructor.prototype as Record<string, unknown>;
-  proto.getAnimations = () => [];
   online(true);
   feed.status = { enabled: true, reason: null, currentVersion: "0.1.0", lastCheckAt: T0, dismissedVersion: null, tipDone: false, ready: null };
   Object.assign(feed, { latest: null, checkError: null, holdDownload: false, holdCheck: false, releaseCheck: null, calls: [], release: null });

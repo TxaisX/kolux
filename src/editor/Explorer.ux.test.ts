@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-702 (DT-C138): the audit's live harness skipped 20 controls on the right sidebar's Explorer tab
 // (findings/live-wave3-b.md, S21). Each one is driven here through its real handler in the mounted
 // Explorer and its content search, and the test asserts what the person sees change.
 import { createElement, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until, type FakeDocument } from "../tasks/fakeDom";
+import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until, type FakeDocument } from "../tasks/realDom";
 
 type Node = { name: string; path: string; kind: "dir" | "file" };
 const f = (path: string): Node => ({ name: path.split("/").pop()!, path, kind: "file" });
@@ -332,25 +333,15 @@ describe("T-710 Explorer row menu from the keyboard", () => {
   });
 
   it("T-720: Escape closes the row menu and gives focus back to the list (under StrictMode too); the arrows move between its rows", async () => {
-    const keys: Array<(e: unknown) => void> = [];
-    Object.assign(globalThis.window, {
-      addEventListener: (t: string, fn: (e: unknown) => void) => t === "keydown" && keys.push(fn),
-      removeEventListener: (t: string, fn: (e: unknown) => void) => t === "keydown" && keys.includes(fn) && keys.splice(keys.indexOf(fn), 1),
-    });
-    const proto = FakeNode.prototype as unknown as Record<string, unknown>;
-    proto.focus = function (this: FakeNode) {
-      doc.activeElement = this;
-    };
     const { container, tree, menus } = await rowMenu({ left: 40, top: 96, bottom: 120 }, true); // StrictMode: the dev double mount too
-    Object.assign(tree, { isConnected: true });
-    doc.activeElement = tree;
+    if (tree.tabIndex < 0) tree.tabIndex = 0;
+    tree.focus();
     await fire(container, "contextmenu", tree, { button: -1, clientX: 100, clientY: 30 });
     await until(() => menus().length === 1, "the row menu");
     const rows = find(menus()[0], (n) => (n.attrs.role ?? "").startsWith("menuitem"));
     expect(doc.activeElement, "focus on the first row").toBe(rows[0]);
     const press = async (key: string) => {
-      const e = { key, shiftKey: false, stopped: false, preventDefault() {}, stopPropagation() { this.stopped = true; } };
-      for (const fn of [...keys]) if (!e.stopped) fn(e);
+      await fire(container, "keydown", doc.activeElement!, { key });
       await settle();
     };
     await press("ArrowDown");

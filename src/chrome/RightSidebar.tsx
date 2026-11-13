@@ -172,40 +172,42 @@ export default function RightSidebar({ tab, width, max, hidden = false, offered,
   // one reached; the More menu takes focus, answers the arrow keys, and Escape closes it before the terminal sees it.
   const moreButton = useRef<HTMLButtonElement>(null);
   return (
-    <Tabs value={current ?? ""} onValue={(t) => onTab(t as RightTab)} render={<aside className="rside" aria-label="Right sidebar" data-testid="right-sidebar" hidden={hidden} style={{ width }} />}>
+    <aside className="rside" aria-label="Right sidebar" data-testid="right-sidebar" hidden={hidden} style={{ width }}>
       <Grip side="right" width={width} min={RIGHT_MIN} max={max} label="Resize the right sidebar" className="rside-grip" onWidth={onWidth} />
-      <TabList className="rside-tabs" label="Right sidebar tabs">
-        {shown.map((t) => (
-          <Tab key={t.id} value={t.id} selected={t.id === current} data-testid={`right-tab-${t.id}`} title={t.hint} className="rside-tab">
-            {t.label}
-          </Tab>
-        ))}
-        {more.length > 0 && (
-          <button
-            ref={moreButton}
-            type="button"
-            className="rside-tab rside-more"
-            title={`More: ${more.map((t) => t.label).join(", ")}`}
-            aria-haspopup="menu"
-            aria-expanded={menu}
-            onClick={() => setMenu(!menu)}
-          >
-            More
-          </button>
-        )}
-      </TabList>
-      {menu && more.length > 0 && (
-        <Menu open onClose={() => setMenu(false)} label="More tabs" anchor={moreButton} align="end" offset={4}>
-          {more.map((t) => (
-            <MenuItem key={t.id} title={t.hint} onClick={() => onTab(t.id)}>
-              <span className="name">{t.label}</span>
-            </MenuItem>
+      <Tabs value={current} onValue={(t) => onTab(t as RightTab)}>
+        <TabList className="rside-tabs" label="Right sidebar tabs">
+          {shown.map((t) => (
+            <Tab key={t.id} value={t.id} selected={t.id === current} data-testid={`right-tab-${t.id}`} title={t.hint} className="rside-tab">
+              {t.label}
+            </Tab>
           ))}
-        </Menu>
-      )}
-      <TabPanel value={current ?? ""} className="rside-body" label={tabs.find((t) => t.id === current)?.label}>
-        <PanelGuard tab={current ?? ""}>{children}</PanelGuard>
-      </TabPanel>
-    </Tabs>
+          {more.length > 0 && (
+            <button
+              ref={moreButton}
+              type="button"
+              className="rside-tab rside-more"
+              title={`More: ${more.map((t) => t.label).join(", ")}`}
+              aria-haspopup="menu"
+              aria-expanded={menu}
+              onClick={() => setMenu(!menu)}
+            >
+              More
+            </button>
+          )}
+        </TabList>
+        {menu && more.length > 0 && (
+          <Menu open onClose={() => setMenu(false)} label="More tabs" anchor={moreButton} align="end" offset={4}>
+            {more.map((t) => (
+              <MenuItem key={t.id} title={t.hint} onClick={() => onTab(t.id)}>
+                <span className="name">{t.label}</span>
+              </MenuItem>
+            ))}
+          </Menu>
+        )}
+        <TabPanel value={current ?? ""} className="rside-body" label={tabs.find((t) => t.id === current)?.label}>
+          <PanelGuard tab={current ?? ""}>{children}</PanelGuard>
+        </TabPanel>
+      </Tabs>
+    </aside>
   );
 }

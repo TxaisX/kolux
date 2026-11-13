@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-600 (F02-settings-update.1; APP-026): the update card takes the keyboard only on the user's own click, and a bare
 // Enter never restarts Kolux from a card the user did not open. The real UpdateCenter (real schedule and card reducer)
 // under fake time, on the APP-024..027 harness; focus is tracked, and `enter` sends the user's next Enter wherever the
 // keyboard is: on the card it is the card's Enter, anywhere else (a terminal) the card never sees it.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, FakeNode, fire, withText } from "../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, fire, withText } from "../tasks/realDom";
 import { card, cardTitle, feed, info, installUpdateDom, mountCenter, pump, sendWindow, sent } from "./__cards__/updateHarness";
 
 const fail = vi.hoisted(() => ({ download: false }));
@@ -24,12 +25,8 @@ let doc: FakeDocument;
 let root: FakeNode;
 let terminal: FakeNode;
 let unmount: () => Promise<void> = async () => {};
-const realFocus = FakeNode.prototype.focus;
 beforeEach(() => {
   doc = installUpdateDom();
-  FakeNode.prototype.focus = function (this: FakeNode) {
-    doc.activeElement = this;
-  };
   terminal = doc.createElement("textarea"); // an agent's terminal, where the user types
   doc.body.appendChild(terminal);
   terminal.focus();
@@ -38,7 +35,6 @@ beforeEach(() => {
 afterEach(async () => {
   await unmount();
   unmount = async () => {};
-  FakeNode.prototype.focus = realFocus;
   vi.useRealTimers();
 });
 async function start() {

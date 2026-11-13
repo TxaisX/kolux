@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-614 (F04-projects-scm.2): a delete of several workspaces tells the window once, with every path,
 // so its tabs close in one go and the shown workspace gives way to one that is not going too. The
 // real ProjectsPanel, multi-select bar and cleanup dialog on the small DOM, with the backend mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle } from "../tasks/realDom";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[], scan: null as unknown }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -41,7 +42,7 @@ beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
-  Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
+  Object.assign(doc, { visibilityState: "visible", hidden: false });
   h.wt = [main, parent, kid];
   h.scan = { projectId: "p1", rows: [row(kid), row(parent)], error: null, timedOut: false, atMs: 1 };
   told = [];
@@ -70,7 +71,7 @@ const cls = (n: FakeNode) => String(n.attrs.className ?? n.attrs.class ?? "");
 
 test("Delete all on a parent with a child tells the window once, children first", async () => {
   const c = await panel();
-  const sess = find(c, (n) => n.attrs["data-path"] === parent.path)[0].childNodes.find((n) => cls(n).includes("sess"))!;
+  const sess = [...find(c, (n) => n.attrs["data-path"] === parent.path)[0].childNodes].find((n) => cls(n).includes("sess"))!;
   await fire(c, "contextmenu", sess, { clientX: 5, clientY: 5, altKey: false });
   await settle(60);
   await click(c, byText(c, "button", "Delete")[0]);

@@ -9,13 +9,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { openExternal } from "../open/openExternal";
-import { restoreFocus } from "../shell/paletteCaps";
-import { watchEscape } from "../switcher/accounts";
 import { chunkBytes } from "../terminal/codec";
 import { onTerminalOutput } from "../terminal/outputBus";
 import { PrintedUrls, addressText, afterScan, capNote, openAddress,  ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
 import "./ports.css";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Popover } from "../ui/Popover";
 
 type Props = { active: string | null; workspaces: string[] };
 
@@ -31,7 +29,6 @@ export default function PortsItem({ active, workspaces }: Props) {
   const [stopping, setStopping] = useState<string[]>([]);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const wasOpen = useRef(false);
   // The row key of a Stop that was pressed with keyboard focus on it: when that row disappears focus would fall to the page body.
   const stopFocus = useRef<string | null>(null);
   const scanned = useRef<string | null>(null); // the workspace the list on screen belongs to
@@ -44,14 +41,7 @@ export default function PortsItem({ active, workspaces }: Props) {
     return () => void off.then((f) => f());
   }, [printed]);
 
-  // Escape closes the popover wherever focus is; focus goes into it on open and back to the trigger on close.
-  useEffect(() => (open ? watchEscape(window, () => setOpen(false)) : undefined), [open]);
-  useEffect(() => {
-    if (open) menu.current?.focus();
-    else if (wasOpen.current) restoreFocus(button.current, (sel) => document.querySelector<HTMLElement>(sel));
-    wasOpen.current = open;
-  }, [open]);
-
+  // The popover is src/ui's: Escape closes it wherever focus is, focus goes into it on open and back to the trigger on close.
   useEffect(() => {
     const k = stopFocus.current;
     if (k === null || !open || view.rows.some((r) => rowKey(r) === k)) return;
@@ -84,7 +74,6 @@ export default function PortsItem({ active, workspaces }: Props) {
   }, [active, open]);
 
   if (active === null) return null;
-  const rect = open ? button.current?.getBoundingClientRect() : null;
   const say = (text: string, bad = false) => (setNote(text), setNoteBad(bad));
   const stop = (r: PortRow, focused: boolean) => {
     const k = rowKey(r);
@@ -112,34 +101,29 @@ export default function PortsItem({ active, workspaces }: Props) {
       <button ref={button} className="item ports-open" data-item="ports" title="Ports this workspace is listening on" aria-haspopup="dialog" aria-expanded={open} onClick={() => (setNote(null), setNoteBad(false), setOpen((o) => !o))}>
         Ports {ownCount(view.rows)}
       </button>
-      {open && (
-        <OutOfFlow>
-          <div className="menu-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div ref={menu} tabIndex={-1} className="menu ports-menu" role="dialog" aria-label="Ports" style={{ left: Math.max(8, Math.min(rect?.left ?? 8, window.innerWidth - 380)), bottom: Math.max(8, window.innerHeight - (rect?.top ?? 0) + 4), minWidth: 340 }}>
-            <div className="menu-title">Ports</div>
-            {view.error && <div className="note error">{view.error}{view.rows.length > 0 ? " Showing the last list." : ""}</div>}
-            <div role="status">{note && <div className={noteBad ? "note error" : "note"}>{note}</div>}</div>
-            {view.rows.length === 0 && !view.error && <div className="sb-hint">Nothing in this workspace is listening on a port.</div>}
-            {view.rows.map((r) => (
-              <div key={rowKey(r)} className="menu-item ports-row" data-port={r.port} data-external={r.external}>
-                <span className="name">
-                  {r.port} <span className="reason">{openAddress(r, printed.forPort(r.port, view.rows))}</span>
-                  {r.external && <span className="reason"> · external</span>}
-                </span>
-                <button className="btn" aria-label={`Open port ${r.port}`} title="Open in your browser" onClick={() => openRow(r)}>
-                  Open
-                </button>
-                {!r.external && (
-                  <button className="btn" aria-label={`Stop port ${r.port}`} title="Stop the process listening here" aria-disabled={stopping.includes(rowKey(r)) ? true : undefined} onClick={(e) => void stop(r, document.activeElement === e.currentTarget)}>
-                    {stopping.includes(rowKey(r)) ? "Stopping…" : "Stop"}
-                  </button>
-                )}
-              </div>
-            ))}
-            {capNote(view.rows) && <div className="sb-hint">{capNote(view.rows)}</div>}
+      <Popover open={open} onClose={() => setOpen(false)} label="Ports" anchor={button} side="top" align="start" offset={4} className="ports-menu" style={{ minWidth: 340 }} boxRef={menu} initialFocus={menu}>
+        <div className="menu-title">Ports</div>
+        {view.error && <div className="note error">{view.error}{view.rows.length > 0 ? " Showing the last list." : ""}</div>}
+        <div role="status">{note && <div className={noteBad ? "note error" : "note"}>{note}</div>}</div>
+        {view.rows.length === 0 && !view.error && <div className="sb-hint">Nothing in this workspace is listening on a port.</div>}
+        {view.rows.map((r) => (
+          <div key={rowKey(r)} className="menu-item ports-row" data-port={r.port} data-external={r.external}>
+            <span className="name">
+              {r.port} <span className="reason">{openAddress(r, printed.forPort(r.port, view.rows))}</span>
+              {r.external && <span className="reason"> · external</span>}
+            </span>
+            <button className="btn" aria-label={`Open port ${r.port}`} title="Open in your browser" onClick={() => openRow(r)}>
+              Open
+            </button>
+            {!r.external && (
+              <button className="btn" aria-label={`Stop port ${r.port}`} title="Stop the process listening here" aria-disabled={stopping.includes(rowKey(r)) ? true : undefined} onClick={(e) => void stop(r, document.activeElement === e.currentTarget)}>
+                {stopping.includes(rowKey(r)) ? "Stopping…" : "Stop"}
+              </button>
+            )}
           </div>
-        </OutOfFlow>
-      )}
+        ))}
+        {capNote(view.rows) && <div className="sb-hint">{capNote(view.rows)}</div>}
+      </Popover>
     </>
   );
 }

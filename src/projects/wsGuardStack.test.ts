@@ -1,14 +1,13 @@
+// @vitest-environment happy-dom
 // W201 B2: the unsaved question opens over the workspace delete question, which stays mounted under it while
 // the caller awaits the answer. The question must take the keyboard from that dialog: Tab stays inside it, the
-// first Escape closes only it, and the delete question answers again once it is gone. The page is the small
-// stand-in the other dialog tests use, with a window that keeps its capture listeners and focus that goes where
-// focus() puts it, so the keys a keyboard user sends are the keys the test sends.
-import { act, createElement } from "react";
+// first Escape closes only it, and the delete question answers again once it is gone. Both are src/ui (Base UI)
+// dialogs on a real DOM (happy-dom): real focus and real key events.
+import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { useCloseGuard } from "../editor/CloseDialog";
 import type { GuardPane } from "../editor/closeGuard";
-import { FOCUSABLE } from "../chrome/dialogFocus";
-import { type FakeDocument, FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle } from "../tasks/realDom";
 import { sameDir } from "../workspaces";
 import ProjectsPanel from "./ProjectsPanel";
 import { namesOf, panesInDirs, unsavedInDirs } from "./wsUnsaved";
@@ -50,7 +49,6 @@ const props = {
   createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
 };
 let doc: FakeDocument;
-let onWindow: Record<string, { fn: (e: unknown) => void; capture: boolean }[]>;
 let unmount: () => Promise<void> = async () => {};
 
 function Harness() {
@@ -68,39 +66,10 @@ function Harness() {
   );
 }
 
-const realFocus = FakeNode.prototype.focus;
-const realClosest = FakeNode.prototype.closest;
-const realQuery = FakeNode.prototype.querySelectorAll;
-/** Just enough of Element.matches for the trap's focusable list and the attribute selectors the dialogs ask. */
-function matches(n: FakeNode, sel: string) {
-  if (sel === FOCUSABLE)
-    return n.nodeType === 1 && ((/^(button|input|select|textarea)$/.test(n.localName) && !("disabled" in n.attrs) && n.attrs.type !== "hidden") || (n.localName === "a" && "href" in n.attrs) || ("tabindex" in n.attrs && n.attrs.tabindex !== "-1"));
-  return sel.split(",").some((one) => {
-    const m = /^\[([\w-]+)(?:="([^"]*)")?\]$/.exec(one.trim());
-    return !!m && n.nodeType === 1 && m[1] in n.attrs && (m[2] === undefined || n.attrs[m[1]] === m[2]);
-  });
-}
-
 beforeEach(() => {
   const dom = installDom();
   doc = dom.doc;
-  onWindow = {};
-  Object.assign(dom.win, {
-    addEventListener: (t: string, fn: (e: unknown) => void, o?: boolean | { capture?: boolean }) => (onWindow[t] ??= []).push({ fn, capture: typeof o === "object" ? !!o.capture : !!o }),
-    removeEventListener: (t: string, fn: (e: unknown) => void) => (onWindow[t] = (onWindow[t] ?? []).filter((l) => l.fn !== fn)),
-    setInterval, clearInterval, setTimeout, clearTimeout, dispatchEvent: () => true,
-  });
-  Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
-  FakeNode.prototype.focus = function (this: FakeNode) {
-    doc.activeElement = this;
-  };
-  FakeNode.prototype.closest = function (this: FakeNode, sel: string) {
-    for (let n: FakeNode | null = this; n; n = n.parentNode) if (matches(n, sel)) return n;
-    return null;
-  };
-  FakeNode.prototype.querySelectorAll = function (this: FakeNode, sel: string) {
-    return find(this, (n) => n !== this && matches(n, sel));
-  };
+  Object.assign(doc, { visibilityState: "visible", hidden: false });
   h.calls = [];
   h.settings = {};
   h.scan = { projectId: "p1", rows: [], error: null, timedOut: false, atMs: 1 };
@@ -108,62 +77,10 @@ beforeEach(() => {
 afterEach(async () => {
   await unmount();
   unmount = async () => {};
-  FakeNode.prototype.focus = realFocus;
-  FakeNode.prototype.closest = realClosest;
-  FakeNode.prototype.querySelectorAll = realQuery;
 });
 
-/** A key pressed where the keyboard is, sent as a browser sends it: capture listeners from the window down to
- *  the target, then bubble listeners back up; a listener that stops it ends the trip there. */
-async function press(key: string, shiftKey = false) {
-  const target = doc.activeElement;
-  const nodes: { listeners: Record<string, { fn: (e: unknown) => void; capture: boolean }[]> }[] = [{ listeners: onWindow }, doc];
-  const up: FakeNode[] = [];
-  for (let n: FakeNode | null = target; n; n = n.parentNode) up.unshift(n);
-  nodes.push(...up);
-  let stopped = false;
-  let now = false;
-  const ev = {
-    type: "keydown",
-    key,
-    code: key,
-    keyCode: key === "Escape" ? 27 : 0,
-    which: key === "Escape" ? 27 : 0,
-    target,
-    srcElement: target,
-    bubbles: true,
-    cancelable: true,
-    defaultPrevented: false,
-    isTrusted: true,
-    isComposing: false,
-    repeat: false,
-    ctrlKey: false,
-    altKey: false,
-    shiftKey,
-    metaKey: false,
-    timeStamp: Date.now(),
-    getModifierState: () => false,
-    preventDefault() {
-      this.defaultPrevented = true;
-    },
-    stopPropagation() {
-      stopped = true;
-    },
-    stopImmediatePropagation() {
-      stopped = now = true;
-    },
-  };
-  const run = (n: { listeners: Record<string, { fn: (e: unknown) => void; capture: boolean }[]> }, capture: boolean) => {
-    for (const l of [...(n.listeners.keydown ?? [])]) if (l.capture === capture && !now) l.fn(ev);
-  };
-  await act(async () => {
-    const last = nodes.length - 1;
-    for (let i = 0; i < last && !stopped; i++) run(nodes[i], true);
-    if (!stopped) run(nodes[last], true); // at the target: its capture listeners, then its others
-    if (!stopped) run(nodes[last], false);
-    for (let i = last - 1; i >= 0 && !stopped; i--) run(nodes[i], false);
-  });
-}
+/** A key pressed where the keyboard is: a real keydown at the focused element (the window's capture listeners first). */
+const press = (c: FakeNode, key: string) => fire(c, "keydown", doc.activeElement ?? doc.body, { key });
 
 const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this workspace");
 const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete workspace")[0];
@@ -182,22 +99,22 @@ test("Tab stays in the unsaved question and the first Escape closes only it; the
   expect(card, "the question opened over the delete dialog").toBeDefined();
   expect(delAsk(c), "which stays mounted under it").toBeDefined();
 
-  // Tab stays in the top dialog: from its last control it wraps to its first, instead of being pulled into the
-  // delete dialog behind the scrim.
-  byText(card, "button", "Save")[0].focus();
-  await press("Tab");
-  expect(doc.activeElement, "Tab from Save wraps to the question's Cancel").toBe(byText(card, "button", "Cancel")[0]);
-  expect(card.contains(doc.activeElement), "focus never left the question").toBe(true);
+  // Tab stays in the top dialog: Base UI keeps it inside (focus guards on both sides of the question, which a real
+  // browser's Tab lands on and sends back in), and the delete dialog behind the scrim cannot take focus meanwhile.
+  expect(card.contains(doc.activeElement), "focus is in the question").toBe(true);
+  expect(find(card.parentElement!.parentElement!, (n) => n.hasAttribute("data-base-ui-focus-guard")).length, "the question's focus guards").toBeGreaterThanOrEqual(2);
+  expect(delAsk(c).closest("[inert],[aria-hidden='true']"), "the delete dialog is out of reach under it").not.toBeNull();
 
   // The first Escape closes only the question. The delete dialog that asked it is still there, still pending.
-  await press("Escape");
+  await press(c, "Escape");
+  await settle(40);
   expect(guardAsk(c), "the first Escape closed the question").toBeUndefined();
   expect(delAsk(c), "and left the delete dialog that asked it").toBeDefined();
   expect(h.calls).not.toContain("workspace_remove");
 
-  // The browser drops the focus of the control that left; the lower dialog answers again now that it is top.
-  doc.activeElement = doc.body;
-  await press("Escape");
+  // The lower dialog answers again now that it is top.
+  await press(c, "Escape");
+  await settle(40);
   expect(delAsk(c), "the next Escape closes the delete dialog").toBeUndefined();
   expect(h.calls).not.toContain("workspace_remove");
 });

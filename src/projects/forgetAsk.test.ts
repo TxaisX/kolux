@@ -1,7 +1,8 @@
+// @vitest-environment happy-dom
 // After-list row 364: the delete shortcut on a folder workspace (a row with no commit) asks before it takes the row out of Kolux.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../tasks/realDom";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: unknown }[], refusal: null as string | null, checkBroken: false }));
 vi.mock("@tauri-apps/api/core", () => ({

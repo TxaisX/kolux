@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 // T-712 (DT-C148): the "Other ways to connect" menu closes on a pick, on Escape and on a click outside it;
 // an account row nests no button inside another, and its Remove confirm (the shared Ask) reads Escape as Keep and
 // does not remove while the row is busy.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount } from "../tasks/realDom";
 import { OtherWays } from "./ConnectGrid";
 import { AccountRow } from "./AccountRow";
 

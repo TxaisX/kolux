@@ -1,9 +1,6 @@
 // @vitest-environment node
 // USAGE-019: the share card's figures, its post, its picture and its clipboard step.
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
-import ShareCard from "./ShareCard";
 import { CARD_W, cardOf, copyPng, costText, drawCard, postText, xUrl } from "./shareCardData";
 import type { Row } from "./tokens";
 
@@ -156,13 +153,5 @@ test("USAGE-019 FIX-1: a cost that leaves out unpriced models is marked partial 
   expect(texts.some((x) => /unpriced/i.test(x))).toBe(false);
 });
 
-test("USAGE-019: the dialog shows the card, Copy image, the one shared Share on X button and Close", () => {
-  const html = renderToStaticMarkup(createElement(ShareCard, { provider: "claude", rows: [row("2026-10-19", { input: 1000 })], range: "30", today, onClose: () => {} }));
-  expect(html).toContain('role="dialog"');
-  expect(html).toContain("<canvas");
-  expect(html).toContain(">Copy image<");
-  expect(html).toContain(">Share on X<");
-  expect(html.match(/Share on X/g)).toHaveLength(1);
-  expect(html).toContain(">Close<");
-  expect(html).not.toMatch(/<svg|<img/i);
-});
+// The dialog itself (the card, Copy image, the one Share on X button, Close) is a src/ui Dialog, drawn only once open:
+// ShareCard.dom.test.tsx opens it on a real DOM.

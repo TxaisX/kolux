@@ -3,8 +3,11 @@
 // with its runs below.
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import AutomationsPage, { type Data } from "./AutomationsPage";
+
+// The delete question is the shared Ask, drawn only on a real DOM; its words are read here through a stand-in.
+vi.mock("../chrome/Ask", async (real) => ({ ...(await real<object>()), default: (await import("../tasks/askStandIn")).AskStandIn }));
 import { HermesRuns, type HermesState } from "./AutomationDetail";
 
 type Initial = NonNullable<Parameters<typeof AutomationsPage>[0]["initial"]>;

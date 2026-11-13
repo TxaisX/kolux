@@ -1,11 +1,11 @@
 // EDIT-054 (T-236-b / T-237-b): the box that asks for a name on the first save of an untitled note. It starts
 // on the current name (accepting it simply saves), shows why a name is refused and changes nothing on disk until
 // the name is accepted. The disk steps are in firstSave.ts; this is the real set of file commands behind them.
-import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { firstSave, type FirstSave, type FirstSaveIo } from "./firstSave";
 import { suggestedName } from "./untitled";
+import { Dialog } from "../ui/Dialog";
 
 const realIo: FirstSaveIo = {
   exists: (full) => invoke<(unknown | null)[]>("file_stamps", { paths: [full] }).then((r) => (r?.[0] ?? null) !== null),
@@ -52,10 +52,6 @@ export default function NamePrompt({ path, root, text, onSaved, onCancel, raised
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    input.current?.focus();
-    input.current?.select();
-  }, []);
   const accept = () => {
     if (busy) return;
     setBusy(true);
@@ -73,39 +69,36 @@ export default function NamePrompt({ path, root, text, onSaved, onCancel, raised
     );
   };
   return (
-    <div className={raised ? "ask-backdrop guard" : "ask-backdrop"} onMouseDown={onCancel}>
-      <div
-        className="ask"
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        aria-label="Name this note"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          trapTab(e);
-          const todo = nameKey(e.key, e.nativeEvent.isComposing || e.keyCode === 229, (e.target as HTMLElement).tagName === "BUTTON");
-          if (todo === "cancel") onCancel();
-          else if (todo === "accept") (e.preventDefault(), accept());
-        }}
-      >
-        <h2 className="ask-title">Name this note</h2>
-        <div className="ask-body">Choose a file name inside this workspace. Folders are made as needed, and .md is added when there is no extension.</div>
-        <input ref={input} className="field" value={name} aria-label="File name" aria-invalid={error !== null} onChange={(e) => (setName(e.target.value), setError(null))} />
-        {error && (
-          <div className="ask-body" role="alert" style={{ color: "var(--danger, #e5534b)" }}>
-            {error}
-          </div>
-        )}
-        <div className="btn-row">
-          <button className="btn" onClick={onCancel}>
-            Cancel
-          </button>
-          <button className="btn primary" disabled={busy} onClick={accept}>
-            Save
-          </button>
+    // src/ui Dialog: the name field takes focus with its text selected, Tab stays inside, Escape (unless an input method
+    // is composing) and a click outside cancel, and focus goes back to where it was.
+    <Dialog
+      onClose={onCancel}
+      label="Name this note"
+      className="ask"
+      viewport={raised ? "ask-backdrop guard" : "ask-backdrop"}
+      initialFocus={() => (input.current?.select(), input.current)}
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (nameKey(e.key, e.nativeEvent.isComposing || e.keyCode === 229, (e.target as HTMLElement).tagName === "BUTTON") === "accept") (e.preventDefault(), accept());
+      }}
+    >
+      <h2 className="ask-title">Name this note</h2>
+      <div className="ask-body">Choose a file name inside this workspace. Folders are made as needed, and .md is added when there is no extension.</div>
+      <input ref={input} className="field" value={name} aria-label="File name" aria-invalid={error !== null} onChange={(e) => (setName(e.target.value), setError(null))} />
+      {error && (
+        <div className="ask-body" role="alert" style={{ color: "var(--danger, #e5534b)" }}>
+          {error}
         </div>
+      )}
+      <div className="btn-row">
+        <button className="btn" onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="btn primary" disabled={busy} onClick={accept}>
+          Save
+        </button>
       </div>
-    </div>
+    </Dialog>
   );
 }

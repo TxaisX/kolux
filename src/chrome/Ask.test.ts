@@ -1,8 +1,23 @@
-// VIEW-116: the confirmation dialog's keys, focus order and don't-ask-again box.
-import { expect, test } from "vitest";
+// @vitest-environment happy-dom
+// VIEW-116: the confirmation dialog's keys, focus order and don't-ask-again box. It is src/ui's AlertDialog (Base UI),
+// drawn in a portal on the body, so it is read from a real DOM.
+import { afterEach, expect, test, vi } from "vitest";
 import { createElement } from "react";
-import { renderToString } from "react-dom/server";
 import Ask, { askKey } from "./Ask";
+import { click, fire, installDom, mount, settle } from "../tasks/realDom";
+
+let unmount: () => Promise<void> = async () => {};
+afterEach(async () => {
+  await unmount();
+  unmount = async () => {};
+});
+const show = async (p: Partial<Parameters<typeof Ask>[0]>) => {
+  installDom();
+  const m = await mount(createElement(Ask, { title: "Delete x?", body: "It goes for good.", confirm: "Delete", onConfirm: () => {}, onCancel: () => {}, ...p }));
+  unmount = m.unmount;
+  await settle(); // Base UI moves focus in on the next frame
+  return document.querySelector<HTMLElement>('[role="alertdialog"]')!;
+};
 
 test("Escape always cancels and Enter on Confirm counts only on prompts that opt in", () => {
   expect(askKey("Escape", false, false)).toBe("cancel");
@@ -14,23 +29,60 @@ test("Escape always cancels and Enter on Confirm counts only on prompts that opt
   expect(askKey("a", true, false)).toBe("pass");
 });
 
-test("Cancel comes before Confirm and the don't-ask-again box starts unticked", () => {
-  const noop = () => {};
-  const html = renderToString(createElement(Ask, { title: "Delete x?", body: "It goes for good.", confirm: "Delete", dontAsk: true, onConfirm: noop, onCancel: noop }));
-  expect(html).toContain('role="alertdialog"');
+test("Cancel comes before Confirm and the don't-ask-again box starts unticked", async () => {
+  const box = await show({ dontAsk: true });
+  expect(box.getAttribute("aria-label")).toBe("Delete x?");
+  expect(box.getAttribute("aria-modal")).toBe("true");
+  expect(box.className).toBe("ask");
+  expect(box.parentElement!.className).toBe("ask-backdrop");
+  const html = box.innerHTML;
   expect(html.indexOf(">Cancel<")).toBeLessThan(html.indexOf(">Delete<"));
-  expect(html).toMatch(/<input type="checkbox"(?![^>]*checked)[^>]*>/);
-  expect(html).toContain("Don&#x27;t ask again");
-  const plain = renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Delete", onConfirm: noop, onCancel: noop }));
-  expect(plain).not.toContain("checkbox");
+  expect(box.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(false);
+  expect(box.textContent).toContain("Don't ask again");
+  await unmount();
+  expect((await show({})).querySelector('input[type="checkbox"]')).toBeNull();
+});
+
+test("the dialog traps focus: Cancel is the control that gets focus, and Escape runs Cancel and stops there", async () => {
+  const onCancel = vi.fn();
+  const terminal = vi.fn();
+  window.addEventListener("keydown", terminal);
+  const box = await show({ onCancel });
+  expect(document.activeElement!.textContent).toBe("Cancel");
+  await fire(box, "keydown", document.activeElement!, { key: "Escape" });
+  expect(onCancel).toHaveBeenCalledTimes(1);
+  expect(terminal).not.toHaveBeenCalled();
+  window.removeEventListener("keydown", terminal);
+});
+
+test("Enter on Delete does nothing unless the prompt opts in", async () => {
+  const onConfirm = vi.fn();
+  const box = await show({ onConfirm });
+  const del = [...box.querySelectorAll("button")].find((b) => b.textContent === "Delete")!;
+  del.focus();
+  let blocked = false;
+  await fire(box, "keydown", del, { key: "Enter", preventDefault: () => (blocked = true) });
+  expect(blocked).toBe(true);
+  await click(box, del);
+  expect(onConfirm).toHaveBeenCalledWith(false);
+});
+
+test("with no confirm word it only explains, with a single OK that closes", async () => {
+  const onCancel = vi.fn();
+  const box = await show({ confirm: null, onCancel });
+  expect([...box.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["OK"]);
+  await click(box, box.querySelector("button")!);
+  expect(onCancel).toHaveBeenCalledTimes(1);
 });
 
 // C28-R1-01: a removal in flight cannot be backed out of, so the question greys Keep and says so to a reader.
-test("a locked question greys its back-out and still offers the confirm", () => {
-  const noop = () => {};
-  const locked = renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Deleting…", cancel: "Keep", locked: true, onConfirm: noop, onCancel: noop }));
-  expect(locked).toContain('aria-disabled="true"');
-  expect(locked).toContain(">Deleting…</button>"); // a prompt whose own operation can finish keeps its confirm
-  const free = renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Delete", cancel: "Keep", onConfirm: noop, onCancel: noop }));
-  expect(free).not.toContain("aria-disabled");
+test("a locked question greys its back-out, ignores Escape, and still offers the confirm", async () => {
+  const onCancel = vi.fn();
+  const locked = await show({ confirm: "Deleting…", cancel: "Keep", locked: true, onCancel });
+  expect(locked.innerHTML).toContain('aria-disabled="true"');
+  expect(locked.innerHTML).toContain(">Deleting…</button>"); // a prompt whose own operation can finish keeps its confirm
+  await fire(locked, "keydown", document.activeElement!, { key: "Escape" });
+  expect(onCancel).not.toHaveBeenCalled();
+  await unmount();
+  expect((await show({ cancel: "Keep" })).innerHTML).not.toContain("aria-disabled");
 });

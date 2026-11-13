@@ -34,7 +34,18 @@ test("DT-C269: every click-outside sheet goes into the page first inside the box
       expect(before.endsWith("<OutOfFlow>"), `${file}: a click-outside sheet put in the page outside an OutOfFlow box`).toBe(true);
     }
   }
-  expect(seen).toBeGreaterThanOrEqual(25);
+  // The hand-rolled sheets go as their popups move onto src/ui (which puts them in a box of its own, below), so the
+  // count falls; the scan itself must still have read the source.
+  expect(Object.keys(files).length).toBeGreaterThan(200);
+  expect(seen).toBeGreaterThanOrEqual(0);
+});
+
+test("DT-C269: every src/ui popup is put in one out-of-flow box on the body, never straight into it", () => {
+  const base = nodeFs.readFileSync(new URL("../ui/base.tsx", import.meta.url), "utf8");
+  const portals = [...base.matchAll(/<(\w+)\.Portal\b([^>]*)>/g)];
+  expect(portals.map((p) => p[1]).sort()).toEqual(["Dialog", "Menu", "Popover", "Select", "Tooltip"]);
+  for (const p of portals) expect(p[2], `${p[1]}.Portal`).toContain("container={layerHost()}");
+  expect(base).toMatch(/el\.className = "out-of-flow";/);
 });
 
 test("DT-C269: the pane menu and its click-outside sheet are drawn inside the box, not straight into the pane", async () => {
