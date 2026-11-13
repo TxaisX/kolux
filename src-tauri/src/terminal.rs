@@ -127,6 +127,9 @@ struct Inner {
     warm: WarmMap,
     /// Folders whose warm shell is starting now, so two starts at once make one.
     warming: HashSet<String>,
+    /// Kept-warm shell: the setting was last saved off (`warm_setting`). A start that read the setting on before
+    /// that keeps nothing: `warm_wanted` refuses and `warm_started` ends the shell.
+    warm_off: bool,
 }
 
 /// Kept-warm shell: the setting, off unless set. Off, nothing here runs and terminals start as before.
@@ -1659,6 +1662,9 @@ impl Terminals {
         }
         let key = warm_key(dir);
         let mut inner = lock(&self.inner);
+        if inner.warm_off {
+            return false;
+        }
         let ready = inner.warm.get(&key).is_some_and(|w| inner.sessions.contains_key(&w.id) && !inner.ended.contains(&w.id));
         if ready || inner.warming.contains(&key) {
             return false;
@@ -1667,12 +1673,13 @@ impl Terminals {
     }
 
     /// Kept-warm shell: `id` is `dir`'s warm shell, started from `plan`. It is ended at once when the folder
-    /// closed while it started, and when the setting went off meanwhile (`drop_warm` called the start off).
+    /// closed while it started, and when the setting went off meanwhile (`drop_warm` called the start off, or the
+    /// setting was saved off after the start read it on).
     fn warm_started(&self, dir: &str, id: u32, plan: Vec<portable_pty::CommandBuilder>) {
         let key = warm_key(dir);
         let gone = {
             let mut inner = lock(&self.inner);
-            if !inner.warming.remove(&key) {
+            if !inner.warming.remove(&key) || inner.warm_off {
                 vec![inner.take_session(id)]
             } else {
                 let old = inner.warm.insert(key, Warm { id, plan }).map(|w| w.id).filter(|old| *old != id);
@@ -1710,7 +1717,9 @@ impl Terminals {
     /// Kept-warm shell: the settings were saved. With the setting off, the warm shells end now rather than at the
     /// next terminal start.
     pub fn warm_setting(&self, settings: &serde_json::Value) {
-        if !warm_on(settings) {
+        let off = !warm_on(settings);
+        lock(&self.inner).warm_off = off;
+        if off {
             self.drop_warm();
         }
     }
@@ -2984,6 +2993,50 @@ mod tests {
         t.fake_session(4_504, "C:/work/t", None);
         t.warm_started("C:/work/t", 4_504, Vec::new());
         assert!(!t.has_warm("C:/work/t") && !lock(&t.inner).sessions.contains_key(&4_504));
+    }
+
+    /// Re-review note 2: terminal_attach and terminal_spawn read the setting, then start the folder's next warm shell
+    /// later; switched off in between, that late start must keep nothing, and a start already under way when it went
+    /// off must not be offered. On again, warm shells start as before.
+    #[test]
+    fn a_start_that_read_the_setting_before_it_went_off_keeps_no_warm_shell() {
+        let t = Terminals::default();
+        let on = serde_json::json!({ "terminalWarmShell": true });
+        t.warm_setting(&on);
+        t.warm_setting(&serde_json::json!({ "terminalWarmShell": false }));
+        assert!(!t.warm_wanted("C:/work/r"), "the late start begins nothing");
+        // a start under way whose folder entry came back after the switch: its shell is ended, not offered
+        t.fake_session(4_601, "C:/work/r", None);
+        t.fake_session(4_602, "C:/work/r", None);
+        lock(&t.inner).warming.insert(warm_key("C:/work/r"));
+        t.warm_started("C:/work/r", 4_602, Vec::new());
+        assert!(!t.has_warm("C:/work/r"));
+        assert!(!lock(&t.inner).sessions.contains_key(&4_602), "ended");
+        assert!(!lock(&t.inner).warming.contains(&warm_key("C:/work/r")));
+        t.warm_setting(&on);
+        assert!(t.warm_wanted("C:/work/r"), "switched on again, the folder may have one");
+    }
+
+    /// Re-review note 3: three places the warm shell is wired into the running app, which a unit test has none of, so
+    /// they are pinned at the source (as `dt_c248_review_3...` pins `spawn_planned`): the warm start gives the shell's
+    /// hooks the warm identity, a pane that took a warm shell is told the shell it runs, and saving the settings
+    /// tells the registry (which ends the warm shells when the setting is off).
+    #[test]
+    fn the_warm_shell_is_wired_into_its_start_the_attach_answer_and_the_settings_save() {
+        let body_of = |src: &str, from: &str| -> String {
+            let src = src.replace("\r\n", "\n");
+            let at = src.find(from).unwrap_or_else(|| panic!("{from}"));
+            let rest = &src[at..];
+            rest[..rest.find("\n}\n").expect("the end of the function")].split_whitespace().collect::<Vec<_>>().join(" ")
+        };
+        let terminal = include_str!("terminal.rs");
+        let start = body_of(terminal, "fn keep_warm(");
+        assert!(start.contains("terminals.spawn_planned(app, cols, rows, plan, None, Some(crate::hooks::WARM_PANE), None)"), "no pane, the warm hooks identity: {start}");
+        let attach = body_of(terminal, "pub fn terminal_attach(");
+        assert!(attach.contains("Attach { program: terminals.started(id), ..attach_answer("), "the taken shell is named: {attach}");
+        let save = body_of(include_str!("lib.rs"), "fn write_settings(");
+        let saved = save.find("store.save_settings(&value)").expect("the save");
+        assert!(save[saved..].contains(".warm_setting(&value)"), "after the save the registry hears the setting: {save}");
     }
 
     /// Review fix 5: a window that uses the background terminal service keeps no warm shell: it would run in the
