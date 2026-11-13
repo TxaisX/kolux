@@ -4,6 +4,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+// The panel is a src/ui Dialog, drawn only on a real DOM; what it shows is read here through a stand-in.
+vi.mock("../ui/Dialog", async () => (await import("../tasks/dialogStandIn")).dialogModule);
 import { CrashPanel } from "./CrashReportDialog";
 
 const draw = (details: string) => renderToStaticMarkup(createElement(CrashPanel, { lead: "Kolux closed unexpectedly.", details, onClose() {}, onAttach() {}, onCopy() {}, onOpen() {} }));
@@ -22,9 +24,9 @@ it("enables Copy Details once the details are there", () => {
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
 const source = nodeFs.readFileSync(new URL("./CrashReportDialog.tsx", import.meta.url), "utf8");
 
-it("uses the shared dialog focus: Tab stays inside, focus starts on Not now and goes back on close", () => {
-  expect(source).toContain("useDialogFocus(box, onClose, () => notNow.current);");
-  // autoFocus would run before the hook's effect, so the hook would remember the dialog's own button as the opener.
+it("is the shared src/ui Dialog: Tab stays inside, focus starts on Not now and goes back on close", () => {
+  expect(source).toMatch(/<Dialog\s+onClose=\{\(\) => onClose\(\)\}\s+label="Report a crash"\s+viewport="scrim"\s+initialFocus=\{notNow\}/);
+  // autoFocus would run before the Dialog moves focus in, so the hand-back would remember the dialog's own button.
   expect(source).not.toMatch(/\bautoFocus\b/);
-  expect(source, "Escape now comes from the shared hook, not a second listener").not.toContain("watchEscape");
+  expect(source, "Escape is the Dialog's, not a listener of its own").not.toContain("watchEscape");
 });

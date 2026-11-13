@@ -128,7 +128,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["projects/CleanupDialog.tsx", "Clean up workspaces in ${project.name}", "tag"],
   ["projects/CleanupDialog.tsx", "Confirm removal", "parent"],
   ["projects/WorktreePalette.tsx", "Go to / Run a command", "inner"],
-  ["recovery/CrashReportDialog.tsx", "Report a crash", "hook"],
   ["recovery/RecoveryMount.tsx", "Graphics", "exempt: the graphics fallback needs one of its two answers"],
   ["scm/PrStart.tsx", "Create pull request", "tag"],
   ["scm/SourceControlPanel.tsx", "Create pull request", "tag"],
@@ -279,7 +278,6 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "trapTab"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
   ["onboarding/Wizard.tsx", "Get started with Kolux", "trapTab"],
-  ["recovery/CrashReportDialog.tsx", "Report a crash", "hook"],
   ["settings/SettingsPage.tsx", "Settings", "trapTab"], // T-732
   ["skills/SkillUpdate.tsx", "Update Kolux skills", "own"],
   ["tasks/NewIssueDialog.tsx", "New issue", "trapTab"],
