@@ -106,6 +106,7 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 //   hook:    its ref is handed to useDialogFocus / trapDialog / useDismiss, which catch Escape on the window
 //   inner:   a field inside it takes focus and handles the key
 //   parent:  it sits inside another listed dialog, whose Escape closes it
+//   in-ui:   it sits inside a src/ui Dialog or Popover, whose Escape (the layer) closes it
 //   wrapper: the element right around it handles the key
 //   window:  a keydown listener on the window handles Escape
 //   exempt:  why Escape is not this dialog's to take
@@ -124,7 +125,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["onboarding/Guides.tsx", "Agent status hooks", "exempt: a docked tip, not modal; Not now closes it"],
   ["onboarding/Tours.tsx", "${tour.name} tour", "window"],
   ["onboarding/Wizard.tsx", "Get started with Kolux", "window"],
-  ["ports/PortsItem.tsx", "Ports", "window"],
   ["projects/AddProject.tsx", "Add project", "tag"],
   ["projects/AddProject.tsx", "Stop copying?", "parent"],
   ["projects/CleanupDialog.tsx", "Clean up workspaces in ${project.name}", "tag"],
@@ -147,8 +147,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["skills/SkillUpdate.tsx", "Update Kolux skills", "tag"],
   ["status/manage.tsx", "End ${name}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/manage.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
-  ["status/ResourceManager.tsx", "Resource Manager", "hook"],
-  ["status/ResourceManager.tsx", "bulkQ.label", "parent"],
+  ["status/ResourceManager.tsx", "bulkQ.label", "in-ui"],
   ["tasks/NewIssueDialog.tsx", "New issue", "tag"],
   ["tasks/TaskDialog.tsx", "${taskKind(task)} ${task.title}", "tag"],
   ["terminal/BackgroundSessions.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
@@ -263,6 +262,9 @@ function closes(d: Found, how: string, all: Found[]): boolean {
       return /onKeyDown=/.test(d.body) && FOCUS.test(d.body) && ESCAPE.test(d.src);
     case "parent":
       return all.some((p) => p !== d && p.file === d.file && p.at < d.at && p.at + p.body.length > d.at);
+    case "in-ui":
+      // it sits inside a src/ui Dialog or Popover in the same file, whose Escape (the layer) closes it first
+      return [...d.src.matchAll(/<(Dialog|AlertDialog|Popover)\b/g)].some((m) => m.index! < d.at && d.src.indexOf(`</${m[1]}>`, m.index) > d.at);
     case "wrapper":
       return /onKeyDown=[^]*?"Escape"/.test(d.src.slice(Math.max(0, d.at - 600), d.at));
     case "window":

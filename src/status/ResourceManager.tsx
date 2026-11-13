@@ -15,8 +15,8 @@ import { committedNote, endNeedsAsk, escapeStep, formatCommitted, formatCpu, gro
 import { bulkQuestion, bulkReport, leftOver, type Bulk, type BulkKind } from "../shell/endAll";
 // T-692: loaded when the panel opens, not with the window; the row is only drawn in this panel.
 const BackgroundSessions = lazy(() => import("../terminal/BackgroundSessions"));
-import { useDialogFocus } from "../chrome/dialogFocus";
-import OutOfFlow from "../chrome/OutOfFlow";
+import { Dialog } from "../ui/Dialog";
+import type { CloseWhy } from "../ui/layer";
 
 const cols = { gridTemplateColumns: RES_COLUMNS };
 
@@ -132,17 +132,16 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
     const t = setInterval(() => void tick(), 2000);
     return () => clearInterval(t);
   }, []);
-  // usage-status.md:8: the popup takes focus, keeps Tab inside and gives focus back; Escape closes the End question
-  // that is open first, and the whole panel only when none is.
-  // The box itself takes focus on open (tabindex -1, not a Tab stop): at mount the figures, and so the buttons, are not drawn yet.
-  useDialogFocus(box, () => {
-    const step = escapeStep({ bulk: bulk !== null, ending: ending !== null, asking: asking !== null, background: !!background.current });
+  // usage-status.md:8: the popup (a src/ui Dialog) takes focus, keeps Tab inside and gives focus back; Escape closes the
+  // End question that is open first, and the whole panel only when none is. A click outside closes the panel.
+  const close = (why: CloseWhy) => {
+    const step = why === "escape" ? escapeStep({ bulk: bulk !== null, ending: ending !== null, asking: asking !== null, background: !!background.current }) : "close";
     if (step === "bulk") setBulk(null);
     else if (step === "ending") setEnding(null);
     else if (step === "asking") setAsking(null);
     else if (step === "background") background.current?.();
     else onClose();
-  }, () => box.current);
+  };
   const end = async (row: Row) => {
     setEnding(null);
     setKillError("");
@@ -154,104 +153,102 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   const candidates = data ? cleanupCandidates(data.sessions, tabs, names(), isLoaded, busy) : [];
 
   return (
-    <OutOfFlow>
-      <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
-      <div ref={box} className="menu res-pop" role="dialog" aria-label="Resource Manager" tabIndex={-1}>
-        <div className="res-head">
-          <span className="menu-title">Resources</span>
-          {data && <span className="res-free">{data.free === null ? "Free memory unknown" : `${formatMemory(data.free)} free${data.total === null ? "" : ` of ${formatMemory(data.total)}`}`}</span>}
-        </div>
-        {failed && <div className="menu-hint warn">{failed}</div>}
-        {killError && (
-          <div className="menu-hint warn" role="alert" data-kill="error">
-            <span>{killError}</span>{" "}
-            <button className="btn" onClick={() => setKillError("")}>
-              Dismiss
-            </button>
-          </div>
-        )}
-        {data && (
-          <div className="res-row res-cols" style={cols} aria-hidden="true">
-            <span className="res-label">Name</span>
-            <span className="res-label res-fig" title="Memory in RAM now (working set)">
-              Resident
-            </span>
-            <span className="res-label res-fig" title="Memory Windows has promised the process (pagefile-backed)">
-              Committed
-            </span>
-            <span className="res-label res-fig">CPU</span>
-            <span />
-          </div>
-        )}
-        {data && (
-          <div className="res-row res-app" data-row="app" style={cols}>
-            <span className="res-name">Kolux</span>
-            <span className="res-fig">{formatMemory(data.app.bytes)}</span>
-            {committedCell(data.app)}
-            <span className="res-fig">{formatCpu(data.app.cpu)}</span>
-            <span className="res-end" />
-          </div>
-        )}
-        {report && (
-          <div className={`menu-hint${report.ok ? "" : " warn"}`} role="status" data-bulk="report">
-            {report.text}
-          </div>
-        )}
-        {bulkQ && (
-          <div className="res-ask res-bulk" role="alertdialog" aria-label={bulkQ.label} data-bulk="ask">
-            <span>{bulkQ.text}</span>
-            <span className="btn-row">
-              <button className="btn danger" onClick={() => void runBulk()}>
-                {bulkQ.confirm}
-              </button>
-              <button className="btn" autoFocus onClick={() => setBulk(null)}>
-                Keep
-              </button>
-            </span>
-          </div>
-        )}
-        {data && data.sessions.length === 0 && <div className="menu-hint">No terminal sessions are running.</div>}
-        {data && data.sessions.length > 0 && !bulkQ && (
-          <div className="res-row res-bulk" data-bulk="offer" style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-            <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal session that is running now; asks first">
-              End all
-            </button>
-            <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Kill every terminal pane and start over; asks first (the terminals run inside Kolux, there is no separate service)">
-              Restart terminals
-            </button>
-          </div>
-        )}
-        {data && data.sessions.length > 0 && <ManageSessions loaded={isLoaded} candidates={asking ?? candidates} asking={asking !== null} onAsk={() => void askAll()} onEnd={() => void endAll()} onKeep={() => setAsking(null)} />}
-        <Suspense fallback={null}>
-          <BackgroundSessions loaded={isLoaded} question={background} />
-        </Suspense>
-        {groups.map((g) => (
-          <section key={g.dir ?? ""} className="res-group" aria-label={g.label}>
-            <div className="res-label" title={g.dir ?? "Terminals started outside any workspace"}>
-              {g.label}
-            </div>
-            {g.rows.map((r) =>
-              ending?.id === r.id ? (
-                <EndQuestion key={r.id} name={r.name} shown={r.shown} onEnd={() => void end(r)} onKeep={() => setEnding(null)} />
-              ) : (
-                <div key={r.id} className="res-row" data-session={r.id} style={cols}>
-                  <span className="res-name" title={`${r.processes} process${r.processes === 1 ? "" : "es"}${r.dir ? ` in ${r.dir}` : ""}`}>
-                    {r.name}
-                    {r.pid !== null && <span className="res-pid"> · pid {r.pid}</span>}
-                  </span>
-                  <span className="res-fig">{formatMemory(r.bytes)}</span>
-                  {committedCell(r)}
-                  <span className="res-fig">{formatCpu(r.cpu)}</span>
-                  <button className="btn res-end" onClick={() => void ask(r)} title={`End ${r.name}`} aria-label={`End ${r.name}`}>
-                    End
-                  </button>
-                </div>
-              ),
-            )}
-          </section>
-        ))}
+    // The box itself takes focus on open (tabindex -1, not a Tab stop): at mount the figures, and so the buttons, are not drawn yet.
+    <Dialog onClose={close} label="Resource Manager" className="menu res-pop" backdrop="menu-backdrop" boxRef={box} initialFocus={box} tabIndex={-1}>
+      <div className="res-head">
+        <span className="menu-title">Resources</span>
+        {data && <span className="res-free">{data.free === null ? "Free memory unknown" : `${formatMemory(data.free)} free${data.total === null ? "" : ` of ${formatMemory(data.total)}`}`}</span>}
       </div>
-    </OutOfFlow>
+      {failed && <div className="menu-hint warn">{failed}</div>}
+      {killError && (
+        <div className="menu-hint warn" role="alert" data-kill="error">
+          <span>{killError}</span>{" "}
+          <button className="btn" onClick={() => setKillError("")}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {data && (
+        <div className="res-row res-cols" style={cols} aria-hidden="true">
+          <span className="res-label">Name</span>
+          <span className="res-label res-fig" title="Memory in RAM now (working set)">
+            Resident
+          </span>
+          <span className="res-label res-fig" title="Memory Windows has promised the process (pagefile-backed)">
+            Committed
+          </span>
+          <span className="res-label res-fig">CPU</span>
+          <span />
+        </div>
+      )}
+      {data && (
+        <div className="res-row res-app" data-row="app" style={cols}>
+          <span className="res-name">Kolux</span>
+          <span className="res-fig">{formatMemory(data.app.bytes)}</span>
+          {committedCell(data.app)}
+          <span className="res-fig">{formatCpu(data.app.cpu)}</span>
+          <span className="res-end" />
+        </div>
+      )}
+      {report && (
+        <div className={`menu-hint${report.ok ? "" : " warn"}`} role="status" data-bulk="report">
+          {report.text}
+        </div>
+      )}
+      {bulkQ && (
+        <div className="res-ask res-bulk" role="alertdialog" aria-label={bulkQ.label} data-bulk="ask">
+          <span>{bulkQ.text}</span>
+          <span className="btn-row">
+            <button className="btn danger" onClick={() => void runBulk()}>
+              {bulkQ.confirm}
+            </button>
+            <button className="btn" autoFocus onClick={() => setBulk(null)}>
+              Keep
+            </button>
+          </span>
+        </div>
+      )}
+      {data && data.sessions.length === 0 && <div className="menu-hint">No terminal sessions are running.</div>}
+      {data && data.sessions.length > 0 && !bulkQ && (
+        <div className="res-row res-bulk" data-bulk="offer" style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+          <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal session that is running now; asks first">
+            End all
+          </button>
+          <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Kill every terminal pane and start over; asks first (the terminals run inside Kolux, there is no separate service)">
+            Restart terminals
+          </button>
+        </div>
+      )}
+      {data && data.sessions.length > 0 && <ManageSessions loaded={isLoaded} candidates={asking ?? candidates} asking={asking !== null} onAsk={() => void askAll()} onEnd={() => void endAll()} onKeep={() => setAsking(null)} />}
+      <Suspense fallback={null}>
+        <BackgroundSessions loaded={isLoaded} question={background} />
+      </Suspense>
+      {groups.map((g) => (
+        <section key={g.dir ?? ""} className="res-group" aria-label={g.label}>
+          <div className="res-label" title={g.dir ?? "Terminals started outside any workspace"}>
+            {g.label}
+          </div>
+          {g.rows.map((r) =>
+            ending?.id === r.id ? (
+              <EndQuestion key={r.id} name={r.name} shown={r.shown} onEnd={() => void end(r)} onKeep={() => setEnding(null)} />
+            ) : (
+              <div key={r.id} className="res-row" data-session={r.id} style={cols}>
+                <span className="res-name" title={`${r.processes} process${r.processes === 1 ? "" : "es"}${r.dir ? ` in ${r.dir}` : ""}`}>
+                  {r.name}
+                  {r.pid !== null && <span className="res-pid"> · pid {r.pid}</span>}
+                </span>
+                <span className="res-fig">{formatMemory(r.bytes)}</span>
+                {committedCell(r)}
+                <span className="res-fig">{formatCpu(r.cpu)}</span>
+                <button className="btn res-end" onClick={() => void ask(r)} title={`End ${r.name}`} aria-label={`End ${r.name}`}>
+                  End
+                </button>
+              </div>
+            ),
+          )}
+        </section>
+      ))}
+    </Dialog>
   );
 }
 

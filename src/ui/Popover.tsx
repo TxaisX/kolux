@@ -2,7 +2,7 @@
 // the status bar's popovers are); focus moves in on open and back to the anchor on close. Escape is layer.ts's.
 // Base UI itself is read on demand (part.ts).
 import { useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { useLayer } from "./layer";
+import { useLayer, type CloseWhy } from "./layer";
 import { useBase } from "./part";
 import "./ui.css";
 
@@ -10,7 +10,7 @@ type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null
 
 export type PopoverProps = {
   open: boolean;
-  onClose: () => void;
+  onClose: (why: CloseWhy) => void;
   label: string;
   /** The button that opened it: the popover hangs from it and focus returns to it. */
   anchor: RefObject<Element | null>;
@@ -22,12 +22,15 @@ export type PopoverProps = {
   modal?: boolean | "trap-focus";
   /** The control that takes focus on open (default: the popover itself). */
   initialFocus?: Focus;
+  /** The popover box, for a caller that moves focus to it (a row whose focused button went away). */
+  boxRef?: RefObject<HTMLDivElement | null>;
   "data-testid"?: string;
   children: ReactNode;
 };
 
-export function Popover({ open, onClose, side = "top", align = "start", offset = 4, modal = false, ...p }: PopoverProps) {
-  const popup = useRef<HTMLDivElement>(null);
+export function Popover({ open, onClose, side = "top", align = "start", offset = 4, modal = false, boxRef, ...p }: PopoverProps) {
+  const own = useRef<HTMLDivElement>(null);
+  const popup = boxRef ?? own;
   useLayer(open, onClose, popup);
   const base = useBase(open);
   return base && open ? <base.PopoverBox popup={popup} onClose={onClose} side={side} align={align} offset={offset} modal={modal} {...p} /> : null;

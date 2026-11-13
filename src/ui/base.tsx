@@ -10,7 +10,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Select } from "@base-ui/react/select";
 import { Tabs } from "@base-ui/react/tabs";
 import { Tooltip } from "@base-ui/react/tooltip";
-import { pointAnchor } from "./layer";
+import { pointAnchor, type CloseWhy } from "./layer";
 
 /** Where every popup is put: one empty box outside the layout, for the reason menus use OutOfFlow (DT-C269): put
  *  straight into the body, a popup made WebKit lay out and redraw the window's rows (terminals included) as it came
@@ -26,13 +26,24 @@ function layerHost(): HTMLElement {
   return el;
 }
 
+/** Whether a press that Base UI reads as outside the popup landed on the element the popup hangs from. That press is
+ *  the element's own (its click toggles the popup): closing on it as well would let the click open it again. */
+function onAnchor(anchor: RefObject<Element | null> | Element | null | undefined, event: Event | undefined): boolean {
+  const el = anchor && "current" in anchor ? anchor.current : anchor;
+  const target = event?.target;
+  return !!el && target instanceof Node && el.contains(target);
+}
+
+/** Base UI's reason for a close, as src/ui names it (Escape never reaches Base UI: layer.ts takes it first). */
+const why = (reason: string): CloseWhy => (reason === "outside-press" ? "outside" : "other");
+
 type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
 type Side = "top" | "bottom" | "left" | "right";
 type Align = "start" | "center" | "end";
 
 export type DialogBoxProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "children" | "className"> & {
   popup: RefObject<HTMLDivElement | null>;
-  onClose: () => void;
+  onClose: (why: CloseWhy) => void;
   label: string;
   className?: string;
   viewport?: string;
@@ -60,7 +71,7 @@ export function DialogBox({ popup, onClose, label, className, viewport, backdrop
     </Dialog.Popup>
   );
   return (
-    <Dialog.Root open modal={modal} onOpenChange={(next) => !next && onClose()}>
+    <Dialog.Root open modal={modal} onOpenChange={(next, d) => !next && onClose(why(d.reason))}>
       <Dialog.Portal container={layerHost()}>
         {backdrop && <Dialog.Backdrop className={backdrop} />}
         {viewport ? <Dialog.Viewport className={viewport}>{box}</Dialog.Viewport> : box}
@@ -71,7 +82,7 @@ export function DialogBox({ popup, onClose, label, className, viewport, backdrop
 
 export type MenuBoxProps = {
   popup: RefObject<HTMLDivElement | null>;
-  onClose: () => void;
+  onClose: (why: CloseWhy) => void;
   label: string;
   anchor?: RefObject<Element | null> | Element | null;
   at?: { x: number; y: number } | null;
@@ -89,7 +100,7 @@ export type MenuBoxProps = {
 
 export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
   return (
-    <Menu.Root open onOpenChange={(next) => !next && onClose()}>
+    <Menu.Root open onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Menu.Portal container={layerHost()}>
         <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
           <Menu.Popup ref={popup} className={plain ? className : className ? `menu ${className}` : "menu"} aria-label={label} style={style} finalFocus={finalFocus as never} {...p}>
@@ -113,7 +124,7 @@ export const MenuCheckboxItemBox = ({ checked, onCheckedChange, className = "men
 
 export type PopoverBoxProps = {
   popup: RefObject<HTMLDivElement | null>;
-  onClose: () => void;
+  onClose: (why: CloseWhy) => void;
   label: string;
   anchor: RefObject<Element | null>;
   side: Side;
@@ -129,7 +140,7 @@ export type PopoverBoxProps = {
 
 export function PopoverBox({ popup, onClose, label, anchor, side, align, offset, className, style, modal, initialFocus, children, ...p }: PopoverBoxProps) {
   return (
-    <Popover.Root open modal={modal} onOpenChange={(next) => !next && onClose()}>
+    <Popover.Root open modal={modal} onOpenChange={(next, d) => !next && !(d.reason === "outside-press" && onAnchor(anchor, d.event)) && onClose(why(d.reason))}>
       <Popover.Portal container={layerHost()}>
         <Popover.Positioner className="ui-positioner" anchor={anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
           <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={anchor as RefObject<HTMLElement | null>} {...p}>

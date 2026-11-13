@@ -4,7 +4,7 @@
 // Escape and stacking are Kolux's (layer.ts); focus trap, initial and final focus, aria and click-outside are Base UI's.
 // Base UI itself is read on demand (part.ts): a closed dialog costs nothing, not even its code.
 import { useRef, type HTMLAttributes, type ReactNode, type RefObject } from "react";
-import { useLayer } from "./layer";
+import { useLayer, type CloseWhy } from "./layer";
 import { useBase } from "./part";
 
 type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
@@ -13,7 +13,7 @@ export type DialogProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "childre
   /** Default true: a dialog that is mounted only while shown needs no open state. */
   open?: boolean;
   /** Escape, a click outside, or Base UI's own close all land here. */
-  onClose: () => void;
+  onClose: (why: CloseWhy) => void;
   /** The dialog's accessible name. */
   label: string;
   /** The dialog box's class, e.g. "ask" or "menu about-panel". */

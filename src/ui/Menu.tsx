@@ -3,7 +3,7 @@
 // It hangs from an element (a "More" button) or, as a context menu, from the point that was right-clicked.
 // Base UI itself is read on demand (part.ts); the rows draw only inside an open menu, so they are Base UI's from the start.
 import { useRef, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { useLayer } from "./layer";
+import { useLayer, type CloseWhy } from "./layer";
 import { useBase } from "./part";
 import type { ItemProps } from "./base";
 import "./ui.css";
@@ -15,7 +15,7 @@ type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null
 
 export type MenuProps = {
   open: boolean;
-  onClose: () => void;
+  onClose: (why: CloseWhy) => void;
   /** The menu's accessible name. */
   label: string;
   /** The element the menu hangs from. */

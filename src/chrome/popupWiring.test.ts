@@ -1,6 +1,7 @@
 // UX lane A: the popups are wired to the shared keyboard helper (dialogFocus.ts, proved in dialogFocus.test.ts).
 // renderToString attaches no refs and runs no effects, so the hooks are spied on: each popup must ask for them.
 import sidebarSrc from "./RightSidebar.tsx?raw";
+import statusSrc from "./StatusBar.tsx?raw";
 import { beforeEach, expect, test, vi } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
@@ -21,12 +22,13 @@ beforeEach(() => {
 
 // The confirmation dialog (chrome/Ask) is src/ui's AlertDialog now: its focus and Escape are proved on a real DOM in Ask.test.ts.
 
-test("the status bar's right-click menu uses the menu keys too; the More tabs menu has them from Base UI (src/ui)", () => {
+test("the status bar's right-click menu and the More tabs menu have the menu keys from Base UI (src/ui), not the hand-rolled helper", () => {
   renderToString(createElement(StatusBar, { terminals: 0 }));
-  expect(useMenuFocus).toHaveBeenCalledTimes(1);
   renderToString(createElement(RightSidebar, { tab: "explorer", width: 300, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
-  expect(useMenuFocus).toHaveBeenCalledTimes(1);
+  expect(useMenuFocus).not.toHaveBeenCalled();
+  expect(statusSrc).toMatch(/<Menu open=\{menu !== null\} onClose=\{\(\) => setMenu\(null\)\} label="Status bar items" at=\{menu\}/);
   expect(sidebarSrc).toMatch(/<Menu open onClose=\{\(\) => setMenu\(false\)\} label="More tabs" anchor=\{moreButton\}/);
+  // statusItems.test.ts opens the status bar's menu on a real DOM.
 });
 
 test("chrome.md:15: only the open right-sidebar tab is a tab stop, and the body is its tab panel", () => {

@@ -1,8 +1,9 @@
-// UX audit findings/usage-status.md rows 2, 8, 11, 14 and 19 on the real ResourceManager (small DOM, tauri commands stood in).
-// The chrome's dialog helper is stood in too, so the test can press "Escape" the way it does: by calling the onClose it was given.
+// @vitest-environment happy-dom
+// UX audit findings/usage-status.md rows 2, 8, 11, 14 and 19 on the real ResourceManager (a src/ui Dialog on a real DOM,
+// tauri commands stood in). Escape is a real keydown, caught on the window as in the app.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, find, installDom, mount, settle, until, withText, type FakeDocument, type FakeNode } from "../tasks/fakeDom";
+import { click, find, fire, installDom, mount, settle, until, withText, type FakeDocument, type FakeNode } from "../tasks/realDom";
 import { escapeStep, singleFlight } from "./resources";
 import rmSource from "./ResourceManager.tsx?raw";
 
@@ -11,7 +12,6 @@ const back = vi.hoisted(() => ({
   killFails: new Set<number>(),
   killHold: null as null | Promise<void>,
   kills: [] as number[],
-  focus: { close: null as null | (() => void), calls: 0 },
 }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
@@ -32,12 +32,6 @@ vi.mock("@tauri-apps/api/core", () => ({
     return Promise.resolve(null);
   },
 }));
-vi.mock("../chrome/dialogFocus", () => ({
-  useDialogFocus: (_box: unknown, onClose: () => void) => {
-    back.focus.close = onClose;
-    back.focus.calls++;
-  },
-}));
 
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};
@@ -52,7 +46,6 @@ beforeEach(() => {
   back.killFails = new Set();
   back.killHold = null;
   back.kills = [];
-  back.focus = { close: null, calls: 0 };
   closed = 0;
 });
 afterEach(async () => {
@@ -110,15 +103,31 @@ test("usage-status.md:19: End all and Restart terminals are disabled while an En
   await until(() => find(doc.body, (n) => n.attrs["data-bulk"] === "offer").length === 0 || buttons().every((b) => !("disabled" in b.attrs)), "the run to end");
 });
 
-test("usage-status.md:8: the popup asks for the dialog keys, and Escape closes an open End question before the panel", async () => {
+const panel = () => find(doc.body, (n) => n.attrs["aria-label"] === "Resource Manager")[0];
+const escape = () => fire(root, "keydown", doc.activeElement ?? doc.body, { key: "Escape" });
+
+test("usage-status.md:8: the panel takes focus, and Escape closes an open End question before the panel", async () => {
   await open();
-  expect(back.focus.calls).toBeGreaterThan(0);
+  expect(panel().attrs.role).toBe("dialog");
+  await until(() => doc.activeElement === panel(), "focus on the panel itself");
   await click(root, endButton(12));
   await until(() => questions().length === 1, "the End question");
-  await act(async () => back.focus.close!());
+  await escape();
   expect(questions()).toHaveLength(0);
   expect(closed).toBe(0);
-  await act(async () => back.focus.close!());
+  await escape();
+  expect(closed).toBe(1);
+});
+
+test("usage-status.md:8: a click outside closes the panel even with a question open", async () => {
+  await open();
+  await click(root, endButton(12));
+  await until(() => questions().length === 1, "the End question");
+  const backdrop = find(doc.body, (n) => n.attrs.class === "menu-backdrop")[0];
+  await fire(root, "pointerdown", backdrop);
+  await fire(root, "mousedown", backdrop);
+  await click(root, backdrop);
+  await settle();
   expect(closed).toBe(1);
 });
 
@@ -158,6 +167,5 @@ test("usage-status.md:11: the poll runs through singleFlight and the old window 
 });
 
 test("usage-status.md:8: the popup itself takes focus on open, before its buttons are drawn, without becoming a Tab stop", () => {
-  expect(rmSource).toMatch(/className="menu res-pop" role="dialog" aria-label="Resource Manager" tabIndex={-1}/);
-  expect(rmSource).toContain("}, () => box.current);");
+  expect(rmSource).toMatch(/<Dialog onClose=\{close\} label="Resource Manager" className="menu res-pop" backdrop="menu-backdrop" boxRef=\{box\} initialFocus=\{box\} tabIndex=\{-1\}>/);
 });

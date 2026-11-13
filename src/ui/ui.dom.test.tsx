@@ -5,7 +5,7 @@
 import { act, useRef, useState, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Dialog, Menu, MenuItem, Select, Tab, TabList, TabPanel, Tabs, Tooltip } from "./index";
+import { Dialog, Menu, MenuItem, Popover, Select, Tab, TabList, TabPanel, Tabs, Tooltip } from "./index";
 import { readBase } from "./part";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -130,6 +130,43 @@ describe("Menu", () => {
     await wait();
     expect(picked).toHaveBeenCalledWith("b");
     expect(q('[role="menu"]')).toBeNull();
+  });
+
+  it("a press on the button it hangs from closes it once, and the button's own click does not open it again", async () => {
+    for (const Pop of ["menu", "popover"] as const) {
+      function Page() {
+        const [open, setOpen] = useState(false);
+        const anchor = useRef<HTMLButtonElement>(null);
+        return (
+          <>
+            <button ref={anchor} id="toggle" onClick={() => setOpen((o) => !o)}>
+              More
+            </button>
+            {Pop === "menu" ? (
+              <Menu open={open} onClose={() => setOpen(false)} label="More tabs" anchor={anchor}>
+                <MenuItem>Alpha</MenuItem>
+              </Menu>
+            ) : (
+              <Popover open={open} onClose={() => setOpen(false)} label="Ports" anchor={anchor}>
+                <button>Open</button>
+              </Popover>
+            )}
+          </>
+        );
+      }
+      await show(<Page />);
+      const toggle = q<HTMLButtonElement>("#toggle")!;
+      await act(async () => toggle.click());
+      await wait();
+      expect(qa('[role="menu"],[role="dialog"]'), Pop).toHaveLength(1);
+      // The press as a mouse sends it: pointerdown and mousedown (where Base UI reads "outside"), then the click.
+      for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup"]) await act(async () => void toggle.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true })));
+      await act(async () => toggle.click());
+      await wait();
+      expect(qa('[role="menu"],[role="dialog"]'), Pop).toHaveLength(0);
+      for (const u of unmounts.splice(0)) await u();
+      document.body.innerHTML = "";
+    }
   });
 });
 

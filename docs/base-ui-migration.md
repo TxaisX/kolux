@@ -228,6 +228,13 @@ The tab and its panel are now linked by `aria-controls` and `aria-labelledby`, a
    reaches the `onClick` and `onKeyDown` of every component around the call site even though the box is drawn on the
    body. Put the popup beside, not inside, an element whose handler must not see it (the board's Move to list sits
    next to its card, so a picked lane does not also select the card).
+12. **Why it closes.** `onClose` is called with `"escape"`, `"outside"` (a press outside the popup) or `"other"`. A popup that
+   steps back one level on Escape reads it: the Resource Manager closes an open End question first on Escape, and the
+   whole panel on a click outside. A press on the button a menu or popover hangs from (`anchor`) is that button's own,
+   so its click toggles the popup shut instead of Base UI closing it and the click opening it again.
+13. **Styles scoped by an element around the call site** (`.trust-prompt .ask`) no longer reach a popup, which is drawn in
+   a portal on the body. Give the popup classes of its own (`Ask` takes `className` and `layer`; the wrappers take
+   `className`, `viewport`, `backdrop`, `positioner`).
 
 ## Remaining call sites
 
@@ -257,7 +264,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | automations | 1 | 1 | 1 | 13 | 1 | 1 | 1 | 14 | 16 |
 | board | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 7 | 0 |
 | chat | 0 | 1 | 0 | 2 | 0 | 1 | 0 | 13 | 3 |
-| chrome | 0 | 1 | 0 | 0 | 4 | 1 | 1 | 22 | 1 |
+| chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | editor | 2 | 6 | 0 | 4 | 8 | 0 | 4 | 128 | 12 |
 | feedback | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 1 |
@@ -267,7 +274,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | launch | 1 | 1 | 0 | 3 | 2 | 0 | 2 | 32 | 5 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
 | onboarding | 6 | 1 | 1 | 1 | 1 | 6 | 2 | 9 | 9 |
-| ports | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 1 |
+| ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
 | projects | 6 | 1 | 1 | 17 | 7 | 0 | 19 | 75 | 25 |
 | recovery | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
 | scm | 3 | 5 | 0 | 6 | 4 | 0 | 5 | 98 | 14 |
@@ -277,14 +284,14 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | shell | 2 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 5 |
 | skills | 2 | 3 | 0 | 0 | 4 | 0 | 2 | 19 | 5 |
 | space | 0 | 0 | 0 | 1 | 0 | 0 | 2 | 4 | 1 |
-| status | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 1 |
+| status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 4 | 1 |
 | tasks | 2 | 0 | 2 | 14 | 0 | 0 | 3 | 41 | 18 |
 | terminal | 6 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 8 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 1 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **38** | **26** | **8** | **92** | **42** | **42** | **57** | **646** | **164** |
+| **Total** | **36** | **25** | **8** | **92** | **41** | **42** | **57** | **646** | **161** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -299,10 +306,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 - [ ] `src/chat/ChatText.tsx`: Menu :117
 - [ ] `src/chat/ModelControls.tsx`: Select :37, Select :51
-
-### chrome
-
-- [ ] `src/chrome/StatusBar.tsx`: Menu :111
 
 ### editmenu
 
@@ -338,10 +341,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 - [ ] `src/onboarding/StepPanels.tsx`: Select :150
 - [ ] `src/onboarding/Tours.tsx`: Dialog :130
 - [ ] `src/onboarding/Wizard.tsx`: Dialog :117
-
-### ports
-
-- [ ] `src/ports/PortsItem.tsx`: Dialog :118
 
 ### projects
 
@@ -408,10 +407,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### space
 
 - [ ] `src/space/SpaceView.tsx`: Select :141
-
-### status
-
-- [ ] `src/status/ResourceManager.tsx`: Dialog :159
 
 ### switcher
 
