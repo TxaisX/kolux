@@ -111,6 +111,12 @@ type Composer = { title: string; body: string; base: string; draft: boolean; err
 // VIEW-069: an agent action runs once at a time; the button stays greyed until the start has an answer.
 export default function SourceControlPanel({ dir, initialStatus, writer = DEFAULT_WRITER, draft, onDraft, onClose, onFix, aiShown = true, pinnedBase, onChangeBase, againstUpstream, groupOrder, onAgainstUpstream, agents, onHand, fixAgent, onFixAgent, onAgentAction, linkedPr, onLinkPr, view = "list", onView, onOpenDiff, diffSplit = "here", onDiffSplit, onAllChanges, notesSection }: Props) {
   const [asking, setAsking] = useState<Asking | null>(null);
+  // The agent picker takes focus when the question opens, as its autoFocus did.
+  const agentPick = useRef<HTMLButtonElement>(null);
+  const askingOpen = asking !== null;
+  useEffect(() => {
+    if (askingOpen) agentPick.current?.focus();
+  }, [askingOpen]);
   // GIT-003: the rows waiting for a yes before their work is thrown away, with the workspace they
   // were picked in (T-615): the yes only ever acts there.
   const [discardingRows, setDiscardingRows] = useState<{ dir: string | null; rows: Change[] } | null>(null);
@@ -1070,13 +1076,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                 }}
               >
                 {asking.title && <div className="scm-ask-title">{asking.title}</div>}
-                <select aria-label="agent to start" className="field" autoFocus value={asking.agent} onChange={(e) => setAsking({ ...asking, agent: e.target.value })}>
-                  {agents.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
+                <Select controlRef={agentPick} label="agent to start" className="field" value={asking.agent} onChange={(v) => setAsking({ ...asking, agent: v })} options={agents.map((a) => ({ value: a.id, label: a.name }))} />
                 <textarea aria-label="prompt for the agent" className="field multi" value={asking.prompt} onChange={(e) => setAsking({ ...asking, prompt: e.target.value, edited: true })} />
                 <label className="conn-switch">
                   <input type="checkbox" checked={asking.remember} onChange={(e) => setAsking({ ...asking, remember: e.target.checked })} />
