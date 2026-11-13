@@ -1,3 +1,4 @@
+// retired: it opens a diff by clicking a file in the Source Control panel (removed by T-644); the F7 hunk flow needs rewriting onto the All Changes file rows
 // LIVE proof, GIT-037 boxes 1+2 (spec/11): clicking an unstaged file opens its diff and F7 / Shift+F7 move the caret between hunks;
 // a single click opens a preview tab that the next click on another file reuses (same tab, new file).
 import { pathToFileURL } from "node:url";

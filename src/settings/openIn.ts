@@ -57,6 +57,3 @@ export function moveApp(list: OpenInApp[], id: string, by: -1 | 1): OpenInApp[] 
 
 /** The presets not in the list yet, for the Add menu. */
 export const presetsLeft = (list: OpenInApp[]) => PRESETS.filter((p) => !list.some((a) => a.id === p.id));
-
-/** What every Open in menu lists, in the user's order: one item per app. */
-export const openInItems = (s: Record<string, unknown>) => readOpenIn(s).map((a) => ({ id: a.id, label: `Open in ${a.name}`, command: a.command }));

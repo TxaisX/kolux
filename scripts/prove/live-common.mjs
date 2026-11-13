@@ -8,21 +8,52 @@
 //    `--settings <the scratch settings.json>` so Claude loads the entries the app installed.
 //  - nothing here reads or writes a credential file; the account folder is only named as a variable value.
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp, guardReport, runWord, sleep, waitFor } from "../evidence/app-launch.mjs";
 
 export { sleep, waitFor };
 export const ROOT = fileURLToPath(new URL("../../", import.meta.url)).replace(/[\\/]+$/, "");
-// Ports of the prove app; PROVE_PORT / PROVE_CDP let two sessions run live proofs at once.
-const PORT = process.env.PROVE_PORT || "1470";
-const CDPP = process.env.PROVE_CDP || "9290";
-const PAGE = new RegExp(`localhost:${PORT}|tauri\\.localhost`);
+// Everything a run may want to place elsewhere, read in one place: a slot (scripts/stress/run-all.mjs) hands each
+// worker its own ports, scratch folders and identifier, so two runs never share a profile or a log folder.
+const env = () => {
+  const identifier = process.env.PROVE_IDENTIFIER || "com.txaisxiong.kolux.prove";
+  return {
+    port: process.env.PROVE_PORT || "1470",
+    cdp: process.env.PROVE_CDP || "9290",
+    base: process.env.PROVE_BASE || "G:/Temp/live-v15",
+    logs: process.env.PROVE_LOGS || "G:/Temp/live-v15-logs",
+    identifier,
+    // createApp only wipes a profile whose identifier carries the suffix, so the suffix follows the identifier.
+    suffix: process.env.PROVE_SUFFIX || identifier.slice(identifier.lastIndexOf(".")) || ".prove",
+  };
+};
+export const ENV = env();
+const PORT = ENV.port;
+const CDPP = ENV.cdp;
+export const PAGE = new RegExp(`localhost:${PORT}|tauri\\.localhost`);
 // Test account A lives outside the old-app folders (X-proc.6); set KOLUX_LIVE_ACCOUNT_A to use another folder.
 export const ACCOUNT_A = process.env.KOLUX_LIVE_ACCOUNT_A || "G:/Temp/live-signin/account-a";
-export const BASE = "G:/Temp/live-v15";
-export const LOGS = "G:/Temp/live-v15-logs";
+// The CDP targets of the prove app: PROVE_CDP, never a fixed port, so two sessions can run at once.
+export const targets = async () => (await fetch(`http://127.0.0.1:${CDPP}/json`)).json();
+/** Today, for the dated LIVE section evidence() writes. */
+export const TODAY = new Date().toISOString().slice(0, 10);
+/**
+ * Appends one dated LIVE section to evidence/cards-<card>.txt. PROVE_EVIDENCE redirects the folder (a parallel run
+ * writes under its own scratch root) and PROVE_NO_EVIDENCE=1 skips the write, so a check can run without touching
+ * the working tree.
+ */
+export function evidence(root, card, lines, script = "live.mjs") {
+  if (process.env.PROVE_NO_EVIDENCE === "1") return null;
+  const dir = process.env.PROVE_EVIDENCE || join(root, "evidence");
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, `cards-${card}.txt`);
+  appendFileSync(file, `\n\nLIVE ${TODAY} (scripts/prove/${script}, hidden dev app)\n${lines.join("\n")}\n`);
+  return file;
+}
+export const BASE = ENV.base;
+export const LOGS = ENV.logs;
 export const CLAUDE = 'section.pane[data-agent*="claude"]';
 
 // Nothing of the old app, no token variable and no API key may reach the app, its panes or Claude.
@@ -71,7 +102,7 @@ export async function startProve(id, opts) {
   const TEMP = `${BASE}/run-${id}`;
   const repo = `${BASE}/work/${id}`;
   const settingsFile = `${TEMP}/tmp/claude-config/settings.json`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: ENV.identifier, temp: TEMP, suffix: ENV.suffix, offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
   const { profile } = app.paths;
   // A fresh run folder: only a folder this lane made (it carries the marker) is wiped.
   if (existsSync(TEMP)) {
@@ -142,9 +173,11 @@ export async function startProve(id, opts) {
       return ((await ctx.screen()) ?? []).join("\n");
     },
     async openClaude() {
-      await click("button.newtab");
-      await waitFor("the New tab menu", () => exists('[role="menu"][aria-label="New tab"]'), 5000);
-      await clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', "/^\\s*Claude Code\\s*$/");
+      // The plus in a shown pane's header opens the same New session menu the old button.newtab did.
+      await focusPane(TERM, 0, ".xterm-helper-textarea");
+      await click(`${TERM}.focused ${TID.paneNewSession}`);
+      await waitFor("the New session menu", () => exists(TID.newSessionMenu), 5000);
+      await clickWhere(`${TID.newSessionMenu} [role="menuitem"]`, "/^\\s*Claude Code\\s*$/");
       await waitFor("a Claude pane", () => shown(CLAUDE), 20000);
       await waitFor("its input field", () => exists(`${CLAUDE} .xterm-helper-textarea`), 20000);
     },
@@ -244,10 +277,27 @@ export function hookEventsInstalled(settingsFile) {
 export const excerpt = (text, n = 6) => text.split("\n").map((l) => l.trim()).filter(Boolean).slice(-n).join(" | ").slice(0, 400);
 
 // ---------- live-v1 (2026-10-26): terminal/pane boxes with plain shells and a stand-in agent, no sign-in ----------
-export const LIVE_BASE = "G:/Temp/live-v15";
-export const LIVE_LOGS = "G:/Temp/live-v15-logs";
+// The same two folders under the names the live-v1 scripts use; one place reads PROVE_BASE / PROVE_LOGS.
+export const LIVE_BASE = BASE;
+export const LIVE_LOGS = LOGS;
 export const TERM = "section.pane[data-agent]";
 export const SHELL = 'section.pane[data-agent="shell"]';
+
+// The controls the harness drives, by their stable attributes in src/. One place, so a renamed id is one edit here
+// instead of a hunt through the proofs. Round 4: this map was missing altogether — `startPlain()` referred to `TID`
+// thirteen times and the name was declared nowhere, so every live proof would have died on its first line with
+// "TID is not defined" the moment the lane finally launched the app. src/ references are the 2026-11-12 tree.
+export const TID = {
+  addProject: '[data-testid="sidebar-add-project"]', // src/projects/ProjectsPanel.tsx:2520
+  addByPath: "[data-add-by-path]", // src/projects/AddProject.tsx:159
+  folderInput: 'input[aria-label="project folder"]', // src/projects/ProjectsPanel.tsx:2582
+  chooser: '[data-testid="chooser-pane"]', // src/launch/ChooserPane.tsx:311
+  seats: ".seats", // src/launch/ChooserPane.tsx:503
+  seatTerminal: '[data-testid="seat-agent-terminal"]', // src/launch/ChooserPane.tsx:542
+  chooserStart: '[data-testid="chooser-start"]', // src/launch/ChooserPane.tsx:673
+  paneNewSession: '[data-testid="pane-new-session"]', // src/terminal/TerminalPane.tsx:1887
+  newSessionMenu: '[data-testid="new-session-menu"]', // src/launch/PlusMenu.tsx:144
+};
 
 /** A stand-in claude.cmd: prints a banner and stays up (no network, no sign-in). body = extra batch lines run after the banner. */
 export function writeStandinClaude(dir, body = []) {
@@ -293,7 +343,7 @@ export async function startPlain(id, opts) {
   const { log } = opts.report;
   const TEMP = `${LIVE_BASE}/run-${id}`;
   const repo = `${LIVE_BASE}/work/${id}`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: ENV.identifier, temp: TEMP, suffix: ENV.suffix, offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
   const { profile } = app.paths;
   if (existsSync(TEMP)) {
     if (!existsSync(join(TEMP, ".prove-run"))) throw new Error(`${TEMP} exists without the prove marker`);
@@ -342,31 +392,22 @@ export async function startPlain(id, opts) {
       },
     });
     delete process.env.GIT_TRACE2;
-    await wf("the sidebar add button", () => exists('aside.sidebar button[aria-label="Add project"]'), 60000);
+    await wf("the sidebar add button", () => exists(TID.addProject), 60000);
     if (!opts.noProject) {
-      await click('aside.sidebar button[aria-label="Add project"]');
-      await wf("the add-by-path item", () => exists('button[data-add-by-path]'), 5000);
-      await click('button[data-add-by-path]');
-      await wf("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
-      await focusField('input[aria-label="project folder"]');
+      await click(TID.addProject);
+      await wf("the add-by-path item", () => exists(TID.addByPath), 5000);
+      await click(TID.addByPath);
+      await wf("the project folder field", () => exists(TID.folderInput), 5000);
+      await focusField(TID.folderInput);
       await cdp("insert", repo, "enter");
-      await wf("the first pane (shell or session chooser)", async () => (await shown(TERM)) >= 1 || (await exists("section.pane.chooser .chooser-foot")), 30000);
-      // A new project opens the session chooser: pick Terminal for every seat and start it.
+      await wf("the first pane (shell or session chooser)", async () => (await shown(TERM)) >= 1 || (await exists(TID.chooser)), 30000);
+      // A new workspace opens the session chooser: every seat gets its Terminal button, then Start (ChooserPane
+      // replaced the seat <select> with a row of agent buttons, so a `chooser select` never matched again).
       if (!(await shown(TERM))) {
-        const picked = await evalJs(`(() => {
-          let n = 0;
-          for (const sel of document.querySelectorAll("section.pane.chooser select")) {
-            const opt = [...sel.options].find((o) => o.text.trim() === "Terminal");
-            if (!opt) continue;
-            Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, opt.value);
-            sel.dispatchEvent(new Event("change", { bubbles: true }));
-            n++;
-          }
-          return n;
-        })()`);
+        const picked = await evalJs(`(() => { let n = 0; for (const b of document.querySelectorAll('${TID.seats} ${TID.seatTerminal}')) { b.click(); n++; } return n; })()`);
         log(`session chooser: Terminal picked for ${picked} seat(s)`);
-        await wf("the chooser's Start button", () => exists("section.pane.chooser .chooser-foot button.btn.primary:not(:disabled)"), 30000);
-        await click("section.pane.chooser .chooser-foot button.btn.primary");
+        await wf("the chooser's Start button", () => exists(`${TID.chooserStart}:not(:disabled)`), 60000);
+        await click(`${TID.chooserStart}:not(:disabled)`);
       }
       await wf("the first shell pane", async () => (await shown(TERM)) >= 1, 30000);
       await wf("its input field", () => exists(`${TERM} .xterm-helper-textarea`), 30000);

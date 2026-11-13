@@ -25,6 +25,15 @@
 //         Claude and Codex configuration and Kolux's real hook folder are never touched. FAILs when the app did
 //         not install its hook into the scratch Claude settings.json, or the hook script that entry names is
 //         missing on disk or not under the scratch home.
+// Flow 6  New session starts every agent type and the pane takes input (SESS-001): the plus menu's Claude Code,
+//         Codex, Grok and OpenCode rows each open a pane that runs a stand-in .cmd (no AI account, no network),
+//         a line typed into that pane is echoed back to a file under --temp/marks, and "Blank terminal" opens a
+//         shell that writes a file the same way. FAILs when a row is missing from the menu, the pane never
+//         shows, or the line never comes back.
+// Flow 7  six or more sessions in one workspace (PROJ, the wave's sidebar bug): the sidebar lists the workspace's
+//         folder row and no per-session rows, clicking that row shows every pane again, and (launch mode) a
+//         restart brings all of them back. The dead `pane-row` class is asserted absent, so a sidebar that
+//         starts listing sessions one per row fails here.
 // Flow 5  quit and come back (council C2, T-542-b): with two or more shells, the Claude stand-in and one
 //         non-default setting live, the app pid's descendant tree is captured (Win32_Process ParentProcessId
 //         walk), the window is closed through the app's own path (window close over CDP, the same as the X
@@ -67,6 +76,7 @@ import { cpus } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp, moveScript } from "./app-launch.mjs";
+import { AGENTS, agentLog as agentLogOf, standinsOn, writeStandins as writeStandinsTo } from "./smoke-standins.mjs";
 // The launching shell may be a pane of another Kolux build (the old app sets KOLUX_USER_DATA_PATH, hook port/token and pane ids);
 // none of it may reach the app under test, its panes or the CLI it runs.
 for (const k of Object.keys(process.env)) if (k.startsWith("KOLUX_")) delete process.env[k];
@@ -98,10 +108,11 @@ const TEMP_MARKER = ".kolux-rs-smoke-temp";
 // FIX-2 (council re-review AFTER 2): the marker names the smoke run that made the folder, so a second run
 // never deletes a folder a live run is using.
 const markerText = (pid) => `made by scripts/evidence/smoke.mjs setup(); pid ${pid}; removed with this folder\n`;
-const ONLY = opt("only", ATTACH ? "1,2,3,4" : "1,2,3,4,5")
+// Flow 5 quits and relaunches the app a dozen times, so it runs last; 6 and 7 want the grid flows 1-4 leave behind.
+const ONLY = opt("only", ATTACH ? "1,2,3,4,6,7" : "1,2,3,4,6,7,5")
   .split(",")
   .map((s) => Number(s.trim()))
-  .filter((n) => n >= 1 && n <= 5);
+  .filter((n) => n >= 1 && n <= 7);
 const BUILD_MINUTES = Number(opt("timeout", "20"));
 // T-184 detection: the task line ticked in this checkout's PLAN.md (the merge gate runs smoke on the checkout
 // that carries the merge, so "on main" and "ticked here" are the same thing there).
@@ -112,6 +123,8 @@ const required = (n) => n !== 5 || QUIT_REQUIRED;
 const repo = join(TEMP, "repo");
 const marks = join(TEMP, "marks");
 const standin = join(TEMP, "standin");
+// Where the agent stand-ins go, where they log the lines their panes send, and the scratch repo their hooks name.
+const standinPaths = { dir: standin, marks, repo };
 const log = (...x) => console.log(...x);
 // Row 855: whole-machine CPU busy % between two os.cpus() snapshots (mean over the window); spawns nothing.
 const cpuSnap = () => cpus().map((c) => c.times);
@@ -161,10 +174,21 @@ const pickLayout = (n) => click(tid(`layout-count-${n}`));
 // the old new-tab button is gone; a pane's header has a "New session" plus that opens the same agent menu. A shown terminal
 // pane takes the focus first, so the plus belongs to a pane a user sees, and the new session joins that pane's cell.
 const newTab = async (label) => {
+  const before = await count(TERM);
   await focusPane(TERM, 0, XTERM_INPUT);
   await click(`${TERM}.focused ${tid("pane-new-session")}`);
   await waitFor("the New session menu", () => exists(tid("new-session-menu")), 5000);
+  // An agent past the first three lives under "Show more agents" (the 29-agent menu); open it first.
+  const has = (re) => evalJs(`(() => { const m = document.querySelector(${JSON.stringify(tid("new-session-menu"))}); return !!m && [...m.querySelectorAll('[role="menuitem"]')].some((x) => ${re.toString()}.test((x.querySelector(".name") ?? x).textContent || "")); })()`);
+  if (!(await has(label))) {
+    await clickWhere(`${tid("new-session-menu")} [role="menuitem"]`, /^\s*Show more agents/i);
+    await waitFor("the more agents submenu", () => has(label), 5000);
+  }
   await clickWhere(`${tid("new-session-menu")} [role="menuitem"]`, label);
+  await waitFor(`a pane after ${label}`, async () => (await count(TERM)) > before, 30000);
+  // The new pane's key is the largest one in the grid; the agent's own type is not a reliable selector
+  // (Grok and OpenCode panes read as "shell" in the app's own header, so data-agent is not "grok").
+  return evalJs(`(() => { const ps = [...document.querySelectorAll(${JSON.stringify(TERM)})]; return String(Math.max(...ps.map((p) => Number(p.dataset.key)))); })()`);
 };
 const read = (file) => (existsSync(file) ? readFileSync(file, "utf8") : null);
 const bytes = (file) => (existsSync(file) ? readFileSync(file) : null);
@@ -213,6 +237,10 @@ async function setup() {
   await git(["init", "-q", "-b", "main"]);
   await git(["-c", "user.name=smoke", "-c", "user.email=smoke@example.invalid", "add", "."]);
   await git(["-c", "user.name=smoke", "-c", "user.email=smoke@example.invalid", "commit", "-q", "-m", "smoke"]);
+  // The four agent stand-ins go on the app's PATH before it starts, so its agent search finds them installed and
+  // the menu offers them (no real CLI, no account, no network).
+  writeStandins();
+  process.env.PATH = `${standin.replace(/\//g, "\\")};${process.env.PATH}`;
   if (!ATTACH) await launch();
   else await pageUp(30000);
   // T-543-b: with no layout saved the window opens with no pane until a workspace is opened.
@@ -221,7 +249,15 @@ async function setup() {
   const before = await count(TERM);
   log(`zero panes after launch: ${before === 0 ? "PASS" : "FAIL"} (${before} ${TERM})`);
   if (!ATTACH && before !== 0) throw new Error(`a fresh profile opened with ${before} pane(s); T-543-b wants none until a workspace is opened`);
-  if (await exists(tid("onboarding-dialog"))) log("WARN a first-run dialog is open; the flows may not reach the grid");
+  if (await exists(tid("onboarding-dialog"))) {
+    // A first-run dialog covers the grid and its menu; close it the way a user would before the flows.
+    // The corner close asks "Skip setup?" first, so the answer is the Skip button, not a click on the close.
+    await click(`${tid("onboarding-dialog")} button[aria-label="Close setup"]`);
+    await waitFor("the skip-setup question", () => exists(tid("ask-dialog")), 5000);
+    await click(tid("ask-confirm"));
+    await waitFor("the first-run dialog to close", async () => !(await exists(tid("onboarding-dialog"))), 5000);
+    log("closed the first-run dialog");
+  }
   await click(tid("sidebar-add-project"));
   await waitFor("the add-by-path link", () => exists(tid("add-project-by-path")), 5000);
   await click(tid("add-project-by-path"));
@@ -354,46 +390,13 @@ async function flow3() {
 }
 
 // ---------- flow 4 ----------
-// The stand-in for Claude Code: the same guards, endpoint file read and curl post as Kolux's installed hook
-// script (hooks.rs), fed the JSON Claude Code would pipe in; then it stays up like a session would.
-function writeStandin() {
-  mkdirSync(standin, { recursive: true });
-  const event = (name, extra) => JSON.stringify({ hook_event_name: name, session_id: "smoke-standin", cwd: repo, ...extra });
-  writeFileSync(join(standin, "session-start.json"), event("SessionStart", { source: "startup" }));
-  writeFileSync(join(standin, "prompt.json"), event("UserPromptSubmit", { prompt: "smoke: turn the dot to Working" }));
-  const post = (file) =>
-    `type "%~dp0${file}" | %SystemRoot%\\System32\\curl.exe -s -m 1.5 --connect-timeout 0.5 --noproxy "*" -X POST -H "Content-Type: application/json" -H "X-Kolux-Token: %KT%" -H "X-Kolux-Pane: %KOLUX_HOOK_IDENTITY%" -H "X-Kolux-Config: %CLAUDE_CONFIG_DIR%" --data-binary @- -o NUL "http://127.0.0.1:%KP%/claude" >NUL 2>&1`;
-  writeFileSync(
-    join(standin, "claude.cmd"),
-    [
-      "@echo off",
-      "echo Kolux smoke stand-in for Claude Code (T-542): posts the hook events a session would.",
-      'if "%KOLUX_PANE_KEY%"=="" (echo not in a Kolux pane & exit /b 0)',
-      "setlocal",
-      'set "KP=%KOLUX_AGENT_HOOK_PORT%"',
-      'set "KT=%KOLUX_AGENT_HOOK_TOKEN%"',
-      'if not "%KOLUX_HOOK_ENDPOINT%"=="" if exist "%KOLUX_HOOK_ENDPOINT%" for /f "usebackq tokens=1,2" %%a in ("%KOLUX_HOOK_ENDPOINT%") do (set "KP=%%a" & set "KT=%%b")',
-      post("session-start.json"),
-      post("prompt.json"),
-      "echo hook events posted; staying up",
-      "ping -n 3600 127.0.0.1 >nul",
-      "",
-    ].join("\r\n"),
-  );
-  return join(standin, "claude.cmd");
-}
-// Points agentOptions.claude.command at the stand-in; the returned function puts the old value back.
-async function standinOn() {
-  const command = writeStandin();
-  const old = await invoke("get_settings");
-  const had = old && typeof old === "object" && "agentOptions" in old;
-  const agentOptions = { ...(had ? old.agentOptions : {}), claude: { ...(had ? old.agentOptions?.claude ?? {} : {}), command } };
-  await invoke("settings_patch", { set: { agentOptions }, remove: [] });
-  return async () => {
-    if (had) await invoke("settings_patch", { set: { agentOptions: old.agentOptions }, remove: [] }).catch(() => {});
-    else await invoke("settings_patch", { set: {}, remove: ["agentOptions"] }).catch(() => {});
-  };
-}
+// The stand-ins for the four agents (flows 4 and 6): each prints a banner, then reads one line at a time from its
+// own pane and appends it to marks/agent-<id>.txt (scripts/evidence/smoke-standins.mjs writes and tests them).
+const agentLog = (id) => agentLogOf(marks, id);
+const writeStandins = () => writeStandinsTo(standinPaths);
+// Points agentOptions.<agent>.command at the stand-ins (all four, or just claude); the returned function puts the
+// old values back.
+const standinOn = (ids = ["claude"]) => standinsOn(invoke, standinPaths, ids);
 const dotWorking = () =>
   waitFor(
     "the status dot to turn Working",
@@ -428,6 +431,66 @@ async function flow4() {
   } finally {
     await restore();
   }
+}
+
+// ---------- flow 6 ----------
+// New session starts every agent type and the pane takes input: Claude Code, Codex, Grok and OpenCode through
+// stand-ins, then a blank terminal, each proven by a line or a command that came back out of the pane.
+async function flow6() {
+  const restore = await standinOn(AGENTS.map((a) => a.id));
+  const took = [];
+  try {
+    for (const agent of AGENTS) {
+      const key = await newTab(new RegExp(`^\\s*${agent.label}\\s*$`));
+      const sel = `${TERM}[data-key="${key}"]`;
+      await waitFor(`a ${agent.label} pane`, () => exists(sel), 30000);
+      const mark = `smoke6-${agent.id}-${Date.now().toString(36)}`;
+      await focusPane(sel, 0, XTERM_INPUT);
+      await cdp("insert", mark, "enter");
+      await waitFor(`${agent.label} to echo the line it was given`, () => (read(agentLog(agent.id)) ?? "").includes(mark), 45000, 500);
+      took.push(`${agent.label} echoed "${mark}"`);
+    }
+    // A blank terminal is the menu's own row for a plain shell; it proves input by writing a file, as flow 1 does.
+    const out = join(marks, "flow6-terminal.txt");
+    const key = await newTab(/^\s*Blank terminal\s*$/);
+    await waitFor("a blank terminal pane", () => exists(`${TERM}[data-key="${key}"]`), 30000);
+    await shellWrites(0, `'smoke6-terminal' | Set-Content '${slash(out)}'`, out, "the blank terminal to write its file");
+    took.push(`Blank terminal wrote ${out}`);
+  } finally {
+    await restore();
+  }
+  return `New session started ${took.length} sessions and every one took input (no AI account, stand-ins only): ${took.join("; ")}`;
+}
+
+// ---------- flow 7 ----------
+// Six or more sessions in one workspace: the sidebar keeps one folder row, clicking it brings the grid back, and
+// a restart keeps every pane. The dead `pane-row` class is asserted absent, so a sidebar that goes back to one
+// row per session fails here instead of silently looking right.
+async function flow7() {
+  let panes = await count(TERM);
+  while (panes < 6) {
+    const want = panes + 1;
+    await focusPane(TERM, 0, XTERM_INPUT);
+    await click(`${TERM}.focused ${tid("pane-split-right")}`);
+    await waitFor(`${want} panes`, async () => (await count(TERM)) >= want, 30000);
+    panes = await count(TERM);
+  }
+  await pickLayout(6);
+  const grid = await waitFor("the six-pane grid", async () => ((await shown(TERM)) >= 6 ? shown(TERM) : null), 20000);
+  const dead = await count("aside.sidebar .pane-row");
+  if (dead > 0) throw new Error(`the sidebar still renders ${dead} .pane-row element(s); a workspace row is .sess[role=button] now`);
+  // Txais 2026-11-12: the sidebar lists the workspace folder row and its sessions under it (never worktrees).
+  const folders = await count(`${tid("sidebar-folder")}`);
+  if (folders !== 1) throw new Error(`the sidebar lists ${folders} folder rows for one workspace with ${panes} sessions; it should list the folder row once`);
+  const sessions = await count(`${tid("sidebar-session")}`);
+  if (sessions < panes) throw new Error(`the sidebar lists ${sessions} session rows for ${panes} sessions; it should list every session under the folder`);
+  await click(tid("sidebar-folder"));
+  const back = await waitFor("every pane again", async () => ((await shown(TERM)) >= grid ? shown(TERM) : null), 20000);
+  const said = `${panes} sessions in one workspace: the sidebar lists the folder row and ${sessions} session rows (no .pane-row), clicking the folder shows ${back} panes`;
+  if (ATTACH) return `${said} (attach mode: no restart)`;
+  await relaunch();
+  const kept = await waitFor(`the ${panes} panes after the restart`, async () => ((await count(TERM)) >= panes ? count(TERM) : null), 90000, 500);
+  return `${said}, and a restart kept ${kept} panes`;
 }
 
 // ---------- flow 5 ----------
@@ -700,7 +763,7 @@ if (flag("self-test")) {
 }
 
 // ---------- run ----------
-const flows = { 1: flow1, 2: flow2, 3: flow3, 4: flow4, 5: flow5 };
+const flows = { 1: flow1, 2: flow2, 3: flow3, 4: flow4, 5: flow5, 6: flow6, 7: flow7 };
 const results = [];
 let setupError = null;
 try {

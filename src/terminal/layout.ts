@@ -1,7 +1,7 @@
 // PROJ-067: the workspaces' tabs and layout are written to the settings as they change and read
 // back at start. Only what a fresh start can rebuild is kept: a terminal tab comes back as its
 // program in its folder (an agent with its last known session resumed, SESS-030, else at its prompt),
-// a browser or editor tab as the same kind on the same path. A saved entry that cannot be read is
+// an editor tab as the same kind on the same path. A saved entry that cannot be read is
 // dropped on its own; the rest comes back. A tab whose folder is gone is dropped, and the active
 // workspace and tab return only while they still exist.
 
@@ -12,13 +12,15 @@ import { isTabColor, type TabColors } from "./tabColor";
 
 export const LAYOUT_FIELD = "savedLayout";
 
-export type PaneKind = "browser" | "editor" | "preview" | "diff" | "changes" | "check";
-const KINDS: PaneKind[] = ["browser", "editor", "preview", "diff", "changes", "check"];
-const AGENTS: Agent[] = ["claude", "codex", "shell"];
+export type PaneKind = "editor" | "preview" | "diff" | "changes" | "check";
+const KINDS: PaneKind[] = ["editor", "preview", "diff", "changes", "check"];
+const AGENTS: Agent[] = ["claude", "codex", "copilot", "cursor", "grok", "opencode", "shell"];
 
 export type SavedPane = {
   key: number;
   cwd: string | null;
+  /** DT-C274: the folder whose grid shows the tab when it is not `cwd` (an own-folder team's one grid). */
+  view?: string | null;
   branch: string | null;
   agent: Agent;
   agentId?: string;
@@ -80,6 +82,7 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     const chooser = !!p.seats && p.program === null && !p.kind;
     const s: SavedPane = { key: p.key, cwd: p.cwd, branch: p.branch, agent: p.agent, program: p.program, args: p.agent === "shell" ? p.args : [] };
     if (chooser) s.chooser = true;
+    if (p.view !== undefined) s.view = p.view;
     if (p.agentId !== undefined) s.agentId = p.agentId;
     if (p.session) s.session = p.session;
     if (p.forkOf) s.forkOf = p.forkOf;
@@ -180,7 +183,7 @@ export function restoreAsks(p: Pick<SavedPane, "agent" | "agentId" | "program" |
 /** DT-C27 (Txais, 2026-11-08: start fresh, "no ai slop"): every terminal tab that ran an agent comes
  *  back as a new plain shell in its folder, so no agent is started or resumed on its own, and a Setup
  *  tab does not run its setup script again. Plain shells,
- *  empty choosers and browser, editor and other tabs come back as saved. */
+ *  empty choosers and editor and other tabs come back as saved. */
 export function freshShells(l: SavedLayout): SavedLayout {
   const panes = l.panes.map((p) => {
     if (p.kind || p.chooser || (p.agent === "shell" && !p.agentId && !p.setupScript)) return p;
@@ -209,8 +212,9 @@ function readPane(v: unknown): SavedPane | null {
   if (o.kind !== undefined) {
     if (!KINDS.includes(o.kind as PaneKind)) return null;
     p.kind = o.kind as PaneKind;
-    if (o.kind !== "browser" && o.kind !== "changes" && !str(o.path)) return null;
+    if (o.kind !== "changes" && !str(o.path)) return null;
   }
+  if (o.view !== undefined && strOrNull(o.view)) p.view = o.view;
   if (str(o.agentId)) p.agentId = o.agentId;
   if (str(o.forkOf) && o.forkOf !== "") p.forkOf = o.forkOf;
   const own = resumeId({ session: str(o.session) ? o.session : undefined, forkOf: p.forkOf });
@@ -256,9 +260,10 @@ export function restoreLayout(value: unknown): SavedLayout | null {
   return tidy(uniqueOwners(panes), activeTab, num(o.focused) ? o.focused : 0, strOrNull(o.activeDir) ? o.activeDir : null, stacked);
 }
 
-/** Drops the tabs whose folder is gone; the active workspace and tab come back only while they exist. */
+/** Drops the tabs whose folder is gone; the active workspace and tab come back only while they exist. DT-C274: a tab
+ *  whose grid's folder is gone goes too, as removing that folder closes it (workspaces.ts withoutDir). */
 export function stillThere(l: SavedLayout, exists: (dir: string) => boolean): SavedLayout {
-  const panes = l.panes.filter((p) => p.cwd === null || exists(p.cwd));
+  const panes = l.panes.filter((p) => (p.cwd === null || exists(p.cwd)) && (p.view === undefined || p.view === null || exists(p.view)));
   const activeDir = l.activeDir !== null && !exists(l.activeDir) ? null : l.activeDir;
   return tidy(panes, l.activeTab, l.focused, activeDir, l.stacked);
 }

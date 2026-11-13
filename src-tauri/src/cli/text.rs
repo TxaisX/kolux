@@ -100,9 +100,6 @@ pub(super) fn text_core(command: &str, r: &Value) -> String {
     if let Some(t) = local_cli::text(command, r) {
         return t;
     }
-    if let Some(t) = crate::browser::cli::text(command, r) {
-        return t;
-    }
     if let Some(t) = automations_cli::text(command, r) {
         return t;
     }

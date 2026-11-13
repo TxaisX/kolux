@@ -237,7 +237,12 @@ impl Service {
         let built: Vec<_> = a["commands"].as_array().into_iter().flatten().filter_map(crate::pty::link::command_from).collect();
         let mut cmds = if !built.is_empty() {
             built
-        } else if program.is_empty() { crate::pty::shell_commands(cwd.as_deref(), None) } else { vec![crate::pty::program_command(&program, &args, cwd.as_deref())] };
+        } else if program.is_empty() {
+            crate::pty::shell_commands(cwd.as_deref(), None)
+        } else {
+            // Goal 0 item 5: an agent asked for by name starts inside the user's shell here too.
+            vec![crate::agents::agent_shell::via_shell(&program, &args, cwd.as_deref(), &a["settings"]).unwrap_or_else(|| crate::pty::program_command(&program, &args, cwd.as_deref()))]
+        };
         if let Some(env) = a["env"].as_object() {
             for cmd in &mut cmds {
                 for (k, v) in env {

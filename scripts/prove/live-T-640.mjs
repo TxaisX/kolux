@@ -20,7 +20,7 @@ const norm = (p) => (p ?? "").replace(/\\/g, "/").toLowerCase();
 
 const ROWS = `(() => {
   const list = document.querySelector("aside.sidebar");
-  const rows = [...list.querySelectorAll(".proj, .branch, [data-path], .pane-row")].filter((e) => e.getClientRects().length);
+  const rows = [...list.querySelectorAll(".proj, .branch, [data-path]")].filter((e) => e.getClientRects().length);
   return rows.map((e) => ({ cls: String(e.className), text: (e.querySelector(".name") ?? e).textContent.trim().slice(0, 50), path: e.getAttribute("data-path") }));
 })()`;
 const MENU = `[...document.querySelectorAll('[role=menu] [role=menuitem]')].filter((e) => e.getClientRects().length).map((e) => e.textContent.trim())`;

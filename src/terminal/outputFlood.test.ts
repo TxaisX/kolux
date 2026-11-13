@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { Terminal } from "@xterm/xterm";
 import { decodeOutput } from "./codec";
 import { Gate, Scanner } from "./shellMarks";
-import { notePrinted } from "../browser/preview";
+import { notePrinted } from "./printedAddresses";
 import { batchAcks } from "./flow";
 
 const MB = 1024 * 1024;
@@ -71,4 +71,5 @@ test("xterm's parser takes 48 MB of lines (scrollback 5000) and holds a bounded 
   expect(term.buffer.active.length).toBeLessThanOrEqual(5000 + 30);
   expect(r).toBeGreaterThan(1);
   term.dispose();
-});
+  // 48 MB through the parser: ~1 s alone, several seconds when other lanes load the PC
+}, 30_000);

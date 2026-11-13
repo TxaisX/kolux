@@ -1,7 +1,7 @@
 // TERM-008 / TERM-016: tidy the grid, and move a split pane into the tab strip of its neighbour. Pure; the window applies the result.
 import { cellsOf, groupOf, type Tabbed } from "../terminal/grid";
 import { dropTab } from "../terminal/rearrange";
-import { sameDir } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 
 /**
  * TERM-008: drops every dragged column and row weight of one folder's grid, whatever the pane count was when it was dragged,
@@ -17,7 +17,7 @@ export function tidyWeights(weights: Record<string, number[]>, dir: string | nul
 export function neighbourCell<P extends Tabbed & { cwd: string | null }>(panes: P[], key: number): number | null {
   const me = panes.find((p) => p.key === key);
   if (!me) return null;
-  const cells = cellsOf(panes.filter((p) => sameDir(p.cwd, me.cwd)));
+  const cells = cellsOf(panes.filter((p) => sameDir(viewOf(p), viewOf(me)))); // its grid (DT-C274)
   const i = cells.findIndex((c) => c.group === groupOf(me));
   const near = cells[i - 1] ?? cells[i + 1];
   return i < 0 || !near ? null : near.group;

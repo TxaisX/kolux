@@ -1,0 +1,17 @@
+[workspace]
+
+[package]
+name = "rune-terminal"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Pinned Rune dev rev (MIT, © Anomaly). Default features omitted here so the spike compiles
+# standalone without patching accesskit_windows; wgpu/DirectWrite/headless tooling stay enabled.
+rune = { git = "https://github.com/anomalyco/rune", rev = "c9ae2f6ec08147fc5c72760bbf09a6acd4a27dc3", default-features = false, features = ["embedded-fonts", "svg"] }
+# Kolux's own PTY code (read-only path dependency; NOT wired back into the app).
+kolux = { path = "../../src-tauri", default-features = false }
+portable-pty = "0.9"
+vt100 = "0.15"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

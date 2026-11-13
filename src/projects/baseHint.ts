@@ -17,11 +17,6 @@ export function isBehindHint(warning: string): boolean {
 export const refreshesOnCreate = (settings: Record<string, unknown>): boolean => settings[REFRESH_SETTING] === true;
 export const hintDismissed = (settings: Record<string, unknown>): boolean => settings[HINT_DISMISSED_SETTING] === true;
 
-/** The notes a create shows: the suggestion is left out once dismissed (or when the update is on, as it would not be sent), the others always stay. */
-export function notesToShow(warnings: string[], settings: Record<string, unknown>): string[] {
-  return hintDismissed(settings) ? warnings.filter((w) => !isBehindHint(w)) : warnings;
-}
-
 /** The suggestion in a create's notes, if there is one and it has not been dismissed. */
 export function behindHint(warnings: string[], settings: Record<string, unknown>): string | null {
   return hintDismissed(settings) ? null : (warnings.find(isBehindHint) ?? null);

@@ -1,0 +1,49 @@
+{
+  "layout": {
+    "panes": 3,
+    "columns": 3,
+    "gap": 18,
+    "outer_pad": 22,
+    "header": false,
+    "status_bar": false,
+    "banner": true
+  },
+  "theme": {
+    "name": "daylight-paper",
+    "app_bg": "#fdf6e3",
+    "pane_bg": "#fffdf5",
+    "header_bg": "#eee8d5",
+    "header_active_bg": "#e4dcc0",
+    "border_idle": "#e4dcc0",
+    "border_active": "#cb4b16",
+    "text": "#073642",
+    "text_dim": "#93a1a1",
+    "cursor_bg": "#cb4b16",
+    "cursor_fg": "#fffdf5",
+    "cursor_unfocused": "#93a1a1",
+    "ansi": [
+      "#073642", "#dc322f", "#859900", "#b58900",
+      "#268bd2", "#d33682", "#2aa198", "#eee8d5",
+      "#586e75", "#cb4b16", "#93a1a1", "#657b83",
+      "#839496", "#6c71c4", "#93a1a1", "#fdf6e3"
+    ]
+  },
+  "font": {
+    "size": 15,
+    "line_height": 22,
+    "cell_width": 0,
+    "pad_x": 14,
+    "pad_y": 12
+  },
+  "shell": {
+    "program": "powershell.exe",
+    "args": ["-NoProfile"],
+    "env": { "KOLUX_PROFILE": "reading" }
+  },
+  "keys": {
+    "next_pane": "alt+n",
+    "prev_pane": "alt+p",
+    "reload": "ctrl+r",
+    "quit": "ctrl+q"
+  }
+}

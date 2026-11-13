@@ -1,19 +1,19 @@
 // VIEW-078: the Ports item of the status bar. It counts the ports the active workspace listens on
-// and, when clicked, lists them with the address a dev server printed, an Open button (Kolux
-// browser; Shift+Ctrl-click for the system browser) and a Stop button. Ports held by processes
-// outside the workspace are listed as external and have no Stop. A failed scan names its problem
+// and, when clicked, lists them with the address a dev server printed, an Open button (which hands
+// the address to the system browser, since Kolux no longer draws web pages) and a Stop button. Ports
+// held by processes outside the workspace are listed as external and have no Stop. A failed scan names its problem
 // and keeps the last good list. The tying of a port to a workspace, and every guard a Stop passes
 // (same program as the row, every holder the workspace's own, a known Git worktree that is no home
 // folder), happens in ports.rs; a refusal comes back as the note under the title, and a Stop that
 // ended nothing (the program was already gone, or still runs but left the port) says so there too.
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { openInBrowser } from "../browser/openIn";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { openExternal } from "../open/openExternal";
 import { restoreFocus } from "../shell/paletteCaps";
 import { watchEscape } from "../switcher/accounts";
 import { chunkBytes } from "../terminal/codec";
 import { onTerminalOutput } from "../terminal/outputBus";
-import { PrintedUrls, addressText, afterScan, capNote, openAddress, openWhere, ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
+import { PrintedUrls, addressText, afterScan, capNote, openAddress,  ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
 import "./ports.css";
 import OutOfFlow from "../chrome/OutOfFlow";
 
@@ -34,6 +34,7 @@ export default function PortsItem({ active, workspaces }: Props) {
   const wasOpen = useRef(false);
   // The row key of a Stop that was pressed with keyboard focus on it: when that row disappears focus would fall to the page body.
   const stopFocus = useRef<string | null>(null);
+  const scanned = useRef<string | null>(null); // the workspace the list on screen belongs to
   const latest = useRef({ active, workspaces });
   latest.current = { active, workspaces };
 
@@ -59,13 +60,21 @@ export default function PortsItem({ active, workspaces }: Props) {
   }, [view.rows, open]);
 
   useEffect(() => {
-    if (active === null) return setView({ rows: [], error: null });
+    if (active === null) {
+      scanned.current = null;
+      return setView({ rows: [], error: null });
+    }
     let live = true;
     const scan = () =>
       invoke<PortRow[]>("ports_list", { workspaces: latest.current.workspaces, active })
         .then((rows) => live && setView((v) => afterScan(v, { rows })))
         .catch((err) => live && setView((v) => afterScan(v, { error: String(err) })));
-    setView({ rows: [], error: null });
+    // N-17: only a different workspace clears the list. Opening or closing the popover kept clearing it, so the
+    // count dropped to nothing on a click and a failed scan threw away the last good list it says it still shows.
+    if (scanned.current !== active) {
+      scanned.current = active;
+      setView({ rows: [], error: null });
+    }
     void scan();
     const t = setInterval(scan, open ? OPEN_MS : CLOSED_MS);
     return () => {
@@ -94,10 +103,9 @@ export default function PortsItem({ active, workspaces }: Props) {
       })
       .finally(() => setStopping((s) => s.filter((x) => x !== k)));
   };
-  const openRow = (r: PortRow, e: MouseEvent) => {
+  const openRow = (r: PortRow) => {
     const url = openAddress(r, printed.forPort(r.port, view.rows));
-    if (openWhere(e) === "system") void invoke("open_external", { url }).catch((err) => say(String(err), true));
-    else openInBrowser(url);
+    void openExternal(url).catch((err) => say(String(err), true));
   };
   return (
     <>
@@ -118,7 +126,7 @@ export default function PortsItem({ active, workspaces }: Props) {
                   {r.port} <span className="reason">{openAddress(r, printed.forPort(r.port, view.rows))}</span>
                   {r.external && <span className="reason"> · external</span>}
                 </span>
-                <button className="btn" aria-label={`Open port ${r.port}`} title="Open in the Kolux browser (Shift+Ctrl-click: system browser)" onClick={(e) => openRow(r, e)}>
+                <button className="btn" aria-label={`Open port ${r.port}`} title="Open in your browser" onClick={() => openRow(r)}>
                   Open
                 </button>
                 {!r.external && (

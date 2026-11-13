@@ -2,10 +2,10 @@
 // src/lazy/pages.tsx. It reads the saved scan (`token_usage`), never a log; tracking is opt-in per provider.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { locale } from "../language";
 import { span, type Lane } from "../board/chip";
 import { agents as AGENTS } from "../keys/actions";
 import { NAMES, type Usage } from "../usage/tokens";
+import { compactCount as compact, usd2 as money } from "../usage/format";
 import { openSettings } from "../settings/pages";
 import { anyTracked, chipOfLive, costKind, countedAt, dueForCount, sessionsOf, totals, usageFor, type Figure, type LiveSession } from "./model";
 import "./insights.css";
@@ -22,8 +22,6 @@ const TICK_MS = 30_000;
 // A count older than this is redone (incremental: the scan keeps what it read) when the panel reads usage.
 const COUNT_MS = 10 * 60_000;
 const SESSION_ROWS = 8;
-const compact = (n: number) => new Intl.NumberFormat(locale(), { notation: "compact", maximumFractionDigits: 1 }).format(n);
-const money = (usd: number) => new Intl.NumberFormat(locale(), { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(usd);
 const PRICE_NOTE = "Estimated from Kolux's local price table at list price. It is not a bill.";
 
 /** "≈ $1.23 est.", "at least ≈ $1.23 est." when some model has no price, "—" when none has. */

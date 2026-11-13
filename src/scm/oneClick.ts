@@ -107,7 +107,8 @@ export const clearOneClick = () => {
 export const useOneClickAll = (): number => useSyncExternalStore(oneClickSubscribe, oneClickVersion, oneClickVersion);
 /** The run for `dir`, kept up to date for a component. */
 export const useOneClick = (dir: string | null): Run | null => {
-  useSyncExternalStore(oneClickSubscribe, oneClickVersion);
+  // The third argument is React's server/hydration snapshot, so a panel can be rendered by a test.
+  useSyncExternalStore(oneClickSubscribe, oneClickVersion, oneClickVersion);
   return dir === null ? null : oneClickRun(dir);
 };
 

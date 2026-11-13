@@ -11,7 +11,7 @@ import { AgentsChat } from "../../lazy/pages";
 import { linksOpenInKolux } from "../../chat/chatLinks";
 import LayoutStrip from "../../chrome/LayoutStrip";
 import { StatusGlyph, Spinner } from "../../chrome/icons";
-import { openInBrowser } from "../../browser/openIn";
+import { openExternal } from "../../open/openExternal";
 import FilePicker, { quickOpenList, type Pick } from "../../editor/FilePicker";
 import { inboxItems } from "../../inbox/inbox";
 import type { Seat } from "../../launch/seats";
@@ -135,7 +135,7 @@ export default function WindowContent() {
               root={activeDir}
               what="changed file"
               load={() => invoke<{ path: string; staged: boolean; code: string }[]>("git_changes", { root: activeDir }).then((cs) => ({ items: cs.map((c): Pick => ({ path: c.path, staged: c.staged, tag: c.staged ? "Staged" : c.code === "?" ? "Untracked" : "Unstaged" })), capped: false }))}
-              onPick={(f) => openDiff(f.path, !!f.staged)}
+              onPick={(f) => openDiff(f.path, !!f.staged, false, undefined, undefined, activeDir)}
               onClose={() => setPicking(null)}
             />
           )}
@@ -156,7 +156,7 @@ export default function WindowContent() {
       )}
       {screen === "skills" && <SkillsPage workspace={activeDir} onClose={() => closeSkills(setScreen)} />}
       {inbox && <InboxView items={inboxItems(inboxSeen.sources, now)} now={now} onOpen={openPane} onReview={reviewChanges} />}
-      {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: openInBrowser, inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} endedOf={(k) => running[k] === false} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
+      {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: (url: string) => void openExternal(url), inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} endedOf={(k) => running[k] === false} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
         setAgentSel(key);
         setFocused(key);
       }} />}

@@ -2,7 +2,7 @@
 // index rather than on the drawn pages: each section names its page, its title and everyday
 // words, so a plain term finds a technical setting. The drift test checks every section here is
 // still drawn as `data-section` on its page.
-import { createContext } from "react";
+import { createContext, useContext } from "react";
 import { agents } from "../keys/actions";
 import { LANGUAGES } from "../language";
 import { PAGES, type PageId } from "./pages";
@@ -16,7 +16,6 @@ export const INDEX: Entry[] = [
   { page: "general", section: "open-in", title: "Open in", words: "open in outside external app apps editor vscode code cursor zed explorer" },
   { page: "general", section: "diagnostics", title: "Diagnostics", words: "diagnostics log copy report problem bug support crash" },
   { page: "general", section: "privacy", title: "Privacy", words: "privacy data telemetry network connections offline feedback" },
-  { page: "general", section: "links", title: "Links", words: "links url open browser kolux system" },
   { page: "general", section: "cli", title: "Command line", words: "command line cli kolux shell command install path register" },
   { page: "general", section: "proxy", title: "Network proxy", words: "proxy network http https socks bypass firewall corporate http1" },
   { page: "general", section: "experimental", title: "Experimental", words: "experimental agent sleep asleep hibernate hibernation idle memory wake" },
@@ -59,8 +58,9 @@ export const INDEX: Entry[] = [
   { page: "terminal", section: "shell", title: "Default shell", words: "shell powershell pwsh cmd command prompt git bash wsl default" },
   { page: "terminal", section: "input", title: "Drawing and input", words: "ligatures typeface gpu webgl drawing render renderer terminal drawing hardware acceleration graphics middle click paste osc 52 osc52 clipboard programs hide pointer mouse cursor typing focus follows full-screen scroll speed option alt meta yen backslash japanese keyboard" },
   { page: "terminal", section: "powershell", title: "PowerShell version", words: "powershell pwsh 7 5 windows version" },
+  { page: "terminal", section: "native", title: "Terminal drawing engine", words: "native windows terminal engine drawing render experimental dll conpty experimental panes" },
   { page: "terminal", section: "closing", title: "Ask before closing running terminals", words: "close closing quit ask confirm confirmation running busy agent program" },
-  { page: "terminal", section: "links", title: "Links in terminals", words: "links web browser open ctrl click shift system menu" },
+  { page: "terminal", section: "links", title: "Links in terminals", words: "links web browser open ctrl right click menu" },
   { page: "terminal", section: "keys", title: "Keys in terminals", words: "keys keyboard chord terminal first shortcuts" },
   { page: "terminal", section: "terminal-import", title: "Import terminal settings", words: "import ghostty warp terminal settings colours colors scheme" },
   { page: "terminal", section: "ghostty-import", title: "Ghostty", words: "ghostty import config", parent: "terminal-import" },
@@ -148,6 +148,12 @@ export const searchRepos = <P extends { name: string; path: string }>(raw: strin
 
 /** While a search runs: the Appearance folds that hold a match (null when no search runs). */
 export const SearchFolds = createContext<Set<string> | null>(null);
+
+/** True while a search draws the page (audit N-45): a card that fills itself from a disk scan or a
+ *  terminal it builds skips that work and says the value shows when the page is opened, so typing in
+ *  the search box costs the index lookup rather than one scan per keystroke. */
+export const SearchRun = createContext(false);
+export const useSearching = () => useContext(SearchRun);
 
 /** A style rule that hides the sections of a drawn page that hold no match. */
 export function hideRule(hits: Hits): string {

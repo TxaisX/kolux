@@ -5,7 +5,7 @@ import type { AgentState } from "../projects/rows";
 import type { TurnInfo } from "../status/useAgentStatus";
 import { askLine, chipOf } from "../board/chip";
 import { estimate } from "../usage/pricing";
-import { localDay, PROVIDERS, rangeStart, recentSessions, tokensOf, type Provider, type Row, type Usage } from "../usage/tokens";
+import { anyTracked, dueForScan, folderName, localDay, PROVIDERS, rangeStart, recentSessions, tokensOf, type Provider, type Row, type Usage } from "../usage/tokens";
 
 /** One open agent pane, as the panel's "Now" list shows it. */
 export type LiveSession = {
@@ -29,10 +29,7 @@ export const chipOfLive = (s: LiveSession, now: number) =>
   chipOf({ agent: s.agent, state: s.state, running: s.running, stale: s.stale, ...s.turn, since: s.at ?? 0 }, now);
 
 /** The last folder of a path, either slash; "" for none. */
-export function folderOf(path: string | null | undefined): string {
-  const parts = (path ?? "").split(/[\\/]+/).filter(Boolean);
-  return parts[parts.length - 1] ?? "";
-}
+export const folderOf = folderName;
 
 const MAX_ACTION = 80;
 const clip = (s: string) => (s.length > MAX_ACTION ? `${s.slice(0, MAX_ACTION - 1)}…` : s);
@@ -49,7 +46,7 @@ const rank = (s: LiveSession) => {
   return lane === "needs" ? 0 : lane === "working" ? 1 : 2;
 };
 
-/** The open agent panes across every workspace (shells, seat choosers and browser/editor tabs left out, as in the Tower). */
+/** The open agent panes across every workspace (shells, seat choosers and editor tabs left out, as in the Tower). */
 export function liveSessions<P extends PaneLike>(
   panes: P[],
   agentOf: (p: P) => string,
@@ -96,7 +93,7 @@ export function trackedRows(usage: Usage): Partial<Record<Provider, Row[]>> {
 }
 
 /** Whether any provider is tracked at all (the panel says tracking is off when none is). */
-export const anyTracked = (usage: Usage): boolean => PROVIDERS.some((p) => usage.tracking[p]);
+export { anyTracked };
 
 function figure(sets: Partial<Record<Provider, Row[]>>, keep: (r: Row) => boolean): Figure {
   let tokens = 0;
@@ -167,5 +164,4 @@ export function countedAt(usage: Usage): number | null {
 /** Tracked providers whose saved count is missing or older than maxAge: the panel asks for a (cached, incremental) rescan.
  *  A provider whose last scan failed is left out, so a missing folder is not rescanned every refresh. */
 // ponytail: a failed provider is only retried by a rescan from the token usage page; add a timed retry if that proves too quiet.
-export const dueForCount = (usage: Usage, now: number, maxAge: number): Provider[] =>
-  PROVIDERS.filter((p) => usage.tracking[p] && !usage[p]?.error && now - (usage[p]?.scannedAt ?? 0) > maxAge);
+export const dueForCount = dueForScan;

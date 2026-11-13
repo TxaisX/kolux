@@ -6,6 +6,7 @@ import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
 import PaneMenu, { chooseItem, fitIn, fromKeys, menuKey, menuStep, noteMenuKey, OPEN_GUARD_MS, outsideDismisses, paneMenuItems, withChord, type MenuContext } from "./PaneMenu";
 import pane from "./TerminalPane.tsx?raw";
+import paneLinks from "./paneLinks.ts?raw";
 
 const noop = () => {};
 /** A pane that can do everything and is split, expandable, selected, titled, with an agent action. */
@@ -164,7 +165,7 @@ test("T-720: a contextmenu is from the keyboard with button -1 (Chromium) or rig
 test("T-710: the terminal hands the menu keys to the engine and opens the pane menu for a keyboard contextmenu", () => {
   // ponytail: wiring only (mounting TerminalPane needs xterm and the backend); the decisions are tested above.
   expect(pane).toMatch(/attachCustomKeyEventHandler\(\(e\) => \{\s*if \(menuKey\(e\)\) return false;/);
-  expect(pane).toContain("if (fromKeys(e) || !hot || !opensMenu(");
+  expect(paneLinks).toContain("if (fromKeys(e) || !hot || !opensMenu("); // the link wiring moved to paneLinks.ts
   expect(pane).toContain("if (fromKeys(e)) return menuRef.current(e.clientX, e.clientY);");
   expect(pane).not.toContain("button < 0");
 });

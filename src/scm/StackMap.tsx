@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { mergeActions, mergeLabel, type MergeInfo, type Pr } from "./model";
 import { chainThrough, mergeThrough, nextInStack, type StackItem } from "./stack";
 import { createNext } from "./stackCreate";
-import { openLinkFailed, stackKey, stillCurrent } from "./panelUx";
+import { openInBrowser, stackKey, stillCurrent } from "./panelUx";
 import "./scmUx.css";
 
 type StackList = { trunk: string; prs: StackItem[] };
@@ -100,7 +100,7 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
 
   const next = shown ? nextInStack(shown.items, pr.number) : null;
   /** A link that will not open says so in the note, never silently. */
-  const openOut = (url: string) => void invoke("open_external", { url }).catch((e) => setNote(openLinkFailed(e)));
+  const openOut = (url: string) => void openInBrowser(url, (u) => invoke("open_external", { url: u })).then((failed) => failed && setNote(failed));
   return (
     <details className="stack-map" data-stack-map onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && void load()}>
       <summary>Stack</summary>

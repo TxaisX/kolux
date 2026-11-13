@@ -1,3 +1,5 @@
+// @ts-expect-error vitest runs on Node; the app's browser tsconfig has no Node types.
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { classify, markShell, readRemove, removePlan, removeQuestion, runningOf } from "./remove";
 import { askKey } from "../chrome/Ask";
@@ -93,4 +95,14 @@ describe("TERM-003 remove a started session", () => {
     expect(askKey("Enter", false, true)).toBe("pass");
     expect(askKey("Enter", true, false)).toBe("block");
   });
+});
+
+// o1-tools N-44: the setting had no reader on the live path; the remove shortcut now consults removePlan before asking.
+it("the remove shortcut stops without asking when the setting says so", async () => {
+  const src = readFileSync(new URL("./paneActions.ts", import.meta.url), "utf8");
+  const body = src.slice(src.indexOf("const removeSession = async"), src.indexOf("// TERM-040 / TERM-041"));
+  expect(body).toMatch(/removePlan\(settings, kind\) === "stop"\) return dropPanes\(\[t\.key\]\)/);
+  expect(body.indexOf("removePlan(")).toBeLessThan(body.indexOf("setAsking("));
+  expect(removePlan({ removeStartedSession: "stop" }, "agent")).toBe("stop");
+  expect(removePlan({}, "agent")).toBe("ask");
 });

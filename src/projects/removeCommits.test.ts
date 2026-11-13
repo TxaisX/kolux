@@ -156,9 +156,9 @@ test("the multi-select bar sends no branch choice either, and a branch the backe
   expect(kept).toEqual([{ branch: "fix-login", commit: "c3c3c3c", projectId: "p1" }]);
 });
 
-test("T-729: a pinned workspace shown twice (pinned rows also in their group) asks in one dialog, not two", async () => {
+test("T-729 (Txais 2026-11-12): Pinned holds folders only, so a pinned worktree has one row (no copy) and asks in one dialog", async () => {
   const c = await panel({ pinnedWorkspaces: [fix.path], pinnedCopies: true });
-  expect(find(c, (n) => n.attrs["data-path"] === fix.path).length, "the row shows twice").toBe(2);
+  expect(find(c, (n) => n.attrs["data-path"] === fix.path).length, "no pinned copy of a worktree").toBe(1);
   await pressDelete();
   expect(question(c).length).toBe(1);
 });

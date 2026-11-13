@@ -34,15 +34,29 @@ export function loadPack(lang: Language = locale()): Promise<Pack> {
   if (!p) {
     p = load().then(
       (pack) => {
+        pending.delete(lang);
         packs.set(lang, pack);
         listeners.forEach((f) => f(lang));
         return pack;
       },
-      () => ({}),
+      () => {
+        pending.delete(lang);
+        return {};
+      },
     );
     pending.set(lang, p);
   }
   return p;
+}
+
+/** Fetches the pack for `lang` now rather than at its first `t()`: a pack that arrives after the first paint leaves that paint in English until something else re-renders. */
+export function preload(lang: Language = locale()): Promise<Pack> {
+  return loadPack(lang);
+}
+
+/** Whether `lang`'s pack is here already (English, which needs none, always is). */
+export function packReady(lang: Language = locale()): boolean {
+  return lang === "en" || packs.has(lang);
 }
 
 /** Called when a pack has arrived, so a screen showing the English stand-in can draw again. */

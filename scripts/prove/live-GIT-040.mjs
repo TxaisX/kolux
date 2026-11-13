@@ -1,3 +1,4 @@
+// retired: it opens a diff by clicking a file in the Source Control panel (removed by T-644); the line-note flow needs rewriting onto the All Changes file rows
 // LIVE proof, GIT-040 box 2 (spec/11): a review note added with the gutter plus, then edited through its Edit button (the open card
 // updates), then removed with the trash button (the card is gone). The note is added the way a person adds one; box 1's placement is already ticked.
 import { pathToFileURL } from "node:url";

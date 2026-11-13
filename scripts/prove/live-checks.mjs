@@ -99,43 +99,6 @@ const checks = {
     return ok;
   },
 
-  // B-7 / BROW-008 box 2: a broken certificate gets its own message.
-  async b7(page) {
-    say('B-7 / BROW-008 box 2 — a broken certificate gets its own message');
-    say(`  app: ${await page.eval("document.title")}`);
-    let ok = true;
-    await page.key('b', 10); // Mod+Shift+B: new browser tab
-    const pane = await waitFor('a browser pane', async () => page.exists('.pane.browser'), 12000).catch(() => false);
-    ok = expect('a browser tab opens', !!pane) && ok;
-    // A new tab autofocuses its bar only when its pane owns the keyboard. Focus the bar directly;
-    // a synthetic click blurs it, and Ctrl+L can land in the focused terminal.
-    const bar = await waitFor('the address bar', async () => page.exists('.pane.browser input[aria-label="Address"]'), 12000).catch(() => false);
-    ok = expect('the address bar is there', !!bar) && ok;
-    if (bar) {
-      // The address input is React-controlled; a synthetic click moves focus to the body, so focus
-      // it directly and insert the text. Input.insertText fires the input event React listens for.
-      await page.eval(`(() => { const i=document.querySelector('.pane.browser input[aria-label="Address"]'); i.focus(); i.select(); return true; })()`);
-      await page.send("Input.insertText", { text: "https://expired.badssl.com/" });
-      await page.key("Enter");
-    }
-    const overlay = await waitFor('the load overlay', async () => page.exists('.load-overlay'), 25000).catch(() => false);
-    ok = expect('the page shows an overlay', !!overlay) && ok;
-    if (overlay) {
-      // The overlay renders before browser_diagnose answers; wait for the certificate wording
-      // rather than reading the first frame.
-      const wording = await waitFor('certificate wording', async () => {
-        const t = await page.eval(`document.querySelector('.load-overlay')?.innerText || ""`);
-        return /certificate/i.test(t) ? t : false;
-      }, 15000).catch(() => false);
-      say(`  certificate wording: ${wording ? "present" : "missing"}`);
-      const text = await page.eval(`(()=>{const o=document.querySelector('.load-overlay'); return { kind:o.getAttribute('data-kind'), text:o.innerText, retry: !!o.querySelector('[data-go="retry"]') };})()`);
-      say(`  overlay: ${JSON.stringify(text)}`);
-      ok = expect('it names the certificate problem', /certificate/i.test(text.text)) && ok;
-      ok = expect('it offers Retry', !!text.retry) && ok;
-      ok = expect('it gives no local-server advice', !/local server|start a server|localhost server/i.test(text.text)) && ok;
-    }
-    return ok;
-  },
 };
 
 const name = process.argv[2];

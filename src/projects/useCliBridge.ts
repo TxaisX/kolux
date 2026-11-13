@@ -5,7 +5,7 @@
 import { openRunTab, paneOfTerminal, runTabEnded, touchRunTab, typedInRunTab } from "../automations/runTab";
 import { missingFileToast } from "../editor/missingFile";
 import { setupRequestOf } from "../orchestration/workerSetup";
-import { sameDir } from "../workspaces";
+import { cliFileShown } from "./rows";
 import type { CliFile, CliWorkspace } from "./model";
 import { startTail } from "./startArgs";
 import { withHintedSession } from "../terminal/layout";
@@ -19,12 +19,13 @@ import type { LaunchActions } from "../launch/launchActions";
 import type { WorkspaceActions } from "./useWorkspaces";
 import type { WindowLate } from "../shell/windowLate";
 
-export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, gateSetup, keyOfHandle, openDiff, openFile, pinned, ptys, removed, runPanes, runSetup, runTabs, select, setPanes, setRefresh, setupExits, splitPane, startIn, startSetup, termCreate, termRename, termSwitch }: Pick<WindowState, "activeDir" | "activeRef" | "agents" | "focused" | "pinned" | "ptys" | "runPanes" | "runTabs" | "setPanes" | "setRefresh"> & Pick<PaneActions, "dropPane" | "keyOfHandle" | "openDiff" | "openFile" | "splitPane" | "termCreate" | "termRename" | "termSwitch"> & Pick<LaunchActions, "gateSetup" | "runSetup" | "startIn"> & Pick<WorkspaceActions, "removed"> & Pick<WindowLate, "select" | "setupExits" | "startSetup">) {
+export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, gateSetup, keyOfHandle, openDiff, openFile, pinned, ptys, removed, runPanes, runSetup, runTabs, select, setPanes, setRefresh, setupExits, splitPane, settingsRef, startIn, startSetup, termCreate, termRename, termSwitch }: { settingsRef: { current: Record<string, unknown> } } & Pick<WindowState, "activeDir" | "activeRef" | "agents" | "focused" | "pinned" | "ptys" | "runPanes" | "runTabs" | "setPanes" | "setRefresh"> & Pick<PaneActions, "dropPane" | "keyOfHandle" | "openDiff" | "openFile" | "splitPane" | "termCreate" | "termRename" | "termSwitch"> & Pick<LaunchActions, "gateSetup" | "runSetup" | "startIn"> & Pick<WorkspaceActions, "removed"> & Pick<WindowLate, "select" | "setupExits" | "startSetup">) {
   // CLI-022: `file open` / `file diff` / `file open-changed` name files of some worktree; the window goes
   // there first and opens the tabs once that worktree is the active one.
   const [cliFiles, setCliFiles] = useState<CliFile[]>([]);
   useEffect(() => {
-    const ready = cliFiles.filter((f) => sameDir(f.worktree, activeDir));
+    // DT-C274: a team worktree's files wait for its team's grid, which select() shows instead of the worktree.
+    const ready = cliFiles.filter((f) => cliFileShown(settingsRef.current, f.worktree, activeDir));
     if (ready.length === 0) return;
     setCliFiles((q) => q.filter((f) => !ready.includes(f)));
     for (const f of ready) {
@@ -34,7 +35,7 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
           // Row 65: a file that vanished since the command looked is refused with a reason, not reported opened.
           if (f.kind === "file-open" && (await missingFileToast(f.path, (ps) => invoke<unknown[]>("file_stamps", { paths: ps })))) failed = "the file is not there (or is outside this project)";
           else if (f.kind === "file-open") openFile(f.path);
-          else openDiff(f.path, f.staged);
+          else openDiff(f.path, f.staged, false, undefined, undefined, f.worktree);
         } catch (err) {
           failed = String(err);
         }
@@ -82,7 +83,7 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
       const p = e.payload;
       const c = cli.current;
       if (p.kind === "file-open" || p.kind === "file-diff") {
-        if (!sameDir(p.worktree, activeRef.current)) c.select(p.worktree, p.branch);
+        if (!cliFileShown(settingsRef.current, p.worktree, activeRef.current)) c.select(p.worktree, p.branch);
         return setCliFiles((q) => [...q, p]);
       }
       if (p.kind === "terminal-create") return c.termCreate(p);

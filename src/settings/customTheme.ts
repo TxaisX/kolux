@@ -13,7 +13,6 @@ export type CustomTheme = { name: string; base: string; overrides: Record<string
 
 /** A theme carries its own tint, saturation and depth (what the sliders said when it was last edited), so it
  *  looks the same whatever the sliders say now. A theme without them (an older file) uses the neutral values. */
-export const NEUTRAL = { tint: 0, saturation: 100, depth: 0 } as const;
 const num = (v: unknown, [lo, hi, dflt]: readonly number[]) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : dflt);
 /** The theme's own look settings, clamped to the slider ranges. */
 export const ownLook = (t: Pick<CustomTheme, "tint" | "saturation" | "depth">) => ({ tint: num(t.tint, SPAN.tint), saturation: num(t.saturation, SPAN.saturation), depth: num(t.depth, SPAN.depth) });

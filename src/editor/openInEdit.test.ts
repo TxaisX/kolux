@@ -1,12 +1,13 @@
 import { expect, test } from "vitest";
-import { addCustom, DEFAULT_APPS, OPEN_IN_FIELD, openInItems, readOpenIn } from "../settings/openIn";
+import { addCustom, DEFAULT_APPS, OPEN_IN_FIELD, readOpenIn } from "../settings/openIn";
+import { fileApps } from "../scm/openWith";
 import { alreadyListed, editApp } from "./openInEdit";
 
 test("SET-039 (T-237-b): editing a custom app changes its name and command and keeps its place", () => {
   const list = addCustom(DEFAULT_APPS, { name: "Vim", command: "gvim" });
   const out = editApp(list, "custom:gvim", { name: "GVim", command: "gvim --remote" });
   expect(out.map((a) => a.name)).toEqual(["File Explorer", "Visual Studio Code", "GVim"]);
-  expect(openInItems({ [OPEN_IN_FIELD]: out })[2]).toEqual({ id: "custom:gvim --remote", label: "Open in GVim", command: "gvim --remote" });
+  expect(fileApps({ [OPEN_IN_FIELD]: out })).toContainEqual({ id: "custom:gvim --remote", label: "Open in GVim", command: "gvim --remote" });
   expect(readOpenIn({ [OPEN_IN_FIELD]: out })).toEqual(out); // it survives a save and read
 });
 

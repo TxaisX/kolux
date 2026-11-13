@@ -52,6 +52,18 @@ describe("P0 cards passing (T-540)", () => {
     expect(cards.get("AAA-004").boxes).toEqual([]);
     expect(cards.get("AAA-005").boxes).toEqual([false, false]);
   });
+  it("lets a retired H card stay in the plan as history, but not a skipped one", () => {
+    const spec = [
+      "### ZZZ-001 · Built, then taken out",
+      "Tier: H · Pushed: 1 · State at 0.15.0: retired 2026-11-12 (pane removed)",
+      "### ZZZ-002 · Never built",
+      "Tier: H · Pushed: 1 · State at 0.15.0: off by default",
+    ].join("\n");
+    const hc = parseCards(spec);
+    expect(hc.get("ZZZ-001").retired).toBe(true);
+    expect(hc.get("ZZZ-002").retired).toBeUndefined();
+    expect(coverageErrors(hc, "", "- [x] T-1 · ZZZ-001 · ZZZ-002").errors).toEqual(["skipped H card planned: ZZZ-002"]);
+  });
   it("counts a P0 card only when every box is ticked; P1 and box-less cards do not count", () => {
     expect(p0Passing(cards)).toEqual({ passing: ["AAA-001"], total: 4 });
   });
@@ -114,8 +126,8 @@ describe("STATE.md head (T-540 --write-state)", () => {
 
 describe("the real repository (T-540)", () => {
   const r = headCounts(undefined, new Map());
-  it("still finds all 228 P0 cards and every box in the spec", () => {
-    expect(r.counts.p0Total).toBe(228);
+  it("still finds all 221 P0 cards (228 less the 7 web-pane cards retired 2026-11-12) and every box in the spec", () => {
+    expect(r.counts.p0Total).toBe(221);
     let boxes = 0;
     for (const c of r.cards.values()) boxes += c.boxes.length;
     expect(boxes).toBeGreaterThanOrEqual(2737);

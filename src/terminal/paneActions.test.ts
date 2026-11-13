@@ -126,3 +126,27 @@ test("Review changes from a workspace row opens that workspace's All Changes, or
   expect(open.list).toHaveLength(3);
   expect(open.setFocused).toHaveBeenCalledWith(5);
 });
+
+// DT-C274: a team grid shows panes of several worktrees; a diff tab of one is never reused for the same path of another.
+test("a diff of a team worktree reuses only a tab of that worktree, never one of a sibling worktree in the same cell", () => {
+  const team = (key: number, cwd: string, extra = {}) => ({ key, cwd, view: "C:\\r", branch: null, agent: "shell", program: null, args: [], ...extra });
+  const panes = [
+    team(1, "C:\\r\\wts\\wt1", { agent: "claude" }),
+    team(2, "C:\\r\\wts\\wt2", { kind: "diff", path: "src/a.ts", staged: false, group: 1 }),
+    team(3, "C:\\r\\wts\\wt2", { kind: "diff", path: "src/b.ts", staged: false, preview: true, group: 1 }),
+  ];
+  const setPanes = vi.fn();
+  const setFocused = vi.fn();
+  const s = { panes, activeDir: "C:\\r", focused: 1, settings: {}, dirty: {}, setPanes, setFocused, nextKey: { current: 9 } } as unknown as WindowState;
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
+  a.openDiff("src/a.ts", false);
+  expect(setFocused).toHaveBeenLastCalledWith(9); // a new tab, not wt2's tab 2
+  const made = (setPanes.mock.calls[0][0] as (ps: typeof panes) => typeof panes)(panes).find((p) => p.key === 9);
+  expect(made).toMatchObject({ cwd: "C:\\r\\wts\\wt1", view: "C:\\r", kind: "diff", path: "src/a.ts" });
+  // the preview tab of wt2 is not taken over by a preview of wt1 either
+  a.openDiff("src/c.ts", false, true);
+  expect(setFocused).toHaveBeenLastCalledWith(10);
+  // the same worktree's tab is reused
+  a.openDiff("src/a.ts", false, false, undefined, undefined, "C:\\r\\wts\\wt2");
+  expect(setFocused).toHaveBeenLastCalledWith(2);
+});

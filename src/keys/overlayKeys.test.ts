@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { actionById } from "./actions";
 import { defaultsOnly } from "./keymap";
-import { CHROME_FIRST, explorerSearchKey, focusChrome, heldByOverlay, menuAction, OVERLAYS, PANE_LOCAL, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
+import { CHROME_FIRST, explorerSearchKey, focusChrome, heldByOverlay, menuAction, OVERLAYS, PANE_LOCAL, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_TERMINAL } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -56,14 +56,12 @@ test("real markup: a docked tip, the hooks card and a tour hold nothing; a modal
   const cleanup = real("sb-form", { role: "dialog" }); // projects CleanupDialog, inline in the sidebar
   const prDraft = real("scm-ask scm-pr", { role: "dialog", "aria-label": "Create pull request" }); // scm/PrStart.tsx
   const resolve = real("scm-ask", { role: "dialog" }); // source control: resolve conflicts with an agent
-  const grab = real("grab-sheet", { role: "dialog" }); // browser/GrabSheet.tsx, inside one browser pane
-  const draw = real("draw-canvas", { role: "dialog" }); // browser/DrawCanvas.tsx, inside one browser pane
   const found = real("pick-list found-list", {}); // the create-worktree form's found issues, inside .sb-form
   const permission = real("chat-permission", { role: "alertdialog" }); // an inline permission card, not modal
   const modal = real("crash-report", { role: "dialog" });
   // The palette tip names the Go to / Run a command key: that key works while the tip shows.
   expect(heldByOverlay("worktree.palette", false, dom([tip, tour, cleanup]) as never)).toBe(false);
-  for (const form of [prDraft, resolve, grab, draw, found, permission]) expect(heldByOverlay("tab.newTerminal", false, dom([form]) as never), form.el.cls.join(".")).toBe(false);
+  for (const form of [prDraft, resolve, found, permission]) expect(heldByOverlay("tab.newTerminal", false, dom([form]) as never), form.el.cls.join(".")).toBe(false);
   expect(heldByOverlay("terminal.splitRight", false, dom([tour]) as never), "the tour's own step still splits").toBe(false);
   expect(heldByOverlay("worktree.palette", false, dom([tip, modal]) as never)).toBe(true);
   expect(heldByOverlay("tab.newTerminal", false, dom([real("menu", {})]) as never)).toBe(true);
@@ -106,10 +104,10 @@ test("the menu's Force Reload asks over unsaved text and reloads without; View >
   expect(s.setScreen).toHaveBeenCalledTimes(1);
 });
 
-test("a page's own browser chord, an editor or an explorer chord is not held: Ctrl+C in a browser pane still copies under a dialog", () => {
-  expect(actionById.get("browser.grabElement")?.scope).toBe("browser");
+test("an editor chord is not held under a dialog, while the app's own chords are", () => {
+  expect(actionById.get("editor.save")?.scope).toBe("editor");
   const modal = real("crash-report", { role: "dialog" });
-  expect(heldByOverlay("browser.grabElement", false, dom([modal]) as never)).toBe(false);
+  expect(heldByOverlay("editor.save", false, dom([modal]) as never)).toBe(false);
   for (const id of ["tab.newTerminal", "terminal.splitRight", "worktree.palette"]) expect(heldByOverlay(id, false, dom([modal]) as never), id).toBe(true);
 });
 
@@ -121,16 +119,6 @@ test("Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the p
   }
   expect(heldByOverlay("terminal.splitRight", false, dom([palette]) as never)).toBe(true);
   for (const id of WINDOW_TERMINAL) expect(actionById.get(id)?.scope, id).toBe("terminal");
-});
-
-test("under a dialog the browser chords the window runs itself wait (Ctrl+L stays in the dialog); a page's own Ctrl+C does not", () => {
-  const modal = real("crash-report", { role: "dialog" });
-  for (const id of WINDOW_BROWSER) {
-    expect(actionById.get(id)?.scope, id).toBe("browser");
-    expect(heldByOverlay(id, false, dom([modal]) as never), id).toBe(true);
-    expect(heldByOverlay(id, false, dom([real("chat-question", { role: "dialog" })]) as never), id).toBe(false);
-  }
-  expect(heldByOverlay("browser.grabElement", false, dom([modal]) as never)).toBe(false);
 });
 
 test("Show Search (Mod+Shift+F) opens from a terminal that already cancelled the press; it waits under a dialog", () => {
@@ -150,7 +138,6 @@ test("the Ctrl+Tab list (itself a menu) still steps while it is open", () => {
 
 test("Automations has a command, so the palette lists it", () => {
   expect(actionById.get("view.automations")?.title).toBe("Open Automations");
-  expect(actionById.get("browser.hardReload")?.title).not.toMatch(/Hard/);
 });
 
 test("UX lane C (request from D): Ctrl+W closes directly unless the pane claims the close for its own warning", () => {
@@ -161,7 +148,7 @@ test("UX lane C (request from D): Ctrl+W closes directly unless the pane claims 
     expect(paneCloseClaimed(1), "no pane listens: the window closes it").toBe(false);
     const claim = (e: Event) => { if ((e as CustomEvent<{ paneId: number }>).detail.paneId === 2) e.preventDefault(); };
     (g.window as EventTarget).addEventListener(PANE_CLOSE_EVENT, claim);
-    expect(paneCloseClaimed(2), "the browser pane takes it").toBe(true);
+    expect(paneCloseClaimed(2), "a pane with its own warning takes it").toBe(true);
     expect(paneCloseClaimed(1), "another pane still closes directly").toBe(false);
   } finally {
     g.window = before;

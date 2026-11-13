@@ -186,8 +186,6 @@ input { font: inherit; }
 .proj.folder:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .proj .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .proj .hint { flex: none; font-size: 11px; color: var(--fg-muted); }
-/* The folder row's agent count: spaced off the branch name and sized like it, not the 14px bold name. */
-.proj .count { flex: none; margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--fg); font-variant-numeric: tabular-nums; }
 .proj .ib { opacity: 0; }
 /* One folder per project: the old worktree rows stay in the DOM (saved work, keyboard, old rows)
    but do not draw beside the folder row. */
@@ -195,7 +193,6 @@ input { font: inherit; }
 .proj:hover .ib, .proj .ib.on, .proj .ib:focus-visible { opacity: 1; } /* a keyboard user lands on the hidden buttons too */
 .branch { display: flex; align-items: center; height: 32px; padding: 0 12px 0 8px; gap: 8px; border-radius: 6px; font-size: 14px; font-weight: 500; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 .branch .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.branch .count, .sess .count { font-size: 11px; color: var(--fg); }
 /* PROJ-062: the second line of a workspace card (Default and Detailed). */
 .hdr-badge { flex: none; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; }
 .sb-group .hdr-badge { margin-right: 6px; }
@@ -589,22 +586,16 @@ input { font: inherit; }
 .pane-head .address { flex: 1; min-width: 0; height: 20px; padding: 0 8px; border: 1px solid var(--line-subtle); border-radius: 6px; background: var(--kbd-bg); color: var(--fg); font: inherit; font-size: 12px; }
 .pane-head .address:focus { outline: none; border-color: var(--focus-ring); }
 /* The native view cannot be clipped by the pane's corners, so it stays inside the 1 px ring and above the 12 px bottom curve. */
-.pane.browser .pane-body { padding: 0; margin: 0 1px 12px; }
 /* BROW-005: while a page loads the reload button is Stop inside a spinner. */
 .ib.loading { position: relative; }
 .ib.loading::before { content: ""; position: absolute; inset: 4px; border: 1.5px solid var(--line-subtle); border-top-color: var(--fg); border-radius: 50%; animation: spin 0.8s linear infinite; }
-.gauge { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; font-size: 11px; font-weight: 500; color: var(--gauge-text); }
-.gauge .ring { color: var(--gauge); }
-.gauge.warn, .gauge.warn .ring, .tab .ring.warn, .meter-fill.warn { color: var(--working-icon); }
-.gauge.danger, .gauge.danger .ring, .tab .ring.danger, .meter-fill.danger { color: var(--meter-danger); }
-/* USAGE-001: no reading yet: a greyed 0%. */
-.gauge.none, .gauge.none .ring { color: var(--fg-muted); opacity: 0.6; }
-/* USAGE-034: the full usage readout in an agent pane's header: ring and percentage, tokens, the two plan
+.tab .ring.warn, .meter-fill.warn { color: var(--working-icon); }
+.tab .ring.danger, .meter-fill.danger { color: var(--meter-danger); }
+/* USAGE-034: the full usage readout in an agent pane's header: tokens, the two plan
    figures with countdowns, the session's cost in a cyan chip. One row, never wrapping; which pieces show is
    decided in script from the header's measured width. */
 .usage-slot { display: contents; }
 .usage-readout { display: inline-flex; align-items: center; gap: 8px; flex: none; margin-right: 6px; white-space: nowrap; font-size: 11px; }
-.usage-readout .gauge { margin-right: 0; }
 .usage-tokens, .usage-count { color: var(--fg-muted); }
 .usage-win { display: inline-flex; align-items: center; gap: 4px; }
 .usage-fig { font-weight: 500; color: var(--gauge-text); }
@@ -1495,7 +1486,7 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 @container (max-width: 510px) { .pane-head .chip { display: none; } }
 @container (max-width: 447px) { .pane-head .word { display: none; } }
 @container (max-width: 380px) { .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { display: none; } }
-@container (max-width: 326px) { .pane-head .right :is(.gauge, .usage-readout, .meter-plan) { display: none; } }
+@container (max-width: 326px) { .pane-head .right :is(.usage-readout, .meter-plan) { display: none; } }
 @container (max-width: 282px) { .pane-head .right .ib:nth-last-child(n + 5) { display: none; } }
 @container (max-width: 256px) { .pane-head .right .ib:nth-last-child(n + 4) { display: none; } }
 @container (max-width: 230px) { .pane-head .right .ib:nth-last-child(n + 3) { display: none; } }
@@ -1507,14 +1498,14 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
    gives up its whole width before the next starts). The name shortens last, never under four characters.
    The right-hand group is packed to its end, so it is cut from the left and Close goes last. A terminal's
    header only: the browser's and the editors' hold other things. */
-.pane:not(.editor):not(.browser) .pane-head .title { flex: 0 1 auto; min-width: min(4ch, 100%); }
-.pane:not(.editor):not(.browser) .pane-head :is(.chip, .word, .status, .crew, .age, .right) { min-width: 0; overflow: hidden; }
-.pane:not(.editor):not(.browser) .pane-head :is(.word, .status, .crew, .age) { text-overflow: ellipsis; }
-.pane:not(.editor):not(.browser) .pane-head .chip { flex-shrink: 100000; }
-.pane:not(.editor):not(.browser) .pane-head .word { flex-shrink: 10000; }
-.pane:not(.editor):not(.browser) .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { flex-shrink: 1000; }
-.pane:not(.editor):not(.browser) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }
-.pane:not(.editor):not(.browser) .pane-head .status { flex-shrink: 10; }
+.pane:not(.editor) .pane-head .title { flex: 0 1 auto; min-width: min(4ch, 100%); }
+.pane:not(.editor) .pane-head :is(.chip, .word, .status, .crew, .age, .right) { min-width: 0; overflow: hidden; }
+.pane:not(.editor) .pane-head :is(.word, .status, .crew, .age) { text-overflow: ellipsis; }
+.pane:not(.editor) .pane-head .chip { flex-shrink: 100000; }
+.pane:not(.editor) .pane-head .word { flex-shrink: 10000; }
+.pane:not(.editor) .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { flex-shrink: 1000; }
+.pane:not(.editor) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }
+.pane:not(.editor) .pane-head .status { flex-shrink: 10; }
 /* SAFE-002..004: the plan review sheet, from the right edge over the window. */
 .plan-sheet { position: fixed; z-index: calc(var(--z-tray) - 1); top: calc(env(safe-area-inset-top, 0px) + 40px); right: 0; bottom: 24px; width: min(520px, 100vw); display: flex; flex-direction: column; background: var(--pane-bg); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35); font-size: 13px; }
 .plan-sheet-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }

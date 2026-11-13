@@ -33,9 +33,11 @@ try {
   // ---- box 2: an agent on Terminals survives Board and back
   await pickScreen(app, "Terminals");
   await sleep(1000);
-  await app.click("button.newtab");
-  await waitFor("the New tab menu", () => app.exists('[role="menu"][aria-label="New tab"]'), 5000);
-  await app.clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', "/^\\s*Claude Code\\s*$/");
+  // The pane header's plus opens the New session menu (button.newtab went with the old tab strip).
+  await app.focusPane("section.pane[data-agent]", 0, ".xterm-helper-textarea");
+  await app.click('[data-testid="terminal-pane"].focused [data-testid="pane-new-session"]');
+  await waitFor("the New tab menu", () => app.exists('[data-testid="new-session-menu"]'), 5000);
+  await app.clickWhere('[data-testid="new-session-menu"] [role="menuitem"]', "/^\\s*Claude Code\\s*$/");
   await waitFor("a Claude stand-in pane", () => app.shown('section.pane[data-agent*="claude"]'), 20000);
   await waitFor("its input", () => app.exists('section.pane[data-agent*="claude"] .xterm-helper-textarea'), 20000);
   const CL = 'section.pane[data-agent*="claude"]';

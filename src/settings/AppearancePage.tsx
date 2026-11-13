@@ -5,7 +5,8 @@ import { lazy, Suspense, useContext, useEffect, useId, useRef, useState, type CS
 import { useLeaveSave } from "./leave";
 import { MAX_LEVEL, MIN_LEVEL, onZoom, percentOf, stepZoom, zoomLevel, type ZoomStep } from "./zoom";
 import { SearchFolds } from "./search";
-import { saveChanged, settingsDiff } from "./saveChanged";
+import { settingsDiff } from "./saveChanged";
+import { patchSettings } from "./useSettings";
 import { applyAppearance, buildTheme, customOf, isDark, MODES, previewOf, readAppearance, SPAN, swatch, themeLabel, terminalFor, themeVars, THEMES, uiFont, monoFont, writeAppearance, WEIGHTS, THEMED_SCREENS, type Appearance, type FontWeight, type Mode } from "../theme";
 import { importScheme, type CustomScheme } from "../terminal/schemes";
 import { bringIn, parseSchemeFile, planImport, planSummary, sameColours } from "./importSchemes";
@@ -592,7 +593,7 @@ export default function AppearancePage() {
       const changed = settingsDiff(writeAppearance({}, from), writeAppearance({}, next)).set;
       if (Object.keys(changed).length === 0) return;
       try {
-        await saveChanged({}, changed);
+        await patchSettings(changed);
         base.current = next;
         setError(null);
       } catch (e) {

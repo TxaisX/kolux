@@ -21,6 +21,8 @@ export const INPUT_FIELDS = {
   optionAsAlt: "terminalOptionAsAlt",
   yenBackslash: "terminalYenBackslash",
   powershell: "powershellVersion",
+  /** NATIVE-TERMINAL.md: panes drawn by the Windows Terminal engine (experimental, off by default). */
+  native: "terminalNative",
 } as const;
 
 /** Families that ship programming ligatures: ligatures on "auto" turn on only for these. */
@@ -58,6 +60,8 @@ export type InputPrefs = {
   optionAsAlt: Auto;
   yenBackslash: boolean;
   powershell: "auto" | "7" | "5";
+  /** Panes drawn by the Windows Terminal engine instead of xterm (NATIVE-TERMINAL.md). Off unless set to true. */
+  native: boolean;
 };
 
 export const FULL_SCREEN_SCROLL = { min: 1, max: 20, start: 1 }; // TERM-089: one report per notch inside full-screen programs
@@ -77,6 +81,7 @@ export function readInput(s: Record<string, unknown>, platform: Platform): Input
     optionAsAlt: autoOf(s[INPUT_FIELDS.optionAsAlt]) ?? "auto",
     yenBackslash: s[INPUT_FIELDS.yenBackslash] === true,
     powershell: s[INPUT_FIELDS.powershell] === "7" || s[INPUT_FIELDS.powershell] === "5" ? s[INPUT_FIELDS.powershell] : "auto",
+    native: s[INPUT_FIELDS.native] === true,
   } as InputPrefs;
 }
 

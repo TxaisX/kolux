@@ -1083,17 +1083,6 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
         c if c.starts_with("orchestration.") => mail(ctx, req),
         c if c.starts_with("account.") => cli_accounts::dispatch(ctx, req),
         c if c.starts_with("automations.") => automations_cli::dispatch(ctx, req),
-        c if crate::browser::cli::is_browser(c) => {
-            // BROW-042: --worktree names the tab's worktree; without it the caller's own folder is
-            // the worktree, and a caller outside every worktree gets whichever tab is on screen.
-            // BROW-044: `tab list --worktree all` is every worktree's tabs (the module reads the word).
-            let worktree = match text("worktree") {
-                Some(sel) if sel == "all" => None,
-                Some(sel) => Some(pick_worktree(ctx, &sel, &req.cwd)?.1.path),
-                None => pick_worktree(ctx, "current", &req.cwd).ok().map(|(_, w)| w.path),
-            };
-            crate::browser::cli::run(req, worktree.as_deref())
-        }
         c if c.starts_with("terminal.") => terminal_cmd(ctx, req),
         c if c.starts_with("file.") => file_cli::dispatch(ctx, req),
         other => Err(Fail::args(format!("unknown command {other}"))),
@@ -4022,7 +4011,6 @@ mod tests {
             ("worktree rm --worktree name:one --force=false", "force"),
             ("terminal send --text hi --interrupt=false", "interrupt"),
             ("terminal close --terminal term-1 --all=false", "all"),
-            ("viewport --width 390 --height 844 --mobile=false", "mobile"),
         ] {
             assert_eq!(ok(line).args[key], false, "{line}");
         }
@@ -4031,7 +4019,6 @@ mod tests {
         }
         assert_eq!(ok("worktree rm --worktree name:one --force").args["force"], true, "bare stays on");
         assert_eq!(ok("terminal send --text hi --interrupt").args["interrupt"], true);
-        assert_eq!(ok("viewport --width 390 --height 844 --mobile").args["mobile"], true);
 
         // the two globals: --json=false is not JSON, and --help=false does not print help
         let (json, p) = parse(&words("worktree list --json=false"));
@@ -7821,23 +7808,15 @@ mod tests {
 
     /// CLI-002 / T-250-b: the grammar of the commands whose work is not built yet is already exact.
     #[test]
-    fn t250b_a_cookie_set_keeps_an_empty_value_and_refuses_a_missing_one_skills_install_collects_every_skill() {
+    fn t250b_a_skills_install_collects_every_skill() {
         let ok = |s: &str| parse(&words(s)).1.unwrap().unwrap();
-        let empty = ok("cookie set --name a --value=");
-        assert_eq!((empty.command.as_str(), &empty.args["value"], &empty.args["name"]), ("browser.cookie-set", &json!(""), &json!("a")));
-        assert!(parse(&words("cookie set --name a")).1.unwrap_err().message.contains("--value is required"));
-        assert!(parse(&words("cookie set --name a --value")).1.unwrap_err().message.contains("--value needs a value"));
-        // A value that starts with two dashes is taken only in the equals form.
-        assert_eq!(ok("cookie set --name a --value=--x").args["value"], "--x");
-        assert!(parse(&words("cookie set --name a --value --x")).1.is_err());
         let two = ok("skills install --skill a --skill b");
         assert_eq!(two.command, "skills.install");
         assert_eq!(two.args["skill"], json!(["a", "b"]));
         assert_eq!(ok("skills install --skill=only").args["skill"], json!(["only"]));
         // Ordinary text flags still keep one value and refuse a second, different one.
         assert!(parse(&words("worktree rm --worktree a --worktree b")).1.unwrap_err().message.contains("twice"));
-        // cookie set and skills install are each routed, once.
-        assert_eq!(commands().iter().filter(|c| c.0 == "cookie set").count(), 1);
+        // skills install is routed (the browser's cookie set went with the web pane).
         assert!(commands().iter().any(|c| c.0 == "skills install"));
     }
 

@@ -24,6 +24,9 @@ pub mod list_command;
 // T-573: the install table, the `agents_install` command and the installer's `--install-agents` run.
 #[path = "agent_install.rs"]
 pub mod agent_install;
+// c2-agents top bug 1: an agent pane runs the user's shell, which starts the agent (via_shell).
+#[path = "agent_shell.rs"]
+pub mod agent_shell;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -147,11 +150,32 @@ pub fn catalogue() -> Vec<AgentInfo> {
 /// Finds `name` the way the command line does, on the PATH and then in the usual install folders.
 /// `None` when nothing runnable matches.
 pub fn find_program(name: &str) -> Option<PathBuf> {
+    find_program_in(&search_dirs(), name)
+}
+
+/// `find_program` against folders already read: a path is checked as it is, a bare name is looked
+/// up in `dirs`.
+fn find_program_in(dirs: &[PathBuf], name: &str) -> Option<PathBuf> {
     let candidate = Path::new(name);
     if candidate.components().count() > 1 {
         return runnable(candidate).then(|| candidate.to_path_buf());
     }
-    find_in(&search_dirs(), name)
+    find_in(dirs, name)
+}
+
+/// c2 audit 12: one agent start asks where its program lives up to three times (run through cmd?
+/// a script shim? found at all?). This reads the search path once and walks it once per name.
+fn program_finder() -> impl Fn(&str) -> Option<PathBuf> {
+    let dirs = search_dirs();
+    let seen = std::cell::RefCell::new(std::collections::HashMap::<String, Option<PathBuf>>::new());
+    move |name: &str| {
+        if let Some(hit) = seen.borrow().get(name) {
+            return hit.clone();
+        }
+        let hit = find_program_in(&dirs, name);
+        seen.borrow_mut().insert(name.to_string(), hit.clone());
+        hit
+    }
 }
 
 /// Finds `name` in `dirs`, in order. On Windows each PATHEXT ending is tried (`claude` matches
@@ -769,16 +793,36 @@ fn credited_name(stem: &str, packages: bool) -> Option<&'static str> {
 /// known session id. Both are left out for a plain new tab, which never carries a resume form.
 // Async: finding the program reads the registry and looks in every PATH folder for each
 // PATHEXT ending, which a slow or network PATH entry turns into a stall of the window's thread.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command(async)]
-pub fn agent_start_line(store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, id: String, extra: Vec<String>, prompt: String, picked: Option<bool>, restore: Option<bool>, session: Option<String>) -> Result<StartLine, String> {
+pub fn agent_start_line(app: tauri::AppHandle, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, id: String, extra: Vec<String>, prompt: String, picked: Option<bool>, restore: Option<bool>, session: Option<String>) -> Result<StartLine, String> {
     let settings = store.lock().map_err(|e| e.to_string())?.settings();
     let start = if restore.unwrap_or(false) { Start::Restore(session.as_deref().map(str::trim).filter(|s| !s.is_empty())) } else { Start::Fresh };
     // SESS-005: a line that cannot be put together is refused here, before any pane is made, and
     // the refusal names the agent.
     let name = agent_name(&id);
-    let line = launch_line(&settings, &id, &extra, &prompt, picked.unwrap_or(false), start, |p| find_program(p).is_some_and(|f| crate::pty::through_cmd(&f))).map_err(|e| named(&name, e))?;
-    command_check(&name, line.program.as_deref(), find_program)?;
-    Ok(line)
+    let find = program_finder();
+    let built = launch_line_with(&settings, &id, &extra, &prompt, picked.unwrap_or(false), start, |p| find(p).is_some_and(|f| crate::pty::through_cmd(&f)), |p| find(p).is_some_and(|f| crate::agents::agent_shell::is_script_shim(&f)), |p| find(p).is_some())
+        .map_err(|e| named(&name, e))
+        .and_then(|line| command_check(&name, line.program.as_deref(), &find).map(|()| line));
+    // c2-agents finding 1: a start that fails before any pane exists is written to kolux.log (agent,
+    // program, where it resolved, why), so "Grok never started" leaves a trace. No arguments: they may
+    // carry the prompt.
+    if let Err(e) = &built {
+        let program = command_override(&settings, &id).map(str::to_string).or_else(|| installed_program_with(&id, |p| find(p).is_some())).unwrap_or_default();
+        let line = start_failure_line(&id, &program, find(&program).as_deref(), e);
+        match tauri::Manager::path(&app).app_data_dir() {
+            Ok(dir) => crate::diag::write(&dir, &line),
+            Err(_) => eprintln!("kolux-rs: {line}"),
+        }
+    }
+    built
+}
+
+/// The kolux.log line for an agent start that failed before its pane started (finding 1).
+fn start_failure_line(id: &str, program: &str, resolved: Option<&Path>, error: &str) -> String {
+    let at = resolved.map_or_else(|| "not found on PATH".to_string(), |p| p.display().to_string());
+    format!("agent start failed: agent {id}, program {program:?}, resolved {at}: {error}")
 }
 
 /// Txais 2026-11-08: a Claude Code seat runs Opus at medium as the lead and its subagents on Sonnet at
@@ -806,7 +850,16 @@ fn add_team(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cm
         return;
     }
     let agents = serde_json::json!({ "general-purpose": { "description": WORKER_DESCRIPTION, "prompt": WORKER_PROMPT, "model": "sonnet", "effort": "high" } });
-    line.args.splice(0..0, ["--agents".to_string(), agents.to_string(), "--append-system-prompt".to_string(), LEAD_NOTE.to_string()]);
+    line.args.splice(0..0, ["--agents".to_string(), json_without_spaces(&agents), "--append-system-prompt".to_string(), LEAD_NOTE.to_string()]);
+}
+
+/// c2-agents top bug 1: Claude Code takes `--agents` as inline JSON only (a file path needs `--print`,
+/// `claude --help` 2.1.322), so the JSON stays on the line. Compact JSON has no whitespace outside its
+/// strings, and a space inside one is written `\u0020`, so the argument has no space at all: then even
+/// Windows PowerShell 5.1's argument binder (a `claude.ps1` shim or a profile function, which split an
+/// argument holding both `"` and a space) hands it over whole. JSON readers decode it back.
+fn json_without_spaces(v: &serde_json::Value) -> String {
+    v.to_string().replace(' ', r"\u0020")
 }
 
 /// T-605 (X-sec.1, L2-rust-crates.1, R08-orch-auto-chat.2): `start_line_as`, except that an agent
@@ -814,10 +867,21 @@ fn add_team(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cm
 /// user's own command, else the catalogue's installed one) starts bare and has its opening prompt
 /// typed in once it is ready (SESS-032), on every route. cmd.exe honours no quoting of a prompt, so
 /// a GitHub title with `"` and `&` could run a command, and it ends the line at the first line break.
+#[cfg(test)]
 fn launch_line(settings: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool, start: Start<'_>, via_cmd: impl Fn(&str) -> bool) -> Result<StartLine, String> {
-    let program = command_override(settings, id).map(str::to_string).or_else(|| installed_program(id));
+    launch_line_with(settings, id, extra, prompt, picked, start, via_cmd, |_| false, |p| find_program(p).is_some())
+}
+
+/// `launch_line`, also told whether the program resolves to a script shim (`shim`: `.cmd`, `.bat`,
+/// `.ps1`) and whether a catalogue name is installed (`found`, see `installed_program_with`).
+/// An agent started through the user's shell (`agent_shell`) that resolves to a shim takes a prompt its shell
+/// could split or rewrite (`agent_shell::shim_safe`) typed in once it is ready.
+#[allow(clippy::too_many_arguments)]
+fn launch_line_with(settings: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool, start: Start<'_>, via_cmd: impl Fn(&str) -> bool, shim: impl Fn(&str) -> bool, found: impl Fn(&str) -> bool) -> Result<StartLine, String> {
+    let program = command_override(settings, id).map(str::to_string).or_else(|| installed_program_with(id, found));
     let cmd = program.as_deref().is_some_and(via_cmd);
-    let typed = !prompt.trim().is_empty() && cmd;
+    let shell_shim = program.as_deref().is_some_and(|p| crate::agents::agent_shell::wraps(p) && shim(p)) && !crate::agents::agent_shell::shim_safe(prompt.trim());
+    let typed = !prompt.trim().is_empty() && (cmd || shell_shim);
     let mut line = start_line_as(settings, id, extra, if typed { "" } else { prompt }, picked, start)?;
     add_team(settings, id, &mut line, cmd);
     if typed {
@@ -830,9 +894,15 @@ fn launch_line(settings: &serde_json::Value, id: &str, extra: &[String], prompt:
 /// installed, else its first name (as `catalogue` lists it). `terminal::terminal_listed_session` runs the
 /// agent's sessions command by it too (T-066-e).
 pub(crate) fn installed_program(id: &str) -> Option<String> {
-    let (_, _, programs, _) = CATALOGUE.iter().find(|e| e.0 == id)?;
     let dirs = search_dirs();
-    programs.iter().find(|p| find_in(&dirs, p).is_some()).or(programs.first()).map(|p| p.to_string())
+    installed_program_with(id, |p| find_in(&dirs, p).is_some())
+}
+
+/// `installed_program`, asking `found` whether a name is installed (an agent start passes its shared
+/// `program_finder`, so the search path is read once per start).
+fn installed_program_with(id: &str, found: impl Fn(&str) -> bool) -> Option<String> {
+    let (_, _, programs, _) = CATALOGUE.iter().find(|e| e.0 == id)?;
+    programs.iter().find(|p| found(p)).or(programs.first()).map(|p| p.to_string())
 }
 
 // ---------------------------------------------------------------- an agent that will not start (SESS-005)
@@ -1026,6 +1096,41 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn program_finder_answers_as_find_program_does() {
+        let find = program_finder();
+        for name in ["git", "no-such-program-kolux-xyz", "claude", "codex"] {
+            assert_eq!(find(name), find_program(name), "{name}");
+            assert_eq!(find(name), find_program(name), "{name}, asked again");
+        }
+        let here = std::env::current_exe().unwrap();
+        assert_eq!(find(here.to_str().unwrap()), Some(here.clone()), "a full path is checked as it is");
+    }
+
+    /// c2 audit 12 timing: three lookups the old way (search path read and walked each time) against
+    /// the shared finder. `cargo test --lib program_finder_timing -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn program_finder_timing() {
+        let rounds = 20;
+        let t = std::time::Instant::now();
+        for _ in 0..rounds {
+            for _ in 0..3 {
+                let _ = find_program("claude");
+            }
+        }
+        let old = t.elapsed() / rounds;
+        let t = std::time::Instant::now();
+        for _ in 0..rounds {
+            let find = program_finder();
+            for _ in 0..3 {
+                let _ = find("claude");
+            }
+        }
+        let new = t.elapsed() / rounds;
+        println!("per start: old {old:?}, shared finder {new:?}");
+    }
 
     fn temp_dir(tag: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("kolux-rs-agents-{tag}-{}", std::process::id()));
@@ -1269,6 +1374,43 @@ X=1" } } });
         assert_eq!(kept.env, vec![(SUBAGENT_MODEL_ENV.to_string(), "opus".to_string())]);
         let codex = launch_line(&none, "codex", &[], "", false, Start::Fresh, |_| false).unwrap();
         assert!(!codex.args.contains(&"--agents".to_string()) && codex.env.iter().all(|(k, _)| k != SUBAGENT_MODEL_ENV));
+    }
+
+    #[test]
+    fn c2_agents_team_json_has_no_space_so_any_powershell_hands_it_over_whole() {
+        let none = serde_json::json!({});
+        let line = launch_line(&none, "claude", &[], "", false, Start::Fresh, |_| false).unwrap();
+        assert!(!line.args[1].contains(char::is_whitespace), "{}", line.args[1]);
+        let back: serde_json::Value = serde_json::from_str(&line.args[1]).unwrap();
+        assert_eq!(back["general-purpose"]["description"].as_str(), Some(WORKER_DESCRIPTION));
+        assert_eq!(back["general-purpose"]["prompt"].as_str(), Some(WORKER_PROMPT));
+        assert!(!LEAD_NOTE.contains('"'), "the lead note has spaces but no quote, so a PowerShell binder keeps it whole");
+    }
+
+    #[test]
+    fn c2_agents_a_shell_started_shim_takes_a_risky_prompt_typed_in() {
+        let none = serde_json::json!({});
+        let shim = |_: &str| true;
+        // A script shim (an npm codex.ps1) and a prompt PowerShell 5.1 or cmd.exe would split: typed in.
+        let risky = launch_line_with(&none, "codex", &[], "fix \"the\" bug", true, Start::Fresh, |_| false, shim, |p| find_program(p).is_some()).unwrap();
+        assert_eq!(risky.typed.as_deref(), Some("fix \"the\" bug"));
+        assert!(!risky.args.iter().any(|a| a.contains("the")));
+        // A plain prompt stays on the line; so does any prompt for a real program (claude.exe, grok.exe).
+        let plain = launch_line_with(&none, "codex", &[], "fix the bug", true, Start::Fresh, |_| false, shim, |p| find_program(p).is_some()).unwrap();
+        assert_eq!((plain.typed, plain.args.last().map(String::as_str)), (None, Some("fix the bug")));
+        let exe = launch_line_with(&none, "grok", &[], "-say \"hi\" & go", true, Start::Fresh, |_| false, |_| false, |p| find_program(p).is_some()).unwrap();
+        assert_eq!(exe.typed, None);
+        assert_eq!(&exe.args[exe.args.len() - 2..], &["--".to_string(), "-say \"hi\" & go".to_string()][..]);
+        // The team setup stays for a Claude shim (only cmd.exe drops it).
+        let claude = launch_line_with(&none, "claude", &[], "say \"hi\"", true, Start::Fresh, |_| false, shim, |p| find_program(p).is_some()).unwrap();
+        assert!(claude.args.contains(&"--agents".to_string()) && claude.typed.is_some());
+    }
+
+    #[test]
+    fn c2_agents_a_failed_start_is_logged_with_agent_program_and_path() {
+        let l = start_failure_line("grok", "grok", Some(Path::new(r"C:\Links\grok.exe")), "Grok is not installed");
+        assert_eq!(l, r#"agent start failed: agent grok, program "grok", resolved C:\Links\grok.exe: Grok is not installed"#);
+        assert!(start_failure_line("claude", "claude", None, "x").contains("not found on PATH"));
     }
 
     #[test]

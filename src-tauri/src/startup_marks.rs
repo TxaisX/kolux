@@ -235,7 +235,7 @@ mod tests {
         assert!(at("prepare_state(") < at("tools::guarded_setup(app"));
         // The body waits for them before it writes to the profile, opens the store or starts anything.
         let join = at("startup_marks::joined(checks?)?");
-        for later in ["diag::write(&dir", "login_env::start()", "startup_scan(&dir)", "cli_register::path_at_start_now(&dir)", "Store::open(&prep.open_dir)", "beside(\"git-detect\"", "browser::helpers::sweep_at_start(&dir)"] {
+        for later in ["diag::write(&dir", "login_env::start()", "startup_scan(&dir)", "cli_register::path_at_start_now(&dir)", "Store::open(&prep.open_dir)", "beside(\"git-detect\""] {
             assert!(join < at(later), "{later} must come after the checks are joined");
         }
         // APP-053: git is started inside the app's job.

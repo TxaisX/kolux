@@ -16,8 +16,8 @@ test("with no hook state the live tab is the fallback, and an ended program neve
   expect(workingByDir(panes, {}, { 1: true, 2: false })).toEqual({ "C:/w/a": 2 });
 });
 
-test("waiting, permission and done agents are not working; shells, browsers and kit tabs are not agents (STAT-036)", () => {
-  const panes = [pane(1, "C:/w/a"), pane(2, "C:/w/a"), pane(3, "C:/w/a"), pane(4, "C:/w/a", "shell"), pane(5, "C:/w/a", "claude", { kind: "browser" }), pane(6, "C:/w/a", "claude", { seats: [1, 2] }), pane(7, null)];
+test("waiting, permission and done agents are not working; shells, editors and kit tabs are not agents (STAT-036)", () => {
+  const panes = [pane(1, "C:/w/a"), pane(2, "C:/w/a"), pane(3, "C:/w/a"), pane(4, "C:/w/a", "shell"), pane(5, "C:/w/a", "claude", { kind: "editor" }), pane(6, "C:/w/a", "claude", { seats: [1, 2] }), pane(7, null)];
   const hook = { 1: "waiting", 2: "permission", 3: "working", 4: "working", 5: "working", 6: "working", 7: "working" } as const;
   expect(workingByDir(panes, hook, {})).toEqual({ "C:/w/a": 1 });
   expect(panes.filter(countsAsAgent).map((p) => p.key)).toEqual([1, 2, 3]);

@@ -69,10 +69,10 @@ test("FIX-2: a Resource Manager that is never told the window has loaded counts 
 
 test("FIX-2: the window has loaded once settings are read and every restored terminal pane has its session or is gone, and it stays loaded", () => {
   const loaded = makeLoadedLatch();
-  const panes = [{ key: 1 }, { key: 2 }, { key: 3, kind: "browser" as const }];
+  const panes = [{ key: 1 }, { key: 2 }, { key: 3, kind: "editor" as const }];
   expect(loaded(false, [1, 2, 3], { 1: 7, 2: 8 }, panes), "settings not read yet").toBe(false);
   expect(loaded(true, [1, 2, 3], { 1: 7 }, panes), "restored pane 2 has no session yet").toBe(false);
-  expect(loaded(true, [1, 2, 3], { 1: 7 }, [{ key: 1 }, { key: 3, kind: "browser" as const }]), "pane 2 is gone, a browser needs no session").toBe(true);
+  expect(loaded(true, [1, 2, 3], { 1: 7 }, [{ key: 1 }, { key: 3, kind: "editor" as const }]), "pane 2 is gone, an editor needs no session").toBe(true);
   expect(loaded(true, [1, 2, 3], { 1: 7 }, [...panes, { key: 9 }]), "latched: a new pane opening later does not undo it").toBe(true);
   expect(makeLoadedLatch()(true, [], {}, []), "nothing to restore: loaded once settings are read").toBe(true);
 });

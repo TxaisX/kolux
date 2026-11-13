@@ -5,6 +5,7 @@
 // pane's program is up; permission, blocked, waiting and interrupted arrive with the status hooks
 // (STAT-001, T-025), and the pull-request state with GIT-025 (T-229). The rules here take them already.
 import { shortcodes } from "./model";
+import { panesIn, sameDir } from "../workspaces";
 
 export type AgentState = "permission" | "blocked" | "waiting" | "interrupted" | "working" | "queued" | "done" | "idle";
 export type PrState = "open" | "draft" | "merged" | "closed" | "suppressed" | null;
@@ -31,6 +32,96 @@ type Made = { path: string; madeBy?: string | null };
 export function withoutAutomationMade<W extends Made>(lists: Record<string, W[]>, hide: boolean): Record<string, W[]> {
   if (!hide) return lists;
   return Object.fromEntries(Object.entries(lists).map(([id, ws]) => [id, ws.filter((w) => w.madeBy !== "automation")]));
+}
+
+/** DT-C274: the worktrees an own-folder team launch made (launch/launchActions.ts startSeats). The team is shown as
+ *  one grid in the folder its chooser was in, so these are left out of the sidebar's workspace rows. */
+export const TEAM_WORKTREES_SETTING = "teamWorktrees";
+
+/** DT-C274: one recorded team worktree and the folder whose grid shows its agent. `view` is null for a record saved as
+ *  a bare path (before the grid was recorded): it is still left out of the sidebar, but no grid is known for it. */
+export type TeamFolder = { path: string; view: string | null };
+type TeamRecord = string | { path: string; view: string };
+
+/** DT-C274: the recorded team worktrees, as saved (`{ path, view }`, or an older bare path); anything else reads as none. */
+export function teamFoldersOf(v: unknown): TeamFolder[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((d): TeamFolder[] => {
+    if (typeof d === "string") return [{ path: d, view: null }];
+    if (d && typeof d === "object" && typeof (d as { path?: unknown }).path === "string") {
+      const view = (d as { view?: unknown }).view;
+      return [{ path: (d as { path: string }).path, view: typeof view === "string" ? view : null }];
+    }
+    return [];
+  });
+}
+
+const recordOf = (t: TeamFolder): TeamRecord => (t.view === null ? t.path : { path: t.path, view: t.view });
+
+/** DT-C274: the record with `add` put in, each path once (a path already there takes the new grid). */
+export function addTeamFolders(v: unknown, add: { path: string; view: string }[]): TeamRecord[] {
+  const had = teamFoldersOf(v).filter((t) => !add.some((a) => sameDir(a.path, t.path)));
+  const fresh = add.filter((a, i) => add.findIndex((b) => sameDir(a.path, b.path)) === i);
+  return [...had.map(recordOf), ...fresh.map((a) => ({ path: a.path, view: a.view }))];
+}
+
+/** DT-C274 (Row 794-c): the record on disk laid under the latest one: every path once, the latest record's entry winning. */
+export function mergedTeamFolders(disk: unknown, latest: unknown): TeamRecord[] {
+  const now = teamFoldersOf(latest);
+  return [...teamFoldersOf(disk).filter((d) => !now.some((t) => sameDir(t.path, d.path))), ...now].map(recordOf);
+}
+
+/** DT-C274: the folder whose grid shows the agent of team worktree `dir`; undefined when `dir` is no recorded team
+ *  worktree, or its grid was not recorded. */
+export function teamViewOf(settings: Record<string, unknown>, dir: string | null): string | undefined {
+  if (dir === null) return undefined;
+  return teamFoldersOf(settings[TEAM_WORKTREES_SETTING]).find((t) => sameDir(t.path, dir))?.view ?? undefined;
+}
+
+/** DT-C274: the team grid select() shows team worktree `dir` in: its recorded grid while that grid still has panes;
+ *  undefined for a plain workspace, and for a stranded team worktree (its grid empty), which is shown as itself. */
+export function selectView(settings: Record<string, unknown>, panes: { key: number; cwd: string | null; view?: string | null }[], dir: string): string | undefined {
+  const view = teamViewOf(settings, dir);
+  return view !== undefined && panesIn(panes, view).length > 0 ? view : undefined;
+}
+
+/** DT-C274: whether a command-line file request for worktree `dir` can open in the shown grid `active`: the worktree
+ *  itself, or its team's grid when `dir` is a recorded team worktree (select() shows that grid instead; a stranded one,
+ *  with no pane left in that grid, is shown as itself). */
+export function cliFileShown(settings: Record<string, unknown>, dir: string, active: string | null): boolean {
+  if (sameDir(dir, active)) return true;
+  const view = teamViewOf(settings, dir);
+  return view !== undefined && sameDir(view, active);
+}
+
+/** DT-C274 (STAT-039): a moved folder takes its records along, as the worktree and as the grid; null when none named it. */
+export function movedTeamFolders(v: unknown, from: string, to: string): TeamRecord[] | null {
+  const had = teamFoldersOf(v);
+  if (!had.some((t) => sameDir(t.path, from) || (t.view !== null && sameDir(t.view, from)))) return null;
+  return had.map((t) => recordOf({ path: sameDir(t.path, from) ? to : t.path, view: t.view !== null && sameDir(t.view, from) ? to : t.view }));
+}
+
+/** DT-C274: the record without the worktrees no longer listed (`listed`: every worktree a full scan found); null when
+ *  nothing goes, so nothing is written. Only a worktree already recorded when the scan began (`began`) can go: one a
+ *  team launch made while the scan ran may be missing from it. */
+export function prunedTeamFolders(v: unknown, listed: string[], began: unknown = v): TeamRecord[] | null {
+  const had = teamFoldersOf(v);
+  const old = teamFoldersOf(began);
+  const kept = had.filter((t) => listed.some((d) => sameDir(d, t.path)) || !old.some((o) => sameDir(o.path, t.path)));
+  return kept.length === had.length ? null : kept.map(recordOf);
+}
+
+/** DT-C274: the team worktrees the sidebar leaves out. One is shown again when it is stranded: nothing is shown in its
+ *  team's grid any more and nothing runs in it (`open`: every folder a pane runs in or is shown in). */
+export function hiddenTeamFolders(v: unknown, open: string[]): string[] {
+  const used = (d: string | null) => d !== null && open.some((o) => sameDir(o, d));
+  return teamFoldersOf(v).filter((t) => used(t.path) || used(t.view)).map((t) => t.path);
+}
+
+/** DT-C274: each project's list without the worktrees a team launch made. A main checkout is never left out. */
+export function withoutTeamMade<W extends { path: string; isMain?: boolean }>(lists: Record<string, W[]>, team: string[], same: (a: string, b: string) => boolean): Record<string, W[]> {
+  if (team.length === 0) return lists;
+  return Object.fromEntries(Object.entries(lists).map(([id, ws]) => [id, ws.filter((w) => w.isMain || !team.some((d) => same(d, w.path)))]));
 }
 
 /** AUTO-024: moving to a worktree the switch hides (View run, the palette) turns the switch off so it can be seen. */
@@ -160,11 +251,12 @@ export function sleepPlan(asleep: string[], ws: { path: string; parent?: string 
   return { next, paths: ws.map((x) => x.path).filter((d) => next.includes(pathKey(d)) && !asleep.includes(pathKey(d))) };
 }
 
-/** How many of these running terminals (by folder) sit in or under any of the given workspaces. */
-export function runningUnder(roots: string[], cwds: string[]): number {
+/** TERM-045 / DT-C274: how many of `sessions` are under `roots`, counting a session once when the folder it runs in
+ *  or the folder whose grid shows it is under one (an own-folder team's agents close with their grid's folder). */
+export function sessionsUnder(roots: string[], sessions: { cwd: string | null; view?: string | null }[]): number {
   const key = pathKey;
-  const under = (c: string) => roots.some((p) => key(c) === key(p) || key(c).startsWith(key(p) + "/"));
-  return cwds.filter(under).length;
+  const under = (c: string | null | undefined) => typeof c === "string" && roots.some((p) => key(c) === key(p) || key(c).startsWith(key(p) + "/"));
+  return sessions.filter((s) => under(s.cwd) || under(s.view)).length;
 }
 
 /** The sentence a sleep or removal question adds when terminals would be closed; empty for none. */

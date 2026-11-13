@@ -9,6 +9,7 @@ import { installWindowBackground } from "./recovery/windowBackground";
 import { stampLook } from "./settings/general";
 import { applyLanguage, LANGUAGE_FIELD } from "./language";
 import { registerBundledPacks } from "./i18n/packs";
+import { loadPack } from "./i18n/lookup";
 import { applyZoom, ZOOM_FIELD } from "./settings/zoom";
 import { applyText, followText } from "./terminal/text";
 import { installMenuWheel } from "./settings/menuWheel";
@@ -128,12 +129,14 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
   if (saved) applyAppearance(readAppearance(stamped || saved));
   // SET-017: the saved language is in force before the first frame draws.
   applyLanguage(saved?.[LANGUAGE_FIELD]);
+  // ...and its pack is here before that frame (a local file: a few ms; capped so a bad pack never holds the start).
+  await Promise.race([loadPack(), new Promise((r) => setTimeout(r, 300))]);
   // SET-019: and so is the saved interface zoom.
   applyZoom(saved?.[ZOOM_FIELD]);
   // PROJ-067: the saved tabs come back, less those whose folder is gone.
   let layout = restoreLayout((stamped || saved || {})[LAYOUT_FIELD]);
   if (layout) {
-    const dirs = [...new Set([...layout.panes.map((p) => p.cwd), layout.activeDir].filter((d): d is string => d !== null))];
+    const dirs = [...new Set([...layout.panes.flatMap((p) => [p.cwd, p.view ?? null]), layout.activeDir].filter((d): d is string => d !== null))]; // DT-C274: a team tab's grid folder is checked too
     // PKG-4: one wave, not two. The folder checks and the history removal start together and both are awaited
     // before this returns, so DT-C27 still holds (nothing old is replayed before a pane opens). The history of
     // every saved tab is forgotten, including a tab whose folder turns out to be gone: that tab is dropped and its

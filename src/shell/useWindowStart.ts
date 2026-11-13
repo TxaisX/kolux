@@ -1,24 +1,20 @@
 // The window's first reads, moved out of App.tsx as they were (cycle 2, the App.tsx split): app info, the
-// agent list (SESS-002), the shells and the settings, a chooser seat whose agent is gone, and pages asked
-// for in the built-in browser (GIT-036). Called where they sat, so the window's hook order is unchanged.
+// agent list (SESS-002), the shells and the settings, and a chooser seat whose agent is gone. Called where they sat, so the window's hook order is unchanged.
 import type { WindowState } from "./windowStore";
 import type { AppInfo } from "../app-info";
-import { OPEN_IN_BROWSER, openDetail, type OpenInBrowser } from "../browser/openIn";
 import type { ShellInfo } from "../terminal/newTab";
 import { applyWindowBlur } from "../chrome/appLook";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { clearMissing } from "../launch/seats";
-import { groupOf } from "../terminal/grid";
 import { applyAppearance, readAppearance } from "../theme";
 import { readSettingsInto } from "./settingsRead";
 import { onlyWindowState } from "../settings/settingsSync";
 import { sharedRead } from "../settings/sharedRead";
-import { sameDir } from "../workspaces";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
-export function useWindowStart({ activeDir, agentPass, focused, installedIds, nextKey, panes, setAgentPass, setAgents, setFocused, setInfo, setPanes, setSettings, setSettingsRead, setShells }: Pick<WindowState, "activeDir" | "agentPass" | "focused" | "installedIds" | "nextKey" | "panes" | "setAgentPass" | "setAgents" | "setFocused" | "setInfo" | "setPanes" | "setSettings" | "setSettingsRead" | "setShells">) {
+export function useWindowStart({ agentPass, installedIds, setAgentPass, setAgents, setInfo, setPanes, setSettings, setSettingsRead, setShells }: Pick<WindowState, "agentPass" | "installedIds" | "setAgentPass" | "setAgents" | "setInfo" | "setPanes" | "setSettings" | "setSettingsRead" | "setShells">) {
   useEffect(() => {
     invoke<AppInfo>("app_info").then(setInfo).catch(() => setInfo(null));
     refreshAgents();
@@ -81,19 +77,6 @@ export function useWindowStart({ activeDir, agentPass, focused, installedIds, ne
     });
   }, [agentPass, offeredKey]);
 
-  // GIT-036: a page asked for in the built-in browser opens as a new tab in the focused split.
-  useEffect(() => {
-    const show = (e: Event) => {
-      // T-242 (BROW-067): the Preview button names its tab "Preview host:port".
-      const { url, title } = openDetail((e as CustomEvent<OpenInBrowser>).detail);
-      const here = panes.find((p) => p.key === focused && sameDir(p.cwd, activeDir));
-      const key = nextKey.current++;
-      setPanes((ps) => [...ps, { key, cwd: activeDir, branch: here?.branch ?? null, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "browser", url, title }]);
-      setFocused(key);
-    };
-    window.addEventListener(OPEN_IN_BROWSER, show);
-    return () => window.removeEventListener(OPEN_IN_BROWSER, show);
-  }, [panes, focused, activeDir]);
   return {
     refreshAgents,
   };

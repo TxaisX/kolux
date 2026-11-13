@@ -40,8 +40,12 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
   const putNote = (dir: string, n: LineNote) => saveNotes(dir, [...notesFor(dir).filter((x) => x.id !== n.id), n]);
   const dropNotes = (dir: string, ids: string[]) => saveNotes(dir, notesFor(dir).filter((x) => !ids.includes(x.id)));
   // Row 794: built on the latest settings, so writes before the next render (Clear filters, then a tick) all land.
+  // DT-C274: `value` may be a function of the key's latest value (settings are JSON, so never a function themselves),
+  // for a writer that finishes after an await and must build on what is there then; undefined from it writes nothing.
   const saveSetting = (key: string, value: unknown) => {
-    const { was, next } = applySetting(settingsRef, key, value);
+    const v = typeof value === "function" ? (value as (prev: unknown) => unknown)(settingsRef.current[key]) : value;
+    if (typeof value === "function" && v === undefined) return;
+    const { was, next } = applySetting(settingsRef, key, v);
     setSettings(next);
     saveChanged(was, next).catch((err) => setNotice(String(err)));
   };

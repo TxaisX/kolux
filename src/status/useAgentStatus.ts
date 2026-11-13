@@ -13,7 +13,7 @@ import type { ContextReading } from "../usage/meter";
 import { raiseNotification, suppressFocused, type KindKey } from "../settings/notifications";
 import { marksUnread } from "../terminal/tabs";
 import { folderName } from "../projects/model";
-import { sameDir } from "../workspaces";
+import { sameDir, viewOf } from "../workspaces";
 import { newPaceMemory, noteId, paced } from "../notify/pace";
 import { badgeCount } from "../notify/badge";
 import { dirsToClear, forgetAcks, toAcknowledge } from "../notify/seen";
@@ -183,7 +183,8 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
     if (!marksUnread(p.key, known, unreadPanes, inView(p.key), winFocused)) return;
     forgetAcks(ackedRef.current, p.key);
     setUnreadPanes((u) => new Set([...u, p.key]));
-    if (p.cwd !== null) markDir(p.cwd, true);
+    const dotDir = viewOf(p); // DT-C274: the dot goes on the row of the grid the pane is shown in
+    if (dotDir !== null) markDir(dotDir, true);
     setToast(title);
   };
   const noticedRef = useRef(noticed);
@@ -347,7 +348,7 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
     for (const a of acks) ackedRef.current.add(a);
     setUnreadPanes((u) => new Set([...u].filter((k) => !seen.includes(k))));
     // a workspace dot stays while another of its panes is still unread
-    for (const d of dirsToClear(panes, unreadPanes, seen)) markDir(d, false);
+    for (const d of dirsToClear(panes.map((x) => ({ key: x.key, cwd: viewOf(x) })), unreadPanes, seen)) markDir(d, false);
   }, [winFocused, seenInputs]);
   useEffect(() => {
     // STAT-048: the taskbar or dock badge counts the workspaces with unseen results; zero clears it.

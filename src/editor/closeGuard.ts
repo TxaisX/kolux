@@ -2,6 +2,7 @@
 // all, to the right or left, Mod+W, the x, Mod+Alt+W) comes here first with the keys it would close. If any
 // of them holds unsaved text, nothing closes until the user chose Save, Don't save or Cancel; Save closes
 // only the tabs that did get saved. These are the rules; CloseDialog.tsx is the dialog.
+import { keyOf } from "./buffers";
 
 export type GuardPane = { key: number; kind?: string; path?: string; cwd?: string | null };
 export type Unsaved = { key: number; path: string; root: string | null };
@@ -81,7 +82,9 @@ export function unusedNotes(
   isNote: (path: string, root: string | null) => boolean,
   read: (path: string) => { text: string | null; disk: string | null },
 ): string[] {
-  const norm = (p: string) => p.replace(/\\/g, "/").toLowerCase();
+  // audit N-11: one path key for the whole area (buffers.ts), so one file opened under two spellings (a
+  // drive letter case, a WSL share name) is still seen as open and its empty note is not deleted.
+  const norm = keyOf;
   const open = new Set(staying.filter((p) => p.path).map((p) => norm(p.path as string)));
   const out: string[] = [];
   for (const p of closing) {

@@ -1,4 +1,4 @@
-// ONB-024 (T-321-c): the usage stop's connected accounts and the orchestration / browser skill cards, as pure rules.
+// ONB-024 (T-321-c): the usage stop's connected accounts and the orchestration skill card, as pure rules.
 import { describe, expect, it } from "vitest";
 import { claudeVia, codexVia, ONBOARDING_TERMINAL_HEIGHT, skillCard, stopCard, STOP_SKILLS, usageCard } from "./stopCards";
 
@@ -41,12 +41,11 @@ describe("the usage stop counts agents as connected (ONB-024)", () => {
   });
 });
 
-describe("the orchestration and browser stops show a skill setup card (ONB-024)", () => {
-  it("each stop names its own skill; the orchestration stop never names another", () => {
+describe("the orchestration stop shows a skill setup card (ONB-024)", () => {
+  it("the orchestration stop names its own skill", () => {
     expect(STOP_SKILLS.orchestration.skill).toBe("orchestration");
-    expect(STOP_SKILLS.browser.skill).toBe("kolux-cli");
     expect(skillCard("orchestration", [])).toMatchObject({ kind: "skill", skill: { skill: "orchestration", ready: false } });
-    expect(skillCard("browser", ["kolux-cli", "orchestration"])).toMatchObject({ skill: { skill: "kolux-cli", ready: true } });
+    expect(skillCard("orchestration", ["kolux-cli", "orchestration"])).toMatchObject({ skill: { skill: "orchestration", ready: true } });
   });
   it("a skill found in an agent's own folder is ready; another skill does not make it ready; unknown while scanning", () => {
     expect(skillCard("orchestration", ["kolux-cli"])).toMatchObject({ skill: { ready: false } });
@@ -55,7 +54,7 @@ describe("the orchestration and browser stops show a skill setup card (ONB-024)"
   });
   it("stopCard returns the skill card without saved settings, and null for stops with no card", () => {
     expect(stopCard("orchestration", { taskSource: null, settings: null, homeSkills: [] })).toMatchObject({ kind: "skill" });
-    expect(stopCard("browser", { taskSource: null, settings: null })).toMatchObject({ kind: "skill", skill: { ready: null } });
+    expect(stopCard("orchestration", { taskSource: null, settings: null })).toMatchObject({ kind: "skill", skill: { ready: null } });
     expect(stopCard("workspaces", { taskSource: null, settings: {} })).toBeNull();
     expect(skillCard("statuses", [])).toBeNull();
   });

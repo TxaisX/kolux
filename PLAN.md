@@ -755,3 +755,30 @@ No new features. Each task names the audit finding ids it closes (P1-, P2A-, P2b
 
 ### agent sleep
 - [x] T-817 · Agent sleep, experimental and off by default (TERM 123, HID 028; Txais 2026-11-09 "Build it, off by default", DT-C242): an "Experimental" card on Settings > General with the "Agent sleep" switch and "Idle minutes before sleep" (30, held 5..240); one check a minute while on puts finished, unfocused, draft-free agent panes with a resumable session to sleep after the delay (session recorded first, then only that pane's process tree ends, placeholder with Wake); Wake resumes the recorded session through the restored-tab path; off means no timer runs; review findings F1 to F10 fixed (no re-typed prompt, a refused Wake keeps the pane asleep, typed input and the foreground count, stale decisions re-checked on both sides, any visible pane stays awake) · terminals · done · gate: `pnpm exec vitest run src/sleep src/settings src/shell src/i18n src/terminal src/chat` green (every never-sleep case, the clamp, switch-off, wake fields, the check's re-checks, a refused Wake); `cargo test --lib t817` green (Rust re-checks, failed save ends nothing); `evidence/T-817.txt` · M
+
+## 10. Native terminals, no web pane (Txais, 2026-11-12)
+
+Direction from Txais on 2026-11-12, taken by the wave (lanes c2-agents, c3-terminal, o1-tools, o2-tests, o3-rune; c1-coord merges). It overrides older plans where they conflict. Decision row: DT-C275.
+
+**Why (Txais, 2026-11-12):** cut Kolux's own resource use so the PC can run many more agents at once. Native terminals are far lighter than Kolux's web-drawn panes. The 2026-11-09 slimdown study (`docs/research/kolux-slimdown-2026-11-09.md`) measured the Kolux web view at about 509 MB reserved across 6 processes, more than the window, the terminal service and the shells combined. Agents get the web through Chrome or the user's own browser instead, which is also better for debugging and daily use.
+
+The direction in seven parts:
+1. Native terminal: panes use the real Windows terminal engine instead of drawing their own (c3-terminal).
+2. Remove the web pane: the embedded browser goes; an "open in browser" action launches the system browser (o1-tools removes the screens, c3-terminal the Rust side).
+3. Rune as the base for a Kolux users shape to their own way of working; a spike first, wiring waits for Txais's go/no-go on its numbers (o3-rune).
+4. Sidebar lists each workspace folder and that folder's sessions, never worktrees (c2-agents).
+5. New session opens a terminal running the user's own shell, then starts the agent inside it; Kolux never runs an agent executable as the pane's process (c2-agents command, c3-terminal spawn).
+6. One feature map of every button, menu item, shortcut and feature with pass/fail proof, at `docs/guide/feature-map.md` (o2-tests builds it; owning lanes fix failures).
+7. Fast to the touch, measured on a release build: keystroke to screen under 16 ms, click or shortcut to visible response under 50 ms, new terminal to a ready prompt under 300 ms (every lane records before/after).
+
+### c3-terminal
+- [ ] T-818 · Native terminal path: compare the options (open a real Windows Terminal window, host the Windows Terminal control inside Kolux, keep Kolux's own pty and switch only the drawing), record the recommendation, then build it behind a setting that stays off until proven · terminal · open · gate: setting off = no change (vitest and cargo test green); setting on = a harness screenshot of a working pane and the three latency numbers recorded
+- [ ] T-819 · Remove the Rust side of the embedded browser (webview creation, browser IPC commands) after T-821 lands · terminal + app shell · open · gate: cargo test and clippy green; no browser command left in the invoke contract
+- [ ] T-820 · New session spawns the user's shell as the pane's process and types the agent's start command into it · terminal · open · gate: harness smoke starts Claude Code, Grok and a plain terminal from New session and each takes input
+
+### o1-tools
+- [ ] T-821 · Delete `src/browser/` and its wiring in the tool screens; add an "open in browser" action that launches the system browser; retire or rewrite the browser feature cards (c1-coord records the retirement in DECISIONS) · tools · open · gate: tsc and vitest green; grep finds no import of `src/browser/`
+- [ ] T-822 · Fast local loop: measure warm install, harness dev launch to first window and a Rust-only rebuild, then cut the slowest so Txais can try a change in minutes instead of a 30 to 45 minute installer build · tooling · open · gate: before/after numbers in the lane report
+
+### follow-ups for c1-coord after T-821 and T-819 merge
+- [ ] T-823 · Docs and checks stop naming the web pane: README, CHANGELOG line, `docs/guide`, the glossary check and privacy audit paths · docs · open · gate: `pnpm check` green; grep for the embedded browser in user docs finds only the retirement note

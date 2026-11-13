@@ -35,11 +35,11 @@ describe("a demo loop (ONB-025)", () => {
 });
 
 describe("what the demos show (ONB-025)", () => {
-  it("only the four demo stops carry one", () => {
-    expect(["workspaces", "workbench", "statuses", "browser", "tasks", "terminal"].map(demoFor)).toEqual(["workspaces", "workbench", "statuses", "browser", null, null]);
+  it("only the three demo stops carry one", () => {
+    expect(["workspaces", "workbench", "statuses", "tasks", "terminal"].map(demoFor)).toEqual(["workspaces", "workbench", "statuses", null, null]);
   });
   it("on Windows the shortcuts read Ctrl, never a Cmd symbol", () => {
-    for (const id of ["workspaces", "workbench", "statuses", "browser"] as const) {
+    for (const id of ["workspaces", "workbench", "statuses"] as const) {
       const text = framesOf(id, "win32").join(" ");
       expect(text).not.toMatch(/Cmd|⌘|⌥|⇧/);
     }
@@ -48,14 +48,8 @@ describe("what the demos show (ONB-025)", () => {
   it("on a Mac the same demo reads Cmd", () => {
     expect(framesOf("workbench", "darwin").join(" ")).toContain("Cmd");
   });
-  it("the browser storyboard keeps its order and length on every platform", () => {
-    const a = framesOf("browser", "win32");
-    expect(a).toHaveLength(4);
-    expect(framesOf("browser", "darwin")).toEqual(a);
-    expect(a.map((f) => f[0])).toEqual(["1", "2", "3", "4"]);
-  });
   it("every demo has at least two frames to move between", () => {
-    for (const id of ["workspaces", "workbench", "statuses", "browser"] as const) expect(framesOf(id, "win32").length).toBeGreaterThan(1);
+    for (const id of ["workspaces", "workbench", "statuses"] as const) expect(framesOf(id, "win32").length).toBeGreaterThan(1);
   });
 });
 

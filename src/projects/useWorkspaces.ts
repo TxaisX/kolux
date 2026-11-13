@@ -14,6 +14,7 @@ import { readLook } from "../settings/general";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { emptySeat } from "../launch/seats";
 import { startPanes, type StartPrefill } from "./workspaceStart";
+import { selectView } from "./rows";
 
 export function useWorkspaces(activeDir: string | null) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -56,9 +57,16 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   // beside its first pane, or a cell of its own to the right or below. `then` runs once it ends
   // (the agent waiting for setup), whatever its exit code, and lands as a tab beside it.
   const afterSetup = useRef<Record<number, () => void>>({});
-  const startSetup = (dir: string, branch: string | null, line: SetupLine, where: SetupWhere, show: boolean, then?: () => Promise<unknown> | void) => {
+  // DT-C274: `view`, the grid a team worktree is shown in (as openDefaultTabs takes it): the Setup terminal runs in
+  // `dir`, is shown there, and is always a tab: of the cell of the pane running in `dir`, else of cell `group` (the chooser's), else of the grid's first cell.
+  const startSetup = (dir: string, branch: string | null, line: SetupLine, where: SetupWhere, show: boolean, then?: () => Promise<unknown> | void, view?: string | null, group?: number) => {
     const key = nextKey.current++;
     setPanes((ps) => {
+      if (view !== undefined) {
+        const shown = cellsOf(panesIn(ps, view));
+        const cell = shown.find((c) => c.panes.some((p) => sameDir(p.cwd, dir))) ?? shown.find((c) => c.group === group) ?? shown[0];
+        return [...ps, { key, cwd: dir, view, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word: line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, ""), group: cell?.group }];
+      }
       const cells = cellsOf(panesIn(ps, dir));
       const tab = where === "tab" || cells.length >= MAX_PANES;
       if (!tab && where === "down" && cells.length === 1) setStacked((st) => ({ ...st, [dir]: true }));
@@ -70,7 +78,7 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
           if (typeof k === "number") setPanes((ps) => ps.map((p) => (p.key === k ? { ...p, group: groupOf(ps.find((x) => x.key === key) ?? p) } : p)));
         });
     if (show) {
-      setActiveDir(dir);
+      setActiveDir(view === undefined ? dir : view);
       setFocused(key);
     }
     return key;
@@ -82,14 +90,22 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   // count. Only then, so nothing re-seeds later.
   // T-664 (b): `prefill` (a front create from the new-workspace form) puts the picked AI in Seat 1 (with the default
   // model and effort, as a dropdown pick would, so Start is ready) and the note in the task; it only matters when the workspace has no pane yet, and nothing runs until Start.
+  // DT-C274: a team worktree (an own-folder team's) is shown in its team's grid, with the pane running in it focused; a
+  // chooser made for it there runs in the worktree.
   const select = (dir: string, branch: string | null, fresh = false, prefill?: StartPrefill) => {
     setPage(null);
-    recentDirs.current = [dir, ...recentDirs.current.filter((d) => !sameDir(d, dir))].slice(0, 20);
-    setActiveDir(dir);
+    // A stranded team worktree (no pane left in its team's grid) is shown as a plain workspace of its own.
+    const view = selectView(settings, panes, dir);
+    const at = view === undefined ? dir : view;
+    recentDirs.current = [at, ...recentDirs.current.filter((d) => !sameDir(d, at))].slice(0, 20);
+    setActiveDir(at);
     if (screen === "artifacts" || screen === "skills") setScreen("terminals");
-    if (panesIn(panes, dir).length > 0) setFocused((f) => focusIn(panes, dir, f));
+    const shown = panesIn(panes, at);
+    const mine = view === undefined ? undefined : shown.find((p) => sameDir(p.cwd, dir) && !p.kind);
+    if (mine) setFocused(mine.key);
+    else if (shown.length > 0) setFocused((f) => focusIn(panes, at, f));
     else {
-      const made = startPanes(dir, branch, fresh ? seedCount(settings[DEFAULT_PANES_FIELD], readLook(settings) === "classic") : 1, () => nextKey.current++, prefill && { seat: prefill.agent ? { ...emptySeat(), ...seatStart(prefill.agent, seatDefault(settings)) } : emptySeat(), task: prefill.task });
+      const made = startPanes(dir, branch, fresh ? seedCount(settings[DEFAULT_PANES_FIELD], readLook(settings) === "classic") : 1, () => nextKey.current++, prefill && { seat: prefill.agent ? { ...emptySeat(), ...seatStart(prefill.agent, seatDefault(settings)) } : emptySeat(), task: prefill.task }).map((p) => (view === undefined ? p : { ...p, view }));
       setPanes((ps) => [...ps, ...made]);
       setFocused(made[0].key);
     }

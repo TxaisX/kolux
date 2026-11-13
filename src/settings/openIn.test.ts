@@ -1,14 +1,15 @@
 // SET-039 (T-323): the Open in list: presets, custom drafts, order, and old preset rows.
 import { describe, expect, it } from "vitest";
-import { addApp, addCustom, DEFAULT_APPS, draftReady, moveApp, OPEN_IN_FIELD, openInItems, PRESETS, presetsLeft, readOpenIn, removeApp } from "./openIn";
+import { addApp, addCustom, DEFAULT_APPS, draftReady, moveApp, OPEN_IN_FIELD, PRESETS, presetsLeft, readOpenIn, removeApp } from "./openIn";
+import { fileApps } from "../scm/openWith";
 
 const zed = PRESETS.find((p) => p.id === "zed")!;
 
 describe("SET-039 Open in apps", () => {
   it("a preset added shows in every Open in menu, and removing it takes it out", () => {
     const list = addApp(DEFAULT_APPS, zed);
-    expect(openInItems({ [OPEN_IN_FIELD]: list }).map((i) => i.label)).toContain("Open in Zed");
-    expect(openInItems({ [OPEN_IN_FIELD]: removeApp(list, "zed") }).map((i) => i.label)).not.toContain("Open in Zed");
+    expect(fileApps({ [OPEN_IN_FIELD]: list }).map((i) => i.label)).toContain("Open in Zed");
+    expect(fileApps({ [OPEN_IN_FIELD]: removeApp(list, "zed") }).map((i) => i.label)).not.toContain("Open in Zed");
     expect(presetsLeft(list).some((p) => p.id === "zed")).toBe(false);
   });
 

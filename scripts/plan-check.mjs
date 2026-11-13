@@ -23,7 +23,7 @@ export const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const CARD_HEAD = /^### ([A-Z]+-\d{3}) · /;
 const BOX = /^\s*- \[([ xX])\]/;
 
-/** Cards of one spec file into a map: id -> { tier, boxes: [ticked, ...] } in Acceptance order. */
+/** Cards of one spec file into a map: id -> { tier, boxes: [ticked, ...], retired? } in Acceptance order. */
 export function parseCards(text, into = new Map()) {
   let card = null;
   let inAcc = false;
@@ -32,8 +32,8 @@ export function parseCards(text, into = new Map()) {
     if (h) { card = { tier: null, boxes: [] }; into.set(h[1], card); inAcc = false; continue; }
     if (!card) continue;
     if (/^#/.test(line)) { card = null; inAcc = false; continue; }
-    const t = card.tier === null && line.match(/^Tier: (\w+)/);
-    if (t) { card.tier = t[1]; continue; }
+    const t = card.tier === null && line.match(/^Tier: (\w+)(.*)/);
+    if (t) { card.tier = t[1]; if (/State at [^:]*: retired\b/.test(t[2])) card.retired = true; continue; }
     if (/^Acceptance:/.test(line)) { inAcc = true; continue; }
     if (inAcc && /^\S/.test(line)) { inAcc = false; continue; }
     const b = inAcc && line.match(BOX);
@@ -174,7 +174,8 @@ export function coverageErrors(cards, decisionsText, planText) {
     const tier = cards.get(id)?.tier;
     if (!tier) { errors.push(`unknown card id in PLAN.md: ${id}`); continue; }
     if (tier === 'D') errors.push(`dropped card planned: ${id}`);
-    if (tier === 'H' && !hBuild.has(id)) errors.push(`skipped H card planned: ${id}`);
+    // A retired card was built, then taken out: its finished tasks stay in the plan as history.
+    if (tier === 'H' && !hBuild.has(id) && !cards.get(id).retired) errors.push(`skipped H card planned: ${id}`);
     if (n !== 1) errors.push(`${id} appears ${n} times (must be exactly once)`);
   }
   return { errors, expected: expected.size, planned: seen.size };

@@ -12,8 +12,14 @@ mod capture;
 mod chat;
 mod chat_tools;
 mod clipboard;
-mod browser;
 mod cleanup;
+mod engine_crash;
+mod html_preview;
+mod net;
+mod pdf_export;
+mod tower_window;
+mod webview_args;
+mod webview_engine;
 mod cap;
 pub mod cli;
 mod cli_accounts;
@@ -246,7 +252,7 @@ pub fn run() {
     // T-286-b (APP-017): every window is excused from background throttling (WebView2 browser
     // arguments; later webviews on the same data folder reuse the same string).
     let safe = resources::recovery::safe_graphics_on(&context.config().identifier, &context.package_info().version.to_string());
-    // Row 939: the window's browser arguments carry the proxy saved in the profile, like its tabs'.
+    // Row 939: the window's browser arguments carry the proxy saved in the profile.
     let identifier = context.config().identifier.clone();
     for w in &mut context.config_mut().app.windows {
         w.create = false;
@@ -310,9 +316,6 @@ pub fn run() {
             }
             // T-182 (APP-020, macOS and Linux): the login shell's environment, read in the background.
             login_env::start();
-            // T-283 (BROW-043): an earlier run's leftover browser helpers are closed, on a thread of
-            // its own so a hanging listing never holds up start-up.
-            browser::helpers::sweep_at_start(&dir);
             // T-594: a user PATH too long for the installer gets <install>\bin added here, once per install.
             cli::cli_register::path_at_start_now(&dir);
             if !job_ok {
@@ -408,7 +411,7 @@ pub fn run() {
             // look; this is the backstop for a page that never gets that far.
             // T-286-b (APP-040): the app's own view reports its engine's process failures.
             if let Some(w) = app.get_webview_window("main") {
-                browser::engine::watch_app_failures(&w, dir.clone());
+                webview_engine::watch_app_failures(&w, dir.clone());
             }
             // APP-014: spelling suggestions for the text-field menu (Windows).
             edit_menu::install(app.handle());
@@ -571,7 +574,6 @@ pub fn run() {
         .on_page_load(|webview, payload| {
             if webview.label() == "main" && matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
                 scm::watch::unwatch_all();
-                browser::preview::clear_grants();
             }
         })
         .on_window_event(|window, event| {
@@ -679,6 +681,10 @@ pub fn run() {
             chat::chat_close,
             terminal::terminal_screen_reply,
             terminal::terminal_resize,
+            terminal::native_term_available,
+            terminal::native_term_attach,
+            terminal::native_term_place,
+            terminal::native_term_detach,
             terminal::terminal_ack,
             terminal::terminal_memory_profile,
             terminal::terminal_output_subscribe,
@@ -869,34 +875,10 @@ pub fn run() {
             keybindings::keybindings_write,
             keybindings::keybindings_reload,
             keybindings::keybindings_show,
-            browser::browser_open,
-            browser::preview::browser_preview_grant,
-            browser::preview::browser_preview_revoke,
-            browser::downloads::browser_download_cancel, browser::downloads::browser_download_reveal,
-            browser::browser_bounds,
-            browser::browser_navigate,
-            browser::browser_go,
-            browser::history::browser_suggest,
-            browser::browser_close,
-            browser::notices::browser_pane_ready,
-            browser::picture::browser_capture, // after-list 151 (BROW-038), 320 (BROW-035)
-            browser::picture::browser_save_picture,
-            browser::drag::browser_drag_through, // after-list 746 (T-319-c, BROW-052)
-            browser::pdf::browser_export_pdf, // T-316-b (EDIT-018)
-            browser::pdf::browser_pick_pdf_path,
-            browser::tower::tower_window_open, // rows 955 / 959: the Tower's own window, built in Rust
-            browser::browser_viewport,
-            browser::browser_cookies_import,
-            browser::cookies::browser_import_sources, // T-319-b (BROW-030)
-            browser::handler::browser_external_handler, // after-list 21 (BROW-008)
-            browser::browser_probe,
-            browser::browser_diagnose,
-            browser::certs::browser_cert,
-            browser::browser_tab,
-            browser::browser_annotate,
-            browser::preview::browser_preview,
-            browser::preview::browser_preview_of,
-            browser::ports::browser_dev_ports,
+            pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
+            pdf_export::browser_pick_pdf_path,
+            tower_window::tower_window_open, // rows 955 / 959: the Tower's own window, built in Rust
+            html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
             automations::automations_list,
             automations::automations_external_refresh,
             automations::automation_external_act,
@@ -1093,7 +1075,7 @@ pub fn run() {
                     api.prevent_exit();
                 } else {
                     // T-286-b (APP-040): engine exits once the app is quitting are not crashes.
-                    browser::crash::quitting();
+                    engine_crash::quitting();
                 }
             }
             #[cfg(target_os = "macos")]
@@ -1110,8 +1092,6 @@ pub fn run() {
                 // the deadline leaves, so a stalled profile drive caps the wait and never freezes the
                 // quit. Settings need no step: every change is already on disk (APP-048).
                 final_save::begin();
-                // T-283 (BROW-043): this run's browser helpers end with it.
-                browser::helpers::stop_all();
                 // T-122 (STAT-018): Grok's Kolux-written hook file goes, unless another running
                 // Kolux owns it; the removal is cut short after grok::QUIT_LIMIT.
                 if let Ok(dir) = app.path().app_data_dir() {

@@ -6,8 +6,6 @@ import type { Pane } from "../App";
 import type { WindowBag } from "../shell/windowBag";
 import type { Page } from "../projects/ProjectsPanel";
 import { needsYou } from "../board/chip";
-import { openInBrowser } from "../browser/openIn";
-import { takeClosed } from "../browser/pages";
 import { screens, type Screen } from "../chrome/TopBar";
 import { SCREEN_OF } from "../chrome/reach";
 import { closedPanes, folderKind, paneFor, placement } from "../chrome/reopenTab";
@@ -24,7 +22,7 @@ import { cellsOf, groupOf } from "../terminal/grid";
 import { editorCloseSet } from "../terminal/pin";
 import { nextNeedsYou } from "../terminal/status";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, type CycleMode } from "../terminal/tabCycle";
-import { panesIn, sameDir } from "../workspaces";
+import { panesIn, sameDir, viewOf } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
 import { worktreesOffNote } from "../projects/singleFolder";
@@ -42,8 +40,8 @@ import { flushSync } from "react-dom";
 type Root = Pick<ParentNode, "querySelector" | "querySelectorAll">;
 
 export const SHOW_PROJECTS_EVENT = "kolux:show-projects";
-/** UX lane C (request from D): Ctrl+W asks the pane first. A pane with its own close path (the browser pane's
- * download / unsent-notes warning) listens for this event on window, calls preventDefault and closes itself. */
+/** UX lane C (request from D): Ctrl+W asks the pane first. A pane with its own close path (a warning before it
+ * closes) listens for this event on window, calls preventDefault and closes itself. */
 export const PANE_CLOSE_EVENT = "kolux:pane-close";
 export function paneCloseClaimed(paneId: number): boolean {
   return !window.dispatchEvent(new CustomEvent(PANE_CLOSE_EVENT, { detail: { paneId }, cancelable: true }));
@@ -53,20 +51,15 @@ export function paneCloseClaimed(paneId: number): boolean {
  *  chrome/fullPage.ts), so Mod+T never opens a tab behind a question. The Settings page is a page, not an overlay, so
  *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
  *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
-// Panels that stay on screen while the user works (an agent's question card, the browser's cookie steps, grab sheet
-// and drawing canvas, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
+// Panels that stay on screen while the user works (an agent's question card, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
 // inline sidebar form: projects (and its found-issues list), source control, the pull request draft) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
 export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], [aria-modal="true"], .pick-list, .font-list, .popover, .palette';
 // A terminal pane's own questions (a dead shell's exit code, Paste N lines?, an account notice) are aria-modal but cover
 // only that pane: the rest of the window, and Ctrl+W on that pane, keep working.
 export const PANE_LOCAL = ".pane-ask";
-export const STAYS_OPEN = '.chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .grab-sheet, .draw-canvas, .found-list';
-// Only the app's own chords wait. An editor or explorer chord, and a browser chord the window does not run itself
-// (Ctrl+C in a page is browser.grabElement), is the focused pane's or the overlay's own and falls through as before.
+export const STAYS_OPEN = '.chat-question, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .found-list';
+// Only the app's own chords wait. An editor or explorer chord is the focused pane's or the overlay's own and falls through as before.
 const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
-// The browser chords this window runs itself: under a dialog Ctrl+L would pull focus out of it into the address bar
-// behind, and Ctrl+R, Alt+Left/Right and Ctrl+F would reload, navigate or search the page behind it.
-export const WINDOW_BROWSER = new Set(["browser.focusAddressBar", "browser.back", "browser.forward", "browser.reload", "browser.find"]);
 // Of the terminal chords, only the ones this window runs itself wait. The rest (copy, paste, select all, find, clear)
 // go to whatever has focus, so Ctrl+V still pastes a link into the worktree palette on the Terminals screen.
 export const WINDOW_TERMINAL = new Set([
@@ -98,7 +91,7 @@ export function menuAction(
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
   if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
   const scope = actionById.get(id)?.scope;
-  if (scope && !HELD_SCOPES.has(scope) && !WINDOW_BROWSER.has(id)) return false;
+  if (scope && !HELD_SCOPES.has(scope)) return false;
   if (scope === "terminal" && !WINDOW_TERMINAL.has(id)) return false;
   const root = doc.querySelector(".settings[role='dialog']") ?? doc;
   return [...root.querySelectorAll(OVERLAYS)].some((el) => {
@@ -122,7 +115,7 @@ export function useWindowKeys(w: WindowBag) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const {
-        accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, browserAction, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
+        accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
         focused, keymap, leavePage, newTab, nextKey, notes, notesFor, openPane, openPreview, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
         right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
         setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
@@ -140,7 +133,6 @@ export function useWindowKeys(w: WindowBag) {
       // SET-009: a modifier tapped twice runs the command bound to "Double+<modifier>" (keys/tapHit.ts).
       const found =
         tapHit(windowTaps, keymap, e) ||
-        (kind === "browser" && matchEvent(keymap, e, ["browser"])) ||
         matchEvent(keymap, e, scopesFor({ screen, kind, inTree })) ||
         // GIT-042: a preview tab takes the one editor shortcut that applies to it.
         (kind === "preview" && [matchEvent(keymap, e, ["editor"])].find((h) => h?.id === "editor.addReviewNote"));
@@ -164,13 +156,6 @@ export function useWindowKeys(w: WindowBag) {
           // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.
           e.preventDefault();
           focusChrome();
-          break;
-        case "browser.focusAddressBar":
-        case "browser.back":
-        case "browser.forward":
-        case "browser.reload":
-        case "browser.find":
-          browserAction(focused, hit.id.slice("browser.".length));
           break;
         case "app.settings":
           if (!settingsOpen) setSettingsAt((a) => ({ target: null, n: a.n }));
@@ -284,11 +269,7 @@ export function useWindowKeys(w: WindowBag) {
         case "zoom.reset":
           // CHAT-026 (T-334): inside a chat the same chords zoom the chat text; the chat hears them itself.
           if (document.activeElement?.closest(".chat")) return;
-          // BROW-012: a browser tab zooms its own page in its own steps. A terminal is left alone:
-          // TERM-078 sizes every terminal from one saved setting, so Mod+= never shrinks one pane.
-          if (kind === "browser") {
-            browserAction(focused, hit.id === "zoom.in" ? "zoomIn" : hit.id === "zoom.out" ? "zoomOut" : "zoomReset");
-          }
+          // A terminal is left alone: TERM-078 sizes every terminal from one saved setting, so Mod+= never shrinks one pane.
           break;
         case "ui.zoomIn":
         case "ui.zoomOut":
@@ -334,9 +315,6 @@ export function useWindowKeys(w: WindowBag) {
           setSwitcher(next);
           break;
         }
-        case "tab.newBrowser":
-          void newTab("browser");
-          break;
         case "editor.copyContext":
           if (!copiers.get(focused)?.()) return;
           break;
@@ -406,15 +384,11 @@ export function useWindowKeys(w: WindowBag) {
           closePane(focused);
           break;
         case "tab.reopenClosed": {
-          // TERM-047 / T-239 (BROW-019): the tab closed last, terminal or browser, comes back: a terminal in
-          // its folder (or the shown workspace when that is gone), a browser page at the address it had.
+          // TERM-047: the tab closed last comes back: a terminal in its folder (or the shown workspace when that is gone).
           void closedPanes.take(folderKind, activeDir).then((r) => {
-            if (r.kind === "browser") {
-              const page = takeClosed();
-              if (page) openInBrowser(page.url);
-            } else if (r.kind === "terminal") {
+            if (r.kind === "terminal") {
               const key = nextKey.current++;
-              const dir = r.pane.cwd || null;
+              const dir = viewOf({ cwd: r.pane.cwd || null, view: r.pane.view }); // DT-C274: the grid it was shown in
               setPanes((ps) => [...ps, paneFor(r.pane, key, placement(ps, focused, dir))]);
               setScreen("terminals");
               if (!sameDir(dir, activeDir)) setActiveDir(dir);
@@ -425,8 +399,8 @@ export function useWindowKeys(w: WindowBag) {
         }
         case "tab.closeAll": {
           // C01-R4-01: COMPAT's `tab.closeAll` is "Close all editor tabs", so the chord takes the
-          // focused strip's editor tabs through one close question and leaves every terminal and
-          // browser tab alone. The tab menu's own "Close all" still takes the whole strip.
+          // focused strip's editor tabs through one close question and leaves every terminal
+          // tab alone. The tab menu's own "Close all" still takes the whole strip.
           if (!inFront) return;
           const editors = editorCloseSet(orderOf(focused), panes, pinned);
           if (editors.length > 0) void closeTab(editors);
@@ -435,7 +409,7 @@ export function useWindowKeys(w: WindowBag) {
         case "terminals.focusNextNeedsYou": {
           // TERM-030: cycle through the panes waiting on the user in grid order, across workspaces;
           // with none waiting, focus stays where it is. DT-C52: a permission or a question only (the one status).
-          const k = nextNeedsYou(panes.filter((p) => p.kind !== "browser").map((p) => p.key), new Set(panes.filter((p) => needsYou(statusOf(p))).map((p) => p.key)), focused);
+          const k = nextNeedsYou(panes.map((p) => p.key), new Set(panes.filter((p) => needsYou(statusOf(p))).map((p) => p.key)), focused);
           if (k === null) {
             setToast("Nothing needs you right now.");
             return;

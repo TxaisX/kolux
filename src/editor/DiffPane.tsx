@@ -26,7 +26,8 @@ import { ChevronDown, Close, Dots, FileCode, TRASH_PATH } from "../chrome/icons"
 import { attach, baseName, detach, docText, fileTextOf, heldOf, isDirty, lineEndsFor, opening, relay, replaceAll, subscribe, type Held } from "./editors";
 import { confirmed } from "./fileMoved";
 import { keepUnsaved, keptToast } from "./unsavedCopy";
-import { copiers, editors, look, saveFile, StaleNotice } from "./EditorPane";
+import { copiers, editors, saveFile, StaleNotice } from "./EditorPane";
+import { look } from "./editorTheme";
 import { contextText, oldSideContext } from "./copyContext";
 import { editedText, notesOn, shortPath, sideOf, where, type LineNote, type Side } from "./diffNotes";
 import { oldSideDoc, unifiedSpot, withOldSideNote } from "./oldSide";

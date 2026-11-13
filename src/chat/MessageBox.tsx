@@ -36,13 +36,11 @@ type Props = {
   cwd?: string | null;
   shownModel?: string | null;
   onTerminal?: () => void;
-  /** CHAT-019: the session's own command list, when it reports one; it replaces the built-in list. */
-  commands?: readonly string[] | null;
 };
 
 let attachCounter = 0;
 
-export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ paneKey, live, blocked, note, onSend, working = false, onStop, agent, cwd = null, shownModel = null, onTerminal, commands = null }, ref) {
+export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ paneKey, live, blocked, note, onSend, working = false, onStop, agent, cwd = null, shownModel = null, onTerminal }, ref) {
   const [text, setText] = useState(() => draftOf(paneKey));
   // The history index shown; history.length means the draft itself.
   const [at, setAt] = useState(() => historyOf(paneKey).length);
@@ -63,7 +61,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   const alive = useRef(true);
   useEffect(() => () => void (alive.current = false), []);
   const trigger = triggerAt(text, caret, agent);
-  const menu = trigger && !isDismissed(dismissed, text, trigger) ? menuFor(trigger, { agent, reported: commands, skills, files }) : null;
+  const menu = trigger && !isDismissed(dismissed, text, trigger) ? menuFor(trigger, { agent, skills, files }) : null;
   const menuOpen = menu !== null && (menu.entries.length > 0 || menu.notes.length > 0);
   const loadSkills = useCallback(
     (refresh: boolean) => {

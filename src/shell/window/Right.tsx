@@ -12,7 +12,7 @@ import { SCM_AGENT_KEY, SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { FOLDER_TAB_KEY, rememberTab } from "../../sessions/folderTabs";
 import { openSessions } from "../../sessions/openPanes";
 import { saveChanged } from "../../settings/saveChanged";
-import { panesIn } from "../../workspaces";
+import { sameDir } from "../../workspaces";
 import { useDeeds, useWindow } from "./store";
 import { useStableFns } from "./stable";
 import { AgentsPanel } from "../../lazy/pages";
@@ -54,12 +54,12 @@ export default function WindowRight() {
       {right.open && right.tab === "insights" && <InsightsPanel sessions={liveSessions(panes, agentOf, statusOf, turn, stamp, running, stale)} onJump={openPane} />}
       {/* VIEW-080 (T-168, T-169): the Agents tab lists past sessions of every agent in the saved scope. */}
       {right.open && right.tab === "agents" && (
-        <AgentsPanel settings={settings} onSave={saveSetting} activeDir={activeDir} projects={projects} projectDirs={Object.entries(owner).filter(([, p]) => p === projectOf(activeDir)).map(([d]) => d)} rescanKey={panes.length} visible={terminals} shell={shells[0]?.program ?? null} onResume={(s, plan) => void resumeOrFocus(s, plan)} onResumeChat={(s, plan) => void resumeIn(s.agent, plan, s.id).then((ok) => ok && setScreen(classic ? "terminals" : "agents"))} openDirs={[...new Set(panes.map((p) => p.cwd).filter((d): d is string => d !== null))]} onJump={(d) => setActiveDir(d)} openPanes={openSessions(panes)} />
+        <AgentsPanel settings={settings} onSave={saveSetting} activeDir={activeDir} projects={projects} projectDirs={Object.entries(owner).filter(([, p]) => p === projectOf(activeDir)).map(([d]) => d)} rescanKey={panes.length} visible={terminals && !fullPage} shell={shells[0]?.program ?? null} onResume={(s, plan) => void resumeOrFocus(s, plan)} onResumeChat={(s, plan) => void resumeIn(s.agent, plan, s.id).then((ok) => ok && setScreen(classic ? "terminals" : "agents"))} openDirs={[...new Set(panes.map((p) => p.cwd).filter((d): d is string => d !== null))]} onJump={(d) => setActiveDir(d)} openPanes={openSessions(panes)} />
       )}
       {right.open && right.tab === "attached" && activeDir !== null && <AttachedWorktreesTab folder={activeDir} worktrees={wsKind.worktrees} onOpen={(path) => { setScreen("terminals"); select(path, null); }} />}
       {right.open && right.tab === "prchecks" && activeDir !== null && <FolderChecksTab folder={activeDir} worktrees={wsKind.worktrees} />}
       {/* VIEW-073: the Checks tab follows the workspace of the focused terminal. */}
-      {right.open && right.tab === "checks" && <ChecksPanel dir={activeDir} linked={activeDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[activeDir] ?? null)} visible={terminals} onOpenCheck={openCheck} />}
+      {right.open && right.tab === "checks" && <ChecksPanel dir={activeDir} linked={activeDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[activeDir] ?? null)} visible={terminals && !fullPage} onOpenCheck={openCheck} />}
       {/* T-187-b / T-189-b: the dialog and helpers behind "Continue with…", "Fix with an agent" and "Start with an agent". */}
       <AgentStartHost
         agents={agents}
@@ -70,7 +70,7 @@ export default function WindowRight() {
         launch={async (id, dir, prompt, extra) => {
           const a = agents.find((x) => x.id === id);
           if (!a) throw new Error(`${id} is not installed here.`);
-          await openIn(a, dir, panesIn(panes, dir)[0]?.branch ?? null, prompt, true, extra);
+          await openIn(a, dir, panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null, prompt, true, extra);
           return { handed: true };
         }}
         makeWorkspace={async (item) => {

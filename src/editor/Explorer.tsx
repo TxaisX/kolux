@@ -12,7 +12,7 @@
 // path can be copied. Part 2: Mod+C then Mod+V copies the selection into the highlighted folder (a taken
 // name gets " copy"), dragging rows moves them into the folder under the pointer (the tree scrolls near its
 // edges), and files dropped in from the desktop are copied there; each of these undoes too.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -378,10 +378,15 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
       /* the switch still works for this session */
     }
   };
-  const shown = noDots ? withoutDotfiles(kids) : kids;
-  const visible = noIgnored ? withoutIgnored(shown, ign) : shown;
-  const rows = query.trim() ? filterRows(flatten(root, visible, new Set(Object.keys(visible)), null), query) : flatten(root, visible, open, draft);
-  const index = rows.findIndex((r) => r.node.path === at);
+  // N-06: the tree is flattened once per change of the tree, the filter or the open folders, not once per render
+  // (a scroll tick re-renders this panel, and that used to walk every folder again).
+  const shown = useMemo(() => (noDots ? withoutDotfiles(kids) : kids), [noDots, kids]);
+  const visible = useMemo(() => (noIgnored ? withoutIgnored(shown, ign) : shown), [noIgnored, shown, ign]);
+  const rows = useMemo(
+    () => (query.trim() ? filterRows(flatten(root, visible, new Set(Object.keys(visible)), null), query) : flatten(root, visible, open, draft)),
+    [query, root, visible, open, draft],
+  );
+  const index = useMemo(() => rows.findIndex((r) => r.node.path === at), [rows, at]);
   const isDir = (n: Node) => n.kind === "dir" || (n.kind === "link" && real[n.path] === "dir");
   /** A row drawn as a folder: anything but a file, unless it is a link already known to point at a file. */
   const dirRow = (n: Node) => n.kind !== "file" && !(n.kind === "link" && real[n.path] && !isDir(n));

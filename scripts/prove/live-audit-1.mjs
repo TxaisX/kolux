@@ -9,7 +9,7 @@
 // through the same onAdded (useWizard projectAdded) as "Open a folder…".
 import { copyFileSync } from "node:fs";
 import { ROOT, LIVE_LOGS, TERM, finish, reporter, sleep, startPlain } from "./live-common.mjs";
-import { ps } from "../evidence/app-launch.mjs";
+import { ps, WIN_PS, waitAppWindow } from "../evidence/app-launch.mjs";
 
 const report = reporter();
 const { log, lines } = report;
@@ -21,8 +21,8 @@ const check = (name, ok, detail) => {
 
 /** One CDP call on the page target (the same target live-common's shot() uses). */
 async function cdpCall(method, params = {}) {
-  const targets = await (await fetch("http://127.0.0.1:9290/json")).json();
-  const t = targets.find((x) => x.type === "page" && /localhost:1470|tauri\.localhost/.test(x.url));
+  const targets = await (await fetch(`http://127.0.0.1:${process.env.PROVE_CDP || "9290"}/json`)).json();
+  const t = targets.find((x) => x.type === "page" && new RegExp(`localhost:${process.env.PROVE_PORT || "1470"}|tauri\.localhost`).test(x.url));
   const ws = new WebSocket(t.webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
   const res = await new Promise((resolve) => {
@@ -106,7 +106,9 @@ try {
     let cx = Math.round(w * dpr);
     for (let i = 0; i < 4; i++) {
       await ps(`Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h,IntPtr a,int x,int y,int cx,int cy,uint f);' -Name W2 -Namespace U2
-        $h = (Get-Process -Id ${app.pid}).MainWindowHandle; [U2.W2]::SetWindowPos($h,[IntPtr]::Zero,0,0,${cx},${Math.round(860 * dpr)},0x0016) | Out-Null`);
+        ${WIN_PS}
+        ${waitAppWindow(app.pid)}
+        if ($h -eq [IntPtr]::Zero) { throw 'no window for pid ${app.pid}' } else { [U2.W2]::SetWindowPos($h,[IntPtr]::Zero,-32000,-32000,${cx},${Math.round(860 * dpr)},0x0016) | Out-Null }`);
       await sleep(900);
       const got = await evalJs("innerWidth");
       if (got === w) return got;

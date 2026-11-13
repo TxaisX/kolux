@@ -13,6 +13,7 @@ import { Close } from "../chrome/icons";
 import { locale } from "../language";
 import { restoreFocus } from "../shell/paletteCaps";
 import { menuStep } from "../terminal/LinkActionMenu";
+import { watchHidden } from "../chat/reading";
 import "./artifacts.css";
 
 export type Artifact = {
@@ -75,6 +76,29 @@ export function ticker(run: () => Promise<unknown>): () => void {
     void run().finally(() => {
       busy = false;
     });
+  };
+}
+
+/** How often a shown Artifacts page walks the workspace folder for new files. */
+export const SCAN_MS = 3000;
+
+/** Starts the folder scan now and every SCAN_MS while the page is shown, and stops it while the window is
+ *  hidden (audit N-21). Answers the function to call with the window's hidden state, and the stop. */
+export function scanWhileShown(run: () => void, ms = SCAN_MS): { setHidden: (hidden: boolean) => void; stop: () => void } {
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const off = () => {
+    if (timer !== null) clearInterval(timer);
+    timer = null;
+  };
+  const on = () => {
+    if (timer !== null) return;
+    run();
+    timer = setInterval(run, ms);
+  };
+  on();
+  return {
+    setHidden: (hidden) => (hidden ? off() : on()),
+    stop: off,
   };
 }
 
@@ -253,6 +277,8 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
   const search = useRef<HTMLInputElement>(null);
   const refocus = useRef<{ id: string | null } | null>(null);
   const told = useRef(new Set<string>());
+  // The last scan failure already named, so a folder that stays unreadable does not toast every 3 s.
+  const toldError = useRef<string | null>(null);
 
   // A library index that cannot be read is shown in the panel, not as an empty library: "No artifacts
   // yet" over a damaged index is how a user comes to believe their entries are gone (C14-R4-01).
@@ -280,6 +306,9 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
   // artifact. The Rust scan remembers unchanged files and only re-imports a changed one, and it keeps
   // only a page, an image or a video; a file it cannot keep (over the cap, unreadable) is named once.
   // One scan at a time: a tick that finds the last one still running is dropped.
+  // A hidden window scans nothing (audit N-21): a page behind another window imported nothing new, and the
+  // scan walks the folder each time. The first scan runs when the page comes back, then the 3 s timer again.
+  // A scan that fails is said once, not swallowed, so a folder the app cannot read does not look idle.
   useEffect(() => {
     if (!workspace) return;
     let live = true;
@@ -287,17 +316,24 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
       invoke<Scanned>("artifacts_scan", { path: workspace, project })
         .then((r) => {
           if (!live) return;
+          toldError.current = null; // a good scan lets the same failure be named again if it comes back
           if (r.changed > 0) void refresh();
           const fresh = newlySkipped(r.skipped, told.current);
           if (fresh.length) onToast(`Not kept in Artifacts: ${fresh.join("; ")}`);
         })
-        .catch(() => {}),
+        .catch((e) => {
+          const why = `Artifacts could not be read: ${String(e)}`;
+          if (!live || toldError.current === why) return;
+          toldError.current = why;
+          onToast(why);
+        }),
     );
-    scan();
-    const timer = window.setInterval(scan, 3000);
+    const loop = scanWhileShown(scan);
+    const off = watchHidden(document, loop.setHidden);
     return () => {
       live = false;
-      window.clearInterval(timer);
+      off();
+      loop.stop();
     };
   }, [workspace, project]);
 

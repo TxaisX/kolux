@@ -19,12 +19,14 @@ try {
   await sleep(2000);
   // Recorder: every status label / title text seen in a Claude pane header, with the time since the click.
   await app.evalJs(`(() => { window.__seen = []; window.__t0 = Date.now(); const snap = () => { for (const s of document.querySelectorAll(${JSON.stringify(CLAUDE)})) { const st = s.querySelector(".st")?.getAttribute("aria-label"); const mark = s.querySelector(".agent-mark")?.getAttribute("title"); const head = s.querySelector("header")?.innerText.replace(/\\s+/g, " ").trim(); const rec = JSON.stringify([st, mark, head]); if (window.__seen[window.__seen.length - 1]?.rec !== rec) window.__seen.push({ ms: Date.now() - window.__t0, rec, st, mark, head, agent: s.getAttribute("data-agent"), label: s.getAttribute("aria-label") }); } }; new MutationObserver(snap).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); return "ok"; })()`);
-  await app.click("button.newtab");
-  await waitFor("the New tab menu", () => app.exists('[role="menu"][aria-label="New tab"]'), 5000);
-  const items = await app.evalJs(`[...document.querySelectorAll('[role="menu"][aria-label="New tab"] [role="menuitem"] .name')].map(e => e.textContent.trim())`);
+  // The pane header's plus opens the New session menu (button.newtab went with the old tab strip).
+  await app.focusPane("section.pane[data-agent]", 0, ".xterm-helper-textarea");
+  await app.click('[data-testid="terminal-pane"].focused [data-testid="pane-new-session"]');
+  await waitFor("the New tab menu", () => app.exists('[data-testid="new-session-menu"]'), 5000);
+  const items = await app.evalJs(`[...document.querySelectorAll('[data-testid="new-session-menu"] [role="menuitem"] .name')].map(e => e.textContent.trim())`);
   log(`New tab menu items: ${JSON.stringify(items)}`);
   await app.evalJs(`window.__t0 = Date.now()`);
-  await app.clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', "/^\\s*Claude Code\\s*$/");
+  await app.clickWhere('[data-testid="new-session-menu"] [role="menuitem"]', "/^\\s*Claude Code\\s*$/");
   await waitFor("a Claude pane", () => app.shown(CLAUDE), 20000);
   await sleep(4000);
   const seen = await app.evalJs(`window.__seen`);

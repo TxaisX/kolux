@@ -34,11 +34,11 @@ export const bulkCloseSet = (order: number[], at: number, which: Which, pinned: 
 
 /** C01-R4-01: `tab.closeAll` is the editor's "Close all editor tabs" (COMPAT.md keeps that name and
  *  chord), so it takes the strip's editor tabs only: the file, preview, diff, changes and check tabs.
- *  A terminal (no kind) or a browser tab stays, and a pinned tab is spared like every bulk close. */
+ *  A terminal (no kind) stays, and a pinned tab is spared like every bulk close. */
 export function editorCloseSet(order: readonly number[], panes: readonly { key: number; kind?: string }[], pinned: ReadonlySet<number>): number[] {
   const isEditor = (k: number) => {
     const p = panes.find((x) => x.key === k);
-    return p !== undefined && p.kind !== undefined && p.kind !== "browser" && p.kind !== "terminal";
+    return p !== undefined && p.kind !== undefined && p.kind !== "terminal";
   };
   return order.filter((k) => isEditor(k) && !pinned.has(k));
 }

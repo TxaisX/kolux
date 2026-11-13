@@ -169,3 +169,16 @@ export function recentSessions(p: Provider, rows: Row[], limit = 10): SessionLin
   }
   return [...out.values()].sort((a, b) => b.day.localeCompare(a.day) || b.last - a.last).slice(0, limit);
 }
+
+/** Whether any provider has token tracking enabled. */
+export const anyTracked = (usage: Usage): boolean => PROVIDERS.some((p) => usage.tracking[p]);
+
+/** Tracked providers whose saved scan is missing or older than `maxAge` (skips providers whose last scan failed). */
+export const dueForScan = (usage: Usage, now: number, maxAge: number): Provider[] =>
+  PROVIDERS.filter((p) => usage.tracking[p] && !usage[p]?.error && now - (usage[p]?.scannedAt ?? 0) > maxAge);
+
+/** The last folder segment of a path (either slash style), or "" when empty. */
+export function folderName(path: string | null | undefined): string {
+  const parts = (path ?? "").split(/[\\/]+/).filter(Boolean);
+  return parts[parts.length - 1] ?? "";
+}

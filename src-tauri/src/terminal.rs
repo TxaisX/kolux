@@ -16,6 +16,7 @@ mod flood;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
 mod output_channel;
+pub(crate) mod native_view;
 mod output_frame;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
@@ -1029,6 +1030,11 @@ fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
     OUTPUT_BATCH.get_or_init(|| {
         let app = app.clone();
         output_batch::Batcher::new(output_batch::WINDOW, output_batch::FLUSH_BYTES, Box::new(move |items| {
+            // Native terminal (NATIVE-TERMINAL.md): a pane drawn by the Windows Terminal engine gets its
+            // output here too; the web view still gets it, so xterm's buffer, search and chat keep working.
+            for item in &items {
+                native_view::feed(item.id, &item.data);
+            }
             // Flood memory (DT-C244): through each subscribed web view's channel; the event only when none is.
             // Raw output (DT-C246): on the channel the batch is one binary frame, no base64 and no JSON.
             if !OUTPUT_READERS.send_raw(|| output_frame::encode(&items), |label| app.get_webview(label).is_some()) {
@@ -1107,7 +1113,7 @@ impl Terminals {
     /// Starts a pane. With no `program` it runs the user's shell; with one (an agent such as
     /// `claude`) it runs that program directly with `args`, in `cwd`.
     #[allow(clippy::too_many_arguments)]
-    pub fn spawn(&self, app: AppHandle, cols: u16, rows: u16, cwd: Option<String>, program: Option<String>, args: Vec<String>, own_env: Vec<(String, String)>, env: Vec<(String, String)>, pane_key: Option<u32>, ticket: Option<u64>, shell: Option<(String, Vec<String>)>, per_worktree_history: bool) -> Result<u32, String> {
+    pub fn spawn(&self, app: AppHandle, cols: u16, rows: u16, cwd: Option<String>, program: Option<String>, args: Vec<String>, own_env: Vec<(String, String)>, env: Vec<(String, String)>, pane_key: Option<u32>, ticket: Option<u64>, shell: Option<(String, Vec<String>)>, per_worktree_history: bool, agent_settings: Option<&serde_json::Value>) -> Result<u32, String> {
         // TERM-115: a pane's Ctrl+C must reach its program. Windows hands "ignore Ctrl+C" down to
         // every child a process starts, and this app is itself started with CREATE_NEW_PROCESS_GROUP
         // (by `kolux-dev`, and by the dev runner), so its shells never saw the interrupt: the pty got
@@ -1130,7 +1136,9 @@ impl Terminals {
         // ACCT-046: a program runs as asked; a shell pane has a line of fallbacks behind the
         // chosen default shell (SET-026), when there is one.
         let mut commands = match program.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
-            Some(p) => vec![program_command(p, &args, cwd.as_deref())],
+            // Goal 0 item 5: a credited agent starts inside the user's own shell, as if typed there
+            // (crate::agents::agent_shell); a shell, an unknown program or no settings run as asked.
+            Some(p) => vec![agent_settings.and_then(|s| crate::agents::agent_shell::via_shell(p, &args, cwd.as_deref(), s)).unwrap_or_else(|| program_command(p, &args, cwd.as_deref()))],
             None => shell_commands(cwd.as_deref(), shell),
         };
         // APP-041: each session's start and end go to the app's own log (no arguments: they may carry secrets).
@@ -1398,9 +1406,14 @@ impl Terminals {
         Some(PaneRun { agent: m.agent, started, wrote: m.last_output.is_some(), alive: !inner.ended.contains(id), home_env: m.home_env.clone(), cwd: m.cwd.clone() })
     }
 
-    /// ACCT-046: the program session `id` actually started.
+    /// ACCT-046: the program session `id` actually started: the shell that came up for a shell pane, and the
+    /// program asked for (`claude`, not the shell that may carry it) for a program pane, so the window waits
+    /// on that program's marks and not on a shell's prompt that never comes.
     pub fn started(&self, id: u32) -> Option<String> {
-        self.inner.lock().ok()?.sessions.get(&id).map(|s| s.program().to_string())
+        let inner = self.inner.lock().ok()?;
+        let session = inner.sessions.get(&id)?;
+        let asked = inner.marks.get(&id).map(|m| m.program.as_str()).filter(|p| !p.is_empty() && !is_shell_program(p));
+        Some(asked.unwrap_or_else(|| session.program()).to_string())
     }
 
     /// CLI-024: what session `id` wrote after `cursor` (none for an open session that wrote nothing yet).
@@ -2083,6 +2096,25 @@ pub fn terminal_reap_pane(terminals: tauri::State<'_, Terminals>, pane_key: u32)
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminals>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, cols: u16, rows: u16, cwd: Option<String>, start: Option<String>, program: Option<String>, args: Option<Vec<String>>, env: Option<Vec<(String, String)>>, pane_key: Option<u32>, account: Option<String>) -> Result<Spawned, String> {
+    let label = program.as_deref().map(str::trim).filter(|p| !p.is_empty()).unwrap_or("shell").to_string();
+    let log_dir = app.path().app_data_dir().ok();
+    let result = spawn_unlogged(app, terminals, store, cols, rows, cwd, start, program, args, env, pane_key, account).await;
+    // c2-agents (d): a start that failed leaves a line in kolux.log, so "the agent never started" has a trace.
+    if let (Err(e), Some(d)) = (&result, &log_dir) {
+        if let Some(line) = start_failed_line(&label, e) {
+            crate::diag::write(d, &line);
+        }
+    }
+    result
+}
+
+/// The kolux.log line for a failed start (none for a start superseded by a newer one: that is no failure).
+fn start_failed_line(label: &str, error: &str) -> Option<String> {
+    (error != SUPERSEDED).then(|| format!("terminal start failed ({label}): {error}"))
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, cols: u16, rows: u16, cwd: Option<String>, start: Option<String>, program: Option<String>, args: Option<Vec<String>>, env: Option<Vec<(String, String)>>, pane_key: Option<u32>, account: Option<String>) -> Result<Spawned, String> {
     // The window sends a launch line, not a process table: a launch that needs more than this is
     // a bug, and the IPC boundary must not be a way to build one from a compromised page.
     if args.as_ref().is_some_and(|a| a.len() > MAX_SPAWN_ARGS) {
@@ -2114,12 +2146,13 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
     let env_own = env.unwrap_or_default();
     let pinned = resumed.is_some();
     #[allow(clippy::type_complexity)]
-    let (env, cap, account, hooks_on, plain, per_worktree_history): (Vec<(String, String)>, bool, Option<String>, bool, Option<serde_json::Value>, bool) = {
+    let (env, cap, account, hooks_on, plain, per_worktree_history, agent_settings): (Vec<(String, String)>, bool, Option<String>, bool, Option<serde_json::Value>, bool, Option<serde_json::Value>) = {
         let store = store.lock().map_err(|e| e.to_string())?;
         let settings = store.settings();
         // SET-026: a plain new terminal opens in the chosen default shell; the search for it on
         // PATH runs after the lock is let go (council), with the settings read here.
         let plain = program.is_none().then(|| settings.clone());
+        let agent_settings = program.is_some().then(|| settings.clone());
         let used = codex.then(|| account.clone().or_else(|| crate::codex_accounts::active_account(&store).map(|a| a.id))).flatten();
         let codex_home = resumed.or_else(|| crate::codex_accounts::active_home(&store));
         let token = crate::secrets::read_setting(&store, crate::claude_key::TOKEN_FIELD).ok().flatten();
@@ -2140,7 +2173,7 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
             .map(|(k, v)| (k.to_string(), v))
             .into_iter()
             .collect();
-        (env, crate::cap::on(&settings), used, crate::hooks::agent_hooks::switch::on(&settings), plain, crate::shell_history::enabled(&settings))
+        (env, crate::cap::on(&settings), used, crate::hooks::agent_hooks::switch::on(&settings), plain, crate::shell_history::enabled(&settings), agent_settings)
     };
     let shell = plain.and_then(|s| crate::pty::default_shell(&s));
     // ACCT-024: on a managed Claude account, the user's own settings may not sign the pane in.
@@ -2195,7 +2228,7 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
     // session once the spawn succeeded (cli.rs fix8_d).
     // T-690: the run this pane belongs to, read before the environment is handed over.
     let run = crate::automations::run_in(&env_own);
-    let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history))?;
+    let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history, agent_settings.as_ref()))?;
     // AUTO-012: an automation run dispatched to this worktree for this agent is followed here.
     if let Some(dir) = dir {
         crate::automations::follow(&app, |s| crate::automations::claim(s, id, pane_key, &dir, agent, run.as_deref(), crate::automations::now_ms()));
@@ -2320,9 +2353,57 @@ fn shell_hook_dir(base: &std::path::Path) -> std::path::PathBuf {
     base.join(format!("{h:016x}"))
 }
 
+
+/// Native terminal (NATIVE-TERMINAL.md): where the Windows Terminal engine was found, or why it was not.
+#[tauri::command]
+pub fn native_term_available() -> Result<String, String> {
+    native_view::available()
+}
+
+/// Native terminal: draws terminal `id` with the Windows Terminal engine over `rect` (physical pixels in
+/// the window's client area), fits the session to the engine's grid and returns that grid.
+#[tauri::command]
+pub fn native_term_attach(app: AppHandle, window: tauri::WebviewWindow, id: u32, rect: native_view::Rect) -> Result<(u16, u16), String> {
+    native_view::attach(&app, &window, id, rect)
+}
+
+/// Native terminal: moves the view to `rect`, or hides it when `rect` is left out.
+#[tauri::command]
+pub fn native_term_place(id: u32, rect: Option<native_view::Rect>) -> Result<Option<(u16, u16)>, String> {
+    native_view::place(id, rect)
+}
+
+/// Native terminal: removes the view; the session goes on and xterm draws it again.
+#[tauri::command]
+pub fn native_term_detach(id: u32) {
+    native_view::detach(id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// c2-agents agent-shell (c): a program carried by a shell reports the program asked for, not the shell;
+    /// a plain shell pane still reports the shell that came up.
+    #[test]
+    fn started_names_the_program_asked_for_not_the_shell_that_carries_it() {
+        let t = Terminals::default();
+        t.fake_session(7, "C:/w", Some("claude"));
+        assert_eq!(t.started(7).as_deref(), Some("claude"));
+        t.fake_session(8, "C:/w", None);
+        let shell = t.started(8).unwrap();
+        assert_ne!(shell, "claude");
+        t.fake_session(9, "C:/w", Some("powershell"));
+        assert_ne!(t.started(9).as_deref(), Some("claude"));
+        assert_eq!(t.started(99), None);
+    }
+
+    /// c2-agents agent-shell (d): a failed start is logged with its program; a superseded one is not.
+    #[test]
+    fn a_failed_start_has_a_log_line_and_a_superseded_one_does_not() {
+        assert_eq!(start_failed_line("grok", "grok was not found on this PC").as_deref(), Some("terminal start failed (grok): grok was not found on this PC"));
+        assert_eq!(start_failed_line("claude", SUPERSEDED), None);
+    }
 
     /// T-184-b: quitting ends the panes the window runs and leaves the service's running, after
     /// recording how much of each one's output the window drew (by its id in the service).

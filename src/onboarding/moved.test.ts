@@ -3,7 +3,7 @@ import { doneFrom, nextTip, type Facts } from "./guide";
 import { MOVED, movedHint, SPLIT_RETIRED, splitCredit } from "./moved";
 
 const before = MOVED[0].before;
-const facts: Facts = { workspaces: [], gitProjects: 0, pageShown: false, integrations: null, cli: false, notifications: null, agent: null, setupScript: null };
+const facts: Facts = { workspaces: [], gitProjects: 0, integrations: null, cli: false, notifications: null, agent: null, setupScript: null };
 const base = { seen: [] as string[], tried: [] as string[], cli: { installed: true, onPath: true } as never, onboarding: false };
 
 describe("the moved-control hint (ONB-042)", () => {
@@ -34,7 +34,7 @@ describe("the legacy split-pane credit (ONB-015 / ONB-042)", () => {
     expect(splitCredit([], { split: { first: SPLIT_RETIRED, count: 4 } })).toBe(false); // a split made after the step was gone
     expect(splitCredit([], { split: { first: 1, count: 0 } })).toBe(false);
     expect(splitCredit(undefined, undefined)).toBe(false);
-    expect(splitCredit(["browser-page"], {})).toBe(false);
+    expect(splitCredit(["repos-two"], {})).toBe(false);
   });
   it("ticks Multi-task and nothing else; a real workspace still ticks it alone", () => {
     expect([...doneFrom({ ...facts, splitCredit: true })]).toEqual(["multitask"]);

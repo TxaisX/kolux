@@ -7,7 +7,7 @@
 // `sidebar.ports.toggle`, whose Ports tab went with remote hosts (VIEW-079, dropped).
 
 export type Platform = "win32" | "linux" | "darwin";
-export type Scope = "global" | "tabs" | "browser" | "editor" | "explorer" | "settings" | "terminal";
+export type Scope = "global" | "tabs" | "editor" | "explorer" | "settings" | "terminal";
 export type Group = "menu" | "workspace-shell" | "editor";
 
 export type Action = {
@@ -107,9 +107,9 @@ export const actions: Action[] = [
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
   // BROW-012: a browser tab's own zoom. These keys do nothing in a terminal: TERM-078 sizes every
   // terminal from one saved setting instead of letting one pane drift.
-  a("zoom.in", "Zoom Browser In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),
-  a("zoom.out", "Zoom Browser Out", "global", ["Mod+Minus", "Mod+NumpadSubtract"], { terminalSafe: true }),
-  a("zoom.reset", "Reset Browser Zoom", "global", ["Mod+0"], { terminalSafe: true }),
+  a("zoom.in", "Zoom In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),
+  a("zoom.out", "Zoom Out", "global", ["Mod+Minus", "Mod+NumpadSubtract"], { terminalSafe: true }),
+  a("zoom.reset", "Reset Zoom", "global", ["Mod+0"], { terminalSafe: true }),
   // SET-019 (T-246-c): the saved interface zoom has keys of its own.
   a("ui.zoomIn", "Zoom Interface In", "global", ["Mod+Alt+Equal"], { group: "menu", terminalSafe: true, keywords: ["zoom", "bigger", "interface", "scale"] }),
   a("ui.zoomOut", "Zoom Interface Out", "global", ["Mod+Alt+Minus"], { group: "menu", terminalSafe: true, keywords: ["zoom", "smaller", "interface", "scale"] }),
@@ -118,14 +118,12 @@ export const actions: Action[] = [
   a("worktree.history.forward", "Worktree History Forward", "global", ["Mod+Alt+ArrowRight"]),
   a("tab.newTerminal", "New terminal tab", "tabs", ["Mod+T"], { keywords: ["shell", "console", "command line"] }),
   a("tab.newAgent", "New agent tab (default agent)", "tabs", ["Mod+Alt+T"]),
-  a("tab.newBrowser", "New browser tab", "tabs", ["Mod+Shift+B"]),
   a("tab.newMarkdown", "New markdown tab", "tabs", ["Mod+Shift+M"]),
   a("tab.openMarkdown", "Open markdown tab", "tabs", ["Mod+Shift+O"]),
   a("tab.close", "Close active tab", "tabs", ["Mod+W"]),
   a("tab.closeAll", "Close all editor tabs", "tabs", ["Mod+Alt+W"]),
   a("tab.rename", "Rename active tab", "tabs", ["Mod+Shift+G"], { darwin: ["Mod+R"], group: "workspace-shell" }),
-  // T-239 (BROW-019): bound again now that the window reopens a closed browser tab (browser/pages.ts;
-  // T-164-b adds terminal tabs through src/terminal/closedTabs.ts). T-543-b had shipped it unbound.
+  // T-164-b: reopens the last closed terminal tab (src/terminal/closedTabs.ts). T-543-b had shipped it unbound.
   a("tab.reopenClosed", "Reopen closed tab", "tabs", ["Mod+Shift+T"]),
   // T-305 (TERM-053): the tab search box (src/shell/TabSearch.tsx).
   a("tab.search", "Search open tabs", "tabs", ["Mod+Shift+K"], { terminalSafe: true, keywords: ["find tab", "switch tab"] }),
@@ -138,13 +136,6 @@ export const actions: Action[] = [
   a("tab.nextTerminal", "Next terminal tab", "tabs", ["Ctrl+PageDown"], { terminalSafe: true }),
   a("tab.previousTerminal", "Previous terminal tab", "tabs", ["Ctrl+PageUp"], { terminalSafe: true }),
   a("tab.selectByIndex", "Select Tab 1–9", "tabs", ["Alt+1"], { darwin: ["Ctrl+1"], index: true, terminalSafe: true }),
-  a("browser.find", "Find in Browser", "browser", ["Mod+F"]),
-  a("browser.back", "Go Back in Browser", "browser", ["Alt+ArrowLeft"]),
-  a("browser.forward", "Go Forward in Browser", "browser", ["Alt+ArrowRight"]),
-  a("browser.reload", "Reload Browser Page", "browser", ["Mod+R"]),
-  a("browser.hardReload", "Reload Browser Page (second key)", "browser", ["Mod+Shift+R"]), // runs browser.reload (sameAs below), so it is not called Hard
-  a("browser.focusAddressBar", "Focus Browser Address Bar", "browser", ["Mod+L"]),
-  a("browser.grabElement", "Grab Page Element", "browser", ["Mod+C"]),
   a("editor.find", "Find in editor", "editor", ["Mod+F"]),
   a("editor.replace", "Replace in editor", "editor", ["Mod+H"], { darwin: ["Mod+Alt+F"] }),
   a("editor.save", "Save File", "editor", ["Mod+S"]),
@@ -194,9 +185,6 @@ export const sameAs: Readonly<Record<string, string>> = {
   "sidebar.sleepingWorkspaces.toggle": "sidebar.sleeping.toggle",
   // VIEW-029 / HID-020: the Agent Dashboard drawer was skipped for the Tower, its always-on successor (OD-09, DT-C35).
   "dashboard.toggle": "view.tower",
-  // BROW-005: the toolbar's Mod+Shift+R reloads, as the same chord already does inside a page (browser.rs chord script).
-  // ponytail: WebView2's reload keeps the cache; a cache-skipping reload in browser.rs is the upgrade path.
-  "browser.hardReload": "browser.reload",
 };
 
 /** The built-in chords for one platform. */

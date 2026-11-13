@@ -11,20 +11,22 @@ import { CONFIRM_CLOSE_FIELD, asksBeforeClose } from "../terminal/closing";
 import { PIN_ASK_FIELD, pinAsks } from "../terminal/pin";
 import { REMOVE_FIELD, readRemove } from "../terminal/remove";
 import { DEFAULT_PANES_FIELD, PANE_COUNTS, seedCount } from "../terminal/grid";
-import { clampNumber, CURSORS, DEFAULT_SHELL_FIELD, FIELDS, LINE_HEIGHT, optionsOf, readText, SCROLLBACK, scrollbackRows, SIZE, WEIGHTS, type TerminalText } from "../terminal/text";
+import { CURSORS, DEFAULT_SHELL_FIELD, FIELDS, LINE_HEIGHT, optionsOf, readText, SCROLLBACK, scrollbackRows, SIZE, WEIGHTS, type TerminalText } from "../terminal/text";
 import { memoryProfile } from "../terminal/flow";
 import { currentTerminal, TERMINAL_EVENT } from "../theme";
 import { FontField } from "./AppearancePage";
 import { Segmented } from "./GeneralPage";
 import { InputCard, PowerShellCard } from "./InputCards";
+import NativeTerminalCard from "./NativeTerminalCard";
 import { detectPlatform } from "../keys/keymap";
 import { readLook } from "./general";
+import { useSearching } from "./search";
+import { NumberField } from "./NumberField";
 import TerminalImport from "./TerminalImport";
 import { openSettings } from "./pages";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
 import { DENSITIES, DENSITY_FIELD, readDensity } from "../shell/paneChrome";
-import { KOLUX_FIELD, switchPatch } from "../shell/linkAsk";
 
 /** TERM-119: on unless switched off; the app reads the same field when it starts a shell. */
 const SHELL_HISTORY_FIELD = "shellHistoryPerWorktree";
@@ -58,34 +60,6 @@ function Sample({ text }: { text: TerminalText }) {
   return <div className="term-sample" ref={host} role="img" aria-label="Sample terminal" />;
 }
 
-/** A typed number corrected on Enter or leaving; `buttons` adds minus and plus, greyed at the ends. */
-function NumberField({ label, value, min, max, step = 1, buttons = false, onSave }: { label: string; value: number; min: number; max: number; step?: number; buttons?: boolean; onSave: (n: number) => void }) {
-  const [typed, setTyped] = useState(String(value));
-  useEffect(() => setTyped(String(value)), [value]);
-  const commit = (raw: unknown) => {
-    const n = clampNumber(raw, min, max, value, step);
-    setTyped(String(n));
-    if (n !== value) onSave(n);
-  };
-  useLeaveSave(() => typed !== String(value) && commit(typed)); // SET-036: changing page or closing keeps what was typed
-  return (
-    <label className="num-field">
-      <span>{label}</span>
-      {buttons && (
-        <button type="button" className="btn" aria-label={`Smaller ${label.toLowerCase()}`} disabled={value <= min} onClick={() => commit(value - step)}>
-          −
-        </button>
-      )}
-      <input type="number" min={min} max={max} step={step} value={typed} onChange={(e) => setTyped(e.target.value)} onBlur={() => commit(typed)} onKeyDown={(e) => e.key === "Enter" && commit(typed)} />
-      {buttons && (
-        <button type="button" className="btn" aria-label={`Larger ${label.toLowerCase()}`} disabled={value >= max} onClick={() => commit(value + step)}>
-          +
-        </button>
-      )}
-    </label>
-  );
-}
-
 function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (on: boolean) => void }) {
   return (
     <label className="conn-switch">
@@ -113,19 +87,23 @@ function WeightField({ label, value, onPick }: { label: string; value: string; o
 export default function TerminalPage() {
   const { settings, error, save, retry } = useSettings();
   const [shells, setShells] = useState<ShellInfo[] | null>(null);
+  // Audit N-45: a search draws this page for its headings only, so the shell list and the sample wait.
+  const searching = useSearching();
   useEffect(() => {
+    if (searching) return;
     if (onWindows()) invoke<ShellInfo[]>("shell_list").then(setShells, () => setShells([]));
-  }, []);
+  }, [searching]);
   const text = settings ? readText(settings) : null;
   // DT-C228: with no scrollback saved, every pane keeps the rows this computer's memory profile sets.
   const [autoRows, setAutoRows] = useState<number | null>(null);
   useEffect(() => {
+    if (searching) return;
     let on = true;
     void memoryProfile().then((p) => on && setAutoRows(p.scrollback));
     return () => {
       on = false;
     };
-  }, []);
+  }, [searching]);
   // TERM-078: a drag on the size slider redraws the sample at once, then saves once the drag pauses.
   // Every open terminal follows the save, so one size reaches every pane.
   const [sizeDraft, setSizeDraft] = useState<number | null>(null);
@@ -161,7 +139,7 @@ export default function TerminalPage() {
       {text && shownText && (
         <section className="conn-card" data-section="text">
           <h2 className="conn-name">Terminal text and cursor</h2>
-          <Sample text={shownText} />
+          {searching ? <p className="conn-detail">The sample terminal shows when you open this page.</p> : <Sample text={shownText} />}
           <div className="term-fields">
             <label className="look-slider term-size">
               <span>Font size</span>
@@ -219,10 +197,9 @@ export default function TerminalPage() {
       {text && (
         <section className="conn-card" data-section="links">
           <h2 className="conn-name">Links</h2>
-          <Switch label="Open web links from the terminal in the Kolux browser" checked={settings?.[KOLUX_FIELD] === true} onChange={(on) => save(switchPatch(on))} />
-          <p className="conn-detail">Off opens them in your system browser. Hold Shift with Ctrl (Cmd on macOS) and click to use the system browser for a single link. Turning this switch yourself also stops the first-click question.</p>
+          <p className="conn-detail">A web link in a terminal opens in your own browser; Kolux no longer draws web pages.</p>
           <Switch label="Link menu on Ctrl+right-click (Cmd+right-click on macOS)" checked={text.linkMenu} onChange={(on) => save({ [FIELDS.linkMenu]: on })} />
-          <p className="conn-detail">Offers opening a link in either browser, copying it, or coming back here. Off also drops it from the hint shown over a link.</p>
+          <p className="conn-detail">Offers opening a link in your browser, copying it, or coming back here. Off also drops it from the hint shown over a link.</p>
         </section>
       )}
       {text && (
@@ -234,6 +211,7 @@ export default function TerminalPage() {
       )}
       {settings && <TerminalImport settings={settings} save={save} />}
       {settings && <InputCard settings={settings} platform={platform} onSave={save} />}
+      {settings && <NativeTerminalCard settings={settings} platform={platform} onSave={save} />}
       {settings && (
         <section className="conn-card" data-section="keys">
           <h2 className="conn-name">Keys in terminals</h2>

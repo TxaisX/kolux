@@ -351,10 +351,12 @@ export function removeTarget<T extends { key: number; seats?: Seat[] }>(shown: T
 export const seatFolder = (chooser: string | null, project: string | null): string | null => chooser ?? project;
 
 /** SESS-018: the New session page starts from this project's previous launch for the count, but
- *  every seat starts blank (SESS-015). Every launch shares the project folder (owner change 2026-11-05). */
-export function sheetStart(last: Lineup | undefined, inGit: boolean): { seats: Seat[]; copies: Copies } {
+ *  every seat starts blank (SESS-015). `copies` is left unset unless the previous launch departed
+ *  from the default for its seat count (the user picked it): unset follows the live seat count
+ *  through `defaultCopies`, so raising 1 seat to 2 switches to own folders (Txais 2026-11-12). */
+export function sheetStart(last: Lineup | undefined, inGit: boolean): { seats: Seat[]; copies?: Copies } {
   const n = Math.min(MAX_SESSIONS, Math.max(1, last?.seats.length ?? 1));
-  // DT-C250: with own folders on, the previous launch's choice comes back (separate copies need Git).
-  const copies: Copies = singleFolder() ? "shared" : last ? (last.copies === "separate" && !inGit ? "shared" : last.copies) : defaultCopies(n, inGit);
-  return { seats: Array.from({ length: n }, emptySeat), copies };
+  // DT-C250: with own folders on, a picked choice comes back (separate copies need Git).
+  const picked = !singleFolder() && last !== undefined && last.copies !== defaultCopies(last.seats.length, inGit) && !(last.copies === "separate" && !inGit);
+  return { seats: Array.from({ length: n }, emptySeat), ...(picked ? { copies: last.copies } : {}) };
 }

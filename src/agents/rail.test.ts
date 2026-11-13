@@ -21,8 +21,8 @@ test("VIEW-015: sessions group under their saved agent, unmatched ones under Oth
   expect(railGroups([shell(1)], saved)).toEqual([]);
 });
 
-test("VIEW-021: a not-started preset sits under its agent; editor and browser tabs are never listed", () => {
-  const panes = [ai(1, "codex", { kind: "editor" }), { key: 2, program: null, cwd: null, seats: [{ agent: "codex" }] }, ai(3, "claude", { kind: "browser" })];
+test("VIEW-021: a not-started preset sits under its agent; editor and diff tabs are never listed", () => {
+  const panes = [ai(1, "codex", { kind: "editor" }), { key: 2, program: null, cwd: null, seats: [{ agent: "codex" }] }, ai(3, "claude", { kind: "diff" })];
   // Claude has no session open, so it gets no group, empty or otherwise.
   expect(railGroups(panes, saved).map((g) => [g.id, g.sessions.map((p) => p.key)])).toEqual([["codex", [2]]]);
 });
@@ -42,8 +42,8 @@ test("VIEW-015: a session reads as its task's name, else its folder, else its nu
   expect(sessionLabel({ key: 3, cwd: null })).toBe("Session 3");
 });
 
-test("VIEW-024: the Board's cards are the terminal panes in order; editor and browser tabs get none", () => {
-  const panes = [shell(1), ai(2, "claude", { kind: "editor" }), { key: 3, program: null, cwd: null, seats: [{ agent: null }] }, ai(4, "claude", { kind: "browser" }), ai(5, "codex")];
+test("VIEW-024: the Board's cards are the terminal panes in order; editor and diff tabs get none", () => {
+  const panes = [shell(1), ai(2, "claude", { kind: "editor" }), { key: 3, program: null, cwd: null, seats: [{ agent: null }] }, ai(4, "claude", { kind: "diff" }), ai(5, "codex")];
   expect(cardPanes(panes).map((p) => p.key)).toEqual([1, 3, 5]);
 });
 

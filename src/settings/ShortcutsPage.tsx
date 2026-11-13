@@ -30,7 +30,17 @@ export default function ShortcutsPage() {
   const policy = readPolicy(status.settings);
   const native = useNativeChords();
   const rows = useMemo(() => shortcutRows(keymap, native), [keymap, native]);
-  const shown = filterRows(rows, filter, query);
+  const shown = useMemo(() => filterRows(rows, filter, query), [rows, filter, query]);
+  // Audit N-53: the rows were re-filtered once per area group on every render; they are grouped once.
+  const groups = useMemo(() => {
+    const by = new Map<string, Row[]>();
+    for (const r of shown) {
+      const list = by.get(r.area);
+      if (list) list.push(r);
+      else by.set(r.area, [r]);
+    }
+    return by;
+  }, [shown]);
   const taps = useRef(createDoubleTap()); // SET-009: a modifier tapped twice is recorded as its own kind of shortcut
 
   // While recording, every key press belongs to the recorder: the window's shortcuts stand
@@ -141,7 +151,7 @@ export default function ShortcutsPage() {
         </div>
         {shown.length === 0 && <p className="conn-detail">No command matches.</p>}
         {Object.values(AREAS).map((area) => {
-          const group = shown.filter((r) => r.area === area);
+          const group = groups.get(area) ?? [];
           if (group.length === 0) return null;
           return (
             <div key={area} className="keys-group">
