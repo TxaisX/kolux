@@ -1,6 +1,6 @@
 # Terminals
 
-Use the Terminals view to run agents and shells in a grid of panes, split and resize them, group them in tabs, and paste into the one you are working in.
+Use the Terminals view to run agents and shells in a grid of panes, one session in each cell, split, move and resize them, and paste into the one you are working in.
 
 ## The pane grid
 
@@ -38,7 +38,9 @@ Every pane has a header. Left to right it shows:
 
 | Item | Meaning |
 |---|---|
-| Agent mark and title | Hover for the folder |
+| Drag grip | Shown while the grid has more than one cell. See [Moving panes](#moving-panes) |
+| Agent mark and title | Hover for the folder. Double-click a terminal's title to rename it |
+| Colour dot, pin, bell, context ring | The pane's Tab Color, a pin when it is pinned, a bell when it finished or rang while you were away, and how full the AI's memory is. See [Pins, colours and closing](#pins-colours-and-closing) |
 | Branch chip | The Git branch, or the short commit when HEAD is detached. Plain folders show none |
 | Program word | The program and its model |
 | Status word | Working, Needs you, Done and so on. See [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -62,38 +64,57 @@ Press "..." or right-click the header.
 | Close pane | Ends the program |
 | Set Title… | Gives the pane your own title |
 | Clear Pane Title | Appears only when you have set a title |
+| Pin Tab / Unpin Tab | Keeps the pane out of the bulk closes and a middle-click, and asks before it closes |
+| Tab Color… | Puts a colour dot in the pane's header |
 | Copy Session ID | Appears only when the session is known |
 | Copy Terminal ID / Copy Pane ID | Puts the id on the clipboard |
 | Clear Screen | Clears the pane's screen and its scrollback (Ctrl+K). See [Clear and find](#clear-and-find) |
 | Find… | Opens the find bar over the pane (Ctrl+F) |
 | Copy terminal diagnostics | Puts a scrubbed snapshot of the pane on the clipboard, for a bug report |
+| Close Others / Close to the Right / Close to the Left / Close All | Closes those panes of this grid, except pinned ones. Only the ones that would close something are shown |
 
-## Tabs
+## One session per cell
 
-A cell with more than one pane shows a tab strip. Each tab has an icon, a status badge, a context ring (how full the AI's memory is), its name and an x to close it. An editor tab also shows a dot while it has unsaved text.
+Each cell of the grid holds one session: there is no tab strip above a pane (owner decision 2026-11-12). What a tab
+used to show and do is in the pane's header. A file, diff, preview or check you open, and a new terminal (Ctrl+T),
+takes the cell right after the pane you are in. A grid holds up to 24 panes; past that, Kolux says "A workspace holds
+up to 24 panes." and opens nothing. What Kolux brings back itself (saved panes after a restart, a reopened tab) is
+never dropped for that limit.
 
-- Double-click a terminal or agent tab to rename it.
-- Middle-click a tab to close it. A pinned tab stays open.
-- Right-click a tab for the menu below. Items that would close nothing are greyed out.
+A layout saved by an older Kolux, where one cell held several tabs, reopens with each of those tabs in a cell of its
+own, in the order the tab strip showed them and where that cell was. Nothing is closed: titles, sessions, files,
+pins and colours all come back.
+
+### Moving panes
+
+Drag a pane by the grip at the start of its header. Drop it on the middle of another cell to swap the two, or on a
+cell's edge to put it on that side. The program in it keeps running.
+
+### Pins, colours and closing
+
+- Middle-click a pane's header to close it. A pinned pane stays open.
+- Right-click a terminal's header for the Pane menu: Pin Tab, Tab Color… and the bulk closes are there. Right-click
+  the header of a file, diff, preview, All Changes, check or chooser for the menu below. With the keyboard, move to a
+  button in the header and press Shift+F10 or the Menu key. Items that would close nothing are greyed out.
 
 | Item | What it does |
 |---|---|
-| Change Title | Renames the tab. Terminals and agents only |
-| Pin tab / Unpin tab | Keeps the tab at the front of the strip (see below) |
-| Close | Closes this tab (Ctrl+W). Greyed out for a pinned tab |
-| Close others | Closes every other tab except pinned ones |
-| Close to the right / Close to the left | Closes the tabs on that side except pinned ones |
-| Close all | Closes every tab in the strip, terminals and browsers included. It leaves pinned tabs open; the shortcut, Ctrl+Alt+W, closes editor tabs only |
-
-Closing the active tab returns you to the tab you used before it. If there is none, the one to its right, else the one to its left.
+| Change Title | Renames the pane. Terminals and agents only |
+| Pin tab / Unpin tab | Keeps the pane out of the bulk closes (see below) |
+| Tab Color | Puts a colour dot in the pane's header |
+| Split Right / Split Down | Opens a shell beside the pane |
+| Close | Closes this pane (Ctrl+W). Greyed out for a pinned pane |
+| Close others | Closes every other pane of this grid except pinned ones |
+| Close to the right / Close to the left | Closes the panes before or after it in the grid, except pinned ones |
+| Close all | Closes every pane of this grid, terminals included. It leaves pinned panes open; the shortcut, Ctrl+Alt+W, closes editor panes only |
 
 If a program is still running, Kolux asks first: "Close "<name>"?" with "A program is still running in it. Closing the tab stops it." Press "Close tab" to go on. This question is on by default and can be switched off in Settings. When a shell ends by itself, a dialog says "The shell ended with exit code N" and offers Close pane or Restart.
 
-Pinned tabs sit before the others with a pin icon. Closing one with Ctrl+W, its x or the pane's close button asks first: "Close pinned tab "<name>"? This tab is pinned. Closing it stops anything still running in it." This question is on by default; switch it off in Settings, Terminal & sessions, "Ask before closing a pinned tab". Pins last until Kolux closes.
+A pinned pane shows a pin icon in its header and keeps its cell. Closing one with Ctrl+W or the pane's close button asks first: "Close pinned tab "<name>"? This tab is pinned. Closing it stops anything still running in it." This question is on by default; switch it off in Settings, Terminal & sessions, "Ask before closing a pinned tab". Pins and colours are saved with the layout.
 
 The "Remove a Session" shortcut (no key by default; set one in Settings) removes a session that has not started, or an idle shell, at once. For a running agent, or a shell with a program running, it asks first: "Stop "<name>"?". Cancel has the focus, so pressing Enter keeps the session running. Press "Stop" to go on. To stop without asking, set Settings, Terminal & sessions, "Removing a started session" to "Stop without asking".
 
-### Adding panes and tabs
+### Adding panes
 
 The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06). A pane is added where you want it:
 
@@ -101,8 +122,8 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 |---|---|
 | Add a shell beside this pane | "Split right" on the pane header, or Ctrl+Shift+D; "Split down" with Alt+Shift+D |
 | Start a new session in a new pane | The pane header's plus, or the sidebar's "New session" |
-| A shell tab in this pane's cell | Ctrl+T |
-| The default agent in a new tab | Ctrl+Alt+T; each installed agent also has its own command in the command palette |
+| A shell in the cell after this pane | Ctrl+T |
+| The default agent in the cell after this pane | Ctrl+Alt+T; each installed agent also has its own command in the command palette |
 | A browser tab | Ctrl+Shift+B, or a link in an agent's reply |
 | A markdown note | New: Ctrl+Shift+M. Existing: Ctrl+Shift+O |
 
