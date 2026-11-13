@@ -698,6 +698,7 @@ input { font: inherit; }
 .autos-table td:first-child .dot.live { background: var(--dot-live); }
 .autos-act { position: relative; width: 34px; text-align: right; }
 .autos-menu { position: absolute; right: 8px; top: 28px; min-width: 150px; }
+.ui-positioner > .autos-menu { position: static; }
 .autos-detail { flex: 1 1 45%; min-height: 0; overflow: auto; padding: 12px 14px; border-top: 1px solid var(--line); }
 .autos-detail-head { display: flex; align-items: center; gap: 10px; }
 .autos-detail h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg); }

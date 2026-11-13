@@ -36,6 +36,7 @@ import { HistoryLoads, acceptHistory, historyFor, type LoadedHistory } from "./h
 import { LINES_SKIPPED_NOTE, canCommit, changeCount, cutBanner, conflictPrompt, grouped, savedFixAgent, isCommitShortcut, nextStep, remoteItems, summaryLabel, summaryRows, summaryTotal, type ActionOutcome, type Change, type CommitOutcome, type RemoteAction, type Status, type Summary, bulk, rowOrder, rowKeys, selectRows, spanRuns, type RowKey, discardAsk, type DiscardAsk, type Section, mergeActions, mergeLabel, type MergeAction, type MergeInfo, abortLabel, capped, clashWord, CONFLICT_CAP, filesWord, graph, graphLines, commitUrl, explainPrompt, type Commit, type GraphRow, prMismatch, prStateWord, scmGroups, prLooked, prRefreshDelay, PR_STALE_MS, prReason, prRowText, withPr, needsGitHub, type Pr, type PrAnswer, type PrLook, commitItems, failureTitle, discardPlan, fileTree, reviewPrompt, SECTION_CAP, tooManyLine, filterRows, fullPath } from "./model";
 import OutOfFlow from "../chrome/OutOfFlow";
 import { Select } from "../ui/Select";
+import { ContextMenu, Menu, MenuItem, MenuTitle } from "../ui/Menu";
 
 type Props = {
   /** Row 838: a status to show before the first read (tests render without a back end). */
@@ -207,7 +208,8 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
   const [failure, setFailure] = useState<Failure | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [menu, setMenu] = useState<{ left: number; top: number } | null>(null);
+  // The Remote actions menu: a src/ui Menu hanging from its button, right edges lined up, 4 px below.
+  const [menu, setMenu] = useState<true | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [closedDirs, setClosedDirs] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<RowKey | null>(null);
@@ -382,7 +384,8 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
       onDraft("");
       await runRemote(action, `Committed ${out.id}; ${label}`);
     });
-  const [commitMenu, setCommitMenu] = useState<{ left: number; top: number } | null>(null);
+  // The Commit and menu: a src/ui Menu hanging from the chevron, right edges lined up, 4 px below.
+  const [commitMenu, setCommitMenu] = useState<true | null>(null);
   const commitButton = useRef<HTMLButtonElement>(null);
 
   // GIT-021: the branch's pull request, looked up once it is published and off the base branch.
@@ -551,8 +554,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
     }
   };
   const openMenu = () => {
-    const r = remoteButton.current?.getBoundingClientRect();
-    if (r) setMenu({ left: Math.max(8, r.right - 250), top: r.bottom + 4 });
+    setMenu((m) => (m ? null : true));
   };
 
   // FIX-BEFORE-2: the rows on screen, in the order drawn (saved group order, filter, cap, closed
@@ -863,10 +865,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                   aria-haspopup="menu"
                   aria-expanded={commitMenu !== null}
                   disabled={busy}
-                  onClick={() => {
-                    const r = commitButton.current?.getBoundingClientRect();
-                    if (r) setCommitMenu({ left: Math.max(8, r.right - 280), top: r.bottom + 4 });
-                  }}
+                  onClick={() => setCommitMenu((m) => (m ? null : true))}
                 >
                   <ChevronDown />
                 </button>
@@ -875,70 +874,34 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                 </button>
               </div>
             </div>
-            {commitMenu && (
-              <OutOfFlow>
-                <div className="menu-backdrop" onClick={() => setCommitMenu(null)} aria-hidden="true" />
-                <div className="menu" role="menu" aria-label="Commit and" style={{ left: commitMenu.left, top: commitMenu.top, width: 280 }}>
-                  <div className="menu-title">Commit and</div>
-                  {commitItems(status, draft).map((item) => (
-                    <button
-                      key={item.id}
-                      role="menuitem"
-                      className="menu-item"
-                      data-commit={item.id}
-                      disabled={item.reason !== null}
-                      title={item.reason ?? item.title}
-                      onClick={() => {
-                        setCommitMenu(null);
-                        void commitThen(item.id, item.label.replace(/^Commit,? (then |and )?/, "").replace(/^./, (c) => c.toUpperCase()));
-                      }}
-                    >
-                      <span className="name">{item.label}</span>
-                      {item.reason && <span className="reason">{item.reason}</span>}
-                    </button>
-                  ))}
-                </div>
-              </OutOfFlow>
-            )}
-            {menu && (
-              <OutOfFlow>
-                <div className="menu-backdrop" onClick={() => setMenu(null)} aria-hidden="true" />
-                <div className="menu" role="menu" aria-label="Remote actions" style={{ left: menu.left, top: menu.top }}>
-                  <div className="menu-title">{status?.upstream ? `Remote · ${status.upstream}` : "Remote"}</div>
-                  {remoteItems(status).map((item) => (
-                    <button
-                      key={item.id}
-                      role="menuitem"
-                      className="menu-item"
-                      data-action={item.id}
-                      disabled={item.reason !== null}
-                      title={item.reason ?? item.label}
-                      onClick={() => {
-                        setMenu(null);
-                        void remote(item.id, item.label);
-                      }}
-                    >
-                      <span className="name">{item.label}</span>
-                      {item.reason && <span className="reason">{item.reason}</span>}
-                    </button>
-                  ))}
-                  <button
-                    role="menuitem"
-                    className="menu-item"
-                    data-action="pr"
-                    disabled={prItemReason !== null}
-                    title={prItemReason ?? "Create pull request"}
-                    onClick={() => {
-                      setMenu(null);
-                      startPr();
-                    }}
-                  >
-                    <span className="name">{look.pr?.state === "OPEN" ? `Open pull request #${look.pr.number}` : "Create pull request"}</span>
-                    {prItemReason && <span className="reason">{prItemReason}</span>}
-                  </button>
-                </div>
-              </OutOfFlow>
-            )}
+            <Menu open={commitMenu !== null} onClose={() => setCommitMenu(null)} label="Commit and" anchor={commitButton} align="end" offset={4} style={{ width: 280 }}>
+              <MenuTitle>Commit and</MenuTitle>
+              {commitItems(status, draft).map((item) => (
+                <MenuItem
+                  key={item.id}
+                  data-commit={item.id}
+                  disabled={item.reason !== null}
+                  title={item.reason ?? item.title}
+                  onClick={() => void commitThen(item.id, item.label.replace(/^Commit,? (then |and )?/, "").replace(/^./, (c) => c.toUpperCase()))}
+                >
+                  <span className="name">{item.label}</span>
+                  {item.reason && <span className="reason">{item.reason}</span>}
+                </MenuItem>
+              ))}
+            </Menu>
+            <Menu open={menu !== null} onClose={() => setMenu(null)} label="Remote actions" anchor={remoteButton} align="end" offset={4}>
+              <MenuTitle>{status?.upstream ? `Remote · ${status.upstream}` : "Remote"}</MenuTitle>
+              {remoteItems(status).map((item) => (
+                <MenuItem key={item.id} data-action={item.id} disabled={item.reason !== null} title={item.reason ?? item.label} onClick={() => void remote(item.id, item.label)}>
+                  <span className="name">{item.label}</span>
+                  {item.reason && <span className="reason">{item.reason}</span>}
+                </MenuItem>
+              ))}
+              <MenuItem data-action="pr" disabled={prItemReason !== null} title={prItemReason ?? "Create pull request"} onClick={startPr}>
+                <span className="name">{look.pr?.state === "OPEN" ? `Open pull request #${look.pr.number}` : "Create pull request"}</span>
+                {prItemReason && <span className="reason">{prItemReason}</span>}
+              </MenuItem>
+            </Menu>
             {status?.branch !== undefined && (
               <div className="scm-prrow" data-pr-row>
                 {look.pr ? (
@@ -1237,7 +1200,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                       }}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        setCtx({ x: Math.min(e.clientX, window.innerWidth - 240), y: Math.min(e.clientY, window.innerHeight - 130), commit: c });
+                        setCtx({ x: e.clientX, y: e.clientY, commit: c });
                       }}
                     >
                       <GraphCell row={rows[i]} />
@@ -1306,10 +1269,10 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                 </div>
               </OutOfFlow>
             )}
-            {ctx && (
-              <OutOfFlow>
-                <div className="menu-backdrop" onClick={() => setCtx(null)} aria-hidden="true" />
-                <div className="menu" role="menu" aria-label="Commit actions" style={{ left: ctx.x, top: ctx.y }}>
+            {/* A src/ui ContextMenu at the right-clicked point (it flips when there is no room). */}
+            <ContextMenu at={ctx} onClose={() => setCtx(null)} label="Commit actions">
+              {ctx && (
+                <>
                   <div className="menu-title hash">{ctx.commit.short}</div>
                   {[
                     { id: "hash", label: "Copy hash", run: () => copy(ctx.commit.hash, "commit hash") },
@@ -1317,22 +1280,13 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                     ...(ghRepo ? [{ id: "open", label: "Open in browser", run: () => void openExternal(commitUrl(ghRepo, ctx.commit.hash)!) }] : []),
                     { id: "explain", label: "Explain changes", run: () => explain(ctx.commit) },
                   ].map((item) => (
-                    <button
-                      key={item.id}
-                      role="menuitem"
-                      className="menu-item"
-                      data-commit-action={item.id}
-                      onClick={() => {
-                        setCtx(null);
-                        void item.run();
-                      }}
-                    >
+                    <MenuItem key={item.id} data-commit-action={item.id} onClick={() => void item.run()}>
                       <span className="name">{item.label}</span>
-                    </button>
+                    </MenuItem>
                   ))}
-                </div>
-              </OutOfFlow>
-            )}
+                </>
+              )}
+            </ContextMenu>
             <HandoffNote dir={dir} agents={agents} onHand={onHand} />
           </>
         )}

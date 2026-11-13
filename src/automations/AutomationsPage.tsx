@@ -12,7 +12,6 @@ import { listen } from "@tauri-apps/api/event";
 import Ask from "../chrome/Ask";
 import { Close, Dots, Plus, Refresh, Search } from "../chrome/icons";
 import { ADD_PROJECT } from "../onboarding/firstRun";
-import { watchEscape } from "../switcher/accounts";
 import type { AgentInfo } from "../launch/PlusMenu";
 import type { Project } from "../projects/model";
 import AutomationDialog, { TemplateCards } from "./AutomationDialog";
@@ -21,8 +20,8 @@ import RunsDashboard, { Breadcrumb, RunPage } from "./RunsDashboard";
 import { Detail } from "./AutomationDetail";
 import { PROVIDERS, type Usage } from "../usage/tokens";
 import { agentChoices, ago, CONFIRM_DELETE_KEY, confirmDelete, deleteWords, failedLoad, holdWhile, joinNotes, runsKey, rowActions, splitWarnings, whereItRuns, keepSelection, lastRun, pageKey, matches, noFilters, normalizeQuery, passes, sortRows, statusWord, triggerLabel, upcoming, type Automation, type Filters, type Names, type Run, type SortKey } from "./model";
-import OutOfFlow from "../chrome/OutOfFlow";
 import { Select } from "../ui/Select";
+import { Menu, MenuItem } from "../ui/Menu";
 
 /** `runsError` says the history could not be read (AUTO-018: the run count then reads unknown). */
 export type Data = { automations: Automation[]; runs: Run[]; runsError?: string };
@@ -102,8 +101,8 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   const [refreshing, setRefreshing] = useState(initial?.refreshing ?? false);
   const dataRef = useRef<Data | null>(null);
   dataRef.current = data;
-  const menuRef = useRef<string | null>(null);
-  menuRef.current = menu;
+  // The dots button of the row whose menu is open: the menu hangs from it.
+  const menuFrom = useRef<HTMLButtonElement | null>(null);
 
   // T-193-b: Refresh asks Hermes and OpenClaw again (their answers are kept until the next Refresh), then reads the list.
   // A failed ask is said in a note; the rows already shown stay.
@@ -156,10 +155,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
       })
       .catch(() => {});
     const tick = window.setInterval(() => setNow(Date.now()), 30000);
-    // Escape shuts an open row menu first, wherever focus is (as the Skills page's menus do).
-    const stopEscape = watchEscape(window, () => setMenu(null), () => menuRef.current !== null);
     return () => {
-      stopEscape();
       window.clearInterval(tick);
       void off.then((u) => u());
     };
@@ -466,43 +462,38 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                           aria-expanded={menu === a.id}
                           onClick={(e) => {
                             e.stopPropagation(); // opening the menu does not select the row
+                            menuFrom.current = e.currentTarget;
                             setMenu(menu === a.id ? null : a.id);
                           }}
                         >
                           <Dots />
                         </button>
                         {menu === a.id && (
-                          <OutOfFlow>
-                            <div
-                              className="menu-backdrop"
-                              onClick={(e) => {
-                                e.stopPropagation(); // shutting the menu does not select the row under it
-                                setMenu(null);
-                              }}
-                              onDoubleClick={(e) => e.stopPropagation()}
-                            />
-                          <div className="menu autos-menu" role="menu" onClick={(e) => e.stopPropagation()}>
-                            {rowActions(a).map((what) =>
-                              what === "run" ? (
-                                <button key={what} className="menu-item" role="menuitem" disabled={!!a.problem || running.includes(a.id)} title={a.problem ? `Run now is blocked: ${a.problem}` : running.includes(a.id) ? "Run now is already being started" : undefined} onClick={() => runNow(a)}>
-                                  <span className="name">Run now</span>
-                                </button>
-                              ) : what === "toggle" ? (
-                                <button key={what} className="menu-item" role="menuitem" onClick={() => toggle(a)}>
-                                  <span className="name">{a.enabled ? "Pause" : "Resume"}</span>
-                                </button>
-                              ) : what === "edit" ? (
-                                <button key={what} className="menu-item" role="menuitem" onClick={() => edit(a)}>
-                                  <span className="name">Edit</span>
-                                </button>
-                              ) : (
-                                <button key={what} className="menu-item" role="menuitem" onClick={() => remove(a)}>
-                                  <span className="name">Delete</span>
-                                </button>
-                              ),
-                            )}
-                          </div>
-                          </OutOfFlow>
+                          // A src/ui Menu hanging from the dots: Escape shuts it first, wherever focus is. A click in it
+                          // crosses the portal up the React tree, so it stops here and never selects the row.
+                          <span onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+                            <Menu open onClose={() => setMenu(null)} label={`Actions for ${a.name}`} anchor={menuFrom} align="end" offset={2} className="autos-menu">
+                              {rowActions(a).map((what) =>
+                                what === "run" ? (
+                                  <MenuItem key={what} disabled={!!a.problem || running.includes(a.id)} title={a.problem ? `Run now is blocked: ${a.problem}` : running.includes(a.id) ? "Run now is already being started" : undefined} onClick={() => runNow(a)}>
+                                    <span className="name">Run now</span>
+                                  </MenuItem>
+                                ) : what === "toggle" ? (
+                                  <MenuItem key={what} onClick={() => toggle(a)}>
+                                    <span className="name">{a.enabled ? "Pause" : "Resume"}</span>
+                                  </MenuItem>
+                                ) : what === "edit" ? (
+                                  <MenuItem key={what} onClick={() => edit(a)}>
+                                    <span className="name">Edit</span>
+                                  </MenuItem>
+                                ) : (
+                                  <MenuItem key={what} onClick={() => remove(a)}>
+                                    <span className="name">Delete</span>
+                                  </MenuItem>
+                                ),
+                              )}
+                            </Menu>
+                          </span>
                         )}
                       </td>
                     </tr>

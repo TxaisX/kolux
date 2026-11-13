@@ -261,7 +261,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | agents | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 |
 | artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 |
-| automations | 0 | 1 | 0 | 0 | 1 | 1 | 1 | 14 | 1 |
+| automations | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 14 | 0 |
 | board | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 7 | 0 |
 | chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
@@ -277,7 +277,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
 | projects | 1 | 1 | 1 | 10 | 7 | 0 | 19 | 75 | 13 |
 | recovery | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
-| scm | 0 | 5 | 0 | 1 | 4 | 0 | 5 | 98 | 6 |
+| scm | 0 | 1 | 0 | 1 | 5 | 0 | 5 | 98 | 2 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
 | settings | 1 | 1 | 0 | 0 | 0 | 30 | 10 | 43 | 2 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
@@ -291,13 +291,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **16** | **24** | **4** | **14** | **41** | **42** | **57** | **646** | **58** |
+| **Total** | **16** | **19** | **4** | **14** | **42** | **42** | **57** | **646** | **53** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
-
-### automations
-
-- [ ] `src/automations/AutomationsPage.tsx`: Menu :484
 
 ### chat
 
@@ -333,8 +329,7 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### scm
 
-- [ ] `src/scm/CommentsPanel.tsx`: Menu :212
-- [ ] `src/scm/SourceControlPanel.tsx`: Menu :881, Menu :906, Select :1110, Menu :1284, Menu :1312
+- [ ] `src/scm/SourceControlPanel.tsx`: Select :1073, Menu :1247
 
 ### settings
 
