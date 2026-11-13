@@ -25,7 +25,8 @@ function TrustDialog({ ask }: { ask: TrustAsk }) {
   const [always, setAlways] = useState(false);
   const mine = useRef<HTMLDivElement>(null);
   const { title, lead } = trustWords(ask);
-  // SAFE-025: another dialog replacing this one counts as Don't run; the next prompt still shows.
+  // SAFE-025: another dialog replacing this one counts as Don't run; the next prompt still shows. The prompt's own box
+  // is drawn in a portal on the body too, so it is told apart by the box itself, not by an element around it.
   useEffect(() => {
     const seen = new MutationObserver((records) => {
       if (records.some((r) => otherDialog(r.addedNodes, mine.current))) answerFirst("skip");
@@ -34,28 +35,29 @@ function TrustDialog({ ask }: { ask: TrustAsk }) {
     return () => seen.disconnect();
   }, []);
   return (
-    <div ref={mine} className="trust-prompt">
-      <Ask
-        title={title}
-        confirm="Run hooks"
-        cancel="Don't run"
-        body={
-          <>
-            <p className="trust-lead">{lead}</p>
-            <pre className="trust-script" aria-label={`The ${KIND_WORDS[ask.kind] ?? "script"} that would run`}>
-              {ask.script}
-            </pre>
-            <p className="trust-lead" role="note">
-              {TRUST_MEMORY}
-            </p>
-            <label className="check trust-always">
-              <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} /> Always trust this repository&apos;s kolux.yaml
-            </label>
-          </>
-        }
-        onConfirm={() => answerFirst(always ? "always" : "once")}
-        onCancel={() => answerFirst("skip")}
-      />
-    </div>
+    <Ask
+      title={title}
+      confirm="Run hooks"
+      cancel="Don't run"
+      body={
+        <>
+          <p className="trust-lead">{lead}</p>
+          <pre className="trust-script" aria-label={`The ${KIND_WORDS[ask.kind] ?? "script"} that would run`}>
+            {ask.script}
+          </pre>
+          <p className="trust-lead" role="note">
+            {TRUST_MEMORY}
+          </p>
+          <label className="check trust-always">
+            <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} /> Always trust this repository&apos;s kolux.yaml
+          </label>
+        </>
+      }
+      onConfirm={() => answerFirst(always ? "always" : "once")}
+      onCancel={() => answerFirst("skip")}
+      className="trust-ask"
+      layer="trust-layer"
+      boxRef={mine}
+    />
   );
 }

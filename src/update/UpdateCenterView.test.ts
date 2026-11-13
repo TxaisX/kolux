@@ -1,10 +1,11 @@
+// @vitest-environment happy-dom
 // T-675 (DT-C111; APP-025, APP-026): UpdateCenterView's wiring on the APP-024..027 harness, where the helper tests
 // (restart.test.ts) cannot reach. A Check after update_status failed ends with the reason instead of spinning, both
 // when it was asked before the failure and after it; Escape from the page is Later on the ready pop-up, but while
 // the "Restart to update?" question is open it closes only the question (the question's own Escape, T-667). Each test fails when its line in UpdateCenterView.tsx is reverted.
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, withText } from "../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, withText } from "../tasks/realDom";
 import { cardTitle, errorText, feed, info, installUpdateDom, mountCenter, popup, popupButton, pump, sendWindow, sent } from "./__cards__/updateHarness";
 
 const status = vi.hoisted(() => ({ fail: null as string | null, held: null as null | ((why: string) => void) }));
@@ -43,10 +44,10 @@ async function start() {
 const check = () => sendWindow("kolux-check-updates");
 /** A key the page itself gets (nothing inside it has focus), sent to the window as the browser would. A popup's
  * Escape watcher stops and prevents the key, so the event has both. */
+/** A key pressed where the keyboard is: a real keydown at the focused element (or the page), up to the window. */
 async function pageKey(key: string) {
-  const e = { type: "keydown", key, defaultPrevented: false, target: doc.body, stopPropagation: () => {}, preventDefault: () => (e.defaultPrevented = true) };
   await act(async () => {
-    (globalThis as unknown as { window: Window }).window.dispatchEvent(e as unknown as Event);
+    (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
   });
 }
 

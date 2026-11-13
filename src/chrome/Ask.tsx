@@ -5,7 +5,7 @@
 // only explains, with a single OK (ACCT-015's Disconnect when nothing can be disconnected).
 // Drawn with src/ui's AlertDialog (Base UI): the focus trap, the hand-back and the click outside are Base UI's; Escape
 // is Kolux's layer (caught on the window before the terminal underneath sees it).
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 import { AlertDialog } from "../ui/Dialog";
 
 /** What a key press in the dialog does: Escape cancels; Enter on Confirm is blocked unless the
@@ -34,9 +34,15 @@ type Props = {
   locked?: boolean;
   onConfirm: (dontAskAgain: boolean) => void;
   onCancel: () => void;
+  /** Extra classes on the box and on the full-window layer that centres it. The dialog is drawn in a portal on the
+   *  body, so a caller styles it through these, never through a class on an element around the call site. */
+  className?: string;
+  layer?: string;
+  /** The dialog box, for a caller that must tell its own dialog from another (the trust prompt). */
+  boxRef?: RefObject<HTMLDivElement | null>;
 };
 
-export default function Ask({ title, body, confirm, enter = false, dontAsk = false, cancel: cancelText = "Cancel", safe = false, locked = false, onConfirm, onCancel }: Props) {
+export default function Ask({ title, body, confirm, enter = false, dontAsk = false, cancel: cancelText = "Cancel", safe = false, locked = false, onConfirm, onCancel, className, layer, boxRef }: Props) {
   const [tick, setTick] = useState(false);
   const cancel = useRef<HTMLButtonElement>(null);
   const ok = useRef<HTMLButtonElement>(null);
@@ -53,8 +59,9 @@ export default function Ask({ title, body, confirm, enter = false, dontAsk = fal
     <AlertDialog
       onClose={backOut}
       label={title}
-      className="ask"
-      viewport="ask-backdrop"
+      className={className ? `ask ${className}` : "ask"}
+      viewport={layer ? `ask-backdrop ${layer}` : "ask-backdrop"}
+      boxRef={boxRef}
       initialFocus={cancel}
       data-testid="ask-dialog"
       onKeyDown={(e) => {

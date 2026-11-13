@@ -1,7 +1,8 @@
+// @vitest-environment happy-dom
 // APP-024..027 on the real UpdateCenter (real UpdateSchedule and card reducer) under fake time. Only the back end is
 // scripted (updateHarness.ts feed): whether the real updater finds, downloads and installs a release is LIVE.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, fire, withText } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, fire, withText } from "../../tasks/realDom";
 import { byTitle, card, cardTitle, errorText, feed, info, installUpdateDom, mountCenter, notes, online, popup, popupButton, popupText as noticeText, pump, sendWindow, sent } from "./updateHarness";
 
 vi.mock("@tauri-apps/api/core", async () => (await import("./updateHarness")).coreMock);
