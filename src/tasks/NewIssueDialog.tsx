@@ -10,6 +10,7 @@ import { actionError } from "./issueActions";
 import { noteUse } from "../onboarding/features";
 import type { Task } from "./model";
 import { closingDraft, createBusy, createOnce, draftFrom, draftToSave, emptyDraft, type IssueDraft, names, openDraft, pickableLabels, TITLE_MAX, titleLength, lastCreateFailure, createResetsDialog, watchCreate, withRepo } from "./newIssue";
+import { Select } from "../ui/Select";
 
 /** The draft kept for this run (also one too long for settings); null after an issue is created.
  * The one-create-at-a-time flag lives next to it, in newIssue.ts (createOnce). */
@@ -143,13 +144,7 @@ export default function NewIssueDialog(p: {
         </div>
         <label>
           Repository{" "}
-          <select className="field" value={d.repo} disabled={busy} onChange={(e) => put(withRepo(d, e.target.value))}>
-            {p.targets.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>{" "}
+          <Select label="Repository" value={d.repo} onChange={(v) => put(withRepo(d, v))} options={p.targets.map((r) => ({ value: r, label: r }))} className="field" disabled={busy} />{" "}
           <span className="tasks-count" data-issue-host title="The GitHub host this issue goes to">
             on {p.host}
           </span>

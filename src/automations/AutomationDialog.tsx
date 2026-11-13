@@ -16,6 +16,7 @@ import type { AgentInfo } from "../launch/PlusMenu";
 import { folderName, type Project, type Worktree } from "../projects/model";
 import { closesOnScrim, defaultForm, EVENT_CHOICES, findNext, hermesEdit, hermesSchedule, scheduleChanged, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
 import { clampBox, cronWords, fieldNames, from12, nudge, templates, to12, toPreset, weekdayNames, type Template } from "./timetable";
+import { Select } from "../ui/Select";
 
 type Props = {
   projects: Project[];
@@ -355,10 +356,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             {!editing && (
               <label className="auto-label">
                 Runs in
-                <select className="field" value={where} onChange={(e) => setWhere(e.target.value as "kolux" | "hermes")}>
-                  <option value="kolux">Kolux</option>
-                  <option value="hermes">Hermes</option>
-                </select>
+                <Select label="Runs in" value={where} onChange={(v) => setWhere(v as "kolux" | "hermes")} options={[{ value: "kolux", label: "Kolux" }, { value: "hermes", label: "Hermes" }]} className="field" />
               </label>
             )}
             {hermes && <span className="muted">Hermes keeps this job and runs it on this computer on its own schedule. Kolux lists it and can pause, run, edit or remove it.</span>}
@@ -372,23 +370,11 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             <>
             <label className="auto-label">
               Agent
-              <select className="field" value={provider} onChange={(e) => setProvider(e.target.value)}>
-                {choices.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <Select label="Agent" value={provider} onChange={(v) => setProvider(v)} options={choices.map((p) => ({ value: p.id, label: p.name }))} className="field" />
             </label>
             <label className="auto-label">
               Project
-              <select className="field" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <Select label="Project" value={projectId} onChange={(v) => setProjectId(v)} options={projects.map((p) => ({ value: p.id, label: p.name }))} className="field" />
             </label>
             <fieldset className="auto-label">
               <legend>Workspace</legend>
@@ -396,27 +382,14 @@ export default function AutomationDialog({ projects, agents, editing, template, 
               <label className="auto-radio">
                 <input type="checkbox" checked={reuse} onChange={(e) => setReuse(e.target.checked)} /> Continue in the session the last run left open, when the agent is idle there
               </label>
-              <select className="field" aria-label="Workspace" value={workspace} disabled={!worktrees} onChange={(e) => setWorkspace(e.target.value)}>
-                {(worktrees ?? []).map((w) => (
-                  <option key={w.path} value={w.path}>
-                    {w.isMain ? `${folderName(w.path)} (main)` : (w.name ?? folderName(w.path))}
-                  </option>
-                ))}
-              </select>
+              <Select label="Workspace" value={workspace} onChange={(v) => setWorkspace(v)} options={[...(worktrees ?? []).map((w) => ({ value: w.path, label: w.isMain ? `${folderName(w.path)} (main)` : (w.name ?? folderName(w.path)) }))]} className="field" disabled={!worktrees} />
             </fieldset>
             </>
             )}
             {!hermes && (
             <label className="auto-label">
               Starts
-              <select className="field" value={starts} onChange={(e) => setStarts(e.target.value)}>
-                <option value="schedule">On a timetable</option>
-                {EVENT_CHOICES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+              <Select label="Starts" value={starts} onChange={(v) => setStarts(v)} options={[{ value: "schedule", label: "On a timetable" }, ...EVENT_CHOICES.map((c) => ({ value: c.value, label: c.label }))]} className="field" />
             </label>
             )}
             {fixedSchedule && (
@@ -429,24 +402,12 @@ export default function AutomationDialog({ projects, agents, editing, template, 
               <>
               <label className="auto-label">
                 {hermes ? "Cron timetable" : "Timetable"}
-                <select className="field" value={form.preset} onChange={(e) => setForm(toPreset(form, e.target.value as Preset, typed))}>
-                  {presets.map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
+                <Select label={hermes ? "Cron timetable" : "Timetable"} value={form.preset} onChange={(v) => setForm(toPreset(form, v as Preset, typed))} options={presets.map((p) => ({ value: p.value, label: p.label }))} className="field" />
               </label>
               {form.preset === "weekly" && (
                 <label className="auto-label">
                   Day
-                  <select className="field" value={form.day ?? 1} onChange={(e) => setForm({ ...form, day: Number(e.target.value) })}>
-                    {weekdayNames(lang).map((d, i) => (
-                      <option key={d} value={i}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
+                  <Select label="Day" value={String(form.day ?? 1)} onChange={(v) => setForm({ ...form, day: Number(v) })} options={weekdayNames(lang).map((d, i) => ({ value: String(i), label: d }))} className="field" />
                 </label>
               )}
               {form.preset !== "custom" && (
@@ -461,10 +422,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
                     )}
                     <TimeBox label="Minute" value={clock.minute} lo={0} hi={59} twoDigits onValue={(m) => setClock(clock.hour, m, clock.pm)} />
                     {form.preset !== "hourly" && (
-                      <select className="field" aria-label="AM or PM" value={clock.pm ? "PM" : "AM"} onChange={(e) => setClock(clock.hour, clock.minute, e.target.value === "PM")}>
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
+                      <Select label="AM or PM" value={clock.pm ? "PM" : "AM"} onChange={(v) => setClock(clock.hour, clock.minute, v === "PM")} options={[{ value: "AM", label: "AM" }, { value: "PM", label: "PM" }]} className="field" />
                     )}
                   </div>
                 </div>
@@ -499,13 +457,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
               {!hermes && (
               <label className="auto-label">
                 If Kolux was away at the time
-                <select className="field" value={grace} onChange={(e) => setGrace(Number(e.target.value))}>
-                  {GRACE.map(([m, word]) => (
-                    <option key={m} value={m}>
-                      {word}
-                    </option>
-                  ))}
-                </select>
+                <Select label="If Kolux was away at the time" value={String(grace)} onChange={(v) => setGrace(Number(v))} options={GRACE.map(([m, word]) => ({ value: String(m), label: word }))} className="field" />
               </label>
               )}
               </>
@@ -520,13 +472,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             </label>
             <label className="auto-label">
               Precheck time limit
-              <select className="field" value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
-                {PRECHECK.map(([s, word]) => (
-                  <option key={s} value={s}>
-                    {word}
-                  </option>
-                ))}
-              </select>
+              <Select label="Precheck time limit" value={String(limit)} onChange={(v) => setLimit(Number(v))} options={PRECHECK.map(([s, word]) => ({ value: String(s), label: word }))} className="field" />
             </label>
             </>
             )}

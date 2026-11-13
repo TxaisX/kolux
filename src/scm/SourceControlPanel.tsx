@@ -35,6 +35,7 @@ import { openExternal } from "../open/openExternal";
 import { HistoryLoads, acceptHistory, historyFor, type LoadedHistory } from "./history";
 import { LINES_SKIPPED_NOTE, canCommit, changeCount, cutBanner, conflictPrompt, grouped, savedFixAgent, isCommitShortcut, nextStep, remoteItems, summaryLabel, summaryRows, summaryTotal, type ActionOutcome, type Change, type CommitOutcome, type RemoteAction, type Status, type Summary, bulk, rowOrder, rowKeys, selectRows, spanRuns, type RowKey, discardAsk, type DiscardAsk, type Section, mergeActions, mergeLabel, type MergeAction, type MergeInfo, abortLabel, capped, clashWord, CONFLICT_CAP, filesWord, graph, graphLines, commitUrl, explainPrompt, type Commit, type GraphRow, prMismatch, prStateWord, scmGroups, prLooked, prRefreshDelay, PR_STALE_MS, prReason, prRowText, withPr, needsGitHub, type Pr, type PrAnswer, type PrLook, commitItems, failureTitle, discardPlan, fileTree, reviewPrompt, SECTION_CAP, tooManyLine, filterRows, fullPath } from "./model";
 import OutOfFlow from "../chrome/OutOfFlow";
+import { Select } from "../ui/Select";
 
 type Props = {
   /** Row 838: a status to show before the first read (tests render without a back end). */
@@ -696,13 +697,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </button>
             )}
             {onDiffSplit && (
-              <select className="scm-split" aria-label="Open diffs in" title="Which split a clicked file's diff opens in" value={diffSplit} onChange={(e) => onDiffSplit(e.target.value as DiffSplit)}>
-                {DIFF_SPLITS.map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              <Select className="scm-split" label="Open diffs in" title="Which split a clicked file's diff opens in" value={diffSplit} onChange={(v) => onDiffSplit(v as DiffSplit)} options={DIFF_SPLITS.map(([id, label]) => ({ value: id, label }))} />
             )}
             {onAllChanges && (
               <button className="ib" title="All changes: every changed file's diff in one tab" aria-label="All changes" onClick={onAllChanges}>

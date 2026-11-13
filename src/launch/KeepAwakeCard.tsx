@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { hooksOn } from "../onboarding/hooksOn";
+import { Select } from "../ui/Select";
 
 export const AWAKE_KEY = "keepAwake";
 export const AWAKE_MODES = ["off", "agent", "on"] as const;
@@ -34,13 +35,7 @@ export default function KeepAwakeCard({ settings, save }: Props) {
   return (
     <section className="conn-card" data-section="keep-awake">
       <h2 className="conn-name">Keep the computer awake</h2>
-      <select aria-label="Keep the computer awake" className="field" value={mode} onChange={(e) => save({ [AWAKE_KEY]: e.target.value })}>
-        {AWAKE_MODES.map((m) => (
-          <option key={m} value={m}>
-            {LABEL[m]}
-          </option>
-        ))}
-      </select>
+      <Select label="Keep the computer awake" value={mode} onChange={(v) => save({ [AWAKE_KEY]: v })} options={AWAKE_MODES.map((m) => ({ value: m, label: LABEL[m] }))} className="field" />
       <p className="conn-detail">{AWAKE_HELP[mode]}</p>
       {mode === "agent" && !hooksOn(settings) ? (
         <p className="conn-detail" data-warn="hooks-off" role="note" style={{ color: "var(--warn)" }}>

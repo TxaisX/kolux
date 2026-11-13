@@ -22,6 +22,7 @@ import { Detail } from "./AutomationDetail";
 import { PROVIDERS, type Usage } from "../usage/tokens";
 import { agentChoices, ago, CONFIRM_DELETE_KEY, confirmDelete, deleteWords, failedLoad, holdWhile, joinNotes, runsKey, rowActions, splitWarnings, whereItRuns, keepSelection, lastRun, pageKey, matches, noFilters, normalizeQuery, passes, sortRows, statusWord, triggerLabel, upcoming, type Automation, type Filters, type Names, type Run, type SortKey } from "./model";
 import OutOfFlow from "../chrome/OutOfFlow";
+import { Select } from "../ui/Select";
 
 /** `runsError` says the history could not be read (AUTO-018: the run count then reads unknown). */
 export type Data = { automations: Automation[]; runs: Run[]; runsError?: string };
@@ -343,18 +344,8 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
           <Search />
           <input ref={search} className="field" placeholder="Search name, project, agent, prompt" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search automations" />
         </label>
-        <select className="field" aria-label="On or paused" value={filters.state} onChange={(e) => setFilters({ ...filters, state: e.target.value as Filters["state"] })}>
-          <option value="all">On and paused</option>
-          <option value="on">On</option>
-          <option value="paused">Paused</option>
-        </select>
-        <select className="field" aria-label="Last run result" value={filters.result} onChange={(e) => setFilters({ ...filters, result: e.target.value as Filters["result"] })}>
-          {results.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
+        <Select label="On or paused" value={filters.state} onChange={(v) => setFilters({ ...filters, state: v as Filters["state"] })} options={[{ value: "all", label: "On and paused" }, { value: "on", label: "On" }, { value: "paused", label: "Paused" }]} className="field" />
+        <Select label="Last run result" value={filters.result} onChange={(v) => setFilters({ ...filters, result: v as Filters["result"] })} options={results.map((r) => ({ value: r.value, label: r.label }))} className="field" />
         {agentIds.length > 1 && (
           <span className="autos-agents" role="group" aria-label="Agents">
             {agentIds.map((id) => (

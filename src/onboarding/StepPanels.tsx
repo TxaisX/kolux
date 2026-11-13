@@ -21,6 +21,7 @@ import { SkillStop, UsageStop } from "./LiveStopCards";
 import { AWAKE_KEY, HOOKS_OFF_HELP } from "../launch/KeepAwakeCard";
 import { WRITER_INSTRUCTIONS_KEY, WRITER_KEY } from "../scm/generate";
 import { integrationSteps, readSeenCached, restale, taskSummary, UNSEEN, type Seen } from "./integrations";
+import { Select } from "../ui/Select";
 
 /** The first copy of `sel` that is really on screen. */
 function shown(sel: string): HTMLElement | null {
@@ -147,13 +148,7 @@ export function NotificationsPanel() {
       </label>
       <div className="look-select">
         <span>Sound</span>
-        <select aria-label="Notification sound" value={n.sound} onChange={(e) => void save({ [SOUND_FIELD]: e.target.value as Sound })}>
-          {panel.choices.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <Select label="Notification sound" value={n.sound} onChange={(v) => void save({ [SOUND_FIELD]: v as Sound })} options={panel.choices.map((s) => ({ value: s.id, label: s.label }))} className="" />
       </div>
       {panel.slider && (
         <div className="look-select">

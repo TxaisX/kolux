@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { handedLine, sinceText, type Note } from "./model";
+import { Select } from "../ui/Select";
 
 type Props = {
   dir: string;
@@ -91,14 +92,7 @@ export default function HandoffNote({ dir, agents, onHand }: Props) {
       </summary>
       <textarea aria-label="handoff note" className="field multi" placeholder="What the next person or agent should know about this workspace" value={text} onChange={(e) => change(e.target.value)} onBlur={() => void flush()} />
       <div className="btn-row">
-        <select aria-label="agent to hand to" className="field" value={agent?.id ?? ""} onChange={(e) => setAgentId(e.target.value)} disabled={agents.length === 0}>
-          {agents.length === 0 && <option value="">No agent found</option>}
-          {agents.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <Select label="agent to hand to" value={agent?.id ?? ""} onChange={(v) => setAgentId(v)} options={[...(agents.length === 0 ? [{ value: "", label: "No agent found" }] : []), ...agents.map((a) => ({ value: a.id, label: a.name }))]} className="field" disabled={agents.length === 0} />
         <button className="btn" disabled={!agent || !text.trim()} title={text.trim() ? undefined : "Write a note first"} onClick={hand}>
           Hand to agent…
         </button>

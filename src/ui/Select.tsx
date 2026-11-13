@@ -3,7 +3,7 @@
 // Escape and stacking are layer.ts's: an open list inside a dialog closes alone and leaves the dialog up.
 // Base UI is read on demand (part.ts). Until it is, the closed control is drawn here as the same button Base UI draws,
 // and the first press or arrow key reads it and opens the list; a select drawn after that is Base UI's from the start.
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useLayer } from "./layer";
 import { baseReady, useBase } from "./part";
 import "./ui.css";
@@ -23,6 +23,8 @@ export type SelectProps = {
   id?: string;
   /** The closed control's own style (a width rule a native select had at its call site). */
   style?: CSSProperties;
+  /** The closed control, for a caller that moves focus to it. */
+  controlRef?: RefObject<HTMLButtonElement | null>;
   "data-testid"?: string;
 };
 
@@ -46,12 +48,13 @@ const chevron = (
   </span>
 );
 
-export function Select({ value, onChange, options, label, className = "field", disabled, title, id, ...p }: SelectProps) {
+export function Select({ value, onChange, options, label, className = "field", disabled, title, id, controlRef, ...p }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [woke, setWoke] = useState(baseReady);
   const base = useBase(woke);
   const popup = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const own = useRef<HTMLButtonElement>(null);
+  const trigger = controlRef ?? own;
   useLayer(open, () => setOpen(false), popup);
   // The list opened by the first press replaced the button that was pressed, so Base UI cannot hand focus back to
   // it: on close, focus that fell to the page goes to the control.
