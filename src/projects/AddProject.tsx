@@ -4,13 +4,13 @@
 // PROJ-003: the clone step fills in the target folder from the address, shows Git's progress,
 // can be cancelled, and shows Git's own words when it fails. PROJ-004: the new-project step
 // takes a name and a parent folder (the home folder to start with).
-import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { FolderPlus, Plus } from "../chrome/icons";
 import { GLOSSARY } from "../glossary";
 import type { Project } from "./model";
+import { Dialog } from "../ui/Dialog";
 
 export type Step = "choose" | "clone" | "new";
 const CHOICES = 3;
@@ -64,7 +64,8 @@ export function AddProjectView({ step, onStep, onBrowse, onByPath, onClose, api,
   const busy = f.ticket !== "";
   const [asking, setAsking] = useState(false);
   useEffect(() => {
-    // Focus stays inside the dialog on every step, so Escape always reaches it.
+    // Focus stays inside the dialog on every later step (the first one is the Dialog's initialFocus: the box is drawn
+    // after this runs on mount).
     if (step === "choose") choices.current[0]?.focus();
     else if (!box.current?.contains(document.activeElement)) box.current?.focus();
   }, [step]);
@@ -112,130 +113,124 @@ export function AddProjectView({ step, onStep, onBrowse, onByPath, onClose, api,
     else leave();
   };
   return (
-    <div className="ask-backdrop" onMouseDown={close}>
-      <div
-        ref={box}
-        tabIndex={-1}
-        className="ask add-project"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Add project"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          trapTab(e);
-          if (e.key === "Escape") {
-            e.preventDefault();
-            close();
-            return;
-          }
-          if (step !== "choose") return;
-          const at = choices.current.findIndex((b) => b === e.target);
-          const next = at < 0 ? null : nextChoice(e.key, at);
-          if (next !== null) {
-            e.preventDefault();
-            choices.current[next]?.focus();
-          }
-        }}
-      >
-        <h2 className="ask-title">{step === "clone" ? GLOSSARY.clone.plain : step === "new" ? "New project" : "Add project"}</h2>
-        {step === "choose" && (
-          <>
-            <button ref={(b) => { choices.current[0] = b; }} className="add-choice primary" title={GLOSSARY.clone.hover} onClick={() => onStep("clone")}>
-              <span className="add-choice-name">{GLOSSARY.clone.plain}</span>
-              <span className="add-choice-hint">Copy a project from GitHub or another Git host</span>
+    <Dialog
+      onClose={close}
+      label="Add project"
+      viewport="ask-backdrop"
+      initialFocus={() => (step === "choose" ? choices.current[0] : box.current)}
+      boxRef={box}
+      tabIndex={-1}
+      className="ask add-project"
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        // Keys stop at the box. Escape is the Dialog's (it lands in close, as a click outside does).
+        e.stopPropagation();
+        if (step !== "choose") return;
+        const at = choices.current.findIndex((b) => b === e.target);
+        const next = at < 0 ? null : nextChoice(e.key, at);
+        if (next !== null) {
+          e.preventDefault();
+          choices.current[next]?.focus();
+        }
+      }}
+    >
+      <h2 className="ask-title">{step === "clone" ? GLOSSARY.clone.plain : step === "new" ? "New project" : "Add project"}</h2>
+      {step === "choose" && (
+        <>
+          <button ref={(b) => { choices.current[0] = b; }} className="add-choice primary" title={GLOSSARY.clone.hover} onClick={() => onStep("clone")}>
+            <span className="add-choice-name">{GLOSSARY.clone.plain}</span>
+            <span className="add-choice-hint">Copy a project from GitHub or another Git host</span>
+          </button>
+          <div className="add-more">
+            <button ref={(b) => { choices.current[1] = b; }} className="add-choice" onClick={onBrowse}>
+              <FolderPlus size={13} />
+              <span className="add-choice-name">Open a folder…</span>
             </button>
-            <div className="add-more">
-              <button ref={(b) => { choices.current[1] = b; }} className="add-choice" onClick={onBrowse}>
-                <FolderPlus size={13} />
-                <span className="add-choice-name">Open a folder…</span>
-              </button>
-              <button ref={(b) => { choices.current[2] = b; }} className="add-choice" onClick={() => onStep("new")}>
-                <Plus size={13} />
-                <span className="add-choice-name">New project</span>
-              </button>
-            </div>
-            {onByPath && (
-              <button className="link" data-add-by-path data-testid="add-project-by-path" onClick={onByPath}>
-                Type a path, or change the workspaces folder…
-              </button>
-            )}
-            <div className="btn-row">
-              <button className="btn" data-add-close onClick={close}>
-                Close
-              </button>
-            </div>
-          </>
-        )}
-        {step === "clone" && (
-          <form className="add-form" onSubmit={(e) => { e.preventDefault(); if (!busy && f.url.trim() && f.dest.trim()) copy(); }}>
-            <label className="add-label">
-              Web address
-              <input aria-label="web address of the project" title="The Git repository URL" className="field" placeholder="https://github.com/owner/project.git" value={f.url} disabled={busy} onChange={(e) => set({ url: e.target.value, error: "" })} autoFocus />
-            </label>
-            <label className="add-label">
-              Folder
-              <input aria-label="folder the copy goes in" className="field" value={f.dest} disabled={busy} onChange={(e) => set({ dest: e.target.value, destTyped: true, error: "" })} />
-            </label>
-            <button type="submit" hidden />
-          </form>
-        )}
-        {step === "new" && (
-          <form className="add-form" onSubmit={(e) => { e.preventDefault(); if (!busy && f.name.trim() && !f.problem) create(); }}>
-            <label className="add-label">
-              Name
-              <input aria-label="project name" className="field" placeholder="my-project" value={f.name} disabled={busy} onChange={(e) => set({ name: e.target.value, error: "" })} autoFocus />
-            </label>
-            <label className="add-label">
-              Goes in
-              <input aria-label="folder the project goes in" className="field" value={f.parent} disabled={busy} onChange={(e) => set({ parent: e.target.value, error: "" })} />
-            </label>
-            <button type="submit" hidden />
-            {f.problem && <p className="add-error" role="alert">{f.problem}</p>}
-          </form>
-        )}
-        {busy && <p className="ask-body add-progress" aria-live="polite">{f.progress}</p>}
-        {f.error && <p className="add-error" role="alert">{f.error}</p>}
-        {asking && busy && (
-          <div role="alertdialog" aria-label="Stop copying?" data-add-stop-ask>
-            <p className="ask-body">The copy is not finished. Stop it and close? Nothing half copied is kept.</p>
-            <div className="btn-row">
-              <button className="btn" autoFocus onClick={() => setAsking(false)}>
-                Keep copying
-              </button>
-              <button className="btn danger" onClick={leave}>
-                Stop and close
-              </button>
-            </div>
+            <button ref={(b) => { choices.current[2] = b; }} className="add-choice" onClick={() => onStep("new")}>
+              <Plus size={13} />
+              <span className="add-choice-name">New project</span>
+            </button>
           </div>
-        )}
-        {step !== "choose" && (
+          {onByPath && (
+            <button className="link" data-add-by-path data-testid="add-project-by-path" onClick={onByPath}>
+              Type a path, or change the workspaces folder…
+            </button>
+          )}
           <div className="btn-row">
-            <button className="btn" onClick={() => onStep("choose")} disabled={busy}>
-              Back
+            <button className="btn" data-add-close onClick={close}>
+              Close
             </button>
-            <button className="btn" onClick={onBrowse} disabled={busy}>
-              Open a folder…
-            </button>
-            {step === "clone" && busy && (
-              <button className="btn" onClick={() => api?.cancel(f.ticket)}>
-                Cancel
-              </button>
-            )}
-            {step === "clone" && !busy && (
-              <button className="btn primary" disabled={!f.url.trim() || !f.dest.trim()} title={GLOSSARY.clone.hover} onClick={copy}>
-                Copy
-              </button>
-            )}
-            {step === "new" && (
-              <button className="btn primary" disabled={busy || !f.name.trim() || f.problem !== ""} onClick={create}>
-                Create
-              </button>
-            )}
           </div>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+      {step === "clone" && (
+        <form className="add-form" onSubmit={(e) => { e.preventDefault(); if (!busy && f.url.trim() && f.dest.trim()) copy(); }}>
+          <label className="add-label">
+            Web address
+            <input aria-label="web address of the project" title="The Git repository URL" className="field" placeholder="https://github.com/owner/project.git" value={f.url} disabled={busy} onChange={(e) => set({ url: e.target.value, error: "" })} autoFocus />
+          </label>
+          <label className="add-label">
+            Folder
+            <input aria-label="folder the copy goes in" className="field" value={f.dest} disabled={busy} onChange={(e) => set({ dest: e.target.value, destTyped: true, error: "" })} />
+          </label>
+          <button type="submit" hidden />
+        </form>
+      )}
+      {step === "new" && (
+        <form className="add-form" onSubmit={(e) => { e.preventDefault(); if (!busy && f.name.trim() && !f.problem) create(); }}>
+          <label className="add-label">
+            Name
+            <input aria-label="project name" className="field" placeholder="my-project" value={f.name} disabled={busy} onChange={(e) => set({ name: e.target.value, error: "" })} autoFocus />
+          </label>
+          <label className="add-label">
+            Goes in
+            <input aria-label="folder the project goes in" className="field" value={f.parent} disabled={busy} onChange={(e) => set({ parent: e.target.value, error: "" })} />
+          </label>
+          <button type="submit" hidden />
+          {f.problem && <p className="add-error" role="alert">{f.problem}</p>}
+        </form>
+      )}
+      {busy && <p className="ask-body add-progress" aria-live="polite">{f.progress}</p>}
+      {f.error && <p className="add-error" role="alert">{f.error}</p>}
+      {asking && busy && (
+        <div role="alertdialog" aria-label="Stop copying?" data-add-stop-ask>
+          <p className="ask-body">The copy is not finished. Stop it and close? Nothing half copied is kept.</p>
+          <div className="btn-row">
+            <button className="btn" autoFocus onClick={() => setAsking(false)}>
+              Keep copying
+            </button>
+            <button className="btn danger" onClick={leave}>
+              Stop and close
+            </button>
+          </div>
+        </div>
+      )}
+      {step !== "choose" && (
+        <div className="btn-row">
+          <button className="btn" onClick={() => onStep("choose")} disabled={busy}>
+            Back
+          </button>
+          <button className="btn" onClick={onBrowse} disabled={busy}>
+            Open a folder…
+          </button>
+          {step === "clone" && busy && (
+            <button className="btn" onClick={() => api?.cancel(f.ticket)}>
+              Cancel
+            </button>
+          )}
+          {step === "clone" && !busy && (
+            <button className="btn primary" disabled={!f.url.trim() || !f.dest.trim()} title={GLOSSARY.clone.hover} onClick={copy}>
+              Copy
+            </button>
+          )}
+          {step === "new" && (
+            <button className="btn primary" disabled={busy || !f.name.trim() || f.problem !== ""} onClick={create}>
+              Create
+            </button>
+          )}
+        </div>
+      )}
+    </Dialog>
   );
 }
 

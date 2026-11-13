@@ -2,13 +2,13 @@
 // and add them as one group or as separate projects. With nothing ticked the folder itself can be
 // opened as a folder project. The scan and the import run in Rust (repo_scan.rs); the shape of
 // the list lives in scanView.ts.
-import { useDialogFocus } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useRef, useState } from "react";
 import { begin, importLine, scanToStop, setAll, stopNow, summary, take, toggle, type ScanEvent, type ScanState } from "./scanView";
 import type { Project } from "./model";
+import { Dialog } from "../ui/Dialog";
 
 type Props = { root: string; onClose: () => void; onDone: (message: string, project?: Project) => void; onProblem: (err: unknown) => void };
 
@@ -25,7 +25,7 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
   // T-738: focus on the folder field, Escape from anywhere, Tab kept inside, focus back to the opener on close.
   const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
-  useDialogFocus(box, onClose, () => field.current);
+  // A src/ui Dialog (below): the folder field takes focus, Tab stays inside, Escape and a click outside close it.
   live.current = scan;
 
   useEffect(() => {
@@ -103,78 +103,86 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
 
   const nothing = scan !== null && scan.ticked.length === 0;
   return (
-    <div className="ask-backdrop" onMouseDown={onClose}>
-      <div className="ask scan-repos" role="dialog" aria-modal="true" ref={box} tabIndex={-1} aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-        <h2 className="ask-title">Look for repositories</h2>
-        <div className="btn-row">
-          <input className="field" aria-label="folder to scan" ref={field} value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />
-          <button className="btn" onClick={() => void browse()} disabled={scan?.running}>
-            Browse
+    <Dialog
+      onClose={onClose}
+      label="Scan a folder for repositories"
+      viewport="ask-backdrop"
+      initialFocus={field}
+      className="ask scan-repos"
+      boxRef={box}
+      tabIndex={-1}
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <h2 className="ask-title">Look for repositories</h2>
+      <div className="btn-row">
+        <input className="field" aria-label="folder to scan" ref={field} value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />
+        <button className="btn" onClick={() => void browse()} disabled={scan?.running}>
+          Browse
+        </button>
+        {scan?.running ? (
+          <button className="btn" data-scan-stop onClick={stop}>
+            Stop
           </button>
-          {scan?.running ? (
-            <button className="btn" data-scan-stop onClick={stop}>
-              Stop
-            </button>
-          ) : (
-            <button className="btn primary" data-scan-start onClick={() => void start()} disabled={!root.trim()}>
-              {scan ? "Scan again" : "Scan"}
-            </button>
-          )}
-        </div>
-        {scan && (
-          <>
-            <p className="ask-body" role="status">
-              {summary(scan)}
-            </p>
-            <ul className="first-files" aria-label="repositories found">
-              {scan.found.map((f, i) => (
-                <li key={f.path}>
-                  <label title={f.linked ? `Found through the linked worktree ${f.linked}` : f.path}>
-                    <input type="checkbox" checked={scan.ticked.includes(f.path)} disabled={f.bare} onChange={() => setScan(toggle(scan, f.path))} />
-                    <span className="first-path">{labels[i] ?? f.name}</span>
-                    {f.bare && <span className="first-secret">bare repository: nothing to open</span>}
-                    {f.linked && <span className="first-secret">main checkout of a linked worktree</span>}
-                  </label>
-                </li>
-              ))}
-              {scan.found.length === 0 && !scan.running && <li className="first-none">No repositories were found here.</li>}
-            </ul>
-            {scan.found.length > 0 && (
-              <div className="btn-row">
-                <button className="btn" onClick={() => setScan(setAll(scan, true))}>
-                  Tick all
-                </button>
-                <button className="btn" onClick={() => setScan(setAll(scan, false))}>
-                  Untick all
-                </button>
-              </div>
-            )}
-            <label className="conn-switch">
-              <input type="radio" name="scan-how" checked={grouped} onChange={() => setGrouped(true)} />
-              <span>One group</span>
-            </label>
-            {grouped && <input className="field" aria-label="group name" placeholder={lastSegment(root)} value={name} onChange={(e) => setName(e.target.value)} />}
-            <label className="conn-switch">
-              <input type="radio" name="scan-how" checked={!grouped} onChange={() => setGrouped(false)} />
-              <span>Separate projects</span>
-            </label>
-            <p className="ask-body">{importLine(scan, grouped)}</p>
-          </>
+        ) : (
+          <button className="btn primary" data-scan-start onClick={() => void start()} disabled={!root.trim()}>
+            {scan ? "Scan again" : "Scan"}
+          </button>
         )}
-        <div className="btn-row">
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          {scan && nothing && !scan.running && (
-            <button className="btn" data-scan-folder disabled={busy} onClick={() => void openFolder()} title="Add the scanned folder itself as a project, without Git">
-              Open {lastSegment(root)} as a folder
-            </button>
-          )}
-          <button className="btn primary" data-scan-import disabled={busy || !scan || nothing} onClick={() => void importTicked()}>
-            Import
-          </button>
-        </div>
       </div>
-    </div>
+      {scan && (
+        <>
+          <p className="ask-body" role="status">
+            {summary(scan)}
+          </p>
+          <ul className="first-files" aria-label="repositories found">
+            {scan.found.map((f, i) => (
+              <li key={f.path}>
+                <label title={f.linked ? `Found through the linked worktree ${f.linked}` : f.path}>
+                  <input type="checkbox" checked={scan.ticked.includes(f.path)} disabled={f.bare} onChange={() => setScan(toggle(scan, f.path))} />
+                  <span className="first-path">{labels[i] ?? f.name}</span>
+                  {f.bare && <span className="first-secret">bare repository: nothing to open</span>}
+                  {f.linked && <span className="first-secret">main checkout of a linked worktree</span>}
+                </label>
+              </li>
+            ))}
+            {scan.found.length === 0 && !scan.running && <li className="first-none">No repositories were found here.</li>}
+          </ul>
+          {scan.found.length > 0 && (
+            <div className="btn-row">
+              <button className="btn" onClick={() => setScan(setAll(scan, true))}>
+                Tick all
+              </button>
+              <button className="btn" onClick={() => setScan(setAll(scan, false))}>
+                Untick all
+              </button>
+            </div>
+          )}
+          <label className="conn-switch">
+            <input type="radio" name="scan-how" checked={grouped} onChange={() => setGrouped(true)} />
+            <span>One group</span>
+          </label>
+          {grouped && <input className="field" aria-label="group name" placeholder={lastSegment(root)} value={name} onChange={(e) => setName(e.target.value)} />}
+          <label className="conn-switch">
+            <input type="radio" name="scan-how" checked={!grouped} onChange={() => setGrouped(false)} />
+            <span>Separate projects</span>
+          </label>
+          <p className="ask-body">{importLine(scan, grouped)}</p>
+        </>
+      )}
+      <div className="btn-row">
+        <button className="btn" onClick={onClose}>
+          Cancel
+        </button>
+        {scan && nothing && !scan.running && (
+          <button className="btn" data-scan-folder disabled={busy} onClick={() => void openFolder()} title="Add the scanned folder itself as a project, without Git">
+            Open {lastSegment(root)} as a folder
+          </button>
+        )}
+        <button className="btn primary" data-scan-import disabled={busy || !scan || nothing} onClick={() => void importTicked()}>
+          Import
+        </button>
+      </div>
+    </Dialog>
   );
 }

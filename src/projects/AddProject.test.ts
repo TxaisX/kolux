@@ -1,9 +1,12 @@
 // PROJ-002: the Add Project dialog's first step and its keys. PROJ-003 and PROJ-004: the clone
 // and new-project steps in each of their states.
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { AddProjectView, nextChoice, type Form, type Step } from "./AddProject";
+
+// The dialog is a src/ui Dialog, drawn only on a real DOM; what it shows is read here through a stand-in.
+vi.mock("../ui/Dialog", async () => (await import("../tasks/dialogStandIn")).dialogModule);
 
 const noop = () => {};
 const view = (step: Step, start?: Partial<Form>) => renderToString(createElement(AddProjectView, { step, onStep: noop, onBrowse: noop, onClose: noop, start }));

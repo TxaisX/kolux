@@ -5,15 +5,15 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { REPORT_CRASH_EVENT } from "../chrome/chromeItems";
-import { useDialogFocus } from "../chrome/dialogFocus";
-import { dialogLead, issueUrl, openFromHelp, openPending, type Crash, type Dialog } from "./model";
+import { dialogLead, issueUrl, openFromHelp, openPending, type Crash, type Dialog as CrashDialog } from "./model";
+import { Dialog } from "../ui/Dialog";
 
 async function copy(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
 export default function CrashReportDialog() {
-  const [d, setD] = useState<Dialog>(null);
+  const [d, setD] = useState<CrashDialog>(null);
   const [details, setDetails] = useState("");
   const [note, setNote] = useState("");
 
@@ -79,42 +79,38 @@ export default function CrashReportDialog() {
   );
 }
 
-/** The report itself. Not now has the focus when it opens, Tab stays inside, Escape closes it from anywhere and focus
- *  goes back where it was (the shared dialog focus); Copy Details waits for the details to load. */
+/** The report itself, a src/ui Dialog. Not now has the focus when it opens, Tab stays inside, Escape closes it from
+ *  anywhere and focus goes back where it was; Copy Details waits for the details to load. */
 export function CrashPanel({ lead, details, onClose, onAttach, onCopy, onOpen }: { lead: string; details: string; onClose: () => void; onAttach: () => void; onCopy: () => void; onOpen: () => void }) {
-  const box = useRef<HTMLDivElement>(null);
   const notNow = useRef<HTMLButtonElement>(null);
-  useDialogFocus(box, onClose, () => notNow.current);
   return (
-      <div className="scrim" onMouseDown={() => onClose()}>
-        <div
-          ref={box}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Report a crash"
-          onMouseDown={(e) => e.stopPropagation()}
-          style={{ width: "min(640px, calc(100vw - 48px))", display: "flex", flexDirection: "column", gap: 10, padding: "16px 18px", background: "var(--pane-bg)", border: "1px solid var(--line-focus)", borderRadius: 12, color: "var(--fg-row)" }}
-        >
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Report a crash</h2>
-          <p className="conn-detail" style={{ margin: 0 }}>
-            {lead}
-          </p>
-          <textarea readOnly value={details} rows={8} aria-label="Crash details" style={{ width: "100%", boxSizing: "border-box", fontFamily: "var(--mono, monospace)", fontSize: 12 }} />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <button className="btn" onClick={onAttach}>
-              Attach recent diagnostic logs
-            </button>
-            <button className="btn" onClick={onCopy} disabled={!details}>
-              Copy Details
-            </button>
-            <button ref={notNow} className="btn" onClick={() => onClose()}>
-              Not now
-            </button>
-            <button className="btn" onClick={onOpen} disabled={!details}>
-              Open on GitHub
-            </button>
-          </div>
-        </div>
+    <Dialog
+      onClose={() => onClose()}
+      label="Report a crash"
+      viewport="scrim"
+      initialFocus={notNow}
+      onMouseDown={(e) => e.stopPropagation()}
+      style={{ width: "min(640px, calc(100vw - 48px))", display: "flex", flexDirection: "column", gap: 10, padding: "16px 18px", background: "var(--pane-bg)", border: "1px solid var(--line-focus)", borderRadius: 12, color: "var(--fg-row)" }}
+    >
+      <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Report a crash</h2>
+      <p className="conn-detail" style={{ margin: 0 }}>
+        {lead}
+      </p>
+      <textarea readOnly value={details} rows={8} aria-label="Crash details" style={{ width: "100%", boxSizing: "border-box", fontFamily: "var(--mono, monospace)", fontSize: 12 }} />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <button className="btn" onClick={onAttach}>
+          Attach recent diagnostic logs
+        </button>
+        <button className="btn" onClick={onCopy} disabled={!details}>
+          Copy Details
+        </button>
+        <button ref={notNow} className="btn" onClick={() => onClose()}>
+          Not now
+        </button>
+        <button className="btn" onClick={onOpen} disabled={!details}>
+          Open on GitHub
+        </button>
       </div>
+    </Dialog>
   );
 }

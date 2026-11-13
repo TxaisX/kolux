@@ -1,9 +1,11 @@
-// APP-041 box 1 (the copy half) and APP-070 box 3 on the real Settings > General cards and the real feedback box.
+// @vitest-environment happy-dom
+// APP-041 box 1 (the copy half) and APP-070 box 3 on the real Settings > General cards and the real feedback box (a src/ui
+// Dialog), on a real DOM.
 // The Tauri boundary is a recorder. The masking itself is Rust (diag.rs; cargo test --lib diag:: in the evidence);
 // whether the real browser opens is LIVE.
 import { createElement, Fragment } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, typeInto, until, withText } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, typeInto, until, withText } from "../../tasks/realDom";
 import { OUTBOUND } from "../outbound";
 import { FEEDBACK_REPO } from "../privacy";
 
@@ -25,18 +27,6 @@ let root: FakeNode;
 const fetchSpy = vi.fn();
 beforeEach(() => {
   doc = installDom().doc as FakeDocument;
-  const bus = new Map<string, Set<(e: Event) => void>>();
-  Object.assign((globalThis as unknown as { window: object }).window, {
-    setTimeout,
-    clearTimeout,
-    addEventListener: (t: string, f: (e: Event) => void) => void (bus.get(t) ?? bus.set(t, new Set()).get(t)!).add(f),
-    removeEventListener: (t: string, f: (e: Event) => void) => void bus.get(t)?.delete(f),
-    dispatchEvent: (e: Event) => (bus.get(e.type)?.forEach((f) => f(e)), true),
-  });
-  Object.defineProperty(globalThis, "navigator", { value: { platform: "Win32", userAgent: "node", clipboard: { writeText: vi.fn(() => Promise.resolve()) } }, configurable: true });
-  const proto = (doc.createElement("div") as FakeNode).constructor.prototype as Record<string, unknown>;
-  proto.setSelectionRange = () => {};
-  proto.getAnimations = () => [];
   calls.list = [];
   fetchSpy.mockClear();
   vi.stubGlobal("fetch", fetchSpy);

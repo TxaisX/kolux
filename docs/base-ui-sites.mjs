@@ -30,8 +30,10 @@ const REFERENCE = [
   ["Tooltip", /\btitle=[{"]|<Tip\b/],
 ];
 // Elements that carry a dialog role but are not popups, so no src/ui wrapper fits them: a card in the chat stream (its
-// Escape interrupts the agent, reach.test.ts calls them exempt) and a question drawn in place inside the surface that
-// asked it, which a modal Base UI dialog would lift out of its row. File and the label text on the line or the next two.
+// Escape interrupts the agent, reach.test.ts calls them exempt), a question or form drawn in place inside the surface
+// that asked it, which a modal Base UI dialog would lift out of its row, and a card docked in a corner of the window
+// that is not opened over anything (its Escape folds or dismisses it). File and the label text on the line or the next
+// two.
 const NOT_POPUPS = [
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "a card in the chat"],
   ["chat/QuestionCard.tsx", "Question from the agent", "a card in the chat"],
@@ -43,6 +45,13 @@ const NOT_POPUPS = [
   ["status/ResourceManager.tsx", "bulkQ.label", "asked in place, in the Resource Manager"],
   ["terminal/BackgroundSessions.tsx", "`End ${what}`", "asked in place, in the Resource Manager"],
   ["recovery/RecoveryMount.tsx", "Graphics", "a notice strip in the window"],
+  ["projects/CleanupDialog.tsx", "`Clean up workspaces in ${project.name}`", "a form drawn in place in the sidebar (.sb-form)"],
+  ["scm/PrStart.tsx", "Create pull request", "a form drawn in place in Source Control (.scm-ask)"],
+  ["scm/SourceControlPanel.tsx", "Create pull request", "a form drawn in place in Source Control (.scm-ask)"],
+  ["scm/SourceControlPanel.tsx", "Resolve conflicts with an agent", "a form drawn in place in Source Control (.scm-ask)"],
+  ["update/UpdateCenterView.tsx", "Updates", "the update card, docked in a corner; Escape folds it"],
+  ["onboarding/Guides.tsx", "\"Tip\"", "a tip card docked in a corner, aria-modal false"],
+  ["onboarding/Guides.tsx", "Agent status hooks", "a tip card docked in a corner, aria-modal false"],
 ];
 
 const files = [];

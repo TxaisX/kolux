@@ -8,6 +8,9 @@ import { ClaudeCardView, claudeDisconnect } from "./SettingsPage";
 import type { KeyStatus } from "./claudeKey";
 import { PENDING_MS, settleWithin } from "./pending";
 
+// The key dialog is a src/ui Dialog, drawn only on a real DOM; what it shows is read here through a stand-in.
+vi.mock("../ui/Dialog", async () => (await import("../tasks/dialogStandIn")).dialogModule);
+
 const off: GrokView = { connection: "none", keySaved: false, signingIn: null, inBrowser: false, deviceLink: null, deviceCode: null, attention: null };
 const html = (view: GrokView, pending: "connect" | null = null) => renderToString(createElement(GrokCardView, { view, pending, onAction: () => {} }));
 const refused = { reason: "sign-in-refused" as const, message: "Grok's sign-in ended without signing in: expired", resetsAt: null };
