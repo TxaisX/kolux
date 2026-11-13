@@ -1,7 +1,11 @@
 # TEMPORARY (PR #253), deleted before the PR is finished. On GitHub's windows-latest runner:
-# counts console-host (conhost.exe) starts during one full `cargo test` on wave-1 and on this
-# branch, and re-runs each test that failed there alone, on both commits, to tell a flaky or
-# pre-existing failure from one this branch caused. Read-only: no secrets, nothing published.
+# - measure: counts console-host (conhost.exe) starts during one full `cargo test` on wave-1 and on
+#   this branch (WMI process-start trace, cross-checked against Security event 4688).
+# - repeat: one test failed once in a full cargo test on the owner's PC and its name was not kept.
+#   This repeats the likely candidates on wave-1, on this branch before its activity.rs timing fix
+#   and on this branch's head, interleaved on one runner: each test alone (quiet, then with every
+#   core kept busy), and the activity and status tests together (they share two locks, as in the
+#   full run). Read-only: no secrets, nothing published.
 name: tmp console hosts
 
 on:
@@ -14,7 +18,7 @@ jobs:
   measure:
     name: Console hosts on ${{ matrix.side }}
     runs-on: windows-latest
-    timeout-minutes: 170
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -23,10 +27,6 @@ jobs:
       SIDE: ${{ matrix.side }}
       WAVE1: 82f3643e7635cece4f9220c49b7d0101174cfa67
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      # Tests to repeat even when they pass in the full run: "<cargo target args>|<test name>;...".
-      EXTRA_TESTS: ""
-      ALONE_REPS: "20"
-      FULL_REPS: "3"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,9 +51,10 @@ jobs:
         shell: pwsh
         run: |
           . ../scripts/test-env.ps1
+          rustc --version
           cargo test --locked --no-run
       - name: Full cargo test with a conhost.exe watch
-        timeout-minutes: 60
+        timeout-minutes: 75
         working-directory: src-tauri
         shell: pwsh
         run: |
@@ -98,18 +99,20 @@ jobs:
           while (-not (Test-Path $ready) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 200 }
           if (-not (Test-Path $ready)) { 'RESULT the WMI watcher did not start; counts below are empty' }
           Start-Sleep -Seconds 5
-          $i0 = [DateTime]::UtcNow; Start-Sleep -Seconds 60; $i1 = [DateTime]::UtcNow
+          # PowerShell names are case-blind: the times and their FILETIME ticks need different names.
+          $idleFrom = [DateTime]::UtcNow; Start-Sleep -Seconds 60; $idleTo = [DateTime]::UtcNow
           . ../scripts/test-env.ps1
-          $t0 = [DateTime]::UtcNow
+          $runFrom = [DateTime]::UtcNow
           cargo test --locked --no-fail-fast 2>&1 | Tee-Object -FilePath $log
           $rc = $LASTEXITCODE
-          $t1 = [DateTime]::UtcNow
+          $runTo = [DateTime]::UtcNow
           New-Item -ItemType File -Path $stop | Out-Null
           $null = $wp.WaitForExit(300000)
           $rows = if (Test-Path $csv) { @(Import-Csv $csv) } else { @() }
-          $I0 = [uint64]$i0.ToFileTimeUtc(); $I1 = [uint64]$i1.ToFileTimeUtc(); $T0 = [uint64]$t0.ToFileTimeUtc(); $T1 = [uint64]$t1.ToFileTimeUtc()
-          $idle = @($rows | Where-Object { $_.name -ieq 'conhost.exe' -and [uint64]$_.ticks -ge $I0 -and [uint64]$_.ticks -lt $I1 }).Count
-          $win = $rows | Where-Object { [uint64]$_.ticks -ge $T0 -and [uint64]$_.ticks -le $T1 } | Sort-Object { [uint64]$_.ticks }
+          $idleA = [uint64]$idleFrom.ToFileTimeUtc(); $idleB = [uint64]$idleTo.ToFileTimeUtc()
+          $runA = [uint64]$runFrom.ToFileTimeUtc(); $runB = [uint64]$runTo.ToFileTimeUtc()
+          $idle = @($rows | Where-Object { $_.name -ieq 'conhost.exe' -and [uint64]$_.ticks -ge $idleA -and [uint64]$_.ticks -lt $idleB }).Count
+          $win = $rows | Where-Object { [uint64]$_.ticks -ge $runA -and [uint64]$_.ticks -le $runB } | Sort-Object { [uint64]$_.ticks }
           # Descendants of this step's shell (cargo, the test binaries and every child they start), in
           # start order; a pid reused by an unrelated process leaves the tree.
           $tree = [System.Collections.Generic.HashSet[int]]::new(); [void]$tree.Add($PID)
@@ -135,15 +138,15 @@ jobs:
             $names[$p] = $r.name
           }
           try {
-            $from = $t0.ToString('yyyy-MM-ddTHH:mm:ss.fffZ'); $to = $t1.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+            $from = $runFrom.ToString('yyyy-MM-ddTHH:mm:ss.fffZ'); $to = $runTo.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
             $xp = "*[System[(EventID=4688) and TimeCreated[@SystemTime>='$from' and @SystemTime<='$to']]]"
             $ev = @(Get-WinEvent -LogName Security -FilterXPath $xp -ErrorAction Stop)
-            $audit = "$(@($ev | Where-Object { "$($_.Properties[5].Value)" -like '*\conhost.exe' }).Count) conhost.exe of $($ev.Count) process creations"
+            $audit = "$(@($ev | Where-Object { "$($_.Properties[5].Value)" -like '*\conhost.exe' }).Count) conhost.exe and $(@($ev | Where-Object { "$($_.Properties[5].Value)" -like '*\git.exe' }).Count) git.exe of $($ev.Count) process creations"
           } catch { $audit = "not available: $($_.Exception.Message)" }
           $tests = Select-String -Path $log -Pattern '^test result:' | ForEach-Object { $_.Line }
           $summary = @(
-            "RESULT side=$env:SIDE commit=$(git rev-parse HEAD) date=$($t0.ToString('yyyy-MM-dd'))",
-            "RESULT cargo test exit $rc, wall $([int]($t1 - $t0).TotalSeconds) s",
+            "RESULT side=$env:SIDE commit=$(git rev-parse HEAD) date=$($runFrom.ToString('yyyy-MM-dd')) from=$($runFrom.ToString('HH:mm:ss'))Z to=$($runTo.ToString('HH:mm:ss'))Z",
+            "RESULT cargo test exit $rc, wall $([int]($runTo - $runFrom).TotalSeconds) s",
             "RESULT conhost.exe starts during the run (WMI): $con total, $conT from the cargo test process tree",
             "RESULT conhost.exe starts in a 60 s idle sample before the run: $idle",
             "RESULT process starts during the run: $all total, $allT in the cargo test tree; git.exe $git total, $gitT in the tree",
@@ -152,75 +155,153 @@ jobs:
           ) + ($tests | ForEach-Object { "RESULT $_" })
           $summary | Out-Host
           $summary | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
-          # Failing tests by target, for the repeat step.
-          $cur = $null; $failNames = @(); $inFail = $false; $failed = [System.Collections.Generic.List[string]]::new()
-          foreach ($line in Get-Content $log) {
-            if ($line -match '^\s+Running (unittests )?(\S+) \(') {
-              $src = $Matches[2] -replace '\\', '/'
-              $cur = if ($src -eq 'src/lib.rs') { '--lib' } elseif ($src -match '^tests/(.+)\.rs$') { "--test $($Matches[1])" } elseif ($src -match '^src/bin/(.+)\.rs$') { "--bin $($Matches[1])" } elseif ($src -eq 'src/main.rs') { '--bin kolux' } else { $null }
-            }
-            if ($line -match '^\s*Doc-tests') { $cur = $null }
-            if ($line -eq 'failures:') { $inFail = $true; $failNames = @() }
-            elseif ($inFail -and $line -match '^    (\S+)$') { $failNames += $Matches[1] }
-            elseif ($line -match '^test result:') {
-              if ($cur) { foreach ($n in $failNames) { $failed.Add("$cur|$n") } }
-              $inFail = $false; $failNames = @()
-            }
-          }
+          $failed = @(Select-String -Path $log -Pattern '^test (\S+) \.\.\. FAILED' | ForEach-Object { $_.Matches[0].Groups[1].Value })
           "RESULT failing tests: $(if ($failed.Count) { $failed -join '; ' } else { 'none' })" | Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY
-          ($failed -join ';') | Set-Content -Path (Join-Path $tmp 'failed.txt')
-      - name: Repeat each failing test alone and in its full binary, on both commits
-        if: always()
-        timeout-minutes: 100
-        working-directory: src-tauri
+
+  repeat:
+    name: Candidate tests on three commits
+    runs-on: windows-latest
+    timeout-minutes: 170
+    env:
+      WAVE1: 82f3643e7635cece4f9220c49b7d0101174cfa67
+      PREFIX: 7039a898b779b8812daaa40e46e5535b3cc83022
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - name: Build each commit's lib tests
         shell: pwsh
         run: |
-          $tmp = $env:RUNNER_TEMP
-          $list = @()
-          $ff = Join-Path $tmp 'failed.txt'
-          if (Test-Path $ff) { $list += ((Get-Content $ff -Raw) -split ';') }
-          $list += ($env:EXTRA_TESTS -split ';')
-          $list = @($list | ForEach-Object { "$_".Trim() } | Where-Object { $_ } | Select-Object -Unique | Select-Object -First 12)
-          if (-not $list.Count) { 'RESULT nothing to repeat'; exit 0 }
-          # Many failures (a broken environment rather than one flaky test) get fewer repeats each.
-          $alone = if ($list.Count -gt 4) { 5 } else { [int]$env:ALONE_REPS }
-          . ../scripts/test-env.ps1
-          $mine = git rev-parse HEAD
-          $other = if ($env:SIDE -eq 'wave-1') { $env:HEAD_SHA } else { $env:WAVE1 }
-          $out = [System.Collections.Generic.List[string]]::new()
-          foreach ($sha in @($mine, $other)) {
-            git checkout --detach --force $sha
-            cargo test --locked --no-run 2>&1 | Select-Object -Last 3
-            foreach ($item in $list) {
-              $tgt, $name = $item -split '\|', 2
-              $targs = @($tgt -split ' ')
-              $pass = 0; $fail = 0
-              for ($i = 1; $i -le $alone; $i++) {
-                $o = (& cargo test --locked @targs -- $name --exact 2>&1 | Out-String)
-                if ($LASTEXITCODE -eq 0 -and $o -match 'test result: ok\. 1 passed') { $pass++ } else {
-                  $fail++
-                  if ($fail -le 2) { "---- alone run $i of $name on $sha failed ----"; ($o -split "`n" | Select-Object -Last 60) -join "`n" }
-                }
+          # One worktree per commit (each test binary keeps its own source folder), one shared target
+          # folder for the dependencies; each binary is copied out because all three get the same name.
+          $bin = Join-Path $env:RUNNER_TEMP 'bin'
+          New-Item -ItemType Directory -Force -Path $bin | Out-Null
+          $env:CARGO_TARGET_DIR = Join-Path $env:RUNNER_TEMP 'target'
+          $sides = [ordered]@{ 'wave-1' = $env:WAVE1; 'pre-fix' = $env:PREFIX; 'head' = $env:HEAD_SHA }
+          foreach ($k in $sides.Keys) {
+            $wt = Join-Path $env:RUNNER_TEMP "wt-$k"
+            git worktree add --detach $wt $sides[$k]
+            Push-Location (Join-Path $wt 'src-tauri')
+            rustc --version
+            $exe = $null
+            cargo test --locked --lib --no-run --message-format=json | ForEach-Object {
+              if ($_ -like '{*') {
+                $j = $_ | ConvertFrom-Json
+                if ($j.reason -eq 'compiler-artifact' -and $j.target.name -eq 'kolux_lib' -and $j.profile.test -and $j.executable) { $exe = $j.executable }
               }
-              $out.Add("RESULT alone $name ($tgt) on $sha : $pass passed, $fail failed of $alone")
             }
-            # The whole binary, as the full run had it: a test that only fails under load shows here.
-            foreach ($tgt in @($list | ForEach-Object { ($_ -split '\|', 2)[0] } | Select-Object -Unique)) {
-              $targs = @($tgt -split ' ')
-              $names = @($list | Where-Object { ($_ -split '\|', 2)[0] -eq $tgt } | ForEach-Object { ($_ -split '\|', 2)[1] })
-              $ok = @{}; foreach ($n in $names) { $ok[$n] = 0 }
-              for ($i = 1; $i -le [int]$env:FULL_REPS; $i++) {
-                $o = (& cargo test --locked @targs 2>&1 | Out-String)
-                $out.Add("RESULT full $tgt run $i on $sha : $((($o -split "`n") | Where-Object { $_ -match '^test result:' }) -join ' / ')")
-                foreach ($n in $names) {
-                  if ($o -match "(?m)^test $([regex]::Escape($n)) \.\.\. ok") { $ok[$n]++ } else {
-                    $m = [regex]::Match($o, "(?s)---- $([regex]::Escape($n)) stdout ----.{0,3000}")
-                    if ($m.Success) { "---- full $tgt run $i, $n on $sha failed ----"; $m.Value }
+            if (-not $exe) { throw "no lib test binary for $k" }
+            Copy-Item $exe (Join-Path $bin "kolux_lib-$k.exe")
+            "BUILT $k $($sides[$k]) from $exe"
+            Pop-Location
+          }
+      - name: Repeat the candidates
+        timeout-minutes: 100
+        shell: pwsh
+        run: |
+          . ./scripts/test-env.ps1
+          $bin = Join-Path $env:RUNNER_TEMP 'bin'
+          $sides = [ordered]@{ 'wave-1' = $env:WAVE1; 'pre-fix' = $env:PREFIX; 'head' = $env:HEAD_SHA }
+          $T067 = 'activity::tests::t067b_a_lost_service_connection_ends_the_open_turn_of_each_pane_it_carried_once'
+          # name, runs per round: the timing-sensitive test this branch changed, a status test that
+          # flaked under load on Linux, and the tests whose children's console this branch changed.
+          $cands = @(
+            @($T067, 5),
+            @('status::tests::p81_a_deny_settle_sets_a_waiting_child_aside_and_both_readings_say_interrupted', 2),
+            @('winproc::tests::t816_command_hides_its_console_on_windows', 1),
+            @('winproc::tests::no_window_shares_an_existing_console_and_hides_a_new_one', 1),
+            @('procs::tests::term045_a_process_running_a_child_has_children_and_the_child_has_none', 1),
+            @('procs::tests::orch058_kill_tree_ends_a_shell_and_the_program_it_started', 1),
+            @('auto_pr::tests::t652_a_command_with_input_outlives_its_limit_or_answers', 1),
+            @('git::tests::git070_a_hung_short_read_is_stopped_at_its_limit_and_the_next_read_runs', 1),
+            @('git::tests::proj027_a_git_that_stalls_is_stopped_with_a_message_naming_the_wait_and_the_cause', 1),
+            @('git::tests::an_unattended_git_fails_fast_on_a_remote_that_wants_a_password', 1)
+          )
+          function Invoke-Bin([string]$side, [string[]]$a, [int]$ms) {
+            $psi = [System.Diagnostics.ProcessStartInfo]::new((Join-Path $bin "kolux_lib-$side.exe"))
+            foreach ($x in $a) { $psi.ArgumentList.Add($x) }
+            $psi.WorkingDirectory = Join-Path $env:RUNNER_TEMP "wt-$side\src-tauri"
+            $psi.UseShellExecute = $false
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $p = [System.Diagnostics.Process]::Start($psi)
+            $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
+            if (-not $p.WaitForExit($ms)) {
+              try { $p.Kill($true) } catch {}
+              $null = $p.WaitForExit(10000)
+              return [pscustomobject]@{ code = 'timeout'; out = '' }
+            }
+            $p.WaitForExit()
+            [pscustomobject]@{ code = $p.ExitCode; out = $o.Result + $e.Result }
+          }
+          $has = @{}
+          foreach ($k in $sides.Keys) {
+            $list = @(& (Join-Path $bin "kolux_lib-$k.exe") --list 2>$null | Where-Object { $_ -like '*: test' } | ForEach-Object { $_ -replace ': test$', '' })
+            $has[$k] = [System.Collections.Generic.HashSet[string]]::new([string[]]$list)
+            "LIST $k $($sides[$k]) has $($has[$k].Count) tests"
+          }
+          $count = [ordered]@{}
+          $shown = @{}
+          function Note([string]$key, [string]$what, [string]$out) {
+            if (-not $count.Contains($key)) { $count[$key] = [ordered]@{ pass = 0; fail = 0; timeout = 0 } }
+            $count[$key][$what]++
+            if ($what -ne 'pass' -and [int]$shown[$key] -lt 2) {
+              $shown[$key] = 1 + [int]$shown[$key]
+              "---- $what in $key ----"
+              (($out -split "`n") | Select-Object -Last 40) -join "`n"
+            }
+          }
+          function Burn { 1..(2 * [Environment]::ProcessorCount) | ForEach-Object { Start-Process pwsh -ArgumentList '-NoProfile -Command "for (;;) {}"' -PassThru -WindowStyle Hidden } }
+          function Report([string]$phase) {
+            $lines = foreach ($key in @($count.Keys | Where-Object { $_ -like "$phase|*" })) {
+              $c = $count[$key]
+              "RESULT $key : $($c.pass) passed, $($c.fail) failed, $($c.timeout) timed out"
+            }
+            $lines | Out-Host
+            $lines | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          }
+          # Alone: each candidate by itself, the three commits back to back for each one.
+          function Alone([string]$phase, [double]$minutes) {
+            $until = (Get-Date).AddMinutes($minutes); $rounds = 0
+            while ((Get-Date) -lt $until) {
+              $rounds++
+              foreach ($c in $cands) {
+                foreach ($k in $sides.Keys) {
+                  if (-not $has[$k].Contains($c[0])) { continue }
+                  for ($i = 0; $i -lt $c[1]; $i++) {
+                    $r = Invoke-Bin $k @($c[0], '--exact') 180000
+                    $what = if ($r.code -eq 'timeout') { 'timeout' } elseif ($r.code -eq 0 -and $r.out -match 'test result: ok\. 1 passed') { 'pass' } else { 'fail' }
+                    Note "$phase|$k|$($c[0])" $what $r.out
                   }
                 }
               }
-              foreach ($n in $names) { $out.Add("RESULT in full $tgt, $n on $sha : passed $($ok[$n]) of $($env:FULL_REPS)") }
             }
+            "RESULT $phase finished $rounds rounds"
+            Report $phase
           }
-          $out | Out-Host
-          $out | Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY
+          # Together: the activity and status tests in one run (libtest's threads), as the full run has them.
+          function Together([string]$phase, [double]$minutes) {
+            $until = (Get-Date).AddMinutes($minutes); $rounds = 0
+            while ((Get-Date) -lt $until) {
+              $rounds++
+              foreach ($k in $sides.Keys) {
+                $r = Invoke-Bin $k @('activity::', 'status::') 300000
+                $what = if ($r.code -eq 'timeout') { 'timeout' } elseif ($r.out -match "(?m)^test $([regex]::Escape($T067)) \.\.\. ok") { 'pass' } else { 'fail' }
+                Note "$phase|$k|$T067" $what $r.out
+                foreach ($m in [regex]::Matches($r.out, '(?m)^test (\S+) \.\.\. FAILED')) {
+                  $n = $m.Groups[1].Value
+                  if ($n -ne $T067) { Note "$phase|$k|other failure $n" 'fail' $r.out }
+                }
+              }
+            }
+            "RESULT $phase finished $rounds rounds"
+            Report $phase
+          }
+          $b = Burn
+          try { Together 'together-busy' 12 } finally { $b | Stop-Process -Force -ErrorAction SilentlyContinue }
+          Alone 'alone-quiet' 15
+          $b = Burn
+          try { Alone 'alone-busy' 12 } finally { $b | Stop-Process -Force -ErrorAction SilentlyContinue }
+          Together 'together-quiet' 6
