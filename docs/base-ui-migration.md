@@ -263,7 +263,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 |
 | automations | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 14 | 0 |
 | board | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 7 | 0 |
-| chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
+| chat | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
 | editmenu | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | editor | 2 | 0 | 0 | 1 | 6 | 0 | 4 | 128 | 3 |
@@ -291,13 +291,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **13** | **7** | **4** | **3** | **39** | **42** | **57** | **646** | **27** |
+| **Total** | **13** | **6** | **4** | **3** | **39** | **42** | **57** | **646** | **26** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
-
-### chat
-
-- [ ] `src/chat/ChatText.tsx`: Menu :117
 
 ### editmenu
 

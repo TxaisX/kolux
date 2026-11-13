@@ -7,7 +7,9 @@ const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: str
 const css = nodeFs.readFileSync(new URL("./chat.css", import.meta.url), "utf8");
 
 test("a link opened in the system browser puts focus back on the link; only an in-app pane keeps it", () => {
-  expect(chatText).toContain("picked.current = onPick(where);");
+  // The choice is a src/ui menu: focus goes back to what had it (the link) unless the pick moved it into a pane; on a
+  // real DOM in BrowserChoice.dom.test.tsx.
+  expect(chatText).toContain("<ContextMenu at={at}");
   expect(chatView).toContain('const inApp = where === "kolux" && !!opener?.onOpenLink;');
   expect(chatView).toContain("return inApp;");
 });
