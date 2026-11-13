@@ -19,6 +19,7 @@ import { askForReview, editReviewers, failedChecks, fixBlocker, fixText, headLab
 import { escapeStep, partialNote } from "./prPageState";
 import type { Person } from "./repoFacts";
 import { Select } from "../ui/Select";
+import { Tab, TabList, Tabs } from "../ui/Tabs";
 
 const NO_THREADS: PrThreads = { threads: [], truncated: false, limit: 0 };
 const say = (e: unknown) => (typeof e === "string" ? e : e instanceof Error ? e.message : "That did not work.");
@@ -303,13 +304,16 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
           {partial}
         </div>
       )}
-      <div className="pr-tabs" role="tablist">
-        {(["conversation", "checks", "files"] as PrTab[]).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => pick(t)}>
-            {t === "conversation" ? "Conversation" : t === "checks" ? `Checks · ${sum.label}` : `Files changed · ${page.changedFiles}`}
-          </button>
-        ))}
-      </div>
+      {/* A src/ui tab strip: one tab stop, the arrow keys move between the three; the page swaps its body below. */}
+      <Tabs value={tab} onValue={pick} panels={false}>
+        <TabList className="pr-tabs" label="Pull request views">
+          {(["conversation", "checks", "files"] as PrTab[]).map((t) => (
+            <Tab key={t} value={t} selected={tab === t} className={tab === t ? "on" : ""}>
+              {t === "conversation" ? "Conversation" : t === "checks" ? `Checks · ${sum.label}` : `Files changed · ${page.changedFiles}`}
+            </Tab>
+          ))}
+        </TabList>
+      </Tabs>
       {tab === "conversation" && (
         <div className="pr-body">
           <div className="pr-main">

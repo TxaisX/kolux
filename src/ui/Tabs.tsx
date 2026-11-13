@@ -7,7 +7,7 @@ import { createContext, useContext, useId, useLayoutEffect, useRef, type ReactNo
 import { useBase } from "./part";
 import "./ui.css";
 
-type Ctx = { id: string; value: string | null; onValue: (v: string) => void; base: ReturnType<typeof useBase> };
+type Ctx = { id: string; value: string | null; onValue: (v: string) => void; base: ReturnType<typeof useBase>; panels: boolean };
 const TabsCtx = createContext<Ctx | null>(null);
 const use = (): Ctx => {
   const c = useContext(TabsCtx);
@@ -15,15 +15,16 @@ const use = (): Ctx => {
   return c;
 };
 
-/** The tab set: draws no element of its own, so the page keeps its own layout (the sidebar's <aside>). */
-export function Tabs<T extends string>({ value, onValue, children }: { value: T | null; onValue: (v: T) => void; children: ReactNode }) {
+/** The tab set: draws no element of its own, so the page keeps its own layout (the sidebar's <aside>). `panels` false:
+ *  the page shows the open tab's content without a TabPanel (a page that swaps its whole body), so a tab names no panel. */
+export function Tabs<T extends string>({ value, onValue, panels = true, children }: { value: T | null; onValue: (v: T) => void; panels?: boolean; children: ReactNode }) {
   const id = useId();
   const base = useBase(true);
-  return <TabsCtx.Provider value={{ id, value, onValue: onValue as (v: string) => void, base }}>{children}</TabsCtx.Provider>;
+  return <TabsCtx.Provider value={{ id, value, onValue: onValue as (v: string) => void, base, panels }}>{children}</TabsCtx.Provider>;
 }
 
 const tabId = (c: Ctx, value: string) => `${c.id}tab-${value}`;
-const panelId = (c: Ctx) => `${c.id}panel`;
+const panelId = (c: Ctx, value: string) => `${c.id}panel-${value}`;
 
 export function TabList({ label, className, children, ...p }: { label: string; className?: string; children: ReactNode; "data-testid"?: string }) {
   const c = use();
@@ -58,17 +59,18 @@ export function TabList({ label, className, children, ...p }: { label: string; c
 /** `selected` sets the tab stop on the first paint, before Base UI has measured the strip. */
 export function Tab({ value, selected, ...p }: { value: string; selected: boolean; className?: string; title?: string; children: ReactNode; "data-testid"?: string }) {
   const c = use();
-  const ids = { id: tabId(c, value), "aria-controls": selected ? panelId(c) : undefined };
+  const ids = { id: tabId(c, value), "aria-controls": selected && c.panels ? panelId(c, value) : undefined };
   if (c.base) return <c.base.TabBox value={value} tabIndex={selected ? 0 : -1} {...ids} {...p} />;
   // Attributes in Base UI's order (tab stop, role, selected), so a page reads the same before and after the hand-over.
   return <button type="button" tabIndex={selected ? 0 : -1} role="tab" aria-selected={selected} {...ids} onClick={() => c.onValue(value)} {...p} />;
 }
 
-/** The open tab's panel. Named by `label`, else by its tab. */
-export function TabPanel({ value, className, label, children }: { value: string; className?: string; label?: string; children: ReactNode }) {
+/** A tab's panel: one drawn for the open tab, or one per tab kept on the page with `hidden` on the closed ones. Named by
+ *  `label`, else by its tab. */
+export function TabPanel({ value, className, label, hidden, children }: { value: string; className?: string; label?: string; hidden?: boolean; children: ReactNode }) {
   const c = use();
   return (
-    <div role="tabpanel" id={panelId(c)} className={className} aria-label={label} aria-labelledby={label === undefined ? tabId(c, value) : undefined}>
+    <div role="tabpanel" id={panelId(c, value)} className={className} aria-label={label} aria-labelledby={label === undefined ? tabId(c, value) : undefined} hidden={hidden}>
       {children}
     </div>
   );

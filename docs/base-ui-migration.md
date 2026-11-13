@@ -261,7 +261,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | agents | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 |
 | artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 |
-| automations | 0 | 1 | 1 | 0 | 1 | 1 | 1 | 14 | 2 |
+| automations | 0 | 1 | 0 | 0 | 1 | 1 | 1 | 14 | 1 |
 | board | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 7 | 0 |
 | chat | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 13 | 1 |
 | chrome | 0 | 0 | 0 | 0 | 3 | 1 | 1 | 22 | 0 |
@@ -279,25 +279,24 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | recovery | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
 | scm | 0 | 5 | 0 | 1 | 4 | 0 | 5 | 98 | 6 |
 | sessions | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 16 | 0 |
-| settings | 1 | 1 | 1 | 0 | 0 | 30 | 10 | 43 | 3 |
+| settings | 1 | 1 | 0 | 0 | 0 | 30 | 10 | 43 | 2 |
 | setup | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
 | shell | 1 | 1 | 2 | 0 | 2 | 0 | 1 | 24 | 4 |
 | skills | 2 | 3 | 0 | 0 | 4 | 0 | 2 | 19 | 5 |
 | space | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 0 |
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 4 | 1 |
-| tasks | 0 | 0 | 2 | 2 | 0 | 0 | 3 | 41 | 4 |
+| tasks | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 41 | 2 |
 | terminal | 5 | 2 | 0 | 0 | 5 | 0 | 0 | 29 | 7 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **16** | **24** | **8** | **14** | **41** | **42** | **57** | **646** | **62** |
+| **Total** | **16** | **24** | **4** | **14** | **41** | **42** | **57** | **646** | **58** |
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
 ### automations
 
-- [ ] `src/automations/AutomationDetail.tsx`: Tabs :97
 - [ ] `src/automations/AutomationsPage.tsx`: Menu :484
 
 ### chat
@@ -340,7 +339,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### settings
 
 - [ ] `src/settings/ConnectGrid.tsx`: Menu :54
-- [ ] `src/settings/RoutingPage.tsx`: Tabs :52
 - [ ] `src/settings/SettingsPage.tsx`: Dialog :402
 
 ### shell
@@ -362,8 +360,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### tasks
 
 - [ ] `src/tasks/ProjectsView.tsx`: Select :45, Select :57
-- [ ] `src/tasks/PullRequestPage.tsx`: Tabs :306
-- [ ] `src/tasks/TasksPage.tsx`: Tabs :314
 
 ### terminal
 

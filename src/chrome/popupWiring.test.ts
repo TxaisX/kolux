@@ -13,7 +13,7 @@ const useMenuFocus = vi.fn();
 vi.mock("./dialogFocus", () => ({ useDialogFocus: (...a: unknown[]) => useDialogFocus(...a), useMenuFocus: (...a: unknown[]) => useMenuFocus(...a) }));
 
 import StatusBar from "./StatusBar";
-import RightSidebar, { tabStep } from "./RightSidebar";
+import RightSidebar from "./RightSidebar";
 
 beforeEach(() => {
   useDialogFocus.mockClear();
@@ -36,14 +36,4 @@ test("chrome.md:15: only the open right-sidebar tab is a tab stop, and the body 
   expect(html).toMatch(/tabindex="0"[^>]*role="tab"[^>]*aria-selected="true"[^>]*>Insights</);
   expect(html).toMatch(/tabindex="-1"[^>]*role="tab"[^>]*aria-selected="false"[^>]*>Explorer</);
   expect(html).toContain('role="tabpanel"');
-});
-
-test("tabStep: Left and Right wrap around the tabs, Home and End jump, other keys do nothing", () => {
-  expect(tabStep(3, 0, "ArrowRight")).toBe(1);
-  expect(tabStep(3, 2, "ArrowRight")).toBe(0);
-  expect(tabStep(3, 0, "ArrowLeft")).toBe(2);
-  expect(tabStep(3, 1, "Home")).toBe(0);
-  expect(tabStep(3, 1, "End")).toBe(2);
-  expect(tabStep(3, 1, "ArrowDown"), "Down is not a tab key").toBeNull();
-  expect(tabStep(3, 1, "a")).toBeNull();
 });

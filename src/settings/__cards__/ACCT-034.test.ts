@@ -24,13 +24,16 @@ function open(start: Record<string, unknown>) {
 }
 const select = (tree: El, label: string) => find(tree, isSelect(label));
 const pick = (tree: El, label: string, value: string) => select(tree, label).props.onChange(value);
-const tab = (tree: El, name: string) => find(tree, (e) => e.type === "button" && e.props.role === "tab" && textOf(e).startsWith(name));
+// The provider tabs are a src/ui tab set: a Tab says whether it is open with `selected`, and a pick goes through the
+// set's onValue (Base UI's, once read; the keys are proved on a real DOM in RoutingPage.keys.test.ts).
+const tab = (tree: El, name: string) => find(tree, (e) => typeof e.props.selected === "boolean" && typeof e.props.value === "string" && textOf(e).startsWith(name));
+const pickTab = (tree: El, name: string) => find(tree, (e) => typeof e.props.onValue === "function").props.onValue(tab(tree, name).props.value);
 
 test("box 1: Claude Build set to Opus at high, then Reset Claude puts Build back to Sonnet at medium and leaves Codex alone", () => {
   const codexPick = { build: { model: "gpt-5.5", effort: "low" } };
   const app = open({ modelRouting: { codex: codexPick }, theme: "dark" });
   let tree = app.render();
-  expect(tab(tree, "Claude Code").props["aria-selected"]).toBe(true);
+  expect(tab(tree, "Claude Code").props.selected).toBe(true);
   expect(select(tree, "Build model").props.value).toBe("sonnet");
   expect(select(tree, "Build effort").props.value).toBe("medium");
   expect(find(tree, (e) => e.type === "button" && textOf(e) === "Reset Claude Code").props.disabled).toBe(true);
@@ -52,7 +55,7 @@ test("box 1: Claude Build set to Opus at high, then Reset Claude puts Build back
   // Codex is unchanged: in the saved settings, and on its own tab.
   expect(routingOf(app.settings()).codex).toEqual(codexPick);
   expect(app.settings().theme).toBe("dark");
-  tab(tree, "Codex").props.onClick();
+  pickTab(tree, "Codex");
   tree = app.render();
   expect(select(tree, "Build model").props.value).toBe("gpt-5.5");
   expect(select(tree, "Build effort").props.value).toBe("low");
@@ -66,10 +69,10 @@ test("box 2: without Codex the Codex tab shows Not detected, can still be select
   expect(findAll(tree0, (e) => e.props.className === "routing-missing")).toHaveLength(1);
   const app = open({});
   let tree = app.render();
-  tab(tree, "Codex").props.onClick();
+  pickTab(tree, "Codex");
   tree = app.render();
-  expect(tab(tree, "Codex").props["aria-selected"]).toBe(true);
-  expect(tab(tree, "Claude Code").props["aria-selected"]).toBe(false);
+  expect(tab(tree, "Codex").props.selected).toBe(true);
+  expect(tab(tree, "Claude Code").props.selected).toBe(false);
   expect(select(tree, "Build model").props.value).toBe("gpt-6-sol");
   expect(select(tree, "Major model")).toBeDefined();
   expect(textOf(tab(tree, "Codex"))).toContain("Not detected");

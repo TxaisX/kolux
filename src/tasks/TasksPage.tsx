@@ -30,6 +30,7 @@ import { startFromItem } from "../agentstart/host";
 import { existingWorkspace, linkKey, linkedRows, workItem, type WorkItem, workLabel } from "./workStart";
 import "./tasks.css";
 import { Select } from "../ui/Select";
+import { Tab, TabList, Tabs } from "../ui/Tabs";
 
 /** GIT-043: preset, query, page and scroll survive leaving the page and coming back (app session);
  * GIT-044: the first visit of the session opens on the saved default preset. */
@@ -310,14 +311,17 @@ export default function TasksPage({ repo, onStart, onResume }: { repo: { dir: st
   };
   const isDefault = preset === defaultPreset(settings);
   const whoOptions = ["@me", ...people.map((p) => p.login)];
+  // A src/ui tab strip: one tab stop, the arrow keys move between the two; the page swaps its body below.
   const tabs = (
-    <div className="tasks-tabs" role="tablist">
-      {([["items", "Issues & pull requests"], ["projects", "Projects"]] as const).map(([id, label]) => (
-        <button key={id} role="tab" className="btn" aria-selected={tab === id} data-tab={id} onClick={() => setTab(id)}>
-          {label}
-        </button>
-      ))}
-    </div>
+    <Tabs value={tab} onValue={setTab} panels={false}>
+      <TabList className="tasks-tabs" label="Tasks views">
+        {([["items", "Issues & pull requests"], ["projects", "Projects"]] as const).map(([id, label]) => (
+          <Tab key={id} value={id} selected={tab === id} className="btn" data-tab={id}>
+            {label}
+          </Tab>
+        ))}
+      </TabList>
+    </Tabs>
   );
   if (tab === "projects") {
     return (
