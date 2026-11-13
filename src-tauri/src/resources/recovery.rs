@@ -264,7 +264,7 @@ pub fn copy_before_open(dir: &Path, worthwhile: bool, version: &str) -> Option<R
 
 /// The scratch folder a frozen session runs on.
 pub fn frozen_dir() -> PathBuf {
-    std::env::temp_dir().join(format!("kolux-rs-frozen-{}", std::process::id()))
+    std::env::temp_dir().join(format!("kolux-frozen-{}", std::process::id()))
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -365,8 +365,7 @@ pub fn repair(path: &Path, user: &str, run: &mut dyn FnMut(&[String]) -> bool, r
 #[cfg(windows)]
 pub fn icacls(args: &[String]) -> bool {
     use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    std::process::Command::new("icacls").args(args).creation_flags(CREATE_NO_WINDOW).output().map(|o| o.status.success()).unwrap_or(false)
+    std::process::Command::new("icacls").args(args).creation_flags(crate::winproc::no_window()).output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 #[cfg(not(windows))]
@@ -708,7 +707,7 @@ pub fn watch_start(app: tauri::AppHandle, perm: Option<String>) {
         }
     });
     if spawned.is_err() {
-        eprintln!("kolux-rs: the interface watch could not start (APP-042)");
+        eprintln!("kolux: the interface watch could not start (APP-042)");
     }
 }
 
@@ -997,7 +996,21 @@ pub fn graphics_choose(app: tauri::AppHandle, stay: bool) -> Result<(), String> 
 
 pub const CRASHES: &str = "crashes.json";
 /// The line every start writes (lib.rs setup), which splits the log into runs.
-pub const START_MARK: &str = "kolux-rs: config:";
+pub const START_MARK: &str = "kolux: config:";
+/// The start line before the rename to Kolux: the run before the first renamed start wrote this
+/// one, so a crash in it is still found.
+const LEGACY_START_MARK: &str = "kolux-rs: config:";
+
+/// Where each run starts in `log`, old-named start lines included, in order.
+fn run_starts(log: &str) -> Vec<usize> {
+    let mut starts: Vec<usize> = log.match_indices(START_MARK).chain(log.match_indices(LEGACY_START_MARK)).map(|(i, _)| i).collect();
+    starts.sort_unstable();
+    starts
+}
+
+fn is_start(line: &str) -> bool {
+    line.contains(START_MARK) || line.contains(LEGACY_START_MARK)
+}
 /// T-286-b (APP-040): written just before Kolux ends or restarts itself (a restart, an update
 /// install), so the next start never mistakes that for a crash.
 pub const SELF_END: &str = "kolux ended itself:";
@@ -1204,7 +1217,7 @@ pub fn memory_text(r: &MemReading, crash_when: u64) -> Option<String> {
 /// never logged a clean end crashed. The summary is its fatal-error line without the time stamp,
 /// or a plain sentence when nothing was captured.
 pub fn previous_run_crash(log: &str) -> Option<String> {
-    let starts: Vec<usize> = log.match_indices(START_MARK).map(|(i, _)| i).collect();
+    let starts = run_starts(log);
     if starts.len() < 2 {
         return None;
     }
@@ -1333,7 +1346,7 @@ fn stamp(line: &str) -> Option<u64> {
 
 /// The last time stamp of the run before the current start (when the previous run was last heard of).
 pub fn previous_run_end(log: &str) -> Option<u64> {
-    let starts: Vec<usize> = log.match_indices(START_MARK).map(|(i, _)| i).collect();
+    let starts = run_starts(log);
     if starts.len() < 2 {
         return None;
     }
@@ -1352,7 +1365,7 @@ pub fn quit_spans(log: &str) -> Vec<(u64, u64)> {
     let mut open: Option<(u64, u64)> = None;
     for line in log.lines() {
         let Some(t) = stamp(line) else { continue };
-        if line.contains(START_MARK) {
+        if is_start(line) {
             if let Some((s, _)) = open.take() {
                 spans.push((s.saturating_sub(QUIT_LEAD), t));
             }
@@ -1561,7 +1574,7 @@ mod tests {
     use super::*;
 
     fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-recovery-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-recovery-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
@@ -1998,20 +2011,32 @@ mod tests {
     // APP-039
 
     #[test]
-    fn t183_a_run_without_a_clean_exit_is_a_crash_and_its_fatal_line_is_the_summary() {
-        let clean = "1 kolux-rs: config: CLAUDE_CONFIG_DIR=x\n2 terminal 1 started\n3 app exit\n4 kolux-rs: config: CLAUDE_CONFIG_DIR=x\n";
+    fn rename_a_start_line_from_before_the_rename_still_splits_the_runs() {
+        let crashed = "1 kolux-rs: config: a\n2 fatal error: boom\n3 kolux: config: a\n";
+        assert_eq!(previous_run_crash(crashed).as_deref(), Some("fatal error: boom"), "the last old-named run's crash is found");
+        let clean = "1 kolux-rs: config: a\n2 app exit\n3 kolux: config: a\n";
         assert_eq!(previous_run_crash(clean), None);
-        let failed_start = "1 kolux-rs: config: a\n2 could not start: no app data folder\n3 kolux-rs: config: a\n";
+        assert_eq!(previous_run_end("10 kolux-rs: config: a\n20 terminal\n30 kolux: config: a\n"), Some(20));
+        let spans = quit_spans("100 kolux-rs: config: a\n150 final save: 4 finished in 10 ms\n151 app exit\n400 kolux: config: a\n");
+        assert_eq!(spans.len(), 1, "{spans:?}");
+        assert_eq!(spans[0].1, 400, "the quit ends at the renamed start");
+    }
+
+    #[test]
+    fn t183_a_run_without_a_clean_exit_is_a_crash_and_its_fatal_line_is_the_summary() {
+        let clean = "1 kolux: config: CLAUDE_CONFIG_DIR=x\n2 terminal 1 started\n3 app exit\n4 kolux: config: CLAUDE_CONFIG_DIR=x\n";
+        assert_eq!(previous_run_crash(clean), None);
+        let failed_start = "1 kolux: config: a\n2 could not start: no app data folder\n3 kolux: config: a\n";
         assert_eq!(previous_run_crash(failed_start), None, "a start that gave up on purpose is not a crash");
-        let crashed = "1 kolux-rs: config: a\n2 terminal 1 started\n3 fatal error: panicked at src/x.rs:1: boom\n4 kolux-rs: config: a\n";
+        let crashed = "1 kolux: config: a\n2 terminal 1 started\n3 fatal error: panicked at src/x.rs:1: boom\n4 kolux: config: a\n";
         assert_eq!(previous_run_crash(crashed).as_deref(), Some("fatal error: panicked at src/x.rs:1: boom"));
-        let killed = "1 kolux-rs: config: a\n2 terminal 1 started\n5 kolux-rs: config: a\n";
+        let killed = "1 kolux: config: a\n2 terminal 1 started\n5 kolux: config: a\n";
         assert_eq!(previous_run_crash(killed).as_deref(), Some(NO_CLEAN_EXIT));
-        let background = "1 kolux-rs: config: a\n2 error in background work, the app keeps going: x\n3 app exit\n4 kolux-rs: config: a\n";
+        let background = "1 kolux: config: a\n2 error in background work, the app keeps going: x\n3 app exit\n4 kolux: config: a\n";
         assert_eq!(previous_run_crash(background), None, "a background error that was survived is not a crash");
-        assert_eq!(previous_run_crash("1 kolux-rs: config: a\n2 terminal\n"), None, "the first run ever has no previous run");
+        assert_eq!(previous_run_crash("1 kolux: config: a\n2 terminal\n"), None, "the first run ever has no previous run");
         // only the run before the current start counts, not an older crash
-        let older = "1 kolux-rs: config: a\n2 fatal error: old\n3 kolux-rs: config: a\n4 app exit\n5 kolux-rs: config: a\n";
+        let older = "1 kolux: config: a\n2 fatal error: old\n3 kolux: config: a\n4 app exit\n5 kolux: config: a\n";
         assert_eq!(previous_run_crash(older), None);
         // the report never carries the user's folder name
         assert_eq!(scrub_report("panicked at C:\\Users\\someone\\src\\x.rs:1 boom"), "panicked at <home>\\src\\x.rs:1 boom");
@@ -2025,7 +2050,7 @@ mod tests {
         let dir = temp("crashes");
         assert_eq!(startup_scan(&dir), None, "no log, no record");
         fs::create_dir_all(dir.join("logs")).unwrap();
-        fs::write(dir.join("logs").join("kolux.log"), "1 kolux-rs: config: a\n2 fatal error: panicked at C:\\Users\\someone\\src\\x.rs: boom\n3 kolux-rs: config: a\n").unwrap();
+        fs::write(dir.join("logs").join("kolux.log"), "1 kolux: config: a\n2 fatal error: panicked at C:\\Users\\someone\\src\\x.rs: boom\n3 kolux: config: a\n").unwrap();
         let c = startup_scan(&dir).expect("a record");
         assert!(!c.summary.contains("someone"), "paths are scrubbed: {}", c.summary);
         let all = crashes_read(&dir);
@@ -2074,12 +2099,12 @@ mod tests {
         assert!(is_crash(&e(Kind::App, false, false, false)), "Kolux itself ending badly");
         // in the log: a quit under way, or Kolux ending itself, is no crash ten times over
         for n in 0..10 {
-            let quit = format!("{n}0 kolux-rs: config: a\n{n}1 final save: 5 finished in 20 ms\n{n}2 kolux-rs: config: a\n");
+            let quit = format!("{n}0 kolux: config: a\n{n}1 final save: 5 finished in 20 ms\n{n}2 kolux: config: a\n");
             assert_eq!(previous_run_crash(&quit), None);
         }
-        let restart = format!("1 kolux-rs: config: a\n2 {SELF_END} restart to update\n3 kolux-rs: config: a\n");
+        let restart = format!("1 kolux: config: a\n2 {SELF_END} restart to update\n3 kolux: config: a\n");
         assert_eq!(previous_run_crash(&restart), None);
-        let gone = "1 kolux-rs: config: a\n7 terminal 1 started\n9 kolux-rs: config: a\n";
+        let gone = "1 kolux: config: a\n7 terminal 1 started\n9 kolux: config: a\n";
         assert_eq!(previous_run_crash(gone).as_deref(), Some(NO_CLEAN_EXIT));
         assert_eq!(previous_run_end(gone), Some(7), "the last line the run wrote");
     }
@@ -2171,7 +2196,7 @@ mod tests {
         let dir = temp("memory");
         memory_save(&dir, &r);
         fs::create_dir_all(dir.join("logs")).unwrap();
-        fs::write(dir.join("logs").join("kolux.log"), "90 kolux-rs: config: a\n130 terminal 1 started\n200 kolux-rs: config: a\n").unwrap();
+        fs::write(dir.join("logs").join("kolux.log"), "90 kolux: config: a\n130 terminal 1 started\n200 kolux: config: a\n").unwrap();
         let c = startup_scan(&dir).expect("a report");
         assert_eq!(c.memory.as_deref(), Some("2.0 GB free of 16.0 GB (88% in use), Kolux itself 400 MB; read 30 s before the crash"));
         assert!(details(&c, "0.1.0", "x").contains("Memory before the crash: 2.0 GB free"));
@@ -2196,7 +2221,7 @@ mod tests {
         assert!(scan_dumps(&dir, &root, "", None).is_empty(), "a dump is looked at once");
         // a dump written inside a quit span is no crash
         let now = now_secs();
-        let log = format!("{} kolux-rs: config: a\n{} final save: 4 finished in 10 ms\n{} app exit\n", now - 100, now - 2, now - 1);
+        let log = format!("{} kolux: config: a\n{} final save: 4 finished in 10 ms\n{} app exit\n", now - 100, now - 2, now - 1);
         assert!(in_quit(&quit_spans(&log), now));
         fs::write(root.join("reports").join("quit.dmp"), minidump(5, 0x1008, &[])).unwrap();
         assert!(scan_dumps(&dir, &root, &log, None).is_empty(), "graphics exit at quit time");
@@ -2206,11 +2231,11 @@ mod tests {
 
     #[test]
     fn t286b_quit_spans_cover_the_quit_and_end_at_the_next_start() {
-        let log = "100 kolux-rs: config: a\n150 final save: 4 finished in 10 ms\n151 app exit\n400 kolux-rs: config: a\n500 terminal\n";
+        let log = "100 kolux: config: a\n150 final save: 4 finished in 10 ms\n151 app exit\n400 kolux: config: a\n500 terminal\n";
         let spans = quit_spans(log);
         assert_eq!(spans, vec![(135, 400)]);
         assert!(in_quit(&spans, 140) && !in_quit(&spans, 120) && !in_quit(&spans, 450));
-        let open = "100 kolux-rs: config: a\n150 kolux ended itself: restart to update\n";
+        let open = "100 kolux: config: a\n150 kolux ended itself: restart to update\n";
         assert_eq!(quit_spans(open), vec![(135, 180)]);
     }
 
@@ -2218,19 +2243,19 @@ mod tests {
 
     #[test]
     fn t324b_a_windows_session_end_is_no_crash_but_a_run_that_just_stops_still_is() {
-        let session = "1 kolux-rs: config: a\n2 terminal 1 started\n3 windows session ended: sign-out, shutdown or restart\n4 kolux-rs: config: a\n";
+        let session = "1 kolux: config: a\n2 terminal 1 started\n3 windows session ended: sign-out, shutdown or restart\n4 kolux: config: a\n";
         assert_eq!(previous_run_crash(session), None, "the session end the user chose is not a crash");
-        let clean = "1 kolux-rs: config: a\n2 app exit\n3 kolux-rs: config: a\n";
+        let clean = "1 kolux: config: a\n2 app exit\n3 kolux: config: a\n";
         assert_eq!(previous_run_crash(clean), None, "a normal quit stays clean");
-        let killed = "1 kolux-rs: config: a\n2 terminal 1 started\n3 kolux-rs: config: a\n";
+        let killed = "1 kolux: config: a\n2 terminal 1 started\n3 kolux: config: a\n";
         assert_eq!(previous_run_crash(killed).as_deref(), Some(NO_CLEAN_EXIT), "a real crash is still reported");
-        let first_run = "1 kolux-rs: config: a\n2 terminal 1 started\n";
+        let first_run = "1 kolux: config: a\n2 terminal 1 started\n";
         assert_eq!(previous_run_crash(first_run), None, "the first run has no previous run");
         // only the run just before this start counts: a session end two runs ago excuses nothing
-        let crash_after = "1 kolux-rs: config: a\n2 windows session ended: x\n3 kolux-rs: config: a\n4 terminal 1 started\n5 kolux-rs: config: a\n";
+        let crash_after = "1 kolux: config: a\n2 windows session ended: x\n3 kolux: config: a\n4 terminal 1 started\n5 kolux: config: a\n";
         assert_eq!(previous_run_crash(crash_after).as_deref(), Some(NO_CLEAN_EXIT));
         // a crash dump written in the shutdown minutes is a quit-time exit too
-        let spans = quit_spans("100 kolux-rs: config: a\n150 windows session ended: x\n400 kolux-rs: config: a\n");
+        let spans = quit_spans("100 kolux: config: a\n150 windows session ended: x\n400 kolux: config: a\n");
         assert_eq!(spans, vec![(135, 400)]);
     }
 
@@ -2286,7 +2311,7 @@ mod tests {
     }
 
     fn profile_with(name: &str, settings: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-row939-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-row939-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         fs::write(d.join("settings.json"), settings).unwrap();
@@ -2315,7 +2340,7 @@ mod tests {
             }
             let _ = fs::remove_dir_all(d);
         }
-        assert!(saved_proxy_in(&std::env::temp_dir().join("kolux-rs-row939-missing")).is_none());
+        assert!(saved_proxy_in(&std::env::temp_dir().join("kolux-row939-missing")).is_none());
     }
 
     #[test]

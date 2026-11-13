@@ -104,7 +104,7 @@ thread_local! {
 /// Tests only: an empty file to stand in for the user's global git config.
 #[cfg(test)]
 pub(crate) fn empty_global_config() -> PathBuf {
-    let path = std::env::temp_dir().join("kolux-rs-test-empty-gitconfig");
+    let path = std::env::temp_dir().join("kolux-test-empty-gitconfig");
     if std::fs::metadata(&path).map(|m| m.len() != 0).unwrap_or(true) {
         let _ = std::fs::write(&path, "");
     }
@@ -769,7 +769,7 @@ fn trust_files() -> (PathBuf, PathBuf) {
 /// Tests never read the developer's own agent files: no trust unless a test grants it.
 #[cfg(test)]
 fn trust_files() -> (PathBuf, PathBuf) {
-    TRUST_FILES.with(|f| f.borrow().clone()).unwrap_or_else(|| (std::env::temp_dir().join("kolux-rs-test-no-claude.json"), std::env::temp_dir().join("kolux-rs-test-no-codex.toml")))
+    TRUST_FILES.with(|f| f.borrow().clone()).unwrap_or_else(|| (std::env::temp_dir().join("kolux-test-no-claude.json"), std::env::temp_dir().join("kolux-test-no-codex.toml")))
 }
 
 /// Tests only: no folder is trusted on this test's thread again (after `trust_for_test`).
@@ -795,9 +795,9 @@ pub(crate) fn trust_for_test(folder: &Path) {
     let mut doc = serde_json::Map::new();
     doc.insert("projects".into(), serde_json::Value::Object(projects));
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    let file = std::env::temp_dir().join(format!("kolux-rs-test-trust-{}-{nanos}.json", std::process::id()));
+    let file = std::env::temp_dir().join(format!("kolux-test-trust-{}-{nanos}.json", std::process::id()));
     std::fs::write(&file, serde_json::Value::Object(doc).to_string()).unwrap();
-    TRUST_FILES.with(|f| *f.borrow_mut() = Some((file, std::env::temp_dir().join("kolux-rs-test-no-codex.toml"))));
+    TRUST_FILES.with(|f| *f.borrow_mut() = Some((file, std::env::temp_dir().join("kolux-test-no-codex.toml"))));
 }
 
 /// Whether `args` is a git command that talks to another repository (S4): fetch, pull, push, clone,
@@ -1317,8 +1317,7 @@ fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, Str
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000; // no console flashes up behind the app
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.creation_flags(crate::winproc::no_window());
     }
     // GIT-070: on macOS and Linux git leads its own process group, so stopping a stalled read
     // (procs::kill_tree's group signal) also ends the hooks, diff tools and pagers it started.
@@ -1592,7 +1591,7 @@ pub(crate) fn move_back(trash: &Path, dest: &Path) -> Result<(), String> {
 #[cfg(windows)]
 fn hide_folder(p: &Path) {
     use std::os::windows::process::CommandExt;
-    let _ = std::process::Command::new("attrib").arg("+h").arg(p).creation_flags(0x0800_0000).output();
+    let _ = std::process::Command::new("attrib").arg("+h").arg(p).creation_flags(crate::winproc::no_window()).output();
 }
 #[cfg(not(windows))]
 fn hide_folder(_: &Path) {}

@@ -369,7 +369,7 @@ fn finish_pick(fence: &crate::fence::Fence, store: &std::sync::Mutex<crate::stat
     let Some(spelled) = path.to_str() else { return Err("Kolux cannot open that file because its name is not valid Unicode. Rename it and pick it again".to_string()) };
     match fence.grant(path, &*store.lock().map_err(|e| e.to_string())?) {
         Err(crate::fence::GrantError::Refused(e)) => return Err(e),
-        Err(crate::fence::GrantError::SaveFailed(e)) => eprintln!("kolux-rs: the picked file's grant was not saved: {e}"),
+        Err(crate::fence::GrantError::SaveFailed(e)) => eprintln!("kolux: the picked file's grant was not saved: {e}"),
         Ok(()) => {}
     }
     Ok(spelled.to_owned())
@@ -416,7 +416,7 @@ fn rg(root: &Path) -> std::io::Result<std::process::Output> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
     }
     cmd.output()
 }
@@ -1649,7 +1649,7 @@ pub fn launch_in(dir: &Path, command: &str, path_var: Option<std::ffi::OsString>
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
     }
     cmd.spawn().map(|_| ()).map_err(|e| format!("{name} did not start: {e}"))
 }

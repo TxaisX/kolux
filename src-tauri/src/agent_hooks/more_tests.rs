@@ -8,7 +8,7 @@ fn state(s: &mut Session, m: &mut Memory, path: &str, j: Value) -> Option<&'stat
 
 /// A folder under the temp dir (a scratch folder under the lane's scratch env), emptied first.
 fn scratch(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("kolux-rs-more-{tag}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("kolux-more-{tag}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&d);
     fs::create_dir_all(&d).unwrap();
     d
@@ -330,7 +330,7 @@ fn stat_017_copilot_events_drive_the_dot() {
 fn stat_017_copilot_hook_file_is_kolux_own_and_goes_whole() {
     let home = scratch("copilot");
     let file = copilot_file(&home);
-    assert!(file.ends_with(Path::new(".copilot").join("hooks").join("kolux-rs.json")));
+    assert!(file.ends_with(Path::new(".copilot").join("hooks").join("kolux.json")));
     assert!(install_copilot(&home, &file).unwrap());
     let v: Value = serde_json::from_str(&read(&file)).unwrap();
     assert_eq!(v["version"], 1);
@@ -399,7 +399,7 @@ fn stat_021_pi_events_drive_the_dot() {
 fn stat_021_pi_extension_is_koluxs_own_file() {
     let home = scratch("pi");
     let file = super::pi::file(&home);
-    assert!(file.ends_with(".pi/agent/extensions/kolux-rs.ts"));
+    assert!(file.ends_with(".pi/agent/extensions/kolux.ts"));
     let dir = file.parent().unwrap().to_path_buf();
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("hello.ts"), "export default function (pi) {}\n").unwrap();
@@ -418,7 +418,7 @@ fn stat_021_pi_extension_is_koluxs_own_file() {
     assert!(super::pi::remove(&file).unwrap());
     assert!(!file.exists() && dir.join("hello.ts").is_file(), "only Kolux's extension goes");
     assert_eq!(super::pi::inspect(&home, &file).0, "not installed");
-    let user = "// my own kolux-rs.ts\nexport default function (pi) {}\n";
+    let user = "// my own kolux.ts\nexport default function (pi) {}\n";
     fs::write(&file, user).unwrap();
     assert!(super::pi::install(&home, &file).is_err());
     assert!(!super::pi::remove(&file).unwrap());
@@ -431,7 +431,7 @@ fn stat_021_pi_extension_is_koluxs_own_file() {
 /// needs quoting (a space, a shell character, a backslash) keeps its double quotes.
 #[test]
 fn row_481_a_plain_script_path_is_written_bare_so_any_shell_runs_it() {
-    assert_eq!(quoted("C:/Users/someone/.kolux-rs/hooks/cursor.cmd"), "C:/Users/someone/.kolux-rs/hooks/cursor.cmd");
+    assert_eq!(quoted("C:/Users/someone/.kolux/hooks/cursor.cmd"), "C:/Users/someone/.kolux/hooks/cursor.cmd");
     for odd in ["C:/Users/some one/hooks/cursor.cmd", "C:/a&b/cursor.cmd", r"C:\Users\someone\cursor.cmd", "C:/a(1)/droid.cmd"] {
         assert_eq!(quoted(odd), format!("\"{odd}\""), "{odd}");
     }
@@ -439,7 +439,7 @@ fn row_481_a_plain_script_path_is_written_bare_so_any_shell_runs_it() {
 
 #[test]
 fn stat_021_pi_titles_come_from_the_kolux_extension_alone() {
-    let text = super::pi::extension("C:/Users/me/.kolux-rs/agent-hooks/pi.cmd");
+    let text = super::pi::extension("C:/Users/me/.kolux/agent-hooks/pi.cmd");
     assert!(text.contains("getSessionName") && text.contains("ctx.ui.setTitle") && text.contains("\"session_info_changed\""), "named by Pi's session name, set through Pi's own title call, refreshed on a rename");
     assert!(text.contains("const TITLE_EVENTS = [\"session_start\",\"agent_start\",\"agent_settled\"];"));
     // Outside a Kolux pane the extension returns before it wires anything, so Pi's own title stays.
@@ -674,4 +674,69 @@ fn stat_014_command_code_script_prints_nothing_so_a_pre_tool_use_is_never_blocke
     let written = read(&home.join(SCRIPT_DIR_FOR_TESTS).join(COMMAND_CODE_SCRIPT));
     assert_eq!(written, script("command-code", "command-code", false));
     assert_ne!(written, script("command-code", "command-code", true), "the printing variant differs, and Command Code gets the silent one");
+}
+
+/// What the build before the rename wrote: `text` with the script folder under its old name.
+fn old_named(text: &str) -> String {
+    text.replace(".kolux/agent-hooks", ".kolux-rs/agent-hooks")
+}
+
+#[test]
+fn rename_old_named_hook_files_go_and_the_new_ones_are_written() {
+    let home = scratch("legacy-files");
+    // Copilot: an old kolux-rs.json beside where kolux.json goes.
+    let file = copilot_file(&home);
+    let old = file.with_file_name(super::super::LEGACY_HOOK_FILE);
+    install_copilot(&home, &file).unwrap();
+    fs::write(&old, old_named(&read(&file))).unwrap();
+    fs::remove_file(&file).unwrap();
+    assert!(install_copilot(&home, &file).unwrap());
+    assert!(!old.exists(), "the old Copilot file goes");
+    assert!(read(&file).contains(".kolux/agent-hooks"));
+    fs::write(&old, old_named(&read(&file))).unwrap();
+    assert!(install_copilot(&home, &file).unwrap(), "an old file beside a current one goes too");
+    assert!(!old.exists());
+    fs::write(&old, "{\"hooks\": {}}").unwrap();
+    assert!(remove_copilot(&file).unwrap());
+    assert!(!file.exists());
+    assert_eq!(read(&old), "{\"hooks\": {}}", "a file under the old name that is not Kolux's stays");
+    // Grok: the same, and the written record follows the new file.
+    let file = grok::file(&home);
+    let old = file.with_file_name(super::super::LEGACY_HOOK_FILE);
+    grok::install(&home, &file).unwrap();
+    let new_text = read(&file);
+    fs::write(&old, old_named(&new_text)).unwrap();
+    fs::remove_file(&file).unwrap();
+    assert!(grok::install(&home, &file).unwrap());
+    assert!(!old.exists(), "the old Grok file goes");
+    assert_eq!(read(&file), new_text);
+    assert!(!grok::install(&home, &file).unwrap(), "installing again changes nothing");
+    fs::write(&old, old_named(&new_text)).unwrap();
+    assert!(grok::remove(&home, &file, false).unwrap());
+    assert!(!file.exists() && !old.exists(), "removal takes both away");
+    // Pi: kolux-rs.ts goes, kolux.ts is written.
+    let file = pi::file(&home);
+    let old = file.with_file_name("kolux-rs.ts");
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    pi::install(&home, &file).unwrap();
+    fs::rename(&file, &old).unwrap();
+    assert!(pi::install(&home, &file).unwrap());
+    assert!(!old.exists() && file.is_file());
+    let _ = fs::remove_dir_all(&home);
+}
+
+#[test]
+fn rename_an_old_kolux_rs_kimi_block_is_replaced_not_duplicated() {
+    let home = scratch("kimi-legacy");
+    let file = kimi_file(&home);
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    fs::write(&file, "a = 1\n").unwrap();
+    install_kimi(&home, &file).unwrap();
+    let new = read(&file);
+    let old = old_named(&new).replace("# >>> kolux status", "# >>> kolux-rs status").replace(KIMI_END, LEGACY_KIMI_END);
+    fs::write(&file, &old).unwrap();
+    assert_eq!(inspect_kimi(&file).0, "installed", "an old whole block reads as Kolux's");
+    assert!(install_kimi(&home, &file).unwrap());
+    assert_eq!(read(&file), new, "one block, under the new name");
+    let _ = fs::remove_dir_all(&home);
 }

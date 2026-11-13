@@ -37,7 +37,7 @@ test("conflicting marks give unknown, and the order of title parts never decides
   expect(who("π - Claude Code")).toBe("unknown");
   // Marks that agree are one owner; the pi sign alone fits both Pi-style agents.
   expect(who("✳ Claude Code")).toBe("claude");
-  expect(who("π - kolux-rs")).toBe("omp,pi");
+  expect(who("π - kolux")).toBe("omp,pi");
   expect(who("π - OMP")).toBe("omp");
 });
 
@@ -45,7 +45,7 @@ test("Gemini CLI's title symbols are its vendor mark, and its name counts in a f
   // The hand, the four-point star and the diamond are the icons Gemini CLI prints at the start of its title.
   expect(who("✋ Action Required")).toBe("gemini");
   expect(who("✦ Fix the codex login bug")).toBe("gemini");
-  expect(who("◇ kolux-rs")).toBe("gemini");
+  expect(who("◇ kolux")).toBe("gemini");
   expect(who("✦ Gemini - port the claude importer")).toBe("gemini");
   expect(who("Gemini CLI")).toBe("gemini");
   expect(who("working - Gemini")).toBe("gemini");

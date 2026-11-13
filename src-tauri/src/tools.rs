@@ -74,7 +74,7 @@ pub fn probe(program: &str, args: &[&str], limit: Duration) -> Ran {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
     }
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut cmd, 0); // own group, so a hang takes the whole tree
@@ -957,7 +957,7 @@ mod tests {
 
     #[test]
     fn card13_dismissed_notices_that_could_not_be_kept_aside_are_never_saved_over() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-tools-c13-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-tools-c13-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Store::open(&dir).unwrap();
         let broken = "{\"gh\": \"abc";

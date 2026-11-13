@@ -1,4 +1,5 @@
-// The status bar's memory figure: the app's working set in bytes (from the Rust side), shown the
+// The status bar's memory figure in bytes, from the Rust side: on Windows the private bytes of Kolux
+// and its web view processes (not the agents or shells), elsewhere the app's working set. Shown the
 // way DESIGN.md section 8 shows it ("717.9 MB"), one decimal, GB past 1024 MB.
 
 const MB = 1024 * 1024;

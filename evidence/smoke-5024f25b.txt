@@ -1,0 +1,4 @@
+pnpm smoke at 2026-11-12T20:56:49.929Z on 5024f25b (G:\Dev\kolux-lanes\c2-agents)
+args: --only 6 --keep --port 1440 --cdp 9420 --identifier com.txaisxiong.kolux.c2.smoke --temp G:/Dev/kolux-lanes/c2-agents/artifacts/round5/smoke6 --timeout 25; T-184 ticked: false; flow 5 report-only
+FAIL 6: timed out after 30000 ms waiting for a Grok pane
+smoke: 0/1 flows passed

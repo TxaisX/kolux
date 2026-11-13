@@ -7,7 +7,7 @@
 //!
 //! ponytail: Windows does not hand out another process's working folder without reading its
 //! memory, so "the process's working folder" is the folder of the terminal that started it
-//! (T-226-b in kolux-rs-after.md for a real cwd read once a Win32 feature is allowed in Cargo.toml).
+//! (T-226-b in kolux-after.md for a real cwd read once a Win32 feature is allowed in Cargo.toml).
 //!
 //! A Stop ends a program, so it is licensed strictly (ports-stop, from PR #42): the row the user
 //! saw must still be the same program (its pid and start time agree three times: on the row, in a
@@ -365,7 +365,7 @@ pub fn netstat(fresh: bool) -> Result<String, String> {
     static LAST: std::sync::Mutex<Option<(std::time::Instant, String)>> = std::sync::Mutex::new(None);
     shared(&LAST, fresh, || {
         // CREATE_NO_WINDOW: a console would flash up on every poll.
-        let out = std::process::Command::new("netstat").args(["-ano"]).creation_flags(0x0800_0000).output().map_err(|e| format!("The port scan could not start: {e}"))?;
+        let out = std::process::Command::new("netstat").args(["-ano"]).creation_flags(crate::winproc::no_window()).output().map_err(|e| format!("The port scan could not start: {e}"))?;
         if !out.status.success() {
             return Err("The port scan failed: netstat did not finish".into());
         }

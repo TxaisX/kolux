@@ -23,7 +23,7 @@ test("every sub-agent turn is a note of its own, even while the lead stays worki
 
 test("the title carries the repository only when several have agents; long replies are cut (STAT-041)", () => {
   expect(noteTitle("Claude 2", null, "finished")).toBe("Claude 2 finished");
-  expect(noteTitle("Claude 2", "kolux-rs", "finished")).toBe("kolux-rs · Claude 2 finished");
+  expect(noteTitle("Claude 2", "kolux", "finished")).toBe("kolux · Claude 2 finished");
   expect(preview("x".repeat(200))).toHaveLength(120);
   expect(preview("x".repeat(200)).endsWith("…")).toBe(true);
 });

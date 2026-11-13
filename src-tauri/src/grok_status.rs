@@ -4,7 +4,7 @@
 //! of the question tool (a cancelled question) means working and never rebuilds the question card;
 //! the start of any other tool means working. The events are in the normalized hook shape every
 //! vendor is turned into (agent_hooks::vendors::normalize). Routing Grok's hooks here and carrying
-//! the question on the status payload is wiring for the status lane (kolux-rs-after.md).
+//! the question on the status payload is wiring for the status lane (kolux-after.md).
 // Nothing calls this until the hook listener routes Grok's events here.
 #![allow(dead_code)]
 

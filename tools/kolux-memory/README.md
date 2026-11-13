@@ -10,7 +10,7 @@ the repository and is never committed. The tool is the portable part.
 ## Quick start
 
 ```powershell
-cd <your clone of kolux-rs>
+cd <your clone of kolux>
 node tools/kolux-memory/cli.mjs build --github
 node tools/kolux-memory/cli.mjs status
 node tools/kolux-memory/cli.mjs resume

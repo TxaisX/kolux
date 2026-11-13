@@ -185,7 +185,7 @@ fn sess025_handoff_notes_never_show_in_git_status() {
 use std::process::Command;
 
 fn temp(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("kolux-rs-proj-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-proj-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     dir
@@ -373,7 +373,7 @@ fn a_plain_folder_gets_git_and_a_first_commit_without_its_secrets() {
 #[test]
 fn starting_git_refuses_a_relative_or_missing_path_and_a_failed_commit_leaves_no_git() {
     assert!(first_commit_preview(Path::new("some/where")).unwrap_err().contains("not a full path"));
-    let gone = std::env::temp_dir().join("kolux-rs-proj-no-such-folder-61");
+    let gone = std::env::temp_dir().join("kolux-proj-no-such-folder-61");
     assert!(start_git(&gone, &[], &[]).unwrap_err().contains("not an existing folder"));
     let dir = temp("first-fail");
     fs::write(dir.join("a.txt"), "a").unwrap();
@@ -2452,7 +2452,7 @@ fn t110b_a_plain_folder_project_only_gets_a_title() {
 
 #[test]
 fn proj059_rename_trims_refuses_blank_and_lasts() {
-    let dir = std::env::temp_dir().join(format!("kolux-rs-rename-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-rename-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let s = Store::open(&dir).unwrap();

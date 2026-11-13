@@ -174,7 +174,7 @@ fn link_dir(target: &Path, link: &Path) -> std::io::Result<()> {
     {
         use std::os::windows::process::CommandExt;
         let mut cmd = std::process::Command::new(crate::pty::system_program("cmd.exe")); // T-663
-        cmd.raw_arg(format!("/C mklink /J \"{}\" \"{}\"", link.display(), target.display())).creation_flags(0x0800_0000);
+        cmd.raw_arg(format!("/C mklink /J \"{}\" \"{}\"", link.display(), target.display())).creation_flags(crate::winproc::no_window());
         match cmd.output() {
             Ok(out) if out.status.success() => Ok(()),
             Ok(out) => Err(std::io::Error::other(String::from_utf8_lossy(&out.stderr).trim().to_string())),
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn copies_keep_to_the_budget_and_a_stopped_copy_says_so() {
-        let root = std::env::temp_dir().join(format!("kolux-rs-budget-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("kolux-budget-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let (repo, dest) = (root.join("repo"), root.join("dest"));
         std::fs::create_dir_all(repo.join("deps/pkg")).unwrap();

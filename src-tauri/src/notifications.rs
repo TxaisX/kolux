@@ -19,7 +19,7 @@ fn blocked() -> bool {
         use std::os::windows::process::CommandExt;
         let out = std::process::Command::new("reg")
             .args(["query", r"HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications", "/v", "ToastEnabled"])
-            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+            .creation_flags(crate::winproc::no_window()) // CREATE_NO_WINDOW
             .output();
         out.map(|o| toasts_off(&String::from_utf8_lossy(&o.stdout))).unwrap_or(false)
     }

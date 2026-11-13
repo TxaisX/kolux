@@ -210,16 +210,16 @@ pub fn tray_pixels(choice: crate::app_look::IconChoice, rgba: &[u8], w: u32, h: 
 /// STAT-048: the taskbar badge. Windows has no badge count, so the count is painted onto an overlay
 /// icon: an amber disc with the number in white, "99+" past the cap. Since the 2026-10-20 merge of
 /// main the one registered command is `badge::badge_set` (single digit, plain disc above 9); this
-/// two-digit painter is unregistered and kept only until it is folded in or dropped (kolux-rs-after.md).
-#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-rs-after.md)
+/// two-digit painter is unregistered and kept only until it is folded in or dropped (kolux-after.md).
+#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-after.md)
 pub const BADGE_SIZE: u32 = 32;
-#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-rs-after.md)
+#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-after.md)
 pub const WHITE: [u8; 4] = [255, 255, 255, 255];
-#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-rs-after.md)
+#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-after.md)
 const BADGE_CAP: u32 = 99;
 
 /// What the badge says for this many workspaces: nothing at zero, the number, or "99+".
-#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-rs-after.md)
+#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-after.md)
 pub fn badge_text(count: u32) -> Option<String> {
     match count {
         0 => None,
@@ -229,7 +229,7 @@ pub fn badge_text(count: u32) -> Option<String> {
 }
 
 /// A 3x5 pixel glyph for each character the badge can show, one row per byte (3 low bits).
-#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-rs-after.md)
+#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-after.md)
 fn glyph(c: char) -> [u8; 5] {
     match c {
         '0' => [0b111, 0b101, 0b101, 0b101, 0b111],
@@ -248,7 +248,7 @@ fn glyph(c: char) -> [u8; 5] {
 }
 
 /// The overlay badge's pixels (RGBA, BADGE_SIZE square): an amber disc with `text` centred in white.
-#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-rs-after.md)
+#[cfg_attr(not(test), allow(dead_code))] // only tests reach it; folded in or dropped in the bug-fix phase (kolux-after.md)
 pub fn paint_badge(text: &str) -> (Vec<u8>, u32, u32) {
     let size = BADGE_SIZE as i64;
     let mut out = vec![0u8; (BADGE_SIZE * BADGE_SIZE * 4) as usize];

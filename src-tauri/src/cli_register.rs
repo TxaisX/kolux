@@ -233,9 +233,9 @@ pub fn path_at_start_now(log_dir: &Path) {
         };
         let line = match done {
             StartPath::NotAsked => return,
-            StartPath::Added => format!("kolux-rs: added {dir} to the user PATH, which was too long for the installer (T-594)"),
-            StartPath::AlreadyThere => format!("kolux-rs: {dir} is already on the user PATH (T-594)"),
-            StartPath::Skipped(why) => format!("kolux-rs: the user PATH was not changed: {why} (T-594)"),
+            StartPath::Added => format!("kolux: added {dir} to the user PATH, which was too long for the installer (T-594)"),
+            StartPath::AlreadyThere => format!("kolux: {dir} is already on the user PATH (T-594)"),
+            StartPath::Skipped(why) => format!("kolux: the user PATH was not changed: {why} (T-594)"),
         };
         crate::diag::write(&log, &line);
     });
@@ -885,7 +885,7 @@ mod tests {
     #[test]
     fn cli008_a_launcher_of_unknown_origin_is_a_conflict_left_where_it_is_and_our_old_one_is_replaced() {
         let d = scratch("launcher");
-        let exe = d.join("app").join("kolux-rs");
+        let exe = d.join("app").join("kolux");
         let target = d.join("bin").join("kolux");
         std::fs::create_dir_all(target.parent().unwrap()).unwrap();
         // Something else is at the target: reported with its path, untouched.
@@ -899,7 +899,7 @@ mod tests {
         // Free again: register writes ours; an outdated one of ours is replaced; remove deletes ours only.
         std::fs::remove_file(&target).unwrap();
         assert_eq!(launcher_register(&target, &exe, true).unwrap().state, "registered");
-        let old = d.join("old").join("kolux-rs");
+        let old = d.join("old").join("kolux");
         std::fs::write(&target, launcher_script(&old)).unwrap();
         assert_eq!(launcher_state(&target, &exe, true).state, "not-registered");
         assert_eq!(launcher_register(&target, &exe, true).unwrap().state, "registered");

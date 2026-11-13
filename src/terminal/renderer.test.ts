@@ -629,3 +629,181 @@ test("bug 1155: starting plain with the GPU switched off stays plain when woken"
   const choice = attachRenderer({ loadAddon: () => {} }, fakeWebgl, false, { live: 0, max: 4 }, true);
   expect(choice.wake()).toBe("dom");
 });
+
+// The glyph-garble bug: xterm's WebGL addon shares one atlas between terminals with the same font, theme and
+// scale, and a terminal's drawn cells keep the atlas coordinates they were built from. This world mimics that
+// (clearTextureAtlas wipes the shared atlas, drops only the calling terminal's cells and asks it for a redraw;
+// a redraw rebuilds cells from the atlas as it is NOW) so a pane left pointing at old coordinates shows up as
+// `stale`, the garbled-text state seen in the grid.
+describe("a shared glyph atlas: clearing it from one pane leaves no live pane stale", () => {
+  const world = () => {
+    const atlas = { epoch: 0, empty: false };
+    const wipe = () => {
+      if (atlas.empty) return;
+      atlas.epoch++;
+      atlas.empty = true;
+    };
+    const pane = (pool: { max: number; live: number }, opts: { throwOnClear?: boolean } = {}) => {
+      const state = { cells: null as number | null, redraws: [] as Array<[number, number]>, clears: 0, wiped: 0, lose: () => {} };
+      const addon = {
+        disposed: 0,
+        dispose() {
+          this.disposed++;
+        },
+        onContextLoss(l: () => void) {
+          state.lose = l;
+        },
+        clearTextureAtlas() {
+          state.clears++;
+          if (opts.throwOnClear) throw new Error("context gone");
+          const before = atlas.epoch;
+          wipe();
+          if (atlas.epoch !== before) state.wiped++;
+          state.cells = null; // this terminal's own cells are dropped, and it asks for a redraw
+        },
+      };
+      const host = { loadAddon() {}, rows: 24, refresh: (a: number, b: number) => void state.redraws.push([a, b]) };
+      const choice = attachRenderer(host, () => addon, true, pool);
+      return {
+        choice,
+        state,
+        addon,
+        /** A paint: unchanged cells are skipped (xterm's own rule), so only a pane with no cells rebuilds them. */
+        paint() {
+          atlas.empty = false;
+          if (state.cells === null) state.cells = atlas.epoch;
+        },
+        get stale() {
+          return state.cells !== null && state.cells !== atlas.epoch;
+        },
+      };
+    };
+    return { atlas, pane };
+  };
+
+  test("the bug: without the broadcast a pane's cells outlive a wipe it never saw (the world itself reports stale)", () => {
+    const { atlas, pane } = world();
+    const a = pane({ max: 12, live: 0 });
+    a.paint();
+    atlas.epoch++; // another terminal's clear: this pane was never told
+    expect(a.stale).toBe(true);
+  });
+
+  test("clearing glyphs from pane A drops the cells of every other live GPU pane and repaints their whole screen", () => {
+    const { pane } = world();
+    const pool = { max: 12, live: 0 };
+    const panes = Array.from({ length: 6 }, () => pane(pool));
+    panes.forEach((p) => p.paint());
+    expect(panes.some((p) => p.stale)).toBe(false);
+    panes[2].choice.clearGlyphs();
+    for (const p of panes) p.paint(); // the next frame of each pane
+    expect(panes.map((p) => p.stale)).toEqual([false, false, false, false, false, false]);
+    for (const [i, p] of panes.entries()) {
+      if (i === 2) continue;
+      expect(p.state.clears).toBe(1);
+      expect(p.state.redraws).toEqual([[0, 23]]);
+    }
+    expect(panes[2].state.clears).toBe(1);
+    expect(panes[2].state.redraws).toEqual([]); // the caller repaints itself (term.refresh at its call sites)
+  });
+
+  test("the shared atlas is wiped once however many panes are told, and every pane ends up on the new one", () => {
+    const { atlas, pane } = world();
+    const pool = { max: 12, live: 0 };
+    const panes = Array.from({ length: 4 }, () => pane(pool));
+    panes.forEach((p) => p.paint());
+    panes[0].choice.clearGlyphs();
+    expect(atlas.epoch).toBe(1);
+    expect(panes.reduce((n, p) => n + p.state.wiped, 0)).toBe(1);
+    panes.forEach((p) => p.paint());
+    expect(panes.every((p) => p.state.cells === 1)).toBe(true);
+  });
+
+  test("a pane drawing plain, parked or waiting for a slot does not clear anyone", () => {
+    const { pane } = world();
+    const pool = { max: 2, live: 0 };
+    const live = pane(pool);
+    const parked = pane(pool);
+    parked.choice.park();
+    const plain = attachRenderer({ loadAddon() {} }, fakeWebgl, false, pool);
+    plain.clearGlyphs();
+    parked.choice.clearGlyphs();
+    expect(live.state.clears).toBe(0);
+    expect(live.state.redraws).toEqual([]);
+  });
+
+  test("a parked pane is left alone while others clear, and takes part again once woken", () => {
+    const { pane } = world();
+    const pool = { max: 12, live: 0 };
+    const a = pane(pool);
+    const b = pane(pool);
+    b.choice.park();
+    a.choice.clearGlyphs();
+    expect(b.state.clears).toBe(0);
+    expect(b.state.redraws).toEqual([]);
+    expect(b.choice.wake()).toBe("webgl");
+    a.choice.clearGlyphs();
+    expect(b.state.clears).toBe(1);
+    expect(b.state.redraws).toEqual([[0, 23]]);
+  });
+
+  test("parking and waking a pane does not touch the atlas of the panes that stay (the addon only unregisters it)", () => {
+    const { pane } = world();
+    const pool = { max: 12, live: 0 };
+    const a = pane(pool);
+    const b = pane(pool);
+    b.paint();
+    a.choice.park();
+    a.choice.wake();
+    expect(b.state.clears).toBe(0);
+    expect(b.state.redraws).toEqual([]);
+    expect(b.stale).toBe(false);
+  });
+
+  test("a disposed pane is no longer told, and panes of another pool are not touched", () => {
+    const { pane } = world();
+    const pool = { max: 12, live: 0 };
+    const a = pane(pool);
+    const gone = pane(pool);
+    const elsewhere = pane({ max: 12, live: 0 });
+    gone.choice.dispose();
+    a.choice.clearGlyphs();
+    expect(gone.state.clears).toBe(0);
+    expect(gone.state.redraws).toEqual([]);
+    expect(elsewhere.state.clears).toBe(0);
+  });
+
+  test("a pane that lost its context is no longer told", () => {
+    const { pane } = world();
+    const pool = { max: 12, live: 0 };
+    const a = pane(pool);
+    const lost = pane(pool);
+    lost.state.lose();
+    expect(lost.choice.mode).toBe("dom");
+    a.choice.clearGlyphs();
+    expect(lost.state.clears).toBe(0);
+    expect(lost.state.redraws).toEqual([]);
+  });
+
+  test("a pane whose clear throws does not stop the others being repainted or break the caller", () => {
+    const { pane } = world();
+    const pool = { max: 12, live: 0 };
+    const a = pane(pool);
+    const broken = pane(pool, { throwOnClear: true });
+    const c = pane(pool);
+    expect(() => a.choice.clearGlyphs()).not.toThrow();
+    expect(broken.state.clears).toBe(1);
+    expect(c.state.clears).toBe(1);
+    expect(c.state.redraws).toEqual([[0, 23]]);
+  });
+
+  test("a host with no refresh or row count (a bare stand-in) is still cleared", () => {
+    const pool = { max: 12, live: 0 };
+    let cleared = 0;
+    const bare = Object.assign(fakeWebgl(), { clearTextureAtlas: () => void cleared++ });
+    attachRenderer({ loadAddon() {} }, () => bare, true, pool);
+    const caller = attachRenderer({ loadAddon() {} }, () => Object.assign(fakeWebgl(), { clearTextureAtlas() {} }), true, pool);
+    caller.clearGlyphs();
+    expect(cleared).toBe(1);
+  });
+});

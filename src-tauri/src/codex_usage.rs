@@ -229,7 +229,7 @@ pub(crate) fn app_server(program: &Path, home: &Path) -> std::io::Result<Child> 
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: never a Codex window on screen
+        cmd.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW: never a Codex window on screen
     }
     cmd.spawn()
 }
@@ -279,7 +279,7 @@ pub fn read_with(program: &Path, home: &Path) -> CodexUsage {
             let _ = s.flush();
         }
     };
-    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux-rs", "title": "Kolux", "version": env!("CARGO_PKG_VERSION") } } }));
+    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux", "title": "Kolux", "version": env!("CARGO_PKG_VERSION") } } }));
     let deadline = Instant::now() + READ_TIMEOUT;
     let (mut account, mut limits) = (None, None);
     let mut started = false;
@@ -403,7 +403,7 @@ mod tests {
 
     #[test]
     fn sign_in_is_looked_for_in_the_account_home_then_codex_home_then_the_default() {
-        let root = std::env::temp_dir().join(format!("kolux-rs-codexhome-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("kolux-codexhome-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let (acct, env, user) = (root.join("acct"), root.join("env"), root.join("user"));
         for d in [&acct, &env, &user.join(".codex")] {
@@ -429,7 +429,7 @@ mod tests {
     // T-548-b: one account's own read never borrows another sign-in.
     #[test]
     fn an_accounts_own_read_never_falls_back_to_another_sign_in() {
-        let root = std::env::temp_dir().join(format!("kolux-rs-codexacct-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("kolux-codexacct-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let (empty, key, chat) = (root.join("empty"), root.join("key"), root.join("chat"));
         for d in [&empty, &key, &chat] {

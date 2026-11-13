@@ -197,6 +197,11 @@ export function installDom() {
     addEventListener() {},
     removeEventListener() {},
     HTMLIFrameElement: class {},
+    // Base UI (via floating-ui) asks `instanceof Element` and friends; fake nodes are none of them.
+    Node: class {},
+    Element: class {},
+    HTMLElement: class {},
+    ShadowRoot: class {},
   };
   win.window = win;
   win.self = win;
@@ -206,6 +211,7 @@ export function installDom() {
   const g = globalThis as Any;
   g.window = win;
   g.document = doc;
+  for (const k of ["Node", "Element", "HTMLElement", "ShadowRoot"]) g[k] ??= win[k];
   g.IS_REACT_ACT_ENVIRONMENT = true;
   return { doc, win, store };
 }

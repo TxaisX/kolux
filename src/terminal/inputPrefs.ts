@@ -23,6 +23,8 @@ export const INPUT_FIELDS = {
   powershell: "powershellVersion",
   /** NATIVE-TERMINAL.md: panes drawn by the Windows Terminal engine (experimental, off by default). */
   native: "terminalNative",
+  /** Kept-warm shell: a shell kept started per open folder, so the next new terminal opens at once (off by default). */
+  warmShell: "terminalWarmShell",
 } as const;
 
 /** Families that ship programming ligatures: ligatures on "auto" turn on only for these. */
@@ -62,6 +64,8 @@ export type InputPrefs = {
   powershell: "auto" | "7" | "5";
   /** Panes drawn by the Windows Terminal engine instead of xterm (NATIVE-TERMINAL.md). Off unless set to true. */
   native: boolean;
+  /** A shell kept ready per open folder for the next new terminal (src-tauri terminal.rs WARM_FIELD). Off unless set to true. */
+  warmShell: boolean;
 };
 
 export const FULL_SCREEN_SCROLL = { min: 1, max: 20, start: 1 }; // TERM-089: one report per notch inside full-screen programs
@@ -82,6 +86,7 @@ export function readInput(s: Record<string, unknown>, platform: Platform): Input
     yenBackslash: s[INPUT_FIELDS.yenBackslash] === true,
     powershell: s[INPUT_FIELDS.powershell] === "7" || s[INPUT_FIELDS.powershell] === "5" ? s[INPUT_FIELDS.powershell] : "auto",
     native: s[INPUT_FIELDS.native] === true,
+    warmShell: s[INPUT_FIELDS.warmShell] === true,
   } as InputPrefs;
 }
 

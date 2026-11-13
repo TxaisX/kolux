@@ -3,7 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-pub const MARKER: &str = ".kolux-rs-scratch";
+pub const MARKER: &str = ".kolux-scratch";
+/// The marker's name before the rename; a scratch root a not-yet-updated script made still counts.
+pub const LEGACY_MARKER: &str = ".kolux-rs-scratch";
 
 fn norm(p: &Path) -> String {
     p.to_string_lossy().replace('\\', "/").trim_end_matches('/').to_lowercase()
@@ -16,7 +18,7 @@ pub fn within(path: &Path, root: &Path) -> bool {
 
 /// The nearest folder above `home` that holds the marker file; `home` itself is not a candidate.
 pub fn resolve_from(home: &Path) -> Result<PathBuf, String> {
-    let found = home.ancestors().skip(1).filter(|a| a.parent().is_some()).find(|a| a.join(MARKER).is_file());
+    let found = home.ancestors().skip(1).filter(|a| a.parent().is_some()).find(|a| a.join(MARKER).is_file() || a.join(LEGACY_MARKER).is_file());
     found.map(Path::to_path_buf).ok_or_else(|| format!("no {MARKER} marker in any folder above {home:?}; create one in the scratch root that holds the home"))
 }
 

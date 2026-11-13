@@ -75,7 +75,7 @@ fn view025_a_card_answer_types_the_agents_own_keys_and_the_pane_leaves_needs_you
 use kolux_lib::state::Store;
 
 fn store_dir(tag: &str) -> std::path::PathBuf {
-    let d = std::env::temp_dir().join(format!("kolux-rs-cards05-{tag}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("kolux-cards05-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     d
 }

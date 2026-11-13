@@ -4287,7 +4287,7 @@ mod tests {
         }
     }
 
-    /// fix-hooks AFTER (masking fuzz, kolux-rs-after.md): on any input, garbage included, a second
+    /// fix-hooks AFTER (masking fuzz, kolux-after.md): on any input, garbage included, a second
     /// mask over mask's own answer changes nothing. The inputs are generated from shell, header,
     /// key and quoting fragments by a fixed-seed xorshift, so a failure names its input and repeats.
     #[test]

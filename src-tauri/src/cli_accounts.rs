@@ -307,7 +307,7 @@ mod tests {
         assert_eq!(run("echo Visit the page and enter the code ABCD-1234", Sink(said.clone())), Some(0));
         assert!(String::from_utf8_lossy(&said.lock().unwrap()).contains("enter the code ABCD-1234"));
         assert_eq!(run("exit 3", Sink(said.clone())), Some(3), "a failed login keeps its own status");
-        assert!(run_forwarding(std::process::Command::new("kolux-rs-no-such-program"), Sink(said)).is_err(), "a program that will not start is an error");
+        assert!(run_forwarding(std::process::Command::new("kolux-no-such-program"), Sink(said)).is_err(), "a program that will not start is an error");
     }
 
     const CREDS: &str = r#"{"claudeAiOauth":{"accessToken":"fake-access","refreshToken":"fake-refresh"}}"#;
@@ -373,7 +373,7 @@ mod tests {
         assert!(stuck.message.contains("was not kept"), "{}", stuck.message);
         assert!(claude_accounts::load(&store.lock().unwrap()).is_empty());
         // Row 989 R1: the rollback took its hooks install lock under the scratch home, never the real one.
-        assert!(dir.join("home").join(".kolux-rs").join("agent-hooks").is_dir(), "the lock ran in the scratch home");
+        assert!(dir.join("home").join(".kolux").join("agent-hooks").is_dir(), "the lock ran in the scratch home");
     }
 
     #[test]

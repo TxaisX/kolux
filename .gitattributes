@@ -16,3 +16,5 @@ docs/**/*.svg text eol=lf
 # T-700 (DT-C136): the PDF viewer files copied from pdfjs-dist keep their exact bytes, so the copy check
 # compares like with like on an autocrlf checkout.
 public/pdfjs/** -text
+# T-783: scripts/notices.mjs writes LF and `--check` compares text, so an autocrlf checkout must not turn it CRLF.
+src-tauri/resources/THIRD-PARTY-NOTICES.txt text eol=lf

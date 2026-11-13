@@ -1523,7 +1523,7 @@ fn ps(ctx: &Ctx, req: &Request, only: Option<Project>, limit: Option<usize>) -> 
     let (dispatches, dispatches_unread) = match load_list(&*lock()?, DISPATCHES_KEY) {
         Ok(d) => (d, false),
         Err(e) => {
-            eprintln!("kolux-rs: worktree ps: {}", e.message);
+            eprintln!("kolux: worktree ps: {}", e.message);
             (Vec::new(), true)
         }
     };
@@ -2668,7 +2668,7 @@ fn keep_transcripts(dispatches: &mut [Value], own: &dyn Fn(u32) -> Option<PathBu
 pub(crate) fn keep_transcript_of(store: &Store, terminal: u32) {
     let mut dispatches = match load_list(store, DISPATCHES_KEY) {
         Ok(d) => d,
-        Err(e) => return eprintln!("kolux-rs: {}", e.message),
+        Err(e) => return eprintln!("kolux: {}", e.message),
     };
     let mine = |t: u32| (t == terminal).then(|| worker_read::own_transcript(t)).flatten();
     if keep_transcripts(&mut dispatches, &mine) {
@@ -4205,7 +4205,7 @@ mod tests {
             assert!(HELP.contains(&format!("kolux-dev {c} ")), "{c} in help");
         }
 
-        let dir = std::env::temp_dir().join(format!("kolux-rs-term-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-term-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4259,7 +4259,7 @@ mod tests {
     /// TERM-125 box 2: `terminal close --worktree X --all` through dispatch closes every terminal of that worktree and no other.
     #[test]
     fn term125_close_worktree_all_closes_every_terminal_there_and_only_there() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-term125close-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-term125close-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -4443,7 +4443,7 @@ mod tests {
         assert!(parse(&line("300")).1.is_ok());
         assert!(WAIT_SUBMIT_RANGE.contains(&WAIT_SUBMIT_MAX.to_string()));
         // The app refuses it too, whichever client sent it, before anything is typed.
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t596w-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t596w-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4464,7 +4464,7 @@ mod tests {
 
     #[test]
     fn row193_reset_on_an_unread_mail_is_refused_before_it_clears_anything() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-row193-reset-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-row193-reset-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4495,7 +4495,7 @@ mod tests {
 
     #[test]
     fn row877_mutating_mail_commands_on_an_unread_mail_are_refused_before_saving_anything() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-row877-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-row877-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4545,7 +4545,7 @@ mod tests {
 
     #[test]
     fn card13b_a_send_retry_with_unreadable_receipts_types_nothing_and_a_repaired_one_types_once() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-c13b-send-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-c13b-send-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4580,7 +4580,7 @@ mod tests {
     /// input box must not type a second time; the retry waits for the first send's receipt.
     #[test]
     fn card15_two_sends_with_the_same_retry_request_type_once() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-c15-send-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-c15-send-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4611,7 +4611,7 @@ mod tests {
     /// Row 883: the text is already typed when the receipt is saved, so a failed save is a warning, never "failed".
     #[test]
     fn row883_a_receipt_that_cannot_be_saved_after_typing_is_a_warning_and_a_retry_types_nothing() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-r883-send-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-r883-send-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4639,7 +4639,7 @@ mod tests {
 
     #[test]
     fn hidden_fails_closed_when_the_dispatch_passes_cannot_be_loaded() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-hidden-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-hidden-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4665,7 +4665,7 @@ mod tests {
 
     #[test]
     fn worktree_ps_still_answers_when_the_dispatch_list_cannot_be_read() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-ps-unread-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-ps-unread-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4685,7 +4685,7 @@ mod tests {
 
     #[test]
     fn row193_a_task_list_that_cannot_be_kept_aside_is_never_saved_over() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-row193-list-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-row193-list-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -4715,7 +4715,7 @@ mod tests {
 
     #[test]
     fn tasks_need_a_known_creator_and_a_dry_run_needs_no_recipient() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-dry-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-dry-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -5049,7 +5049,7 @@ mod tests {
     #[test]
     fn a_lost_change_can_be_looked_up_and_each_scope_reset_on_its_own() {
         use crate::orchestration::Mail;
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli038-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli038-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -5101,7 +5101,7 @@ mod tests {
     /// are listed and the missing one is named, in JSON and in the text.
     #[test]
     fn cli017_worktree_list_lists_what_it_can_and_names_a_project_whose_folder_is_gone() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t596-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t596-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let (kept, gone) = (dir.join("kept"), dir.join("gone"));
         for r in [&kept, &gone] {
@@ -5150,7 +5150,7 @@ mod tests {
         assert_eq!(parse(&words("worktree current --usage")).1.unwrap().unwrap().args["usage"], true);
         assert_eq!(parse(&words("worktree show --worktree name:a --usage")).1.unwrap().unwrap().args["usage"], true);
 
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli117-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli117-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         let other = dir.join("other");
@@ -5259,7 +5259,7 @@ mod tests {
         assert_eq!(p.command, "worktree.set");
         assert_eq!((&p.args["issue"], &p.args["displayName"], &p.args["noParent"]), (&json!("null"), &json!("Login"), &json!(true)));
 
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli019-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli019-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -5355,7 +5355,7 @@ mod tests {
         assert_eq!(p.unwrap().unwrap().command, "worktree.overlap");
         assert!(parse(&words("worktree changes --repo name:x")).1.unwrap_err().message.contains("unknown flag"));
 
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli118-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli118-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -5431,7 +5431,7 @@ mod tests {
     /// remote is kept and named; one with nothing of its own still goes.
     #[test]
     fn t613b_worktree_rm_keeps_a_branch_holding_a_commit_found_nowhere_else() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli613b-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli613b-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -5477,7 +5477,7 @@ mod tests {
     /// a dirty worktree is refused and a branch holding a commit found nowhere else is kept.
     #[test]
     fn c26r4_01_force_false_keeps_the_branch_the_way_no_force_does() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli-c26r401-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli-c26r401-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -5526,7 +5526,7 @@ mod tests {
 
     #[test]
     fn create_and_remove_a_worktree_from_the_command_line() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -5786,7 +5786,7 @@ mod tests {
     }
     #[test]
     fn worktree_ps_sums_up_workers_and_keeps_the_last_list_when_a_scan_fails() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli129-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli129-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -5872,7 +5872,7 @@ mod tests {
 
     #[test]
     fn a_worker_whose_terminal_dies_mid_task_escalates_once_to_its_run() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli172-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli172-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let store = Store::open(&dir.join("data")).unwrap();
@@ -5917,7 +5917,7 @@ mod tests {
     fn request_show_reads_the_ledger_and_a_worker_start_retry_never_starts_twice() {
         let refused = |s: &str| parse(&words(s)).1.unwrap_err().message;
         assert!(refused("orchestration request-show").contains("--request"));
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli173-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli173-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -5988,7 +5988,7 @@ mod tests {
     #[test]
     fn cli011_box2_app_open_asks_the_window_forward() {
         use std::sync::atomic::{AtomicUsize, Ordering};
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli011-front-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli011-front-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -6090,7 +6090,7 @@ mod tests {
     #[test]
     fn cli012_status_tells_running_not_running_stale_and_graph_not_ready_apart() {
         use std::sync::atomic::{AtomicBool, Ordering};
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli012-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli012-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let ask = |port: u16, token: &str| ask_status(port, token, "s1", "");
@@ -6142,7 +6142,7 @@ mod tests {
     /// busy with another request, with the pid the startup file names.
     #[test]
     fn cli012_status_answers_within_its_short_wait_while_the_app_is_busy() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli012b-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli012b-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
@@ -6176,7 +6176,7 @@ mod tests {
     /// the request ends the reading has no busy part.
     #[test]
     fn t076c_status_while_busy_says_what_runs_and_for_how_long() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t076c-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t076c-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
@@ -6243,7 +6243,7 @@ mod tests {
     #[test]
     fn fix1_status_answers_past_a_silent_client_and_counts_the_queue() {
         assert!(ACCEPT_READ + Duration::from_millis(500) <= STATUS_WAIT, "the accept read must end well inside the status wait");
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix1-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix1-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
@@ -6358,7 +6358,7 @@ mod tests {
     #[test]
     fn fix2_worker_release_saves_pending_before_the_kill() {
         use std::cell::RefCell;
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix2r-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix2r-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let me = u64::from(std::process::id());
@@ -6479,7 +6479,7 @@ mod tests {
         old.as_object_mut().unwrap().remove("committed_total");
         assert!(text_of(MEMORY, &old).lines().nth(3).unwrap().contains("– MB"), "{}", text_of(MEMORY, &old));
         // No app: no startup file, so one plain line and a non-zero exit.
-        let none = std::env::temp_dir().join(format!("kolux-rs-cli041-{}", std::process::id()));
+        let none = std::env::temp_dir().join(format!("kolux-cli041-{}", std::process::id()));
         let f = read_endpoint(&none).unwrap_err();
         assert_eq!(f.code, "app_unreachable");
         assert!(f.message.contains("not running") && f.message.contains(&format!("{} open", crate::orchestration::CLI)), "{}", f.message);
@@ -6628,7 +6628,7 @@ mod tests {
     #[test]
     fn fix4_b_offered_lines_run_from_the_coordinator_pane_and_from_no_pane() {
         let cli = crate::orchestration::CLI;
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix4-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix4-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -6741,7 +6741,7 @@ mod tests {
     /// may name any Run.
     #[test]
     fn fix5_b_worker_start_with_a_from_it_cannot_prove_fails() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix5-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix5-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -6898,7 +6898,7 @@ mod tests {
     /// command, stay open. A wrong tuple order in `session_now`/`runs_now` would show here.
     #[test]
     fn fix7_d_stop_and_release_through_dispatch_end_only_the_workers_marked_session() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix7-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix7-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -6955,7 +6955,7 @@ mod tests {
 
     /// The Ctx pieces a dispatch-level test needs: a scratch folder, its store and the git runner.
     fn fix8_world(tag: &str) -> (std::path::PathBuf, Git, Mutex<Store>) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix8-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix8-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -7314,7 +7314,7 @@ mod tests {
     /// the ordinary path and closes it. An answer that is not an object keeps its shape.
     #[test]
     fn fix10_c_a_reopen_whose_kill_fails_is_retried_the_ordinary_way() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix10c-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix10c-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let mut rows = vec![json!({ "id": "dispatch-1", "runId": null, "taskId": "task-1", "status": "stopped", "released": true, "lateStamp": true, "lateAfter": "released", "latePending": true, "terminal": 7, "agent": "claude", "worktree": "w" })];
@@ -7767,7 +7767,7 @@ mod tests {
     /// anything is made; naming itself, it is still held to its own Run.
     #[test]
     fn fix6_d_worker_start_from_a_pane_naming_another_terminal_is_a_mismatch() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-clifix6-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-clifix6-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -7840,7 +7840,7 @@ mod tests {
 
     #[test]
     fn t250b_c_file_open_diff_and_open_changed_tell_the_window_and_report_opened_and_skipped() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli250b-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli250b-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -7928,7 +7928,7 @@ mod tests {
     /// inventory, so a plain shell, an agent tab and the window's placement agree in all three.
     #[test]
     fn t262b_the_terminal_worktree_and_peer_lists_read_the_session_tab_inventory() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli262b-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli262b-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -7978,7 +7978,7 @@ mod tests {
     /// `orchestration task-reset` closes the breaker, and the task lists ready again.
     #[test]
     fn t279d_task_reset_frees_a_held_task_and_the_text_line_shows_the_held_label() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-cli279d-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-cli279d-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -8020,7 +8020,7 @@ mod tests {
 
     #[test]
     fn app019_a_second_launch_hands_its_markdown_files_to_the_running_copy() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-app019-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-app019-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
@@ -8174,7 +8174,7 @@ mod tests {
 
     #[test]
     fn t793_through_the_store_a_pane_the_runtime_cannot_prove_is_not_scoped_and_a_proven_worker_is() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t793-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -8211,7 +8211,7 @@ mod tests {
     /// turns this red.
     #[test]
     fn t793_dispatch_refuses_a_worker_pane_that_targets_another_pane() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-dispatch-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t793-dispatch-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -8304,7 +8304,7 @@ mod tests {
     /// treated as one with no pane (which is not scoped).
     #[test]
     fn t793_fix3_a_pane_that_does_not_prove_its_from_is_refused() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix3-from-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t793-fix3-from-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -8322,7 +8322,7 @@ mod tests {
     /// Review fix 2 (N1): a worker may not reset the dispatch list (`--tasks`, `--all`): that would turn it into a coordinator.
     #[test]
     fn t793_fix2_dispatch_refuses_orchestration_reset_from_a_worker() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-reset-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t793-fix2-reset-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -8355,7 +8355,7 @@ mod tests {
     /// Review fix 2 (N2): `worktree create` with an agent or a prompt opens an agent tab in a new pane, so a worker may not run it.
     #[test]
     fn t793_fix2_dispatch_refuses_a_worker_worktree_create_that_starts_an_agent() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-wt-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t793-fix2-wt-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();
@@ -8384,7 +8384,7 @@ mod tests {
     /// create one, change what it says, or run one; reading, pausing and removing them are not program starts.
     #[test]
     fn t793_fix2_dispatch_refuses_worker_automations_that_start_an_agent() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-auto-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-t793-fix2-auto-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git_ = Git::detect().unwrap();

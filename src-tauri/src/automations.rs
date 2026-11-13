@@ -1439,7 +1439,7 @@ fn run_precheck(cmd: &str, dir: &Path, limit: std::time::Duration) -> Option<Val
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c.creation_flags(crate::winproc::no_window()); // CREATE_NO_WINDOW
     }
     let mut child = match c.spawn() {
         Ok(ch) => ch,
@@ -1685,7 +1685,7 @@ mod tests {
     use std::cell::RefCell;
 
     fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-auto-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-auto-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d

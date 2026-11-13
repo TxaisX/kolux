@@ -51,7 +51,7 @@ fn decode_kind(e: &serde_json::Error) -> String {
 /// The log line for a blob kept aside: the key, why it did not read (kind and place) and the copy's
 /// name, never what was in it.
 fn kept_note(key: &str, aside: &str, why: &str) -> String {
-    format!("kolux-rs: {key} could not be read ({why}); its bytes are kept as {aside} and it starts fresh")
+    format!("kolux: {key} could not be read ({why}); its bytes are kept as {aside} and it starts fresh")
 }
 
 #[cfg(test)]
@@ -125,7 +125,7 @@ mod tests {
     use serde_json::Value;
 
     fn fresh(tag: &str) -> (Store, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-kept-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-kept-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         (Store::open(&dir).unwrap(), dir)
     }

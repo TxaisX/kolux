@@ -192,7 +192,7 @@ mod tests {
     use std::path::PathBuf;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-repoid-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-repoid-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -304,7 +304,7 @@ mod tests {
         run(&["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "-m", "first"], Some(&dir)).unwrap();
         let want = identity(&dir, "").unwrap();
         assert_eq!(want.legacy, None);
-        assert!(want.id.ends_with(&format!("kolux-rs-repoid-no-remote-{}", std::process::id())), "{}", want.id);
+        assert!(want.id.ends_with(&format!("kolux-repoid-no-remote-{}", std::process::id())), "{}", want.id);
         assert!(!want.id.contains('\\') && !want.id.ends_with('/') && !want.id.contains(".git"), "{}", want.id);
         let linked = scratch("no-remote-linked").join("wt");
         run(&["worktree", "add", "-q", "-b", "side", &linked.to_string_lossy()], Some(&dir)).unwrap();
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn row917_a_git_failure_is_an_error_not_a_path() {
-        let missing = std::env::temp_dir().join(format!("kolux-rs-repoid-missing-{}", std::process::id()));
+        let missing = std::env::temp_dir().join(format!("kolux-repoid-missing-{}", std::process::id()));
         let _ = fs::remove_dir_all(&missing);
         assert!(identity(&missing, "").is_err(), "an unreadable directory must not read as a folder id");
     }

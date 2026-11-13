@@ -58,7 +58,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     rmSync(OLDER, { recursive: true, force: true });
     mkdirSync(OLDER, { recursive: true });
-    writeFileSync(`${OLDER}/.kolux-rs-scratch`, "");
+    writeFileSync(`${OLDER}/.kolux-scratch`, "");
     writeFileSync(`${OLDER}/kolux-dev.cmd`, "@echo off\r\necho 0.0.1-older\r\n");
     ctx = await startPlain("CLI-007", { report: rep, standin: STANDIN_BODY, pathDirs: [OLDER] });
     ctx.appDir = `${new URL("../../src-tauri/target/debug", import.meta.url).pathname.slice(1)}`;

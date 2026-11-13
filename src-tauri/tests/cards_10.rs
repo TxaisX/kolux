@@ -17,7 +17,7 @@ fn scratch(tag: &str) -> PathBuf {
     let d = scratch_root::root().join("safe10").join(format!("{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
-    std::fs::write(d.join(".kolux-rs-scratch"), "").unwrap();
+    std::fs::write(d.join(".kolux-scratch"), "").unwrap();
     d
 }
 

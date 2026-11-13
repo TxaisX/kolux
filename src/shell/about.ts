@@ -36,3 +36,15 @@ export const ABOUT_MENU_ID = "help.about";
 export function openAbout(target: EventTarget = window): void {
   target.dispatchEvent(new Event(ABOUT_EVENT));
 }
+
+/** T-783: the About panel's button that shows THIRD-PARTY-NOTICES.txt, the licence notices of the open-source code in the app. */
+export const NOTICES_BUTTON = "Third-party notices";
+
+export type NoticesState = { kind: "closed" } | { kind: "loading" } | { kind: "text"; text: string } | { kind: "error"; message: string };
+
+/** What the panel shows once the app answers: the text, or why there is none. */
+export function noticesState(text: string | null, error?: unknown): NoticesState {
+  if (typeof text === "string" && text.trim() !== "") return { kind: "text", text };
+  const why = typeof error === "string" ? error : error instanceof Error ? error.message : "";
+  return { kind: "error", message: why || "The notices file is missing from this install." };
+}

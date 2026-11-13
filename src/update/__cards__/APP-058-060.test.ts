@@ -23,18 +23,18 @@ let scratchRoot: string | null = null;
 function scratch(tag: string): string {
   if (!scratchRoot) {
     for (let d = os.tmpdir(); path.dirname(d) !== d; d = path.dirname(d)) {
-      if (fs.existsSync(path.join(d, ".kolux-rs-scratch"))) {
+      if (fs.existsSync(path.join(d, ".kolux-scratch"))) {
         scratchRoot = d;
         break;
       }
     }
     if (!scratchRoot) {
-      scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kolux-rs-scratch-"));
-      fs.writeFileSync(path.join(scratchRoot, ".kolux-rs-scratch"), "");
+      scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kolux-scratch-"));
+      fs.writeFileSync(path.join(scratchRoot, ".kolux-scratch"), "");
     }
   }
   const dir = fs.mkdtempSync(path.join(scratchRoot, `${tag}-`));
-  fs.writeFileSync(path.join(dir, ".kolux-rs-scratch"), "");
+  fs.writeFileSync(path.join(dir, ".kolux-scratch"), "");
   return dir;
 }
 const slash = (p: string) => p.replace(/\\/g, "/");
@@ -84,7 +84,7 @@ describe("APP-058", { timeout: 120_000 }, () => {
       ...process.env,
       KOLUX_RELEASE_CHECKOUT: path.join(root, "rel", "checkout"),
       KOLUX_RELEASE_PUBLISH_DIR: publish, // a folder, so nothing can reach GitHub
-      KOLUX_RELEASE_KEY: path.join(root, "nokey", "kolux-rs.key"), // absent: the job cannot build or sign
+      KOLUX_RELEASE_KEY: path.join(root, "nokey", "kolux.key"), // absent: the job cannot build or sign
     };
     const lines: string[] = [];
     ship(parseArgs(["--main", "--message", "Add b"]), { cwd: work, log: (l: string) => lines.push(l), env });
@@ -158,7 +158,7 @@ describe("APP-059 box 2", { timeout: 180_000 }, () => {
       GIT_CONFIG_GLOBAL: cfg,
       KOLUX_RELEASE_CHECKOUT: checkout,
       KOLUX_RELEASE_PUBLISH_DIR: pub,
-      KOLUX_RELEASE_KEY: path.join(root, "nokey", "kolux-rs.key"),
+      KOLUX_RELEASE_KEY: path.join(root, "nokey", "kolux.key"),
     };
     const job = [path.join(SCRIPTS, "release.mjs"), "--repo", repo];
 

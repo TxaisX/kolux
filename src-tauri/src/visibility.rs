@@ -118,7 +118,7 @@ fn read_choices(store: &Store) -> Value {
     static LOGGED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     ensure_read(store).unwrap_or_else(|e| {
         if !LOGGED.swap(true, std::sync::atomic::Ordering::Relaxed) {
-            eprintln!("kolux-rs: the worktree visibility choices could not be read or created ({e}); worktrees made outside Kolux stay hidden until that works");
+            eprintln!("kolux: the worktree visibility choices could not be read or created ({e}); worktrees made outside Kolux stay hidden until that works");
         }
         Value::Null
     })
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn card13_visibility_choices_that_could_not_be_kept_aside_are_never_saved_over() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-vis-c13-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-vis-c13-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Store::open(&dir).unwrap();
         let broken = "{\"global\": {\"claude\": true";
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn card13b_listing_worktrees_degrades_when_the_choices_cannot_be_kept_aside() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-vis-c13b-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-vis-c13b-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Store::open(&dir).unwrap();
         let broken = "{\"global\": {\"claude\": true";
@@ -272,7 +272,7 @@ mod tests {
     const BROKEN_LIST: &str = r#"[{"id":"keep-1","name":"keep","path":"C:/keep"},{"id":"ke"#;
 
     fn broken_list_store(tag: &str) -> (Store, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-vis-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-vis-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Store::open(&dir).unwrap();
         store.set(crate::projects::PROJECTS_KEY, BROKEN_LIST).unwrap();
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn row903_a_readable_project_list_still_seeds_the_grandfathered_choices() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-vis-r903-ok-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-vis-r903-ok-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Store::open(&dir).unwrap();
         store.set(crate::projects::PROJECTS_KEY, r#"[{"id":"keep-1","name":"keep","path":"C:/keep"}]"#).unwrap();

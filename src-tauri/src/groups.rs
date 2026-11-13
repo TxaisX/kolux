@@ -179,7 +179,7 @@ mod tests {
     use super::*;
 
     fn store(name: &str) -> (Store, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-groups-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-groups-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         (Store::open(&dir).unwrap(), dir)

@@ -34,7 +34,7 @@ fn args_err(message: impl Into<String>) -> Failure {
 /// Kolux's agent id, the installer's name for it, and whether the shared folder already serves it
 /// (so naming it separately would only install a second copy). An agent not listed has no known
 /// installer name and is never guessed at. The installer names are an assumption to be checked
-/// against a live installer (kolux-rs-after.md).
+/// against a live installer (kolux-after.md).
 const AGENTS: &[(&str, &str, bool)] = &[
     ("claude", "claude-code", false),
     ("codex", "codex", true),

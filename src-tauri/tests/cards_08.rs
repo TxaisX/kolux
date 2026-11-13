@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 fn scratch(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("kolux-rs-cards08-{tag}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("kolux-cards08-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -917,7 +917,7 @@ fn orch022_box2_a_stop_when_kolux_holds_no_live_terminal_for_the_worker_says_unv
 
 #[test]
 fn orch022_box1_stopping_a_running_worker_ends_its_agent_terminal_and_the_worktree_folder_stays_on_disk() {
-    let root = std::env::temp_dir().join(format!("kolux-rs-cards08-o22b1-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("kolux-cards08-o22b1-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let worktree = root.join("worktree");
     std::fs::create_dir_all(&worktree).unwrap();

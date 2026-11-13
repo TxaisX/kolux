@@ -116,7 +116,7 @@ fn kill_tree(pid: u32) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        let _ = std::process::Command::new("taskkill").args(["/T", "/F", "/PID", &pid.to_string()]).creation_flags(0x0800_0000).output();
+        let _ = std::process::Command::new("taskkill").args(["/T", "/F", "/PID", &pid.to_string()]).creation_flags(crate::winproc::no_window()).output();
     }
     #[cfg(not(windows))]
     {
@@ -392,7 +392,7 @@ mod tests {
     use std::process::Command;
 
     fn temp(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-newproj-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-newproj-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -517,7 +517,7 @@ mod tests {
 
     #[test]
     fn proj003_two_clones_aimed_at_one_folder_wait_for_each_other() {
-        let dir = std::env::temp_dir().join("kolux-rs-newproj-turn");
+        let dir = std::env::temp_dir().join("kolux-newproj-turn");
         let first = Turn::take(&dir);
         let (tx, rx) = std::sync::mpsc::channel();
         let other = dir.clone();

@@ -305,7 +305,7 @@ mod tests {
     use serde_json::json;
 
     fn tmp(tag: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-sessrows-{tag}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-sessrows-{tag}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
@@ -414,7 +414,7 @@ mod tests {
     fn view084_worktree_line_knows_a_missing_folder_and_never_asks_a_network_path() {
         let here = std::env::temp_dir();
         assert_eq!(folder_exists(Some(&here.to_string_lossy())), Some(true));
-        assert_eq!(folder_exists(Some(&here.join("kolux-rs-sessrows-gone-xyz").to_string_lossy())), Some(false));
+        assert_eq!(folder_exists(Some(&here.join("kolux-sessrows-gone-xyz").to_string_lossy())), Some(false));
         assert_eq!(folder_exists(Some(r"\\server\share\x")), None);
         assert_eq!(folder_exists(Some("//server/share/x")), None);
         assert_eq!(folder_exists(Some("  ")), None);

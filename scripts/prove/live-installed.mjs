@@ -253,6 +253,7 @@ export async function closeRunning() {
     $targets = @()${pid ? ` + ${pid}` : ''}
     $svc = @(Get-CimInstance Win32_Process -Filter "Name='kolux.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '--terminal-service' -and $_.CommandLine -like "*$mine*" })
     $targets += @($svc | ForEach-Object { $_.ParentProcessId })
+    # kolux-rs is the program name before T-790; installed copies may still be that old build.
     $alive = @($targets | Sort-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } | Where-Object { $_.ProcessName -in @('kolux', 'kolux-rs') -and $_.MainWindowHandle -ne 0 })
     foreach ($p in $alive) { $p.CloseMainWindow() | Out-Null }
     $end = (Get-Date).AddSeconds(30)

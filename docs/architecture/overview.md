@@ -65,7 +65,7 @@ Everything lives under `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resource
 - `terminals.json`, `cli.json`, and `agent-hooks-endpoint.txt` plus one `agent-hooks-endpoint-<terminal>.txt` per pane, the endpoint files for the local doors;
 - `artifacts/`, `browser-profiles/`, and the managed Claude and Codex homes.
 
-Hook scripts are not in the profile. They live in `~/.kolux-rs/agent-hooks` (`src-tauri/src/hooks.rs:30-36`), and each install writes a `.bak-kolux` copy beside the agent's own settings.
+Hook scripts are not in the profile. They live in `~/.kolux/agent-hooks` (`src-tauri/src/hooks.rs:30-36`), and each install writes a `.bak-kolux` copy beside the agent's own settings.
 
 [Data](data.md) has the full table and the recovery behavior.
 

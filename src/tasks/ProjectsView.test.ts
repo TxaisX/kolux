@@ -65,7 +65,7 @@ beforeEach(() => {
       held.items[0].issueType = String(a.name);
       return String(a.name);
     },
-    clone_suggest: (a) => ({ url: String(a.url), dest: "C:/Users/me/kolux-rs/workspaces/app" }),
+    clone_suggest: (a) => ({ url: String(a.url), dest: "C:/Users/me/kolux/workspaces/app" }),
   };
 });
 afterEach(async () => {

@@ -17,7 +17,7 @@ fn app041_box2_logs_past_the_real_caps_delete_the_oldest_and_the_total_stays_bel
     let dir = scratch_root::root().join("app41").join(format!("diag-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join(".kolux-rs-scratch"), "").unwrap();
+    fs::write(dir.join(".kolux-scratch"), "").unwrap();
     let pad = "x".repeat(LINE);
     let n = 2000; // 2000 * ~4 KB = ~8 MB, four times the total cap
     for i in 0..n {

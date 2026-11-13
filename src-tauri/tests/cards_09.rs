@@ -17,7 +17,7 @@ const FRI_NOON: i64 = 1_791_547_200_000;
 const HOUR: i64 = 3_600_000;
 
 fn scratch(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("kolux-rs-cards09-{tag}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("kolux-cards09-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d

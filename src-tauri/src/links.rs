@@ -455,7 +455,7 @@ pub fn spawn_editor(plan: &EditorPlan) -> Result<std::process::Child, String> {
     {
         use std::os::windows::process::CommandExt;
         // CREATE_NEW_CONSOLE for NeoVim; CREATE_NO_WINDOW keeps a .cmd launcher's shell out of sight.
-        c.creation_flags(if plan.console { 0x0000_0010 } else { 0x0800_0000 });
+        c.creation_flags(if plan.console { 0x0000_0010 } else { crate::winproc::no_window() });
     }
     c.spawn().map_err(|e| format!("could not start {}: {e}", plan.program.display()))
 }
@@ -684,7 +684,7 @@ mod tests {
         assert!(!host_path(r"\\nas\projects\repo\a", &long));
         // the refusal is text only: a host that cannot exist answers at once
         let t = std::time::Instant::now();
-        let err = refuse_host(r"\\no-such-host-kolux-rs.invalid\share\a.txt", &[]).unwrap_err();
+        let err = refuse_host(r"\\no-such-host-kolux.invalid\share\a.txt", &[]).unwrap_err();
         assert!(t.elapsed() < std::time::Duration::from_millis(500));
         assert!(err.contains("another computer"), "{err}");
         assert_eq!(refuse_host(r"C:\a.txt", &[]), Ok(()));

@@ -39,7 +39,7 @@ test("Cursor, MiMo and Pi launched in a workspace count by their launch record a
     pane(3, "C:/w/b", "shell", { agentId: "pi", program: "pi" }),
     pane(4, "C:/w/b", "shell", { program: null }),
   ];
-  const live = { 1: { title: "⠋ Cursor Agent" }, 2: { title: "MiMo Code - done" }, 3: { title: "π ⠹ kolux-rs" }, 4: { title: "⠋ working" } };
+  const live = { 1: { title: "⠋ Cursor Agent" }, 2: { title: "MiMo Code - done" }, 3: { title: "π ⠹ kolux" }, 4: { title: "⠋ working" } };
   // MiMo's title says it finished; the plain shell (no launch record) is never counted from output.
   expect(workingByDir(panes, {}, { 1: true, 2: true, 3: true, 4: true }, live)).toEqual({ "C:/w/a": 1, "C:/w/b": 1 });
   // A hook's word still wins over the title, and an ended program never counts.

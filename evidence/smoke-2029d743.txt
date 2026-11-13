@@ -1,0 +1,9 @@
+pnpm smoke at 2026-11-12T19:18:01.862Z on 2029d743 (G:\Dev\kolux-lanes\c1-coord)
+args: --port 1430 --cdp 9341 --identifier com.txaisxiong.kolux.c1.smoke --offscreen --timeout 20; T-184 ticked: false; flow 5 report-only
+FAIL 1: setup failed: could not focus [data-testid="add-project-folder-input"]: not-focused
+FAIL 2: setup failed: could not focus [data-testid="add-project-folder-input"]: not-focused
+FAIL 3: setup failed: could not focus [data-testid="add-project-folder-input"]: not-focused
+FAIL 4: setup failed: could not focus [data-testid="add-project-folder-input"]: not-focused
+FAIL 5 [report-only]: setup failed: could not focus [data-testid="add-project-folder-input"]: not-focused
+PASS close [report-only]: window close over CDP, exited in 9.3 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)
+smoke: 0/4 flows passed (flow 5 report-only until T-184 is ticked in PLAN.md: FAIL)

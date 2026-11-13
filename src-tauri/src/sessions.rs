@@ -93,7 +93,7 @@ mod tests {
     use super::*;
 
     fn tmp(tag: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-sessions-{tag}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-sessions-{tag}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d

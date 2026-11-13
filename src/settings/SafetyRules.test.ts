@@ -55,12 +55,12 @@ test("reset for all projects keeps the per-project scopes; reset for a project d
 // the scope has to name that folder or the hook never finds it (the page used to send only
 // `project.workspacesDir`, which a default project does not have).
 test("c19r101_a_projects_scope_names_the_folder_its_panes_run_in", () => {
-  const place = { dir: "C:/Users/x/kolux-rs/workspaces", flat: false };
+  const place = { dir: "C:/Users/x/kolux/workspaces", flat: false };
   const shop = { path: "G:\\Dev\\shop", name: "shop" };
-  expect(paneFolders(shop, place, [shop])).toEqual(["C:/Users/x/kolux-rs/workspaces/shop"]);
+  expect(paneFolders(shop, place, [shop])).toEqual(["C:/Users/x/kolux/workspaces/shop"]);
   expect(paneFolders({ ...shop, workspacesDir: "wt" }, place, [shop])).toEqual(["G:/Dev/shop/wt/shop"]);
   expect(paneFolders({ ...shop, workspacesDir: "D:/wt" }, place, [shop])).toEqual(["D:/wt/shop"]);
-  expect(paneFolders({ path: "G:\\Dev\\shop.git", name: "shop.git" }, place, [])).toEqual(["C:/Users/x/kolux-rs/workspaces/shop"]);
+  expect(paneFolders({ path: "G:\\Dev\\shop.git", name: "shop.git" }, place, [])).toEqual(["C:/Users/x/kolux/workspaces/shop"]);
   // The gaps, stated: a flat layout's folder carries no project, an unknown place names nothing,
   // and two projects with one folder name cannot be told apart, so neither claims it.
   expect(paneFolders(shop, { ...place, flat: true }, [shop])).toEqual([]);
@@ -70,19 +70,19 @@ test("c19r101_a_projects_scope_names_the_folder_its_panes_run_in", () => {
 });
 
 test("c19r101_a_save_writes_the_pane_folder_and_a_moved_workspaces_folder_is_re_claimed", () => {
-  const place = { dir: "C:/Users/x/kolux-rs/workspaces", flat: false };
+  const place = { dir: "C:/Users/x/kolux/workspaces", flat: false };
   const shop = { path: ROOT, name: "shop" };
   const dirs = paneFolders(shop, place, [shop]);
   const s = switchIn({}, ROOT, "force-push", false, dirs) as Record<string, Record<string, { dirs: string[] }>>;
-  expect(s[PROJECTS_FIELD][ROOT].dirs).toEqual(["C:/Users/x/kolux-rs/workspaces/shop"]);
+  expect(s[PROJECTS_FIELD][ROOT].dirs).toEqual(["C:/Users/x/kolux/workspaces/shop"]);
   const moved = paneFolders(shop, { dir: "D:/ws", flat: false }, [shop]);
   const again = switchIn(s, ROOT, "db-drop", false, moved) as Record<string, Record<string, { dirs: string[] }>>;
   expect(again[PROJECTS_FIELD][ROOT].dirs).toEqual(["D:/ws/shop"]);
   // An unknown place never drops the claim already saved.
   const kept = switchIn(s, ROOT, "db-drop", false, []) as Record<string, Record<string, { dirs: string[] }>>;
-  expect(kept[PROJECTS_FIELD][ROOT].dirs).toEqual(["C:/Users/x/kolux-rs/workspaces/shop"]);
+  expect(kept[PROJECTS_FIELD][ROOT].dirs).toEqual(["C:/Users/x/kolux/workspaces/shop"]);
   const added = addRule(s, ROOT, p1, dirs) as Record<string, Record<string, { dirs: string[] }>>;
-  expect(added[PROJECTS_FIELD][ROOT].dirs).toEqual(["C:/Users/x/kolux-rs/workspaces/shop"]);
+  expect(added[PROJECTS_FIELD][ROOT].dirs).toEqual(["C:/Users/x/kolux/workspaces/shop"]);
 });
 
 const rules = [{ id: "force-push", name: "Force-push to main", samples: ["a", "b"] }];

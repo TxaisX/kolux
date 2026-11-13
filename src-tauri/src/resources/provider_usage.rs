@@ -7,7 +7,7 @@
 //! - MiniMax M Plan remaining usage: a GET of the remains address on www.minimax.io with the key as
 //!   a Bearer token (public docs: platform.minimax.io/docs/m-plan/faq.md and token-plan/faq.md).
 //!   MiniMax publishes no format for the reply, so Kolux says only that MiniMax answered; the
-//!   figures wait for published docs (kolux-rs-after.md). Its mainland endpoint has no published
+//!   figures wait for published docs (kolux-after.md). Its mainland endpoint has no published
 //!   usage address, so nothing is asked there.
 //!
 //! Claude, Codex and Gemini are not asked anything here: their figures stay on what their own

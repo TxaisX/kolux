@@ -3,7 +3,7 @@
 //! `{"hooks": {"<event>": [{"matcher", "hooks": [{"type": "command", "command", "timeout"}]}]}}`;
 //! payloads carry `hookEventName`, `sessionId`, `toolName`, `toolInput`.
 //!
-//! Kolux writes its own file there, `kolux-rs.json`, and takes it away again when it quits, unless
+//! Kolux writes its own file there, `kolux.json`, and takes it away again when it quits, unless
 //! another running Kolux still owns it. Every removal takes out only the entries Kolux wrote; a
 //! file the user emptied stays empty across launches and comes back only when the user switches the
 //! hooks off and on again.
@@ -36,7 +36,7 @@ pub fn home_of(home: &Path) -> PathBuf {
 
 /// Kolux's own hook file in Grok's home.
 pub fn file(home: &Path) -> PathBuf {
-    home_of(home).join("hooks").join("kolux-rs.json")
+    home_of(home).join("hooks").join("kolux.json")
 }
 
 pub fn write_script(home: &Path) -> Result<String, String> {
@@ -82,13 +82,15 @@ pub fn contents(script_path: &str) -> String {
 pub fn install(home: &Path, file: &Path) -> Result<bool, String> {
     let path = write_script(home)?;
     let new = contents(&path);
+    // The old-named file goes first: it shares the written record, which the new file then takes.
+    let dropped = super::super::drop_legacy(file, super::super::LEGACY_HOOK_FILE, |old| remove(home, old, true));
     let text = read_opt(file)?;
     match text.as_deref() {
-        Some(t) if t == new => return Ok(false),
-        Some(t) if emptied(t) => return Ok(false),
+        Some(t) if t == new => return Ok(dropped),
+        Some(t) if emptied(t) => return Ok(dropped),
         Some(t) if !serde_json::from_str::<Value>(t).is_ok_and(|v| has_mine(&v)) => return Err(format!("{} is not Kolux's own hook file; left alone", file.display())),
         // Kolux's file, edited by hand since Kolux wrote it: the edit stands.
-        Some(t) if fs::read_to_string(written_record(home, file)).ok().as_deref() != Some(t) => return Ok(false),
+        Some(t) if fs::read_to_string(written_record(home, file)).ok().as_deref() != Some(t) => return Ok(dropped),
         _ => {}
     }
     if let Some(dir) = file.parent() {
@@ -111,6 +113,12 @@ fn remember(record: &Path, text: &str) {
 /// nothing else is left in it; `emptied_too` also takes away a file the user emptied (switching the
 /// hooks off, so switching them on again puts them back). Never writes over a newer edit.
 pub fn remove(home: &Path, file: &Path, emptied_too: bool) -> Result<bool, String> {
+    let now = remove_one(home, file, emptied_too)?;
+    // The old-named file from before the rename goes the same way, after the new one.
+    Ok(super::super::drop_legacy(file, super::super::LEGACY_HOOK_FILE, |old| remove_one(home, old, emptied_too)) || now)
+}
+
+fn remove_one(home: &Path, file: &Path, emptied_too: bool) -> Result<bool, String> {
     let Some(text) = read_opt(file)? else { return Ok(false) };
     let record = written_record(home, file);
     if emptied(&text) {
@@ -268,9 +276,9 @@ pub fn at_quit(profile: &Path) {
         let _ = tx.send(quit_at(&home, &file, &me, crate::procs::alive));
     });
     match rx.recv_timeout(QUIT_LIMIT) {
-        Ok(Ok(what)) => eprintln!("kolux-rs: grok hooks at quit: {what}"),
-        Ok(Err(e)) => eprintln!("kolux-rs: grok hooks at quit: {e}"),
-        Err(_) => eprintln!("kolux-rs: grok hooks at quit: not finished within {} s; left as they are", QUIT_LIMIT.as_secs()),
+        Ok(Ok(what)) => eprintln!("kolux: grok hooks at quit: {what}"),
+        Ok(Err(e)) => eprintln!("kolux: grok hooks at quit: {e}"),
+        Err(_) => eprintln!("kolux: grok hooks at quit: not finished within {} s; left as they are", QUIT_LIMIT.as_secs()),
     }
 }
 
@@ -367,7 +375,7 @@ mod tests {
     use super::*;
 
     fn scratch(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-t122-grok-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-t122-grok-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
@@ -380,7 +388,7 @@ mod tests {
     #[test]
     fn stat_018_install_writes_kolux_own_file_and_respects_hand_edits_and_emptying() {
         let home = scratch("install");
-        let file = home.join(".grok").join("hooks").join("kolux-rs.json");
+        let file = home.join(".grok").join("hooks").join("kolux.json");
         assert!(install(&home, &file).unwrap(), "absent: written");
         let v: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
         for e in EVENTS {
@@ -415,7 +423,7 @@ mod tests {
     #[test]
     fn stat_018_removal_is_idempotent_and_takes_out_only_kolux_entries() {
         let home = scratch("remove");
-        let file = home.join(".grok").join("hooks").join("kolux-rs.json");
+        let file = home.join(".grok").join("hooks").join("kolux.json");
         install(&home, &file).unwrap();
         // The user added an entry of their own next to Kolux's.
         let mut v: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
@@ -438,7 +446,7 @@ mod tests {
     #[test]
     fn stat_018_quit_removes_the_file_unless_another_running_kolux_owns_it() {
         let home = scratch("quit");
-        let file = home.join(".grok").join("hooks").join("kolux-rs.json");
+        let file = home.join(".grok").join("hooks").join("kolux.json");
         let me = owner(10, &home);
         let other = owner(20, &home);
         install(&home, &file).unwrap();
