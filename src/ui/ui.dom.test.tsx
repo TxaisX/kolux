@@ -77,6 +77,22 @@ describe("Dialog", () => {
   });
 });
 
+describe("Escape and an input method", () => {
+  it("leaves Escape to an input method that is composing, and closes on the next one", async () => {
+    const closed = vi.fn();
+    await show(
+      <Dialog onClose={closed} label="Name" className="ask">
+        <input aria-label="name" />
+      </Dialog>,
+    );
+    const field = q<HTMLInputElement>('[aria-label="name"]')!;
+    await act(async () => void field.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", isComposing: true, bubbles: true, cancelable: true })));
+    expect(closed).not.toHaveBeenCalled();
+    await press(field, "Escape");
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("Menu", () => {
   it("is a menu of menuitems; the arrow keys move between rows and a picked row runs and closes it", async () => {
     const picked = vi.fn();

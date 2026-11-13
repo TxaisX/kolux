@@ -1,16 +1,13 @@
 // @vitest-environment node
 // UX audit findings/usage-status.md rows 3, 4, 7, 9, 10, 15, 16, 17 and 18 (the Usage side). Invented figures only.
 import { createElement } from "react";
-import { renderToStaticMarkup, renderToString } from "react-dom/server";
-import { beforeEach, expect, test, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { expect, test, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
-const useDialogFocus = vi.fn();
-vi.mock("../chrome/dialogFocus", () => ({ useDialogFocus: (...a: unknown[]) => useDialogFocus(...a) }));
 
 import { loadFailedText, scanFailedNote, scopeFailedNote, trackFailedNote } from "./analyticsNotes";
 import ShareButton from "./ShareButton";
-import ShareCard from "./ShareCard";
 import { WorkspaceSpendView } from "./WorkspaceSpend";
 import { workspaceSpend } from "./workspaceRibbon";
 import { LoadFailed, TokenAnalyticsView, figureLabel } from "./TokenAnalytics";
@@ -27,8 +24,6 @@ const today = new Date(2026, 2, 31);
 const usage = (tracking = true): Usage => ({ tracking: { claude: tracking, codex: false }, claude: { scannedAt: 1, rows: [row("2026-03-30", { input: 1234 })], error: null }, codex: null });
 const view = (extra: Record<string, unknown> = {}, pick: "claude" | "overview" = "claude") =>
   renderToStaticMarkup(createElement(TokenAnalyticsView, { usage: usage(), pick, scanning: [], onPick: () => {}, onTrack: () => {}, onRefresh: () => {}, today, filters: { range: "30", scope: "all", roots: [] }, onFilters: () => {}, ...extra }));
-
-beforeEach(() => useDialogFocus.mockClear());
 
 test("usage-status.md:3: a token_usage failure draws the error and a Retry button, not nothing", () => {
   const html = renderToStaticMarkup(createElement(LoadFailed, { error: "db locked", onRetry: () => {} }));
@@ -82,12 +77,10 @@ test("usage-status.md:7: the Share on X button uses the shared .btn class, which
   expect(html).not.toContain("usage-share");
 });
 
-test("usage-status.md:9: the Share dialog takes focus, traps Tab and restores it through the shared helper, with Escape closing it", () => {
-  const onClose = vi.fn();
-  renderToString(createElement(ShareCard, { provider: "claude", rows: [row("2026-03-30", { input: 5 })], range: "30", today, onClose }));
-  expect(useDialogFocus).toHaveBeenCalledTimes(1);
-  expect(useDialogFocus.mock.calls[0][1]).toBe(onClose);
-  expect(shareCardSource).not.toContain('"Escape"'); // the dialog's own window listener is gone
+test("usage-status.md:9: the Share dialog is the shared src/ui Dialog, which takes focus, traps Tab, restores it and closes on Escape", () => {
+  // The behaviour is proved on a real DOM in ShareCard.dom.test.tsx; here, that the dialog is the shared one.
+  expect(shareCardSource).toMatch(/<Dialog onClose=\{onClose\} label=\{`Share \$\{card\.providerName\} usage`\}/);
+  expect(shareCardSource).not.toContain('"Escape"'); // no key code of its own
 });
 
 test("usage-status.md:15: the strip ribbon's label sits on an element that can carry one (role group)", () => {

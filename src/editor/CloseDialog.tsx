@@ -3,8 +3,7 @@
 // with only the keys that may go. Save writes each unsaved file (an untitled note asks for its name first);
 // a file that does not save stays open with its text. Don't save drops the edits on purpose; Cancel closes nothing.
 import { useEffect, useRef, useState } from "react";
-import { trapTab } from "../chrome/dialogFocus";
-import { useModalSlot } from "../chrome/modalStack";
+import { AlertDialog } from "../ui/Dialog";
 import { baseName, diskOf, isDirty, textOf } from "./buffers";
 import { askText, closable, mayRemove, saveAll, unsavedTabs, type Choice, type GuardPane, type Unsaved } from "./closeGuard";
 import NamePrompt from "./NamePrompt";
@@ -79,12 +78,8 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
 
   const cancel = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
-  // W201 B2: while the question is up it is the top dialog, so the one it was asked from (an Ask that stays
-  // mounted under it) leaves Tab and Escape to it. It leaves the stack when it closes.
-  useModalSlot(card, ask !== null);
-  useEffect(() => {
-    if (ask) cancel.current?.focus();
-  }, [ask]);
+  // The question is src/ui's AlertDialog: Cancel takes focus, Tab stays inside, and while it is up it is the top
+  // layer, so the dialog it was asked from (an Ask that stays mounted under it) leaves Tab and Escape to it (W201 B2).
   // While a save runs the buttons are off and would drop the focus; the card keeps it so Tab and Escape stay inside.
   useEffect(() => {
     if (ask && busy) card.current?.focus();
@@ -93,36 +88,30 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
   const dialog = (
     <>
       {ask && !naming && (
-        <div className="ask-backdrop guard" onMouseDown={() => void choose("cancel")}>
-          <div
-            ref={card}
-            tabIndex={-1}
-            className="ask"
-            role="alertdialog"
-            aria-modal="true"
-            aria-label="Save changes before closing?"
-            onMouseDown={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              trapTab(e); // aria-modal: Tab stays inside (no stop while a save runs: every button is off)
-              if (e.key === "Escape") (e.preventDefault(), void choose("cancel")); // choose() ignores it while a save runs
-            }}
-          >
-            <h2 className="ask-title">Save changes before closing?</h2>
-            <div className="ask-body">{askText(ask.unsaved.map((u) => baseName(u.path)))} Closing without saving loses them.</div>
-            <div className="btn-row">
-              <button ref={cancel} className="btn" disabled={busy} onClick={() => void choose("cancel")}>
-                Cancel
-              </button>
-              <button className="btn danger" disabled={busy} onClick={() => void choose("discard")}>
-                Don&apos;t save
-              </button>
-              <button className="btn primary" disabled={busy} onClick={() => void choose("save")}>
-                {ask.unsaved.length === 1 ? "Save" : "Save all"}
-              </button>
-            </div>
+        <AlertDialog
+          boxRef={card}
+          onClose={() => void choose("cancel")}
+          label="Save changes before closing?"
+          className="ask"
+          viewport="ask-backdrop guard"
+          initialFocus={cancel}
+          tabIndex={-1}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <h2 className="ask-title">Save changes before closing?</h2>
+          <div className="ask-body">{askText(ask.unsaved.map((u) => baseName(u.path)))} Closing without saving loses them.</div>
+          <div className="btn-row">
+            <button ref={cancel} className="btn" disabled={busy} onClick={() => void choose("cancel")}>
+              Cancel
+            </button>
+            <button className="btn danger" disabled={busy} onClick={() => void choose("discard")}>
+              Don&apos;t save
+            </button>
+            <button className="btn primary" disabled={busy} onClick={() => void choose("save")}>
+              {ask.unsaved.length === 1 ? "Save" : "Save all"}
+            </button>
           </div>
-        </div>
+        </AlertDialog>
       )}
       {naming && naming.t.root && (
         <NamePrompt

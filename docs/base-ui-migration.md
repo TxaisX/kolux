@@ -197,8 +197,9 @@ The tab and its panel are now linked by `aria-controls` and `aria-labelledby`, a
    focus. Migrate the outer dialog only together with, or after, the dialogs it opens. Alternatively, render the inner
    one inside the outer `Dialog`'s children.
 4. **Layering.** Base UI places a positioner element and draws the popup inside it. `.ui-positioner` carries
-   `z-index: var(--z-menu)`, and `.menu` inside it is `position: static`. A menu that must sit above a dialog needs
-   its own positioner class with a higher `--z-*` token, not a z-index on the popup.
+   `z-index: calc(var(--z-top) + 2)`, above every Kolux dialog (the raised guard is `--z-top + 1`), because a menu or
+   a select's list is often opened from inside one; `.menu` inside it is `position: static`. Every popup is put in one
+   empty out-of-flow box on the body (`.out-of-flow[data-ui-layer]`), for the reason menus use `OutOfFlow` (DT-C269).
 5. **First paint of tabs.** Base UI sets the roving `tabIndex` after mount, so `Tab` takes `selected` and writes
    `tabIndex` itself. A server render (`renderToString` tests) shows one tab stop. Attribute order in the HTML is
    `tabindex role aria-selected`, which matters for regex tests.
@@ -218,6 +219,15 @@ The tab and its panel are now linked by `aria-controls` and `aria-labelledby`, a
    arrow key; a tab strip draws the same buttons and roles and hands over once the code is in (Base UI wraps only the
    strip, so the panel is not drawn again); a tooltip decides itself when to show and asks Base UI only to place it.
    Never import `@base-ui/react` outside `base.tsx`.
+10. **The box mounts after its owner.** A popup's children are drawn once Base UI is read and its portal is in, a step
+   after the component that renders the popup has run its first effects. An effect that reads a ref inside the box on
+   mount (`ref.current.focus()`, `getContext`, a measure) finds `null` and never runs again: the share card stayed
+   blank this way. Focus goes through `initialFocus`; anything else hangs off a callback ref or state that holds the
+   element, so the effect runs when the element arrives (`usage/ShareCard.tsx`, `board/WorkspaceBoard.tsx`).
+11. **React events cross the portal.** A click or key in a popup bubbles up the React tree, not the DOM tree, so it
+   reaches the `onClick` and `onKeyDown` of every component around the call site even though the box is drawn on the
+   body. Put the popup beside, not inside, an element whose handler must not see it (the board's Move to list sits
+   next to its card, so a picked lane does not also select the card).
 
 ## Remaining call sites
 
@@ -238,14 +248,13 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | Folder | Dialog | Menu | ContextMenu | Popover | Tabs | Switch | Checkbox | Select | Tooltip | All |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | agents | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 5 |
-| agentstart | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | artifacts | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 7 |
 | automations | 3 | 3 | 0 | 0 | 1 | 1 | 1 | 13 | 14 | 36 |
-| board | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 9 |
+| board | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 7 |
 | chat | 2 | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 13 | 19 |
 | chrome | 0 | 1 | 2 | 1 | 0 | 1 | 1 | 0 | 22 | 28 |
 | editmenu | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 |
-| editor | 6 | 6 | 4 | 0 | 0 | 0 | 4 | 4 | 128 | 152 |
+| editor | 2 | 6 | 4 | 0 | 0 | 0 | 4 | 4 | 128 | 148 |
 | feedback | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 4 |
 | floor | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 3 |
 | inbox | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 4 |
@@ -269,16 +278,12 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 | terminal | 7 | 2 | 3 | 0 | 0 | 0 | 0 | 0 | 29 | 41 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 4 |
 | update | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 5 |
-| usage | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 13 | 15 |
-| **Total** | **61** | **29** | **20** | **4** | **8** | **42** | **57** | **92** | **646** | **959** |
+| usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 13 | 14 |
+| **Total** | **54** | **28** | **20** | **4** | **8** | **42** | **57** | **92** | **646** | **951** |
 
 ### agents
 
 - [ ] `src/agents/AgentsRail.tsx`: Tooltip :44, Tooltip :57, Tooltip :62, Tooltip :70, Tooltip :75
-
-### agentstart
-
-- [ ] `src/agentstart/AgentStartHost.tsx`: Dialog :56
 
 ### artifacts
 
@@ -294,7 +299,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 ### board
 
 - [ ] `src/board/ChipRow.tsx`: Tooltip :13, Tooltip :18, Tooltip :24, Tooltip :27, Tooltip :34
-- [ ] `src/board/WorkspaceBoard.tsx`: Dialog :131, Tooltip :199, Tooltip :221, Menu :223
+- [ ] `src/board/WorkspaceBoard.tsx`: Tooltip :199, Tooltip :221
 
 ### chat
 
@@ -324,7 +329,6 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/editor/AddProjectRow.tsx`: Tooltip :49
 - [ ] `src/editor/AllChangesPane.tsx`: Tooltip :376, Tooltip :383, Select :387, Tooltip :387, Tooltip :392, Tooltip :395, Tooltip :399, Checkbox :400, Tooltip :402, Checkbox :403, Tooltip :413, Tooltip :422, Tooltip :428, Tooltip :431, Tooltip :446, Tooltip :449, Tooltip :453, Tooltip :467, Tooltip :472, Tooltip :473, Tooltip :481, Tooltip :511, Tooltip :636, Checkbox :639, Tooltip :639, Tooltip :640, Tooltip :643, Tooltip :647, Tooltip :652, Tooltip :657
 - [ ] `src/editor/ChangeTree.tsx`: Checkbox :44, Tooltip :44, Tooltip :45, Tooltip :48
-- [ ] `src/editor/CloseDialog.tsx`: Dialog :101
 - [ ] `src/editor/CodeLabel.tsx`: Select :50, Tooltip :53
 - [ ] `src/editor/ContentSearch.tsx`: Tooltip :75, Tooltip :103, Tooltip :113
 - [ ] `src/editor/DiffPane.tsx`: Tooltip :511, Menu :517, Tooltip :533, Tooltip :536, Tooltip :543, Tooltip :546, Tooltip :559, Tooltip :567, Tooltip :572, Tooltip :573, Tooltip :577, Tooltip :585, Dialog :621
@@ -332,11 +336,9 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/editor/DrawPanel.tsx`: Tooltip :53
 - [ ] `src/editor/EditorPane.tsx`: Tooltip :152, Tooltip :173, Tooltip :770, Tooltip :774, Tooltip :775, Tooltip :780, Tooltip :794, Tooltip :804, Tooltip :811, Tooltip :816, Tooltip :823, Tooltip :826, Tooltip :832, Tooltip :846
 - [ ] `src/editor/Explorer.tsx`: Tooltip :825, Tooltip :828, Tooltip :831, Tooltip :834, Tooltip :837, Tooltip :843, Tooltip :849, Tooltip :852, Tooltip :855, Tooltip :858, Tooltip :861, ContextMenu :867, Menu :868, ContextMenu :879, Menu :880, Tooltip :913, Tooltip :933, ContextMenu :951, ContextMenu :977, Tooltip :978, Tooltip :992
-- [ ] `src/editor/FilePicker.tsx`: Dialog :104
 - [ ] `src/editor/ImageCanvas.tsx`: Tooltip :92, Tooltip :95, Tooltip :98, Tooltip :101, Tooltip :104
 - [ ] `src/editor/ImageView.tsx`: Tooltip :47, Tooltip :51, Tooltip :56, Tooltip :68, Tooltip :73
 - [ ] `src/editor/LinkHover.tsx`: Tooltip :69
-- [ ] `src/editor/NamePrompt.tsx`: Dialog :79
 - [ ] `src/editor/NoteRail.tsx`: Tooltip :80, Tooltip :92, Tooltip :136
 - [ ] `src/editor/NoteTools.tsx`: Tooltip :111, Tooltip :114, Tooltip :120, Tooltip :123, Tooltip :126, Tooltip :173, Tooltip :191
 - [ ] `src/editor/NotebookView.tsx`: Tooltip :158, Tooltip :173, Select :193
@@ -345,7 +347,6 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/editor/ReviewNotes.tsx`: Dialog :71, Tooltip :118, Menu :150, Tooltip :191
 - [ ] `src/editor/RichToolbar.tsx`: Tooltip :59, Select :77, Tooltip :80
 - [ ] `src/editor/TableControls.tsx`: Tooltip :102, Tooltip :108, Menu :113, Tooltip :115
-- [ ] `src/editor/TemplatePicker.tsx`: Dialog :66
 
 ### feedback
 
@@ -549,7 +550,6 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/usage/ClaudePill.tsx`: Tooltip :53, Tooltip :65
 - [ ] `src/usage/CodexPill.tsx`: Tooltip :26
 - [ ] `src/usage/ShareButton.tsx`: Tooltip :8
-- [ ] `src/usage/ShareCard.tsx`: Dialog :81
 - [ ] `src/usage/TokenAnalytics.tsx`: Tooltip :129, Tooltip :177, Switch :222, Tooltip :256
 - [ ] `src/usage/UsagePill.tsx`: Tooltip :17
 - [ ] `src/usage/WorkspaceSpend.tsx`: Tooltip :60, Tooltip :72, Tooltip :97, Tooltip :102, Tooltip :164

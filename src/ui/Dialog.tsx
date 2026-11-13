@@ -17,7 +17,7 @@ export type DialogProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "childre
   /** The dialog's accessible name. */
   label: string;
   /** The dialog box's class, e.g. "ask" or "menu about-panel". */
-  className: string;
+  className?: string;
   viewport?: string;
   backdrop?: string;
   /** Draw as an alert dialog: a question that needs an answer. */
@@ -28,11 +28,14 @@ export type DialogProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "childre
   initialFocus?: Focus;
   /** Where focus goes on close (default: what had it before the dialog opened). */
   finalFocus?: Focus;
+  /** The dialog box, for a caller that moves focus to it (a busy dialog whose buttons are all off). */
+  boxRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 };
 
-export function Dialog({ open = true, onClose, alert = false, modal = true, ...p }: DialogProps) {
-  const popup = useRef<HTMLDivElement>(null);
+export function Dialog({ open = true, onClose, alert = false, modal = true, boxRef, ...p }: DialogProps) {
+  const own = useRef<HTMLDivElement>(null);
+  const popup = boxRef ?? own;
   useLayer(open, onClose, popup);
   const base = useBase(open);
   return base && open ? <base.DialogBox popup={popup} onClose={onClose} alert={alert} modal={modal} {...p} /> : null;

@@ -1,8 +1,5 @@
-import { createElement } from "react";
-import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import { buildLanes, dragSet, droppedPaths, escapeAction, FRESH_QUERY, LANE_GAP, LANE_MAX, LANE_MIN, laneLeft, laneRange, laneWidth, listFailure, matches, moveFailure, nearestLane, pick, selectLane, windowRange, type BoardCard, type Status } from "./boardModel";
-import WorkspaceBoardView from "./WorkspaceBoard";
+import { buildLanes, dragSet, droppedPaths, FRESH_QUERY, LANE_GAP, LANE_MAX, LANE_MIN, laneLeft, laneRange, laneWidth, listFailure, matches, moveFailure, nearestLane, pick, selectLane, windowRange, type BoardCard, type Status } from "./boardModel";
 
 const card = (n: number, status = "todo", project = "alpha"): BoardCard => ({ path: `C:/w/${project}/${n}`, project, projectId: project, label: `work ${n}`, branch: `feat/${n}`, status, isMain: false });
 const statuses = (n: number): Status[] => Array.from({ length: n }, (_, i) => ({ id: `s${i}`, label: `Status ${i}` }));
@@ -60,13 +57,10 @@ test("VIEW-027: with hundreds of cards only the ones near the visible area are d
   expect(laneRange(10000, 1000, 260, 21)[1]).toBe(21);
 });
 
-test("PROJ-085: Escape leaves the board open while a popover is open, and the search starts empty", () => {
-  expect(escapeAction(true)).toBe("close-popover");
-  expect(escapeAction(false)).toBe("close-board");
+// Escape closing the Move to list before the board, and the empty search of a freshly mounted board, are proved on a
+// real DOM in WorkspaceBoard.dom.test.tsx (the board is a src/ui Dialog and its list a src/ui Menu, the newer layer).
+test("PROJ-085: the search starts empty", () => {
   expect(FRESH_QUERY).toBe("");
-  // a freshly mounted board (what reopening does) shows an empty search box
-  const html = renderToString(createElement(WorkspaceBoardView, { onClose: () => {} }));
-  expect(html).toContain('value=""');
 });
 
 test("VIEW-027: a lane header selects every card in the lane; dragging a selected card carries the selection", () => {

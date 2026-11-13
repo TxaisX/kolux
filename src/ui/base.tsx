@@ -12,6 +12,20 @@ import { Tabs } from "@base-ui/react/tabs";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { pointAnchor } from "./layer";
 
+/** Where every popup is put: one empty box outside the layout, for the reason menus use OutOfFlow (DT-C269): put
+ *  straight into the body, a popup made WebKit lay out and redraw the window's rows (terminals included) as it came
+ *  and went. Made on first use, kept for the window's life. */
+function layerHost(): HTMLElement {
+  let el = document.querySelector<HTMLElement>("body > .out-of-flow[data-ui-layer]");
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "out-of-flow";
+    el.setAttribute("data-ui-layer", "");
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
 type Focus = boolean | RefObject<HTMLElement | null> | (() => HTMLElement | null | boolean | void);
 type Side = "top" | "bottom" | "left" | "right";
 type Align = "start" | "center" | "end";
@@ -20,7 +34,7 @@ export type DialogBoxProps = Omit<HTMLAttributes<HTMLDivElement>, "role" | "chil
   popup: RefObject<HTMLDivElement | null>;
   onClose: () => void;
   label: string;
-  className: string;
+  className?: string;
   viewport?: string;
   backdrop?: string;
   alert: boolean;
@@ -47,7 +61,7 @@ export function DialogBox({ popup, onClose, label, className, viewport, backdrop
   );
   return (
     <Dialog.Root open modal={modal} onOpenChange={(next) => !next && onClose()}>
-      <Dialog.Portal>
+      <Dialog.Portal container={layerHost()}>
         {backdrop && <Dialog.Backdrop className={backdrop} />}
         {viewport ? <Dialog.Viewport className={viewport}>{box}</Dialog.Viewport> : box}
       </Dialog.Portal>
@@ -65,6 +79,7 @@ export type MenuBoxProps = {
   align: Align;
   offset: number;
   className?: string;
+  plain?: boolean;
   positioner?: string;
   style?: CSSProperties;
   finalFocus?: Focus;
@@ -72,12 +87,12 @@ export type MenuBoxProps = {
   children: ReactNode;
 };
 
-export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset, className, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
+export function MenuBox({ popup, onClose, label, anchor, at, side, align, offset, className, plain, positioner, style, finalFocus, children, ...p }: MenuBoxProps) {
   return (
     <Menu.Root open onOpenChange={(next) => !next && onClose()}>
-      <Menu.Portal>
+      <Menu.Portal container={layerHost()}>
         <Menu.Positioner className={positioner ? `ui-positioner ${positioner}` : "ui-positioner"} anchor={at ? pointAnchor(at.x, at.y) : anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
-          <Menu.Popup ref={popup} className={className ? `menu ${className}` : "menu"} aria-label={label} style={style} finalFocus={finalFocus as never} {...p}>
+          <Menu.Popup ref={popup} className={plain ? className : className ? `menu ${className}` : "menu"} aria-label={label} style={style} finalFocus={finalFocus as never} {...p}>
             {children}
           </Menu.Popup>
         </Menu.Positioner>
@@ -115,7 +130,7 @@ export type PopoverBoxProps = {
 export function PopoverBox({ popup, onClose, label, anchor, side, align, offset, className, style, modal, initialFocus, children, ...p }: PopoverBoxProps) {
   return (
     <Popover.Root open modal={modal} onOpenChange={(next) => !next && onClose()}>
-      <Popover.Portal>
+      <Popover.Portal container={layerHost()}>
         <Popover.Positioner className="ui-positioner" anchor={anchor} side={side} align={align} sideOffset={offset} collisionPadding={8} positionMethod="fixed">
           <Popover.Popup ref={popup} className={className ? `menu ${className}` : "menu"} role="dialog" aria-label={label} style={style} initialFocus={initialFocus as never} finalFocus={anchor as RefObject<HTMLElement | null>} {...p}>
             {children}
@@ -152,7 +167,7 @@ export function SelectBox({ popup, open, onOpen, value, onChange, options, label
         <Select.Value className="ui-select-value" />
         {chevron}
       </Select.Trigger>
-      <Select.Portal>
+      <Select.Portal container={layerHost()}>
         <Select.Positioner className="ui-positioner" alignItemWithTrigger={false} side="bottom" align="start" sideOffset={4} collisionPadding={8}>
           <Select.Popup ref={popup} className="menu ui-select-menu">
             <Select.List>
@@ -189,7 +204,7 @@ export const TabBox = ({ value, ...p }: { value: string; id: string; tabIndex: n
 export function TooltipBox({ anchor, id, side, children }: { anchor: RefObject<Element | null>; id: string; side: Side; children: ReactNode }) {
   return (
     <Tooltip.Root open>
-      <Tooltip.Portal>
+      <Tooltip.Portal container={layerHost()}>
         <Tooltip.Positioner className="ui-positioner ui-tip-positioner" anchor={anchor} side={side} sideOffset={6} collisionPadding={8}>
           <Tooltip.Popup id={id} role="tooltip" className="tip ui-tip">
             {children}

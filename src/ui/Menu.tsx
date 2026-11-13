@@ -28,6 +28,8 @@ export type MenuProps = {
   offset?: number;
   /** Extra classes after "menu". */
   className?: string;
+  /** Draw with `className` alone, not Kolux's .menu box (a list with a look of its own, the board's Move to). */
+  plain?: boolean;
   /** Extra classes on the positioner, for a menu that must sit above a dialog (a higher --z-* token). */
   positioner?: string;
   style?: CSSProperties;

@@ -17,10 +17,17 @@ export function useLayer(open: boolean, onClose: () => void, box?: RefObject<Ele
     if (!open) return;
     // A popup inside a hidden pane (panes stay mounted while another is shown) leaves the keys alone.
     const modal: Modal = { shown: () => !box?.current?.closest?.("[hidden]") };
+    let composing = false;
     const release = pushModal(modal);
-    const stop = watchEscape(window, () => close.current(), () => isTopModal(modal));
+    // An input method that is composing owns Escape (it drops the candidate), so the key is left to it. The note is
+    // taken first: listeners on the same target run in the order they were added.
+    const note = (e: Event) => void (composing = (e as KeyboardEvent).isComposing || (e as KeyboardEvent).keyCode === 229);
+    window.addEventListener("keydown", note, { capture: true });
+    const stopNote = () => window.removeEventListener("keydown", note, { capture: true });
+    const stop = watchEscape(window, () => close.current(), () => isTopModal(modal) && !composing);
     return () => {
       stop();
+      stopNote();
       release();
     };
   }, [open, box]);

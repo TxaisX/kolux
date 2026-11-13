@@ -111,18 +111,12 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 //   exempt:  why Escape is not this dialog's to take
 //   layer:   a src/ui wrapper whose useLayer catches Escape on the window (Kolux's stack, ahead of Base UI)
 const DIALOGS: [file: string, label: string, how: string][] = [
-  ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
   ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "tag"],
   ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
-  ["board/WorkspaceBoard.tsx", "Workspace statuses", "tag"],
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
-  ["editor/CloseDialog.tsx", "Save changes before closing?", "tag"],
   ["editor/DiffPane.tsx", "pop.note ? \"Edit review note\" : \"Add review note\"", "inner"],
-  ["editor/FilePicker.tsx", "Open a ${what}", "inner"],
-  ["editor/NamePrompt.tsx", "Name this note", "tag"],
   ["editor/ReviewNotes.tsx", "Add review note", "inner"],
-  ["editor/TemplatePicker.tsx", "Start a note from a template", "inner"],
   ["feedback/FeedbackDialog.tsx", "Send feedback", "tag"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "tag"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
@@ -165,7 +159,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["terminal/TerminalPane.tsx", "The shell ended", "tag"],
   ["terminal/TerminalPane.tsx", "The terminal did not come back", "inner"],
   ["update/UpdateCenterView.tsx", "Updates", "tag"],
-  ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
   // src/ui wrappers: a dialog drawn with <Dialog> / <AlertDialog> has no role literal at its call site; its Escape is
   // the wrapper's useLayer (Kolux's window-capture watchEscape), proved once for every caller in src/ui/ui.test.tsx.
   ["ui/base.tsx", "label", "layer"],
@@ -286,12 +279,8 @@ function closes(d: Found, how: string, all: Found[]): boolean {
 // own onKeyDown, a focus hook (useDialogFocus / trapDialog) on its ref, or its own Tab code. A new aria-modal
 // dialog fails until it is listed with its trap.
 const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = [
-  ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
   ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "trapTab"],
   ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
-  ["board/WorkspaceBoard.tsx", "Workspace statuses", "trapTab"],
-  ["editor/CloseDialog.tsx", "Save changes before closing?", "trapTab"],
-  ["editor/NamePrompt.tsx", "Name this note", "trapTab"],
   ["feedback/FeedbackDialog.tsx", "Send feedback", "own"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "trapTab"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
@@ -312,7 +301,6 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "trapTab"],
   ["terminal/TerminalPane.tsx", "The shell ended", "trapTab"],
   ["terminal/TerminalPane.tsx", "The terminal did not come back", "trapTab"],
-  ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
 ];
 function traps(d: Found, how: string): boolean {
   const ref = /\bref=\{(\w+)\}/.exec(d.tag)?.[1];
