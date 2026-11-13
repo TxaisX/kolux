@@ -54,11 +54,40 @@ Run: `powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File spikes\native
 - Setting: `terminalNative: true` in settings turns it on. The toggle on the settings page is owned by
   another lane (bug filed).
 
+## Look and drawing (fu/native-style)
+
+- The engine draws with the pane's own look: the active terminal theme (background, foreground, cursor,
+  selection, the 16 ANSI colours), the terminal font family and size, and the cursor shape and blink, sent
+  with `native_term_attach` and again with `native_term_place` on a theme or text change
+  (`nativeLook` in `src/terminal/nativeView.ts`, `TerminalSetTheme` in `native_view.rs`). Colours Windows
+  cannot take (see-through ones) are laid over the background. Font size goes in points (CSS px x 0.75).
+- DPI: the engine is told the window's DPI at attach and again when it changes (`TerminalDpiChanged`).
+- xterm stops drawing under a native pane: its screen leaves the page while the engine draws and comes
+  back (refitted) when the engine steps aside, so a menu over the pane still shows the same lines. xterm
+  keeps the engine's grid size.
+- A new native view starts from the session's saved tail and then takes only output newer than it, so
+  an attach never shows a blank pane and no chunk is drawn twice.
+
+## Kept-warm shell (setting, off by default)
+
+- Settings > Terminal > "Faster new terminals" saves `terminalWarmShell`. On, Kolux keeps one plain
+  shell started per open folder; the folder's next new plain shell terminal takes it (answered through
+  `terminal_attach` as `attached`, APP-052) and a new warm shell starts in the background. Cost: about
+  56 MB per open folder. Off, terminals start exactly as before; a warm shell left from before is ended at the next terminal start.
+- A warm shell ends when its folder's last terminal closes, and with the app.
+- Limits: only plain shell terminals take it (agents, chosen shells, restored or moved panes start as
+  usual); a warm shell lacks the per-pane hook identity, so an agent typed into it by hand does not report
+  status; a warm shell may show in session lists before it is taken; a default shell change ends the old
+  warm shell at the next claim.
+
 ## Still to do before it can default on
 
-1. Skip xterm's drawing for native panes (today xterm still draws underneath, so no memory is saved yet).
-2. Hide the native view while a menu, dialog or the command palette covers the pane (airspace).
-3. Theme and font from Kolux settings (`TerminalSetTheme`), clipboard copy/paste, focus hand-off between
-   the web view and the native window.
+1. Done: xterm's drawing is skipped for native panes (its screen leaves the page while the engine draws).
+2. Done in round 4: the native view steps aside while a menu, dialog or the command palette covers the
+   pane (`overlayOver`).
+3. Theme and font: done (above). Still open: clipboard copy/paste, focus hand-off between the web view
+   and the native window.
 4. Ship the DLL (license notice in THIRD-PARTY-NOTICES.md, bundling in tauri.conf.json).
 5. Measure: 8 panes printing, memory and CPU, xterm vs native.
+6. Kept-warm shell: give a taken warm shell the pane's hook identity, and keep warm shells out of
+   session lists.

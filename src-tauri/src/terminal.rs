@@ -122,6 +122,52 @@ struct Inner {
     /// Row 211: which process each session id holds now; a new number every time an id starts (a reused id too).
     process_gen: HashMap<u32, u64>,
     process_count: u64,
+    /// Kept-warm shell (`WARM_FIELD`, off by default): a plain shell already started per open folder (by
+    /// `warm_key`) with the shell it runs, which the folder's next new terminal takes instead of starting one.
+    warm: WarmMap,
+    /// Folders whose warm shell is starting now, so two starts at once make one.
+    warming: HashSet<String>,
+}
+
+/// Kept-warm shell: the setting, off unless set. Off, nothing here runs and terminals start as before.
+pub const WARM_FIELD: &str = "terminalWarmShell";
+
+/// Kept-warm shell: the shell a session runs (`default_shell`), None for the system's own.
+type ShellSpec = Option<(String, Vec<String>)>;
+/// Kept-warm shell: folder (`warm_key`) to its warm session and the shell it runs.
+type WarmMap = HashMap<String, (u32, ShellSpec)>;
+
+pub fn warm_on(settings: &serde_json::Value) -> bool {
+    settings.get(WARM_FIELD).and_then(serde_json::Value::as_bool) == Some(true)
+}
+
+/// Kept-warm shell: one spelling of a folder for the warm map (case and slashes folded on Windows).
+fn warm_key(dir: &str) -> String {
+    crate::links::fence_key(dir)
+}
+
+/// Kept-warm shell: the folders whose warm shell no longer has a terminal of the folder beside it (the
+/// folder's last terminal closed, or the folder was closed), so it is ended. Pure, over the registry's maps.
+fn idle_warm(warm: &WarmMap, dirs: &HashMap<u32, String>) -> Vec<String> {
+    let mut idle: Vec<String> = warm
+        .iter()
+        .filter(|(key, (wid, _))| !dirs.iter().any(|(id, d)| id != wid && warm_key(d) == **key))
+        .map(|(key, _)| key.clone())
+        .collect();
+    idle.sort();
+    idle
+}
+
+impl Inner {
+    /// Kept-warm shell: takes out every warm shell left without a terminal of its folder, to be ended
+    /// with `end_taken` once the lock is let go.
+    fn take_idle_warm(&mut self) -> Vec<Taken> {
+        if self.warm.is_empty() {
+            return Vec::new();
+        }
+        let ids: Vec<u32> = idle_warm(&self.warm, &self.dirs).into_iter().filter_map(|k| self.warm.remove(&k)).map(|(id, _)| id).collect();
+        ids.into_iter().map(|id| self.take_session(id)).collect()
+    }
 }
 
 /// A lock that a panic elsewhere did not spoil for good.
@@ -1033,7 +1079,7 @@ fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
             // Native terminal (NATIVE-TERMINAL.md): a pane drawn by the Windows Terminal engine gets its
             // output here too; the web view still gets it, so xterm's buffer, search and chat keep working.
             for item in &items {
-                native_view::feed(item.id, &item.data);
+                native_view::feed(item.id, &item.data, item.seq);
             }
             // Flood memory (DT-C244): through each subscribed web view's channel; the event only when none is.
             // Raw output (DT-C246): on the channel the batch is one binary frame, no base64 and no JSON.
@@ -1334,6 +1380,7 @@ impl Terminals {
                 let mut hist = None;
                 let mut agent = None;
                 let mut removed = None;
+                let mut warm_gone = Vec::new();
                 if let Ok(mut inner) = registry.lock() {
                     agent = inner.marks.get(&id).and_then(|m| m.agent);
                     removed = inner.sessions.remove(&id);
@@ -1350,6 +1397,10 @@ impl Terminals {
                     if let Some(f) = inner.flow.remove(&id) {
                         f.release();
                     }
+                    warm_gone = inner.take_idle_warm();
+                }
+                if !warm_gone.is_empty() {
+                    std::thread::spawn(move || warm_gone.into_iter().for_each(end_taken));
                 }
                 // AUTO-014: keep the end of a followed run's output before the log goes. Its lock waits
                 // for a chunk the pump counted before the registry was taken above (P2 perf).
@@ -1525,12 +1576,87 @@ impl Terminals {
 
     /// Ends one session. Its exit event follows from the waiter thread.
     pub fn kill(&self, id: u32) -> Result<(), String> {
-        let taken = {
+        let (taken, warm_gone) = {
             let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
-            inner.take_session(id)
+            let taken = inner.take_session(id);
+            (taken, inner.take_idle_warm())
         };
         end_taken(taken);
+        warm_gone.into_iter().for_each(end_taken);
         Ok(())
+    }
+
+    /// Kept-warm shell: should a warm shell start for `dir` now? True at most once until `warm_started` or
+    /// `warm_failed`: none is ready or starting for the folder.
+    pub fn warm_wanted(&self, dir: &str) -> bool {
+        let key = warm_key(dir);
+        let mut inner = lock(&self.inner);
+        let ready = inner.warm.get(&key).is_some_and(|(id, _)| inner.sessions.contains_key(id) && !inner.ended.contains(id));
+        if ready || inner.warming.contains(&key) {
+            return false;
+        }
+        inner.warming.insert(key)
+    }
+
+    /// Kept-warm shell: `id` is `dir`'s warm shell, running `shell`. A folder closed while it started gets
+    /// none: it is ended at once.
+    pub fn warm_started(&self, dir: &str, id: u32, shell: Option<(String, Vec<String>)>) {
+        let key = warm_key(dir);
+        let gone = {
+            let mut inner = lock(&self.inner);
+            inner.warming.remove(&key);
+            let old = inner.warm.insert(key, (id, shell)).map(|(old, _)| old).filter(|old| *old != id);
+            let mut gone: Vec<Taken> = old.map(|o| inner.take_session(o)).into_iter().collect();
+            gone.extend(inner.take_idle_warm());
+            gone
+        };
+        gone.into_iter().for_each(end_taken);
+    }
+
+    pub fn warm_failed(&self, dir: &str) {
+        lock(&self.inner).warming.remove(&warm_key(dir));
+    }
+
+    /// Kept-warm shell switched off: every warm shell ends. Nothing to do (the usual case) costs one lock.
+    pub fn drop_warm(&self) {
+        let gone: Vec<Taken> = {
+            let mut inner = lock(&self.inner);
+            let ids: Vec<u32> = inner.warm.drain().map(|(_, (id, _))| id).collect();
+            ids.into_iter().map(|id| inner.take_session(id)).collect()
+        };
+        gone.into_iter().for_each(end_taken);
+    }
+
+    /// Kept-warm shell: pane `pane_key`, which has no terminal running, takes `dir`'s warm shell when it
+    /// runs the shell a new terminal would start (`shell`). The shell becomes the pane's own: the pane key
+    /// maps to it (APP-052 reattach answers it from here on) and its output is saved under the key
+    /// (TERM-106). None when there is no live warm shell of that shell for the folder.
+    pub fn claim_warm(&self, dir: &str, shell: &Option<(String, Vec<String>)>, pane_key: u32, log_dir: Option<&std::path::Path>) -> Option<u32> {
+        let history = log_dir.and_then(|d| History::open(d, pane_key));
+        let (claimed, stale) = {
+            let mut inner = lock(&self.inner);
+            let running = |inner: &Inner, id: &u32| inner.sessions.contains_key(id) && !inner.ended.contains(id);
+            let (id, spec) = inner.warm.remove(&warm_key(dir))?;
+            if !running(&inner, &id) {
+                (None, None)
+            } else if &spec != shell {
+                // The default shell changed since it started: it is not what a new terminal runs now.
+                (None, Some(inner.take_session(id)))
+            } else if inner.panes.get(&pane_key).is_some_and(|p| running(&inner, p)) {
+                inner.warm.insert(warm_key(dir), (id, spec));
+                (None, None)
+            } else {
+                inner.panes.insert(pane_key, id);
+                if let Some(h) = history {
+                    inner.hist.insert(id, Arc::new(Mutex::new(h)));
+                }
+                (Some(id), None)
+            }
+        };
+        if let Some(t) = stale {
+            end_taken(t);
+        }
+        claimed
     }
 
     /// DT-C248 review 2: a start for pane `pane_key` is about to be asked for; the number it carries into
@@ -1770,6 +1896,20 @@ impl Terminals {
         }
         let Snapshot { seq, data } = inner.snaps.entry(id).or_default().snapshot();
         Some(LiveHistory { id, seq, data })
+    }
+
+    /// Native terminal: session `id`'s output count and its recent raw output from a line boundary, the
+    /// first picture of a view that starts drawing it. None for a session that is not running.
+    pub fn live_tail(&self, id: u32) -> Option<(u64, Vec<u8>)> {
+        let mut inner = self.inner.lock().ok()?;
+        if !inner.sessions.contains_key(&id) || inner.ended.contains(&id) {
+            return None;
+        }
+        let snap = inner.snaps.get_mut(&id)?;
+        let seq = snap.seq;
+        let all = snap.tail.make_contiguous();
+        let keep = if seq == all.len() as u64 { all.len() } else { all.len().saturating_sub(1) };
+        Some((seq, trim_history(all, keep).to_vec()))
     }
 
     /// Row 211: the process generation of session `id` (changes on every spawn, respawn or adoption of that id), None for an unknown id.
@@ -2067,10 +2207,52 @@ pub fn attach_answer(ours: u64, running: Option<u32>, asked: u64) -> Attach {
 
 /// APP-052: a pane asks for the terminal it had before the window reloaded. Async so the registry
 /// lock is taken off the window's thread.
+/// Kept-warm shell: with the setting on, a new plain-shell pane sends `warm` (its folder and size); a pane
+/// with nothing running then takes the folder's warm shell and is answered "attached" with it, and the
+/// folder's next warm shell starts in the background. Setting off, or no `warm`: the answer is as before.
 #[tauri::command(async)]
-pub fn terminal_attach(terminals: tauri::State<'_, Terminals>, pane_key: u32, generation: u64) -> Attach {
+pub fn terminal_attach(app: AppHandle, terminals: tauri::State<'_, Terminals>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, pane_key: u32, generation: u64, warm: Option<WarmAsk>) -> Attach {
     terminals.wait_linked(LINK_WAIT);
-    attach_answer(self::generation(), terminals.attached(pane_key), generation)
+    let answer = attach_answer(self::generation(), terminals.attached(pane_key), generation);
+    let Some(ask) = warm.filter(|_| answer.state == "fresh") else { return answer };
+    let settings = match store.lock() {
+        Ok(s) => s.settings(),
+        Err(_) => return answer,
+    };
+    if !warm_on(&settings) {
+        terminals.drop_warm();
+        return answer;
+    }
+    let dir = start_dir(&ask.cwd, None);
+    let shell = crate::pty::default_shell(&settings);
+    let log_dir = app.path().app_data_dir().ok();
+    let Some(id) = terminals.claim_warm(&dir, &shell, pane_key, log_dir.as_deref()) else { return answer };
+    let _ = terminals.resize(id, ask.cols, ask.rows);
+    keep_warm(&app, terminals.inner(), dir, ask.cols, ask.rows, shell, crate::shell_history::enabled(&settings));
+    attach_answer(answer.generation, Some(id), generation)
+}
+
+/// Kept-warm shell: what a new plain-shell pane sends with `terminal_attach`.
+#[derive(serde::Deserialize, Debug)]
+pub struct WarmAsk {
+    pub cwd: String,
+    pub cols: u16,
+    pub rows: u16,
+}
+
+/// Kept-warm shell: starts `dir`'s next warm shell off the caller's thread (a shell start takes about 0.8 s),
+/// unless one is ready or starting. A plain shell without a pane: no key, no hooks identity, no history file.
+fn keep_warm(app: &AppHandle, terminals: &Terminals, dir: String, cols: u16, rows: u16, shell: Option<(String, Vec<String>)>, per_worktree_history: bool) {
+    if !terminals.warm_wanted(&dir) {
+        return;
+    }
+    let (app, terminals) = (app.clone(), terminals.clone());
+    std::thread::spawn(move || {
+        match terminals.spawn(app, cols, rows, Some(dir.clone()), None, Vec::new(), Vec::new(), Vec::new(), None, None, shell.clone(), per_worktree_history, None) {
+            Ok(id) => terminals.warm_started(&dir, id, shell),
+            Err(_) => terminals.warm_failed(&dir),
+        }
+    });
 }
 
 /// DT-C248 review: what a pane still running a terminal redraws from when it is remounted in another cell:
@@ -2221,6 +2403,9 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     }
     let agent = program.as_deref().and_then(crate::tools::credited_program);
     let dir = cwd.clone();
+    // Kept-warm shell: only a plain new terminal (the default shell, nothing added) is one a warm shell can stand in for.
+    let warm_like = program.is_none() && args.is_empty() && env_own.is_empty() && shell.is_some();
+    let warm_shell = shell.clone();
     // T-172-e: a worker start puts its dispatch id in the first session's environment; the start that is
     // waiting for it learns which session that is (only a start still waiting is told).
     // cli FIX-7: the last such entry in the environment names the dispatch (the window appends its own).
@@ -2229,6 +2414,14 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     // T-690: the run this pane belongs to, read before the environment is handed over.
     let run = crate::automations::run_in(&env_own);
     let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history, agent_settings.as_ref()))?;
+    if warm_like {
+        let on = store.lock().map(|s| warm_on(&s.settings())).unwrap_or(false);
+        match &dir {
+            Some(d) if on => keep_warm(&app, terminals.inner(), d.clone(), cols, rows, warm_shell, per_worktree_history),
+            _ if !on => terminals.drop_warm(),
+            _ => {}
+        }
+    }
     // AUTO-012: an automation run dispatched to this worktree for this agent is followed here.
     if let Some(dir) = dir {
         crate::automations::follow(&app, |s| crate::automations::claim(s, id, pane_key, &dir, agent, run.as_deref(), crate::automations::now_ms()));
@@ -2363,13 +2556,31 @@ pub fn native_term_available() -> Result<String, String> {
 /// Native terminal: draws terminal `id` with the Windows Terminal engine over `rect` (physical pixels in
 /// the window's client area), fits the session to the engine's grid and returns that grid.
 #[tauri::command]
-pub fn native_term_attach(app: AppHandle, window: tauri::WebviewWindow, id: u32, rect: native_view::Rect) -> Result<(u16, u16), String> {
-    native_view::attach(&app, &window, id, rect)
+/// `look`: Kolux's terminal colours and font for the engine (nativeView.ts builds it from the active theme).
+/// A new view starts from the session's recent output, so the prompt already printed shows at once.
+pub fn native_term_attach(
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+    terminals: tauri::State<'_, Terminals>,
+    id: u32,
+    rect: native_view::Rect,
+    look: Option<native_view::Look>,
+) -> Result<(u16, u16), String> {
+    let fresh = !native_view::has(id);
+    let grid = native_view::attach(&app, &window, id, rect, look)?;
+    if fresh {
+        native_view::seed(id, || terminals.live_tail(id));
+    }
+    Ok(grid)
 }
 
-/// Native terminal: moves the view to `rect`, or hides it when `rect` is left out.
+/// Native terminal: moves the view to `rect`, or hides it when `rect` is left out. With `look` (the theme or
+/// the terminal font changed) the live view takes Kolux's new colours and font first.
 #[tauri::command]
-pub fn native_term_place(id: u32, rect: Option<native_view::Rect>) -> Result<Option<(u16, u16)>, String> {
+pub fn native_term_place(id: u32, rect: Option<native_view::Rect>, look: Option<native_view::Look>) -> Result<Option<(u16, u16)>, String> {
+    if let Some(look) = look {
+        native_view::set_look(id, look)?;
+    }
     native_view::place(id, rect)
 }
 
@@ -2382,6 +2593,46 @@ pub fn native_term_detach(id: u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_warm_shell_setting_is_off_unless_set_on() {
+        assert!(!warm_on(&serde_json::json!({})));
+        assert!(!warm_on(&serde_json::json!({ "terminalWarmShell": "yes" })));
+        assert!(!warm_on(&serde_json::json!({ "terminalWarmShell": false })));
+        assert!(warm_on(&serde_json::json!({ "terminalWarmShell": true })));
+    }
+
+    #[test]
+    fn a_warm_shell_is_freed_once_its_folder_has_no_other_terminal() {
+        let mut warm = HashMap::new();
+        warm.insert(warm_key("C:/work/a"), (10, None));
+        warm.insert(warm_key("C:/work/b"), (20, None));
+        let mut dirs = HashMap::new();
+        dirs.insert(10, "C:/work/a".to_string());
+        dirs.insert(20, "C:/work/b".to_string());
+        dirs.insert(1, "C:/work/a".to_string());
+        // folder a still has terminal 1; folder b has only its warm shell
+        assert_eq!(idle_warm(&warm, &dirs), vec![warm_key("C:/work/b")]);
+        dirs.remove(&1);
+        assert_eq!(idle_warm(&warm, &dirs).len(), 2);
+    }
+
+    #[test]
+    fn warm_shell_bookkeeping_without_sessions() {
+        let t = Terminals::default();
+        assert!(t.warm_wanted("C:/work/a"));
+        assert!(!t.warm_wanted("C:/work/a"), "one start per folder at a time");
+        t.warm_failed("C:/work/a");
+        assert!(t.warm_wanted("C:/work/a"));
+        // a warm entry whose session is not running is never handed to a pane
+        lock(&t.inner).warm.insert(warm_key("C:/work/a"), (7, None));
+        assert_eq!(t.claim_warm("C:/work/a", &None, 3, None), None);
+        assert!(lock(&t.inner).panes.get(&3).is_none());
+        // switched off: the map empties
+        lock(&t.inner).warm.insert(warm_key("C:/work/b"), (8, None));
+        t.drop_warm();
+        assert!(lock(&t.inner).warm.is_empty());
+    }
 
     /// c2-agents agent-shell (c): a program carried by a shell reports the program asked for, not the shell;
     /// a plain shell pane still reports the shell that came up.

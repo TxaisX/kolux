@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { bindNative, overlayOver, rectOf, sameRect } from "./nativeView";
+import { bindNative, colorref, nativeLook, overlayOver, rectOf, sameRect } from "./nativeView";
 
 test("the pane body's spot goes to Rust in physical pixels; a zero-size body is nothing to show", () => {
   expect(rectOf({ left: 10, top: 20.4, width: 300, height: 200 }, 1.5)).toEqual({ x: 15, y: 31, w: 450, h: 300 });
@@ -24,15 +24,15 @@ test("attaches once the terminal has an id, moves on change, hides while hidden,
   expect(calls).toEqual([]); // no terminal yet
   id = 7;
   await new Promise((r) => setTimeout(r, 15));
-  expect(calls[0]).toEqual(["native_term_attach", { id: 7, rect: { x: 0, y: 0, w: 100, h: 50 } }]);
+  expect(calls[0]).toEqual(["native_term_attach", { id: 7, rect: { x: 0, y: 0, w: 100, h: 50 }, look: null }]);
   expect(calls).toHaveLength(1); // unchanged spot: no more calls
   expect(el.dataset.native).toBe("on");
   box.left = 30;
   await new Promise((r) => setTimeout(r, 15));
-  expect(calls[1]).toEqual(["native_term_place", { id: 7, rect: { x: 30, y: 0, w: 100, h: 50 } }]);
+  expect(calls[1]).toEqual(["native_term_place", { id: 7, rect: { x: 30, y: 0, w: 100, h: 50 }, look: null }]);
   hidden = true;
   await new Promise((r) => setTimeout(r, 15));
-  expect(calls[2]).toEqual(["native_term_place", { id: 7, rect: null }]);
+  expect(calls[2]).toEqual(["native_term_place", { id: 7, rect: null, look: null }]);
   stop();
   expect(calls[calls.length - 1]).toEqual(["native_term_detach", { id: 7 }]);
   expect(el.dataset.native).toBeUndefined();
@@ -61,16 +61,16 @@ test("web UI over the pane moves the engine aside and back; the pane hears when 
   const el = body();
   const stop = bindNative(el, () => 4, () => false, call, 5, { covered: () => menu, onShown: (on) => seen.push(on) });
   await new Promise((r) => setTimeout(r, 15));
-  expect(calls[0]).toEqual(["native_term_attach", { id: 4, rect: { x: 0, y: 0, w: 100, h: 50 } }]);
+  expect(calls[0]).toEqual(["native_term_attach", { id: 4, rect: { x: 0, y: 0, w: 100, h: 50 }, look: null }]);
   expect(seen).toEqual([true]);
   menu = true;
   await new Promise((r) => setTimeout(r, 15));
-  expect(calls[1]).toEqual(["native_term_place", { id: 4, rect: null }]);
+  expect(calls[1]).toEqual(["native_term_place", { id: 4, rect: null, look: null }]);
   expect(el.dataset.native).toBe("under");
   expect(seen).toEqual([true, false]);
   menu = false;
   await new Promise((r) => setTimeout(r, 15));
-  expect(calls[2]).toEqual(["native_term_place", { id: 4, rect: { x: 0, y: 0, w: 100, h: 50 } }]);
+  expect(calls[2]).toEqual(["native_term_place", { id: 4, rect: { x: 0, y: 0, w: 100, h: 50 }, look: null }]);
   expect(el.dataset.native).toBe("on");
   stop();
   expect(seen).toEqual([true, false, true, false]);
@@ -94,4 +94,69 @@ test("overlayOver: an open menu over the pane counts, one elsewhere does not; so
   expect(overlayOver(pane, doc)).toBe(true);
   top = { contains: (n: unknown) => n === pane }; // the pane's own frame around the body
   expect(overlayOver(pane, doc)).toBe(false);
+});
+
+test("colorref: CSS colours become Windows COLORREFs; see-through ones are laid over the ground", () => {
+  expect(colorref("#112233", 0)).toBe(0x332211);
+  expect(colorref("#abc", 0)).toBe(0xccbbaa);
+  expect(colorref("rgb(1, 2, 3)", 0)).toBe(0x030201);
+  expect(colorref("#ffffff80", 0, "#000000")).toBe(0x808080);
+  expect(colorref("rgba(255, 0, 0, 0.5)", 0, "#0000ff")).toBe(0x800080);
+  expect(colorref("var(--x)", 42)).toBe(42);
+  expect(colorref(undefined, 7)).toBe(7);
+});
+
+test("nativeLook: the pane's theme, first font family in points and cursor shape, in the engine's slots", () => {
+  const theme = { background: "#101010", foreground: "#e0e0e0", selectionBackground: "#ffffff40", red: "#ff0000", brightWhite: "#fefefe" };
+  const look = nativeLook(theme, '"Cascadia Mono", Consolas, monospace', 13, "bar", false);
+  expect(look.background).toBe(0x101010);
+  expect(look.foreground).toBe(0xe0e0e0);
+  expect(look.selection).toBe(colorref("#ffffff40", 0, "#101010"));
+  expect(look.table).toHaveLength(16);
+  expect(look.table[1]).toBe(0x0000ff);
+  expect(look.table[15]).toBe(0xfefefe);
+  expect(look.table[0]).toBe(0x0c0c0c); // left out: Windows Terminal's own slot
+  expect(look.font).toBe("Cascadia Mono");
+  expect(look.size).toBe(10);
+  expect(look.cursorStyle).toBe(6);
+  expect(nativeLook({}, "monospace", 16, "block", true)).toMatchObject({ font: "Cascadia Mono", size: 12, cursorStyle: 0 });
+  expect(nativeLook({}, "Fira Code", 13, "block", false).cursorStyle).toBe(2);
+  expect(nativeLook({}, "Fira Code", 13, "underline", true).cursorStyle).toBe(3);
+  expect(nativeLook({}, "Fira Code", 13, "underline", false).cursorStyle).toBe(4);
+});
+
+test("the look goes with the attach, again on a theme event, and the engine's grid reaches the pane", async () => {
+  const listeners: Record<string, () => void> = {};
+  vi.stubGlobal("window", {
+    devicePixelRatio: 1,
+    addEventListener: (ev: string, f: () => void) => (listeners[ev] = f),
+    removeEventListener: (ev: string) => delete listeners[ev],
+  });
+  const calls: [string, Record<string, unknown> | undefined][] = [];
+  const call = async (cmd: string, args?: Record<string, unknown>) => {
+    calls.push([cmd, args]);
+    return [120, 30];
+  };
+  let size = 13;
+  const grids: [number, number][] = [];
+  const stop = bindNative(body(), () => 3, () => false, call, 5, {
+    covered: () => false,
+    look: () => nativeLook({ background: "#000000" }, "Consolas", size, "block", true),
+    lookEvents: ["kolux-terminal-theme"],
+    onGrid: (c, r) => grids.push([c, r]),
+  });
+  await new Promise((r) => setTimeout(r, 15));
+  expect(calls).toHaveLength(1);
+  expect(calls[0][0]).toBe("native_term_attach");
+  expect(calls[0][1]?.look).toMatchObject({ font: "Consolas", size: 10 });
+  expect(grids).toEqual([[120, 30]]);
+  size = 20;
+  listeners["kolux-terminal-theme"]();
+  await new Promise((r) => setTimeout(r, 15));
+  expect(calls).toHaveLength(2); // one restyle, then quiet again
+  expect(calls[1][0]).toBe("native_term_place");
+  expect(calls[1][1]?.look).toMatchObject({ size: 15 });
+  stop();
+  expect(listeners["kolux-terminal-theme"]).toBeUndefined();
+  vi.unstubAllGlobals();
 });
