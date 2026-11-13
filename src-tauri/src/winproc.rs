@@ -12,16 +12,35 @@
 use std::ffi::OsStr;
 use std::process::Command;
 
-/// CREATE_NO_WINDOW: the child gets no console window (its output pipes still work).
+/// CREATE_NO_WINDOW: the child gets a new console with no window (its output pipes still work).
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-/// Makes `cmd` start without a console window; nothing on other systems.
+/// The creation flag that keeps a child from opening a console window: CREATE_NO_WINDOW when this
+/// program has no console of its own (the release app), 0 when it has one (a test binary or a debug
+/// build run from a terminal, a pane's pseudo console). A child that shares the console it is started
+/// from shows no window and costs no console host (`conhost.exe`); CREATE_NO_WINDOW always makes a
+/// new hidden console, so a start-per-test suite paid one host per child (about 1,700 in one run of
+/// the lib tests, each scanned by Defender). Decided once: nothing here attaches or frees a console.
+#[cfg(windows)]
+pub fn no_window() -> u32 {
+    use std::sync::OnceLock;
+    static FLAG: OnceLock<u32> = OnceLock::new();
+    *FLAG.get_or_init(|| {
+        let mut ids = [0u32; 1];
+        // SAFETY: `ids` is a live one-element buffer and the count passed is its length; the call
+        // returns 0 when this process has no console.
+        let attached = unsafe { windows_sys::Win32::System::Console::GetConsoleProcessList(ids.as_mut_ptr(), 1) };
+        if attached == 0 { CREATE_NO_WINDOW } else { 0 }
+    })
+}
+
+/// Makes `cmd` start without a console window of its own; nothing on other systems.
 pub fn quiet(cmd: &mut Command) -> &mut Command {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.creation_flags(no_window());
     }
     cmd
 }
@@ -141,6 +160,16 @@ mod tests {
         assert_eq!(unhidden_spawns("x.rs", &commented), vec![2], "a comment naming the helper does not hide the spawn");
         let url = format!("fn a() {{\n    let u = \"https://x\"; let c = {new}\"x\");\n}}\n");
         assert_eq!(unhidden_spawns("x.rs", &url), vec![2], "a URL's // is not a comment");
+    }
+
+    /// A program with a console shares it with its children (no new console host per child); one
+    /// without asks for a hidden console. Either way no window opens.
+    #[cfg(windows)]
+    #[test]
+    fn no_window_shares_an_existing_console_and_hides_a_new_one() {
+        let mut ids = [0u32; 1];
+        let attached = unsafe { windows_sys::Win32::System::Console::GetConsoleProcessList(ids.as_mut_ptr(), 1) } != 0;
+        assert_eq!(no_window(), if attached { 0 } else { CREATE_NO_WINDOW });
     }
 
     #[test]
