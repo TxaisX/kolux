@@ -12,7 +12,7 @@
 import { Kbd } from "../../keys/KeymapContext";
 import { MAX_PANES, hasRoom } from "../../terminal/grid";
 import { TAB_COLORS, setTabColor, tabMenuHead } from "../../terminal/tabColor";
-import { ContextMenu, MenuItem } from "../../ui";
+import { ContextMenu, MenuCheckboxItem, MenuItem } from "../../ui";
 import { panesIn, viewOf } from "../../workspaces";
 import { closeRows } from "./tabMenu";
 import { useWindow } from "./store";
@@ -35,10 +35,11 @@ export default function TabMenuView() {
           <div key={i.id} className="menu-colors" role="group" aria-label={i.label}>
             <span className="name">{i.label}</span>
             {TAB_COLORS.map((c) => (
-              <MenuItem key={c.id} className={tabColors[key] === c.id ? "swatch on" : "swatch"} title={c.label} onClick={() => (close(), setTabColors((m) => setTabColor(m, key, c.id)))}>
+              // A ticked row (menuitemcheckbox), so a screen reader says which colour the pane has; picking one closes the menu.
+              <MenuCheckboxItem key={c.id} checked={tabColors[key] === c.id} className={tabColors[key] === c.id ? "swatch on" : "swatch"} title={c.label} onCheckedChange={() => (close(), setTabColors((m) => setTabColor(m, key, c.id)))}>
                 <span className="swatch-fill" style={{ background: c.css }} aria-hidden="true" />
                 <span className="swatch-name">{c.label}</span>
-              </MenuItem>
+              </MenuCheckboxItem>
             ))}
             <MenuItem className="swatch none" title="No color" onClick={() => (close(), setTabColors((m) => setTabColor(m, key, null)))}>
               <span aria-hidden="true">×</span>

@@ -20,6 +20,8 @@ vi.mock("../ui", async () => {
     ContextMenu: ({ at, label, children }: Kids & { at: unknown; label: string }) => (at ? el("div", { role: "menu", "aria-label": label }, children as never) : null),
     MenuItem: ({ className = "menu-item", title, disabled, onClick, children }: Kids & { className?: string; title?: string; disabled?: boolean; onClick?: () => void }) =>
       el("button", { type: "button", role: "menuitem", className, title, "aria-disabled": disabled ? "true" : undefined, onClick: () => !disabled && onClick?.() }, children as never),
+    MenuCheckboxItem: ({ className = "menu-item", title, checked, onCheckedChange, children }: Kids & { className?: string; title?: string; checked: boolean; onCheckedChange: (on: boolean) => void }) =>
+      el("button", { type: "button", role: "menuitemcheckbox", "aria-checked": String(checked), className, title, onClick: () => onCheckedChange(!checked) }, children as never),
   };
 });
 
@@ -178,6 +180,8 @@ describe("S24: every item of the tab menu", () => {
     const swatches = find(c, (n) => n.localName === "button" && /^swatch( on)?$/.test(n.attrs.class ?? ""));
     expect(swatches.map((n) => n.attrs.title)).toEqual(TAB_COLORS.map((t) => t.label));
     expect(swatches.map((n) => find(n, (k) => k.attrs.class === "swatch-name")[0].textContent)).toEqual(TAB_COLORS.map((t) => t.label)); // its name for a screen reader
+    // Each colour is a ticked row, so a screen reader hears which one the pane has (none yet here).
+    expect(swatches.map((n) => [n.attrs.role, n.attrs["aria-checked"]])).toEqual(TAB_COLORS.map(() => ["menuitemcheckbox", "false"]));
     for (const s of swatches) await click(c, s);
     await click(c, item("No color"));
     const set = fn("setTabColors").mock.calls.map(([up]) => up({ 1: TAB_COLORS[0].id }));

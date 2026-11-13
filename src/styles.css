@@ -1504,6 +1504,13 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .pane:not(.editor) .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { flex-shrink: 1000; }
 .pane:not(.editor) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }
 .pane:not(.editor) .pane-head .status { flex-shrink: 10; }
+/* One session per cell (2026-11-12): with no tab strip above it, a file, diff, preview or check pane names itself only
+   in its header, so its name keeps at least eight characters and the path beside it gives way first. */
+.pane.editor .pane-head .title { flex: 0 1 auto; min-width: min(8ch, 100%); }
+.pane.editor .pane-head .path { flex-shrink: 1000; }
+/* ...and its Close stays in reach: when the header's buttons run past a narrow pane, Close sits over the end of them. */
+.pane.editor .pane-head { overflow: hidden; }
+.pane.editor .pane-head .right { position: sticky; right: 0; flex: none; padding-left: 4px; background: var(--pane-bg); box-shadow: 9px 0 0 var(--pane-bg); }
 /* SAFE-002..004: the plan review sheet, from the right edge over the window. */
 .plan-sheet { position: fixed; z-index: calc(var(--z-tray) - 1); top: calc(env(safe-area-inset-top, 0px) + 40px); right: 0; bottom: 24px; width: min(520px, 100vw); display: flex; flex-direction: column; background: var(--pane-bg); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35); font-size: 13px; }
 .plan-sheet-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
