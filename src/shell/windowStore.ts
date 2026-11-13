@@ -42,7 +42,7 @@ import { pickWithNotice } from "../switcher/accounts";
 import type { Gap } from "../terminal/dividers";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { gridOf, setGridRoots } from "../workspaces";
-import { EMPTY_GRID_MAP, GRID_MAP_SETTING, focusDirOf, mergeGridMap, readGridMap, sameGridMap, unionGridMaps, type GridMap } from "../projects/worktreeGrid";
+import { EMPTY_GRID_MAP, GRID_MAP_SETTING, focusDirOf, foldGridMap, readGridMap, sameGridMap, unionGridMaps, type GridMap } from "../projects/worktreeGrid";
 import { scanGridOwners } from "../projects/gridScan";
 import type { Project } from "../projects/model";
 import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
@@ -192,9 +192,11 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [startScan, setStartScan] = useState<{ projects: Project[]; owner: Record<string, string> } | null>(null);
   const gridIn = useRef<unknown[]>([]);
   if (gridIn.current[0] !== projects || gridIn.current[1] !== owner || gridIn.current[2] !== startScan) {
+    // The start scan joins the map once, on the render it arrives; later renders are the live project list's alone, so a
+    // project added or removed after the start is mapped or pruned by it (the scan's old list never comes back).
+    const scanNew = startScan !== null && gridIn.current[2] !== startScan;
     gridIn.current = [projects, owner, startScan];
-    let next = mergeGridMap(gridMap.current, projects, owner);
-    if (startScan) next = mergeGridMap(next, startScan.projects, startScan.owner);
+    const next = foldGridMap(gridMap.current, projects, owner, scanNew ? startScan : null);
     gridMap.current = next;
     setGridRoots(next.worktrees, next.roots); // before anything below draws a pane's grid (module state, same answer for the same lists)
   }

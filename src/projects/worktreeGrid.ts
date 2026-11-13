@@ -143,6 +143,16 @@ export function mergeGridMap(prev: GridMap, projects: { id: string; path: string
   return sameGridMap(prev, next) ? prev : next;
 }
 
+/** The map a project list and its worktree owners describe, nothing kept from before. */
+export const gridMapOf = (projects: { id: string; path: string }[], owner: Record<string, string>): GridMap => ({ roots: projects.map((p) => p.path), worktrees: gridRootsOf(projects, owner) });
+
+/** The known map after one more look. `scan` (the start-up scan, given once, on the render it arrives) is only added to
+ *  the map, never made the project list: a project added or removed since is the live `projects`' to say, so that list
+ *  and its owners are what prunes. */
+export function foldGridMap(prev: GridMap, projects: { id: string; path: string }[], owner: Record<string, string>, scan: { projects: { id: string; path: string }[]; owner: Record<string, string> } | null): GridMap {
+  return mergeGridMap(scan ? unionGridMaps(prev, gridMapOf(scan.projects, scan.owner)) : prev, projects, owner);
+}
+
 /** Two maps as one: every project folder and worktree either knows. */
 export function unionGridMaps(a: GridMap, b: GridMap): GridMap {
   const roots = [...new Set([...a.roots, ...b.roots])];

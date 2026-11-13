@@ -198,7 +198,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // that covers it, and closes a full page (Tasks, Automations) that covers it too; both paths
   // below do, or the click looks like nothing happened.
   // EDIT-026 (T-317): `follow` opens the file as a read-only log tab that keeps adding lines as the file grows (a caller such as an AI Vault "View Log" button passes true).
-  const openFile = (path: string, line?: number, column?: number, follow?: boolean) => {
+  // `root`: the worktree the file belongs to when the caller knows it (a command-line file of a linked worktree); the tab
+  // then runs there, as a diff's does, not where the focused pane runs.
+  const openFile = (path: string, line?: number, column?: number, follow?: boolean, root?: string | null) => {
     setScreen("terminals");
     setPage(null);
     const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
@@ -212,7 +214,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       return setFocused(same.key);
     }
     const key = nextKey.current++;
-    setPanes((ps) => [...ps, { key, ...besideOf(here), group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "editor", path, jump, ...(follow ? { follow: true } : {}) }]);
+    const at = root !== undefined && root !== null && !sameDir(root, here?.cwd ?? null) ? { cwd: root, branch: panes.find((p) => sameDir(p.cwd, root))?.branch ?? null } : besideOf(here);
+    setPanes((ps) => [...ps, { key, ...at, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "editor", path, jump, ...(follow ? { follow: true } : {}) }]);
     setFocused(key);
   };
   // EDIT-014: a Mod+clicked link in a note. Web links open in the system browser,

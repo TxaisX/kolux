@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "vitest";
-import { EMPTY_GRID_MAP, GRID_MAP_SETTING, clearStartDirs, focusDirOf, forgetStartDirs, gridRootsOf, mergeGridMap, readGridMap, setStartDir, startDirOf, unionGridMaps } from "./worktreeGrid";
+import { EMPTY_GRID_MAP, GRID_MAP_SETTING, clearStartDirs, focusDirOf, foldGridMap, forgetStartDirs, gridRootsOf, mergeGridMap, readGridMap, setStartDir, startDirOf, unionGridMaps } from "./worktreeGrid";
 import { gridOf, panesIn, setGridRoots } from "../workspaces";
 
 const P = { id: "p1", path: "G:\\Dev\\kolux" };
@@ -95,4 +95,41 @@ test("P2-1: forgetting a removed worktree clears a pick that named it (or a fold
   setStartDir(P.path, C);
   forgetStartDirs([A]);
   expect(startDirOf(P.path)).toBe(C);
+});
+
+// P1-B: the start scan joins the map once; the live project list then adds and prunes on its own.
+test("P1-B: start scan, then a project added with a worktree is mapped, then a project removed is pruned", () => {
+  const D = { id: "p3", path: "G:\\Dev\\added" };
+  const DW = "G:\\Dev\\added-lanes\\one";
+  const BW = "G:\\Dev\\brain-lanes\\two";
+  const both = { ...owner, [BW]: "p2" };
+  const scan = { projects: [P, B], owner: both };
+  // 1. the start scan (sidebar closed): both projects and their worktrees
+  let map = foldGridMap(EMPTY_GRID_MAP, [], {}, scan);
+  expect(map.roots).toEqual([P.path, B.path]);
+  expect(map.worktrees[A]).toBe(P.path);
+  expect(map.worktrees[BW]).toBe(B.path);
+  // 2. the sidebar opens with a project added this session; the scan is not given again (it was folded once)
+  map = foldGridMap(map, [P, B, D], { ...both, [D.path]: "p3", [DW]: "p3" }, null);
+  expect(map.roots).toEqual([P.path, B.path, D.path]);
+  expect(map.worktrees[DW]).toBe(D.path);
+  expect(map.worktrees[A]).toBe(P.path);
+  // 3. a project is removed: its worktrees leave, the others stay
+  map = foldGridMap(map, [P, D], { [P.path]: "p1", [A]: "p1", [C]: "p1", [D.path]: "p3", [DW]: "p3" }, null);
+  expect(map.roots).toEqual([P.path, D.path]);
+  expect(map.worktrees[BW]).toBeUndefined();
+  expect(Object.keys(map.worktrees).sort()).toEqual([A, C, DW].sort());
+  setGridRoots(map.worktrees, map.roots);
+  expect(gridOf(DW)).toBe(D.path); // the added project's worktree session shows in its project's grid, not an orphan grid of its own
+  // the old behaviour, a scan list that replaced the live one on every change, would have lost D here
+  const stale = mergeGridMap(mergeGridMap(map, [P, B, D], owner), scan.projects, scan.owner);
+  expect(stale.roots).toEqual([P.path, B.path]);
+});
+
+test("P1-B: a start scan that arrives after the sidebar loaded adds to the live list, never replaces it", () => {
+  const D = { id: "p3", path: "G:\\Dev\\added" };
+  const live =foldGridMap(EMPTY_GRID_MAP, [P, D], { [P.path]: "p1", [D.path]: "p3" }, null);
+  const joined = foldGridMap(live, [P, D], { [P.path]: "p1", [D.path]: "p3" }, { projects: [P, B], owner });
+  expect(joined.worktrees[A]).toBe(P.path);
+  expect(joined.roots).toEqual([P.path, D.path]); // the live list is the one that says which projects there are
 });
