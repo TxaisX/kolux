@@ -67,6 +67,25 @@ Run: `powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File spikes\native
   keeps the engine's grid size.
 - A new native view starts from the session's saved tail and then takes only output newer than it, so
   an attach never shows a blank pane and no chunk is drawn twice.
+- The font size goes to the engine as a 32-bit int. The engine's PDB gives `TerminalSetTheme(void*,
+  _TerminalTheme, const wchar_t*, int fontSize, int newDpi)` (the WPF control declares it `short`); passed as
+  an i16 its upper half was whatever the register held, and a 10 pt look drew a 16 x 5 grid in a
+  1289 x 834 pane. Now the same pane is 161 x 55. The theme struct and the other entry points match the PDB.
+- The engine's answers to the cursor question (ESC [ row ; col R) stay out of the session. xterm takes the
+  same output and answers it already; the second answer reached PowerShell as F3 ("search for the next key
+  typed"), so the first line typed into a native pane lost its first letter.
+
+### Screenshots (taken on GitHub's windows-latest runner)
+
+A pane drawn by the engine in the Kolux dark look, then the light look after the switch; the 16 console
+colours as backgrounds come from Kolux's table. Commit 4cf73213, 2026-11-13, run
+https://github.com/TxaisX/kolux/actions/runs/43370612797: `scripts/prove/live-native-look.mjs` drove the
+debug app over CDP, and the window was captured with `scripts/evidence/shot.ps1` (PrintWindow, which also
+captures the engine's child window; a CDP page capture cannot see it). Windows Server 2025, 1920 x 1080 at
+96 DPI, engine `CI.Microsoft.Terminal.Wpf` 1.25.260303002.
+
+- `evidence/NATIVE-TERMINAL-dark-native-pane.png`
+- `evidence/NATIVE-TERMINAL-light-native-pane.png`
 
 ## Kept-warm shell (setting, off by default)
 
@@ -75,6 +94,59 @@ Run: `powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File spikes\native
   `terminal_attach` as `attached`, APP-052) and a new warm shell starts in the background. Cost: about
   56 MB per open folder. Off, terminals start exactly as before; a warm shell left from before is ended at the next terminal start.
 - A warm shell ends when its folder's last terminal closes, and with the app.
+- On Windows the console host asks where the cursor is (ESC [6n) before the shell draws anything, and waits
+  for a terminal's answer. A warm shell has no pane, so Kolux answers it (top left, as a blank screen
+  would) before it offers the shell; one that does not ask within 10 s is ended instead of offered. The
+  pane that takes it leaves that answered question out of the snapshot it draws. Before this, every warm
+  shell sat at the question until a pane took it, and the setting made new terminals slower (below).
+
+### New terminal, warm shell off vs on (measured on GitHub's windows-latest runner)
+
+Not the owner's PC: a cloud runner (Windows Server 2025, image windows-2025-vs2026 20261103.298.1,
+WebView2 156.0.4314.58), PowerShell 7 as the default shell, a debug build. Method
+(`scripts/prove/live-warm-shell.mjs`, run by a temporary workflow): one app launch per setting; in a pane's
+New session menu, "Blank terminal" is pressed 5 times, each new pane closed again and 6 s left before the
+next press. Each time is `performance.now()` in the page from the press to the new pane's xterm buffer
+holding a line ending in `>`. Each run is tagged by the backend calls its pane made: "attached" means
+`terminal_attach` answered it with the folder's warm shell and no `terminal_spawn` followed; "spawned"
+means it started its own shell with `terminal_spawn`.
+
+Commit 4cf73213, 2026-11-13, run https://github.com/TxaisX/kolux/actions/runs/43370612797:
+
+| run | off: to prompt | off: path | on: to prompt | on: path |
+|---|---|---|---|---|
+| 1 | 1588.6 ms | spawned | 270.5 ms | attached |
+| 2 | 1632.3 ms | spawned | 303.0 ms | attached |
+| 3 | 2641.2 ms | spawned | 221.1 ms | attached |
+| 4 | 1710.2 ms | spawned | 270.2 ms | attached |
+| 5 | 1600.9 ms | spawned | 283.9 ms | attached |
+| median | **1632.3 ms** | | **270.5 ms** | |
+
+The runner varies from run to run: the same check on commit 90ac9724 (warm shell fix in, native cursor
+fix not yet) gave medians of 908.7 ms off and 170.8 ms on (on: 133.2 to 244.8 ms, all attached;
+https://github.com/TxaisX/kolux/actions/runs/43368955947). Both support the setting's "about 0.3 s".
+
+Before the fix (commit 34dabba0, https://github.com/TxaisX/kolux/actions/runs/43366064099), every
+"on" run took the warm shell and was still slower, because the warm shell had not reached its prompt:
+
+| run | off: to prompt | off: path | on: to prompt | on: path |
+|---|---|---|---|---|
+| 1 | 1149.1 ms | spawned | 1256.0 ms | attached |
+| 2 | 1332.7 ms | spawned | 2110.6 ms | attached |
+| 3 | 1122.0 ms | spawned | 5156.3 ms | attached |
+| 4 | 1140.2 ms | spawned | 3234.8 ms | attached |
+| 5 | 1215.1 ms | spawned | 2707.0 ms | attached |
+| median | 1149.1 ms | | 2707.0 ms | |
+
+The "about 56 MB per open folder" in the setting's label was not measured in this round.
+
+### Running the live checks
+
+`node scripts/prove/live-warm-shell.mjs` and `NATIVE_TERMINAL_DLL=<path to Microsoft.Terminal.Control.dll>
+node scripts/prove/live-native-look.mjs`, with the usual `PROVE_*` variables. Where the WebView2 ignores
+`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` (156.0.4314.58 on the runner did, and also the same flag as a
+WebView2 policy), set `PROVE_CDP_IN_CONFIG=1` so the debugging port goes in through the window config.
+`PROVE_BUILD_MINUTES` shortens the wait for the page on a machine that built the app beforehand.
 - Limits: only plain shell terminals take it (agents, chosen shells, restored or moved panes start as
   usual); a warm shell lacks the per-pane hook identity, so an agent typed into it by hand does not report
   status; a warm shell may show in session lists before it is taken; a default shell change ends the old
