@@ -224,7 +224,7 @@ fn old_node(app: Option<&Path>) -> bool {
     let mut c = std::process::Command::new(node);
     c.args(["-p", "process.versions.uv"]).stdin(std::process::Stdio::null()).current_dir(app);
     #[cfg(windows)]
-    std::os::windows::process::CommandExt::creation_flags(&mut c, 0x0800_0000); // CREATE_NO_WINDOW
+    std::os::windows::process::CommandExt::creation_flags(&mut c, crate::winproc::no_window());
     c.output().ok().and_then(|o| node_version(&String::from_utf8_lossy(&o.stdout))).is_none_or(|v| v < (1, 48))
 }
 
@@ -262,7 +262,7 @@ fn command(l: &Launch, dir: Option<&Path>) -> std::process::Command {
         // Node 22 and later) honours the same variable, so its children skip it too while they
         // keep this environment.
         c.env("NoDefaultCurrentDirectoryInExePath", "1");
-        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c.creation_flags(crate::winproc::no_window());
         c.args(&l.args);
         if let Some(r) = &l.raw {
             c.raw_arg(r);

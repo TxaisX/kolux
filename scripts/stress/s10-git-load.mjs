@@ -18,7 +18,7 @@ const RUN_MS = 60000;
 const KEY_GAP_MS = 50;
 const REPO = process.env.S10_REPO || "G:/Temp/stress-s10/repo";
 const ROOT = fileURLToPath(new URL("../../", import.meta.url)).replace(/[\\/]+$/, "");
-const SLOT = process.env.KOLUX_SLOTS ? join(process.env.KOLUX_SLOTS, "slot.mjs") : join(ROOT, "..", "kolux-rs-slots", "slot.mjs");
+const SLOT = process.env.KOLUX_SLOTS ? join(process.env.KOLUX_SLOTS, "slot.mjs") : join(ROOT, "..", "kolux-slots", "slot.mjs");
 const DIAG = process.env.S10_DIAG === "1";
 const DIAG_LOG = "G:/Temp/stress-logs/s10-diag.log";
 

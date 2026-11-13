@@ -6,7 +6,7 @@ If you only want to use the app, read the [user guide](../guide/README.md).
 
 ## Quick start
 
-You need Windows 11 x64, Git, Node.js 24, pnpm 12, Rust 1.90 or newer with the MSVC toolchain, the Visual Studio 2022 C++ build tools, and the WebView2 runtime.
+You need Windows 11 x64, Git, Node.js 24, pnpm 12, Rust with the MSVC toolchain (the release pinned in `rust-toolchain.toml`, which rustup installs by itself), the Visual Studio 2022 C++ build tools, and the WebView2 runtime.
 
 ```powershell
 pnpm install

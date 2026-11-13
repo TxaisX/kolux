@@ -29,7 +29,7 @@ the record survives the cache being replaced.
 | Source | Default | What it contributes |
 |---|---|---|
 | Agent session store | `~/.local/share/opencode/opencode.db` | Sessions, user/assistant text, tool calls, agents, models, cost |
-| Kolux repo | `G:\Dev\kolux-rs` | 2,900+ commits, worktrees, `spec/` cards, `evidence/` files, `docs/` |
+| Kolux repo | `G:\Dev\kolux` | 2,900+ commits, worktrees, `spec/` cards, `evidence/` files, `docs/` |
 | Vault | `G:\Dev\Projects\Txais Brain` | Kolux project notes, syntheses, `.kolux/handoffs/` |
 | Local work ledger | `<db folder>\work-items.jsonl` | Completed items written with `record`; replayed on every build |
 | GitHub (optional, `--github`) | `TxaisX/kolux` via `gh` | Pull requests and releases |
