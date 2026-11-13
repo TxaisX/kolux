@@ -1,0 +1,94 @@
+# TEMPORARY (PR #252; deleted again before the PR is finished). Runs the two live checks that need real Windows on
+# GitHub's windows-latest runner: a pane drawn by the Windows Terminal engine in the dark and the light Kolux look
+# (scripts/prove/live-native-look.mjs) and "new terminal" with the kept-warm shell off and on
+# (scripts/prove/live-warm-shell.mjs). Screenshots, timings and logs are uploaded even when a check fails.
+# Numbers from here are the runner's, not the owner's PC.
+name: Temporary native pane evidence
+
+on:
+  push:
+    branches: [fu/native-style]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tmp-native-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    name: Native pane shots and new-terminal timings (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 12
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+      - run: pnpm install --frozen-lockfile
+      - name: Screen size
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          try { Set-DisplayResolution -Width 1920 -Height 1080 -Force -ErrorAction Stop } catch { "Set-DisplayResolution: $_" }
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          [System.Environment]::OSVersion.VersionString
+          query user 2>&1
+      - name: Fetch the Windows Terminal engine (NuGet CI.Microsoft.Terminal.Wpf 1.25.260303002, MIT, not committed)
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'wt-engine'
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $zip = Join-Path $dir 'pkg.zip'
+          Invoke-WebRequest -Uri 'https://www.nuget.org/api/v2/package/CI.Microsoft.Terminal.Wpf/1.25.260303002' -OutFile $zip
+          Expand-Archive $zip -DestinationPath (Join-Path $dir 'x') -Force
+          $dll = Join-Path $dir 'x\runtimes\win-x64\native\Microsoft.Terminal.Control.dll'
+          if (-not (Test-Path $dll)) { Get-ChildItem -Recurse (Join-Path $dir 'x') -Filter *.dll | ForEach-Object FullName; throw 'no win-x64 Microsoft.Terminal.Control.dll in the package' }
+          Get-Item $dll | Format-List FullName, Length
+          "sha256 $((Get-FileHash $dll -Algorithm SHA256).Hash)"
+          "signature $((Get-AuthenticodeSignature $dll).Status)"
+          "NATIVE_TERMINAL_DLL=$dll" >> $env:GITHUB_ENV
+      - name: Build the debug app once (the live checks start it with pnpm tauri dev)
+        working-directory: src-tauri
+        run: cargo build --locked
+      - name: New terminal with the kept-warm shell off, then on (5 runs each)
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          $env:PROVE_BASE = Join-Path $env:RUNNER_TEMP 'live'
+          $env:PROVE_LOGS = Join-Path $env:RUNNER_TEMP 'live-logs'
+          $env:PROVE_NO_EVIDENCE = '1'
+          node scripts/prove/live-warm-shell.mjs
+          "exit $LASTEXITCODE"
+      - name: A native pane in the dark and the light look
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 20
+        run: |
+          $env:PROVE_BASE = Join-Path $env:RUNNER_TEMP 'live'
+          $env:PROVE_LOGS = Join-Path $env:RUNNER_TEMP 'live-logs'
+          $env:PROVE_NO_EVIDENCE = '1'
+          $env:NATIVE_ON_SCREEN = '1'
+          node scripts/prove/live-native-look.mjs
+          "exit $LASTEXITCODE"
+      - name: Upload screenshots, timings and logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-evidence
+          path: |
+            ${{ runner.temp }}/live-logs
+            ${{ runner.temp }}/live/run-*/*.log
+          if-no-files-found: warn
