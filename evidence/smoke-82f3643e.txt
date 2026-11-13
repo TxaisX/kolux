@@ -1,0 +1,4 @@
+pnpm smoke at 2026-11-13T01:39:28.452Z on 82f3643e (G:\Dev\kolux-lanes\c2-agents)
+args: --only 3 --keep --identifier com.txaisxiong.kolux.c2ui.smoke --port 1477 --cdp 9277 --temp G:\Temp\c2ui-smoke; T-184 ticked: false; flow 5 report-only
+PASS 3: Delete in the Explorer asked first ("Delete": Move notes.txt to the trash?); after Cancel notes.txt is still on disk, byte-identical (14 bytes). This replaces the old flow 3, which tested the Source Control Discard that T-644/DT-C85 removed.
+smoke: 1/1 flows passed

@@ -1,0 +1,11 @@
+stress S1 (Pane churn (40 panes x 5 rounds)) at 2026-11-08T08:06:19.792Z on 75be2b46 (G:\Dev\kolux-rs)
+args: S1; ran 49 s
+
+FAIL  scenario ran to the end
+      bar: no exception
+      measured: Error: timed out after 30000 ms waiting for the sidebar |     at Object.waitFor (file:///G:/Dev/kolux-rs/scripts/evidence/app-launch.mjs:32:33) |     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.4 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)
+
+S1: HARNESS-BLOCKED

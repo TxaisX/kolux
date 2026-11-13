@@ -1,0 +1,11 @@
+pnpm smoke at 2026-11-12T23:17:07.423Z on 25b59eb9 (G:\Dev\kolux-lanes\c1-coord)
+args: --port 1430 --cdp 9341 --identifier com.txaisxiong.kolux.c1.smoke --temp G:/Temp/kolux-rs-smoke-c1 --offscreen; T-184 ticked: false; flow 5 report-only
+PASS 1: grid 4 -> 6 (3 shells + 1 empty -> 3 shells + 3 empty); all 3 shells echoed the marker set before the change (same PTY processes)
+PASS 2: Mod+S wrote notes.txt: disk now holds "typed by smoke 1794525245725" plus the original line (42 bytes)
+PASS 3: Delete in the Explorer asked first ("Delete": Move notes.txt to the trash?); after Cancel notes.txt is still on disk, byte-identical (42 bytes). This replaces the old flow 3, which tested the Source Control Discard that T-644/DT-C85 removed.
+PASS 4: Claude pane's dot reads "status: Working" after the stand-in posted SessionStart + UserPromptSubmit; hook installed into the scratch G:\Temp\kolux-rs-smoke-c1\tmp\claude-config\settings.json, script G:/Temp/kolux-rs-smoke-c1/home/.kolux-rs/agent-hooks/claude.cmd on disk
+PASS 6: New session started 5 sessions and every one took input (no AI account, stand-ins only): Claude Code echoed "smoke6-claude-mwe6033f"; Codex echoed "smoke6-codex-mwe605ao"; Grok echoed "smoke6-grok-mwe6071p"; OpenCode echoed "smoke6-opencode-mwe608ym"; Blank terminal wrote G:\Temp\kolux-rs-smoke-c1\marks\flow6-terminal.txt
+PASS 7: 9 sessions in one workspace: the sidebar lists the folder row and 9 session rows (no .pane-row), clicking the folder shows 8 panes, and a restart kept 9 panes
+FAIL 5 [report-only]: timed out after 60000 ms waiting for the sidebar
+PASS close [report-only]: WM_CLOSE by PostMessage (the page did not answer), exited in 3.4 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)
+smoke: 6/6 flows passed (flow 5 report-only until T-184 is ticked in PLAN.md: FAIL)

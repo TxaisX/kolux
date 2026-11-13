@@ -1,0 +1,44 @@
+T-779 / T-793 / T-780 Windows gate run (sec2-windows worktree, lane/ready-sec-2)
+Date: 2026-11-09. Commit: c0fea821 (detached). Windows 11, rustc 1.99.0, git 2.55.0.windows.3.
+Uncommitted evidence. pnpm install: SKIPPED, cargo builds without node_modules/dist here.
+Test env: scripts/test-env.ps1 (scratch homes) for every cargo test run except where noted. cargo -j 2 (paging-file errors at default jobs).
+
+GATES
+1. cargo test --lib t779 (plain env, first run)            : killed by my own 590 s timeout while compiling+running (not a result). Re-run:
+2. cargo test --lib t779 (plain env)                       : exit 0, 45 passed, 0 failed, 0 ignored.
+   NOTE: t779d_a_folders_own_transfer_programs_never_run hangs ~4 min: its marker program "cmd.exe /c echo ran" is run by Git's sh,
+   which turns "/c" into "C:/", so cmd.exe starts interactive and waits on git's pipe. A stuck cmd.exe was killed by hand (run 2) or by
+   a watcher after 90 s (later runs). Not B6. Test is new in this lane (absent at aa56260d). It then passes. NEEDS A FIX (e.g. "cmd.exe //c").
+3. cargo test (plain env, -j 2)                            : lib 3020 passed, 1 failed (t606_the_claude_writer_runs_from_an_empty_folder_of_its_own_with_only_the_users_settings), 6 ignored;
+   exit 101, integration targets not run (fail-fast). Re-run alone plain env: same failure ("The agent did not finish within 20 seconds").
+   Passes under test-env (exit 0, 1 passed). The test's own comment calls it a known Windows environment failure. Pre-dates lane (e16db79d).
+4. cargo test --no-fail-fast --test '*' --bins (plain env) : 9 integration targets failed with "no .kolux-rs-scratch marker": environment, needs test-env.
+5. FULL: . scripts/test-env.ps1; cargo test -j 2 --no-fail-fast : exit 101.
+   lib: 3020 passed; 1 failed (tools::tests::row961_a_probe_with_more_output_than_the_pipe_holds_is_not_reported_hung); 6 ignored.
+   cards_01..09, 13, 15, 17, 19, 19_diag, 20, scratch_root, shim: all ok. bins: 0 tests. doc-tests: 0 tests (exit 0).
+   cards_10: 37 passed, 3 failed; cards_11: 9 passed, 3 failed.
+6. Re-run alone (test-env): row961 : exit 0, 1 passed (load flake, environmental).
+   cards_10 + cards_11 : exit 101 again, same 6 failures:
+     cards_10: safe023_box2_launching_again_in_the_same_folder_leaves_the_trust_file_byte_for_byte_alone
+               safe024_box1_six_worktrees_are_covered_by_one_call_and_one_write
+               safe024_box2_thirteen_folders_are_refused_before_any_path_is_worked_out
+       -> "not trusted: <dir> is not a git worktree, so it keeps the agent's own prompt" (T-780 worktree trust refuses plain folders)
+     cards_11: git004_box3_a_pre_commit_hook_that_exits_1_blocks_the_commit_and_what_it_printed_comes_back
+               git006_box1_and_2_a_new_branch_walks_edit_stage_commit_publish_and_a_rebase_is_a_rewrite
+               git007_box1_two_local_commits_are_two_to_push_and_pushing_brings_the_counts_to_zero
+       -> "Kolux did not run git commit: the folder has its own git hook pre-commit ... not trusted" ; "git push could go to a repository on this computer ... not trusted"
+   BASELINE aa56260d (detached worktree, same test-env): cargo test --test cards_10 --test cards_11 : exit 0, cards_10 40 passed, cards_11 12 passed.
+   => these 6 are NEW with this lane (fixtures not trusting their folders / not real worktrees). Baseline worktree removed afterwards.
+7. cargo clippy -j 2 --all-targets -- -D warnings          : exit 0 (Finished dev profile), no warnings reported.
+
+B6 (git.rs hook_in_the_way / hook_file; fix commit 6ff3d6a7 "review fix 4", old code = executable_hooks() listing, .take(4096), exact-name match)
+  Only one B6 test exists: t779e_a_hook_among_many_decoys_is_still_found (5000 decoys a00000.., then a hook "pre-commit"; then on Windows renames it to
+  "PRE-COMMIT.exe" which covers .exe and letter case together). No separate test for .exe alone or case alone.
+  RED (old executable_hooks restored in git.rs only; hooks.rs/trust.rs untouched), cargo test --lib t779e_ : exit 101, 12 passed, 1 failed
+    test git::tests::t779e_a_hook_among_many_decoys_is_still_found ... FAILED
+    panicked at src\git.rs:4034:9: assertion failed: refused(&["commit", "-q", "-m", "x"], &dir).is_some()
+    => sub-case (c) listing cap: RED. Sub-cases (a) .exe and (b) case: NOT SEPARATELY SHOWN RED: the test stops at the (c) assertion before it reaches the
+    PRE-COMMIT.exe assertion; separating them needs a variant (cap removed) not run for lack of turns.
+  GREEN (committed code restored by re-edit; git status --short and git diff --stat both empty; sha256 of git.rs equals the pre-edit copy bbeb9387...):
+    cargo test --lib t779e_ : exit 0, 13 passed, 0 failed (includes t779e_a_hook_among_many_decoys_is_still_found ... ok)
+  Also seen: cards_11 git004_box3 (a pre-commit hook) is refused by the new code on Windows, i.e. hook detection works there.

@@ -1,0 +1,11 @@
+stress S6 (Unicode and ANSI torture (one pane)) at 2026-11-08T08:02:03.790Z on 75be2b46 (G:\Dev\kolux-rs)
+args: all --minutes 10; ran 52 s
+
+FAIL  scenario ran to the end
+      bar: no exception
+      measured: Error: timed out after 30000 ms waiting for the sidebar |     at Object.waitFor (file:///G:/Dev/kolux-rs/scripts/evidence/app-launch.mjs:32:33) |     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.3 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)
+
+S6: HARNESS-BLOCKED

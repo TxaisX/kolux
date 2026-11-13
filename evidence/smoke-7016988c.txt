@@ -1,0 +1,10 @@
+pnpm smoke at 2026-11-12T21:04:55.236Z on 7016988c (G:\Dev\kolux-lanes\c1-coord)
+args: --port 1430 --cdp 9341 --identifier com.txaisxiong.kolux.c1.smoke --temp G:\Temp\kolux-rs-smoke-c1 --offscreen; T-184 ticked: false; flow 5 report-only
+PASS 1: grid 4 -> 6 (3 shells + 1 empty -> 3 shells + 3 empty); all 3 shells echoed the marker set before the change (same PTY processes)
+PASS 2: Mod+S wrote notes.txt: disk now holds "typed by smoke 1794517200619" plus the original line (42 bytes)
+PASS 3: Delete in the Explorer asked first ("Delete": Move notes.txt to the trash?); after Cancel notes.txt is still on disk, byte-identical (42 bytes). This replaces the old flow 3, which tested the Source Control Discard that T-644/DT-C85 removed.
+PASS 4: Claude pane's dot reads "status: Working" after the stand-in posted SessionStart + UserPromptSubmit; hook installed into the scratch G:\Temp\kolux-rs-smoke-c1\tmp\claude-config\settings.json, script G:/Temp/kolux-rs-smoke-c1/home/.kolux-rs/agent-hooks/claude.cmd on disk
+FAIL 6: timed out after 30000 ms waiting for a Grok pane
+FAIL 7: the sidebar lists 7 workspace rows for one workspace with 7 sessions; it should list the folder row only
+FAIL 5 [report-only]: settings.json is not byte-identical after the relaunch (3688 -> 3281 bytes; keys that differ: savedLayout); restore: 6 of 3 shells came back, 6 echoed the marker · live: 3 shells, 2 Claude stand-in pane, needsStrip=false; settings.json 3688 bytes · quit: window close over CDP, exited in 3.3 s; pre-close tree 24 (msedgewebview2.exe x6, conhost.exe x7, powershell.exe x7, cmd.exe x4); survivors 0 (none) · come back: settings.json CHANGED; needsStrip=false holds; 6/3 shells restored, 6 echoed a marker; 0 Claude pane back · stress: relaunched at once after a quit (exited in 1.0 s); page up in 3.1 s; no webview failure in the log · storm: 10 relaunches with 12 saved shell panes; shells seen [12 12 12 12 12 12 12 12 12 12]; stalled (ThreadCount <= 1 at 15 s) [0 0 0 0 0 0 0 0 0 0] = 0; survivors per close [0 0 0 0 0 0 0 0 0 0 0]
+smoke: 4/6 flows passed (flow 5 report-only until T-184 is ticked in PLAN.md: FAIL)
