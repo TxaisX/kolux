@@ -5,6 +5,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 // The sheet's markdown preview sanitises through the browser; plain marked stands in for it here.
 vi.mock("../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => marked.parse(md, { async: false }) }));
+// The sheet is a src/ui Dialog, drawn only on a real DOM; its contents are read here through a stand-in.
+vi.mock("../ui/Dialog", async () => (await import("../tasks/dialogStandIn")).dialogModule);
 const { default: PlanSheet } = await import("./PlanSheet");
 
 const sheet = (extra: Record<string, unknown>) =>

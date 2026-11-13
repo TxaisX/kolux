@@ -283,7 +283,7 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | insights | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 |
 | launch | 0 | 1 | 0 | 0 | 2 | 0 | 2 | 32 | 1 |
 | look | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 0 |
-| onboarding | 4 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 5 |
+| onboarding | 3 | 0 | 1 | 0 | 1 | 6 | 2 | 9 | 4 |
 | ports | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 3 | 0 |
 | projects | 0 | 1 | 1 | 0 | 7 | 0 | 19 | 75 | 2 |
 | recovery | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
@@ -297,13 +297,13 @@ The sites still listed, and why each is left for now, are under "What is left, a
 | status | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 9 | 0 |
 | switcher | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 4 | 0 |
 | tasks | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 41 | 0 |
-| terminal | 5 | 1 | 0 | 0 | 4 | 0 | 0 | 29 | 6 |
+| terminal | 4 | 1 | 0 | 0 | 4 | 0 | 0 | 29 | 5 |
 | tower | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | update | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 |
 | usage | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 13 | 0 |
-| **Total** | **13** | **6** | **3** | **3** | **39** | **42** | **57** | **646** | **20** |
+| **Total** | **11** | **6** | **3** | **3** | **39** | **42** | **57** | **646** | **18** |
 
-To do: 20. Native on purpose: 3. Removed by #255: 2.
+To do: 18. Native on purpose: 3. Removed by #255: 2.
 
 Left to migrate (the Dialog, Menu, Tabs and Select lines):
 
@@ -323,7 +323,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### onboarding
 
 - [ ] `src/onboarding/Guides.tsx`: Dialog :177, Dialog :269, Tabs :279
-- [ ] `src/onboarding/Tours.tsx`: Dialog :130
 - [ ] `src/onboarding/Wizard.tsx`: Dialog :117
 
 ### projects
@@ -345,7 +344,6 @@ Left to migrate (the Dialog, Menu, Tabs and Select lines):
 ### terminal
 
 - [ ] `src/terminal/PaneMenu.tsx`: Menu :166
-- [ ] `src/terminal/PlanSheet.tsx`: Dialog :50
 - [ ] `src/terminal/TerminalPane.tsx`: Dialog :1952, Dialog :1981, Dialog :2028, Dialog :2055
 
 Native on purpose, counted in their column but not to do:
@@ -393,9 +391,6 @@ here for whoever moves them:
 - `terminal/TerminalPane.tsx`, four `.pane-ask` questions: drawn inside their pane and covering only it, so the other
   panes stay usable. A src/ui Dialog is drawn on the body over the whole window; these need the pane's box as their
   viewport (a pane-scoped layer), which the wrappers do not have yet.
-- `terminal/PlanSheet.tsx` (the plan review sheet) and `onboarding/Tours.tsx` (a tour card beside the control it points
-  at, with a ring around it): non-modal. `Dialog modal={false}` fits, but a press outside must not close them (their
-  `onClose` has to ignore `"outside"`), and the tour places itself from its target's box.
 - `terminal/PaneMenu.tsx`, the terminal's right-click menu: its keyboard tests (T-710 menu keys, T-720 Tab and Escape
   handing focus back into the pane under StrictMode) are written against this menu on the fake DOM and move to a real
   DOM with it.
