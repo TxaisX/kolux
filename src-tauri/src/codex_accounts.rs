@@ -914,7 +914,7 @@ fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), Stri
     // Row 947: the list is already saved, so a marker that will not clear is logged and reported at the end, after the sign-in files are gone.
     let cleared = if store.get(ACTIVE_KEY).ok().flatten().as_deref() == Some(id) { store.set(ACTIVE_KEY, "").map_err(|e| e.to_string()) } else { Ok(()) };
     if let Err(e) = &cleared {
-        eprintln!("kolux-rs: could not clear the active Codex account ({e})");
+        eprintln!("kolux: could not clear the active Codex account ({e})");
     }
     Ok((gone, cleared))
 }

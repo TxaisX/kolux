@@ -335,9 +335,9 @@ Var KoluxOldLnkSm
 ; the old uninstaller's own running-app check (Restart Manager) sometimes stopped it (exit 2), also with no old
 ; program left running (cause not established); in /P it then waited on its "Uninstallation Aborted" page for a
 ; click. So the programs of the old install go first: Restart Manager reports the processes using an .exe in the
-; old folder or its bin folder (by full path, never by name: another install may run a kolux-rs.exe of its own).
+; old folder or its bin folder (by full path, never by name: another install may run a KOLUX_OLD_EXE of its own).
 ; It waits up to 10 s for them to end by themselves, then, while the old program is still there, asks Restart
-; Manager to close them, as the old uninstaller's own check does for kolux-rs.exe; if that fails it waits again,
+; Manager to close them, as the old uninstaller's own check does for KOLUX_OLD_EXE; if that fails it waits again,
 ; 60 s in all.
 ; Whatever still runs after that is left to the old uninstaller, which fails closed. Uses $R4, $R5, $R6, $R8
 ; (the caller saved them) and keeps $0-$3.

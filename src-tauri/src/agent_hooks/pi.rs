@@ -6,7 +6,7 @@
 //! `tool_execution_start` / `tool_execution_end` (with `toolName`, `isError`), `agent_settled`
 //! (with `aborted`), `session_start` and `session_shutdown` (with `reason`).
 //!
-//! Kolux writes its own file there, `kolux-rs.ts`, apart from the user's own extensions: it runs
+//! Kolux writes its own file there, `kolux.ts`, apart from the user's own extensions: it runs
 //! Kolux's hook script with the event name and a small JSON body, only inside a Kolux pane. A file
 //! of that name Kolux did not write is never touched; taking the hooks away deletes only Kolux's.
 //! STAT-025: the prompt that began the run is the one text that goes along (cut at 16000, the
@@ -23,6 +23,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub const SCRIPT: &str = "pi.cmd";
+/// The extension's file name before the rename to Kolux; an old one is taken away, never left
+/// beside the new one (Pi would load both).
+const LEGACY_FILE: &str = "kolux-rs.ts";
 /// The line that marks the extension as Kolux's own.
 pub const MARK_LINE: &str = "// Kolux status extension for Pi. Written by Kolux; edits are overwritten.";
 /// STAT-021: the Pi events the extension reports, by Pi's own names.
@@ -34,7 +37,7 @@ pub const TITLE_EVENTS: [&str; 3] = ["session_start", "agent_start", "agent_sett
 
 /// Kolux's own extension file in Pi's user extensions folder.
 pub fn file(home: &Path) -> PathBuf {
-    home.join(".pi").join("agent").join("extensions").join("kolux-rs.ts")
+    home.join(".pi").join("agent").join("extensions").join("kolux.ts")
 }
 
 /// The script takes the event as its argument and prints nothing.
@@ -106,18 +109,25 @@ pub fn mine(text: &str) -> bool {
 pub fn install(home: &Path, file: &Path) -> Result<bool, String> {
     let path = write_script(home)?;
     let want = extension(&path);
+    let dropped = super::super::drop_legacy(file, LEGACY_FILE, remove_one);
     let text = read_opt(file)?;
     match text.as_deref() {
         Some(t) if !mine(t) => return Err(format!("{} is not Kolux's own extension; left alone", file.display())),
-        Some(t) if t == want => return Ok(false),
+        Some(t) if t == want => return Ok(dropped),
         _ => {}
     }
     write_atomic(file, want.as_bytes(), text.as_deref())?;
     Ok(true)
 }
 
-/// Kolux's extension goes; a file of the same name that is not Kolux's stays.
+/// Kolux's extension goes (and its old-named one from before the rename); a file of the same name
+/// that is not Kolux's stays.
 pub fn remove(file: &Path) -> Result<bool, String> {
+    let now = remove_one(file)?;
+    Ok(super::super::drop_legacy(file, LEGACY_FILE, remove_one) || now)
+}
+
+fn remove_one(file: &Path) -> Result<bool, String> {
     let Some(text) = read_opt(file)? else { return Ok(false) };
     if !mine(&text) {
         return Ok(false);

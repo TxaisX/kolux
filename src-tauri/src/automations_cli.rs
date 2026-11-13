@@ -431,7 +431,7 @@ mod tests {
     /// switch must not clash with its pair.
     #[test]
     fn c26r4_01_automation_switches_written_false_are_off() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-autocli-c26r401-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-autocli-c26r401-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -462,7 +462,7 @@ mod tests {
 
     /// T-197-c: a store with one project (a throwaway repo) and the command line over it.
     fn with_cli(tag: &str, f: impl FnOnce(&Ctx, &Mutex<Store>, &Path, &dyn Fn(&str, Value) -> Result<Value, super::Fail>)) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-autocli-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-autocli-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -615,7 +615,7 @@ mod tests {
 
     #[test]
     fn automations_are_made_changed_listed_and_removed_from_the_command_line() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-autocli-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-autocli-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();

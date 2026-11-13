@@ -27,6 +27,7 @@ pub mod codex_usage;
 mod creatures;
 pub mod diag;
 mod editor_drafts;
+pub mod env_name;
 mod editor_search;
 pub mod fence;
 pub mod files;
@@ -222,7 +223,7 @@ fn dev_inject() -> Result<(), String> {
     }
 }
 
-/// T-075-b: the background terminal service process (`kolux-rs --terminal-service <identifier> <data folder>`).
+/// T-075-b: the background terminal service process (`kolux --terminal-service <identifier> <data folder>`).
 pub fn terminal_service_main(args: &[String]) -> i32 {
     pty::service::main(args)
 }
@@ -306,7 +307,7 @@ pub fn run() {
             })?;
             diag::set_dir(&dir);
             if let Some(m) = &moved {
-                diag::write(&dir, &format!("kolux-rs: {}", m.summary()));
+                diag::write(&dir, &format!("kolux: {}", m.summary()));
             }
             // T-182 (APP-020, macOS and Linux): the login shell's environment, read in the background.
             login_env::start();
@@ -316,11 +317,11 @@ pub fn run() {
             // T-594: a user PATH too long for the installer gets <install>\bin added here, once per install.
             cli::cli_register::path_at_start_now(&dir);
             if !job_ok {
-                diag::write(&dir, "kolux-rs: the app could not be put in its own job object; child processes would survive a crash (APP-053)");
+                diag::write(&dir, "kolux: the app could not be put in its own job object; child processes would survive a crash (APP-053)");
             }
             // The config homes this process resolved (defaults included), so a launch that inherited another
             // app's environment shows up in the log.
-            diag::write(&dir, &format!("kolux-rs: config: CLAUDE_CONFIG_DIR={} CODEX_HOME={}", hooks::claude_settings_file().parent().map(|d| d.display().to_string()).unwrap_or_default(), trust::codex_config_file().parent().map(|d| d.display().to_string()).unwrap_or_default()));
+            diag::write(&dir, &format!("kolux: config: CLAUDE_CONFIG_DIR={} CODEX_HOME={}", hooks::claude_settings_file().parent().map(|d| d.display().to_string()).unwrap_or_default(), trust::codex_config_file().parent().map(|d| d.display().to_string()).unwrap_or_default()));
             // T-183 (APP-039): a previous run that left no clean exit becomes a crash record.
             resources::recovery::startup_scan(&dir);
             // T-183 (APP-021): the profile folder must take a write and every install file must read; a
@@ -361,7 +362,7 @@ pub fn run() {
             skill_delete::startup_recover(&dir);
             let starts = onboarding::count_start(&store)?; // a failed count write is logged inside, never fatal
             if let Err(e) = onboarding::first_start(&store, starts) {
-                eprintln!("kolux-rs: onboarding start failed ({e}); startup goes on");
+                eprintln!("kolux: onboarding start failed ({e}); startup goes on");
             }
             // USAGE-011: last run's activity counts, before any pane reports.
             activity::start(&store);

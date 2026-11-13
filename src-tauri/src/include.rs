@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn copies_keep_to_the_budget_and_a_stopped_copy_says_so() {
-        let root = std::env::temp_dir().join(format!("kolux-rs-budget-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("kolux-budget-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let (repo, dest) = (root.join("repo"), root.join("dest"));
         std::fs::create_dir_all(repo.join("deps/pkg")).unwrap();

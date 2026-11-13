@@ -207,7 +207,7 @@ pub mod tests {
 
     #[test]
     fn t286b_dumps_are_found_one_or_two_folders_down_oldest_first() {
-        let root = std::env::temp_dir().join(format!("kolux-rs-crashdump-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("kolux-crashdump-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(root.join("reports")).unwrap();
         fs::write(root.join("reports").join("a.dmp"), minidump(5, 0x1008, &[(0x1000, 0x100, "C:\\x\\libGLESv2.dll")])).unwrap();

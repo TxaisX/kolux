@@ -628,7 +628,7 @@ mod tests {
 
     #[test]
     fn orch055_a_terminal_send_receipt_lasts_across_a_reload_and_is_bounded() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-sendonce-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-sendonce-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let store = crate::state::Store::open(&dir).unwrap();
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     fn card13_receipts_that_could_not_be_kept_aside_are_never_saved_over() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-sendonce-c13-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-sendonce-c13-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = crate::state::Store::open(&dir).unwrap();
         let broken = "[{\"key\": \"term-1|r\", \"at\": 5";

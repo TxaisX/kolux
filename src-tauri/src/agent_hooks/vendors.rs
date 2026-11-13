@@ -18,7 +18,11 @@ use std::time::{Duration, Instant};
 pub const GEMINI_SCRIPT: &str = "gemini.cmd";
 pub const ANTIGRAVITY_SCRIPT: &str = "antigravity.cmd";
 /// The plugin file and the Antigravity bundle both carry this name.
-pub const NAME: &str = "kolux-rs";
+pub const NAME: &str = "kolux";
+/// `NAME` before the rename to Kolux: an old plugin file or bundle of Kolux's is taken out when the
+/// new one goes in or the hooks go, never left beside it.
+pub const LEGACY_NAME: &str = "kolux-rs";
+const LEGACY_AMP_FILE: &str = "kolux-rs.js";
 pub const GEMINI_EVENTS: [&str; 4] = ["BeforeAgent", "AfterAgent", "BeforeTool", "AfterTool"];
 const GEMINI_TOOL_EVENTS: [&str; 2] = ["BeforeTool", "AfterTool"];
 /// Gemini CLI takes hook timeouts in milliseconds.
@@ -278,7 +282,7 @@ fn keep_copy(home: &Path, file: &Path, agent: &str, existed: bool, mine_already:
         return Ok(());
     }
     if let Some((original, copy)) = back_up(file, &target_dir(home, file).join(BACKUP_RECORD))? {
-        eprintln!("kolux-rs: {agent} hooks: kept a copy before the first write: sha256 original {original}, backup {copy}");
+        eprintln!("kolux: {agent} hooks: kept a copy before the first write: sha256 original {original}, backup {copy}");
     }
     Ok(())
 }
@@ -390,16 +394,18 @@ pub fn install_antigravity(home: &Path, file: &Path) -> Result<bool, String> {
         .iter()
         .map(|e| (e.to_string(), if ANTIGRAVITY_TOOL_EVENTS.contains(e) { json!([{ "matcher": "*", "hooks": [handler(e)] }]) } else { json!([handler(e)]) }))
         .collect();
+    // An old bundle of Kolux's under the name before the rename goes; its switch carries over.
+    let legacy = root.get(LEGACY_NAME).is_some_and(bundle_mine).then(|| root.remove(LEGACY_NAME)).flatten();
     // FIX-1 (e): the user's switch on the bundle stays as he set it.
     let had = root.get(NAME);
-    if let Some(on) = had.and_then(|b| b.get("enabled")) {
+    if let Some(on) = had.or(legacy.as_ref()).and_then(|b| b.get("enabled")) {
         bundle.insert("enabled".into(), on.clone());
     }
     let bundle = Value::Object(bundle);
-    if had == Some(&bundle) {
+    if legacy.is_none() && had == Some(&bundle) {
         return Ok(false);
     }
-    let mine_already = had.is_some();
+    let mine_already = had.is_some() || legacy.is_some();
     root.insert(NAME.into(), bundle);
     keep_copy(home, file, "antigravity", text.is_some(), mine_already)?;
     write_json(file, &v, text.as_deref())?;
@@ -410,10 +416,13 @@ pub fn remove_antigravity(home: &Path, file: &Path) -> Result<bool, String> {
     let Some(text) = read_opt(file)? else { return Ok(false) };
     let mut v = parse(file, Some(&text))?;
     let Some(root) = v.as_object_mut() else { return Ok(false) };
-    if !root.get(NAME).is_some_and(bundle_mine) {
+    let names: Vec<&str> = [NAME, LEGACY_NAME].into_iter().filter(|n| root.get(*n).is_some_and(bundle_mine)).collect();
+    if names.is_empty() {
         return Ok(false);
     }
-    root.remove(NAME);
+    for n in names {
+        root.remove(n);
+    }
     write_back(home, file, &v, &text)?;
     Ok(true)
 }
@@ -421,9 +430,10 @@ pub fn remove_antigravity(home: &Path, file: &Path) -> Result<bool, String> {
 /// Amp: Kolux's plugin file; a file of the user's under that name is never replaced.
 pub fn install_amp(file: &Path) -> Result<bool, String> {
     let plugin = amp_plugin();
+    let dropped = super::drop_legacy(file, LEGACY_AMP_FILE, remove_one_amp);
     let old = read_opt(file)?;
     if old.as_deref() == Some(plugin.as_str()) {
-        return Ok(false);
+        return Ok(dropped);
     }
     if old.as_deref().is_some_and(|o| !amp_mine(o)) {
         return Err(format!("{} is not Kolux's own plugin; left alone", file.display()));
@@ -438,7 +448,13 @@ fn amp_mine(text: &str) -> bool {
     text.lines().next().is_some_and(|l| l.starts_with("// ") && l.contains("Written by Kolux"))
 }
 
+/// Kolux's plugin goes, and its old-named one from before the rename.
 pub fn remove_amp(file: &Path) -> Result<bool, String> {
+    let now = remove_one_amp(file)?;
+    Ok(super::drop_legacy(file, LEGACY_AMP_FILE, remove_one_amp) || now)
+}
+
+fn remove_one_amp(file: &Path) -> Result<bool, String> {
     match read_opt(file)? {
         Some(t) if amp_mine(&t) => fs::remove_file(file).map(|_| true).map_err(|e| format!("{}: {e}", file.display())),
         _ => Ok(false),
@@ -474,7 +490,8 @@ fn inspect_antigravity(file: &Path) -> (&'static str, Option<String>) {
         Ok(Some(Err(e))) => return ("error", Some(format!("{} is not JSON ({e}); left alone", file.display()))),
         Err(e) => return ("error", Some(e)),
     };
-    let Some(bundle) = v.get(NAME) else { return ("not installed", None) };
+    // An old-named bundle reads as Kolux's too; the next start rewrites it under the new name.
+    let Some(bundle) = v.get(NAME).or_else(|| v.get(LEGACY_NAME)) else { return ("not installed", None) };
     if !bundle_mine(bundle) {
         return ("error", Some(format!("a {NAME} bundle that is not Kolux's")));
     }
@@ -638,7 +655,7 @@ mod tests {
     }
 
     fn scratch(tag: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-rs-vendors-{tag}-{}", std::process::id()));
+        let d = std::env::temp_dir().join(format!("kolux-vendors-{tag}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
@@ -678,7 +695,7 @@ mod tests {
         assert!(remove_antigravity(&home, &file).unwrap());
         let v: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
         assert_eq!(v, json!({"mine":{"Stop":[{"hooks":[{"type":"command","command":"notify"}]}]}}));
-        fs::write(&file, r#"{"kolux-rs":{"Stop":[{"hooks":[{"type":"command","command":"someone else"}]}]}}"#).unwrap();
+        fs::write(&file, r#"{"kolux":{"Stop":[{"hooks":[{"type":"command","command":"someone else"}]}]}}"#).unwrap();
         assert!(install_antigravity(&home, &file).is_err(), "a same-named bundle of the user's is left alone");
         assert!(!remove_antigravity(&home, &file).unwrap());
         assert_eq!(inspect_antigravity(&file).0, "error");
@@ -865,7 +882,7 @@ mod tests {
         let home = scratch("fix1-agy-shape");
         let file = antigravity_file(&home);
         fs::create_dir_all(file.parent().unwrap()).unwrap();
-        for text in ["[1]", "not json", r#"{"kolux-rs":"x"}"#, r#"{"kolux-rs":{"Stop":"notify"}}"#] {
+        for text in ["[1]", "not json", r#"{"kolux":"x"}"#, r#"{"kolux":{"Stop":"notify"}}"#] {
             fs::write(&file, text).unwrap();
             assert!(install_antigravity(&home, &file).is_err(), "{text}");
             assert_eq!(fs::read_to_string(&file).unwrap(), text);
@@ -938,7 +955,7 @@ mod tests {
     #[test]
     fn fix1_apply_writes_vendor_files_only_below_a_scratch_marker() {
         let home = scratch("fix1-fence");
-        let profile = Path::new("kolux-rs-test-profile");
+        let profile = Path::new("kolux-test-profile");
         for id in ["gemini", "antigravity", "amp"] {
             let e = apply(&home, profile, id, Plan::Install).expect_err(id);
             assert!(e.contains("left alone"), "{id}: {e}");

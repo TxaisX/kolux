@@ -950,7 +950,7 @@ impl Mail {
     /// cannot be read at all loads empty but marked `unread`, so it is never saved over.
     pub fn load(store: &crate::state::Store) -> Mail {
         kept::load(store, KEY).unwrap_or_else(|why| {
-            eprintln!("kolux-rs: {why}");
+            eprintln!("kolux: {why}");
             Mail { unread: true, ..Mail::default() }
         })
     }
@@ -1757,7 +1757,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn the_orchestration_store_opens_to_the_current_user_only() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-orch-private-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-orch-private-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let store = crate::state::Store::open(&dir).unwrap();

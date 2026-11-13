@@ -97,7 +97,7 @@ fn save(store: &Store, rec: &Onboarding) -> Result<(), String> {
 pub fn count_start(store: &Store) -> Result<u64, String> {
     let starts: u64 = store.get("start_count").map_err(|e| e.to_string())?.and_then(|v| v.parse().ok()).unwrap_or(0) + 1;
     if let Err(e) = store.set("start_count", &starts.to_string()) {
-        eprintln!("kolux-rs: start count not saved ({e}); startup goes on");
+        eprintln!("kolux: start count not saved ({e}); startup goes on");
     }
     Ok(starts)
 }
@@ -108,7 +108,7 @@ pub fn first_start(store: &Store, starts: u64) -> Result<(), String> {
     let rec = match try_raw(store) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("kolux-rs: {e}; onboarding left as it is");
+            eprintln!("kolux: {e}; onboarding left as it is");
             return Ok(());
         }
     };
@@ -119,7 +119,7 @@ pub fn first_start(store: &Store, starts: u64) -> Result<(), String> {
     };
     // Row 884: a record that cannot be written is logged; the wizard just does not open this run.
     if let Err(e) = saved {
-        eprintln!("kolux-rs: onboarding record not saved ({e}); startup goes on");
+        eprintln!("kolux: onboarding record not saved ({e}); startup goes on");
     }
     Ok(())
 }
@@ -334,7 +334,7 @@ fn tours_read(store: &Store) -> Result<Guide, String> {
         }
         Err(e) => {
             // Row 885: a damaged guide cannot record that a tour was seen, so it must never start one.
-            eprintln!("kolux-rs: {e}; tours answered from the default, none automatic");
+            eprintln!("kolux: {e}; tours answered from the default, none automatic");
             Ok(tours_decided(Guide::default(), false).0)
         }
     }
@@ -625,7 +625,7 @@ mod tests {
 
     #[test]
     fn the_cli_counts_on_path_only_when_its_own_folder_is_there() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-onb-cli-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-onb-cli-{}", std::process::id()));
         let other = dir.join("other");
         std::fs::create_dir_all(&other).unwrap();
         let launcher = if cfg!(windows) { "kolux.exe" } else { "kolux" };
@@ -645,7 +645,7 @@ mod tests {
     /// beside the app (scripts/release.mjs, DT-R27); the guide's CLI step looks there, so it can complete.
     #[test]
     fn cli007_an_installed_copy_finds_its_cli_in_the_bin_folder() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-onb-bin-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-onb-bin-{}", std::process::id()));
         let bin = dir.join("bin");
         std::fs::create_dir_all(&bin).unwrap();
         std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
@@ -663,7 +663,7 @@ mod tests {
     /// the check still finishes and still finds the CLI's own folder after it.
     #[test]
     fn a_path_folder_that_does_not_answer_is_passed_over() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-onb-dead-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-onb-dead-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
         // Stands in for a lookup on an offline drive: the "dead" folder never answers in time.
@@ -703,7 +703,7 @@ mod tests {
     /// Council FB 2: a PATH folder on a share is never looked up (that signs in to the share).
     #[test]
     fn a_path_folder_on_another_computer_is_never_looked_up() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-onb-unc-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-onb-unc-{}", std::process::id()));
         let other = dir.join("other");
         std::fs::create_dir_all(&other).unwrap();
         std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
@@ -719,7 +719,7 @@ mod tests {
     /// Council FS 1: dead folders share one deadline, and one still looking is not asked again.
     #[test]
     fn dead_path_folders_share_one_deadline_and_are_not_asked_twice() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-onb-dead3-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-onb-dead3-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
         let dead = ["Z:/offline/w2-dead-1", "Z:/offline/w2-dead-2", "Z:/offline/w2-dead-3"].map(std::path::PathBuf::from);
@@ -741,7 +741,7 @@ mod tests {
     }
 
     fn store(tag: &str) -> (Store, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-onb-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-onb-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         (Store::open(&dir).unwrap(), dir)
     }

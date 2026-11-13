@@ -171,7 +171,7 @@ mod tests {
     use std::fs;
 
     fn temp(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-folderproj-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-folderproj-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir

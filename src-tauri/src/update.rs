@@ -22,26 +22,36 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// The update manifest of the newest published release (OD-20: Kolux's own feed).
 pub const DEFAULT_RELEASE_ENDPOINT: &str = "https://github.com/TxaisX/kolux/releases/latest/download/latest.json";
-/// Where a release build reads its feed. The release job never sets `KOLUX_RS_RELEASE_ENDPOINT`, so a
+/// Where a release build reads its feed. The release job never sets `KOLUX_RELEASE_ENDPOINT`, so a
 /// shipped build reads the GitHub feed above; the T-785 update proof rig
 /// builds scratch-identity installers against a feed on the loopback address. It is a build-time
 /// value: an installed release build still takes no feed from its environment.
-pub const RELEASE_ENDPOINT: &str = match option_env!("KOLUX_RS_RELEASE_ENDPOINT") {
+pub const RELEASE_ENDPOINT: &str = match option_env!("KOLUX_RELEASE_ENDPOINT") {
     Some(e) => e,
-    None => DEFAULT_RELEASE_ENDPOINT,
+    None => match LEGACY_RELEASE_ENDPOINT {
+        Some(e) => e,
+        None => DEFAULT_RELEASE_ENDPOINT,
+    },
 };
+/// The build variables' names before the rename to Kolux (`KOLUX_RS_*`), read when the new name is
+/// unset so a release job that still sets the old name builds the same copy.
+const LEGACY_RELEASE_ENDPOINT: Option<&str> = option_env!("KOLUX_RS_RELEASE_ENDPOINT");
+const LEGACY_RELEASE_PUBKEY: Option<&str> = option_env!("KOLUX_RS_RELEASE_PUBKEY");
 /// The minisign public key releases are signed with. The release job (scripts/release.mjs, T-091)
 /// builds it in from the public half of the signing key; a build made without it says it cannot
 /// update instead of accepting anything unsigned.
-pub const RELEASE_PUBKEY: &str = match option_env!("KOLUX_RS_RELEASE_PUBKEY") {
+pub const RELEASE_PUBKEY: &str = match option_env!("KOLUX_RELEASE_PUBKEY") {
     Some(k) => k,
-    None => "",
+    None => match LEGACY_RELEASE_PUBKEY {
+        Some(k) => k,
+        None => "",
+    },
 };
 /// A check that has not answered by then is dropped (APP-024 "a check that stalls").
 pub const CHECK_TIMEOUT: Duration = Duration::from_secs(30);
 /// Development copies only: a test feed and its key.
-pub const ENV_ENDPOINT: &str = "KOLUX_RS_UPDATE_ENDPOINT";
-pub const ENV_PUBKEY: &str = "KOLUX_RS_UPDATE_PUBKEY";
+pub const ENV_ENDPOINT: &str = "KOLUX_UPDATE_ENDPOINT";
+pub const ENV_PUBKEY: &str = "KOLUX_UPDATE_PUBKEY";
 /// Release notes in the card are cut to this many lines (APP-027).
 pub const NOTE_LINES: usize = 6;
 
@@ -84,7 +94,7 @@ fn installed_copy() -> bool {
 }
 
 fn this_feed() -> Result<Feed, String> {
-    feed(cfg!(debug_assertions), installed_copy(), |k| std::env::var(k).ok())
+    feed(cfg!(debug_assertions), installed_copy(), crate::env_name::var)
 }
 
 /// Release notes as a few plain lines: headings and empty lines go, list markers are stripped,
@@ -137,7 +147,7 @@ pub struct Updates {
 /// T-199 (APP-031): the compatibility mode in force (the variable wins over the saved choice).
 fn compat_on(app: &AppHandle) -> bool {
     let saved = app.state::<Mutex<Store>>().lock().ok().and_then(|s| s.get(care::KEY_COMPAT).ok().flatten()).as_deref() == Some("1");
-    care::compat_mode(saved, std::env::var(care::ENV_COMPAT).ok().as_deref())
+    care::compat_mode(saved, crate::env_name::var(care::ENV_COMPAT).as_deref())
 }
 
 /// The hosts a release download is fetched from (GitHub Releases and the storage it redirects to).
@@ -220,7 +230,7 @@ pub fn update_status(app: AppHandle, store: State<'_, Mutex<Store>>, updates: St
         dismissed_version: get(KEY_DISMISSED).filter(|v| !v.is_empty()),
         tip_done: get(KEY_TIP_DONE).as_deref() == Some("1"),
         ready: updates.ready.lock().map_err(|e| e.to_string())?.as_ref().map(|(u, _)| info_of(u)),
-        compat: care::compat_mode(get(care::KEY_COMPAT).as_deref() == Some("1"), std::env::var(care::ENV_COMPAT).ok().as_deref()),
+        compat: care::compat_mode(get(care::KEY_COMPAT).as_deref() == Some("1"), crate::env_name::var(care::ENV_COMPAT).as_deref()),
     })
 }
 
@@ -360,7 +370,7 @@ pub async fn update_download(app: AppHandle) -> Result<Info, String> {
     // T-293 (APP-030): the installer's Windows publisher must match this copy's; no bypass.
     let (checked, version) = (bytes.clone(), update.version.clone());
     let verdict = tauri::async_runtime::spawn_blocking(move || {
-        let dir = std::env::temp_dir().join("kolux-rs-update-check");
+        let dir = std::env::temp_dir().join("kolux-update-check");
         guard::vet(&checked, &dir, &version, &guard::running_state(), guard::Pins { subject: guard::PINNED_PUBLISHER, issuer: guard::PINNED_ISSUER }, guard::SIGNED_BUILD || guard::PINNED_PUBLISHER.is_some() || guard::PINNED_ISSUER.is_some(), guard::check_file)
     })
     .await
@@ -567,11 +577,12 @@ mod tests {
     fn the_shipped_feed_is_the_github_release_manifest() {
         // The release job (scripts/release.mjs) sets no endpoint override; only the T-785 proof rig does.
         assert_eq!(DEFAULT_RELEASE_ENDPOINT, "https://github.com/TxaisX/kolux/releases/latest/download/latest.json");
-        if option_env!("KOLUX_RS_RELEASE_ENDPOINT").is_none() {
+        if option_env!("KOLUX_RELEASE_ENDPOINT").is_none() && LEGACY_RELEASE_ENDPOINT.is_none() {
             assert_eq!(RELEASE_ENDPOINT, DEFAULT_RELEASE_ENDPOINT);
         }
         let src = include_str!("../../scripts/release.mjs");
-        assert!(!src.contains("KOLUX_RS_RELEASE_ENDPOINT"), "the release job must never point a shipped build at another feed");
+        // `_RELEASE_ENDPOINT` covers the variable's new name and its name before the rename.
+        assert!(!src.contains("_RELEASE_ENDPOINT"), "the release job must never point a shipped build at another feed");
     }
 
     #[test]
@@ -654,7 +665,7 @@ mod tests {
         assert_eq!(clean_notes(Some("# Only a heading\n\n")), Vec::<String>::new());
         assert_eq!(clean_notes(None), Vec::<String>::new());
         // The release job's hidden source marker never shows as a note.
-        assert_eq!(clean_notes(Some("- Ship it\n<!-- kolux-rs-source: abc123 -->\n")), vec!["Ship it"]);
+        assert_eq!(clean_notes(Some("- Ship it\n<!-- kolux-source: abc123 -->\n")), vec!["Ship it"]);
     }
 
     #[test]

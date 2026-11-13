@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex, OnceLock};
 
-pub const SWEEP_OFF_VAR: &str = "KOLUX_RS_NO_HELPER_SWEEP";
+pub const SWEEP_OFF_VAR: &str = "KOLUX_NO_HELPER_SWEEP";
 const FILE: &str = "browser-helpers.json";
 
 /// One recorded helper: its process id, the system's start moment for it, its program file, and
@@ -114,7 +114,7 @@ pub fn sweep_at_start(dir: &Path) {
     let dir = dir.to_path_buf();
     SWEPT.get_or_init(move || {
         let _ = DIR.set(dir.clone());
-        let off = sweep_off(std::env::var(SWEEP_OFF_VAR).ok().as_deref());
+        let off = sweep_off(crate::env_name::var(SWEEP_OFF_VAR).as_deref());
         let _ = std::thread::Builder::new().name("browser-helper-sweep".into()).spawn(move || {
             let records = read(&dir);
             let me = me();

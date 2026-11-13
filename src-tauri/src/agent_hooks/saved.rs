@@ -198,7 +198,7 @@ pub fn note(app: &tauri::AppHandle, route: &str, body: &[u8], status: &Status, h
     };
     if let Ok(store) = app.state::<Mutex<crate::state::Store>>().lock() {
         if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
-            eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+            eprintln!("kolux: the agents' status could not be saved: {e}");
         }
     }
 }
@@ -245,16 +245,16 @@ pub fn startup(store: &crate::state::Store, dir: &Path) {
     if std::fs::rename(&spool, &taken).is_ok() {
         let big = std::fs::metadata(&taken).map(|m| m.len() > SPOOL_MAX).unwrap_or(true);
         if big {
-            eprintln!("kolux-rs: the agents' undelivered events were too many to replay; dropped");
+            eprintln!("kolux: the agents' undelivered events were too many to replay; dropped");
         } else if let Ok(bytes) = std::fs::read(&taken) {
             let n = replay(&String::from_utf8_lossy(&bytes), &mut rows, now);
-            eprintln!("kolux-rs: {n} agent event(s) sent while Kolux was closed were applied");
+            eprintln!("kolux: {n} agent event(s) sent while Kolux was closed were applied");
         }
         let _ = std::fs::remove_file(&taken);
     }
     keep_living_children(&mut rows, crate::procs::alive, crate::procs::started_at);
     if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
-        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+        eprintln!("kolux: the agents' status could not be saved: {e}");
     }
     CONFIRMED.lock().unwrap_or_else(|p| p.into_inner()).clear();
     *RESTORED.lock().unwrap_or_else(|p| p.into_inner()) = rows;
@@ -325,10 +325,10 @@ pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
     taken.sort_by_key(|r| r.at);
     let rows = resumable(resumable(record(store), restored), taken);
     if let Err(e) = store.set(RESUMABLE_KEY, &serialize(&rows)) {
-        eprintln!("kolux-rs: the agents to resume could not be recorded: {e}");
+        eprintln!("kolux: the agents to resume could not be recorded: {e}");
     }
     if let Err(e) = store.set(SAVED_KEY, &serialize(&kept)) {
-        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+        eprintln!("kolux: the agents' status could not be saved: {e}");
     }
 }
 
@@ -351,7 +351,7 @@ pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32, idle: std::time
         live.values().cloned().collect()
     };
     if let Err(e) = store.set(SAVED_KEY, &serialize(&kept)) {
-        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+        eprintln!("kolux: the agents' status could not be saved: {e}");
     }
     Ok(row)
 }
@@ -372,7 +372,7 @@ pub fn unsleep(store: &crate::state::Store, row: Row) {
         live.values().cloned().collect()
     };
     if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
-        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+        eprintln!("kolux: the agents' status could not be saved: {e}");
     }
 }
 
@@ -410,7 +410,7 @@ pub fn at_quit(store: &crate::state::Store) {
     // events say otherwise.
     let rows = resumable(resumable(earlier, restored), live);
     if let Err(e) = store.set(RESUMABLE_KEY, &serialize(&rows)) {
-        eprintln!("kolux-rs: the agents to resume could not be recorded: {e}");
+        eprintln!("kolux: the agents to resume could not be recorded: {e}");
     }
 }
 
@@ -436,7 +436,7 @@ pub fn keep_panes(store: &crate::state::Store, keep: &[u32]) {
     };
     if LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().is_none_or(HashMap::is_empty) {
         if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
-            eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+            eprintln!("kolux: the agents' status could not be saved: {e}");
         }
     }
 }

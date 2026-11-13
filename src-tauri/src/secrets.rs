@@ -61,13 +61,13 @@ fn set_store_down(down: bool) {
 }
 
 /// SAFE-026: whether the secret store is treated as down. A development build also takes
-/// `KOLUX_RS_SECRET_STORE_DOWN` so the outage can be shown live; a release build never does.
+/// `KOLUX_SECRET_STORE_DOWN` so the outage can be shown live; a release build never does.
 fn store_down() -> bool {
     #[cfg(test)]
     if DOWN.with(|d| d.get()) {
         return true;
     }
-    cfg!(debug_assertions) && std::env::var_os("KOLUX_RS_SECRET_STORE_DOWN").is_some()
+    cfg!(debug_assertions) && crate::env_name::var_os("KOLUX_SECRET_STORE_DOWN").is_some()
 }
 
 /// Whether the secret store seals and opens a fresh value right now.
@@ -633,7 +633,7 @@ mod tests {
     }
 
     fn temp_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-secrets-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-secrets-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir

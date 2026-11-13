@@ -1183,7 +1183,7 @@ mod tests {
 
     /// The git processes one `scm::status` read starts, from git's own trace2 event log.
     fn git_argvs_of_one_status_read(dir: &Path) -> Vec<String> {
-        let trace = std::env::temp_dir().join(format!("kolux-rs-watch-argvs-{}.json", std::process::id()));
+        let trace = std::env::temp_dir().join(format!("kolux-watch-argvs-{}.json", std::process::id()));
         let _ = std::fs::remove_file(&trace);
         crate::git::TRACE2.with(|t| *t.borrow_mut() = Some(trace.clone()));
         crate::scm::status(dir).unwrap();

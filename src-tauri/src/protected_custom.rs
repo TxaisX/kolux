@@ -751,19 +751,19 @@ mod tests {
             "protectedProjects": {
                 "G:/Dev/shop": {
                     "off": ["force-push"],
-                    "dirs": ["C:/Users/x/kolux-rs/workspaces/shop"],
+                    "dirs": ["C:/Users/x/kolux/workspaces/shop"],
                     "rules": [{ "id": "p1", "name": "Migrations", "kind": "regex", "pattern": "^prisma migrate" }]
                 }
             }
         });
         let base = crate::protected::Base::default();
-        let pane = "C:/Users/x/kolux-rs/workspaces/shop/fix-login/src";
+        let pane = "C:/Users/x/kolux/workspaces/shop/fix-login/src";
         assert_eq!(scope_of(&s, Some(pane)).map(|(r, _)| r).as_deref(), Some("G:/Dev/shop"));
         assert!(working(&s, Some(pane)).off.contains(&"force-push".to_string()));
         assert_eq!(check("git push --force origin main", &base, &s, Some(pane)), None, "the switch the user turned off here holds");
         assert_eq!(check("prisma migrate reset", &base, &s, Some(pane)).as_deref(), Some("Migrations"), "the project's own rule asks");
-        assert_eq!(check("prisma migrate reset", &base, &s, Some("C:/Users/x/kolux-rs/workspaces/shop2/x")), None, "a sibling folder is not shop");
-        assert_eq!(check("prisma migrate reset", &base, &s, Some("C:/Users/x/kolux-rs/workspaces/shop")).as_deref(), Some("Migrations"), "the folder itself counts");
+        assert_eq!(check("prisma migrate reset", &base, &s, Some("C:/Users/x/kolux/workspaces/shop2/x")), None, "a sibling folder is not shop");
+        assert_eq!(check("prisma migrate reset", &base, &s, Some("C:/Users/x/kolux/workspaces/shop")).as_deref(), Some("Migrations"), "the folder itself counts");
     }
 
     /// C19-R1-01, the gap the fix does not close: with the flat layout a pane's folder is
@@ -782,7 +782,7 @@ mod tests {
             }
         });
         let base = crate::protected::Base::default();
-        let pane = "C:/Users/x/kolux-rs/workspaces/fix-login";
+        let pane = "C:/Users/x/kolux/workspaces/fix-login";
         assert_eq!(scope_of(&s, Some(pane)), None);
         assert_eq!(check("prisma migrate reset", &base, &s, Some(pane)), None, "the flat layout's gap: the project's rule cannot be found");
         assert_eq!(check("git push --force origin main", &base, &s, Some(pane)).as_deref(), Some("Force-push to main"), "and its off list cannot be found either");

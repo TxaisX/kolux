@@ -369,7 +369,7 @@ fn finish_pick(fence: &crate::fence::Fence, store: &std::sync::Mutex<crate::stat
     let Some(spelled) = path.to_str() else { return Err("Kolux cannot open that file because its name is not valid Unicode. Rename it and pick it again".to_string()) };
     match fence.grant(path, &*store.lock().map_err(|e| e.to_string())?) {
         Err(crate::fence::GrantError::Refused(e)) => return Err(e),
-        Err(crate::fence::GrantError::SaveFailed(e)) => eprintln!("kolux-rs: the picked file's grant was not saved: {e}"),
+        Err(crate::fence::GrantError::SaveFailed(e)) => eprintln!("kolux: the picked file's grant was not saved: {e}"),
         Ok(()) => {}
     }
     Ok(spelled.to_owned())

@@ -7,13 +7,13 @@ fn ev(j: &str) -> Value {
 }
 
 fn temp(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("kolux-rs-agent-hooks-{name}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("kolux-agent-hooks-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     dir
 }
 
-const MINE: &str = "\"C:/Users/me/.kolux-rs/agent-hooks/claude.cmd\" || exit 0";
+const MINE: &str = "\"C:/Users/me/.kolux/agent-hooks/claude.cmd\" || exit 0";
 
 /// hooks FIX-2: the tests that read `CLAUDE_CONFIG_DIR` twice (t_152_*) and the one that sets it
 /// for a moment (t_134_b) take turns, so no test sees the variable change between its two reads.
@@ -59,8 +59,8 @@ fn stat_004_hooks_go_only_to_found_agents_and_leave_switched_off_ones() {
 #[test]
 fn stat_005_kolux_entries_are_spotted_in_every_form() {
     assert!(names_mine(&json!({ "type": "command", "command": MINE })));
-    assert!(names_mine(&json!({ "command": ["C:\\Users\\me\\.kolux-rs\\agent-hooks\\claude.cmd"] })), "the command as a list of words");
-    assert!(names_mine(&json!({ "command": "cmd.exe", "args": ["/c", "C:/Users/me/.kolux-rs/agent-hooks/claude.cmd"] })), "the argument-list form");
+    assert!(names_mine(&json!({ "command": ["C:\\Users\\me\\.kolux\\agent-hooks\\claude.cmd"] })), "the command as a list of words");
+    assert!(names_mine(&json!({ "command": "cmd.exe", "args": ["/c", "C:/Users/me/.kolux/agent-hooks/claude.cmd"] })), "the argument-list form");
     assert!(!names_mine(&json!({ "command": "node guard.js", "args": ["--fast"] })));
     assert!(!names_mine(&json!({ "command": "C:/Users/someone/.other-app/agent-hooks/claude-hook.cmd" })), "another app's entries stay its own (DT-C1)");
 }
@@ -85,8 +85,8 @@ fn stat_005_a_user_hook_beside_kolux_in_one_group_survives_and_leftovers_are_cle
     for e in CLAUDE_EVENTS {
         assert_eq!(s["hooks"][e].as_array().unwrap().iter().filter(|g| is_mine(g)).count(), 1, "{e}");
     }
-    let mut c = json!({ "hooks": { "Stop": [{ "hooks": [{ "command": "notify.cmd" }, { "command": "C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd" }] }] } });
-    install_codex_hooks(&mut c, "\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"");
+    let mut c = json!({ "hooks": { "Stop": [{ "hooks": [{ "command": "notify.cmd" }, { "command": "C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd" }] }] } });
+    install_codex_hooks(&mut c, "\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"");
     assert!(c["hooks"]["Stop"].as_array().unwrap().iter().any(|g| g["hooks"] == json!([{ "command": "notify.cmd" }])));
 }
 
@@ -97,7 +97,7 @@ fn stat_005_removal_gives_back_the_users_file() {
     let prev = dir.join("prev.sh");
     let user = "{\n    \"model\": \"opus\",\n    \"statusLine\": {\n        \"type\": \"command\",\n        \"command\": \"my-line.sh\",\n        \"padding\": 1\n    },\n    \"hooks\": {\n        \"Stop\": [\n            {\n                \"hooks\": [\n                    {\n                        \"type\": \"command\",\n                        \"command\": \"notify.cmd\"\n                    }\n                ]\n            }\n        ]\n    }\n}\n";
     fs::write(&file, user).unwrap();
-    let status = "k=x; \"C:/Users/me/.kolux-rs/agent-hooks/claude-status.cmd\" <\"$k\"";
+    let status = "k=x; \"C:/Users/me/.kolux/agent-hooks/claude-status.cmd\" <\"$k\"";
     let (changed, displaced) = install_claude(&file, MINE, status).unwrap();
     assert!(changed && displaced.as_deref() == Some("my-line.sh"));
     fs::write(&prev, "my-line.sh\n").unwrap();
@@ -115,7 +115,7 @@ fn stat_005_removal_gives_back_the_users_file() {
     assert!(remove_claude(&file, &prev).unwrap_err().contains("left alone"));
     assert_eq!(fs::read_to_string(&file).unwrap(), "{ not json");
     // Codex: Kolux's groups go, the user's stay.
-    fs::write(dir.join("hooks.json"), r#"{"hooks":{"Stop":[{"hooks":[{"command":"notify.cmd"}]},{"hooks":[{"command":"\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\""}]}],"SessionStart":[{"hooks":[{"command":"\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\""}]}]}}"#).unwrap();
+    fs::write(dir.join("hooks.json"), r#"{"hooks":{"Stop":[{"hooks":[{"command":"notify.cmd"}]},{"hooks":[{"command":"\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\""}]}],"SessionStart":[{"hooks":[{"command":"\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\""}]}]}}"#).unwrap();
     assert!(remove_codex(&dir).unwrap());
     assert_eq!(ev(&fs::read_to_string(dir.join("hooks.json")).unwrap()), json!({ "hooks": { "Stop": [{ "hooks": [{ "command": "notify.cmd" }] }] } }));
 }
@@ -627,7 +627,7 @@ mod script_runs {
         let mut rows = Vec::new();
         assert_eq!(saved::replay(&held, &mut rows, 1), 2);
         assert_eq!((rows[0].pane_key, rows[0].state.as_str()), (7, "done"));
-        let leftovers: Vec<_> = fs::read_dir(&script_temp).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.starts_with("kolux-rs-hook-")).collect();
+        let leftovers: Vec<_> = fs::read_dir(&script_temp).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.starts_with("kolux-hook-")).collect();
         assert!(leftovers.is_empty(), "the script's own temporary files are removed: {leftovers:?}");
         let _ = fs::remove_dir_all(&script_temp);
         let _ = fs::remove_dir_all(&data);
@@ -1316,7 +1316,7 @@ fn t_152_3_only_kolux_entries_change_and_invalid_json_is_refused() {
         let theirs: Vec<&Value> = groups.iter().filter(|g| !is_mine(g)).collect();
         assert_eq!(theirs, user["hooks"][e].as_array().unwrap().iter().collect::<Vec<_>>(), "{e}: the user's groups untouched, the other app's entry included");
         assert_eq!(groups.iter().filter(|g| is_mine(g)).count(), 1, "{e}");
-        assert!(groups.iter().filter(|g| is_mine(g)).all(|g| g.to_string().contains(".kolux-rs/agent-hooks")));
+        assert!(groups.iter().filter(|g| is_mine(g)).all(|g| g.to_string().contains(".kolux/agent-hooks")));
     }
     // Stripped of Kolux's entries both ways, the two files say the same thing.
     let strip_all = |v: &Value| {
@@ -1366,10 +1366,10 @@ fn t_152_4_the_users_status_line_still_runs_and_comes_back_exactly() {
 fn t_152_5_a_file_changed_since_it_was_read_is_never_overwritten() {
     let dir = temp("t152-atomic");
     let file = dir.join("settings.json");
-    let tmp = file.with_extension("json.kolux-rs-tmp");
+    let tmp = file.with_extension("json.kolux-tmp");
     fs::write(&file, "{\"model\":\"opus\"}\n").unwrap();
     let err = write_atomic(&file, b"{}\n", Some("{\"model\":\"sonnet\"}\n")).unwrap_err();
-    println!("kolux-rs: claude hooks: {err}");
+    println!("kolux: claude hooks: {err}");
     assert!(err.ends_with("changed since it was read; nothing written"));
     assert_eq!(fs::read_to_string(&file).unwrap(), "{\"model\":\"opus\"}\n", "the newer file stays");
     assert!(!tmp.exists(), "no temp file left");
@@ -1418,10 +1418,10 @@ fn t_152_5_an_install_on_a_file_changed_since_the_start_fails_and_writes_nothing
     let newer = shaped().replace("\"opus\"", "\"sonnet\"");
     fs::write(&file, &newer).unwrap();
     let err = install_claude_from(&file, Some(read_first), MINE, "x").unwrap_err();
-    println!("kolux-rs: claude hooks: {err}");
+    println!("kolux: claude hooks: {err}");
     assert!(err.ends_with("changed since it was read; nothing written"));
     assert_eq!(fs::read_to_string(&file).unwrap(), newer, "the target is untouched");
-    assert!(!file.with_extension("json.kolux-rs-tmp").exists());
+    assert!(!file.with_extension("json.kolux-tmp").exists());
 }
 
 #[allow(clippy::permissions_set_readonly_false)]
@@ -1441,12 +1441,12 @@ fn t_152_4_a_failed_install_after_the_status_line_save_leaves_his_line_for_the_n
     // A settings file that cannot be replaced: install_claude fails after the status line save.
     read_only(&file, true);
     let err = install_claude_at(&home, &file).unwrap_err();
-    println!("kolux-rs: claude hooks: {err}");
+    println!("kolux: claude hooks: {err}");
     let line = ev(&user)["statusLine"].clone();
     assert_eq!(fs::read_to_string(&prev).unwrap().trim_end(), line["command"].as_str().unwrap(), "saved before the install ran");
     assert_eq!(ev(&fs::read_to_string(prev.with_extension("json")).unwrap()), line);
     assert_eq!(fs::read_to_string(&file).unwrap(), user, "his line was never replaced");
-    assert!(!file.with_extension("json.kolux-rs-tmp").exists(), "no temp file left");
+    assert!(!file.with_extension("json.kolux-tmp").exists(), "no temp file left");
     read_only(&file, false);
     read_only(&backup_of(&file), false);
     // The next "off": the status line is still his and the file is exactly as it was.
@@ -1461,7 +1461,7 @@ fn t_152_6_a_codex_hooks_file_with_empty_hooks_comes_back_byte_for_byte() {
     let (home, profile) = (dir.join("home"), dir.join("profile"));
     let managed = profile.join(crate::codex_accounts::FOLDER).join("c1");
     let file = managed.join("hooks.json");
-    let command = "\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"";
+    let command = "\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"";
     // T-152-b (4): the real managed-home path. A pane start installs into the managed home through
     // install_codex_home -> install_codex, whose file write is write_codex_groups (the Codex trust
     // step that follows needs the codex program and writes only config.toml, so it is left out
@@ -1537,7 +1537,7 @@ fn t584_a_file_with_an_empty_hook_list_installs_and_comes_back_byte_for_byte() {
     let profile = dir.join("profile");
     let managed = profile.join(crate::codex_accounts::FOLDER).join("t584");
     let file = managed.join("hooks.json");
-    let command = "\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"";
+    let command = "\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"";
     let text = "{\"hooks\":{\"Stop\":[]}}";
     fs::create_dir_all(&managed).unwrap();
     fs::write(&file, text).unwrap();
@@ -1640,12 +1640,12 @@ fn t_152_b_5_a_save_between_read_and_write_is_merged_once_and_a_second_one_fails
     fs::write(&file, shaped()).unwrap();
     BEFORE_REREAD.with(|c| c.borrow_mut().extend([save(&file, "saved-twice"), save(&file, "saved-first")]));
     let err = install_claude_at(&home, &file).unwrap_err();
-    println!("kolux-rs: claude hooks: {err}");
+    println!("kolux: claude hooks: {err}");
     assert!(err.ends_with("changed since it was read; nothing written"), "{err}");
     let now = fs::read_to_string(&file).unwrap();
     assert_eq!(ev(&now)["model"], "saved-twice");
     assert_eq!(switch::inspect(&file, &CLAUDE_EVENTS).0, "not installed");
-    assert!(!file.with_extension("json.kolux-rs-tmp").exists());
+    assert!(!file.with_extension("json.kolux-tmp").exists());
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -1766,7 +1766,7 @@ fn t_152_c_4_a_hooked_file_without_its_copy_is_refused_and_nothing_is_written() 
     assert_eq!(fs::read(&record).unwrap(), record_had, "the record is not written");
     // Kolux's status line alone counts as Kolux's entries too.
     let line = dir.join("line.json");
-    fs::write(&line, r#"{"statusLine":{"type":"command","command":"C:/Users/me/.kolux-rs/agent-hooks/claude-status.cmd"}}"#).unwrap();
+    fs::write(&line, r#"{"statusLine":{"type":"command","command":"C:/Users/me/.kolux/agent-hooks/claude-status.cmd"}}"#).unwrap();
     assert!(back_up(&line, &dir.join("line.sha256")).unwrap_err().contains("already holds Kolux's hook entries"));
     assert!(!backup_of(&line).exists() && !dir.join("line.sha256").exists());
     let _ = fs::remove_dir_all(&dir);
@@ -1901,7 +1901,7 @@ fn fix_3_codex_a_hooks_file_kolux_created_installs_again_and_off_deletes_it_and_
     fs::create_dir_all(&home).unwrap();
     let file = home.join("hooks.json");
     let record = codex_record(&file);
-    let (a, b) = ("\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"", "\"D:\\moved\\.kolux-rs\\agent-hooks\\codex.cmd\"");
+    let (a, b) = ("\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"", "\"D:\\moved\\.kolux\\agent-hooks\\codex.cmd\"");
     let install = |command: &str| {
         let text = fs::read_to_string(&file).ok();
         let mut v: Value = serde_json::from_str(text.as_deref().unwrap_or("{}")).unwrap();
@@ -1974,7 +1974,7 @@ fn fix_4_codex_a_created_file_rolled_back_goes_before_its_record() {
     fs::create_dir_all(&home).unwrap();
     let file = home.join("hooks.json");
     let record = codex_record(&file);
-    let command = "\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"";
+    let command = "\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"";
     // The file is held open while Codex is asked, so the rollback cannot remove it.
     let mut held = None;
     let err = install_codex_with(&home, command, |_| {
@@ -2015,7 +2015,7 @@ fn fix_5_codex_a_rollback_never_overwrites_or_removes_a_file_saved_meanwhile() {
     fs::create_dir_all(&home).unwrap();
     let file = home.join("hooks.json");
     let record = codex_record(&file);
-    let command = "\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"";
+    let command = "\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"";
     let users = |n: u32| format!("{{\n  \"hooks\": {{}},\n  \"saved\": {n}\n}}\n");
     // Kolux created the file; the user's save in the window stays, record and all.
     let err = install_codex_with(&home, command, |_| {
@@ -2063,7 +2063,7 @@ fn fix_6_codex_a_file_deleted_in_the_window_leaves_no_record_behind() {
     fs::create_dir_all(&home).unwrap();
     let file = home.join("hooks.json");
     let record = codex_record(&file);
-    let command = "\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"";
+    let command = "\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"";
     let err = install_codex_with(&home, command, |_| {
         assert!(record.exists(), "the record is there while Codex is asked");
         fs::remove_file(&file).unwrap();
@@ -2086,7 +2086,7 @@ fn fix_5_codex_a_failed_trust_write_keeps_its_own_error_when_the_rollback_fails_
     let home = dir.join("codex");
     fs::create_dir_all(&home).unwrap();
     let file = home.join("hooks.json");
-    let command = "\"C:\\Users\\me\\.kolux-rs\\agent-hooks\\codex.cmd\"";
+    let command = "\"C:\\Users\\me\\.kolux\\agent-hooks\\codex.cmd\"";
     // The trust write's temporary file cannot be made: a folder sits where it goes.
     fs::create_dir_all(home.join("config.kolux-tmp")).unwrap();
     fs::write(&file, "{}\n").unwrap();
@@ -2289,7 +2289,7 @@ fn t025e_the_users_hooks_and_approvals_are_copied_with_kolux_first_and_the_users
     let (dir, user, managed) = mirror_fixture("t025e-copy");
     user_approves(&user, &[("pre_tool_use:0:0", "sha256:aa"), ("stop:0:0", "sha256:bb")]);
     let before = (fs::read(user.join("hooks.json")).unwrap(), fs::read(user.join("config.toml")).unwrap());
-    let command = "\"C:/Users/me/.kolux-rs/agent-hooks/codex.cmd\"";
+    let command = "\"C:/Users/me/.kolux/agent-hooks/codex.cmd\"";
     assert!(install_codex_mirroring(&managed, command, Some(&user), |h| kolux_listing(h, command)).unwrap());
     let copy: Value = serde_json::from_str(&fs::read_to_string(managed.join("hooks.json")).unwrap()).unwrap();
     for (event, theirs) in [("PreToolUse", "user-a.cmd"), ("Stop", "user-b.cmd")] {
@@ -2311,7 +2311,7 @@ fn t025e_a_withdrawn_approval_disappears_from_the_copy_and_a_changed_original_is
     use super::super::install_codex_mirroring;
     let (dir, user, managed) = mirror_fixture("t025e-refresh");
     user_approves(&user, &[("pre_tool_use:0:0", "sha256:aa"), ("stop:0:0", "sha256:bb")]);
-    let command = "\"C:/Users/me/.kolux-rs/agent-hooks/codex.cmd\"";
+    let command = "\"C:/Users/me/.kolux/agent-hooks/codex.cmd\"";
     install_codex_mirroring(&managed, command, Some(&user), |h| kolux_listing(h, command)).unwrap();
     user_approves(&user, &[("pre_tool_use:0:0", "sha256:aa")]);
     assert!(install_codex_mirroring(&managed, command, Some(&user), |_| panic!("only the approvals moved")).unwrap());
@@ -2333,7 +2333,7 @@ fn t025e_a_withdrawn_approval_disappears_from_the_copy_and_a_changed_original_is
 fn t025e_a_user_hooks_file_that_cannot_be_parsed_leaves_the_copy_as_it_was() {
     use super::super::install_codex_mirroring;
     let (dir, user, managed) = mirror_fixture("t025e-broken");
-    let command = "\"C:/Users/me/.kolux-rs/agent-hooks/codex.cmd\"";
+    let command = "\"C:/Users/me/.kolux/agent-hooks/codex.cmd\"";
     install_codex_mirroring(&managed, command, Some(&user), |h| kolux_listing(h, command)).unwrap();
     let copy = fs::read(managed.join("hooks.json")).unwrap();
     fs::write(user.join("hooks.json"), "{ not json").unwrap();
@@ -2347,7 +2347,7 @@ fn t025e_trust_is_granted_again_when_kolux_s_own_entry_changes() {
     use super::super::{install_codex_mirroring, snake};
     let (dir, user, managed) = mirror_fixture("t025e-regrant");
     user_approves(&user, &[("stop:0:0", "sha256:bb")]);
-    let (first, second) = ("\"C:/Users/me/.kolux-rs/agent-hooks/codex.cmd\"", "\"C:/Users/me/.kolux-rs/agent-hooks/codex-2.cmd\"");
+    let (first, second) = ("\"C:/Users/me/.kolux/agent-hooks/codex.cmd\"", "\"C:/Users/me/.kolux/agent-hooks/codex-2.cmd\"");
     install_codex_mirroring(&managed, first, Some(&user), |h| kolux_listing(h, first)).unwrap();
     let rehash = |h: &Path| {
         let real = crate::trust::real_path(&h.join("hooks.json")).unwrap();

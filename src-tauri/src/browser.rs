@@ -3164,7 +3164,7 @@ mod tests {
 
     #[test]
     fn row939_an_unreadable_settings_file_is_an_error_not_no_proxy() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-row939-settings-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-row939-settings-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = crate::state::Store::open(&dir).unwrap();
         assert_eq!(proxy_in_settings(store.try_settings()), Ok(None), "no file yet (first run) is no proxy");
@@ -3181,7 +3181,7 @@ mod tests {
     // so a proxy in it is honoured and a copy that cannot be read refuses the tab, the icon and the HEAD.
     #[test]
     fn row939b_a_missing_settings_file_with_a_proxy_in_the_last_good_copy_refuses_everything() {
-        let dir = std::env::temp_dir().join(format!("kolux-rs-row939b-settings-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("kolux-row939b-settings-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let store = crate::state::Store::open(&dir).unwrap();
         let read = |s: &crate::state::Store| proxy_in_profile(s.try_settings(), &s.dir());

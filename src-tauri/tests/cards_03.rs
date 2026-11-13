@@ -33,7 +33,7 @@ fn shell_prompt_names(dir: &str, leaf: &str) -> Result<String, String> {
 }
 
 fn workspace(tag: &str) -> std::path::PathBuf {
-    let d = std::env::temp_dir().join(format!("kolux-rs-cards03-{tag}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("kolux-cards03-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d

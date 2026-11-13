@@ -791,7 +791,7 @@ mod tests {
 
     #[test]
     fn git020_d_rename_keeps_a_tracked_branch_and_avoids_a_taken_name() {
-        let tmp = std::env::temp_dir().join(format!("kolux-rs-rename-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("kolux-rename-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
         let g = |a: &[&str]| crate::git::run(a, Some(&tmp)).unwrap();
@@ -808,7 +808,7 @@ mod tests {
     }
 
     fn placeholder_repo(tag: &str) -> std::path::PathBuf {
-        let tmp = std::env::temp_dir().join(format!("kolux-rs-name931-{tag}-{}", std::process::id())).join("amber-otter");
+        let tmp = std::env::temp_dir().join(format!("kolux-name931-{tag}-{}", std::process::id())).join("amber-otter");
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
         let g = |a: &[&str]| crate::git::run(a, Some(&tmp)).unwrap();
