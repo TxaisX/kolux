@@ -230,3 +230,10 @@ test("the pane title commands read like the pane menu: Set title… then Clear t
   expect(actionById.get("terminal.setTitle")?.title).toBe("Set title…");
   expect(actionById.get("terminal.clearPaneTitle")?.title).toBe("Clear title");
 });
+
+test("R3: the short pane title rows are still found by \"pane\" or \"name\" in the palette", () => {
+  const rows = commandRows(resolve(null, "win32"), []);
+  for (const word of ["pane", "name", "pane title"]) {
+    expect(paletteRows(rows, word).map((r) => r.label)).toEqual(expect.arrayContaining(["Set title…", "Clear title"]));
+  }
+});
