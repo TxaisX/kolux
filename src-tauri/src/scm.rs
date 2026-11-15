@@ -2721,14 +2721,38 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     if !untracked.is_empty() {
         discard(worktree, "untracked", &untracked)?;
     }
-    // A staged new file, unstaged above.
+    // A staged new file, unstaged above. N-01: an index entry is a file or a gitlink, never a
+    // plain folder, so a folder here is a nested repository or a file that became a folder. A
+    // folder holding `.git` is kept, and so is any folder that is not empty; only an empty one goes.
+    let mut kept = Vec::new();
     for p in &remove {
         let full = worktree.join(native(p));
         let Ok(meta) = fs::symlink_metadata(&full) else { continue };
-        let done = if meta.is_dir() { fs::remove_dir_all(&full) } else { fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)) };
+        if fs::symlink_metadata(full.join(".git")).is_ok() {
+            kept.push(own_repo(p));
+            continue;
+        }
+        let done = if meta.is_dir() {
+            if fs::read_dir(&full).is_ok_and(|mut d| d.next().is_some()) {
+                kept.push(format!("{p} is a folder with files in it, so Kolux leaves it. Delete it by hand if you mean to."));
+                continue;
+            }
+            fs::remove_dir(&full)
+        } else {
+            fs::remove_file(&full).or_else(|_| fs::remove_dir(&full))
+        };
         done.map_err(|e| format!("{p}: {e}"))?;
     }
-    Ok(())
+    if kept.is_empty() {
+        Ok(())
+    } else {
+        Err(kept.join("\n"))
+    }
+}
+
+/// R-06 / N-01: what Discard says about a nested repository it leaves.
+fn own_repo(p: &str) -> String {
+    format!("{} is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.", p.trim_end_matches('/'))
 }
 
 /// Runs `git <args>` over `paths` handed on stdin, NUL-separated and literal, so no name is
@@ -2770,7 +2794,7 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             if nested.is_empty() {
                 return Ok(());
             }
-            Err(nested.iter().map(|p| format!("{} is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.", p.trim_end_matches('/'))).collect::<Vec<_>>().join("\n"))
+            Err(nested.iter().map(|p| own_repo(p)).collect::<Vec<_>>().join("\n"))
         }
         _ => Err(format!("the {section} section cannot be discarded")),
     }

@@ -2763,6 +2763,43 @@ fn b09_discard_without_a_section_leaves_a_nested_repo_and_ignored_files_alone() 
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// An outer repository with a nested one (one commit) staged in it by `git add inner`.
+fn staged_inner_repo(name: &str) -> (PathBuf, PathBuf) {
+    let dir = temp_repo(name);
+    let inner = dir.join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    plain(&["init", "-q", "-b", "main"], &inner);
+    fs::write(inner.join("work.txt"), "unpushed\n").unwrap();
+    plain(&["add", "work.txt"], &inner);
+    plain(&["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "inner"], &inner);
+    plain(&["add", "inner"], &dir);
+    assert_eq!(paths(&status(&dir).unwrap().staged), ["inner"], "the nested repository is staged");
+    (dir, inner)
+}
+
+/// N-01: a staged nested repository is unstaged and kept by the section-free discard, never
+/// deleted with its history.
+#[test]
+fn n01_discard_paths_keeps_a_staged_nested_repo() {
+    let (dir, inner) = staged_inner_repo("n01-staged-inner");
+    let said = discard_paths(&dir, &["inner".to_string()]).expect_err("the kept repository is named");
+    assert_eq!(said, "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    assert_eq!(fs::read_to_string(inner.join("work.txt")).unwrap(), "unpushed\n");
+    assert!(status(&dir).unwrap().staged.is_empty(), "inner is no longer staged");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// N-01, the live route: the Changes tab's staged-section discard leaves the nested repository too.
+#[test]
+fn n01_staged_section_discard_keeps_a_nested_repo() {
+    let (dir, inner) = staged_inner_repo("n01-staged-section");
+    let _ = discard(&dir, "staged", &["inner".to_string()]);
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    assert_eq!(fs::read_to_string(inner.join("work.txt")).unwrap(), "unpushed\n");
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {
