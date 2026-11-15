@@ -54,7 +54,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null); // 49-ux2: say what went wrong instead of guessing "no git project"
-  const shown = useContext(WindowStore)?.activeDir ?? null; // R27-03: the grid on screen, known with the sidebar closed too
+  const onScreenDir = useContext(WindowStore)?.activeDir ?? null; // R27-03: the grid on screen, known with the sidebar closed too
   const go = async () => {
     setBusy(true);
     setFailed(null);
@@ -62,7 +62,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
     try {
       const projects = await invoke<Proj[]>("project_list");
       const lists = await Promise.all(projects.map((p) => invoke<Place[]>("workspace_list", { projectId: p.id }).catch(() => null)));
-      const active = shown ?? frontProjectPath(); // F24: the project on screen (its header), not a hidden worktree row
+      const active = onScreenDir ?? frontProjectPath(); // F24: the project on screen (its header), not a hidden worktree row
       const target = composeTarget(projects, lists, active);
       if (target.kind === "ask") return setAsk(true);
       composer.reset();

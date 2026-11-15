@@ -57,7 +57,7 @@ test("F23: the reveal-selected effect scrolls the project header into view", () 
 });
 
 test("F24: the Setup Guide step aims at the project on screen", () => {
-  expect(stepSrc).toContain("const active = shown ?? frontProjectPath();"); // R27-03: the window's shown grid first, the header as fallback
+  expect(stepSrc).toContain("const active = onScreenDir ?? frontProjectPath();"); // R27-03: the window's shown grid first, the header as fallback
   expect(stepSrc).not.toContain(".sess.sel");
 });
 
