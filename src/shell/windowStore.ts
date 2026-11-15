@@ -20,7 +20,7 @@ import { openPageAt, startScreen } from "../settings/general";
 import type { SettingsTarget } from "../settings/pages";
 import { useAppSettings } from "../settings/useAppSettings";
 import { saveChanged } from "../settings/saveChanged";
-import { useAgentStatusState } from "../status/useAgentStatus";
+import { forgetGone, useAgentStatusState } from "../status/useAgentStatus";
 import { useAccountSwitcher } from "../switcher/AccountSwitcher";
 import type { CodexAccount } from "../terminal/accountChange";
 import { groupOf, type Zoom } from "../terminal/grid";
@@ -125,6 +125,13 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const plan = usePlan(); // USAGE-002: the plan figures the pills read
   const accountSwitcher = useAccountSwitcher(); // T-548: the account new panes use, for the palette rows and the Board and Tower figures
   const { needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew, hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir } = useAgentStatusState(running);
+  useEffect(() => {
+    // Audit F9: a closed pane takes its kept account and setup choices and its waiting mark with it.
+    const open = new Set(panes.map((p) => p.key));
+    setKept((k) => forgetGone(k, open));
+    setKeptSetup((k) => forgetGone(k, open));
+    setNeeds((r) => forgetGone(r, open));
+  }, [panes, setNeeds]);
   const rowRef = useRef<Record<string, RowInfo>>({}); // PROJ-063: each folder's last row state, to keep its `changed` time
   const ptys = useRef<Record<number, number>>({}); // TERM-045: each pane's session id
   const cliFailed = useRef<Record<string, string>>({}); // CLI-026: command-line requests the window could not open
