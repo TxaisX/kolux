@@ -20,7 +20,7 @@ use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -437,11 +437,29 @@ impl Service {
         });
         let conn = self.next_conn();
         // The hello comes before the token is checked, so any local program can send it: it gets
-        // HELLO_BYTES and HELLO_WAIT, no more (R06-terminal-process.5).
-        let _ = stream.set_read_timeout(Some(HELLO_WAIT));
+        // HELLO_BYTES and HELLO_WAIT, no more (R06-terminal-process.5). N-03: HELLO_WAIT is one
+        // deadline for the whole line, so each read gets only the time left; past it, it is refused.
+        let deadline = Instant::now() + HELLO_WAIT;
         let mut reader = BufReader::new(stream);
         let mut first = Vec::new();
-        let _ = (&mut reader).take(HELLO_BYTES).read_until(b'\n', &mut first);
+        while !first.ends_with(b"\n") && (first.len() as u64) < HELLO_BYTES {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() || reader.get_ref().set_read_timeout(Some(left)).is_err() {
+                first.clear();
+                break;
+            }
+            let Ok(buf) = reader.fill_buf() else {
+                first.clear();
+                break;
+            };
+            if buf.is_empty() {
+                break;
+            }
+            let room = buf.len().min((HELLO_BYTES as usize) - first.len());
+            let used = buf[..room].iter().position(|&b| b == b'\n').map_or(room, |i| i + 1);
+            first.extend_from_slice(&buf[..used]);
+            reader.consume(used);
+        }
         let hello: Value = serde_json::from_slice(&first).unwrap_or(Value::Null);
         let refused = if hello["op"] != "hello" {
             Some("the first line must be a hello")
@@ -1152,6 +1170,42 @@ mod tests {
         assert_eq!(good.request(json!({ "op": "list" }), &mut events).unwrap()["terminals"], json!([]));
         drop(good);
         let _ = flood.join();
+        drop(s);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// N-03: the hello wait is a total, not per read: a client that sends one byte every 300 ms
+    /// and never a line end is refused or closed within about 3 seconds.
+    #[test]
+    fn n03_a_dripped_hello_is_cut_off_at_the_total_wait() {
+        let dir = scratch("hello-drip");
+        let s = start(&dir, PROTOCOL, IDLE_LIMIT);
+        let raw = TcpStream::connect(("127.0.0.1", s.ep.port)).unwrap();
+        raw.set_read_timeout(Some(Duration::from_secs(4))).unwrap();
+        let mut out = raw.try_clone().unwrap();
+        let done = Arc::new(AtomicBool::new(false));
+        let stop = done.clone();
+        let drip = std::thread::spawn(move || {
+            for _ in 0..15 {
+                if stop.load(Ordering::SeqCst) || out.write_all(b"x").is_err() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(300));
+            }
+        });
+        let began = Instant::now();
+        match reply(raw) {
+            Ok(line) => assert!(line.contains("\"ok\":false"), "{line}"),
+            Err(k) => assert!(!matches!(k, std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock), "a dripped hello was still being read after 4 s"),
+        }
+        assert!(began.elapsed() < Duration::from_secs(3), "cut off after {:?}", began.elapsed());
+        done.store(true, Ordering::SeqCst);
+        let _ = drip.join();
+        // A good client is still taken.
+        let mut good = Client::connect(&s.ep, Duration::from_secs(5)).unwrap();
+        let mut events = Vec::new();
+        assert_eq!(good.request(json!({ "op": "list" }), &mut events).unwrap()["terminals"], json!([]));
+        drop(good);
         drop(s);
         let _ = std::fs::remove_dir_all(dir);
     }
