@@ -271,9 +271,11 @@ fn run_pane(terminals: crate::terminal::Terminals, pane: String, cursor: bool) {
         POINTERS.lock().unwrap_or_else(|e| e.into_inner()).panes.remove(&pane);
         return;
     };
+    // B-23: the agent may have quit since the mail was queued; a pane without one is gone for the pointer.
+    let agent = || runs_agent(&crate::agents::inventory::tabs(&terminals), &pane);
     let look = || PaneLook {
         now_ms: now_ms(),
-        live: terminals.live(&pane),
+        live: terminals.live(&pane) && agent(),
         hooks_state: crate::status::state_of(id).map(str::to_string),
         quiet_ms: terminals.quiet_for(id).map(|d| d.as_millis() as u64),
         // ponytail: no chat view takes a pane over yet, so neither hold applies (after-list row).
@@ -299,9 +301,18 @@ fn run_pane(terminals: crate::terminal::Terminals, pane: String, cursor: bool) {
                 live: terminals.live(&pane),
             }
         };
+        // B-23: checked again right before typing; a miss leaves the mail waiting and the next look drops it.
+        if !agent() {
+            return false;
+        }
         so::drive(&mut send, Some(text), true, so_look, |s| terminals.write(id, s), std::thread::sleep).is_ok_and(|d| d.pasted_ms.is_some())
     };
     pump(&POINTERS, &pane, cursor, look, type_line, std::thread::sleep);
+}
+
+/// The pane `pane` still runs an agent: one Kolux started, or one the foreground poll finds in front of its shell.
+fn runs_agent(tabs: &[crate::agents::inventory::Tab], pane: &str) -> bool {
+    tabs.iter().any(|t| t.handle == pane && t.agent.is_some())
 }
 
 #[cfg(test)]
@@ -322,6 +333,21 @@ mod tests {
         let mut p = Pointers::default();
         p.rebind([(pane.to_string(), run.to_string())]);
         p
+    }
+
+    #[test]
+    fn b23_a_pane_whose_agent_quit_is_not_typed_into() {
+        let tab = |handle: &str, agent: Option<&'static str>| crate::agents::inventory::Tab { handle: handle.into(), agent, program: None, cwd: None, title: None, placement: None };
+        let tabs = [tab("term-1", Some("claude")), tab("term-2", None)];
+        assert!(runs_agent(&tabs, "term-1"));
+        assert!(!runs_agent(&tabs, "term-2"), "the agent quit: a plain shell is left");
+        assert!(!runs_agent(&tabs, "term-3"), "the terminal is gone");
+        // The pump then drops the mail instead of typing it.
+        let p = Mutex::new(tied("term-2", "run-1"));
+        p.lock().unwrap().arrive("term-2", arr("m1", Some("run-1")));
+        let mut typed = 0;
+        pump(&p, "term-2", false, || PaneLook { live: false, ..look(10_000, Some("idle")) }, |_, _| { typed += 1; true }, |_| {});
+        assert_eq!(typed, 0);
     }
 
     #[test]

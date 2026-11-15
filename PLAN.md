@@ -800,3 +800,4 @@ The direction in seven parts:
 - [x] T-872 · An older chat page no longer reads one giant line whole: a line far over the page cap is left out and the next page goes on above it (B-13) · engine · done · test `b13_a_giant_line_is_left_out_of_an_older_page_and_the_next_page_goes_on_above_it`
 - [x] T-873 · One scheduled automation that cannot start is logged and the others due in the same tick still start (B-14) · engine · done · test `b14_one_due_automation_that_fails_does_not_stop_the_next`
 - [x] T-874 · The auto-PR remote lookup reads only a folder inside a project or worktree (the folder fence); anywhere else answers `none` (B-17) · engine · done · test `b17_the_remote_of_a_folder_outside_the_fence_is_not_read`
+- [x] T-875 · The mail pointer checks again, right before typing, that the pane still runs an agent; a pane whose agent quit is dropped, not typed into (B-23) · engine · done · test `b23_a_pane_whose_agent_quit_is_not_typed_into`
