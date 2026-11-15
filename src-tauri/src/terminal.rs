@@ -1779,7 +1779,7 @@ impl Terminals {
             return None;
         }
         let inner = self.inner.lock().ok()?;
-        inner.keys.iter().find(|(_, k)| k.as_str() == key).map(|(id, _)| handle_of(*id))
+        inner.keys.iter().find(|(_, k)| crate::hooks::same(k, key)).map(|(id, _)| handle_of(*id))
     }
 
     /// ORCH-013: the program a terminal was started with, once it has written and then been quiet
@@ -3522,6 +3522,18 @@ mod tests {
         assert_eq!(t.kill_under(&y).ended, 0, "a different gone folder ends nothing");
         assert_eq!(t.kill_under(&x).ended, 2, "the gone folder itself and a folder under it are still ended");
         std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// R-07: a pane key is compared in constant time; the right key is still found and a wrong one of
+    /// the same length is still refused. (Timing itself is not something a test can show.)
+    #[test]
+    fn r07_by_key_takes_the_right_key_and_refuses_a_wrong_one_of_the_same_length() {
+        let t = Terminals::default();
+        t.fake_session(4, "C:/made-up", None);
+        t.fake_key(4, "made-up-key-0001");
+        assert_eq!(t.by_key("made-up-key-0001"), Some(handle_of(4)));
+        assert_eq!(t.by_key("made-up-key-0002"), None);
+        assert_eq!(t.by_key(""), None);
     }
 
     /// T-262-c (CLI-023): a plain shell given no folder lists the home folder it started in and
