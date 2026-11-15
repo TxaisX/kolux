@@ -1,6 +1,6 @@
 // T-612 (T-568): the user guide's first-launch table has to name the wizard's screens as the app has them and
 // say what its buttons do now that kits and sample data are gone: "Your work" offers Pick a folder or Continue,
-// and "Open a session" with no project yet hands over to Add Project. This check failed while the guide still
+// and "Start your agents" opens the Start form with "Choose folders and agents". This check failed while the guide still
 // described the "Try with sample data" and "Choose a kit ... Start kit" screens (STATE.md follow-up of 2026-10-30).
 import { expect, test } from "vitest";
 import guide from "../../docs/guide/getting-started.md?raw";

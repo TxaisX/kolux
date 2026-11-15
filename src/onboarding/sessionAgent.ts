@@ -1,4 +1,4 @@
-// 49-ux2: the agent the wizard's Open a session would start (the default first), or null when none is
+// 49-ux2: the agent the wizard's Start your agents screen needs (the default first), or null when none is
 // installed and switched on. One rule shared by useWizard (what the click does) and Wizard (when the
 // last button is held back), so the two never disagree.
 import type { AgentInfo } from "../launch/PlusMenu";

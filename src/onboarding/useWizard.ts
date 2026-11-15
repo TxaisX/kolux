@@ -59,7 +59,7 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
     window.addEventListener(REOPEN_WIZARD, reopen);
     return () => window.removeEventListener(REOPEN_WIZARD, reopen);
   }, []);
-  // ONB-010: armed by Pick a folder, or by Skip while no project exists; the next project added
+  // ONB-010: armed only by Pick a folder; the next project added
   // starts the saved default agent in it, once.
   const firstFolder = useRef(false);
   // T-796: Pick a folder on Your work: once the folder is added the wizard comes back on the last screen, which asks what to start.

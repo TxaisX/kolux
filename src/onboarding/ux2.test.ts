@@ -1,5 +1,5 @@
 // 49-ux2 (lane C): the pure rules behind the onboarding fixes: the checklist's hide flag, the agent
-// Open a session needs, the focus helper every dialog shares, the shortcut label, and the tour notice.
+// Start your agents needs, the focus helper every dialog shares, the shortcut label, and the tour notice.
 import { describe, expect, it, vi } from "vitest";
 import { checklistHidden, HIDE_PATCH, legacyProfile } from "./guide";
 import { sessionAgent } from "./sessionAgent";
@@ -26,7 +26,7 @@ describe("onboarding.md:3: the checklist's hide flag", () => {
   });
 });
 
-describe("onboarding.md:4, :15: Open a session needs an agent", () => {
+describe("onboarding.md:4, :15: Start your agents needs an agent", () => {
   it("is null with no agent installed, and the wizard holds the button back with a reason", () => {
     expect(sessionAgent([], {})).toBeNull();
     expect(sessionAgent([{ ...claude, installed: false }], {})).toBeNull();
