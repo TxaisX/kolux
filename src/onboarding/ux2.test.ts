@@ -35,7 +35,7 @@ describe("onboarding.md:4, :15: Open a session needs an agent", () => {
     expect(mainOff(2, true, false)).toBe(true); // T-796: Your work waits for a folder
     expect(mainOff(2, true, true)).toBe(false);
     expect(START_MAIN).toBe("Choose folders and agents"); // job 22: one button, with or without a folder or an agent
-    expect(NO_AGENT_WHY).toMatch(/Settings > Agents/);
+    expect(NO_AGENT_WHY).toBe("No AI is installed yet. The next screen can install one, or open a plain terminal."); // job 29 R4: the Start form
   });
 
   it("follows the agent list: an agent installed after the wizard opened counts, and the stop unsubscribes", async () => {

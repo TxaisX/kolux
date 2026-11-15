@@ -63,7 +63,7 @@ export const mainOff = (at: number, connected: boolean, hasFolder = true) => (at
 
 // 49-ux2: these live here, not in sessionAgent.ts, so the code loaded at start does not carry them.
 /** Why the next step offers only a plain terminal while no agent is installed (the button still opens it). */
-export const NO_AGENT_WHY = "No AI agent is installed yet, so the next step offers a plain terminal. Install one in Settings > Agents, then check again.";
+export const NO_AGENT_WHY = "No AI is installed yet. The next screen can install one, or open a plain terminal.";
 /** T-796: why Continue waits on Your work. */
 export const NO_FOLDER_WHY = "Pick a folder to continue, or skip this for now.";
 

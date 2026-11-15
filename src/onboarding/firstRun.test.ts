@@ -331,3 +331,8 @@ test("job 22: the last screen lists no agents and its button reads the same with
     expect(html).toMatch(new RegExp(`>${START_MAIN}<span`));
   }
 });
+
+test("job 29 R4: the last first-run screen's words match its one button, which opens the Start form", () => {
+  const last = SCREENS[SCREENS.length - 1];
+  expect(last).toMatchObject({ name: "Start your agents", heading: "Start your agents", sub: "Next you pick the folders, how many agents, and which AI." });
+});
