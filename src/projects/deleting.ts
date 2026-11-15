@@ -68,6 +68,10 @@ export function keyDeleteTarget<W extends { path: string; isMain: boolean }>(hov
 /** Audit F13/F14: the line shown when the focused pane is not in a worktree. */
 export const notInWorktree = (what: "delete" | "rename") => `The pane you are in is not in a worktree, so there is nothing to ${what}.`;
 
+/** Review R27-02: the line shown when the focused pane is in a worktree the user hid, or one made outside Kolux
+ *  and not yet reviewed. The key's delete route works on the listed worktrees only, so it says so instead. */
+export const NOT_LISTED_WORKTREE = "Kolux does not list this worktree, so it cannot delete it from here.";
+
 /** PROJ-075: the row the delete shortcut found under the pointer, as the sidebar knows it. */
 export type PointerRow = { path: string; isMain: boolean; head: string };
 

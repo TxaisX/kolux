@@ -22,7 +22,7 @@ import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
 import { sessionDir, sessionLabel, sessionsByProject, focusPane, type FolderSession } from "./folderSessions";
 import { dialogWhere, setupMode } from "../launch/launchOrder";
-import { asksBeforeDelete, blocker, commitsNote, isTextField, keepsAtFirst, keyDeleteTarget, notInWorktree, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
+import { asksBeforeDelete, blocker, commitsNote, isTextField, keepsAtFirst, keyDeleteTarget, NOT_LISTED_WORKTREE, notInWorktree, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
@@ -1074,7 +1074,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (hit === null && (!listLoaded.current || !projects.every((p) => p.id in worktrees))) return; // a sidebar the shortcut just opened has no lists yet (R27-01: an empty list is not a loaded one)
     servedDelete = deleteRequest;
     if (hit === null) {
-      say("warn", notInWorktree("delete"));
+      const unlisted = keyDeleteTarget(null, workDir ?? activeDir, projects.flatMap((p) => [...(hiddenWts[p.id] ?? []), ...(fresh[p.id] ?? [])]), same); // R27-02
+      say("warn", unlisted ? NOT_LISTED_WORKTREE : notInWorktree("delete"));
       return;
     }
     const { p, w } = hit.w;

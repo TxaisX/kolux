@@ -119,6 +119,17 @@ test("Delete Workspace pressed with the sidebar closed and no projects at all sa
   expect(c.textContent).toContain("The pane you are in is not in a worktree, so there is nothing to delete.");
 });
 
+// Review R27-02: a worktree the user hid (or one made outside Kolux) is not in the list the key searches. The
+// note says Kolux does not list it, rather than that the pane is not in a worktree; nothing is checked or deleted.
+test("Delete Workspace on a pane in a hidden worktree says Kolux does not list it, and deletes nothing", async () => {
+  h.wt = [main, { ...fix, hidden: true }];
+  const c = await panel(fix.path);
+  await pressDelete();
+  expect(checks()).toEqual([]);
+  expect(c.textContent).not.toContain("not in a worktree");
+  expect(c.textContent).toContain("Kolux does not list this worktree, so it cannot delete it from here.");
+});
+
 test("Rename worktree opens the name field of the focused pane's worktree", async () => {
   const c = await panel(fix.path, 1);
   const field = find(c, (n) => n.attrs["aria-label"] === "Workspace name");
