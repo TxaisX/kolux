@@ -782,3 +782,6 @@ The direction in seven parts:
 
 ### follow-ups for c1-coord after T-821 and T-819 merge
 - [ ] T-823 · Docs and checks stop naming the web pane: README, CHANGELOG line, `docs/guide`, the glossary check and privacy audit paths · docs · open · gate: `pnpm check` green; grep for the embedded browser in user docs finds only the retirement note
+
+### wave 2026-11-15, job 30 (fix-ui-5)
+- [x] T-840 · Review fixes on the UI lane: Delete Workspace from a closed sidebar waits for the project list (R27 01); a pane in a hidden or unreviewed worktree is told Kolux does not list it (R27 02); the Setup Guide parallel step aims at the project on screen (R27 03); comment moved and unused `deleteTarget` removed (R27 06, R27 07); Explorer undo and redo refuse to bin a file changed since (F31); deleting a group clears sub-group project header colours; Ctrl+B bold in a rich view on any keyboard layout (R27 09) · projects + editor + keys · done · gate: `npx vitest run src/keys src/projects src/editor src/look src/onboarding` green; `npx tsc --noEmit` exit 0 · M
