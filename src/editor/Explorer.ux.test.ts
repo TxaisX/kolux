@@ -218,7 +218,7 @@ describe("T-702 Explorer header", () => {
   });
 
   // R35-02: undo of a copy bins the copy, so a copy edited since is refused the same way.
-  const copyThenUndo = async (changed: boolean) => {
+  const copyThenUndo = async (changed: boolean, gone = false) => {
     const { container } = await explorer();
     onDisk.set("/r/readme copy.md", { mtime: 1000, size: 5 });
     const tree = find(container, (n) => n.attrs.role === "tree")[0];
@@ -229,6 +229,7 @@ describe("T-702 Explorer header", () => {
     await until(() => calls.some(([c, a]) => c === "file_stamps" && (a.paths as string[]).includes("/r/readme copy.md")), "the copy's stamp to be read");
     await settle();
     if (changed) onDisk.set("/r/readme copy.md", { mtime: 2000, size: 42 }); // someone typed into the copy since
+    if (gone) onDisk.delete("/r/readme copy.md"); // someone deleted the copy outside Kolux
     await key("z", "KeyZ");
     await settle();
     return container;
@@ -238,6 +239,13 @@ describe("T-702 Explorer header", () => {
     await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
     expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
     expect(container.textContent).toContain("readme copy.md changed since that action, so it was not undone");
+  });
+  it("undo of a copy that is gone says it is no longer there, not that it changed (R35-03)", async () => {
+    const container = await copyThenUndo(false, true);
+    await until(() => container.textContent.includes("no longer there"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("readme copy.md is no longer there, so there is nothing to undo");
+    expect(container.textContent).not.toContain("changed since that action");
   });
   it("undo of a copy left as it was still bins it (R35-02)", async () => {
     const container = await copyThenUndo(false);

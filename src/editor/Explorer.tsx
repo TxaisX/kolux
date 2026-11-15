@@ -574,9 +574,15 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     );
     // F31: a file changed since the action is not binned; the step is dropped, like the identity refusal above.
     const kept = cmd === "fs_trash" ? keptStamps(op) : null;
-    const changed = kept ? invoke<(Stamp | null)[] | null>("file_stamps", { paths: kept.paths }).then((now) => kept.paths.find((_, i) => !sameStamp(now?.[i] ?? null, kept.stamps[i])) ?? null) : Promise.resolve(null);
-    changed.then((path) => {
-      if (path !== null) return fail(`${baseName(path)} changed since that action, so it was not ${call === undoOf ? "undone" : "redone"}`);
+    const changed = kept
+      ? invoke<(Stamp | null)[] | null>("file_stamps", { paths: kept.paths }).then((now) => {
+          const i = kept.paths.findIndex((_, k) => !sameStamp(now?.[k] ?? null, kept.stamps[k]));
+          return i < 0 ? null : { path: kept.paths[i], gone: Array.isArray(now) && now[i] === null }; // R35-03: a file no longer there is not "changed"
+        })
+      : Promise.resolve(null);
+    changed.then((hit) => {
+      if (hit?.gone) return fail(`${baseName(hit.path)} is no longer there, so there is nothing to ${call === undoOf ? "undo" : "redo"}`);
+      if (hit) return fail(`${baseName(hit.path)} changed since that action, so it was not ${call === undoOf ? "undone" : "redone"}`);
       go();
     }, (err) => {
       from.current.push(op); // still there to try again
