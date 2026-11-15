@@ -1754,7 +1754,8 @@ impl Terminals {
     pub fn kill_under(&self, dir: &std::path::Path) -> Stopped {
         let wanted = |d: &str| {
             let d = std::path::Path::new(d);
-            let same = |a: &std::path::Path, b: &std::path::Path| a.canonicalize().ok() == b.canonicalize().ok();
+            // R-01: a folder that cannot be resolved matches only by its path text, never another gone folder.
+            let same = crate::projects::same_folder;
             same(d, dir) || d.ancestors().skip(1).any(|a| same(a, dir))
         };
         let found: Vec<(u32, Option<u32>)> = match self.inner.lock() {
@@ -3506,6 +3507,21 @@ mod tests {
         let stale = t.kill_under(&std::env::temp_dir());
         assert_eq!((stale.ended, stale.stuck.len()), (1, 0), "a stale record is swept without blocking");
         assert!(t.inner.lock().unwrap().dirs.is_empty());
+    }
+
+    /// R-01: two folders that are both gone are not the same folder. Ending the terminals under one
+    /// gone folder leaves a terminal that started in a different gone folder alone.
+    #[test]
+    fn r01_a_gone_folder_does_not_match_a_different_gone_folder() {
+        let base = std::env::temp_dir().join(format!("kolux-r01-{}", std::process::id()));
+        std::fs::create_dir_all(&base).unwrap();
+        let (x, y) = (base.join("gone-x"), base.join("gone-y"));
+        let t = Terminals::default();
+        t.fake_session(1, &x.to_string_lossy(), None);
+        t.fake_session(2, &x.join("sub").to_string_lossy(), None);
+        assert_eq!(t.kill_under(&y).ended, 0, "a different gone folder ends nothing");
+        assert_eq!(t.kill_under(&x).ended, 2, "the gone folder itself and a folder under it are still ended");
+        std::fs::remove_dir_all(&base).unwrap();
     }
 
     /// T-262-c (CLI-023): a plain shell given no folder lists the home folder it started in and
