@@ -19,14 +19,14 @@ export function isFirstWindow(): boolean {
   }
 }
 
-export function useStartAsk(o: { settings: Record<string, unknown>; settingsRead: boolean; agentsDone: boolean; launching: boolean; sheetOpen: boolean; open: () => void }) {
-  const { settings, settingsRead, agentsDone, launching, sheetOpen } = o;
+export function useStartAsk(o: { settings: Record<string, unknown>; settingsRead: boolean; agentsDone: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean; open: () => void }) {
+  const { settings, settingsRead, agentsDone, launching, sheetOpen, firstRun } = o;
   const open = useRef(o.open);
   open.current = o.open;
   useEffect(() => {
-    const now = askAtOpen({ on: asksAtStart(settings), firstWindow: isFirstWindow(), asked, settingsRead, agentsDone, launching, sheetOpen });
+    const now = askAtOpen({ on: asksAtStart(settings), firstWindow: isFirstWindow(), asked, settingsRead, agentsDone, launching, sheetOpen, firstRun });
     if (now === "wait") return;
     asked = true;
     if (now === "ask") open.current();
-  }, [settings, settingsRead, agentsDone, launching, sheetOpen]);
+  }, [settings, settingsRead, agentsDone, launching, sheetOpen, firstRun]);
 }

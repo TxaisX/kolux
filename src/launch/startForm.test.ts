@@ -70,6 +70,8 @@ test("Start form D: asked once, first window only, after settings and the agent 
   expect(askAtOpen({ ...w, on: false })).toBe("skip");
   expect(askAtOpen({ ...w, launching: true })).toBe("skip");
   expect(askAtOpen({ ...w, sheetOpen: true })).toBe("skip");
+  // D-15: while the first-run screens are up they do the asking; the form never asks a second time.
+  expect(askAtOpen({ ...w, firstRun: true })).toBe("skip");
   expect(asksAtStart({})).toBe(true);
   expect(asksAtStart({ [START_ASK_KEY]: false })).toBe(false);
 });

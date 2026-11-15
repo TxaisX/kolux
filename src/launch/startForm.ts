@@ -83,8 +83,9 @@ export function startSummary(perFolder: number, folderNames: string[], what: str
 
 /** Rule D: the Start form opens by itself once per app start, in the first window, after the settings and the
  * first agent search have answered, unless switched off, already shown, a launch is under way or a sheet is open. */
-export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; agentsDone: boolean; launching: boolean; sheetOpen: boolean }): "ask" | "wait" | "skip" {
-  if (w.asked || !w.firstWindow) return "skip";
+export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; agentsDone: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean }): "ask" | "wait" | "skip" {
+  // D-15: the first-run screens already ask which AI and open the first session, so the form does not ask again.
+  if (w.asked || !w.firstWindow || w.firstRun) return "skip";
   if (!w.settingsRead || !w.agentsDone) return "wait";
   if (!w.on || w.launching || w.sheetOpen) return "skip";
   return "ask";
