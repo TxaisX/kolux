@@ -54,6 +54,20 @@ export const keepsAtFirst = (c: RemoveCheck): true | undefined => ((c.commits ??
 /** VIEW-048: the workspace the delete shortcut acts on; the row under the pointer wins over the one shown. */
 export const deleteTarget = (hovered: string | null, active: string | null) => hovered ?? active;
 
+/** Audit F13: what the delete shortcut acts on. Worktree rows have no sidebar row any more (one grid per
+ *  project), so a worktree row under the pointer wins and, with none, it is the worktree the focused pane
+ *  works in (`workDir`). A project's main folder is never a target: null then. */
+export function keyDeleteTarget<W extends { path: string; isMain: boolean }>(hovered: string | null, workDir: string | null, rows: readonly W[], same: (a: string, b: string) => boolean): { w: W; hovered: boolean } | null {
+  const at = (d: string | null) => (d === null ? undefined : rows.find((x) => !x.isMain && same(x.path, d)));
+  const h = at(hovered);
+  if (h) return { w: h, hovered: true };
+  const f = at(workDir);
+  return f ? { w: f, hovered: false } : null;
+}
+
+/** Audit F13/F14: the line shown when the focused pane is not in a worktree. */
+export const notInWorktree = (what: "delete" | "rename") => `The pane you are in is not in a worktree, so there is nothing to ${what}.`;
+
 /** PROJ-075: the row the delete shortcut found under the pointer, as the sidebar knows it. */
 export type PointerRow = { path: string; isMain: boolean; head: string };
 
