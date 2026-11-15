@@ -124,3 +124,28 @@ export function pickWords(pick: OnePick | "mixed", nameOf: (id: string) => strin
   if (pick.fast) words.push("fast");
   return words;
 }
+
+/** How one ticked folder's launch ended: `error` is null when it started, else why it did not, in plain words. */
+export type FolderResult = { name: string; count: number; error: string | null };
+
+/** Start form C (wave 2, item 2): every ticked folder is tried, one after another; a folder that is refused or fails
+ * does not stop the ones after it. `run` resolves to null when the folder started, else the reason it did not. */
+export async function startEach<T extends { name: string }>(folders: T[], count: number, run: (folder: T, n: number) => Promise<string | null>): Promise<FolderResult[]> {
+  const out: FolderResult[] = [];
+  for (const [n, f] of folders.entries()) {
+    const error = await run(f, n).catch((e: unknown) => String(e));
+    out.push({ name: f.name, count, error: error === null ? null : error.replace(/^Error: /, "") });
+  }
+  return out;
+}
+
+/** The one line after a launch across folders: null when every folder started; one folder says its own reason;
+ * several say "4 of 6 started. 2 need you." and then each folder that did not start and why. */
+export function acrossNote(results: FolderResult[]): string | null {
+  const failed = results.filter((r) => r.error !== null);
+  if (failed.length === 0) return null;
+  if (results.length === 1) return failed[0].error;
+  const total = results.reduce((n, r) => n + r.count, 0);
+  const down = failed.reduce((n, r) => n + r.count, 0);
+  return [`${total - down} of ${total} started. ${down} need${down === 1 ? "s" : ""} you.`, ...failed.map((r) => `${r.name} did not start: ${r.error}`)].join(" ");
+}

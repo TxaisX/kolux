@@ -29,7 +29,7 @@ import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
-import { LAST_START_KEY, type StartSheet } from "./startForm";
+import { acrossNote, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
 import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
@@ -78,13 +78,14 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // the rules block and a handoff note made before it starts (SESS-025), in that folder and named
   // after the folder and its seat number.
   // Start form C: `given` is the chooser to start from when it is neither in the grid nor the open sheet (a second
-  // ticked folder). True once the sessions have landed.
-  const startSeats = async (key: number, seats: Seat[], given?: Pane): Promise<boolean> => {
+  // ticked folder). True once the sessions have landed. `say` takes the closing line in place of the notice bar, so a
+  // launch across folders can say every folder's outcome in one line (wave 2, item 2).
+  const startSeats = async (key: number, seats: Seat[], given?: Pane, say: (note: string | null) => void = setNotice): Promise<boolean> => {
     const chooser = given ?? panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
     if (!chooser) return false;
     const tooMany = tooManySeats(seats.length);
     if (tooMany) {
-      setNotice(tooMany);
+      say(tooMany);
       return false;
     }
     const inGrid = panes.some((p) => p.key === key);
@@ -129,7 +130,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // lands there whole too (each agent runs in its worktree, all are shown in the chooser's grid).
       const landing = makes && !team ? picked.filter((a) => a === null).length : seats.length;
       if (cellsOf(panesIn(panes.filter((p) => p.key !== key), place)).length + landing > MAX_PANES) {
-        setNotice(`A workspace holds up to ${MAX_PANES} panes.`);
+        say(`A workspace holds up to ${MAX_PANES} panes.`);
         return false;
       }
       const repo = makes && proj ? await invoke<{ mode?: string; wait?: boolean }>("repo_setup_get", { path: proj.path }).catch(() => null) : null;
@@ -223,7 +224,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       setRefresh((n) => n + 1);
       seatsSettled = true;
       const said = [...setupTrouble, ...trustLines.map(([line]) => line)];
-      setNotice(said.length ? said.join(" ") : null);
+      say(said.length ? said.join(" ") : null);
       for (const [, shown] of trustLines) shown();
       return true;
     } catch (err) {
@@ -231,7 +232,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       seatsSettled = true;
       // A seat that failed leaves the earlier seats' new workspaces behind: refresh the sidebar so they show, and say so.
       if (kept.length) setRefresh((n) => n + 1);
-      setNotice(failureNote(err, kept.length));
+      say(failureNote(err, kept.length));
       return false;
     } finally {
       setLaunching(false);
@@ -239,20 +240,32 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   };
 
   // Start form C: Start launches the same lineup in every ticked folder, each in that folder's own grid, through
-  // startSeats once per folder (one launch path). The first folder failing stops the rest. The folders and the
-  // count are kept for the next form (rule F).
+  // startSeats once per folder (one launch path). A folder that is refused or fails does not stop the rest; one line
+  // then says how many started and which folders need the user, and why (wave 2, item 2). The form closes once any
+  // folder has started (startSeats closes it), so it stays open only when nothing started. The folders and the count
+  // are kept for the next form (rule F).
   const startAcross = async (from: StartSheet, seats: Seat[]) => {
     const ids = (from.folders ?? []).filter((id) => projects.some((p) => p.id === id));
     if (ids.length === 0) return void (await startSeats(from.key, seats));
     const tooMany = tooManySeats(seats.length * ids.length);
     if (tooMany) return setNotice(tooMany);
     p.saveSetting(LAST_START_KEY, { folders: ids, count: seats.length });
-    for (const [n, id] of ids.entries()) {
-      const proj = projects.find((x) => x.id === id)!;
-      const here = late.projectOf(from.cwd) === id;
-      const chooser: Pane = { ...from, key: n === 0 ? from.key : nextKey.current++, cwd: here ? from.cwd : proj.path, branch: here ? from.branch : null };
-      if (!(await startSeats(chooser.key, seats, chooser))) return;
-    }
+    const said: string[] = [];
+    const results = await startEach(
+      ids.map((id) => projects.find((x) => x.id === id)!),
+      seats.length,
+      async (proj, n) => {
+        const here = late.projectOf(from.cwd) === proj.id;
+        const chooser: Pane = { ...from, key: n === 0 ? from.key : nextKey.current++, cwd: here ? from.cwd : proj.path, branch: here ? from.branch : null };
+        const got: { note: string | null } = { note: null };
+        const ok = await startSeats(chooser.key, seats, chooser, (m) => void (got.note = m));
+        if (!ok) return got.note ?? "It did not start. Try again.";
+        if (got.note) said.push(got.note);
+        return null;
+      },
+    );
+    const line = [acrossNote(results), ...said].filter(Boolean).join(" ");
+    setNotice(line || null);
   };
 
   // PROJ-038: the agent is the new workspace's first tab, started with its prompt; nothing else

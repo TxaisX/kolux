@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { MAX_PANES } from "../terminal/grid";
 import { emptySeat, lineupOf, MAX_SESSIONS, TERMINAL, type Seat } from "./seats";
-import { askAtOpen, asksAtStart, everySeatStart, folderPlan, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY } from "./startForm";
+import { acrossNote, startEach, askAtOpen, asksAtStart, everySeatStart, folderPlan, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY } from "./startForm";
 
 const D = { model: "opus", effort: "high" };
 const none = { model: null };
@@ -99,4 +99,23 @@ test("Start form F: opens on the last Start's folders and count and the folder's
   expect(prefill({ projects, last: null, lineup, installed: [] }).seats.every((s) => s.agent === null)).toBe(true);
   expect(lastStart({ [LAST_START_KEY]: { folders: "x", count: 2 } })).toBeNull();
   expect(lastStart({ [LAST_START_KEY]: { folders: [], count: 99 } })?.count).toBe(MAX_SESSIONS);
+});
+
+test("wave 2 item 2: a refused folder between two good ones does not stop the third; one line says what happened", async () => {
+  const tried: string[] = [];
+  const results = await startEach([{ name: "kolux" }, { name: "Txais Brain" }, { name: "site" }], 2, async (f) => {
+    tried.push(f.name);
+    return f.name === "Txais Brain" ? "Error: Txais Brain asks about setup for each new workspace, so it cannot be bulk-launched." : null;
+  });
+  expect(tried).toEqual(["kolux", "Txais Brain", "site"]);
+  expect(results.map((r) => r.error === null)).toEqual([true, false, true]);
+  expect(acrossNote(results)).toBe("4 of 6 started. 2 need you. Txais Brain did not start: Txais Brain asks about setup for each new workspace, so it cannot be bulk-launched.");
+  // A thrown failure is caught and named too; every folder started means no line; one folder says its own reason only.
+  const thrown = await startEach([{ name: "a" }, { name: "b" }], 1, async (f) => {
+    if (f.name === "a") throw new Error("a is gone");
+    return null;
+  });
+  expect(acrossNote(thrown)).toBe("1 of 2 started. 1 needs you. a did not start: a is gone");
+  expect(acrossNote([{ name: "a", count: 3, error: null }])).toBeNull();
+  expect(acrossNote([{ name: "a", count: 3, error: "A workspace holds up to 6 panes." }])).toBe("A workspace holds up to 6 panes.");
 });
