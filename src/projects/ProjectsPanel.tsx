@@ -1373,6 +1373,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         const kept = await invoke<KeptBranch | null>("workspace_remove", { projectId: p.id, path, force: false, stamp: check.stamp, keepBranch: null });
         if (kept) setKept((old) => addKept(old, [{ ...kept, projectId: p.id }]));
         gone.push(path);
+        void invoke("editor_drafts_drop", { worktree: path }).catch(() => undefined); // audit F19: as a single delete does (EDIT-004)
       }
       say("ok", `removed ${b.order.length} workspaces, children first`);
       setBatch(null);

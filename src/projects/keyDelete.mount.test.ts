@@ -106,3 +106,17 @@ test("Rename worktree on the main folder says so and opens no field", async () =
   expect(find(c, (n) => n.attrs["aria-label"] === "Workspace name").length).toBe(0);
   expect(c.textContent).toContain("The pane you are in is not in a worktree, so there is nothing to rename.");
 });
+
+// Audit F19: the back end does not drop a worktree's unsaved editor drafts when it removes the folder
+// (`workspace_remove` in src-tauri/src/projects.rs never calls editor_drafts), so the children-first batch
+// delete drops them per removed folder, as the single delete does.
+test("Deleting a worktree with a child worktree drops the editor drafts of each one removed", async () => {
+  const kid = { ...base, path: "C:/w/ws/fix-login-kid", branch: "fix-login-kid", head: "d4d4d4d", isMain: false, parent: fix.path };
+  h.wt = [main, { ...fix, parent: main.path }, kid];
+  const c = await panel(fix.path);
+  await pressDelete();
+  await click(c, byText(c, "button", "Delete all")[0]);
+  await settle(60);
+  expect(h.calls.filter((x) => x.cmd === "workspace_remove").map((x) => x.args.path)).toEqual([kid.path, fix.path]);
+  expect(h.calls.filter((x) => x.cmd === "editor_drafts_drop").map((x) => x.args.worktree)).toEqual([kid.path, fix.path]);
+});
