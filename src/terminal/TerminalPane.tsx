@@ -1825,7 +1825,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             <Dots size={12} />
           </button>
           <button
-            className="ib"
+            className="ib pane-expand"
             onClick={onExpand}
             disabled={!canExpand}
             aria-expanded={card ? card.expanded : undefined}

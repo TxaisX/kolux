@@ -1495,6 +1495,8 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .pane { container-type: inline-size; }
 .pane-head .title { min-width: 0; }
 @container (max-width: 510px) { .pane-head .chip:not(.wt-chip) { display: none; } }
+/* D-08: a narrow header keeps split, expand and + out of the way until it is hovered or holds focus. The focused pane shows them; menu and close always stay. */
+@container (max-width: 560px) { .pane:not(.focused) .pane-head:not(:hover, :focus-within) .right :is(.pane-expand, [data-testid="pane-split-right"], [data-testid="pane-new-session"]) { display: none; } }
 /* One workspace per project: the worktree chip stays at any cell width the title can share (a narrow cell keeps its coloured dot). */
 @container (max-width: 340px) { .pane-head .wt-chip .wt-text { display: none; } }
 @container (max-width: 447px) { .pane-head .word { display: none; } }
