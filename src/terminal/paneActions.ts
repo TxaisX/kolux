@@ -579,7 +579,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const r = splitTabOut(panes, key, dir);
     if (!r) return;
     handOver(movedKeys(panes, r.panes)); // DT-C248: the tab moves to a cell of its own; its terminal stays
-    setStacked((st) => ({ ...st, [activeDir ?? ""]: r.stack }));
+    const me = panes.find((p) => p.key === key)!; // audit F8: the tab's own grid, keyed as splitPane keys it
+    const grid = sameDir(viewOf(me), activeDir) ? (activeDir ?? "") : (viewOf(me) ?? "");
+    setStacked((st) => ({ ...st, [grid]: r.stack }));
     setPanes(r.panes);
     setActiveTab((m) => ({ ...m, [key]: key }));
     setFocused(key);

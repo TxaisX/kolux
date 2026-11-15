@@ -176,3 +176,18 @@ test("restarting a cell's first tab keeps its sibling tabs and marks with it", (
   expect(colors).toEqual({ 9: "red" });
   expect(active).toEqual({ 4: 9 });
 });
+
+// Audit F8: Split Down on a tab of a grid not in front stacks that tab's own grid, as splitPane does.
+test("splitting a tab out of a grid not in front stacks that grid, not the one in front", () => {
+  let stacked: Record<string, boolean> = { "C:\front": false };
+  const setStacked = vi.fn((f: (st: typeof stacked) => typeof stacked) => (stacked = f(stacked)));
+  const panes = [
+    { key: 1, cwd: "C:\front", branch: null, agent: "shell", program: null, args: [] },
+    { key: 5, cwd: "C:\other", branch: null, agent: "shell", program: null, args: [] },
+    { key: 6, cwd: "C:\other", branch: null, agent: "shell", program: null, args: [], group: 5 },
+  ];
+  const s = { panes, activeDir: "C:\front", setPanes: vi.fn(), setFocused: vi.fn(), setActiveTab: vi.fn(), setStacked } as unknown as WindowState;
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
+  a.splitTab(6, "down");
+  expect(stacked).toEqual({ "C:\front": false, "C:\other": true });
+});
