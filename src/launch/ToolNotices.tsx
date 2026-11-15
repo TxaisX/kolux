@@ -8,7 +8,7 @@ import { CHECK_FAILED, dismissKey, toolNotices, type Notice, type Tools } from "
 
 /** The notice id for a dismissal that could not be saved; it has no Check again button, only Dismiss. */
 export const DISMISS_FAILED = "dismiss-failed";
-export const dismissFailedNotice = (err: unknown): Notice => ({ id: DISMISS_FAILED, text: `Kolux could not save that dismissal: ${String(err)}` });
+export const dismissFailedNotice = (_err: unknown): Notice => ({ id: DISMISS_FAILED, text: "Kolux couldn't hide that for good. It may show again." });
 
 type ViewProps = { notices: Notice[]; busy: boolean; onDismiss: (id: string) => void; onRefresh: () => void };
 

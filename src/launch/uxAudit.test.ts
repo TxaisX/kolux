@@ -115,7 +115,8 @@ test("F2: the no-AI-program notice has an Open Settings button; a failed check s
 
 test("F2: a dismissal that could not be saved shows its own notice, with Dismiss only", () => {
   const html = view([dismissFailedNotice("disk full")]);
-  expect(html).toContain("Kolux could not save that dismissal: disk full");
+  expect(html.replace(/&#x27;/g, "'")).toContain("Kolux couldn't hide that for good. It may show again."); // design rewrite row 17 (job 22)
+  expect(html).not.toContain("dismissal");
   expect(html).toContain(`data-notice="${DISMISS_FAILED}"`);
   expect(html).toContain(">Dismiss<");
   expect(html).not.toContain("Check again");
