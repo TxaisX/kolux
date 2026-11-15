@@ -216,7 +216,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
             <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal. Running agents stop. Saved files are not touched. Asks first.">
               End all
             </button>
-            <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Kill every terminal pane and start over; asks first (the terminals run inside Kolux, there is no separate service)">
+            <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Restart every terminal. Running agents stop. Saved files are not touched. Asks first.">
               Restart terminals
             </button>
           </div>
