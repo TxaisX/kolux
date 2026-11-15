@@ -2695,3 +2695,31 @@ sed -n 's/.*"used_percentage":\([0-9]*\).*/ctx \1%/p'
     assert_eq!(ev(&fs::read_to_string(&file).unwrap()), ev(user), "off restores his own status line exactly");
     let _ = fs::remove_dir_all(&dir);
 }
+
+/// P3 (wave job 7): `install_groups` swaps a malformed `hooks` value (or event list) for an empty
+/// one, so every installer refuses such a file first and leaves it byte for byte as it was. Codex's
+/// `hooks.json` had no such check; Claude Code's settings were already refused by the T-152 (3) check.
+#[test]
+fn p3_a_malformed_hooks_value_is_refused_and_the_file_left_as_it_was() {
+    let dir = temp("p3-malformed");
+    let home = dir.join("codex");
+    fs::create_dir_all(&home).unwrap();
+    let file = home.join("hooks.json");
+    let command = r#""C:\Users\me\.kolux\agent-hooks\codex.cmd""#;
+    let event = CODEX_EVENTS[0];
+    for text in ["[1, 2]".to_string(), r#"{"hooks": "mine, broken"}"#.to_string(), format!(r#"{{"hooks": {{"{event}": "mine, broken"}}}}"#)] {
+        fs::write(&file, &text).unwrap();
+        let err = install_codex_with(&home, command, |_| unreachable!("refused before Codex is asked")).unwrap_err();
+        assert!(err.contains("left alone"), "{text}: {err}");
+        assert_eq!(fs::read_to_string(&file).unwrap(), text, "{text}: the file is untouched");
+        assert!(!backup_of(&file).exists() && !codex_record(&file).exists() && !home.join("config.toml").exists(), "{text}: nothing else was written");
+    }
+    let claude = dir.join("settings.json");
+    let event = CLAUDE_EVENTS[0];
+    for text in [r#"{"hooks": "mine, broken"}"#.to_string(), format!(r#"{{"hooks": {{"{event}": "mine, broken"}}}}"#)] {
+        fs::write(&claude, &text).unwrap();
+        assert!(install_claude(&claude, command, "status").is_err(), "{text}");
+        assert_eq!(fs::read_to_string(&claude).unwrap(), text, "{text}: the settings are untouched");
+    }
+    let _ = fs::remove_dir_all(&dir);
+}

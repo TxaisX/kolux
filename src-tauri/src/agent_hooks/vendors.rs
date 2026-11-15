@@ -300,7 +300,8 @@ fn write_back(home: &Path, file: &Path, v: &Value, text: &str) -> Result<(), Str
 
 /// FIX-1 (c): a value Kolux would have to replace to add its own groups is the user's, so the
 /// file is refused, never rewritten.
-fn refuse_shape(file: &Path, v: &Value, events: &[&str]) -> Result<(), String> {
+/// Shared by Codex's `hooks.json` install (`hooks::install_codex_mirroring`).
+pub(crate) fn refuse_shape(file: &Path, v: &Value, events: &[&str]) -> Result<(), String> {
     let bad = |what: String| Err(format!("{} has {what}; left alone", file.display()));
     let Some(root) = v.as_object() else { return bad("a top level that is not an object".into()) };
     let Some(hooks) = root.get("hooks") else { return Ok(()) };

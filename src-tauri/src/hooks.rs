@@ -1523,6 +1523,10 @@ pub(crate) fn install_codex_mirroring(home: &Path, command: &str, user: Option<&
     };
     let text = read(&file)?;
     let mut hooks: Value = serde_json::from_str(text.as_deref().unwrap_or("{}")).map_err(|e| format!("{} is not JSON ({e}); left alone", file.display()))?;
+    // P3 (wave job 7): a top level that is not an object, a `hooks` value that is not an object or an
+    // event that is not a list is refused, as for every other agent, so `install_groups` never
+    // swaps the user's broken entries for empty ones.
+    agent_hooks::vendors::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
     let mut doc: toml_edit::DocumentMut = read(&config)?.unwrap_or_default().parse().map_err(|e| format!("{} is not valid TOML ({e}); left alone", config.display()))?;
     let config_before = doc.to_string();
     let hooks_before = hooks.clone();
