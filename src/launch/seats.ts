@@ -227,7 +227,9 @@ export function offeredLineup(saved: unknown, installedIds: string[]): Lineup | 
 const knownModel = (s: Seat): Seat => {
   if (s.agent === null || s.agent === TERMINAL || s.model === null) return s;
   const list = modelsFor(s.agent);
-  return list.length === 0 || list.some((m) => m.id === s.model) ? s : { ...s, model: null };
+  // Job 13 F6: Grok and Cursor list some models only through the live search; until it answers, a remembered one stays.
+  const waiting = LISTED.includes(s.agent) && !discovered[s.agent];
+  return waiting || list.length === 0 || list.some((m) => m.id === s.model) ? s : { ...s, model: null };
 };
 
 /** Puts a lineup back: its shape with its roles, and each seat's agent, model, effort and fast mode;
