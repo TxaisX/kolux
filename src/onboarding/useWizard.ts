@@ -98,7 +98,7 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
     setToast(PICK_FOLDER_NOTE);
     // Job 37 A3: the panel never came, so Add project never opened: the screens come back where the user was.
     void addFolderVia({ ...reach, fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)) }).then((ok) => {
-      if (ok) return;
+      if (ok || !finishOnAdd.current) return; // job 43 F5: a reopen or a project added meanwhile already moved on
       backToSession.current = firstFolder.current = finishOnAdd.current = false;
       setWizard(at);
       setToast("Could not open Add project. Try again.");

@@ -220,6 +220,24 @@ test("job 37 A3: the project panel never shows: the wizard comes back on the scr
   expect(started).toEqual([]); // nothing stays armed behind the user's back
 });
 
+test("job 43 F5: a project added while Add project is still being reached: the late 'could not open' answer changes nothing", async () => {
+  const app = await mountWizard({ defaultAgent: "claude" });
+  app.now().setWizard(2);
+  await app.settle();
+  let release = () => {};
+  const gate = new Promise<void>((r) => (release = r));
+  app.now().pickFolder(true, { panelShown: () => false, showPanel: () => {}, wait: () => gate });
+  await app.settle();
+  expect(app.now().wizard).toBeNull();
+  app.now().projectAdded("C:/other-way", null);
+  await app.settle();
+  expect(app.now().wizard).toBe(3);
+  release();
+  await app.settle();
+  expect(app.now().wizard).toBe(3);
+  expect(toasts).not.toContain("Could not open Add project. Try again.");
+});
+
 test("49-ux2: Pick a folder cancelled, then Help > Onboarding: the wizard is back and a project added later does not complete setup", async () => {
   const { REOPEN_WIZARD } = await import("./firstRun");
   const app = await mountWizard();
