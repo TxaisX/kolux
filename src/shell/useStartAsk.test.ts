@@ -57,6 +57,26 @@ test("R1 case (c): a late draw with no saved layout: the form asks over 0 panes"
   act(() => root.unmount());
 });
 
+test("job 37 A1: a slow start, the user opens a terminal before the saved tabs return: the form does not ask", () => {
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), settingsRead: true, layoutIn: false, panes: 0 })));
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: false, panes: 1 })));
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: true, panes: 4, agentsDone: true })));
+  expect(open).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
+
+test("job 37 A1 mirror: a slow start, nothing added during the wait, 3 saved tabs land: the form asks once", () => {
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), settingsRead: true, layoutIn: false, panes: 0 })));
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: false, panes: 0 })));
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: true, panes: 3, agentsDone: true })));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
 type In = Parameters<typeof useStartAsk>[0];
 function Probe(p: In) {
   useStartAsk(p);

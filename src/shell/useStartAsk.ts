@@ -39,8 +39,11 @@ export function useStartAsk(o: {
   // Job 29 R1: the pane count is taken only once last time's layout is in, so restored panes never count as added.
   const acted = useRef(false);
   const base = useRef<number | null>(null);
+  // Job 37 A1: the saved tabs and layoutIn land in one update, so a rise while layoutIn is false is the user's.
+  const waitBase = useRef<number | null>(null);
   useEffect(() => {
     if (launching || sheetOpen) acted.current = true;
+    if (!layoutIn && panes > (waitBase.current ??= panes)) acted.current = true;
     if (base.current === null) base.current = settingsRead && layoutIn ? panes : null;
     else if (panes > base.current) acted.current = true;
     const now = askAtOpen({ on: asksAtStart(settings), firstWindow: isFirstWindow(), asked, settingsRead, layoutIn, agentsDone, projectsRead, launching, sheetOpen, firstRun, firstRunKnown, agentsFailed, userActed: acted.current });
