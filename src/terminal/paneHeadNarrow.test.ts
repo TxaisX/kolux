@@ -7,6 +7,15 @@ const read = async (rel: string): Promise<string> => ((await import(/* @vite-ign
 const styles = await read("../styles.css");
 const pane = await read("./TerminalPane.tsx");
 const THREE = ['.pane-expand', '[data-testid="pane-new-session"]', '[data-testid="pane-split-right"]'];
+// R6: every @container block at 560 px that sets order, braces counted so a rule over several lines is one block.
+const orderRules560 = (css: string): string[] =>
+  [...css.matchAll(/@container[^{]*\b560px[^{]*\{/g)].flatMap((m) => {
+    let depth = 1;
+    let i = m.index! + m[0].length;
+    for (; depth > 0 && i < css.length; i++) depth += css[i] === "{" ? 1 : css[i] === "}" ? -1 : 0;
+    const block = css.slice(m.index!, i);
+    return /[{;\s]order\s*:/.test(block) ? [block] : [];
+  });
 const hide = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(([^)]*)\) \.pane-head[^{]*\{ display: none; \} \}/);
 
 test("a narrow header hides split, expand and + until hover or focus, except in the focused pane; menu and close are not named", () => {
@@ -41,9 +50,10 @@ test("in a narrow header the three come first, so showing them never moves the m
   expect(order).not.toBeNull();
   expect(order![2].split(", ").sort()).toEqual(THREE);
   expect(order![1].split(", ")).toEqual([".card"]);
-  // No other rule reorders anything in the header's right-hand group (the menu and close are plain .ib buttons).
-  const reorders = styles.split("\n").filter((l) => /\.pane-head[^{]*\.right/.test(l) && /[{;]\s*order\s*:/.test(l));
-  expect(reorders).toEqual([order![0]]);
+  // R6: no other 560 px rule sets order on anything, whether or not it names .pane-head, on one line or several.
+  const FAKE = '\n@container (max-width: 560px) {\n  .right .ib[title="Pane menu"] { order: 1; }\n}\n';
+  expect(orderRules560(styles + FAKE)).toHaveLength(2); // the check can fail: a made-up second rule is caught
+  expect(orderRules560(styles)).toEqual([order![0]]);
   // The group is packed to its right end; that is what keeps the items at rest still.
   expect(styles).toContain(".pane:not(.editor) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }");
   expect(pane).toContain('onMouseDown={onFocus}');
