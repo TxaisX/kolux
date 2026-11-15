@@ -68,7 +68,9 @@ Each row shows the skill's name, where it came from (a plugin shows "Plugin: nam
 
 When you have never picked a view, Kolux opens on Terminals. After that it opens on the view you were on when you quit.
 
-A fresh start has no terminal pane yet. The Terminals view says "Nothing running here yet." and offers two buttons: Open a terminal, and Choose what to run.
+A fresh start has no terminal pane yet. The Terminals view says "Nothing running here yet." and offers two buttons: Start agents, which opens the Start form, and Open a terminal, which opens a plain shell in the project folder.
+
+Each time Kolux starts, its first window opens the Start form once, in front of whatever was open last time. It asks which folders to open, how many agents and which AI. "Keep what was open" or Escape closes it and changes nothing. The switch "Ask what to open when Kolux starts" in Settings, General turns this off; Kolux then opens what was open last time.
 
 ## The top bar
 
@@ -133,11 +135,11 @@ More detail is in [Projects and folders](projects-and-worktrees.md).
 
 ## Start your first agent
 
-1. In the sidebar, press "New session" at the bottom. A New session page opens for the current project, with its folder shown under the title.
-2. Under "Choose what to run", pick a shape (Solo is one agent), then an AI and a model for each seat. Press Start (Ctrl+Enter also starts). The agent runs in a new pane in the project folder.
-3. The pane opens and the agent starts. Type your request in the pane.
+1. In the sidebar, press "New session" at the bottom. A menu opens with one row for each AI program Kolux found, then "Blank terminal", "Terminal…" and "Choose what to run…". Picking an AI row starts that one agent in a new pane.
+2. To choose more, pick "Choose what to run…". The Start form opens. Under "Folders" tick the project folders to start in. Under "How many" pick how many agents open in each folder. Under "Which AI" pick the AI, its model and its effort; that one choice goes to every agent. "Make each one different" opens a row for each agent. Press Start (Ctrl+Enter also starts). In the Classic look this row opens a pane that asks the same questions.
+3. A pane opens for each agent and the agent starts. Type your request in the pane.
 4. Watch its status word in the pane header (Working, Needs you, Done). Press the bell to see every session that needs you.
 
-Other ways in: press Ctrl+T for a plain shell, the pane header's plus for a menu of the AI programs Kolux found (Claude Code, Codex and Grok lead; the others sit behind "Show more agents"), or Ctrl+Shift+B for the browser.
+Other ways in: press Ctrl+T for a plain shell, or the pane header's plus for a menu of the AI programs Kolux found (Claude Code, Codex and Grok lead; the others sit behind "Show more agents").
 
 <!-- verified against: src/onboarding/Wizard.tsx, src/chrome/TopBar.tsx, src/usage/meter.ts, src/usage/ClaudePill.tsx, src/usage/CodexPill.tsx, src/settings/general.ts, src/projects/AddProject.tsx, src/projects/ProjectsPanel.tsx, src/launch/PlusMenu.tsx, src/keys/actions.ts, src/onboarding/Guides.tsx, src/onboarding/HelpMenu.tsx, src/onboarding/Tours.tsx, src/onboarding/guide.ts, src/onboarding/tour.ts, src-tauri/src/onboarding.rs, src/skills/SkillsPage.tsx, src/skills/skills.ts, src/skills/nav.ts, src/projects/SkillsRow.tsx, src/projects/HideableRow.tsx, src/chrome/chromeItems.ts, src-tauri/src/skills.rs, src-tauri/src/menu.rs, src/chrome/useChrome.ts at 6f0c159a -->

@@ -34,6 +34,7 @@ The search knows the Editor and diffs, Open in and Network proxy cards by everyd
 |---|---|---|
 | Look | Classic or New. A fresh profile starts on New; an older profile that never chose stays on Classic | `uiLook` |
 | Opens first | Agents, Board, Terminals or Tower. Default is Terminals. Agents and Board need the New look; Terminals and Tower work in both | `firstScreen` |
+| Ask what to open when Kolux starts | On by default. Each time Kolux starts, its first window asks once which folders to open, how many agents and which AI. Off opens what was open last time | `askWhatToOpen` |
 | Review notes | On by default. Select text in a file and press Ctrl+Shift+A to leave a note for an agent | `markdownReviewNotes` |
 | Needs you strip | On by default. Shows the strip of agents waiting for you above the panes | `needsStrip` |
 
