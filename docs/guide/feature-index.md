@@ -291,7 +291,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-123-b | A Codex agent's reply text reaches its card from its finish report, as Claude Code's does. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-123-c-b | With Claude Code, a finish after Esc or Ctrl+C shows Done, not Interrupted. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-123-c-c | With Claude Code, Esc while a tool is finishing still settles Interrupted, not Working. | [Board, agents and inbox](board-agents-inbox.md) |
-| T-124 | No recent update after 30 minutes without status; the terminal title stands in before hooks report; programs can report status in band. | [Board, agents and inbox](board-agents-inbox.md) |
+| T-124 | Quiet for a while after 30 minutes without status; the terminal title stands in before hooks report; programs can report status in band. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-124-c | Approve and Deny on a card only for a permission the agent's hooks reported; "no status for" names how long since the last status. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-123-d | A waiting agent's card shows every question it asked, not only the first. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-127 | A Checks panel and pull request comments show in the sidebar. | [Projects and folders](projects-and-worktrees.md) |

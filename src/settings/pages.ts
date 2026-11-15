@@ -7,7 +7,7 @@ export const PAGES = {
   accounts: "Accounts & keys",
   agents: "Agents",
   terminal: "Terminal & sessions",
-  git: "Git & worktrees",
+  git: "Git",
   safety: "Safety",
   notifications: "Notifications",
   shortcuts: "Shortcuts",

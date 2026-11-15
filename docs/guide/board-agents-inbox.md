@@ -30,7 +30,7 @@ Lanes run left to right. A lane is drawn only when it holds a card.
 | Done | Done | The first line of the reply and the newest file written |
 | Idle | Idle | Time since it went idle |
 | Queued | Working | "Queued" |
-| Quiet for a while | Working | "No recent update", and how long since its last status (for example "no status for 12m"). Shown when a working agent prints nothing for a while, or sends no status for 30 minutes |
+| Quiet for a while | Working | "Quiet for a while", and how long since its last status (for example "no status for 12m"). Shown when a working agent prints nothing for a while, or sends no status for 30 minutes |
 | Working | Working | Time running and the current tool step |
 
 On the Board and the Tower a blocked session reads Stopped, and the line under the word gives the cause. The pane header keeps the word Blocked.
@@ -165,9 +165,9 @@ The same words appear in pane headers, tabs, the sidebar, the Board, the Tower a
 | Done | The agent finished its turn. Clearing a session (/clear) or compacting it by hand also shows Done, without a notification |
 | Idle | Nothing is running here |
 | Queued | Waiting for its turn to start |
-| No recent update | No status has arrived from this agent for a while: it printed nothing for some minutes, or, while working, sent no status for 30 minutes. It clears with the next status |
+| Quiet for a while | No status has arrived from this agent for a while: it printed nothing for some minutes, or, while working, sent no status for 30 minutes. It clears with the next status |
 | Starting | The program is starting up |
-| Cannot reach | Kolux cannot talk to this agent |
+| Lost contact | Kolux cannot talk to this agent |
 | Stopped | The program has stopped. A session held by a limit or a sign-in reads Stopped too, with the cause on its line |
 
 A plain shell reads "Ready" while it runs and "Ended (code)" after it exits. A session not yet started reads "Not started" on the Agents page.

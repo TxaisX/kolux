@@ -53,7 +53,7 @@ test("VIEW-017: a row's status word is one of the fixed set, from the same signa
   expect(rowStatus({ seats: [{ agent: "claude" }] }, null).word).toBe("Not started");
   expect(rowStatus({}, sig({ running: undefined })).word).toBe("Starting");
   // A stale working reading is never shown as Working; a process that ended without a done signal reads Stopped.
-  expect(rowStatus({}, sig({ stale: true })).word).toBe("No recent update");
+  expect(rowStatus({}, sig({ stale: true })).word).toBe("Quiet for a while");
   expect(rowStatus({}, sig({ running: false })).word).toBe("Stopped");
   expect(rowStatus({}, sig({})).word).toBe("Working");
   expect(rowStatus({}, sig({ state: "permission" }))).toMatchObject({ word: "Needs you", tone: "attention" });

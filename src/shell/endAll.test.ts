@@ -9,10 +9,10 @@ describe("set-042 / set-060 end every session", () => {
     expect(bulkQuestion("all", [])).toBeNull();
     const all = bulkQuestion("all", [1, 2, 3]);
     expect(all?.text).toContain("3 terminal sessions");
-    expect(all?.text).toContain("opened meanwhile is left alone");
+    expect(all?.text).toContain("Your files are safe");
     expect(all?.confirm).toBe("End all");
     const restart = bulkQuestion("restart", [4]);
-    expect(restart?.text).toContain("1 terminal session) is killed; this cannot be undone");
+    expect(restart?.text).toContain("Restart every terminal (1 terminal session)? Running agents stop.");
     expect(restart?.confirm).toBe("Restart");
   });
 

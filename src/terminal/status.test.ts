@@ -68,7 +68,7 @@ test("every surface reads one vocabulary: each state has its word, glyph, tone a
   expect([VOCAB.blocked.glyph, VOCAB.waiting.glyph]).toEqual([VOCAB.permission.glyph, VOCAB.permission.glyph]);
   expect([VOCAB.blocked.tone, VOCAB.waiting.tone]).toEqual([VOCAB.permission.tone, VOCAB.permission.tone]);
   expect(VOCAB.starting.word).toBe("Starting");
-  expect(VOCAB.unreachable.word).toBe("Cannot reach");
+  expect(VOCAB.unreachable.word).toBe("Lost contact");
   expect(stoppedLabel("exit code 2")).toBe("Stopped: exit code 2");
 });
 

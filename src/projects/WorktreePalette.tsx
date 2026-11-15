@@ -325,7 +325,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
               {chipLabel(c)} ×
             </button>
           ))}
-          <select aria-label="Filter by repository" value="" onChange={(e) => e.target.value && addChip({ field: "repo", value: e.target.value })}>
+          <select aria-label="Filter by project" value="" onChange={(e) => e.target.value && addChip({ field: "repo", value: e.target.value })}>
             <option value="">+ Repository</option>
             {repoOptions(projects, lists)
               .filter((o) => !repoChips.some((c) => c.value === o.id))

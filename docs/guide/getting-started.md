@@ -68,7 +68,7 @@ Each row shows the skill's name, where it came from (a plugin shows "Plugin: nam
 
 When you have never picked a view, Kolux opens on Terminals. After that it opens on the view you were on when you quit.
 
-A fresh start has no terminal pane yet. The Terminals view says "No terminal open here" and offers two buttons: Open a shell, and Choose what to run.
+A fresh start has no terminal pane yet. The Terminals view says "Nothing running here yet." and offers two buttons: Open a terminal, and Choose what to run.
 
 ## The top bar
 

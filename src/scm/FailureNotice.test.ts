@@ -39,7 +39,7 @@ test("Pull first is disabled while another action runs, and absent for a failure
 });
 
 test("Fix with AI shows only when the AI features are on and the failure is not a pull-policy choice", () => {
-  const hook = { title: "Commit blocked by a hook", output: "lint failed", fix: "lint failed" };
+  const hook = { title: "A project check stopped this save. See why below.", output: "lint failed", fix: "lint failed" };
   expect(renderToString(createElement(FailureNotice, props(hook)))).not.toContain("Fix with AI");
   expect(renderToString(createElement(FailureNotice, props(hook, { aiOn: true })))).toContain("Fix with AI");
   expect(renderToString(createElement(FailureNotice, props({ ...hook, policy: true }, { aiOn: true })))).not.toContain("Fix with AI");

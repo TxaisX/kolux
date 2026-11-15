@@ -7,7 +7,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 import { onRename, type RenameEvent } from "./renameOnWork";
 
-/** The Settings > Git & worktrees switch (mirrors the back end's setting key); on unless set off. */
+/** The Settings > Git switch (mirrors the back end's setting key); on unless set off. */
 export const RENAME_FOLDERS_KEY = "renameFolders";
 export const renamesFolders = (s: Record<string, unknown>): boolean => s[RENAME_FOLDERS_KEY] !== false;
 

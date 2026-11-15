@@ -22,6 +22,6 @@ test("the Git Bash process-limit failure is explained with recovery actions", ()
   const text = explain("bash: fork: retry: Resource temporarily unavailable");
   expect(text).toContain("run out of process slots");
   expect(text).toContain("Close a few terminals");
-  expect(exitAdvice(127)).toContain("exit 127");
-  expect(exitAdvice(3)).toContain("exit code 3");
+  expect(exitAdvice(127)).toContain("code 127");
+  expect(exitAdvice(3)).toContain("code 3");
 });

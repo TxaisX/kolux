@@ -13,7 +13,7 @@ Changes save as you make them. They live in `settings.json` in Kolux's data fold
 | Accounts & keys | Signing in to Claude, Codex and Grok |
 | Agents | Which agents are on, how they start, whether they ask permission |
 | Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default shell, close warnings, pinned tabs, removing a running session |
-| Git & worktrees | Branch names, compare base, commit messages |
+| Git | Branch names, compare base, commit messages |
 | Safety | A short note on protected commands (see [Safety](safety.md)) |
 | Notifications | What alerts you, and how |
 | Shortcuts | Every command and its keys |
@@ -190,7 +190,7 @@ Saved keys and sign-ins are sealed by the system keyring (Windows' secret store)
 | Installed agents | A list with a Refresh button. Each has an on/off switch, a "default" mark, and a "How it starts" fold with Command, Default arguments and Environment | `agentOptions` |
 | Agent status hooks | Off until the setup line is answered or you turn it on here, then it shows the saved answer. The first-run dialog's Connect step (or, on a profile that never answered, a one-time card) shows "Kolux will add its status hooks to each AI's settings, so it can show you which one needs you." beside a switch that starts on. Continue records the switch; Back and "I'll do this later" do not. On the one-time card, Done records the switch, Turn off records no, and Not now leaves it unanswered, so the card asks again at the next launch. Turn it off here or there | `agentStatusHooks` |
 | Hold Claude and Codex to a 200k context window | On | |
-| Prompt-cache timer | Off. When on, "Cache length" is 5 minutes (default) or 1 hour | |
+| Cache countdown | Off. When on, "Cache length" is 5 minutes (default) or 1 hour | |
 
 **Agent Permissions matters.** Under Yolo, Claude Code starts in its automatic mode, where its own safety check approves routine actions and still stops risky ones. Codex starts with no approval prompts but inside its sandbox (the walled-off area it works in): it can change files only in the workspace's own folder. By default the sandbox also keeps its commands off the internet and away from Git's own records, so Codex can edit files but cannot commit, install packages or push. Such a command fails and Codex is told why; it does not ask you. Choose Manual if you want each agent to ask before it acts.
 
@@ -243,7 +243,7 @@ A sample terminal at the top of the card shows each change as you make it. Open 
 | Line height | 1 to 2 in steps of 0.05, default 1 | `terminalLineHeight` |
 | Cursor | Block (default), Bar or Underline | `terminalCursorStyle` |
 | Blinking cursor | On | `terminalCursorBlink` |
-| Minimum contrast: keep text readable on any colour scheme | Off. When on, text keeps at least a 4.5 to 1 contrast against its background | `terminalMinimumContrast` |
+| Always keep text readable | Off. When on, text keeps at least a 4.5 to 1 contrast against its background | `terminalMinimumContrast` |
 | GPU drawing | Automatic (default: the GPU when the computer has one that works), On or Off. Up to six terminals use it at a time; the rest draw the plain way | `terminalGpu` |
 
 A number you type is corrected to the nearest allowed value when you press Enter or leave the box.
@@ -271,7 +271,7 @@ This card shows on Windows only. "New terminals open in" lists "Automatic (Power
 
 The shell you pick is tried first. If it will not start (it was uninstalled, or Windows refuses it), Kolux goes on to the automatic shells behind it instead of giving up, and the new terminal opens with one dim line such as "<chosen shell> did not start; opened <shell>" so you can see what happened. A choice that is no longer installed leaves the automatic order as it was.
 
-## Git & worktrees
+## Git
 
 | Setting | Choices | Saved as |
 |---|---|---|

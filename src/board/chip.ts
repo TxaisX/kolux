@@ -146,7 +146,7 @@ export function chipOf(s: Signal, now: number): Chip | null {
     default:
       // A stale working signal never shows Working. It says what is missing, the status: a long tool
       // can stream output all along (T-124-c).
-      if (s.stale) return chip("working", "No recent update", since ? `no status for ${since}` : "");
+      if (s.stale) return chip("working", "Quiet for a while", since ? `no status for ${since}` : "");
       if (s.monitoring) return chip("working", "Working", "Watching background tasks");
       return chip("working", "Working", [since, step].filter(Boolean).join(" · "));
   }

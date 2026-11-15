@@ -26,9 +26,9 @@ export const VOCAB: Record<StatusKey, Vocab> = {
   done: { word: "Done", glyph: "check", tone: "done", explain: "The agent finished its turn." },
   idle: { word: "Idle", glyph: "idle", tone: "", explain: "Nothing is running here." },
   queued: { word: "Queued", glyph: "idle", tone: "", explain: "Waiting for its turn to start." },
-  stale: { word: "No recent update", glyph: "stale", tone: "", explain: "No status has arrived from this agent for a while." },
+  stale: { word: "Quiet for a while", glyph: "stale", tone: "", explain: "No status has arrived from this agent for a while." },
   starting: { word: "Starting", glyph: "spinner", tone: "working", explain: "The program is starting up." },
-  unreachable: { word: "Cannot reach", glyph: "failed", tone: "bad", explain: "Kolux cannot talk to this agent." },
+  unreachable: { word: "Lost contact", glyph: "failed", tone: "bad", explain: "Kolux cannot talk to this agent." },
   stopped: { word: "Stopped", glyph: "idle", tone: "", explain: "Stopped: waiting on a limit or sign-in, or the program has ended." },
 };
 
@@ -74,7 +74,7 @@ export function headerOf(agent: string, kind: Kind, code: number | null | undefi
   if (kind === "failed") return h("failed");
   if (kind === "starting") return h("starting", agent === "shell" ? { tone: "" } : {});
   if (kind === "running") {
-    if (agent === "shell") return h("idle", { word: "Ready", explain: "The shell is ready for a command." });
+    if (agent === "shell") return h("idle", { word: "Ready", explain: "Ready for you to type." });
     if (hook === "blocked" || hook === "interrupted" || hook === "waiting") return h(hook);
     if (needs || hook === "permission") return h("permission");
     if (hook === "done") return done();

@@ -59,7 +59,7 @@ export function useWizard({ setToast, agents, settings, activeDir, startIn, open
       void reopenWizard(
         () => invoke("onboarding_reopen"),
         () => setWizard(0),
-        (err) => setToast(`Kolux could not reopen onboarding (${String(err)}).`),
+        (err) => setToast(`Setup didn't open. Try again from Help. Details: ${String(err)}`),
       );
     };
     window.addEventListener(REOPEN_WIZARD, reopen);

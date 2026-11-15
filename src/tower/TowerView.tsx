@@ -28,7 +28,7 @@ export const NO_WINDOW = "The Tower could not open in its own window here, so it
 /** The glyph for a row: its lane, with the stale and stopped words told apart. */
 function glyphOf(r: Row): GlyphName {
   if (r.lane === "needs") return "attention";
-  if (r.lane === "working") return r.word === "No recent update" ? "stale" : r.word === "Queued" ? "idle" : "spinner";
+  if (r.lane === "working") return r.word === "Quiet for a while" ? "stale" : r.word === "Queued" ? "idle" : "spinner";
   if (r.lane === "done") return "check";
   if (r.lane === "stopped") return r.line === "Interrupted" ? "interrupted" : "failed";
   return "idle";

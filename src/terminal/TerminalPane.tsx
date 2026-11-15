@@ -94,7 +94,7 @@ import { markShell, runningOf, shellInAgentPane } from "./remove";
 import { registerTurnSource, xtermSource } from "./turnRead";
 
 // TERM-036: the pane menu's copy items; Copy Session ID shows only once the session is known.
-const COPY_IDS = [["session", "Copy Session ID"], ["terminal", "Copy Terminal ID"], ["pane", "Copy Pane ID"]] as const;
+const COPY_IDS = [["session", "Copy session ID"], ["terminal", "Copy terminal ID"], ["pane", "Copy pane ID"]] as const;
 
 type Status = { kind: "starting" } | { kind: "running"; id: number; account: string | null } | { kind: "ended"; code: number | null } | { kind: "failed"; error: string };
 
@@ -784,7 +784,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         return;
       }
       if (id === null) {
-        if (!held.push(data, auto)) setFlash("Keys typed before the shell started were dropped past 16 KB");
+        if (!held.push(data, auto)) setFlash("Some early typing was lost. Type it again.");
         return;
       }
       return writes.write(id, data, auto, only);
@@ -1187,7 +1187,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             return;
           }
           serviceRef.current = back.service;
-          if (back.kind === "replaced") setFlash("The terminal service was replaced; the pane starts again on the new one");
+          if (back.kind === "replaced") setFlash("Kolux restarted the terminal. Your pane is opening again.");
         }
         const tail = replayedOld ? afterReplay(term.buffer.normal, term.rows, back?.kind === "attached") : "";
         if (tail) {
@@ -2070,14 +2070,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             role="alertdialog"
             aria-modal="true"
             tabIndex={-1}
-            aria-label="The shell ended"
+            aria-label="This terminal stopped"
             onKeyDown={(e) => {
               e.stopPropagation();
               trapTab(e);
               if (e.key === "Escape") closeRef.current?.();
             }}
           >
-            <h2 className="ask-title">The shell ended with exit code {died}</h2>
+            <h2 className="ask-title">This terminal stopped</h2>
             <p className="ask-body">{exitAdvice(died)}</p>
             <div className="btn-row">
               <button className="btn" onClick={() => closeRef.current?.()}>
@@ -2097,14 +2097,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             role="alertdialog"
             aria-modal="true"
             tabIndex={-1}
-            aria-label="The terminal did not come back"
+            aria-label="This terminal didn't reopen"
             onKeyDown={(e) => {
               e.stopPropagation();
               trapTab(e);
               if (e.key === "Escape") closeRef.current?.();
             }}
           >
-            <h2 className="ask-title">This tab's terminal did not come back</h2>
+            <h2 className="ask-title">This terminal didn't reopen</h2>
             <p className="ask-body">{restoreAsk}. The tab and its saved output are kept.</p>
             <div className="btn-row">
               <button className="btn" onClick={() => closeRef.current?.()}>

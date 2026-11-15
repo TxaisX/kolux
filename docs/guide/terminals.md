@@ -6,7 +6,7 @@ Use the Terminals view to run agents and shells in a grid of panes, split and re
 
 Each workspace (a folder) has its own grid. The grid holds one to twenty-four panes. It picks columns by count: 1 pane is one column, 2 panes two, up to 4 panes two columns, up to 9 panes three, and more than that four.
 
-An empty workspace shows "No terminal open here." with two buttons: "Open a shell" and "Choose what to run".
+An empty workspace shows "Nothing running here yet." with two buttons: "Open a terminal" and "Choose what to run".
 
 ### Layouts
 

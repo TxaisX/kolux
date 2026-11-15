@@ -53,7 +53,7 @@ test("T-265 SET-059: minutes and seconds, yellow in the final minute, a red icon
 
 test("T-265 SET-059: the Agents page switch and its length", () => {
   const off = html(createElement(CachePick, { minutes: null, onPick: () => {} }));
-  expect(off).toContain("Prompt-cache timer");
+  expect(off).toContain("Cache countdown");
   expect(off).not.toContain('checked=""');
   expect(off).toContain("disabled");
   const on = html(createElement(CachePick, { minutes: 60, onPick: () => {} }));

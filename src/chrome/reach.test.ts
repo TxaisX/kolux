@@ -163,8 +163,8 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["terminal/PlanSheet.tsx", "Review the plan for ${title}", "inner"],
   ["terminal/TerminalPane.tsx", "notice.title", "tag"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "tag"],
-  ["terminal/TerminalPane.tsx", "The shell ended", "tag"],
-  ["terminal/TerminalPane.tsx", "The terminal did not come back", "inner"],
+  ["terminal/TerminalPane.tsx", "This terminal stopped", "tag"],
+  ["terminal/TerminalPane.tsx", "This terminal didn't reopen", "inner"],
   ["update/UpdateCenterView.tsx", "Updates", "tag"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
   // src/ui wrappers: a dialog drawn with <Dialog> / <AlertDialog> has no role literal at its call site; its Escape is
@@ -311,8 +311,8 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
   ["terminal/ForkDialog.tsx", "Fork Agent Session", "trapTab"],
   ["terminal/TerminalPane.tsx", "notice.title", "trapTab"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "trapTab"],
-  ["terminal/TerminalPane.tsx", "The shell ended", "trapTab"],
-  ["terminal/TerminalPane.tsx", "The terminal did not come back", "trapTab"],
+  ["terminal/TerminalPane.tsx", "This terminal stopped", "trapTab"],
+  ["terminal/TerminalPane.tsx", "This terminal didn't reopen", "trapTab"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
 ];
 function traps(d: Found, how: string): boolean {

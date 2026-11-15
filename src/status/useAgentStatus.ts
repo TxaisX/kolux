@@ -318,7 +318,7 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
       if (p) quietRef.current(p, e.payload.minutes);
       setStale((m) => ({ ...m, [e.payload.paneKey]: true }));
     });
-    // STAT-032: a working reading with no hook signal for 30 minutes reads No recent update, quietly.
+    // STAT-032: a working reading with no hook signal for 30 minutes reads Quiet for a while.
     const offUnverified = listen<{ paneKey: number; minutes: number }>("agent-unverified", (e) => setStale((m) => ({ ...m, [e.payload.paneKey]: true })));
     // STAT-034 (T-124-b): an in-band new turn drops the pane's stored provider session; a completion keeps it.
     const offInbandTurn = onInbandTurn((paneKey) => setPanes((ps) => forgetSession(ps, paneKey)));

@@ -53,7 +53,7 @@ const NOT_STARTED: RowStatus = { word: "Not started", tone: "", explain: "A pres
 
 /** VIEW-017: a never-launched preset reads Not started; a session reads the word the Board's chip
  *  gives the same signal (Starting with no process yet, Stopped once it ended without a done
- *  signal, No recent update for a stale working reading, never Working then); with no signal at
+ *  signal, Quiet for a while for a stale working reading, never Working then); with no signal at
  *  all it reads Idle. The cannot-reach word waits for a remote host to be unreachable. */
 export function rowStatus(p: Pick<Session, "seats">, chip: { word: string; line: string } | null): RowStatus {
   if (p.seats) return NOT_STARTED;

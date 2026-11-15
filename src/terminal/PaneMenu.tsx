@@ -58,24 +58,24 @@ export function paneMenuItems(c: MenuContext): MenuItem[] {
     if (run) out.push({ id, name, run, group, ...more });
   };
   add(0, "copy", "Copy", c.selected ? c.onCopy : undefined, { key: "terminal.copySelection" });
-  add(0, "selectAll", "Select All", c.onSelectAll, { key: "terminal.selectAll" });
+  add(0, "selectAll", "Select all", c.onSelectAll, { key: "terminal.selectAll" });
   add(0, "paste", "Paste", c.onPaste, { key: "terminal.paste" });
   for (const a of c.agentActions ?? []) add(1, a.id, a.name, a.run, { title: a.title });
   const split = c.onSplit;
-  add(2, "splitRight", "Split Right", split && (() => split("right")), { key: "terminal.splitRight" });
-  add(2, "splitDown", "Split Down", split && (() => split("down")), { key: "terminal.splitDown" });
+  add(2, "splitRight", "Split right", split && (() => split("right")), { key: "terminal.splitRight" });
+  add(2, "splitDown", "Split down", split && (() => split("down")), { key: "terminal.splitDown" });
   add(2, "equalize", "Equalize", c.onEqualize, { key: "terminal.equalizePaneSizes", title: "Gives every pane in the grid the same size" });
-  add(2, "moveToTab", "Move to Tab", c.onMoveToTab, { title: "Moves this pane into the tab strip of the pane beside it; the program keeps running" });
+  add(2, "moveToTab", "Move to tab", c.onMoveToTab, { title: "Moves this pane into the tab strip of the pane beside it; the program keeps running" });
   add(2, "expand", c.expanded ? "Collapse" : "Expand", c.canExpand ? c.onExpand : undefined, { key: "terminal.expandPane" });
-  add(3, "setTitle", "Set Title…", c.onSetTitle, { key: "terminal.setTitle" });
-  add(3, "clearTitle", "Clear Title", c.hasTitle ? c.onClearTitle : undefined, { key: "terminal.clearPaneTitle" });
+  add(3, "setTitle", "Set title…", c.onSetTitle, { key: "terminal.setTitle" });
+  add(3, "clearTitle", "Clear title", c.hasTitle ? c.onClearTitle : undefined, { key: "terminal.clearPaneTitle" });
   for (const i of c.copyIds ?? []) add(3, i.id, i.name, i.run);
   add(3, "diagnostics", "Copy terminal diagnostics", c.onDiagnostics, { title: "A scrubbed snapshot of this pane for a bug report, to the clipboard" });
-  add(4, "clear", "Clear Screen", c.onClear, { key: "terminal.clear", title: "Clears the screen and the scrollback of this pane" });
+  add(4, "clear", "Clear screen", c.onClear, { key: "terminal.clear", title: "Clears the screen and the scrollback of this pane" });
   add(4, "find", "Find…", c.onFind, { key: "terminal.search", title: "Find text in this pane's screen and scrollback" });
   // UX audit terminal F5: the destructive item sits last, apart from the rest, so a slip of the hand lands elsewhere.
   // T-717 (DT-C153): the chord shown is tab.close's, which owns Mod+W and closes the focused pane.
-  add(5, "close", "Close Pane", c.onClose, { key: "tab.close", danger: true, title: "Ends the program in this pane" });
+  add(5, "close", "Close pane", c.onClose, { key: "tab.close", danger: true, title: "Ends the program in this pane" });
   return out;
 }
 

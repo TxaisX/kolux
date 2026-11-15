@@ -170,7 +170,7 @@ export default function TerminalPage() {
             <Segmented label="Cursor" options={CURSORS.map((c) => ({ id: c, label: c[0].toUpperCase() + c.slice(1) }))} value={text.cursor} onPick={(c) => save({ [FIELDS.cursor]: c })} />
           </div>
           <Switch label="Blinking cursor" checked={text.blink} onChange={(on) => save({ [FIELDS.blink]: on })} />
-          <Switch label="Minimum contrast: keep text readable on any colour scheme" checked={text.contrast} onChange={(on) => save({ [FIELDS.contrast]: on })} />
+          <Switch label="Always keep text readable" checked={text.contrast} onChange={(on) => save({ [FIELDS.contrast]: on })} />
           <div className="look-select">
             <span>Pane headers</span>
             <Segmented label="Pane headers" options={DENSITIES.map((d) => ({ id: d, label: d[0].toUpperCase() + d.slice(1) }))} value={readDensity(settings)} onPick={(d) => save({ [DENSITY_FIELD]: d })} />
@@ -188,8 +188,8 @@ export default function TerminalPage() {
           {!text.scrollbackSet && autoRows !== null && <p className="conn-detail">Scrollback rows: Automatic ({autoRows} rows), set from this computer's memory. Type a number to choose your own.</p>}
           {settings && (
             <>
-              <Switch label="Keep shell history separate for each workspace" checked={settings[SHELL_HISTORY_FIELD] !== false} onChange={(on) => save({ [SHELL_HISTORY_FIELD]: on })} />
-              <p className="conn-detail">The up arrow in bash, zsh and fish then shows the commands run in that workspace only. Command Prompt and PowerShell are left as they are, and a history file you set yourself is kept. Applies to terminals opened after the change.</p>
+              <Switch label="Separate command history for each folder" checked={settings[SHELL_HISTORY_FIELD] !== false} onChange={(on) => save({ [SHELL_HISTORY_FIELD]: on })} />
+              <p className="conn-detail">The up arrow in bash, zsh and fish then shows the commands run in that folder only. Command Prompt and PowerShell are left as they are, and a history file you set yourself is kept. Applies to terminals opened after the change.</p>
             </>
           )}
         </section>

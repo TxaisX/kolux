@@ -66,7 +66,7 @@ export default function SignInNotice() {
   const signIn = (l: Lapsed) => {
     setError(null);
     const call = l.agent === "claude" ? invoke("claude_account_sign_in", { id: l.id }) : invoke("codex_account_sign_in", { device: false, again: l.id });
-    call.catch((e) => setError({ key: `${l.agent}:${l.id}`, text: `Sign-in did not start: ${String(e)}` }));
+    call.catch((e) => setError({ key: `${l.agent}:${l.id}`, text: `Sign-in didn't open. Try again. Details: ${String(e)}` }));
   };
   const now = lapsed(claude, codex);
   useEffect(() => setError(null), [now?.agent, now?.id]);

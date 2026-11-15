@@ -40,14 +40,14 @@ describe("G1 (not reproduced): the palette's filter selects add a chip, then go 
     const { default: WorktreePalette } = await import("../projects/WorktreePalette");
     const project = { id: "p1", name: "app", path: "C:/w/app" } as unknown as Project;
     const c = await show(WorktreePalette, { projects: [project], items: [], prOf: () => null, recent: [], scope: [], hasWorktree: true, onWorktree: () => {}, onCreate: () => {}, onClose: () => {} });
-    const repo = byLabel(c, "select", "Filter by repository")[0];
+    const repo = byLabel(c, "select", "Filter by project")[0];
     await until(() => repo.options.length > 1, "the repository options");
     expect(repo.options[0].textContent).toBe("+ Repository");
     repo.value = repo.options[1].value;
     await fire(c, "change", repo);
     await until(() => chips(c).length === 1, "the repository chip");
     expect(chips(c)).toEqual(["Remove the filter Repository: app"]);
-    expect(byLabel(c, "select", "Filter by repository")[0].options.map((o) => o.value)).toEqual([""]);
+    expect(byLabel(c, "select", "Filter by project")[0].options.map((o) => o.value)).toEqual([""]);
     const kind = byLabel(c, "select", "Filter by kind")[0];
     kind.value = "Workspaces";
     await fire(c, "change", kind);

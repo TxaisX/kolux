@@ -14,7 +14,7 @@ import { windowFiles } from "./shell/windowSource";
 import { AddProjectView } from "./projects/AddProject";
 import StartGit from "./projects/StartGit";
 
-/** In-scope screens: onboarding, Add Project, the folder-without-Git dialog, the launcher, the landing notices, the sidebar, the Connect cards, error toasts. */
+/** In-scope screens: onboarding, Add Project, the folder-without-Git dialog, the launcher, the landing notices, the sidebar, the Connect cards, error toasts; design audit D-10/D-20: the pane error words, the Settings page names, the agents search box. */
 const BASE_SCREENS = import.meta.glob(
   [
     "./onboarding/Wizard.tsx",
@@ -35,6 +35,9 @@ const BASE_SCREENS = import.meta.glob(
     "./settings/SignInNotice.tsx",
     "./settings/KeyLostNotice.tsx",
     "./App.tsx",
+    "./terminal/errors.ts",
+    "./settings/pages.ts",
+    "./sessions/AgentsPanel.tsx",
   ],
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
@@ -92,8 +95,8 @@ test("ONB-036: no banned word in the text shown on a newcomer screen", () => {
 });
 
 test("ONB-036: the scan reads the base screens and every window module, so the list cannot shrink silently", () => {
-  // A renamed base screen leaves the glob: 18 is the named list's guard.
-  expect(Object.keys(BASE_SCREENS)).toHaveLength(18);
+  // A renamed base screen leaves the glob: 21 is the named list's guard.
+  expect(Object.keys(BASE_SCREENS)).toHaveLength(21);
   // The window's list is shell/windowSource.ts's, read whole (its own test proves the folder joins there).
   for (const [file, text] of Object.entries(windowFiles)) expect(SOURCES[file], file).toBe(text);
 });

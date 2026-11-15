@@ -6,14 +6,14 @@ Find out what went wrong, get a safe report to share, and get back to work. Star
 
 | What you see | What it means | What to do |
 |---|---|---|
-| A pane shows "The shell ended with exit code N" with **Close pane** and **Restart** | The program in the pane stopped | Restart runs the same start line again in that pane. Close pane gives its space to the neighbours |
-| "The program is not installed where Kolux looks for it (it is not on PATH)" | Windows cannot find the program | Install it, or fix your PATH, then open the pane again |
+| A pane shows "This terminal stopped" with **Close pane** and **Restart** | The program in the pane stopped | Restart opens it again in that pane. Close pane gives its space to the others |
+| "Kolux can't find this program" | Windows cannot find the program | Install it, or fix your PATH, then open the pane again |
 | "Windows refused to start the program (access denied)" | An antivirus or policy blocked it | Allow the program, then open the pane again |
 | "Git Bash could not start another process: Windows has run out of process slots for it" | Too many programs running | Close a few terminals or other programs, or restart Kolux, then open the pane again |
 | "The program in this pane has ended, so nothing can be sent to it" | You sent text to a pane whose program had stopped | Restart the pane |
-| "The shell could not find a command it was started with (exit 127)" | The start line names a missing command | Check the agent's Command in Settings, Agents |
-| Exit 126 or 128: "usually a permission or a path problem" | The shell found the program but could not run it | Check the file's permissions and path, then Restart |
-| Exit above 128: "The shell was stopped by a signal" | Something ended the program from outside | Restart |
+| "A program it needed isn't installed (code 127)" | The start line names a missing command | Check the agent's Command in Settings, Agents |
+| Code 126 or 128: "It couldn't run its program" | The shell found the program but could not run it | Check the file's permissions and path, then Restart |
+| Code above 128: "Something outside Kolux stopped it" | Something ended the program from outside | Restart |
 | An unexplained error ends with a "report it" link | Kolux has no plain words for it | Copy diagnostics (below) and report it |
 | A new terminal opens with a dim line "<shell> did not start; opened <shell>" | The default shell you chose in Settings would not start, so Kolux used the next automatic shell | Check that the shell is still installed, or pick another under Settings, Terminal & sessions, Default shell. See [Settings](settings.md#default-shell) |
 | The Skill folders list says "Not scanned: This folder links to another computer, which Kolux never opens" | The workspace is on a network share, or a skills folder is a link to one. Kolux never reads through those | Use a copy on a local drive, or a mapped drive letter for the workspace. See [Safety](safety.md#other-computers-and-network-shares) |
