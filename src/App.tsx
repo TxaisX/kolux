@@ -82,7 +82,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // Cycle 2: everything this render makes, filled at the end; the actions, the key handler and the drawing read it (shell/windowBag.ts).
   const w = {} as WindowBag;
   // The window's state and its first hooks, in their order (shell/windowStore.ts).
-  const store = useWindowStore(initial, layout, late);
+  const store = useWindowStore(initial, layout, late, read);
   const {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, setExplorerFocus, dragLeft,
     panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,

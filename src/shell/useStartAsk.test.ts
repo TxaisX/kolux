@@ -32,12 +32,37 @@ test("F4: a failed first search or a user who moved on counts as answered; the f
   expect(askAtOpen({ ...w, firstRunKnown: false, firstRun: true })).toBe("skip");
 });
 
+test("R1: until last time's layout is in, the form waits, even if panes came meanwhile", () => {
+  expect(askAtOpen({ ...w, layoutIn: false, userActed: true })).toBe("wait");
+  expect(askAtOpen({ ...w, layoutIn: false })).toBe("wait");
+  expect(askAtOpen({ ...w, layoutIn: true })).toBe("ask");
+});
+
+test("R1: a slow start brings 3 saved panes back after the settings read: the form still asks once", () => {
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), settingsRead: true, layoutIn: false, panes: 0 })));
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: true, panes: 3 })));
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: true, panes: 3, agentsDone: true })));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
+test("R1 case (c): a late draw with no saved layout: the form asks over 0 panes", () => {
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: false, panes: 0 })));
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: true, panes: 0, agentsDone: true })));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
 type In = Parameters<typeof useStartAsk>[0];
 function Probe(p: In) {
   useStartAsk(p);
   return null;
 }
-const base = (open: () => void): In => ({ settings: {}, settingsRead: true, agentsDone: false, projectsRead: true, launching: false, sheetOpen: false, firstRun: false, firstRunKnown: true, agentsFailed: false, panes: 2, open });
+const base = (open: () => void): In => ({ settings: {}, settingsRead: true, layoutIn: true, agentsDone: false, projectsRead: true, launching: false, sheetOpen: false, firstRun: false, firstRunKnown: true, agentsFailed: false, panes: 2, open });
 
 test("F4: the first search fails, a later search works: the form does not come up", () => {
   const open = vi.fn();

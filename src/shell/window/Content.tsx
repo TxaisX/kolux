@@ -52,10 +52,10 @@ export default function WindowContent() {
     setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
     screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
     focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, running,
-    standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown,
+    standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
   // Start form D: asked once when Kolux starts, in the main window, in front of what was restored.
-  useStartAsk({ settings, settingsRead, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: panes.length, open: () => openStart({ atOpen: true }) });
+  useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: panes.length, open: () => openStart({ atOpen: true }) });
   return (
     <div className="content">
       {sheet?.seats && (

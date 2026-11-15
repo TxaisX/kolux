@@ -53,7 +53,7 @@ export const LEFT_OPEN_KEY = "leftSidebarOpen";
 /** The left sidebar at start: shown unless it was hidden when the app last closed. */
 export const leftOpenAtStart = (s: Record<string, unknown>): boolean => s[LEFT_OPEN_KEY] !== false;
 
-export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null, late: SavedLayout | null = null) {
+export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null, late: SavedLayout | null = null, read = true) {
   const keymap = useKeymap();
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [screen, setScreen] = useState<Screen>(() => startScreen(initial)); // SET-037
@@ -223,9 +223,14 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // React unmounted the first, killing every terminal it held. The saved tabs now join the window already drawn,
   // once, so a tab opened during the wait keeps its pane and its agent. A choice the user made meanwhile wins.
   const adopted = useRef(false);
+  // Job 29 R1: "last time's layout is in", set in the same update that joins the saved panes, so the Start form never
+  // counts them as panes the user added. A late draw with no saved layout (read, but `late` null) is in as well.
+  const [layoutIn, setLayoutIn] = useState(read);
   useEffect(() => {
+    if (read && !late) setLayoutIn(true);
     if (!late || adopted.current) return;
     adopted.current = true;
+    setLayoutIn(true);
     setPanes((ps) => joinSaved(ps, late));
     setActiveTab((m) => ({ ...late.activeTab, ...m }));
     setStacked((s) => ({ ...late.stacked, ...s }));
@@ -235,7 +240,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     const marks = joinMarks(marksNow.current, late);
     setPinned(marks.pinned);
     setTabColors(marks.colors);
-  }, [late]);
+  }, [late, read]);
   const { setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
@@ -247,7 +252,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
     settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
-    defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, projectsRead, owner, setOwner, names, setNames, refresh, setRefresh,
+    defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, projectsRead, layoutIn, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
     setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,
   };
