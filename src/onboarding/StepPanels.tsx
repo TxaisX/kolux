@@ -21,6 +21,7 @@ import { SkillStop, UsageStop } from "./LiveStopCards";
 import { AWAKE_KEY, HOOKS_OFF_HELP } from "../launch/KeepAwakeCard";
 import { WRITER_INSTRUCTIONS_KEY, WRITER_KEY } from "../scm/generate";
 import { integrationSteps, readSeenCached, restale, taskSummary, UNSEEN, type Seen } from "./integrations";
+import { frontProjectPath } from "../projects/frontRow";
 
 /** The first copy of `sel` that is really on screen. */
 function shown(sel: string): HTMLElement | null {
@@ -59,7 +60,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
     try {
       const projects = await invoke<Proj[]>("project_list");
       const lists = await Promise.all(projects.map((p) => invoke<Place[]>("workspace_list", { projectId: p.id }).catch(() => null)));
-      const active = document.querySelector<HTMLElement>(".sess.sel")?.closest<HTMLElement>("[data-path]")?.dataset.path ?? null;
+      const active = frontProjectPath(); // F24: the project on screen (its header), not a hidden worktree row
       const target = composeTarget(projects, lists, active);
       if (target.kind === "ask") return setAsk(true);
       composer.reset();

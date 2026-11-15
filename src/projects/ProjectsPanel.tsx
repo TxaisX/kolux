@@ -97,6 +97,7 @@ import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { FILE_MANAGER, loadTargets, openIn } from "../editor/openIn";
+import { frontProjectRow } from "./frontRow";
 
 /** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
@@ -248,7 +249,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const revealed = useRef(0);
   useEffect(() => {
     if (!reveal || revealed.current === reveal) return;
-    const row = document.querySelector(".sidebar :is(button.branch, .sess[role=button]).sel");
+    const row = frontProjectRow(); // F23: the visible project header; the old worktree rows are hidden
     if (!row) return;
     revealed.current = reveal;
     row.scrollIntoView({ block: "nearest" });
