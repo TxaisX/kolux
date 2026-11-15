@@ -1,0 +1,126 @@
+// The Start form (Txais 2026-11-15): one question, asked once, for every pane. Which folders, how many in each,
+// and which AI, model and effort; that one answer is applied to every seat. The per-seat rows of SESS-007 sit
+// behind "Make each one different". These are the form's pure rules; ChooserPane draws them, SeatChooser and
+// the window wire them (startSeats runs once per ticked folder).
+import type { Pane } from "../App";
+import { MAX_PANES } from "../terminal/grid";
+import { sameDir } from "../workspaces";
+import { seatStart, type SeatDefault } from "./defaultSeat";
+import { applyLineup, emptySeat, MAX_SESSIONS, resizeLineup, TERMINAL, type Lineup, type Seat, type Shape } from "./seats";
+
+/** Settings switch "Ask what to open when Kolux starts"; anything but an explicit false is on. */
+export const START_ASK_KEY = "askWhatToOpen";
+/** The folders (project ids) and the per-folder count of the last Start, so the form opens on them again. */
+export const LAST_START_KEY = "lastStart";
+
+/** The New session sheet's state: a chooser pane plus the ticked folders, and whether it is the at-open ask. */
+export type StartSheet = Pane & { folders?: string[]; atOpen?: boolean };
+
+export const asksAtStart = (settings: Record<string, unknown>): boolean => settings[START_ASK_KEY] !== false;
+
+export type LastStart = { folders: string[]; count: number };
+export function lastStart(settings: Record<string, unknown>): LastStart | null {
+  const v = settings[LAST_START_KEY] as Partial<LastStart> | undefined;
+  if (!v || !Array.isArray(v.folders) || typeof v.count !== "number" || !Number.isFinite(v.count)) return null;
+  return { folders: v.folders.filter((f): f is string => typeof f === "string"), count: Math.min(MAX_SESSIONS, Math.max(1, Math.round(v.count))) };
+}
+
+/** What the one "Which AI / Model / Effort" row shows. */
+export type OnePick = Pick<Seat, "agent" | "model" | "effort" | "fast">;
+const pickOf = (s: Seat): OnePick => ({ agent: s.agent, model: s.model, effort: s.effort, fast: s.fast });
+const samePick = (a: OnePick, b: OnePick) => a.agent === b.agent && a.model === b.model && (a.effort ?? "") === (b.effort ?? "") && !!a.fast === !!b.fast;
+
+/** The single row's value: the seats' shared pick, or "mixed" when they differ. */
+export function oneForAll(seats: Seat[]): OnePick | "mixed" {
+  if (seats.length === 0) return { agent: null, model: null };
+  const first = pickOf(seats[0]);
+  return seats.every((s) => samePick(pickOf(s), first)) ? first : "mixed";
+}
+
+/** The single row sets every seat at once; roles, job titles and prompts stay per seat. */
+export const setAll = (seats: Seat[], pick: OnePick): Seat[] => seats.map((s) => ({ ...s, agent: pick.agent, model: pick.model, effort: pick.effort, fast: pick.fast }));
+
+/** Picking an AI in the single row: every seat starts on it with the default model and effort (T-571). */
+export const pickForAll = (seats: Seat[], agent: string, d: SeatDefault, saved?: Parameters<typeof seatStart>[2]): Seat[] => setAll(seats, seatStart(agent, d, saved));
+
+/** T-809 for the Start form: blank seats all start on the default agent once detection answers, or null for no change. */
+export function everySeatStart(seats: Seat[], defaultId: string, agents: { id: string; installed: boolean }[], d: SeatDefault, saved?: Parameters<typeof seatStart>[2]): Seat[] | null {
+  if (defaultId === "" || !agents.some((a) => a.id === defaultId && a.installed)) return null;
+  if (seats.length === 0 || seats.some((s) => s.agent !== null)) return null;
+  return pickForAll(seats, defaultId, d, saved);
+}
+
+export type FolderRow = { id: string; name: string; path: string };
+
+/** The known projects, the ones shown most recently first (the sidebar's PROJ-070 order), the rest as listed. */
+export function recentFirst<P extends { path: string }>(projects: P[], recent: string[]): P[] {
+  const rank = (p: P) => {
+    const i = recent.findIndex((d) => sameDir(d, p.path) || d.toLowerCase().startsWith(p.path.toLowerCase().replace(/[\\/]+$/, "") + "\\") || d.toLowerCase().startsWith(p.path.toLowerCase().replace(/[\\/]+$/, "") + "/"));
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return projects.map((p, i) => ({ p, i, r: rank(p) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.p);
+}
+
+/** The whole launch across the ticked folders: its total, and why Start is off when it is. `used` is how many
+ * cells each folder's grid already holds (SESS-008: a grid holds up to MAX_PANES). */
+export function folderPlan(perFolder: number, folders: { name: string; used: number }[]): { total: number; problem: string | null } {
+  const total = perFolder * folders.length;
+  if (folders.length === 0) return { total, problem: "Tick at least one folder." };
+  if (total > MAX_SESSIONS) return { total, problem: `${total} sessions is more than ${MAX_SESSIONS}, the most Kolux starts at once. Pick fewer, or untick a folder.` };
+  const full = folders.find((f) => f.used + perFolder > MAX_PANES);
+  if (full) return { total, problem: `${full.name} has room for ${Math.max(0, MAX_PANES - full.used)} more. A grid holds up to ${MAX_PANES}.` };
+  return { total, problem: null };
+}
+
+/** The footer line in plain words: "6 sessions: Claude Code, Opus, High, in kolux". */
+export function startSummary(perFolder: number, folderNames: string[], what: string[]): string {
+  const total = perFolder * folderNames.length;
+  const count = `${total} ${total === 1 ? "session" : "sessions"}`;
+  const where =
+    folderNames.length === 0 ? "" : folderNames.length === 1 ? `in ${folderNames[0]}` : `${perFolder} in each of ${folderNames.slice(0, -1).join(", ")} and ${folderNames[folderNames.length - 1]}`;
+  return [`${count}${what.length || where ? ":" : ""}`, [...what, where].filter(Boolean).join(", ")].filter(Boolean).join(" ");
+}
+
+/** Rule D: the Start form opens by itself once per app start, in the first window, after the settings and the
+ * first agent search have answered, unless switched off, already shown, a launch is under way or a sheet is open. */
+export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; agentsDone: boolean; launching: boolean; sheetOpen: boolean }): "ask" | "wait" | "skip" {
+  if (w.asked || !w.firstWindow) return "skip";
+  if (!w.settingsRead || !w.agentsDone) return "wait";
+  if (!w.on || w.launching || w.sheetOpen) return "skip";
+  return "ask";
+}
+
+/** Rule F: what the form opens on. Folders: the ones given (the project in front), else the last Start's that
+ * still exist, else the first project. Count: the one given, else the last Start's, else the folder's last lineup,
+ * else 1. Seats: the folder's last lineup (AI, model, effort) resized to the count, else blank (the default agent
+ * fills them once detection answers, everySeatStart). */
+export function prefill(o: { projects: { id: string }[]; folders?: string[] | null; count?: number | null; last: LastStart | null; lineup: Lineup | null; installed: string[] }): { folders: string[]; shape: Shape; seats: Seat[] } {
+  const known = (ids: string[]) => ids.filter((id) => o.projects.some((p) => p.id === id));
+  const given = known(o.folders ?? []);
+  const kept = known(o.last?.folders ?? []);
+  const folders = given.length ? given : kept.length ? kept : o.projects.length ? [o.projects[0].id] : [];
+  const count = Math.min(MAX_SESSIONS, Math.max(1, o.count ?? o.last?.count ?? o.lineup?.seats.length ?? 1));
+  if (o.lineup) {
+    const back = applyLineup(o.lineup, o.installed);
+    // One pick for all: the lineup's first seat with an AI is the pick every seat gets when the count changes it.
+    const shared = oneForAll(back.seats);
+    const seats = back.seats.length === count || shared === "mixed" ? resizeLineup(back.shape, back.seats, count) : resizeLineup(back.shape, setAll(Array.from({ length: count }, emptySeat), shared), count);
+    if (seats.seats.some((s) => s.agent !== null)) return { folders, ...seats };
+  }
+  return { folders, shape: "custom", seats: Array.from({ length: count }, emptySeat) };
+}
+
+/** Rule E: the layout strip's count asks for the cells it adds, once, on the Start form (0 = nothing to ask). */
+export const stripAsk = (add: number): number => Math.min(MAX_PANES, Math.max(0, add));
+
+/** The plain words for the single row's pick, for the footer line. */
+export function pickWords(pick: OnePick | "mixed", nameOf: (id: string) => string, modelLabel: (agent: string, model: string) => string): string[] {
+  if (pick === "mixed") return ["each one different"];
+  if (pick.agent === null) return [];
+  if (pick.agent === TERMINAL) return ["plain terminal"];
+  const words = [nameOf(pick.agent)];
+  if (pick.model) words.push(modelLabel(pick.agent, pick.model));
+  if (pick.effort) words.push(pick.effort[0].toUpperCase() + pick.effort.slice(1));
+  if (pick.fast) words.push("fast");
+  return words;
+}

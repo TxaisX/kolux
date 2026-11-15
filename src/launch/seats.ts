@@ -205,11 +205,12 @@ export function seatArgs(s: Seat): string[] {
 
 /** SESS-021: what "Use last lineup" brings back for a project: the shape, the files choice and
  * each seat's agent and model; never the options, titles or prompts. */
-export type Lineup = { shape: Shape; copies: Copies; seats: { agent: string | null; model: string | null }[] };
+export type Lineup = { shape: Shape; copies: Copies; seats: { agent: string | null; model: string | null; effort?: string; fast?: boolean }[] };
 
 export const LAST_LINEUP_KEY = "lastLineups";
 
-export const lineupOf = (shape: Shape, copies: Copies, seats: Seat[]): Lineup => ({ shape, copies, seats: seats.map((s) => ({ agent: s.agent, model: s.model })) });
+// Start form (2026-11-15): the effort and fast mode are kept too, so the form opens on the whole last pick.
+export const lineupOf = (shape: Shape, copies: Copies, seats: Seat[]): Lineup => ({ shape, copies, seats: seats.map((s) => ({ agent: s.agent, model: s.model, ...(s.effort ? { effort: s.effort } : {}), ...(s.fast ? { fast: true } : {}) })) });
 
 /** The agents a lineup remembers, each once, in seat order; terminals left out. */
 export const lineupAgents = (l: Lineup): string[] => [...new Set(l.seats.flatMap((s) => (s.agent && s.agent !== TERMINAL ? [s.agent] : [])))];
@@ -224,7 +225,7 @@ export function offeredLineup(saved: unknown, installedIds: string[]): Lineup | 
 /** Puts a lineup back: its shape with its roles, and each seat's agent and model; a seat whose
  * agent is gone is left blank. */
 export function applyLineup(l: Lineup, installedIds: string[]): { shape: Shape; seats: Seat[] } {
-  const seats = clearMissing(l.seats.map((s) => ({ agent: s.agent, model: s.model })), installedIds);
+  const seats = clearMissing(l.seats.map((s) => ({ agent: s.agent, model: s.model, ...(typeof s.effort === "string" ? { effort: s.effort } : {}), ...(s.fast === true ? { fast: true } : {}) })), installedIds);
   return resizeLineup(l.shape, seats, seats.length);
 }
 

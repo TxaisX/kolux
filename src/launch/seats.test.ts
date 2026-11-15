@@ -179,10 +179,10 @@ test("SESS-016: a seat's effort and fast mode reach its start line only when its
   expect(seatArgs({ agent: "claude", model: "default", effort: "high" })).toEqual([]);
 });
 
-test("SESS-021: a lineup keeps shape, folders and each seat's agent and model, never options or prompts", () => {
+test("SESS-021: a lineup keeps shape, folders and each seat's agent, model and effort (Start form), never titles or prompts", () => {
   const seats: Seat[] = [{ agent: "codex", model: "gpt-5", prompt: "x", role: "builder" }, { agent: "claude", model: "opus", effort: "max", title: "T", role: "reviewer" }];
   const l = lineupOf("pair", "separate", seats);
-  expect(l).toEqual({ shape: "pair", copies: "separate", seats: [{ agent: "codex", model: "gpt-5" }, { agent: "claude", model: "opus" }] });
+  expect(l).toEqual({ shape: "pair", copies: "separate", seats: [{ agent: "codex", model: "gpt-5" }, { agent: "claude", model: "opus", effort: "max" }] });
   expect(lineupAgents(l)).toEqual(["codex", "claude"]);
   expect(offeredLineup(l, ["claude"])).toBe(l);
   expect(offeredLineup(l, ["gemini"])).toBeNull();
@@ -190,7 +190,7 @@ test("SESS-021: a lineup keeps shape, folders and each seat's agent and model, n
   expect(offeredLineup({ shape: "odd", seats: [] }, ["claude"])).toBeNull();
   const back = applyLineup(l, ["claude"]);
   expect(back.shape).toBe("pair");
-  expect(back.seats).toEqual([{ agent: null, model: null, role: "builder" }, { agent: "claude", model: "opus", role: "reviewer" }]);
+  expect(back.seats).toEqual([{ agent: null, model: null, role: "builder" }, { agent: "claude", model: "opus", effort: "max", role: "reviewer" }]);
 });
 
 test("SESS-029: Grok's discovered list replaces the built-in one and offers efforts up to extra-high, flag after the model", () => {
