@@ -60,12 +60,12 @@ try {
   await sleep(800);
   const onSession = await heading();
   log(`after Continue on Your work: ${onSession}`);
-  await clickWhere(`${wizard} button.onb-main`, "/^\\s*Open a session/");
+  await clickWhere(`${wizard} button.onb-main`, "/^\\s*Choose folders and agents/");
   await sleep(1500);
   const wizardGone = !(await exists(wizard));
-  const addOpen = await exists('[role="dialog"][aria-label="Add project"]');
-  check("T-612 wizard reaches Open a session after Continue on Your work", onWork === "Your work" && onSession === "Open a session", { onWork, onSession });
-  check("T-612 Open a session with no project closes the wizard and opens Add Project", wizardGone && addOpen, { wizardGone, addOpen });
+  const startOpen = await exists('[data-testid="chooser-pane"][aria-label="Start"]');
+  check("T-612 wizard reaches Start your agents after Continue on Your work", onWork === "Your work" && onSession === "Start your agents", { onWork, onSession });
+  check("T-612 Choose folders and agents closes the wizard and opens the Start form", wizardGone && startOpen, { wizardGone, startOpen });
   await ctx.shot("audit-1-add-project");
   await cdp("key", "Escape");
   await sleep(800);

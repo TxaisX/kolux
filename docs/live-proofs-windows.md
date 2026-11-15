@@ -78,10 +78,10 @@ box empty until the integrator says the fix is in and a re-run passes.
 ### A-3 · T-612 · The first-run wizard always finishes
 - [ ] Run
 - Set up: still on the first-run screens (or a fresh profile).
-- Press: Continue on the "Your work" screen, then "Open a session".
-- Should happen: with no project yet, "Add Project" opens and asks for a folder. Pick your test project. Claude
-  starts in that folder.
-- Fail if: the wizard gets stuck; "Open a session" does nothing; Claude starts somewhere else.
+- Press: Continue on the "Your work" screen. The last screen reads "Start your agents". Press "Choose folders and
+  agents".
+- Should happen: setup closes and the Start form opens. It asks which folders, how many agents, and which AI.
+- Fail if: the wizard gets stuck; "Choose folders and agents" does nothing; setup closes but no Start form opens.
 - Result: ______________________________________________
 
 ### A-4 · STAT-008 box 1 · Codex never asks you to trust Kolux's hooks
