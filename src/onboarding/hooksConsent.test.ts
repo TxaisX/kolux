@@ -20,7 +20,7 @@ vi.mock("react", async (orig) => {
     return h.slots[k] as { current: T };
   }
   // Effects never run here: the window listeners and the settings read are not what these tests look at.
-  const hooks = { useState, useRef, useEffect: () => {}, useLayoutEffect: () => {} };
+  const hooks = { useState, useRef, useEffect: () => {}, useLayoutEffect: () => {}, useContext: () => null }; // no window store: R27-03 falls back to the sidebar row
   return { ...real, ...hooks, default: { ...real, ...hooks } };
 });
 
