@@ -28,9 +28,17 @@ function CellBox({ text, kind, readOnly, onEdit }: { text: string; kind: CellKin
       setDraft(text);
     }
   }, [text]);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const pending = useRef<string | null>(null); // audit F3: text typed but not yet sent, flushed when the cell goes away
+  useEffect(
+    () => () => {
+      window.clearTimeout(timer.current);
+      if (pending.current !== null) send(pending.current);
+    },
+    [],
+  );
   const send = (t: string) => {
     window.clearTimeout(timer.current);
+    pending.current = null;
     if (t !== sent.current) {
       sent.current = t;
       edit.current(t);
@@ -58,6 +66,7 @@ function CellBox({ text, kind, readOnly, onEdit }: { text: string; kind: CellKin
         setDraft(e.target.value);
         window.clearTimeout(timer.current);
         const t = e.target.value;
+        pending.current = t;
         timer.current = window.setTimeout(() => send(t), 300);
       }}
       onBlur={(e) => send(e.target.value)}
