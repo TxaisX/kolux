@@ -782,3 +782,6 @@ The direction in seven parts:
 
 ### follow-ups for c1-coord after T-821 and T-819 merge
 - [ ] T-823 · Docs and checks stop naming the web pane: README, CHANGELOG line, `docs/guide`, the glossary check and privacy audit paths · docs · open · gate: `pnpm check` green; grep for the embedded browser in user docs finds only the retirement note
+
+### design-fixes (wave 2026-11-15)
+- [x] T-850 · Design review follow-ups on the narrow pane header and words (job 28 review): in a narrow header the split, expand and + buttons sit left of the menu so nothing shown at rest moves when they appear, Board cards keep Expand, and the three stay while a header menu is open; Settings search names "Default terminal"; the Restart terminals hover text and the "Clear title" command use plain words; the red-error test checks only the error lines · design · done · gate: `npx vitest run src/terminal src/settings src/status src/keys` green and `pnpm check` green
