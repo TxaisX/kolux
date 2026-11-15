@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import dialogsSrc from "./Dialogs.tsx?raw";
 import { describe, expect, it } from "vitest";
 import { paletteAt } from "./paletteAt";
 import { setGridRoots } from "../../workspaces";
@@ -50,7 +50,7 @@ describe("paletteAt (F27)", () => {
   });
 
   it("the palette in Dialogs uses it", () => {
-    const src = readFileSync("src/shell/window/Dialogs.tsx", "utf8");
+    const src = dialogsSrc;
     expect(src).toContain("atOf={(d) => paletteAt(");
     expect(src).not.toMatch(/sameDir\(viewOf\(p\), d\)/);
   });
