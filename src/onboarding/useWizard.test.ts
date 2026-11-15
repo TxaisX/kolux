@@ -187,10 +187,32 @@ test("a plain terminal as the saved default starts nothing in the first folder (
   expect(started).toEqual([]);
 });
 
+// Job 29 R7: Pick a folder reaches Add Project the way the Start form's Add folder does (addFolderVia, the
+// addFolder.test.ts "hands"): with the sidebar's panel drawn it fires at once; hidden, it shows the panel first.
+const drawn = { panelShown: () => true, showPanel: () => {}, wait: async () => {} };
+const hidden = (shownAfter: number) => {
+  const log: string[] = [];
+  let calls = 0;
+  let shownAt: number | null = null;
+  const h = { panelShown: () => shownAt !== null && calls >= shownAt, showPanel: () => void (log.push("show"), (shownAt = calls + shownAfter)), wait: async () => void calls++ };
+  return { log, h };
+};
+
+test("job 29 R7: with the sidebar hidden, Pick a folder shows the panel first, then opens Add Project", async () => {
+  const { ADD_PROJECT } = await import("./firstRun");
+  const t = hidden(2);
+  win.addEventListener(ADD_PROJECT, () => t.log.push("add-project"));
+  const app = await mountWizard({ defaultAgent: "claude" });
+  app.now().pickFolder(true, t.h);
+  await app.settle();
+  expect(t.log).toEqual(["show", "add-project"]);
+  expect(app.now().wizard).toBeNull();
+});
+
 test("49-ux2: Pick a folder cancelled, then Help > Onboarding: the wizard is back and a project added later does not complete setup", async () => {
   const { REOPEN_WIZARD } = await import("./firstRun");
   const app = await mountWizard();
-  app.now().pickFolder();
+  app.now().pickFolder(false, drawn);
   await app.settle();
   expect(app.now().wizard).toBeNull();
   expect(closes).toEqual([]);
@@ -213,7 +235,7 @@ test("T-796: Pick a folder from the Your work screen returns to the last screen 
   const { ADD_PROJECT } = await import("./firstRun");
   win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
   const app = await mountWizard({ defaultAgent: "claude" });
-  app.now().pickFolder(null, true);
+  app.now().pickFolder(true, drawn);
   await app.settle();
   expect(app.now().wizard).toBeNull();
   expect(heard).toContain("add-project");

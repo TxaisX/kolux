@@ -14,6 +14,8 @@ import { toggleSkills } from "../../skills/nav";
 import { windowLoaded } from "../../status/manage";
 import { tabName } from "../../terminal/tabName";
 import { useWindow } from "./store";
+import { ADD_PROJECT as ADD_PROJECT_BUTTON } from "../../onboarding/actions";
+import { showsProjects } from "./sidebarScreens";
 import { SkillUpdateNotice } from "../../lazy/pages";
 import { Guides } from "../../lazy/pages";
 import { Wizard } from "../../lazy/pages";
@@ -26,7 +28,7 @@ export default function WindowHosts() {
     wizard, settings, saveSetting, wizardSession, wizardClose, pickFolder, projects, endWizard, firstFolder,
     screen, setScreen, settingsRead, picked, notes, repoless, activeDir, putNote, setNotes, setPicked,
     reviewTargets, sendMenu, setSendMenu, sendReview, startReview, agents, defaultId, live, panes, ptys, titles,
-    owner, restoredKeys, setToast, openStart,
+    owner, restoredKeys, setToast, openStart, setSidebarOpen,
   } = useWindow();
   return (
     <>
@@ -40,7 +42,15 @@ export default function WindowHosts() {
           hasFolder={projects.length > 0}
           onPickFolder={() => {
             if (wizardClose.retry()) return;
-            pickFolder(null, true); // ONB-004: Add Project, then back to the last screen (T-796)
+            // ONB-004: Add Project, then back to the last screen (T-796); with the sidebar hidden, its panel is shown first (job 29 R7)
+            pickFolder(true, {
+              panelShown: () => document.querySelector(ADD_PROJECT_BUTTON) !== null,
+              showPanel: () => {
+                setSidebarOpen(true);
+                if (!showsProjects(screen)) setScreen("terminals");
+              },
+              wait: (ms) => new Promise((r) => setTimeout(r, ms)),
+            });
           }}
           onClose={() => {
             if (wizardClose.retry()) return;

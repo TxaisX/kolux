@@ -7,6 +7,7 @@ import { projectAddedNote } from "./sidebar";
 import { starAfterClose } from "./star";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { defaultAgentId, offeredAgents } from "../launch/agents";
+import { addFolderVia } from "../launch/startForm";
 
 type WizardDeps = {
   setToast: (text: string) => void;
@@ -96,16 +97,17 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
   // ONB-004: Pick a folder hands over to Add Project and starts `agent` in the folder added next. 49-ux2: setup is
   // marked completed only once a folder was added (projectAdded), so cancelling the dialog does not finish it;
   // the wizard stays out of the dialog's way and Help > Onboarding brings it back.
-  const pickFolder = (agent: AgentInfo | null = null, backToLast = false, plain = false) => {
+  // Job 29 R7: Add Project lives in the sidebar's panel; `reach` shows that panel first when it is hidden (addFolderVia).
+  const pickFolder = (backToLast: boolean, reach: Omit<Parameters<typeof addFolderVia>[0], "fire">) => {
     if (wizardClose.retry()) return;
     firstFolder.current = true;
-    firstPlain.current = plain;
+    firstPlain.current = false;
     finishOnAdd.current = true;
     backToSession.current = backToLast;
-    firstAgent.current = agent;
+    firstAgent.current = null;
     setWizard(null);
     setToast(PICK_FOLDER_NOTE);
-    window.dispatchEvent(new CustomEvent(ADD_PROJECT));
+    void addFolderVia({ ...reach, fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)) });
   };
   // Job 22 (FROZEN decision 8, one Start question): the last screen hands over to the Start form. Setup is stored as
   // completed as before, the screens close, and then `open` brings up the form once. A failed save keeps the screens up
