@@ -2749,11 +2749,17 @@ fn b09_discard_without_a_section_leaves_a_nested_repo_and_ignored_files_alone() 
     let st = status(&dir).unwrap();
     let rows: Vec<String> = st.untracked.iter().map(|c| c.path.clone()).collect();
     assert_eq!(rows, ["box/inner/", "box/plain.txt"], "the nested repo is one row; the ignored file is not listed");
-    discard_paths(&dir, &rows).unwrap();
+    let said = discard_paths(&dir, &rows).expect_err("R-06: the kept repository is named");
+    assert_eq!(said, "box/inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
     assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
     assert_eq!(fs::read_to_string(inner.join("work.txt")).unwrap(), "unpushed\n");
     assert_eq!(fs::read_to_string(dir.join("box").join("secret.env")).unwrap(), "KEY=1\n", "an ignored file is never touched");
     assert!(!dir.join("box").join("plain.txt").exists(), "a plain untracked file is removed");
+    // R-06: the live route (the untracked section) says the same and still cleans the other rows.
+    fs::write(dir.join("box").join("again.txt"), "a").unwrap();
+    let said = discard(&dir, "untracked", &["box/inner/".to_string(), "box/again.txt".to_string()]).expect_err("named");
+    assert!(said.starts_with("box/inner is its own Git repository"), "{said}");
+    assert!(inner.join(".git").is_dir() && !dir.join("box").join("again.txt").exists());
     let _ = fs::remove_dir_all(&dir);
 }
 

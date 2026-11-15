@@ -2758,14 +2758,19 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
         "staged" => piped(worktree, &["--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
         "changed" => piped(worktree, &["--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
         "untracked" => {
+            // R-06: git clean -f leaves a nested repository without a word; say so, and clean the rest.
+            let (nested, rest): (Vec<&String>, Vec<&String>) = paths.iter().partition(|p| fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/'))).join(".git")).is_ok());
             // ponytail: git clean reads no list from its input, so the names go on the command line
             // in chunks that stay well under the Windows command-line limit.
-            for chunk in paths.chunks(100) {
+            for chunk in rest.chunks(100) {
                 let mut args = vec!["--literal-pathspecs", "clean", "-f", "-d", "-q", "--"];
-                args.extend(chunk.iter().map(String::as_str));
+                args.extend(chunk.iter().map(|p| p.as_str()));
                 run(&args, Some(worktree))?;
             }
-            Ok(())
+            if nested.is_empty() {
+                return Ok(());
+            }
+            Err(nested.iter().map(|p| format!("{} is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.", p.trim_end_matches('/'))).collect::<Vec<_>>().join("\n"))
         }
         _ => Err(format!("the {section} section cannot be discarded")),
     }
