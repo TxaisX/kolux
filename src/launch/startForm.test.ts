@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { MAX_PANES } from "../terminal/grid";
 import { emptySeat, lineupOf, MAX_SESSIONS, TERMINAL, type Seat } from "./seats";
-import { acrossNote, startEach, askAtOpen, asksAtStart, everySeatStart, folderPlan, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY } from "./startForm";
+import { acrossNote, startEach, askAtOpen, asksAtStart, everySeatStart, folderPlan, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, recountAll, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY } from "./startForm";
 
 const D = { model: "opus", effort: "high" };
 const none = { model: null };
@@ -120,4 +120,30 @@ test("wave 2 item 2: a refused folder between two good ones does not stop the th
   expect(acrossNote(thrown)).toBe("1 of 2 started. 1 needs you. a did not start: a is gone");
   expect(acrossNote([{ name: "a", count: 3, error: null }])).toBeNull();
   expect(acrossNote([{ name: "a", count: 3, error: "A workspace holds up to 6 panes." }])).toBe("A workspace holds up to 6 panes.");
+});
+
+test("job 13 F2: a new How many keeps the one answer, up and back down; mixed seats are left as they were", async () => {
+  const up = recountAll("custom", [opus], 4);
+  expect(up.seats).toHaveLength(4);
+  expect(up.seats.every((s) => s.agent === "claude" && s.model === "opus" && s.effort === "high")).toBe(true);
+  expect(oneForAll(up.seats)).not.toBe("mixed");
+  const { allReady } = await import("./seats");
+  expect(allReady(up.seats)).toBe(true);
+  const down = recountAll(up.shape, up.seats, 2);
+  expect(down.seats).toHaveLength(2);
+  expect(oneForAll(down.seats)).toEqual(oneForAll([opus]));
+  // Seats that differ: the new seats stay blank, as before.
+  const mixed = recountAll("custom", [opus, { ...opus, effort: "low" }], 3);
+  expect(mixed.seats[2]).toEqual(emptySeat());
+  // Nothing picked yet: blank seats stay blank.
+  expect(recountAll("custom", [emptySeat()], 2).seats).toEqual([emptySeat(), emptySeat()]);
+});
+
+test("job 13 F2: the quick counts, the big-count button and the typed field all go through recountAll", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./ChooserPane.tsx", import.meta.url), "utf8");
+  expect(src).toMatch(/const recount = \(n: number\) => \{[^}]*recountAll\(shape, seats, n\)/);
+  expect(src).toContain("onClick={() => recount(n)}");
+  expect(src).toContain("onClick={() => recount(bigCount)}");
+  expect(src).toContain("else recount(plan.n);");
 });

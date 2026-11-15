@@ -40,6 +40,14 @@ export function oneForAll(seats: Seat[]): OnePick | "mixed" {
 /** The single row sets every seat at once; roles, job titles and prompts stay per seat. */
 export const setAll = (seats: Seat[], pick: OnePick): Seat[] => seats.map((s) => ({ ...s, agent: pick.agent, model: pick.model, effort: pick.effort, fast: pick.fast }));
 
+/** A new "How many" keeps the one answer: when every seat holds the same pick, the added seats get it too.
+ * Seats that differ are resized as before (job 13 F2). */
+export function recountAll(shape: Shape, seats: Seat[], n: number): { shape: Shape; seats: Seat[] } {
+  const one = oneForAll(seats);
+  const next = resizeLineup(shape, seats, n);
+  return one === "mixed" || one.agent === null ? next : { shape: next.shape, seats: setAll(next.seats, one) };
+}
+
 /** Picking an AI in the single row: every seat starts on it with the default model and effort (T-571). */
 export const pickForAll = (seats: Seat[], agent: string, d: SeatDefault, saved?: Parameters<typeof seatStart>[2]): Seat[] => setAll(seats, seatStart(agent, d, saved));
 

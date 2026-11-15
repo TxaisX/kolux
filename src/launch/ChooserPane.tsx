@@ -20,13 +20,13 @@ import AgentMark from "../marks/AgentMark";
 import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
 import { seatStart, type SeatDefault } from "./defaultSeat";
-import { everySeatStart, folderPlan, oneForAll, pickForAll, pickWords, setAll, startSummary, type FolderRow } from "./startForm";
+import { everySeatStart, folderPlan, oneForAll, pickForAll, pickWords, recountAll, setAll, startSummary, type FolderRow } from "./startForm";
 import { canInstall, FEATURED, featuredRows, installNoteOf, installTip, otherRows, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
 import { useDialogFocus } from "../chrome/dialogFocus";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
-import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
+import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
@@ -295,7 +295,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   // through a one-seat moment that drops the picks of seats 2 and up.
   const recount = (n: number) => {
     setBigCount(null);
-    const next = resizeLineup(shape, seats, n);
+    const next = recountAll(shape, seats, n);
     onLineup(next.shape, next.seats);
   };
   const applyCount = (e: { currentTarget: HTMLInputElement }) => {
