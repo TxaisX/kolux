@@ -483,7 +483,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
             </button>
             {status && status.staged.length === 0 && message.trim() !== "" && !outcome && <span className="note">Nothing is staged yet: use Stage all, or Stage on a file in the Working tree view.</span>}
             {outcome && (
-              <span className={`note${outcome.bad ? " warn" : ""}`} role={outcome.bad ? "alert" : "status"}>
+              <span className={`note${outcome.bad ? " warn" : ""}`} role={outcome.bad ? "alert" : "status"} style={{ whiteSpace: "pre-line" }}>
                 {outcome.text}
               </span>
             )}

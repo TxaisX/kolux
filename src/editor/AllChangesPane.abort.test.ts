@@ -117,3 +117,15 @@ test("a failed abort says so in the warning colour and leaves the notice up", as
   expect(aborts()).toHaveLength(1);
   expect(find(c, (n) => n.attrs["data-abort"] === "merge")).toHaveLength(1);
 });
+
+// A Discard (or any) failure of several lines (one per folder the engine left) shows one line each, not run together.
+test("the outcome note keeps the line breaks of a message of several lines", async () => {
+  h.fail = true;
+  const c = await pane({ ...emptyStatus, branch: "main", operation: "merge", conflicts: [conflict] });
+  await click(c, byText(c, "button", "Abort merge")[0]);
+  await settle();
+  await click(c, byText(dialog(c)[0], "button", "Abort merge")[0]);
+  await until(() => c.textContent.includes("Abort merge failed"));
+  const note = find(c, (n) => n.attrs.role === "alert" && n.attrs.class === "note warn")[0];
+  expect((note.style as Record<string, unknown>).whiteSpace).toBe("pre-line");
+});
