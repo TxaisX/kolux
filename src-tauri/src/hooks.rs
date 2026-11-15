@@ -1527,7 +1527,8 @@ pub(crate) fn install_codex_mirroring(home: &Path, command: &str, user: Option<&
     // event that is not a list is refused, as for every other agent, so `install_groups` never
     // swaps the user's broken entries for empty ones.
     agent_hooks::vendors::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
-    let mut doc: toml_edit::DocumentMut = read(&config)?.unwrap_or_default().parse().map_err(|e| format!("{} is not valid TOML ({e}); left alone", config.display()))?;
+    let config_text = read(&config)?.unwrap_or_default();
+    let mut doc: toml_edit::DocumentMut = config_text.parse().map_err(|e| format!("{} is not valid TOML ({}); left alone", config.display(), crate::trust::toml_fault(&e, &config_text)))?;
     let config_before = doc.to_string();
     let hooks_before = hooks.clone();
     let mut changed = false;
@@ -2725,5 +2726,20 @@ Content-Length: {}
         let _ = release.send(());
         holder.join().unwrap();
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn b20_a_broken_codex_config_line_is_named_by_number_never_quoted() {
+        let home = std::env::temp_dir().join(format!("kolux-hooks-b20-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&home);
+        std::fs::create_dir_all(&home).unwrap();
+        // A made-up value, unquoted so the file does not parse.
+        std::fs::write(home.join("config.toml"), "token = abc123SECRET\n").unwrap();
+        let err = install_codex_with(&home, "kolux-hook", |_| None).unwrap_err();
+        assert!(err.contains("not valid TOML"), "{err}");
+        assert!(err.contains("line 1"), "{err}");
+        assert!(!err.contains("abc123SECRET"), "{err}");
+        assert_eq!(std::fs::read_to_string(home.join("config.toml")).unwrap(), "token = abc123SECRET\n", "left alone");
+        let _ = std::fs::remove_dir_all(&home);
     }
 }
