@@ -10,12 +10,19 @@ const THREE = ['.pane-expand', '[data-testid="pane-new-session"]', '[data-testid
 const hide = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(([^)]*)\) \.pane-head[^{]*\{ display: none; \} \}/);
 
 test("a narrow header hides split, expand and + until hover or focus, except in the focused pane; menu and close are not named", () => {
-  const rule = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(\.focused\) \.pane-head:not\(:hover, :focus-within\) \.right :is\(([^)]*)\) \{ display: none; \} \}/);
+  const rule = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(\.focused, \.card\) \.pane-head:not\(:hover, :focus-within\) \.right :is\(([^)]*)\) \{ display: none; \} \}/);
   expect(rule).not.toBeNull();
   expect(rule![1].split(", ").sort()).toEqual(THREE);
   expect(pane).toContain('className="ib pane-expand"');
   expect(pane).toContain('data-testid="pane-split-right"');
   expect(pane).toContain('data-testid="pane-new-session"');
+});
+
+// F2: a Board card is narrow and never focused, and its Expand button is how the card opens its terminal.
+test("Board cards are left out of the narrow hide rule, so a card keeps its Expand button", () => {
+  expect(hide).not.toBeNull();
+  expect(hide![1].split(", ")).toEqual(expect.arrayContaining([".focused", ".card"]));
+  expect(pane).toContain("const onExpand = card ? card.onToggle : expand?.toggle;");
 });
 
 // F1: the three sit at the left end of the right-hand group, which is packed to its right end, so when they
