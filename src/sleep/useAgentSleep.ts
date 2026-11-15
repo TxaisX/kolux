@@ -96,7 +96,7 @@ export async function wakeOnce(d: SleepDeps, key: number, invoke: Invoke = tauri
   try {
     line = await invoke<StartLine>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.asleep.session });
   } catch (e) {
-    d.setToast(`This agent didn't wake up. Click Restart to try again. Details: ${String(e)}`);
+    d.setToast(`This agent didn't wake up. Click Wake to try again. Details: ${String(e)}`);
     return false;
   }
   d.restoredKeys.current.add(key);

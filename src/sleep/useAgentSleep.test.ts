@@ -181,7 +181,7 @@ test("T-817 TERM-123 (review F2): a refused Wake keeps the pane asleep, spawns n
   await expect(wakeOnce(w.deps, 1, r.invoke, clock)).resolves.toBe(false);
   expect(w.s.panes[0]).toEqual(before); // still asleep: the launch args (with the task) never run again
   expect(w.restoredKeys.current.has(1)).toBe(false);
-  expect(w.s.toasts).toEqual(["This agent didn't wake up. Click Restart to try again. Details: that agent is gone"]);
+  expect(w.s.toasts).toEqual(["This agent didn't wake up. Click Wake to try again. Details: that agent is gone"]);
   // A pane that is not asleep is not woken.
   const w2 = world();
   const r2 = rust({ agent_start_line: () => ({ args: [], program: null, env: [], resumed: false }) });
