@@ -313,7 +313,11 @@ pub fn tick(l: &Launch, now: i64) -> Result<Vec<Value>, String> {
         let window = (a["missedRunGraceMinutes"].as_u64().unwrap_or(0) as i64 * 60_000).max(ON_TIME_MS);
         // Is there a due time between the window's start and now? Then the latest one is in it.
         if next_run(&a, now - window - 1).is_some_and(|t| t <= now) {
-            started.push(run(l, &id, "schedule")?);
+            // B-14: one automation that cannot start does not hold up the others due in this tick.
+            match run(l, &id, "schedule") {
+                Ok(r) => started.push(r),
+                Err(e) => eprintln!("automation {id} could not start: {e}"),
+            }
         } else {
             let store = l.store.lock().map_err(|e| e.to_string())?;
             started.push(skip(&store, &id, "schedule", "missed", "Kolux was not available at the due time, and the grace window has passed")?);
@@ -2186,6 +2190,45 @@ mod tests {
         let runs = after["runs"].as_array().unwrap();
         assert_eq!(runs.len(), 2, "the run that began and one skipped entry for the missed time");
         assert!(runs.iter().any(|r| r["automationId"] == "missed" && r["cause"] == "missed"));
+        drop(l);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn b14_one_due_automation_that_fails_does_not_stop_the_next() {
+        let dir = temp("tick-fail");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Mutex::new(Store::open(&dir.join("db")).unwrap());
+        let every = json!({ "kind": "schedule", "cron": "* * * * *", "timezone": "UTC" });
+        {
+            let s = store.lock().unwrap();
+            seed(&s, &ws);
+            let base = json!({ "prompt": "check", "provider": "claude", "projectId": "p1", "workspaceMode": "existing", "workspace": ws.to_string_lossy(), "trigger": every, "enabled": true, "nextRunAt": FRI_NOON });
+            let row = |id: &str| {
+                let mut r = base.clone();
+                r["id"] = json!(id);
+                r["name"] = json!(id);
+                r
+            };
+            s.set(KEY, &json!([row("first"), row("second")]).to_string()).unwrap();
+        }
+        let git = Git::detect().unwrap();
+        // The first run's start notice deletes that automation, so its run fails when it reschedules.
+        let once = std::cell::Cell::new(true);
+        let notify = |_: &str, _: Value| {
+            if once.replace(false) {
+                let s = store.lock().unwrap();
+                let kept: Vec<Value> = load(&s, KEY).unwrap().into_iter().filter(|a| a["id"] != "first").collect();
+                save(&s, KEY, &kept).unwrap();
+            }
+        };
+        let yes = |_: &str| true;
+        let l = Launch { git: &git, store: &store, claude_config: dir.join("claude.json"), installed: &yes, notify: &notify };
+        let started = tick(&l, FRI_NOON + 5_000).expect("the tick goes on past a failed run");
+        assert_eq!(started.len(), 1, "{started:?}");
+        assert_eq!((started[0]["automationId"].as_str(), started[0]["status"].as_str()), (Some("second"), Some("dispatched")));
         drop(l);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
