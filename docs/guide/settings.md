@@ -229,7 +229,7 @@ The first table covers panes and closing. The cards after it cover the terminal'
 | New workspaces start with | 1, 2, 4, 6, 9 or 12 panes. Default 1. Classic always uses 1 | `defaultPaneCount` |
 | Ask before closing running terminals | On. A tab with only an idle shell always closes at once | `confirmCloseRunning` |
 | Ask before closing a pinned tab | On. Pinned tabs sit first in the strip and stay out of Close others, Close all and middle-click | `pinnedTabsAsk` |
-| Removing a started session | "Ask first" (default) or "Stop without asking". Applies to Remove session on a running agent or a busy shell. A pane that has not started, or an idle shell, is removed straight away | `removeStartedSession` |
+| Removing a started session | "Ask first" (default) or "Stop without asking". Applies to Remove session on a running agent or a busy terminal. A pane that has not started, or an idle terminal, is removed straight away | `removeStartedSession` |
 
 ### Terminal text and cursor
 
@@ -265,7 +265,7 @@ A number you type is corrected to the nearest allowed value when you press Enter
 
 A right-click paste gets the same checks as a Ctrl+V paste: the size limit, the safe way of pasting several lines and the "Paste N lines?" question (see [Terminals](terminals.md#paste-and-copy)).
 
-### Default shell
+### Default terminal
 
 This card shows on Windows only. "New terminals open in" lists "Automatic (PowerShell 7 when installed)" and each shell Kolux found on the computer: PowerShell 7, Windows PowerShell, Command Prompt, Git Bash and WSL. Pick one and a new plain terminal, including the one Ctrl+T opens, starts in it. Terminals that are already open keep the shell they started with. Saved as `defaultShell`.
 

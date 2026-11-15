@@ -92,6 +92,9 @@ A submenu of the View menu that lists the full-page screens so you can switch be
 **Status**
 What an agent is doing. The main states are **Working**, **Needs you**, **Done**, **Stopped**, and **Idle**. The full list, including Blocked and Interrupted, is in [Board, Agents and Inbox](guide/board-agents-inbox.md#status-words).
 
+- **Ready**: a plain terminal, with no agent in it, waiting for you to type.
+- **Ended (code)**: a plain terminal whose program has ended. The number, when shown, is its exit code.
+
 **Hook**
 A small script Kolux installs in an agent's own settings. The agent runs it on events such as a prompt, a tool call, a permission request, or a finished turn. The hook posts to Kolux's loopback listener.
 

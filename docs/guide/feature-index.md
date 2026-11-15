@@ -246,7 +246,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-102-a | Drag panes to rearrange, close tabs in bulk and use the tab right-click menu. | [Terminals](terminals.md) |
 | T-103-a | Terminals keep their scroll position when you switch views. | [Terminals](terminals.md) |
 | T-104-a | Windows terminals pick the best shell and start with a clean environment. | [Terminals](terminals.md) |
-| T-104-c | The default shell you chose is tried first, and the automatic shells wait behind it as fallbacks; a pane says in one dim line when the chosen shell did not start. | [Settings](settings.md#default-shell) |
+| T-104-c | The default shell you chose is tried first, and the automatic shells wait behind it as fallbacks; a pane says in one dim line when the chosen shell did not start. | [Settings](settings.md#default-terminal) |
 | T-105 | The kolux terminal command lists, shows, creates, splits and renames terminals. | [Command line](command-line.md) |
 
 ### P1 · theme 2 · Isolation (earlier versions: one worktree per agent) (36 cards)

@@ -21,7 +21,7 @@
   <a href="https://github.com/TxaisX/kolux/releases/latest"><img src="https://img.shields.io/github/v/release/TxaisX/kolux?label=release" alt="Latest release"></a>
 </p>
 
-Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. In a Git project, each agent you launch works in its own Git worktree (a separate copy of the project) on its own branch, so agents do not overwrite each other's files. To have every agent share the project's own folder instead, turn off **Own folder for each agent** in Settings, Git & worktrees.
+Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. In a Git project, each agent you launch works in its own Git worktree (a separate copy of the project) on its own branch, so agents do not overwrite each other's files. To have every agent share the project's own folder instead, turn off **Own folder for each agent** in Settings, Git.
 
 > **Early alpha.** Kolux is built and used daily on Windows 11, but it has not been tested by outside users yet. Keep your work in Git, expect breaking changes, and report what breaks. [Status](docs/STATUS.md) lists what is verified and what is still open.
 

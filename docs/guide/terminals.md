@@ -60,11 +60,11 @@ Press "..." or right-click the header.
 | Expand pane / Restore pane | Same as the Expand control |
 | Split right / Split down | Add a shell in the same folder |
 | Close pane | Ends the program |
-| Set Title… | Gives the pane your own title |
-| Clear Pane Title | Appears only when you have set a title |
-| Copy Session ID | Appears only when the session is known |
-| Copy Terminal ID / Copy Pane ID | Puts the id on the clipboard |
-| Clear Screen | Clears the pane's screen and its scrollback (Ctrl+K). See [Clear and find](#clear-and-find) |
+| Set title… | Gives the pane your own title |
+| Clear title | Appears only when you have set a title |
+| Copy session ID | Appears only when the session is known |
+| Copy terminal ID / Copy pane ID | Puts the id on the clipboard |
+| Clear screen | Clears the pane's screen and its scrollback (Ctrl+K). See [Clear and find](#clear-and-find) |
 | Find… | Opens the find bar over the pane (Ctrl+F) |
 | Copy terminal diagnostics | Puts a scrubbed snapshot of the pane on the clipboard, for a bug report |
 
@@ -78,7 +78,7 @@ A cell with more than one pane shows a tab strip. Each tab has an icon, a status
 
 | Item | What it does |
 |---|---|
-| Change Title | Renames the tab. Terminals and agents only |
+| Change title | Renames the tab. Terminals and agents only |
 | Pin tab / Unpin tab | Keeps the tab at the front of the strip (see below) |
 | Close | Closes this tab (Ctrl+W). Greyed out for a pinned tab |
 | Close others | Closes every other tab except pinned ones |
@@ -87,7 +87,7 @@ A cell with more than one pane shows a tab strip. Each tab has an icon, a status
 
 Closing the active tab returns you to the tab you used before it. If there is none, the one to its right, else the one to its left.
 
-If a program is still running, Kolux asks first: "Close "<name>"?" with "A program is still running in it. Closing the tab stops it." Press "Close tab" to go on. This question is on by default and can be switched off in Settings. When a shell ends by itself, a dialog says "The shell ended with exit code N" and offers Close pane or Restart.
+If a program is still running, Kolux asks first: "Close "<name>"?" with "A program is still running in it. Closing the tab stops it." Press "Close tab" to go on. This question is on by default and can be switched off in Settings. When a terminal ends by itself, a dialog says "This terminal stopped", says why with the exit code, and offers Close pane or Restart.
 
 Pinned tabs sit before the others with a pin icon. Closing one with Ctrl+W, its x or the pane's close button asks first: "Close pinned tab "<name>"? This tab is pinned. Closing it stops anything still running in it." This question is on by default; switch it off in Settings, Terminal & sessions, "Ask before closing a pinned tab". Pins last until Kolux closes.
 

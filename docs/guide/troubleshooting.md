@@ -13,9 +13,9 @@ Find out what went wrong, get a safe report to share, and get back to work. Star
 | "The program in this pane has ended, so nothing can be sent to it" | You sent text to a pane whose program had stopped | Restart the pane |
 | "A program it needed isn't installed (code 127)" | The start line names a missing command | Check the agent's Command in Settings, Agents |
 | Code 126 or 128: "It couldn't run its program" | The shell found the program but could not run it | Check the file's permissions and path, then Restart |
-| Code above 128: "Something outside Kolux stopped it" | Something ended the program from outside | Restart |
+| Code above 128: "The program was stopped" | Something ended the program, such as Ctrl+C or a crash | Restart |
 | An unexplained error ends with a "report it" link | Kolux has no plain words for it | Copy diagnostics (below) and report it |
-| A new terminal opens with a dim line "<shell> did not start; opened <shell>" | The default shell you chose in Settings would not start, so Kolux used the next automatic shell | Check that the shell is still installed, or pick another under Settings, Terminal & sessions, Default shell. See [Settings](settings.md#default-shell) |
+| A new terminal opens with a dim line "<shell> did not start; opened <shell>" | The default shell you chose in Settings would not start, so Kolux used the next automatic shell | Check that the shell is still installed, or pick another under Settings, Terminal & sessions, Default terminal. See [Settings](settings.md#default-terminal) |
 | The Skill folders list says "Not scanned: This folder links to another computer, which Kolux never opens" | The workspace is on a network share, or a skills folder is a link to one. Kolux never reads through those | Use a copy on a local drive, or a mapped drive letter for the workspace. See [Safety](safety.md#other-computers-and-network-shares) |
 | A pane stays blank after it opens | A known case: a shell sometimes stalls as it starts | Close the pane and open a new one |
 | The Board or Agents page shows no live status | Agent status hooks are off | Turn on "Agent status hooks" in Settings, Agents. See [Settings](settings.md) |
