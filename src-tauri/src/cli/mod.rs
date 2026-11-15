@@ -3771,7 +3771,7 @@ fn serve_loop_with(listener: TcpListener, token: &str, runtime: &str, status: im
             c.running = c.waiting.pop_front().map(|(command, _)| (command, Instant::now()));
         }
         let (id, out) = match serde_json::from_str::<Request>(&line) {
-            Ok(req) if req.token != token => (req.id, Err(Fail::new("unauthorized", "the token does not match this app; is cli.json stale?"))),
+            Ok(req) if !crate::hooks::same(&req.token, token) => (req.id, Err(Fail::new("unauthorized", "the token does not match this app; is cli.json stale?"))),
             // CLI-038: an app older than the CLI turns a change away before it runs.
             Ok(req) if CHANGES.contains(&req.command.as_str()) && newer(&req.cli, VERSION) => {
                 (req.id, Err(Fail { code: "version_gap", message: format!("this Kolux ({VERSION}) is older than the command line ({}); update Kolux before sending orchestration changes", req.cli), data: json!({ "appVersion": VERSION, "cliVersion": req.cli }) }))
@@ -3797,7 +3797,7 @@ fn serve_loop_with(listener: TcpListener, token: &str, runtime: &str, status: im
 /// straight away with the app's answer plus the running request's command and how long it has
 /// run; None hands the line on to the queue.
 fn busy_status(line: &str, token: &str, runtime: &str, current: &Current, status: &dyn Fn() -> Value) -> Option<String> {
-    let req = serde_json::from_str::<Request>(line).ok().filter(|r| r.command == STATUS && r.token == token)?;
+    let req = serde_json::from_str::<Request>(line).ok().filter(|r| r.command == STATUS && crate::hooks::same(&r.token, token))?;
     // cli FIX-1: nothing runs but requests wait their turn (the gap between two): busy with the
     // next one, for as long as it has waited.
     let (command, since, queued) = {
@@ -6329,6 +6329,11 @@ mod tests {
         let reply: Value = serde_json::from_str(&busy_status(&status_line_in, "tok", "rt-1", &current, &answer).expect("busy while the queue is not empty")).unwrap();
         assert_eq!((reply["result"]["busy"]["command"].as_str(), reply["result"]["busy"]["queued"].as_u64()), (Some("worktree.create"), Some(0)));
         assert!(reply["result"]["busy"]["runningMs"].as_u64().unwrap() >= 400);
+        // B-05: the token is compared without stopping at the first difference (hooks::same); a
+        // wrong token, a prefix of the right one and a longer one are not answered while busy.
+        for wrong in ["tox", "to", "toke", ""] {
+            assert!(busy_status(&status_line_in, wrong, "rt-1", &current, &answer).is_none(), "{wrong:?}");
+        }
         let _ = std::fs::remove_dir_all(&dir);
     }
 

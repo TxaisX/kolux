@@ -400,7 +400,7 @@ pub fn pane_token(secret: &str, pane_key: u32, terminal: Option<u32>) -> String 
 }
 
 /// Equal without stopping at the first difference.
-fn same(a: &str, b: &str) -> bool {
+pub(crate) fn same(a: &str, b: &str) -> bool {
     let (a, b) = (a.as_bytes(), b.as_bytes());
     a.len() == b.len() && a.iter().zip(b).fold(0u8, |d, (x, y)| d | (x ^ y)) == 0
 }
