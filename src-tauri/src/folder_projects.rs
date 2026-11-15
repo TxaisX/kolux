@@ -149,6 +149,15 @@ pub fn project_add_folder(store: State<'_, Mutex<Store>>, path: String) -> Resul
     add_folder(&*store.lock().map_err(|e| e.to_string())?, Path::new(path.trim()))
 }
 
+/// PROJ-008: ends the terminals in a project's folder and each of its worktrees, before the project
+/// is taken out of Kolux. `kill` ends the sessions under one folder and says how many. Git runs here,
+/// so call it with the store let go; a project whose folder is gone lists nothing. Shared by
+/// `project_remove` and `groups::group_delete` (F21), so both end the same folders in the same way.
+pub(crate) fn end_sessions(git: &Git, project: &Project, folder: bool, mut kill: impl FnMut(&Path) -> usize) -> usize {
+    let worktrees: Vec<String> = if folder { Vec::new() } else { git.worktrees(Path::new(&project.path)).map(|all| all.into_iter().map(|w| w.path).collect()).unwrap_or_default() };
+    session_dirs(project, &worktrees).iter().map(|d| kill(d)).sum()
+}
+
 /// PROJ-008: the sidebar asks first; this ends the project's terminals and removes it.
 #[tauri::command(async)]
 pub fn project_remove(git: State<'_, Git>, store: State<'_, Mutex<Store>>, terminals: State<'_, crate::terminal::Terminals>, project_id: String) -> Result<Removed, String> {
@@ -158,9 +167,7 @@ pub fn project_remove(git: State<'_, Git>, store: State<'_, Mutex<Store>>, termi
         let folder = is_folder(&store, &project.id);
         (project, folder)
     };
-    // Git runs with the store let go; a project whose folder is gone lists nothing.
-    let worktrees: Vec<String> = if folder { Vec::new() } else { git.worktrees(Path::new(&project.path)).map(|all| all.into_iter().map(|w| w.path).collect()).unwrap_or_default() };
-    let ended = session_dirs(&project, &worktrees).iter().map(|d| terminals.kill_under(d).ended).sum();
+    let ended = end_sessions(&git, &project, folder, |d| terminals.kill_under(d).ended);
     remove_project(&*store.lock().map_err(|e| e.to_string())?, &project.id)?;
     Ok(Removed { name: project.name, path: project.path, ended })
 }

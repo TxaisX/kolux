@@ -166,11 +166,41 @@ pub fn group_put(store: StoreState<'_>, project_id: String, group: Option<String
 }
 
 /// PROJ-015: removing the projects takes them out of Kolux only; their folders stay on disk.
-#[tauri::command]
-pub fn group_delete(store: StoreState<'_>, id: String, remove_projects: bool) -> Result<Groups, String> {
-    let store = store.lock().map_err(|e| e.to_string())?;
-    let (groups, removed) = change(&store, |g| g.delete(&id, remove_projects))?;
-    crate::projects::forget_projects(&store, &removed)?;
+/// F21: like `project_remove`, each removed project's terminals end first.
+#[tauri::command(async)]
+pub fn group_delete(
+    git: tauri::State<'_, crate::git::Git>,
+    store: StoreState<'_>,
+    terminals: tauri::State<'_, crate::terminal::Terminals>,
+    id: String,
+    remove_projects: bool,
+) -> Result<Groups, String> {
+    delete_with(&git, &store, &id, remove_projects, |d| terminals.kill_under(d).ended)
+}
+
+/// Deletes the group; with `remove_projects`, ends each removed project's terminals through
+/// `folder_projects::end_sessions` (Git and the kills run with the store let go), then forgets them.
+fn delete_with(git: &crate::git::Git, store: &Mutex<Store>, id: &str, remove_projects: bool, mut kill: impl FnMut(&std::path::Path) -> usize) -> Result<Groups, String> {
+    let (groups, removed, going) = {
+        let store = store.lock().map_err(|e| e.to_string())?;
+        let (groups, removed) = change(&store, |g| g.delete(id, remove_projects))?;
+        let going: Vec<_> = removed
+            .iter()
+            .filter_map(|p| crate::projects::find_project(&store, p).ok())
+            .map(|p| {
+                let folder = crate::folder_projects::is_folder(&store, &p.id);
+                (p, folder)
+            })
+            .collect();
+        (groups, removed, going)
+    };
+    if removed.is_empty() {
+        return Ok(groups);
+    }
+    for (project, folder) in &going {
+        crate::folder_projects::end_sessions(git, project, *folder, &mut kill);
+    }
+    crate::projects::forget_projects(&*store.lock().map_err(|e| e.to_string())?, &removed)?;
     Ok(groups)
 }
 
@@ -304,5 +334,63 @@ mod tests {
         assert_eq!(removed, vec!["p1".to_string(), "p2".to_string()]);
         assert_eq!(gone.groups, vec![other]);
         assert!(g.clone().delete("missing", false).is_err());
+    }
+
+    /// F21: "Also remove its projects" ends each removed project's terminals before it goes, through
+    /// the same step `project_remove` uses; without it, nothing is ended and the projects stay.
+    #[test]
+    fn f21_deleting_a_group_with_its_projects_ends_their_terminals_first_and_only_theirs() {
+        let (s, dir) = store("f21");
+        let git = crate::git::Git::detect().unwrap();
+        let folder = |n: &str| {
+            let f = dir.join(n);
+            std::fs::create_dir_all(&f).unwrap();
+            crate::folder_projects::add_folder(&s, &f).unwrap()
+        };
+        let (a, b, c) = (folder("a"), folder("b"), folder("c"));
+        let (top, sub) = {
+            let (g, (top, sub)) = change(&s, |g| {
+                let top = g.create("Top", None)?;
+                let sub = g.create("Sub", Some(&top.id))?;
+                g.put(&a.id, Some(&top.id))?;
+                g.put(&b.id, Some(&sub.id))?;
+                Ok((top, sub))
+            })
+            .unwrap();
+            assert_eq!(g.members.len(), 2);
+            (top, sub)
+        };
+        let store = Mutex::new(s);
+        let mut ended: Vec<std::path::PathBuf> = Vec::new();
+        // Without "remove its projects": nothing is ended and every project stays.
+        let kept = delete_with(&git, &store, &sub.id, false, |d| {
+            ended.push(d.to_path_buf());
+            1
+        })
+        .unwrap();
+        assert!(ended.is_empty(), "no terminal is ended when the projects stay");
+        assert_eq!(kept.groups.len(), 1);
+        assert_eq!(crate::projects::load_projects(&store.lock().unwrap()).len(), 3);
+        // b is at the top level now; put it back under Top, then delete Top with its projects.
+        change(&store.lock().unwrap(), |g| g.put(&b.id, Some(&top.id))).unwrap();
+        let left = delete_with(&git, &store, &top.id, true, |d| {
+            // The kill step runs while the projects are still known (the order project_remove uses).
+            let s = store.try_lock().expect("the store is let go while terminals end");
+            assert_eq!(crate::projects::load_projects(&s).len(), 3);
+            ended.push(d.to_path_buf());
+            1
+        })
+        .unwrap();
+        assert!(left.groups.is_empty() && left.members.is_empty());
+        let mut want = vec![std::path::PathBuf::from(&a.path), std::path::PathBuf::from(&b.path)];
+        want.sort();
+        ended.sort();
+        assert_eq!(ended, want, "the folders of exactly the removed projects, each once");
+        let s = store.into_inner().unwrap();
+        let ids: Vec<String> = crate::projects::load_projects(&s).into_iter().map(|p| p.id).collect();
+        assert_eq!(ids, vec![c.id.clone()], "only the project outside the group is left");
+        assert!(dir.join("a").exists() && dir.join("b").exists(), "folders stay on disk");
+        drop(s);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
