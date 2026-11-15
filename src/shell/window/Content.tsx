@@ -173,7 +173,7 @@ export default function WindowContent() {
       {agentsScreen && selected === null && (
         <div className="empty">
           <h2>Agents</h2>
-          <p>{saved.length ? "No session yet." : "No agents yet. Start one to begin."}</p>
+          <p>{saved.length ? "No session yet." : agentPass.looking ? "Looking for agents…" : "No agents yet. Start one to begin."}</p>
           {(
             <div className="btn-row">
               <button className="btn primary" onClick={addChooser}>
