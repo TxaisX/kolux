@@ -29,6 +29,19 @@ export function kPalette<T extends Match | null | undefined | false>(hit: T, map
 /** Where Ctrl+K keeps its own meaning: a terminal clears, a rich Markdown view opens its Link box. */
 export const kTaken = (active: Element | null | undefined): boolean => typeof active?.closest === "function" && !!(active.closest(".xterm") || active.closest(".md-rich"));
 
+/** Audit F22: the format keys a rich Markdown view keeps whatever the table binds to them, as Ctrl+K above. Ctrl+B
+ *  makes text bold there (the table gives it to Toggle Sidebar). The press is let through, not the action: Toggle
+ *  Sidebar moved to another key still works in the view. Mod+I, Mod+U, Mod+Z, Mod+Y and Mod+Shift+Z have no window
+ *  binding in an editor tab's scopes, so they need no entry. */
+const RICH_FORMAT_KEYS = ["b"];
+export const richKeyTaken = (map: Keymap, e: KeyLike, active: Element | null | undefined): boolean =>
+  RICH_FORMAT_KEYS.includes(e.key.toLowerCase()) &&
+  !e.shiftKey &&
+  !e.altKey &&
+  (map.platform === "darwin" ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey) &&
+  typeof active?.closest === "function" &&
+  !!active.closest(".md-rich");
+
 const ANYWHERE = "Mod+Shift+P";
 
 /** What the top-bar box shows: Ctrl+K while that opens the palette from where the focus is (`active`), else the

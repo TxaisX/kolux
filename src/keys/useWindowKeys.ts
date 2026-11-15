@@ -28,7 +28,7 @@ import { forceReload, windowCommand } from "./commands";
 import { worktreesOffNote } from "../projects/singleFolder";
 import { scopesFor } from "./keyScopes";
 import { matchEvent, type KeyLike, type Keymap } from "./keymap";
-import { kPalette } from "./paletteKey";
+import { kPalette, richKeyTaken } from "./paletteKey";
 import { recording } from "./record";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
@@ -141,7 +141,7 @@ export function useWindowKeys(w: WindowBag) {
         (kind === "preview" && [matchEvent(keymap, e, ["editor"])].find((h) => h?.id === "editor.addReviewNote"));
       // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
       const hit = kPalette(found, keymap, e, document.activeElement);
-      if (!hit || heldByTerminal(hit.id, settings)) return;
+      if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
       if (heldByOverlay(hit.id, !!switcherRef.current)) {
         e.preventDefault(); // the overlay's own key handlers still see it; the webview's built-in action does not run
         return;
