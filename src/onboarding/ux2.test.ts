@@ -1,5 +1,5 @@
 // 49-ux2 (lane C): the pure rules behind the onboarding fixes: the checklist's hide flag, the agent
-// Open a session needs, the focus helper every dialog shares, the shortcut label, and the tour notice.
+// Start your agents needs, the focus helper every dialog shares, the shortcut label, and the tour notice.
 import { describe, expect, it, vi } from "vitest";
 import { checklistHidden, HIDE_PATCH, legacyProfile } from "./guide";
 import { sessionAgent } from "./sessionAgent";
@@ -8,7 +8,7 @@ import { OPEN_SETTINGS } from "../settings/pages";
 import { submitKeys } from "./submitKeys";
 import type { Want } from "./tour";
 import { tourNotice } from "./Tours";
-import { followAgents, lastMain, mainOff, NO_AGENT_WHY } from "./Wizard";
+import { followAgents, mainOff, NO_AGENT_WHY, START_MAIN } from "./Wizard";
 import { recordsHooks } from "./hooksOn";
 import { failedNote } from "./StepPanels";
 import { GH_LOGIN } from "./integrations";
@@ -26,7 +26,7 @@ describe("onboarding.md:3: the checklist's hide flag", () => {
   });
 });
 
-describe("onboarding.md:4, :15: Open a session needs an agent", () => {
+describe("onboarding.md:4, :15: Start your agents needs an agent", () => {
   it("is null with no agent installed, and the wizard holds the button back with a reason", () => {
     expect(sessionAgent([], {})).toBeNull();
     expect(sessionAgent([{ ...claude, installed: false }], {})).toBeNull();
@@ -34,10 +34,8 @@ describe("onboarding.md:4, :15: Open a session needs an agent", () => {
     expect(mainOff(3, true)).toBe(false); // never greyed out: with no agent a plain terminal is the pick (T-796)
     expect(mainOff(2, true, false)).toBe(true); // T-796: Your work waits for a folder
     expect(mainOff(2, true, true)).toBe(false);
-    expect(lastMain(false)).toBe("Pick a folder"); // no folder at the last screen: the one way on
-    expect(lastMain(true)).toBe("Open a session");
-    expect(lastMain(true, true)).toBe("Open a terminal");
-    expect(NO_AGENT_WHY).toMatch(/Settings > Agents/);
+    expect(START_MAIN).toBe("Choose folders and agents"); // job 22: one button, with or without a folder or an agent
+    expect(NO_AGENT_WHY).toBe("No AI is installed yet. The next screen can install one, or open a plain terminal."); // job 29 R4: the Start form
   });
 
   it("follows the agent list: an agent installed after the wizard opened counts, and the stop unsubscribes", async () => {

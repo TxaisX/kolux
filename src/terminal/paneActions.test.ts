@@ -88,6 +88,30 @@ test("shrinking the pane count moves the focus off a removed chooser tab", () =>
   expect(focused).toBe(1);
 });
 
+// D-14 (wave 2 item 4): the layout strip never leaves empty "choose what to run" panes. Growing from one
+// started pane to four adds no pane at all; it opens the Start form once with How many set to the 3 new cells.
+test("growing the layout opens the Start form for the new cells and adds no chooser panes", () => {
+  const started = { key: 1, cwd: "C:\w", branch: null, agent: "shell", program: null, args: [] };
+  const setPanes = vi.fn();
+  const setSheet = vi.fn();
+  const s = { panes: [started], activeDir: "C:\w", projects: [], settings: {}, agents: [], installedIds: [], setPanes, setSheet, setToast: vi.fn(), titles: {}, nextKey: { current: 9 }, setFocused: vi.fn() } as unknown as WindowState;
+  const la = { lineupsOf: () => ({}), projectFor: () => null, inGitFor: () => false, launch: vi.fn(), pretrust: vi.fn() };
+  const a = paneActions(s, {} as never, la as never, { projectOf: () => null } as unknown as WindowLate);
+  a.setCount(4);
+  expect(setPanes).not.toHaveBeenCalled();
+  expect(setSheet).toHaveBeenCalledTimes(1);
+  expect(setSheet.mock.calls[0][0].seats).toHaveLength(3);
+});
+
+// Wave 2 item 6 (rewrite row 13): going smaller past a started session names it and says what to do.
+test("shrinking past a started session says to close it first", () => {
+  const started = (key: number) => ({ key, cwd: "C:\w", branch: null, agent: "shell", program: null, args: [] });
+  const setToast = vi.fn();
+  const s = { panes: [started(1), started(2)], activeDir: "C:\w", setPanes: vi.fn(), setToast, titles: {}, nextKey: { current: 9 }, setFocused: vi.fn() } as unknown as WindowState;
+  paneActions(s, {} as never, {} as never, {} as WindowLate).setCount(1);
+  expect(setToast.mock.calls[0][0]).toMatch(/^Close .+ first to use fewer panes\.$/);
+});
+
 // The palette reaches All Changes without a finished agent, and finds pages and commands by the words people type.
 test("the palette finds All Changes, the Appearance page and the new shell command by everyday words", async () => {
   const { resolve } = await import("../keys/keymap");

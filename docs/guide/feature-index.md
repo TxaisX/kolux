@@ -122,6 +122,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | Task | Feature | Guide page |
 |---|---|---|
 | T-046 | The New session page fills the workspace instead of opening a dialog. | [Getting started](getting-started.md) |
+| T-824 | One Start form asks which folders, how many and which AI, model and effort, once, and applies it to every pane; Kolux asks it when it starts. | [Getting started](getting-started.md) |
 | T-047 | Expand a pane to fill the grid; every pane has a header with title and usage. | [Terminals](terminals.md) |
 | T-048 | The terminal grid has a clean, uncluttered look. | [Terminals](terminals.md) |
 | T-049-a | Three workspace screens, Agents, Board and Terminals, switch from the keyboard. | [Getting started](getting-started.md) |

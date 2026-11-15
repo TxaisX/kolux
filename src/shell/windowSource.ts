@@ -13,6 +13,7 @@ const OUTSIDE = import.meta.glob(
     "../App.tsx",
     "./windowStore.ts",
     "./useWindowStart.ts",
+    "./useStartAsk.ts",
     "./windowLate.ts",
     "./useWindowSave.ts",
     "./WindowView.tsx",

@@ -161,7 +161,7 @@ test("T-608: the wizard writes no hooks until the user moves on from the line; t
   ]);
 });
 
-test("49-ux2 (onboarding.md:4, :15): with no agent the last screen offers only the plain terminal; Check again reads the list, and an agent then becomes the pick", async () => {
+test("49-ux2 / job 22: with no agent the last screen says so and Check again reads the list; either way its button hands over to the Start form", async () => {
   vi.stubGlobal("navigator", { platform: "Win32" });
   const picked = vi.fn();
   const session = vi.fn();
@@ -176,7 +176,7 @@ test("49-ux2 (onboarding.md:4, :15): with no agent the last screen offers only t
   expect(el.props.noAgent).toBe(true);
   el.props.onMain();
   expect(session).toHaveBeenCalledTimes(1);
-  expect(session).toHaveBeenLastCalledWith("terminal"); // T-796: no agent, so the plain terminal is the pick, never a folder question
+  expect(session).toHaveBeenLastCalledWith(); // job 22: no pick here; the Start form offers Terminal, never a folder question
   expect(picked).not.toHaveBeenCalled();
   agentList = [{ id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:/bin/claude" }];
   draw().props.onRecheck();
@@ -185,7 +185,7 @@ test("49-ux2 (onboarding.md:4, :15): with no agent the last screen offers only t
   expect(el.props.noAgent).toBe(false);
   el.props.onMain();
   expect(session).toHaveBeenCalledTimes(2);
-  expect(session).toHaveBeenLastCalledWith("claude");
+  expect(session).toHaveBeenLastCalledWith();
   expect(picked).not.toHaveBeenCalled();
 });
 

@@ -179,10 +179,10 @@ test("SESS-016: a seat's effort and fast mode reach its start line only when its
   expect(seatArgs({ agent: "claude", model: "default", effort: "high" })).toEqual([]);
 });
 
-test("SESS-021: a lineup keeps shape, folders and each seat's agent and model, never options or prompts", () => {
+test("SESS-021: a lineup keeps shape, folders and each seat's agent, model and effort (Start form), never titles or prompts", () => {
   const seats: Seat[] = [{ agent: "codex", model: "gpt-5", prompt: "x", role: "builder" }, { agent: "claude", model: "opus", effort: "max", title: "T", role: "reviewer" }];
   const l = lineupOf("pair", "separate", seats);
-  expect(l).toEqual({ shape: "pair", copies: "separate", seats: [{ agent: "codex", model: "gpt-5" }, { agent: "claude", model: "opus" }] });
+  expect(l).toEqual({ shape: "pair", copies: "separate", seats: [{ agent: "codex", model: "gpt-5" }, { agent: "claude", model: "opus", effort: "max" }] });
   expect(lineupAgents(l)).toEqual(["codex", "claude"]);
   expect(offeredLineup(l, ["claude"])).toBe(l);
   expect(offeredLineup(l, ["gemini"])).toBeNull();
@@ -190,7 +190,7 @@ test("SESS-021: a lineup keeps shape, folders and each seat's agent and model, n
   expect(offeredLineup({ shape: "odd", seats: [] }, ["claude"])).toBeNull();
   const back = applyLineup(l, ["claude"]);
   expect(back.shape).toBe("pair");
-  expect(back.seats).toEqual([{ agent: null, model: null, role: "builder" }, { agent: "claude", model: "opus", role: "reviewer" }]);
+  expect(back.seats).toEqual([{ agent: null, model: null, role: "builder" }, { agent: "claude", model: "opus", effort: "max", role: "reviewer" }]);
 });
 
 test("SESS-029: Grok's discovered list replaces the built-in one and offers efforts up to extra-high, flag after the model", () => {
@@ -213,4 +213,22 @@ test("SESS-029: an unreadable or empty answer leaves the list as it was", () => 
 test("SESS-029: Cursor's discovered models join after its built-in ones, each once", () => {
   setDiscovered("cursor", [{ id: "auto", label: "Auto" }, { id: "composer-2", label: "Composer 2" }]);
   expect(modelsFor("cursor").map((m) => m.id)).toEqual(["auto", "sonnet-4.5", "gpt-5", "composer-2", "default"]);
+});
+
+test("Push 1 item 2: a saved model the agent no longer lists comes back as no model, so Start waits for a pick", () => {
+  const l = lineupOf("custom", "shared", [{ agent: "claude", model: "retired-model-x", effort: "high" }, { agent: "claude", model: "opus" }]);
+  const back = applyLineup(l, ["claude"]).seats;
+  expect(back[0].model).toBeNull();
+  expect(seatReady(back[0])).toBe(false);
+  expect(back[1].model).toBe("opus");
+  // An agent with no model list keeps whatever was saved (there is nothing to check it against).
+  expect(applyLineup(lineupOf("custom", "shared", [{ agent: "aider", model: "x" }]), ["aider"]).seats[0].model).toBe("x");
+});
+
+test("Push 1 item 1: a lineup saved before effort and fast mode existed still loads", () => {
+  const old = { shape: "custom", copies: "shared", seats: [{ agent: "claude", model: "opus" }] } as unknown as Parameters<typeof applyLineup>[0];
+  const back = applyLineup(old, ["claude"]).seats[0];
+  expect(back).toEqual({ agent: "claude", model: "opus" });
+  const kept = applyLineup(lineupOf("custom", "shared", [{ agent: "claude", model: "opus", effort: "max", fast: true }]), ["claude"]).seats[0];
+  expect(kept).toMatchObject({ effort: "max", fast: true });
 });

@@ -5,7 +5,6 @@
 // stand-ins (PROJ-020), then the grid itself (Grid.tsx).
 import { invoke } from "@tauri-apps/api/core";
 import ScreenBoundary from "../../recovery/ScreenBoundary";
-import type { Pane } from "../../App";
 import { cardPanes } from "../../agents/rail";
 import { AgentsChat } from "../../lazy/pages";
 import { linksOpenInKolux } from "../../chat/chatLinks";
@@ -15,6 +14,7 @@ import { openExternal } from "../../open/openExternal";
 import FilePicker, { quickOpenList, type Pick } from "../../editor/FilePicker";
 import { inboxItems } from "../../inbox/inbox";
 import type { Seat } from "../../launch/seats";
+import type { StartSheet } from "../../launch/startForm";
 import { folderName, projectLabel } from "../../projects/model";
 import { closeSkills } from "../../skills/nav";
 import { tasksRepo } from "../../tasks/model";
@@ -26,6 +26,7 @@ import { nameOf } from "../../workspaces";
 import Grid from "./Grid";
 import Notices from "./Notices";
 import SeatChooser from "./SeatChooser";
+import { useStartAsk } from "../useStartAsk";
 import { useWindow } from "./store";
 import { PlanSheet } from "../../lazy/pages";
 import { RoutingPage } from "../../lazy/pages";
@@ -51,15 +52,20 @@ export default function WindowContent() {
     setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
     screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
     focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, running,
-    standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser,
+    standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
+  // Start form D: asked once when Kolux starts, in the main window, in front of what was restored.
+  useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: panes.length, open: () => openStart({ atOpen: true }) });
   return (
     <div className="content">
       {sheet?.seats && (
         <div className="sheet-wrap">
           {(() => {
             const proj = projects.find((x) => x.id === (projectOf(sheet.cwd) ?? projectFor(null)));
-            return <SeatChooser pane={sheet as Pane & { seats: Seat[] }} hidden={false} focused onFocus={() => {}} onClose={() => setSheet(null)} sheetOf={{ project: proj?.name ?? "No project", path: sheet.cwd ?? proj?.path ?? "Home folder" }} />;
+            // Start form C: the header names the ticked folders; one folder keeps its path under the name.
+            const ticked = (sheet.folders ?? []).map((id) => projects.find((x) => x.id === id)).filter((x) => !!x);
+            const head = ticked.length > 1 ? { project: ticked.map((x) => x.name).join(", "), path: `${ticked.length} folders` } : ticked.length === 1 ? { project: ticked[0].name, path: ticked[0].path } : { project: proj?.name ?? "No project", path: sheet.cwd ?? proj?.path ?? "Home folder" };
+            return <SeatChooser pane={sheet as StartSheet & { seats: Seat[] }} hidden={false} focused onFocus={() => {}} onClose={() => setSheet(null)} sheetOf={head} />;
           })()}
         </div>
       )}
@@ -167,10 +173,10 @@ export default function WindowContent() {
       {agentsScreen && selected === null && (
         <div className="empty">
           <h2>Agents</h2>
-          <p>{saved.length ? "No session yet." : "No agents yet."}</p>
-          {saved.length > 0 && (
+          <p>{saved.length ? "No session yet." : agentPass.looking ? "Looking for agents…" : "No agents yet. Start one to begin."}</p>
+          {(
             <div className="btn-row">
-              <button className="btn" onClick={addChooser}>
+              <button className="btn primary" onClick={addChooser}>
                 New session
               </button>
             </div>

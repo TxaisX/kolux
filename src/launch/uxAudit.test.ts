@@ -58,7 +58,7 @@ test("F1: the sheet's X and Cancel are disabled while Starting", () => {
   const props = { number: 1, agents: [claude], seats: [{ agent: "terminal", model: null }] as Seat[], onSeats() {}, shape: "custom" as const, onLineup() {}, task: "", onTask() {}, onStart() {}, copies: "shared" as const, inGit: true, onCopies() {}, closable: true, onClose() {}, saved: [], onSaved() {}, onPickSaved() {}, sheet: { project: "P", path: "/p" } };
   const idle = renderToString(createElement(ChooserPane, props));
   const busy = renderToString(createElement(ChooserPane, { ...props, busy: true }));
-  const close = (h: string) => h.split("<button").find((b) => b.includes('aria-label="Close New session"'))!;
+  const close = (h: string) => h.split("<button").find((b) => b.includes('aria-label="Close Start"'))!;
   const cancel = (h: string) => h.split("<button").find((b) => b.includes(">Cancel<"))!;
   expect(close(idle)).not.toContain("disabled");
   expect(cancel(idle)).not.toContain("disabled");
@@ -115,7 +115,8 @@ test("F2: the no-AI-program notice has an Open Settings button; a failed check s
 
 test("F2: a dismissal that could not be saved shows its own notice, with Dismiss only", () => {
   const html = view([dismissFailedNotice("disk full")]);
-  expect(html).toContain("Kolux could not save that dismissal: disk full");
+  expect(html.replace(/&#x27;/g, "'")).toContain("Kolux couldn't hide that for good. It may show again."); // design rewrite row 17 (job 22)
+  expect(html).not.toContain("dismissal");
   expect(html).toContain(`data-notice="${DISMISS_FAILED}"`);
   expect(html).toContain(">Dismiss<");
   expect(html).not.toContain("Check again");

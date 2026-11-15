@@ -32,7 +32,8 @@ import { openTabSearch, TAB_SEARCH_ACTION } from "../shell/findTab";
 import { paneMark } from "../launch/PlusMenu";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { removeShortcutAsk } from "../launch/removeAsk";
-import { emptySeat, removeTarget, sheetStart, type Seat, withoutFailed } from "../launch/seats";
+import { emptySeat, offeredLineup, removeTarget, sheetStart, type Seat, withoutFailed } from "../launch/seats";
+import { lastStart, prefill, stripAsk, type StartSheet } from "../launch/startForm";
 import { startWatch } from "../launch/startWatch";
 import type { Page } from "../projects/ProjectsPanel";
 import { projectRows } from "./projectRows";
@@ -86,16 +87,27 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // up to MAX_PANES.
   const addChooser = () => {
     if (cellsOf(panesIn(panes, activeDir)).length >= MAX_PANES) return setToast(`A workspace holds up to ${MAX_PANES} panes.`);
-    if (!classic) {
-      // SESS-018: the count and the files choice come from this project's last launch; seats start blank.
-      const at: Pane = { key: 0, cwd: startDirOf(activeDir), branch: null, agent: "shell", program: null, args: [] };
-      const start = sheetStart(lineupsOf(settings)[late.projectOf(activeDir) ?? projectFor(null) ?? ""], inGitFor(at));
-      setSheet({ ...at, key: nextKey.current++, seats: start.seats, copies: start.copies, shape: "custom" });
-      return;
-    }
+    if (!classic) return openStart({ here: true });
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: startDirOf(activeDir), branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }]);
     setFocused(key);
+  };
+  // Start form (2026-11-15): the one form for every pane, opened prefilled (rule F): the folders and count of the last
+  // Start, the AI, model and effort of the first folder's last lineup. `here` ticks the project in front instead;
+  // `count` is the layout strip's empty cells (rule E); `atOpen` is the ask at app open (rule D).
+  const openStart = (o: { here?: boolean; count?: number; atOpen?: boolean } = {}) => {
+    const pid = late.projectOf(activeDir) ?? null;
+    const lineups = lineupsOf(settings);
+    const base = { projects: s.projects, folders: o.here ? (pid ? [pid] : []) : null, count: o.count ?? null, last: lastStart(settings), installed: installedIds };
+    const first = prefill({ ...base, lineup: null }).folders[0] ?? projectFor(null) ?? "";
+    const lineup = offeredLineup(lineups[first], installedIds);
+    const f = prefill({ ...base, lineup });
+    const proj = s.projects.find((p) => p.id === f.folders[0]);
+    const cwd = proj && pid !== proj.id ? proj.path : startDirOf(activeDir);
+    const at: Pane = { key: 0, cwd, branch: null, agent: "shell", program: null, args: [] };
+    const copies = sheetStart(lineups[first], inGitFor(at)).copies;
+    const next: StartSheet = { ...at, key: nextKey.current++, seats: f.seats, shape: f.shape, copies, folders: f.folders, atOpen: o.atOpen };
+    setSheet(next);
   };
   // VIEW-036 / SESS-008: the remove-session shortcut closes the newest chooser pane in front, else the focused
   // session, and always asks first (launch/removeAsk.ts), an empty chooser too. A lone chooser stays, so the
@@ -280,8 +292,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setPanes((ps) => [...ps, { key, cwd: workDir, branch: here?.branch ?? null, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "check", check }]);
     setFocused(key);
   };
-  // TERM-001: the layout strip sets how many cells the workspace in front holds. Growing adds
-  // empty chooser panes (nothing starts on its own); shrinking drops unstarted cells newest
+  // TERM-001: the layout strip sets how many cells the workspace in front holds. Growing opens the
+  // Start form for the cells it adds (nothing starts on its own); shrinking drops unstarted cells newest
   // first and leaves started sessions alone: the ask before removing a started session is
   // TERM-003 on T-151, so until then the toast names the session in the way.
   const setCount = (n: number) => {
@@ -291,12 +303,17 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const stuck = blocking(cells, n);
     if (stuck.length) {
       const first = shown.find((c) => c.group === stuck[0])?.panes[0];
-      setToast(`${first ? tabName(first, titles) : "A pane"} is a started session: close it to go smaller.${stuck.length > 1 ? ` (${stuck.length} in the way.)` : ""}`);
+      setToast(`Close ${first ? tabName(first, titles) : "a pane"} first to use fewer panes.${stuck.length > 1 ? ` (${stuck.length} in the way.)` : ""}`);
       if (add === 0 && drop.length === 0) return;
     }
-    const fresh: Pane[] = Array.from({ length: add }, () => ({ key: nextKey.current++, cwd: startDirOf(activeDir), branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }));
+    // Start form E: growing asks once, on the Start form, with How many set to the empty cells; Start fills them.
+    // No chooser panes or "pick me" slots are added.
+    const ask = stripAsk(add);
+    if (ask > 0) openStart({ here: true, count: ask });
+    if (drop.length === 0) return;
     const rest = panes.filter((p) => !drop.includes(groupOf(p)));
-    setPanes([...rest, ...fresh]);
+    // Push 1 item 3: the functional form, so another update made in the same tick is not overwritten.
+    setPanes((ps) => ps.filter((p) => !drop.includes(groupOf(p))));
     // `drop` names cells; a cell of two chooser tabs goes whole, so the focus is checked against every pane leaving
     const leaving = panes.filter((p) => drop.includes(groupOf(p))).map((p) => p.key);
     setFocused((f) => (leaving.includes(f) ? focusIn(rest, activeDir, f) : f));
@@ -337,7 +354,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     if (!cli) setFocused(pane.key);
   };
 
-  const setChooser = (key: number, patch: Partial<Pane>) => {
+  const setChooser = (key: number, patch: Partial<StartSheet>) => {
     setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, ...patch } : p)));
     setSheet((s) => (s && s.key === key ? { ...s, ...patch } : s));
   };
@@ -462,7 +479,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     // terminal (Pane.tsx onPty), so a later failure of the same tab still drops it.
     if (restoredKeys.current.has(key)) {
       restoredKeys.current.delete(key);
-      setToast(`A session did not start: ${error}`);
+      setToast(`This agent didn't start. Try again, or open Settings > Agents. (${error})`);
       return;
     }
     startWatch.seen(key); // SESS-005: its own toast says why; no five-second warning on top
@@ -473,7 +490,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     // removal must stand (a list from this render would bring the pane that failed first back, dead)
     setPanes((ps) => withoutFailed(ps, key).panes);
     setFocused((f) => (f === key ? focusIn(rest, activeDir, f) : f));
-    setToast(batchEmpty ? `Nothing started: ${error}` : `A session did not start: ${error}`);
+    setToast(batchEmpty ? `Nothing started: ${error}` : `This agent didn't start. Try again, or open Settings > Agents. (${error})`);
   };
 
   // ACCT-064: Restart starts the program again in the same slot (a new key remounts the pane, which
@@ -675,7 +692,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setFocused(key);
   };
   return {
-    addShell, addChooser, removeSession, openTerminalIn, newTab, openFile, followLink, openDiff, openPreview, openCheck, setCount, expandPane, splitPane, setChooser,
+    addShell, addChooser, openStart, removeSession, openTerminalIn, newTab, openFile, followLink, openDiff, openPreview, openCheck, setCount, expandPane, splitPane, setChooser,
     setSeats, stillThere, step, paletteItems, keyOfHandle, showDir, termCreate, termSwitch, renamePane, termRename, failedPane, restartPane, noticeFor,
     orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges, openChangesIn,
     addPreset,

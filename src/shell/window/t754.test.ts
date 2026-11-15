@@ -14,7 +14,7 @@ test("T-754: the empty Board shows a New session button, and a click runs addCho
   Object.assign(win, { setTimeout, clearTimeout, setInterval, clearInterval });
   const { default: WindowContent } = await import("./Content");
   const addChooser = vi.fn();
-  const bag = { board: true, panes: [], saved: [], waiting: [], standIns: [], projects: [], lanes: [], cells: [], shown: [], addChooser } as unknown as WindowBag;
+  const bag = { board: true, panes: [], saved: [], waiting: [], standIns: [], projects: [], lanes: [], cells: [], shown: [], addChooser, settings: {}, agentPass: { looking: true, done: false, error: null } } as unknown as WindowBag;
   const { container, unmount } = await mount(createElement(WindowStoreProvider, { store: bag, children: createElement(WindowContent) }), doc);
   expect(container.textContent).toContain("No session yet.");
   const button = find(container, (n) => n.localName === "button" && n.textContent.trim() === "New session")[0];

@@ -71,7 +71,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-async function mountWizard(settings: Record<string, unknown> = {}, activeDir: string | null = null) {
+async function mountWizard(settings: Record<string, unknown> = {}) {
   const { useWizard } = await import("./useWizard");
   const { CHECKLIST_CHANGED } = await import("./firstRun");
   const { PROJECT_ADDED } = await import("./sidebar");
@@ -86,10 +86,8 @@ async function mountWizard(settings: Record<string, unknown> = {}, activeDir: st
     setToast: (t: string) => void toasts.push(t),
     agents,
     settings,
-    activeDir,
     kitAIs: [],
     startIn: async (a: { id: string }, dir: string) => (started.push(`${a.id}@${dir}`), 1),
-    openShell: () => void started.push("shell"),
     startKit: async () => true,
     setKitConflict: () => {},
     setKits: () => {},
@@ -187,32 +185,63 @@ test("a plain terminal as the saved default starts nothing in the first folder (
   expect(started).toEqual([]);
 });
 
-// T-612 (audit F08-onboarding-look-misc.2): since kits went (T-568), "Your work"'s Continue reaches the last screen with no
-// workspace, and Open a session silently did nothing there. Now it leads to picking a folder and opens the session in it.
-test("T-612 / 49-ux2: Open a session with no workspace yet opens Add Project, stores setup as completed only when the folder is added, and starts the session there, once", async () => {
+// Job 29 R7: Pick a folder reaches Add Project the way the Start form's Add folder does (addFolderVia, the
+// addFolder.test.ts "hands"): with the sidebar's panel drawn it fires at once; hidden, it shows the panel first.
+const drawn = { panelShown: () => true, showPanel: () => {}, wait: async () => {} };
+const hidden = (shownAfter: number) => {
+  const log: string[] = [];
+  let calls = 0;
+  let shownAt: number | null = null;
+  const h = { panelShown: () => shownAt !== null && calls >= shownAt, showPanel: () => void (log.push("show"), (shownAt = calls + shownAfter)), wait: async () => void calls++ };
+  return { log, h };
+};
+
+test("job 29 R7: with the sidebar hidden, Pick a folder shows the panel first, then opens Add Project", async () => {
   const { ADD_PROJECT } = await import("./firstRun");
-  win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
-  const app = await mountWizard(); // a new profile: no saved default agent, no workspace
-  await app.now().wizardSession();
+  const t = hidden(2);
+  win.addEventListener(ADD_PROJECT, () => t.log.push("add-project"));
+  const app = await mountWizard({ defaultAgent: "claude" });
+  app.now().pickFolder(true, t.h);
   await app.settle();
-  // 49-ux2: Pick a folder hides the wizard and says why, but stores nothing until a folder was really added.
-  expect(closes).toEqual([]);
+  expect(t.log).toEqual(["show", "add-project"]);
   expect(app.now().wizard).toBeNull();
-  expect(heard).toContain("add-project");
-  expect(toasts).toHaveLength(1);
-  expect(started).toEqual([]);
-  app.now().projectAdded("C:/new", "main");
+});
+
+test("job 37 A3: the project panel never shows: the wizard comes back on the screen the user was on, with one plain line", async () => {
+  const app = await mountWizard({ defaultAgent: "claude" });
+  app.now().setWizard(2);
   await app.settle();
-  expect(closes).toEqual(["completed"]);
-  expect(started).toEqual(["claude@C:/new"]); // the agent Open a session would have used: the first one offered
-  app.now().projectAdded("C:/other", null);
-  expect(started).toEqual(["claude@C:/new"]);
+  app.now().pickFolder(true, { panelShown: () => false, showPanel: () => {}, wait: async () => {} });
+  await app.settle();
+  expect(app.now().wizard).toBe(2);
+  expect(toasts[toasts.length - 1]).toBe("Could not open Add project. Try again.");
+  app.now().projectAdded("C:/later", null);
+  await app.settle();
+  expect(started).toEqual([]); // nothing stays armed behind the user's back
+});
+
+test("job 43 F5: a project added while Add project is still being reached: the late 'could not open' answer changes nothing", async () => {
+  const app = await mountWizard({ defaultAgent: "claude" });
+  app.now().setWizard(2);
+  await app.settle();
+  let release = () => {};
+  const gate = new Promise<void>((r) => (release = r));
+  app.now().pickFolder(true, { panelShown: () => false, showPanel: () => {}, wait: () => gate });
+  await app.settle();
+  expect(app.now().wizard).toBeNull();
+  app.now().projectAdded("C:/other-way", null);
+  await app.settle();
+  expect(app.now().wizard).toBe(3);
+  release();
+  await app.settle();
+  expect(app.now().wizard).toBe(3);
+  expect(toasts).not.toContain("Could not open Add project. Try again.");
 });
 
 test("49-ux2: Pick a folder cancelled, then Help > Onboarding: the wizard is back and a project added later does not complete setup", async () => {
   const { REOPEN_WIZARD } = await import("./firstRun");
   const app = await mountWizard();
-  app.now().pickFolder();
+  app.now().pickFolder(false, drawn);
   await app.settle();
   expect(app.now().wizard).toBeNull();
   expect(closes).toEqual([]);
@@ -231,37 +260,11 @@ test("49-ux2: Pick a folder cancelled, then Help > Onboarding: the wizard is bac
   expect(started).toEqual([]);
 });
 
-test("T-612: with a workspace in front, Open a session starts the session there and closes setup as completed", async () => {
-  const app = await mountWizard({}, "C:/w");
-  await app.now().wizardSession();
-  await app.settle();
-  expect(started).toEqual(["claude@C:/w"]);
-  expect(closes).toEqual(["completed"]);
-  expect(heard.filter((x) => x === "add-project")).toEqual([]);
-});
-
-// T-796 (p4a-04): the last screen starts what the user picked; the folder step returns to it instead of finishing setup.
-test("T-796: a plain terminal pick opens a shell in the folder in front, closes setup as completed and starts no agent", async () => {
-  const app = await mountWizard({}, "C:/w");
-  await app.now().wizardSession("terminal");
-  await app.settle();
-  expect(started).toEqual(["shell"]);
-  expect(closes).toEqual(["completed"]);
-});
-
-test("T-796: an agent pick starts that agent, not the first one offered", async () => {
-  const app = await mountWizard({}, "C:/w");
-  await app.now().wizardSession("claude");
-  await app.settle();
-  expect(started).toEqual(["claude@C:/w"]);
-  expect(closes).toEqual(["completed"]);
-});
-
 test("T-796: Pick a folder from the Your work screen returns to the last screen once a folder is added, and finishes nothing", async () => {
   const { ADD_PROJECT } = await import("./firstRun");
   win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
   const app = await mountWizard({ defaultAgent: "claude" });
-  app.now().pickFolder(null, true);
+  app.now().pickFolder(true, drawn);
   await app.settle();
   expect(app.now().wizard).toBeNull();
   expect(heard).toContain("add-project");
@@ -276,23 +279,35 @@ test("T-796: Pick a folder from the Your work screen returns to the last screen 
   expect(closes).toEqual([]);
 });
 
-test("T-796: a plain terminal pick with no folder at all still goes to Add Project, once", async () => {
+// Job 22 item 1 (FROZEN decision 8): the last screen hands over to the Start form. Setup is stored as completed, the
+// first-run screens close, then the form opens once. Nothing starts by itself, and Add Project does not open.
+test("job 22: the main button on the last screen stores setup as completed, closes it, then opens the Start form once", async () => {
   const { ADD_PROJECT } = await import("./firstRun");
   win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
-  const app = await mountWizard();
-  await app.now().wizardSession("terminal");
+  const app = await mountWizard({ defaultAgent: "claude" });
+  const open = vi.fn();
+  app.now().wizardSession(open);
   await app.settle();
-  expect(heard.filter((x) => x === "add-project")).toHaveLength(1);
+  expect(closes).toEqual(["completed"]);
+  expect(app.now().wizard).toBeNull();
+  expect(open).toHaveBeenCalledTimes(1);
   expect(started).toEqual([]);
-  expect(closes).toEqual([]);
+  expect(heard.filter((x) => x === "add-project")).toEqual([]);
 });
 
-test("a plain terminal pick with no folder starts no AI agent in the folder added next, even with a saved default agent", async () => {
-  const app = await mountWizard({ defaultAgent: "claude" });
-  await app.now().wizardSession("terminal");
+test("job 22: with no folder and no AI the button still hands over to the form; a failed save opens it only on the retry", async () => {
+  const app = await mountWizard();
+  store.closeOk = false;
+  const open = vi.fn();
+  app.now().wizardSession(open);
   await app.settle();
-  app.now().projectAdded("C:/new", "main");
+  expect(open).not.toHaveBeenCalled();
+  expect(app.now().wizard).toBe(3); // still up, on the last screen
+  expect(toasts).toHaveLength(1);
+  store.closeOk = true;
+  app.now().wizardSession(open); // the same button again: the stored close is tried once more, with its hand-over
   await app.settle();
-  expect(started).toEqual([]); // the new workspace opens its plain terminal by itself
   expect(closes).toEqual(["completed"]);
+  expect(open).toHaveBeenCalledTimes(1);
+  expect(started).toEqual([]);
 });

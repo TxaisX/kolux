@@ -6,7 +6,7 @@ export const SCREENS = [
   { id: "welcome", name: "Welcome", heading: "Several AIs can work on your files at the same time", sub: "Claude, Codex and Grok each take a part of the job, side by side." },
   { id: "connect", name: "Connect an AI", heading: "Connect an AI", sub: "Sign in with a plan you already pay for. No terminal needed." },
   { id: "work", name: "Your work", heading: "Your work", sub: "Pick the folder your AIs will work in." },
-  { id: "session", name: "Open a session", heading: "Open a session", sub: "Start with an AI or a plain terminal in your folder." },
+  { id: "session", name: "Start your agents", heading: "Start your agents", sub: "Next you pick the folders, how many agents, and which AI." },
 ] as const;
 
 /** The record onboarding_get returns while the wizard is still open; `step` is the last screen finished, -1 for none. */

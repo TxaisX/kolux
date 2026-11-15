@@ -594,7 +594,7 @@ export function HooksAsk({ settings, onDone }: { settings: Record<string, unknow
   const dock = useTipDock();
   useEffect(() => {
     let timer = 0;
-    const show = () => (document.querySelector("[role=dialog]") ? (timer = window.setTimeout(show, 1000)) : setShown(true));
+    const show = () => (document.querySelector("[role=dialog], .sheet-wrap") ? (timer = window.setTimeout(show, 1000)) : setShown(true));
     show();
     return () => window.clearTimeout(timer);
   }, []);

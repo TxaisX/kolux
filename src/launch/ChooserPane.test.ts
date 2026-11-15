@@ -14,7 +14,8 @@ beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:\\bin\\claude.exe", docs: true };
 const render = (seats: Seat[], closable = true, inGit = true, copies: Copies = defaultCopies(seats.length, inGit), shape: Shape = "custom", task = "", saved: SavedShape[] = []) =>
   renderToString(createElement(ChooserPane, { number: 2, agents: [claude], seats, onSeats: () => {}, onLineup: () => {}, shape, task, onTask: () => {}, onStart: () => {}, copies, inGit, onCopies: () => {}, closable, onClose: () => {}, saved, onSaved: () => {}, onPickSaved: () => {} }));
-const startButton = (html: string) => html.split("<button").find((b) => b.includes(">Start"))!;
+// slice(1): the text before the first button holds the "Start" heading, which is not the button.
+const startButton = (html: string) => html.split("<button").slice(1).find((b) => b.includes(">Start"))!;
 
 test("SESS-007: Claude without a model keeps Start disabled, a model enables it, Terminal is enabled at once", () => {
   const noModel = render([{ agent: "claude", model: null }]);
@@ -81,7 +82,7 @@ test("SESS-012: the lineup shows the shape row, a task for every seat, and each 
   const html = render(swarm, true, true, "separate", "swarm", "Fix the login page");
   for (const s of ["Solo", "Pair", "Workbench", "Swarm", "Custom"]) expect(html).toContain(`>${s}</button>`);
   expect(html.split("<button").find((b) => b.includes(">Swarm<"))).toContain('aria-pressed="true"');
-  expect(html).toContain("Task for every seat");
+  expect(html).toContain("Task for all of them");
   expect(html).toContain("Fix the login page");
   const roles = [...html.matchAll(/class="chip seat-role"[^>]*>([a-z]+)</g)].map((m) => m[1]);
   expect(roles).toEqual(["scout", "builder", "builder", "tester", "reviewer"]);
@@ -154,9 +155,12 @@ const agentButtons = (html: string) => [...html.matchAll(/<button class="btn age
 test("Txais 2026-11-08: each seat has a button for Claude Code, Codex, OpenCode and Grok, then Terminal and Other; the rest sit behind Other", () => {
   const list = [agent("aider", "Aider", true), agent("grok", "Grok", false), agent("codex", "Codex", true), claude, agent("opencode", "OpenCode", true), agent("goose", "Goose", false)];
   const html = renderWith(list);
-  expect(html).not.toContain("<select");
+  // The whole form: the one row for all and every seat use the same buttons; no <select> picks the agent anywhere.
+  expect(html.match(/<select/g) ?? []).toHaveLength(0);
+  expect(html).toContain('aria-label="Which AI for all of them"');
   expect(html).toContain('aria-label="Seat 1: which AI"');
-  expect(agentButtons(html).map((b) => b[0])).toEqual(["Claude Code", "Codex", "OpenCode", "Grok" + "not installed", "Terminal", "Other…"]);
+  const lineup = ["Claude Code", "Codex", "OpenCode", "Grok" + "not installed", "Terminal", "Other…"];
+  expect(agentButtons(html).map((b) => b[0])).toEqual([...lineup, ...lineup]);
   expect(html).not.toContain(">Aider<");
   expect(html).not.toContain(">Install<");
   expect(startButton(renderWith(list))).toContain("disabled");
@@ -170,6 +174,18 @@ test("Txais 2026-11-08: the seat's pick shows as a pressed button; an agent pick
   expect(html).toContain("Claude Code docs");
   expect(agentButtons(renderWith(list, false, [{ agent: TERMINAL, model: null }])).find((b) => b[0] === "Terminal")?.[1]).toBe("true");
   expect(agentButtons(renderWith(list, false, [{ agent: "aider", model: null }])).find((b) => b[0] === "Other: Aider")?.[1]).toBe("true");
+});
+
+test("Start form A: the one row presses the agent every seat shares; when seats differ it says Mixed and presses none", () => {
+  const list = [claude, agent("codex", "Codex", true)];
+  const head = (html: string) => html.split('aria-label="Which AI"')[1].split('aria-label="Which AI for all of them"')[0];
+  const row = (html: string) => html.split('aria-label="Which AI for all of them"')[1].split("</div>")[0];
+  const same = renderWith(list, false, [{ agent: "codex", model: null }, { agent: "codex", model: null }]);
+  expect(row(same)).toMatch(/aria-pressed="true"[^>]*>.*Codex/);
+  expect(head(same)).not.toContain("Mixed");
+  const mixed = renderWith(list, false, [{ agent: "codex", model: null }, { agent: "claude", model: "opus" }]);
+  expect(head(mixed)).toContain(">Mixed<");
+  expect(row(mixed)).not.toContain('aria-pressed="true"');
 });
 
 test("T-201-c SESS-017: any agent with its own page links out to it, the folded ones too", () => {
@@ -194,7 +210,7 @@ test("SESS-019: with kits gone, the launch shape, session count, folders and tas
   const html = renderSeats([{ agent: null, model: null }]);
   expect(html).not.toContain("Starter kits");
   expect(html).not.toContain("Advanced");
-  for (const part of ['aria-label="Launch shape"', 'aria-label="How many sessions"', 'aria-label="Where the AIs work"', "Task for every seat"]) expect(html).toContain(part);
+  for (const part of ['aria-label="Launch shape"', 'aria-label="How many sessions"', 'aria-label="Where the AIs work"', "Task for all of them"]) expect(html).toContain(part);
 });
 
 test("SESS-019: the footer counts the sessions and names the first seat still lacking an AI", () => {
@@ -210,7 +226,7 @@ test("SESS-019: the footer counts the sessions and names the first seat still la
 
 test("SESS-018: the New session page shows the project and its path, the add-agents link, Cancel and the launch shortcut", () => {
   const html = renderToString(createElement(ChooserPane, { number: 7, agents: [claude], seats: [{ agent: null, model: null }], onSeats: () => {}, onLineup: () => {}, shape: "custom", task: "", onTask: () => {}, onStart: () => {}, copies: "separate", inGit: true, onCopies: () => {}, closable: true, onClose: () => {}, saved: [], onSaved: () => {}, onPickSaved: () => {}, sheet: { project: "demo", path: "G:\Temp\demo" } }));
-  expect(html).toContain("New session");
+  expect(html).toContain("<h2>Start</h2>");
   expect(html).toContain("demo");
   expect(html).toContain("G:\Temp\demo");
   expect(html).not.toContain("Session 7");
@@ -232,6 +248,10 @@ test("SESS-018: Ctrl+Enter launches only a complete lineup, Escape closes the pa
   expect(sheetKey({ key: "Enter", ctrlKey: true, metaKey: false }, done, true)).toBe(null);
   expect(sheetKey({ key: "Enter", ctrlKey: false, metaKey: false }, done, false)).toBe(null);
   expect(sheetKey({ key: "Escape", ctrlKey: false, metaKey: false }, done, false)).toBe("close");
+  // Wave 2 item 3: plain Enter on the form itself (not inside a field) starts; inside a field it does not.
+  expect(sheetKey({ key: "Enter", ctrlKey: false, metaKey: false }, done, false, false, true)).toBe("launch");
+  expect(sheetKey({ key: "Enter", ctrlKey: false, metaKey: false }, blank, false, false, true)).toBe("blocked");
+  expect(sheetKey({ key: "Escape", ctrlKey: false, metaKey: false }, done, false, true, true)).toBeNull();
 });
 
 test("SESS-018: the page starts with the project's last count and files choice, every seat blank", () => {

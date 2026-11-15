@@ -1,6 +1,6 @@
 // T-612 (T-568): the user guide's first-launch table has to name the wizard's screens as the app has them and
 // say what its buttons do now that kits and sample data are gone: "Your work" offers Pick a folder or Continue,
-// and "Open a session" with no project yet hands over to Add Project. This check failed while the guide still
+// and "Start your agents" opens the Start form with "Choose folders and agents". This check failed while the guide still
 // described the "Try with sample data" and "Choose a kit ... Start kit" screens (STATE.md follow-up of 2026-10-30).
 import { expect, test } from "vitest";
 import guide from "../../docs/guide/getting-started.md?raw";
@@ -23,12 +23,13 @@ test("the step table no longer describes sample data or kits", () => {
   expect(table()).not.toContain("Start kit");
 });
 
-test("the step table says Your work offers Pick a folder, and Open a session falls back to Add Project", () => {
+test("the step table says Your work offers Pick a folder, and the last step hands over to the Start form (job 22)", () => {
   const [, , work, session] = rows();
   expect(work[2]).toContain("Pick a folder");
   expect(work[3]).toBe("Continue");
-  expect(session[2]).toContain("Add Project");
-  expect(session[3]).toBe("Open a session");
+  expect(session[2]).toContain("Start form");
+  expect(session[2]).not.toMatch(/Add Project/);
+  expect(session[3]).toBe("Choose folders and agents");
 });
 
 // PR #55 review: with Default agent left on Auto, defaultAgentId is "" and ONB-010 guesses no agent, so Pick a folder

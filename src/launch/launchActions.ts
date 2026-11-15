@@ -29,6 +29,7 @@ import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
+import { acrossNote, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
 import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
@@ -76,13 +77,18 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // brief, the shared task and its own prompt (SESS-012); with two or more AI seats each also gets
   // the rules block and a handoff note made before it starts (SESS-025), in that folder and named
   // after the folder and its seat number.
-  const startSeats = async (key: number, seats: Seat[]) => {
-    const chooser = panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
-    if (!chooser) return;
+  // Start form C: `given` is the chooser to start from when it is neither in the grid nor the open sheet (a second
+  // ticked folder). True once the sessions have landed. `say` takes the closing line in place of the notice bar, so a
+  // launch across folders can say every folder's outcome in one line (wave 2, item 2).
+  // Job 13 F3: `o.form` is the form that started this launch (only that one closes); `o.quiet` lands the sessions
+  // without changing the screen, the page, the folder in front or the focus (a later folder of a Start across folders).
+  const startSeats = async (key: number, seats: Seat[], given?: Pane, say: (note: string | null) => void = setNotice, o: { form?: number; quiet?: boolean } = {}): Promise<boolean> => {
+    const chooser = given ?? panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
+    if (!chooser) return false;
     const tooMany = tooManySeats(seats.length);
     if (tooMany) {
-      setNotice(tooMany);
-      return;
+      say(tooMany);
+      return false;
     }
     const inGrid = panes.some((p) => p.key === key);
     setLaunching(true);
@@ -126,8 +132,8 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // lands there whole too (each agent runs in its worktree, all are shown in the chooser's grid).
       const landing = makes && !team ? picked.filter((a) => a === null).length : seats.length;
       if (cellsOf(panesIn(panes.filter((p) => p.key !== key), place)).length + landing > MAX_PANES) {
-        setNotice(`A workspace holds up to ${MAX_PANES} panes.`);
-        return;
+        say(`A workspace holds up to ${MAX_PANES} panes.`);
+        return false;
       }
       const repo = makes && proj ? await invoke<{ mode?: string; wait?: boolean }>("repo_setup_get", { path: proj.path }).catch(() => null) : null;
       const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes);
@@ -192,7 +198,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       if (inGrid && !late.panesRef.current.some((p) => p.key === key)) {
         seatsSettled = true;
         if (kept.length) setRefresh((n) => n + 1);
-        return;
+        return false;
       }
       if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", makes ? "separate" : "shared", seats) };
       // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018). DT-C274: a team
@@ -210,27 +216,65 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // VIEW-021: a preset started from the Agents rail stays the selected session once it runs.
       setAgentSel((sel) => (sel === key ? made[0].key : sel));
       if (!inGrid) {
-        setSheet(null);
-        setScreen("terminals");
-        setPage(null);
+        const form = o.form ?? key;
+        setSheet((s) => (s?.key === form ? null : s));
+        if (!o.quiet) {
+          setScreen("terminals");
+          setPage(null);
+        }
       }
       setToast(made.length === 1 ? "Starting 1 session" : `Starting ${made.length} sessions`);
-      setActiveDir(team ? place : made[0].cwd);
-      setFocused(made[0].key);
+      if (!o.quiet) {
+        setActiveDir(team ? place : made[0].cwd);
+        setFocused(made[0].key);
+      }
       setRefresh((n) => n + 1);
       seatsSettled = true;
       const said = [...setupTrouble, ...trustLines.map(([line]) => line)];
-      setNotice(said.length ? said.join(" ") : null);
+      say(said.length ? said.join(" ") : null);
       for (const [, shown] of trustLines) shown();
+      return true;
     } catch (err) {
       // Trust lines gathered so far were never shown: they stay unsaid, so the next launch says them.
       seatsSettled = true;
       // A seat that failed leaves the earlier seats' new workspaces behind: refresh the sidebar so they show, and say so.
       if (kept.length) setRefresh((n) => n + 1);
-      setNotice(failureNote(err, kept.length));
+      say(failureNote(err, kept.length));
+      return false;
     } finally {
       setLaunching(false);
     }
+  };
+
+  // Start form C: Start launches the same lineup in every ticked folder, each in that folder's own grid, through
+  // startSeats once per folder (one launch path). A folder that is refused or fails does not stop the rest; one line
+  // then says how many started and which folders need the user, and why (wave 2, item 2). The form closes once any
+  // folder has started (startSeats closes it), so it stays open only when nothing started. The folders and the count
+  // are kept for the next form (rule F).
+  const startAcross = async (from: StartSheet, seats: Seat[]) => {
+    const ids = (from.folders ?? []).filter((id) => projects.some((p) => p.id === id));
+    if (ids.length === 0) return void (await startSeats(from.key, seats));
+    const tooMany = tooManySeats(seats.length * ids.length);
+    if (tooMany) return setNotice(tooMany);
+    const said: string[] = [];
+    let landed = false; // the first folder that starts brings its grid to the front; later ones land quietly (job 13 F3)
+    const results = await startEach(
+      ids.map((id) => projects.find((x) => x.id === id)!),
+      seats.length,
+      async (proj, n) => {
+        const here = late.projectOf(from.cwd) === proj.id;
+        const chooser: Pane = { ...from, key: n === 0 ? from.key : nextKey.current++, cwd: here ? from.cwd : proj.path, branch: here ? from.branch : null };
+        const got: { note: string | null } = { note: null };
+        const ok = await startSeats(chooser.key, seats, chooser, (m) => void (got.note = m), { form: from.key, quiet: landed });
+        if (!ok) return got.note ?? "It did not start. Try again.";
+        if (!landed) p.saveSetting(LAST_START_KEY, { folders: ids, count: seats.length }); // only a Start that started is remembered (job 13 F8)
+        landed = true;
+        if (got.note) said.push(got.note);
+        return null;
+      },
+    );
+    const line = [acrossNote(results), ...said].filter(Boolean).join(" ");
+    setNotice(line || null);
   };
 
   // PROJ-038: the agent is the new workspace's first tab, started with its prompt; nothing else
@@ -449,7 +493,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
   };
   return {
-    lineupsOf, rememberLineup, inGitFor, startSeats, startIn, openIn, resumeIn, resumeOrFocus, openTabs, runSetup, gateSetup, fromItem, fromName, pretrust,
+    lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, openTabs, runSetup, gateSetup, fromItem, fromName, pretrust,
     fixWithAI, projectFor, launch,
   };
 }

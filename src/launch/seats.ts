@@ -205,11 +205,12 @@ export function seatArgs(s: Seat): string[] {
 
 /** SESS-021: what "Use last lineup" brings back for a project: the shape, the files choice and
  * each seat's agent and model; never the options, titles or prompts. */
-export type Lineup = { shape: Shape; copies: Copies; seats: { agent: string | null; model: string | null }[] };
+export type Lineup = { shape: Shape; copies: Copies; seats: { agent: string | null; model: string | null; effort?: string; fast?: boolean }[] };
 
 export const LAST_LINEUP_KEY = "lastLineups";
 
-export const lineupOf = (shape: Shape, copies: Copies, seats: Seat[]): Lineup => ({ shape, copies, seats: seats.map((s) => ({ agent: s.agent, model: s.model })) });
+// Start form (2026-11-15): the effort and fast mode are kept too, so the form opens on the whole last pick.
+export const lineupOf = (shape: Shape, copies: Copies, seats: Seat[]): Lineup => ({ shape, copies, seats: seats.map((s) => ({ agent: s.agent, model: s.model, ...(s.effort ? { effort: s.effort } : {}), ...(s.fast ? { fast: true } : {}) })) });
 
 /** The agents a lineup remembers, each once, in seat order; terminals left out. */
 export const lineupAgents = (l: Lineup): string[] => [...new Set(l.seats.flatMap((s) => (s.agent && s.agent !== TERMINAL ? [s.agent] : [])))];
@@ -221,10 +222,20 @@ export function offeredLineup(saved: unknown, installedIds: string[]): Lineup | 
   return lineupAgents(l).some((a) => installedIds.includes(a)) ? l : null;
 }
 
-/** Puts a lineup back: its shape with its roles, and each seat's agent and model; a seat whose
- * agent is gone is left blank. */
+/** A saved model the agent no longer lists is dropped (model: null), so the seat asks for a pick
+ * instead of starting with a --model the program rejects. An agent with no list keeps it. */
+export const knownModel = (s: Seat): Seat => {
+  if (s.agent === null || s.agent === TERMINAL || s.model === null) return s;
+  const list = modelsFor(s.agent);
+  // Job 13 F6: Grok and Cursor list some models only through the live search; until it answers, a remembered one stays.
+  const waiting = LISTED.includes(s.agent) && !discovered[s.agent];
+  return waiting || list.length === 0 || list.some((m) => m.id === s.model) ? s : { ...s, model: null };
+};
+
+/** Puts a lineup back: its shape with its roles, and each seat's agent, model, effort and fast mode;
+ * a seat whose agent is gone is left blank, a model that is gone is left unpicked. */
 export function applyLineup(l: Lineup, installedIds: string[]): { shape: Shape; seats: Seat[] } {
-  const seats = clearMissing(l.seats.map((s) => ({ agent: s.agent, model: s.model })), installedIds);
+  const seats = clearMissing(l.seats.map((s) => ({ agent: s.agent, model: s.model, ...(typeof s.effort === "string" ? { effort: s.effort } : {}), ...(s.fast === true ? { fast: true } : {}) })), installedIds).map(knownModel);
   return resizeLineup(l.shape, seats, seats.length);
 }
 

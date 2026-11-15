@@ -15,3 +15,21 @@ test("Sidebar.tsx gates the card and its grip on showsProjects, not on terminals
   expect(sidebar.match(/showsProjects\(screen\) && sidebarOpen/g)).toHaveLength(2);
   expect(sidebar).not.toContain('(terminals || screen === "artifacts" || screen === "skills")');
 });
+
+test("job 37 A3: Pick a folder and the Start form's Add folder use the same hands to reach Add project", async () => {
+  const { addFolderHands } = await import("./sidebarScreens");
+  const hosts = (await import("./Hosts.tsx?raw")).default;
+  const seats = (await import("./SeatChooser.tsx?raw")).default;
+  for (const src of [hosts, seats]) {
+    expect(src).toContain("addFolderHands(setSidebarOpen, screen, setScreen)");
+    expect(src).not.toContain("document.querySelector(ADD_PROJECT_BUTTON)");
+  }
+  const did: string[] = [];
+  const h = addFolderHands((on) => void did.push(`sidebar ${on}`), "agents", (s) => void did.push(`screen ${s}`));
+  h.showPanel();
+  expect(did).toEqual(["sidebar true", "screen terminals"]);
+  did.length = 0;
+  addFolderHands((on) => void did.push(`sidebar ${on}`), "terminals", (s) => void did.push(`screen ${s}`)).showPanel();
+  expect(did).toEqual(["sidebar true"]);
+  await expect(h.wait(0)).resolves.toBeUndefined();
+});

@@ -45,6 +45,7 @@ import { gridOf, setGridRoots } from "../workspaces";
 import { EMPTY_GRID_MAP, GRID_MAP_SETTING, focusDirOf, foldGridMap, readGridMap, sameGridMap, unionGridMaps, type GridMap } from "../projects/worktreeGrid";
 import { scanGridOwners } from "../projects/gridScan";
 import type { Project } from "../projects/model";
+import type { StartSheet } from "../launch/startForm";
 import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
 
 /** The settings key that remembers whether the left sidebar is shown. */
@@ -52,7 +53,7 @@ export const LEFT_OPEN_KEY = "leftSidebarOpen";
 /** The left sidebar at start: shown unless it was hidden when the app last closed. */
 export const leftOpenAtStart = (s: Record<string, unknown>): boolean => s[LEFT_OPEN_KEY] !== false;
 
-export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null, late: SavedLayout | null = null) {
+export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null, late: SavedLayout | null = null, read = true) {
   const keymap = useKeymap();
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [screen, setScreen] = useState<Screen>(() => startScreen(initial)); // SET-037
@@ -177,7 +178,8 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   useEffect(() => installTabWheel(), []);
   // SESS-018: on the New look a new session is chosen on a full-page sheet over the workspace,
   // held here rather than in the grid; Classic keeps the chooser pane (SESS-019).
-  const [sheet, setSheet] = useState<Pane | null>(null);
+  // Start form (2026-11-15): the sheet also holds the ticked folders and whether it is the ask at app open.
+  const [sheet, setSheet] = useState<StartSheet | null>(null);
   // SET-027: everywhere but Settings, only agents that are switched on are offered.
   const teamsHost = useTeamsHost();
   const agents = useMemo(() => withTeams(offeredAgents(allAgents, settings), settings, teamsHost), [allAgents, settings, teamsHost]);
@@ -195,7 +197,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     gridMap.current = unionGridMaps(gridMap.current, readGridMap(settings));
   }
   setGridRoots(gridMap.current.worktrees, gridMap.current.roots);
-  const { projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(gridOf(activeRaw));
+  const { projects, setProjects, projectsRead, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(gridOf(activeRaw));
   const [startScan, setStartScan] = useState<{ projects: Project[]; owner: Record<string, string> } | null>(null);
   const gridIn = useRef<unknown[]>([]);
   if (gridIn.current[0] !== projects || gridIn.current[1] !== owner || gridIn.current[2] !== startScan) {
@@ -228,9 +230,14 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // React unmounted the first, killing every terminal it held. The saved tabs now join the window already drawn,
   // once, so a tab opened during the wait keeps its pane and its agent. A choice the user made meanwhile wins.
   const adopted = useRef(false);
+  // Job 29 R1: "last time's layout is in", set in the same update that joins the saved panes, so the Start form never
+  // counts them as panes the user added. A late draw with no saved layout (read, but `late` null) is in as well.
+  const [layoutIn, setLayoutIn] = useState(read);
   useEffect(() => {
+    if (read && !late) setLayoutIn(true);
     if (!late || adopted.current) return;
     adopted.current = true;
+    setLayoutIn(true);
     setPanes((ps) => joinSaved(ps, late));
     setActiveTab((m) => ({ ...late.activeTab, ...m }));
     setStacked((s) => ({ ...late.stacked, ...s }));
@@ -240,7 +247,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     const marks = joinMarks(marksNow.current, late);
     setPinned(marks.pinned);
     setTabColors(marks.colors);
-  }, [late]);
+  }, [late, read]);
   const { setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
@@ -252,7 +259,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
     settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
-    defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh,
+    defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, projectsRead, layoutIn, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
     setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,
   };

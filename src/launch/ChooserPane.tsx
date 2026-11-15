@@ -19,13 +19,14 @@ import VendorMark from "../chrome/VendorMark";
 import AgentMark from "../marks/AgentMark";
 import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
-import { firstSeatStart, seatStart, type SeatDefault } from "./defaultSeat";
+import { seatStart, type SeatDefault } from "./defaultSeat";
+import { everySeatStart, folderPlan, oneForAll, pickForAll, pickWords, recountAll, setAll, startSummary, type FolderRow } from "./startForm";
 import { canInstall, FEATURED, featuredRows, installNoteOf, installTip, otherRows, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
 import { useDialogFocus } from "../chrome/dialogFocus";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
-import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
+import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered, knownModel } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
@@ -47,14 +48,14 @@ function DocsLink({ agent }: { agent: AgentInfo }) {
 }
 
 /** Txais 2026-11-08: the window behind a seat's Other button, listing installed agents without a button of their own. */
-function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: number; agents: AgentInfo[]; picked: string | null; onPick: (id: string) => void; onMore: () => void; onClose: () => void }) {
+function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: number | null; agents: AgentInfo[]; picked: string | null; onPick: (id: string) => void; onMore: () => void; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   useDialogFocus(box, onClose); // focus on open, Tab kept inside, Escape from anywhere, focus back on close
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={box} className="other-agents" role="dialog" aria-modal="true" aria-label="Other AI programs">
         <h2>Other AI programs</h2>
-        <span className="caption">{`Installed on this computer. Your pick runs in seat ${seat + 1}.`}</span>
+        <span className="caption">{seat === null ? "Installed on this computer. Your pick goes to all of them." : `Installed on this computer. Your pick runs in seat ${seat + 1}.`}</span>
         {agents.length === 0 ? (
           <span className="caption">No other AI programs are installed.</span>
         ) : (
@@ -80,6 +81,31 @@ function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: 
   );
 }
 
+/** Txais 2026-11-08: a button each for Claude Code, Codex, OpenCode and Grok (FEATURED), then Terminal and Other…; the rest sit
+ * behind Other. One group serves both the Start form's one row for all (`pick` null while the seats differ) and each seat. */
+function AgentButtons({ rows, pick, label, testid, idPrefix, onChoose, onOther }: { rows: AgentInfo[]; pick: string | null; label: string; testid: string; idPrefix: string; onChoose: (id: string) => void; onOther: () => void }) {
+  const other = pick && pick !== TERMINAL && !FEATURED.includes(pick) ? rows.find((x) => x.id === pick) : undefined;
+  return (
+    <div className="agent-grid" role="group" data-testid={testid} aria-label={label}>
+      {featuredRows(rows).map((a) => (
+        <button key={a.id} className="btn agent-btn" data-testid={`${idPrefix}-${a.id}`} aria-pressed={pick === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => onChoose(a.id)}>
+          <AgentMark id={a.id} size={28} />
+          <span className="agent-btn-name">{a.name}</span>
+          {!a.installed && <span className="agent-btn-note">not installed</span>}
+        </button>
+      ))}
+      <button className="btn agent-btn" data-testid={`${idPrefix}-terminal`} aria-pressed={pick === TERMINAL} title="A plain terminal, no AI" onClick={() => onChoose(TERMINAL)}>
+        <VendorMark agent="shell" size={28} />
+        <span className="agent-btn-name">Terminal</span>
+      </button>
+      <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={onOther}>
+        {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
+        <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
+      </button>
+    </div>
+  );
+}
+
 /** UX audit F4: what a missing agent with no Install route and no docs page tells the person to do. */
 export const selfInstallHint = (a: AgentInfo): string | null => (!a.installed && !canInstall(a) && !a.docs ? `Kolux cannot install ${a.name} for you. Install it yourself, then press Refresh agents.` : null);
 
@@ -91,9 +117,11 @@ export const holdsTyping = (el: { tagName?: string; value?: string; type?: strin
 
 /** SESS-018: what a key does on the New session page: Ctrl+Enter (Cmd+Enter on a Mac) launches a
  * complete lineup and is "blocked" while a seat is unfinished; Escape closes the page. */
-export function sheetKey(e: { key: string; ctrlKey: boolean; metaKey: boolean }, seats: Seat[], mac: boolean, busy = false): "launch" | "blocked" | "close" | null {
+export function sheetKey(e: { key: string; ctrlKey: boolean; metaKey: boolean }, seats: Seat[], mac: boolean, busy = false, onForm = false): "launch" | "blocked" | "close" | null {
   if (e.key === "Escape") return busy ? null : "close";
-  if (e.key !== "Enter" || !(mac ? e.metaKey : e.ctrlKey)) return null;
+  // Wave 2 item 3: the form takes focus when it opens, so plain Enter there starts the prefilled answer.
+  const plain = onForm && !e.ctrlKey && !e.metaKey;
+  if (e.key !== "Enter" || !(plain || (mac ? e.metaKey : e.ctrlKey))) return null;
   return allReady(seats) ? "launch" : "blocked";
 }
 
@@ -152,9 +180,13 @@ type Props = {
   defaultAgent?: string;
   /** SESS-018: set on the New look: the chooser is the full-page New session sheet for this project. */
   sheet?: { project: string; path: string } | null;
+  /** Start form C: the known project folders (most recent first), the ticked ones, each grid's cells in use, and Add folder. */
+  folders?: { rows: FolderRow[]; ticked: string[]; used: Record<string, number>; onTick: (ids: string[]) => void; onAdd: () => void } | null;
+  /** Start form D: the close button's words when the form was asked at app open ("Keep what was open"). */
+  keepLabel?: string;
 };
 
-export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, onCopies, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null, defaultAgent = "" }: Props) {
+export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, onCopies, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null, defaultAgent = "", folders = null, keepLabel = "Cancel" }: Props) {
   const mac = useKeymap().platform === "darwin";
   // SESS-018: a Ctrl+Enter that cannot launch points at the footer's unfinished seat.
   const [nudged, setNudged] = useState(false);
@@ -169,6 +201,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const rows = pickList(agents.map((a) => fixed[a.id] ?? a), detecting);
   const none = !detecting && !rows.some((a) => a.installed);
   const nameOf = (id: string) => agents.find((a) => a.id === id)?.name ?? id;
+  const noneNote = (
+    <span className="caption">
+      No AI programs have been found yet. Pick one below to install it, or{" "}
+      <button className="btn link" onClick={() => openSettings("accounts")}>
+        open Settings
+      </button>
+      .
+    </span>
+  );
   // TERM-012: a chooser Kolux focuses takes the keyboard, so typing no longer lands in the last pane.
   const box = useRef<HTMLElement>(null);
   const win = useContext(WindowStore);
@@ -185,7 +226,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   useEffect(() => {
     if (seeded.current || detecting) return;
     seeded.current = true;
-    const start = firstSeatStart(seatsRef.current, defaultAgent, rows, seatDefault_);
+    const start = everySeatStart(seatsRef.current, defaultAgent, rows, seatDefault_); // Start form A: every blank seat, not only seat 1
     if (start) onSeats(start);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detecting]);
@@ -203,15 +244,28 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     setSeat(i, { agent: null, model: null, effort: undefined, fast: undefined });
   };
   // Which seat's Other window is open (Txais 2026-11-08: the four main agents get buttons, the rest sit behind Other).
-  const [otherFor, setOtherFor] = useState<number | null>(null);
+  const [otherFor, setOtherFor] = useState<number | "all" | null>(null);
   // SESS-029: Grok and Cursor are asked for their models once per app run.
   const [, setLive] = useState(0);
+  // Job 22 item 3: when the list lands while this form is open, a model it lacks is dropped in the parent's seats too.
+  const seatsNow = useRef({ seats, onSeats });
+  seatsNow.current = { seats, onSeats };
   useEffect(() => {
-    for (const a of agents) if (a.installed && LISTED.includes(a.id)) void liveModels(a.id).then((n) => n && setLive((v) => v + 1));
+    let on = true;
+    const recheck = () => {
+      const { seats: now, onSeats: put } = seatsNow.current;
+      const kept = now.map(knownModel);
+      if (on && kept.some((s, i) => s !== now[i])) put(kept);
+    };
+    for (const a of agents) if (a.installed && LISTED.includes(a.id)) void liveModels(a.id).then((n) => n && (setLive((v) => v + 1), recheck()));
+    return () => void (on = false);
   }, [agents]);
   const setSeat = (i: number, patch: Partial<Seat>) => onSeats(seats.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const searched = !pass || canLaunch(pass);
-  const ready = allReady(seats) && !busy && searched;
+  // Start form C: the launch across the ticked folders, and why Start is off when it is.
+  const tickedRows = folders ? folders.rows.filter((f) => folders.ticked.includes(f.id)) : [];
+  const plan = folders ? (folders.rows.length === 0 ? { total: 0, problem: "Add a folder first." } : folderPlan(seats.length, tickedRows.map((f) => ({ name: f.name, used: folders.used[f.id] ?? 0 })))) : null;
+  const ready = allReady(seats) && !busy && searched && !plan?.problem;
   const anyReady = seats.some(seatReady);
   // SESS-022: a line per provider near its limit, above Start; it never disables Start.
   const warnings = launchWarnings(seats.map((s) => s.agent), useLaunchUsage());
@@ -251,7 +305,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   // through a one-seat moment that drops the picks of seats 2 and up.
   const recount = (n: number) => {
     setBigCount(null);
-    const next = resizeLineup(shape, seats, n);
+    const next = recountAll(shape, seats, n);
     onLineup(next.shape, next.seats);
   };
   const applyCount = (e: { currentTarget: HTMLInputElement }) => {
@@ -272,7 +326,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   useEffect(() => () => typing.cancel(), []);
   const onSheetKey = (e: KeyboardEvent) => {
     if (!sheet || e.defaultPrevented) return;
-    const what = sheetKey(e, seats, mac, busy);
+    const what = sheetKey(e, seats, mac, busy, e.target === box.current);
     if (busy && e.key === "Escape") e.preventDefault(); // Starting: the launch is under way and cannot be called off
     if (what === "close") {
       // Escape inside an open name field closes that field first (its own handler).
@@ -289,6 +343,61 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       setNudged(true);
     }
   };
+  // SESS-017: the Install route, notes and docs for a picked agent, on a seat or on the one row (seat 0 then stands for all).
+  const installBits = (pick: string | null, i: number) => {
+    const a = rows.find((x) => x.id === pick);
+    if (!a) return null;
+    return (
+      <>
+        {canInstall(a) && (
+        <button
+          className="btn"
+          disabled={installing !== null}
+          title={installTip(a)}
+          onClick={() => {
+            setInstalling(a.id);
+            setInstallError(({ [a.id]: _gone, ...rest }) => rest);
+            void runInstall(a).then((r) => {
+              setInstalling(null);
+              if ("error" in r) return setInstallError((x) => ({ ...x, [a.id]: r.error }));
+              setFixed((x) => ({ ...x, [a.id]: r.agent }));
+              // Every empty seat that was showing this same missing agent takes it too.
+              const now = seatsRef.current;
+              const same = new Set(now.flatMap((_, j) => (j === i || shownPick(now, shownRef.current, j) === a.id ? [j] : [])));
+              setShown((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !same.has(Number(k)))));
+              onSeats(now.map((s, j) => (same.has(j) && (j === i || s.agent === null) ? { ...s, ...seatStart(a.id, seatDefault_) } : s)));
+              onRefresh?.();
+            });
+          }}
+        >
+          {installing === a.id ? "Installing…" : "Install"}
+        </button>
+        )}
+        {installNoteOf(a) && <span className="caption" data-install-note>{installNoteOf(a)}</span>}
+        {selfInstallHint(a) && <span className="caption">{selfInstallHint(a)}</span>}
+        {installError[a.id] && (
+          <span className="agent-missing" role="alert">
+            {installError[a.id]}
+          </span>
+        )}
+        <DocsLink agent={a} />
+      </>
+    );
+  };
+  // Start form A: the one row's pick for every seat; a missing agent is shown on every seat so Install appears once.
+  const one = oneForAll(seats);
+  const oneShown = one === "mixed" ? null : (one.agent ?? shown[0] ?? null);
+  const oneMissing = oneShown !== null && oneShown !== TERMINAL && !rows.find((a) => a.id === oneShown)?.installed ? oneShown : null;
+  const chooseAll = (id: string) => {
+    const a = rows.find((x) => x.id === id);
+    if (id === TERMINAL || a?.installed) {
+      setShown({});
+      return onSeats(pickForAll(seats, id, seatDefault_));
+    }
+    setShown(Object.fromEntries(seats.map((_, k) => [k, id])));
+    onSeats(setAll(seats, { agent: null, model: null }));
+  };
+  const [eachOpen, setEachOpen] = useState(false);
   const launchKeys = [mac ? "Cmd" : "Ctrl", "Enter"];
   // T-745: with several choosers in the grid, only one shows the sheet; this one is an empty slot until clicked.
   // Mousedown moves the sheet here and removes the button under the pointer, so preventDefault stops the browser
@@ -308,17 +417,17 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       </section>
     );
   return (
-    <section ref={box} tabIndex={-1} data-testid="chooser-pane" className={`pane chooser${sheet ? " sheet" : ""}${focused ? " focused" : ""}`} hidden={hidden} aria-label={sheet ? "New session" : `Session ${number} chooser`} onMouseDown={onFocus} onKeyDown={onSheetKey}>
+    <section ref={box} tabIndex={-1} data-testid="chooser-pane" className={`pane chooser${sheet ? " sheet" : ""}${focused ? " focused" : ""}`} hidden={hidden} aria-label={sheet ? "Start" : `Session ${number} chooser`} onMouseDown={onFocus} onKeyDown={onSheetKey}>
       {sheet ? (
         <header className="sheet-head">
           <div className="sheet-title">
-            <h2>New session</h2>
+            <h2>Start</h2>
             <span className="sheet-project">{sheet.project}</span>
             <span className="sheet-path" title={sheet.path}>
               {sheet.path}
             </span>
           </div>
-          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close New session">
+          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close Start">
             <Close size={12} />
           </button>
         </header>
@@ -343,6 +452,110 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         ) : pass && !pass.done ? (
           <p className="caption">Looking for agents…</p>
         ) : null}
+        {folders && (
+          <div className="count-row" role="group" aria-label="Folders">
+            <span className="label">Folders</span>
+            {folders.rows.length === 0 && <span className="caption">Add a folder first.</span>}
+            {folders.rows.map((f) => (
+              <label key={f.id} className="choice" title={f.path}>
+                <input type="checkbox" checked={folders.ticked.includes(f.id)} onChange={(e) => folders.onTick(e.currentTarget.checked ? [...folders.ticked, f.id] : folders.ticked.filter((id) => id !== f.id))} />
+                {f.name}
+              </label>
+            ))}
+            <button className="btn" onClick={folders.onAdd} title="Add a project folder Kolux can open">
+              Add folder
+            </button>
+          </div>
+        )}
+        <div className="count-row" role="group" aria-label="How many sessions">
+          <span className="label">How many</span>
+          {QUICK_COUNTS.map((n) => (
+            <button key={n} className="btn" aria-pressed={seats.length === n} onClick={() => recount(n)}>
+              {n}
+            </button>
+          ))}
+          <input
+            ref={countBox}
+            className="count-field"
+            type="number"
+            min={1}
+            max={MAX_SESSIONS}
+            aria-label="Any number of sessions"
+            defaultValue={seats.length}
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={applyCount}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") applyCount(e);
+            }}
+            onChange={(e) => {
+              // The spinner and arrow keys step the value: that is a whole number, apply at once.
+              if (!(e.nativeEvent as InputEvent).inputType) applyCount(e);
+              else {
+                const box = e.currentTarget;
+                typing.later(() => applyCount({ currentTarget: box }));
+              }
+            }}
+          />
+          {folders && <span className="caption">in each folder</span>}
+        </div>
+        {bigCount !== null && (
+          <div className="note warn" role="alert">
+            {`${bigCount} sessions is a lot: ${copies === "separate" ? "with own folders each AI seat makes a folder of its own" : "every seat works in the same folder"}. `}
+            <button className="btn" onClick={() => recount(bigCount)}>
+              {`Use ${bigCount}`}
+            </button>{" "}
+            <button
+              className="btn"
+              onClick={() => {
+                setBigCount(null);
+                if (countBox.current) countBox.current.value = String(seats.length);
+              }}
+            >
+              {`Keep ${seats.length}`}
+            </button>
+          </div>
+        )}
+        <div className="count-row" role="group" aria-label="Which AI">
+          <span className="label">Which AI</span>
+          {one === "mixed" && <span className="caption">Mixed</span>}
+          {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
+          {none && noneNote}
+          {!detecting && <AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" testid="all-agents" idPrefix="all-agent" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
+          {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length > 0 && (
+            <div className="choices" role="radiogroup" aria-label="Which model for all of them">
+              <span className="label">{one.model === null ? "Pick a model" : "Model"}</span>
+              {modelsFor(one.agent).map((m) => (
+                <label key={m.id} className="choice">
+                  <input type="radio" name={`all-${number}-model`} checked={one.model === m.id} onChange={() => onSeats(setAll(seats, { agent: one.agent, model: m.id, effort: undefined, fast: undefined }))} />
+                  {m.label}
+                </label>
+              ))}
+            </div>
+          )}
+          {one !== "mixed" && choiceOf(seats[0])?.efforts && (
+            <label className="choice">
+              Effort
+              <select aria-label="Effort for all" value={one.effort ?? ""} onChange={(e) => onSeats(setAll(seats, { ...one, effort: e.currentTarget.value || undefined }))}>
+                <option value="">{choiceOf(seats[0])?.defaultEffort ? `Model default (${choiceOf(seats[0])?.defaultEffort})` : "Model default"}</option>
+                {choiceOf(seats[0])?.efforts?.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {one !== "mixed" && choiceOf(seats[0])?.fast && (
+            <label className="choice" title="Faster answers at a higher price per token">
+              <input type="checkbox" aria-label="Fast mode for all" checked={one.fast === true} onChange={(e) => onSeats(setAll(seats, { ...one, fast: e.currentTarget.checked || undefined }))} />
+              Fast mode
+            </label>
+          )}
+          {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
+          {oneMissing && installBits(oneMissing, 0)}
+        </div>
+        <details className="chooser-each" open={eachOpen} onToggle={(e) => setEachOpen(e.currentTarget.open)}>
+          <summary className="btn link">Make each one different</summary>
         {lastLineup && onUseLineup && (
           <div className="count-row">
             <button className="btn" onClick={onUseLineup} title="Put back this project's last shape, folders choice and each seat's AI and model">
@@ -374,7 +587,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         {naming !== null && (
           <div className="count-row" role="group" aria-label="Save as team">
             <input className="seat-job" autoFocus type="text" maxLength={60} placeholder="Team name" aria-label="Team name" value={naming} onChange={(e) => setNaming(e.currentTarget.value)} onKeyDown={(e) => (e.key === "Enter" ? save() : e.key === "Escape" && setNaming(null))} />
-            <button className="btn primary" disabled={!naming.trim()} onClick={save}>
+            <button className="btn" disabled={!naming.trim()} onClick={save}>
               Save
             </button>
             <button className="btn" onClick={() => setNaming(null)}>
@@ -409,56 +622,11 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             </button>
           </div>
         )}
-        <div className="count-row" role="group" aria-label="How many sessions">
-          <span className="label">Sessions</span>
-          {QUICK_COUNTS.map((n) => (
-            <button key={n} className="btn" aria-pressed={seats.length === n} onClick={() => recount(n)}>
-              {n}
-            </button>
-          ))}
-          <input
-            ref={countBox}
-            className="count-field"
-            type="number"
-            min={1}
-            max={MAX_SESSIONS}
-            aria-label="Any number of sessions"
-            defaultValue={seats.length}
-            onFocus={(e) => e.currentTarget.select()}
-            onBlur={applyCount}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") applyCount(e);
-            }}
-            onChange={(e) => {
-              // The spinner and arrow keys step the value: that is a whole number, apply at once.
-              if (!(e.nativeEvent as InputEvent).inputType) applyCount(e);
-              else {
-                const box = e.currentTarget;
-                typing.later(() => applyCount({ currentTarget: box }));
-              }
-            }}
-          />
+          <div className="count-row">
           <button className="btn" disabled={!anyReady || seats.length < 2} onClick={() => onSeats(sameForAll(seats))} title="Copy the first finished seat's AI and model into every seat">
             Same for all
           </button>
-        </div>
-        {bigCount !== null && (
-          <div className="note warn" role="alert">
-            {`${bigCount} sessions is a lot: ${copies === "separate" ? "with own folders each AI seat makes a folder of its own" : "every seat works in the same folder"}. `}
-            <button className="btn" onClick={() => recount(bigCount)}>
-              {`Use ${bigCount}`}
-            </button>{" "}
-            <button
-              className="btn"
-              onClick={() => {
-                setBigCount(null);
-                if (countBox.current) countBox.current.value = String(seats.length);
-              }}
-            >
-              {`Keep ${seats.length}`}
-            </button>
           </div>
-        )}
         {singleFolder() ? (
           <div className="count-row" role="group" aria-label="Where the AIs work">
             <span className="label">Folder</span>
@@ -492,14 +660,6 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             )}
           </div>
         )}
-        <textarea
-          className="seat-prompt"
-          rows={2}
-          placeholder="Task for every seat (optional)"
-          aria-label="Task for every seat"
-          value={task}
-          onChange={(e) => onTask(e.currentTarget.value)}
-        />
         <div className="seats">
           {seats.map((seat, i) => (
             <div key={i} className="seat">
@@ -521,80 +681,9 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               </div>
               <div className="choices agent-pick">
                 {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
-                {none && (
-                  <span className="caption">
-                    No AI programs have been found yet. Pick one below to install it, or{" "}
-                    <button className="btn link" onClick={() => openSettings("accounts")}>
-                      open Settings
-                    </button>
-                    .
-                  </span>
-                )}
-                {!detecting && (
-                  <div className="agent-grid" role="group" data-testid={`seat-${i + 1}-agents`} aria-label={`Seat ${i + 1}: which AI`}>
-                    {featuredRows(rows).map((a) => (
-                      <button key={a.id} className="btn agent-btn" data-testid={`seat-agent-${a.id}`} aria-pressed={shownPick(seats, shown, i) === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => chooseAgent(i, a.id)}>
-                        <AgentMark id={a.id} size={28} />
-                        <span className="agent-btn-name">{a.name}</span>
-                        {!a.installed && <span className="agent-btn-note">not installed</span>}
-                      </button>
-                    ))}
-                    <button className="btn agent-btn" data-testid="seat-agent-terminal" aria-pressed={shownPick(seats, shown, i) === TERMINAL} title="A plain terminal, no AI" onClick={() => chooseAgent(i, TERMINAL)}>
-                      <VendorMark agent="shell" size={28} />
-                      <span className="agent-btn-name">Terminal</span>
-                    </button>
-                    {(() => {
-                      const pick = shownPick(seats, shown, i);
-                      const other = pick && pick !== TERMINAL && !FEATURED.includes(pick) ? rows.find((x) => x.id === pick) : undefined;
-                      return (
-                        <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={() => setOtherFor(i)}>
-                          {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
-                          <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
-                        </button>
-                      );
-                    })()}
-                  </div>
-                )}
-                {(() => {
-                  const a = rows.find((x) => x.id === shownPick(seats, shown, i));
-                  if (!a) return null;
-                  return (
-                    <>
-                      {canInstall(a) && (
-                      <button
-                        className="btn"
-                        disabled={installing !== null}
-                        title={installTip(a)}
-                        onClick={() => {
-                          setInstalling(a.id);
-                          setInstallError(({ [a.id]: _gone, ...rest }) => rest);
-                          void runInstall(a).then((r) => {
-                            setInstalling(null);
-                            if ("error" in r) return setInstallError((x) => ({ ...x, [a.id]: r.error }));
-                            setFixed((x) => ({ ...x, [a.id]: r.agent }));
-                            // Every empty seat that was showing this same missing agent takes it too.
-                            const now = seatsRef.current;
-                            const same = new Set(now.flatMap((_, j) => (j === i || shownPick(now, shownRef.current, j) === a.id ? [j] : [])));
-                            setShown((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !same.has(Number(k)))));
-                            onSeats(now.map((s, j) => (same.has(j) && (j === i || s.agent === null) ? { ...s, ...seatStart(a.id, seatDefault_) } : s)));
-                            onRefresh?.();
-                          });
-                        }}
-                      >
-                        {installing === a.id ? "Installing…" : "Install"}
-                      </button>
-                      )}
-                      {installNoteOf(a) && <span className="caption" data-install-note>{installNoteOf(a)}</span>}
-                      {selfInstallHint(a) && <span className="caption">{selfInstallHint(a)}</span>}
-                      {installError[a.id] && (
-                        <span className="agent-missing" role="alert">
-                          {installError[a.id]}
-                        </span>
-                      )}
-                      <DocsLink agent={a} />
-                    </>
-                  );
-                })()}
+                {none && noneNote}
+                {!detecting && <AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} testid={`seat-${i + 1}-agents`} idPrefix="seat-agent" onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
+                {installBits(shownPick(seats, shown, i), i)}
               </div>
               {seat.agent !== null && seat.agent !== TERMINAL && modelsFor(seat.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
               {seat.agent !== null && modelsFor(seat.agent).length > 0 && (
@@ -644,6 +733,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             </div>
           ))}
         </div>
+        </details>
+        <textarea
+          className="seat-prompt"
+          rows={2}
+          placeholder="Task for all of them (optional)"
+          aria-label="Task for all of them"
+          value={task}
+          onChange={(e) => onTask(e.currentTarget.value)}
+        />
         {sheet && (
           <button className="btn link chooser-advanced" onClick={() => openSettings("accounts")} title="Connect or install another AI in Settings">
             Add more agents
@@ -652,8 +750,13 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       </div>
       <footer className="chooser-foot">
         <div className={`caption chooser-count${nudged && gap ? " warn" : ""}`} role={nudged && gap ? "alert" : "status"}>
-          {`${sessions} ${sessions === 1 ? "session" : "sessions"}${gap ? ` · ${gap}` : ""}`}
+          {`${folders ? startSummary(sessions, tickedRows.map((f) => f.name), pickWords(oneForAll(seats), nameOf, (agent, model) => modelsFor(agent).find((m) => m.id === model)?.label ?? model)) : `${sessions} ${sessions === 1 ? "session" : "sessions"}`}${gap ? ` · ${gap}` : ""}`}
         </div>
+        {plan?.problem && (
+          <div className="note warn" role="status">
+            {plan.problem}
+          </div>
+        )}
         {warnings.map((w) => (
           <div key={w} className="note warn" role="status">
             {w}
@@ -662,7 +765,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         <div className="btn-row">
           {sheet && (
             <button className="btn" onClick={onClose} disabled={busy}>
-              Cancel
+              {keepLabel}
             </button>
           )}
           {onRefresh && (
@@ -687,10 +790,10 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       </footer>
       {otherFor !== null && (
         <OtherAgents
-          seat={otherFor}
+          seat={otherFor === "all" ? null : otherFor}
           agents={otherRows(rows)}
-          picked={seats[otherFor]?.agent ?? null}
-          onPick={(id) => (pickAgent(otherFor, id), setOtherFor(null))}
+          picked={otherFor === "all" ? (one === "mixed" ? null : one.agent) : (seats[otherFor]?.agent ?? null)}
+          onPick={(id) => (otherFor === "all" ? chooseAll(id) : pickAgent(otherFor, id), setOtherFor(null))}
           onMore={() => (setOtherFor(null), openSettings("accounts"))}
           onClose={() => setOtherFor(null)}
         />

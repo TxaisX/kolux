@@ -14,6 +14,7 @@ import { toggleSkills } from "../../skills/nav";
 import { windowLoaded } from "../../status/manage";
 import { tabName } from "../../terminal/tabName";
 import { useWindow } from "./store";
+import { addFolderHands } from "./sidebarScreens";
 import { SkillUpdateNotice } from "../../lazy/pages";
 import { Guides } from "../../lazy/pages";
 import { Wizard } from "../../lazy/pages";
@@ -26,7 +27,7 @@ export default function WindowHosts() {
     wizard, settings, saveSetting, wizardSession, wizardClose, pickFolder, projects, endWizard, firstFolder,
     screen, setScreen, settingsRead, picked, notes, repoless, activeDir, putNote, setNotes, setPicked,
     reviewTargets, sendMenu, setSendMenu, sendReview, startReview, agents, defaultId, live, panes, ptys, titles,
-    owner, restoredKeys, setToast,
+    owner, restoredKeys, setToast, openStart, setSidebarOpen,
   } = useWindow();
   return (
     <>
@@ -36,11 +37,12 @@ export default function WindowHosts() {
           start={wizard}
           ping={settings["notifyOnFinish" satisfies KindKey] !== false}
           onPing={(on) => saveSetting("notifyOnFinish" satisfies KindKey, on)}
-          onSession={(choice) => void wizardSession(choice)}
+          onSession={() => wizardSession(() => openStart({ here: activeDir !== null }))} // job 22: hand over to the Start form, on the folder in front
           hasFolder={projects.length > 0}
           onPickFolder={() => {
             if (wizardClose.retry()) return;
-            pickFolder(null, true); // ONB-004: Add Project, then back to the last screen (T-796)
+            // ONB-004: Add Project, then back to the last screen (T-796); with the sidebar hidden, its panel is shown first (job 29 R7)
+            pickFolder(true, addFolderHands(setSidebarOpen, screen, setScreen));
           }}
           onClose={() => {
             if (wizardClose.retry()) return;
