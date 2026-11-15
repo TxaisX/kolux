@@ -4,7 +4,7 @@
 .board-head h2 { margin: 0; font-size: 14px; flex: none; }
 .board-search { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
 .board-search .field { flex: 1; min-width: 0; height: 26px; font-size: 12px; }
-.board-error { margin: 0; padding: 6px 12px; font-size: 12px; color: var(--danger, #e5484d); }
+.board-error { margin: 0; padding: 6px 12px; font-size: 12px; color: var(--status-bad, #ef5350); }
 .board-note { margin: 0; padding: 12px; font-size: 12px; color: var(--fg-label); }
 .board-lanes { position: relative; flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
 .board-canvas { position: relative; height: 100%; }

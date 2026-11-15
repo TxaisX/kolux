@@ -41,4 +41,4 @@
 .ins-pill.needs { color: var(--working-icon); border-color: var(--working-icon); }
 .ins-pill.working { color: var(--working); border-color: var(--working); }
 .ins-pill.done { color: var(--done); border-color: var(--done); }
-.ins-pill.stopped { color: var(--danger); border-color: var(--danger); }
+.ins-pill.stopped { color: var(--fg-faint); border-color: var(--fg-faint); } /* D-04: stopped is grey (rule 7) */

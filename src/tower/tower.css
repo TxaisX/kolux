@@ -43,7 +43,7 @@
 .tower .row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tower .row .st { display: inline-flex; color: var(--dot-idle); }
 .tower .row.needs .st { color: var(--working-icon); }
-.tower .row.working .st { color: var(--working-icon); }
+.tower .row.working .st { color: var(--working); } /* D-01: working cyan, needs you yellow */
 .tower .row.done .st { color: var(--done-icon); }
 .tower .row .name { font-weight: 500; }
 .tower .row .agent { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--fg-muted); }

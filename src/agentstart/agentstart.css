@@ -2,4 +2,4 @@
 .agentstart-dialog { width: min(460px, calc(100vw - 48px)); max-height: calc(100vh - 48px); overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 12px; }
 .agentstart-dialog h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .agentstart-dialog p { margin: 0; overflow-wrap: anywhere; }
-.agentstart-error { color: var(--danger); }
+.agentstart-error { color: var(--status-bad); }
