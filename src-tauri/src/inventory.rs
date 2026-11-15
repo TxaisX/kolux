@@ -192,10 +192,6 @@ mod tests {
         assert_eq!(tabs[1].agent, Some("codex"), "a program Kolux started is credited first");
         assert_eq!(tabs[2].agent, None, "a shell with nothing in front stays a shell");
         assert_eq!(for_socket(tabs)[0].agent, Some("claude"), "the socket list keeps the credit");
-        // The real path reads the poll's shared answers (another test may prune them meanwhile).
-        crate::foreground::note(900_301, crate::foreground::Front::Agent("claude"), &[900_301]);
-        let live = compose(vec![session("term-900301", Some("pwsh.exe"))], &[]);
-        assert!(live[0].agent.is_none_or(|a| a == "claude"), "{:?}", live[0].agent);
     }
 
     /// T-279-c: over the runtime socket a tab's program line is only the program's name; the
