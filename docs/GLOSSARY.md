@@ -160,7 +160,7 @@ The agent permission modes in Settings, Agents. **Yolo** lets Claude Code use it
 ## Settings and help
 
 **Settings**
-The page for everything you can change. Ctrl+, opens it. Its pages include Accounts & keys, Terminal & sessions, Notifications, Shortcuts and Git & worktrees.
+The page for everything you can change. Ctrl+, opens it. Its pages include Accounts & keys, Terminal & sessions, Notifications, Shortcuts and Git.
 
 **Accounts & keys**
 The Settings page where you connect Claude, Codex and Grok and keep saved keys. The usage pill in the top bar opens it.
@@ -168,8 +168,8 @@ The Settings page where you connect Claude, Codex and Grok and keep saved keys. 
 **Terminal & sessions**
 The Settings page for how terminals draw and take input, and for what happens when you close a terminal that still has a program running.
 
-**Git & worktrees**
-The Settings page for Git behaviour, such as renaming a folder when work starts and which agent writes commit messages. Its name still says worktrees; Kolux now works in one folder per project.
+**Git**
+The Settings page for Git behaviour, such as renaming a folder when work starts and which agent writes commit messages. Kolux works in one folder per project.
 
 **Shortcuts**
 The Settings page that lists every keyboard shortcut and lets you change it.
