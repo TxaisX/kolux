@@ -2800,6 +2800,23 @@ fn n01_staged_section_discard_keeps_a_nested_repo() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// N-02: one nested repository in the pick does not stop a staged new file from being removed.
+#[test]
+fn n02_a_nested_repo_in_the_pick_does_not_stop_the_other_rows() {
+    let dir = temp_repo("n02-mixed");
+    let inner = dir.join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    plain(&["init", "-q", "-b", "main"], &inner);
+    fs::write(inner.join("work.txt"), "unpushed\n").unwrap();
+    fs::write(dir.join("added.txt"), "a\n").unwrap();
+    plain(&["add", "added.txt"], &dir);
+    let said = discard_paths(&dir, &["inner/".to_string(), "added.txt".to_string()]).expect_err("the kept repository is named");
+    assert_eq!(said, "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
+    assert!(!dir.join("added.txt").exists(), "the staged new file is removed");
+    assert!(inner.join(".git").is_dir() && inner.join("work.txt").exists(), "the nested repository is whole");
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {

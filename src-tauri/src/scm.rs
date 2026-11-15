@@ -2718,17 +2718,20 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     if !tracked.is_empty() {
         with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked)?;
     }
+    // N-02: a nested repository is taken out before git clean runs and named at the end, so the
+    // other rows still go; any error from the untracked discard is then a real failure and stops.
+    let (nested, untracked): (Vec<String>, Vec<String>) = untracked.into_iter().partition(|p| own_repo_at(worktree, p));
+    let mut kept: Vec<String> = nested.iter().map(|p| own_repo(p)).collect();
     if !untracked.is_empty() {
         discard(worktree, "untracked", &untracked)?;
     }
     // A staged new file, unstaged above. N-01: an index entry is a file or a gitlink, never a
     // plain folder, so a folder here is a nested repository or a file that became a folder. A
     // folder holding `.git` is kept, and so is any folder that is not empty; only an empty one goes.
-    let mut kept = Vec::new();
     for p in &remove {
         let full = worktree.join(native(p));
         let Ok(meta) = fs::symlink_metadata(&full) else { continue };
-        if fs::symlink_metadata(full.join(".git")).is_ok() {
+        if own_repo_at(worktree, p) {
             kept.push(own_repo(p));
             continue;
         }
@@ -2748,6 +2751,11 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     } else {
         Err(kept.join("\n"))
     }
+}
+
+/// R-06: true when the row's folder holds `.git` (a file or a folder), a nested repository.
+fn own_repo_at(worktree: &Path, p: &str) -> bool {
+    fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/'))).join(".git")).is_ok()
 }
 
 /// R-06 / N-01: what Discard says about a nested repository it leaves.
@@ -2783,7 +2791,7 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
         "changed" => piped(worktree, &["--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
         "untracked" => {
             // R-06: git clean -f leaves a nested repository without a word; say so, and clean the rest.
-            let (nested, rest): (Vec<&String>, Vec<&String>) = paths.iter().partition(|p| fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/'))).join(".git")).is_ok());
+            let (nested, rest): (Vec<&String>, Vec<&String>) = paths.iter().partition(|p| own_repo_at(worktree, p));
             // ponytail: git clean reads no list from its input, so the names go on the command line
             // in chunks that stay well under the Windows command-line limit.
             for chunk in rest.chunks(100) {
