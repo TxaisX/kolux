@@ -3,7 +3,7 @@
 // Only palette ids are saved; anything else (or nothing) reads as grey, which is also what every new
 // project starts with, so grey is never written.
 import { projectsInGroup } from "../projects/groupMembers";
-import type { Groups } from "../projects/groups";
+import { groupChoices, type Groups } from "../projects/groups";
 
 export const HEADER_COLOURS_SETTING = "headerColours";
 
@@ -53,7 +53,9 @@ export function forgetHeaderColours(settings: Record<string, unknown>, gone: Rea
  *  (`projectsInGroup`). `groups` must be the ones from BEFORE the delete: the answer to the delete no longer lists them. */
 export function headersGoneWithGroup(groups: Groups, groupId: string, remove: boolean): Array<{ kind: HeaderKind; id: string }> {
   const projects = remove ? projectsInGroup(groups, groupId).map((pid) => ({ kind: "p" as const, id: pid })) : [];
-  return [{ kind: "g", id: groupId }, ...projects];
+  const outside = new Set(groupChoices(groups, groupId).map((x) => x.id)); // R35-04: the sub-groups go with it, so their colours do too
+  const subs = groups.groups.filter((x) => x.id !== groupId && !outside.has(x.id)).map((x) => ({ kind: "g" as const, id: x.id }));
+  return [{ kind: "g", id: groupId }, ...subs, ...projects];
 }
 
 /** The new `headerColours` value after those headers are gone, or null when none of them had a colour (so

@@ -50,3 +50,9 @@ test("job 24 follow-up: a sub-group's projects lose their header colours with th
   // "Also remove its projects" off: the sub-group's project stays, and so does its colour
   expect(headersGoneWithGroup(nested, "g1", false)).not.toContainEqual({ kind: "p", id: "e" });
 });
+
+test("R35-04: the sub-groups deleted with a group lose their own header colours too, with or without their projects", () => {
+  const nested = { groups: [top("g1"), { id: "g1a", name: "g1a", parent: "g1" }, { id: "g1b", name: "g1b", parent: "g1a" }, top("g2")], members: { a: "g1" }, rev: 0 };
+  const paint = { [HEADER_COLOURS_SETTING]: { "g:g1": "pink", "g:g1a": "blue", "g:g1b": "green", "g:g2": "amber" } };
+  for (const remove of [true, false]) expect(colourSaveAfterDelete(paint, headersGoneWithGroup(nested, "g1", remove))).toEqual({ "g:g2": "amber" });
+});
