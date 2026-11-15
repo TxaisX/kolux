@@ -9,8 +9,7 @@ import { panesIn } from "../../workspaces";
 import { cellsOf } from "../../terminal/grid";
 import { ADD_PROJECT } from "../../onboarding/firstRun";
 import { addFolderVia, recentFirst, type StartSheet } from "../../launch/startForm";
-import { ADD_PROJECT as ADD_PROJECT_BUTTON } from "../../onboarding/actions";
-import { showsProjects } from "./sidebarScreens";
+import { addFolderHands } from "./sidebarScreens";
 import { useWindow } from "./store";
 import { ChooserPane } from "../../lazy/pages";
 
@@ -37,15 +36,7 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
         onTick: (ids: string[]) => setChooser(p.key, { folders: ids }),
         // the sidebar's Add project dialog; with the sidebar hidden or on Agents, its panel is shown first (job 13 F1)
         onAdd: () =>
-          void addFolderVia({
-            panelShown: () => document.querySelector(ADD_PROJECT_BUTTON) !== null,
-            showPanel: () => {
-              setSidebarOpen(true);
-              if (!showsProjects(screen)) setScreen("terminals");
-            },
-            fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)),
-            wait: (ms) => new Promise((r) => setTimeout(r, ms)),
-          }),
+          void addFolderVia({ ...addFolderHands(setSidebarOpen, screen, setScreen), fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)) }),
       }
     : null;
   return (
