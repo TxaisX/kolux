@@ -17,6 +17,7 @@ const FOUND = { files: [{ path: "src/a.ts", hits: [{ line: 3, col: 2, before: "x
 const calls: Array<[string, Record<string, unknown>]> = [];
 let gate: Promise<void> | null = null; // while set, dir_list waits for it (to see the refresh in progress)
 let trashReply: unknown = null; // what fs_trash answers (a refusal, in the undo test)
+const onDisk = new Map<string, { mtime: number; size: number }>(); // what file_stamps answers, by path (F31)
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args: Record<string, unknown> = {}) => {
     calls.push([cmd, args]);
@@ -31,6 +32,7 @@ vi.mock("@tauri-apps/api/core", () => ({
       return { path: from.slice(0, Math.max(from.lastIndexOf("/"), from.lastIndexOf("\\")) + 1) + String(args.name), id: "v2", error: null };
     }
     if (cmd === "fs_trash") return trashReply ?? [];
+    if (cmd === "file_stamps") return (args.paths as string[]).map((p) => onDisk.get(p) ?? null);
     if (cmd === "editor_search") return FOUND;
     if (cmd === "get_settings") return {};
     return null;
@@ -46,6 +48,7 @@ beforeEach(() => {
   calls.length = 0;
   gate = null;
   trashReply = null;
+  onDisk.clear();
   const dom = installDom();
   doc = dom.doc;
   store = dom.store;
@@ -182,6 +185,35 @@ describe("T-702 Explorer header", () => {
     await settle();
     expect(calls.filter(([c]) => c === "fs_trash").length).toBe(1);
     expect(calls.some(([c]) => c === "fs_restore")).toBe(false);
+  });
+
+  // F31: the entry is the same (so the identity check passes) but its text changed after the action.
+  const newFileThenUndo = async (changed: boolean) => {
+    const { container } = await explorer();
+    onDisk.set("/r/notes.md", { mtime: 1000, size: 0 });
+    await click(container, button(container, "New file"));
+    const field = input(container, "New file name");
+    await typeInto(container, field, "notes.md");
+    await fire(container, "keydown", field, { key: "Enter" });
+    await until(() => calls.some(([c]) => c === "file_stamps"), "the new file's stamp to be read");
+    await settle();
+    if (changed) onDisk.set("/r/notes.md", { mtime: 2000, size: 42 }); // someone typed into it since
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    await fire(container, "keydown", tree, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await settle();
+    return container;
+  };
+  it("undo of a new file that was changed since is refused and does not bin it (F31)", async () => {
+    const container = await newFileThenUndo(true);
+    await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("notes.md changed since that action, so it was not undone");
+  });
+  it("undo of a new file left as it was still bins it (F31)", async () => {
+    const container = await newFileThenUndo(false);
+    await until(() => calls.some(([c]) => c === "fs_trash"), "the file to be binned");
+    expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/notes.md"], expect: ["v1"], mustBeEmpty: [false] });
+    expect(container.textContent).not.toContain("changed since that action");
   });
 
   it("Open in opens its menu of apps (aria-expanded), and a second click closes it", async () => {

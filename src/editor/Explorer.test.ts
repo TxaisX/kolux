@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { between, claimRead, dirAt, DRAFT, expandNote, flatten, isWsl, movesInto, redoOf, tops, undoOf, type Node } from "./Explorer";
+import { between, claimRead, dirAt, DRAFT, expandNote, flatten, isWsl, keptStamps, movesInto, redoOf, tops, undoOf, type Node } from "./Explorer";
 
 const dir = (path: string): Node => ({ name: path.split("/").pop()!, path, kind: "dir" });
 const file = (path: string): Node => ({ name: path.split("/").pop()!, path, kind: "file" });
@@ -71,6 +71,16 @@ describe("explorer file operations", () => {
     expect(isWsl("//wsl.localhost/Ubuntu/x")).toBe(true);
     expect(isWsl("C:\\wsl$\\x")).toBe(false);
   });
+  it("F31: names the files a binning step must find unchanged, with the size and time recorded for each", () => {
+    const st = { mtime: 5, size: 9 };
+    expect(keptStamps({ kind: "create", path: "/r/n.ts", stamp: st })).toEqual({ paths: ["/r/n.ts"], stamps: [st] });
+    expect(keptStamps({ kind: "trash", paths: ["/r/a", "/r/b"], stamps: [st, null] })).toEqual({ paths: ["/r/a", "/r/b"], stamps: [st, null] });
+    // Nothing recorded (a folder, or an action from before stamps): nothing to check.
+    expect(keptStamps({ kind: "create", path: "/r/lib", folder: true })).toBeNull();
+    expect(keptStamps({ kind: "trash", paths: ["/r/a"] })).toBeNull();
+    expect(keptStamps({ kind: "copy", from: ["/r/a"], dir: "/r/d", made: ["/r/d/a"] })).toBeNull();
+  });
+
   it("undoes a copy by binning the copies and a move by moving each item back", () => {
     const copy = { kind: "copy" as const, from: ["/r/a.ts"], dir: "/r/d", made: ["/r/d/a.ts"] };
     expect(undoOf(copy)).toEqual(["fs_trash", { paths: ["/r/d/a.ts"], expect: [null] }]);

@@ -35,6 +35,7 @@ import { labelOf, matchEvent } from "../keys/keymap";
 import { withChord } from "../terminal/PaneMenu";
 import { explorerSearchKey } from "../keys/useWindowKeys";
 import { announceMoves } from "./fileMoved";
+import { sameStamp, type Stamp } from "./diskChange";
 import { EditorPane } from "../lazy/panes";
 import OutOfFlow from "../chrome/OutOfFlow";
 
@@ -48,9 +49,9 @@ export type Draft = { dir: string; folder: boolean };
 /** One explorer action, as the undo history keeps it. `id` is the entry the action touched, so an
  *  undo refuses when that path now holds a different file (C24-R3-01). */
 export type Op =
-  | { kind: "create"; path: string; id?: string | null; folder?: boolean }
+  | { kind: "create"; path: string; id?: string | null; folder?: boolean; stamp?: Stamp | null }
   | { kind: "rename"; from: string; to: string; id?: string | null }
-  | { kind: "trash"; paths: string[] }
+  | { kind: "trash"; paths: string[]; stamps?: (Stamp | null)[] }
   | { kind: "copy"; from: string[]; dir: string; made: string[]; ids?: (string | null)[] }
   | { kind: "move"; moves: [string, string][] }; // [from, to]
 type Gone = { path: string; permanent: boolean; error: string | null };
@@ -103,6 +104,14 @@ export function undoOf(op: Op): [CommandName, Record<string, unknown>] {
     case "move":
       return ["fs_move", { moves: op.moves.map(([from, to]) => [to, parentOf(from)]) }];
   }
+}
+/** F31: the files a binning step (the undo of a create, the redo of a delete) must find as the action
+ *  left them, with the size and time recorded then; null when none was recorded. The identity check
+ *  catches a different file at the path; this catches the same file with new text. */
+export function keptStamps(op: Op): { paths: string[]; stamps: (Stamp | null)[] } | null {
+  if (op.kind === "create" && op.stamp !== undefined) return { paths: [op.path], stamps: [op.stamp] };
+  if (op.kind === "trash" && op.stamps) return { paths: op.paths, stamps: op.stamps };
+  return null;
 }
 export function redoOf(op: Op): [CommandName, Record<string, unknown>] {
   switch (op.kind) {
@@ -448,7 +457,9 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     back();
     if (!d || !name.trim()) return;
     invoke<Made>("fs_create", { dir: d.dir, name, folder: d.folder }).then((made) => {
-      record({ kind: "create", path: made.path, id: made.id, folder: d.folder });
+      const op: Op = { kind: "create", path: made.path, id: made.id, folder: d.folder };
+      record(op);
+      if (!d.folder) noteStamps(op);
       void load(d.dir).then(() => pick(made.path));
     }, fail);
   };
@@ -516,11 +527,21 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
       if (ok.length) setAt(ok[0][1]);
     }, fail);
   };
+  /** F31: the size and time of the files an action left, so a later binning step can tell they changed. */
+  const noteStamps = (op: Op) => {
+    const paths = op.kind === "create" ? (op.folder ? [] : [op.path]) : op.kind === "trash" ? op.paths : [];
+    if (!paths.length) return;
+    void invoke<(Stamp | null)[] | null>("file_stamps", { paths }).then((now) => {
+      if (!Array.isArray(now)) return;
+      if (op.kind === "create") op.stamp = now[0] ?? null;
+      else if (op.kind === "trash") op.stamps = paths.map((_, i) => now[i] ?? null);
+    }, () => undefined);
+  };
   const replay = (from: typeof done, to: typeof done, call: (op: Op) => [CommandName, Record<string, unknown>]) => {
     const op = from.current.pop();
     if (!op) return;
     const [cmd, args] = call(op);
-    invokeNamed<Gone[] | Placed[] | Made | null>(cmd, args).then(
+    const go = () => invokeNamed<Gone[] | Placed[] | Made | null>(cmd, args).then(
       (res) => {
         // A refusal (the path now holds a different entry) is final: the step is dropped, not put
         // back to retry, so one changed file cannot jam the whole undo history (C24-R3-01).
@@ -532,6 +553,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
           op.ids = made.flatMap((p) => (p.to ? [p.id] : []));
         }
         to.current.push(op);
+        if (cmd === "fs_restore") noteStamps(op); // F31: what the restored files hold now
         setNote(null);
         if (cmd === "fs_move") follow((res as Placed[]).flatMap((p): [string, string][] => (p.to ? [[p.from, p.to]] : [])));
         if (cmd === "fs_rename") follow([[args.path as string, (res as Made).path]]);
@@ -542,6 +564,16 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         fail(err);
       },
     );
+    // F31: a file changed since the action is not binned; the step is dropped, like the identity refusal above.
+    const kept = cmd === "fs_trash" ? keptStamps(op) : null;
+    const changed = kept ? invoke<(Stamp | null)[] | null>("file_stamps", { paths: kept.paths }).then((now) => kept.paths.find((_, i) => !sameStamp(now?.[i] ?? null, kept.stamps[i])) ?? null) : Promise.resolve(null);
+    changed.then((path) => {
+      if (path !== null) return fail(`${baseName(path)} changed since that action, so it was not ${call === undoOf ? "undone" : "redone"}`);
+      go();
+    }, (err) => {
+      from.current.push(op); // still there to try again
+      fail(err);
+    });
   };
   const relative = (p: string) => (p.startsWith(root) ? p.slice(root.length).replace(/^[\\/]/, "") : p);
   const copy = (text: string) =>
