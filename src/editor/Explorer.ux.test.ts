@@ -41,7 +41,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 const warmed = vi.hoisted(() => ({ n: 0 }));
 vi.mock("../lazy/panes", () => ({ EditorPane: { warm: () => void warmed.n++ } }));
-vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => {}) }) }));
+const dropped = vi.hoisted(() => ({ on: null as null | ((e: { payload: Record<string, unknown> }) => void) })); // the desktop drop handler (R42-01)
+vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: (h: (e: { payload: Record<string, unknown> }) => void) => ((dropped.on = h), Promise.resolve(() => {})) }) }));
 
 let doc: FakeDocument;
 let store: Map<string, string>;
@@ -252,6 +253,22 @@ describe("T-702 Explorer header", () => {
     await until(() => calls.some(([c]) => c === "fs_trash"), "the copy to be binned");
     expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/readme copy.md"], expect: ["c1"] });
     expect(container.textContent).not.toContain("changed since that action");
+  });
+
+  // R42-01: a file dropped in from outside the project is not in the tree, and its copy is checked too.
+  it("undo of a copy of a dropped-in file that was changed since is refused and does not bin it (R42-01)", async () => {
+    const { container } = await explorer();
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    (doc as unknown as { elementFromPoint: () => FakeNode }).elementFromPoint = () => tree;
+    onDisk.set("/outside/notes copy.md", { mtime: 1000, size: 5 });
+    dropped.on!({ payload: { type: "drop", paths: ["/outside/notes.md"], position: { x: 1, y: 1 } } });
+    await until(() => calls.some(([c, a]) => c === "file_stamps" && (a.paths as string[]).includes("/outside/notes copy.md")), "the copy's stamp to be read");
+    await settle();
+    onDisk.set("/outside/notes copy.md", { mtime: 2000, size: 42 }); // someone typed into the copy since
+    await fire(container, "keydown", tree, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("notes copy.md changed since that action, so it was not undone");
   });
 
   it("Open in opens its menu of apps (aria-expanded), and a second click closes it", async () => {

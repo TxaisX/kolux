@@ -79,8 +79,11 @@ describe("explorer file operations", () => {
     expect(keptStamps({ kind: "create", path: "/r/lib", folder: true })).toBeNull();
     expect(keptStamps({ kind: "trash", paths: ["/r/a"] })).toBeNull();
     expect(keptStamps({ kind: "copy", from: ["/r/a"], dir: "/r/d", made: ["/r/d/a"] })).toBeNull();
-    // R35-02: a copy checks its copied files, not its copied folders
-    expect(keptStamps({ kind: "copy", from: ["/r/a", "/r/lib"], dir: "/r/d", made: ["/r/d/a", "/r/d/lib"], file: [true, false], stamps: [st] })).toEqual({ paths: ["/r/d/a"], stamps: [st] });
+    // R42-01: a copy checks every copy, folders too; one with no stamp at copy time stays unchecked
+    const st2 = { mtime: 6, size: 0 };
+    expect(keptStamps({ kind: "copy", from: ["/r/a", "/r/lib"], dir: "/r/d", made: ["/r/d/a", "/r/d/lib"], stamps: [st, st2] })).toEqual({ paths: ["/r/d/a", "/r/d/lib"], stamps: [st, st2] });
+    expect(keptStamps({ kind: "copy", from: ["/r/a", "/r/b"], dir: "/r/d", made: ["/r/d/a", "/r/d/b"], stamps: [null, st] })).toEqual({ paths: ["/r/d/b"], stamps: [st] });
+    expect(keptStamps({ kind: "copy", from: ["/r/a"], dir: "/r/d", made: ["/r/d/a"], stamps: [null] })).toBeNull();
   });
 
   it("undoes a copy by binning the copies and a move by moving each item back", () => {

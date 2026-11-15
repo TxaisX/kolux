@@ -52,7 +52,7 @@ export type Op =
   | { kind: "create"; path: string; id?: string | null; folder?: boolean; stamp?: Stamp | null }
   | { kind: "rename"; from: string; to: string; id?: string | null }
   | { kind: "trash"; paths: string[]; stamps?: (Stamp | null)[] }
-  | { kind: "copy"; from: string[]; dir: string; made: string[]; ids?: (string | null)[]; file?: boolean[]; stamps?: (Stamp | null)[] }
+  | { kind: "copy"; from: string[]; dir: string; made: string[]; ids?: (string | null)[]; stamps?: (Stamp | null)[] }
   | { kind: "move"; moves: [string, string][] }; // [from, to]
 type Gone = { path: string; permanent: boolean; error: string | null };
 type Placed = { from: string; to: string | null; id: string | null; error: string | null };
@@ -111,7 +111,11 @@ export function undoOf(op: Op): [CommandName, Record<string, unknown>] {
 export function keptStamps(op: Op): { paths: string[]; stamps: (Stamp | null)[] } | null {
   if (op.kind === "create" && op.stamp !== undefined) return { paths: [op.path], stamps: [op.stamp] };
   if (op.kind === "trash" && op.stamps) return { paths: op.paths, stamps: op.stamps };
-  if (op.kind === "copy" && op.stamps) return { paths: op.made.filter((_, i) => op.file?.[i]), stamps: op.stamps }; // R35-02: the copied files, not folders
+  if (op.kind === "copy" && op.stamps) {
+    // R42-01: every copy, wherever its source came from; one with no stamp at copy time stays unchecked.
+    const on = (_: unknown, i: number) => (op.stamps?.[i] ?? null) !== null;
+    return op.stamps.some(on) ? { paths: op.made.filter(on), stamps: op.stamps.filter(on) } : null;
+  }
   return null;
 }
 export function redoOf(op: Op): [CommandName, Record<string, unknown>] {
@@ -507,9 +511,8 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     invoke<Placed[]>("fs_copy", { paths, dir }).then((res) => {
       const landed = res.filter((p) => p.to);
       const made = landed.map((p) => p.to!);
-      const file = landed.map((p) => Object.values(kids).some((ns) => ns?.some((n) => n.path === p.from && n.kind === "file"))); // R35-02
       if (made.length) {
-        const op: Op = { kind: "copy", from: landed.map((p) => p.from), dir, made, ids: landed.map((p) => p.id), file };
+        const op: Op = { kind: "copy", from: landed.map((p) => p.from), dir, made, ids: landed.map((p) => p.id) };
         record(op);
         noteStamps(op);
       }
@@ -535,7 +538,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   };
   /** F31: the size and time of the files an action left, so a later binning step can tell they changed. */
   const noteStamps = (op: Op) => {
-    const paths = op.kind === "create" ? (op.folder ? [] : [op.path]) : op.kind === "trash" ? op.paths : op.kind === "copy" ? op.made.filter((_, i) => op.file?.[i]) : [];
+    const paths = op.kind === "create" ? (op.folder ? [] : [op.path]) : op.kind === "trash" ? op.paths : op.kind === "copy" ? op.made : [];
     if (!paths.length) return;
     void invoke<(Stamp | null)[] | null>("file_stamps", { paths }).then((now) => {
       if (!Array.isArray(now)) return;
@@ -557,8 +560,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
           const made = res as Placed[];
           op.made = made.flatMap((p) => (p.to ? [p.to] : [])); // the copies may get new names
           op.ids = made.flatMap((p) => (p.to ? [p.id] : []));
-          op.file = made.flatMap((p) => (p.to ? [op.file?.[op.from.indexOf(p.from)] ?? false] : [])); // R35-02: the new copies get new stamps
-          op.stamps = undefined;
+          op.stamps = undefined; // R35-02: the new copies get new stamps
         }
         to.current.push(op);
         if (cmd === "fs_restore" || (op.kind === "copy" && cmd === "fs_copy")) noteStamps(op); // F31: what the restored (or copied again) files hold now
