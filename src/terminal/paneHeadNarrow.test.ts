@@ -10,7 +10,7 @@ const THREE = ['.pane-expand', '[data-testid="pane-new-session"]', '[data-testid
 const hide = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(([^)]*)\) \.pane-head[^{]*\{ display: none; \} \}/);
 
 test("a narrow header hides split, expand and + until hover or focus, except in the focused pane; menu and close are not named", () => {
-  const rule = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(\.focused, \.card\) \.pane-head:not\(:hover, :focus-within\) \.right :is\(([^)]*)\) \{ display: none; \} \}/);
+  const rule = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(\.focused, \.card\) \.pane-head:not\(:hover, :focus-within, :has\(\[aria-expanded="true"\]\)\) \.right :is\(([^)]*)\) \{ display: none; \} \}/);
   expect(rule).not.toBeNull();
   expect(rule![1].split(", ").sort()).toEqual(THREE);
   expect(pane).toContain('className="ib pane-expand"');
@@ -23,6 +23,13 @@ test("Board cards are left out of the narrow hide rule, so a card keeps its Expa
   expect(hide).not.toBeNull();
   expect(hide![1].split(", ")).toEqual(expect.arrayContaining([".focused", ".card"]));
   expect(pane).toContain("const onExpand = card ? card.onToggle : expand?.toggle;");
+});
+
+// F3: "+" and the pane menu open outside the header and take focus; the three must not vanish under their own open menu.
+test("the three stay while a header menu is open (the menu and + buttons say so with aria-expanded)", () => {
+  expect(hide![0]).toContain('.pane-head:not(:hover, :focus-within, :has([aria-expanded="true"]))');
+  expect(pane).toContain("aria-expanded={menuAt !== null}");
+  expect(pane).toContain("aria-expanded={plusAt !== null}");
 });
 
 // F1: the three sit at the left end of the right-hand group, which is packed to its right end, so when they
