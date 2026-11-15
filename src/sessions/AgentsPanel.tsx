@@ -32,7 +32,7 @@ export type PanelProps = {
   visible: boolean;
   /** The program of the shell the new tab runs, so the copied command is written for it. */
   shell: string | null;
-  onResume: (s: Session, plan: ResumePlan) => void;
+  onResume: (s: Session, plan: ResumePlan) => void | Promise<unknown>; // audit F17: a promise holds the double-click guard until the pane exists
   /** VIEW-086 (T-146-d): resume in a new tab and bring the Agents (chat) screen to the front; the button shows only when this is given. */
   onResumeChat?: (s: Session, plan: ResumePlan) => void;
   /** VIEW-084: every workspace folder open in Kolux, and the way to go to one (the row's worktree line). */
@@ -144,7 +144,7 @@ function AgentsPanelBody(props: PanelProps) {
           timer.current = window.setTimeout(publish, publishDelay(Date.now(), lastKey.current, arrived));
         })
         .catch((err) => {
-          setError(String(err));
+          if (live.current.key === asked.key) setError(String(err)); // audit F20: an old scope's failure stays with it
           setBusy(false);
         });
     },
@@ -156,6 +156,7 @@ function AgentsPanelBody(props: PanelProps) {
   useEffect(() => {
     setList(cached(key)?.sessions ?? null);
     setReport(cached(key)?.report ?? NO_REPORT);
+    setError(null);
     if (visible) load(false);
   }, [key, visible, load]);
   useEffect(() => {
@@ -165,16 +166,22 @@ function AgentsPanelBody(props: PanelProps) {
     return () => window.removeEventListener("focus", on);
   }, [visible, load]);
   // An agent started: its session file appears a moment later; at most one rescan per interval.
+  // Audit F18: a start inside the interval joins the one rescan already waiting, or waits for the interval's end.
   const first = useRef(true);
+  const rescan = useRef<number | null>(null);
   useEffect(() => {
     if (first.current) {
       first.current = false;
       return;
     }
-    if (!visible || !limiter.current.allow(Date.now())) return;
-    const t = window.setTimeout(() => load(false), AFTER_START_MS);
-    return () => window.clearTimeout(t);
+    if (!visible || rescan.current !== null) return;
+    rescan.current = window.setTimeout(() => {
+      rescan.current = null;
+      limiter.current.ran(Date.now());
+      load(false);
+    }, limiter.current.wait(Date.now(), AFTER_START_MS));
   }, [rescanKey]);
+  useEffect(() => () => void (rescan.current !== null && window.clearTimeout(rescan.current)), []);
 
   // A double click on Resume opens one terminal, not two.
   const inflight = useRef(new InFlight());

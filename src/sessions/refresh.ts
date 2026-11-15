@@ -27,6 +27,14 @@ export class RescanLimiter {
     this.last = now;
     return true;
   }
+  /** Audit F18: how long a rescan asked for at `now` waits, at least `min`, so it runs once the interval is over. */
+  wait(now: number, min: number): number {
+    return Math.max(min, this.last + this.every - now);
+  }
+  /** Marks a rescan as run at `now`. */
+  ran(now: number): void {
+    this.last = now;
+  }
 }
 
 /** The last results per scope, so reopening the tab shows them at once while a refresh runs. */
