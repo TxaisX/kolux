@@ -55,7 +55,7 @@ export const INDEX: Entry[] = [
   { page: "terminal", section: "text", title: "Terminal text and cursor", words: "terminal font size family typeface weight bold line height spacing cursor caret blink block bar underline contrast readable sample" },
   { page: "terminal", section: "scrolling", title: "History and scrolling", words: "scrollback history rows lines buffer scroll sensitivity speed fast wheel" },
   { page: "terminal", section: "clipboard", title: "Clipboard", words: "copy paste select selection right click clipboard mouse" },
-  { page: "terminal", section: "shell", title: "Default shell", words: "shell powershell pwsh cmd command prompt git bash wsl default" },
+  { page: "terminal", section: "shell", title: "Default terminal", words: "shell terminal powershell pwsh cmd command prompt git bash wsl default" },
   { page: "terminal", section: "input", title: "Drawing and input", words: "ligatures typeface gpu webgl drawing render renderer terminal drawing hardware acceleration graphics middle click paste osc 52 osc52 clipboard programs hide pointer mouse cursor typing focus follows full-screen scroll speed option alt meta yen backslash japanese keyboard" },
   { page: "terminal", section: "powershell", title: "PowerShell version", words: "powershell pwsh 7 5 windows version" },
   { page: "terminal", section: "native", title: "Terminal drawing engine", words: "native windows terminal engine drawing render experimental dll conpty experimental panes" },

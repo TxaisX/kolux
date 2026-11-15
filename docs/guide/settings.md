@@ -12,7 +12,7 @@ Changes save as you make them. They live in `settings.json` in Kolux's data fold
 | Appearance | Colours, interface zoom, fonts, terminal text, the sidebar buttons, status bar |
 | Accounts & keys | Signing in to Claude, Codex and Grok |
 | Agents | Which agents are on, how they start, whether they ask permission |
-| Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default shell, close warnings, pinned tabs, removing a running session |
+| Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default terminal, close warnings, pinned tabs, removing a running session |
 | Git | Branch names, compare base, commit messages |
 | Safety | A short note on protected commands (see [Safety](safety.md)) |
 | Notifications | What alerts you, and how |
