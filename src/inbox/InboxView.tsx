@@ -113,7 +113,11 @@ function Detail({ item, onOpen, onReview }: { item: Item; onOpen: () => void; on
     setReadable(null);
     setNote(null);
     if (!canRead) return;
-    invoke<Readable | null>("prompt_read", { paneKey: item.key }).then(setReadable).catch(() => setReadable(null));
+    let live = true; // audit F2: an answer for the row picked before is dropped
+    invoke<Readable | null>("prompt_read", { paneKey: item.key }).then((r) => live && setReadable(r)).catch(() => live && setReadable(null));
+    return () => {
+      live = false;
+    };
   }, [item.key, item.state, canRead]);
   const answer = (choice: number) => {
     if (!readable) return;
@@ -129,10 +133,14 @@ function Detail({ item, onOpen, onReview }: { item: Item; onOpen: () => void; on
     setScm(null);
     setScmError(null);
     setLast(null);
-    if (item.cwd) invoke<Status>("scm_status", { worktree: item.cwd }).then(setScm).catch((e) => setScmError(typeof e === "string" ? e : e instanceof Error ? e.message : "the status command failed"));
+    let live = true; // audit F2: an answer for the row picked before is dropped
+    if (item.cwd) invoke<Status>("scm_status", { worktree: item.cwd }).then((st) => live && setScm(st)).catch((e) => live && setScmError(typeof e === "string" ? e : e instanceof Error ? e.message : "the status command failed"));
     invoke<Entry[]>("agent_history", { paneKey: item.key })
-      .then((h) => setLast([...h].reverse().find((e) => e.prompt) ?? null))
-      .catch(() => setLast(null));
+      .then((h) => live && setLast([...h].reverse().find((e) => e.prompt) ?? null))
+      .catch(() => live && setLast(null));
+    return () => {
+      live = false;
+    };
   }, [item.key, item.cwd, item.state]);
   const changed = scm ? scm.staged.length + scm.changed.length + scm.untracked.length + scm.conflicts.length : null;
   const v = VOCAB[item.state];
