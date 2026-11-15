@@ -6501,6 +6501,20 @@ mod tests {
         assert!(scoped.starts_with("kolux worktree") && !scoped.contains("kolux-dev"), "{scoped}");
         let typo = named(&help_raw(&words("wrktree")).0, "kolux");
         assert!(typo.contains("did you mean kolux worktree") && !typo.contains("kolux-dev"), "{typo}");
+        // B-04: the usage lines `agent-context` serves and the automations hints go through the same
+        // rename (a debug build answers to kolux-dev, so the source is checked for written-in names).
+        let cli = crate::orchestration::CLI;
+        let context = local_cli::agent_context();
+        let usages: Vec<&str> = context["commands"].as_array().expect("commands").iter().filter_map(|c| c["usage"].as_str()).filter(|u| !u.is_empty()).collect();
+        assert!(!usages.is_empty() && usages.iter().all(|u| u.starts_with(&format!("{cli} "))), "{usages:?}");
+        assert_eq!(automations_cli::text("automations.list", &json!({ "automations": [] })).unwrap(), format!("no automations yet; make one with {cli} automations create"));
+        let local = include_str!("../local_cli.rs");
+        let usage_fn = &local[local.find("fn usage(").expect("usage")..];
+        let usage_fn = &usage_fn[..usage_fn.find("\n}").expect("end of usage")];
+        assert!(usage_fn.contains("named(") && usage_fn.contains("orchestration::CLI"), "{usage_fn}");
+        let automations = include_str!("../automations_cli.rs");
+        let shipped = &automations[..automations.find("#[cfg(test)]").expect("tests")];
+        assert!(!shipped.contains("kolux-dev"), "automations_cli.rs writes kolux-dev into text a user reads");
     }
 
     /// T-550: the notes and hints a user reads outside help name the program this build answers

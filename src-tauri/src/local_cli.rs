@@ -233,7 +233,8 @@ pub fn bare(path: &[String]) -> Option<&'static str> {
     }
 }
 
-/// The help lines for these words: the one naming them and the indented ones under it.
+/// The help lines for these words: the one naming them and the indented ones under it, under the
+/// name this build answers to (B-04: `kolux` in a release build, as `help()` renames it).
 fn usage(words: &str) -> String {
     let lines: Vec<&str> = HELP.lines().collect();
     let names = |l: &str| {
@@ -247,7 +248,7 @@ fn usage(words: &str) -> String {
     };
     let mut out = vec![lines[at].trim()];
     out.extend(lines[at + 1..].iter().take_while(|l| l.starts_with("      ")).map(|l| l.trim()));
-    out.join(" ")
+    super::help::named(&out.join(" "), crate::orchestration::CLI)
 }
 
 pub fn agent_context() -> Value {
