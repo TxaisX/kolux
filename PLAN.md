@@ -782,3 +782,7 @@ The direction in seven parts:
 
 ### follow-ups for c1-coord after T-821 and T-819 merge
 - [ ] T-823 · Docs and checks stop naming the web pane: README, CHANGELOG line, `docs/guide`, the glossary check and privacy audit paths · docs · open · gate: `pnpm check` green; grep for the embedded browser in user docs finds only the retirement note
+
+## 11. Engine fixes from the 2026-11-15 audit (lane audit-fixes-core)
+
+- [x] T-830 · Agent typed into a shell pane shows in `kolux terminal list`, the orchestration peer list and the app's session list (ORCH 060, B-01): the inventory falls back to the foreground poll as `Terminals::program` does · engine · done · test `b01_an_agent_typed_into_a_shell_is_credited_from_the_foreground_poll`

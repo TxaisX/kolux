@@ -31,7 +31,8 @@ pub struct Placement {
 pub struct Tab {
     /// The terminal handle (`term-<n>`).
     pub handle: String,
-    /// The agent Kolux started in the tab (none for a shell; a tab title plays no part).
+    /// The agent in the tab: the one Kolux started, else the one the foreground poll found in front
+    /// of the shell (none for a plain shell; a tab title plays no part).
     pub agent: Option<&'static str>,
     /// The program line Kolux started, when it started one.
     pub program: Option<String>,
@@ -51,13 +52,21 @@ fn agent_of(program: Option<&str>) -> Option<&'static str> {
 /// Joins the live sessions (handle, start folder, program, in handle order) with the window's
 /// placement rows.
 pub fn compose(sessions: Vec<(String, Option<String>, Option<String>)>, layout: &[Value]) -> Vec<Tab> {
+    compose_with(sessions, layout, crate::foreground::found)
+}
+
+/// `compose`, with `found` answering the agent in front of a shell terminal by id. B-01: an agent
+/// typed into a shell pane (how every agent pane starts) has no program line to credit, so the
+/// foreground poll's answer stands in, the same rule as `Terminals::program`.
+fn compose_with(sessions: Vec<(String, Option<String>, Option<String>)>, layout: &[Value], found: impl Fn(u32) -> Option<&'static str>) -> Vec<Tab> {
     sessions
         .into_iter()
         .map(|(handle, cwd, program)| {
             let at = layout.iter().find(|r| r["handle"] == handle.as_str());
             let placement = at.and_then(|r| Some(Placement { pane: r["cell"].as_u64()?, tab: r["tab"].as_u64()?, shown: r["shown"].as_bool().unwrap_or(false) }));
             let title = at.and_then(|r| r["title"].as_str()).map(str::to_string);
-            Tab { agent: agent_of(program.as_deref()), handle, program, cwd, title, placement }
+            let agent = agent_of(program.as_deref()).or_else(|| handle.strip_prefix("term-")?.parse().ok().and_then(&found));
+            Tab { agent, handle, program, cwd, title, placement }
         })
         .collect()
 }
@@ -160,6 +169,33 @@ mod tests {
     fn fix4_a_bare_path_with_a_space_is_credited_like_the_account_callers_do() {
         let tabs = compose(vec![session("term-1", Some(r"C:\Program Files\Claude\claude.exe")), session("term-2", Some("claude --x"))], &[]);
         assert_eq!((tabs[0].agent, tabs[1].agent), (Some("claude"), Some("claude")));
+    }
+
+    /// B-01 (wave 2026-11-15): an agent typed into a shell pane (how every agent pane starts) is
+    /// credited from the foreground poll, as `Terminals::program` does; a program Kolux started
+    /// still wins, and a shell with nothing in front stays a shell.
+    #[test]
+    fn b01_an_agent_typed_into_a_shell_is_credited_from_the_foreground_poll() {
+        // The poll's answers, faked: `foreground::note` keeps one shared map that other tests prune.
+        let found = |id: u32| match id {
+            7 => Some("claude"),
+            8 => Some("codex"),
+            _ => None,
+        };
+        let sessions = vec![
+            session("term-7", Some(r"C:\Program Files\PowerShell\7\pwsh.exe")),
+            session("term-8", Some("codex --sandbox workspace-write")),
+            session("term-9", Some("pwsh.exe")),
+        ];
+        let tabs = compose_with(sessions, &[], found);
+        assert_eq!(tabs[0].agent, Some("claude"), "the shell pane's agent comes from the foreground poll");
+        assert_eq!(tabs[1].agent, Some("codex"), "a program Kolux started is credited first");
+        assert_eq!(tabs[2].agent, None, "a shell with nothing in front stays a shell");
+        assert_eq!(for_socket(tabs)[0].agent, Some("claude"), "the socket list keeps the credit");
+        // The real path reads the poll's shared answers (another test may prune them meanwhile).
+        crate::foreground::note(900_301, crate::foreground::Front::Agent("claude"), &[900_301]);
+        let live = compose(vec![session("term-900301", Some("pwsh.exe"))], &[]);
+        assert!(live[0].agent.is_none_or(|a| a == "claude"), "{:?}", live[0].agent);
     }
 
     /// T-279-c: over the runtime socket a tab's program line is only the program's name; the
