@@ -303,7 +303,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const stuck = blocking(cells, n);
     if (stuck.length) {
       const first = shown.find((c) => c.group === stuck[0])?.panes[0];
-      setToast(`${first ? tabName(first, titles) : "A pane"} is a started session: close it to go smaller.${stuck.length > 1 ? ` (${stuck.length} in the way.)` : ""}`);
+      setToast(`Close ${first ? tabName(first, titles) : "a pane"} first to use fewer panes.${stuck.length > 1 ? ` (${stuck.length} in the way.)` : ""}`);
       if (add === 0 && drop.length === 0) return;
     }
     // Start form E: growing asks once, on the Start form, with How many set to the empty cells; Start fills them.
@@ -479,7 +479,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     // terminal (Pane.tsx onPty), so a later failure of the same tab still drops it.
     if (restoredKeys.current.has(key)) {
       restoredKeys.current.delete(key);
-      setToast(`A session did not start: ${error}`);
+      setToast(`This agent didn't start. Try again, or open Settings > Agents. (${error})`);
       return;
     }
     startWatch.seen(key); // SESS-005: its own toast says why; no five-second warning on top
@@ -490,7 +490,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     // removal must stand (a list from this render would bring the pane that failed first back, dead)
     setPanes((ps) => withoutFailed(ps, key).panes);
     setFocused((f) => (f === key ? focusIn(rest, activeDir, f) : f));
-    setToast(batchEmpty ? `Nothing started: ${error}` : `A session did not start: ${error}`);
+    setToast(batchEmpty ? `Nothing started: ${error}` : `This agent didn't start. Try again, or open Settings > Agents. (${error})`);
   };
 
   // ACCT-064: Restart starts the program again in the same slot (a new key remounts the pane, which

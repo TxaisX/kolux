@@ -103,6 +103,15 @@ test("growing the layout opens the Start form for the new cells and adds no choo
   expect(setSheet.mock.calls[0][0].seats).toHaveLength(3);
 });
 
+// Wave 2 item 6 (rewrite row 13): going smaller past a started session names it and says what to do.
+test("shrinking past a started session says to close it first", () => {
+  const started = (key: number) => ({ key, cwd: "C:\w", branch: null, agent: "shell", program: null, args: [] });
+  const setToast = vi.fn();
+  const s = { panes: [started(1), started(2)], activeDir: "C:\w", setPanes: vi.fn(), setToast, titles: {}, nextKey: { current: 9 }, setFocused: vi.fn() } as unknown as WindowState;
+  paneActions(s, {} as never, {} as never, {} as WindowLate).setCount(1);
+  expect(setToast.mock.calls[0][0]).toMatch(/^Close .+ first to use fewer panes\.$/);
+});
+
 // The palette reaches All Changes without a finished agent, and finds pages and commands by the words people type.
 test("the palette finds All Changes, the Appearance page and the new shell command by everyday words", async () => {
   const { resolve } = await import("../keys/keymap");
