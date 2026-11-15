@@ -1,6 +1,9 @@
 // The Start form (Txais 2026-11-15, PLAN T-824): one question for every pane. Folders, How many in each,
 // one Which AI / Model / Effort row, the per-seat rows behind "Make each one different", the footer total,
 // and "Keep what was open" when it was asked at app open. Rendered to HTML with no browser.
+// Third pass (PLAN T-826, job 16): its fixes are tested beside the code: startForm.test.ts (F2), addFolder.test.ts (F1),
+// startAcross.test.ts (F3, F8), shell/useStartAsk.test.ts (F4, F5), prefillF7F9.test.ts, liveModelF6.test.ts and
+// shell/window/agentsEmpty.test.ts (F15).
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
