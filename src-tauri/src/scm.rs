@@ -2681,11 +2681,12 @@ fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String>
 /// is removed for good, a deleted file comes back from the last commit, a modified or renamed
 /// file is put back as the last commit had it; staged work is unstaged first. A link is only ever
 /// removed or rewritten as a link: what it points at is never followed, so nothing outside the
-/// repository is touched. An untracked folder (`box/`) goes with everything in it.
+/// repository is touched. B-09: an untracked row goes exactly as the untracked section's discard
+/// sends it (`git clean -f -d`), so a nested repository and ignored files are left alone.
 pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     check_paths(paths)?;
     let st = status(worktree)?;
-    let (mut staged, mut tracked, mut remove) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     for p in paths {
         let p = p.trim_end_matches('/');
         let index = st.staged.iter().find(|c| c.path == p);
@@ -2696,7 +2697,9 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
                 tracked.push(from.clone());
             }
         }
-        if st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p) || index.is_some_and(|c| c.status == "A" || c.from.is_some()) {
+        if st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p) {
+            untracked.push(p.to_string());
+        } else if index.is_some_and(|c| c.status == "A" || c.from.is_some()) {
             remove.push(p.to_string());
         } else {
             tracked.push(p.to_string());
@@ -2715,13 +2718,49 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     if !tracked.is_empty() {
         with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked)?;
     }
+    // N-02: a nested repository is taken out before git clean runs and named at the end, so the
+    // other rows still go; any error from the untracked discard is then a real failure and stops.
+    let (nested, untracked): (Vec<String>, Vec<String>) = untracked.into_iter().partition(|p| own_repo_at(worktree, p));
+    let mut kept: Vec<String> = nested.iter().map(|p| own_repo(p)).collect();
+    if !untracked.is_empty() {
+        discard(worktree, "untracked", &untracked)?;
+    }
+    // A staged new file, unstaged above. N-01: an index entry is a file or a gitlink, never a
+    // plain folder, so a folder here is a nested repository or a file that became a folder. A
+    // folder holding `.git` is kept, and so is any folder that is not empty; only an empty one goes.
     for p in &remove {
         let full = worktree.join(native(p));
         let Ok(meta) = fs::symlink_metadata(&full) else { continue };
-        let done = if meta.is_dir() { fs::remove_dir_all(&full) } else { fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)) };
+        if own_repo_at(worktree, p) {
+            kept.push(own_repo(p));
+            continue;
+        }
+        let done = if meta.is_dir() {
+            if fs::read_dir(&full).is_ok_and(|mut d| d.next().is_some()) {
+                kept.push(format!("{p} is a folder with files in it, so Kolux leaves it. Delete it by hand if you mean to."));
+                continue;
+            }
+            fs::remove_dir(&full)
+        } else {
+            fs::remove_file(&full).or_else(|_| fs::remove_dir(&full))
+        };
         done.map_err(|e| format!("{p}: {e}"))?;
     }
-    Ok(())
+    if kept.is_empty() {
+        Ok(())
+    } else {
+        Err(kept.join("\n"))
+    }
+}
+
+/// R-06: true when the row's folder holds `.git` (a file or a folder), a nested repository.
+fn own_repo_at(worktree: &Path, p: &str) -> bool {
+    fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/'))).join(".git")).is_ok()
+}
+
+/// R-06 / N-01: what Discard says about a nested repository it leaves.
+fn own_repo(p: &str) -> String {
+    format!("{} is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.", p.trim_end_matches('/'))
 }
 
 /// Runs `git <args>` over `paths` handed on stdin, NUL-separated and literal, so no name is
@@ -2751,14 +2790,19 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
         "staged" => piped(worktree, &["--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
         "changed" => piped(worktree, &["--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
         "untracked" => {
+            // R-06: git clean -f leaves a nested repository without a word; say so, and clean the rest.
+            let (nested, rest): (Vec<&String>, Vec<&String>) = paths.iter().partition(|p| own_repo_at(worktree, p));
             // ponytail: git clean reads no list from its input, so the names go on the command line
             // in chunks that stay well under the Windows command-line limit.
-            for chunk in paths.chunks(100) {
+            for chunk in rest.chunks(100) {
                 let mut args = vec!["--literal-pathspecs", "clean", "-f", "-d", "-q", "--"];
-                args.extend(chunk.iter().map(String::as_str));
+                args.extend(chunk.iter().map(|p| p.as_str()));
                 run(&args, Some(worktree))?;
             }
-            Ok(())
+            if nested.is_empty() {
+                return Ok(());
+            }
+            Err(nested.iter().map(|p| own_repo(p)).collect::<Vec<_>>().join("\n"))
         }
         _ => Err(format!("the {section} section cannot be discarded")),
     }

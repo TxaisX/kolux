@@ -218,7 +218,7 @@ pub fn respond_within(previews: &[Preview], target: &str, max: u64) -> (u16, &'s
     let Some((token, rest)) = path.trim_start_matches('/').split_once('/') else {
         return (404, "text/plain", b"not a preview address".to_vec());
     };
-    let Some(p) = previews.iter().find(|p| p.token == token) else {
+    let Some(p) = previews.iter().find(|p| crate::hooks::same(&p.token, token)) else {
         return (404, "text/plain", b"no such preview".to_vec());
     };
     let file = match fenced(&p.root, &decode(rest)) {
@@ -338,6 +338,18 @@ mod tests {
         p[0].granted = true;
         assert_eq!(respond(&p, "/t1/css/a.css").0, 200);
         assert_eq!(respond(&p, "/t1/a%20b.html").0, 200);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// R-07: the token is compared in constant time; the right one is still taken and a wrong one of
+    /// the same length is still refused. (Timing itself is not something a test can show.)
+    #[test]
+    fn r07_the_right_token_is_taken_and_a_wrong_one_of_the_same_length_is_refused() {
+        let dir = site("r07");
+        let p = vec![open(&dir, false)];
+        assert_eq!(respond(&p, "/t1/index.html").0, 200);
+        let (s, _, body) = respond(&p, "/t2/index.html");
+        assert_eq!((s, body.as_slice()), (404, &b"no such preview"[..]));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

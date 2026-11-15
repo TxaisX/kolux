@@ -140,7 +140,7 @@ fn schedule(a: &Value, form: &Value, zone: &str) -> Value {
 fn find(ctx: &Ctx, id: &str) -> Result<Value, Fail> {
     let store = ctx.store.lock().map_err(|e| e.to_string())?;
     let all = automations::list(&store)?;
-    all["automations"].as_array().and_then(|l| l.iter().find(|a| a["id"] == id)).cloned().ok_or_else(|| Fail { code: "not_found", message: format!("no automation is called {id}"), data: json!({ "hint": "kolux-dev automations list shows them" }) })
+    all["automations"].as_array().and_then(|l| l.iter().find(|a| a["id"] == id)).cloned().ok_or_else(|| Fail { code: "not_found", message: format!("no automation is called {id}"), data: json!({ "hint": format!("{} automations list shows them", crate::orchestration::CLI) }) })
 }
 
 /// CLI-004: a value in a next-step command the way the current shell expects, so the line pastes
@@ -353,7 +353,7 @@ pub(super) fn text(command: &str, r: &Value) -> Option<String> {
         "automations.list" => {
             let rows = r["automations"].as_array().cloned().unwrap_or_default();
             if rows.is_empty() {
-                "no automations yet; make one with kolux-dev automations create".into()
+                format!("no automations yet; make one with {} automations create", crate::orchestration::CLI)
             } else {
                 rows.iter().map(line).collect::<Vec<_>>().join("\n")
             }

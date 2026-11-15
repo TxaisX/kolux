@@ -2729,6 +2729,94 @@ fn git003_discard_deletes_new_files_restores_deleted_ones_and_never_follows_a_li
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// B-09 (wave 2026-11-15): the section-free discard sends an untracked row through the same
+/// `git clean -f -d` as the untracked section, so a nested repository (with its history) and an
+/// ignored file in an untracked folder survive; a plain untracked file still goes.
+#[test]
+fn b09_discard_without_a_section_leaves_a_nested_repo_and_ignored_files_alone() {
+    let dir = temp_repo("b09-nested");
+    fs::write(dir.join(".gitignore"), "*.env\n").unwrap();
+    run(&["add", ".gitignore"], Some(&dir)).unwrap();
+    run(&["commit", "-q", "-m", "ignore"], Some(&dir)).unwrap();
+    let inner = dir.join("box").join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    run(&["init", "-q", "-b", "main"], Some(&inner)).unwrap();
+    fs::write(inner.join("work.txt"), "unpushed\n").unwrap();
+    run(&["add", "work.txt"], Some(&inner)).unwrap();
+    run(&["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "inner"], Some(&inner)).unwrap();
+    fs::write(dir.join("box").join("secret.env"), "KEY=1\n").unwrap();
+    fs::write(dir.join("box").join("plain.txt"), "p\n").unwrap();
+    let st = status(&dir).unwrap();
+    let rows: Vec<String> = st.untracked.iter().map(|c| c.path.clone()).collect();
+    assert_eq!(rows, ["box/inner/", "box/plain.txt"], "the nested repo is one row; the ignored file is not listed");
+    let said = discard_paths(&dir, &rows).expect_err("R-06: the kept repository is named");
+    assert_eq!(said, "box/inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    assert_eq!(fs::read_to_string(inner.join("work.txt")).unwrap(), "unpushed\n");
+    assert_eq!(fs::read_to_string(dir.join("box").join("secret.env")).unwrap(), "KEY=1\n", "an ignored file is never touched");
+    assert!(!dir.join("box").join("plain.txt").exists(), "a plain untracked file is removed");
+    // R-06: the live route (the untracked section) says the same and still cleans the other rows.
+    fs::write(dir.join("box").join("again.txt"), "a").unwrap();
+    let said = discard(&dir, "untracked", &["box/inner/".to_string(), "box/again.txt".to_string()]).expect_err("named");
+    assert!(said.starts_with("box/inner is its own Git repository"), "{said}");
+    assert!(inner.join(".git").is_dir() && !dir.join("box").join("again.txt").exists());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// An outer repository with a nested one (one commit) staged in it by `git add inner`.
+fn staged_inner_repo(name: &str) -> (PathBuf, PathBuf) {
+    let dir = temp_repo(name);
+    let inner = dir.join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    plain(&["init", "-q", "-b", "main"], &inner);
+    fs::write(inner.join("work.txt"), "unpushed\n").unwrap();
+    plain(&["add", "work.txt"], &inner);
+    plain(&["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "inner"], &inner);
+    plain(&["add", "inner"], &dir);
+    assert_eq!(paths(&status(&dir).unwrap().staged), ["inner"], "the nested repository is staged");
+    (dir, inner)
+}
+
+/// N-01: a staged nested repository is unstaged and kept by the section-free discard, never
+/// deleted with its history.
+#[test]
+fn n01_discard_paths_keeps_a_staged_nested_repo() {
+    let (dir, inner) = staged_inner_repo("n01-staged-inner");
+    let said = discard_paths(&dir, &["inner".to_string()]).expect_err("the kept repository is named");
+    assert_eq!(said, "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    assert_eq!(fs::read_to_string(inner.join("work.txt")).unwrap(), "unpushed\n");
+    assert!(status(&dir).unwrap().staged.is_empty(), "inner is no longer staged");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// N-01, the live route: the Changes tab's staged-section discard leaves the nested repository too.
+#[test]
+fn n01_staged_section_discard_keeps_a_nested_repo() {
+    let (dir, inner) = staged_inner_repo("n01-staged-section");
+    let _ = discard(&dir, "staged", &["inner".to_string()]);
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    assert_eq!(fs::read_to_string(inner.join("work.txt")).unwrap(), "unpushed\n");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// N-02: one nested repository in the pick does not stop a staged new file from being removed.
+#[test]
+fn n02_a_nested_repo_in_the_pick_does_not_stop_the_other_rows() {
+    let dir = temp_repo("n02-mixed");
+    let inner = dir.join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    plain(&["init", "-q", "-b", "main"], &inner);
+    fs::write(inner.join("work.txt"), "unpushed\n").unwrap();
+    fs::write(dir.join("added.txt"), "a\n").unwrap();
+    plain(&["add", "added.txt"], &dir);
+    let said = discard_paths(&dir, &["inner/".to_string(), "added.txt".to_string()]).expect_err("the kept repository is named");
+    assert_eq!(said, "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
+    assert!(!dir.join("added.txt").exists(), "the staged new file is removed");
+    assert!(inner.join(".git").is_dir() && inner.join("work.txt").exists(), "the nested repository is whole");
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {

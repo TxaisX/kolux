@@ -400,7 +400,7 @@ pub fn pane_token(secret: &str, pane_key: u32, terminal: Option<u32>) -> String 
 }
 
 /// Equal without stopping at the first difference.
-fn same(a: &str, b: &str) -> bool {
+pub(crate) fn same(a: &str, b: &str) -> bool {
     let (a, b) = (a.as_bytes(), b.as_bytes());
     a.len() == b.len() && a.iter().zip(b).fold(0u8, |d, (x, y)| d | (x ^ y)) == 0
 }
@@ -890,7 +890,13 @@ fn work_prompt(change: &Change) -> Option<&str> {
 /// (projects::rename_after_work makes every check, so only the first work renames it); `None` when
 /// no project knows the folder.
 pub fn rename_after_prompt(git: &crate::git::Git, store: &Mutex<crate::state::Store>, dir: &str, prompt: &str) -> Option<Result<crate::projects::RenameAnswer, String>> {
-    let project = crate::projects::project_for_path(git, &*store.lock().ok()?, dir)?;
+    // B-10: the store is held only for the cheap lookups; git (once per project) runs without it,
+    // as in `terminal list` (B-03). The guard is a temporary, dropped at the end of this statement.
+    let known = crate::projects::project_known(&*store.lock().ok()?, dir);
+    let project = match known {
+        Ok(p) => p,
+        Err(projects) => crate::projects::project_by_git(git, projects, dir)?,
+    };
     Some(crate::projects::rename_after_work(git, store, &project, dir, prompt))
 }
 
@@ -1517,7 +1523,12 @@ pub(crate) fn install_codex_mirroring(home: &Path, command: &str, user: Option<&
     };
     let text = read(&file)?;
     let mut hooks: Value = serde_json::from_str(text.as_deref().unwrap_or("{}")).map_err(|e| format!("{} is not JSON ({e}); left alone", file.display()))?;
-    let mut doc: toml_edit::DocumentMut = read(&config)?.unwrap_or_default().parse().map_err(|e| format!("{} is not valid TOML ({e}); left alone", config.display()))?;
+    // P3 (wave job 7): a top level that is not an object, a `hooks` value that is not an object or an
+    // event that is not a list is refused, as for every other agent, so `install_groups` never
+    // swaps the user's broken entries for empty ones.
+    agent_hooks::vendors::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
+    let config_text = read(&config)?.unwrap_or_default();
+    let mut doc: toml_edit::DocumentMut = config_text.parse().map_err(|e| format!("{} is not valid TOML ({}); left alone", config.display(), crate::trust::toml_fault(&e, &config_text)))?;
     let config_before = doc.to_string();
     let hooks_before = hooks.clone();
     let mut changed = false;
@@ -2485,6 +2496,41 @@ Content-Length: {}
         let _ = std::fs::remove_dir_all(&base);
     }
 
+    /// B-10 (wave 2026-11-15): a folder only Git knows (a worktree made outside Kolux, beside the
+    /// repo) is still traced to its project, but through the store-free Git step: the store-held
+    /// part hands back the project list instead of running git under the lock.
+    #[test]
+    fn b10_a_worktree_only_git_knows_is_found_with_git_run_outside_the_store_lock() {
+        use crate::{git::Git, projects, state::Store};
+        let git = Git::detect().unwrap();
+        let base = std::env::temp_dir().join(format!("kolux-hooks-b10-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let (profile, repo, ext) = (base.join("profile"), base.join("repo"), base.join("ext"));
+        for d in [&profile, &repo] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        let run = |args: &[&str]| assert!(std::process::Command::new("git").args(args).current_dir(&repo).output().unwrap().status.success(), "git {args:?}");
+        run(&["init", "-q", "-b", "main"]);
+        run(&["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "first"]);
+        run(&["worktree", "add", "-q", "-b", "ext", &ext.to_string_lossy()]);
+        let store = Store::open(&profile).unwrap();
+        let project = projects::add_project(&git, &store, &repo).unwrap();
+        let store = Mutex::new(store);
+        let ext = ext.to_string_lossy().to_string();
+        // The store-held part finds nothing and hands the projects back for the Git step.
+        let list = projects::project_known(&store.lock().unwrap(), &ext).expect_err("only Git knows this folder");
+        assert_eq!(list.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), vec![project.id.as_str()]);
+        // The Git step needs no store at all.
+        assert_eq!(projects::project_by_git(&git, list, &ext).map(|p| p.id), Some(project.id.clone()));
+        // The rename path still reaches the project (it is not a suggested workspace, so it stays).
+        let answer = rename_after_prompt(&git, &store, &ext, "Fix the login bug").expect("the project is found through Git").unwrap();
+        assert!(!answer.renamed, "{answer:?}");
+        assert!(store.try_lock().is_ok(), "the store is free afterwards");
+        // The one-call form agrees.
+        assert_eq!(projects::project_for_path(&git, &store.lock().unwrap(), &ext).map(|p| p.id), Some(project.id));
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
     // ---- T-583: the hook line never blocks (R02-hooks-status.3, audit item 6) ----
 
     /// The real accept loop, request reading and reply on a loopback port, with the app's parts stood in.
@@ -2680,5 +2726,20 @@ Content-Length: {}
         let _ = release.send(());
         holder.join().unwrap();
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn b20_a_broken_codex_config_line_is_named_by_number_never_quoted() {
+        let home = std::env::temp_dir().join(format!("kolux-hooks-b20-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&home);
+        std::fs::create_dir_all(&home).unwrap();
+        // A made-up value, unquoted so the file does not parse.
+        std::fs::write(home.join("config.toml"), "token = abc123SECRET\n").unwrap();
+        let err = install_codex_with(&home, "kolux-hook", |_| None).unwrap_err();
+        assert!(err.contains("not valid TOML"), "{err}");
+        assert!(err.contains("line 1"), "{err}");
+        assert!(!err.contains("abc123SECRET"), "{err}");
+        assert_eq!(std::fs::read_to_string(home.join("config.toml")).unwrap(), "token = abc123SECRET\n", "left alone");
+        let _ = std::fs::remove_dir_all(&home);
     }
 }

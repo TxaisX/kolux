@@ -706,10 +706,21 @@ pub fn page_before(path: &Path, end: u64, lines: usize) -> std::io::Result<(Vec<
         }
     }
     let start = lines_start(&mut f, end, lines, PAGE_BYTES)?;
-    let mut buf = vec![0u8; (end - start) as usize];
-    f.seek(SeekFrom::Start(start))?;
+    // B-13: the oldest line taken is far over the cap (one giant line): read only the last PAGE_BYTES and leave
+    // that line out; the cursor still moves to its start, so the next page goes on above it.
+    let giant = end - start > PAGE_BYTES * 4;
+    let from = if giant { end - PAGE_BYTES } else { start };
+    let mut buf = vec![0u8; (end - from) as usize];
+    f.seek(SeekFrom::Start(from))?;
     f.read_exact(&mut buf)?;
-    let out = String::from_utf8_lossy(&buf).split('\n').map(|l| l.trim_end_matches('\r')).filter(|l| !l.is_empty()).map(str::to_owned).collect();
+    if giant {
+        let cut = buf.iter().position(|&b| b == b'\n').map_or(buf.len(), |i| i + 1);
+        buf.drain(..cut);
+    }
+    let out: Vec<String> = String::from_utf8_lossy(&buf).split('\n').map(|l| l.trim_end_matches('\r')).filter(|l| !l.is_empty()).map(str::to_owned).collect();
+    if giant && out.is_empty() && start > 0 {
+        return page_before(path, start, lines);
+    }
     Ok((out, start))
 }
 
@@ -1754,6 +1765,21 @@ mod tests {
         assert_eq!(t.read().unwrap().0.len(), 3);
         assert_eq!(t.first_start, 0, "everything fit in the first page");
         assert_eq!(page_before(&f, 0, 100).unwrap(), (vec![], 0));
+    }
+
+    #[test]
+    fn b13_a_giant_line_is_left_out_of_an_older_page_and_the_next_page_goes_on_above_it() {
+        let d = temp("chat-page-giant");
+        let f = d.join("t.jsonl");
+        let giant = "x".repeat((PAGE_BYTES * 8) as usize);
+        fs::write(&f, format!("a\n{giant}\nb\n")).unwrap();
+        drop(giant);
+        let len = fs::metadata(&f).unwrap().len();
+        // Only the lines below the giant one, and the cursor at the giant line's start (after "a\n").
+        assert_eq!(page_before(&f, len, 50).unwrap(), (vec!["b".to_string()], 2));
+        assert_eq!(page_before(&f, 2, 50).unwrap(), (vec!["a".to_string()], 0), "the next page moves past it");
+        // A cursor just below the giant line: nothing else is in reach, so the page goes on above it.
+        assert_eq!(page_before(&f, len - 2, 50).unwrap(), (vec!["a".to_string()], 0));
     }
 
     #[test]

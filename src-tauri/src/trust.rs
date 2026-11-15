@@ -161,6 +161,16 @@ pub fn trust_claude(file: &Path, paths: &[PathBuf]) -> Result<usize, String> {
 }
 
 
+/// A TOML parse error as "line N: <the parser's short message>". Never the broken line's text:
+/// that line can hold a key or token, and this error reaches agents and toasts (B-20).
+pub(crate) fn toml_fault(e: &toml_edit::TomlError, text: &str) -> String {
+    let msg = e.message().split_whitespace().collect::<Vec<_>>().join(" ");
+    match e.span() {
+        Some(at) => format!("line {}: {msg}", text.get(..at.start).map_or(0, |t| t.matches('\n').count()) + 1),
+        None => msg,
+    }
+}
+
 /// Codex's configuration: `config.toml` under `CODEX_HOME`, else `~/.codex`.
 pub fn codex_config_file() -> PathBuf {
     std::env::var("CODEX_HOME")
@@ -188,7 +198,7 @@ pub fn trust_codex(file: &Path, paths: &[PathBuf]) -> Result<usize, String> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
         Err(e) => return Err(format!("{}: {e}", file.display())),
     };
-    let mut doc: toml_edit::DocumentMut = raw.as_deref().unwrap_or("").parse().map_err(|e| format!("{} is not valid TOML ({e}); left untouched", file.display()))?;
+    let mut doc: toml_edit::DocumentMut = raw.as_deref().unwrap_or("").parse().map_err(|e| format!("{} is not valid TOML ({}); left untouched", file.display(), toml_fault(&e, raw.as_deref().unwrap_or(""))))?;
     let fresh = !doc.contains_key("projects");
     let projects = doc.as_table_mut().entry("projects").or_insert(toml_edit::table());
     let projects = projects.as_table_mut().ok_or_else(|| format!("{}: projects is not a table; left untouched", file.display()))?;
@@ -515,6 +525,23 @@ mod tests {
         assert!(trust_claude(&file, &[]).unwrap_err().contains("no folders"));
         assert!(!file.exists(), "a refused batch writes nothing");
         assert!(trust_claude(&file, &many[..1]).unwrap_err().contains("nowhere-0"), "a folder that does not exist cannot be trusted");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn b20_a_broken_codex_line_is_named_by_number_never_quoted() {
+        let d = temp("b20");
+        let a = d.join("Repo");
+        std::fs::create_dir_all(&a).unwrap();
+        let file = d.join("config.toml");
+        // A made-up value, unquoted so the file does not parse.
+        let given = "model = \"gpt\"\ntoken = abc123SECRET\n";
+        std::fs::write(&file, given).unwrap();
+        let err = trust_codex(&file, std::slice::from_ref(&a)).unwrap_err();
+        assert!(err.contains("not valid TOML"), "{err}");
+        assert!(err.contains("line 2"), "{err}");
+        assert!(!err.contains("abc123SECRET"), "{err}");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), given, "left untouched");
         let _ = std::fs::remove_dir_all(&d);
     }
 

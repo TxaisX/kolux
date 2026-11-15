@@ -113,8 +113,24 @@ pub const MAX_USER_PREFIX: usize = 40;
 
 /// Compares two folders the way Windows does: same canonical path, letter case ignored.
 pub(crate) fn same_folder(a: &Path, b: &Path) -> bool {
-    let norm = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf()).to_string_lossy().to_lowercase();
-    norm(a) == norm(b)
+    let (ra, rb) = (a.canonicalize(), b.canonicalize());
+    let both = ra.is_ok() && rb.is_ok();
+    let norm = |r: std::io::Result<PathBuf>, p: &Path| r.unwrap_or_else(|_| p.to_path_buf()).to_string_lossy().to_lowercase();
+    let (a, b) = (norm(ra, a), norm(rb, b));
+    if both {
+        return a == b;
+    }
+    // N-05: a side that cannot be resolved (a folder already gone) is matched on its text: one kind
+    // of slash, no `\\?\` start and no slash at the end, which never name a different folder here.
+    let text = |s: String| {
+        let s = if cfg!(windows) { s.replace('/', "\\") } else { s };
+        let s = match s.strip_prefix(r"\\?\unc\") {
+            Some(rest) => format!(r"\\{rest}"),
+            None => s.strip_prefix(r"\\?\").unwrap_or(&s).to_string(),
+        };
+        s.trim_end_matches(['\\', '/']).to_string()
+    };
+    text(a) == text(b)
 }
 
 /// For display and lookup only: an unreadable list shows empty (after being kept aside).
@@ -748,12 +764,18 @@ pub fn workspace_set_parent(git: State<'_, Git>, store: StoreState<'_>, project_
 }
 
 pub fn list_workspaces(git: &Git, store: &Store, project: &Project) -> Result<Vec<Worktree>, String> {
+    decorate(store, project, scan_workspaces(git, project)?)
+}
+
+/// B-03: the Git half of `list_workspaces` (the scan and the moved-folder repair). It reads no
+/// store, so a caller can run it without holding the app's state lock and `decorate` after.
+pub fn scan_workspaces(git: &Git, project: &Project) -> Result<Vec<Worktree>, String> {
     let repo = Path::new(&project.path);
     let mut all = git.worktrees(repo)?;
     if repair_moved(git, repo, &all) {
         all = git.worktrees(repo)?;
     }
-    decorate(store, project, all)
+    Ok(all)
 }
 
 /// PROJ-068: the Git folder a linked worktree points at from its `.git` file; None for the main
@@ -1205,14 +1227,39 @@ pub fn lock_held(err: &str) -> bool {
     e.contains(".lock") || e.contains("another git process") || e.contains("cannot lock") || e.contains("could not lock")
 }
 
-/// What a failed `git worktree add` may have left: the folder (it did not exist before), Git's
-/// record of it, and `made`, the branch the add was creating (none of that name existed before).
-fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>) {
-    let _ = std::fs::remove_dir_all(dest);
+/// What a failed `git worktree add` may have left: the folder, Git's record of it, and `made`, the
+/// branch the add was creating (none of that name existed before). The folder goes only when this
+/// add made it: it was not there before (`was_there`) and `git_made` says it is Git's. A folder that
+/// was there and empty before (`was_empty`, R-04) is emptied again and kept when `git_made` says what
+/// is in it now is Git's: nothing in it was there before, and a link inside is removed, never followed.
+fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool, was_empty: bool) {
+    if !was_there && git_made(dest) {
+        let _ = std::fs::remove_dir_all(dest);
+    } else if was_there && was_empty && git_made(dest) {
+        for entry in std::fs::read_dir(dest).into_iter().flatten().flatten() {
+            let path = entry.path();
+            let _ = match std::fs::symlink_metadata(&path) {
+                Ok(m) if m.is_dir() && !m.is_symlink() => std::fs::remove_dir_all(&path),
+                // A link (to a file or a folder) goes as a link; what it points at is never touched.
+                Ok(m) if m.is_symlink() => std::fs::remove_file(&path).or_else(|_| std::fs::remove_dir(&path)),
+                _ => std::fs::remove_file(&path),
+            };
+        }
+    }
     let _ = crate::git::run(&["worktree", "prune"], Some(repo));
     if let Some(branch) = made.filter(|b| crate::git::run(&["rev-parse", "--verify", "--quiet", &format!("refs/heads/{b}")], Some(repo)).is_ok()) {
         let _ = crate::git::run(&["branch", "-D", branch], Some(repo));
     }
+}
+
+/// Whether a folder a failed add left is Git's own: a real folder (never a link), empty, or holding
+/// the `.git` file (`gitdir: ...`) that `worktree add` writes before it checks anything out. A folder
+/// another program made and filled in the meantime is not.
+fn git_made(dest: &Path) -> bool {
+    let is_dir = std::fs::symlink_metadata(dest).is_ok_and(|m| m.is_dir() && !m.is_symlink());
+    let empty = || std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none());
+    let linked = || std::fs::read_to_string(dest.join(".git")).is_ok_and(|s| s.starts_with("gitdir:"));
+    is_dir && (empty() || linked())
 }
 
 /// PROJ-031: what kind of problem a failed create was, so the message can say what to do.
@@ -1264,8 +1311,10 @@ pub fn explain_create_error(raw: String) -> String {
 /// policy: each failed try is cleared away first, and a cancel stops the waiting.
 pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dyn Fn() -> bool, add: impl Fn() -> Result<(), String>) -> Result<(), String> {
     let mut waits = CREATE_WAITS_MS.iter();
+    let was_there = std::fs::symlink_metadata(dest).is_ok();
+    let was_empty = was_there && git_made(dest) && std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none());
     while let Err(e) = add() {
-        clear_failed_add(repo, dest, made);
+        clear_failed_add(repo, dest, made, was_there, was_empty);
         if overtaken() {
             return Err(OVERTAKEN.to_string());
         }
@@ -2196,14 +2245,31 @@ fn linked_pr(store: &Store, path: &str) -> bool {
 /// T-107-d: the project a workspace at `path` belongs to: the one that saw it being made, else
 /// the one whose own folder holds it, else the one whose Git lists it as a worktree.
 pub fn project_for_path(git: &Git, store: &Store, path: &str) -> Option<Project> {
+    match project_known(store, path) {
+        Ok(p) => Some(p),
+        Err(projects) => project_by_git(git, projects, path),
+    }
+}
+
+/// B-10: the store-only part of `project_for_path` (the project that saw the folder made, else the
+/// one whose folder holds it); when neither, every project, for `project_by_git` to run with the
+/// store let go.
+pub(crate) fn project_known(store: &Store, path: &str) -> Result<Project, Vec<Project>> {
     let key = name_key(path);
     let projects = load_projects(store);
     if let Some(p) = projects.iter().find(|p| seen_of(store, p).is_some_and(|s| s.contains(&key))) {
-        return Some(p.clone());
+        return Ok(p.clone());
     }
     if let Some(p) = projects.iter().find(|p| name_key(&p.path) == key || key.starts_with(&format!("{}/", name_key(&p.path).trim_end_matches('/')))) {
-        return Some(p.clone());
+        return Ok(p.clone());
     }
+    Err(projects)
+}
+
+/// B-10: the Git part of `project_for_path`: the project whose Git lists `path` as a worktree. Runs
+/// `git worktree list` once per project, so it takes no store.
+pub(crate) fn project_by_git(git: &Git, projects: Vec<Project>, path: &str) -> Option<Project> {
+    let key = name_key(path);
     projects.into_iter().find(|p| git.worktrees(Path::new(&p.path)).is_ok_and(|ws| ws.iter().any(|w| name_key(&w.path) == key)))
 }
 

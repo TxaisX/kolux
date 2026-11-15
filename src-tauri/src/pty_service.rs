@@ -46,6 +46,9 @@ const PROBE_WAIT: Duration = Duration::from_millis(2500);
 const POLL: Duration = Duration::from_millis(100);
 /// A launched service has this long to answer before the start is called failed.
 pub const START_LIMIT: Duration = Duration::from_secs(5);
+/// The most a hello line may hold (a real one is about 100 bytes) and how long it may take.
+const HELLO_BYTES: u64 = 4096;
+const HELLO_WAIT: Duration = Duration::from_secs(2);
 
 // ---------------------------------------------------------------- one copy
 
@@ -433,11 +436,34 @@ impl Service {
             let _ = out.shutdown(std::net::Shutdown::Both);
         });
         let conn = self.next_conn();
-        let mut lines = BufReader::new(stream).lines();
-        let hello: Value = lines.next().and_then(Result::ok).and_then(|l| serde_json::from_str(&l).ok()).unwrap_or(Value::Null);
+        // The hello comes before the token is checked, so any local program can send it: it gets
+        // HELLO_BYTES and HELLO_WAIT, no more (R06-terminal-process.5). N-03: HELLO_WAIT is one
+        // deadline for the whole line, so each read gets only the time left; past it, it is refused.
+        let deadline = Instant::now() + HELLO_WAIT;
+        let mut reader = BufReader::new(stream);
+        let mut first = Vec::new();
+        while !first.ends_with(b"\n") && (first.len() as u64) < HELLO_BYTES {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() || reader.get_ref().set_read_timeout(Some(left)).is_err() {
+                first.clear();
+                break;
+            }
+            let Ok(buf) = reader.fill_buf() else {
+                first.clear();
+                break;
+            };
+            if buf.is_empty() {
+                break;
+            }
+            let room = buf.len().min((HELLO_BYTES as usize) - first.len());
+            let used = buf[..room].iter().position(|&b| b == b'\n').map_or(room, |i| i + 1);
+            first.extend_from_slice(&buf[..used]);
+            reader.consume(used);
+        }
+        let hello: Value = serde_json::from_slice(&first).unwrap_or(Value::Null);
         let refused = if hello["op"] != "hello" {
             Some("the first line must be a hello")
-        } else if hello["token"].as_str() != Some(cfg.token.as_str()) {
+        } else if !hello["token"].as_str().is_some_and(|t| crate::hooks::same(t, &cfg.token)) {
             Some("the token does not match this terminal service")
         } else {
             None
@@ -447,7 +473,9 @@ impl Service {
             None => tx.send(json!({ "ok": true, "result": { "generation": generation(), "protocol": cfg.protocol, "pid": std::process::id() } }).to_string()),
         };
         if refused.is_none() {
-            for line in lines {
+            // A good client: its connection lives for hours, with requests minutes apart.
+            let _ = reader.get_ref().set_read_timeout(None);
+            for line in reader.lines() {
                 let Ok(line) = line else { break };
                 let req: Value = serde_json::from_str(&line).unwrap_or(Value::Null);
                 let re = req["re"].clone();
@@ -1095,6 +1123,89 @@ mod tests {
         let mut line = String::new();
         BufReader::new(raw).read_line(&mut line).unwrap();
         assert!(line.contains("\"ok\":false") && line.contains("hello"), "{line}");
+        drop(s);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// What a raw connection gets back: a line, or how the read ended (EOF, reset, timed out).
+    fn reply(raw: TcpStream) -> Result<String, std::io::ErrorKind> {
+        let mut line = String::new();
+        match BufReader::new(raw).read_line(&mut line) {
+            Ok(0) => Err(std::io::ErrorKind::UnexpectedEof),
+            Ok(_) => Ok(line),
+            Err(e) => Err(e.kind()),
+        }
+    }
+
+    #[test]
+    fn r06_a_hello_is_capped_and_timed_and_a_good_client_may_then_wait() {
+        let dir = scratch("hello-cap");
+        let s = start(&dir, PROTOCOL, IDLE_LIMIT);
+        let timed_out = |k: std::io::ErrorKind| matches!(k, std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock);
+        // 1 MB with no newline: refused once the cap is read, while the sender still holds the line open.
+        let raw = TcpStream::connect(("127.0.0.1", s.ep.port)).unwrap();
+        raw.set_read_timeout(Some(Duration::from_secs(6))).unwrap();
+        let mut out = raw.try_clone().unwrap();
+        let flood = std::thread::spawn(move || {
+            let _ = out.write_all(&vec![b'x'; 1024 * 1024]);
+            std::thread::sleep(Duration::from_secs(7));
+        });
+        match reply(raw) {
+            Ok(line) => assert!(line.contains("\"ok\":false"), "{line}"),
+            Err(k) => assert!(!timed_out(k), "the service kept reading a 1 MB hello"),
+        }
+        // A connection that sends nothing is dropped after the hello wait.
+        let silent = TcpStream::connect(("127.0.0.1", s.ep.port)).unwrap();
+        silent.set_read_timeout(Some(Duration::from_secs(6))).unwrap();
+        let began = Instant::now();
+        match reply(silent) {
+            Ok(line) => assert!(line.contains("\"ok\":false"), "{line}"),
+            Err(k) => assert!(!timed_out(k), "a silent connection was kept"),
+        }
+        assert!(began.elapsed() >= Duration::from_millis(1500), "dropped only once the hello wait is over");
+        // The service still answers a good hello, and that client may wait past the hello wait.
+        let mut good = Client::connect(&s.ep, Duration::from_secs(10)).unwrap();
+        std::thread::sleep(HELLO_WAIT + Duration::from_millis(800));
+        let mut events = Vec::new();
+        assert_eq!(good.request(json!({ "op": "list" }), &mut events).unwrap()["terminals"], json!([]));
+        drop(good);
+        let _ = flood.join();
+        drop(s);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// N-03: the hello wait is a total, not per read: a client that sends one byte every 300 ms
+    /// and never a line end is refused or closed within about 3 seconds.
+    #[test]
+    fn n03_a_dripped_hello_is_cut_off_at_the_total_wait() {
+        let dir = scratch("hello-drip");
+        let s = start(&dir, PROTOCOL, IDLE_LIMIT);
+        let raw = TcpStream::connect(("127.0.0.1", s.ep.port)).unwrap();
+        raw.set_read_timeout(Some(Duration::from_secs(4))).unwrap();
+        let mut out = raw.try_clone().unwrap();
+        let done = Arc::new(AtomicBool::new(false));
+        let stop = done.clone();
+        let drip = std::thread::spawn(move || {
+            for _ in 0..15 {
+                if stop.load(Ordering::SeqCst) || out.write_all(b"x").is_err() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(300));
+            }
+        });
+        let began = Instant::now();
+        match reply(raw) {
+            Ok(line) => assert!(line.contains("\"ok\":false"), "{line}"),
+            Err(k) => assert!(!matches!(k, std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock), "a dripped hello was still being read after 4 s"),
+        }
+        assert!(began.elapsed() < Duration::from_secs(3), "cut off after {:?}", began.elapsed());
+        done.store(true, Ordering::SeqCst);
+        let _ = drip.join();
+        // A good client is still taken.
+        let mut good = Client::connect(&s.ep, Duration::from_secs(5)).unwrap();
+        let mut events = Vec::new();
+        assert_eq!(good.request(json!({ "op": "list" }), &mut events).unwrap()["terminals"], json!([]));
+        drop(good);
         drop(s);
         let _ = std::fs::remove_dir_all(dir);
     }

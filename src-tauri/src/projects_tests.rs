@@ -514,6 +514,108 @@ fn sess038_a_create_git_finds_locked_is_retried_and_a_failed_one_leaves_nothing(
     }
 }
 
+/// Wave 2026-11-15 (P3): a failed add clears only a folder it made itself: one that was not there
+/// before and is empty or Git's own (its `.git` file). A folder that was there already, or one
+/// another program filled while Git ran, is left as it is.
+#[test]
+fn p3_a_failed_add_removes_only_a_folder_it_made_itself() {
+    let repo = temp_repo("p3-clear");
+    let root = temp("p3-clear-root");
+    let fail = || Err::<(), String>("fatal: invalid reference: nope".to_string());
+    // There before the add: kept with what it holds.
+    let before = root.join("before");
+    fs::create_dir_all(&before).unwrap();
+    fs::write(before.join("mine.txt"), "x").unwrap();
+    assert!(add_retrying(&repo, &before, None, &|| false, fail).is_err());
+    assert_eq!(fs::read_to_string(before.join("mine.txt")).unwrap(), "x", "a folder that was there is left alone");
+    // Made by the add and holding only Git's `.git` file: removed.
+    let gits = root.join("gits");
+    assert!(add_retrying(&repo, &gits, None, &|| false, || {
+        fs::create_dir_all(&gits).unwrap();
+        fs::write(gits.join(".git"), "gitdir: C:/r/.git/worktrees/gits\n").unwrap();
+        fail()
+    })
+    .is_err());
+    assert!(!gits.exists(), "Git's half-made folder is cleared");
+    // Made empty by the add: removed.
+    let empty = root.join("empty");
+    assert!(add_retrying(&repo, &empty, None, &|| false, || {
+        fs::create_dir_all(&empty).unwrap();
+        fail()
+    })
+    .is_err());
+    assert!(!empty.exists(), "an empty folder the add made is cleared");
+    // Made while Git ran and filled by someone else (no `.git` file): kept.
+    let theirs = root.join("theirs");
+    assert!(add_retrying(&repo, &theirs, None, &|| false, || {
+        fs::create_dir_all(&theirs).unwrap();
+        fs::write(theirs.join("report.txt"), "y").unwrap();
+        fail()
+    })
+    .is_err());
+    assert_eq!(fs::read_to_string(theirs.join("report.txt")).unwrap(), "y", "another program's files are never removed");
+    for d in [repo, root] {
+        let _ = fs::remove_dir_all(d);
+    }
+}
+
+/// R-04: a folder that was there and empty before a failed add is emptied again and kept; a folder
+/// that held a file before keeps it, and a link the add left inside is removed, never followed.
+#[test]
+fn r04_a_folder_empty_before_a_failed_add_is_empty_again_after_it() {
+    let repo = temp_repo("r04-clear");
+    let root = temp("r04-clear-root");
+    let fail = || Err::<(), String>("fatal: invalid reference: nope".to_string());
+    let outside = root.join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    fs::write(outside.join("keep.txt"), "k").unwrap();
+    // N-09: a junction (no special right needed) to a second folder inside the test's own folder.
+    let aimed = root.join("aimed");
+    fs::create_dir_all(&aimed).unwrap();
+    fs::write(aimed.join("keep.txt"), "j").unwrap();
+    let empty = root.join("empty");
+    fs::create_dir_all(&empty).unwrap();
+    assert!(add_retrying(&repo, &empty, None, &|| false, || {
+        fs::write(empty.join(".git"), "gitdir: C:/r/.git/worktrees/empty\n").unwrap();
+        fs::create_dir_all(empty.join("src")).unwrap();
+        fs::write(empty.join("src").join("half.rs"), "x").unwrap();
+        #[cfg(windows)]
+        if let Err(e) = std::os::windows::fs::symlink_dir(&outside, empty.join("link")) {
+            eprintln!("r04: skipped the folder-link case, a link could not be made here ({e})");
+        }
+        link_dir(&empty.join("junction"), &aimed);
+        fail()
+    })
+    .is_err());
+    assert!(empty.is_dir(), "the folder that was there is kept");
+    assert_eq!(fs::read_dir(&empty).unwrap().count(), 0, "and it is empty again, the junction itself removed");
+    assert_eq!(fs::read_to_string(outside.join("keep.txt")).unwrap(), "k", "a link inside is never followed");
+    assert_eq!(fs::read_to_string(aimed.join("keep.txt")).unwrap(), "j", "a junction inside is never followed");
+    // There with a file before: the file stays, and so does what the add left.
+    let held = root.join("held");
+    fs::create_dir_all(&held).unwrap();
+    fs::write(held.join("mine.txt"), "x").unwrap();
+    assert!(add_retrying(&repo, &held, None, &|| false, || {
+        fs::write(held.join(".git"), "gitdir: C:/r/.git/worktrees/held\n").unwrap();
+        fail()
+    })
+    .is_err());
+    assert_eq!(fs::read_to_string(held.join("mine.txt")).unwrap(), "x", "what was there before is never removed");
+    // There and empty before, filled by another program (no `.git` file): kept.
+    let theirs = root.join("theirs");
+    fs::create_dir_all(&theirs).unwrap();
+    assert!(add_retrying(&repo, &theirs, None, &|| false, || {
+        fs::write(theirs.join("report.txt"), "y").unwrap();
+        fail()
+    })
+    .is_err());
+    assert_eq!(fs::read_to_string(theirs.join("report.txt")).unwrap(), "y", "another program's files are never removed");
+    for d in [repo, root.clone()] {
+        let _ = fs::remove_dir_all(d);
+    }
+    assert!(!root.exists(), "the test leaves nothing behind");
+}
+
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
 fn project_with_workspaces(tag: &str) -> (Git, Store, Project, PathBuf, Vec<PathBuf>, Place) {
     let git = Git::detect().unwrap();
@@ -3596,4 +3698,21 @@ fn row895_setting_a_project_folder_and_base_refuses_rather_than_wiping_an_unread
     assert_eq!(store.get("projects").unwrap().as_deref(), Some(BROKEN_LIST));
     drop(store);
     let _ = fs::remove_dir_all(profile);
+}
+
+/// N-05: a folder that is already gone matches itself written another way (forward slashes, a
+/// slash at the end, a `\?\` start), so `kill_under` still finds its terminals; two different
+/// gone folders still do not match.
+#[test]
+fn n05_a_gone_folder_matches_itself_written_another_way() {
+    let base = std::env::temp_dir().join(format!("kolux-n05-{}", std::process::id()));
+    let gone = base.join("gone");
+    assert!(!gone.exists());
+    let forward = format!("{}/", gone.to_string_lossy().replace('\\', "/"));
+    assert!(same_folder(Path::new(&forward), &gone), "{forward} is {}", gone.display());
+    #[cfg(windows)]
+    assert!(same_folder(Path::new(&format!(r"\\?\{}", gone.display())), &gone));
+    assert!(same_folder(&gone.join("sub").join(".."), &gone.join("sub").join("..")));
+    assert!(!same_folder(Path::new(&forward), &base.join("other")), "two different gone folders");
+    assert!(!same_folder(&gone, &base), "a gone folder is not its parent");
 }

@@ -830,6 +830,7 @@ impl Library {
             return Err(format!("{name} is not an artifact: the viewer shows HTML pages, images and video, and opens nothing else, so it is not kept"));
         }
         let mut entry = Entry { id: id.clone(), title: name.clone(), source: from.source.into(), kind: kind.into(), origin: from.origin, project: from.project, session: from.session, added: from.at, size: 0, page: name.clone(), state: "unavailable".into(), stamp: None };
+        let mut staged = None;
         if !src.is_absolute() {
             entry.state = "remote".into();
         } else if !on_network_share(src) {
@@ -840,34 +841,53 @@ impl Library {
                 return Err(format!("{name} is larger than {} MB", cap / (1024 * 1024)));
             }
             entry.stamp = Some((modified_of(&md), len));
-            let tmp = self.dir.join(format!(".new-{id}"));
+            // B-21: a temp folder of its own per store, so two stores of one origin at once never share one.
+            static STORES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let n = STORES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let tmp = self.dir.join(format!(".new-{id}-{}-{n}", std::process::id()));
             let _ = fs::remove_dir_all(&tmp);
             fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
-            let mut size = len;
-            if kind == "page" {
-                let mut html = Vec::with_capacity(len as usize);
-                file.by_ref().take(MAX_PAGE + 1).read_to_end(&mut html).map_err(|e| format!("could not read {name}: {e}"))?;
-                if html.len() as u64 > MAX_PAGE {
-                    return Err(format!("{name} is larger than {} MB", MAX_PAGE / (1024 * 1024)));
+            let built = (|| -> Result<u64, String> {
+                let mut size = len;
+                if kind == "page" {
+                    let mut html = Vec::with_capacity(len as usize);
+                    file.by_ref().take(MAX_PAGE + 1).read_to_end(&mut html).map_err(|e| format!("could not read {name}: {e}"))?;
+                    if html.len() as u64 > MAX_PAGE {
+                        return Err(format!("{name} is larger than {} MB", MAX_PAGE / (1024 * 1024)));
+                    }
+                    let text = String::from_utf8_lossy(&html);
+                    if let Some(t) = title_of(&text) {
+                        entry.title = t;
+                    }
+                    let folder = page_real_path(&file, src).and_then(|real| asset_folder(&real, root));
+                    size = self.copy_assets(folder.as_deref(), &text, &name, &tmp, html.len() as u64);
+                    let page = vendor_scripts(&text, &tmp, fetch, &mut size);
+                    fs::write(tmp.join(&name), page.as_ref().map_or(&html[..], |p| p.as_bytes())).map_err(|e| e.to_string())?;
+                } else {
+                    copy_capped(&mut file, &tmp.join(&name), MAX_FILE, &name)?;
                 }
-                let text = String::from_utf8_lossy(&html);
-                if let Some(t) = title_of(&text) {
-                    entry.title = t;
+                Ok(size)
+            })();
+            match built {
+                Ok(size) => entry.size = size,
+                Err(e) => {
+                    let _ = fs::remove_dir_all(&tmp);
+                    return Err(e);
                 }
-                let folder = page_real_path(&file, src).and_then(|real| asset_folder(&real, root));
-                size = self.copy_assets(folder.as_deref(), &text, &name, &tmp, html.len() as u64);
-                let page = vendor_scripts(&text, &tmp, fetch, &mut size);
-                fs::write(tmp.join(&name), page.as_ref().map_or(&html[..], |p| p.as_bytes())).map_err(|e| e.to_string())?;
-            } else {
-                copy_capped(&mut file, &tmp.join(&name), MAX_FILE, &name)?;
             }
-            entry.size = size;
-            let dest = self.dir.join(&id);
-            let _ = fs::remove_dir_all(&dest);
-            fs::rename(&tmp, &dest).map_err(|e| e.to_string())?;
-            entry.state = "ok".into();
+            staged = Some(tmp);
         }
         let _g = self.lock.lock();
+        // B-21: the old copy is replaced under the library lock, so a second store cannot step in between.
+        if let Some(tmp) = staged {
+            let dest = self.dir.join(&id);
+            let _ = fs::remove_dir_all(&dest);
+            if let Err(e) = fs::rename(&tmp, &dest) {
+                let _ = fs::remove_dir_all(&tmp);
+                return Err(e.to_string());
+            }
+            entry.state = "ok".into();
+        }
         // Read again under the lock, and never write over an index that could not be parsed: the
         // publish path (a Claude Write) lands here with no user action (C14-R4-01).
         let mut list = self.read()?;
@@ -2704,5 +2724,37 @@ mod tests {
         assert_eq!(asset_folder(&sibling, Some(&root)), None, "a folder sharing only a name prefix is outside");
         #[cfg(windows)]
         assert_eq!(asset_folder(Path::new(r"\\?\UNC\server\share\ws\p.html"), None), None, "a share is never kept");
+    }
+
+    /// B-21: two stores of the same page at once each build in their own temp folder and replace
+    /// the stored copy under the library lock: both succeed, the copy ends whole, no temp is left.
+    #[test]
+    fn b21_two_stores_of_one_page_at_once_leave_it_whole_and_no_temp_folder() {
+        let root = temp_dir("b21-race");
+        let lib = std::sync::Arc::new(Library::new(root.join("lib")));
+        let src = root.join("page.html");
+        fs::write(&src, format!("<title>P</title>{}", "x".repeat(200_000))).unwrap();
+        for round in 0..40 {
+            let gate = std::sync::Arc::new(std::sync::Barrier::new(2));
+            let runs: Vec<_> = (0..2)
+                .map(|_| {
+                    let (lib, src, gate) = (lib.clone(), src.clone(), gate.clone());
+                    std::thread::spawn(move || {
+                        gate.wait();
+                        lib.add_in(&src, Origin::hand(&src), &|_| None, None)
+                    })
+                })
+                .collect();
+            for r in runs {
+                let e = r.join().unwrap().unwrap_or_else(|e| panic!("round {round}: {e}"));
+                assert_eq!(e.state, "ok", "round {round}");
+            }
+            let id = id_of(&src.to_string_lossy());
+            let stored = fs::read(lib.dir.join(&id).join("page.html")).unwrap_or_else(|e| panic!("round {round}: the stored page is missing: {e}"));
+            assert_eq!(stored.len(), 200_016, "round {round}: the stored page is whole");
+            let temps: Vec<_> = fs::read_dir(&lib.dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.starts_with(".new-")).collect();
+            assert!(temps.is_empty(), "round {round}: {temps:?}");
+        }
+        let _ = fs::remove_dir_all(&root);
     }
 }
