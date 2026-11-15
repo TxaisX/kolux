@@ -33,6 +33,7 @@ let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};
 let pressDelete: () => Promise<void> = async () => {};
 let focusOn: (dir: string) => Promise<void> = async () => {};
+let activeDir: string | null = "C:/w/app"; // the folder of the pane in front; null when no pane is focused
 
 beforeEach(() => {
   const dom = installDom();
@@ -45,18 +46,19 @@ beforeEach(() => {
   h.unsaved = [];
   h.listGate = null;
   h.projects = [{ id: "p1", name: "app", path: "C:/w/app" }];
+  activeDir = "C:/w/app";
 });
 afterEach(async () => {
   await unmount();
   unmount = async () => {};
 });
 
-async function panel(workDir: string, renameRequest = 0, firstDelete = 0, wait = 120) {
+async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0, wait = 120) {
   const { default: ProjectsPanel } = await import("./ProjectsPanel");
   const { act } = await import("react");
   const props = {
     openDirs: ["C:/w/app"], sessions: [], states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
-    activeDir: "C:/w/app", workDir, onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
+    activeDir, workDir, onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
     onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true), renameRequest,
@@ -166,6 +168,47 @@ test("a press held for the lists is dropped when the focus moves to another work
   await settle(120);
   expect(checks()).toEqual([]);
   expect(question(c).length).toBe(0);
+});
+
+// Pins for behaviour the R35-01 fix already has (review R42): a held press with no focused folder, a remount
+// inside 10 seconds, and a hovered row on a held press.
+test("a press held with no folder focused, and none when the lists come in, is served", async () => {
+  activeDir = null;
+  let open = () => {};
+  h.listGate = new Promise<void>((r) => (open = r));
+  const c = await panel(null, 0, 17, 20); // 17: a press count no earlier test in this file has served
+  expect(c.textContent).not.toContain("not in a worktree");
+  open();
+  await settle(120);
+  expect(checks()).toEqual([]);
+  expect(c.textContent).toContain("The pane you are in is not in a worktree, so there is nothing to delete.");
+});
+
+test("a press held when the sidebar closes is served and asks when it opens again inside 10 seconds on the same folder", async () => {
+  h.listGate = new Promise<void>(() => {}); // the list never answers while the sidebar is open
+  await panel(fix.path, 0, 19, 20); // 19: a press count no earlier test in this file has served
+  await unmount();
+  unmount = async () => {};
+  h.listGate = null;
+  const c = await panel(fix.path, 0, 19);
+  expect(checks()).toEqual([fix.path]);
+  expect(question(c).length).toBe(1);
+  expect(question(c)[0].textContent).toContain("fix-login");
+});
+
+test("a held press asks about the focused pane's worktree, not a row hovered when the lists come in", async () => {
+  const other = { ...base, path: "C:/w/ws/other", branch: "other", head: "e5e5e5e", isMain: false };
+  h.wt = [main, fix, other];
+  let open = () => {};
+  h.listGate = new Promise<void>((r) => (open = r));
+  const c = await panel(fix.path, 0, 21, 20); // 21: a press count no earlier test in this file has served
+  Object.assign(doc, { querySelectorAll: (sel: string) => (sel.includes(":hover") ? [{ dataset: { path: other.path } }] : []) });
+  open();
+  await settle(120);
+  expect(checks()).toEqual([fix.path]);
+  expect(question(c).length).toBe(1);
+  expect(question(c)[0].textContent).toContain("fix-login");
+  expect(question(c)[0].textContent).not.toContain("other");
 });
 
 test("Delete Workspace pressed with the sidebar closed and no projects at all says so once the list comes in", async () => {
