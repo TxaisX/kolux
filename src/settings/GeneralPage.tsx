@@ -7,6 +7,7 @@ import { SettingsError } from "./SettingsError";
 import { NumberDraftField } from "./NumberDraftField";
 import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook, shownFirst, stripOn, type Look } from "./general";
 import { REVIEW_FIELD, reviewOn } from "../editor/notes";
+import { START_ASK_KEY, asksAtStart } from "../launch/startForm";
 import { CONFIRM_DELETE_KEY, confirmDelete } from "../automations/model";
 import { askAgainPatch, skippedOf, skippedSentence } from "./confirmations";
 import { OUTBOUND } from "./outbound";
@@ -48,6 +49,10 @@ export function GeneralView({ settings, onSave }: { settings: Record<string, unk
         <Segmented label="Opens first" options={screens} value={shownFirst(settings, classic)} off={classic ? ["agents", "board"] : []} onPick={(v) => onSave({ [FIRST_FIELD]: v, [LAST_SCREEN_FIELD]: v })} />
       </div>
       {classic && <p className="conn-detail">Switch the look to New to open on Agents or Board.</p>}
+      <label className="conn-switch">
+        <input type="checkbox" aria-label="Ask what to open when Kolux starts" checked={asksAtStart(settings)} onChange={(e) => onSave({ [START_ASK_KEY]: e.target.checked })} />
+        <span>Ask what to open when Kolux starts: which folders, how many agents and which AI. Off opens what was open last time.</span>
+      </label>
       <label className="conn-switch">
         <input type="checkbox" aria-label="Review notes" checked={reviewOn(settings)} onChange={(e) => onSave({ [REVIEW_FIELD]: e.target.checked })} />
         <span>Review notes: select text in a file and press Ctrl+Shift+A to add a note for an agent.</span>
