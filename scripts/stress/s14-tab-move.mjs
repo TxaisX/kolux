@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { addProjectAndOpen, gitInit, paneProcs, seedOnboardingDone, seedProfile, snapshot } from "./lib.mjs";
 
-export const title = "pane moves keep the program running: Move to Tab and tab drags with Claude Code stand-ins and a shell (DT-C248)";
+export const title = "pane moves keep the program running: Move to tab and tab drags with Claude Code stand-ins and a shell (DT-C248)";
 
 const unwrap = (v) => (v && typeof v === "object" && "result" in v && v.result && "value" in v.result ? v.result.value : v);
 const STANDIN_SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "prove", "agent-sleep-standin.cjs");
@@ -57,12 +57,12 @@ const paneTextByKey = (app, key) => app.evalJs(`(() => { const p = document.quer
 // The cells on screen and the keys of the panes each holds (Grid.tsx: one .cell per group, the panes inside it).
 const cells = (app) => app.evalJs(`[...document.querySelectorAll(".grid > .cell")].map((c) => [...c.querySelectorAll(':scope > section.pane[data-key]')].map((p) => Number(p.getAttribute("data-key"))))`).then(unwrap);
 const cellIndexOf = async (app, key) => (await cells(app)).findIndex((c) => c.includes(key));
-// TERM-016 Move to Tab, from the pane menu a right-click on the pane's header opens (TerminalPane.tsx).
+// TERM-016 Move to tab, from the pane menu a right-click on the pane's header opens (TerminalPane.tsx).
 const moveToTab = async (app, key) => {
   const r = unwrap(await app.evalJs(`(() => { const h = document.querySelector('section.pane[data-key="${key}"] header.pane-head'); if (!h) return "no header"; const b = h.getBoundingClientRect(); h.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: b.left + 40, clientY: b.top + b.height / 2 })); return "menu"; })()`));
   if (r !== "menu") return r;
   await app.sleep(400);
-  return unwrap(await app.evalJs(`(() => { const i = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find((e) => /^\\s*Move to Tab/.test(e.textContent)); if (!i) return "no Move to Tab item: " + [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].map((e) => e.textContent.trim()).join("|"); i.click(); return "moved"; })()`));
+  return unwrap(await app.evalJs(`(() => { const i = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find((e) => /^\\s*Move to tab/i.test(e.textContent)); if (!i) return "no Move to tab item: " + [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].map((e) => e.textContent.trim()).join("|"); i.click(); return "moved"; })()`));
 };
 // TERM-054: a tab dragged with the pointer. The strip's tab for pane `key` gets a dragstart (Grid.tsx remembers the
 // dragged tab), then the target (the body of the cell holding pane `onto`, or the tab of pane `onto`) gets dragover and
@@ -159,15 +159,15 @@ export async function run(ctx) {
     return { alive: names.every((n) => alive[P[n].pid] === true), fresh, banner: names.every((n) => banner[n]), placed };
   };
 
-  // ---- Move to Tab (TERM-016): D folds into C's cell, then B into A's ----
+  // ---- Move to tab (TERM-016): D folds into C's cell, then B into A's ----
   let r = await moveToTab(app, P.D.key);
-  log(`Move to Tab on D: ${r}`);
-  const m1 = await settle("Move to Tab D", ["D"], await cellIndexOf(app, P.C.key));
+  log(`Move to tab on D: ${r}`);
+  const m1 = await settle("Move to tab D", ["D"], await cellIndexOf(app, P.C.key));
   r = await moveToTab(app, P.B.key);
-  log(`Move to Tab on B: ${r}`);
-  const m2 = await settle("Move to Tab B", ["B"], await cellIndexOf(app, P.A.key));
-  checks.add("Move to Tab keeps the agent running (TERM-016): no stand-in restarted", "0 restarts, both pids alive", `${m2.fresh} restart(s); pids alive: D ${m1.alive} B ${m2.alive}`, m1.alive && m2.alive && m2.fresh === 0);
-  checks.add("a pane moved with Move to Tab still shows its output and sits in the cell beside it", "banner on screen, in the neighbour's cell", `banner D ${m1.banner} B ${m2.banner}; placed D ${m1.placed} B ${m2.placed}`, m1.banner && m2.banner && m1.placed && m2.placed);
+  log(`Move to tab on B: ${r}`);
+  const m2 = await settle("Move to tab B", ["B"], await cellIndexOf(app, P.A.key));
+  checks.add("Move to tab keeps the agent running (TERM-016): no stand-in restarted", "0 restarts, both pids alive", `${m2.fresh} restart(s); pids alive: D ${m1.alive} B ${m2.alive}`, m1.alive && m2.alive && m2.fresh === 0);
+  checks.add("a pane moved with Move to tab still shows its output and sits in the cell beside it", "banner on screen, in the neighbour's cell", `banner D ${m1.banner} B ${m2.banner}; placed D ${m1.placed} B ${m2.placed}`, m1.banner && m2.banner && m1.placed && m2.placed);
 
   // ---- tab drag onto a tab (TERM-054): B's tab (beside A) dropped after D's tab in C's cell ----
   r = await dragTabOntoTab(app, P.B.key, P.D.key);
@@ -181,10 +181,10 @@ export async function run(ctx) {
   const d2 = await settle("tab drag onto a cell (D)", ["D"], await cellIndexOf(app, P.A.key));
   checks.add("a tab dragged onto another cell keeps its agent running (TERM-054)", "0 restarts, pid alive, banner kept, lands in that cell", `${d2.fresh} restart(s) in all; D alive ${d2.alive}; banner ${d2.banner}; placed ${d2.placed}`, d2.alive && d2.fresh === 0 && d2.banner && d2.placed);
 
-  // ---- the plain shell: Move to Tab, then a command typed into it must still answer ----
+  // ---- the plain shell: Move to tab, then a command typed into it must still answer ----
   if (shellKey !== undefined) {
     r = await moveToTab(app, shellKey);
-    log(`Move to Tab on the shell: ${r}`);
+    log(`Move to tab on the shell: ${r}`);
     await app.sleep(2500);
     const shells1 = await shellPids(app);
     const shellAlive = await alivePids(app, shells0);
@@ -199,7 +199,7 @@ export async function run(ctx) {
     }
     log(`typed into the moved shell: shown ${shown.includes(shellKey)}, answered ${answered}`);
     const samePids = JSON.stringify(shells1) === JSON.stringify(shells0) && shells0.every((p) => shellAlive[p]);
-    checks.add("Move to Tab keeps a plain shell running and answering", "same shell processes, command answered", `processes ${samePids ? "unchanged" : `${JSON.stringify(shells0)} -> ${JSON.stringify(shells1)}`}; answered ${answered}`, samePids && answered);
+    checks.add("Move to tab keeps a plain shell running and answering", "same shell processes, command answered", `processes ${samePids ? "unchanged" : `${JSON.stringify(shells0)} -> ${JSON.stringify(shells1)}`}; answered ${answered}`, samePids && answered);
   }
 
   const fresh = starts(app).length - startsBefore;

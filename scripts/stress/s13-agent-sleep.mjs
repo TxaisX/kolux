@@ -103,12 +103,12 @@ const STRIP = (key) => `[...document.querySelectorAll(".tabs")].find((t) => t.pa
 const tabsIn = (app, key) => app.evalJs(`(() => { const s = ${STRIP(key)}; return s ? [...s.querySelectorAll(':scope > [role="tab"]')].map((t) => t.textContent.trim() + (t.getAttribute("aria-selected") === "true" ? " *" : "")) : []; })()`).then(unwrap);
 // Brings tab n of that strip forward the way a press on it does (Grid.tsx: mousedown on a tab focuses its pane).
 const pressTabIn = (app, key, n) => app.evalJs(`(() => { const s = ${STRIP(key)}; const t = s && s.querySelectorAll(':scope > [role="tab"]')[${n}]; if (!t) return "no tab"; t.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); return "pressed"; })()`).then(unwrap);
-// TERM-016 Move to Tab, from the pane menu a right-click on the pane's header opens (TerminalPane.tsx).
+// TERM-016 Move to tab, from the pane menu a right-click on the pane's header opens (TerminalPane.tsx).
 const moveToTab = async (app, key) => {
   const r = unwrap(await app.evalJs(`(() => { const h = document.querySelector('section.pane[data-key="${key}"] header.pane-head'); if (!h) return "no header"; const b = h.getBoundingClientRect(); h.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: b.left + 40, clientY: b.top + b.height / 2 })); return "menu"; })()`));
   if (r !== "menu") return r;
   await app.sleep(400);
-  return unwrap(await app.evalJs(`(() => { const i = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find((e) => /^\\s*Move to Tab/.test(e.textContent)); if (!i) return "no Move to Tab item: " + [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].map((e) => e.textContent.trim()).join("|"); i.click(); return "moved"; })()`));
+  return unwrap(await app.evalJs(`(() => { const i = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find((e) => /^\\s*Move to tab/i.test(e.textContent)); if (!i) return "no Move to tab item: " + [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].map((e) => e.textContent.trim()).join("|"); i.click(); return "moved"; })()`));
 };
 const asleepState = (app) => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(ASLEEP)})].map((e) => ({ hidden: e.hidden, text: e.innerText.replace(/\\s+/g, " ").trim().slice(0, 120) }))`).then(unwrap);
 const docVisible = (app) => app.evalJs(`document.visibilityState`).then(unwrap);
@@ -157,19 +157,19 @@ export async function run(ctx) {
   }
 
   // ---- one cell, five tabs: each new session opened in a cell of its own, so A, D, B and V are folded, in that order, into the
-  // first cell with the pane menu's Move to Tab (TERM-016: "the program keeps running"); V, moved last, is the tab on top.
+  // first cell with the pane menu's Move to tab (TERM-016: "the program keeps running"); V, moved last, is the tab on top.
   // Should a move restart a pane's agent anyway, the restarted stand-in takes the same mode again (modes.txt is written afresh). ----
   writeFileSync(join(standinDir(app), "modes.txt"), ORDER.map(([, m]) => m).join("\n") + "\n");
   const n1 = starts(app).length;
   for (const [n] of ORDER) {
     const r = await moveToTab(app, P[n].key);
     await app.sleep(1500);
-    log(`Move to Tab on ${n}: ${r}; stand-in pid ${P[n].pid} alive: ${(await alivePids(app, [P[n].pid]))[P[n].pid]}`);
+    log(`Move to tab on ${n}: ${r}; stand-in pid ${P[n].pid} alive: ${(await alivePids(app, [P[n].pid]))[P[n].pid]}`);
   }
   await app.sleep(6000);
   const restarted = starts(app).slice(n1);
   if (restarted.length) log(`FINDING: moving the panes restarted ${restarted.length} agent(s) as fresh sessions (no --resume): ${restarted.map((e) => `pid ${e.pid} session ${e.session}`).join("; ")}`);
-  checks.add("Move to Tab keeps each agent running (TERM-016)", "0 restarts", `${restarted.length} restart(s)`, restarted.length === 0);
+  checks.add("Move to tab keeps each agent running (TERM-016)", "0 restarts", `${restarted.length} restart(s)`, restarted.length === 0);
   const tabs = await tabsIn(app, P.V.key);
   const tabOf = {};
   for (let n = 0; n < tabs.length; n++) {
