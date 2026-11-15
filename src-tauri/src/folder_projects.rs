@@ -53,7 +53,7 @@ pub(crate) fn unflag_write(store: &Store, ids: &[String]) -> Result<Option<(Stri
 /// What Kolux remembered about this project's path: the suggested names retired in its workspaces
 /// folder and its cached scan results. Run when the project is added and when it is removed, so a
 /// folder added again later starts clean (the saved setup goes with `forget_projects`).
-fn clear_traces(store: &Store, project: &Project) -> Result<(), String> {
+pub(crate) fn clear_traces(store: &Store, project: &Project) -> Result<(), String> {
     let place = projects::place_from(project, &store.settings());
     projects::clear_retired_scope(store, &projects::retired_scope(&place, project))?;
     store.set(&crate::bulk::space_key(&project.id), "").map_err(|e| e.to_string())

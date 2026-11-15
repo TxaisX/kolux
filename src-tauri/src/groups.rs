@@ -200,7 +200,12 @@ fn delete_with(git: &crate::git::Git, store: &Mutex<Store>, id: &str, remove_pro
     for (project, folder) in &going {
         crate::folder_projects::end_sessions(git, project, *folder, &mut kill);
     }
-    crate::projects::forget_projects(&*store.lock().map_err(|e| e.to_string())?, &removed)?;
+    // Under one lock hold, as `remove_project` does: clear what was kept about each path, then forget.
+    let store = store.lock().map_err(|e| e.to_string())?;
+    for (project, _) in &going {
+        crate::folder_projects::clear_traces(&store, project)?;
+    }
+    crate::projects::forget_projects(&store, &removed)?;
     Ok(groups)
 }
 
@@ -390,6 +395,42 @@ mod tests {
         let ids: Vec<String> = crate::projects::load_projects(&s).into_iter().map(|p| p.id).collect();
         assert_eq!(ids, vec![c.id.clone()], "only the project outside the group is left");
         assert!(dir.join("a").exists() && dir.join("b").exists(), "folders stay on disk");
+        drop(s);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn deleting_a_group_with_its_projects_clears_what_was_kept_about_their_paths() {
+        let (s, dir) = store("traces");
+        let git = crate::git::Git::detect().unwrap();
+        let folder = |n: &str| {
+            let f = dir.join(n);
+            std::fs::create_dir_all(&f).unwrap();
+            crate::folder_projects::add_folder(&s, &f).unwrap()
+        };
+        let (a, c) = (folder("a"), folder("c"));
+        let scope = |p: &crate::projects::Project, s: &Store| crate::projects::retired_scope(&crate::projects::place_from(p, &s.settings()), p);
+        for p in [&a, &c] {
+            crate::projects::retire_name(&s, &scope(p, &s), &crate::creatures::creature_name(&[], 1)).unwrap();
+            s.set(&crate::bulk::space_key(&p.id), "[{\"stale\":true}]").unwrap();
+        }
+        let (_, top) = change(&s, |g| {
+            let top = g.create("Top", None)?;
+            g.put(&a.id, Some(&top.id))?;
+            Ok(top)
+        })
+        .unwrap();
+        let store = Mutex::new(s);
+        delete_with(&git, &store, &top.id, true, |_| 0).unwrap();
+        let s = store.into_inner().unwrap();
+        assert!(crate::projects::retired_names(&s, &scope(&a, &s)).is_empty(), "retired names for that folder are cleared");
+        assert_eq!(s.get(&crate::bulk::space_key(&a.id)).unwrap().unwrap_or_default(), "", "cached scan results are cleared");
+        assert!(!crate::projects::retired_names(&s, &scope(&c, &s)).is_empty(), "a project outside the group keeps its own");
+        assert_ne!(s.get(&crate::bulk::space_key(&c.id)).unwrap().unwrap_or_default(), "");
+        // added again, it starts clean
+        let again = crate::folder_projects::add_folder(&s, &dir.join("a")).unwrap();
+        assert!(crate::projects::retired_names(&s, &scope(&again, &s)).is_empty());
+        assert!(dir.join("a").exists(), "folders stay on disk");
         drop(s);
         let _ = std::fs::remove_dir_all(&dir);
     }
