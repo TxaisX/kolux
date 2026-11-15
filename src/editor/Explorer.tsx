@@ -583,6 +583,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         })
       : Promise.resolve(null);
     changed.then((hit) => {
+      if (hit?.gone && touched(op).length > 1) return fail(`${baseName(hit.path)} is no longer there, so this step was not ${call === undoOf ? "undone" : "redone"}`); // R42-02: the others are still there
       if (hit?.gone) return fail(`${baseName(hit.path)} is no longer there, so there is nothing to ${call === undoOf ? "undo" : "redo"}`);
       if (hit) return fail(`${baseName(hit.path)} changed since that action, so it was not ${call === undoOf ? "undone" : "redone"}`);
       go();

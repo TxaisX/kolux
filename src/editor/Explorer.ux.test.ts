@@ -248,6 +248,22 @@ describe("T-702 Explorer header", () => {
     expect(container.textContent).toContain("readme copy.md is no longer there, so there is nothing to undo");
     expect(container.textContent).not.toContain("changed since that action");
   });
+  it("undo of two copies where one is gone says this step was not undone, not that there is nothing to undo (R42-02)", async () => {
+    const { container } = await explorer();
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    (doc as unknown as { elementFromPoint: () => FakeNode }).elementFromPoint = () => tree;
+    onDisk.set("/outside/a copy.md", { mtime: 1000, size: 5 });
+    onDisk.set("/outside/b copy.md", { mtime: 1000, size: 5 });
+    dropped.on!({ payload: { type: "drop", paths: ["/outside/a.md", "/outside/b.md"], position: { x: 1, y: 1 } } });
+    await until(() => calls.some(([c, a]) => c === "file_stamps" && (a.paths as string[]).includes("/outside/b copy.md")), "the copies' stamps to be read");
+    await settle();
+    onDisk.delete("/outside/a copy.md"); // someone deleted one copy outside Kolux
+    await fire(container, "keydown", tree, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await until(() => container.textContent.includes("no longer there"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("a copy.md is no longer there, so this step was not undone");
+    expect(container.textContent).not.toContain("nothing to undo");
+  });
   it("undo of a copy left as it was still bins it (R35-02)", async () => {
     const container = await copyThenUndo(false);
     await until(() => calls.some(([c]) => c === "fs_trash"), "the copy to be binned");
