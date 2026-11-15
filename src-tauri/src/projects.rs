@@ -1211,14 +1211,27 @@ pub fn lock_held(err: &str) -> bool {
     e.contains(".lock") || e.contains("another git process") || e.contains("cannot lock") || e.contains("could not lock")
 }
 
-/// What a failed `git worktree add` may have left: the folder (it did not exist before), Git's
-/// record of it, and `made`, the branch the add was creating (none of that name existed before).
-fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>) {
-    let _ = std::fs::remove_dir_all(dest);
+/// What a failed `git worktree add` may have left: the folder, Git's record of it, and `made`, the
+/// branch the add was creating (none of that name existed before). The folder goes only when this
+/// add made it: it was not there before (`was_there`) and `git_made` says it is Git's.
+fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool) {
+    if !was_there && git_made(dest) {
+        let _ = std::fs::remove_dir_all(dest);
+    }
     let _ = crate::git::run(&["worktree", "prune"], Some(repo));
     if let Some(branch) = made.filter(|b| crate::git::run(&["rev-parse", "--verify", "--quiet", &format!("refs/heads/{b}")], Some(repo)).is_ok()) {
         let _ = crate::git::run(&["branch", "-D", branch], Some(repo));
     }
+}
+
+/// Whether a folder a failed add left is Git's own: a real folder (never a link), empty, or holding
+/// the `.git` file (`gitdir: ...`) that `worktree add` writes before it checks anything out. A folder
+/// another program made and filled in the meantime is not.
+fn git_made(dest: &Path) -> bool {
+    let is_dir = std::fs::symlink_metadata(dest).is_ok_and(|m| m.is_dir() && !m.is_symlink());
+    let empty = || std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none());
+    let linked = || std::fs::read_to_string(dest.join(".git")).is_ok_and(|s| s.starts_with("gitdir:"));
+    is_dir && (empty() || linked())
 }
 
 /// PROJ-031: what kind of problem a failed create was, so the message can say what to do.
@@ -1270,8 +1283,9 @@ pub fn explain_create_error(raw: String) -> String {
 /// policy: each failed try is cleared away first, and a cancel stops the waiting.
 pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dyn Fn() -> bool, add: impl Fn() -> Result<(), String>) -> Result<(), String> {
     let mut waits = CREATE_WAITS_MS.iter();
+    let was_there = std::fs::symlink_metadata(dest).is_ok();
     while let Err(e) = add() {
-        clear_failed_add(repo, dest, made);
+        clear_failed_add(repo, dest, made, was_there);
         if overtaken() {
             return Err(OVERTAKEN.to_string());
         }

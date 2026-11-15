@@ -514,6 +514,52 @@ fn sess038_a_create_git_finds_locked_is_retried_and_a_failed_one_leaves_nothing(
     }
 }
 
+/// Wave 2026-11-15 (P3): a failed add clears only a folder it made itself: one that was not there
+/// before and is empty or Git's own (its `.git` file). A folder that was there already, or one
+/// another program filled while Git ran, is left as it is.
+#[test]
+fn p3_a_failed_add_removes_only_a_folder_it_made_itself() {
+    let repo = temp_repo("p3-clear");
+    let root = temp("p3-clear-root");
+    let fail = || Err::<(), String>("fatal: invalid reference: nope".to_string());
+    // There before the add: kept with what it holds.
+    let before = root.join("before");
+    fs::create_dir_all(&before).unwrap();
+    fs::write(before.join("mine.txt"), "x").unwrap();
+    assert!(add_retrying(&repo, &before, None, &|| false, fail).is_err());
+    assert_eq!(fs::read_to_string(before.join("mine.txt")).unwrap(), "x", "a folder that was there is left alone");
+    // Made by the add and holding only Git's `.git` file: removed.
+    let gits = root.join("gits");
+    assert!(add_retrying(&repo, &gits, None, &|| false, || {
+        fs::create_dir_all(&gits).unwrap();
+        fs::write(gits.join(".git"), "gitdir: C:/r/.git/worktrees/gits
+").unwrap();
+        fail()
+    })
+    .is_err());
+    assert!(!gits.exists(), "Git's half-made folder is cleared");
+    // Made empty by the add: removed.
+    let empty = root.join("empty");
+    assert!(add_retrying(&repo, &empty, None, &|| false, || {
+        fs::create_dir_all(&empty).unwrap();
+        fail()
+    })
+    .is_err());
+    assert!(!empty.exists(), "an empty folder the add made is cleared");
+    // Made while Git ran and filled by someone else (no `.git` file): kept.
+    let theirs = root.join("theirs");
+    assert!(add_retrying(&repo, &theirs, None, &|| false, || {
+        fs::create_dir_all(&theirs).unwrap();
+        fs::write(theirs.join("report.txt"), "y").unwrap();
+        fail()
+    })
+    .is_err());
+    assert_eq!(fs::read_to_string(theirs.join("report.txt")).unwrap(), "y", "another program's files are never removed");
+    for d in [repo, root] {
+        let _ = fs::remove_dir_all(d);
+    }
+}
+
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
 fn project_with_workspaces(tag: &str) -> (Git, Store, Project, PathBuf, Vec<PathBuf>, Place) {
     let git = Git::detect().unwrap();
