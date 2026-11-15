@@ -98,7 +98,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const openStart = (o: { here?: boolean; count?: number; atOpen?: boolean } = {}) => {
     const pid = late.projectOf(activeDir) ?? null;
     const lineups = lineupsOf(settings);
-    const base = { projects: s.projects, folders: o.here && pid ? [pid] : null, count: o.count ?? null, last: lastStart(settings), installed: installedIds };
+    const base = { projects: s.projects, folders: o.here ? (pid ? [pid] : []) : null, count: o.count ?? null, last: lastStart(settings), installed: installedIds };
     const first = prefill({ ...base, lineup: null }).folders[0] ?? projectFor(null) ?? "";
     const lineup = offeredLineup(lineups[first], installedIds);
     const f = prefill({ ...base, lineup });

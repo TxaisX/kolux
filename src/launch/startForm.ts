@@ -112,13 +112,15 @@ export function prefill(o: { projects: { id: string }[]; folders?: string[] | nu
   const known = (ids: string[]) => ids.filter((id) => o.projects.some((p) => p.id === id));
   const given = known(o.folders ?? []);
   const kept = known(o.last?.folders ?? []);
-  const folders = given.length ? given : kept.length ? kept : o.projects.length ? [o.projects[0].id] : [];
+  // Job 13 F7: a given list, even an empty one (New session with no project in front), is what gets ticked.
+  const folders = o.folders ? given : kept.length ? kept : o.projects.length ? [o.projects[0].id] : [];
   const count = Math.min(MAX_SESSIONS, Math.max(1, o.count ?? o.last?.count ?? o.lineup?.seats.length ?? 1));
   if (o.lineup) {
     const back = applyLineup(o.lineup, o.installed);
     // One pick for all: the lineup's first seat with an AI is the pick every seat gets when the count changes it.
     const shared = oneForAll(back.seats);
-    const seats = back.seats.length === count || shared === "mixed" ? resizeLineup(back.shape, back.seats, count) : resizeLineup(back.shape, setAll(Array.from({ length: count }, emptySeat), shared), count);
+    // Job 13 F9: a mixed lineup is not padded with blank seats; a remembered count stops at its length.
+    const seats = back.seats.length === count || shared === "mixed" ? resizeLineup(back.shape, back.seats, shared === "mixed" && o.count == null ? Math.min(count, back.seats.length) : count) : resizeLineup(back.shape, setAll(Array.from({ length: count }, emptySeat), shared), count);
     if (seats.seats.some((s) => s.agent !== null)) return { folders, ...seats };
   }
   return { folders, shape: "custom", seats: Array.from({ length: count }, emptySeat) };
