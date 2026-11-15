@@ -73,10 +73,10 @@ export const WINDOW_TERMINAL = new Set([
 export const explorerSearchKey = (map: Keymap, e: KeyLike, doc: Root = document): boolean =>
   matchEvent(map, e, ["global"])?.id === "sidebar.search.toggle" && !heldByOverlay("sidebar.search.toggle", false, doc);
 
-/** The top bar's first control that takes focus: a disabled button (the sign-in mark while signed out) is passed over. */
 // Audit F12: since one grid per project (2026-11-13) the sidebar shows only project folder rows; the old
 // main and worktree rows stay in the page but hidden, so keyboard moves walk the folder rows alone.
 export const WORKSPACE_ROWS = ".sidebar .proj.folder[data-path]";
+/** The top bar's first control that takes focus: a disabled button (the sign-in mark while signed out) is passed over. */
 export const CHROME_FIRST = "header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']";
 export const focusChrome = (doc: Pick<ParentNode, "querySelector"> = document): void => doc.querySelector<HTMLElement>(CHROME_FIRST)?.focus();
 

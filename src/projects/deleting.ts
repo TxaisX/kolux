@@ -51,9 +51,6 @@ export const BATCH_BRANCH_NOTE = "Each branch is deleted too, unless the workspa
  *  workspace's own record decides (PROJ-030: opened on a branch that already existed). */
 export const keepsAtFirst = (c: RemoveCheck): true | undefined => ((c.commits ?? []).length > 0 ? true : undefined);
 
-/** VIEW-048: the workspace the delete shortcut acts on; the row under the pointer wins over the one shown. */
-export const deleteTarget = (hovered: string | null, active: string | null) => hovered ?? active;
-
 /** Audit F13: what the delete shortcut acts on. Worktree rows have no sidebar row any more (one grid per
  *  project), so a worktree row under the pointer wins and, with none, it is the worktree the focused pane
  *  works in (`workDir`). A project's main folder is never a target: null then. */
