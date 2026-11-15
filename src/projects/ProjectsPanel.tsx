@@ -1073,8 +1073,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (deleteRequest === 0 || deleteRequest === servedDelete) return;
     const dir = workDir ?? activeDir;
     const waited = seenDelete?.n === deleteRequest;
+    const age = waited ? Date.now() - seenDelete!.at : 0; // R42-04: a clock set back gives a negative age, too old as well
     if (!waited) seenDelete = { n: deleteRequest, at: Date.now(), dir };
-    else if (Date.now() - seenDelete!.at > 10000 || !(dir === null || seenDelete!.dir === null ? dir === seenDelete!.dir : same(dir, seenDelete!.dir))) {
+    else if (age < 0 || age > 10000 || !(dir === null || seenDelete!.dir === null ? dir === seenDelete!.dir : same(dir, seenDelete!.dir))) {
       servedDelete = deleteRequest; // R35-01: too old, or the focus moved to another folder: dropped, nothing shown
       return;
     }

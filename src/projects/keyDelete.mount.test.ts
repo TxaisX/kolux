@@ -137,6 +137,24 @@ test("a press still held when the sidebar closes is dropped once 10 seconds have
   }
 });
 
+// Review R42-04: a clock set back between first seen and the lists coming in gives a negative age, which is too old too.
+test("a press still held when the clock is set back is dropped, not served", async () => {
+  h.listGate = new Promise<void>(() => {}); // the list never answers while the sidebar is open
+  await panel(fix.path, 0, 15, 20); // 15: a press count no earlier test in this file has served
+  await unmount();
+  unmount = async () => {};
+  h.listGate = null;
+  const earlier = Date.now() - 60_000;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(earlier);
+  try {
+    const c = await panel(fix.path, 0, 15);
+    expect(checks()).toEqual([]);
+    expect(question(c).length).toBe(0);
+  } finally {
+    clock.mockRestore();
+  }
+});
+
 test("a press held for the lists is dropped when the focus moves to another worktree first", async () => {
   const other = { ...base, path: "C:/w/ws/other", branch: "other", head: "e5e5e5e", isMain: false };
   h.wt = [main, fix, other];
