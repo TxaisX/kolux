@@ -358,6 +358,8 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
     // USAGE-001: closing a pane forgets its reading.
     const open = new Set(panes.map((p) => p.key));
     setContext((c) => forgetGone(c, open));
+    setStamp((s) => forgetGone(s, open)); // audit F9: its state clock and quiet mark go too
+    setStale((s) => forgetGone(s, open));
     shownRef.current = forgetGone(shownRef.current, open);
     floorRef.current = forgetGone(floorRef.current, open);
     freshRef.current = forgetGone(freshRef.current, open);

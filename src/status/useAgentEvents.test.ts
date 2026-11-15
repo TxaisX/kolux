@@ -39,11 +39,11 @@ const setContext = (u: Record<number, Reading> | ((c: Record<number, Reading>) =
 };
 const none = () => {};
 const pane = (key: number) => ({ key, cwd: null, branch: null, agent: "claude", program: null, args: [] });
-const render = (keys: number[]) => {
+const render = (keys: number[], over: Record<string, unknown> = {}) => {
   ri = 0;
   ei = 0;
   const panes = keys.map(pane) as never;
-  useAgentEvents({ panes, setPanes: none, titles: {}, settings: {}, inView: () => true, setToast: none, tabName: () => "Claude 1", setCrew: none, setTurn: none, setStale: none, hookRef: { current: {} }, setHook: none, setStamp: none, setContext: setContext as never, unreadPanes: new Set(), setUnreadPanes: none, winFocused: false, markDir: none });
+  useAgentEvents({ panes, setPanes: none, titles: {}, settings: {}, inView: () => true, setToast: none, tabName: () => "Claude 1", setCrew: none, setTurn: none, setStale: none, hookRef: { current: {} }, setHook: none, setStamp: none, setContext: setContext as never, unreadPanes: new Set(), setUnreadPanes: none, winFocused: false, markDir: none, ...over });
   due.splice(0).forEach((f) => f());
 };
 const usage = (paneKey: number, tokens: number, session?: string, at?: number) => bus["claude-usage"]({ payload: { paneKey, contextTokens: tokens, contextWindow: 200_000, session, at } });
@@ -296,4 +296,17 @@ test("unmounting the window clears the candidate's timer (USAGE-001)", () => {
   expect(vi.getTimerCount()).toBe(0);
   vi.advanceTimersByTime(60_000);
   expect(context[1]).toBeUndefined();
+});
+
+// Audit F9: a closed pane's state clock and quiet mark are let go, as its reading is.
+test("closing a pane drops its stamp and its quiet mark", () => {
+  type Rec = Record<number, unknown>;
+  let stamp: Rec = { 1: { at: 1, interrupted: false }, 2: { at: 2, interrupted: false } };
+  let stale: Rec = { 1: true, 2: true };
+  const upd = (get: () => Rec, put: (r: Rec) => void) => (u: Rec | ((r: Rec) => Rec)) => put(typeof u === "function" ? u(get()) : u);
+  const over = { setStamp: upd(() => stamp, (r) => (stamp = r)), setStale: upd(() => stale, (r) => (stale = r)) };
+  render([1, 2], over);
+  render([1], over);
+  expect(Object.keys(stamp)).toEqual(["1"]);
+  expect(Object.keys(stale)).toEqual(["1"]);
 });
