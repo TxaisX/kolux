@@ -1,14 +1,15 @@
 // LIVE proof, audit loop item 1 (cycle 5): T-612, T-621 and T-625 on the dev app, hidden off-screen, a fresh scratch
 // profile, a stand-in claude (no real agent, no sign-in). Run: node scripts/prove/live-audit-1.mjs
-//  T-612  the first-run wizard finishes after Continue on "Your work" (Open a session with no project opens Add Project;
-//         the folder added gets the first AI, once), and on later launches the Tip card's Close button and Escape close it.
+//  T-612  the first-run wizard finishes after Continue on "Your work" (a project folder is added by path first, so
+//         Continue is on; "Choose folders and agents" closes setup and opens the Start form), and on later launches the
+//         Tip card's Close button and Escape close it.
 //  T-621  at 900, 1400 and 1920 px the switcher's four segments sit inside its frame, nothing covers them, and a real
 //         mouse click on Tower's centre selects Tower.
 //  T-625  the left sidebar at 220 px: the footer fits, and a screenshot of it (evidence/T-625.png).
 // The native folder picker is not driven: the folder goes in through the sidebar's by-path field, which reports the add
 // through the same onAdded (useWizard projectAdded) as "Open a folder…".
 import { copyFileSync } from "node:fs";
-import { ROOT, LIVE_LOGS, TERM, finish, reporter, sleep, startPlain } from "./live-common.mjs";
+import { ROOT, LIVE_LOGS, TERM, TID, finish, reporter, sleep, startPlain } from "./live-common.mjs";
 import { ps, WIN_PS, waitAppWindow } from "../evidence/app-launch.mjs";
 
 const report = reporter();
@@ -56,6 +57,14 @@ try {
   await sleep(800);
   const onWork = await heading();
   log(`after "I'll do this later": ${onWork}`);
+  // Job 43 F2: Continue on "Your work" stays off until a project folder exists, so add one by path first.
+  await app.click(TID.addProject);
+  await wf("the add-by-path item", () => exists(TID.addByPath), 5000);
+  await app.click(TID.addByPath);
+  await wf("the project folder field", () => exists(TID.folderInput), 5000);
+  await app.focusField(TID.folderInput);
+  await cdp("insert", repo, "enter");
+  await wf("Continue switched on", () => evalJs(`(() => { const b = document.querySelector(${JSON.stringify(`${wizard} button.onb-main`)}); return !!b && !b.disabled; })()`), 15000);
   await clickWhere(`${wizard} button.onb-main`, "/^\\s*Continue/");
   await sleep(800);
   const onSession = await heading();
@@ -66,20 +75,9 @@ try {
   const startOpen = await exists('[data-testid="chooser-pane"][aria-label="Start"]');
   check("T-612 wizard reaches Start your agents after Continue on Your work", onWork === "Your work" && onSession === "Start your agents", { onWork, onSession });
   check("T-612 Choose folders and agents closes the wizard and opens the Start form", wizardGone && startOpen, { wizardGone, startOpen });
-  await ctx.shot("audit-1-add-project");
+  await ctx.shot("audit-1-start-form");
   await cdp("key", "Escape");
   await sleep(800);
-  await app.click('.sb-foot button[title^="Add a project by path"]');
-  await wf("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
-  await app.focusField('input[aria-label="project folder"]');
-  await cdp("insert", repo, "enter");
-  await wf("a pane for the folder", async () => (await app.shown(TERM)) >= 1, 30000);
-  await sleep(4000);
-  const agents = await evalJs(`[...document.querySelectorAll(${JSON.stringify(TERM)})].filter(e => e.offsetParent !== null).map(e => e.getAttribute("data-agent"))`);
-  const buf = ((await ctx.lines(0))?.lines ?? []).join("\n");
-  const cwdLine = buf.split("\n").find((l) => l.startsWith("cwd=")) ?? "";
-  const inFolder = cwdLine.toLowerCase().replace(/\\/g, "/").includes(repo.toLowerCase().replace(/\\/g, "/"));
-  check("T-612 the folder added gets the first AI, in that folder, once", agents.length === 1 && /claude/.test(agents[0] ?? "") && inFolder, { agents, cwdLine });
   const onb = await app.invoke("onboarding_get").catch((e) => `error ${e.message}`);
   log(`onboarding record: ${JSON.stringify(onb)}`);
 
