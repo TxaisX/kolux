@@ -214,3 +214,21 @@ test("SESS-029: Cursor's discovered models join after its built-in ones, each on
   setDiscovered("cursor", [{ id: "auto", label: "Auto" }, { id: "composer-2", label: "Composer 2" }]);
   expect(modelsFor("cursor").map((m) => m.id)).toEqual(["auto", "sonnet-4.5", "gpt-5", "composer-2", "default"]);
 });
+
+test("Push 1 item 2: a saved model the agent no longer lists comes back as no model, so Start waits for a pick", () => {
+  const l = lineupOf("custom", "shared", [{ agent: "claude", model: "retired-model-x", effort: "high" }, { agent: "claude", model: "opus" }]);
+  const back = applyLineup(l, ["claude"]).seats;
+  expect(back[0].model).toBeNull();
+  expect(seatReady(back[0])).toBe(false);
+  expect(back[1].model).toBe("opus");
+  // An agent with no model list keeps whatever was saved (there is nothing to check it against).
+  expect(applyLineup(lineupOf("custom", "shared", [{ agent: "aider", model: "x" }]), ["aider"]).seats[0].model).toBe("x");
+});
+
+test("Push 1 item 1: a lineup saved before effort and fast mode existed still loads", () => {
+  const old = { shape: "custom", copies: "shared", seats: [{ agent: "claude", model: "opus" }] } as unknown as Parameters<typeof applyLineup>[0];
+  const back = applyLineup(old, ["claude"]).seats[0];
+  expect(back).toEqual({ agent: "claude", model: "opus" });
+  const kept = applyLineup(lineupOf("custom", "shared", [{ agent: "claude", model: "opus", effort: "max", fast: true }]), ["claude"]).seats[0];
+  expect(kept).toMatchObject({ effort: "max", fast: true });
+});

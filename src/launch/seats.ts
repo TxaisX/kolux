@@ -222,10 +222,18 @@ export function offeredLineup(saved: unknown, installedIds: string[]): Lineup | 
   return lineupAgents(l).some((a) => installedIds.includes(a)) ? l : null;
 }
 
-/** Puts a lineup back: its shape with its roles, and each seat's agent and model; a seat whose
- * agent is gone is left blank. */
+/** A saved model the agent no longer lists is dropped (model: null), so the seat asks for a pick
+ * instead of starting with a --model the program rejects. An agent with no list keeps it. */
+const knownModel = (s: Seat): Seat => {
+  if (s.agent === null || s.agent === TERMINAL || s.model === null) return s;
+  const list = modelsFor(s.agent);
+  return list.length === 0 || list.some((m) => m.id === s.model) ? s : { ...s, model: null };
+};
+
+/** Puts a lineup back: its shape with its roles, and each seat's agent, model, effort and fast mode;
+ * a seat whose agent is gone is left blank, a model that is gone is left unpicked. */
 export function applyLineup(l: Lineup, installedIds: string[]): { shape: Shape; seats: Seat[] } {
-  const seats = clearMissing(l.seats.map((s) => ({ agent: s.agent, model: s.model, ...(typeof s.effort === "string" ? { effort: s.effort } : {}), ...(s.fast === true ? { fast: true } : {}) })), installedIds);
+  const seats = clearMissing(l.seats.map((s) => ({ agent: s.agent, model: s.model, ...(typeof s.effort === "string" ? { effort: s.effort } : {}), ...(s.fast === true ? { fast: true } : {}) })), installedIds).map(knownModel);
   return resizeLineup(l.shape, seats, seats.length);
 }
 
