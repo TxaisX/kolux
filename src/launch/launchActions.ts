@@ -29,6 +29,7 @@ import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
+import { LAST_START_KEY, type StartSheet } from "./startForm";
 import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
@@ -76,13 +77,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // brief, the shared task and its own prompt (SESS-012); with two or more AI seats each also gets
   // the rules block and a handoff note made before it starts (SESS-025), in that folder and named
   // after the folder and its seat number.
-  const startSeats = async (key: number, seats: Seat[]) => {
-    const chooser = panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
-    if (!chooser) return;
+  // Start form C: `given` is the chooser to start from when it is neither in the grid nor the open sheet (a second
+  // ticked folder). True once the sessions have landed.
+  const startSeats = async (key: number, seats: Seat[], given?: Pane): Promise<boolean> => {
+    const chooser = given ?? panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
+    if (!chooser) return false;
     const tooMany = tooManySeats(seats.length);
     if (tooMany) {
       setNotice(tooMany);
-      return;
+      return false;
     }
     const inGrid = panes.some((p) => p.key === key);
     setLaunching(true);
@@ -127,7 +130,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const landing = makes && !team ? picked.filter((a) => a === null).length : seats.length;
       if (cellsOf(panesIn(panes.filter((p) => p.key !== key), place)).length + landing > MAX_PANES) {
         setNotice(`A workspace holds up to ${MAX_PANES} panes.`);
-        return;
+        return false;
       }
       const repo = makes && proj ? await invoke<{ mode?: string; wait?: boolean }>("repo_setup_get", { path: proj.path }).catch(() => null) : null;
       const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes);
@@ -192,7 +195,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       if (inGrid && !late.panesRef.current.some((p) => p.key === key)) {
         seatsSettled = true;
         if (kept.length) setRefresh((n) => n + 1);
-        return;
+        return false;
       }
       if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", makes ? "separate" : "shared", seats) };
       // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018). DT-C274: a team
@@ -222,14 +225,33 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const said = [...setupTrouble, ...trustLines.map(([line]) => line)];
       setNotice(said.length ? said.join(" ") : null);
       for (const [, shown] of trustLines) shown();
+      return true;
     } catch (err) {
       // Trust lines gathered so far were never shown: they stay unsaid, so the next launch says them.
       seatsSettled = true;
       // A seat that failed leaves the earlier seats' new workspaces behind: refresh the sidebar so they show, and say so.
       if (kept.length) setRefresh((n) => n + 1);
       setNotice(failureNote(err, kept.length));
+      return false;
     } finally {
       setLaunching(false);
+    }
+  };
+
+  // Start form C: Start launches the same lineup in every ticked folder, each in that folder's own grid, through
+  // startSeats once per folder (one launch path). The first folder failing stops the rest. The folders and the
+  // count are kept for the next form (rule F).
+  const startAcross = async (from: StartSheet, seats: Seat[]) => {
+    const ids = (from.folders ?? []).filter((id) => projects.some((p) => p.id === id));
+    if (ids.length === 0) return void (await startSeats(from.key, seats));
+    const tooMany = tooManySeats(seats.length * ids.length);
+    if (tooMany) return setNotice(tooMany);
+    p.saveSetting(LAST_START_KEY, { folders: ids, count: seats.length });
+    for (const [n, id] of ids.entries()) {
+      const proj = projects.find((x) => x.id === id)!;
+      const here = late.projectOf(from.cwd) === id;
+      const chooser: Pane = { ...from, key: n === 0 ? from.key : nextKey.current++, cwd: here ? from.cwd : proj.path, branch: here ? from.branch : null };
+      if (!(await startSeats(chooser.key, seats, chooser))) return;
     }
   };
 
@@ -449,7 +471,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
   };
   return {
-    lineupsOf, rememberLineup, inGitFor, startSeats, startIn, openIn, resumeIn, resumeOrFocus, openTabs, runSetup, gateSetup, fromItem, fromName, pretrust,
+    lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, openTabs, runSetup, gateSetup, fromItem, fromName, pretrust,
     fixWithAI, projectFor, launch,
   };
 }
