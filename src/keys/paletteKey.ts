@@ -35,7 +35,7 @@ export const kTaken = (active: Element | null | undefined): boolean => typeof ac
  *  binding in an editor tab's scopes, so they need no entry. */
 const RICH_FORMAT_KEYS = ["b"];
 export const richKeyTaken = (map: Keymap, e: KeyLike, active: Element | null | undefined): boolean =>
-  RICH_FORMAT_KEYS.includes(e.key.toLowerCase()) &&
+  (RICH_FORMAT_KEYS.includes(e.key.toLowerCase()) || e.code === "KeyB") && // R27-09: the B key wherever the layout puts B
   !e.shiftKey &&
   !e.altKey &&
   (map.platform === "darwin" ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey) &&
