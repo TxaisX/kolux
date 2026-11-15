@@ -5,14 +5,14 @@ import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], unsaved: [] as string[][] }));
+const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], unsaved: [] as string[][], listGate: null as Promise<void> | null, projects: [{ id: "p1", name: "app", path: "C:/w/app" }] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     h.calls.push({ cmd, args });
     if (cmd === "workspace_remove_check") return Promise.resolve({ changes: [], locked: null, nested: [], commits: [], stamp: "s" });
     if (cmd === "get_settings") return Promise.resolve({});
     if (cmd === "workspace_statuses") return Promise.resolve({ list: [] });
-    if (cmd === "project_list") return Promise.resolve([{ id: "p1", name: "app", path: "C:/w/app" }]);
+    if (cmd === "project_list") return (h.listGate ?? Promise.resolve()).then(() => h.projects);
     if (cmd === "workspace_scan") return Promise.resolve({ list: h.wt, unseen: [] });
     if (cmd === "workspaces_place_get") return Promise.resolve({ dir: "", flat: false, used: [], fromEnv: false });
     if (cmd === "scm_prs_poll") return Promise.resolve({ prs: [], limitedUntil: null });
@@ -42,13 +42,15 @@ beforeEach(() => {
   h.wt = [main, fix];
   h.calls = [];
   h.unsaved = [];
+  h.listGate = null;
+  h.projects = [{ id: "p1", name: "app", path: "C:/w/app" }];
 });
 afterEach(async () => {
   await unmount();
   unmount = async () => {};
 });
 
-async function panel(workDir: string, renameRequest = 0) {
+async function panel(workDir: string, renameRequest = 0, firstDelete = 0, wait = 120) {
   const { default: ProjectsPanel } = await import("./ProjectsPanel");
   const { act } = await import("react");
   const props = {
@@ -59,7 +61,7 @@ async function panel(workDir: string, renameRequest = 0) {
     onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true), renameRequest,
   };
   const Host = () => {
-    const [n, setN] = useState(0);
+    const [n, setN] = useState(firstDelete);
     pressDelete = async () => {
       await act(async () => setN((v) => v + 1));
       await settle(60);
@@ -68,7 +70,7 @@ async function panel(workDir: string, renameRequest = 0) {
   };
   const m = await mount(createElement(Host), doc);
   unmount = m.unmount;
-  await settle(120);
+  await settle(wait);
   return m.container as FakeNode;
 }
 const checks = () => h.calls.filter((c) => c.cmd === "workspace_remove_check").map((c) => c.args.path);
@@ -92,6 +94,28 @@ test("Delete Workspace on a pane in the project's main folder says so and checks
   await pressDelete();
   expect(checks()).toEqual([]);
   expect(question(c).length).toBe(0);
+  expect(c.textContent).toContain("The pane you are in is not in a worktree, so there is nothing to delete.");
+});
+
+// Review R27-01: the shortcut opens a closed sidebar, so the panel mounts with the press already made and
+// an empty project list. It waits for the lists rather than saying "not in a worktree" and using up the press.
+test("Delete Workspace pressed with the sidebar closed waits for the lists, then asks about the focused pane's worktree", async () => {
+  let open = () => {};
+  h.listGate = new Promise<void>((r) => (open = r));
+  const c = await panel(fix.path, 0, 7, 20); // 7: a press count no earlier test in this file has served
+  expect(c.textContent).not.toContain("not in a worktree");
+  open();
+  await settle(120);
+  expect(c.textContent).not.toContain("not in a worktree");
+  expect(checks()).toEqual([fix.path]);
+  expect(question(c).length).toBe(1);
+  expect(question(c)[0].textContent).toContain("fix-login");
+});
+
+test("Delete Workspace pressed with the sidebar closed and no projects at all says so once the list comes in", async () => {
+  h.projects = [];
+  const c = await panel(fix.path, 0, 9);
+  expect(checks()).toEqual([]);
   expect(c.textContent).toContain("The pane you are in is not in a worktree, so there is nothing to delete.");
 });
 

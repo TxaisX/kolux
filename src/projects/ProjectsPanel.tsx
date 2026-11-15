@@ -540,8 +540,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // A Board status or nest change shows here at once, not on the next poll.
   useEffect(() => onWorkspaceStatus(window, () => void refreshWorktrees(projects).catch(fail)), [projects, refreshWorktrees]);
 
+  const listLoaded = useRef(false); // review R27-01: the project list has come in at least once (it may be empty)
   const reload = useCallback(async () => {
     const list = await invoke<Project[]>("project_list");
+    listLoaded.current = true;
     setProjects(list);
     const g = await invoke<Groups>("groups_get");
     setGroups((o) => keepNewer(o, g));
@@ -1069,7 +1071,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // Audit F13: with no worktree row under the pointer, the worktree the focused pane works in; never a main folder.
     const rows = projects.flatMap((p) => (worktrees[p.id] ?? []).map((w) => ({ p, w, path: w.path, isMain: w.isMain })));
     const hit = keyDeleteTarget(hovered, workDir ?? activeDir, rows, same);
-    if (hit === null && !projects.every((p) => p.id in worktrees)) return; // a sidebar the shortcut just opened has no lists yet
+    if (hit === null && (!listLoaded.current || !projects.every((p) => p.id in worktrees))) return; // a sidebar the shortcut just opened has no lists yet (R27-01: an empty list is not a loaded one)
     servedDelete = deleteRequest;
     if (hit === null) {
       say("warn", notInWorktree("delete"));
