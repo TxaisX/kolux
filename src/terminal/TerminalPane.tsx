@@ -1472,7 +1472,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       .then((un) => {
         if (live) stop = un;
         else un();
-      });
+      })
+      .catch(() => {}); // audit F11: no drop events for this pane, and no unhandled rejection
     return () => {
       live = false;
       stop?.();
