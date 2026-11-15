@@ -32,6 +32,7 @@ const fix = { ...base, path: "C:/w/ws/fix-login", branch: "fix-login", head: "c3
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};
 let pressDelete: () => Promise<void> = async () => {};
+let focusOn: (dir: string) => Promise<void> = async () => {};
 
 beforeEach(() => {
   const dom = installDom();
@@ -62,11 +63,16 @@ async function panel(workDir: string, renameRequest = 0, firstDelete = 0, wait =
   };
   const Host = () => {
     const [n, setN] = useState(firstDelete);
+    const [dir, setDir] = useState(workDir);
     pressDelete = async () => {
       await act(async () => setN((v) => v + 1));
       await settle(60);
     };
-    return createElement(ProjectsPanel, { ...props, deleteRequest: n } as never);
+    focusOn = async (d) => {
+      await act(async () => setDir(d));
+      await settle(20);
+    };
+    return createElement(ProjectsPanel, { ...props, workDir: dir, deleteRequest: n } as never);
   };
   const m = await mount(createElement(Host), doc);
   unmount = m.unmount;
@@ -110,6 +116,38 @@ test("Delete Workspace pressed with the sidebar closed waits for the lists, then
   expect(checks()).toEqual([fix.path]);
   expect(question(c).length).toBe(1);
   expect(question(c)[0].textContent).toContain("fix-login");
+});
+
+// Review R35-01: a press held for the lists is served later only within 10 seconds of the panel first seeing it,
+// and only while the focused pane is in the same folder; otherwise it is dropped with no check and no question.
+test("a press still held when the sidebar closes is dropped once 10 seconds have gone by", async () => {
+  h.listGate = new Promise<void>(() => {}); // the list never answers while the sidebar is open
+  await panel(fix.path, 0, 11, 20); // 11: a press count no earlier test in this file has served
+  await unmount();
+  unmount = async () => {};
+  h.listGate = null;
+  const later = Date.now() + 11_000;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(later);
+  try {
+    const c = await panel(fix.path, 0, 11);
+    expect(checks()).toEqual([]);
+    expect(question(c).length).toBe(0);
+  } finally {
+    clock.mockRestore();
+  }
+});
+
+test("a press held for the lists is dropped when the focus moves to another worktree first", async () => {
+  const other = { ...base, path: "C:/w/ws/other", branch: "other", head: "e5e5e5e", isMain: false };
+  h.wt = [main, fix, other];
+  let open = () => {};
+  h.listGate = new Promise<void>((r) => (open = r));
+  const c = await panel(fix.path, 0, 13, 20); // 13: a press count no earlier test in this file has served
+  await focusOn(other.path);
+  open();
+  await settle(120);
+  expect(checks()).toEqual([]);
+  expect(question(c).length).toBe(0);
 });
 
 test("Delete Workspace pressed with the sidebar closed and no projects at all says so once the list comes in", async () => {

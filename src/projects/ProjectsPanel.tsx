@@ -204,6 +204,9 @@ const NOT_BUILT = false;
 // Audit F13: the last delete shortcut press served. Kept outside the panel, which unmounts with the sidebar,
 // so opening the sidebar again never replays an old press.
 let servedDelete = 0;
+// Review R35-01: when the panel first saw the press it has not served yet, and the focused folder then. A press
+// that has to wait for the lists is served only within 10 s of that and only for the same folder.
+let seenDelete: { n: number; at: number; dir: string | null } | null = null;
 const RECENT_KEY = "kolux.composer.recentProjects";
 const ADD_ITEM = "+add";
 const readRecent = (): string[] => {
@@ -1066,11 +1069,18 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   useEffect(() => {
     // VIEW-048: the row under the pointer, read at key time so a row that just went away never counts
     const hovered = [...document.querySelectorAll<HTMLElement>("[data-path]:hover")].pop()?.dataset.path ?? null;
-    if (deleteRequest < servedDelete) servedDelete = 0; // a count that went back is a new window's
+    if (deleteRequest < servedDelete) [servedDelete, seenDelete] = [0, null]; // a count that went back is a new window's
     if (deleteRequest === 0 || deleteRequest === servedDelete) return;
+    const dir = workDir ?? activeDir;
+    const waited = seenDelete?.n === deleteRequest;
+    if (!waited) seenDelete = { n: deleteRequest, at: Date.now(), dir };
+    else if (Date.now() - seenDelete!.at > 10000 || !(dir === null || seenDelete!.dir === null ? dir === seenDelete!.dir : same(dir, seenDelete!.dir))) {
+      servedDelete = deleteRequest; // R35-01: too old, or the focus moved to another folder: dropped, nothing shown
+      return;
+    }
     // Audit F13: with no worktree row under the pointer, the worktree the focused pane works in; never a main folder.
     const rows = projects.flatMap((p) => (worktrees[p.id] ?? []).map((w) => ({ p, w, path: w.path, isMain: w.isMain })));
-    const hit = keyDeleteTarget(hovered, workDir ?? activeDir, rows, same);
+    const hit = keyDeleteTarget(waited ? null : hovered, workDir ?? activeDir, rows, same); // a press that waited never takes a hovered row
     if (hit === null && (!listLoaded.current || !projects.every((p) => p.id in worktrees))) return; // a sidebar the shortcut just opened has no lists yet (R27-01: an empty list is not a loaded one)
     servedDelete = deleteRequest;
     if (hit === null) {

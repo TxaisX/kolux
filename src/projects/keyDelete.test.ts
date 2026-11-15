@@ -38,7 +38,7 @@ const delEffect = effect("// VIEW-048: the row under the pointer");
 const renameEffect = effect("if (renameRequest === 0) return;");
 
 test("the delete shortcut takes the pane menu's route: startDelete, which asks first and names the worktree", () => {
-  expect(delEffect).toContain("keyDeleteTarget(hovered, workDir ?? activeDir, rows, same)");
+  expect(delEffect).toContain("keyDeleteTarget(waited ? null : hovered, workDir ?? activeDir, rows, same)");
   expect(delEffect).toContain("void startDelete(p, w);");
   expect(delEffect).toContain('say("warn", unlisted ? NOT_LISTED_WORKTREE : notInWorktree("delete"))'); // R27-02: a hidden or unreviewed worktree gets its own line
   // The pane label menu's Delete item goes the same way.
