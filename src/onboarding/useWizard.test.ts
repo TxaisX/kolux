@@ -214,7 +214,7 @@ test("job 37 A3: the project panel never shows: the wizard comes back on the scr
   app.now().pickFolder(true, { panelShown: () => false, showPanel: () => {}, wait: async () => {} });
   await app.settle();
   expect(app.now().wizard).toBe(2);
-  expect(toasts.at(-1)).toBe("Could not open Add project. Try again.");
+  expect(toasts[toasts.length - 1]).toBe("Could not open Add project. Try again.");
   app.now().projectAdded("C:/later", null);
   await app.settle();
   expect(started).toEqual([]); // nothing stays armed behind the user's back
