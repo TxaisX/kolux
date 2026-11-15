@@ -45,6 +45,7 @@ import { gridOf, setGridRoots } from "../workspaces";
 import { EMPTY_GRID_MAP, GRID_MAP_SETTING, focusDirOf, foldGridMap, readGridMap, sameGridMap, unionGridMaps, type GridMap } from "../projects/worktreeGrid";
 import { scanGridOwners } from "../projects/gridScan";
 import type { Project } from "../projects/model";
+import type { StartSheet } from "../launch/startForm";
 import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
 
 /** The settings key that remembers whether the left sidebar is shown. */
@@ -170,7 +171,8 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   useEffect(() => installTabWheel(), []);
   // SESS-018: on the New look a new session is chosen on a full-page sheet over the workspace,
   // held here rather than in the grid; Classic keeps the chooser pane (SESS-019).
-  const [sheet, setSheet] = useState<Pane | null>(null);
+  // Start form (2026-11-15): the sheet also holds the ticked folders and whether it is the ask at app open.
+  const [sheet, setSheet] = useState<StartSheet | null>(null);
   // SET-027: everywhere but Settings, only agents that are switched on are offered.
   const teamsHost = useTeamsHost();
   const agents = useMemo(() => withTeams(offeredAgents(allAgents, settings), settings, teamsHost), [allAgents, settings, teamsHost]);
