@@ -224,7 +224,7 @@ export function offeredLineup(saved: unknown, installedIds: string[]): Lineup | 
 
 /** A saved model the agent no longer lists is dropped (model: null), so the seat asks for a pick
  * instead of starting with a --model the program rejects. An agent with no list keeps it. */
-const knownModel = (s: Seat): Seat => {
+export const knownModel = (s: Seat): Seat => {
   if (s.agent === null || s.agent === TERMINAL || s.model === null) return s;
   const list = modelsFor(s.agent);
   // Job 13 F6: Grok and Cursor list some models only through the live search; until it answers, a remembered one stays.

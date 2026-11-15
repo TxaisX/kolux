@@ -26,7 +26,7 @@ import { useKeymap } from "../keys/KeymapContext";
 import { useDialogFocus } from "../chrome/dialogFocus";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
-import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
+import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered, knownModel } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
@@ -247,8 +247,18 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const [otherFor, setOtherFor] = useState<number | "all" | null>(null);
   // SESS-029: Grok and Cursor are asked for their models once per app run.
   const [, setLive] = useState(0);
+  // Job 22 item 3: when the list lands while this form is open, a model it lacks is dropped in the parent's seats too.
+  const seatsNow = useRef({ seats, onSeats });
+  seatsNow.current = { seats, onSeats };
   useEffect(() => {
-    for (const a of agents) if (a.installed && LISTED.includes(a.id)) void liveModels(a.id).then((n) => n && setLive((v) => v + 1));
+    let on = true;
+    const recheck = () => {
+      const { seats: now, onSeats: put } = seatsNow.current;
+      const kept = now.map(knownModel);
+      if (on && kept.some((s, i) => s !== now[i])) put(kept);
+    };
+    for (const a of agents) if (a.installed && LISTED.includes(a.id)) void liveModels(a.id).then((n) => n && (setLive((v) => v + 1), recheck()));
+    return () => void (on = false);
   }, [agents]);
   const setSeat = (i: number, patch: Partial<Seat>) => onSeats(seats.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const searched = !pass || canLaunch(pass);
