@@ -82,19 +82,22 @@ function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: 
 }
 
 /** Txais 2026-11-08: a button each for Claude Code, Codex, OpenCode and Grok (FEATURED), then Terminal and Other…; the rest sit
- * behind Other. One group serves both the Start form's one row for all (`pick` null while the seats differ) and each seat. */
-function AgentButtons({ rows, pick, label, testid, idPrefix, onChoose, onOther }: { rows: AgentInfo[]; pick: string | null; label: string; testid: string; idPrefix: string; onChoose: (id: string) => void; onOther: () => void }) {
+ * behind Other. One group serves both the Start form's one row for all (`pick` null while the seats differ) and each seat.
+ * Test ids: the caller names the group (`all-agents`, `seat-<n>-agents`) and the buttons are `seat-agent-<id>` in every
+ * group. Each id is written out where scripts/smoke-testids.test.mjs can read it; an id built from a prefix would match
+ * any id at all in that check. */
+function AgentButtons({ rows, pick, label, "data-testid": testid, onChoose, onOther }: { rows: AgentInfo[]; pick: string | null; label: string; "data-testid": string; onChoose: (id: string) => void; onOther: () => void }) {
   const other = pick && pick !== TERMINAL && !FEATURED.includes(pick) ? rows.find((x) => x.id === pick) : undefined;
   return (
     <div className="agent-grid" role="group" data-testid={testid} aria-label={label}>
       {featuredRows(rows).map((a) => (
-        <button key={a.id} className="btn agent-btn" data-testid={`${idPrefix}-${a.id}`} aria-pressed={pick === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => onChoose(a.id)}>
+        <button key={a.id} className="btn agent-btn" data-testid={`seat-agent-${a.id}`} aria-pressed={pick === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => onChoose(a.id)}>
           <AgentMark id={a.id} size={28} />
           <span className="agent-btn-name">{a.name}</span>
           {!a.installed && <span className="agent-btn-note">not installed</span>}
         </button>
       ))}
-      <button className="btn agent-btn" data-testid={`${idPrefix}-terminal`} aria-pressed={pick === TERMINAL} title="A plain terminal, no AI" onClick={() => onChoose(TERMINAL)}>
+      <button className="btn agent-btn" data-testid="seat-agent-terminal" aria-pressed={pick === TERMINAL} title="A plain terminal, no AI" onClick={() => onChoose(TERMINAL)}>
         <VendorMark agent="shell" size={28} />
         <span className="agent-btn-name">Terminal</span>
       </button>
@@ -520,7 +523,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
           {one === "mixed" && <span className="caption">Mixed</span>}
           {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
           {none && noneNote}
-          {!detecting && <AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" testid="all-agents" idPrefix="all-agent" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
+          {!detecting && <AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" data-testid="all-agents" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
           {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length > 0 && (
             <div className="choices" role="radiogroup" aria-label="Which model for all of them">
               <span className="label">{one.model === null ? "Pick a model" : "Model"}</span>
@@ -682,7 +685,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               <div className="choices agent-pick">
                 {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
                 {none && noneNote}
-                {!detecting && <AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} testid={`seat-${i + 1}-agents`} idPrefix="seat-agent" onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
+                {!detecting && <AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} data-testid={`seat-${i + 1}-agents`} onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
                 {installBits(shownPick(seats, shown, i), i)}
               </div>
               {seat.agent !== null && seat.agent !== TERMINAL && modelsFor(seat.agent).length === 0 && <span className="caption">Uses the program's default model</span>}

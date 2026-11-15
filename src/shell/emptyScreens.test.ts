@@ -7,7 +7,7 @@ const src = (f: string) => nodeFs.readFileSync(`src/shell/${f}`, "utf8").replace
 const block = (s: string, from: string, to: string) => s.slice(s.indexOf(from), s.indexOf(to, s.indexOf(from)));
 
 test("D-05: the empty grid has one main button (Start agents) and the terminal is a quiet link", () => {
-  const empty = block(src("./window/Grid.tsx"), "No terminal open here.", "</div>\n        </div>");
+  const empty = block(src("./window/Grid.tsx"), "Nothing running here yet.", "</div>\n        </div>");
   expect(empty.match(/btn primary/g) ?? []).toHaveLength(1);
   expect(empty).toMatch(/btn primary" onClick=\{addChooser\}>\s*Start agents/);
   expect(empty).toContain('className="btn link"');

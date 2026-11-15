@@ -1,5 +1,5 @@
 // SESS-007 box 3: a chooser that is the grid's only pane has no close button; beside another pane it has one;
-// the New session sheet keeps its own close button. The decision (chooserClosable) is real product code; the
+// the Start form (the sheet) keeps its own close button. The decision (chooserClosable) is real product code; the
 // rendered button is the real ChooserPane. App.tsx only passes the shown-pane count (MIRROR App.tsx renderChooser callers).
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
@@ -25,8 +25,8 @@ test("SESS-007 b3: a chooser beside another pane has the Close this chooser butt
   expect(render(2, null)).toContain("Close this chooser");
 });
 
-test("SESS-007 b3: the New session sheet keeps its close button even with no other pane", () => {
+test("SESS-007 b3: the Start form keeps its close button even with no other pane", () => {
   const html = render(1, { project: "demo", path: "C:\demo" });
-  expect(html).toContain("Close New session");
+  expect(html).toContain("Close Start");
   expect(chooserClosable(1, true)).toBe(true);
 });

@@ -105,6 +105,8 @@
     "agentSleep",
     "agentSleepIdleMinutes",
     "agentSleepTestFast",
-    "agentOwnFolders"
+    "agentOwnFolders",
+    "askWhatToOpen",
+    "lastStart"
   ]
 }
