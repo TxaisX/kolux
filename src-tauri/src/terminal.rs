@@ -2628,7 +2628,7 @@ mod tests {
         // a warm entry whose session is not running is never handed to a pane
         lock(&t.inner).warm.insert(warm_key("C:/work/a"), (7, None));
         assert_eq!(t.claim_warm("C:/work/a", &None, 3, None), None);
-        assert!(lock(&t.inner).panes.get(&3).is_none());
+        assert!(!lock(&t.inner).panes.contains_key(&3));
         // switched off: the map empties
         lock(&t.inner).warm.insert(warm_key("C:/work/b"), (8, None));
         t.drop_warm();
