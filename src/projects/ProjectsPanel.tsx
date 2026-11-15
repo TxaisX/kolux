@@ -890,9 +890,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
   };
   const deleteGroup = async (g: Group, remove: boolean) => {
+    // F21: removing the projects closes their panes, so it asks and closes as removeProject does, for every
+    // project in the group and its sub-groups (the back end removes those too). On Cancel nothing is deleted.
+    const outside = new Set(groupChoices(groups, g.id).map((x) => x.id)); // every group but this one and its sub-groups
+    const inside = new Set(groups.groups.filter((x) => !outside.has(x.id)).map((x) => x.id));
+    const members = remove ? projects.filter((p) => inside.has(groups.members[p.id])) : [];
+    if (remove) {
+      const folders = members.flatMap((p) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)]);
+      if (!(await onAskUnsaved(openDirs.filter((d) => folders.some((r) => underDir(d, r)))))) return;
+    }
     try {
       const gone = headersGoneWithGroup(groups.members, g.id, remove); // read before the delete: the answer no longer lists the members
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
+      if (members.length > 0) onRemovedAll(members.map((p) => p.path));
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
       if (colours) live.current.onSetting(HEADER_COLOURS_SETTING, colours);
       setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away
