@@ -532,8 +532,7 @@ fn p3_a_failed_add_removes_only_a_folder_it_made_itself() {
     let gits = root.join("gits");
     assert!(add_retrying(&repo, &gits, None, &|| false, || {
         fs::create_dir_all(&gits).unwrap();
-        fs::write(gits.join(".git"), "gitdir: C:/r/.git/worktrees/gits
-").unwrap();
+        fs::write(gits.join(".git"), "gitdir: C:/r/.git/worktrees/gits\n").unwrap();
         fail()
     })
     .is_err());
