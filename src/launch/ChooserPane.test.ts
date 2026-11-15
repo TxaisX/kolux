@@ -248,6 +248,10 @@ test("SESS-018: Ctrl+Enter launches only a complete lineup, Escape closes the pa
   expect(sheetKey({ key: "Enter", ctrlKey: true, metaKey: false }, done, true)).toBe(null);
   expect(sheetKey({ key: "Enter", ctrlKey: false, metaKey: false }, done, false)).toBe(null);
   expect(sheetKey({ key: "Escape", ctrlKey: false, metaKey: false }, done, false)).toBe("close");
+  // Wave 2 item 3: plain Enter on the form itself (not inside a field) starts; inside a field it does not.
+  expect(sheetKey({ key: "Enter", ctrlKey: false, metaKey: false }, done, false, false, true)).toBe("launch");
+  expect(sheetKey({ key: "Enter", ctrlKey: false, metaKey: false }, blank, false, false, true)).toBe("blocked");
+  expect(sheetKey({ key: "Escape", ctrlKey: false, metaKey: false }, done, false, true, true)).toBeNull();
 });
 
 test("SESS-018: the page starts with the project's last count and files choice, every seat blank", () => {

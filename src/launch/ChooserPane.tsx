@@ -117,9 +117,11 @@ export const holdsTyping = (el: { tagName?: string; value?: string; type?: strin
 
 /** SESS-018: what a key does on the New session page: Ctrl+Enter (Cmd+Enter on a Mac) launches a
  * complete lineup and is "blocked" while a seat is unfinished; Escape closes the page. */
-export function sheetKey(e: { key: string; ctrlKey: boolean; metaKey: boolean }, seats: Seat[], mac: boolean, busy = false): "launch" | "blocked" | "close" | null {
+export function sheetKey(e: { key: string; ctrlKey: boolean; metaKey: boolean }, seats: Seat[], mac: boolean, busy = false, onForm = false): "launch" | "blocked" | "close" | null {
   if (e.key === "Escape") return busy ? null : "close";
-  if (e.key !== "Enter" || !(mac ? e.metaKey : e.ctrlKey)) return null;
+  // Wave 2 item 3: the form takes focus when it opens, so plain Enter there starts the prefilled answer.
+  const plain = onForm && !e.ctrlKey && !e.metaKey;
+  if (e.key !== "Enter" || !(plain || (mac ? e.metaKey : e.ctrlKey))) return null;
   return allReady(seats) ? "launch" : "blocked";
 }
 
@@ -314,7 +316,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   useEffect(() => () => typing.cancel(), []);
   const onSheetKey = (e: KeyboardEvent) => {
     if (!sheet || e.defaultPrevented) return;
-    const what = sheetKey(e, seats, mac, busy);
+    const what = sheetKey(e, seats, mac, busy, e.target === box.current);
     if (busy && e.key === "Escape") e.preventDefault(); // Starting: the launch is under way and cannot be called off
     if (what === "close") {
       // Escape inside an open name field closes that field first (its own handler).
@@ -575,7 +577,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         {naming !== null && (
           <div className="count-row" role="group" aria-label="Save as team">
             <input className="seat-job" autoFocus type="text" maxLength={60} placeholder="Team name" aria-label="Team name" value={naming} onChange={(e) => setNaming(e.currentTarget.value)} onKeyDown={(e) => (e.key === "Enter" ? save() : e.key === "Escape" && setNaming(null))} />
-            <button className="btn primary" disabled={!naming.trim()} onClick={save}>
+            <button className="btn" disabled={!naming.trim()} onClick={save}>
               Save
             </button>
             <button className="btn" onClick={() => setNaming(null)}>
