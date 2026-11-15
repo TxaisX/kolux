@@ -74,6 +74,9 @@ export const explorerSearchKey = (map: Keymap, e: KeyLike, doc: Root = document)
   matchEvent(map, e, ["global"])?.id === "sidebar.search.toggle" && !heldByOverlay("sidebar.search.toggle", false, doc);
 
 /** The top bar's first control that takes focus: a disabled button (the sign-in mark while signed out) is passed over. */
+// Audit F12: since one grid per project (2026-11-13) the sidebar shows only project folder rows; the old
+// main and worktree rows stay in the page but hidden, so keyboard moves walk the folder rows alone.
+export const WORKSPACE_ROWS = ".sidebar .proj.folder[data-path]";
 export const CHROME_FIRST = "header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']";
 export const focusChrome = (doc: Pick<ParentNode, "querySelector"> = document): void => doc.querySelector<HTMLElement>(CHROME_FIRST)?.focus();
 
@@ -203,12 +206,12 @@ export function useWindowKeys(w: WindowBag) {
             setScreen("terminals");
             setSidebarOpen(true);
           });
-          const rows = [...document.querySelectorAll<HTMLElement>(".sidebar :is(button.branch, .sess[role=button])")];
+          const rows = [...document.querySelectorAll<HTMLElement>(WORKSPACE_ROWS)];
           const at = rows.findIndex((r) => r.classList.contains("sel"));
           if (hit.id === "sidebar.focusWorktreeList") {
             // VIEW-050: a sidebar just opened lists its rows a moment later, so look again for up to a second.
             const focusList = (tries: number) => {
-              const list = [...document.querySelectorAll<HTMLElement>(".sidebar :is(button.branch, .sess[role=button])")];
+              const list = [...document.querySelectorAll<HTMLElement>(WORKSPACE_ROWS)];
               if (list.length) (list.find((r) => r.classList.contains("sel")) ?? list[0]).focus();
               else if (tries > 0) setTimeout(() => focusList(tries - 1), 50);
             };
