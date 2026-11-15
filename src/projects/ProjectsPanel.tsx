@@ -22,7 +22,7 @@ import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
 import { sessionDir, sessionLabel, sessionsByProject, focusPane, type FolderSession } from "./folderSessions";
 import { dialogWhere, setupMode } from "../launch/launchOrder";
-import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
+import { asksBeforeDelete, blocker, commitsNote, isTextField, keepsAtFirst, keyDeleteTarget, NOT_LISTED_WORKTREE, notInWorktree, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
@@ -97,6 +97,8 @@ import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { FILE_MANAGER, loadTargets, openIn } from "../editor/openIn";
+import { frontProjectRow } from "./frontRow";
+import { projectsInGroup } from "./groupMembers";
 
 /** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
@@ -173,6 +175,8 @@ type Props = {
   createName?: string;
   /** Bumped by Mod+Shift+Backspace (workspace.delete): asks to delete the workspace shown (PROJ-070). */
   deleteRequest: number;
+  /** Audit F13/F14: the folder the focused pane works in; Delete Workspace and Rename worktree act on it. */
+  workDir?: string | null;
   /** T-611: bumped by workspace.rename (PROJ-059): starts the inline rename of the workspace shown. */
   renameRequest?: number;
   /** T-611: the rename request was served (renamed, or nothing to rename); the window clears it. */
@@ -197,6 +201,12 @@ type Props = {
 // SESS-035: the projects the composer last made workspaces in, newest first (this computer only).
 /** T-543-b: controls not built yet stay in the code but are not shown. */
 const NOT_BUILT = false;
+// Audit F13: the last delete shortcut press served. Kept outside the panel, which unmounts with the sidebar,
+// so opening the sidebar again never replays an old press.
+let servedDelete = 0;
+// Review R35-01: when the panel first saw the press it has not served yet, and the focused folder then. A press
+// that has to wait for the lists is served only within 10 s of that and only for the same folder.
+let seenDelete: { n: number; at: number; dir: string | null } | null = null;
 const RECENT_KEY = "kolux.composer.recentProjects";
 const ADD_ITEM = "+add";
 const readRecent = (): string[] => {
@@ -215,7 +225,7 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
@@ -243,7 +253,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const revealed = useRef(0);
   useEffect(() => {
     if (!reveal || revealed.current === reveal) return;
-    const row = document.querySelector(".sidebar :is(button.branch, .sess[role=button]).sel");
+    const row = frontProjectRow(); // F23: the visible project header; the old worktree rows are hidden
     if (!row) return;
     revealed.current = reveal;
     row.scrollIntoView({ block: "nearest" });
@@ -533,8 +543,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // A Board status or nest change shows here at once, not on the next poll.
   useEffect(() => onWorkspaceStatus(window, () => void refreshWorktrees(projects).catch(fail)), [projects, refreshWorktrees]);
 
+  const listLoaded = useRef(false); // review R27-01: the project list has come in at least once (it may be empty)
   const reload = useCallback(async () => {
     const list = await invoke<Project[]>("project_list");
+    listLoaded.current = true;
     setProjects(list);
     const g = await invoke<Groups>("groups_get");
     setGroups((o) => keepNewer(o, g));
@@ -885,9 +897,18 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
   };
   const deleteGroup = async (g: Group, remove: boolean) => {
+    // F21: removing the projects closes their panes, so it asks and closes as removeProject does, for every
+    // project in the group and its sub-groups (the back end removes those too). On Cancel nothing is deleted.
+    const going = new Set(projectsInGroup(groups, g.id));
+    const members = remove ? projects.filter((p) => going.has(p.id)) : [];
+    if (remove) {
+      const folders = members.flatMap((p) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)]);
+      if (!(await onAskUnsaved(openDirs.filter((d) => folders.some((r) => underDir(d, r)))))) return;
+    }
     try {
-      const gone = headersGoneWithGroup(groups.members, g.id, remove); // read before the delete: the answer no longer lists the members
+      const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
+      if (members.length > 0) onRemovedAll(members.map((p) => p.path));
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
       if (colours) live.current.onSetting(HEADER_COLOURS_SETTING, colours);
       setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away
@@ -1048,33 +1069,47 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   useEffect(() => {
     // VIEW-048: the row under the pointer, read at key time so a row that just went away never counts
     const hovered = [...document.querySelectorAll<HTMLElement>("[data-path]:hover")].pop()?.dataset.path ?? null;
-    const target = deleteTarget(hovered, activeDir);
-    if (deleteRequest === 0 || target === null) return;
-    if (hovered !== null) {
-      // PROJ-075: the row under the pointer; nothing on a main checkout, a row already deleting, or while a text field has focus
-      const row = projects.flatMap((p) => (worktrees[p.id] ?? []).map((w) => ({ p, w }))).find(({ w }) => same(hovered, w.path));
-      const act = row ? pointerDelete(row.w, { fieldFocused: isTextField(document.activeElement), deleting: new Set(busy === "removing" && confirm ? [confirm.path] : []) }) : null;
-      if (!row || act === null) return;
-      if (act.action === "forget") return void askForget({ projectId: row.p.id, path: act.path, label: worktreeLabel(row.w) });
-      return void ask(row.p.id, row.w.path, worktreeLabel(row.w));
+    if (deleteRequest < servedDelete) [servedDelete, seenDelete] = [0, null]; // a count that went back is a new window's
+    if (deleteRequest === 0 || deleteRequest === servedDelete) return;
+    const dir = workDir ?? activeDir;
+    const waited = seenDelete?.n === deleteRequest;
+    const age = waited ? Date.now() - seenDelete!.at : 0; // R42-04: a clock set back gives a negative age, too old as well
+    if (!waited) seenDelete = { n: deleteRequest, at: Date.now(), dir };
+    else if (age < 0 || age > 10000 || !(dir === null || seenDelete!.dir === null ? dir === seenDelete!.dir : same(dir, seenDelete!.dir))) {
+      servedDelete = deleteRequest; // R35-01: too old, or the focus moved to another folder: dropped, nothing shown
+      return;
     }
-    for (const p of projects) {
-      const w = (worktrees[p.id] ?? []).find((x) => !x.isMain && same(target, x.path));
-      if (w) return void ask(p.id, w.path, worktreeLabel(w));
+    // Audit F13: with no worktree row under the pointer, the worktree the focused pane works in; never a main folder.
+    const rows = projects.flatMap((p) => (worktrees[p.id] ?? []).map((w) => ({ p, w, path: w.path, isMain: w.isMain })));
+    const hit = keyDeleteTarget(waited ? null : hovered, workDir ?? activeDir, rows, same); // a press that waited never takes a hovered row
+    if (hit === null && (!listLoaded.current || !projects.every((p) => p.id in worktrees))) return; // a sidebar the shortcut just opened has no lists yet (R27-01: an empty list is not a loaded one)
+    servedDelete = deleteRequest;
+    if (hit === null) {
+      const unlisted = keyDeleteTarget(null, workDir ?? activeDir, projects.flatMap((p) => [...(hiddenWts[p.id] ?? []), ...(fresh[p.id] ?? [])]), same); // R27-02
+      say("warn", unlisted ? NOT_LISTED_WORKTREE : notInWorktree("delete"));
+      return;
     }
-    say("warn", `The workspace ${hovered === null ? "shown" : "under the pointer"} is not one Kolux can delete (a project's main folder, or no workspace).`);
-  }, [deleteRequest]);
+    const { p, w } = hit.w;
+    if (hit.hovered) {
+      // PROJ-075: the row under the pointer; nothing on a row already deleting, or while a text field has focus
+      const act = pointerDelete(w, { fieldFocused: isTextField(document.activeElement), deleting: new Set(busy === "removing" && confirm ? [confirm.path] : []) });
+      if (act === null) return;
+      if (act.action === "forget") return void askForget({ projectId: p.id, path: act.path, label: worktreeLabel(w) });
+      return void ask(p.id, w.path, worktreeLabel(w));
+    }
+    void startDelete(p, w); // the same route as Delete in the pane's worktree label menu
+  }, [deleteRequest, worktrees, projects]);
   // T-611 (PROJ-059): workspace.rename opens the same inline rename as F2 on the workspace shown. A sidebar
   // the command just opened has no list yet, so the request stays pending until the lists come in; taking it
   // clears it, so it never fires later on another workspace or when the panel mounts again.
   useEffect(() => {
     if (renameRequest === 0) return;
-    const w = renameTarget(activeDir, projects, worktrees, same);
+    const w = renameTarget(workDir ?? activeDir, projects, worktrees, same); // audit F14: the focused pane's folder
     if (w === "wait") return;
-    if (w === "none") say("warn", "There is no workspace in front to rename.");
+    if (w === "none" || w.isMain) say("warn", notInWorktree("rename"));
     else startRename(w);
     onRenameTaken();
-  }, [renameRequest, worktrees, projects, activeDir]);
+  }, [renameRequest, worktrees, projects, activeDir, workDir]);
   // SESS-035: Recent (projects the composer made workspaces in), then the rest by match, then Add project.
   const projectItems = (q: string): PickItem[] => {
     const hints = pathHints(projects);
@@ -1363,6 +1398,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         const kept = await invoke<KeptBranch | null>("workspace_remove", { projectId: p.id, path, force: false, stamp: check.stamp, keepBranch: null });
         if (kept) setKept((old) => addKept(old, [{ ...kept, projectId: p.id }]));
         gone.push(path);
+        void invoke("editor_drafts_drop", { worktree: path }).catch(() => undefined); // audit F19: as a single delete does (EDIT-004)
       }
       say("ok", `removed ${b.order.length} workspaces, children first`);
       setBatch(null);
@@ -2450,7 +2486,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           body={
             <>
               Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
-              {dropGroup.remove && runNote(Object.entries(groups.members).filter(([, gid]) => gid === g.id).flatMap(([pid]) => (worktrees[pid] ?? []).map((x) => x.path)))}
+              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => (worktrees[pid] ?? []).map((x) => x.path)))}
               <label className="check">
                 <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
                 Also remove its projects from Kolux (their folders stay on disk)

@@ -25,6 +25,7 @@ export const sameProjects = sameProps<ProjectsProps>({
   settings: sameSettings, // read while drawing (group, sort, details): by value, less the window's saved layout
   onSetting: "same",
   activeDir: "same",
+  workDir: "same",
   onSelect: "same",
   onAdded: "same",
   onRemoved: "same",

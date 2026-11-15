@@ -150,3 +150,44 @@ test("a diff of a team worktree reuses only a tab of that worktree, never one of
   a.openDiff("src/a.ts", false, false, undefined, undefined, "C:\\r\\wts\\wt2");
   expect(setFocused).toHaveBeenLastCalledWith(2);
 });
+
+// Audit F1: Restart on a cell's first tab keeps it in its cell, with its pin, colour and active-tab mark.
+test("restarting a cell's first tab keeps its sibling tabs and marks with it", () => {
+  type P = { key: number; cwd: string; branch: null; agent: string; program: null; args: never[]; group?: number; account?: string };
+  let list: P[] = [
+    { key: 4, cwd: "C:\w", branch: null, agent: "codex", program: null, args: [], account: "a" },
+    { key: 6, cwd: "C:\w", branch: null, agent: "shell", program: null, args: [], group: 4 },
+  ];
+  let pinned = new Set([4]);
+  let colors: Record<number, string> = { 4: "red" };
+  let active: Record<number, number> = { 4: 4 };
+  const upd = <T,>(cur: () => T, set: (v: T) => void) => vi.fn((v: unknown) => set(typeof v === "function" ? (v as (x: T) => T)(cur()) : (v as T)));
+  const s = {
+    panes: list, activeDir: "C:\w", focused: 4, ptys: { current: { 4: 1 } }, nextKey: { current: 9 },
+    setPanes: upd(() => list, (v) => (list = v)), setRunning: vi.fn(), setFocused: vi.fn(),
+    setPinned: upd(() => pinned, (v) => (pinned = v)), setTabColors: upd(() => colors, (v) => (colors = v)), setActiveTab: upd(() => active, (v) => (active = v)),
+  } as unknown as WindowState;
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
+  a.restartPane(4);
+  const groupOf = (p: P) => p.group ?? p.key;
+  expect(list.map((p) => p.key)).toEqual([9, 6]);
+  expect(groupOf(list[0])).toBe(groupOf(list[1])); // still one cell
+  expect([...pinned]).toEqual([9]);
+  expect(colors).toEqual({ 9: "red" });
+  expect(active).toEqual({ 4: 9 });
+});
+
+// Audit F8: Split Down on a tab of a grid not in front stacks that tab's own grid, as splitPane does.
+test("splitting a tab out of a grid not in front stacks that grid, not the one in front", () => {
+  let stacked: Record<string, boolean> = { "C:\front": false };
+  const setStacked = vi.fn((f: (st: typeof stacked) => typeof stacked) => (stacked = f(stacked)));
+  const panes = [
+    { key: 1, cwd: "C:\front", branch: null, agent: "shell", program: null, args: [] },
+    { key: 5, cwd: "C:\other", branch: null, agent: "shell", program: null, args: [] },
+    { key: 6, cwd: "C:\other", branch: null, agent: "shell", program: null, args: [], group: 5 },
+  ];
+  const s = { panes, activeDir: "C:\front", setPanes: vi.fn(), setFocused: vi.fn(), setActiveTab: vi.fn(), setStacked } as unknown as WindowState;
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
+  a.splitTab(6, "down");
+  expect(stacked).toEqual({ "C:\front": false, "C:\other": true });
+});

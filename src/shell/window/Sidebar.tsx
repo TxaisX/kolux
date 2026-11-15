@@ -22,7 +22,7 @@ import type { Project } from "../../projects/model";
 export default function WindowSidebar() {
   const {
     screen, sidebarOpen, reveal, openDirs, sources, rowStates, unreadDirs,
-    settings, saveSetting, activeDir, select, agents, defaultId,
+    settings, saveSetting, activeDir, workDir, select, agents, defaultId,
     launching, addChooser, newTab, allAgents, agentPass, page, setPage, refresh,
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest,
     setScreen, setProjects, setOwner, setNames, leftWidth, setDragLeft,
@@ -81,6 +81,7 @@ export default function WindowSidebar() {
           settings={settings}
           onSetting={deeds.saveSetting}
           activeDir={activeDir}
+          workDir={workDir}
           onSelect={act.select}
           onFocusPane={act.focusPane}
           onRemoved={deeds.removed}

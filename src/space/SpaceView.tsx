@@ -96,6 +96,8 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
     try {
       for (const p of pending.picks) await askArchive(p.path);
       const batch = await invoke<Batch>("workspace_remove_many", removeArgs(projectId, pending.picks));
+      // EDIT-004: a removed folder's unsaved drafts go with it, as a single delete does; a failed one keeps them.
+      for (const i of batch.items) if (i.outcome === "removed") void invoke("editor_drafts_drop", { worktree: i.path }).catch(() => undefined);
       if (shownId.current !== projectId) return;
       const out = afterBatch(rows, batch);
       setRows(out.rows);

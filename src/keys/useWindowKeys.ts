@@ -28,7 +28,7 @@ import { forceReload, windowCommand } from "./commands";
 import { worktreesOffNote } from "../projects/singleFolder";
 import { scopesFor } from "./keyScopes";
 import { matchEvent, type KeyLike, type Keymap } from "./keymap";
-import { kPalette } from "./paletteKey";
+import { kPalette, richKeyTaken } from "./paletteKey";
 import { recording } from "./record";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
@@ -73,6 +73,9 @@ export const WINDOW_TERMINAL = new Set([
 export const explorerSearchKey = (map: Keymap, e: KeyLike, doc: Root = document): boolean =>
   matchEvent(map, e, ["global"])?.id === "sidebar.search.toggle" && !heldByOverlay("sidebar.search.toggle", false, doc);
 
+// Audit F12: since one grid per project (2026-11-13) the sidebar shows only project folder rows; the old
+// main and worktree rows stay in the page but hidden, so keyboard moves walk the folder rows alone.
+export const WORKSPACE_ROWS = ".sidebar .proj.folder[data-path]";
 /** The top bar's first control that takes focus: a disabled button (the sign-in mark while signed out) is passed over. */
 export const CHROME_FIRST = "header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']";
 export const focusChrome = (doc: Pick<ParentNode, "querySelector"> = document): void => doc.querySelector<HTMLElement>(CHROME_FIRST)?.focus();
@@ -138,7 +141,7 @@ export function useWindowKeys(w: WindowBag) {
         (kind === "preview" && [matchEvent(keymap, e, ["editor"])].find((h) => h?.id === "editor.addReviewNote"));
       // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
       const hit = kPalette(found, keymap, e, document.activeElement);
-      if (!hit || heldByTerminal(hit.id, settings)) return;
+      if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
       if (heldByOverlay(hit.id, !!switcherRef.current)) {
         e.preventDefault(); // the overlay's own key handlers still see it; the webview's built-in action does not run
         return;
@@ -203,12 +206,12 @@ export function useWindowKeys(w: WindowBag) {
             setScreen("terminals");
             setSidebarOpen(true);
           });
-          const rows = [...document.querySelectorAll<HTMLElement>(".sidebar :is(button.branch, .sess[role=button])")];
+          const rows = [...document.querySelectorAll<HTMLElement>(WORKSPACE_ROWS)];
           const at = rows.findIndex((r) => r.classList.contains("sel"));
           if (hit.id === "sidebar.focusWorktreeList") {
             // VIEW-050: a sidebar just opened lists its rows a moment later, so look again for up to a second.
             const focusList = (tries: number) => {
-              const list = [...document.querySelectorAll<HTMLElement>(".sidebar :is(button.branch, .sess[role=button])")];
+              const list = [...document.querySelectorAll<HTMLElement>(WORKSPACE_ROWS)];
               if (list.length) (list.find((r) => r.classList.contains("sel")) ?? list[0]).focus();
               else if (tries > 0) setTimeout(() => focusList(tries - 1), 50);
             };

@@ -2,6 +2,8 @@
 // sessions pass the filters, how they group, and how a folder is labelled. The Rust side
 // (session_list.rs) finds the sessions; the panel only draws what these functions return.
 
+import { gridOf } from "../workspaces";
+
 export type Session = { agent: string; id: string; title: string; modifiedMs: number; bytes: number; turns: number; dir: string | null };
 export type GroupBy = "none" | "folder" | "agent" | "project";
 export type SortBy = "recent" | "oldest" | "title";
@@ -34,10 +36,12 @@ export function parseQuery(text: string): Query {
 
 export type Project = { path: string };
 
-/** The project root a folder sits under (the deepest one); a blank root never matches; none gives the folder itself. */
+/** The project root a folder sits under (the deepest one); a blank root never matches; none gives the folder itself.
+ *  F26: a worktree outside its project's folder (the default workspaces folder) counts under the project whose grid
+ *  shows it (`gridOf`). */
 export function projectOf(dir: string | null, projects: Project[]): string | null {
   if (dir === null) return null;
-  const d = normPath(dir);
+  const d = normPath(gridOf(dir) ?? dir);
   const roots = projects.map((p) => p.path.trim()).filter((p) => p !== "").map(normPath);
   const home = roots.filter((r) => d === r || d.startsWith(`${r}/`)).sort((a, b) => b.length - a.length)[0];
   return home ?? d;

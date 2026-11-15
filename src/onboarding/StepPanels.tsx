@@ -2,7 +2,7 @@
 // new-workspace composer with a short tour, notifications offers sound choices (and on macOS a
 // permission card), the default-agent step shows an agent picker with a fold-out list of fallback
 // agents, and the setup-script step offers to automate workspace setup. The rules are in actions.ts.
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "../settings/useSettings";
 import { openSettings } from "../settings/pages";
@@ -21,6 +21,8 @@ import { SkillStop, UsageStop } from "./LiveStopCards";
 import { AWAKE_KEY, HOOKS_OFF_HELP } from "../launch/KeepAwakeCard";
 import { WRITER_INSTRUCTIONS_KEY, WRITER_KEY } from "../scm/generate";
 import { integrationSteps, readSeenCached, restale, taskSummary, UNSEEN, type Seen } from "./integrations";
+import { frontProjectPath } from "../projects/frontRow";
+import { WindowStore } from "../shell/window/store";
 
 /** The first copy of `sel` that is really on screen. */
 function shown(sel: string): HTMLElement | null {
@@ -52,6 +54,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null); // 49-ux2: say what went wrong instead of guessing "no git project"
+  const onScreenDir = useContext(WindowStore)?.activeDir ?? null; // R27-03: the grid on screen, known with the sidebar closed too
   const go = async () => {
     setBusy(true);
     setFailed(null);
@@ -59,7 +62,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
     try {
       const projects = await invoke<Proj[]>("project_list");
       const lists = await Promise.all(projects.map((p) => invoke<Place[]>("workspace_list", { projectId: p.id }).catch(() => null)));
-      const active = document.querySelector<HTMLElement>(".sess.sel")?.closest<HTMLElement>("[data-path]")?.dataset.path ?? null;
+      const active = onScreenDir ?? frontProjectPath(); // F24: the project on screen (its header), not a hidden worktree row
       const target = composeTarget(projects, lists, active);
       if (target.kind === "ask") return setAsk(true);
       composer.reset();

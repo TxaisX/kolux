@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isClean, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
+import { asksBeforeDelete, blocker, commitsNote, isClean, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 
 const clean: RemoveCheck = { changes: [], locked: null, nested: [], stamp: "h|" };
 
@@ -38,12 +38,6 @@ test("T-613: commits found on no other branch and no remote are named, keep the 
   expect(shownCommits(clean)).toEqual({ lines: [], more: 0 });
   expect(keepsAtFirst(three), "Keep the branch starts ticked").toBe(true);
   expect(keepsAtFirst(clean), "otherwise the workspace's own record decides").toBeUndefined();
-});
-
-test("VIEW-048: the shortcut deletes the hovered workspace before the active one", () => {
-  expect(deleteTarget("G:/ws/b", "G:/ws/a")).toBe("G:/ws/b");
-  expect(deleteTarget(null, "G:/ws/a")).toBe("G:/ws/a");
-  expect(deleteTarget(null, null)).toBe(null);
 });
 
 describe("PROJ-075: delete the workspace under the pointer", () => {

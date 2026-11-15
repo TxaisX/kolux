@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { actionById } from "./actions";
 import { chordsOf, labelParts, matchEvent, resolve, type KeyLike } from "./keymap";
-import { kPalette, paletteHint } from "./paletteKey";
+import { kPalette, paletteHint, richKeyTaken } from "./paletteKey";
 import { routeKey, type RoutedKey } from "../terminal/shellKeys";
 
 const ev = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({ key: k, code: k.length === 1 ? `Key${k.toUpperCase()}` : k, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...mods });
@@ -86,5 +86,19 @@ describe("Ctrl+K", () => {
     expect(paletteHint(win, inside(".cm-editor"))).toEqual(["Ctrl", "K"]);
     const mine = resolve({ keybindings: { "worktree.palette": "Mod+Alt+P" } }, "win32");
     expect(paletteHint(mine, inside(".xterm"))).toEqual(["Ctrl", "Alt", "P"]);
+  });
+});
+
+describe("R27-09: Ctrl+B makes text bold in a rich note view on any keyboard layout", () => {
+  const rich = inside(".md-rich");
+  it("the B key counts by where it sits, even when the layout types another letter there", () => {
+    expect(richKeyTaken(win, ev("b", { ctrlKey: true }), rich)).toBe(true);
+    expect(richKeyTaken(win, { ...ev("и", { ctrlKey: true }), code: "KeyB" }, rich), "Russian layout: the B key types и").toBe(true);
+    expect(richKeyTaken(mac, { ...ev("∫", { metaKey: true }), code: "KeyB" }, rich)).toBe(true);
+  });
+  it("other keys, other places and extra modifiers are left alone", () => {
+    expect(richKeyTaken(win, ev("n", { ctrlKey: true }), rich)).toBe(false);
+    expect(richKeyTaken(win, { ...ev("и", { ctrlKey: true }), code: "KeyB" }, inside(".xterm"))).toBe(false);
+    expect(richKeyTaken(win, { ...ev("B", { ctrlKey: true, shiftKey: true }), code: "KeyB" }, rich)).toBe(false);
   });
 });

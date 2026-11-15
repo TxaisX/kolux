@@ -8,6 +8,7 @@ import { usePulseRest } from "../chrome/pulseRest";
 import { restingLoop, wakeOnChange } from "./followLoop";
 import { features, hasUsed, noteUse } from "./features";
 import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, lookAt, START_GRID, nextShown, ownerOff, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
+import { frontProjectRow } from "../projects/frontRow";
 
 
 /** The first copy of `sel` that is really on screen (hidden copies are passed over). */
@@ -257,7 +258,7 @@ export default function Tours() {
       if (!r) return;
       // ONB-042: opening a surface that has a tour counts as using that feature, once per window.
       for (const t of TOURS) if (!surfaced.has(t.id) && tourFeature(t.id) && shown(t.trigger) && noteUse(t.id)) surfaced.add(t.id);
-      const workspaceTab = !!document.querySelector(".sess.sel");
+      const workspaceTab = !!frontProjectRow(); // F25: a project's terminals are in front (ONB-033), read from its visible header
       const auto = TOURS.find((t) => autoStarts({ id: t.id, auto: r.toursAuto, seen: r.toursSeen, slotUsed: slot.current, blocked: blocked(), tried: hasUsed("split") ? [...r.tried, "split"] : r.tried, workspaceTab }) && shown(t.trigger) && !ownerOff(settings.current, t.id));
       if (auto) {
         slot.current = true;

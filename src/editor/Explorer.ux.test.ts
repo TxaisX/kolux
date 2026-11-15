@@ -17,6 +17,7 @@ const FOUND = { files: [{ path: "src/a.ts", hits: [{ line: 3, col: 2, before: "x
 const calls: Array<[string, Record<string, unknown>]> = [];
 let gate: Promise<void> | null = null; // while set, dir_list waits for it (to see the refresh in progress)
 let trashReply: unknown = null; // what fs_trash answers (a refusal, in the undo test)
+const onDisk = new Map<string, { mtime: number; size: number }>(); // what file_stamps answers, by path (F31)
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args: Record<string, unknown> = {}) => {
     calls.push([cmd, args]);
@@ -31,6 +32,8 @@ vi.mock("@tauri-apps/api/core", () => ({
       return { path: from.slice(0, Math.max(from.lastIndexOf("/"), from.lastIndexOf("\\")) + 1) + String(args.name), id: "v2", error: null };
     }
     if (cmd === "fs_trash") return trashReply ?? [];
+    if (cmd === "fs_copy") return (args.paths as string[]).map((p) => ({ from: p, to: p.replace(/\.md$/, " copy.md"), id: "c1", error: null }));
+    if (cmd === "file_stamps") return (args.paths as string[]).map((p) => onDisk.get(p) ?? null);
     if (cmd === "editor_search") return FOUND;
     if (cmd === "get_settings") return {};
     return null;
@@ -38,7 +41,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 const warmed = vi.hoisted(() => ({ n: 0 }));
 vi.mock("../lazy/panes", () => ({ EditorPane: { warm: () => void warmed.n++ } }));
-vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => {}) }) }));
+const dropped = vi.hoisted(() => ({ on: null as null | ((e: { payload: Record<string, unknown> }) => void) })); // the desktop drop handler (R42-01)
+vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: (h: (e: { payload: Record<string, unknown> }) => void) => ((dropped.on = h), Promise.resolve(() => {})) }) }));
 
 let doc: FakeDocument;
 let store: Map<string, string>;
@@ -46,6 +50,7 @@ beforeEach(() => {
   calls.length = 0;
   gate = null;
   trashReply = null;
+  onDisk.clear();
   const dom = installDom();
   doc = dom.doc;
   store = dom.store;
@@ -182,6 +187,104 @@ describe("T-702 Explorer header", () => {
     await settle();
     expect(calls.filter(([c]) => c === "fs_trash").length).toBe(1);
     expect(calls.some(([c]) => c === "fs_restore")).toBe(false);
+  });
+
+  // F31: the entry is the same (so the identity check passes) but its text changed after the action.
+  const newFileThenUndo = async (changed: boolean) => {
+    const { container } = await explorer();
+    onDisk.set("/r/notes.md", { mtime: 1000, size: 0 });
+    await click(container, button(container, "New file"));
+    const field = input(container, "New file name");
+    await typeInto(container, field, "notes.md");
+    await fire(container, "keydown", field, { key: "Enter" });
+    await until(() => calls.some(([c]) => c === "file_stamps"), "the new file's stamp to be read");
+    await settle();
+    if (changed) onDisk.set("/r/notes.md", { mtime: 2000, size: 42 }); // someone typed into it since
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    await fire(container, "keydown", tree, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await settle();
+    return container;
+  };
+  it("undo of a new file that was changed since is refused and does not bin it (F31)", async () => {
+    const container = await newFileThenUndo(true);
+    await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("notes.md changed since that action, so it was not undone");
+  });
+  it("undo of a new file left as it was still bins it (F31)", async () => {
+    const container = await newFileThenUndo(false);
+    await until(() => calls.some(([c]) => c === "fs_trash"), "the file to be binned");
+    expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/notes.md"], expect: ["v1"], mustBeEmpty: [false] });
+    expect(container.textContent).not.toContain("changed since that action");
+  });
+
+  // R35-02: undo of a copy bins the copy, so a copy edited since is refused the same way.
+  const copyThenUndo = async (changed: boolean, gone = false) => {
+    const { container } = await explorer();
+    onDisk.set("/r/readme copy.md", { mtime: 1000, size: 5 });
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    const key = (k: string, code: string) => fire(container, "keydown", tree, { key: k, code, ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await click(container, find(container, (n) => n.attrs.class === "ex-name" && n.textContent === "readme.md")[0]);
+    await key("c", "KeyC");
+    await key("v", "KeyV");
+    await until(() => calls.some(([c, a]) => c === "file_stamps" && (a.paths as string[]).includes("/r/readme copy.md")), "the copy's stamp to be read");
+    await settle();
+    if (changed) onDisk.set("/r/readme copy.md", { mtime: 2000, size: 42 }); // someone typed into the copy since
+    if (gone) onDisk.delete("/r/readme copy.md"); // someone deleted the copy outside Kolux
+    await key("z", "KeyZ");
+    await settle();
+    return container;
+  };
+  it("undo of a copy that was changed since is refused and does not bin it (R35-02)", async () => {
+    const container = await copyThenUndo(true);
+    await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("readme copy.md changed since that action, so it was not undone");
+  });
+  it("undo of a copy that is gone says it is no longer there, not that it changed (R35-03)", async () => {
+    const container = await copyThenUndo(false, true);
+    await until(() => container.textContent.includes("no longer there"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("readme copy.md is no longer there, so there is nothing to undo");
+    expect(container.textContent).not.toContain("changed since that action");
+  });
+  it("undo of two copies where one is gone says this step was not undone, not that there is nothing to undo (R42-02)", async () => {
+    const { container } = await explorer();
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    (doc as unknown as { elementFromPoint: () => FakeNode }).elementFromPoint = () => tree;
+    onDisk.set("/outside/a copy.md", { mtime: 1000, size: 5 });
+    onDisk.set("/outside/b copy.md", { mtime: 1000, size: 5 });
+    dropped.on!({ payload: { type: "drop", paths: ["/outside/a.md", "/outside/b.md"], position: { x: 1, y: 1 } } });
+    await until(() => calls.some(([c, a]) => c === "file_stamps" && (a.paths as string[]).includes("/outside/b copy.md")), "the copies' stamps to be read");
+    await settle();
+    onDisk.delete("/outside/a copy.md"); // someone deleted one copy outside Kolux
+    await fire(container, "keydown", tree, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await until(() => container.textContent.includes("no longer there"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("a copy.md is no longer there, so this step was not undone");
+    expect(container.textContent).not.toContain("nothing to undo");
+  });
+  it("undo of a copy left as it was still bins it (R35-02)", async () => {
+    const container = await copyThenUndo(false);
+    await until(() => calls.some(([c]) => c === "fs_trash"), "the copy to be binned");
+    expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/readme copy.md"], expect: ["c1"] });
+    expect(container.textContent).not.toContain("changed since that action");
+  });
+
+  // R42-01: a file dropped in from outside the project is not in the tree, and its copy is checked too.
+  it("undo of a copy of a dropped-in file that was changed since is refused and does not bin it (R42-01)", async () => {
+    const { container } = await explorer();
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    (doc as unknown as { elementFromPoint: () => FakeNode }).elementFromPoint = () => tree;
+    onDisk.set("/outside/notes copy.md", { mtime: 1000, size: 5 });
+    dropped.on!({ payload: { type: "drop", paths: ["/outside/notes.md"], position: { x: 1, y: 1 } } });
+    await until(() => calls.some(([c, a]) => c === "file_stamps" && (a.paths as string[]).includes("/outside/notes copy.md")), "the copy's stamp to be read");
+    await settle();
+    onDisk.set("/outside/notes copy.md", { mtime: 2000, size: 42 }); // someone typed into the copy since
+    await fire(container, "keydown", tree, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("notes copy.md changed since that action, so it was not undone");
   });
 
   it("Open in opens its menu of apps (aria-expanded), and a second click closes it", async () => {

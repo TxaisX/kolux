@@ -350,14 +350,20 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
     // a workspace dot stays while another of its panes is still unread
     for (const d of dirsToClear(panes.map((x) => ({ key: x.key, cwd: viewOf(x) })), unreadPanes, seen)) markDir(d, false);
   }, [winFocused, seenInputs]);
+  const badgeSent = useRef<number | null>(null); // audit F10: the count last sent, so an unchanged one is not sent again
   useEffect(() => {
     // STAT-048: the taskbar or dock badge counts the workspaces with unseen results; zero clears it.
-    void invoke("badge_set", { count: badgeCount(unreadPanes, panes) }).catch(() => {});
+    const count = badgeCount(unreadPanes, panes);
+    if (count === badgeSent.current) return;
+    badgeSent.current = count;
+    void invoke("badge_set", { count }).catch(() => {});
   }, [unreadPanes, panes]);
   useEffect(() => {
     // USAGE-001: closing a pane forgets its reading.
     const open = new Set(panes.map((p) => p.key));
     setContext((c) => forgetGone(c, open));
+    setStamp((s) => forgetGone(s, open)); // audit F9: its state clock and quiet mark go too
+    setStale((s) => forgetGone(s, open));
     shownRef.current = forgetGone(shownRef.current, open);
     floorRef.current = forgetGone(floorRef.current, open);
     freshRef.current = forgetGone(freshRef.current, open);
