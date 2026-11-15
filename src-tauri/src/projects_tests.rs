@@ -559,6 +559,54 @@ fn p3_a_failed_add_removes_only_a_folder_it_made_itself() {
     }
 }
 
+/// R-04: a folder that was there and empty before a failed add is emptied again and kept; a folder
+/// that held a file before keeps it, and a link the add left inside is removed, never followed.
+#[test]
+fn r04_a_folder_empty_before_a_failed_add_is_empty_again_after_it() {
+    let repo = temp_repo("r04-clear");
+    let root = temp("r04-clear-root");
+    let fail = || Err::<(), String>("fatal: invalid reference: nope".to_string());
+    let outside = root.join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    fs::write(outside.join("keep.txt"), "k").unwrap();
+    let empty = root.join("empty");
+    fs::create_dir_all(&empty).unwrap();
+    assert!(add_retrying(&repo, &empty, None, &|| false, || {
+        fs::write(empty.join(".git"), "gitdir: C:/r/.git/worktrees/empty\n").unwrap();
+        fs::create_dir_all(empty.join("src")).unwrap();
+        fs::write(empty.join("src").join("half.rs"), "x").unwrap();
+        #[cfg(windows)]
+        let _ = std::os::windows::fs::symlink_dir(&outside, empty.join("link"));
+        fail()
+    })
+    .is_err());
+    assert!(empty.is_dir(), "the folder that was there is kept");
+    assert_eq!(fs::read_dir(&empty).unwrap().count(), 0, "and it is empty again");
+    assert_eq!(fs::read_to_string(outside.join("keep.txt")).unwrap(), "k", "a link inside is never followed");
+    // There with a file before: the file stays, and so does what the add left.
+    let held = root.join("held");
+    fs::create_dir_all(&held).unwrap();
+    fs::write(held.join("mine.txt"), "x").unwrap();
+    assert!(add_retrying(&repo, &held, None, &|| false, || {
+        fs::write(held.join(".git"), "gitdir: C:/r/.git/worktrees/held\n").unwrap();
+        fail()
+    })
+    .is_err());
+    assert_eq!(fs::read_to_string(held.join("mine.txt")).unwrap(), "x", "what was there before is never removed");
+    // There and empty before, filled by another program (no `.git` file): kept.
+    let theirs = root.join("theirs");
+    fs::create_dir_all(&theirs).unwrap();
+    assert!(add_retrying(&repo, &theirs, None, &|| false, || {
+        fs::write(theirs.join("report.txt"), "y").unwrap();
+        fail()
+    })
+    .is_err());
+    assert_eq!(fs::read_to_string(theirs.join("report.txt")).unwrap(), "y", "another program's files are never removed");
+    for d in [repo, root] {
+        let _ = fs::remove_dir_all(d);
+    }
+}
+
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
 fn project_with_workspaces(tag: &str) -> (Git, Store, Project, PathBuf, Vec<PathBuf>, Place) {
     let git = Git::detect().unwrap();

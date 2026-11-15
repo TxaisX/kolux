@@ -1213,10 +1213,22 @@ pub fn lock_held(err: &str) -> bool {
 
 /// What a failed `git worktree add` may have left: the folder, Git's record of it, and `made`, the
 /// branch the add was creating (none of that name existed before). The folder goes only when this
-/// add made it: it was not there before (`was_there`) and `git_made` says it is Git's.
-fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool) {
+/// add made it: it was not there before (`was_there`) and `git_made` says it is Git's. A folder that
+/// was there and empty before (`was_empty`, R-04) is emptied again and kept when `git_made` says what
+/// is in it now is Git's: nothing in it was there before, and a link inside is removed, never followed.
+fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool, was_empty: bool) {
     if !was_there && git_made(dest) {
         let _ = std::fs::remove_dir_all(dest);
+    } else if was_there && was_empty && git_made(dest) {
+        for entry in std::fs::read_dir(dest).into_iter().flatten().flatten() {
+            let path = entry.path();
+            let _ = match std::fs::symlink_metadata(&path) {
+                Ok(m) if m.is_dir() && !m.is_symlink() => std::fs::remove_dir_all(&path),
+                // A link (to a file or a folder) goes as a link; what it points at is never touched.
+                Ok(m) if m.is_symlink() => std::fs::remove_file(&path).or_else(|_| std::fs::remove_dir(&path)),
+                _ => std::fs::remove_file(&path),
+            };
+        }
     }
     let _ = crate::git::run(&["worktree", "prune"], Some(repo));
     if let Some(branch) = made.filter(|b| crate::git::run(&["rev-parse", "--verify", "--quiet", &format!("refs/heads/{b}")], Some(repo)).is_ok()) {
@@ -1284,8 +1296,9 @@ pub fn explain_create_error(raw: String) -> String {
 pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dyn Fn() -> bool, add: impl Fn() -> Result<(), String>) -> Result<(), String> {
     let mut waits = CREATE_WAITS_MS.iter();
     let was_there = std::fs::symlink_metadata(dest).is_ok();
+    let was_empty = was_there && git_made(dest) && std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none());
     while let Err(e) = add() {
-        clear_failed_add(repo, dest, made, was_there);
+        clear_failed_add(repo, dest, made, was_there, was_empty);
         if overtaken() {
             return Err(OVERTAKEN.to_string());
         }
