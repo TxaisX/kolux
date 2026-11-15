@@ -26,7 +26,7 @@ export default function WindowHosts() {
     wizard, settings, saveSetting, wizardSession, wizardClose, pickFolder, projects, endWizard, firstFolder,
     screen, setScreen, settingsRead, picked, notes, repoless, activeDir, putNote, setNotes, setPicked,
     reviewTargets, sendMenu, setSendMenu, sendReview, startReview, agents, defaultId, live, panes, ptys, titles,
-    owner, restoredKeys, setToast,
+    owner, restoredKeys, setToast, openStart,
   } = useWindow();
   return (
     <>
@@ -36,7 +36,7 @@ export default function WindowHosts() {
           start={wizard}
           ping={settings["notifyOnFinish" satisfies KindKey] !== false}
           onPing={(on) => saveSetting("notifyOnFinish" satisfies KindKey, on)}
-          onSession={(choice) => void wizardSession(choice)}
+          onSession={() => wizardSession(() => openStart({ here: activeDir !== null }))} // job 22: hand over to the Start form, on the folder in front
           hasFolder={projects.length > 0}
           onPickFolder={() => {
             if (wizardClose.retry()) return;

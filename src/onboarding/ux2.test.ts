@@ -8,7 +8,7 @@ import { OPEN_SETTINGS } from "../settings/pages";
 import { submitKeys } from "./submitKeys";
 import type { Want } from "./tour";
 import { tourNotice } from "./Tours";
-import { followAgents, lastMain, mainOff, NO_AGENT_WHY } from "./Wizard";
+import { followAgents, mainOff, NO_AGENT_WHY, START_MAIN } from "./Wizard";
 import { recordsHooks } from "./hooksOn";
 import { failedNote } from "./StepPanels";
 import { GH_LOGIN } from "./integrations";
@@ -34,9 +34,7 @@ describe("onboarding.md:4, :15: Open a session needs an agent", () => {
     expect(mainOff(3, true)).toBe(false); // never greyed out: with no agent a plain terminal is the pick (T-796)
     expect(mainOff(2, true, false)).toBe(true); // T-796: Your work waits for a folder
     expect(mainOff(2, true, true)).toBe(false);
-    expect(lastMain(false)).toBe("Pick a folder"); // no folder at the last screen: the one way on
-    expect(lastMain(true)).toBe("Open a session");
-    expect(lastMain(true, true)).toBe("Open a terminal");
+    expect(START_MAIN).toBe("Choose folders and agents"); // job 22: one button, with or without a folder or an agent
     expect(NO_AGENT_WHY).toMatch(/Settings > Agents/);
   });
 

@@ -23,12 +23,13 @@ test("the step table no longer describes sample data or kits", () => {
   expect(table()).not.toContain("Start kit");
 });
 
-test("the step table says Your work offers Pick a folder, and Open a session falls back to Add Project", () => {
+test("the step table says Your work offers Pick a folder, and the last step hands over to the Start form (job 22)", () => {
   const [, , work, session] = rows();
   expect(work[2]).toContain("Pick a folder");
   expect(work[3]).toBe("Continue");
-  expect(session[2]).toContain("Add Project");
-  expect(session[3]).toBe("Open a session");
+  expect(session[2]).toContain("Start form");
+  expect(session[2]).not.toMatch(/Add Project/);
+  expect(session[3]).toBe("Choose folders and agents");
 });
 
 // PR #55 review: with Default agent left on Auto, defaultAgentId is "" and ONB-010 guesses no agent, so Pick a folder

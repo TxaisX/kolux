@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ADD_PROJECT, firstFolderAgent, oneClick, openAt, REOPEN_WIZARD, reopenWizard, wizardCloser, type Outcome } from "./firstRun";
-import { isAiAgent } from "./agentKind";
 import { projectAddedNote } from "./sidebar";
 import { starAfterClose } from "./star";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { defaultAgentId, offeredAgents } from "../launch/agents";
-import { sessionAgent } from "./sessionAgent";
 
 type WizardDeps = {
   setToast: (text: string) => void;
@@ -22,13 +20,8 @@ type WizardDeps = {
 
 /** 49-ux2: what Pick a folder says while Add Project is up and the wizard is out of its way. */
 export const PICK_FOLDER_NOTE = "Add a project to finish setup. If you cancel, Help > Onboarding brings the setup back.";
-/** 49-ux2: Open a session with no AI agent installed used to do nothing. */
-export const NO_AGENT_NOTE = "No agent is installed yet, so no session was started. Install one in Settings > Agents, then open a session.";
 
-/** The grid tour after a finished setup; its code is read only then (PKG-6: tour.ts is not first-load code). */
-const startGridTour = () => void import("./tour").then((m) => m.startGridTour(), () => undefined);
-
-export function useWizard({ setToast, agents, settings, activeDir, startIn, openShell }: WizardDeps) {
+export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
   // ONB-001..005: the first-run wizard floats over the app while its record says it is open.
   const [wizard, setWizard] = useState<number | null>(null);
   const [wizardKnown, setWizardKnown] = useState(false); // job 13 F4: the Start form's ask at open waits for this answer
@@ -114,21 +107,12 @@ export function useWizard({ setToast, agents, settings, activeDir, startIn, open
     setToast(PICK_FOLDER_NOTE);
     window.dispatchEvent(new CustomEvent(ADD_PROJECT));
   };
-  // ONB-005: one plain session on the first available agent (the default first), empty prompt.
-  // T-612 (audit F08-onboarding-look-misc.2): with no workspace yet (Continue on "Your work" makes none since kits went,
-  // T-568), it leads to picking a folder, and the session opens there; a plain terminal opens with the folder anyway.
-  // T-796: `choice` is what the last screen picked: an agent's id, or the plain terminal's.
-  const wizardSession = async (choice?: string) => {
+  // Job 22 (FROZEN decision 8, one Start question): the last screen hands over to the Start form. Setup is stored as
+  // completed as before, the screens close, and then `open` brings up the form once. A failed save keeps the screens up
+  // with a toast; the same button tries that close again, with its hand-over.
+  const wizardSession = (open: () => void) => {
     if (wizardClose.retry()) return;
-    const plain = choice !== undefined && !isAiAgent(choice);
-    const agent = plain ? null : choice !== undefined ? (agents.find((a) => a.id === choice && a.installed) ?? null) : sessionAgent(agents, settings);
-    if (!activeDir) return pickFolder(agent && isAiAgent(agent.id) ? agent : null, false, plain);
-    if (plain) {
-      openShell();
-      return endWizard("completed", startGridTour);
-    }
-    if (!agent) return setToast(NO_AGENT_NOTE);
-    if ((await startIn(agent, activeDir, null, "", true)) !== null) endWizard("completed", startGridTour);
+    endWizard("completed", open);
   };
   return { wizard, setWizard, wizardKnown, wizardClose, endWizard, firstFolder, projectAdded, wizardSession, pickFolder };
 }

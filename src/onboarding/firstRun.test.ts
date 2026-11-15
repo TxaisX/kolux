@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { CHECKLIST_CHANGED, chordFires, clearReadFailure, closer, readFailed, connectFailed, escapeLeaves, firstAiConnected, firstConnection, firstFolderAgent, leaveKey, milestone, oneClick, openAt, reopenWizard, SCREENS, STATUSES_FAILED, wizardCloser, type Outcome } from "./firstRun";
-import { WizardView, sessionChoices } from "./Wizard";
+import { START_MAIN, WizardView } from "./Wizard";
 import { jargon } from "../glossary";
 
 const view = (at: number, more: Record<string, unknown> = {}) =>
@@ -62,11 +62,11 @@ test("ONB-004: the work screen offers Pick a folder and Continue; kits and sampl
   expect(html).toMatch(/>Continue<span/);
 });
 
-test("ONB-005: the last screen has the finish switch on and Open a session as its main button", () => {
+test("ONB-005 / job 22: the last screen has the finish switch on and the Start form hand-over as its main button", () => {
   const html = view(3);
   expect(html).toContain("4 of 4");
   expect(html).toMatch(/<input type="checkbox" role="switch" checked=""/);
-  expect(html).toMatch(/>Open a session<span/);
+  expect(html).toMatch(new RegExp(`>${START_MAIN}<span`));
   expect(html).not.toContain("kit");
   expect(view(3, { ping: false })).not.toMatch(/role="switch" checked=""/);
 });
@@ -309,11 +309,7 @@ test("ONB-006: the wizard's close button has an accessible name, and the dialog 
   expect(html).toMatch(/role="dialog"[^>]*tabindex="-1"/i);
 });
 
-// T-796 (p4a-04): step 3 holds Continue back until a folder exists, or says Skip; step 4 lets the user pick what starts.
-const claude = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:/bin/claude" };
-const codex = { id: "codex", name: "Codex", program: "codex", args: [], installed: true, path: "C:/bin/codex" };
-const shell = { id: "terminal", name: "Terminal", program: "powershell", args: [], installed: true, path: "C:/bin/powershell" };
-
+// T-796 (p4a-04): step 3 holds Continue back until a folder exists, or says Skip. Job 22: step 4 hands over to the Start form.
 test("T-796: with no folder the Your work screen greys Continue, says why and offers Skip for now; with one it does neither", () => {
   const none = view(2, { hasFolder: false });
   expect(none).toMatch(/<button[^>]*disabled=""[^>]*>Continue/);
@@ -326,22 +322,12 @@ test("T-796: with no folder the Your work screen greys Continue, says why and of
   expect(some).not.toContain("onb-why");
 });
 
-test("T-796: the last screen lists the installed agents and a plain terminal, marks the pick, and the button names it", () => {
-  const choices = sessionChoices([codex, claude, shell], { defaultAgent: "codex" });
-  const html = view(3, { hasFolder: true, choices, choice: "codex" });
-  expect(html).toContain('role="radiogroup"');
-  expect(html.match(/type="radio"/g)).toHaveLength(3);
-  expect(html).toMatch(/<input type="radio"[^>]*checked=""[^>]*\/?><span>Codex<\/span>/);
-  expect(html).toContain("Plain terminal");
-  expect(html).toMatch(/>Open a session<span/);
-  expect(view(3, { hasFolder: true, choices, choice: "terminal" })).toMatch(/>Open a terminal<span/);
-  expect(view(3, { hasFolder: false, choices, choice: "claude" })).toMatch(/>Pick a folder<span/);
-});
-
-test("T-796: the choices are the installed, switched-on AI agents with the default first, then one plain terminal", () => {
-  expect(sessionChoices([claude, codex, shell], {}).map((c) => c.id)).toEqual(["claude", "codex", "terminal"]);
-  expect(sessionChoices([claude, codex, shell], { defaultAgent: "codex" }).map((c) => c.id)).toEqual(["codex", "claude", "terminal"]);
-  expect(sessionChoices([claude, codex], { disabledAgents: ["claude"] }).map((c) => c.id)).toEqual(["codex", "terminal"]);
-  expect(sessionChoices([{ ...claude, installed: false }, shell], {}).map((c) => c.id)).toEqual(["terminal"]);
-  expect(sessionChoices([], {}).map((c) => c.id)).toEqual(["terminal"]);
+// Job 22: the AI pick moved to the Start form (FROZEN decision 8); the last screen lists no agents.
+test("job 22: the last screen lists no agents and its button reads the same with or without a folder", () => {
+  for (const hasFolder of [true, false]) {
+    const html = view(3, { hasFolder });
+    expect(html).not.toContain('role="radiogroup"');
+    expect(html).not.toContain('type="radio"');
+    expect(html).toMatch(new RegExp(`>${START_MAIN}<span`));
+  }
 });

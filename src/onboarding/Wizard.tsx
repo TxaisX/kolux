@@ -14,8 +14,6 @@ import GrokCard from "../settings/GrokCard";
 import { t } from "../i18n/lookup";
 import { usePackLoaded } from "../shell/usePackLoaded";
 import { chordFires, escapeLeaves, leaveKey, milestone, SCREENS } from "./firstRun";
-import { isAiAgent, TERMINAL_ID } from "./agentKind";
-import { defaultAgentId, menuAgents, offeredAgents } from "../launch/agents";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { sessionAgent } from "./sessionAgent";
 import { HOOKS_LINE, hooksDefault, recordHooks, recordsHooks } from "./hooksOn";
@@ -40,10 +38,6 @@ type ViewProps = {
   noAgent?: boolean;
   /** T-796: a folder exists (a project is added). Your work waits for one; the last screen needs one to start in. */
   hasFolder?: boolean;
-  /** T-796: what the last screen can start (installed agents, then a plain terminal), and which is picked. */
-  choices?: SessionChoice[];
-  choice?: string;
-  onChoice?: (id: string) => void;
   onRecheck?: () => void;
   cards?: ReactNode;
   onPing: (on: boolean) => void;
@@ -66,25 +60,16 @@ type ViewProps = {
 /** The main button is held back on Connect until an AI is connected, and on Your work until a folder exists (T-796). */
 export const mainOff = (at: number, connected: boolean, hasFolder = true) => (at === 1 && !connected) || (at === 2 && !hasFolder);
 
-/** T-796: one thing the last screen can start. */
-export type SessionChoice = { id: string; name: string };
-/** T-796: the installed, switched-on AI agents (the default first), then one plain terminal that needs no agent. */
-export const sessionChoices = (agents: AgentInfo[], settings: Record<string, unknown> | null | undefined): SessionChoice[] => [
-  ...menuAgents(offeredAgents(agents, settings ?? {}), defaultAgentId(settings))
-    .filter((a) => isAiAgent(a.id))
-    .map((a) => ({ id: a.id, name: a.name })),
-  { id: TERMINAL_ID, name: "Plain terminal" },
-];
 
 // 49-ux2: these live here, not in sessionAgent.ts, so the code loaded at start does not carry them.
-/** Why the last button picks a folder instead of opening a session while no agent is installed. */
-export const NO_AGENT_WHY = "No AI agent is installed yet, so only a plain terminal is offered. Install one in Settings > Agents, then check again.";
+/** Why the next step offers only a plain terminal while no agent is installed (the button still opens it). */
+export const NO_AGENT_WHY = "No AI agent is installed yet, so the next step offers a plain terminal. Install one in Settings > Agents, then check again.";
 /** T-796: why Continue waits on Your work. */
 export const NO_FOLDER_WHY = "Pick a folder to continue, or skip this for now.";
 
-/** The wizard's last button: what the pick starts, or the folder first when none exists yet (T-796: the pick is the user's). */
-export const lastMain = (hasFolder: boolean, plain = false): "Open a session" | "Open a terminal" | "Pick a folder" =>
-  !hasFolder ? "Pick a folder" : plain ? "Open a terminal" : "Open a session";
+/** Job 22 (FROZEN decision 8): the last screen's one main button. It closes setup and opens the Start form, which asks
+ *  for the folders, how many agents and which AI, model and effort (and offers Add folder and Terminal itself). */
+export const START_MAIN = "Choose folders and agents";
 
 /** Reads the agent list now and again whenever another view installs or changes one (agents-changed). Returns the stop. */
 export function followAgents(
@@ -105,9 +90,7 @@ export function followAgents(
 export function WizardView(p: ViewProps) {
   const screen = SCREENS[p.at];
   const hasFolder = p.hasFolder ?? true;
-  const choices = p.choices ?? [];
-  const pick = choices.find((c) => c.id === p.choice) ?? choices[0];
-  const main = ["Get started", "Continue", "Continue", lastMain(hasFolder, pick?.id === TERMINAL_ID)][p.at];
+  const main = ["Get started", "Continue", "Continue", START_MAIN][p.at];
   // DT-C239: the tiles' "at work" dots rest after a while with no input (each pulse frame redraws the blurred backdrop).
   const [resting, tiles] = usePulseRest<HTMLDivElement>(p.at === 0);
   const secondary = [null, "I’ll do this later", hasFolder ? null : "Skip for now", null][p.at];
@@ -162,16 +145,6 @@ export function WizardView(p: ViewProps) {
           )}
           {p.at === 3 && (
             <>
-              {choices.length > 0 && (
-                <div className="onb-choices" role="radiogroup" aria-label="Start with">
-                  {choices.map((c) => (
-                    <label key={c.id} className="onb-ping">
-                      <input type="radio" name="onb-start" checked={pick?.id === c.id} onChange={() => p.onChoice?.(c.id)} />
-                      <span>{c.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
               <label className="onb-ping">
                 <input type="checkbox" role="switch" checked={p.ping} onChange={(e) => p.onPing(e.target.checked)} />
                 <span>Tell me whenever an AI finishes</span>
@@ -232,8 +205,8 @@ type Props = {
   start: number;
   ping: boolean;
   onPing: (on: boolean) => void;
-  /** T-796: starts what the last screen picked ("terminal" is a plain terminal). */
-  onSession: (choice: string) => void;
+  /** Job 22: the last screen's main button: setup closes and the Start form opens. */
+  onSession: () => void;
   /** T-796: a folder exists, so Your work can go on and the last screen can start something. */
   hasFolder: boolean;
   /** Pick a folder from Your work: Add Project opens and the wizard comes back on the last screen. */
@@ -263,10 +236,6 @@ export default function Wizard(props: Props) {
   // Read again on every screen and on agents-changed: an agent installed from the Connect screen counts at once.
   useEffect(() => followAgents(() => invoke<AgentInfo[]>("agent_list"), (cb) => listen("agents-changed", (e) => cb(e.payload)), setAgents), [at]);
   const noAgent = agents !== null && sessionAgent(agents, settings) === null;
-  // T-796: what the last screen offers; the first is the default agent, or the plain terminal when no agent is installed.
-  const choices = sessionChoices(agents ?? [], settings);
-  const [picked, setPicked] = useState<string | null>(null);
-  const choice = choices.find((c) => c.id === picked)?.id ?? choices[0].id;
   const go = (to: number, later = false) => {
     // The stored step is the last screen finished (onboarding.rs); a failed save keeps the wizard going.
     if (to > at) invoke("onboarding_step", { step: to - 1 }).catch(() => {});
@@ -274,7 +243,7 @@ export default function Wizard(props: Props) {
     if (recordsHooks(at, to, later)) void recordHooks(hooksNow).catch(() => {});
     setAt(to);
   };
-  const main = () => [() => go(1), () => go(2), () => go(3), () => props.onSession(choice)][at]();
+  const main = () => [() => go(1), () => go(2), () => go(3), () => props.onSession()][at]();
   const secondary = () => (at === 1 ? go(2, true) : undefined);
   const off = mainOff(at, connected, props.hasFolder);
   useEffect(() => {
@@ -305,9 +274,6 @@ export default function Wizard(props: Props) {
       hooks={hooksNow}
       noAgent={noAgent}
       hasFolder={props.hasFolder}
-      choices={choices}
-      choice={choice}
-      onChoice={setPicked}
       onSkipWork={() => props.onClose()}
       onRecheck={readAgents}
       cards={<ConnectGrid cards={cards} />}

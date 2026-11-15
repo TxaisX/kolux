@@ -49,6 +49,21 @@ test("F4: the first search fails, a later search works: the form does not come u
   act(() => root.unmount());
 });
 
+test("job 22: the first-run screens hand over to the form; the ask at open never opens a second one", () => {
+  const open = vi.fn();
+  const root = mount();
+  // the first-run state is read, the screens are up, the search is still running
+  act(() => root.render(createElement(Probe, { ...base(open), firstRunKnown: false, firstRun: false })));
+  act(() => root.render(createElement(Probe, { ...base(open), firstRun: true })));
+  act(() => root.render(createElement(Probe, { ...base(open), firstRun: true, agentsDone: true })));
+  // the main button: the screens close and the hand-over opens the form, then the user closes it
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, sheetOpen: true })));
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true })));
+  expect(open).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
+
+
 test("F4: a pane added while the search runs, or a launch that ended: the form does not come up later", () => {
   for (const moved of [{ panes: 3 }, { launching: true }]) {
     resetStartAsk();
