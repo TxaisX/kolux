@@ -28,7 +28,9 @@ test("working is cyan and needs you yellow on every surface that shows both", ()
   expect(styles).toMatch(/\.pane-head \.st\.working \{ color: var\(--working\); \}/);
   expect(styles).toMatch(/\.pane-head \.st\.bad \{ color: var\(--status-bad\); \}/);
   expect(styles).toMatch(/\.inbox \.row\.working \.st \{ color: var\(--working\); \}/);
-  expect(styles).toMatch(/\.sb-list \.dot\.live, \.sb-list \.dot\.working \{ background: var\(--working\); \}/);
+  expect(styles).toMatch(/\.sb-list \.dot\.working \{ background: var\(--working\); \}/);
+  // R10-01: a running but idle session keeps its own state colour; "live" alone never paints the dot.
+  expect(styles).not.toMatch(/\.sb-list \.dot\.live[^{]*\{[^}]*background/);
   expect(tower).toMatch(/\.tower \.row\.working \.st \{ color: var\(--working\); \}/);
   expect(rows).toMatch(/\.session-dot\.running \{ background: var\(--working\); \}/);
 });

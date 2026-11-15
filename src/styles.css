@@ -212,7 +212,7 @@ input { font: inherit; }
 .sess { position: relative; display: flex; align-items: center; height: 32px; padding: 0 4px 0 26px; gap: 10px; border-radius: 6px; font-size: 13px; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 /* PROJ-063: the dot is the strongest live agent state; what needs you is amber, working green, done teal. */
 .sb-list .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dot-idle); flex: none; }
-.sb-list .dot.live, .sb-list .dot.working { background: var(--working); } /* D-02: working is cyan everywhere; green is done only */
+.sb-list .dot.working { background: var(--working); } /* D-02: working is cyan everywhere; green is done only */
 .sb-list .dot.done { background: var(--done-icon); }
 .sb-list .dot.failed, .sb-list .dot.unreachable { background: var(--status-bad); }
 .sb-list .dot.permission, .sb-list .dot.blocked, .sb-list .dot.waiting, .sb-list .dot.interrupted { background: var(--working-icon); }
