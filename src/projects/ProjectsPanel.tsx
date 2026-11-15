@@ -98,6 +98,7 @@ import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { FILE_MANAGER, loadTargets, openIn } from "../editor/openIn";
 import { frontProjectRow } from "./frontRow";
+import { projectsInGroup } from "./groupMembers";
 
 /** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
@@ -893,9 +894,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const deleteGroup = async (g: Group, remove: boolean) => {
     // F21: removing the projects closes their panes, so it asks and closes as removeProject does, for every
     // project in the group and its sub-groups (the back end removes those too). On Cancel nothing is deleted.
-    const outside = new Set(groupChoices(groups, g.id).map((x) => x.id)); // every group but this one and its sub-groups
-    const inside = new Set(groups.groups.filter((x) => !outside.has(x.id)).map((x) => x.id));
-    const members = remove ? projects.filter((p) => inside.has(groups.members[p.id])) : [];
+    const going = new Set(projectsInGroup(groups, g.id));
+    const members = remove ? projects.filter((p) => going.has(p.id)) : [];
     if (remove) {
       const folders = members.flatMap((p) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)]);
       if (!(await onAskUnsaved(openDirs.filter((d) => folders.some((r) => underDir(d, r)))))) return;
@@ -2472,7 +2472,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           body={
             <>
               Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
-              {dropGroup.remove && runNote(Object.entries(groups.members).filter(([, gid]) => gid === g.id).flatMap(([pid]) => (worktrees[pid] ?? []).map((x) => x.path)))}
+              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => (worktrees[pid] ?? []).map((x) => x.path)))}
               <label className="check">
                 <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
                 Also remove its projects from Kolux (their folders stay on disk)
