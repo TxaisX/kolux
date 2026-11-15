@@ -782,3 +782,8 @@ The direction in seven parts:
 
 ### follow-ups for c1-coord after T-821 and T-819 merge
 - [ ] T-823 · Docs and checks stop naming the web pane: README, CHANGELOG line, `docs/guide`, the glossary check and privacy audit paths · docs · open · gate: `pnpm check` green; grep for the embedded browser in user docs finds only the retirement note
+
+## 11. One Start form for every pane (Txais, 2026-11-15)
+
+Txais, 2026-11-15: "We don't want to open up six individual ones. It'll be one request that will be applied to the number of pages that we have that we want to open." Wave job 1 (lane launch-form). It changes SESS 007, SESS 018 and the layout strip (TERM 001); it keeps SESS 012, SESS 014, SESS 016, SESS 017, SESS 020, SESS 021 and SESS 022.
+- [x] T-824 · The Start form: one form asks which folders, how many in each and which AI, model and effort, and applies that one answer to every pane. The per-seat rows sit behind "Make each one different". Start runs the lineup in every ticked folder through `startSeats`, one folder at a time; over 24 in total keeps Start off. New session and the layout strip open it prefilled (the strip sets How many to the cells it adds) instead of adding chooser panes. Kolux asks once at start in the main window, with "Keep what was open"; Settings > General has "Ask what to open when Kolux starts" (on by default). Lineups keep effort and fast mode; a saved model the agent no longer lists comes back unpicked · launch · built 2026-11-15 · gate: `npx vitest run src/launch src/shell src/terminal src/settings src/keys` green; card `src/launch/__cards__/START-FORM.test.ts`; live check by the coordinator

@@ -47,11 +47,16 @@ The pane a new workspace opens, and what the header's + and the sidebar's choose
 | Control | Where | What it should do | What it does now | Verdict | Proof |
 |---|---|---|---|---|---|
 | Chooser pane | `src/launch/ChooserPane.tsx:311` (`data-testid="chooser-pane"`) | ask what to run, in which shape | draws seats and the agent grid | `live-pass` | `live-latency` (round 4): a new workspace opened the chooser, every seat got Terminal, Start ran |
-| Close | `ChooserPane.tsx:321` (`aria-label="Close New session"`) | close the chooser; blocked while starting | `onClose`, disabled while `busy` | `code` | `ChooserPane.tsx:321` |
+| Close | `ChooserPane.tsx:387` (`aria-label="Close Start"`) | close the chooser; blocked while starting | `onClose`, disabled while `busy` | `code` | `ChooserPane.tsx:321` |
 | Seat count | `ChooserPane.tsx:412` (`aria-label="How many sessions"`) + `:425` (any number) | 1..N sessions for this launch | sets the seat count | `code` | `ChooserPane.tsx:412-425` |
 | Launch shape | `ChooserPane.tsx:353` (`aria-label="Launch shape"`) | own folder vs one grid | sets the shape | `code` | `ChooserPane.tsx:353` |
 | Where the AIs work | `ChooserPane.tsx:469` (`aria-label="Where the AIs work"`, radiogroup) | each in its own worktree vs one folder | sets it | `code` | `ChooserPane.tsx:469` |
-| Task for every seat | `ChooserPane.tsx:499` | one prompt applied to every seat | stores it on the launch | `code` | `ChooserPane.tsx:499` |
+| Task for all of them | `ChooserPane.tsx:749` | one prompt applied to every seat | stores it on the launch | `code` | `ChooserPane.tsx:749` |
+| Folders (Start form, T-824) | `ChooserPane.tsx:413` (`aria-label="Folders"`) | tick the known projects to start in, most recent first; Add folder opens the add-project dialog | ticks are kept on the sheet; Start runs once per ticked folder | `code` | `src/launch/__cards__/START-FORM.test.ts` |
+| Which AI for all (Start form, T-824) | `ChooserPane.tsx:475` (`aria-label="Which AI"`) | one AI, model and effort for every seat; Mixed when seats differ | sets every seat at once | `code` | `src/launch/startForm.test.ts`, `START-FORM.test.ts` |
+| Make each one different (Start form, T-824) | `ChooserPane.tsx:534` (`details.chooser-each`) | the per-seat rows, shape, saved teams and Use last lineup, closed by default | native disclosure | `code` | `START-FORM.test.ts` |
+| Keep what was open (Start form, T-824) | `ChooserPane.tsx:777` | at app open, close the form and change nothing | same as Cancel, other words | `code` | `START-FORM.test.ts` |
+| Ask what to open when Kolux starts (T-824) | `src/settings/GeneralPage.tsx:53` | Settings switch, on by default | saves `askWhatToOpen` | `code` | `src/launch/startForm.test.ts` |
 | Seat job title / opening prompt | `ChooserPane.tsx:517`, `:639` | optional per-seat name and opening line | stored per seat | `code` | `ChooserPane.tsx:517,639` |
 | Which AI | `ChooserPane.tsx:534` (`seat-<n>-agents`), tiles `seat-agent-<id>`, `seat-agent-terminal` | one tile per agent plus a plain terminal | `aria-pressed` marks the pick; a missing agent's tile offers install | `live-pass` (Terminal tile) | `live-latency` (round 4): the Terminal tile was pressed for the seat and the shell started; the four agent tiles are still smoke flow 6 only |
 | Model / effort / fast mode | `ChooserPane.tsx:601`, `:616`, `:628` | per-seat model pick, effort, fast mode | inputs per seat | `code` | `ChooserPane.tsx:601-628` |
