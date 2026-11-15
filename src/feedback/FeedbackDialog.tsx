@@ -221,12 +221,12 @@ export default function FeedbackDialog() {
         </div>
         )}
         {refused.map((m) => (
-          <p key={m} role="alert" className="conn-detail" style={{ margin: 0, color: "var(--danger)" }}>
+          <p key={m} role="alert" className="conn-detail" style={{ margin: 0, color: "var(--status-bad)" }}>
             {m}
           </p>
         ))}
         {s.error && (
-          <p role="alert" className="conn-detail" style={{ margin: 0, color: "var(--danger)" }}>
+          <p role="alert" className="conn-detail" style={{ margin: 0, color: "var(--status-bad)" }}>
             {s.error}
           </p>
         )}

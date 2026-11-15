@@ -91,7 +91,7 @@ export default function ShareCard({ provider, rows, range, today, onClose }: Pro
           </button>
         </div>
         {error && (
-          <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--danger, #e5484d)" }}>
+          <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--status-bad, #ef5350)" }}>
             {error}
           </p>
         )}

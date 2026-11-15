@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 import { buildTheme, contrast, readAppearance, THEMES, type Theme } from "./theme";
 
 const GROUNDS = ["app-bg", "pane-bg", "surface", "strip-bg", "chip-bg", "row-selected"] as const;
-const TEXT = ["fg", "fg-row", "fg-muted", "fg-nav", "fg-label", "fg-faint", "mark", "link", "working", "done", "gauge-text", "warn", "danger", "cost-fg"] as const;
+const TEXT = ["fg", "fg-row", "fg-muted", "fg-nav", "fg-label", "fg-faint", "mark", "link", "working", "done", "gauge-text", "warn", "danger", "status-bad", "cost-fg"] as const;
 const ICON = ["fg-icon-dim", "working-icon", "done-icon"] as const;
 
 const settings = [

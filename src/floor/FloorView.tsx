@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Segmented } from "../settings/GeneralPage";
 import { indent, lanes, RANGES, rangeStart, staleNote, ticks, type Kind, type Range, type Track } from "./timeline";
 
-const COLOUR: Record<Kind, string> = { working: "var(--working)", needs: "var(--warn)", idle: "var(--line-strong)", unverifiable: "var(--line-subtle)" };
+const COLOUR: Record<Kind, string> = { working: "var(--working)", needs: "var(--working-icon)", idle: "var(--line-strong)", unverifiable: "var(--line-subtle)" };
 const WORD: Record<Kind, string> = { working: "Working", needs: "Needs you", idle: "Idle", unverifiable: "Unverifiable" };
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 

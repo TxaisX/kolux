@@ -35,6 +35,28 @@ test("working is cyan and needs you yellow on every surface that shows both", ()
   expect(rows).toMatch(/\.session-dot\.running \{ background: var\(--working\); \}/);
 });
 
+test("the palette's unread dot is cyan: its rule comes after the yellow dot rule, so it wins (R10-04)", () => {
+  const dot = styles.indexOf(".palette-mark .badge.dot {");
+  const unread = styles.indexOf(".palette-mark .badge.unread.dot { background: var(--working); }");
+  expect(dot).toBeGreaterThan(-1);
+  expect(unread).toBeGreaterThan(dot);
+});
+
+test("failures the first pass missed are red too, and the Floor's needs you is the pane header's yellow (R10-07)", async () => {
+  expect(styles).toMatch(/\.note\.error \{ color: var\(--status-bad\); \}/);
+  expect(styles).toMatch(/\.scm-handoff summary \.state\.error \{ color: var\(--status-bad\); \}/);
+  expect(styles).toMatch(/\.upd-card\.error \.upd-icon \{ color: var\(--status-bad\); \}/);
+  expect(styles).toMatch(/\.check-row \.word\.failed \{ color: var\(--status-bad\); \}/);
+  expect(styles).toMatch(/\.check-dot\.failed \{ background: var\(--status-bad\); \}/);
+  for (const f of ["../../feedback/FeedbackDialog.tsx", "../../usage/ShareCard.tsx", "../../editor/NamePrompt.tsx"]) {
+    const src = await read(f);
+    expect(src, f).not.toMatch(/var\(--danger/);
+    expect(src, f).toMatch(/var\(--status-bad/);
+  }
+  expect(styles).toMatch(/\.pane-head \.st\.attention \{ color: var\(--working-icon\); \}/);
+  expect(await read("../../floor/FloorView.tsx")).toMatch(/needs: "var\(--working-icon\)"/);
+});
+
 test("errors and deleted lines are red; stopped is grey", () => {
   expect(chat).toMatch(/\.chat-error \{ color: var\(--status-bad\); \}/);
   expect(chat).toMatch(/\.chat-out \.dl\.del \{ color: var\(--status-bad\); \}/);
