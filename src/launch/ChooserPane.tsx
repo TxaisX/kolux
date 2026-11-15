@@ -48,14 +48,14 @@ function DocsLink({ agent }: { agent: AgentInfo }) {
 }
 
 /** Txais 2026-11-08: the window behind a seat's Other button, listing installed agents without a button of their own. */
-function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: number; agents: AgentInfo[]; picked: string | null; onPick: (id: string) => void; onMore: () => void; onClose: () => void }) {
+function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: number | null; agents: AgentInfo[]; picked: string | null; onPick: (id: string) => void; onMore: () => void; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   useDialogFocus(box, onClose); // focus on open, Tab kept inside, Escape from anywhere, focus back on close
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={box} className="other-agents" role="dialog" aria-modal="true" aria-label="Other AI programs">
         <h2>Other AI programs</h2>
-        <span className="caption">{`Installed on this computer. Your pick runs in seat ${seat + 1}.`}</span>
+        <span className="caption">{seat === null ? "Installed on this computer. Your pick goes to all of them." : `Installed on this computer. Your pick runs in seat ${seat + 1}.`}</span>
         {agents.length === 0 ? (
           <span className="caption">No other AI programs are installed.</span>
         ) : (
@@ -77,6 +77,31 @@ function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: 
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Txais 2026-11-08: a button each for Claude Code, Codex, OpenCode and Grok (FEATURED), then Terminal and Other…; the rest sit
+ * behind Other. One group serves both the Start form's one row for all (`pick` null while the seats differ) and each seat. */
+function AgentButtons({ rows, pick, label, testid, idPrefix, onChoose, onOther }: { rows: AgentInfo[]; pick: string | null; label: string; testid: string; idPrefix: string; onChoose: (id: string) => void; onOther: () => void }) {
+  const other = pick && pick !== TERMINAL && !FEATURED.includes(pick) ? rows.find((x) => x.id === pick) : undefined;
+  return (
+    <div className="agent-grid" role="group" data-testid={testid} aria-label={label}>
+      {featuredRows(rows).map((a) => (
+        <button key={a.id} className="btn agent-btn" data-testid={`${idPrefix}-${a.id}`} aria-pressed={pick === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => onChoose(a.id)}>
+          <AgentMark id={a.id} size={28} />
+          <span className="agent-btn-name">{a.name}</span>
+          {!a.installed && <span className="agent-btn-note">not installed</span>}
+        </button>
+      ))}
+      <button className="btn agent-btn" data-testid={`${idPrefix}-terminal`} aria-pressed={pick === TERMINAL} title="A plain terminal, no AI" onClick={() => onChoose(TERMINAL)}>
+        <VendorMark agent="shell" size={28} />
+        <span className="agent-btn-name">Terminal</span>
+      </button>
+      <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={onOther}>
+        {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
+        <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
+      </button>
     </div>
   );
 }
@@ -159,9 +184,6 @@ type Props = {
   keepLabel?: string;
 };
 
-/** The one row's value while the seats differ. */
-const MIXED = "__mixed__";
-
 export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, onCopies, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null, defaultAgent = "", folders = null, keepLabel = "Cancel" }: Props) {
   const mac = useKeymap().platform === "darwin";
   // SESS-018: a Ctrl+Enter that cannot launch points at the footer's unfinished seat.
@@ -177,6 +199,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const rows = pickList(agents.map((a) => fixed[a.id] ?? a), detecting);
   const none = !detecting && !rows.some((a) => a.installed);
   const nameOf = (id: string) => agents.find((a) => a.id === id)?.name ?? id;
+  const noneNote = (
+    <span className="caption">
+      No AI programs have been found yet. Pick one below to install it, or{" "}
+      <button className="btn link" onClick={() => openSettings("accounts")}>
+        open Settings
+      </button>
+      .
+    </span>
+  );
   // TERM-012: a chooser Kolux focuses takes the keyboard, so typing no longer lands in the last pane.
   const box = useRef<HTMLElement>(null);
   const win = useContext(WindowStore);
@@ -211,7 +242,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     setSeat(i, { agent: null, model: null, effort: undefined, fast: undefined });
   };
   // Which seat's Other window is open (Txais 2026-11-08: the four main agents get buttons, the rest sit behind Other).
-  const [otherFor, setOtherFor] = useState<number | null>(null);
+  const [otherFor, setOtherFor] = useState<number | "all" | null>(null);
   // SESS-029: Grok and Cursor are asked for their models once per app run.
   const [, setLive] = useState(0);
   useEffect(() => {
@@ -474,40 +505,20 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         )}
         <div className="count-row" role="group" aria-label="Which AI">
           <span className="label">Which AI</span>
-          <select aria-label="Which AI" value={one === "mixed" ? MIXED : (oneShown ?? "")} onChange={(e) => e.currentTarget.value && chooseAll(e.currentTarget.value)}>
-            {one === "mixed" && (
-              <option value={MIXED} disabled>
-                Mixed
-              </option>
-            )}
-            {one !== "mixed" && !oneShown && (
-              <option value="" disabled>
-                {detecting ? "Looking for AI programs…" : "Pick an AI"}
-              </option>
-            )}
-            {rows.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.installed ? a.name : `${a.name} (not installed)`}
-              </option>
-            ))}
-            <option value={TERMINAL}>Plain terminal</option>
-          </select>
+          {one === "mixed" && <span className="caption">Mixed</span>}
+          {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
+          {none && noneNote}
+          {!detecting && <AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" testid="all-agents" idPrefix="all-agent" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
           {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length > 0 && (
-            <label className="choice">
-              Model
-              <select aria-label="Model for all" value={one.model ?? ""} onChange={(e) => onSeats(setAll(seats, { agent: one.agent, model: e.currentTarget.value, effort: undefined, fast: undefined }))}>
-                {one.model === null && (
-                  <option value="" disabled>
-                    Pick a model
-                  </option>
-                )}
-                {modelsFor(one.agent).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="choices" role="radiogroup" aria-label="Which model for all of them">
+              <span className="label">{one.model === null ? "Pick a model" : "Model"}</span>
+              {modelsFor(one.agent).map((m) => (
+                <label key={m.id} className="choice">
+                  <input type="radio" name={`all-${number}-model`} checked={one.model === m.id} onChange={() => onSeats(setAll(seats, { agent: one.agent, model: m.id, effort: undefined, fast: undefined }))} />
+                  {m.label}
+                </label>
+              ))}
+            </div>
           )}
           {one !== "mixed" && choiceOf(seats[0])?.efforts && (
             <label className="choice">
@@ -658,40 +669,8 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               </div>
               <div className="choices agent-pick">
                 {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
-                {none && (
-                  <span className="caption">
-                    No AI programs have been found yet. Pick one below to install it, or{" "}
-                    <button className="btn link" onClick={() => openSettings("accounts")}>
-                      open Settings
-                    </button>
-                    .
-                  </span>
-                )}
-                {!detecting && (
-                  <div className="agent-grid" role="group" data-testid={`seat-${i + 1}-agents`} aria-label={`Seat ${i + 1}: which AI`}>
-                    {featuredRows(rows).map((a) => (
-                      <button key={a.id} className="btn agent-btn" data-testid={`seat-agent-${a.id}`} aria-pressed={shownPick(seats, shown, i) === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => chooseAgent(i, a.id)}>
-                        <AgentMark id={a.id} size={28} />
-                        <span className="agent-btn-name">{a.name}</span>
-                        {!a.installed && <span className="agent-btn-note">not installed</span>}
-                      </button>
-                    ))}
-                    <button className="btn agent-btn" data-testid="seat-agent-terminal" aria-pressed={shownPick(seats, shown, i) === TERMINAL} title="A plain terminal, no AI" onClick={() => chooseAgent(i, TERMINAL)}>
-                      <VendorMark agent="shell" size={28} />
-                      <span className="agent-btn-name">Terminal</span>
-                    </button>
-                    {(() => {
-                      const pick = shownPick(seats, shown, i);
-                      const other = pick && pick !== TERMINAL && !FEATURED.includes(pick) ? rows.find((x) => x.id === pick) : undefined;
-                      return (
-                        <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={() => setOtherFor(i)}>
-                          {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
-                          <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
-                        </button>
-                      );
-                    })()}
-                  </div>
-                )}
+                {none && noneNote}
+                {!detecting && <AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} testid={`seat-${i + 1}-agents`} idPrefix="seat-agent" onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
                 {installBits(shownPick(seats, shown, i), i)}
               </div>
               {seat.agent !== null && seat.agent !== TERMINAL && modelsFor(seat.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
@@ -799,10 +778,10 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       </footer>
       {otherFor !== null && (
         <OtherAgents
-          seat={otherFor}
+          seat={otherFor === "all" ? null : otherFor}
           agents={otherRows(rows)}
-          picked={seats[otherFor]?.agent ?? null}
-          onPick={(id) => (pickAgent(otherFor, id), setOtherFor(null))}
+          picked={otherFor === "all" ? (one === "mixed" ? null : one.agent) : (seats[otherFor]?.agent ?? null)}
+          onPick={(id) => (otherFor === "all" ? chooseAll(id) : pickAgent(otherFor, id), setOtherFor(null))}
           onMore={() => (setOtherFor(null), openSettings("accounts"))}
           onClose={() => setOtherFor(null)}
         />

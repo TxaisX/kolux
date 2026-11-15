@@ -32,7 +32,8 @@ test("Start form: Folders, How many, one Which AI row, Make each one different c
 
 test("Start form: seats that differ show Mixed in the one row", () => {
   const html = form([{ agent: "claude", model: "opus" }, { agent: "claude", model: "sonnet" }], ["kolux"]);
-  expect(html).toMatch(/<option value="__mixed__"[^>]*selected[^>]*>Mixed<\/option>/);
+  expect(html.split('aria-label="Which AI"')[1].split('aria-label="Which AI for all of them"')[0]).toContain(">Mixed<");
+  expect(html.split('aria-label="Which AI for all of them"')[1].split("</div>")[0]).not.toContain('aria-pressed="true"');
 });
 
 test("Start form: two folders double the total; over 24 says so and Start is off", () => {

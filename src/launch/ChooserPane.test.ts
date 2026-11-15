@@ -155,11 +155,13 @@ const agentButtons = (html: string) => [...html.matchAll(/<button class="btn age
 test("Txais 2026-11-08: each seat has a button for Claude Code, Codex, OpenCode and Grok, then Terminal and Other; the rest sit behind Other", () => {
   const list = [agent("aider", "Aider", true), agent("grok", "Grok", false), agent("codex", "Codex", true), claude, agent("opencode", "OpenCode", true), agent("goose", "Goose", false)];
   const html = renderWith(list);
-  // Start form A: the one row for all is a dropdown (Txais 2026-11-15 sketch); each seat's own row keeps the buttons.
-  expect(html.split('class="chooser-each"')[1]).not.toContain("<select");
+  // The whole form: the one row for all and every seat use the same buttons; no <select> picks the agent anywhere.
+  expect(html.match(/<select/g) ?? []).toHaveLength(0);
+  expect(html).toContain('aria-label="Which AI for all of them"');
   expect(html).toContain('aria-label="Seat 1: which AI"');
-  expect(agentButtons(html).map((b) => b[0])).toEqual(["Claude Code", "Codex", "OpenCode", "Grok" + "not installed", "Terminal", "Other…"]);
-  expect(html.split('class="chooser-each"')[1]).not.toContain(">Aider<");
+  const lineup = ["Claude Code", "Codex", "OpenCode", "Grok" + "not installed", "Terminal", "Other…"];
+  expect(agentButtons(html).map((b) => b[0])).toEqual([...lineup, ...lineup]);
+  expect(html).not.toContain(">Aider<");
   expect(html).not.toContain(">Install<");
   expect(startButton(renderWith(list))).toContain("disabled");
   expect(startButton(renderWith(list, false, [{ agent: "claude", model: "opus" }]))).not.toContain("disabled");
@@ -172,6 +174,18 @@ test("Txais 2026-11-08: the seat's pick shows as a pressed button; an agent pick
   expect(html).toContain("Claude Code docs");
   expect(agentButtons(renderWith(list, false, [{ agent: TERMINAL, model: null }])).find((b) => b[0] === "Terminal")?.[1]).toBe("true");
   expect(agentButtons(renderWith(list, false, [{ agent: "aider", model: null }])).find((b) => b[0] === "Other: Aider")?.[1]).toBe("true");
+});
+
+test("Start form A: the one row presses the agent every seat shares; when seats differ it says Mixed and presses none", () => {
+  const list = [claude, agent("codex", "Codex", true)];
+  const head = (html: string) => html.split('aria-label="Which AI"')[1].split('aria-label="Which AI for all of them"')[0];
+  const row = (html: string) => html.split('aria-label="Which AI for all of them"')[1].split("</div>")[0];
+  const same = renderWith(list, false, [{ agent: "codex", model: null }, { agent: "codex", model: null }]);
+  expect(row(same)).toMatch(/aria-pressed="true"[^>]*>.*Codex/);
+  expect(head(same)).not.toContain("Mixed");
+  const mixed = renderWith(list, false, [{ agent: "codex", model: null }, { agent: "claude", model: "opus" }]);
+  expect(head(mixed)).toContain(">Mixed<");
+  expect(row(mixed)).not.toContain('aria-pressed="true"');
 });
 
 test("T-201-c SESS-017: any agent with its own page links out to it, the folded ones too", () => {
