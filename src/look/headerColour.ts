@@ -2,6 +2,9 @@
 // Saved as one setting, `headerColours`, a map of "p:<project id>" / "g:<group id>" to a palette id.
 // Only palette ids are saved; anything else (or nothing) reads as grey, which is also what every new
 // project starts with, so grey is never written.
+import { projectsInGroup } from "../projects/groupMembers";
+import type { Groups } from "../projects/groups";
+
 export const HEADER_COLOURS_SETTING = "headerColours";
 
 export type HeaderColour = { id: string; label: string; hex: string };
@@ -46,10 +49,10 @@ export function forgetHeaderColours(settings: Record<string, unknown>, gone: Rea
 }
 
 /** The headers that disappear with a deleted group: the group's own, plus (when its projects are removed
- *  too, `remove`) each project that was in it. `members` maps project id to group id and must be the
- *  map from BEFORE the delete: the answer to the delete no longer lists them. */
-export function headersGoneWithGroup(members: Readonly<Record<string, string>>, groupId: string, remove: boolean): Array<{ kind: HeaderKind; id: string }> {
-  const projects = remove ? Object.entries(members).filter(([, gid]) => gid === groupId).map(([pid]) => ({ kind: "p" as const, id: pid })) : [];
+ *  too, `remove`) each project that was in it or in one of its sub-groups, the same set the delete removes
+ *  (`projectsInGroup`). `groups` must be the ones from BEFORE the delete: the answer to the delete no longer lists them. */
+export function headersGoneWithGroup(groups: Groups, groupId: string, remove: boolean): Array<{ kind: HeaderKind; id: string }> {
+  const projects = remove ? projectsInGroup(groups, groupId).map((pid) => ({ kind: "p" as const, id: pid })) : [];
   return [{ kind: "g", id: groupId }, ...projects];
 }
 

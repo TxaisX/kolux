@@ -903,7 +903,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       if (!(await onAskUnsaved(openDirs.filter((d) => folders.some((r) => underDir(d, r)))))) return;
     }
     try {
-      const gone = headersGoneWithGroup(groups.members, g.id, remove); // read before the delete: the answer no longer lists the members
+      const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
       if (members.length > 0) onRemovedAll(members.map((p) => p.path));
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
