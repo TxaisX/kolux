@@ -38,6 +38,7 @@ test("R1: a late layout with 3 panes: no committed render has the layout in whil
   act(() => root.render(createElement(Probe, { read: false, late: null, seen })));
   expect(seen[seen.length - 1]).toEqual({ layoutIn: false, panes: 0 });
   act(() => root.render(createElement(Probe, { read: true, late: saved, seen })));
+  expect(seen.filter((r) => !r.layoutIn && r.panes > 0)).toEqual([]); // job 43 F3: the saved tabs never land before layoutIn
   expect(seen.filter((r) => r.layoutIn && r.panes === 0)).toEqual([]);
   expect(seen[seen.length - 1]).toEqual({ layoutIn: true, panes: 3 });
   act(() => root.unmount());
