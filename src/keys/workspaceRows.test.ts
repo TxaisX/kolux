@@ -34,7 +34,7 @@ const page = (selA: boolean): Row[] => [
 ];
 
 // What the key handler does: list the rows, find the selected one, pick the target.
-const press = (rows: Row[], how: { index: number } | { step: number }) => {
+const press = (rows: Row[], how: { index: number } | { step: 1 | -1 }) => {
   const list = rows.filter((r) => matches(r, WORKSPACE_ROWS));
   const at = list.findIndex((r) => r.cls.includes("sel"));
   const i = navTarget(list.length, at, how);
