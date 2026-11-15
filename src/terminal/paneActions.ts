@@ -481,7 +481,11 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const restartPane = (key: number) => {
     const fresh = nextKey.current++;
     delete ptys.current[key];
-    setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, key: fresh, account: undefined, setup: undefined, typed: undefined } : p)));
+    // audit F1: the pane keeps its cell (its tabs are grouped under the old key) and its pin, colour and active-tab mark
+    setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, key: fresh, group: p.group ?? key, account: undefined, setup: undefined, typed: undefined } : p)));
+    s.setPinned((pn) => (pn.has(key) ? new Set([...pn].map((k) => (k === key ? fresh : k))) : pn));
+    s.setTabColors((c) => (key in c ? { ...forgetColors(c, [key]), [fresh]: c[key] } : c));
+    setActiveTab((m) => Object.fromEntries(Object.entries(m).map(([g, k]) => [g, k === key ? fresh : k])));
     setRunning((r) => {
       const { [key]: _gone, ...rest } = r;
       return rest;
