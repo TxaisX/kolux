@@ -80,7 +80,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // Start form C: `given` is the chooser to start from when it is neither in the grid nor the open sheet (a second
   // ticked folder). True once the sessions have landed. `say` takes the closing line in place of the notice bar, so a
   // launch across folders can say every folder's outcome in one line (wave 2, item 2).
-  const startSeats = async (key: number, seats: Seat[], given?: Pane, say: (note: string | null) => void = setNotice): Promise<boolean> => {
+  // Job 13 F3: `o.form` is the form that started this launch (only that one closes); `o.quiet` lands the sessions
+  // without changing the screen, the page, the folder in front or the focus (a later folder of a Start across folders).
+  const startSeats = async (key: number, seats: Seat[], given?: Pane, say: (note: string | null) => void = setNotice, o: { form?: number; quiet?: boolean } = {}): Promise<boolean> => {
     const chooser = given ?? panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
     if (!chooser) return false;
     const tooMany = tooManySeats(seats.length);
@@ -214,13 +216,18 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // VIEW-021: a preset started from the Agents rail stays the selected session once it runs.
       setAgentSel((sel) => (sel === key ? made[0].key : sel));
       if (!inGrid) {
-        setSheet(null);
-        setScreen("terminals");
-        setPage(null);
+        const form = o.form ?? key;
+        setSheet((s) => (s?.key === form ? null : s));
+        if (!o.quiet) {
+          setScreen("terminals");
+          setPage(null);
+        }
       }
       setToast(made.length === 1 ? "Starting 1 session" : `Starting ${made.length} sessions`);
-      setActiveDir(team ? place : made[0].cwd);
-      setFocused(made[0].key);
+      if (!o.quiet) {
+        setActiveDir(team ? place : made[0].cwd);
+        setFocused(made[0].key);
+      }
       setRefresh((n) => n + 1);
       seatsSettled = true;
       const said = [...setupTrouble, ...trustLines.map(([line]) => line)];
@@ -251,6 +258,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     if (tooMany) return setNotice(tooMany);
     p.saveSetting(LAST_START_KEY, { folders: ids, count: seats.length });
     const said: string[] = [];
+    let landed = false; // the first folder that starts brings its grid to the front; later ones land quietly (job 13 F3)
     const results = await startEach(
       ids.map((id) => projects.find((x) => x.id === id)!),
       seats.length,
@@ -258,8 +266,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         const here = late.projectOf(from.cwd) === proj.id;
         const chooser: Pane = { ...from, key: n === 0 ? from.key : nextKey.current++, cwd: here ? from.cwd : proj.path, branch: here ? from.branch : null };
         const got: { note: string | null } = { note: null };
-        const ok = await startSeats(chooser.key, seats, chooser, (m) => void (got.note = m));
+        const ok = await startSeats(chooser.key, seats, chooser, (m) => void (got.note = m), { form: from.key, quiet: landed });
         if (!ok) return got.note ?? "It did not start. Try again.";
+        landed = true;
         if (got.note) said.push(got.note);
         return null;
       },
