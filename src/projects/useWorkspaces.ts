@@ -2,7 +2,8 @@
 // where the code used to sit: useWorkspaces holds the lists and requests (the window's state slot),
 // useWorkspaceActions opens, sets up and removes workspaces over the window's panes (the slot where
 // the setup terminal's code was). The grid's own state (stacked pairs, weights) stays in the window.
-import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { Pane } from "../App";
 import type { Screen } from "../chrome/TopBar";
 import type { Page } from "./ProjectsPanel";
@@ -17,8 +18,24 @@ import { emptySeat } from "../launch/seats";
 import { startPanes, type StartPrefill } from "./workspaceStart";
 import { selectView } from "./rows";
 
+/** Job 13 F1: the window reads the project list once at start, so the Start form knows the folders even with the
+ *  sidebar hidden or on the Agents screen. The sidebar's panel keeps writing the same list after that; a list it has
+ *  already written is not replaced. `done` runs whether the read worked or not. */
+export function readProjectsOnce(list: () => Promise<Project[]>, set: Dispatch<SetStateAction<Project[]>>, done: () => void, live: () => boolean = () => true): Promise<void> {
+  return Promise.resolve()
+    .then(list)
+    .then((l) => void (live() && set((cur) => (cur.length ? cur : l))), () => {})
+    .finally(() => void (live() && done()));
+}
+
 export function useWorkspaces(activeDir: string | null) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsRead, setProjectsRead] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void readProjectsOnce(() => invoke<Project[]>("project_list"), setProjects, () => setProjectsRead(true), () => live);
+    return () => void (live = false);
+  }, []);
   const [owner, setOwner] = useState<Record<string, string>>({});
   const [names, setNames] = useState<Record<string, string>>({}); // workspace folder -> the name typed for it (PROJ-021)
   const [refresh, setRefresh] = useState(0);
@@ -30,7 +47,7 @@ export function useWorkspaces(activeDir: string | null) {
   const [standIns, setStandIns] = useState<PendingCreate[]>([]); // PROJ-020: creates Git is still working on
   const [createName, setCreateName] = useState(""); // PROJ-057: the palette's typed name, prefilled there
   const [hist, setHist] = useState(EMPTY_HISTORY); // VIEW-046: workspaces and pages shown, for back and forward
-  return { projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist };
+  return { projects, setProjects, projectsRead, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist };
 }
 
 type ActionDeps = {

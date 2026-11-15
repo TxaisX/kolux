@@ -8,7 +8,9 @@ import { SAVED_SHAPES_KEY, applyLineup, defaultCopies, offeredLineup, restoreSha
 import { panesIn } from "../../workspaces";
 import { cellsOf } from "../../terminal/grid";
 import { ADD_PROJECT } from "../../onboarding/firstRun";
-import { recentFirst, type StartSheet } from "../../launch/startForm";
+import { addFolderVia, recentFirst, type StartSheet } from "../../launch/startForm";
+import { ADD_PROJECT as ADD_PROJECT_BUTTON } from "../../onboarding/actions";
+import { showsProjects } from "./sidebarScreens";
 import { useWindow } from "./store";
 import { ChooserPane } from "../../lazy/pages";
 
@@ -24,6 +26,7 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
   const {
     agents, agentPass, refreshAgents, settings, installedIds, lineupsOf, projectOf, projectFor, setChooser,
     setSeats, startSeats, startAcross, inGitFor, launching, panes, activeDir, saveSetting, projects, recentDirs,
+    screen, setScreen, setSidebarOpen,
   } = useWindow();
   // Start form C: the folders row, on the sheet only. Each folder's grid size counts toward its MAX_PANES.
   const folders = sheetOf
@@ -32,7 +35,17 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
         ticked: p.folders ?? [],
         used: Object.fromEntries(projects.map((x) => [x.id, cellsOf(panesIn(panes, x.path)).length])),
         onTick: (ids: string[]) => setChooser(p.key, { folders: ids }),
-        onAdd: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)), // the sidebar's Add project dialog
+        // the sidebar's Add project dialog; with the sidebar hidden or on Agents, its panel is shown first (job 13 F1)
+        onAdd: () =>
+          void addFolderVia({
+            panelShown: () => document.querySelector(ADD_PROJECT_BUTTON) !== null,
+            showPanel: () => {
+              setSidebarOpen(true);
+              if (!showsProjects(screen)) setScreen("terminals");
+            },
+            fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)),
+            wait: (ms) => new Promise((r) => setTimeout(r, ms)),
+          }),
       }
     : null;
   return (

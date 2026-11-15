@@ -91,10 +91,11 @@ export function startSummary(perFolder: number, folderNames: string[], what: str
 
 /** Rule D: the Start form opens by itself once per app start, in the first window, after the settings and the
  * first agent search have answered, unless switched off, already shown, a launch is under way or a sheet is open. */
-export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; agentsDone: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean }): "ask" | "wait" | "skip" {
+export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; agentsDone: boolean; projectsRead?: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean }): "ask" | "wait" | "skip" {
   // D-15: the first-run screens already ask which AI and open the first session, so the form does not ask again.
   if (w.asked || !w.firstWindow || w.firstRun) return "skip";
-  if (!w.settingsRead || !w.agentsDone) return "wait";
+  // Job 13 F1: the folders are read too, so the form never says "Add a folder first." or ticks none because the list came late.
+  if (!w.settingsRead || !w.agentsDone || w.projectsRead === false) return "wait";
   if (!w.on || w.launching || w.sheetOpen) return "skip";
   return "ask";
 }
@@ -157,4 +158,18 @@ export function acrossNote(results: FolderResult[]): string | null {
   const total = results.reduce((n, r) => n + r.count, 0);
   const down = failed.reduce((n, r) => n + r.count, 0);
   return [`${total - down} of ${total} started. ${down} need${down === 1 ? "s" : ""} you.`, ...failed.map((r) => `${r.name} did not start: ${r.error}`)].join(" ");
+}
+
+/** Job 13 F1: the form's "Add folder" uses the one Add project dialog, which lives in the sidebar's project panel. When
+ *  that panel is not drawn (sidebar hidden, or the Agents screen), it shows the panel first and fires the same request
+ *  once the panel is there to hear it. False when the panel never came. */
+export async function addFolderVia(h: { panelShown: () => boolean; showPanel: () => void; fire: () => void; wait: (ms: number) => Promise<void> }, tries = 20): Promise<boolean> {
+  if (h.panelShown()) return void h.fire(), true;
+  h.showPanel();
+  for (let i = 0; i < tries; i++) {
+    await h.wait(50);
+    // one more wait after it shows, so the panel's listener (set after it draws) is there
+    if (h.panelShown()) return await h.wait(50), h.fire(), true;
+  }
+  return false;
 }

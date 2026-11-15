@@ -190,7 +190,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     gridMap.current = unionGridMaps(gridMap.current, readGridMap(settings));
   }
   setGridRoots(gridMap.current.worktrees, gridMap.current.roots);
-  const { projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(gridOf(activeRaw));
+  const { projects, setProjects, projectsRead, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(gridOf(activeRaw));
   const [startScan, setStartScan] = useState<{ projects: Project[]; owner: Record<string, string> } | null>(null);
   const gridIn = useRef<unknown[]>([]);
   if (gridIn.current[0] !== projects || gridIn.current[1] !== owner || gridIn.current[2] !== startScan) {
@@ -247,7 +247,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
     settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
-    defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh,
+    defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, projectsRead, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
     setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,
   };
