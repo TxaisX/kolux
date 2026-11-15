@@ -38,6 +38,8 @@ const BASE_SCREENS = import.meta.glob(
     "./terminal/errors.ts",
     "./settings/pages.ts",
     "./sessions/AgentsPanel.tsx",
+    "./shell/endAll.ts",
+    "./settings/TerminalPage.tsx",
   ],
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
@@ -95,8 +97,8 @@ test("ONB-036: no banned word in the text shown on a newcomer screen", () => {
 });
 
 test("ONB-036: the scan reads the base screens and every window module, so the list cannot shrink silently", () => {
-  // A renamed base screen leaves the glob: 21 is the named list's guard.
-  expect(Object.keys(BASE_SCREENS)).toHaveLength(21);
+  // A renamed base screen leaves the glob: 23 is the named list's guard.
+  expect(Object.keys(BASE_SCREENS)).toHaveLength(23);
   // The window's list is shell/windowSource.ts's, read whole (its own test proves the folder joins there).
   for (const [file, text] of Object.entries(windowFiles)) expect(SOURCES[file], file).toBe(text);
 });

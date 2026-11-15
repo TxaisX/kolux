@@ -146,16 +146,16 @@ describe("S24: every item of the tab menu", () => {
   it("lists the title, pin, color, split and close items", async () => {
     const { c } = await open();
     const names = find(c, (n) => n.attrs.class === "name").map((n) => n.textContent);
-    expect(names).toEqual(["Change Title", "Pin tab", "Tab Color", "Split Right", "Split Down", "Close", "Close others", "Close to the right", "Close to the left", "Close all"]);
+    expect(names).toEqual(["Change title", "Pin tab", "Tab color", "Split right", "Split down", "Close", "Close others", "Close to the right", "Close to the left", "Close all"]);
   });
   it("each head item does what it says and closes the menu", async () => {
     const { c, item } = await open();
-    await click(c, item("Change Title"));
+    await click(c, item("Change title"));
     expect(fn("setRenamingTab")).toHaveBeenCalledWith(2);
     await click(c, item("Pin tab"));
     expect(fn("setPinned").mock.calls[0][0](new Set<number>())).toEqual(new Set([2]));
-    await click(c, item("Split Right"));
-    await click(c, item("Split Down"));
+    await click(c, item("Split right"));
+    await click(c, item("Split down"));
     expect(fn("splitTab").mock.calls).toEqual([[2, "right"], [2, "down"]]);
     const swatches = find(c, (n) => n.attrs.role === "menuitemradio");
     expect(swatches.length).toBe(TAB_COLORS.length);
@@ -182,7 +182,7 @@ describe("S24: every item of the tab menu", () => {
     await unmount();
     const again = await open();
     expect(again.item("Close to the right").attrs["aria-disabled"]).toBe("true");
-    expect(again.item("Split Right").hasAttribute("disabled")).toBe(true);
+    expect(again.item("Split right").hasAttribute("disabled")).toBe(true);
     fn("closeTab").mockClear();
     await click(again.c, again.item("Close to the right"));
     expect(fn("closeTab")).not.toHaveBeenCalled();

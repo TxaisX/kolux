@@ -213,7 +213,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
         {data && data.sessions.length === 0 && <div className="menu-hint">No terminal sessions are running.</div>}
         {data && data.sessions.length > 0 && !bulkQ && (
           <div className="res-row res-bulk" data-bulk="offer" style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-            <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal session that is running now; asks first">
+            <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal. Running agents stop. Saved files are not touched. Asks first.">
               End all
             </button>
             <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Kill every terminal pane and start over; asks first (the terminals run inside Kolux, there is no separate service)">

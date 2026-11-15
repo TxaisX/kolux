@@ -32,6 +32,6 @@ export function explain(error: string, where = ""): string {
 export function exitAdvice(code: number): string {
   if (code === 127) return "A program it needed isn't installed (code 127). Restart tries again.";
   if (code === 126 || code === 128) return `It couldn't run its program (code ${code}). A wrong path or a blocked file is the usual cause. Restart tries again.`;
-  if (code > 128) return `Something outside Kolux stopped it (code ${code}). Restart opens it again.`;
+  if (code > 128) return `The program was stopped (code ${code}). Restart opens it again.`;
   return `It stopped by itself (code ${code}). Restart opens it again here. Close pane gives the space to the others.`;
 }

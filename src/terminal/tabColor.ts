@@ -49,15 +49,15 @@ export type TabMenuEntry =
   | { id: "close"; label: string };
 
 /**
- * TERM-049: the entries before the close items, in the order the card lists them: Change Title
- * (only for terminal and agent tabs), pin or unpin, Tab Color, Split Right, Split Down.
+ * TERM-049: the entries before the close items, in the order the card lists them: Change title
+ * (only for terminal and agent tabs), pin or unpin, Tab color, Split right, Split down.
  */
 export function tabMenuHead(kind: string | undefined, pinned: boolean, split: { enabled: boolean; why: string | null }): TabMenuEntry[] {
   const out: TabMenuEntry[] = [];
-  if (!kind) out.push({ id: "rename", label: "Change Title" });
+  if (!kind) out.push({ id: "rename", label: "Change title" });
   out.push({ id: "pin", label: pinned ? "Unpin tab" : "Pin tab" });
-  out.push({ id: "color", label: "Tab Color" });
-  out.push({ id: "splitRight", label: "Split Right", disabled: !split.enabled, why: split.why });
-  out.push({ id: "splitDown", label: "Split Down", disabled: !split.enabled, why: split.why });
+  out.push({ id: "color", label: "Tab color" });
+  out.push({ id: "splitRight", label: "Split right", disabled: !split.enabled, why: split.why });
+  out.push({ id: "splitDown", label: "Split down", disabled: !split.enabled, why: split.why });
   return out;
 }

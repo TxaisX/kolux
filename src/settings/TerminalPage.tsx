@@ -226,7 +226,7 @@ export default function TerminalPage() {
       )}
       {settings && shells && (
         <section className="conn-card" data-section="shell">
-          <h2 className="conn-name">Default shell</h2>
+          <h2 className="conn-name">Default terminal</h2>
           <label className="num-field">
             <span>New terminals open in</span>
             <select value={shellOptions.some((o) => o.id === shellChoice) ? shellChoice : "auto"} onChange={(e) => save({ [DEFAULT_SHELL_FIELD]: e.target.value })}>
@@ -237,7 +237,7 @@ export default function TerminalPage() {
               ))}
             </select>
           </label>
-          <p className="conn-detail">Only the shells found on this computer are listed. Open terminals keep the shell they started with.</p>
+          <p className="conn-detail">Only the terminals found on this computer are listed. Open terminals keep the one they started with.</p>
         </section>
       )}
       {settings && <PowerShellCard settings={settings} platform={platform} onSave={save} />}
@@ -245,7 +245,7 @@ export default function TerminalPage() {
         <section className="conn-card" data-section="closing">
           <h2 className="conn-name">Closing terminals</h2>
           <Switch label="Ask before closing running terminals" checked={asksBeforeClose(settings)} onChange={(on) => save({ [CONFIRM_CLOSE_FIELD]: on })} />
-          <p className="conn-detail">An idle shell always closes straight away.</p>
+          <p className="conn-detail">An idle terminal always closes straight away.</p>
           <label className="conn-switch">
             <input type="checkbox" role="switch" checked={pinAsks(settings)} onChange={(e) => save({ [PIN_ASK_FIELD]: e.target.checked })} />
             Ask before closing a pinned tab
@@ -261,7 +261,7 @@ export default function TerminalPage() {
             value={readRemove(settings)}
             onPick={(v) => save({ [REMOVE_FIELD]: v })}
           />
-          <p className="conn-detail">Applies to Remove session on a running agent or a busy shell. A pane that has not started, or an idle shell, is removed straight away.</p>
+          <p className="conn-detail">Applies to Remove session on a running agent or a busy terminal. A pane that has not started, or an idle terminal, is removed straight away.</p>
         </section>
       )}
     </>
