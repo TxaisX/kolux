@@ -116,8 +116,8 @@ test("usage-status.md:19: the End all and Restart terminals hover texts use the 
   const offer = find(doc.body, (n) => n.attrs["data-bulk"] === "offer")[0];
   const titles = find(offer, (n) => n.localName === "button").map((b) => b.attrs.title);
   const q = bulkQuestion("restart", [1])!;
-  expect(titles).toEqual(["End every terminal. Running agents stop. Saved files are not touched. Asks first.", "Restart every terminal. Running agents stop. Saved files are not touched. Asks first."]);
-  expect(titles[1].startsWith(`${q.label}. `)).toBe(true);
+  expect(titles).toEqual(["End every terminal. Running agents stop. Saved files are not touched. Asks first.", "Ends every terminal. Reopen a pane for a fresh one. Running agents and programs stop. Saved files are not touched. Asks first."]);
+  expect([titles[1], q.text].every((t) => t.includes("Reopen a pane for a"))).toBe(true); // R2: neither promises a restart that does not happen
   expect(q.text).toContain("Running agents stop. Saved files are not touched.");
   expect(titles.join(" ")).not.toMatch(/kill/i);
 });

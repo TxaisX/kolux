@@ -12,7 +12,8 @@ describe("set-042 / set-060 end every session", () => {
     expect(all?.text).toContain("Saved files are not touched.");
     expect(all?.confirm).toBe("End all");
     const restart = bulkQuestion("restart", [4]);
-    expect(restart?.text).toContain("Restart every terminal (1 terminal session)? Running agents stop.");
+    expect(restart?.text).toContain("End every terminal (1 terminal session) so you can start fresh? Running agents stop.");
+    expect(restart?.text).toContain("Reopen a pane for a new terminal.");
     expect(restart?.confirm).toBe("Restart");
   });
 

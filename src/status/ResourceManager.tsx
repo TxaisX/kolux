@@ -216,7 +216,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
             <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal. Running agents stop. Saved files are not touched. Asks first.">
               End all
             </button>
-            <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Restart every terminal. Running agents stop. Saved files are not touched. Asks first.">
+            <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Ends every terminal. Reopen a pane for a fresh one. Running agents and programs stop. Saved files are not touched. Asks first.">
               Restart terminals
             </button>
           </div>

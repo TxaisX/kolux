@@ -16,7 +16,7 @@ export function bulkQuestion(kind: BulkKind, ids: number[]): { label: string; te
   const what = plural(ids.length);
   return kind === "all"
     ? { label: `End ${what}`, text: `End every terminal (${what})? Running agents stop. Saved files are not touched.`, confirm: "End all" }
-    : { label: "Restart every terminal", text: `Restart every terminal (${what})? Running agents stop. Saved files are not touched.`, confirm: "Restart" };
+    : { label: "Restart every terminal", text: `End every terminal (${what}) so you can start fresh? Running agents stop. Saved files are not touched. Reopen a pane for a new terminal.`, confirm: "Restart" };
 }
 
 /** Which of the ended ids a fresh read still lists (a kill that did not take). */
