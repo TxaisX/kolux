@@ -748,12 +748,18 @@ pub fn workspace_set_parent(git: State<'_, Git>, store: StoreState<'_>, project_
 }
 
 pub fn list_workspaces(git: &Git, store: &Store, project: &Project) -> Result<Vec<Worktree>, String> {
+    decorate(store, project, scan_workspaces(git, project)?)
+}
+
+/// B-03: the Git half of `list_workspaces` (the scan and the moved-folder repair). It reads no
+/// store, so a caller can run it without holding the app's state lock and `decorate` after.
+pub fn scan_workspaces(git: &Git, project: &Project) -> Result<Vec<Worktree>, String> {
     let repo = Path::new(&project.path);
     let mut all = git.worktrees(repo)?;
     if repair_moved(git, repo, &all) {
         all = git.worktrees(repo)?;
     }
-    decorate(store, project, all)
+    Ok(all)
 }
 
 /// PROJ-068: the Git folder a linked worktree points at from its `.git` file; None for the main

@@ -1268,11 +1268,15 @@ fn one_shot(command: &str) -> bool {
 /// CLI-023: every open terminal with its worktree and where the window shows it: its pane (a cell
 /// of the worktree's grid, counted from 1), its tab inside that pane, and whether it is in view.
 fn terminal_rows(ctx: &Ctx) -> Result<Vec<Value>, Fail> {
+    // B-03: git runs once per project with the app's state unlocked (agents poll this list); the
+    // lock is held only to read the projects and, after the scans, to decorate them.
+    let list = projects::load_projects(&*ctx.store.lock().map_err(|e| e.to_string())?);
+    let scanned: Vec<_> = list.into_iter().filter_map(|p| Some((projects::scan_workspaces(ctx.git, &p).ok()?, p))).collect();
     let mut trees: Vec<(String, Option<String>)> = Vec::new();
     {
         let store = ctx.store.lock().map_err(|e| e.to_string())?;
-        for p in projects::load_projects(&store) {
-            trees.extend(projects::list_workspaces(ctx.git, &store, &p).unwrap_or_default().into_iter().map(|w| (w.path, w.branch)));
+        for (all, p) in scanned {
+            trees.extend(projects::decorate(&store, &p, all).unwrap_or_default().into_iter().map(|w| (w.path, w.branch)));
         }
     }
     // T-262-b: the rows are the session tab inventory (the same list the app and the agents read).
@@ -4252,6 +4256,43 @@ mod tests {
         assert_eq!(text_of("terminal.send", &json!({ "terminal": "term-1", "delivered": ["text", "enter"], "receipt": "turn_began" })), "sent text+enter to term-1: the prompt was taken (the agent began a turn)");
         assert_eq!(text_of("terminal.send", &json!({ "terminal": "term-1", "delivered": ["text", "enter"], "receipt": "queued", "next": "kolux terminal read --terminal term-1 --screen" })), "sent text+enter to term-1: queued; look with kolux terminal read --terminal term-1 --screen");
         assert_eq!(text_of("terminal.wait", &json!({ "terminal": "term-1", "state": "done" })), "term-1 is done");
+        drop(ctx);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// B-03 (wave 2026-11-15): `terminal list` runs git with the store unlocked and decorates after;
+    /// each terminal still lands in its own worktree with its branch, and the store is free after.
+    #[test]
+    fn b03_terminal_list_still_maps_each_terminal_to_its_worktree() {
+        let dir = std::env::temp_dir().join(format!("kolux-b03rows-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let repo = dir.join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        git(&["init", "-q", "-b", "main"], &repo);
+        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "one"], &repo);
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        projects::add_project(&git_, &store.lock().unwrap(), &repo).unwrap();
+        {
+            let s = store.lock().unwrap();
+            let mut settings = s.settings();
+            settings["workspacesDir"] = json!(dir.join("ws").display().to_string());
+            settings["branchPrefix"] = json!("none");
+            s.save_settings(&settings).unwrap();
+        }
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
+        let req = |command: &str, args: Value| Request { id: "r".into(), token: String::new(), command: command.into(), cwd: dir.display().to_string(), args, pane: None, cli: String::new(), arrived: None };
+        let x = dispatch(&ctx, &req("worktree.create", json!({ "repo": "name:repo", "name": "xx" }))).unwrap()["path"].as_str().unwrap().to_string();
+        terminals.fake_session(31, &x, None);
+        terminals.fake_session(32, &repo.display().to_string(), None);
+        let rows = terminal_rows(&ctx).unwrap();
+        let of = |h: &str| rows.iter().find(|r| r["handle"] == h).cloned().unwrap();
+        assert!(of("term-31")["worktree"].as_str().is_some_and(|w| same_dir(w, &x)), "{rows:?}");
+        assert_eq!(of("term-31")["branch"], json!("xx"), "{rows:?}");
+        assert!(of("term-32")["worktree"].as_str().is_some_and(|w| same_dir(w, &repo.display().to_string())), "{rows:?}");
+        assert!(store.try_lock().is_ok(), "the store lock is let go");
         drop(ctx);
         let _ = std::fs::remove_dir_all(&dir);
     }

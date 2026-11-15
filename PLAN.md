@@ -787,3 +787,4 @@ The direction in seven parts:
 
 - [x] T-830 · Agent typed into a shell pane shows in `kolux terminal list`, the orchestration peer list and the app's session list (ORCH 060, B-01): the inventory falls back to the foreground poll as `Terminals::program` does · engine · done · test `b01_an_agent_typed_into_a_shell_is_credited_from_the_foreground_poll`
 - [x] T-831 · Release text never says `kolux-dev`: the usage lines `kolux agent-context` serves and the two automations hints go through the rename `help()` uses (CLI 001, B-04) · engine · done · test `usage_text_names_the_program_this_build_answers_to`
+- [x] T-832 · `kolux terminal list` no longer holds the app's state lock while git runs once per project: projects are read under the lock, git scans (and the moved-folder repair) run without it, the lock is taken again only to decorate (CLI 023, B-03) · engine · done · test `b03_terminal_list_still_maps_each_terminal_to_its_worktree`
