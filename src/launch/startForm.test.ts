@@ -140,8 +140,7 @@ test("job 13 F2: a new How many keeps the one answer, up and back down; mixed se
 });
 
 test("job 13 F2: the quick counts, the big-count button and the typed field all go through recountAll", async () => {
-  const { readFileSync } = await import("node:fs");
-  const src = readFileSync(new URL("./ChooserPane.tsx", import.meta.url), "utf8");
+  const src = (await import("./ChooserPane.tsx?raw")).default;
   expect(src).toMatch(/const recount = \(n: number\) => \{[^}]*recountAll\(shape, seats, n\)/);
   expect(src).toContain("onClick={() => recount(n)}");
   expect(src).toContain("onClick={() => recount(bigCount)}");
