@@ -32,6 +32,7 @@ vi.mock("@tauri-apps/api/core", () => ({
       return { path: from.slice(0, Math.max(from.lastIndexOf("/"), from.lastIndexOf("\\")) + 1) + String(args.name), id: "v2", error: null };
     }
     if (cmd === "fs_trash") return trashReply ?? [];
+    if (cmd === "fs_copy") return (args.paths as string[]).map((p) => ({ from: p, to: p.replace(/\.md$/, " copy.md"), id: "c1", error: null }));
     if (cmd === "file_stamps") return (args.paths as string[]).map((p) => onDisk.get(p) ?? null);
     if (cmd === "editor_search") return FOUND;
     if (cmd === "get_settings") return {};
@@ -213,6 +214,35 @@ describe("T-702 Explorer header", () => {
     const container = await newFileThenUndo(false);
     await until(() => calls.some(([c]) => c === "fs_trash"), "the file to be binned");
     expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/notes.md"], expect: ["v1"], mustBeEmpty: [false] });
+    expect(container.textContent).not.toContain("changed since that action");
+  });
+
+  // R35-02: undo of a copy bins the copy, so a copy edited since is refused the same way.
+  const copyThenUndo = async (changed: boolean) => {
+    const { container } = await explorer();
+    onDisk.set("/r/readme copy.md", { mtime: 1000, size: 5 });
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    const key = (k: string, code: string) => fire(container, "keydown", tree, { key: k, code, ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await click(container, find(container, (n) => n.attrs.class === "ex-name" && n.textContent === "readme.md")[0]);
+    await key("c", "KeyC");
+    await key("v", "KeyV");
+    await until(() => calls.some(([c, a]) => c === "file_stamps" && (a.paths as string[]).includes("/r/readme copy.md")), "the copy's stamp to be read");
+    await settle();
+    if (changed) onDisk.set("/r/readme copy.md", { mtime: 2000, size: 42 }); // someone typed into the copy since
+    await key("z", "KeyZ");
+    await settle();
+    return container;
+  };
+  it("undo of a copy that was changed since is refused and does not bin it (R35-02)", async () => {
+    const container = await copyThenUndo(true);
+    await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
+    expect(calls.some(([c]) => c === "fs_trash")).toBe(false);
+    expect(container.textContent).toContain("readme copy.md changed since that action, so it was not undone");
+  });
+  it("undo of a copy left as it was still bins it (R35-02)", async () => {
+    const container = await copyThenUndo(false);
+    await until(() => calls.some(([c]) => c === "fs_trash"), "the copy to be binned");
+    expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/readme copy.md"], expect: ["c1"] });
     expect(container.textContent).not.toContain("changed since that action");
   });
 

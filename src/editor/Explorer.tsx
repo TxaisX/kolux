@@ -52,7 +52,7 @@ export type Op =
   | { kind: "create"; path: string; id?: string | null; folder?: boolean; stamp?: Stamp | null }
   | { kind: "rename"; from: string; to: string; id?: string | null }
   | { kind: "trash"; paths: string[]; stamps?: (Stamp | null)[] }
-  | { kind: "copy"; from: string[]; dir: string; made: string[]; ids?: (string | null)[] }
+  | { kind: "copy"; from: string[]; dir: string; made: string[]; ids?: (string | null)[]; file?: boolean[]; stamps?: (Stamp | null)[] }
   | { kind: "move"; moves: [string, string][] }; // [from, to]
 type Gone = { path: string; permanent: boolean; error: string | null };
 type Placed = { from: string; to: string | null; id: string | null; error: string | null };
@@ -111,6 +111,7 @@ export function undoOf(op: Op): [CommandName, Record<string, unknown>] {
 export function keptStamps(op: Op): { paths: string[]; stamps: (Stamp | null)[] } | null {
   if (op.kind === "create" && op.stamp !== undefined) return { paths: [op.path], stamps: [op.stamp] };
   if (op.kind === "trash" && op.stamps) return { paths: op.paths, stamps: op.stamps };
+  if (op.kind === "copy" && op.stamps) return { paths: op.made.filter((_, i) => op.file?.[i]), stamps: op.stamps }; // R35-02: the copied files, not folders
   return null;
 }
 export function redoOf(op: Op): [CommandName, Record<string, unknown>] {
@@ -506,7 +507,12 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     invoke<Placed[]>("fs_copy", { paths, dir }).then((res) => {
       const landed = res.filter((p) => p.to);
       const made = landed.map((p) => p.to!);
-      if (made.length) record({ kind: "copy", from: landed.map((p) => p.from), dir, made, ids: landed.map((p) => p.id) });
+      const file = landed.map((p) => Object.values(kids).some((ns) => ns?.some((n) => n.path === p.from && n.kind === "file"))); // R35-02
+      if (made.length) {
+        const op: Op = { kind: "copy", from: landed.map((p) => p.from), dir, made, ids: landed.map((p) => p.id), file };
+        record(op);
+        noteStamps(op);
+      }
       const errors = errorsOf(res);
       if (errors.length) setNote({ text: errors.join("; "), bad: true });
       if (dir !== root) setOpen((o) => new Set(o).add(dir));
@@ -529,12 +535,12 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   };
   /** F31: the size and time of the files an action left, so a later binning step can tell they changed. */
   const noteStamps = (op: Op) => {
-    const paths = op.kind === "create" ? (op.folder ? [] : [op.path]) : op.kind === "trash" ? op.paths : [];
+    const paths = op.kind === "create" ? (op.folder ? [] : [op.path]) : op.kind === "trash" ? op.paths : op.kind === "copy" ? op.made.filter((_, i) => op.file?.[i]) : [];
     if (!paths.length) return;
     void invoke<(Stamp | null)[] | null>("file_stamps", { paths }).then((now) => {
       if (!Array.isArray(now)) return;
       if (op.kind === "create") op.stamp = now[0] ?? null;
-      else if (op.kind === "trash") op.stamps = paths.map((_, i) => now[i] ?? null);
+      else if (op.kind === "trash" || op.kind === "copy") op.stamps = paths.map((_, i) => now[i] ?? null);
     }, () => undefined);
   };
   const replay = (from: typeof done, to: typeof done, call: (op: Op) => [CommandName, Record<string, unknown>]) => {
@@ -551,9 +557,11 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
           const made = res as Placed[];
           op.made = made.flatMap((p) => (p.to ? [p.to] : [])); // the copies may get new names
           op.ids = made.flatMap((p) => (p.to ? [p.id] : []));
+          op.file = made.flatMap((p) => (p.to ? [op.file?.[op.from.indexOf(p.from)] ?? false] : [])); // R35-02: the new copies get new stamps
+          op.stamps = undefined;
         }
         to.current.push(op);
-        if (cmd === "fs_restore") noteStamps(op); // F31: what the restored files hold now
+        if (cmd === "fs_restore" || (op.kind === "copy" && cmd === "fs_copy")) noteStamps(op); // F31: what the restored (or copied again) files hold now
         setNote(null);
         if (cmd === "fs_move") follow((res as Placed[]).flatMap((p): [string, string][] => (p.to ? [[p.from, p.to]] : [])));
         if (cmd === "fs_rename") follow([[args.path as string, (res as Made).path]]);
