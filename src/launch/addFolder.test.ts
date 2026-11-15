@@ -84,7 +84,7 @@ test("F1: if the panel never comes, nothing is fired", async () => {
 
 test("F1: the form's Add folder goes through addFolderVia, opening the sidebar and leaving the Agents screen", () => {
   expect(seatChooserSrc).toContain("addFolderVia({");
-  expect(seatChooserSrc).toContain("setSidebarOpen(true)");
-  expect(seatChooserSrc).toContain('if (!showsProjects(screen)) setScreen("terminals")');
+  // job 37 A3: the hands (sidebar open, off Agents) are shared with Pick a folder; sidebarScreens.test.ts checks them
+  expect(seatChooserSrc).toContain("addFolderHands(setSidebarOpen, screen, setScreen)");
   expect(seatChooserSrc).toContain("window.dispatchEvent(new CustomEvent(ADD_PROJECT))");
 });
