@@ -256,7 +256,6 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     if (ids.length === 0) return void (await startSeats(from.key, seats));
     const tooMany = tooManySeats(seats.length * ids.length);
     if (tooMany) return setNotice(tooMany);
-    p.saveSetting(LAST_START_KEY, { folders: ids, count: seats.length });
     const said: string[] = [];
     let landed = false; // the first folder that starts brings its grid to the front; later ones land quietly (job 13 F3)
     const results = await startEach(
@@ -268,6 +267,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         const got: { note: string | null } = { note: null };
         const ok = await startSeats(chooser.key, seats, chooser, (m) => void (got.note = m), { form: from.key, quiet: landed });
         if (!ok) return got.note ?? "It did not start. Try again.";
+        if (!landed) p.saveSetting(LAST_START_KEY, { folders: ids, count: seats.length }); // only a Start that started is remembered (job 13 F8)
         landed = true;
         if (got.note) said.push(got.note);
         return null;

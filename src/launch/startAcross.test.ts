@@ -15,7 +15,7 @@ const projects = [
   { id: "b", name: "beta", path: "C:\beta" },
 ];
 
-test("F3: two folders; a new form opened after the first one lands stays open, and the view is not moved again", async () => {
+async function run() {
   type Sheet = { key: number } | null;
   const state: { sheet: Sheet } = { sheet: null };
   const form = { key: 50, cwd: "C:\alpha", branch: null, agent: "shell", program: null, args: [], seats: [seat()], folders: ["a", "b"] };
@@ -31,8 +31,15 @@ test("F3: two folders; a new form opened after the first one lands stays open, a
     setToast, ...calls,
   };
   const late = { projectOf: (cwd: string | null) => projects.find((p) => p.path === cwd)?.id ?? null, pendingLineup: { current: {} }, panesRef: { current: [] } };
-  const a = launchActions(s as never, { settingsRef: { current: {} }, saveSetting: vi.fn() } as never, late as never);
+  const saved: number[] = []; // landings seen when the last Start is saved
+  const saveSetting = vi.fn(() => void saved.push(landings));
+  const a = launchActions(s as never, { settingsRef: { current: {} }, saveSetting } as never, late as never);
   await a.startAcross(form as never, [seat()] as never);
+  return { state, calls, landings, saved, saveSetting };
+}
+
+test("F3: two folders; a new form opened after the first one lands stays open, and the view is not moved again", async () => {
+  const { state, calls, landings } = await run();
   expect(landings).toBe(2);
   expect(state.sheet).toEqual({ key: 77 });
   expect(calls.setScreen).toHaveBeenCalledTimes(1);
@@ -41,4 +48,11 @@ test("F3: two folders; a new form opened after the first one lands stays open, a
   expect(calls.setFocused).toHaveBeenCalledTimes(1);
   // every folder started: no "x of y" line
   expect(calls.setNotice).toHaveBeenLastCalledWith(null);
+});
+
+test("F8: the last Start is saved once, after the first folder has started, not before", async () => {
+  const { saved, saveSetting } = await run();
+  expect(saveSetting).toHaveBeenCalledTimes(1);
+  expect(saveSetting).toHaveBeenCalledWith("lastStart", { folders: ["a", "b"], count: 1 });
+  expect(saved[0]).toBeGreaterThanOrEqual(1);
 });
