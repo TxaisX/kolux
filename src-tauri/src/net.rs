@@ -136,7 +136,8 @@ fn icon_client_for(app: Option<Url>, near: bool, lookup: Lookup) -> Option<reqwe
     let policy = reqwest::redirect::Policy::custom(move |hop| {
         let same = hop.previous().first().is_some_and(|first| same_spot(first, hop.url()));
         if !hop_ok(hop.url(), hop.previous(), app.as_ref()) {
-            let to = hop.url().to_string();
+            // Only the scheme and host: the path or query of an address can carry a token.
+            let to = format!("{}://{}", hop.url().scheme(), hop.url().host_str().unwrap_or("?"));
             hop.error(format!("icon redirect to {to} refused"))
         } else if near && !same {
             hop.stop()
@@ -676,6 +677,24 @@ mod tests {
         });
         assert_eq!(tauri::async_runtime::block_on(fetch_icon(&clients, true, url, None)), Some("data:image/png;base64,BwcH".into()));
         assert_eq!(server.join().unwrap(), ["GET /favicon.ico HTTP/1.1", "GET /real.png HTTP/1.1"]);
+    }
+
+    /// A refused redirect names only the scheme and host it was sent to: the path and query of an
+    /// address can carry a token, and the error text may be shown or logged.
+    #[test]
+    fn a_refused_icon_redirect_names_the_host_and_never_the_query() {
+        let (url, first) = answer_once("HTTP/1.1 302 Found\r\nLocation: http://localhost:9/p/x.png?token=made-up-QUERY-VALUE\r\nContent-Length: 0\r\n\r\n".into(), 0);
+        let clients = icon_clients(None, system_lookup).unwrap();
+        let err = tauri::async_runtime::block_on(async { clients.near.get(url).send().await }).expect_err("the hop is refused");
+        first.join().unwrap();
+        let mut text = err.to_string();
+        let mut cause = std::error::Error::source(&err);
+        while let Some(e) = cause {
+            text.push_str(&format!(" | {e}"));
+            cause = e.source();
+        }
+        assert!(text.contains("icon redirect to http://localhost refused"), "{text}");
+        assert!(!text.contains("made-up-QUERY-VALUE") && !text.contains("/p/x.png"), "{text}");
     }
 
     /// An icon server on a loopback port that answers every request with a 3-byte image; the
