@@ -225,3 +225,8 @@ test("T-798 (P4B-01): worktrees off hides Create, Rename and Delete worktree fro
   expect(labels(true)).toEqual(commandRows(map, [], undefined, () => undefined).map((r) => r.label));
   expect(keysSrc).toContain("worktreesOffNote(hit.id)");
 });
+
+test("the pane title commands read like the pane menu: Set title… then Clear title", () => {
+  expect(actionById.get("terminal.setTitle")?.title).toBe("Set title…");
+  expect(actionById.get("terminal.clearPaneTitle")?.title).toBe("Clear title");
+});

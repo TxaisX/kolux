@@ -162,7 +162,7 @@ export const actions: Action[] = [
   a("terminal.equalizePaneSizes", "Equalize pane sizes", "terminal", []),
   a("terminal.expandPane", "Expand / collapse pane", "terminal", ["Mod+Shift+Enter"]),
   a("terminal.setTitle", "Set title…", "terminal", []),
-  a("terminal.clearPaneTitle", "Clear Pane Title", "terminal", []),
+  a("terminal.clearPaneTitle", "Clear title", "terminal", []),
   // T-717 (DT-C153): Mod+W is tab.close's, which closes the focused pane on the terminals screen too (TERM-014);
   // this id stays for a user's own chord and runs the same close.
   a("terminal.closePane", "Close active pane", "terminal", []),
