@@ -890,7 +890,13 @@ fn work_prompt(change: &Change) -> Option<&str> {
 /// (projects::rename_after_work makes every check, so only the first work renames it); `None` when
 /// no project knows the folder.
 pub fn rename_after_prompt(git: &crate::git::Git, store: &Mutex<crate::state::Store>, dir: &str, prompt: &str) -> Option<Result<crate::projects::RenameAnswer, String>> {
-    let project = crate::projects::project_for_path(git, &*store.lock().ok()?, dir)?;
+    // B-10: the store is held only for the cheap lookups; git (once per project) runs without it,
+    // as in `terminal list` (B-03). The guard is a temporary, dropped at the end of this statement.
+    let known = crate::projects::project_known(&*store.lock().ok()?, dir);
+    let project = match known {
+        Ok(p) => p,
+        Err(projects) => crate::projects::project_by_git(git, projects, dir)?,
+    };
     Some(crate::projects::rename_after_work(git, store, &project, dir, prompt))
 }
 
@@ -2482,6 +2488,41 @@ Content-Length: {}
         assert!(first.branch.as_deref().is_some_and(|b| b.ends_with("fix-the-login-bug")), "{first:?}");
         let again = rename_after_prompt(&git, &store, &made.path, "Something else entirely").unwrap().unwrap();
         assert!(!again.renamed, "{again:?}");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    /// B-10 (wave 2026-11-15): a folder only Git knows (a worktree made outside Kolux, beside the
+    /// repo) is still traced to its project, but through the store-free Git step: the store-held
+    /// part hands back the project list instead of running git under the lock.
+    #[test]
+    fn b10_a_worktree_only_git_knows_is_found_with_git_run_outside_the_store_lock() {
+        use crate::{git::Git, projects, state::Store};
+        let git = Git::detect().unwrap();
+        let base = std::env::temp_dir().join(format!("kolux-hooks-b10-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let (profile, repo, ext) = (base.join("profile"), base.join("repo"), base.join("ext"));
+        for d in [&profile, &repo] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        let run = |args: &[&str]| assert!(std::process::Command::new("git").args(args).current_dir(&repo).output().unwrap().status.success(), "git {args:?}");
+        run(&["init", "-q", "-b", "main"]);
+        run(&["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "first"]);
+        run(&["worktree", "add", "-q", "-b", "ext", &ext.to_string_lossy()]);
+        let store = Store::open(&profile).unwrap();
+        let project = projects::add_project(&git, &store, &repo).unwrap();
+        let store = Mutex::new(store);
+        let ext = ext.to_string_lossy().to_string();
+        // The store-held part finds nothing and hands the projects back for the Git step.
+        let list = projects::project_known(&store.lock().unwrap(), &ext).expect_err("only Git knows this folder");
+        assert_eq!(list.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), vec![project.id.as_str()]);
+        // The Git step needs no store at all.
+        assert_eq!(projects::project_by_git(&git, list, &ext).map(|p| p.id), Some(project.id.clone()));
+        // The rename path still reaches the project (it is not a suggested workspace, so it stays).
+        let answer = rename_after_prompt(&git, &store, &ext, "Fix the login bug").expect("the project is found through Git").unwrap();
+        assert!(!answer.renamed, "{answer:?}");
+        assert!(store.try_lock().is_ok(), "the store is free afterwards");
+        // The one-call form agrees.
+        assert_eq!(projects::project_for_path(&git, &store.lock().unwrap(), &ext).map(|p| p.id), Some(project.id));
         let _ = std::fs::remove_dir_all(&base);
     }
 

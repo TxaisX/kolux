@@ -2202,14 +2202,31 @@ fn linked_pr(store: &Store, path: &str) -> bool {
 /// T-107-d: the project a workspace at `path` belongs to: the one that saw it being made, else
 /// the one whose own folder holds it, else the one whose Git lists it as a worktree.
 pub fn project_for_path(git: &Git, store: &Store, path: &str) -> Option<Project> {
+    match project_known(store, path) {
+        Ok(p) => Some(p),
+        Err(projects) => project_by_git(git, projects, path),
+    }
+}
+
+/// B-10: the store-only part of `project_for_path` (the project that saw the folder made, else the
+/// one whose folder holds it); when neither, every project, for `project_by_git` to run with the
+/// store let go.
+pub(crate) fn project_known(store: &Store, path: &str) -> Result<Project, Vec<Project>> {
     let key = name_key(path);
     let projects = load_projects(store);
     if let Some(p) = projects.iter().find(|p| seen_of(store, p).is_some_and(|s| s.contains(&key))) {
-        return Some(p.clone());
+        return Ok(p.clone());
     }
     if let Some(p) = projects.iter().find(|p| name_key(&p.path) == key || key.starts_with(&format!("{}/", name_key(&p.path).trim_end_matches('/')))) {
-        return Some(p.clone());
+        return Ok(p.clone());
     }
+    Err(projects)
+}
+
+/// B-10: the Git part of `project_for_path`: the project whose Git lists `path` as a worktree. Runs
+/// `git worktree list` once per project, so it takes no store.
+pub(crate) fn project_by_git(git: &Git, projects: Vec<Project>, path: &str) -> Option<Project> {
+    let key = name_key(path);
     projects.into_iter().find(|p| git.worktrees(Path::new(&p.path)).is_ok_and(|ws| ws.iter().any(|w| name_key(&w.path) == key)))
 }
 
