@@ -23,7 +23,7 @@ import { codeHighlighting, editorMode } from "./syntax";
 import { ChevronDown, Close, List } from "../chrome/icons";
 import FileIcon from "./FileIcon";
 import CsvTable from "./CsvTable";
-import NotebookView from "./NotebookView";
+import NotebookView, { flushCells } from "./NotebookView";
 import SvgView from "./SvgView";
 import { insertError, insertPastedPicture, pastedPicture } from "./pictureBytes";
 import { applyImage } from "./richFormat";
@@ -380,7 +380,7 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
       },
       (err) => alive && setError(String(err)),
     );
-    editors.set(id, () => (needsName(path, root, diskOf(path)) ? (setNaming(true), Promise.resolve()) : saveFile(path, setStale, report.current.onToast)));
+    editors.set(id, () => (flushCells(path), needsName(path, root, diskOf(path)) ? (setNaming(true), Promise.resolve()) : saveFile(path, setStale, report.current.onToast)));
     return () => {
       alive = false;
       auto.cancel();

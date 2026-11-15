@@ -15,7 +15,14 @@ type Props = { path: string; loaded: number; hidden?: boolean; readOnly?: boolea
 const OUTPUT_LINES = 60;
 const KINDS: CellKind[] = ["code", "markdown", "raw"];
 
-function CellBox({ text, kind, readOnly, onEdit }: { text: string; kind: CellKind; readOnly: boolean; onEdit: (t: string) => void }) {
+// Audit F3: the editor's Save sends what a cell still holds (typed inside its 300 ms pause) before it writes.
+const cellFlush = new Map<string, Set<() => void>>();
+/** Sends every cell's pending text for the notebook at `path` to the file buffer now. */
+export function flushCells(path: string): void {
+  cellFlush.get(path)?.forEach((f) => f());
+}
+
+function CellBox({ path, text, kind, readOnly, onEdit }: { path: string; text: string; kind: CellKind; readOnly: boolean; onEdit: (t: string) => void }) {
   const [full, setFull] = useState(false);
   const [draft, setDraft] = useState(text);
   const timer = useRef<number | undefined>(undefined);
@@ -36,6 +43,16 @@ function CellBox({ text, kind, readOnly, onEdit }: { text: string; kind: CellKin
     },
     [],
   );
+  useEffect(() => {
+    const f = () => pending.current !== null && send(pending.current);
+    const all = cellFlush.get(path) ?? new Set<() => void>();
+    cellFlush.set(path, all);
+    all.add(f);
+    return () => {
+      all.delete(f);
+      if (all.size === 0 && cellFlush.get(path) === all) cellFlush.delete(path);
+    };
+  }, [path]);
   const send = (t: string) => {
     window.clearTimeout(timer.current);
     pending.current = null;
@@ -224,7 +241,7 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
                   </span>
                 )}
               </header>
-              <CellBox text={sourceOf(c)} kind={kindOf(c)} readOnly={readOnly} onEdit={(t) => change(withSource(nb, i, t))} />
+              <CellBox path={path} text={sourceOf(c)} kind={kindOf(c)} readOnly={readOnly} onEdit={(t) => change(withSource(nb, i, t))} />
               {out && out.shown && (
                 <pre className="nb-out" aria-label={`Cell ${i + 1} output`}>
                   {out.shown}
