@@ -48,10 +48,15 @@ test("failures the first pass missed are red too, and the Floor's needs you is t
   expect(styles).toMatch(/\.upd-card\.error \.upd-icon \{ color: var\(--status-bad\); \}/);
   expect(styles).toMatch(/\.check-row \.word\.failed \{ color: var\(--status-bad\); \}/);
   expect(styles).toMatch(/\.check-dot\.failed \{ background: var\(--status-bad\); \}/);
-  for (const f of ["../../feedback/FeedbackDialog.tsx", "../../usage/ShareCard.tsx", "../../editor/NamePrompt.tsx"]) {
+  // Only the error lines (role="alert") are held to red: a later --danger elsewhere, say a delete button, is fine.
+  const alerts = (src: string) => src.split("\n").filter((l) => l.includes('role="alert"'));
+  const red = (src: string) => alerts(src).length > 0 && alerts(src).every((l) => /var\(--status-bad/.test(l) && !/var\(--danger/.test(l));
+  for (const [f, n] of [["../../feedback/FeedbackDialog.tsx", 2], ["../../usage/ShareCard.tsx", 1], ["../../editor/NamePrompt.tsx", 1]] as const) {
     const src = await read(f);
-    expect(src, f).not.toMatch(/var\(--danger/);
-    expect(src, f).toMatch(/var\(--status-bad/);
+    expect(alerts(src).length, f).toBeGreaterThanOrEqual(n);
+    expect(red(src), f).toBe(true);
+    expect(red(src.replace(/var\(--status-bad/g, "var(--danger")), `${f} with its errors back on --danger`).toBe(false);
+    expect(red(`${src}\n<button style={{ color: "var(--danger)" }}>Delete</button>`), `${f} with a delete button`).toBe(true);
   }
   expect(styles).toMatch(/\.pane-head \.st\.attention \{ color: var\(--working-icon\); \}/);
   expect(await read("../../floor/FloorView.tsx")).toMatch(/needs: "var\(--working-icon\)"/);
