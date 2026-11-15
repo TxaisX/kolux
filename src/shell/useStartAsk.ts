@@ -30,9 +30,9 @@ export function isFirstWindow(): boolean {
 
 export function useStartAsk(o: {
   settings: Record<string, unknown>; settingsRead: boolean; layoutIn: boolean; agentsDone: boolean; projectsRead: boolean; launching: boolean; sheetOpen: boolean;
-  firstRun?: boolean; firstRunKnown?: boolean; agentsFailed?: boolean; panes?: number; open: () => void;
+  firstRun?: boolean; firstRunKnown?: boolean; agentsFailed?: boolean; panes: number; open: () => void;
 }) {
-  const { settings, settingsRead, layoutIn, agentsDone, projectsRead, launching, sheetOpen, firstRun, firstRunKnown, agentsFailed, panes = 0 } = o;
+  const { settings, settingsRead, layoutIn, agentsDone, projectsRead, launching, sheetOpen, firstRun, firstRunKnown, agentsFailed, panes } = o;
   const open = useRef(o.open);
   open.current = o.open;
   // Job 13 F4: the user has moved on: a launch, a form they opened, or a pane added after the settings were read.
