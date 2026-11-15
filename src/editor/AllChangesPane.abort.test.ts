@@ -128,4 +128,6 @@ test("the outcome note keeps the line breaks of a message of several lines", asy
   await until(() => c.textContent.includes("Abort merge failed"));
   const note = find(c, (n) => n.attrs.role === "alert" && n.attrs.class === "note warn")[0];
   expect((note.style as Record<string, unknown>).whiteSpace).toBe("pre-line");
+  // R42-03: a hook that prints many lines cannot fill the tab: about 8 lines show, the rest scroll.
+  expect(note.style).toMatchObject({ display: "inline-block", maxHeight: "12em", overflowY: "auto" });
 });
