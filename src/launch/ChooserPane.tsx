@@ -19,7 +19,8 @@ import VendorMark from "../chrome/VendorMark";
 import AgentMark from "../marks/AgentMark";
 import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
-import { firstSeatStart, seatStart, type SeatDefault } from "./defaultSeat";
+import { seatStart, type SeatDefault } from "./defaultSeat";
+import { everySeatStart, folderPlan, oneForAll, pickForAll, pickWords, setAll, startSummary, type FolderRow } from "./startForm";
 import { canInstall, FEATURED, featuredRows, installNoteOf, installTip, otherRows, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
 import { useDialogFocus } from "../chrome/dialogFocus";
@@ -152,9 +153,16 @@ type Props = {
   defaultAgent?: string;
   /** SESS-018: set on the New look: the chooser is the full-page New session sheet for this project. */
   sheet?: { project: string; path: string } | null;
+  /** Start form C: the known project folders (most recent first), the ticked ones, each grid's cells in use, and Add folder. */
+  folders?: { rows: FolderRow[]; ticked: string[]; used: Record<string, number>; onTick: (ids: string[]) => void; onAdd: () => void } | null;
+  /** Start form D: the close button's words when the form was asked at app open ("Keep what was open"). */
+  keepLabel?: string;
 };
 
-export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, onCopies, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null, defaultAgent = "" }: Props) {
+/** The one row's value while the seats differ. */
+const MIXED = "__mixed__";
+
+export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, onCopies, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null, defaultAgent = "", folders = null, keepLabel = "Cancel" }: Props) {
   const mac = useKeymap().platform === "darwin";
   // SESS-018: a Ctrl+Enter that cannot launch points at the footer's unfinished seat.
   const [nudged, setNudged] = useState(false);
@@ -185,7 +193,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   useEffect(() => {
     if (seeded.current || detecting) return;
     seeded.current = true;
-    const start = firstSeatStart(seatsRef.current, defaultAgent, rows, seatDefault_);
+    const start = everySeatStart(seatsRef.current, defaultAgent, rows, seatDefault_); // Start form A: every blank seat, not only seat 1
     if (start) onSeats(start);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detecting]);
@@ -211,7 +219,10 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   }, [agents]);
   const setSeat = (i: number, patch: Partial<Seat>) => onSeats(seats.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const searched = !pass || canLaunch(pass);
-  const ready = allReady(seats) && !busy && searched;
+  // Start form C: the launch across the ticked folders, and why Start is off when it is.
+  const tickedRows = folders ? folders.rows.filter((f) => folders.ticked.includes(f.id)) : [];
+  const plan = folders ? (folders.rows.length === 0 ? { total: 0, problem: "Add a folder first." } : folderPlan(seats.length, tickedRows.map((f) => ({ name: f.name, used: folders.used[f.id] ?? 0 })))) : null;
+  const ready = allReady(seats) && !busy && searched && !plan?.problem;
   const anyReady = seats.some(seatReady);
   // SESS-022: a line per provider near its limit, above Start; it never disables Start.
   const warnings = launchWarnings(seats.map((s) => s.agent), useLaunchUsage());
@@ -289,6 +300,61 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       setNudged(true);
     }
   };
+  // SESS-017: the Install route, notes and docs for a picked agent, on a seat or on the one row (seat 0 then stands for all).
+  const installBits = (pick: string | null, i: number) => {
+    const a = rows.find((x) => x.id === pick);
+    if (!a) return null;
+    return (
+      <>
+        {canInstall(a) && (
+        <button
+          className="btn"
+          disabled={installing !== null}
+          title={installTip(a)}
+          onClick={() => {
+            setInstalling(a.id);
+            setInstallError(({ [a.id]: _gone, ...rest }) => rest);
+            void runInstall(a).then((r) => {
+              setInstalling(null);
+              if ("error" in r) return setInstallError((x) => ({ ...x, [a.id]: r.error }));
+              setFixed((x) => ({ ...x, [a.id]: r.agent }));
+              // Every empty seat that was showing this same missing agent takes it too.
+              const now = seatsRef.current;
+              const same = new Set(now.flatMap((_, j) => (j === i || shownPick(now, shownRef.current, j) === a.id ? [j] : [])));
+              setShown((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !same.has(Number(k)))));
+              onSeats(now.map((s, j) => (same.has(j) && (j === i || s.agent === null) ? { ...s, ...seatStart(a.id, seatDefault_) } : s)));
+              onRefresh?.();
+            });
+          }}
+        >
+          {installing === a.id ? "Installing…" : "Install"}
+        </button>
+        )}
+        {installNoteOf(a) && <span className="caption" data-install-note>{installNoteOf(a)}</span>}
+        {selfInstallHint(a) && <span className="caption">{selfInstallHint(a)}</span>}
+        {installError[a.id] && (
+          <span className="agent-missing" role="alert">
+            {installError[a.id]}
+          </span>
+        )}
+        <DocsLink agent={a} />
+      </>
+    );
+  };
+  // Start form A: the one row's pick for every seat; a missing agent is shown on every seat so Install appears once.
+  const one = oneForAll(seats);
+  const oneShown = one === "mixed" ? null : (one.agent ?? shown[0] ?? null);
+  const oneMissing = oneShown !== null && oneShown !== TERMINAL && !rows.find((a) => a.id === oneShown)?.installed ? oneShown : null;
+  const chooseAll = (id: string) => {
+    const a = rows.find((x) => x.id === id);
+    if (id === TERMINAL || a?.installed) {
+      setShown({});
+      return onSeats(pickForAll(seats, id, seatDefault_));
+    }
+    setShown(Object.fromEntries(seats.map((_, k) => [k, id])));
+    onSeats(setAll(seats, { agent: null, model: null }));
+  };
+  const [eachOpen, setEachOpen] = useState(false);
   const launchKeys = [mac ? "Cmd" : "Ctrl", "Enter"];
   // T-745: with several choosers in the grid, only one shows the sheet; this one is an empty slot until clicked.
   // Mousedown moves the sheet here and removes the button under the pointer, so preventDefault stops the browser
@@ -308,17 +374,17 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       </section>
     );
   return (
-    <section ref={box} tabIndex={-1} data-testid="chooser-pane" className={`pane chooser${sheet ? " sheet" : ""}${focused ? " focused" : ""}`} hidden={hidden} aria-label={sheet ? "New session" : `Session ${number} chooser`} onMouseDown={onFocus} onKeyDown={onSheetKey}>
+    <section ref={box} tabIndex={-1} data-testid="chooser-pane" className={`pane chooser${sheet ? " sheet" : ""}${focused ? " focused" : ""}`} hidden={hidden} aria-label={sheet ? "Start" : `Session ${number} chooser`} onMouseDown={onFocus} onKeyDown={onSheetKey}>
       {sheet ? (
         <header className="sheet-head">
           <div className="sheet-title">
-            <h2>New session</h2>
+            <h2>Start</h2>
             <span className="sheet-project">{sheet.project}</span>
             <span className="sheet-path" title={sheet.path}>
               {sheet.path}
             </span>
           </div>
-          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close New session">
+          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close Start">
             <Close size={12} />
           </button>
         </header>
@@ -343,6 +409,130 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         ) : pass && !pass.done ? (
           <p className="caption">Looking for agents…</p>
         ) : null}
+        {folders && (
+          <div className="count-row" role="group" aria-label="Folders">
+            <span className="label">Folders</span>
+            {folders.rows.length === 0 && <span className="caption">Add a folder first.</span>}
+            {folders.rows.map((f) => (
+              <label key={f.id} className="choice" title={f.path}>
+                <input type="checkbox" checked={folders.ticked.includes(f.id)} onChange={(e) => folders.onTick(e.currentTarget.checked ? [...folders.ticked, f.id] : folders.ticked.filter((id) => id !== f.id))} />
+                {f.name}
+              </label>
+            ))}
+            <button className="btn" onClick={folders.onAdd} title="Add a project folder Kolux can open">
+              Add folder
+            </button>
+          </div>
+        )}
+        <div className="count-row" role="group" aria-label="How many sessions">
+          <span className="label">How many</span>
+          {QUICK_COUNTS.map((n) => (
+            <button key={n} className="btn" aria-pressed={seats.length === n} onClick={() => recount(n)}>
+              {n}
+            </button>
+          ))}
+          <input
+            ref={countBox}
+            className="count-field"
+            type="number"
+            min={1}
+            max={MAX_SESSIONS}
+            aria-label="Any number of sessions"
+            defaultValue={seats.length}
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={applyCount}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") applyCount(e);
+            }}
+            onChange={(e) => {
+              // The spinner and arrow keys step the value: that is a whole number, apply at once.
+              if (!(e.nativeEvent as InputEvent).inputType) applyCount(e);
+              else {
+                const box = e.currentTarget;
+                typing.later(() => applyCount({ currentTarget: box }));
+              }
+            }}
+          />
+          {folders && <span className="caption">in each folder</span>}
+        </div>
+        {bigCount !== null && (
+          <div className="note warn" role="alert">
+            {`${bigCount} sessions is a lot: ${copies === "separate" ? "with own folders each AI seat makes a folder of its own" : "every seat works in the same folder"}. `}
+            <button className="btn" onClick={() => recount(bigCount)}>
+              {`Use ${bigCount}`}
+            </button>{" "}
+            <button
+              className="btn"
+              onClick={() => {
+                setBigCount(null);
+                if (countBox.current) countBox.current.value = String(seats.length);
+              }}
+            >
+              {`Keep ${seats.length}`}
+            </button>
+          </div>
+        )}
+        <div className="count-row" role="group" aria-label="Which AI">
+          <span className="label">Which AI</span>
+          <select aria-label="Which AI" value={one === "mixed" ? MIXED : (oneShown ?? "")} onChange={(e) => e.currentTarget.value && chooseAll(e.currentTarget.value)}>
+            {one === "mixed" && (
+              <option value={MIXED} disabled>
+                Mixed
+              </option>
+            )}
+            {one !== "mixed" && !oneShown && (
+              <option value="" disabled>
+                {detecting ? "Looking for AI programs…" : "Pick an AI"}
+              </option>
+            )}
+            {rows.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.installed ? a.name : `${a.name} (not installed)`}
+              </option>
+            ))}
+            <option value={TERMINAL}>Plain terminal</option>
+          </select>
+          {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length > 0 && (
+            <label className="choice">
+              Model
+              <select aria-label="Model for all" value={one.model ?? ""} onChange={(e) => onSeats(setAll(seats, { agent: one.agent, model: e.currentTarget.value, effort: undefined, fast: undefined }))}>
+                {one.model === null && (
+                  <option value="" disabled>
+                    Pick a model
+                  </option>
+                )}
+                {modelsFor(one.agent).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {one !== "mixed" && choiceOf(seats[0])?.efforts && (
+            <label className="choice">
+              Effort
+              <select aria-label="Effort for all" value={one.effort ?? ""} onChange={(e) => onSeats(setAll(seats, { ...one, effort: e.currentTarget.value || undefined }))}>
+                <option value="">{choiceOf(seats[0])?.defaultEffort ? `Model default (${choiceOf(seats[0])?.defaultEffort})` : "Model default"}</option>
+                {choiceOf(seats[0])?.efforts?.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {one !== "mixed" && choiceOf(seats[0])?.fast && (
+            <label className="choice" title="Faster answers at a higher price per token">
+              <input type="checkbox" aria-label="Fast mode for all" checked={one.fast === true} onChange={(e) => onSeats(setAll(seats, { ...one, fast: e.currentTarget.checked || undefined }))} />
+              Fast mode
+            </label>
+          )}
+          {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
+          {oneMissing && installBits(oneMissing, 0)}
+        </div>
+        <details className="chooser-each" open={eachOpen} onToggle={(e) => setEachOpen(e.currentTarget.open)}>
+          <summary className="btn link">Make each one different</summary>
         {lastLineup && onUseLineup && (
           <div className="count-row">
             <button className="btn" onClick={onUseLineup} title="Put back this project's last shape, folders choice and each seat's AI and model">
@@ -409,56 +599,11 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             </button>
           </div>
         )}
-        <div className="count-row" role="group" aria-label="How many sessions">
-          <span className="label">Sessions</span>
-          {QUICK_COUNTS.map((n) => (
-            <button key={n} className="btn" aria-pressed={seats.length === n} onClick={() => recount(n)}>
-              {n}
-            </button>
-          ))}
-          <input
-            ref={countBox}
-            className="count-field"
-            type="number"
-            min={1}
-            max={MAX_SESSIONS}
-            aria-label="Any number of sessions"
-            defaultValue={seats.length}
-            onFocus={(e) => e.currentTarget.select()}
-            onBlur={applyCount}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") applyCount(e);
-            }}
-            onChange={(e) => {
-              // The spinner and arrow keys step the value: that is a whole number, apply at once.
-              if (!(e.nativeEvent as InputEvent).inputType) applyCount(e);
-              else {
-                const box = e.currentTarget;
-                typing.later(() => applyCount({ currentTarget: box }));
-              }
-            }}
-          />
+          <div className="count-row">
           <button className="btn" disabled={!anyReady || seats.length < 2} onClick={() => onSeats(sameForAll(seats))} title="Copy the first finished seat's AI and model into every seat">
             Same for all
           </button>
-        </div>
-        {bigCount !== null && (
-          <div className="note warn" role="alert">
-            {`${bigCount} sessions is a lot: ${copies === "separate" ? "with own folders each AI seat makes a folder of its own" : "every seat works in the same folder"}. `}
-            <button className="btn" onClick={() => recount(bigCount)}>
-              {`Use ${bigCount}`}
-            </button>{" "}
-            <button
-              className="btn"
-              onClick={() => {
-                setBigCount(null);
-                if (countBox.current) countBox.current.value = String(seats.length);
-              }}
-            >
-              {`Keep ${seats.length}`}
-            </button>
           </div>
-        )}
         {singleFolder() ? (
           <div className="count-row" role="group" aria-label="Where the AIs work">
             <span className="label">Folder</span>
@@ -492,14 +637,6 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             )}
           </div>
         )}
-        <textarea
-          className="seat-prompt"
-          rows={2}
-          placeholder="Task for every seat (optional)"
-          aria-label="Task for every seat"
-          value={task}
-          onChange={(e) => onTask(e.currentTarget.value)}
-        />
         <div className="seats">
           {seats.map((seat, i) => (
             <div key={i} className="seat">
@@ -555,46 +692,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                     })()}
                   </div>
                 )}
-                {(() => {
-                  const a = rows.find((x) => x.id === shownPick(seats, shown, i));
-                  if (!a) return null;
-                  return (
-                    <>
-                      {canInstall(a) && (
-                      <button
-                        className="btn"
-                        disabled={installing !== null}
-                        title={installTip(a)}
-                        onClick={() => {
-                          setInstalling(a.id);
-                          setInstallError(({ [a.id]: _gone, ...rest }) => rest);
-                          void runInstall(a).then((r) => {
-                            setInstalling(null);
-                            if ("error" in r) return setInstallError((x) => ({ ...x, [a.id]: r.error }));
-                            setFixed((x) => ({ ...x, [a.id]: r.agent }));
-                            // Every empty seat that was showing this same missing agent takes it too.
-                            const now = seatsRef.current;
-                            const same = new Set(now.flatMap((_, j) => (j === i || shownPick(now, shownRef.current, j) === a.id ? [j] : [])));
-                            setShown((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !same.has(Number(k)))));
-                            onSeats(now.map((s, j) => (same.has(j) && (j === i || s.agent === null) ? { ...s, ...seatStart(a.id, seatDefault_) } : s)));
-                            onRefresh?.();
-                          });
-                        }}
-                      >
-                        {installing === a.id ? "Installing…" : "Install"}
-                      </button>
-                      )}
-                      {installNoteOf(a) && <span className="caption" data-install-note>{installNoteOf(a)}</span>}
-                      {selfInstallHint(a) && <span className="caption">{selfInstallHint(a)}</span>}
-                      {installError[a.id] && (
-                        <span className="agent-missing" role="alert">
-                          {installError[a.id]}
-                        </span>
-                      )}
-                      <DocsLink agent={a} />
-                    </>
-                  );
-                })()}
+                {installBits(shownPick(seats, shown, i), i)}
               </div>
               {seat.agent !== null && seat.agent !== TERMINAL && modelsFor(seat.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
               {seat.agent !== null && modelsFor(seat.agent).length > 0 && (
@@ -644,6 +742,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             </div>
           ))}
         </div>
+        </details>
+        <textarea
+          className="seat-prompt"
+          rows={2}
+          placeholder="Task for all of them (optional)"
+          aria-label="Task for all of them"
+          value={task}
+          onChange={(e) => onTask(e.currentTarget.value)}
+        />
         {sheet && (
           <button className="btn link chooser-advanced" onClick={() => openSettings("accounts")} title="Connect or install another AI in Settings">
             Add more agents
@@ -652,8 +759,13 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       </div>
       <footer className="chooser-foot">
         <div className={`caption chooser-count${nudged && gap ? " warn" : ""}`} role={nudged && gap ? "alert" : "status"}>
-          {`${sessions} ${sessions === 1 ? "session" : "sessions"}${gap ? ` · ${gap}` : ""}`}
+          {`${folders ? startSummary(sessions, tickedRows.map((f) => f.name), pickWords(oneForAll(seats), nameOf, (agent, model) => modelsFor(agent).find((m) => m.id === model)?.label ?? model)) : `${sessions} ${sessions === 1 ? "session" : "sessions"}`}${gap ? ` · ${gap}` : ""}`}
         </div>
+        {plan?.problem && (
+          <div className="note warn" role="status">
+            {plan.problem}
+          </div>
+        )}
         {warnings.map((w) => (
           <div key={w} className="note warn" role="status">
             {w}
@@ -662,7 +774,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         <div className="btn-row">
           {sheet && (
             <button className="btn" onClick={onClose} disabled={busy}>
-              Cancel
+              {keepLabel}
             </button>
           )}
           {onRefresh && (

@@ -14,7 +14,8 @@ beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:\\bin\\claude.exe", docs: true };
 const render = (seats: Seat[], closable = true, inGit = true, copies: Copies = defaultCopies(seats.length, inGit), shape: Shape = "custom", task = "", saved: SavedShape[] = []) =>
   renderToString(createElement(ChooserPane, { number: 2, agents: [claude], seats, onSeats: () => {}, onLineup: () => {}, shape, task, onTask: () => {}, onStart: () => {}, copies, inGit, onCopies: () => {}, closable, onClose: () => {}, saved, onSaved: () => {}, onPickSaved: () => {} }));
-const startButton = (html: string) => html.split("<button").find((b) => b.includes(">Start"))!;
+// slice(1): the text before the first button holds the "Start" heading, which is not the button.
+const startButton = (html: string) => html.split("<button").slice(1).find((b) => b.includes(">Start"))!;
 
 test("SESS-007: Claude without a model keeps Start disabled, a model enables it, Terminal is enabled at once", () => {
   const noModel = render([{ agent: "claude", model: null }]);
@@ -81,7 +82,7 @@ test("SESS-012: the lineup shows the shape row, a task for every seat, and each 
   const html = render(swarm, true, true, "separate", "swarm", "Fix the login page");
   for (const s of ["Solo", "Pair", "Workbench", "Swarm", "Custom"]) expect(html).toContain(`>${s}</button>`);
   expect(html.split("<button").find((b) => b.includes(">Swarm<"))).toContain('aria-pressed="true"');
-  expect(html).toContain("Task for every seat");
+  expect(html).toContain("Task for all of them");
   expect(html).toContain("Fix the login page");
   const roles = [...html.matchAll(/class="chip seat-role"[^>]*>([a-z]+)</g)].map((m) => m[1]);
   expect(roles).toEqual(["scout", "builder", "builder", "tester", "reviewer"]);
@@ -154,10 +155,11 @@ const agentButtons = (html: string) => [...html.matchAll(/<button class="btn age
 test("Txais 2026-11-08: each seat has a button for Claude Code, Codex, OpenCode and Grok, then Terminal and Other; the rest sit behind Other", () => {
   const list = [agent("aider", "Aider", true), agent("grok", "Grok", false), agent("codex", "Codex", true), claude, agent("opencode", "OpenCode", true), agent("goose", "Goose", false)];
   const html = renderWith(list);
-  expect(html).not.toContain("<select");
+  // Start form A: the one row for all is a dropdown (Txais 2026-11-15 sketch); each seat's own row keeps the buttons.
+  expect(html.split('class="chooser-each"')[1]).not.toContain("<select");
   expect(html).toContain('aria-label="Seat 1: which AI"');
   expect(agentButtons(html).map((b) => b[0])).toEqual(["Claude Code", "Codex", "OpenCode", "Grok" + "not installed", "Terminal", "Other…"]);
-  expect(html).not.toContain(">Aider<");
+  expect(html.split('class="chooser-each"')[1]).not.toContain(">Aider<");
   expect(html).not.toContain(">Install<");
   expect(startButton(renderWith(list))).toContain("disabled");
   expect(startButton(renderWith(list, false, [{ agent: "claude", model: "opus" }]))).not.toContain("disabled");
@@ -194,7 +196,7 @@ test("SESS-019: with kits gone, the launch shape, session count, folders and tas
   const html = renderSeats([{ agent: null, model: null }]);
   expect(html).not.toContain("Starter kits");
   expect(html).not.toContain("Advanced");
-  for (const part of ['aria-label="Launch shape"', 'aria-label="How many sessions"', 'aria-label="Where the AIs work"', "Task for every seat"]) expect(html).toContain(part);
+  for (const part of ['aria-label="Launch shape"', 'aria-label="How many sessions"', 'aria-label="Where the AIs work"', "Task for all of them"]) expect(html).toContain(part);
 });
 
 test("SESS-019: the footer counts the sessions and names the first seat still lacking an AI", () => {
@@ -210,7 +212,7 @@ test("SESS-019: the footer counts the sessions and names the first seat still la
 
 test("SESS-018: the New session page shows the project and its path, the add-agents link, Cancel and the launch shortcut", () => {
   const html = renderToString(createElement(ChooserPane, { number: 7, agents: [claude], seats: [{ agent: null, model: null }], onSeats: () => {}, onLineup: () => {}, shape: "custom", task: "", onTask: () => {}, onStart: () => {}, copies: "separate", inGit: true, onCopies: () => {}, closable: true, onClose: () => {}, saved: [], onSaved: () => {}, onPickSaved: () => {}, sheet: { project: "demo", path: "G:\Temp\demo" } }));
-  expect(html).toContain("New session");
+  expect(html).toContain("<h2>Start</h2>");
   expect(html).toContain("demo");
   expect(html).toContain("G:\Temp\demo");
   expect(html).not.toContain("Session 7");

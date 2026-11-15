@@ -614,6 +614,11 @@ input { font: inherit; }
 .chooser-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; overflow: auto; font-size: 12px; }
 .chooser-body > * { flex-shrink: 0; }
 .chooser-body .label { color: var(--fg-muted); margin-right: 4px; }
+/* Start form (2026-11-15): the per-seat rows sit behind "Make each one different"; open, they keep the body's own spacing. */
+.chooser-each { display: flex; flex-direction: column; gap: 12px; }
+.chooser-each > summary { list-style: none; width: fit-content; cursor: pointer; }
+.chooser-each > summary::-webkit-details-marker { display: none; }
+.chooser-each:not([open]) { gap: 0; }
 .chooser-foot { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 14px; border-top: 1px solid var(--line-subtle); font-size: 12px; }
 .chooser-foot .btn-row { flex-wrap: wrap; }
 .count-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
