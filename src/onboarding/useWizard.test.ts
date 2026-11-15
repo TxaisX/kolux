@@ -71,7 +71,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-async function mountWizard(settings: Record<string, unknown> = {}, activeDir: string | null = null) {
+async function mountWizard(settings: Record<string, unknown> = {}) {
   const { useWizard } = await import("./useWizard");
   const { CHECKLIST_CHANGED } = await import("./firstRun");
   const { PROJECT_ADDED } = await import("./sidebar");
@@ -86,10 +86,8 @@ async function mountWizard(settings: Record<string, unknown> = {}, activeDir: st
     setToast: (t: string) => void toasts.push(t),
     agents,
     settings,
-    activeDir,
     kitAIs: [],
     startIn: async (a: { id: string }, dir: string) => (started.push(`${a.id}@${dir}`), 1),
-    openShell: () => void started.push("shell"),
     startKit: async () => true,
     setKitConflict: () => {},
     setKits: () => {},
@@ -255,7 +253,7 @@ test("T-796: Pick a folder from the Your work screen returns to the last screen 
 test("job 22: the main button on the last screen stores setup as completed, closes it, then opens the Start form once", async () => {
   const { ADD_PROJECT } = await import("./firstRun");
   win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
-  const app = await mountWizard({ defaultAgent: "claude" }, "C:/w");
+  const app = await mountWizard({ defaultAgent: "claude" });
   const open = vi.fn();
   app.now().wizardSession(open);
   await app.settle();

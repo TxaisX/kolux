@@ -13,10 +13,7 @@ type WizardDeps = {
   setToast: (text: string) => void;
   agents: AgentInfo[];
   settings: Record<string, unknown>;
-  activeDir: string | null;
   startIn: (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra?: string[], title?: string) => Promise<number | null>;
-  /** T-796: a plain shell tab in the folder in front (the same one a new terminal tab opens). */
-  openShell: () => void;
 };
 
 /** 49-ux2: what Pick a folder says while Add Project is up and the wizard is out of its way. */
@@ -69,25 +66,18 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
   const backToSession = useRef(false);
   // 49-ux2: Pick a folder hides the wizard but stores nothing; the close is stored once a project was really added.
   const finishOnAdd = useRef(false);
-  // T-612: the AI agent Open a session would have started, for the folder picked after it (else ONB-010's saved default).
-  const firstAgent = useRef<AgentInfo | null>(null);
-  // A plain terminal picked on the last screen before any folder: the folder added next starts no agent (the new workspace opens its terminal).
-  const firstPlain = useRef(false);
   // VIEW-114 (FIX-2): every added project tells the sidebar entry to read its steps again.
   const projectAdded = (dir: string, branch: string | null) => {
     projectAddedNote();
     if (backToSession.current) {
       backToSession.current = firstFolder.current = finishOnAdd.current = false;
-      firstAgent.current = null;
       invoke("onboarding_step", { step: 2 }).catch(() => {}); // the folder screen is finished; the last one is next
       setWizard(3);
       return;
     }
     if (!firstFolder.current) return;
     firstFolder.current = false;
-    const agent = firstPlain.current ? null : (firstAgent.current ?? firstFolderAgent(offeredAgents(agents, settings), defaultAgentId(settings)));
-    firstAgent.current = null;
-    firstPlain.current = false;
+    const agent = firstFolderAgent(offeredAgents(agents, settings), defaultAgentId(settings));
     if (finishOnAdd.current) {
       finishOnAdd.current = false;
       void wizardClose.end("completed");
@@ -101,10 +91,8 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
   const pickFolder = (backToLast: boolean, reach: Omit<Parameters<typeof addFolderVia>[0], "fire">) => {
     if (wizardClose.retry()) return;
     firstFolder.current = true;
-    firstPlain.current = false;
     finishOnAdd.current = true;
     backToSession.current = backToLast;
-    firstAgent.current = null;
     setWizard(null);
     setToast(PICK_FOLDER_NOTE);
     void addFolderVia({ ...reach, fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)) });
