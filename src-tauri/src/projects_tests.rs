@@ -569,6 +569,10 @@ fn r04_a_folder_empty_before_a_failed_add_is_empty_again_after_it() {
     let outside = root.join("outside");
     fs::create_dir_all(&outside).unwrap();
     fs::write(outside.join("keep.txt"), "k").unwrap();
+    // N-09: a junction (no special right needed) to a second folder inside the test's own folder.
+    let aimed = root.join("aimed");
+    fs::create_dir_all(&aimed).unwrap();
+    fs::write(aimed.join("keep.txt"), "j").unwrap();
     let empty = root.join("empty");
     fs::create_dir_all(&empty).unwrap();
     assert!(add_retrying(&repo, &empty, None, &|| false, || {
@@ -576,13 +580,17 @@ fn r04_a_folder_empty_before_a_failed_add_is_empty_again_after_it() {
         fs::create_dir_all(empty.join("src")).unwrap();
         fs::write(empty.join("src").join("half.rs"), "x").unwrap();
         #[cfg(windows)]
-        let _ = std::os::windows::fs::symlink_dir(&outside, empty.join("link"));
+        if let Err(e) = std::os::windows::fs::symlink_dir(&outside, empty.join("link")) {
+            eprintln!("r04: skipped the folder-link case, a link could not be made here ({e})");
+        }
+        link_dir(&empty.join("junction"), &aimed);
         fail()
     })
     .is_err());
     assert!(empty.is_dir(), "the folder that was there is kept");
-    assert_eq!(fs::read_dir(&empty).unwrap().count(), 0, "and it is empty again");
+    assert_eq!(fs::read_dir(&empty).unwrap().count(), 0, "and it is empty again, the junction itself removed");
     assert_eq!(fs::read_to_string(outside.join("keep.txt")).unwrap(), "k", "a link inside is never followed");
+    assert_eq!(fs::read_to_string(aimed.join("keep.txt")).unwrap(), "j", "a junction inside is never followed");
     // There with a file before: the file stays, and so does what the add left.
     let held = root.join("held");
     fs::create_dir_all(&held).unwrap();
@@ -602,9 +610,10 @@ fn r04_a_folder_empty_before_a_failed_add_is_empty_again_after_it() {
     })
     .is_err());
     assert_eq!(fs::read_to_string(theirs.join("report.txt")).unwrap(), "y", "another program's files are never removed");
-    for d in [repo, root] {
+    for d in [repo, root.clone()] {
         let _ = fs::remove_dir_all(d);
     }
+    assert!(!root.exists(), "the test leaves nothing behind");
 }
 
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
