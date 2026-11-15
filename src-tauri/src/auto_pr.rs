@@ -963,9 +963,18 @@ async fn fenced_step(
 }
 
 /// `none` (no origin remote, or not a repository), `github` or `other`.
-#[tauri::command]
-pub async fn auto_pr_remote(worktree: String) -> String {
-    tauri::async_runtime::spawn_blocking(move || remote_kind(Path::new(&worktree)).to_string()).await.unwrap_or_else(|_| "none".into())
+/// ACCT-055: only inside a project or worktree (fence.rs); anywhere else answers `none` (B-17).
+#[tauri::command(async)]
+pub fn auto_pr_remote(worktree: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, Git>) -> Result<String, String> {
+    Ok(remote_in(&worktree, |t| fence.allow(t, &store, &git, false)).to_string())
+}
+
+/// `remote_kind` of the repository `folder` is in, when the fence `allow` lets it be read.
+fn remote_in(folder: &str, allow: impl FnOnce(&str) -> Result<PathBuf, String>) -> &'static str {
+    match fenced(toplevel(folder), allow) {
+        Ok(dir) => remote_kind(&dir),
+        Err(_) => "none",
+    }
 }
 
 /// Commits the workspace's changes on its own branch, after scanning every file the commit would add.
@@ -1868,6 +1877,20 @@ mod tests {
         assert_eq!(toplevel(&outside.to_string_lossy()), None);
         assert_eq!(toplevel(&outside.join("missing").to_string_lossy()), None);
         cleanup(&[&inside, &outside, &dir]);
+    }
+
+    #[test]
+    fn b17_the_remote_of_a_folder_outside_the_fence_is_not_read() {
+        let dir = repo("b17");
+        run(&["remote", "add", "origin", "https://github.com/example/demo.git"], Some(&dir)).unwrap();
+        let folder = dir.join("sub");
+        fs::create_dir_all(&folder).unwrap();
+        let inside = vec![dir.clone()];
+        let allow = |roots: Vec<PathBuf>| move |t: &str| crate::fence::check(Path::new(t), &roots, &[], false);
+        assert_eq!(remote_in(&folder.to_string_lossy(), allow(inside)), "github", "inside the fence it is read");
+        let elsewhere = vec![std::env::temp_dir().join(format!("kolux-autopr-b17-other-{}", id()))];
+        assert_eq!(remote_in(&folder.to_string_lossy(), allow(elsewhere)), "none", "outside the fence it is not");
+        cleanup(&[&dir]);
     }
 
     #[test]
