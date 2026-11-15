@@ -3690,3 +3690,20 @@ fn row895_setting_a_project_folder_and_base_refuses_rather_than_wiping_an_unread
     drop(store);
     let _ = fs::remove_dir_all(profile);
 }
+
+/// N-05: a folder that is already gone matches itself written another way (forward slashes, a
+/// slash at the end, a `\?\` start), so `kill_under` still finds its terminals; two different
+/// gone folders still do not match.
+#[test]
+fn n05_a_gone_folder_matches_itself_written_another_way() {
+    let base = std::env::temp_dir().join(format!("kolux-n05-{}", std::process::id()));
+    let gone = base.join("gone");
+    assert!(!gone.exists());
+    let forward = format!("{}/", gone.to_string_lossy().replace('\\', "/"));
+    assert!(same_folder(Path::new(&forward), &gone), "{forward} is {}", gone.display());
+    #[cfg(windows)]
+    assert!(same_folder(Path::new(&format!(r"\\?\{}", gone.display())), &gone));
+    assert!(same_folder(&gone.join("sub").join(".."), &gone.join("sub").join("..")));
+    assert!(!same_folder(Path::new(&forward), &base.join("other")), "two different gone folders");
+    assert!(!same_folder(&gone, &base), "a gone folder is not its parent");
+}

@@ -113,8 +113,24 @@ pub const MAX_USER_PREFIX: usize = 40;
 
 /// Compares two folders the way Windows does: same canonical path, letter case ignored.
 pub(crate) fn same_folder(a: &Path, b: &Path) -> bool {
-    let norm = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf()).to_string_lossy().to_lowercase();
-    norm(a) == norm(b)
+    let (ra, rb) = (a.canonicalize(), b.canonicalize());
+    let both = ra.is_ok() && rb.is_ok();
+    let norm = |r: std::io::Result<PathBuf>, p: &Path| r.unwrap_or_else(|_| p.to_path_buf()).to_string_lossy().to_lowercase();
+    let (a, b) = (norm(ra, a), norm(rb, b));
+    if both {
+        return a == b;
+    }
+    // N-05: a side that cannot be resolved (a folder already gone) is matched on its text: one kind
+    // of slash, no `\\?\` start and no slash at the end, which never name a different folder here.
+    let text = |s: String| {
+        let s = if cfg!(windows) { s.replace('/', "\\") } else { s };
+        let s = match s.strip_prefix(r"\\?\unc\") {
+            Some(rest) => format!(r"\\{rest}"),
+            None => s.strip_prefix(r"\\?\").unwrap_or(&s).to_string(),
+        };
+        s.trim_end_matches(['\\', '/']).to_string()
+    };
+    text(a) == text(b)
 }
 
 /// For display and lookup only: an unreadable list shows empty (after being kept aside).
