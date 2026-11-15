@@ -2681,11 +2681,12 @@ fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String>
 /// is removed for good, a deleted file comes back from the last commit, a modified or renamed
 /// file is put back as the last commit had it; staged work is unstaged first. A link is only ever
 /// removed or rewritten as a link: what it points at is never followed, so nothing outside the
-/// repository is touched. An untracked folder (`box/`) goes with everything in it.
+/// repository is touched. B-09: an untracked row goes exactly as the untracked section's discard
+/// sends it (`git clean -f -d`), so a nested repository and ignored files are left alone.
 pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     check_paths(paths)?;
     let st = status(worktree)?;
-    let (mut staged, mut tracked, mut remove) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     for p in paths {
         let p = p.trim_end_matches('/');
         let index = st.staged.iter().find(|c| c.path == p);
@@ -2696,7 +2697,9 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
                 tracked.push(from.clone());
             }
         }
-        if st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p) || index.is_some_and(|c| c.status == "A" || c.from.is_some()) {
+        if st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p) {
+            untracked.push(p.to_string());
+        } else if index.is_some_and(|c| c.status == "A" || c.from.is_some()) {
             remove.push(p.to_string());
         } else {
             tracked.push(p.to_string());
@@ -2715,6 +2718,10 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     if !tracked.is_empty() {
         with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked)?;
     }
+    if !untracked.is_empty() {
+        discard(worktree, "untracked", &untracked)?;
+    }
+    // A staged new file, unstaged above.
     for p in &remove {
         let full = worktree.join(native(p));
         let Ok(meta) = fs::symlink_metadata(&full) else { continue };

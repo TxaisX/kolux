@@ -2729,6 +2729,40 @@ fn git003_discard_deletes_new_files_restores_deleted_ones_and_never_follows_a_li
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// B-09 (wave 2026-11-15): the section-free discard sends an untracked row through the same
+/// `git clean -f -d` as the untracked section, so a nested repository (with its history) and an
+/// ignored file in an untracked folder survive; a plain untracked file still goes.
+#[test]
+fn b09_discard_without_a_section_leaves_a_nested_repo_and_ignored_files_alone() {
+    let dir = temp_repo("b09-nested");
+    fs::write(dir.join(".gitignore"), "*.env
+").unwrap();
+    run(&["add", ".gitignore"], Some(&dir)).unwrap();
+    run(&["commit", "-q", "-m", "ignore"], Some(&dir)).unwrap();
+    let inner = dir.join("box").join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    run(&["init", "-q", "-b", "main"], Some(&inner)).unwrap();
+    fs::write(inner.join("work.txt"), "unpushed
+").unwrap();
+    run(&["add", "work.txt"], Some(&inner)).unwrap();
+    run(&["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "inner"], Some(&inner)).unwrap();
+    fs::write(dir.join("box").join("secret.env"), "KEY=1
+").unwrap();
+    fs::write(dir.join("box").join("plain.txt"), "p
+").unwrap();
+    let st = status(&dir).unwrap();
+    let rows: Vec<String> = st.untracked.iter().map(|c| c.path.clone()).collect();
+    assert_eq!(rows, ["box/inner/", "box/plain.txt"], "the nested repo is one row; the ignored file is not listed");
+    discard_paths(&dir, &rows).unwrap();
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    assert_eq!(fs::read_to_string(inner.join("work.txt")).unwrap(), "unpushed
+");
+    assert_eq!(fs::read_to_string(dir.join("box").join("secret.env")).unwrap(), "KEY=1
+", "an ignored file is never touched");
+    assert!(!dir.join("box").join("plain.txt").exists(), "a plain untracked file is removed");
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {
