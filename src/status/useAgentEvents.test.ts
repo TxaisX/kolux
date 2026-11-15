@@ -25,7 +25,8 @@ vi.mock("react", async (orig) => ({
 }));
 const bus: Record<string, (e: { payload: unknown }) => void> = {};
 vi.mock("@tauri-apps/api/event", () => ({ listen: (name: string, f: (e: { payload: unknown }) => void) => ((bus[name] = f), Promise.resolve(() => {})) }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.resolve() }));
+const sent = vi.hoisted(() => [] as unknown[][]); // audit F10: the back-end calls made
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => (sent.push(a), Promise.resolve()) }));
 const { useAgentEvents } = await import("./useAgentStatus");
 
 let context: Record<number, Reading> = {};
@@ -309,4 +310,13 @@ test("closing a pane drops its stamp and its quiet mark", () => {
   render([1], over);
   expect(Object.keys(stamp)).toEqual(["1"]);
   expect(Object.keys(stale)).toEqual(["1"]);
+});
+
+// Audit F10: the taskbar badge is sent only when its count changes, not on every pane or focus change.
+test("the badge count is sent once while it stays the same", () => {
+  sent.length = 0;
+  render([1]);
+  render([1, 2]);
+  render([1, 2]);
+  expect(sent.filter(([cmd]) => cmd === "badge_set")).toEqual([["badge_set", { count: 0 }]]);
 });
