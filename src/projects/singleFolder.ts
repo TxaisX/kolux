@@ -1,7 +1,7 @@
 /** Owner change 2026-11-05: Kolux works in one folder per project. Worktree creation is off, so
  *  every surface that would make a second folder renders nothing.
  *  DT-C250 (2026-11-10): that is the default, and a person can choose the other way: with "Own folder
- *  for each agent" on (Settings > Git & worktrees), an agent launched beside others gets a Git worktree
+ *  for each agent" on (Settings > Git), an agent launched beside others gets a Git worktree
  *  of its own on its own branch, and the sidebar lists those folders again.
  *  DT-C273 (2026-11-11): own folders are now the default; only a saved `false` keeps one folder per project. */
 export const OWN_FOLDERS_FIELD = "agentOwnFolders";

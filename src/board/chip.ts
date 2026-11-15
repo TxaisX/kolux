@@ -7,6 +7,7 @@ import { stopLine, type StopInfo } from "../terminal/notify";
 import { IDLE, shownAgent, type Identity } from "../terminal/shellMarks";
 import { launchedAgent, type LaunchRecord } from "../status/credit";
 import type { Agent } from "../chrome/VendorMark";
+import { VOCAB } from "../terminal/status";
 
 export type Lane = "needs" | "working" | "done" | "stopped" | "idle";
 export const LANES: Array<{ id: Lane; title: string }> = [
@@ -146,7 +147,7 @@ export function chipOf(s: Signal, now: number): Chip | null {
     default:
       // A stale working signal never shows Working. It says what is missing, the status: a long tool
       // can stream output all along (T-124-c).
-      if (s.stale) return chip("working", "No recent update", since ? `no status for ${since}` : "");
+      if (s.stale) return chip("working", VOCAB.stale.word, since ? `no status for ${since}` : "");
       if (s.monitoring) return chip("working", "Working", "Watching background tasks");
       return chip("working", "Working", [since, step].filter(Boolean).join(" · "));
   }

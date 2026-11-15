@@ -4,6 +4,7 @@ import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { click, find, installDom, mount, settle, until, withText, type FakeDocument, type FakeNode } from "../tasks/fakeDom";
 import { escapeStep, singleFlight } from "./resources";
+import { bulkQuestion } from "../shell/endAll";
 import rmSource from "./ResourceManager.tsx?raw";
 
 const back = vi.hoisted(() => ({
@@ -108,6 +109,17 @@ test("usage-status.md:19: End all and Restart terminals are disabled while an En
   expect(buttons().map((b) => "disabled" in b.attrs)).toEqual([true, true]);
   await act(async () => release());
   await until(() => find(doc.body, (n) => n.attrs["data-bulk"] === "offer").length === 0 || buttons().every((b) => !("disabled" in b.attrs)), "the run to end");
+});
+
+test("usage-status.md:19: the End all and Restart terminals hover texts use the words of their question", async () => {
+  await open();
+  const offer = find(doc.body, (n) => n.attrs["data-bulk"] === "offer")[0];
+  const titles = find(offer, (n) => n.localName === "button").map((b) => b.attrs.title);
+  const q = bulkQuestion("restart", [1])!;
+  expect(titles).toEqual(["End every terminal. Running agents stop. Saved files are not touched. Asks first.", "Ends every terminal. Reopen a pane for a fresh one. Running agents and programs stop. Saved files are not touched. Asks first."]);
+  expect([titles[1], q.text].every((t) => t.includes("Reopen a pane for a"))).toBe(true); // R2: neither promises a restart that does not happen
+  expect(q.text).toContain("Running agents stop. Saved files are not touched.");
+  expect(titles.join(" ")).not.toMatch(/kill/i);
 });
 
 test("usage-status.md:8: the popup asks for the dialog keys, and Escape closes an open End question before the panel", async () => {

@@ -7,7 +7,7 @@ import { agentChoices } from "../scm/writerPick";
 const view = (settings: Record<string, unknown>, draft = "", check: { prefix: string; refused: boolean } | null = null) =>
   renderToString(createElement(GitView, { settings, save: () => {}, draft, setDraft: () => {}, check }));
 
-test("T-116-a-fix: the branch prefix, its sample and the default compare base live on Settings > Git & worktrees", () => {
+test("T-116-a-fix: the branch prefix, its sample and the default compare base live on Settings > Git", () => {
   const html = view({}, "", { prefix: "txais-xiong/", refused: false });
   const card = html.slice(html.indexOf('data-section="branches"'));
   expect(card).toContain("Branch prefix");

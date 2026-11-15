@@ -15,8 +15,8 @@ export function bulkQuestion(kind: BulkKind, ids: number[]): { label: string; te
   if (ids.length === 0) return null;
   const what = plural(ids.length);
   return kind === "all"
-    ? { label: `End ${what}`, text: `End every terminal session (${what})? Every program running in them stops and their panes show that the session ended. A terminal opened meanwhile is left alone; new terminals open straight away.`, confirm: "End all" }
-    : { label: "Restart the terminals", text: `Restart the terminals? Every running terminal pane (${what}) is killed; this cannot be undone. The panes show that their process exited and can be reopened at once.`, confirm: "Restart" };
+    ? { label: `End ${what}`, text: `End every terminal (${what})? Running agents stop. Saved files are not touched.`, confirm: "End all" }
+    : { label: "Restart every terminal", text: `End every terminal (${what}) so you can start fresh? Running agents stop. Saved files are not touched. Reopen a pane for a new terminal.`, confirm: "Restart" };
 }
 
 /** Which of the ended ids a fresh read still lists (a kill that did not take). */
@@ -28,5 +28,5 @@ export function bulkReport(kind: BulkKind, ended: number[], left: number[]): { t
   const n = plural(ended.length);
   return kind === "all"
     ? { ok: true, text: ended.length === 0 ? "No terminal session was left to end; new terminals open straight away." : `${n} ended; new terminals open straight away.` }
-    : { ok: true, text: `The terminals were restarted: ${n} ended. Reopen a pane for a fresh shell.` };
+    : { ok: true, text: `The terminals were restarted: ${n} ended. Reopen a pane for a fresh terminal.` };
 }

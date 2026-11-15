@@ -239,12 +239,12 @@ export default function AgentsPage() {
 // the provider keeps the cache; minutes, or null for off.
 export function CachePick({ minutes, onPick }: { minutes: number | null; onPick: (m: number | null) => void }) {
   return (
-    <section className="conn-card" aria-label="Prompt-cache timer">
+    <section className="conn-card" aria-label="Cache countdown">
       <label className="conn-switch">
         <input type="checkbox" role="switch" checked={minutes !== null} onChange={(e) => onPick(e.target.checked ? 5 : null)} />
         <span>
-          Prompt-cache timer
-          <small>When a Claude agent goes idle, its workspace card counts down how long the conversation stays cached; after that the next message sends it all again without the cache.</small>
+          Cache countdown
+          <small>When a Claude agent goes quiet, its card counts down how long Claude keeps the chat ready. After that, the next message costs more because the whole chat is sent again.</small>
         </span>
       </label>
       <div className="look-select">

@@ -363,10 +363,10 @@ export const LINES_SKIPPED_NOTE = "Too many files to count lines";
 
 /** What a screen reader hears on the summary, collapsed or not: the totals and the split. */
 export const summaryLabel = (branch: string | null, s: Summary): string => {
-  if (s.linesSkipped) return `${branch ?? "Detached HEAD"}, ${s.ahead} ahead and ${s.behind} behind ${s.against}, ${LINES_SKIPPED_NOTE}`;
+  if (s.linesSkipped) return `${branch ?? "Not on a branch"}, ${s.ahead} ahead and ${s.behind} behind ${s.against}, ${LINES_SKIPPED_NOTE}`;
   const t = summaryTotal(s);
   const split = summaryRows(s).map((r) => `${r.label.toLowerCase()} ${grouped(r.added)} added ${grouped(r.removed)} removed`).join(", ");
-  return `${branch ?? "Detached HEAD"}, ${s.ahead} ahead and ${s.behind} behind ${s.against}, ${grouped(t.added)} line${t.added === 1 ? "" : "s"} added and ${grouped(t.removed)} removed: ${split}`;
+  return `${branch ?? "Not on a branch"}, ${s.ahead} ahead and ${s.behind} behind ${s.against}, ${grouped(t.added)} line${t.added === 1 ? "" : "s"} added and ${grouped(t.removed)} removed: ${split}`;
 };
 
 /** GIT-002 / FIX-BEFORE-2: what the panel draws: the filter text, and in the tree view the closed

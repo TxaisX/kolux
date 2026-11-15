@@ -8,7 +8,8 @@ import type { GlyphName } from "../chrome/icons";
 import type { AgentState } from "../projects/rows";
 
 export type Kind = "starting" | "running" | "ended" | "failed";
-export type Tone = "" | "working" | "done" | "attention";
+/** `bad` (D-03): failed or cannot reach, painted red; `attention` is needs you, painted yellow. */
+export type Tone = "" | "working" | "done" | "attention" | "bad";
 /** The card's ten states, the Agents view's starting / cannot-reach / stopped, and Kolux's queued. */
 export type StatusKey = AgentState | "background" | "failed" | "stale" | "starting" | "unreachable" | "stopped";
 export type Vocab = { word: string; glyph: GlyphName; tone: Tone; explain: string };
@@ -21,13 +22,13 @@ export const VOCAB: Record<StatusKey, Vocab> = {
   waiting: { ...needsYou, word: "Needs you", explain: "The agent asked a question and is waiting for your answer." },
   permission: { ...needsYou, word: "Needs you", explain: "The agent needs your permission for a tool." },
   interrupted: { word: "Interrupted", glyph: "interrupted", tone: "attention", explain: "The turn was stopped before it finished." },
-  failed: { word: "Failed", glyph: "failed", tone: "attention", explain: "The program could not start." },
+  failed: { word: "Failed", glyph: "failed", tone: "bad", explain: "The program could not start." },
   done: { word: "Done", glyph: "check", tone: "done", explain: "The agent finished its turn." },
   idle: { word: "Idle", glyph: "idle", tone: "", explain: "Nothing is running here." },
   queued: { word: "Queued", glyph: "idle", tone: "", explain: "Waiting for its turn to start." },
-  stale: { word: "No recent update", glyph: "stale", tone: "", explain: "No status has arrived from this agent for a while." },
+  stale: { word: "Quiet for a while", glyph: "stale", tone: "", explain: "No status has arrived from this agent for a while." },
   starting: { word: "Starting", glyph: "spinner", tone: "working", explain: "The program is starting up." },
-  unreachable: { word: "Cannot reach", glyph: "failed", tone: "attention", explain: "Kolux cannot talk to this agent." },
+  unreachable: { word: "Lost contact", glyph: "failed", tone: "bad", explain: "Kolux cannot talk to this agent." },
   stopped: { word: "Stopped", glyph: "idle", tone: "", explain: "Stopped: waiting on a limit or sign-in, or the program has ended." },
 };
 
@@ -68,12 +69,12 @@ export const foundAgent = (a: string | null): "claude" | "codex" | null => (a ==
 export const statusAgent = (shown: string, launched: string | null): string => (shown === "shell" && launched ? launched : shown);
 
 export function headerOf(agent: string, kind: Kind, code: number | null | undefined, needs: boolean, finishedAt: number | null, now: number, hook?: AgentState | "background"): Header {
-  const h = (state: StatusKey, over: Partial<Header> = {}): Header => ({ ...VOCAB[state], state, age: "", needsYou: VOCAB[state].tone === "attention", ...over });
+  const h = (state: StatusKey, over: Partial<Header> = {}): Header => ({ ...VOCAB[state], state, age: "", needsYou: VOCAB[state].tone === "attention" || VOCAB[state].tone === "bad", ...over });
   const done = () => h("done", { age: finishedAt === null ? "" : ageLabel(finishedAt, now) });
   if (kind === "failed") return h("failed");
   if (kind === "starting") return h("starting", agent === "shell" ? { tone: "" } : {});
   if (kind === "running") {
-    if (agent === "shell") return h("idle", { word: "Ready", explain: "The shell is ready for a command." });
+    if (agent === "shell") return h("idle", { word: "Ready", explain: "Ready for you to type." });
     if (hook === "blocked" || hook === "interrupted" || hook === "waiting") return h(hook);
     if (needs || hook === "permission") return h("permission");
     if (hook === "done") return done();

@@ -6,7 +6,7 @@ Use the Terminals view to run agents and shells in a grid of panes, split and re
 
 Each workspace (a folder) has its own grid. The grid holds one to twenty-four panes. It picks columns by count: 1 pane is one column, 2 panes two, up to 4 panes two columns, up to 9 panes three, and more than that four.
 
-An empty workspace shows "No terminal open here." with two buttons: "Open a shell" and "Choose what to run".
+An empty workspace shows "Nothing running here yet." with two buttons: "Open a terminal" and "Choose what to run".
 
 ### Layouts
 
@@ -60,11 +60,11 @@ Press "..." or right-click the header.
 | Expand pane / Restore pane | Same as the Expand control |
 | Split right / Split down | Add a shell in the same folder |
 | Close pane | Ends the program |
-| Set Title… | Gives the pane your own title |
-| Clear Pane Title | Appears only when you have set a title |
-| Copy Session ID | Appears only when the session is known |
-| Copy Terminal ID / Copy Pane ID | Puts the id on the clipboard |
-| Clear Screen | Clears the pane's screen and its scrollback (Ctrl+K). See [Clear and find](#clear-and-find) |
+| Set title… | Gives the pane your own title |
+| Clear title | Appears only when you have set a title |
+| Copy session ID | Appears only when the session is known |
+| Copy terminal ID / Copy pane ID | Puts the id on the clipboard |
+| Clear screen | Clears the pane's screen and its scrollback (Ctrl+K). See [Clear and find](#clear-and-find) |
 | Find… | Opens the find bar over the pane (Ctrl+F) |
 | Copy terminal diagnostics | Puts a scrubbed snapshot of the pane on the clipboard, for a bug report |
 
@@ -78,7 +78,7 @@ A cell with more than one pane shows a tab strip. Each tab has an icon, a status
 
 | Item | What it does |
 |---|---|
-| Change Title | Renames the tab. Terminals and agents only |
+| Change title | Renames the tab. Terminals and agents only |
 | Pin tab / Unpin tab | Keeps the tab at the front of the strip (see below) |
 | Close | Closes this tab (Ctrl+W). Greyed out for a pinned tab |
 | Close others | Closes every other tab except pinned ones |
@@ -87,7 +87,7 @@ A cell with more than one pane shows a tab strip. Each tab has an icon, a status
 
 Closing the active tab returns you to the tab you used before it. If there is none, the one to its right, else the one to its left.
 
-If a program is still running, Kolux asks first: "Close "<name>"?" with "A program is still running in it. Closing the tab stops it." Press "Close tab" to go on. This question is on by default and can be switched off in Settings. When a shell ends by itself, a dialog says "The shell ended with exit code N" and offers Close pane or Restart.
+If a program is still running, Kolux asks first: "Close "<name>"?" with "A program is still running in it. Closing the tab stops it." Press "Close tab" to go on. This question is on by default and can be switched off in Settings. When a terminal ends by itself, a dialog says "This terminal stopped", says why with the exit code, and offers Close pane or Restart.
 
 Pinned tabs sit before the others with a pin icon. Closing one with Ctrl+W, its x or the pane's close button asks first: "Close pinned tab "<name>"? This tab is pinned. Closing it stops anything still running in it." This question is on by default; switch it off in Settings, Terminal & sessions, "Ask before closing a pinned tab". Pins last until Kolux closes.
 
@@ -242,4 +242,4 @@ With "Terminal first", Kolux still keeps Ctrl+V, Ctrl+Tab, Ctrl+PageUp, Ctrl+Pag
 
 Keys that no Kolux shortcut uses always reach the program. Ctrl+R opens the shell's history search, for example, and Ctrl+Arrow moves by word. Alt+Left and Alt+Right move by word too. Ctrl+C with nothing selected is the program's interrupt. Ctrl+K and Ctrl+F belong to Kolux (clear and find); with "Terminal first" they go to the program instead, because they are not marked safe for terminals. A key you press while composing text with an input method is never taken by a Kolux shortcut.
 
-<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, src-tauri/src/pty.rs, PLAN.md at bc11a7f1 -->
+<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, src-tauri/src/pty.rs, PLAN.md at 76ce460d -->

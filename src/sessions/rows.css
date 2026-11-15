@@ -9,7 +9,7 @@
 .session-children li { display: flex; align-items: center; gap: 6px; font-size: 11.5px; min-width: 0; }
 .session-child-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .session-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dot-idle); flex: none; }
-.session-dot.running { background: var(--dot-live); }
+.session-dot.running { background: var(--working); } /* D-02: running is working (cyan); green is finished */
 .session-dot.finished { background: var(--done-icon); }
 .session-worktree { font-size: 11px; color: var(--fg-muted); align-self: flex-start; overflow-wrap: anywhere; }
 .session-worktree.unavailable { color: var(--fg-muted); text-decoration: line-through; }

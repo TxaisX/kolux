@@ -89,7 +89,7 @@ export function RepoView({ project, globalDir, onSave, outside, onOutside, start
       <p className="conn-detail">Kolux works in this folder. It does not make worktree copies.</p>
       <DraftField label="Display name" saved={project.displayName} inherited={project.name} start={start?.displayName} onSave={(v) => onSave("displayName", v)} />
       <DraftField label="New workspaces start from" saved={project.base} inherited="the default branch" start={start?.base} onSave={(v) => onSave("base", v)} />
-      {!singleFolder() && <DraftField label="Workspaces folder" saved={project.workspacesDir} inherited={globalDir ? `${globalDir} (the global folder)` : "the global folder (Git & worktrees)"} start={start?.workspacesDir} onSave={(v) => onSave("workspacesDir", v)} />}
+      {!singleFolder() && <DraftField label="Workspaces folder" saved={project.workspacesDir} inherited={globalDir ? `${globalDir} (the global folder)` : "the global folder (Settings > Git)"} start={start?.workspacesDir} onSave={(v) => onSave("workspacesDir", v)} />}
       {outside && onOutside && <OutsideField outside={outside} onChoose={onOutside} />}
       <p className="conn-detail">Empty uses the value shown in grey. The icon is chosen from the project's own row in the sidebar.</p>
     </section>

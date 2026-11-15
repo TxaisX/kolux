@@ -33,7 +33,7 @@
 ::highlight(kx-hl-type) { color: var(--danger); }
 ::highlight(kx-hl-meta) { color: var(--gauge-text); }
 ::highlight(kx-hl-add) { color: var(--done); }
-::highlight(kx-hl-del) { color: var(--meter-danger); }
+::highlight(kx-hl-del) { color: var(--status-bad); }
 /* EDIT-016: the contents panel beside a note. */
 .pane.editor { position: relative; }
 .pane.editor.toc-open .md-rich, .pane.editor.toc-open .md-preview { padding-right: 252px; }
@@ -61,7 +61,7 @@
 .content-search input, .cs-file > button { min-height: 24px; }
 .content-search .cs-row .ib { min-width: 24px; }
 .cs-status { color: var(--fg-muted); padding: 2px 1px; }
-.cs-status.bad { color: var(--warn); }
+.cs-status.bad { color: var(--status-bad); }
 .cs-results { flex: 1; min-height: 0; overflow: auto; margin: 0 -8px; }
 .cs-file > button { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; padding: 3px 10px; }
 .cs-file > button:hover { background: var(--row-selected); }

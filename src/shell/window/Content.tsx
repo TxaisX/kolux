@@ -192,7 +192,7 @@ export default function WindowContent() {
             <button key={p.key} className="needs-chip" onClick={() => openPane(p.key)} title={VOCAB[statusOf(p)!].explain}>
               <StatusGlyph glyph="attention" size={11} />
               <span className="name">{tabName(p, titles)}</span>
-              <span className="why">{statusOf(p) === "permission" ? "needs permission" : "asked a question"}</span>
+              <span className="why">{statusOf(p) === "permission" ? "wants a yes or no" : "asked a question"}</span>
             </button>
           ))}
         </div>

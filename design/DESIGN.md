@@ -213,7 +213,7 @@ Inner content runs from about x 13 to x 291. Top to bottom:
 | Divider | 962 | 1 px `#272727`, full card width |
 | Footer icon row | 974..987 | gear (x 23), help-circle (x 50), refresh icon + "Check for updates" (x 91..214), a circle/target icon (x 241), and a pause-like glyph (x 271). All `#a1a1a1`, 12-14 px. |
 
-> Amendment 2026-10-12 (T-116-a-fix): the sidebar's add-project form (the Projects header button) no longer holds the branch prefix or the default compare base; one link in it opens Settings > Git & worktrees, where both now live.
+> Amendment 2026-10-12 (T-116-a-fix): the sidebar's add-project form (the Projects header button) no longer holds the branch prefix or the default compare base; one link in it opens Settings > Git, where both now live.
 
 ## 6. Layout strip (x 297..1919, y 36..75, fill `#0a0a0a`)
 

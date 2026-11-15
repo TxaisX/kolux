@@ -212,12 +212,13 @@ input { font: inherit; }
 .sess { position: relative; display: flex; align-items: center; height: 32px; padding: 0 4px 0 26px; gap: 10px; border-radius: 6px; font-size: 13px; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 /* PROJ-063: the dot is the strongest live agent state; what needs you is amber, working green, done teal. */
 .sb-list .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dot-idle); flex: none; }
-.sb-list .dot.live, .sb-list .dot.working { background: var(--dot-live); }
+.sb-list .dot.working { background: var(--working); } /* D-02: working is cyan everywhere; green is done only */
 .sb-list .dot.done { background: var(--done-icon); }
+.sb-list .dot.failed, .sb-list .dot.unreachable { background: var(--status-bad); }
 .sb-list .dot.permission, .sb-list .dot.blocked, .sb-list .dot.waiting, .sb-list .dot.interrupted { background: var(--working-icon); }
 .sess.sel::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; border-radius: 1px; background: var(--dot-live); }
 .sess.unread .name { font-weight: 600; color: var(--fg); }
-.sess.unread .name::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--working-icon); vertical-align: middle; }
+.sess.unread .name::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--working); vertical-align: middle; }
 .sb-group { display: flex; align-items: center; gap: 6px; width: 100%; height: 26px; margin-top: 6px; padding: 0 8px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-label); }
 .sb-group .count { font-weight: 400; color: var(--fg-muted); }
 .sb-group .chev { display: inline-flex; margin-left: auto; transition: transform 80ms; }
@@ -269,7 +270,7 @@ input { font: inherit; }
 .note { font-size: 12px; padding: 4px 9px; word-break: normal; overflow-wrap: anywhere; line-height: 1.4; }
 .note.ok { color: var(--done); }
 .note.warn { color: #e2c06a; }
-.note.error { color: #f0a07a; }
+.note.error { color: var(--status-bad); }
 .field.multi { height: auto; min-height: 44px; padding: 4px 8px; resize: vertical; font: inherit; font-size: 12px; }
 .preview { color: var(--fg-label); word-break: break-all; line-height: 1.4; }
 .sb-divider { height: 1px; background: var(--line); margin: 0 4px; flex: none; }
@@ -527,8 +528,9 @@ input { font: inherit; }
 .inbox .row[aria-selected="true"] { background: var(--row-selected); color: var(--fg); }
 .inbox:focus .row[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--focus-ring); }
 .inbox .row .st { display: inline-flex; flex: none; color: var(--dot-idle); }
-.inbox .row.working .st { color: var(--working-icon); }
+.inbox .row.working .st { color: var(--working); }
 .inbox .row.attention .st { color: var(--working-icon); }
+.inbox .row.bad .st { color: var(--status-bad); }
 .inbox .row.done .st { color: var(--done-icon); }
 .inbox .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inbox .row .lbl { flex: none; font-size: 11px; color: var(--fg-muted); }
@@ -540,6 +542,7 @@ input { font: inherit; }
 .inbox .detail h2 .status.working { color: var(--working); }
 .inbox .detail h2 .status.done { color: var(--done); }
 .inbox .detail h2 .status.attention { color: var(--working-icon); }
+.inbox .detail h2 .status.bad { color: var(--status-bad); }
 .inbox .detail dl { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; margin: 0 0 16px; font-size: 12px; }
 .inbox .detail dt { color: var(--fg-muted); }
 .inbox .detail dd { margin: 0; color: var(--fg); min-width: 0; overflow-wrap: anywhere; }
@@ -551,10 +554,12 @@ input { font: inherit; }
 .tab[aria-selected="true"] { background: var(--pane-bg); border-color: var(--line-focus); color: var(--fg); }
 /* TERM-055: one badge beside the agent icon; the spinner reuses the header's spin. */
 .tab .badge { display: inline-flex; flex: none; }
-.tab .badge.working { color: var(--working-icon); }
+/* D-01, rule 7: working and unread cyan, needs you yellow, done green, stopped grey. */
+.tab .badge.working, .tab .badge.background { color: var(--working); }
 .tab .badge.done { color: var(--done-icon); }
-.tab .badge.unread,
+.tab .badge.unread { color: var(--working); }
 .tab .badge.permission { color: var(--working-icon); }
+.tab .badge.stopped { color: var(--fg-faint); }
 .tab .tab-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .tab .tab-x { width: 18px; height: 18px; border-radius: 4px; color: var(--fg-muted); line-height: 1; }
 .tab .tab-x:hover { background: var(--row-selected); color: var(--fg); }
@@ -567,8 +572,9 @@ input { font: inherit; }
 .pane-head { flex: none; height: 27px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 9px; border-bottom: 1px solid var(--line-subtle); font-size: 12px; white-space: nowrap; }
 .pane-head .st { display: inline-flex; flex: none; }
 .pane-head .st.done { color: var(--done-icon); }
-.pane-head .st.working { color: var(--working-icon); }
+.pane-head .st.working { color: var(--working); }
 .pane-head .st.attention { color: var(--working-icon); }
+.pane-head .st.bad { color: var(--status-bad); }
 .pane-head .st.idle { color: var(--dot-idle); }
 .pane-head .agent-mark { display: inline-flex; color: var(--fg-muted); flex: none; }
 .pane-head .title { font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; }
@@ -578,6 +584,7 @@ input { font: inherit; }
 .pane-head .status.working { color: var(--working); }
 .pane-head .status.done { color: var(--done); }
 .pane-head .status.attention { color: var(--working-icon); }
+.pane-head .status.bad { color: var(--status-bad); }
 .pane-head .age { color: var(--fg-muted); }
 .pane-head .crew { color: var(--fg-muted); font-size: 11px; }
 .conn-switch input[type="number"] { width: 64px; }
@@ -733,10 +740,10 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .runs-tile { flex: 1 1 140px; padding: 8px 10px; border: 1px solid var(--line-subtle); border-radius: 8px; background: var(--input-bg); font-size: 12px; color: var(--fg-muted); }
 .runs-tile b { display: block; font-size: 18px; font-weight: 600; color: var(--fg); }
 .runs-tile.ok b { color: var(--done); }
-.runs-tile.bad b { color: var(--danger); }
+.runs-tile.bad b { color: var(--status-bad); }
 .runs-table th { padding: 0 12px; height: 30px; }
 .runs-row { cursor: pointer; }
-.runs-status.failed { color: var(--danger); }
+.runs-status.failed { color: var(--status-bad); }
 .runs-count { margin: 0; padding: 8px 12px; font-size: 11px; color: var(--fg-faint); }
 .run-facts { margin: 0; padding: 12px 14px; display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; font-size: 12px; }
 .run-facts div { display: contents; }
@@ -919,7 +926,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .add-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-muted); }
 .add-label .field { margin: 0; }
 .add-progress { font: 11px var(--mono-font); overflow-wrap: anywhere; }
-.add-error { margin: 0; font-size: 12px; color: var(--danger); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.add-error { margin: 0; font-size: 12px; color: var(--status-bad); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .ask-check { display: flex; align-items: center; gap: 6px; margin: -6px 0 14px; font-size: 12px; color: var(--fg-muted); }
 .ask-list { margin: 0 0 14px; padding: 0 0 0 18px; max-height: min(40vh, 240px); overflow: auto; font: 11.5px var(--mono-font); color: var(--fg-muted); }
 .ask-list li { overflow-wrap: anywhere; }
@@ -939,14 +946,14 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .statusbar .upd-item { color: var(--fg); font: inherit; padding: 0 4px; border-radius: 4px; }
 .statusbar .upd-item:hover { background: var(--row-selected); }
 .statusbar .upd-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--done); }
-.statusbar .upd-item.error { color: var(--danger); }
-.statusbar .upd-item.error .dot { background: var(--meter-danger); }
+.statusbar .upd-item.error { color: var(--status-bad); }
+.statusbar .upd-item.error .dot { background: var(--status-bad); }
 /* SKILL-027: the skill update item (spinner with a count, green check, red failure) and SKILL-025: the freshness pill. */
 .statusbar .skill-item { color: var(--fg); font: inherit; padding: 0 4px; border-radius: 4px; }
 .statusbar .skill-item:hover { background: var(--row-selected); }
 .statusbar .skill-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--done); }
-.statusbar .skill-item.bad { color: var(--danger); }
-.statusbar .skill-item.bad .dot { background: var(--meter-danger); }
+.statusbar .skill-item.bad { color: var(--status-bad); }
+.statusbar .skill-item.bad .dot { background: var(--status-bad); }
 .statusbar .skill-item .spin { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line-strong); border-top-color: var(--fg); animation: skill-spin 0.9s linear infinite; }
 @keyframes skill-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .statusbar .skill-item .spin { animation: none; } }
@@ -954,7 +961,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 button.skills-pill { cursor: pointer; }
 .skills-pill.ok { color: var(--done); }
 .skills-pill.warn { color: var(--warn); }
-.skills-pill.bad { color: var(--danger); }
+.skills-pill.bad { color: var(--status-bad); }
 .res-pop { right: 16px; bottom: 32px; width: min(460px, calc(100vw - 32px)); max-height: min(70vh, 560px); overflow-y: auto; }
 .res-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-right: 8px; }
 .res-free { font-size: 12px; color: var(--fg-muted); }
@@ -1000,7 +1007,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .scm-handoff { margin: 0 8px 8px; padding: 6px 8px; border: 1px solid var(--line-subtle); border-radius: 8px; font-size: 12px; color: var(--fg-muted); display: flex; flex-direction: column; gap: 6px; }
 .scm-handoff summary { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--fg-label); font-weight: 500; }
 .scm-handoff summary .state { margin-left: auto; font-weight: 400; color: var(--fg-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.scm-handoff summary .state.error { color: #f0a07a; }
+.scm-handoff summary .state.error { color: var(--status-bad); }
 .scm-handoff .field.multi { min-height: 96px; margin-top: 6px; }
 .scm-handoff .btn-row { display: flex; gap: 6px; margin-top: 6px; }
 .scm-handoff .btn-row select { flex: 1; min-width: 0; }
@@ -1013,7 +1020,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .upd-card.collapsed .upd-head { cursor: pointer; }
 .upd-icon { display: inline-flex; color: var(--fg-muted); }
 .upd-card.ready .upd-icon, .upd-card.upToDate .upd-icon, .upd-pop svg { color: var(--done); }
-.upd-card.error .upd-icon { color: #f0a07a; }
+.upd-card.error .upd-icon { color: var(--status-bad); }
 .upd-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upd-pct { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
 .upd-body { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -1079,9 +1086,12 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .palette-num { flex: none; min-width: 1.2em; opacity: 0.55; font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
 .palette-mark { display: inline-flex; align-items: center; gap: 4px; flex: none; }
 .palette-mark .badge { display: inline-flex; }
-.palette-mark .badge.working, .palette-mark .badge.background, .palette-mark .badge.unread, .palette-mark .badge.permission { color: var(--working-icon); }
+.palette-mark .badge.working, .palette-mark .badge.background, .palette-mark .badge.unread { color: var(--working); }
+.palette-mark .badge.permission { color: var(--working-icon); }
+.palette-mark .badge.stopped { color: var(--fg-faint); }
 .palette-mark .badge.done { color: var(--done-icon); }
 .palette-mark .badge.dot { width: 7px; height: 7px; margin: 0 2px; border-radius: 50%; background: var(--working-icon); }
+.palette-mark .badge.unread.dot { background: var(--working); }
 .palette-age { font-size: 11px; color: var(--fg-faint); font-variant-numeric: tabular-nums; }
 .picker-tip { position: fixed; z-index: var(--z-top); max-width: min(640px, 70vw); padding: 4px 8px; border: 1px solid var(--line-focus); border-radius: 6px; background: var(--pane-bg); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); font-size: 12px; color: var(--fg); overflow-wrap: anywhere; pointer-events: none; }
 .picker-tip-folder { color: var(--fg-muted); }
@@ -1268,7 +1278,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .onb-work { display: flex; flex-direction: column; gap: 12px; }
 .onb-folder { align-self: flex-start; }
 .onb-or { font-size: 12px; color: var(--fg-faint); }
-.onb-error { margin: 0; font-size: 12px; color: var(--warn); }
+.onb-error { margin: 0; font-size: 12px; color: var(--status-bad); }
 .onb-ping { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--fg); cursor: pointer; }
 @media (max-width: 640px) { .onb-tiles { grid-template-columns: minmax(0, 1fr); } }
 /* VIEW-010: the Tasks page reuses the Automations page frame. */
@@ -1288,8 +1298,8 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .tasks-who { flex: none; color: var(--fg-label); }
 .tasks-checks { flex: none; padding: 1px 6px; border-radius: 999px; background: var(--chip-bg); font-size: 11px; color: var(--fg-faint); }
 .tasks-checks.passing { color: var(--done); }
-.tasks-checks.failing { color: var(--danger); }
-.tasks-checks.running { color: var(--working-icon); }
+.tasks-checks.failing { color: var(--status-bad); }
+.tasks-checks.running { color: var(--working); }
 .tasks-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 12px; border-top: 1px solid var(--line-subtle); font-size: 12px; }
 .tasks-foot .btn { min-width: 26px; padding: 2px 6px; }
 .tasks-foot .btn[aria-current="page"] { background: var(--row-selected); color: var(--fg); }
@@ -1339,12 +1349,12 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .skills-root { padding: 5px 8px; border-radius: 6px; min-width: 0; }
 .skills-root .label { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--fg); }
 .skills-root .state { flex: none; color: var(--fg-faint); max-width: 60%; text-align: right; }
-.skills-root.error .state { color: var(--danger); }
+.skills-root.error .state { color: var(--status-bad); }
 .skills-root.partial .state { color: var(--warn); }
 .skills-root .path { font-size: 11px; color: var(--fg-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono-font); }
 .skills-note { padding: 6px 12px; font-size: 12px; color: var(--warn); }
 .skills-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.skills-err { color: var(--danger); }
+.skills-err { color: var(--status-bad); }
 .skills-list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; }
 .skills-row { padding: 8px 10px; border-radius: 6px; min-width: 0; }
 .skills-row:hover { background: var(--row-selected); }
@@ -1458,7 +1468,8 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 /* VIEW-017: the row's status word, one of the fixed set; what needs you is amber, working green, done teal. */
 .sess .status { flex: none; font-size: 11px; color: var(--fg-muted); }
 .sess .status.attention { color: var(--working-icon); }
-.sess .status.working { color: var(--dot-live); }
+.sess .status.bad { color: var(--status-bad); }
+.sess .status.working { color: var(--working); }
 .sess .status.done { color: var(--done-icon); }
 /* USAGE-004: a context ring on rail rows that have a reading; the plan footer under the groups. */
 .sess .ring { flex: none; color: var(--gauge); }
@@ -1484,6 +1495,10 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .pane { container-type: inline-size; }
 .pane-head .title { min-width: 0; }
 @container (max-width: 510px) { .pane-head .chip:not(.wt-chip) { display: none; } }
+/* D-08: a narrow header keeps split, expand and + out of the way until it is hovered, holds focus or has a menu open. The focused pane and Board cards always show them; this rule never hides menu or close. */
+@container (max-width: 560px) { .pane:not(.focused, .card) .pane-head:not(:hover, :focus-within, :has([aria-expanded="true"])) .right :is(.pane-expand, [data-testid="pane-split-right"], [data-testid="pane-new-session"]) { display: none; } }
+/* F1: the three come first in the right-hand group, which is packed to its right end, so when they appear nothing shown at rest moves. Not keyed to focus: a pane takes focus on mousedown. */
+@container (max-width: 560px) { .pane:not(.card) .pane-head .right :is(.pane-expand, [data-testid="pane-split-right"], [data-testid="pane-new-session"]) { order: -1; } }
 /* One workspace per project: the worktree chip stays at any cell width the title can share (a narrow cell keeps its coloured dot). */
 @container (max-width: 340px) { .pane-head .wt-chip .wt-text { display: none; } }
 @container (max-width: 447px) { .pane-head .word { display: none; } }
@@ -1571,13 +1586,13 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .check-row > summary:hover { background: var(--chip-bg); }
 .check-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .check-row .wf { color: var(--fg-faint); }
-.check-row .word.failed { color: var(--danger); }
+.check-row .word.failed { color: var(--status-bad); }
 .check-row .word.passed { color: var(--done); }
 .check-row .word.unresolved { color: var(--working-icon); }
 .check-row .word.running, .check-row .word.skipped, .check-row .word.cancelled { color: var(--fg-label); }
 .check-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--fg-faint); }
 .check-dot.passed { background: var(--done-icon); }
-.check-dot.failed { background: var(--danger); }
+.check-dot.failed { background: var(--status-bad); }
 .check-dot.running { background: transparent; box-sizing: border-box; border: 1.5px solid var(--fg-label); }
 .check-dot.unresolved { background: var(--working-icon); }
 .check-detail { margin: 2px 0 6px 14px; padding: 6px 8px; border-left: 1px solid var(--divider); color: var(--fg-label); display: flex; flex-direction: column; gap: 4px; align-items: flex-start; resize: vertical; overflow: auto; min-height: 40px; max-height: 60vh; line-height: 1.4; }

@@ -40,14 +40,14 @@ describe("G1 (not reproduced): the palette's filter selects add a chip, then go 
     const { default: WorktreePalette } = await import("../projects/WorktreePalette");
     const project = { id: "p1", name: "app", path: "C:/w/app" } as unknown as Project;
     const c = await show(WorktreePalette, { projects: [project], items: [], prOf: () => null, recent: [], scope: [], hasWorktree: true, onWorktree: () => {}, onCreate: () => {}, onClose: () => {} });
-    const repo = byLabel(c, "select", "Filter by repository")[0];
+    const repo = byLabel(c, "select", "Filter by project")[0];
     await until(() => repo.options.length > 1, "the repository options");
     expect(repo.options[0].textContent).toBe("+ Repository");
     repo.value = repo.options[1].value;
     await fire(c, "change", repo);
     await until(() => chips(c).length === 1, "the repository chip");
     expect(chips(c)).toEqual(["Remove the filter Repository: app"]);
-    expect(byLabel(c, "select", "Filter by repository")[0].options.map((o) => o.value)).toEqual([""]);
+    expect(byLabel(c, "select", "Filter by project")[0].options.map((o) => o.value)).toEqual([""]);
     const kind = byLabel(c, "select", "Filter by kind")[0];
     kind.value = "Workspaces";
     await fire(c, "change", kind);
@@ -146,16 +146,16 @@ describe("S24: every item of the tab menu", () => {
   it("lists the title, pin, color, split and close items", async () => {
     const { c } = await open();
     const names = find(c, (n) => n.attrs.class === "name").map((n) => n.textContent);
-    expect(names).toEqual(["Change Title", "Pin tab", "Tab Color", "Split Right", "Split Down", "Close", "Close others", "Close to the right", "Close to the left", "Close all"]);
+    expect(names).toEqual(["Change title", "Pin tab", "Tab color", "Split right", "Split down", "Close", "Close others", "Close to the right", "Close to the left", "Close all"]);
   });
   it("each head item does what it says and closes the menu", async () => {
     const { c, item } = await open();
-    await click(c, item("Change Title"));
+    await click(c, item("Change title"));
     expect(fn("setRenamingTab")).toHaveBeenCalledWith(2);
     await click(c, item("Pin tab"));
     expect(fn("setPinned").mock.calls[0][0](new Set<number>())).toEqual(new Set([2]));
-    await click(c, item("Split Right"));
-    await click(c, item("Split Down"));
+    await click(c, item("Split right"));
+    await click(c, item("Split down"));
     expect(fn("splitTab").mock.calls).toEqual([[2, "right"], [2, "down"]]);
     const swatches = find(c, (n) => n.attrs.role === "menuitemradio");
     expect(swatches.length).toBe(TAB_COLORS.length);
@@ -182,7 +182,7 @@ describe("S24: every item of the tab menu", () => {
     await unmount();
     const again = await open();
     expect(again.item("Close to the right").attrs["aria-disabled"]).toBe("true");
-    expect(again.item("Split Right").hasAttribute("disabled")).toBe(true);
+    expect(again.item("Split right").hasAttribute("disabled")).toBe(true);
     fn("closeTab").mockClear();
     await click(again.c, again.item("Close to the right"));
     expect(fn("closeTab")).not.toHaveBeenCalled();

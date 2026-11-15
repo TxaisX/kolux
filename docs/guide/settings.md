@@ -12,8 +12,8 @@ Changes save as you make them. They live in `settings.json` in Kolux's data fold
 | Appearance | Colours, interface zoom, fonts, terminal text, the sidebar buttons, status bar |
 | Accounts & keys | Signing in to Claude, Codex and Grok |
 | Agents | Which agents are on, how they start, whether they ask permission |
-| Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default shell, close warnings, pinned tabs, removing a running session |
-| Git & worktrees | Branch names, compare base, commit messages |
+| Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default terminal, close warnings, pinned tabs, removing a running session |
+| Git | Branch names, compare base, commit messages |
 | Safety | A short note on protected commands (see [Safety](safety.md)) |
 | Notifications | What alerts you, and how |
 | Shortcuts | Every command and its keys |
@@ -190,7 +190,7 @@ Saved keys and sign-ins are sealed by the system keyring (Windows' secret store)
 | Installed agents | A list with a Refresh button. Each has an on/off switch, a "default" mark, and a "How it starts" fold with Command, Default arguments and Environment | `agentOptions` |
 | Agent status hooks | Off until the setup line is answered or you turn it on here, then it shows the saved answer. The first-run dialog's Connect step (or, on a profile that never answered, a one-time card) shows "Kolux will add its status hooks to each AI's settings, so it can show you which one needs you." beside a switch that starts on. Continue records the switch; Back and "I'll do this later" do not. On the one-time card, Done records the switch, Turn off records no, and Not now leaves it unanswered, so the card asks again at the next launch. Turn it off here or there | `agentStatusHooks` |
 | Hold Claude and Codex to a 200k context window | On | |
-| Prompt-cache timer | Off. When on, "Cache length" is 5 minutes (default) or 1 hour | |
+| Cache countdown | Off. When on, "Cache length" is 5 minutes (default) or 1 hour | |
 
 **Agent Permissions matters.** Under Yolo, Claude Code starts in its automatic mode, where its own safety check approves routine actions and still stops risky ones. Codex starts with no approval prompts but inside its sandbox (the walled-off area it works in): it can change files only in the workspace's own folder. By default the sandbox also keeps its commands off the internet and away from Git's own records, so Codex can edit files but cannot commit, install packages or push. Such a command fails and Codex is told why; it does not ask you. Choose Manual if you want each agent to ask before it acts.
 
@@ -229,7 +229,7 @@ The first table covers panes and closing. The cards after it cover the terminal'
 | New workspaces start with | 1, 2, 4, 6, 9 or 12 panes. Default 1. Classic always uses 1 | `defaultPaneCount` |
 | Ask before closing running terminals | On. A tab with only an idle shell always closes at once | `confirmCloseRunning` |
 | Ask before closing a pinned tab | On. Pinned tabs sit first in the strip and stay out of Close others, Close all and middle-click | `pinnedTabsAsk` |
-| Removing a started session | "Ask first" (default) or "Stop without asking". Applies to Remove session on a running agent or a busy shell. A pane that has not started, or an idle shell, is removed straight away | `removeStartedSession` |
+| Removing a started session | "Ask first" (default) or "Stop without asking". Applies to Remove session on a running agent or a busy terminal. A pane that has not started, or an idle terminal, is removed straight away | `removeStartedSession` |
 
 ### Terminal text and cursor
 
@@ -243,7 +243,7 @@ A sample terminal at the top of the card shows each change as you make it. Open 
 | Line height | 1 to 2 in steps of 0.05, default 1 | `terminalLineHeight` |
 | Cursor | Block (default), Bar or Underline | `terminalCursorStyle` |
 | Blinking cursor | On | `terminalCursorBlink` |
-| Minimum contrast: keep text readable on any colour scheme | Off. When on, text keeps at least a 4.5 to 1 contrast against its background | `terminalMinimumContrast` |
+| Always keep text readable | Off. When on, text keeps at least a 4.5 to 1 contrast against its background | `terminalMinimumContrast` |
 | GPU drawing | Automatic (default: the GPU when the computer has one that works), On or Off. Up to six terminals use it at a time; the rest draw the plain way | `terminalGpu` |
 
 A number you type is corrected to the nearest allowed value when you press Enter or leave the box.
@@ -265,13 +265,13 @@ A number you type is corrected to the nearest allowed value when you press Enter
 
 A right-click paste gets the same checks as a Ctrl+V paste: the size limit, the safe way of pasting several lines and the "Paste N lines?" question (see [Terminals](terminals.md#paste-and-copy)).
 
-### Default shell
+### Default terminal
 
 This card shows on Windows only. "New terminals open in" lists "Automatic (PowerShell 7 when installed)" and each shell Kolux found on the computer: PowerShell 7, Windows PowerShell, Command Prompt, Git Bash and WSL. Pick one and a new plain terminal, including the one Ctrl+T opens, starts in it. Terminals that are already open keep the shell they started with. Saved as `defaultShell`.
 
 The shell you pick is tried first. If it will not start (it was uninstalled, or Windows refuses it), Kolux goes on to the automatic shells behind it instead of giving up, and the new terminal opens with one dim line such as "<chosen shell> did not start; opened <shell>" so you can see what happened. A choice that is no longer installed leaves the automatic order as it was.
 
-## Git & worktrees
+## Git
 
 | Setting | Choices | Saved as |
 |---|---|---|
@@ -332,4 +332,4 @@ Each project has two settings: "New workspaces start from" (blank means the defa
 
 The mouse wheel scrolls long menus, pickers and sheets, including the lists inside dialogs. Over such a surface the wheel moves the nearest part, working outward from the pointer, that can still scroll that way. When nothing in the menu can move, the wheel does nothing, so the page behind it does not jump. Ctrl+wheel (zoom) and sideways scrolling are left alone, and a list that sits inline on a page still scrolls its page.
 
-<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/ShortcutsPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src/settings/editorPrefs.ts, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx, src/settings/ExperimentalCard.tsx, src/sleep/agentSleep.ts, src/sleep/useAgentSleep.ts, src/look/FinishSettings.tsx, src/projects/singleFolder.ts at c330511c -->
+<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/ShortcutsPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src/settings/editorPrefs.ts, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx, src/settings/ExperimentalCard.tsx, src/sleep/agentSleep.ts, src/sleep/useAgentSleep.ts, src/look/FinishSettings.tsx, src/projects/singleFolder.ts at 3dfe5e55 -->

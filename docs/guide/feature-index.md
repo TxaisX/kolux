@@ -246,7 +246,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-102-a | Drag panes to rearrange, close tabs in bulk and use the tab right-click menu. | [Terminals](terminals.md) |
 | T-103-a | Terminals keep their scroll position when you switch views. | [Terminals](terminals.md) |
 | T-104-a | Windows terminals pick the best shell and start with a clean environment. | [Terminals](terminals.md) |
-| T-104-c | The default shell you chose is tried first, and the automatic shells wait behind it as fallbacks; a pane says in one dim line when the chosen shell did not start. | [Settings](settings.md#default-shell) |
+| T-104-c | The default terminal you chose is tried first, and the automatic shells wait behind it as fallbacks; a pane says in one dim line when the chosen shell did not start. | [Settings](settings.md#default-terminal) |
 | T-105 | The kolux terminal command lists, shows, creates, splits and renames terminals. | [Command line](command-line.md) |
 
 ### P1 · theme 2 · Isolation (earlier versions: one worktree per agent) (36 cards)
@@ -291,7 +291,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-123-b | A Codex agent's reply text reaches its card from its finish report, as Claude Code's does. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-123-c-b | With Claude Code, a finish after Esc or Ctrl+C shows Done, not Interrupted. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-123-c-c | With Claude Code, Esc while a tool is finishing still settles Interrupted, not Working. | [Board, agents and inbox](board-agents-inbox.md) |
-| T-124 | No recent update after 30 minutes without status; the terminal title stands in before hooks report; programs can report status in band. | [Board, agents and inbox](board-agents-inbox.md) |
+| T-124 | Quiet for a while after 30 minutes without status; the terminal title stands in before hooks report; programs can report status in band. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-124-c | Approve and Deny on a card only for a permission the agent's hooks reported; "no status for" names how long since the last status. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-123-d | A waiting agent's card shows every question it asked, not only the first. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-127 | A Checks panel and pull request comments show in the sidebar. | [Projects and folders](projects-and-worktrees.md) |
@@ -471,7 +471,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-244-c | The Enable Kolux CLI check no longer freezes the window: a PATH folder that does not answer within a second is passed over, and one on another computer is never looked up. | [Getting started](getting-started.md) |
 | T-245 | Contextual tours: small callouts with Back, Next, Skip and Done that show once and can be replayed from the Help menu. | [Getting started](getting-started.md) |
 | T-246 | Search every setting at once, open or reload the keybindings file, choose Kolux first or Terminal first for shortcuts, and zoom the whole interface. | [Settings](settings.md#search-all-settings) |
-| T-247 | The Terminal settings cover text, cursor, scrolling, clipboard and the Windows default shell; a Confirmations card brings skipped questions back. | [Settings](settings.md#terminal-text-and-cursor) |
+| T-247 | The Terminal settings cover text, cursor, scrolling, clipboard and the Windows default terminal; a Confirmations card brings skipped questions back. | [Settings](settings.md#terminal-text-and-cursor) |
 | T-248-a | A standard menu (File, Edit, View, Window, Help) opens from the Kolux mark in the top bar and shows your shortcuts as hints. | [Getting started](getting-started.md) |
 | T-250-a | Help on every command level, plus a version flag, in the command line. | [Command line](command-line.md) |
 
@@ -561,4 +561,4 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-325 | The Agents page shows a Claude Code, OpenClaude or Codex session as a live chat with each message once and in order. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
 | T-326 | Chat folds the agent's work: Thought rows, steps, file edits as diff cards, a subagent row and busy timers. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
 | T-327 | A chat message box that types into the agent's terminal and follows the newest message; it holds a send while the agent is asking, and Request changes on a plan waits until the agent leaves its menu. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
-<!-- verified against: PLAN.md at f28a7e65 -->
+<!-- verified against: PLAN.md at 3dfe5e55 -->

@@ -1,0 +1,60 @@
+// D-08 (design audit): in a narrow pane header the split, expand and "+" buttons wait until the header is
+// hovered or holds keyboard focus (the focused pane always shows them), so the status word and Approve keep their room. Menu and close always stay.
+import { expect, test } from "vitest";
+
+const fsName = "node:fs";
+const read = async (rel: string): Promise<string> => ((await import(/* @vite-ignore */ fsName)) as { readFileSync: (u: URL, e: string) => string }).readFileSync(new URL(rel, import.meta.url), "utf8");
+const styles = await read("../styles.css");
+const pane = await read("./TerminalPane.tsx");
+const THREE = ['.pane-expand', '[data-testid="pane-new-session"]', '[data-testid="pane-split-right"]'];
+// R6: every @container block at 560 px that sets order, braces counted so a rule over several lines is one block.
+const orderRules560 = (css: string): string[] =>
+  [...css.matchAll(/@container[^{]*\b560px[^{]*\{/g)].flatMap((m) => {
+    let depth = 1;
+    let i = m.index! + m[0].length;
+    for (; depth > 0 && i < css.length; i++) depth += css[i] === "{" ? 1 : css[i] === "}" ? -1 : 0;
+    const block = css.slice(m.index!, i);
+    return /[{;\s]order\s*:/.test(block) ? [block] : [];
+  });
+const hide = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(([^)]*)\) \.pane-head[^{]*\{ display: none; \} \}/);
+
+test("a narrow header hides split, expand and + until hover or focus, except in the focused pane; menu and close are not named", () => {
+  const rule = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(\.focused, \.card\) \.pane-head:not\(:hover, :focus-within, :has\(\[aria-expanded="true"\]\)\) \.right :is\(([^)]*)\) \{ display: none; \} \}/);
+  expect(rule).not.toBeNull();
+  expect(rule![1].split(", ").sort()).toEqual(THREE);
+  expect(pane).toContain('className="ib pane-expand"');
+  expect(pane).toContain('data-testid="pane-split-right"');
+  expect(pane).toContain('data-testid="pane-new-session"');
+});
+
+// F2: a Board card is narrow and never focused, and its Expand button is how the card opens its terminal.
+test("Board cards are left out of the narrow hide rule, so a card keeps its Expand button", () => {
+  expect(hide).not.toBeNull();
+  expect(hide![1].split(", ")).toEqual(expect.arrayContaining([".focused", ".card"]));
+  expect(pane).toContain("const onExpand = card ? card.onToggle : expand?.toggle;");
+});
+
+// F3: "+" and the pane menu open outside the header and take focus; the three must not vanish under their own open menu.
+test("the three stay while a header menu is open (the menu and + buttons say so with aria-expanded)", () => {
+  expect(hide![0]).toContain('.pane-head:not(:hover, :focus-within, :has([aria-expanded="true"]))');
+  expect(pane).toContain("aria-expanded={menuAt !== null}");
+  expect(pane).toContain("aria-expanded={plusAt !== null}");
+});
+
+// F1: the three sit at the left end of the right-hand group, which is packed to its right end, so when they
+// appear nothing that shows at rest (meter, Review plan, usage, menu, close) moves under the pointer. The
+// rule must not depend on .focused: a pane takes focus on mousedown, so a focus-keyed order would move the
+// menu between press and release.
+test("in a narrow header the three come first, so showing them never moves the menu or close", () => {
+  const order = styles.match(/@container \(max-width: 560px\) \{ \.pane:not\(([^)]*)\) \.pane-head \.right :is\(([^)]*)\) \{ order: -1; \} \}/);
+  expect(order).not.toBeNull();
+  expect(order![2].split(", ").sort()).toEqual(THREE);
+  expect(order![1].split(", ")).toEqual([".card"]);
+  // R6: no other 560 px rule sets order on anything, whether or not it names .pane-head, on one line or several.
+  const FAKE = '\n@container (max-width: 560px) {\n  .right .ib[title="Pane menu"] { order: 1; }\n}\n';
+  expect(orderRules560(styles + FAKE)).toHaveLength(2); // the check can fail: a made-up second rule is caught
+  expect(orderRules560(styles)).toEqual([order![0]]);
+  // The group is packed to its right end; that is what keeps the items at rest still.
+  expect(styles).toContain(".pane:not(.editor) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }");
+  expect(pane).toContain('onMouseDown={onFocus}');
+});

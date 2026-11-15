@@ -30,7 +30,7 @@ Lanes run left to right. A lane is drawn only when it holds a card.
 | Done | Done | The first line of the reply and the newest file written |
 | Idle | Idle | Time since it went idle |
 | Queued | Working | "Queued" |
-| Quiet for a while | Working | "No recent update", and how long since its last status (for example "no status for 12m"). Shown when a working agent prints nothing for a while, or sends no status for 30 minutes |
+| Quiet for a while | Working | "Quiet for a while", and how long since its last status (for example "no status for 12m"). Shown when a working agent prints nothing for a while, or sends no status for 30 minutes |
 | Working | Working | Time running and the current tool step |
 
 On the Board and the Tower a blocked session reads Stopped, and the line under the word gives the cause. The pane header keeps the word Blocked.
@@ -165,9 +165,9 @@ The same words appear in pane headers, tabs, the sidebar, the Board, the Tower a
 | Done | The agent finished its turn. Clearing a session (/clear) or compacting it by hand also shows Done, without a notification |
 | Idle | Nothing is running here |
 | Queued | Waiting for its turn to start |
-| No recent update | No status has arrived from this agent for a while: it printed nothing for some minutes, or, while working, sent no status for 30 minutes. It clears with the next status |
+| Quiet for a while | No status has arrived from this agent for a while: it printed nothing for some minutes, or, while working, sent no status for 30 minutes. It clears with the next status |
 | Starting | The program is starting up |
-| Cannot reach | Kolux cannot talk to this agent |
+| Lost contact | Kolux cannot talk to this agent |
 | Stopped | The program has stopped. A session held by a limit or a sign-in reads Stopped too, with the cause on its line |
 
 A plain shell reads "Ready" while it runs and "Ended (code)" after it exits. A session not yet started reads "Not started" on the Agents page.
@@ -214,4 +214,4 @@ Settings, Notifications has three switches and a sound choice (System default, C
 
 The pill in the top bar shows how much of your weekly allowance is left for each installed AI program, for example "Claude 80% left". Click it to open Settings at Accounts & keys, on the AI connections section. Hover for the weekly limit and when it resets. It tints as the allowance runs down (warning at 70% used, danger above 90%). See [Getting started](getting-started.md) for the full description.
 
-<!-- verified against: src/board/chip.ts, src/board/review.ts, src/App.tsx, src/agents/AgentsRail.tsx, src/agents/rail.ts, src/inbox/inbox.ts, src/inbox/InboxView.tsx, src/inbox/exitedPrompt.ts, src/terminal/status.ts, src/terminal/notify.ts, src/chat/ChatView.tsx, src/chat/MessageBox.tsx, src/chat/StepRows.tsx, src/chat/send.ts, src/chat/model.ts, src/chat/composer.ts, src/status/useAgentStatus.ts, src/usage/meter.ts, src/tower/tower.ts, src/tower/TowerView.tsx, src/chrome/TopBar.tsx, src/keys/actions.ts, src-tauri/src/status.rs, src/floor/FloorView.tsx, src/floor/timeline.ts, src-tauri/src/activity.rs, src/automations/RunsDashboard.tsx, src/automations/usage.ts, src-tauri/src/terminal.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, PLAN.md at c2ef69fc -->
+<!-- verified against: src/board/chip.ts, src/board/review.ts, src/App.tsx, src/agents/AgentsRail.tsx, src/agents/rail.ts, src/inbox/inbox.ts, src/inbox/InboxView.tsx, src/inbox/exitedPrompt.ts, src/terminal/status.ts, src/terminal/notify.ts, src/chat/ChatView.tsx, src/chat/MessageBox.tsx, src/chat/StepRows.tsx, src/chat/send.ts, src/chat/model.ts, src/chat/composer.ts, src/status/useAgentStatus.ts, src/usage/meter.ts, src/tower/tower.ts, src/tower/TowerView.tsx, src/chrome/TopBar.tsx, src/keys/actions.ts, src-tauri/src/status.rs, src/floor/FloorView.tsx, src/floor/timeline.ts, src-tauri/src/activity.rs, src/automations/RunsDashboard.tsx, src/automations/usage.ts, src-tauri/src/terminal.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, PLAN.md at 6f0c159a -->

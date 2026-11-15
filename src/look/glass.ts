@@ -29,7 +29,7 @@ export const CAST = 0.4;
 export const WASH = 0.2;
 export const POOL = 0.8;
 /** The text colours a panel can carry, and the icon and dot colours (which need 3:1, not 4.5:1). */
-export const GLASS_TEXT = ["fg", "fg-row", "fg-muted", "fg-nav", "fg-label", "fg-faint", "fg-disabled", "mark", "link", "working", "done", "gauge-text", "warn", "danger", "cost-fg"] as const;
+export const GLASS_TEXT = ["fg", "fg-row", "fg-muted", "fg-nav", "fg-label", "fg-faint", "fg-disabled", "mark", "link", "working", "done", "gauge-text", "warn", "danger", "status-bad", "cost-fg"] as const;
 export const GLASS_ICONS = ["fg-icon-dim", "working-icon", "done-icon"] as const;
 export const TEXT_BAR = 4.5;
 export const ICON_BAR = 3;

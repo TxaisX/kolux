@@ -25,9 +25,9 @@ const full: MenuContext = {
   hasTitle: true,
   onClearTitle: noop,
   copyIds: [
-    { id: "idSession", name: "Copy Session ID", run: noop },
-    { id: "idTerminal", name: "Copy Terminal ID", run: noop },
-    { id: "idPane", name: "Copy Pane ID", run: noop },
+    { id: "idSession", name: "Copy session ID", run: noop },
+    { id: "idTerminal", name: "Copy terminal ID", run: noop },
+    { id: "idPane", name: "Copy pane ID", run: noop },
   ],
   onDiagnostics: noop,
   onClose: noop,
@@ -39,11 +39,11 @@ const html = (c: MenuContext) => renderToString(createElement(PaneMenu, { style:
 
 test("TERM-035: the menu lists Copy, Select All, Paste; agent actions; splits, Equalize, Expand; title; ids; diagnostics; Clear Screen, Find; Close last, in that order", () => {
   expect(names(full)).toEqual([
-    "Copy", "Select All", "Paste",
+    "Copy", "Select all", "Paste",
     "Review plan",
-    "Split Right", "Split Down", "Equalize", "Expand",
-    "Set Title…", "Clear Title", "Copy Session ID", "Copy Terminal ID", "Copy Pane ID", "Copy terminal diagnostics",
-    "Clear Screen", "Find…", "Close Pane",
+    "Split right", "Split down", "Equalize", "Expand",
+    "Set title…", "Clear title", "Copy session ID", "Copy terminal ID", "Copy pane ID", "Copy terminal diagnostics",
+    "Clear screen", "Find…", "Close pane",
   ]);
 });
 
@@ -55,13 +55,13 @@ test("TERM-035: in an unsplit pane the menu has no Equalize item", () => {
 test("TERM-035: items appear only when they apply (Copy needs a selection, Clear Title a title, Expand room, Close a way to close)", () => {
   const bare = names({ ...full, selected: false, hasTitle: false, canExpand: false, onClose: undefined, onSplit: undefined, agentActions: [], copyIds: [] });
   expect(bare).not.toContain("Copy");
-  expect(bare).not.toContain("Clear Title");
+  expect(bare).not.toContain("Clear title");
   expect(bare).not.toContain("Expand");
-  expect(bare).not.toContain("Close Pane");
-  expect(bare).not.toContain("Split Right");
-  expect(bare).toContain("Select All");
+  expect(bare).not.toContain("Close pane");
+  expect(bare).not.toContain("Split right");
+  expect(bare).toContain("Select all");
   expect(bare).toContain("Paste");
-  expect(bare).toContain("Clear Screen");
+  expect(bare).toContain("Clear screen");
 });
 
 test("TERM-013: an expanded pane's menu offers Collapse; a lone classic pane has no Expand item", () => {
@@ -72,13 +72,13 @@ test("TERM-013: an expanded pane's menu offers Collapse; a lone classic pane has
 
 test("TERM-035: Close Pane is styled destructive and no other item is; shortcuts show only when assigned", () => {
   const items = paneMenuItems(full);
-  expect(items.filter((i) => i.danger).map((i) => i.name)).toEqual(["Close Pane"]);
+  expect(items.filter((i) => i.danger).map((i) => i.name)).toEqual(["Close pane"]);
   const out = html(full);
-  const close = out.split("<button").find((b) => b.includes("Close Pane"))!;
+  const close = out.split("<button").find((b) => b.includes("Close pane"))!;
   expect(close).toContain("danger");
   expect(close).toContain("Ctrl+W");
   // Set Title has no default chord: no shortcut text beside it.
-  const title = out.split("<button").find((b) => b.includes("Set Title"))!;
+  const title = out.split("<button").find((b) => b.includes("Set title"))!;
   expect(title).not.toContain('class="muted"');
   expect(out).toContain('role="separator"');
 });
@@ -86,14 +86,14 @@ test("TERM-035: Close Pane is styled destructive and no other item is; shortcuts
 test("TERM-035: an item's action is what the menu offers for it", () => {
   const ran: string[] = [];
   const items = paneMenuItems({ ...full, onSplit: (d) => ran.push(`split ${d}`), onEqualize: () => ran.push("equalize"), onClose: () => ran.push("close") });
-  for (const n of ["Split Right", "Split Down", "Equalize", "Close Pane"]) items.find((i) => i.name === n)!.run();
+  for (const n of ["Split right", "Split down", "Equalize", "Close pane"]) items.find((i) => i.name === n)!.run();
   expect(ran).toEqual(["split right", "split down", "equalize", "close"]);
 });
 
 test("FIX-1: chooseItem dismisses the menu first, then runs the item's action (Close Pane included); the menu renders one button per item", () => {
   const order: string[] = [];
   const items = paneMenuItems({ ...full, onSplit: (d) => order.push(`split ${d}`), onEqualize: () => order.push("equalize"), onClose: () => order.push("close") });
-  for (const n of ["Split Right", "Equalize", "Close Pane"]) chooseItem(items.find((i) => i.name === n)!, () => order.push("dismiss"));
+  for (const n of ["Split right", "Equalize", "Close pane"]) chooseItem(items.find((i) => i.name === n)!, () => order.push("dismiss"));
   expect(order).toEqual(["dismiss", "split right", "dismiss", "equalize", "dismiss", "close"]);
   // Markup only: one button per item. That a button's onClick calls chooseItem is read from PaneMenu.tsx, not proven here
   // (server rendering carries no handlers); the live proof clicks Close Pane (evidence/core-FIX-1.txt step 3).
@@ -117,7 +117,7 @@ test("TERM-035: a tall menu opened near the bottom or right edge is moved back i
 
 test("UX audit terminal F5: Close Pane is the last item and takes the danger token, not a hard-coded colour", () => {
   const items = paneMenuItems(full);
-  expect(items[items.length - 1].name).toBe("Close Pane");
+  expect(items[items.length - 1].name).toBe("Close pane");
   expect(items[items.length - 1].group).not.toBe(items[items.length - 2].group);
   const out = html(full);
   expect(out).toContain("var(--danger)");

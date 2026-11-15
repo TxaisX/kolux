@@ -39,7 +39,7 @@ const render = (props: Props) => {
   sid = 0;
   return renderToStaticMarkup(createElement(TerminalPane as never, { agent: "claude", cwd: "C:/work/app", onClose: () => {}, onSplit: () => {}, expand: { on: false, can: true, toggle: () => {} }, ...props }));
 };
-const titlesOf = (html: string) => [...html.matchAll(/<button class="ib"[^>]*?title="([^"]*)"/g)].map((m) => m[1]);
+const titlesOf = (html: string) => [...html.matchAll(/<button class="ib(?: [^"]*)?"[^>]*?title="([^"]*)"/g)].map((m) => m[1]);
 const kind = (t: string) => (t.startsWith("Pane menu") ? "more" : t.startsWith("Expand") || t.startsWith("Restore") ? "expand" : t.startsWith("Split") ? "split" : t.startsWith("Close") ? "close" : "other");
 
 beforeEach(() => {

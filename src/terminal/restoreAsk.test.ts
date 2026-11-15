@@ -52,7 +52,7 @@ test("C24-R1-01: the pane branches on restored, keeps the tab with a reason and 
   expect(branch).toContain("fail(back.reason)");
   expect(branch.indexOf("keepsTab(back, restored || moved)")).toBeLessThan(branch.indexOf("fail(back.reason)"));
   // The body notice offers the retry and the close, and the retry asks the service again.
-  expect(pane).toContain("This tab's terminal did not come back");
+  expect(pane).toContain("This terminal didn't reopen");
   expect(pane).toContain("Try again");
   expect(pane).toContain("retryRestore.current = () =>");
 });

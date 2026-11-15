@@ -9,10 +9,11 @@ describe("set-042 / set-060 end every session", () => {
     expect(bulkQuestion("all", [])).toBeNull();
     const all = bulkQuestion("all", [1, 2, 3]);
     expect(all?.text).toContain("3 terminal sessions");
-    expect(all?.text).toContain("opened meanwhile is left alone");
+    expect(all?.text).toContain("Saved files are not touched.");
     expect(all?.confirm).toBe("End all");
     const restart = bulkQuestion("restart", [4]);
-    expect(restart?.text).toContain("1 terminal session) is killed; this cannot be undone");
+    expect(restart?.text).toContain("End every terminal (1 terminal session) so you can start fresh? Running agents stop.");
+    expect(restart?.text).toContain("Reopen a pane for a new terminal.");
     expect(restart?.confirm).toBe("Restart");
   });
 
@@ -25,7 +26,7 @@ describe("set-042 / set-060 end every session", () => {
   it("reports success once none is listed, even when there was nothing to end; names what stayed", () => {
     expect(bulkReport("all", [1, 2], [])).toEqual({ ok: true, text: "2 terminal sessions ended; new terminals open straight away." });
     expect(bulkReport("all", [], [])).toEqual({ ok: true, text: "No terminal session was left to end; new terminals open straight away." });
-    expect(bulkReport("restart", [1], [])).toEqual({ ok: true, text: "The terminals were restarted: 1 terminal session ended. Reopen a pane for a fresh shell." });
+    expect(bulkReport("restart", [1], [])).toEqual({ ok: true, text: "The terminals were restarted: 1 terminal session ended. Reopen a pane for a fresh terminal." });
     const bad = bulkReport("restart", [1, 2], [2]);
     expect(bad.ok).toBe(false);
     expect(bad.text).toContain("1 terminal session did not end (Session 2)");

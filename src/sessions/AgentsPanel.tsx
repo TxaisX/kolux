@@ -223,7 +223,7 @@ function AgentsPanelBody(props: PanelProps) {
         <input
           type="search"
           className="agents-search"
-          placeholder="Search: words, &quot;a phrase&quot;, repo:name, path:folder"
+          placeholder="Search agents, projects or folders"
           aria-label="Search past sessions"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

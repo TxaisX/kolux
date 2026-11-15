@@ -62,7 +62,7 @@ test("every reason has its one fix, or none (ACCT-013)", () => {
 
 test("UX-audit: a sign-in that could not start says so next to the button", () => {
   const l = lapsed(claude, codex);
-  const html = renderToString(createElement(SignInNoticeView, { lapsed: l, onSignIn: () => {}, error: "Sign-in did not start: no browser" }));
-  expect(html).toContain("Sign-in did not start: no browser");
+  const html = renderToString(createElement(SignInNoticeView, { lapsed: l, onSignIn: () => {}, error: "Sign-in didn't open. Try again. Details: no browser" }));
+  expect(html).toContain("Try again. Details: no browser");
   expect(renderToString(createElement(SignInNoticeView, { lapsed: l, onSignIn: () => {} }))).not.toContain("data-signin-error");
 });

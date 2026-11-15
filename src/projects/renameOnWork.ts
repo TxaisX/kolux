@@ -8,7 +8,7 @@ import { listen } from "@tauri-apps/api/event";
 import { autoBranchOn, namingWriter, type NamingPorts } from "../scm/autoBranch";
 import { useEffect, useRef } from "react";
 
-/** The Settings > Git & worktrees switch (mirrors the back end's setting key). */
+/** The Settings > Git switch (mirrors the back end's setting key). */
 export const RENAME_KEY = "renameBranches";
 
 export type RenameAnswer = {

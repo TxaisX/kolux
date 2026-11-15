@@ -1,4 +1,4 @@
-// T-654 (DT-C89): Settings > Git & worktrees > Automatic pull requests. One default for every
+// T-654 (DT-C89): Settings > Git > Automatic pull requests. One default for every
 // workspace ("on for GitHub repositories" is the recommended one) and, per workspace, "use the
 // default", "on" or "off". Saved as `autoPr: { default, workspaces: { <folder>: true | false } }`;
 // scm/autoPr.ts enabledFor() reads it back.

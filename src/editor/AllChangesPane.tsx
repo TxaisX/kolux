@@ -293,7 +293,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
             setMessage("");
             return { text: `Committed ${out.id}`, bad: false };
           }
-          return { text: `${out.blocked ? "Commit blocked by a hook" : "Commit failed"}: ${out.output}`, bad: true };
+          return { text: `${out.blocked ? "A project check stopped this save" : "Commit failed"}: ${out.output}`, bad: true };
         },
         (e): Say => ({ text: String(e), bad: true }),
       ),

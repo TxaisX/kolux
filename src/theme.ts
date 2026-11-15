@@ -59,6 +59,10 @@ export const classic = {
   /** Not measured (nothing in the capture was past 90%): the meter's red, USAGE-002. Its own name, as
    *  `danger` above is the error-text colour. */
   "meter-danger": "#e5484d",
+  /** D-03: the one red for a broken state (failed, cannot reach, an error, a deleted line). Rule 7: red = bad.
+   *  A touch lighter than `meter-danger` so an error word clears 4.5:1 on every dark theme's surface. Working is
+   *  `working` (cyan), needs you is `working-icon` (yellow), done is `done` / `done-icon` (green), idle is `dot-idle`. */
+  "status-bad": "#ef5350",
   /** USAGE-034: the pane header's session-cost chip. A status colour, so light mode darkens it with the rest. */
   "cost-fg": "#1f9db0",
   // C23-R3-01: the ten syntax inks. Dark mode keeps One Dark's own values; light mode floors each one
@@ -85,7 +89,7 @@ export const SYNTAX_FLOOR = 4.6;
 export const SIDEBAR_FLOOR = 4.6;
 /** T-801 (P4B-14): the grounds a light-mode text or icon token can sit on, and the tokens floored against the darkest of them. */
 const LIGHT_GROUNDS = ["app-bg", "strip-bg", "pane-bg", "surface", "chip-bg", "row-selected"] as const;
-const LIGHT_TEXT = ["fg-row", "fg-muted", "fg-nav", "fg-label", "fg-faint", "mark", "link", "working", "done", "gauge-text", "warn", "danger", "cost-fg"] as const;
+const LIGHT_TEXT = ["fg-row", "fg-muted", "fg-nav", "fg-label", "fg-faint", "mark", "link", "working", "done", "gauge-text", "warn", "danger", "cost-fg", "status-bad"] as const;
 /** Icons and dots need 3:1, not 4.5:1; a little over so rounding in `hsl` cannot drop the measured pair under the bar. */
 const LIGHT_ICON = ["fg-icon-dim", "working-icon", "done-icon"] as const;
 const ICON_FLOOR = 3.1;

@@ -54,10 +54,10 @@ export default function Grid() {
       {terminals && shown.length === 0 && (
         <div className="empty">
           <h2>{activeDir ? folderName(activeDir) : "Terminal"}</h2>
-          <p>No terminal open here.</p>
+          <p>Nothing running here yet.</p>
           <div className="btn-row">
             <button className="btn" onClick={() => addShell(startDirOf(activeDir), null)}>
-              Open a shell
+              Open a terminal
             </button>
             <button className="btn" onClick={addChooser}>
               Choose what to run

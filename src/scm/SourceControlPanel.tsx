@@ -358,7 +358,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
         setFailure(null);
         setInfo(`Committed ${out.id}`);
       } else {
-        setFailure({ title: out.blocked ? "Commit blocked by a hook" : "Commit failed", output: out.output });
+        setFailure({ title: out.blocked ? "A project check stopped this save. See why below." : "Commit failed", output: out.output });
       }
     });
   // GIT-009: a failed action names its kind; only a hook failure is offered to an agent, with the
@@ -377,7 +377,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
   const commitThen = (action: RemoteAction, label: string) =>
     guarded(async () => {
       const out = await invoke<CommitOutcome>("scm_commit", { worktree: dir, message: draft });
-      if (!out.id) return setFailure({ title: out.blocked ? "Commit blocked by a hook; nothing was pushed" : "Commit failed; nothing was pushed", output: out.output });
+      if (!out.id) return setFailure({ title: out.blocked ? "A project check stopped this save, so nothing was pushed. See why below." : "Commit failed; nothing was pushed", output: out.output });
       onDraft("");
       await runRemote(action, `Committed ${out.id}; ${label}`);
     });
@@ -732,7 +732,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
             {summary && (
               <details className="scm-summary" data-summary>
                 <summary aria-label={summaryLabel(status?.branch ?? null, summary)} title={`against ${summary.against}`}>
-                  <span className="branch">{status?.branch ?? "Detached HEAD"}</span>
+                  <span className="branch">{status?.branch ?? "Not on a branch"}</span>
                   <span className="ab">
                     ↑{summary.ahead} ↓{summary.behind} {summary.against}
                   </span>
@@ -851,7 +851,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               {aiShown && repoRef !== null && (
                 <div className="sb-hint">
                   <button type="button" className="link" title={`This repository's AI switch is saved as ${typeof repoRef === "string" ? repoRef : repoRef.id}`} onClick={() => void saveSettings({ [REPO_AI_KEY]: withRepoAi(appSettings, repoRef, repoOff ? "follow" : "off") })}>
-                    {repoOff ? "Follow the global AI setting for this repository" : "Turn AI off for this repository"}
+                    {repoOff ? "Follow the global AI setting for this project" : "Turn AI off for this project"}
                   </button>
                   <span> Repository: {typeof repoRef === "string" ? repoRef : repoRef.id}</span>
                 </div>

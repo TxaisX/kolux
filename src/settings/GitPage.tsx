@@ -1,4 +1,4 @@
-// Settings > Git & worktrees. SET-031 / GIT-066: how new branches begin (the git user name,
+// Settings > Git. SET-031 / GIT-066: how new branches begin (the git user name,
 // then the gh login; custom text; or none), the default compare base, and whether a new
 // workspace refreshes its base first, and the order of the Source Control groups. PROJ-070: whether deleting one clean workspace asks first. T-116-a-fix moved the prefix and compare base here from the sidebar gear.
 import { OWN_FOLDERS_FIELD, ownFoldersOn } from "../projects/singleFolder";
@@ -123,7 +123,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         </label>
         <p className="conn-detail" data-own-folders-note>
           {ownFoldersOn(settings)
-            ? "On: in a Git project, an agent you launch gets a folder of its own (a Git worktree on its own branch, made on this computer; nothing goes to GitHub until you push). Agents no longer overwrite each other's files, and each one's changes are reviewed and merged on their own. The sidebar lists these folders as workspaces, and the launch chooser lets you pick Own folder for each AI or Same folder for all."
+            ? "On: in a Git project, each agent you launch works in its own folder (a Git worktree on its own branch, made on this computer; nothing goes to GitHub until you push). Agents no longer overwrite each other's files, and each one's changes are reviewed and merged on their own. The sidebar still lists only your project folders; each session there shows which folder it works in."
             : "Off: every agent works in the project's own folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other."}
         </p>
       </section>

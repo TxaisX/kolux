@@ -17,6 +17,7 @@ import { refreshAll } from "../usage/refresh";
 import { OWN_WINDOW_WIRED, openTowerWindow } from "./ownWindow";
 import Ring from "../usage/Ring";
 import { emptyWords, laneCounts, refreshLabel, revealRow, selectionForKey, type AccountUsage, type Row } from "./tower";
+import { VOCAB } from "../terminal/status";
 
 /** T-546-c: `detached` = drawn in the Tower's own window (no Own window button; Refresh asks the main window). */
 /** `ownWindow` = offer the Own window button (FIX-2: only once T-546-c's window side is wired). */
@@ -28,7 +29,7 @@ export const NO_WINDOW = "The Tower could not open in its own window here, so it
 /** The glyph for a row: its lane, with the stale and stopped words told apart. */
 function glyphOf(r: Row): GlyphName {
   if (r.lane === "needs") return "attention";
-  if (r.lane === "working") return r.word === "No recent update" ? "stale" : r.word === "Queued" ? "idle" : "spinner";
+  if (r.lane === "working") return r.word === VOCAB.stale.word ? "stale" : r.word === "Queued" ? "idle" : "spinner";
   if (r.lane === "done") return "check";
   if (r.lane === "stopped") return r.line === "Interrupted" ? "interrupted" : "failed";
   return "idle";

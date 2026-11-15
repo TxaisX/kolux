@@ -1,5 +1,5 @@
 // GIT-018 (T-228-d): picking an agent, a model and a thinking effort for commit messages. The pure
-// rules behind the Settings > Git & worktrees controls: which agents are offered, which efforts a
+// rules behind the Settings > Git controls: which agents are offered, which efforts a
 // model takes, and what a change of agent or model resets.
 import { WRITER_AGENTS, WRITER_EFFORT_KEY, WRITER_KEY, WRITER_MODEL_KEY } from "./generate";
 

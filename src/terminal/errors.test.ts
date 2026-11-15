@@ -22,6 +22,8 @@ test("the Git Bash process-limit failure is explained with recovery actions", ()
   const text = explain("bash: fork: retry: Resource temporarily unavailable");
   expect(text).toContain("run out of process slots");
   expect(text).toContain("Close a few terminals");
-  expect(exitAdvice(127)).toContain("exit 127");
-  expect(exitAdvice(3)).toContain("exit code 3");
+  expect(exitAdvice(127)).toContain("code 127");
+  expect(exitAdvice(3)).toContain("code 3");
+  // A Ctrl+C (130) is above 128 too: the words do not blame something outside Kolux.
+  expect(exitAdvice(130)).toBe("The program was stopped (code 130). Restart opens it again.");
 });

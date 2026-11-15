@@ -63,6 +63,13 @@ describe("search all settings (SET-007)", () => {
   it("finds Ask before closing running terminals by confirm, close or agent (SET 043)", () => {
     for (const q of ["confirm", "close", "agent"]) expect(searchSettings(q)!.pages.find((p) => p.page === "terminal")?.sections, q).toContain("closing");
   });
+  it("finds the Default terminal card by its heading's words and by shell, and names it as the card does", () => {
+    for (const q of ["default terminal", "shell"]) expect(searchSettings(q)!.pages.find((p) => p.page === "terminal")?.sections, q).toContain("shell");
+    const card = INDEX.find((e) => e.page === "terminal" && e.section === "shell")!;
+    expect(card.title).toBe("Default terminal");
+    expect(card.words.split(" ")).toEqual(expect.arrayContaining(["terminal", "shell"]));
+    expect(read("TerminalPage.tsx")).toContain(card.title);
+  });
   it("ranks the page whose title matches first, then the rest in page order", () => {
     const h = searchSettings("shortcuts")!;
     expect(h.pages[0]).toEqual({ page: "shortcuts", sections: "all" });

@@ -67,3 +67,24 @@ test("the selected row is scrolled into view at the nearest edge", () => {
   expect(revealRow(list, null)).toBe(false);
   expect(revealRow(null, 3)).toBe(false);
 });
+
+test("R10-08: the Tower's quiet-for-a-while mark follows the stale state, not the word on screen", async () => {
+  const { chipOf } = await import("../board/chip");
+  const { VOCAB } = await import("../terminal/status");
+  const { StatusGlyph } = await import("../chrome/icons");
+  const glyph = (g: "stale" | "spinner") => renderToString(createElement(StatusGlyph, { glyph: g, size: 12 }));
+  const html = () => {
+    const chip = chipOf({ agent: "claude", state: "working", running: true, stale: true, since: -60_000 }, 0);
+    return renderToString(createElement(TowerView, { rows: towerRows([{ ...seat(1), chip }]), usage: [], now: 0, onOpen: () => {} }));
+  };
+  const word = VOCAB.stale.word;
+  try {
+    VOCAB.stale.word = "Silent lately";
+    const out = html();
+    expect(out).toContain("Silent lately");
+    expect(out).toContain(glyph("stale"));
+    expect(out).not.toContain(glyph("spinner"));
+  } finally {
+    VOCAB.stale.word = word;
+  }
+});

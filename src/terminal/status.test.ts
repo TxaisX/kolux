@@ -9,7 +9,7 @@ test("a plain shell reads as a terminal with a neutral status; an agent's word i
   // DT-C52: an exited agent reads Stopped, as the Board, the Tower and the Inbox say (was Done before round 3)
   expect(headerOf("claude", "ended", 0, false, 0, 0)).toMatchObject({ word: "Stopped", tone: "", state: "stopped", explain: "Stopped: exited" });
   expect(headerOf("claude", "ended", 2, false, 0, 0)).toMatchObject({ word: "Ended (2)", tone: "" });
-  expect(headerOf("claude", "failed", undefined, false, null, 0)).toMatchObject({ word: "Failed", tone: "attention", needsYou: true });
+  expect(headerOf("claude", "failed", undefined, false, null, 0)).toMatchObject({ word: "Failed", tone: "bad", needsYou: true });
 });
 
 test("a finished agent shows how long ago: just now, then minutes (TERM-023)", () => {
@@ -68,7 +68,7 @@ test("every surface reads one vocabulary: each state has its word, glyph, tone a
   expect([VOCAB.blocked.glyph, VOCAB.waiting.glyph]).toEqual([VOCAB.permission.glyph, VOCAB.permission.glyph]);
   expect([VOCAB.blocked.tone, VOCAB.waiting.tone]).toEqual([VOCAB.permission.tone, VOCAB.permission.tone]);
   expect(VOCAB.starting.word).toBe("Starting");
-  expect(VOCAB.unreachable.word).toBe("Cannot reach");
+  expect(VOCAB.unreachable.word).toBe("Lost contact");
   expect(stoppedLabel("exit code 2")).toBe("Stopped: exit code 2");
 });
 
