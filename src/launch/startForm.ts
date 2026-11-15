@@ -91,9 +91,13 @@ export function startSummary(perFolder: number, folderNames: string[], what: str
 
 /** Rule D: the Start form opens by itself once per app start, in the first window, after the settings and the
  * first agent search have answered, unless switched off, already shown, a launch is under way or a sheet is open. */
-export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; agentsDone: boolean; projectsRead?: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean }): "ask" | "wait" | "skip" {
+export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; agentsDone: boolean; projectsRead?: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean; firstRunKnown?: boolean; agentsFailed?: boolean; userActed?: boolean }): "ask" | "wait" | "skip" {
   // D-15: the first-run screens already ask which AI and open the first session, so the form does not ask again.
   if (w.asked || !w.firstWindow || w.firstRun) return "skip";
+  // Job 13 F4: it never jumps up over work. A first agent search that failed, or a user who has already started
+  // something (a launch, a pane, a form), counts as answered: a later good search does not bring the form up.
+  if (w.agentsFailed || w.userActed) return "skip";
+  if (w.firstRunKnown === false) return "wait"; // the first-run screens' state comes from an async read (job 11 D-15)
   // Job 13 F1: the folders are read too, so the form never says "Add a folder first." or ticks none because the list came late.
   if (!w.settingsRead || !w.agentsDone || w.projectsRead === false) return "wait";
   if (!w.on || w.launching || w.sheetOpen) return "skip";

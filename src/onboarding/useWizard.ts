@@ -31,8 +31,11 @@ const startGridTour = () => void import("./tour").then((m) => m.startGridTour(),
 export function useWizard({ setToast, agents, settings, activeDir, startIn, openShell }: WizardDeps) {
   // ONB-001..005: the first-run wizard floats over the app while its record says it is open.
   const [wizard, setWizard] = useState<number | null>(null);
+  const [wizardKnown, setWizardKnown] = useState(false); // job 13 F4: the Start form's ask at open waits for this answer
   useEffect(() => {
-    invoke<{ step: number } | null>("onboarding_get").then((r) => setWizard(openAt(r)), () => {});
+    invoke<{ step: number } | null>("onboarding_get")
+      .then((r) => setWizard(openAt(r)), () => {})
+      .finally(() => setWizardKnown(true));
   }, []);
   // ONB-007: the close is stored before the wizard goes; a failed store keeps it open with a toast,
   // and the next click on any of its ways out tries that same close again. VIEW-114: a stored close
@@ -127,5 +130,5 @@ export function useWizard({ setToast, agents, settings, activeDir, startIn, open
     if (!agent) return setToast(NO_AGENT_NOTE);
     if ((await startIn(agent, activeDir, null, "", true)) !== null) endWizard("completed", startGridTour);
   };
-  return { wizard, setWizard, wizardClose, endWizard, firstFolder, projectAdded, wizardSession, pickFolder };
+  return { wizard, setWizard, wizardKnown, wizardClose, endWizard, firstFolder, projectAdded, wizardSession, pickFolder };
 }
