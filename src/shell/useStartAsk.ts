@@ -5,10 +5,19 @@ import { useEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { askAtOpen, asksAtStart } from "../launch/startForm";
 
-/** Once per app start: module state lives as long as the webview, so a second window never asks again. */
-let asked = false;
+/** Once per app start: module state lives as long as the webview, so a second window never asks again. A page reload
+ *  in the same run keeps the answer in sessionStorage (job 13 F5); storage that is refused only loses that. */
+const ASKED_KEY = "kolux.startAsked";
+const store = (f: (s: Storage) => unknown) => {
+  try {
+    return f(sessionStorage);
+  } catch {
+    return null;
+  }
+};
+let asked = store((s) => s.getItem(ASKED_KEY)) === "1";
 /** Tests only. */
-export const resetStartAsk = () => void (asked = false);
+export const resetStartAsk = () => void ((asked = false), store((s) => s.removeItem(ASKED_KEY)));
 
 /** The first window is the one Tauri labels "main" (TowerWindow uses the same label). */
 export function isFirstWindow(): boolean {
@@ -36,6 +45,7 @@ export function useStartAsk(o: {
     const now = askAtOpen({ on: asksAtStart(settings), firstWindow: isFirstWindow(), asked, settingsRead, agentsDone, projectsRead, launching, sheetOpen, firstRun, firstRunKnown, agentsFailed, userActed: acted.current });
     if (now === "wait") return;
     asked = true;
+    store((s) => s.setItem(ASKED_KEY, "1"));
     if (now === "ask") open.current();
   }, [settings, settingsRead, agentsDone, projectsRead, launching, sheetOpen, firstRun, firstRunKnown, agentsFailed, panes]);
 }
