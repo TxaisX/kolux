@@ -93,9 +93,16 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
     firstFolder.current = true;
     finishOnAdd.current = true;
     backToSession.current = backToLast;
+    const at = wizard;
     setWizard(null);
     setToast(PICK_FOLDER_NOTE);
-    void addFolderVia({ ...reach, fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)) });
+    // Job 37 A3: the panel never came, so Add project never opened: the screens come back where the user was.
+    void addFolderVia({ ...reach, fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)) }).then((ok) => {
+      if (ok) return;
+      backToSession.current = firstFolder.current = finishOnAdd.current = false;
+      setWizard(at);
+      setToast("Could not open Add project. Try again.");
+    });
   };
   // Job 22 (FROZEN decision 8, one Start question): the last screen hands over to the Start form. Setup is stored as
   // completed as before, the screens close, and then `open` brings up the form once. A failed save keeps the screens up

@@ -207,6 +207,19 @@ test("job 29 R7: with the sidebar hidden, Pick a folder shows the panel first, t
   expect(app.now().wizard).toBeNull();
 });
 
+test("job 37 A3: the project panel never shows: the wizard comes back on the screen the user was on, with one plain line", async () => {
+  const app = await mountWizard({ defaultAgent: "claude" });
+  app.now().setWizard(2);
+  await app.settle();
+  app.now().pickFolder(true, { panelShown: () => false, showPanel: () => {}, wait: async () => {} });
+  await app.settle();
+  expect(app.now().wizard).toBe(2);
+  expect(toasts.at(-1)).toBe("Could not open Add project. Try again.");
+  app.now().projectAdded("C:/later", null);
+  await app.settle();
+  expect(started).toEqual([]); // nothing stays armed behind the user's back
+});
+
 test("49-ux2: Pick a folder cancelled, then Help > Onboarding: the wizard is back and a project added later does not complete setup", async () => {
   const { REOPEN_WIZARD } = await import("./firstRun");
   const app = await mountWizard();
