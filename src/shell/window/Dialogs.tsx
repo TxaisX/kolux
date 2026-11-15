@@ -6,14 +6,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import Ask from "../../chrome/Ask";
 import { reloadAsk } from "../../keys/commands";
 import { noteUse } from "../../onboarding/features";
-import WorktreePalette, { dirMark, dirMonitoring } from "../../projects/WorktreePalette";
+import WorktreePalette from "../../projects/WorktreePalette";
+import { paletteAt } from "./paletteAt";
 import { workItem } from "../../projects/model";
 import { movedTeamFolders, TEAM_WORKTREES_SETTING } from "../../projects/rows";
 import { SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { tabName } from "../../terminal/tabName";
 import { pasteHosts } from "../../tasks/pasteHosts";
 import { openExternal } from "../../open/openExternal";
-import { sameDir, viewOf } from "../../workspaces";
+import { sameDir } from "../../workspaces";
 import { AboutPanel } from "../../lazy/pages";
 import { LinkAskHost } from "../../lazy/pages";
 import TabSearch from "../TabSearch";
@@ -110,7 +111,7 @@ export default function WindowDialogs() {
  *  this and nothing else of the window. */
 function PaletteHost() {
   const {
-    projects, paletteItems, rowStates, panes, hook, turn, unreadDirs, activeDir, projectOf, setScreen, select, fromItem, projectFor,
+    projects, paletteItems, rowStates, panes, hook, turn, unreadPanes, statusOf, running, activeDir, projectOf, setScreen, select, fromItem, projectFor,
     fromName, setSidebarOpen, setCreateName, setCreateRequest, settings, recentDirs,
   } = useWindow();
   const open = usePaletteOpen();
@@ -124,13 +125,7 @@ function PaletteHost() {
         projects={projects}
         items={[...prRows, ...paletteItems()]}
         prOf={() => null} /* VIEW-043: the Pull requests rows come from prRows, above */
-        atOf={(d) => {
-          const row = Object.entries(rowStates).find(([x]) => sameDir(x, d))?.[1];
-          // STAT-024: the radio mark when the folder's working panes only watch background work.
-          const watching = dirMonitoring(panes.filter((p) => sameDir(viewOf(p), d)).map((p) => ({ state: hook[p.key], monitoring: turn[p.key]?.monitoring })));
-          const mark = dirMark(row?.state ?? null, [...unreadDirs].some((x) => sameDir(x, d)), watching);
-          return mark ? { mark, since: row?.changed ?? 0 } : null;
-        }}
+        atOf={(d) => paletteAt(d, panes, statusOf, running, unreadPanes, hook, turn, rowStates)}
         recent={recentDirs.current}
         scope={[]}
         hasWorktree={activeDir !== null && projectOf(activeDir) !== null}
