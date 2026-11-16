@@ -12,7 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { formatMemory } from "./memory";
 import { cleanupCandidates, EndQuestion, endConfirmed, ManageSessions, paneless, sessionsLoaded, type InventoryTab } from "./manage";
 import { committedNote, endNeedsAsk, escapeStep, formatCommitted, formatCpu, groupSessions, RES_COLUMNS, singleFlight, type Resources, type Row, type SessionUsage, type Usage } from "./resources";
-import { bulkQuestion, bulkReport, leftOver, type Bulk, type BulkKind } from "../shell/endAll";
+import { bulkQuestion, bulkReport, leftOver, type Bulk } from "../shell/endAll";
 // T-692: loaded when the panel opens, not with the window; the row is only drawn in this panel.
 const BackgroundSessions = lazy(() => import("../terminal/BackgroundSessions"));
 import { useDialogFocus } from "../chrome/dialogFocus";
@@ -104,11 +104,11 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   // the report comes from a read after the kills, so it says what really ended.
   const [bulk, setBulk] = useState<Bulk | null>(null);
   const [report, setReport] = useState<{ text: string; ok: boolean } | null>(null);
-  const askBulk = async (kind: BulkKind) => {
+  const askBulk = async () => {
     const r = await read();
     const ids = r ? r.sessions.map((s) => s.id) : [];
-    setBulk(ids.length > 0 ? { kind, ids } : null);
-    if (ids.length === 0) setReport(bulkReport(kind, [], []));
+    setBulk(ids.length > 0 ? { ids } : null);
+    if (ids.length === 0) setReport(bulkReport([], []));
   };
   const runBulk = async () => {
     if (!bulk) return;
@@ -118,13 +118,13 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
     try {
       const ended = await endConfirmed(bulk.ids, () => read().then((r) => r?.sessions ?? []), (id) => invoke("terminal_kill", { id }).catch(killFailed));
       const fresh = await read();
-      setReport(bulkReport(bulk.kind, ended, leftOver(ended, fresh?.sessions ?? null)));
+      setReport(bulkReport(ended, leftOver(ended, fresh?.sessions ?? null)));
       await refresh();
     } finally {
       setRunning(false);
     }
   };
-  const bulkQ = bulk ? bulkQuestion(bulk.kind, bulk.ids) : null;
+  const bulkQ = bulk ? bulkQuestion(bulk.ids) : null;
   useEffect(() => {
     // usage-status.md:11: a tick is skipped while the last read is still running, so slow reads do not pile up.
     const tick = singleFlight(refresh);
@@ -213,7 +213,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
         {data && data.sessions.length === 0 && <div className="menu-hint">No terminal sessions are running.</div>}
         {data && data.sessions.length > 0 && !bulkQ && (
           <div className="res-row res-bulk" data-bulk="offer" style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-            <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal. Running agents stop. Saved files are not touched. Asks first.">
+            <button className="btn" disabled={running} onClick={() => void askBulk()} title="End every terminal. Running agents stop. Saved files are not touched. Asks first.">
               End all
             </button>
           </div>

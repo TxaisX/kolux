@@ -5,13 +5,14 @@ import { bulkQuestion, bulkReport, leftOver } from "./endAll";
 const s = (id: number): SessionUsage => ({ id, pid: 100 + id, dir: null, bytes: 0, cpu: 0, processes: 1, committed: null });
 
 describe("set-042 / set-060 end every session", () => {
-  it("asks only when something runs, with the count and the kind's words", () => {
-    expect(bulkQuestion("all", [])).toBeNull();
-    const all = bulkQuestion("all", [1, 2, 3]);
+  it("asks only when something runs, with the count; there is one kind of batch, End all, and no restart", () => {
+    expect(bulkQuestion([])).toBeNull();
+    const all = bulkQuestion([1, 2, 3]);
     expect(all?.text).toContain("3 terminal sessions");
     expect(all?.text).toContain("Saved files are not touched.");
     expect(all?.confirm).toBe("End all");
-    expect(bulkQuestion("all", [4])?.label).toBe("End 1 terminal session");
+    expect(bulkQuestion([4])?.label).toBe("End 1 terminal session");
+    expect(JSON.stringify(all)).not.toMatch(/restart/i);
   });
 
   it("leftOver: what a fresh read still lists; a failed read keeps every id open", () => {
@@ -21,10 +22,11 @@ describe("set-042 / set-060 end every session", () => {
   });
 
   it("reports success once none is listed, even when there was nothing to end; names what stayed", () => {
-    expect(bulkReport("all", [1, 2], [])).toEqual({ ok: true, text: "2 terminal sessions ended; new terminals open straight away." });
-    expect(bulkReport("all", [], [])).toEqual({ ok: true, text: "No terminal session was left to end; new terminals open straight away." });
-    expect(bulkReport("all", [1], [])).toEqual({ ok: true, text: "1 terminal session ended; new terminals open straight away." });
-    const bad = bulkReport("all", [1, 2], [2]);
+    expect(bulkReport([1, 2], [])).toEqual({ ok: true, text: "2 terminal sessions ended; new terminals open straight away." });
+    expect(bulkReport([], [])).toEqual({ ok: true, text: "No terminal session was left to end; new terminals open straight away." });
+    expect(bulkReport([1], [])).toEqual({ ok: true, text: "1 terminal session ended; new terminals open straight away." });
+    expect(bulkReport([1, 2], []).text).not.toMatch(/restart/i);
+    const bad = bulkReport([1, 2], [2]);
     expect(bad.ok).toBe(false);
     expect(bad.text).toContain("1 terminal session did not end (Session 2)");
     expect(bad.text).toContain("diag log");

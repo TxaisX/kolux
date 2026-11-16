@@ -4,13 +4,12 @@
 // meanwhile survives, and success is reported once a fresh read lists none of them.
 import type { SessionUsage } from "../status/resources";
 
-export type BulkKind = "all";
-export type Bulk = { kind: BulkKind; ids: number[] };
+export type Bulk = { ids: number[] };
 
 const plural = (n: number) => `${n} terminal session${n === 1 ? "" : "s"}`;
 
 /** The question before the batch; null when nothing is running (nothing to ask about). */
-export function bulkQuestion(_kind: BulkKind, ids: number[]): { label: string; text: string; confirm: string } | null {
+export function bulkQuestion(ids: number[]): { label: string; text: string; confirm: string } | null {
   if (ids.length === 0) return null;
   const what = plural(ids.length);
   return { label: `End ${what}`, text: `End every terminal (${what})? Running agents stop. Saved files are not touched.`, confirm: "End all" };
@@ -20,7 +19,7 @@ export function bulkQuestion(_kind: BulkKind, ids: number[]): { label: string; t
 export const leftOver = (ids: number[], fresh: SessionUsage[] | null): number[] => (fresh === null ? ids : ids.filter((id) => fresh.some((s) => s.id === id)));
 
 /** The toast after the batch: success once none of them is listed, else what stayed and where to look. */
-export function bulkReport(_kind: BulkKind, ended: number[], left: number[]): { text: string; ok: boolean } {
+export function bulkReport(ended: number[], left: number[]): { text: string; ok: boolean } {
   if (left.length > 0) return { ok: false, text: `${plural(left.length)} did not end (${left.map((id) => `Session ${id}`).join(", ")}); the rest did. See the diag log under the profile folder.` };
   const n = plural(ended.length);
   return { ok: true, text: ended.length === 0 ? "No terminal session was left to end; new terminals open straight away." : `${n} ended; new terminals open straight away.` };
