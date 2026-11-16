@@ -61,6 +61,7 @@ import { PROJECT_COMMAND_EVENT, isProjectCommand, type ProjectCommandId } from "
 import { restoreField } from "./draft";
 import PlusMenu, { type AgentInfo } from "../launch/PlusMenu";
 import { openSettings as openSettingsPage } from "../settings/pages";
+import { readStatusBar } from "../chrome/statusItems";
 import { BehindNote, ListButtons, OutsideCard, PickedBar } from "../shell/ProjectsExtras";
 import { useOneForm } from "../shell/oneForm";
 import { dismissedOutside, jumpToCurrent, outsideOf, toggleRow, useAutoIcons, useTopButton, withDismissed, OUTSIDE_DISMISSED_SETTING } from "../shell/projectsGlue";
@@ -762,7 +763,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       onRemovedAll([gone.path], staying);
       setDropProject(null);
       setSettingsFor(null);
-      const unchecked = gone.unchecked ? ". Git did not list its worktrees, so a terminal in one of them may still be running. To end it, click the memory number in the bottom bar" : "";
+      // R83-01: the list that failed may be a staying project's, so no owner is named. The memory number opens the
+      // Resource Manager; when its bar item is unticked, the line first says how to turn it back on.
+      const toEnd = readStatusBar(live.current.settings).hidden.includes("memory") ? "right-click the bottom bar, turn on Resource Manager, then click the memory number" : "click the memory number in the bottom bar";
+      const unchecked = gone.unchecked ? `. Git could not list every worktree, so a terminal may still be running. To end it, ${toEnd}` : "";
       say(gone.unchecked ? "warn" : "ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk${unchecked}`);
       await reload();
     } catch (err) {

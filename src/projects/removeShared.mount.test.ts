@@ -135,13 +135,18 @@ test("R74-02: the shared worktree shown in the removed project's grid is counted
 });
 
 // The engine answers `unchecked: true` when Git could not list a project's worktrees, and then leaves those terminals alone.
+// R83-01: the list that failed may be a staying project's, so the line names no owner. When the memory number is hidden
+// (the bar's "Resource Manager" item unticked), the line says how to bring it back first.
+const toEnd = "To end it, click the memory number in the bottom bar";
+const toEndHidden = "To end it, right-click the bottom bar, turn on Resource Manager, then click the memory number";
 test.each([
-  ["unchecked: true", { unchecked: true }, "warn", true],
-  ["unchecked: false", { unchecked: false }, "ok", false],
-  ["no unchecked field (the engine as it is today)", {}, "ok", false],
-])("the line after Remove, %s", async (_name, extra, kind, warns) => {
+  ["unchecked: true", { unchecked: true }, "warn", true, {}],
+  ["unchecked: true, memory number hidden", { unchecked: true }, "warn", true, { statusBarHidden: ["memory"] }],
+  ["unchecked: false", { unchecked: false }, "ok", false, {}],
+  ["no unchecked field (the engine as it is today)", {}, "ok", false, {}],
+])("the line after Remove, %s", async (_name, extra, kind, warns, settings) => {
   h.extra = extra;
-  const c = await panel();
+  const c = await panel({ settings });
   await click(c, byLabel(c, "button", "Remove app")[0]);
   await settle(20);
   await click(c, byText(c, "button", "Remove app")[0]);
@@ -150,7 +155,9 @@ test.each([
   const text = note.textContent;
   expect(text).toContain("Removed app from Kolux; 1 terminal closed. Its folder stays on disk");
   expect(String(note.attrs.class ?? note.attrs.className)).toBe(`note ${kind}`);
-  const line = "Git did not list its worktrees, so a terminal in one of them may still be running. To end it, click the memory number in the bottom bar";
+  const hidden = (settings as { statusBarHidden?: string[] }).statusBarHidden?.includes("memory");
+  const line = `Git could not list every worktree, so a terminal may still be running. ${hidden ? toEndHidden : toEnd}`;
   if (warns) expect(text).toContain(`Its folder stays on disk. ${line}`);
-  else expect(text).not.toContain("Git did not list");
+  else expect(text).not.toContain("Git could not list");
+  expect(text).not.toContain("Git did not list its worktrees");
 });
