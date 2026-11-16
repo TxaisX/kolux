@@ -142,7 +142,7 @@ test("sameProjects: fresh lists with the same rows do not redraw the project lis
   const agents: never[] = [];
   const base = (over: Partial<ProjectsProps> = {}): ProjectsProps => ({
     openDirs: ["C:/w"], sessions: [{ key: 1, agent: "claude", title: "w", cwd: "C:/w", running: true }], states: { "C:/w": { state: "working", changed: 5, pr: null } },
-    unread, onUnread: fn, settings, onSetting: fn, activeDir: "C:/w", onSelect: fn, onRemoved: fn, onSleep: fn, unsavedIn: fn as never, agents, launching: false,
+    unread, onUnread: fn, settings, onSetting: fn, activeDir: "C:/w", onSelect: fn, onRemoved: fn, onRemovedAll: fn, onSleep: fn, unsavedIn: fn as never, agents, launching: false,
     onLaunch: fn, defaultId: "claude", onSetDefault: fn, onChoose: fn, page: null, onPage: fn, refresh: 0, onIndex: fn, createRequest: 0, deleteRequest: 0,
     onStartIn: fn, nest: true, onNest: fn, artifactsOn: false, onArtifacts: fn, ...over,
   });

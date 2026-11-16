@@ -62,6 +62,7 @@ function Harness() {
     createElement(ProjectsPanel, {
       ...props,
       onRemoved: (path: string) => void removed.push(path),
+      onRemovedAll: (paths: string[]) => void removed.push(...paths),
       unsavedIn: (paths: string[]) => namesOf(unsavedInDirs(panes, dirty, paths, sameDir)),
       onAskUnsaved: (paths: string[]) => guard.confirm(panesInDirs(panes, paths, sameDir)),
     } as never),
@@ -253,6 +254,7 @@ function ProjectHarness() {
       ...props,
       openDirs: projectPanes.flatMap((p) => (p.cwd ? [p.cwd] : [])), // every pane's folder, as App passes it
       onRemoved: (path: string) => void removed.push(path),
+      onRemovedAll: (paths: string[]) => void removed.push(...paths),
       unsavedIn: (paths: string[]) => namesOf(unsavedInDirs(projectPanes, projectDirty, paths, sameDir)),
       onAskUnsaved: (paths: string[]) => guard.confirm(panesInDirs(projectPanes, paths, sameDir)),
     } as never),

@@ -2,7 +2,7 @@
 // engine ends only the removed projects' terminals (job 52: the deepest project folder or worktree that holds a
 // terminal's folder owns it). The real ProjectsPanel on the small DOM, backend mocked (harness as in
 // groupDeleteCloses.mount.test.ts): a project "inner" lies inside "app" and stays, with a worktree inside app too.
-import { createElement } from "react";
+import { type ComponentProps, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, installDom, mount, settle } from "../tasks/fakeDom";
 
@@ -159,4 +159,13 @@ test("R71-01: the group delete question counts it too", async () => {
   const c = await panel([running(5, hiddenIn.path)]);
   await askGroupDelete(c);
   expect((byLabel(c, "div", "Delete group")[0] ?? c).textContent).toContain("3 terminals are still running and will be closed.");
+});
+
+// R71-03: the panel has no default for `onRemovedAll` (the old one, `paths.forEach(onRemoved)`, dropped the staying list,
+// so a mount without the prop closed a nested project's panes). `npx tsc --noEmit` checks this pin.
+test("R71-03: onRemovedAll is a required prop, so no mount can drop the staying list", () => {
+  type PanelProps = ComponentProps<typeof import("./ProjectsPanel").default>;
+  // @ts-expect-error onRemovedAll is required
+  const pin: Pick<PanelProps, "onRemovedAll"> = {};
+  expect(pin).toEqual({});
 });
