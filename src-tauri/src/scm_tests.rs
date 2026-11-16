@@ -3058,7 +3058,7 @@ fn r59_nothing_is_written_or_deleted_through_a_junction_at_a_parent_folder() {
         let result = by_route(&dir, route.trim_end_matches("-untracked"), &[row]);
         assert_eq!(fs::read_to_string(out.join("f.txt")).ok().as_deref(), Some("mine\n"), "{route}: the target's f.txt is not written");
         assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the target's p.txt is not deleted");
-        assert_eq!(result.expect_err(route), format!("d is a link to another folder, so Kolux leaves {row}. Remove the link by hand, then discard again."), "{route}");
+        assert_eq!(result.expect_err(route), format!("d is a link, so Kolux leaves {row}. Remove the link by hand, then discard again."), "{route}");
     }
 }
 

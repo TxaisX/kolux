@@ -2831,7 +2831,7 @@ fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<Strin
             continue;
         }
         match fs::symlink_metadata(worktree.join(native(&at))) {
-            Ok(m) if m.is_symlink() => return Some(format!("{at} is a link to another folder, so Kolux leaves {row}. Remove the link by hand, then discard again.")),
+            Ok(m) if m.is_symlink() => return Some(format!("{at} is a link, so Kolux leaves {row}. Remove the link by hand, then discard again.")),
             Ok(m) if m.is_dir() => drop(real.insert(at.clone())),
             Ok(_) => return Some(format!("{at} is now a file, so Kolux leaves {row}. Remove or move that file by hand, then discard again.")),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
