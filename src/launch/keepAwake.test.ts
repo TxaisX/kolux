@@ -34,7 +34,7 @@ test("the Settings card offers On, Agent and Off, picks the saved one and explai
   expect(on).toContain("a few minutes after its usual sleep timeout");
 });
 
-const HOOKS_OFF = "Agent mode follows the agent status hooks, which are off: turn them on above, or pick On.";
+const HOOKS_OFF = "Agent mode follows &quot;Show what each agent is doing&quot;, which is off: turn it on above, or pick On.";
 
 test("Agent mode with the status hooks off (their default) says it cannot hold, and points to the hooks or On", () => {
   // hooks unset is off (Settings > Agents reads only a saved true as on)

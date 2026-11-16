@@ -57,7 +57,7 @@ export function SafetyView({ settings, rules, error = null, save, turnOnHooks, t
         Only Claude Code is covered; Codex and other agents are not. This is advisory, not a safety control: a command can be written around a rule.
       </p>
       <p className={hooks ? "conn-detail" : "conn-detail warn"} data-hooks-note role={hooks ? undefined : "alert"}>
-        {hooks ? "Protected actions work through the agent status hooks, which are on." : "The agent status hooks are off, so Claude cannot ask yet. Turn them on here or in Settings > Agents."}{" "}
+        {hooks ? 'Protected actions need "Show what each agent is doing", which is on.' : '"Show what each agent is doing" is off, so Claude cannot ask yet. Turn it on here or in Settings > Agents.'}{" "}
         {!hooks && turnOnHooks && (
           <button type="button" className="btn" data-turn-on-hooks onClick={() => void turnOnHooks()}>
             Turn on
@@ -66,14 +66,14 @@ export function SafetyView({ settings, rules, error = null, save, turnOnHooks, t
       </p>
       {turnOnError && (
         <p className="conn-detail warn" role="alert">
-          Turning on the status hooks did not finish: {turnOnError}
+          Turning on "Show what each agent is doing" did not finish: {turnOnError}
         </p>
       )}
       <label className="conn-switch" data-hooks-off={hooks ? undefined : ""}>
         <input type="checkbox" role="switch" aria-label="Ask before protected actions" checked={master} disabled={!hooks} onChange={(e) => void save(switchAll(e.target.checked))} />
         <span>
           Ask before protected actions
-          <small id="safety-master-note">{!hooks ? "Off: the status hooks are off, so nothing can ask yet." : master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
+          <small id="safety-master-note">{!hooks ? 'Off: "Show what each agent is doing" is off, so nothing can ask yet.' : master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
         </span>
       </label>
       {error && (
