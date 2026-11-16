@@ -251,6 +251,7 @@ pub(crate) fn shared_repo(store: &Store, base: &Path, b_at: &Path) -> (Project, 
     run(&["init", "-q", "-b", "main"]);
     run(&["config", "user.email", "test@example.invalid"]);
     run(&["config", "user.name", "Kolux test"]);
+    run(&["config", "commit.gpgsign", "false"]);
     std::fs::write(repo.join("a.txt"), "a").unwrap();
     run(&["add", "."]);
     run(&["commit", "-q", "-m", "first"]);
