@@ -1769,8 +1769,10 @@ impl Terminals {
             Err(_) => return Stopped::default(),
         };
         let spare: Vec<std::path::PathBuf> = if found.is_empty() { Vec::new() } else { spare().into_iter().filter(|s| under(s, dir)).collect() };
+        // F3: the folder checks run with no lock held; the lock below only looks up each process id.
+        let found: Vec<u32> = found.into_iter().filter(|(_, d)| !spare.iter().any(|s| under(std::path::Path::new(d), s))).map(|(id, _)| id).collect();
         let found: Vec<(u32, Option<u32>)> = match self.inner.lock() {
-            Ok(inner) => found.into_iter().filter(|(_, d)| !spare.iter().any(|s| under(std::path::Path::new(d), s))).map(|(id, _)| (id, inner.sessions.get(&id).and_then(Session::pid))).collect(),
+            Ok(inner) => found.into_iter().map(|id| (id, inner.sessions.get(&id).and_then(Session::pid))).collect(),
             Err(_) => return Stopped::default(),
         };
         for (id, pid) in &found {
