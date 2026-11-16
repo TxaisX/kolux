@@ -10,7 +10,7 @@ import type { Page } from "./ProjectsPanel";
 import type { PendingCreate, Project, SetupLine, SetupWhere } from "./model";
 import { EMPTY_HISTORY } from "./nav";
 import { cellsOf, DEFAULT_PANES_FIELD, groupOf, MAX_PANES, seedCount } from "../terminal/grid";
-import { activeAfterRemove, focusIn, gridOf, panesIn, sameDir, withoutDir } from "../workspaces";
+import { activeAfterRemove, focusIn, goesWith, gridOf, panesIn, sameDir, underDir, withoutDir } from "../workspaces";
 import { forgetStartDirs, startDirOf } from "./worktreeGrid";
 import { readLook } from "../settings/general";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
@@ -136,16 +136,19 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   // PROJ-053: putting workspaces to sleep closes their panes the same way, all at once.
   // T-614: the panes are updated from the newest list, so a tab opened meanwhile stays (and its
   // process lives) and a tab removed earlier never comes back; several removals are one call.
-  const removedAll = (paths: string[]) => {
+  // PROJ 008 / F21: `staying` (removing a project or a group's projects) lists the folders and worktrees of the projects that
+  // remain; a nested one inside a removed folder keeps its panes, its start pick and the view (`goesWith`).
+  const removedAll = (paths: string[], staying: string[] = []) => {
     if (paths.length === 0) return;
-    forgetStartDirs(paths); // a worktree that is gone is no longer where new sessions start
-    const without = (ps: Pane[]) => paths.reduce((x, d) => withoutDir(x, d), ps);
+    forgetStartDirs(paths, staying); // a worktree that is gone is no longer where new sessions start
+    const without = (ps: Pane[]) => paths.reduce((x, d) => withoutDir(x, d, staying), ps);
     const left = without(panesNow.current);
     const gone = (d: string) => paths.some((x) => sameDir(d, x));
     const pid = projectOf(paths[0]);
     const siblings = Object.entries(owner).filter(([d, p]) => p === pid && !gone(d) && panesIn(left, d).length > 0).map(([d]) => d);
-    const hit = paths.find((x) => activeRef.current !== null && activeAfterRemove(activeRef.current, x) !== activeRef.current);
-    const next = hit === undefined ? activeRef.current : activeAfterRemove(activeRef.current, hit, recentDirs.current.filter((d) => !gone(d)), siblings);
+    const hit = paths.find((x) => activeRef.current !== null && goesWith(activeRef.current, [x], staying));
+    // R71-05: a project inside the removed one that stays (and still has terminals) can be shown next.
+    const next = hit === undefined ? activeRef.current : activeAfterRemove(activeRef.current, hit, recentDirs.current.filter((d) => !gone(d)), [...siblings, ...staying.filter((d) => underDir(d, hit) && panesIn(left, d).length > 0)], staying);
     setPanes(without);
     setActiveDir(next);
     setFocused((f) => focusIn(left, next, f));

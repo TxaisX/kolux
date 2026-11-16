@@ -215,7 +215,7 @@ test("the move question gives focus back to the row on Cancel, on Escape and aft
 
 test("the workspace delete question and its button say Delete, not Remove, and it shows Deleting… while it works", async () => {
   const c = await panel();
-  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this workspace"))[0]);
+  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this worktree"))[0]);
   await settle(60);
   expect(hasText(c, "Delete fix and its folder?")).toBe(true);
   expect(hasText(c, "Remove fix")).toBe(false);
@@ -235,7 +235,7 @@ test("the workspace delete question and its button say Delete, not Remove, and i
 // closes the dialog while the folder still goes. Keep, Escape and a click outside go nowhere until it ends.
 test("Keep and Escape cannot back out of the delete question while the removal runs", async () => {
   const c = await panel();
-  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this workspace"))[0]);
+  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this worktree"))[0]);
   await settle(60);
   h.hold = "workspace_remove";
   await click(c, byText(c, "button", "Delete")[0]);

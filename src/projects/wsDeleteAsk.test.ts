@@ -62,6 +62,7 @@ function Harness() {
     createElement(ProjectsPanel, {
       ...props,
       onRemoved: (path: string) => void removed.push(path),
+      onRemovedAll: (paths: string[]) => void removed.push(...paths),
       unsavedIn: (paths: string[]) => namesOf(unsavedInDirs(panes, dirty, paths, sameDir)),
       onAskUnsaved: (paths: string[]) => guard.confirm(panesInDirs(panes, paths, sameDir)),
     } as never),
@@ -84,8 +85,8 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this workspace");
-const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete workspace")[0];
+const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this worktree");
+const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete worktree")[0];
 const guardAsk = (c: FakeNode) => byLabel(c, "div", "Save changes before closing?")[0];
 
 test("a dirty tab in the workspace names its file and asks before the delete drops anything", async () => {
@@ -253,6 +254,7 @@ function ProjectHarness() {
       ...props,
       openDirs: projectPanes.flatMap((p) => (p.cwd ? [p.cwd] : [])), // every pane's folder, as App passes it
       onRemoved: (path: string) => void removed.push(path),
+      onRemovedAll: (paths: string[]) => void removed.push(...paths),
       unsavedIn: (paths: string[]) => namesOf(unsavedInDirs(projectPanes, projectDirty, paths, sameDir)),
       onAskUnsaved: (paths: string[]) => guard.confirm(panesInDirs(projectPanes, paths, sameDir)),
     } as never),
@@ -291,5 +293,5 @@ test("Remove project asks about every editor tab it closes, hidden workspaces in
   await click(c, byText(guardAsk(c), "button", "Don't save")[0]);
   await settle(200);
   expect(h.calls).toContain("project_remove"); // only after the explicit choice
-  expect(removed).toEqual(["C:/w/app"]);
+  expect(removed).toEqual(["C:/w/app", "C:/w/ws/fix", "C:/w/app/ws/nested", "C:/w/app/ws/hidden"]); // F88-01: every going folder, own first
 });

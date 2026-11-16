@@ -80,7 +80,7 @@ export const actions: Action[] = [
   a("worktree.navigateDown", "Next worktree", "global", ["Mod+Shift+ArrowDown"]),
   a("workspace.create", "Create worktree", "global", ["Mod+N", "Mod+Shift+N"], { darwin: ["Mod+N"] }),
   a("workspace.rename", "Rename worktree", "global", [], { darwin: ["Mod+Alt+R"], group: "workspace-shell" }),
-  a("workspace.delete", "Delete Workspace", "global", ["Mod+Shift+Backspace"]),
+  a("workspace.delete", "Delete worktree", "global", ["Mod+Shift+Backspace"]),
   a("workspace.openBoard", "Show Workspace Statuses", "global", []), // T-610: not a second "Board" (VIEW-001's keeps the name)
   a("workspace.selectByIndex", "Select Workspace 1–9", "global", ["Mod+1"], { index: true }),
   a("view.tasks", "Open Tasks", "global", []),

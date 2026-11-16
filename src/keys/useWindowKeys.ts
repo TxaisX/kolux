@@ -26,10 +26,12 @@ import { panesIn, sameDir, viewOf } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
 import { worktreesOffNote } from "../projects/singleFolder";
+import { isTextField } from "../projects/deleting";
 import { scopesFor } from "./keyScopes";
 import { matchEvent, type KeyLike, type Keymap } from "./keymap";
 import { kPalette, richKeyTaken } from "./paletteKey";
 import { recording } from "./record";
+import { runningCommand } from "./runCommand";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
 import { settingsShown } from "../onboarding/settingsShown";
@@ -67,6 +69,15 @@ export const WINDOW_TERMINAL = new Set([
   "terminal.focusPreviousPane", "terminal.expandPane", "terminal.splitRight", "terminal.splitDown",
   "terminal.equalizePaneSizes",
 ]);
+/** Audit F28: the commands that close, end or delete something. While a plain text field has the focus they do not
+ *  run, so Ctrl+W typed in a settings box or the palette never closes the pane behind it. R54-01: a command picked
+ *  in the palette is no key typed into the field, so it always runs. */
+export const CLOSING_KEYS = new Set(["tab.close", "terminal.closePane", "tab.closeAll", "workspace.delete", "sessions.remove"]);
+/** The terminal's hidden text area, the code editor and the rich Markdown view are text fields too, but keep their own key rules.
+ *  R54-05: so does a terminal's own Find box, part of its pane: Ctrl+W there closes that pane. */
+const OWN_KEY_RULES = ".xterm, .cm-editor, .md-rich, .term-find";
+export const typingHolds = (id: string, active: Element | null): boolean =>
+  !runningCommand() && CLOSING_KEYS.has(id) && isTextField(active) && !active?.closest(OWN_KEY_RULES);
 
 /** The explorer's own Mod+Shift+F listener fires unless a menu or modal dialog holds the chord. It does not test
  *  defaultPrevented: a focused terminal cancels every Kolux chord (the shell never sees it) and the search still opens. */
@@ -142,6 +153,19 @@ export function useWindowKeys(w: WindowBag) {
       // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
       const hit = kPalette(found, keymap, e, document.activeElement);
       if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
+      if (typingHolds(hit.id, document.activeElement)) {
+        // F28: the command does not run; the key stays with the text field. R54-04 / R74-03 / R83-02: the webview's own action
+        // for it is stopped only when the key can carry one: by the letter it types (B, D to U, W), a digit or F1 to F24, or
+        // by its place on the keyboard (letter chords match on the place, so Ctrl+W on a Russian layout types "ц" but is the
+        // W place). Never when the key types A, C, V, X, Y or Z: those are the field's select all, copy, paste, cut, redo and
+        // undo on any layout (on a French layout the W place types "z"). Every other key (arrows, Home, End, Page Up/Down,
+        // Tab, Escape, Enter, Space, Backspace, Delete) is the field's, untouched. F88-02: the numpad's place is not checked:
+        // with NumLock on its key is the digit, and with NumLock off it is an arrow, Home, End or Page Up/Down.
+        const byKey = /^([bd-uw]|[0-9]|F([1-9]|1[0-9]|2[0-4]))$/i.test(e.key);
+        const byPlace = /^(Key[BD-UW]|Digit[0-9])$/.test(e.code);
+        if ((byKey || byPlace) && !/^[acvxyz]$/i.test(e.key)) e.preventDefault();
+        return;
+      }
       if (heldByOverlay(hit.id, !!switcherRef.current)) {
         e.preventDefault(); // the overlay's own key handlers still see it; the webview's built-in action does not run
         return;

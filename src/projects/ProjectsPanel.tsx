@@ -20,7 +20,7 @@ import { isFolderWorkspace } from "../sessions/folderTabs";
 import { Fragment, useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
-import { sessionDir, sessionLabel, sessionsByProject, focusPane, type FolderSession } from "./folderSessions";
+import { type FolderSession } from "./folderSessions";
 import { dialogWhere, setupMode } from "../launch/launchOrder";
 import { asksBeforeDelete, blocker, commitsNote, isTextField, keepsAtFirst, keyDeleteTarget, NOT_LISTED_WORKTREE, notInWorktree, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
@@ -28,13 +28,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { underDir } from "../workspaces";
+import { closesWith, goesWith, goingFolders, sameDir, underDir } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
-import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
+import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
 import { ArrowRight, Bell, Chip, ChevronDown, Close, EyeOff, Funnel, Minus, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
 import { AddProject, StatusEditor, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
 import { CleanupDialog, SettingsPage } from "../lazy/pages";
@@ -61,6 +61,7 @@ import { PROJECT_COMMAND_EVENT, isProjectCommand, type ProjectCommandId } from "
 import { restoreField } from "./draft";
 import PlusMenu, { type AgentInfo } from "../launch/PlusMenu";
 import { openSettings as openSettingsPage } from "../settings/pages";
+import { readStatusBar } from "../chrome/statusItems";
 import { BehindNote, ListButtons, OutsideCard, PickedBar } from "../shell/ProjectsExtras";
 import { useOneForm } from "../shell/oneForm";
 import { dismissedOutside, jumpToCurrent, outsideOf, toggleRow, useAutoIcons, useTopButton, withDismissed, OUTSIDE_DISMISSED_SETTING } from "../shell/projectsGlue";
@@ -111,8 +112,8 @@ type Props = {
   reveal?: number;
   /** Folders a pane is open in: those workspace rows show a live dot. */
   openDirs: string[];
-  /** VIEW-051: the window's agent and shell panes; a workspace lists its running ones as rows
-   * and counts them (the left pane no longer lists terminals as rows). */
+  /** VIEW-051: the window's agent and shell panes. The sidebar draws no rows for them; a delete, sleep or remove
+   * question counts the running ones it would close (runNote). */
   sessions?: FolderSession[];
   /** PROJ-063: each open folder's strongest agent state and when it last changed. */
   states: Record<string, RowInfo>;
@@ -134,7 +135,7 @@ type Props = {
   onRemoved: (path: string) => void;
   /** T-614: the same for several at once (a batch, the cleanup dialog, the multi-select bar): one call
    *  with every path, so the shown workspace gives way to one that is not going too. */
-  onRemovedAll?: (paths: string[]) => void;
+  onRemovedAll: (paths: string[], staying?: string[]) => void; // R71-03: required, so no mount can drop the staying list
   /** PROJ-053: these workspaces went to sleep; close their panes. */
   onSleep: (paths: string[]) => void;
   /** EDIT-031: the file names with unsaved text in these workspaces, for the delete question. */
@@ -175,7 +176,7 @@ type Props = {
   createName?: string;
   /** Bumped by Mod+Shift+Backspace (workspace.delete): asks to delete the workspace shown (PROJ-070). */
   deleteRequest: number;
-  /** Audit F13/F14: the folder the focused pane works in; Delete Workspace and Rename worktree act on it. */
+  /** Audit F13/F14: the folder the focused pane works in; Delete worktree and Rename worktree act on it. */
   workDir?: string | null;
   /** T-611: bumped by workspace.rename (PROJ-059): starts the inline rename of the workspace shown. */
   renameRequest?: number;
@@ -225,7 +226,7 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll, onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
@@ -743,17 +744,43 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // tabs are asked about first, the same question a closing tab gets; on Cancel nothing is removed.
   // The folders asked about are the open panes' own, not the sidebar's rows: a worktree hidden by hand
   // or made by an automation is not listed, but its panes close all the same.
+  // PROJ 008 / F21: a project's folder and every worktree of it the page knows; `stayingBut` gives them for every project that
+  // is not going, so a nested project that stays keeps its panes, is not counted and is not asked about (`goesWith`).
+  const foldersOf = (p: Project) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
+  const stayingBut = (going: Set<string>) => projects.filter((q) => !going.has(q.id)).flatMap(foldersOf);
+  // Job 64 F1: a folder that a staying project on the same repository also lists does not go (`goingFolders`); a tab in it
+  // that the removed grid shows is kept (R83-04), so it is not asked about. Alone on a repository, as before.
+  // R83-04: not when its own folder stays (a staying project lists it), whichever grid shows it. F88-04: so only the going
+  // folders are asked about; a folder under a listed one that is not going stays (`staysOwn`), so it never closes.
+  const askedOf = (folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying));
+  // F88-01: the going folders, each once and in order (the scan lists the own folder again); `removedAll` closes their panes
+  // and reads the first as the project's own, so a going worktree under a staying project's folder closes too.
+  const once = (ds: string[]) => ds.filter((d, i) => ds.findIndex((x) => sameDir(x, d)) === i);
+  // F88-03: whether removing `gone` keeps something open that it lists: an open folder or a running terminal that does not
+  // close (`closesWith`), in a listed folder that does not go and is not a staying project's own folder (a shared worktree).
+  const keepsOpen = (gone: Project[], staying: string[]) => {
+    const going = gone.flatMap((p) => goingFolders(p.path, foldersOf(p), staying));
+    const owns = projects.filter((q) => !gone.includes(q)).map((q) => q.path);
+    const kept = gone.flatMap(foldersOf).filter((d) => !going.some((g) => sameDir(g, d)) && !owns.some((o) => sameDir(o, d)));
+    return [...openDirs.map((cwd) => ({ cwd })), ...sessions.filter((s) => s.running)].some((s) => kept.some((d) => underDir(s.cwd, d)) && !closesWith(s, going, staying));
+  };
   const removeProject = async (p: Project) => {
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
-    const folders = [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
-    const closed = openDirs.filter((d) => folders.some((r) => underDir(d, r)));
+    const staying = stayingBut(new Set([p.id]));
+    const folders = once(goingFolders(p.path, foldersOf(p), staying));
+    const closed = askedOf(folders, staying);
     if (!(await onAskUnsaved(closed))) return;
     try {
-      const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });
-      onRemoved(gone.path);
+      // `unchecked`: Git could not list a project's worktrees, so the engine left their terminals running (missing = false).
+      const gone = await invoke<{ name: string; path: string; ended: number; unchecked?: boolean }>("project_remove", { projectId: p.id });
+      onRemovedAll(folders, staying);
       setDropProject(null);
       setSettingsFor(null);
-      say("ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk`);
+      // R83-01: the list that failed may be a staying project's, so no owner is named. The memory number opens the
+      // Resource Manager; when its bar item is unticked, the line first says how to turn it back on.
+      const toEnd = readStatusBar(live.current.settings).hidden.includes("memory") ? "right-click the bottom bar, turn on Resource Manager, then click the memory number" : "click the memory number in the bottom bar";
+      const unchecked = gone.unchecked ? `. Git could not list every worktree, so a terminal may still be running. To end it, ${toEnd}` : "";
+      say(gone.unchecked ? "warn" : "ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk${unchecked}`);
       await reload();
     } catch (err) {
       fail(err);
@@ -901,14 +928,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // project in the group and its sub-groups (the back end removes those too). On Cancel nothing is deleted.
     const going = new Set(projectsInGroup(groups, g.id));
     const members = remove ? projects.filter((p) => going.has(p.id)) : [];
+    const staying = stayingBut(going);
+    const folders = once(members.flatMap((p) => goingFolders(p.path, foldersOf(p), staying)));
     if (remove) {
-      const folders = members.flatMap((p) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)]);
-      if (!(await onAskUnsaved(openDirs.filter((d) => folders.some((r) => underDir(d, r)))))) return;
+      if (!(await onAskUnsaved(askedOf(folders, staying)))) return;
     }
     try {
       const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
-      if (members.length > 0) onRemovedAll(members.map((p) => p.path));
+      if (members.length > 0) onRemovedAll(folders, staying);
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
       if (colours) live.current.onSetting(HEADER_COLOURS_SETTING, colours);
       setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away
@@ -1019,7 +1047,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       if (stopped.current.has(mine.ticket)) {
         const n = stoppedNote(mine.name, String(err));
         say(n.kind, n.text);
-      } else if (overtaken.current.has(mine.ticket)) say("warn", `${mine.name}: ${String(err)}`);
+      } else if (overtaken.current.has(mine.ticket)) say("warn", overtakenNote(mine.name, String(err)));
       else {
         fail(err);
         // The form was cleared for the next one; a failure puts the typed words back (only into empty fields).
@@ -1095,9 +1123,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const act = pointerDelete(w, { fieldFocused: isTextField(document.activeElement), deleting: new Set(busy === "removing" && confirm ? [confirm.path] : []) });
       if (act === null) return;
       if (act.action === "forget") return void askForget({ projectId: p.id, path: act.path, label: worktreeLabel(w) });
-      return void ask(p.id, w.path, worktreeLabel(w));
+      return void ask(p.id, w.path, worktreeLabel(w), { always: true }); // R27-05: the shortcut always asks
     }
-    void startDelete(p, w); // the same route as Delete in the pane's worktree label menu
+    void startDelete(p, w, { always: true }); // the same route as Delete in the pane's worktree label menu, but it always asks
   }, [deleteRequest, worktrees, projects]);
   // T-611 (PROJ-059): workspace.rename opens the same inline rename as F2 on the workspace shown. A sidebar
   // the command just opened has no list yet, so the request stays pending until the lists come in; taking it
@@ -1270,14 +1298,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // PROJ-070: look at the workspace first; the question shows what would be lost, and a clean
   // one with the question switched off goes straight to deleting. T-613: commits found on no other
   // branch and on no remote always ask, with Keep the branch ticked at first.
-  const ask = async (projectId: string, path: string, branch: string) => {
+  // Review R27-05: `always` (the delete shortcut) shows the question whatever the setting says.
+  const ask = async (projectId: string, path: string, branch: string, opts: { always?: boolean } = {}) => {
     setBusy("checking");
     let asked = null;
     try {
       const check = await invoke<RemoveCheck>("workspace_remove_check", { projectId, path });
       const settings = await invoke<Record<string, unknown>>("get_settings");
       asked = { projectId, path, branch, check, force: false, keep: keepsAtFirst(check) };
-      if (!skipsQuestion(check, settings) || runNote([path])) {
+      if (opts.always || !skipsQuestion(check, settings) || runNote([path])) {
         setConfirm(asked);
         asked = null;
       }
@@ -1366,11 +1395,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   };
   const askGroup = (g: Group) => (openGroup(g), setDropGroup({ remove: false }));
   // T-055: a workspace with children offers only to delete them all; a lone one follows the question setting.
-  const startDelete = async (p: Project, w: Worktree) => {
+  const startDelete = async (p: Project, w: Worktree, opts: { always?: boolean } = {}) => {
     const now = await invoke<Record<string, unknown>>("get_settings");
     const plan = deletePlan([w.path], (worktrees[p.id] ?? []).map((x) => ({ path: x.path, parent: x.parent })), asksBeforeDelete(now));
     if (plan.withChildren) setBatch({ root: w.path, order: plan.order });
-    else await ask(p.id, w.path, worktreeLabel(w));
+    else await ask(p.id, w.path, worktreeLabel(w), opts);
   };
   const labelOf = (path: string) => {
     const w = Object.values(worktrees).flat().find((x) => same(x.path, path));
@@ -1710,7 +1739,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // Txais (2026-11-12): a row shows no count of the agents in it ("1 working", "1"); its state word says what is happening.
   // TERM-045: the line a removal question adds when terminals under these workspaces still run (and the ask is on).
   // DT-C274: a session counts under a folder when it runs there or is shown in its grid (an own-folder team's agents).
-  const runNote = (paths: string[]) => closingNote(asksBeforeClose(settings) ? sessionsUnder(paths, sessions.filter((s) => s.running)) : 0);
+  // PROJ 008 / F21: `staying` (a project removal or a group delete only): a nested project that stays is not counted.
+  const runNote = (paths: string[], staying: string[] = []) => closingNote(asksBeforeClose(settings) ? sessionsUnder(paths, sessions.filter((s) => s.running), staying) : 0);
   const isSelected = (w: Worktree) => activeDir !== null && same(activeDir, w.path);
   const infoOf = (w: Worktree): RowInfo => {
     const info = Object.entries(states).find(([d]) => same(d, w.path))?.[1] ?? { state: "idle", changed: 0, pr: null };
@@ -1749,45 +1779,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const inList = (w: Worktree) => elsewhere(w) && !hidden(w); // the lane's listed(), renamed: main's listed is the worktree state
   // Txais (2026-11-12): Pinned and the grouped lists hold folders (main checkouts) only; a worktree never has a row.
   const pinnedEntries = everyEntry.filter((x) => x.w.isMain && pinned.has(pathKey(x.w.path)) && !hidden(x.w));
-  // The sessions of each folder: the open agent and terminal panes in it or in any worktree of it (an own-folder team's agents).
-  const ownSessions = sessionsByProject(sessions, projects.map((p) => ({ id: p.id, paths: [p.path, ...(listed[p.id] ?? []).map((w) => w.path), ...(hiddenWts[p.id] ?? []).map((w) => w.path)] })));
-  // Clicking a session shows the grid it is in, then focuses its pane.
-  const openSession = (p: Project, s: FolderSession) => {
-    const dir = sessionDir(s);
-    if (dir === null) return;
-    const w = (listed[p.id] ?? []).find((x) => same(x.path, dir));
-    if (w) show(w);
-    else onSelect(dir, null);
-    focusPane(s.key);
-  };
-  const sessionRows = (p: Project) =>
-    (ownSessions[p.id] ?? []).map((s) => {
-      const state: AgentState = s.state ?? "idle";
-      const name = sessionLabel(s);
-      return (
-        <div
-          key={`session-${s.key}`}
-          className="sess"
-          role="button"
-          tabIndex={0}
-          data-session={s.key}
-          data-testid="sidebar-session"
-          data-state={state}
-          title={[s.agent !== name ? `${name} (${s.agent})` : name, s.cwd, s.running ? null : "Exited"].filter(Boolean).join(String.fromCharCode(10))}
-          style={{ paddingLeft: 26 }}
-          onClick={() => openSession(p, s)}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter" && e.key !== " ") return;
-            e.preventDefault();
-            openSession(p, s);
-          }}
-        >
-          <span className={`dot ${state}${s.running ? " live" : ""}`} role="img" aria-label={state} data-tip={VOCAB[state].explain} />
-          <span className="name">{name}</span>
-          {!s.running && <span className="hint">exited</span>}
-        </div>
-      );
-    });
   async function sleep(w: Worktree) {
     const { next, paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
     // EDIT-031: its unsaved editor tabs are asked about first; on Cancel it stays awake with its tabs.
@@ -2078,7 +2069,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {!asking && !w.isMain && (
             <button
               className="ib"
-              title="Delete this workspace: deletes its folder, and its branch unless it was opened on an existing one"
+              title="Delete this worktree: deletes its folder, and its branch unless it was opened on an existing one"
               disabled={busy !== ""}
               onClick={(e) => {
                 e.stopPropagation();
@@ -2155,11 +2146,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         )}
         {first && batch?.root === w.path && (
           <Ask
-            title="Delete workspace and children"
+            title="Delete worktree and children"
             body={
               <>
                 <div>
-                  Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
+                  Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} worktree{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
                 </div>
                 <ul style={{ margin: 0, paddingLeft: 16 }}>
                   {batch.order.map((d) => (
@@ -2168,7 +2159,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 </ul>
                 {batchNames.length > 0 && (
                   <>
-                    <span>{askText(batchNames)} Deleting these workspaces closes their tabs.</span>
+                    <span>{askText(batchNames)} Deleting these worktrees closes their tabs.</span>
                     <ul className="del-changes" aria-label="files with unsaved changes">
                       {batchNames.map((n) => (
                         <li key={n}>{n}</li>
@@ -2218,11 +2209,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         )}
         {first && asking && (
           <Ask
-            title="Delete workspace"
+            title="Delete worktree"
             body={
               <>
                 <span>
-                  Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
+                  Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the worktree was opened on a branch that already existed.{" "}
                   {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
                   {runNote([confirm.path])}
                 </span>
@@ -2236,7 +2227,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 )}
                 {dirtyNames.length > 0 && (
                   <>
-                    <span>{askText(dirtyNames)} Deleting the workspace closes its tabs.</span>
+                    <span>{askText(dirtyNames)} Deleting the worktree closes its tabs.</span>
                     <ul className="del-changes" aria-label="files with unsaved changes">
                       {dirtyNames.map((n) => (
                         <li key={n}>{n}</li>
@@ -2317,7 +2308,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const main = list.find((w) => w.isMain);
       const others = order(list.filter((w) => !w.isMain && inList(w)).map((w) => ({ p, w })));
       const opening = creating === p.id;
-      // Txais (2026-11-12): the sidebar lists folders and their sessions, never worktrees. The project row is the folder,
+      // Txais (2026-11-12): the sidebar lists folders only, never sessions or worktrees. The project row is the folder,
       // and clicking it shows the grid of every pane opened in that folder or in a worktree of it.
       const inFolder = activeDir !== null && [p.path, ...list.map((w) => w.path), ...(hiddenWts[p.id] ?? []).map((w) => w.path)].some((d) => same(activeDir, d));
       const selected = main !== undefined && (isSelected(main) || inFolder);
@@ -2325,7 +2316,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       return (
         <div key={p.id}>
           <div
-            className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}`}
+            className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}${folder && isUnread(main) ? " unread" : ""}`}
             title={p.path}
             data-path={folder ? main.path : undefined}
             data-testid={folder ? "sidebar-folder" : undefined}
@@ -2348,7 +2339,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <span className="name" title={p.displayName ? p.name : undefined}>{projectLabel(p)}{labels[p.id]?.hint && <span className="sb-name-hint" title={labels[p.id].hint ?? undefined}>{labels[p.id].hintCut}</span>}</span>
             {folder && <span className="hint" title={main.path}>{worktreeLabel(main)}</span>}
-            {/* The branch and push hints sit side by side in the folder row; styles.css spaces them only in session rows. */}
+            {/* The branch and push hints sit side by side in the folder row; styles.css has no rule that spaces them, so the gap is set here. */}
             {folder && <span className="push-gap" style={{ marginLeft: 6, flex: "none" }}>{pushTag(main)}</span>}
             <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
               <Gear />
@@ -2360,7 +2351,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {dropProject === p.id && (
             <Ask
               title="Remove project"
-              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</>}
+              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared.{keepsOpen([p], stayingBut(new Set([p.id]))) && " Terminals in a worktree that another project in Kolux also lists stay open."} The folder and its files stay on disk.{runNote(goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
               confirm={`Remove ${p.name}`}
               cancel="Keep it"
               onConfirm={() => removeProject(p)}
@@ -2432,7 +2423,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {opening && nameField(p)}
           {standIn(p)}
           {/* A worktree never has a row: its rows stay in the DOM for saved work and for the keyboard, but they
-              do not draw. What runs in one shows as a session row under the folder. */}
+              do not draw. What runs in one shows in the folder's grid, not as a row. */}
           <div className="old-workspaces">
             {outsideCard({ outside: outsideOf(list), dismissed: dismissedOutside(settings).includes(p.id), collapsed: false, otherRows: others.length }).show && (
               <OutsideCard outside={outsideOf(list)} onDismiss={() => onSetting(OUTSIDE_DISMISSED_SETTING, withDismissed(settings, p.id))} />
@@ -2486,7 +2477,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           body={
             <>
               Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
-              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => (worktrees[pid] ?? []).map((x) => x.path)))}
+              {dropGroup.remove && keepsOpen(projects.filter((q) => projectsInGroup(groups, g.id).includes(q.id)), stayingBut(new Set(projectsInGroup(groups, g.id)))) && " Terminals in a worktree that another project in Kolux also lists stay open."}
+              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => projects.filter((q) => q.id === pid)).flatMap((q) => goingFolders(q.path, foldersOf(q), stayingBut(new Set(projectsInGroup(groups, g.id))))), stayingBut(new Set(projectsInGroup(groups, g.id))))}
               <label className="check">
                 <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
                 Also remove its projects from Kolux (their folders stay on disk)
@@ -2770,7 +2762,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                     </span>
                   </button>
                 )}
-                {!folded.has(g.title) && g.rows.map((x) => <Fragment key={x.w.path}>{row(x)}{sessionRows(x.p)}</Fragment>)}
+                {!folded.has(g.title) && g.rows.map((x) => <Fragment key={x.w.path}>{row(x)}</Fragment>)}
               </div>
             ))}
 

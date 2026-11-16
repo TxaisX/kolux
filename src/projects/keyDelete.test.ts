@@ -1,8 +1,9 @@
-// Audit F13/F14: Delete Workspace (Ctrl+Shift+Backspace) and Rename worktree lost their target when worktrees
+// Audit F13/F14: Delete worktree (Ctrl+Shift+Backspace) and Rename worktree lost their target when worktrees
 // stopped having sidebar rows. With no worktree row under the pointer they now act on the folder the focused
 // pane works in, through the same route as the pane's worktree label menu, and never on a main folder.
 import { expect, test } from "vitest";
 import { keyDeleteTarget, notInWorktree } from "./deleting";
+import { actionById } from "../keys/actions";
 import panelSrc from "./ProjectsPanel.tsx?raw";
 import sidebarSrc from "../shell/window/Sidebar.tsx?raw";
 
@@ -39,13 +40,13 @@ const renameEffect = effect("if (renameRequest === 0) return;");
 
 test("the delete shortcut takes the pane menu's route: startDelete, which asks first and names the worktree", () => {
   expect(delEffect).toContain("keyDeleteTarget(waited ? null : hovered, workDir ?? activeDir, rows, same)");
-  expect(delEffect).toContain("void startDelete(p, w);");
+  expect(delEffect).toContain("void startDelete(p, w, { always: true });"); // R27-05: the shortcut always asks
   expect(delEffect).toContain('say("warn", unlisted ? NOT_LISTED_WORKTREE : notInWorktree("delete"))'); // R27-02: a hidden or unreviewed worktree gets its own line
   // The pane label menu's Delete item goes the same way.
   expect(panelSrc).toContain('else if (id === "delete") await startDelete(p, w);');
   // startDelete asks the question with the worktree's name (or the children-first batch question).
   const start = panelSrc.slice(panelSrc.indexOf("const startDelete = async"), panelSrc.indexOf("const labelOf ="));
-  expect(start).toContain("await ask(p.id, w.path, worktreeLabel(w))");
+  expect(start).toContain("await ask(p.id, w.path, worktreeLabel(w), opts)");
   expect(start).toContain("setBatch(");
 });
 
@@ -66,4 +67,9 @@ test("Rename worktree aims at the focused pane's folder and refuses a main folde
   expect(renameEffect).toContain("renameTarget(workDir ?? activeDir, projects, worktrees, same)");
   expect(renameEffect).toContain('if (w === "none" || w.isMain) say("warn", notInWorktree("rename"));');
   expect(sidebarSrc).toContain("workDir={workDir}");
+});
+
+test("the shortcut is named for what it deletes: a worktree, as Create worktree and Rename worktree are", () => {
+  expect(actionById.get("workspace.delete")?.title).toBe("Delete worktree");
+  expect(actionById.get("workspace.delete")?.win32).toEqual(["Mod+Shift+Backspace"]);
 });

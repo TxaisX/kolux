@@ -59,6 +59,6 @@ test("Ctrl+Shift+Down from the first project reaches the second, then wraps to t
 });
 
 test("the selector still fits the project row ProjectsPanel draws", () => {
-  expect(panelSrc).toContain('className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}`}');
+  expect(panelSrc).toContain('className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}${folder && isUnread(main) ? " unread" : ""}`}'); // R61-03 added the unread mark
   expect(panelSrc).toContain("data-path={folder ? main.path : undefined}");
 });

@@ -143,8 +143,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["recovery/CrashReportDialog.tsx", "Report a crash", "hook"],
   ["recovery/RecoveryMount.tsx", "Graphics", "exempt: the graphics fallback needs one of its two answers"],
   ["scm/PrStart.tsx", "Create pull request", "tag"],
-  ["scm/SourceControlPanel.tsx", "Create pull request", "tag"],
-  ["scm/SourceControlPanel.tsx", "asking.title ?? \"Resolve conflicts with an agent\"", "tag"],
   ["scm/StackMap.tsx", "Confirm the stack merge", "tag"],
   ["settings/GrokCard.tsx", "Use an xAI API key", "wrapper"],
   ["settings/SettingsPage.tsx", "Settings", "window"],

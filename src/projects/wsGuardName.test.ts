@@ -85,8 +85,8 @@ afterEach(async () => {
   delete (FakeNode.prototype as { select?: () => void }).select;
 });
 
-const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this workspace");
-const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete workspace")[0];
+const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this worktree");
+const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete worktree")[0];
 const guardAsk = (c: FakeNode) => byLabel(c, "div", "Save changes before closing?")[0];
 const nameAsk = (c: FakeNode) => byLabel(c, "div", "Name this note")[0];
 

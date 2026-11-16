@@ -130,7 +130,18 @@ test("box 4: Pinned and the grouped lists hold folders only, never a worktree", 
   await unmount();
   const grouped = await panel(six.slice(0, 2), { workspaceGroupBy: "status" });
   expect(visible(grouped).filter((n) => n.attrs["data-worktree"] !== undefined).map((n) => n.attrs["data-path"])).toEqual(["C:/w/app"]);
-  expect(find(grouped, (n) => n.attrs["data-session"] !== undefined)).toHaveLength(2);
+  expect(find(grouped, (n) => n.attrs["data-session"] !== undefined)).toEqual([]);
+});
+
+// Txais (2026-11-12): the sidebar shows folders only; every session is already in the grid. Grouping by status,
+// pull request or one flat list still drew a session row under each folder.
+test("the sidebar draws no session rows in any grouping", async () => {
+  for (const workspaceGroupBy of ["project", "status", "pr", "none"]) {
+    const c = await panel(six, { workspaceGroupBy });
+    expect(find(c, (n) => n.attrs["data-session"] !== undefined || n.attrs["data-testid"] === "sidebar-session"), workspaceGroupBy).toEqual([]);
+    expect(find(c, (n) => n.attrs["data-path"] === "C:/w/app").length, workspaceGroupBy).toBeGreaterThan(0); // the folder row is still drawn
+    await unmount();
+  }
 });
 
 // Txais (2026-11-13): the worktree rows are gone from the ribbon, so what they offered is reached from the pane-header
@@ -153,4 +164,14 @@ test("box 5: an old worktree request (the sidebar opened later) pops no menu", a
   h.wt = [wt, agentWt(1)];
   const c = await panel(six.slice(0, 2), team, { worktreeRequest: { path: agentWt(1).path, x: 40, y: 60, n: Date.now() - 60000 } });
   expect(find(c, (n) => n.attrs.role === "menu")).toEqual([]);
+});
+
+// R61-03: an agent that finished in a folder's grid while it was not shown marks the folder's row, as the session rows did.
+test("R61-03: an unread folder's row carries the unread mark; a read one does not", async () => {
+  const cls = (c: FakeNode) => { const row = find(c, (n) => n.attrs["data-testid"] === "sidebar-folder")[0]; return String(row?.attrs.className ?? row?.attrs.class ?? "").split(" "); };
+  const read = await panel([]);
+  expect(cls(read)).not.toContain("unread");
+  await unmount();
+  const un = await panel([], {}, { unread: new Set(["C:/w/app"]) });
+  expect(cls(un)).toContain("unread");
 });
