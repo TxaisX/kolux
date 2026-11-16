@@ -83,7 +83,7 @@ Kolux runs two small listeners on your own computer, one for the command line an
 
 ## Agent status hooks
 
-The switch for these hooks is now called "Show what each agent is doing" (Settings, Agents). A status hook is a small script (or, for Amp, a plugin) that an agent program runs at each event and that reports to Kolux. Setting them up is described in [Settings](settings.md#hooks-for-gemini-cli-antigravity-and-amp). This section covers what the Gemini CLI, Antigravity and Amp hooks send and how your agents' settings files are kept safe.
+The switch for these hooks is called "Show what each agent is doing" (Settings, Agents). A status hook is a small script (or, for Amp, a plugin) that an agent program runs at each event and that reports to Kolux. Setting them up is described in [Settings](settings.md#hooks-for-gemini-cli-antigravity-and-amp). This section covers what the Gemini CLI, Antigravity and Amp hooks send and how your agents' settings files are kept safe.
 
 ### What each hook sends
 
