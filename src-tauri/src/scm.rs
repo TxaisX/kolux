@@ -2698,19 +2698,45 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     check_paths(paths)?;
     let st = status(worktree)?;
     let k = kinds(worktree, &paths.iter().map(|p| p.trim_end_matches('/')).collect::<Vec<_>>(), true)?;
-    let held = |r: &str| k.at.contains(r) || k.head_file.contains(r);
+    // F90-01 / F94-02: a link at a row the index holds is the row's own.
+    let held = |r: &str| k.at.contains(r);
     let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut kept = Vec::new();
     let mut renames: Vec<(String, String)> = Vec::new();
     let mut real = std::collections::HashSet::new();
+    let mut pairs: Vec<(String, String)> = Vec::new();
     for p in paths {
         let p = p.trim_end_matches('/');
         let index = st.staged.iter().find(|c| c.path == p);
+        let from = index.and_then(|c| c.from.as_deref());
         // F-02: a row whose file (or a rename's old file) Git would write over a folder with
         // something in it is left exactly as it is: not unstaged, not written, not cleaned.
         // R59-01/R59-02: so is a row under a link or a file where a folder was.
-        // F90-01: Git holds the row itself when `k` says so, and a staged rename's old half always.
-        if let Some(why) = std::iter::once((p, held(p))).chain(index.and_then(|c| c.from.as_deref()).map(|f| (f, true))).find_map(|(at, h)| left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at))).or_else(|| is_link(worktree, at, h).err())) {
+        // F94-01 / F94-02 (rule D): so is the row when only the last commit holds it, and a staged
+        // rename's old half always, when a file or a link stands at its place; unless what stands
+        // there is one disk entry with the rename's own new half, or (for the row) with another
+        // row of this call the index holds, which then must go too (`pairs`).
+        let (mut why, mut pair) = (None, None);
+        for at in std::iter::once(p).chain(from) {
+            why = left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at)));
+            if why.is_none() && (at != p || (k.head_file.contains(p) && !k.at.contains(p))) {
+                match stands_in_place(worktree, at) {
+                    Ok(Some(_)) if at != p && one_entry(worktree, at, p) => {}
+                    Ok(Some(line)) if at != p => why = Some(line),
+                    Ok(Some(line)) => match paths.iter().map(|o| o.trim_end_matches('/')).find(|o| k.at.contains(*o) && one_entry(worktree, p, o)) {
+                        Some(o) => pair = Some(o.to_string()),
+                        None => why = Some(line),
+                    },
+                    Ok(None) => {}
+                    Err(e) => why = Some(e),
+                }
+            }
+            why = why.or_else(|| is_link(worktree, at, held(at)).err());
+            if why.is_some() {
+                break;
+            }
+        }
+        if let Some(why) = why {
             kept.push(why);
             continue;
         }
@@ -2720,6 +2746,9 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         if !listed_untracked && k.folder(p) {
             kept.push(folder_line(p));
             continue;
+        }
+        if let Some(o) = pair {
+            pairs.push((p.to_string(), o));
         }
         if let Some(c) = index {
             staged.push(c.path.clone());
@@ -2744,7 +2773,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     let (mut removed, mut failed) = (Vec::new(), Vec::new());
     for p in &tracked {
         // F90-01: the same answer the check above gave this row.
-        match remove_link(worktree, p, held(p) || renames.iter().any(|(from, _)| from == p)) {
+        match remove_link(worktree, p, held(p)) {
             Ok(true) => removed.push(p.clone()),
             Ok(false) => {}
             Err(e) => {
@@ -2753,10 +2782,25 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
             }
         }
     }
-    for (from, to) in &renames {
-        if failed.contains(from) && !failed.contains(to) {
-            kept.push(format!("{to} is the other half of a rename, so Kolux leaves it too."));
-            failed.push(to.clone());
+    // F94-01: until nothing more is left, so a rename and a pair (a row whose other row is left,
+    // or did not pass the check) both stay whole.
+    loop {
+        let n = failed.len();
+        for (from, to) in &renames {
+            if failed.contains(from) && !failed.contains(to) {
+                kept.push(format!("{to} is the other half of a rename, so Kolux leaves it too."));
+                failed.push(to.clone());
+            }
+        }
+        for (row, other) in &pairs {
+            let goes = [&staged, &tracked, &untracked, &remove].iter().any(|l| l.contains(other)) && !failed.contains(other);
+            if !goes && !failed.contains(row) {
+                kept.push(shares_place(row, other));
+                failed.push(row.clone());
+            }
+        }
+        if failed.len() == n {
+            break;
         }
     }
     staged.retain(|p| !failed.contains(p));
@@ -3066,8 +3110,8 @@ fn remove_link(worktree: &Path, p: &str, held: bool) -> Result<bool, String> {
 
 /// R70-05 / R82-03: whether row `p` itself is a link, read only. A row whose kind cannot be read
 /// (for a reason other than "missing") is left, never taken as "not a link".
-/// F90-01: `held` is true when Git holds a file, link or submodule at exactly this row (index or
-/// last commit); Git then writes the same object Kolux removes, so the spelling walk is skipped.
+/// F90-01 / F94-02: `held` is true when the index holds a file, link or submodule at exactly this
+/// row; Git then writes the same object Kolux removes, so the spelling walk is skipped.
 fn is_link(worktree: &Path, p: &str, held: bool) -> Result<bool, String> {
     let p = p.trim_end_matches('/');
     match fs::symlink_metadata(worktree.join(native(p))) {
@@ -3078,6 +3122,56 @@ fn is_link(worktree: &Path, p: &str, held: bool) -> Result<bool, String> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(_) => Err(unread(p, p)),
     }
+}
+
+/// F94-01 / F94-02 (rule D): row `p` is held only in the last commit (a staged deletion, or a
+/// staged rename's old half), so the index has no entry for it: a file or a link standing at its
+/// place, under any spelling the disk opens, is not the row's, and Discard writes over or removes
+/// neither. `Ok(None)`: the place is empty, or a real folder (the folder checks decide those).
+/// `Ok(Some(line))`: something stands there. Only looks.
+fn stands_in_place(worktree: &Path, p: &str) -> Result<Option<String>, String> {
+    let row = p.trim_end_matches('/');
+    match fs::symlink_metadata(worktree.join(native(row))) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(_) => Err(unread(row, row)),
+        Ok(m) if m.is_symlink() => Ok(Some(format!("A link stands where {row} would come back, so Kolux leaves {row} as it is. Remove the link by hand, then discard again."))),
+        Ok(m) if m.is_dir() => Ok(None),
+        Ok(_) => Ok(Some(format!("A file stands where {row} would come back, so Kolux leaves {row} as it is. Use Unstage to keep that file, or move it away and discard again."))),
+    }
+}
+
+/// F94-01, rule D's one exception: rows `p` and `other` are one disk entry (a rename that only
+/// changes letter case). One parent folder, last parts equal ignoring letter case but not the
+/// same, and the parent's listing holds `other`'s last part exactly and not `p`'s. False when the
+/// listing cannot be read.
+fn one_entry(worktree: &Path, p: &str, other: &str) -> bool {
+    fn split(r: &str) -> (&str, &str) {
+        let r = r.trim_end_matches('/');
+        r.rsplit_once('/').unwrap_or(("", r))
+    }
+    let ((dir, name), (other_dir, other_name)) = (split(p), split(other));
+    if dir != other_dir || name == other_name || name.to_lowercase() != other_name.to_lowercase() {
+        return false;
+    }
+    let Ok(Ok(names)) = fs::read_dir(worktree.join(native(dir))).map(|d| d.map(|e| e.map(|e| e.file_name())).collect::<Result<Vec<_>, _>>()) else {
+        return false;
+    };
+    names.iter().any(|n| n.as_os_str() == other_name) && !names.iter().any(|n| n.as_os_str() == name)
+}
+
+/// F94-01: a row let through as one disk entry with `other` is left when `other` is left.
+fn leave_pairs(pairs: &[(String, String)], left: &mut Vec<String>, said: &mut Vec<String>) {
+    for (row, other) in pairs {
+        if left.contains(other) && !left.contains(row) {
+            said.push(shares_place(row, other));
+            left.push(row.clone());
+        }
+    }
+}
+
+/// F94-01: what Discard says about a row it leaves because `other`, its one disk entry, is left.
+fn shares_place(row: &str, other: &str) -> String {
+    format!("{row} shares its place on disk with {other}, so Kolux leaves it too.")
 }
 
 /// F-02: what Discard says about a row it leaves because a folder now sits in its file's place.
@@ -3122,18 +3216,32 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
     match section {
         "staged" | "changed" => {
             let k = kinds(worktree, &rows, true)?;
-            // F90-01: one answer per row, for the check and the link step alike.
-            let held = |r: &str| k.at.contains(r) || k.head_file.contains(r);
+            // F90-01: one answer per row, for the check and the link step alike. F94-02: the index only.
+            let held = |r: &str| k.at.contains(r);
             // F-02: a row whose file Git would write over a folder with something in it is left as
             // it is and named; the other rows still go. R59-01/R59-02: so is a row under a link or a
             // file where a folder was; a link at the row itself is removed (only the link) first.
             let (mut said, mut rest, mut left, mut links) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
             let mut real = std::collections::HashSet::new();
+            let mut pairs: Vec<(String, String)> = Vec::new();
             // R82-04: this loop only looks (a row whose kind cannot be read is left); no link is
             // removed until every check, the rename look-up included, is done.
             for p in paths {
                 let row = p.trim_end_matches('/').to_string();
-                let why = left_why(worktree, p, &mut real).or_else(|| k.folder(p).then(|| folder_line(p))).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p)));
+                let mut why = left_why(worktree, p, &mut real).or_else(|| k.folder(p).then(|| folder_line(p))).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p)));
+                // F94-01 / F94-02 (rule D): a row only the last commit holds comes back only into an
+                // empty place, unless what stands there is a row of this call the index holds (one
+                // disk entry); that pair stays together (`leave_pairs`).
+                if why.is_none() && k.head_file.contains(&row) && !k.at.contains(&row) {
+                    match stands_in_place(worktree, &row) {
+                        Ok(Some(line)) => match rows.iter().find(|o| k.at.contains(**o) && one_entry(worktree, &row, o)) {
+                            Some(o) => pairs.push((row.clone(), o.to_string())),
+                            None => why = Some(line),
+                        },
+                        Ok(None) => {}
+                        Err(e) => why = Some(e),
+                    }
+                }
                 match why.map_or_else(|| is_link(worktree, p, held(&row)), Err) {
                     Err(why) => {
                         said.push(why);
@@ -3151,6 +3259,7 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // or a link is to be removed. R70-03: a status that cannot be read leaves every row; a
             // picked partner gets its own line.
             let mut halves: Vec<(String, String)> = Vec::new();
+            leave_pairs(&pairs, &mut left, &mut said);
             if section == "staged" && (!left.is_empty() || !links.is_empty()) {
                 match status(worktree) {
                     Ok(st) => {
@@ -3159,12 +3268,20 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
                             halves.push((from.clone(), c.path.clone()));
                             halves.push((c.path, from));
                         }
-                        for (half, other) in &halves {
-                            if left.contains(other) && !left.contains(half) {
-                                if rest.iter().any(|p| p.trim_end_matches('/') == half) {
-                                    said.push(format!("{half} is the other half of a rename, so Kolux leaves it too."));
+                        // F94-01: until nothing more is left, so a pair and a rename both stay whole.
+                        loop {
+                            let n = left.len();
+                            for (half, other) in &halves {
+                                if left.contains(other) && !left.contains(half) {
+                                    if rest.iter().any(|p| p.trim_end_matches('/') == half) {
+                                        said.push(format!("{half} is the other half of a rename, so Kolux leaves it too."));
+                                    }
+                                    left.push(half.clone());
                                 }
-                                left.push(half.clone());
+                            }
+                            leave_pairs(&pairs, &mut left, &mut said);
+                            if left.len() == n {
+                                break;
                             }
                         }
                         rest.retain(|p| !left.iter().any(|l| l == p.trim_end_matches('/')));

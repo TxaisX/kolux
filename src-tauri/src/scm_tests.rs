@@ -3820,8 +3820,9 @@ fn r86_a_link_is_removed_only_under_its_own_name() {
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
 
-/// R86-03: on the paths route a link that cannot be removed at a staged rename's old half leaves
-/// the rename whole: nothing is unstaged and the new file stays.
+/// R86-03: on the paths route a link at a staged rename's old half leaves the rename whole:
+/// nothing is unstaged and the new file stays. F94-02: the check leaves it (rule D) before any
+/// removal; the lock below would make a removal fail, so the exact line shows none was tried.
 #[cfg(windows)]
 #[test]
 fn r86_a_held_link_at_a_renames_old_half_leaves_the_rename_whole() {
@@ -3837,7 +3838,8 @@ fn r86_a_held_link_at_a_renames_old_half_leaves_the_rename_whole() {
     let said = by_route(&dir, "paths", &["b"]);
     drop(held);
     let renamed = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "b" && c.from.as_deref() == Some("a")));
-    assert!(matches!(&said, Err(e) if e.starts_with("a: ") && e.ends_with("\nb is the other half of a rename, so Kolux leaves it too.")), "said {said:?}");
+    // F94-02 (rule D): the link at the old half is left by the check; no removal is tried.
+    assert_eq!(said, Err("A link stands where a would come back, so Kolux leaves a as it is. Remove the link by hand, then discard again.".to_string()));
     assert!(dir.join("b").exists(), "b still stands");
     assert!(renamed, "the rename is still staged");
     assert!(fs::symlink_metadata(dir.join("a")).is_ok_and(|m| m.is_symlink()), "the link a stays");
@@ -3932,6 +3934,191 @@ fn r93_an_untracked_name_ending_in_a_dot_beside_a_tracked_file_is_left() {
         }
         if !dot_stood {
             wrong.push(format!("{route}: foo. is gone"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 / F94-02: the two lines Discard gives a row only the last commit holds when something
+/// stands at its place.
+fn r95_file(row: &str) -> String {
+    format!("A file stands where {row} would come back, so Kolux leaves {row} as it is. Use Unstage to keep that file, or move it away and discard again.")
+}
+
+#[cfg(windows)]
+fn r95_link(row: &str) -> String {
+    format!("A link stands where {row} would come back, so Kolux leaves {row} as it is. Remove the link by hand, then discard again.")
+}
+
+#[cfg(windows)]
+fn r95_listed(dir: &Path, name: &str) -> bool {
+    fs::read_dir(dir).unwrap().any(|e| e.unwrap().file_name() == name)
+}
+
+/// F94-01 (rule D): a staged deletion whose place holds a new file of the same name is left on
+/// the staged and paths routes: the new text stays and the deletion stays staged.
+#[test]
+fn r95_a_staged_deletion_never_writes_over_a_new_file_of_its_name() {
+    let mut wrong = Vec::new();
+    for route in ["staged", "paths"] {
+        let dir = temp_repo(&format!("r95a-{route}"));
+        commit_file(&dir, "notes", "old\n");
+        plain(&["rm", "-q", "notes"], &dir);
+        fs::write(dir.join("notes"), "mine\n").unwrap();
+        let said = by_route(&dir, route, &["notes"]);
+        let text = fs::read_to_string(dir.join("notes")).ok();
+        let deleted = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "notes" && c.status == "D"));
+        let _ = fs::remove_dir_all(&dir);
+        if said != Err(r95_file("notes")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: notes holds {text:?}, not the new text"));
+        }
+        if !deleted {
+            wrong.push(format!("{route}: the deletion of notes is no longer staged"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 (rule D): on Windows `notes` opens a new untracked `NOTES`. Discarding the staged
+/// deletion of `notes` leaves it: `NOTES` keeps its name and its text, on both routes.
+#[cfg(windows)]
+#[test]
+fn r95_a_staged_deletion_never_writes_over_a_file_in_other_letter_case() {
+    let mut wrong = Vec::new();
+    for route in ["staged", "paths"] {
+        let dir = temp_repo(&format!("r95b-{route}"));
+        commit_file(&dir, "notes", "old\n");
+        plain(&["rm", "-q", "notes"], &dir);
+        fs::write(dir.join("NOTES"), "mine\n").unwrap();
+        let said = by_route(&dir, route, &["notes"]);
+        let text = fs::read_to_string(dir.join("NOTES")).ok();
+        let (upper, lower) = (r95_listed(&dir, "NOTES"), r95_listed(&dir, "notes"));
+        let deleted = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "notes" && c.status == "D"));
+        let _ = fs::remove_dir_all(&dir);
+        if said != Err(r95_file("notes")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: NOTES holds {text:?}, not the new text"));
+        }
+        if !upper || lower {
+            wrong.push(format!("{route}: the listing holds NOTES {upper}, notes {lower}"));
+        }
+        if !deleted {
+            wrong.push(format!("{route}: the deletion of notes is no longer staged"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-02 (rule D): a junction standing where a staged deletion would come back, spelled `LNK`
+/// or `lnk`, is not the row's: it is left with the link line, on both routes, and what it points
+/// at is untouched.
+#[cfg(windows)]
+#[test]
+fn r95_a_link_where_a_staged_deletion_would_come_back_is_left() {
+    let mut wrong = Vec::new();
+    for (spelled, tag) in [("LNK", "upper"), ("lnk", "lower")] {
+        for route in ["staged", "paths"] {
+            let name = format!("r95c-{tag}-{route}");
+            let dir = temp_repo(&name);
+            let out = outside_folder(&name);
+            let _clean = LinksThenFolders(vec![dir.join(spelled)], vec![dir.clone(), out.clone()]);
+            commit_file(&dir, "lnk", "old\n");
+            plain(&["rm", "-q", "lnk"], &dir);
+            fs::write(out.join("o.txt"), "o\n").unwrap();
+            junction(&dir.join(spelled), &out);
+            let said = by_route(&dir, route, &["lnk"]);
+            if said != Err(r95_link("lnk")) {
+                wrong.push(format!("{spelled} {route}: said {said:?}"));
+            }
+            if !fs::symlink_metadata(dir.join(spelled)).is_ok_and(|m| m.is_symlink()) {
+                wrong.push(format!("{spelled} {route}: the junction is gone"));
+            }
+            if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+                wrong.push(format!("{spelled} {route}: the outside o.txt changed"));
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 (rule D): a new file standing at a staged rename's old half leaves the rename whole: on
+/// the paths route (row `b`) and on the staged route (rows `b` and `a`) `a` keeps its new text, `b`
+/// stands and the rename stays staged.
+#[test]
+fn r95_a_new_file_at_a_renames_old_half_leaves_the_rename_whole() {
+    let mut wrong = Vec::new();
+    for (route, rows) in [("paths", &["b"][..]), ("staged", &["b", "a"][..])] {
+        let dir = temp_repo(&format!("r95d-{route}"));
+        commit_file(&dir, "a", "old\n");
+        plain(&["mv", "a", "b"], &dir);
+        fs::write(dir.join("a"), "mine\n").unwrap();
+        let said = by_route(&dir, route, rows);
+        let text = fs::read_to_string(dir.join("a")).ok();
+        let b = dir.join("b").exists();
+        let renamed = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "b" && c.from.as_deref() == Some("a")));
+        let _ = fs::remove_dir_all(&dir);
+        let want = if route == "paths" { r95_file("a") } else { format!("{}\nb is the other half of a rename, so Kolux leaves it too.", r95_file("a")) };
+        if said != Err(want) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: a holds {text:?}, not the new text"));
+        }
+        if !b {
+            wrong.push(format!("{route}: b is gone"));
+        }
+        if !renamed {
+            wrong.push(format!("{route}: the rename is no longer staged"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 (rule D's exception): a rename that only changes letter case has its old half standing
+/// on disk as the new half itself. Discarded with both rows on the staged route, it comes back
+/// whole under its old name. (`guide.md`, since the test repository already holds `README.md`.)
+#[cfg(windows)]
+#[test]
+fn r95_a_letter_case_rename_discarded_whole_on_the_staged_route_comes_back() {
+    let dir = temp_repo("r95e");
+    commit_file(&dir, "guide.md", "old\n");
+    plain(&["mv", "guide.md", "GUIDE.md"], &dir);
+    let said = by_route(&dir, "staged", &["GUIDE.md", "guide.md"]);
+    let (lower, upper) = (r95_listed(&dir, "guide.md"), r95_listed(&dir, "GUIDE.md"));
+    let text = fs::read_to_string(dir.join("guide.md")).ok();
+    let st = status(&dir).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(said, Ok(()));
+    assert!(lower && !upper, "the listing holds guide.md {lower}, GUIDE.md {upper}");
+    assert_eq!(text.as_deref(), Some("old\n"));
+    assert!(st.staged.is_empty() && st.changed.is_empty() && st.untracked.is_empty(), "status lists {st:?}");
+}
+
+/// F94-01 control: a staged deletion with nothing at its place still comes back on both routes.
+#[test]
+fn r95_a_staged_deletion_with_an_empty_place_comes_back() {
+    let mut wrong = Vec::new();
+    for route in ["staged", "paths"] {
+        let dir = temp_repo(&format!("r95f-{route}"));
+        commit_file(&dir, "notes", "old\n");
+        plain(&["rm", "-q", "notes"], &dir);
+        let said = by_route(&dir, route, &["notes"]);
+        let text = fs::read_to_string(dir.join("notes")).ok();
+        let st = status(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+        if said != Ok(()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("old\n") {
+            wrong.push(format!("{route}: notes holds {text:?}"));
+        }
+        if !st.staged.is_empty() {
+            wrong.push(format!("{route}: still staged {:?}", st.staged));
         }
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
