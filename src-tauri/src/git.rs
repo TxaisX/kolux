@@ -84,6 +84,17 @@ pub struct Worktree {
 /// prompt no one can see, Git Credential Manager's window included. Saved credentials still work.
 pub const NO_PROMPT: [(&str, &str); 2] = [("GIT_TERMINAL_PROMPT", "0"), ("GCM_INTERACTIVE", "never")];
 
+/// Tests only: a traced git command line past its leading `-c key=value` pairs, so a test that
+/// counts processes by command (`status`, `config`) still finds one that carries a setting.
+#[cfg(test)]
+pub(crate) fn past_config_flags(argv: &str) -> &str {
+    let mut rest = argv;
+    while let Some(after) = rest.strip_prefix("-c ") {
+        rest = after.split_once(' ').map_or("", |(_, tail)| tail);
+    }
+    rest
+}
+
 #[cfg(test)]
 thread_local! {
     /// Tests only: when set, every git this thread starts writes git's own trace2 event log to

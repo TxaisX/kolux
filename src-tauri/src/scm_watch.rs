@@ -1207,7 +1207,8 @@ mod tests {
         let argvs = git_argvs_of_one_status_read(&dir);
         println!("T-033-e: one status read = {} git processes: {argvs:?}", argvs.len());
         assert!(!argvs.is_empty(), "trace2 log missing");
-        assert_eq!(argvs.iter().filter(|a| a.starts_with("status")).count(), 1, "{argvs:?}");
+        // F96-03: the status read carries `-c status.renames=true` ahead of the command.
+        assert_eq!(argvs.iter().filter(|a| crate::git::past_config_flags(a).starts_with("status")).count(), 1, "{argvs:?}");
         assert!(argvs.len() >= 5, "a read is status plus the base, the operation and the line counts: {argvs:?}");
         let a_minute = argvs.len() * 60 / GAP.as_secs() as usize;
         println!("T-033-e: at most {} reads a minute = at most {a_minute} git processes a minute", 60 / GAP.as_secs());

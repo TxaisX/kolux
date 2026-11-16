@@ -1224,10 +1224,12 @@ fn remote_actions_move_commits_through_a_bare_remote_and_rebased_work_offers_a_l
         .collect();
     let report = format!("3 reads took {took:?}; processes {argvs:?}; times {times:?}");
     eprintln!("{report}");
-    assert!(argvs.iter().filter(|a| a.starts_with("status ")).count() >= 3, "trace2 log missing: {report}");
+    // F96-03: the status read and its program-key listing carry `-c status.renames=true` ahead of the command.
+    let command = |a: &String| crate::git::past_config_flags(a).to_string();
+    assert!(argvs.iter().filter(|a| command(a).starts_with("status ")).count() >= 3, "trace2 log missing: {report}");
     let network = ["fetch", "ls-remote", "remote-", "upload-pack", "credential", "fsmonitor", "http"];
     // The program-key listing (`config ... --get-regexp`) names key patterns such as ^credential\.; it is a read.
-    assert!(!argvs.iter().filter(|a| !a.starts_with("config ")).any(|a| network.iter().any(|n| a.contains(n))), "a status read went to the network: {report}");
+    assert!(!argvs.iter().filter(|a| !command(a).starts_with("config ")).any(|a| network.iter().any(|n| a.contains(n))), "a status read went to the network: {report}");
     assert!(took < std::time::Duration::from_secs(20), "{report}");
     let fetched = remote(&dir, "fetch").unwrap();
     assert!(!fetched.ok && !fetched.output.is_empty(), "{fetched:?}");
