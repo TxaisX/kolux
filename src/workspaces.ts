@@ -21,7 +21,9 @@ let gridSig = "[]";
 export function setGridRoots(roots: Record<string, string>, projectFolders: string[] = []): void {
   const next: Record<string, string> = {};
   for (const root of projectFolders) next[dirKey(root)] = root;
-  for (const [dir, root] of Object.entries(roots)) next[dirKey(dir)] = root;
+  // R71-02: a project folder keeps its own grid; a worktree entry for it (a map saved before this rule) does not move it.
+  const own = new Set(Object.keys(next));
+  for (const [dir, root] of Object.entries(roots)) if (!own.has(dirKey(dir))) next[dirKey(dir)] = root;
   const sig = JSON.stringify(Object.entries(next).sort(([x], [y]) => (x < y ? -1 : 1)));
   if (sig === gridSig) return; // the window calls this every render; the answers are kept while the lists are the same
   gridSig = sig;

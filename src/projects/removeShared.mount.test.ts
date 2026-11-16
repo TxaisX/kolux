@@ -54,7 +54,7 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-async function panel() {
+async function panel(extra: Record<string, unknown> = {}) {
   const { default: ProjectsPanel } = await import("./ProjectsPanel");
   const props = {
     openDirs: ["C:/w/app", "C:/w/app-b", "C:/w/wt3"], sessions, states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
@@ -64,7 +64,7 @@ async function panel() {
     onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true),
     onRemovedAll: (paths: string[], staying?: string[]) => void h.closed.push([paths, staying]),
   };
-  const m = await mount(createElement(ProjectsPanel, props as never), doc);
+  const m = await mount(createElement(ProjectsPanel, { ...props, ...extra } as never), doc);
   unmount = m.unmount;
   await settle(120);
   return m.container as FakeNode;
@@ -97,4 +97,15 @@ test("k: deleting a group that removes both projects counts and asks about every
   await click(c, byText(c, "button", "Delete group")[0]);
   await settle(60);
   expect([...h.unsaved[0]].sort()).toEqual(["C:/w/app", "C:/w/app-b", "C:/w/wt3"]);
+});
+
+test("R71-02: the owner map the sidebar hands to the window maps each project's own folder to its own grid", async () => {
+  const seen: [{ id: string; path: string }[], Record<string, string>][] = [];
+  await panel({ onIndex: (list: { id: string; path: string }[], owner: Record<string, string>) => void seen.push([list, owner]) });
+  const [list, owner] = seen[seen.length - 1];
+  const { gridRootsOf } = await import("./worktreeGrid");
+  const roots = gridRootsOf(list, owner);
+  expect(roots["C:/w/app"]).toBeUndefined();
+  expect(roots["C:/w/app-b"]).toBeUndefined();
+  expect(["C:/w/app", "C:/w/app-b"]).toContain(roots["C:/w/wt3"]);
 });

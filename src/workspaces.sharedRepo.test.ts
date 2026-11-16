@@ -2,8 +2,9 @@
 // linked worktree of it; `git worktree list` from either names every worktree, so each project's list holds the other's
 // own folder and every worktree both share. A shared folder goes with a removed project only when it is that project's
 // own folder. The removed list goes through `goingFolders` before `goesWith` and `sessionsUnder` are asked.
-import { describe, expect, test } from "vitest";
-import { goesWith, goingFolders } from "./workspaces";
+import { afterEach, describe, expect, test } from "vitest";
+import { gridOf, goesWith, goingFolders, setGridRoots, withoutDir } from "./workspaces";
+import { gridRootsOf } from "./projects/worktreeGrid";
 import { sessionsUnder } from "./projects/rows";
 
 const A = "C:/r/app";
@@ -59,5 +60,49 @@ describe("goingFolders: two projects on one repository", () => {
     const a = remove(["A"], [A, B, W], odd, { A: "c:/r/APP/", B });
     expect(a.asked).toEqual([A]);
     expect(a.counted).toBe(1);
+  });
+});
+
+// R71-02: a project's own folder is shown in its own grid, never in the other project's. The owner map is built as the
+// sidebar builds it (`ProjectsPanel`, one entry per scanned worktree, the last project in the list wins).
+describe("R71-02: the grid map with two projects on one repository", () => {
+  const pa = { id: "A", path: A };
+  const pb = { id: "B", path: B };
+  const ownerOf = (order: { id: string; path: string }[]) => {
+    const owner: Record<string, string> = {};
+    for (const p of order) for (const d of lists[p.id]) owner[d] = p.id;
+    return owner;
+  };
+  afterEach(() => setGridRoots({}));
+
+  test.each([
+    ["[A, B]", [pa, pb]],
+    ["[B, A]", [pb, pa]],
+  ])("order %s: each project's own folder maps to its own grid, the shared worktree to one of them", (_, order) => {
+    const roots = gridRootsOf(order, ownerOf(order));
+    expect(roots[A]).toBeUndefined();
+    expect(roots[B]).toBeUndefined();
+    expect([A, B]).toContain(roots[W]);
+    setGridRoots(roots, order.map((p) => p.path));
+    expect(gridOf(A)).toBe(A);
+    expect(gridOf(B)).toBe(B);
+    expect([A, B]).toContain(gridOf(W));
+  });
+
+  test("a map saved before this fix (B's folder under A's grid) still answers each project's own folder as its own grid", () => {
+    setGridRoots({ [B]: A, [W]: A }, [A, B]);
+    expect(gridOf(B)).toBe(B);
+    expect(gridOf(A)).toBe(A);
+    expect(gridOf(W)).toBe(A);
+  });
+
+  test.each([
+    ["[A, B]", [pa, pb]],
+    ["[B, A]", [pb, pa]],
+  ])("order %s: removing A keeps B's pane, removing B keeps A's pane", (_, order) => {
+    setGridRoots(gridRootsOf(order, ownerOf(order)), order.map((p) => p.path));
+    const panes = [{ key: 1, cwd: A }, { key: 2, cwd: B }];
+    expect(withoutDir(panes, A, lists.B).map((p) => p.key)).toEqual([2]);
+    expect(withoutDir(panes, B, lists.A).map((p) => p.key)).toEqual([1]);
   });
 });

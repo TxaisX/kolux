@@ -5,12 +5,14 @@ import { TAB_COLORS } from "../terminal/tabColor";
 import { dirKey, goesWith, sameDir, viewOf } from "../workspaces";
 import { folderName } from "./model";
 
-/** Each worktree folder (the project's own folder left out) and the project folder whose grid shows it. */
+/** Each worktree folder (the project's own folder left out) and the project folder whose grid shows it. R71-02: a folder
+ *  that is some project's own folder is never mapped to another project's grid (two projects on one Git repository each
+ *  list the other's folder as a worktree). */
 export function gridRootsOf(projects: { id: string; path: string }[], owner: Record<string, string>): Record<string, string> {
   const roots: Record<string, string> = {};
   for (const [dir, id] of Object.entries(owner)) {
     const p = projects.find((x) => x.id === id);
-    if (p && !sameDir(dir, p.path)) roots[dir] = p.path;
+    if (p && !projects.some((x) => sameDir(dir, x.path))) roots[dir] = p.path;
   }
   return roots;
 }
