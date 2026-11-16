@@ -2331,7 +2331,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {dropProject === p.id && (
             <Ask
               title="Remove project"
-              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(goingFolders(p.path, list.map((x) => x.path), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
+              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
               confirm={`Remove ${p.name}`}
               cancel="Keep it"
               onConfirm={() => removeProject(p)}
@@ -2457,7 +2457,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           body={
             <>
               Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
-              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => goingFolders(projects.find((q) => q.id === pid)?.path ?? "", (worktrees[pid] ?? []).map((x) => x.path), stayingBut(new Set(projectsInGroup(groups, g.id))))), stayingBut(new Set(projectsInGroup(groups, g.id))))}
+              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => projects.filter((q) => q.id === pid)).flatMap((q) => goingFolders(q.path, foldersOf(q), stayingBut(new Set(projectsInGroup(groups, g.id))))), stayingBut(new Set(projectsInGroup(groups, g.id))))}
               <label className="check">
                 <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
                 Also remove its projects from Kolux (their folders stay on disk)

@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, installDom, mount, settle } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ calls: [] as string[], unsaved: [] as string[][], closed: [] as unknown[][], removed: [] as string[] }));
+const h = vi.hoisted(() => ({ calls: [] as string[], unsaved: [] as string[][], closed: [] as unknown[][], removed: [] as string[], extra: [] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     h.calls.push(cmd);
@@ -18,7 +18,7 @@ vi.mock("@tauri-apps/api/core", () => ({
         { id: "p1", name: "app", path: "C:/w/app" },
         { id: "p2", name: "inner", path: "C:/w/app/inner" },
       ]);
-    if (cmd === "workspace_scan") return Promise.resolve({ list: args.projectId === "p1" ? [appMain, appFix] : [innerMain, innerWt], unseen: [] });
+    if (cmd === "workspace_scan") return Promise.resolve({ list: args.projectId === "p1" ? [appMain, appFix, ...h.extra] : [innerMain, innerWt], unseen: [] });
     if (cmd === "workspaces_place_get") return Promise.resolve({ dir: "", flat: false, used: [], fromEnv: false });
     if (cmd === "setup_suggestion") return Promise.resolve({ kind: "none" });
     if (cmd === "groups_get") return Promise.resolve({ groups: [{ id: "g1", name: "Clients", parent: null }], members: { p1: "g1" }, rev: 1 });
@@ -52,16 +52,17 @@ beforeEach(() => {
   h.unsaved = [];
   h.closed = [];
   h.removed = [];
+  h.extra = [];
 });
 afterEach(async () => {
   await unmount();
   unmount = async () => {};
 });
 
-async function panel() {
+async function panel(more: unknown[] = []) {
   const { default: ProjectsPanel } = await import("./ProjectsPanel");
   const props = {
-    openDirs: ["C:/w/app", "C:/w/ws/fix", "C:/w/app/inner", "C:/w/app/wts/inner-b"], sessions, states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
+    openDirs: ["C:/w/app", "C:/w/ws/fix", "C:/w/app/inner", "C:/w/app/wts/inner-b"], sessions: [...sessions, ...more], states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
     activeDir: null, onSelect: () => {}, onRemoved: (path: string) => void h.removed.push(path), onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
@@ -141,4 +142,21 @@ test("F21: deleting a group with its projects hands over the projects outside th
   expect(paths).toEqual(["C:/w/app"]);
   expect(staying).toEqual(expect.arrayContaining(inner));
   expect(staying).not.toContain("C:/w/app");
+});
+
+// R71-01: one folder list feeds the count and the unsaved question. A hidden worktree of app that lies inside the nested
+// project "inner" (which stays) is still app's: the page closes its pane and the engine ends its terminal, so the count
+// includes it.
+const hiddenIn = { ...base, path: "C:/w/app/inner/.wt/h", branch: "h", head: "f5f5f5f", isMain: false, hidden: true };
+test("R71-01: the removal question counts a running terminal in a hidden worktree of the removed project inside the project that stays", async () => {
+  h.extra = [hiddenIn];
+  const c = await panel([running(5, hiddenIn.path)]);
+  await removeApp(c);
+  expect(ask(c).textContent).toContain("3 terminals are still running and will be closed.");
+});
+test("R71-01: the group delete question counts it too", async () => {
+  h.extra = [hiddenIn];
+  const c = await panel([running(5, hiddenIn.path)]);
+  await askGroupDelete(c);
+  expect((byLabel(c, "div", "Delete group")[0] ?? c).textContent).toContain("3 terminals are still running and will be closed.");
 });
