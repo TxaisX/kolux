@@ -708,6 +708,35 @@ fn f4_an_empty_folder_left_is_retried_and_a_users_folder_is_to_be_emptied() {
     drop(held.borrow_mut().take());
 }
 
+/// F5: a cancelled add whose clean-up left files keeps the cancel text first and whole, then names
+/// the folder. A cancel that left nothing is the cancel text alone, as before.
+#[cfg(windows)]
+#[test]
+fn f5_a_cancelled_add_that_left_files_still_names_the_folder() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let repo = temp_repo("f5-clear");
+    let root = temp("f5-clear-root");
+    let _clean = [crate::test_dir::TempDir(repo.clone()), crate::test_dir::TempDir(root.clone())];
+    let held: std::cell::RefCell<Option<fs::File>> = std::cell::RefCell::new(None);
+    let dest = root.join("stuck");
+    let half_made = |hold: bool| {
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(dest.join(".git"), "gitdir: C:/r/.git/worktrees/stuck\n").unwrap();
+        fs::write(dest.join("pack.idx"), "x").unwrap();
+        if hold {
+            *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(0).open(dest.join("pack.idx")).unwrap());
+        }
+        Err::<(), String>("fatal: invalid reference: nope".to_string())
+    };
+    let said = add_retrying(&repo, &dest, None, &|| true, || half_made(true)).unwrap_err();
+    assert_eq!(said, format!("{OVERTAKEN}. Kolux could not clear the folder {}. Remove it by hand before you try again.", dest.display()));
+    assert_eq!(explain_create_error(said.clone()), said, "a cancel is not rewritten");
+    drop(held.borrow_mut().take());
+    fs::remove_dir_all(&dest).unwrap();
+    assert_eq!(add_retrying(&repo, &dest, None, &|| true, || half_made(false)).unwrap_err(), OVERTAKEN, "nothing left: the cancel text alone");
+    assert!(!dest.exists());
+}
+
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
 fn project_with_workspaces(tag: &str) -> (Git, Store, Project, PathBuf, Vec<PathBuf>, Place) {
     let git = Git::detect().unwrap();

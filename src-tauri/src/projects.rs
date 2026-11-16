@@ -1337,14 +1337,16 @@ pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dy
     let was_empty = was_there && git_made(dest) && std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none());
     while let Err(e) = add() {
         let stuck = clear_failed_add(repo, dest, made, was_there, was_empty);
+        // F4: a folder that was there before the add is the user's own: it is emptied, not removed.
+        let verb = if was_there { "Empty" } else { "Remove" };
+        let left = || format!("{}. {verb} it by hand before you try again.", dest.display());
         if overtaken() {
-            return Err(OVERTAKEN.to_string());
+            // F5: the cancel text stays first and whole (the page reads it as a prefix); a folder left is named after it.
+            return Err(if stuck { format!("{OVERTAKEN}. {}{}", NOT_CLEARED.trim_start(), left()) } else { OVERTAKEN.to_string() });
         }
         // N-06: a retry into what was left can only fail with a misleading "already exists": stop and say so.
         if stuck {
-            // F4: a folder that was there before the add is the user's own: it is emptied, not removed.
-            let verb = if was_there { "Empty" } else { "Remove" };
-            return Err(format!("{e}{NOT_CLEARED}{}. {verb} it by hand before you try again.", dest.display()));
+            return Err(format!("{e}{NOT_CLEARED}{}", left()));
         }
         match waits.next() {
             Some(ms) if lock_held(&e) => std::thread::sleep(std::time::Duration::from_millis(*ms)),
