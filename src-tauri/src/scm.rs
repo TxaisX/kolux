@@ -2713,24 +2713,39 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         }
     }
     if !staged.is_empty() {
-        with_paths(worktree, &["reset", "-q"], &staged)?;
+        if let Err(e) = with_paths(worktree, &["reset", "-q"], &staged) {
+            kept.push(e);
+            return Err(kept.join("
+"));
+        }
     }
     for p in &tracked {
         // A link is removed before git rewrites it, so git never writes through it.
         let full = worktree.join(native(p));
         if fs::symlink_metadata(&full).is_ok_and(|m| m.is_symlink()) {
-            fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)).map_err(|e| format!("{p}: {e}"))?;
+            if let Err(e) = fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)) {
+                kept.push(format!("{p}: {e}"));
+                return Err(kept.join("
+"));
+            }
         }
     }
     if !tracked.is_empty() {
-        with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked)?;
+        if let Err(e) = with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked) {
+            kept.push(e);
+            return Err(kept.join("
+"));
+        }
     }
     // N-02: a nested repository is taken out before git clean runs and named at the end, so the
-    // other rows still go; any error from the untracked discard is then a real failure and stops.
+    // other rows still go. F-01: an error from the untracked discard, or from removing one staged
+    // new file, is a real failure: it is named at the end with the rest, and the other rows still go.
     let (nested, untracked): (Vec<String>, Vec<String>) = untracked.into_iter().partition(|p| own_repo_at(worktree, p));
     kept.extend(nested.iter().map(|p| own_repo(p)));
     if !untracked.is_empty() {
-        discard(worktree, "untracked", &untracked)?;
+        if let Err(e) = discard(worktree, "untracked", &untracked) {
+            kept.push(e);
+        }
     }
     // A staged new file, unstaged above. N-01: an index entry is a file or a gitlink, never a
     // plain folder, so a folder here is a nested repository or a file that became a folder. A
@@ -2751,7 +2766,9 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         } else {
             fs::remove_file(&full).or_else(|_| fs::remove_dir(&full))
         };
-        done.map_err(|e| format!("{p}: {e}"))?;
+        if let Err(e) = done {
+            kept.push(format!("{p}: {e}"));
+        }
     }
     if kept.is_empty() {
         Ok(())

@@ -2887,6 +2887,34 @@ fn f02_an_empty_folder_in_a_tracked_files_place_gives_the_file_back() {
     }
 }
 
+/// F-01: one removal that fails (a file held open by another program) does not stop the rest,
+/// and every line already collected comes back with it.
+#[cfg(windows)]
+#[test]
+fn f01_one_failed_removal_does_not_stop_the_rest_or_drop_what_was_said() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let (dir, inner) = staged_inner_repo("f01-held");
+    let older = std::time::SystemTime::now() - std::time::Duration::from_secs(60);
+    for name in ["a.txt", "b.txt", "c.txt"] {
+        fs::write(dir.join(name), "new\n").unwrap();
+        // Older than the index, so git never has to open the held file to compare it.
+        fs::File::options().write(true).open(dir.join(name)).unwrap().set_modified(older).unwrap();
+    }
+    plain(&["add", "a.txt", "b.txt", "c.txt"], &dir);
+    let held = fs::File::options().read(true).share_mode(0).open(dir.join("b.txt")).unwrap();
+    let rows: Vec<String> = ["a.txt", "b.txt", "inner", "c.txt"].iter().map(|s| s.to_string()).collect();
+    let result = discard_paths(&dir, &rows);
+    drop(held);
+    let said = result.expect_err("the held file and the kept repository are named");
+    let lines: Vec<&str> = said.lines().collect();
+    assert_eq!(lines.len(), 2, "{said}");
+    assert!(lines.iter().any(|l| l.starts_with("b.txt: ")), "{said}");
+    assert!(lines.contains(&"inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to."), "{said}");
+    assert!(!dir.join("a.txt").exists() && !dir.join("c.txt").exists(), "the other two files are gone");
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {
