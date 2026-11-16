@@ -2729,7 +2729,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         }
     }
     if !tracked.is_empty() {
-        if let Err(e) = with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked) {
+        if let Err(e) = with_paths(worktree, &["-c", "submodule.recurse=false", "checkout", "-q", "HEAD"], &tracked) {
             kept.push(e);
             return Err(kept.join("\n"));
         }
@@ -2837,9 +2837,9 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // it is and named; the other rows still go.
             let (kept, rest): (Vec<String>, Vec<String>) = paths.iter().cloned().partition(|p| folder_in_place(worktree, p));
             let args: &[&str] = if section == "staged" {
-                &["--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
+                &["-c", "submodule.recurse=false", "--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
             } else {
-                &["--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
+                &["-c", "submodule.recurse=false", "--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
             };
             let mut said: Vec<String> = kept.iter().map(|p| now_folder(p)).collect();
             if !rest.is_empty() || said.is_empty() {

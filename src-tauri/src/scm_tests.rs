@@ -2915,6 +2915,31 @@ fn f01_one_failed_removal_does_not_stop_the_rest_or_drop_what_was_said() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// F-03: a `submodule.recurse=true` setting does not make Discard write inside a submodule; work
+/// in it that was not committed stays. The setting is the test repository's own, never global.
+#[test]
+fn f03_discard_never_writes_inside_a_submodule_even_when_git_is_set_to_recurse() {
+    let lib = temp_repo("f03-lib");
+    let top = temp_repo("f03-top");
+    let lib_url = lib.to_string_lossy().replace('\\', "/");
+    plain(&["-c", "protocol.file.allow=always", "submodule", "add", "-q", &lib_url, "sub"], &top);
+    plain(&["commit", "-q", "-m", "add sub"], &top);
+    let inner = top.join("sub");
+    commit_file(&inner, "x.txt", "x\n");
+    plain(&["add", "sub"], &top);
+    fs::write(inner.join("README.md"), "uncommitted\n").unwrap();
+    plain(&["config", "submodule.recurse", "true"], &top);
+    let result = discard(&top, "staged", &["sub".to_string()]);
+    assert_eq!(fs::read_to_string(inner.join("README.md")).unwrap(), "uncommitted\n", "the work inside the submodule is kept");
+    assert!(inner.join("x.txt").exists(), "the submodule's new commit is still checked out");
+    // The row still reaches git (a submodule's folder is not kept as a file's place): it is unstaged.
+    result.unwrap();
+    assert!(status(&top).unwrap().staged.is_empty(), "the submodule's new commit is no longer staged");
+    for d in [&lib, &top] {
+        let _ = fs::remove_dir_all(d);
+    }
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {
