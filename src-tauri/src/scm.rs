@@ -2875,7 +2875,7 @@ fn folder_in_place(worktree: &Path, p: &str) -> bool {
 /// printing nothing means that; any other failure is Git's words, never "no commit yet".
 /// R82-05: read through the same turn and time limit as every other short read.
 fn no_commit(worktree: &Path) -> Result<bool, String> {
-    let o = crate::git::read_status(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree))?;
+    let o = crate::git::read_exit(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree))?;
     match o.status.code() {
         Some(0) => Ok(false),
         Some(1) if o.stdout.is_empty() && o.stderr.is_empty() => Ok(true),

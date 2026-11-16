@@ -1725,7 +1725,7 @@ fn bytes_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -
 
 /// R82-05: a short read through the same turn and time limit as `output`, with git's exit code and
 /// both streams kept, so a caller can tell one particular failure from any other.
-pub(crate) fn read_status(args: &[&str], cwd: Option<&Path>) -> Result<std::process::Output, String> {
+pub(crate) fn read_exit(args: &[&str], cwd: Option<&Path>) -> Result<std::process::Output, String> {
     let _turn = cwd.map(|d| LIMITER.enter(d, FOREGROUND.get()));
     finished_within(args, cwd, SHORT_READ_LIMIT)
 }
