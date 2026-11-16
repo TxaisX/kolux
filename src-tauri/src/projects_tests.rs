@@ -3762,3 +3762,21 @@ fn n05_a_gone_folder_matches_itself_written_another_way() {
     assert!(!same_folder(Path::new(&forward), &base.join("other")), "two different gone folders");
     assert!(!same_folder(&gone, &base), "a gone folder is not its parent");
 }
+
+/// F-05: the text step keeps a root's slash, so a drive root is not the bare drive (the current folder
+/// on that drive) and a lone slash is not the empty path; any other end slash still goes.
+#[test]
+fn f05_a_root_keeps_its_slash_and_other_folders_still_lose_theirs() {
+    let t = |s: &str| folder_text(s.to_string());
+    assert_ne!(t(r"c:\"), t("c:"), "a drive root is not the bare drive");
+    assert_ne!(t(r"\"), t(""), "a lone backslash is not the empty path");
+    assert_ne!(t("/"), t(""), "a lone slash is not the empty path");
+    assert_eq!(t(r"c:\\"), t(r"c:\"), "a root keeps one slash");
+    assert_eq!(t(r"c:\a\"), t(r"c:\a"));
+    assert_eq!(t(r"\\?\c:\a\"), t(r"c:\a"));
+    assert_eq!(t(r"\\server\share\"), t(r"\\server\share"));
+    let gone = std::env::temp_dir().join(format!("kolux-f05-{}", std::process::id())).join("made-up");
+    assert!(!gone.exists());
+    assert!(same_folder(Path::new(&format!("{}\\", gone.display())), &gone), "still the same with an end slash");
+    assert!(!same_folder(&gone, &gone.with_file_name("made-up-2")), "a different gone folder is still different");
+}

@@ -122,15 +122,22 @@ pub(crate) fn same_folder(a: &Path, b: &Path) -> bool {
     }
     // N-05: a side that cannot be resolved (a folder already gone) is matched on its text: one kind
     // of slash, no `\\?\` start and no slash at the end, which never name a different folder here.
-    let text = |s: String| {
-        let s = if cfg!(windows) { s.replace('/', "\\") } else { s };
-        let s = match s.strip_prefix(r"\\?\unc\") {
-            Some(rest) => format!(r"\\{rest}"),
-            None => s.strip_prefix(r"\\?\").unwrap_or(&s).to_string(),
-        };
-        s.trim_end_matches(['\\', '/']).to_string()
+    folder_text(a) == folder_text(b)
+}
+
+/// N-05: the text step of `same_folder`, on a lowercased path. F-05: a root keeps its slash: `c:` (the
+/// current folder on drive C) and the empty path name something else than `c:\` and `\`.
+fn folder_text(s: String) -> String {
+    let s = if cfg!(windows) { s.replace('/', "\\") } else { s };
+    let s = match s.strip_prefix(r"\\?\unc\") {
+        Some(rest) => format!(r"\\{rest}"),
+        None => s.strip_prefix(r"\\?\").unwrap_or(&s).to_string(),
     };
-    text(a) == text(b)
+    let trimmed = s.trim_end_matches(['\\', '/']);
+    if trimmed.is_empty() || (trimmed.len() == 2 && trimmed.ends_with(':')) {
+        return s[..trimmed.len() + (s.len() - trimmed.len()).min(1)].to_string();
+    }
+    trimmed.to_string()
 }
 
 /// For display and lookup only: an unreadable list shows empty (after being kept aside).
