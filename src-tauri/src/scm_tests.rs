@@ -3183,6 +3183,40 @@ fn r59_one_failed_clean_chunk_does_not_stop_the_rest_or_drop_the_nested_line() {
     assert!(said.lines().any(|l| l == "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to."), "{said}");
 }
 
+/// R59-07: when the last commit cannot be read, a folder in a tracked file's place is kept; a
+/// repository with no commit yet is not such a failure, so a nested repository there is still
+/// named as one (not as "now a folder").
+#[test]
+fn r59_a_failed_read_of_the_last_commit_keeps_the_folder_but_no_commit_yet_does_not() {
+    let dir = temp_repo("r59i");
+    commit_file(&dir, "foo", "f\n");
+    plain(&["rm", "--cached", "-q", "foo"], &dir);
+    fs::remove_file(dir.join("foo")).unwrap();
+    fs::create_dir(dir.join("foo")).unwrap();
+    fs::write(dir.join("foo").join("work.txt"), "unpushed\n").unwrap();
+    // The last commit's tree object is taken away, so `ls-tree HEAD` fails while HEAD still names a commit.
+    let tree = run(&["rev-parse", "HEAD^{tree}"], Some(&dir)).unwrap();
+    let object = dir.join(".git").join("objects").join(&tree[..2]).join(&tree[2..]);
+    let mut perms = fs::metadata(&object).unwrap().permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
+    perms.set_readonly(false);
+    fs::set_permissions(&object, perms).unwrap();
+    fs::remove_file(&object).unwrap();
+    let kept = folder_in_place(&dir, "foo");
+    let _ = fs::remove_dir_all(&dir);
+    assert!(kept, "a failed read of the last commit keeps the folder");
+
+    let fresh = std::env::temp_dir().join(format!("kolux-scm-r59i-fresh-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&fresh);
+    fs::create_dir_all(fresh.join("inner")).unwrap();
+    plain(&["init", "-q"], &fresh);
+    plain(&["init", "-q"], &fresh.join("inner"));
+    fs::write(fresh.join("inner").join("a.txt"), "a\n").unwrap();
+    let result = discard_paths(&fresh, &["inner/".to_string()]);
+    let _ = fs::remove_dir_all(&fresh);
+    assert_eq!(result.expect_err("named"), "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {

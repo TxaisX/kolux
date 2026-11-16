@@ -2799,7 +2799,12 @@ fn folder_in_place(worktree: &Path, p: &str) -> bool {
     // The modes the index and the last commit hold at exactly `p`; a failed read keeps the folder.
     let modes = |args: &[&str]| run(args, Some(worktree)).map(|out| out.split('\0').filter_map(|e| e.split_once('\t')).filter(|(_, at)| *at == p).map(|(m, _)| m.split(' ').next().unwrap_or_default().to_string()).collect::<Vec<_>>());
     let Ok(index) = modes(&["--literal-pathspecs", "ls-files", "-s", "-z", "--", p]) else { return true };
-    let head = modes(&["--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", p]).unwrap_or_default();
+    // R59-07: so does a failed read of the last commit, unless there is no commit yet.
+    let head = match modes(&["--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", p]) {
+        Ok(head) => head,
+        Err(_) if run(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree)).is_err() => Vec::new(),
+        Err(_) => return true,
+    };
     index.iter().chain(&head).any(|m| m != "160000" && m != "040000")
 }
 
