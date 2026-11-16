@@ -18,6 +18,14 @@ describe("glossary-check", () => {
     expect(text).not.toMatch(/Kolux makes no extra copies\./);
   });
 
+  it("says only a New session menu pick gets a worktree, and agents share the workspace only while Own folder is off (job 56)", () => {
+    const text = fs.readFileSync(fileURLToPath(new URL("../docs/GLOSSARY.md", import.meta.url)), "utf8");
+    expect(text).not.toContain("an agent started from **New session**");
+    expect(text.match(/an agent picked from the \*\*New session\*\* menu/g)?.length).toBe(2);
+    expect(text).not.toContain("Because every agent shares it");
+    expect(text).toMatch(/While "Own folder for each agent" \(Settings, Git\) is off, every agent shares it/);
+  });
+
   it("reads bold terms, joins singular and plural, and splits 'A and B'", () => {
     const have = entries("**Automation**\nx\n**Yolo and Manual**\n");
     expect(have.has("automation")).toBe(true);
