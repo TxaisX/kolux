@@ -2656,8 +2656,9 @@ fn check_paths(paths: &[String]) -> Result<(), String> {
 pub fn stage(worktree: &Path, paths: &[String], on: bool) -> Result<(), String> {
     check_paths(paths)?;
     // `restore --staged` needs a commit to restore from; in a repository with none, unstaging is
-    // taking the paths out of the index.
-    let no_commits = !on && run(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree)).is_err();
+    // taking the paths out of the index. R82-05: any other failure to read the last commit comes
+    // back as Git's words, and nothing is changed.
+    let no_commits = !on && no_commit(worktree)?;
     let args: &[&str] = if on {
         &["--literal-pathspecs", "add", "--pathspec-from-file=-", "--pathspec-file-nul"]
     } else if no_commits {
@@ -2848,8 +2849,9 @@ fn folder_in_place(worktree: &Path, p: &str) -> bool {
 
 /// R70-02: true when the repository has no commit yet. Only `rev-parse` ending with code 1 and
 /// printing nothing means that; any other failure is Git's words, never "no commit yet".
+/// R82-05: read through the same turn and time limit as every other short read.
 fn no_commit(worktree: &Path) -> Result<bool, String> {
-    let o = command(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree)).output().map_err(|e| format!("could not run git: {e}"))?;
+    let o = crate::git::read_status(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree))?;
     match o.status.code() {
         Some(0) => Ok(false),
         Some(1) if o.stdout.is_empty() && o.stderr.is_empty() => Ok(true),

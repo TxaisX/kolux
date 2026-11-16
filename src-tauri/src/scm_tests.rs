@@ -3645,3 +3645,21 @@ fn r82_a_link_in_a_rename_left_whole_is_not_removed() {
     assert_eq!(fs::read_to_string(out.join("o.txt")).unwrap(), "o\n");
     assert_eq!(fs::read_to_string(dir.join("b.txt").join("x.txt")).unwrap(), "mine\n");
 }
+
+/// R82-05: unstaging when the branch list cannot be read is not taken as "no commit yet": Git's
+/// words come back and the index is unchanged (that reading took the file out of the index).
+#[test]
+fn r82_a_broken_branch_list_does_not_unstage_by_removal() {
+    let dir = temp_repo("r82h");
+    commit_file(&dir, "foo", "f\n");
+    fs::write(dir.join("foo"), "staged\n").unwrap();
+    plain(&["add", "foo"], &dir);
+    plain(&["pack-refs", "--all"], &dir);
+    let refs = dir.join(".git").join("packed-refs");
+    fs::write(&refs, fs::read_to_string(&refs).unwrap() + "garbage line\n").unwrap();
+    let said = stage(&dir, &["foo".to_string()], false);
+    let listed = run(&["ls-files"], Some(&dir));
+    let _ = fs::remove_dir_all(&dir);
+    assert!(said.is_err(), "Git's words come back: {said:?}");
+    assert!(listed.as_ref().is_ok_and(|l| l.lines().any(|l| l == "foo")), "foo is still in the index: {listed:?}");
+}
