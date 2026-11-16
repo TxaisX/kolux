@@ -2841,7 +2841,7 @@ fn remove_link(worktree: &Path, p: &str) -> Result<bool, String> {
 
 /// F-02: what Discard says about a row it leaves because a folder now sits in its file's place.
 fn now_folder(p: &str) -> String {
-    format!("{} is now a folder, so Kolux leaves it. Remove or move the folder by hand if you want the file back.", p.trim_end_matches('/'))
+    format!("{} is now a folder, so Kolux leaves it. Remove or move the folder by hand, then discard again.", p.trim_end_matches('/'))
 }
 
 /// R-06 / N-01: what Discard says about a nested repository it leaves.

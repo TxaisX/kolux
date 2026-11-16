@@ -2846,7 +2846,7 @@ fn folder_in_a_files_place(name: &str, nested: bool, staged: bool) -> PathBuf {
 /// named; the other row of the same pick is still put back.
 #[test]
 fn f02_discard_never_removes_a_folder_that_took_a_tracked_files_place() {
-    let said_foo = "foo is now a folder, so Kolux leaves it. Remove or move the folder by hand if you want the file back.";
+    let said_foo = "foo is now a folder, so Kolux leaves it. Remove or move the folder by hand, then discard again.";
     for nested in [true, false] {
         for route in ["changed", "staged", "paths-changed", "paths-staged"] {
             let staged = route.ends_with("staged");
