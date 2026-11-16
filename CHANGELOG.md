@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.17
+
 - **Kolux asks what to open.** When Kolux starts, one Start form asks which folders, how many agents, and which AI and model for each. The same form opens for a new pane and for the first folder you add after setup. The sessions it starts take an empty "pick an agent" pane first, so none is left beside them; an empty pane you already typed a task into is left as it is. Settings › General has "Ask what to open when Kolux starts"; off opens what was open last time.
 - **Discard is much more careful.** Discard in All Changes never deletes a folder that took a file's place, never writes or deletes through a folder link, never discards a whole folder at once, and never writes a deleted file back over a newer file of the same name, also when the two names differ only in letter case or by a look-alike letter. Discarding a copied file no longer undoes your changes to the file it was copied from (this could happen when Git is set to detect copies). When it leaves something alone, a yellow line under "Kolux left this as it is:" says why and what to do next. A real failure is red under "Could not discard".
 - **Taking a project out of Kolux ends only that project's terminals.** A project inside it that stays keeps its terminals, and so does a worktree another project on the same repository also lists. The question counts only what will close.
