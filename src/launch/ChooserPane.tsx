@@ -247,6 +247,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   // A program with no model list has nothing to pick: its seat uses the program's own default.
   const pickAgent = (i: number, id: string) => {
     setShown(({ [i]: _gone, ...rest }) => rest);
+    forget(id);
     // T-571: the default model and effort start the seat (else the agent's saved pick, Row 389); the person can still change both.
     setSeat(i, seatStart(id, seatDefault_));
   };
@@ -266,6 +267,8 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   seatsNow.current = { seats, onSeats };
   // Job 50 A5: each (AI, model) pair the live list dropped, once, so the form can say why a seat lost its model.
   const [gone, setGone] = useState<{ agent: string; model: string }[]>([]);
+  // Job 57 F4: picking an AI is a fresh pick, so its old pairs are forgotten (else the line comes back for a model it never had).
+  const forget = (id: string) => setGone((g) => (g.some((x) => x.agent === id) ? g.filter((x) => x.agent !== id) : g));
   useEffect(() => {
     let on = true;
     const recheck = () => {
@@ -413,6 +416,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     const a = rows.find((x) => x.id === id);
     if (id === TERMINAL || a?.installed) {
       setShown({});
+      forget(id);
       return onSeats(pickForAll(seats, id, seatDefault_));
     }
     setShown(Object.fromEntries(seats.map((_, k) => [k, id])));

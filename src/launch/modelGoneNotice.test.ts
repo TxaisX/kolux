@@ -3,11 +3,11 @@
 import { act, createElement, useState } from "react";
 import type { Root } from "react-dom/client";
 import { beforeAll, expect, test, vi } from "vitest";
-import { installDom } from "../tasks/fakeDom";
+import { click, find, installDom, type FakeNode } from "../tasks/fakeDom";
 import type { AgentInfo } from "./PlusMenu";
 import type { Seat } from "./seats";
 
-vi.mock("@tauri-apps/api/core", () => ({ invoke: (cmd: string) => (cmd === "agent_models" ? Promise.resolve([{ id: "grok-a", label: "A" }]) : new Promise(() => {})) }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (cmd: string) => (cmd === "agent_models" ? Promise.resolve([{ id: "grok-a", label: "A" }, { id: "grok-b", label: "B" }]) : new Promise(() => {})) }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let doc: Document;
@@ -50,6 +50,54 @@ test("job 50 A5: a model the AI no longer offers is named once per pair, and the
   expect(box.textContent).toContain("Grok no longer offers grok-gone. Pick another.");
   // Every Grok seat has a model again: the lines go.
   act(() => live.set(live.seats.map((s) => ({ ...s, model: "grok-a" }))));
+  expect(box.textContent).not.toContain("no longer offers");
+  act(() => root.unmount());
+});
+
+// Job 57 F4: a pair is forgotten when the user picks that AI again, so a fresh pick that never had the model
+// (seatStart gives no model when the AI lists several and none is saved) shows no old line.
+const claude: AgentInfo = { id: "claude", name: "Claude", program: "claude", args: [], installed: true, path: null };
+function OneSeat() {
+  const [seats, setSeats] = useState<Seat[]>([{ agent: "grok", model: "grok-old" }]);
+  live.seats = seats;
+  live.set = setSeats;
+  const noop = () => {};
+  return createElement(ChooserPane, { number: 1, agents: [claude, grok], seats, onSeats: setSeats, onLineup: noop, shape: "custom", task: "", onTask: noop, onStart: noop, copies: "shared", inGit: false, onCopies: noop, closable: true, onClose: noop, saved: [], onSaved: noop, onPickSaved: noop });
+}
+const line = "Grok no longer offers grok-old. Pick another.";
+
+async function dropped() {
+  const { createRoot } = await import("react-dom/client");
+  const box = doc.createElement("div") as unknown as Element;
+  const root: Root = createRoot(box);
+  act(() => root.render(createElement(OneSeat)));
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 0));
+  });
+  expect(live.seats[0].model).toBeNull();
+  expect(box.textContent, "the plain case still shows the line").toContain(line);
+  const node = box as unknown as FakeNode;
+  const button = (group: string, id: string) => find(node, (n) => n.attrs["data-testid"] === group)[0] && find(find(node, (n) => n.attrs["data-testid"] === group)[0], (n) => n.attrs["data-testid"] === `seat-agent-${id}`)[0];
+  const pick = (group: string, id: string) => act(async () => void (await click(node, button(group, id))));
+  return { box, root, pick };
+}
+
+test("job 57 F4: switching all seats to another AI and back to Grok shows no old line", async () => {
+  const { box, root, pick } = await dropped();
+  await pick("all-agents", "claude");
+  expect(live.seats[0].agent).toBe("claude");
+  expect(box.textContent).not.toContain("no longer offers");
+  await pick("all-agents", "grok");
+  expect(live.seats[0]).toMatchObject({ agent: "grok", model: null });
+  expect(box.textContent).not.toContain("no longer offers");
+  act(() => root.unmount());
+});
+
+test("job 57 F4: the same through one seat's own AI buttons", async () => {
+  const { box, root, pick } = await dropped();
+  await pick("seat-1-agents", "claude");
+  await pick("seat-1-agents", "grok");
+  expect(live.seats[0]).toMatchObject({ agent: "grok", model: null });
   expect(box.textContent).not.toContain("no longer offers");
   act(() => root.unmount());
 });
