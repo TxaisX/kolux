@@ -153,7 +153,12 @@ export function useWindowKeys(w: WindowBag) {
       // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
       const hit = kPalette(found, keymap, e, document.activeElement);
       if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
-      if (typingHolds(hit.id, document.activeElement)) return; // F28: the key stays with the text field
+      if (typingHolds(hit.id, document.activeElement)) {
+        // F28: the key stays with the text field. R54-04: the webview's own action for it does not run either, except
+        // for a key the field edits with (Backspace, Delete, Ctrl+A/C/V/X/Y/Z), which the field keeps.
+        if (!/^(Backspace|Delete|[acvxyz])$/i.test(e.key)) e.preventDefault();
+        return;
+      }
       if (heldByOverlay(hit.id, !!switcherRef.current)) {
         e.preventDefault(); // the overlay's own key handlers still see it; the webview's built-in action does not run
         return;

@@ -67,12 +67,12 @@ function press(key: string, mods: { ctrlKey?: boolean; shiftKey?: boolean } = {}
   return e;
 }
 
-test("Ctrl+W with the focus in a text box does not close the pane, and the field keeps the key", async () => {
+test("Ctrl+W with the focus in a text box does not close the pane, and the webview's own action for it does not run either (R54-04)", async () => {
   await handler();
   Object.assign(doc, { activeElement: el("input", "text") });
   const e = press("w", { ctrlKey: true });
   expect(closed).toEqual([]);
-  expect(e.defaultPrevented).toBe(false);
+  expect(e.defaultPrevented).toBe(true);
   Object.assign(doc, { activeElement: el("textarea") });
   press("w", { ctrlKey: true });
   expect(closed).toEqual([]);
@@ -126,4 +126,11 @@ test("R54-05: Ctrl+W typed in a terminal's own Find box closes that pane, as in 
   expect(closed).toEqual(["p1"]);
   const bar = (await import("../terminal/FindBar.tsx?raw")).default;
   expect(bar, "the Find bar carries the class the guard looks for").toContain('className="term-find"');
+});
+
+test("R54-04: Ctrl+Shift+Backspace held by a text box stays the field's own key (a Backspace chord edits text)", async () => {
+  await handler();
+  Object.assign(doc, { activeElement: el("input", "text") });
+  const e = press("Backspace", { ctrlKey: true, shiftKey: true });
+  expect(e.defaultPrevented).toBe(false);
 });
