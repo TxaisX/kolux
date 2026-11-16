@@ -264,12 +264,17 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   // Job 22 item 3: when the list lands while this form is open, a model it lacks is dropped in the parent's seats too.
   const seatsNow = useRef({ seats, onSeats });
   seatsNow.current = { seats, onSeats };
+  // Job 50 A5: each (AI, model) pair the live list dropped, once, so the form can say why a seat lost its model.
+  const [gone, setGone] = useState<{ agent: string; model: string }[]>([]);
   useEffect(() => {
     let on = true;
     const recheck = () => {
       const { seats: now, onSeats: put } = seatsNow.current;
       const kept = now.map(knownModel);
-      if (on && kept.some((s, i) => s !== now[i])) put(kept);
+      if (!on || !kept.some((s, i) => s !== now[i])) return;
+      const lost = now.flatMap((s, i) => (s.agent !== null && s.model !== null && kept[i].model === null ? [{ agent: s.agent, model: s.model }] : []));
+      setGone((g) => lost.reduce((acc, p) => (acc.some((x) => x.agent === p.agent && x.model === p.model) ? acc : [...acc, p]), g));
+      put(kept);
     };
     for (const a of agents) if (a.installed && LISTED.includes(a.id)) void liveModels(a.id).then((n) => n && (setLive((v) => v + 1), recheck()));
     return () => void (on = false);
@@ -283,6 +288,8 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const anyReady = seats.some(seatReady);
   // SESS-022: a line per provider near its limit, above Start; it never disables Start.
   const warnings = launchWarnings(seats.map((s) => s.agent), useLaunchUsage());
+  // Job 50 A5: a dropped model's line stays while a seat of that AI still has no model.
+  const goneLines = gone.filter((g) => seats.some((s) => s.agent === g.agent && s.model === null)).map((g) => `${nameOf(g.agent)} no longer offers ${g.model}. Pick another.`);
   const [naming, setNaming] = useState<string | null>(null); // the Save as team name field, open when set
   const [menu, setMenu] = useState<{ i: number; name: string } | null>(null); // a saved shape's rename/delete menu
   const [undo, setUndo] = useState<{ team: SavedShape; index: number } | null>(null); // the team just deleted, and where it sat
@@ -771,7 +778,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             {plan.problem}
           </div>
         )}
-        {warnings.map((w) => (
+        {[...goneLines, ...warnings].map((w) => (
           <div key={w} className="note warn" role="status">
             {w}
           </div>
