@@ -405,8 +405,10 @@ mod tests {
     /// folder that stays keeps its terminals running; one removed in the same step spares nothing.
     #[test]
     fn r02_deleting_a_group_spares_the_terminals_of_a_nested_project_that_stays() {
+        // F79-4: the guard is declared first, so it drops last, after the store lets go of its file.
+        let _clean: crate::test_dir::TempDir;
         let (s, dir) = store("r02");
-        let _clean = crate::test_dir::TempDir(dir.clone());
+        _clean = crate::test_dir::TempDir(dir.clone());
         let git = crate::git::Git::detect().unwrap();
         let (outer, inner, deep) = (dir.join("outer"), dir.join("outer").join("inner"), dir.join("outer").join("inner").join("deep"));
         std::fs::create_dir_all(&deep).unwrap();
