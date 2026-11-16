@@ -307,3 +307,58 @@ test("job 47 F1: a handed file and then a terminal the user opens on a fast star
   expect(open).not.toHaveBeenCalled();
   act(() => root.unmount());
 });
+
+// Job 57 F3: the first-run answer comes after the 5 s limit opened the form. Setup is drawn next, so the form the
+// ask opened is closed (finishing setup opens it again). A form the user opened by hand stays.
+test("job 57 F3: a late first-run answer closes the form the ask at open opened, once", () => {
+  vi.useFakeTimers();
+  resetStartAsk();
+  const open = vi.fn();
+  const close = vi.fn();
+  const root = mount();
+  const stuck = { ...base(open), close, agentsDone: true, firstRunKnown: false };
+  act(() => root.render(createElement(Probe, stuck)));
+  act(() => void vi.advanceTimersByTime(START_WAIT_MS));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true })));
+  expect(close).not.toHaveBeenCalled();
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true, firstRunKnown: true, firstRun: true })));
+  expect(close).toHaveBeenCalledTimes(1);
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: false, firstRunKnown: true, firstRun: true })));
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true, firstRunKnown: true, firstRun: true })));
+  expect(close).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
+test("job 57 F3: the user opened the form by hand, then the first-run answer comes: no close", () => {
+  vi.useFakeTimers();
+  resetStartAsk();
+  const open = vi.fn();
+  const close = vi.fn();
+  const root = mount();
+  const stuck = { ...base(open), close, agentsDone: true, firstRunKnown: false };
+  act(() => root.render(createElement(Probe, stuck)));
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true })));
+  act(() => void vi.advanceTimersByTime(START_WAIT_MS * 2));
+  expect(open).not.toHaveBeenCalled();
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true, firstRunKnown: true, firstRun: true })));
+  expect(close).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
+
+test("job 57 F3: the form the ask opened was closed and the user opened one by hand: no close", () => {
+  vi.useFakeTimers();
+  resetStartAsk();
+  const open = vi.fn();
+  const close = vi.fn();
+  const root = mount();
+  const stuck = { ...base(open), close, agentsDone: true, firstRunKnown: false };
+  act(() => root.render(createElement(Probe, stuck)));
+  act(() => void vi.advanceTimersByTime(START_WAIT_MS));
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true })));
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: false })));
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true })));
+  act(() => root.render(createElement(Probe, { ...stuck, sheetOpen: true, firstRunKnown: true, firstRun: true })));
+  expect(close).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});

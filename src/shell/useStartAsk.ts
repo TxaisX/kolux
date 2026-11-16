@@ -46,11 +46,23 @@ export function isFirstWindow(): boolean {
 
 export function useStartAsk(o: {
   settings: Record<string, unknown>; settingsRead: boolean; layoutIn: boolean; agentsDone: boolean; projectsRead: boolean; launching: boolean; sheetOpen: boolean;
-  firstRun?: boolean; firstRunKnown?: boolean; agentsFailed?: boolean; panes: number; open: () => void;
+  firstRun?: boolean; firstRunKnown?: boolean; agentsFailed?: boolean; panes: number; open: () => void; close?: () => void;
 }) {
   const { settings, settingsRead, layoutIn, agentsDone, projectsRead, launching, sheetOpen, firstRun, firstRunKnown, agentsFailed, panes } = o;
   const open = useRef(o.open);
   open.current = o.open;
+  // Job 57 F3: the form this ask opened, while it is up. A first-run answer that comes after the limit opened it
+  // closes it, since setup is drawn next (and hands over to the form itself). A form opened by hand is never closed.
+  const close = useRef(o.close);
+  close.current = o.close;
+  const mine = useRef<"opening" | "up" | null>(null);
+  useEffect(() => {
+    if (mine.current === "opening" && sheetOpen) mine.current = "up";
+    else if (mine.current === "up" && !sheetOpen) mine.current = null;
+    if (!firstRun || mine.current === null) return;
+    mine.current = null;
+    close.current?.();
+  }, [firstRun, sheetOpen]);
   // Job 13 F4: the user has moved on: a launch, a form they opened, or a pane added after the settings were read.
   // Job 29 R1: the pane count is taken only once last time's layout is in, so restored panes never count as added.
   const acted = useRef(false);
@@ -78,6 +90,8 @@ export function useStartAsk(o: {
     if (now === "wait") return;
     asked = true;
     store((s) => s.setItem(ASKED_KEY, "1"));
-    if (now === "ask") open.current();
+    if (now !== "ask") return;
+    mine.current = "opening";
+    open.current();
   }, [settings, settingsRead, layoutIn, agentsDone, projectsRead, launching, sheetOpen, firstRun, firstRunKnown, agentsFailed, panes, late]);
 }
