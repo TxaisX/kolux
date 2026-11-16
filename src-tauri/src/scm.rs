@@ -2985,6 +2985,8 @@ fn kinds(worktree: &Path, rows: &[&str], with_head: bool) -> Result<Kinds, Strin
 /// missing folder ends the look (Git makes it again).
 // R70-06, accepted: a link made between this check and Git's write is not seen. Closing that needs
 // Git itself to refuse writing through a link (or a lock on the folders), which it does not offer.
+// F90-05: the untracked route's look at the row before `git clean` (R86-02) has the same accepted
+// window between the check and the write.
 fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<String>) -> Option<String> {
     let row = p.trim_end_matches('/');
     let parts: Vec<&str> = row.split('/').filter(|s| !s.is_empty() && *s != ".").collect();
