@@ -135,3 +135,17 @@ test("goesWith: with no staying folders it is underDir against the removed folde
     expect(goesWith(d, removed, [])).toBe(removed.some((r) => underDir(d, r)));
   }
 });
+
+test("PROJ 008: withoutDir spares the panes of a staying folder inside the removed one; without the list it closes them all", () => {
+  const ps = [
+    { key: 1, cwd: "C:/x/a" },
+    { key: 2, cwd: "C:/x/a/inner/src" },
+    { key: 3, cwd: "C:/x/a/wts/team", view: "C:/x/a" },
+    { key: 4, cwd: "C:/x/a/inner/wts/t", view: "C:/x/a/inner" },
+    { key: 5, cwd: "C:/other" },
+  ];
+  expect(withoutDir(ps, "C:/x/a").map((p) => p.key)).toEqual([5]);
+  expect(withoutDir(ps, "C:/x/a", []).map((p) => p.key)).toEqual([5]);
+  expect(withoutDir(ps, "C:\\X\\A", ["c:/x/a/INNER/"]).map((p) => p.key)).toEqual([2, 4, 5]);
+  expect(withoutDir(ps, "C:/x/a", ["C:/x/a"]).map((p) => p.key), "a tie spares nothing").toEqual([5]);
+});

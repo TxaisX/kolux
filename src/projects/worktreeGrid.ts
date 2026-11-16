@@ -2,7 +2,7 @@
 // grid. This is the pure part: which project folder a worktree's grid is, the colour that tells one worktree's
 // sessions from another's, the label the pane header wears, and where a new session opens. No React, no invoke.
 import { TAB_COLORS } from "../terminal/tabColor";
-import { dirKey, sameDir, viewOf } from "../workspaces";
+import { dirKey, goesWith, sameDir, viewOf } from "../workspaces";
 import { folderName } from "./model";
 
 /** Each worktree folder (the project's own folder left out) and the project folder whose grid shows it. */
@@ -98,9 +98,10 @@ export const startDirOf = (root: string | null): string | null => (root === null
 export const clearStartDirs = (): void => starts.clear();
 
 
-/** A removed worktree is no longer a place new sessions can start: a pick naming it (or a folder inside it) is dropped. */
-export function forgetStartDirs(removed: string[]): void {
-  for (const [root, dir] of [...starts]) if (removed.some((r) => dirKey(dir) === dirKey(r) || dirKey(dir).startsWith(dirKey(r) + "\\"))) starts.delete(root);
+/** A removed worktree is no longer a place new sessions can start: a pick naming it (or a folder inside it) is dropped.
+ *  PROJ 008 / F21: a pick inside a `staying` folder deeper than the removed one (a nested project that stays) is kept. */
+export function forgetStartDirs(removed: string[], staying: string[] = []): void {
+  for (const [root, dir] of [...starts]) if (goesWith(dir, removed, staying)) starts.delete(root);
 }
 
 /** The folder the focused pane works in, for what acts on files and Git (Explorer, quick open, changes, Checks, a new

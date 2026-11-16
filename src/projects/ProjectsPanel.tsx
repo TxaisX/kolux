@@ -134,7 +134,7 @@ type Props = {
   onRemoved: (path: string) => void;
   /** T-614: the same for several at once (a batch, the cleanup dialog, the multi-select bar): one call
    *  with every path, so the shown workspace gives way to one that is not going too. */
-  onRemovedAll?: (paths: string[]) => void;
+  onRemovedAll?: (paths: string[], staying?: string[]) => void;
   /** PROJ-053: these workspaces went to sleep; close their panes. */
   onSleep: (paths: string[]) => void;
   /** EDIT-031: the file names with unsaved text in these workspaces, for the delete question. */
@@ -743,14 +743,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // tabs are asked about first, the same question a closing tab gets; on Cancel nothing is removed.
   // The folders asked about are the open panes' own, not the sidebar's rows: a worktree hidden by hand
   // or made by an automation is not listed, but its panes close all the same.
+  // PROJ 008 / F21: a project's folder and every worktree of it the page knows; `stayingBut` gives them for every project that
+  // is not going, so a nested project that stays keeps its panes, is not counted and is not asked about (`goesWith`).
+  const foldersOf = (p: Project) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
+  const stayingBut = (going: Set<string>) => projects.filter((q) => !going.has(q.id)).flatMap(foldersOf);
   const removeProject = async (p: Project) => {
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
-    const folders = [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
+    const folders = foldersOf(p);
+    const staying = stayingBut(new Set([p.id]));
     const closed = openDirs.filter((d) => folders.some((r) => underDir(d, r)));
     if (!(await onAskUnsaved(closed))) return;
     try {
       const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });
-      onRemoved(gone.path);
+      onRemovedAll([gone.path], staying);
       setDropProject(null);
       setSettingsFor(null);
       say("ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk`);
@@ -902,13 +907,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const going = new Set(projectsInGroup(groups, g.id));
     const members = remove ? projects.filter((p) => going.has(p.id)) : [];
     if (remove) {
-      const folders = members.flatMap((p) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)]);
+      const folders = members.flatMap(foldersOf);
       if (!(await onAskUnsaved(openDirs.filter((d) => folders.some((r) => underDir(d, r)))))) return;
     }
     try {
       const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
-      if (members.length > 0) onRemovedAll(members.map((p) => p.path));
+      if (members.length > 0) onRemovedAll(members.map((p) => p.path), stayingBut(going));
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
       if (colours) live.current.onSetting(HEADER_COLOURS_SETTING, colours);
       setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away

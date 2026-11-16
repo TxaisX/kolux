@@ -10,6 +10,7 @@ import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { seatReady } from "../launch/seats";
 import { useWorkspaceActions } from "./useWorkspaces";
 import { TEAM_WORKTREES_SETTING } from "./rows";
+import { clearStartDirs, setStartDir, startDirOf } from "./worktreeGrid";
 
 const A = "C:/w/ws/a";
 const B = "C:/w/ws/b";
@@ -106,4 +107,35 @@ test("selecting a team worktree shows its team's grid, or the worktree itself on
   const made = host.panes.find((p) => p.key >= 100);
   expect(made?.cwd).toBe(W);
   expect(made?.view).toBeUndefined();
+});
+
+// PROJ 008 / F21 (job 65): removing a project leaves the files on disk, so a project nested in its folder that stays keeps
+// its tabs, its start pick and the view; the engine keeps that project's terminals running (job 52).
+const N = `${A}/inner`; // a project inside A that stays
+const N_WT = `${A}/wts/n-one`; // a worktree of N that lies inside A
+const nested = () => [pane(1, A), pane(2, N), pane(3, `${N}/src`), pane(4, N_WT), pane(5, `${A}/wts/a-one`), pane(6, B)];
+
+test("PROJ 008: removing a project with a nested project that stays closes only the removed project's tabs; the view stays", async () => {
+  clearStartDirs();
+  setStartDir(N, N_WT);
+  setStartDir(A, `${A}/wts/a-one`);
+  await mount(createElement(Harness, { start: nested(), active: N, recent: [N, A, B] }), doc);
+  await act(async () => host.actions.removedAll([A, `${A}/wts/a-one`], [N, N_WT, B]));
+  expect(keys()).toEqual([2, 3, 4, 6]);
+  expect(host.active, "the nested project in front stays in front").toBe(N);
+  expect(startDirOf(N), "the staying project's start pick is kept").toBe(N_WT);
+  expect(startDirOf(A), "the removed project's pick is forgotten").toBe(A);
+});
+
+test("PROJ 008: a worktree delete and sleep (no staying list) close everything under the folder, as before", async () => {
+  clearStartDirs();
+  setStartDir(N, N_WT);
+  await mount(createElement(Harness, { start: nested(), active: N, recent: [N, A, B] }), doc);
+  await act(async () => host.actions.removedAll([A]));
+  expect(keys()).toEqual([6]);
+  expect(host.active, "the shown folder was under the removed one: it gives way to a sibling").toBe(B);
+  expect(startDirOf(N)).toBe(N);
+  await mount(createElement(Harness, { start: nested(), active: N, recent: [N, A, B] }), doc);
+  await act(async () => host.actions.removed(A));
+  expect(keys()).toEqual([6]);
 });

@@ -102,9 +102,10 @@ export function focusIn(panes: PaneLike[], dir: string | null, focused: number):
 }
 
 /** Removing a workspace closes every pane in it (PROJ-066: none of its tabs remain anywhere). DT-C274: the panes
- *  shown in its grid close with it too, a team whose agents run in worktrees of their own included. */
-export function withoutDir<P extends PaneLike>(panes: P[], root: string): P[] {
-  return panes.filter((p) => !underDir(p.cwd, root) && !underDir(viewOf(p), root));
+ *  shown in its grid close with it too, a team whose agents run in worktrees of their own included. PROJ 008 / F21: a pane
+ *  of a `staying` folder inside it (a nested project that stays) stays (`goesWith`). */
+export function withoutDir<P extends PaneLike>(panes: P[], root: string, staying: string[] = []): P[] {
+  return panes.filter((p) => !goesWith(p.cwd, [root], staying) && !goesWith(viewOf(p), [root], staying));
 }
 
 /** Where to go when the shown workspace is removed: stay unless it was the one removed, then the
