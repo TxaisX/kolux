@@ -3014,7 +3014,8 @@ fn by_route(dir: &Path, route: &str, rows: &[&str]) -> Result<(), String> {
 }
 
 /// R59-01: a junction where a tracked file was is removed as a link before Git writes the file
-/// back; the folder it points at keeps its files, on every route.
+/// back; the folder it points at keeps its files, on every route. F94-02: on the staged route the
+/// row is a staged deletion (the index no longer holds it), so the junction is left (rule D).
 /// R70-07: the "paths" route pins behaviour (it passed before R59 too); it is not a regression test.
 #[cfg(windows)]
 #[test]
@@ -3032,6 +3033,12 @@ fn r59_a_junction_in_a_tracked_files_place_is_removed_as_a_link_and_its_target_k
         junction(&dir.join("foo"), &out);
         let result = by_route(&dir, route, &["foo"]);
         assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the junction's target keeps its file");
+        if route == "staged" {
+            // F94-02 (rule D): the index no longer holds foo, so the junction is not the row's.
+            assert_eq!(result, Err("A link stands where foo would come back, so Kolux leaves foo as it is. Remove the link by hand, then discard again.".to_string()));
+            assert!(fs::symlink_metadata(dir.join("foo")).is_ok_and(|m| m.is_symlink()), "staged: the junction stays");
+            continue;
+        }
         result.unwrap_or_else(|e| panic!("{route}: {e}"));
         assert_eq!(fs::read_to_string(dir.join("foo")).unwrap(), "f\n", "{route}: foo is the committed file again");
     }
@@ -3646,7 +3653,8 @@ fn r82_a_link_in_a_rename_left_whole_is_not_removed() {
     junction(&dir.join("a.txt"), &out);
     let said = by_route(&dir, "staged", &["a.txt", "b.txt"]);
     let link = fs::symlink_metadata(dir.join("a.txt")).is_ok_and(|m| m.is_symlink());
-    assert_eq!(said, Err(format!("{}\na.txt is the other half of a rename, so Kolux leaves it too.", now_folder("b.txt"))));
+    // F94-02 (rule D): a.txt, the rename's old half, is left by its own check now.
+    assert_eq!(said, Err(format!("A link stands where a.txt would come back, so Kolux leaves a.txt as it is. Remove the link by hand, then discard again.\n{}", now_folder("b.txt"))));
     assert!(link, "the link at a.txt is still there");
     assert_eq!(fs::read_to_string(out.join("o.txt")).unwrap(), "o\n");
     assert_eq!(fs::read_to_string(dir.join("b.txt").join("x.txt")).unwrap(), "mine\n");
