@@ -3,8 +3,8 @@
 // own folder and every worktree both share. A shared folder goes with a removed project only when it is that project's
 // own folder. The removed list goes through `goingFolders` before `goesWith` and `sessionsUnder` are asked.
 import { afterEach, describe, expect, test } from "vitest";
-import { gridOf, goesWith, goingFolders, setGridRoots, withoutDir } from "./workspaces";
-import { gridRootsOf } from "./projects/worktreeGrid";
+import { closesWith, gridOf, goesWith, goingFolders, setGridRoots, withoutDir } from "./workspaces";
+import { gridRootsOf, mergeGridMap } from "./projects/worktreeGrid";
 import { sessionsUnder } from "./projects/rows";
 
 const A = "C:/r/app";
@@ -14,11 +14,17 @@ const lists: Record<string, string[]> = { A: [A, B, W], B: [B, A, W] };
 const own: Record<string, string> = { A, B };
 const at = (cwd: string) => ({ cwd, running: true });
 
-/** What removing `gone` (the rest stay) asks about, closes and counts, for terminals in `open`. */
+/** What removing `gone` (the rest stay) asks about, closes and counts, for terminals in `open`. Asked as `askedOf` in
+ *  ProjectsPanel asks (with the grid that shows the folder); closed as `removedAll` closes (`withoutDir` per own folder). */
 function remove(gone: string[], open: string[], all = lists, owner = own) {
   const staying = Object.keys(all).filter((k) => !gone.includes(k)).flatMap((k) => all[k]);
   const going = gone.flatMap((k) => goingFolders(owner[k], all[k], staying));
-  return { going, asked: open.filter((d) => goesWith(d, going, staying)), counted: sessionsUnder(going, open.map(at), staying) };
+  const listed = gone.flatMap((k) => all[k]);
+  const asked = open.filter((d) => goesWith(d, going, staying) || (goesWith(d, listed, staying) && closesWith({ cwd: d }, going, staying)));
+  const panes = open.map((cwd, i) => ({ key: i, cwd }));
+  const kept = gone.reduce((ps, k) => withoutDir(ps, owner[k], staying), panes);
+  const closed = panes.filter((p) => !kept.includes(p)).map((p) => p.cwd);
+  return { going, asked, closed, counted: sessionsUnder(going, open.map(at), staying) };
 }
 
 describe("goingFolders: two projects on one repository", () => {
@@ -119,5 +125,52 @@ describe("R71-02: the grid map with two projects on one repository", () => {
     const panes = [{ key: 1, cwd: A }, { key: 2, cwd: B }];
     expect(withoutDir(panes, A, lists.B).map((p) => p.key)).toEqual([2]);
     expect(withoutDir(panes, B, lists.A).map((p) => p.key)).toEqual([1]);
+  });
+});
+
+// R83-04: a pane closes when its OWN folder goes. The shared worktree W is listed by the staying project, so its pane is
+// kept, not asked about and not counted, whichever grid showed it; after the remove it shows in the staying project's grid.
+describe("R83-04: a worktree a staying project also lists stays open", () => {
+  const pa = { id: "A", path: A };
+  const pb = { id: "B", path: B };
+  const ownerOf = (order: { id: string; path: string }[]) => {
+    const owner: Record<string, string> = {};
+    for (const p of order) for (const d of lists[p.id]) owner[d] = p.id;
+    return owner;
+  };
+  afterEach(() => setGridRoots({}));
+
+  test.each([
+    ["[A, B]", "A", [pa, pb]],
+    ["[A, B]", "B", [pa, pb]],
+    ["[B, A]", "A", [pb, pa]],
+    ["[B, A]", "B", [pb, pa]],
+  ])("order %s, remove %s: only its own folder closes, is asked about and is counted; W then shows in the other's grid", (_, gone, order) => {
+    const prev = mergeGridMap({ roots: [], worktrees: {} }, order, ownerOf(order));
+    setGridRoots(prev.worktrees, prev.roots);
+    const r = remove([gone], [A, B, W]);
+    expect(r.closed).toEqual([own[gone]]);
+    expect(r.asked).toEqual([own[gone]]);
+    expect(r.counted).toBe(1);
+    // the project list read again: the removed project is gone, the old W entry in the saved map is dropped
+    const left = order.filter((p) => p.id !== gone);
+    const next = mergeGridMap(prev, left, ownerOf(left));
+    setGridRoots(next.worktrees, next.roots);
+    expect(gridOf(W)).toBe(left[0].path);
+  });
+
+  test("j. one project alone on its repository still closes, asks about and counts all three", () => {
+    setGridRoots({ [B]: A, [W]: A }, [A]);
+    const r = remove(["A"], [A, B, W], { A: [A, B, W] }, { A });
+    expect(r.closed).toEqual([A, B, W]);
+    expect(r.asked).toEqual([A, B, W]);
+    expect(r.counted).toBe(3);
+  });
+
+  test("known limit: a pane in W with an explicit view naming the going grid still closes and is counted", () => {
+    setGridRoots({ [W]: B }, [A, B]);
+    const pane = { key: 1, cwd: W, view: A };
+    expect(withoutDir([pane], A, lists.B)).toEqual([]);
+    expect(sessionsUnder([A], [pane], lists.B)).toBe(1);
   });
 });

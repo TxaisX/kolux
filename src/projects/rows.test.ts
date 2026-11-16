@@ -167,13 +167,14 @@ test("PROJ 008 / F21: a session of a nested project that stays is not counted; w
   expect(sessionsUnder(["C:/r"], sessions, ["C:/r"]), "a tie counts").toBe(4);
 });
 
-// R74-02: two projects on one repository (A main checkout, B a linked worktree of it); the shared worktree W shows in
-// one project's grid. A session in W with no view closes with the project whose grid shows it, so that removal counts it.
+// R74-02, reversed by R83-04: two projects on one repository (A main checkout, B a linked worktree of it); the shared
+// worktree W shows in one project's grid. B stays and lists W, so a session in W with no view stays open and is not counted,
+// whichever grid shows it.
 afterEach(() => setGridRoots({}));
 test.each([
-  ["W shows in A's grid", "C:/w/app", 1],
+  ["W shows in A's grid", "C:/w/app", 0],
   ["W shows in B's grid", "C:/w/app-b", 0],
-])("R74-02 %s: removing A counts a session in W only when A's grid shows it", (_name, grid, count) => {
+])("R83-04 %s: removing A does not count a session in W, which B also lists", (_name, grid, count) => {
   const [A, B, W] = ["C:/w/app", "C:/w/app-b", "C:/w/wt3"];
   setGridRoots({ [W]: grid }, [A, B]);
   expect(sessionsUnder([A], [{ cwd: W }], [B, A, W])).toBe(count);

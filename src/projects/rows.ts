@@ -5,7 +5,7 @@
 // pane's program is up; permission, blocked, waiting and interrupted arrive with the status hooks
 // (STAT-001, T-025), and the pull-request state with GIT-025 (T-229). The rules here take them already.
 import { shortcodes } from "./model";
-import { goesWith, gridOf, panesIn, sameDir, viewOf } from "../workspaces";
+import { closesWith, goesWith, gridOf, panesIn, sameDir } from "../workspaces";
 
 export type AgentState = "permission" | "blocked" | "waiting" | "interrupted" | "working" | "queued" | "done" | "idle";
 export type PrState = "open" | "draft" | "merged" | "closed" | "suppressed" | null;
@@ -259,7 +259,8 @@ export function sessionsUnder(roots: string[], sessions: { cwd: string | null; v
   const key = pathKey;
   const under = (c: string | null | undefined) => typeof c === "string" && (staying.length ? goesWith(c, roots, staying) : roots.some((p) => key(c) === key(p) || key(c).startsWith(key(p) + "/")));
   // R74-02: and by the grid that shows it (`viewOf`), as `withoutDir` closes it: a shared worktree shown in the removed grid.
-  return sessions.filter((s) => under(s.cwd) || under(s.view) || under(viewOf(s))).length;
+  // R83-04: `closesWith` keeps a session whose own folder a staying project lists, whichever grid shows it.
+  return sessions.filter((s) => under(s.cwd) || under(s.view) || closesWith(s, roots, staying)).length;
 }
 
 /** The sentence a sleep or removal question adds when terminals would be closed; empty for none. */

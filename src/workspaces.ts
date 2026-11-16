@@ -115,7 +115,22 @@ export function focusIn(panes: PaneLike[], dir: string | null, focused: number):
  *  shown in its grid close with it too, a team whose agents run in worktrees of their own included. PROJ 008 / F21: a pane
  *  of a `staying` folder inside it (a nested project that stays) stays (`goesWith`). */
 export function withoutDir<P extends PaneLike>(panes: P[], root: string, staying: string[] = []): P[] {
-  return panes.filter((p) => !goesWith(p.cwd, [root], staying) && !goesWith(viewOf(p), [root], staying));
+  return panes.filter((p) => !closesWith(p, [root], staying));
+}
+
+/** R83-04: the pane's own folder stays: it lies in a folder a staying project lists, deeper than any removed folder it lies in. */
+export function staysOwn(dir: string | null, removed: string[], staying: string[]): boolean {
+  const depth = (list: string[]) => list.reduce((n, r) => (underDir(dir, r) ? Math.max(n, dirKey(r).length) : n), -1);
+  const kept = depth(staying);
+  return kept >= 0 && kept > depth(removed);
+}
+
+/** Whether removing `removed` closes the pane (`withoutDir`), asks about its folder (`askedOf`) and counts it
+ *  (`sessionsUnder`): its own folder goes, or the grid that shows it goes. R83-04: a pane with no `view` whose own folder
+ *  stays (`staysOwn`: a worktree a staying project also lists) is kept, whichever grid showed it. A pane whose `view`
+ *  names a going grid still closes with it. */
+export function closesWith(p: { cwd: string | null; view?: string | null }, removed: string[], staying: string[] = []): boolean {
+  return goesWith(p.cwd, removed, staying) || (goesWith(viewOf(p), removed, staying) && (p.view != null || !staysOwn(p.cwd, removed, staying)));
 }
 
 /** Where to go when the shown workspace is removed: stay unless it was the one removed, then the

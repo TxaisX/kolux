@@ -111,24 +111,24 @@ test("R71-02: the owner map the sidebar hands to the window maps each project's 
   expect(["C:/w/app", "C:/w/app-b"]).toContain(roots["C:/w/wt3"]);
 });
 
-// R74-02 / R74-07: with the REAL grid map, the shared "wt3" shows in app's grid. Its session (no view) closes with app, so
-// app's Remove question counts it and asks about it; app-b's does not.
-test("R74-02: the shared worktree shown in the removed project's grid is counted and asked about", async () => {
+// R83-04 (reverses R74-02): with the REAL grid map, in both scan orders, the shared "wt3" is listed by app-b, which stays.
+// Removing app counts, asks about and closes only app's own folder; wt3's terminal stays open and the question says so.
+test.each([
+  ["wt3 in app's grid", "C:/w/app"],
+  ["wt3 in app-b's grid", "C:/w/app-b"],
+])("R83-04: %s: app's Remove question does not count or ask about wt3 and says a shared worktree stays open", async (_, grid) => {
   const { setGridRoots } = await import("../workspaces");
-  setGridRoots({ "C:/w/wt3": "C:/w/app" }, ["C:/w/app", "C:/w/app-b"]);
+  setGridRoots({ "C:/w/wt3": grid }, ["C:/w/app", "C:/w/app-b"]);
   try {
-    const c = await panel({ sessions: [running(3, "C:/w/wt3")] });
-    await click(c, byLabel(c, "button", "Remove app-b")[0]);
-    await settle(20);
-    expect(ask(c).textContent).not.toContain("still running");
-    await click(c, byText(c, "button", "Cancel")[0]);
-    await settle(20);
+    const c = await panel();
     await click(c, byLabel(c, "button", "Remove app")[0]);
     await settle(20);
-    expect(ask(c).textContent).toContain("1 terminal is still running and will be closed.");
+    const text = ask(c).textContent;
+    expect(text).toContain("1 terminal is still running and will be closed.");
+    expect(text).toContain("are cleared. A worktree that another project in Kolux also lists stays open. The folder and its files stay on disk.");
     await click(c, byText(c, "button", "Remove app")[0]);
     await settle(40);
-    expect(h.unsaved).toEqual([["C:/w/app", "C:/w/wt3"]]);
+    expect(h.unsaved).toEqual([["C:/w/app"]]);
   } finally {
     setGridRoots({});
   }

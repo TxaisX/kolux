@@ -28,7 +28,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { goesWith, goingFolders, gridOf } from "../workspaces";
+import { closesWith, goesWith, goingFolders } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
@@ -749,8 +749,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const foldersOf = (p: Project) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
   const stayingBut = (going: Set<string>) => projects.filter((q) => !going.has(q.id)).flatMap(foldersOf);
   // Job 64 F1: a folder that a staying project on the same repository also lists does not go (`goingFolders`); a tab in it
-  // that the removed grid shows (`gridOf`) still closes, so it is still asked about. Alone on a repository, as before.
-  const askedOf = (listed: string[], folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying) || (goesWith(d, listed, staying) && goesWith(gridOf(d), folders, staying)));
+  // that the removed grid shows is kept (R83-04), so it is not asked about. Alone on a repository, as before.
+  // R83-04: not when its own folder stays (`closesWith`: a staying project lists it), whichever grid shows it.
+  const askedOf = (listed: string[], folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying) || (goesWith(d, listed, staying) && closesWith({ cwd: d }, folders, staying)));
   const removeProject = async (p: Project) => {
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
     const staying = stayingBut(new Set([p.id]));
@@ -2337,7 +2338,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {dropProject === p.id && (
             <Ask
               title="Remove project"
-              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
+              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared.{goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))).length < foldersOf(p).length && " A worktree that another project in Kolux also lists stays open."} The folder and its files stay on disk.{runNote(goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
               confirm={`Remove ${p.name}`}
               cancel="Keep it"
               onConfirm={() => removeProject(p)}
