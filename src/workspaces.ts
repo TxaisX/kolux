@@ -88,6 +88,14 @@ export function goesWith(dir: string | null, removed: string[], staying: string[
   return gone >= 0 && gone >= depth(staying);
 }
 
+/** PROJ 008 / F21 (job 64's F1): the folders that go with a removed project, asked before `goesWith` and `sessionsUnder`.
+ *  Two projects can sit on one Git repository (a main checkout and a linked worktree of it), and Git lists every worktree
+ *  to both, so each lists the other's own folder and the worktrees they share. A listed folder goes only when it is the
+ *  project's own (`own`) or no staying project lists it (`staying`: their folders and worktrees). */
+export function goingFolders(own: string, listed: string[], staying: string[]): string[] {
+  return listed.filter((d) => sameDir(d, own) || !staying.some((s) => sameDir(s, d)));
+}
+
 /** The panes shown for a workspace (DT-C274: by the grid they are shown in, `viewOf`). */
 export function panesIn<P extends PaneLike>(panes: P[], dir: string | null): P[] {
   const at = gridOf(dir);

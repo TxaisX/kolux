@@ -28,7 +28,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { goesWith } from "../workspaces";
+import { goesWith, goingFolders, gridOf } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
@@ -747,11 +747,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // is not going, so a nested project that stays keeps its panes, is not counted and is not asked about (`goesWith`).
   const foldersOf = (p: Project) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
   const stayingBut = (going: Set<string>) => projects.filter((q) => !going.has(q.id)).flatMap(foldersOf);
+  // Job 64 F1: a folder that a staying project on the same repository also lists does not go (`goingFolders`); a tab in it
+  // that the removed grid shows (`gridOf`) still closes, so it is still asked about. Alone on a repository, as before.
+  const askedOf = (listed: string[], folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying) || (goesWith(d, listed, staying) && goesWith(gridOf(d), folders, staying)));
   const removeProject = async (p: Project) => {
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
-    const folders = foldersOf(p);
     const staying = stayingBut(new Set([p.id]));
-    const closed = openDirs.filter((d) => goesWith(d, folders, staying));
+    const folders = goingFolders(p.path, foldersOf(p), staying);
+    const closed = askedOf(foldersOf(p), folders, staying);
     if (!(await onAskUnsaved(closed))) return;
     try {
       const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });
@@ -907,8 +910,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const going = new Set(projectsInGroup(groups, g.id));
     const members = remove ? projects.filter((p) => going.has(p.id)) : [];
     if (remove) {
-      const folders = members.flatMap(foldersOf);
-      if (!(await onAskUnsaved(openDirs.filter((d) => goesWith(d, folders, stayingBut(going)))))) return;
+      const staying = stayingBut(going);
+      if (!(await onAskUnsaved(askedOf(members.flatMap(foldersOf), members.flatMap((p) => goingFolders(p.path, foldersOf(p), staying)), staying)))) return;
     }
     try {
       const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members
@@ -2328,7 +2331,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {dropProject === p.id && (
             <Ask
               title="Remove project"
-              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path), stayingBut(new Set([p.id])))}</>}
+              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(goingFolders(p.path, list.map((x) => x.path), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
               confirm={`Remove ${p.name}`}
               cancel="Keep it"
               onConfirm={() => removeProject(p)}
@@ -2454,7 +2457,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           body={
             <>
               Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
-              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => (worktrees[pid] ?? []).map((x) => x.path)), stayingBut(new Set(projectsInGroup(groups, g.id))))}
+              {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => goingFolders(projects.find((q) => q.id === pid)?.path ?? "", (worktrees[pid] ?? []).map((x) => x.path), stayingBut(new Set(projectsInGroup(groups, g.id))))), stayingBut(new Set(projectsInGroup(groups, g.id))))}
               <label className="check">
                 <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
                 Also remove its projects from Kolux (their folders stay on disk)
