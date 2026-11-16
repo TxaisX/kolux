@@ -12,7 +12,7 @@
 import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { menuStep } from "../terminal/LinkActionMenu";
 import { NARROW_PX } from "../shell/window/narrow";
-import { Menu, MenuItem } from "../ui/Menu";
+import { Menu, MenuItem } from "../lazy/uiMenu";
 import { Tab, TabList, TabPanel, Tabs } from "../ui/Tabs";
 
 export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
@@ -188,6 +188,8 @@ export default function RightSidebar({ tab, width, max, hidden = false, offered,
             title={`More: ${more.map((t) => t.label).join(", ")}`}
             aria-haspopup="menu"
             aria-expanded={menu}
+            onPointerEnter={Menu.warm}
+            onFocus={Menu.warm}
             onClick={() => setMenu(!menu)}
           >
             More

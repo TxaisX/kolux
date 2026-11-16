@@ -45,6 +45,8 @@ describe("first-load bundle budget", () => {
     // back past it.
     // 2026-11-11 (DT-C253): the first load is 1,427,895 bytes, so the ceiling came down with it (1,442,000);
     // the lower bound here only guards against a ceiling typed with a digit missing.
+    // 2026-11-16: the first load had grown to 1,587,679 bytes while the check was not being run; with two menus and
+    // a name box loading on first open it is 1,484,458, and the ceiling (1,499,000) is still under the bar.
     expect(CEILING).toBeLessThanOrEqual(1_500_000);
     expect(CEILING).toBeGreaterThan(1_400_000);
   });

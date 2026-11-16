@@ -2,13 +2,18 @@
 // close path; when it answers true the guard has taken over and App's own close runs later through `close(keys)`
 // with only the keys that may go. Save writes each unsaved file (an untitled note asks for its name first);
 // a file that does not save stays open with its text. Don't save drops the edits on purpose; Cancel closes nothing.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { trapTab } from "../chrome/dialogFocus";
 import { useModalSlot } from "../chrome/modalStack";
+import { deferred } from "../lazy/deferred";
 import { baseName, diskOf, isDirty, textOf } from "./buffers";
 import { askText, closable, mayRemove, saveAll, unsavedTabs, type Choice, type GuardPane, type Unsaved } from "./closeGuard";
-import NamePrompt from "./NamePrompt";
+import type NamePromptView from "./NamePrompt";
 import { needsName } from "./untitled";
+
+/** The name box for an untitled note, read when the question opens (bundle-budget.mjs): only Save on an untitled
+ *  note draws it, and by the time the user picks Save its code is in. */
+const NamePrompt = deferred<ComponentProps<typeof NamePromptView>>(() => import("./NamePrompt"));
 
 /** EDIT-031: the editor's own save, loaded the first time the user picks Save. The prompt itself is
  *  drawn for any tab, so the window does not carry CodeMirror before a file is opened (cycle 3, first load). */
@@ -84,6 +89,7 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
   useModalSlot(card, ask !== null);
   useEffect(() => {
     if (ask) cancel.current?.focus();
+    if (ask) NamePrompt.warm();
   }, [ask]);
   // While a save runs the buttons are off and would drop the focus; the card keeps it so Tab and Escape stay inside.
   useEffect(() => {

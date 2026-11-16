@@ -10,6 +10,10 @@ const heavy = [
   ["chrome/LayoutStrip.tsx", /from "\.\.\/usage\/WorkspaceSpend"/],
   ["crash.tsx", /from "\.\/feedback\/FeedbackDialog"/],
   ["recovery/ScreenBoundary.tsx", /from "\.\.\/feedback\/FeedbackDialog"/],
+  // 2026-11-16: src/ui's Menu (Base UI's menu and its floating layer, about 100 kB) and the unsaved question's name box.
+  ["chrome/RightSidebar.tsx", /from "\.\.\/ui\/Menu"/],
+  ["projects/HideableRow.tsx", /from "\.\.\/ui\/Menu"/],
+  ["editor/CloseDialog.tsx", /from "\.\/NamePrompt"/],
 ] as const;
 
 test.each(heavy)("%s does not import the code that opens on a click", (file, pattern) => {
