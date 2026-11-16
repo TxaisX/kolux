@@ -311,7 +311,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           // R83-05: a failure is red; a project check that stopped the save stays yellow (the user fixes and retries).
           return { text: `${out.blocked ? "A project check stopped this save" : "Commit failed"}: ${out.output}`, bad: true, ...(out.blocked ? {} : { error: true }) };
         },
-        (e): Say => ({ text: String(e), bad: true, error: true }),
+        (e): Say => ({ text: `Commit failed: ${String(e)}`, bad: true, error: true }),
       ),
     );
   };

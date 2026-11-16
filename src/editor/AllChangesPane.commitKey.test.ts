@@ -94,7 +94,7 @@ test("a keystroke still inside an input-method composition commits nothing", asy
 // R83-05: "Commit failed" and a commit that threw are red; "A project check stopped this save" stays yellow.
 test.each([
   ["Commit failed", () => Promise.resolve({ id: null, blocked: false, output: "bad object" }), "Commit failed: bad object", "note error"],
-  ["the commit threw", () => Promise.reject("git crashed"), "git crashed", "note error"],
+  ["the commit threw", () => Promise.reject("git crashed"), "Commit failed: git crashed", "note error"], // F88-05: it says what failed
   ["a project check stopped it", () => Promise.resolve({ id: null, blocked: true, output: "lint" }), "A project check stopped this save: lint", "note warn"],
 ])("R83-05: %s: the result line's colour", async (_, answer, words, cls) => {
   h.commit = answer;
