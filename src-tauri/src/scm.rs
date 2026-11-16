@@ -231,7 +231,9 @@ pub fn status(worktree: &Path) -> Result<Status, String> {
 fn read_status(worktree: &Path) -> Result<Status, String> {
     // Every untracked file by name, not a collapsed folder, so each can be staged on its own.
     // GIT-070: a short read, so it takes the worktree's turn and has a time limit.
-    let out = output(&["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
+    // F96-03: renames only, never a copy (the user's `status.renames` or `diff.renames` may say
+    // `copies`); `count` reads the same way.
+    let out = output(&["-c", "status.renames=true", "status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
     let mut st = parse_status(&String::from_utf8_lossy(&out));
     if let (Some(branch), Some(_)) = (st.branch.as_deref(), st.upstream.as_deref()) {
         st.upstream_remote = run(&["config", "--get", &format!("branch.{branch}.remote")], Some(worktree)).ok().map(|t| t.trim().to_string()).filter(|r| !r.is_empty() && r != ".");
@@ -2637,6 +2639,10 @@ fn check_paths(paths: &[String]) -> Result<(), String> {
         return Err("nothing to stage".into());
     }
     for p in paths {
+        // R82-03: a NUL would reach Git as a break between two names.
+        if p.contains('\0') {
+            return Err("A file name here holds a character Kolux cannot pass to Git. Nothing was changed.".into());
+        }
         let path = Path::new(p);
         let inside = !p.trim().is_empty() && path.components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
         if !inside {
@@ -2652,8 +2658,9 @@ fn check_paths(paths: &[String]) -> Result<(), String> {
 pub fn stage(worktree: &Path, paths: &[String], on: bool) -> Result<(), String> {
     check_paths(paths)?;
     // `restore --staged` needs a commit to restore from; in a repository with none, unstaging is
-    // taking the paths out of the index.
-    let no_commits = !on && run(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree)).is_err();
+    // taking the paths out of the index. R82-05: any other failure to read the last commit comes
+    // back as Git's words, and nothing is changed.
+    let no_commits = !on && no_commit(worktree)?;
     let args: &[&str] = if on {
         &["--literal-pathspecs", "add", "--pathspec-from-file=-", "--pathspec-file-nul"]
     } else if no_commits {
@@ -2683,21 +2690,84 @@ fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String>
 /// removed or rewritten as a link: what it points at is never followed, so nothing outside the
 /// repository is touched. B-09: an untracked row goes exactly as the untracked section's discard
 /// sends it (`git clean -f -d`), so a nested repository and ignored files are left alone.
+/// F94-01 / F94-02: a deleted file, or a rename's old file, comes back only into an empty place; a
+/// file or a link standing there is left, and so is its row.
 pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
+    // R86-05: an empty list is answered in Discard's words, before the shared row checks.
+    if paths.is_empty() {
+        return Err("Nothing to discard.".into());
+    }
+    let paths: &[String] = &one_spelling(paths);
+    not_whole(paths)?;
     check_paths(paths)?;
     let st = status(worktree)?;
+    let k = kinds(worktree, &paths.iter().map(|p| p.trim_end_matches('/')).collect::<Vec<_>>(), true)?;
+    // F90-01 / F94-02: a link at a row the index holds is the row's own.
+    let held = |r: &str| k.at.contains(r);
     let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let mut kept = Vec::new();
+    let mut renames: Vec<(String, String)> = Vec::new();
+    let mut real = std::collections::HashSet::new();
+    let mut pairs: Vec<(String, String)> = Vec::new();
+    // F94-03: a staged rename whose two halves are one disk entry, as (old half, new half).
+    let mut ones: Vec<(String, String)> = Vec::new();
     for p in paths {
         let p = p.trim_end_matches('/');
         let index = st.staged.iter().find(|c| c.path == p);
+        let from = index.and_then(|c| c.from.as_deref());
+        // F-02: a row whose file (or a rename's old file) Git would write over a folder with
+        // something in it is left exactly as it is: not unstaged, not written, not cleaned.
+        // R59-01/R59-02: so is a row under a link or a file where a folder was.
+        // F94-01 / F94-02 (rule D): so is the row when only the last commit holds it, and a staged
+        // rename's old half always, when a file or a link stands at its place; unless what stands
+        // there is one disk entry with the rename's own new half, or (for the row) with another
+        // row of this call the index holds, which then must go too (`pairs`).
+        let (mut why, mut pair, mut one) = (None, None, false);
+        for at in std::iter::once(p).chain(from) {
+            why = left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at)));
+            if why.is_none() && (at != p || (k.head_file.contains(p) && !k.at.contains(p))) {
+                match stands_in_place(worktree, at) {
+                    Ok(Some(_)) if at != p && one_entry(worktree, at, p) => one = true,
+                    Ok(Some(line)) if at != p => why = Some(line),
+                    Ok(Some(line)) => match paths.iter().map(|o| o.trim_end_matches('/')).find(|o| k.at.contains(*o) && one_entry(worktree, p, o)) {
+                        Some(o) => pair = Some(o.to_string()),
+                        None => why = Some(line),
+                    },
+                    Ok(None) => {}
+                    Err(e) => why = Some(e),
+                }
+            }
+            why = why.or_else(|| is_link(worktree, at, held(at)).err());
+            if why.is_some() {
+                break;
+            }
+        }
+        if let Some(why) = why {
+            kept.push(why);
+            continue;
+        }
+        // R82-02: a row naming a folder of tracked files is left whole (a row listed as untracked
+        // goes as one, below).
+        let listed_untracked = st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p);
+        if !listed_untracked && k.folder(p) {
+            kept.push(folder_line(p));
+            continue;
+        }
+        if let Some(o) = pair {
+            pairs.push((p.to_string(), o));
+        }
+        if let (true, Some(f)) = (one, from) {
+            ones.push((f.to_string(), p.to_string()));
+        }
         if let Some(c) = index {
             staged.push(c.path.clone());
             if let Some(from) = &c.from {
                 staged.push(from.clone());
                 tracked.push(from.clone());
+                renames.push((from.clone(), c.path.clone()));
             }
         }
-        if st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p) {
+        if listed_untracked {
             untracked.push(p.to_string());
         } else if index.is_some_and(|c| c.status == "A" || c.from.is_some()) {
             remove.push(p.to_string());
@@ -2705,31 +2775,84 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
             tracked.push(p.to_string());
         }
     }
-    if !staged.is_empty() {
-        with_paths(worktree, &["reset", "-q"], &staged)?;
-    }
+    // A link is removed before git rewrites it, so git never writes through it. R82-03: a row
+    // whose kind cannot be read, or whose link cannot be removed, is named and left; the rest go.
+    // R86-03: this runs before anything is unstaged, so a left row (and a staged rename's other
+    // half with it) keeps its staged change.
+    let (mut removed, mut failed) = (Vec::new(), Vec::new());
     for p in &tracked {
-        // A link is removed before git rewrites it, so git never writes through it.
-        let full = worktree.join(native(p));
-        if fs::symlink_metadata(&full).is_ok_and(|m| m.is_symlink()) {
-            fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)).map_err(|e| format!("{p}: {e}"))?;
+        // F90-01: the same answer the check above gave this row.
+        match remove_link(worktree, p, held(p)) {
+            Ok(true) => removed.push(p.clone()),
+            Ok(false) => {}
+            Err(e) => {
+                kept.push(e);
+                failed.push(p.clone());
+            }
+        }
+    }
+    // F94-01: until nothing more is left, so a rename and a pair (a row whose other row is left,
+    // or did not pass the check) both stay whole.
+    loop {
+        let n = failed.len();
+        for (from, to) in &renames {
+            if failed.contains(from) && !failed.contains(to) {
+                kept.push(format!("{to} is the other half of a rename, so Kolux leaves it too."));
+                failed.push(to.clone());
+            }
+        }
+        for (row, other) in &pairs {
+            let goes = [&staged, &tracked, &untracked, &remove].iter().any(|l| l.contains(other)) && !failed.contains(other);
+            if !goes && !failed.contains(row) {
+                kept.push(shares_place(row, other));
+                failed.push(row.clone());
+            }
+        }
+        if failed.len() == n {
+            break;
+        }
+    }
+    staged.retain(|p| !failed.contains(p));
+    tracked.retain(|p| !failed.contains(p));
+    remove.retain(|p| !failed.contains(p));
+    let already = |kept: &mut Vec<String>| kept.extend(removed.iter().map(|p| format!("The link at {p} was already removed. What it pointed to is untouched.")));
+    if !staged.is_empty() {
+        if let Err(e) = with_paths(worktree, &["reset", "-q"], &staged) {
+            kept.push(e);
+            already(&mut kept);
+            return Err(kept.join("\n"));
         }
     }
     if !tracked.is_empty() {
-        with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked)?;
+        if let Err(e) = with_paths(worktree, &["-c", "submodule.recurse=false", "checkout", "-q", "HEAD"], &tracked) {
+            kept.push(e);
+            already(&mut kept);
+            return Err(kept.join("\n"));
+        }
     }
     // N-02: a nested repository is taken out before git clean runs and named at the end, so the
-    // other rows still go; any error from the untracked discard is then a real failure and stops.
+    // other rows still go. F-01: an error from the untracked discard, or from removing one staged
+    // new file, is a real failure: it is named at the end with the rest, and the other rows still go.
     let (nested, untracked): (Vec<String>, Vec<String>) = untracked.into_iter().partition(|p| own_repo_at(worktree, p));
-    let mut kept: Vec<String> = nested.iter().map(|p| own_repo(p)).collect();
+    kept.extend(nested.iter().map(|p| own_repo(p)));
     if !untracked.is_empty() {
-        discard(worktree, "untracked", &untracked)?;
+        if let Err(e) = discard(worktree, "untracked", &untracked) {
+            kept.push(e);
+        }
     }
     // A staged new file, unstaged above. N-01: an index entry is a file or a gitlink, never a
     // plain folder, so a folder here is a nested repository or a file that became a folder. A
     // folder holding `.git` is kept, and so is any folder that is not empty; only an empty one goes.
     for p in &remove {
         let full = worktree.join(native(p));
+        // F94-03: the new half is the old half's own disk entry (a rename that only changes letter
+        // case): it gets its old name back instead of being deleted.
+        if let Some((from, _)) = ones.iter().find(|(_, to)| to == p) {
+            if let Err(e) = fs::rename(&full, worktree.join(native(from))) {
+                kept.push(format!("{from}: {e}"));
+            }
+            continue;
+        }
         let Ok(meta) = fs::symlink_metadata(&full) else { continue };
         if own_repo_at(worktree, p) {
             kept.push(own_repo(p));
@@ -2744,7 +2867,9 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         } else {
             fs::remove_file(&full).or_else(|_| fs::remove_dir(&full))
         };
-        done.map_err(|e| format!("{p}: {e}"))?;
+        if let Err(e) = done {
+            kept.push(format!("{p}: {e}"));
+        }
     }
     if kept.is_empty() {
         Ok(())
@@ -2753,9 +2878,322 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     }
 }
 
+/// R70-01: Git for Windows reads `\` in a row as a folder break, so on Windows Discard turns every
+/// row to Git's own `/` spelling before any check: every check and every Git call sees one
+/// spelling. Elsewhere `\` is a legal character in a file name, and the row stays as it is.
+/// R82-01: empty and `.` parts are dropped (`./foo`, `sub//foo` and `sub/./foo` are checked as the
+/// file Git reads them as), a trailing `/` is kept once, and `..` stays so the check refuses it. A
+/// rooted or prefixed row (`/x`, `C:d/f`, `d:stream`, `//?/x`) stays as sent, refused the same way.
+fn one_spelling(paths: &[String]) -> Vec<String> {
+    paths
+        .iter()
+        .map(|p| {
+            let p = if cfg!(windows) { p.replace('\\', "/") } else { p.clone() };
+            let path = Path::new(&p);
+            if path.has_root() || matches!(path.components().next(), Some(Component::Prefix(_))) {
+                return p;
+            }
+            let clean = p.split('/').filter(|s| !s.is_empty() && *s != ".").collect::<Vec<_>>().join("/");
+            if p.ends_with('/') && !clean.is_empty() {
+                clean + "/"
+            } else {
+                clean
+            }
+        })
+        .collect()
+}
+
 /// R-06: true when the row's folder holds `.git` (a file or a folder), a nested repository.
+/// F-04: a row that is itself a link is never one, even when it points at a repository: it is
+/// removed as a link, and what it points at is never touched.
 fn own_repo_at(worktree: &Path, p: &str) -> bool {
-    fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/'))).join(".git")).is_ok()
+    let full = worktree.join(native(p.trim_end_matches('/')));
+    fs::symlink_metadata(&full).is_ok_and(|m| !m.is_symlink()) && fs::symlink_metadata(full.join(".git")).is_ok()
+}
+
+/// F-02: true when Git's checkout or restore would write a file or a link at `p` while a real
+/// folder (not a link) with anything in it, or one that cannot be read, sits there: Git would
+/// remove that folder whole, a nested repository's history included. An empty folder is left to
+/// Git (nothing is lost with it), and so is a submodule's folder (its entry is a gitlink, which
+/// Git never writes as a file) or a tracked folder's.
+fn folder_in_place(worktree: &Path, p: &str) -> bool {
+    let p = p.trim_end_matches('/');
+    let full = worktree.join(native(p));
+    let real_folder = fs::symlink_metadata(&full).is_ok_and(|m| m.is_dir() && !m.is_symlink());
+    if !real_folder || fs::read_dir(&full).is_ok_and(|mut d| d.next().is_none()) {
+        return false;
+    }
+    // The modes the index and the last commit hold at exactly `p`; a failed read keeps the folder.
+    let modes = |args: &[&str]| run(args, Some(worktree)).map(|out| out.split('\0').filter_map(|e| e.split_once('\t')).filter(|(_, at)| *at == p).map(|(m, _)| m.split(' ').next().unwrap_or_default().to_string()).collect::<Vec<_>>());
+    let Ok(index) = modes(&["--literal-pathspecs", "ls-files", "-s", "-z", "--", p]) else { return true };
+    // R59-07: so does a failed read of the last commit, unless there is no commit yet.
+    let head = match modes(&["--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", p]) {
+        Ok(head) => head,
+        Err(_) if matches!(no_commit(worktree), Ok(true)) => Vec::new(),
+        Err(_) => return true,
+    };
+    index.iter().chain(&head).any(|m| m != "160000" && m != "040000")
+}
+
+/// R70-02: true when the repository has no commit yet. Only `rev-parse` ending with code 1 and
+/// printing nothing means that; any other failure is Git's words, never "no commit yet".
+/// R82-05: read through the same turn and time limit as every other short read.
+fn no_commit(worktree: &Path) -> Result<bool, String> {
+    let o = crate::git::read_exit(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree))?;
+    match o.status.code() {
+        Some(0) => Ok(false),
+        Some(1) if o.stdout.is_empty() && o.stderr.is_empty() => Ok(true),
+        _ => {
+            let e = String::from_utf8_lossy(&o.stderr).trim().to_string();
+            Err(if e.is_empty() { format!("git rev-parse --verify -q HEAD failed ({})", o.status) } else { e })
+        }
+    }
+}
+
+/// R82-02: the line Discard said in place of a whole call with a row that names the repository.
+const WHOLE: &str = "Kolux does not discard a whole folder at once. Pick the files instead.";
+
+/// R82-02: a row that is empty after `one_spelling` (`.`, `./`, `.\`) names the whole repository;
+/// the whole call is refused before any Git command or removal.
+fn not_whole(paths: &[String]) -> Result<(), String> {
+    if paths.iter().any(|p| p.is_empty()) {
+        Err(WHOLE.into())
+    } else {
+        Ok(())
+    }
+}
+
+/// R82-02: what Discard says about a row it leaves because it names a folder of tracked files.
+fn folder_line(p: &str) -> String {
+    format!("{} is a folder, so Kolux leaves it. Discard the files inside it instead.", p.trim_end_matches('/'))
+}
+
+/// R82-02: what the index and the last commit hold at and below each row (rows without a trailing
+/// `/`), read with one `ls-files` and (when `with_head`) one `ls-tree` per call, in chunks that stay
+/// well under the Windows command-line limit.
+#[derive(Default)]
+struct Kinds {
+    at: std::collections::HashSet<String>,
+    below: std::collections::HashSet<String>,
+    head_dir: std::collections::HashSet<String>,
+    head_file: std::collections::HashSet<String>,
+}
+
+impl Kinds {
+    /// A folder of tracked files: no file or gitlink at the row in the index or the last commit,
+    /// and a folder there in the last commit or files below it in the index.
+    fn folder(&self, p: &str) -> bool {
+        let p = p.trim_end_matches('/');
+        !self.at.contains(p) && !self.head_file.contains(p) && (self.head_dir.contains(p) || self.below.contains(p))
+    }
+}
+
+fn kinds(worktree: &Path, rows: &[&str], with_head: bool) -> Result<Kinds, String> {
+    let stop = |e: String| format!("Kolux could not ask Git what these rows are, so it stopped before changing them: {e}");
+    let wanted: std::collections::HashSet<&str> = rows.iter().copied().collect();
+    let mut k = Kinds::default();
+    let (mut chunks, mut chunk, mut size) = (Vec::new(), Vec::new(), 0);
+    for r in rows {
+        if size + r.len() > 8000 && !chunk.is_empty() {
+            chunks.push(std::mem::take(&mut chunk));
+            size = 0;
+        }
+        size += r.len() + 3;
+        chunk.push(*r);
+    }
+    chunks.push(chunk);
+    let entries = |out: Vec<u8>| String::from_utf8_lossy(&out).split('\0').filter_map(|e| e.split_once('\t').map(|(m, at)| (m.split(' ').next().unwrap_or_default().to_string(), at.to_string()))).collect::<Vec<_>>();
+    for chunk in &chunks {
+        let mut args = vec!["--literal-pathspecs", "ls-files", "-s", "-z", "--"];
+        args.extend(chunk);
+        for (_, at) in entries(output(&args, Some(worktree)).map_err(stop)?) {
+            for (i, _) in at.match_indices('/') {
+                if wanted.contains(&at[..i]) {
+                    k.below.insert(at[..i].to_string());
+                }
+            }
+            if wanted.contains(at.as_str()) {
+                k.at.insert(at);
+            }
+        }
+        if !with_head {
+            continue;
+        }
+        let mut args = vec!["--literal-pathspecs", "ls-tree", "-z", "HEAD", "--"];
+        args.extend(chunk);
+        let head = match output(&args, Some(worktree)) {
+            Ok(out) => entries(out),
+            Err(_) if matches!(no_commit(worktree), Ok(true)) => Vec::new(),
+            Err(e) => return Err(stop(e)),
+        };
+        for (mode, at) in head {
+            if wanted.contains(at.as_str()) {
+                if mode == "040000" {
+                    k.head_dir.insert(at);
+                } else {
+                    k.head_file.insert(at);
+                }
+            }
+        }
+    }
+    Ok(k)
+}
+
+/// R59-01 / R59-02: why Discard must leave row `p`, or nothing. A folder above it (below the
+/// worktree's root, never the root or above) that is a link would have Git write or delete in the
+/// folder it points at; one that is now a file would be deleted to make room.
+/// One `symlink_metadata` per folder not yet seen as real in this discard (`real`), no process; a
+/// missing folder ends the look (Git makes it again).
+// R70-06, accepted: a link made between this check and Git's write is not seen. Closing that needs
+// Git itself to refuse writing through a link (or a lock on the folders), which it does not offer.
+// F90-05: the untracked route's look at the row before `git clean` (R86-02) has the same accepted
+// window between the check and the write.
+fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<String>) -> Option<String> {
+    let row = p.trim_end_matches('/');
+    let parts: Vec<&str> = row.split('/').filter(|s| !s.is_empty() && *s != ".").collect();
+    // R86-01: Windows drops a trailing dot or space, so `sub.` opens `sub`: Git and the disk would
+    // read two names. Any part of the row (its own name included) ending so is left.
+    if cfg!(windows) && parts.iter().any(|s| s.ends_with('.') || s.ends_with(' ')) {
+        return Some(format!("{row} has a name that ends in a dot or a space. Windows reads that as another name, so Kolux leaves it. Rename or delete it with the tool that made it (WSL, for example), not in Explorer."));
+    }
+    let mut at = String::new();
+    for part in &parts[..parts.len().saturating_sub(1)] {
+        at = if at.is_empty() { part.to_string() } else { format!("{at}/{part}") };
+        if real.contains(&at) {
+            continue;
+        }
+        match fs::symlink_metadata(worktree.join(native(&at))) {
+            Ok(m) if m.is_symlink() => return Some(format!("{at} is a link, so Kolux leaves {row}. Remove the link by hand, then discard again.")),
+            Ok(m) if m.is_dir() => drop(real.insert(at.clone())),
+            Ok(_) => return Some(format!("{at} is now a file, so Kolux leaves {row}. Remove or move that file by hand, then discard again.")),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
+            Err(_) => return Some(unread(&at, row)),
+        }
+    }
+    None
+}
+
+/// What Discard says about a part `at` of row `row` that could not be read. R86-04: a failure, so
+/// it never holds the words of a row left on purpose.
+fn unread(at: &str, row: &str) -> String {
+    if at == row {
+        format!("{row} could not be read. Kolux did not change it.")
+    } else {
+        format!("{at} could not be read. Kolux did not change {row}.")
+    }
+}
+
+/// R86-01: on Windows one file or folder answers to more than one spelling (`SUB`, `sub.`, a
+/// short name such as `SUB~1`), and Git does not know that. Ok when every part of row `p` is
+/// spelled exactly as its folder's listing holds it, or when nothing stands there; otherwise the
+/// row is left. Each folder is listed once per call (`lists`). Off Windows Git may print another
+/// Unicode form of a name than the disk holds, so the rule is Windows only.
+fn on_disk_as_sent(worktree: &Path, p: &str, lists: &mut std::collections::HashMap<String, Option<std::collections::HashSet<std::ffi::OsString>>>) -> Result<(), String> {
+    if !cfg!(windows) {
+        return Ok(());
+    }
+    let row = p.trim_end_matches('/');
+    let mut at = String::new();
+    for part in row.split('/') {
+        let names = lists.entry(at.clone()).or_insert_with(|| fs::read_dir(worktree.join(native(&at))).ok().and_then(|d| d.map(|e| e.map(|e| e.file_name())).collect::<Result<_, _>>().ok()));
+        let Some(names) = names else {
+            let shown = if at.is_empty() { worktree.display().to_string() } else { at.clone() };
+            return Err(unread(&shown, row));
+        };
+        let next = if at.is_empty() { part.to_string() } else { format!("{at}/{part}") };
+        if !names.contains(std::ffi::OsStr::new(part)) {
+            return match fs::symlink_metadata(worktree.join(native(&next))) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(_) => Err(unread(&next, row)),
+                Ok(_) => Err(format!("{row} is not spelled the way it is on disk, so Kolux leaves it. Wait for the list to update, then discard again.")),
+            };
+        }
+        at = next;
+    }
+    Ok(())
+}
+
+/// R59-01 / R59-04: removes a link (a junction, a folder or file symlink) at row `p` itself,
+/// never what it points at. True when there was one; a failure names the row. R70-05: a row whose
+/// kind cannot be read (for a reason other than "missing") is left, never taken as "not a link".
+fn remove_link(worktree: &Path, p: &str, held: bool) -> Result<bool, String> {
+    if !is_link(worktree, p, held)? {
+        return Ok(false);
+    }
+    let p = p.trim_end_matches('/');
+    let full = worktree.join(native(p));
+    fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)).map(|_| true).map_err(|e| format!("{p}: {e}"))
+}
+
+/// R70-05 / R82-03: whether row `p` itself is a link, read only. A row whose kind cannot be read
+/// (for a reason other than "missing") is left, never taken as "not a link".
+/// F90-01 / F94-02: `held` is true when the index holds a file, link or submodule at exactly this
+/// row; Git then writes the same object Kolux removes, so the spelling walk is skipped.
+fn is_link(worktree: &Path, p: &str, held: bool) -> Result<bool, String> {
+    let p = p.trim_end_matches('/');
+    match fs::symlink_metadata(worktree.join(native(p))) {
+        // R86-01: a link counts only under the spelling the disk holds; `LNK` or `lnk.` is left.
+        Ok(m) if m.is_symlink() && held => Ok(true),
+        Ok(m) if m.is_symlink() => on_disk_as_sent(worktree, p, &mut Default::default()).map(|_| true),
+        Ok(_) => Ok(false),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(_) => Err(unread(p, p)),
+    }
+}
+
+/// F94-01 / F94-02 (rule D): row `p` is held only in the last commit (a staged deletion, or a
+/// staged rename's old half), so the index has no entry for it: a file or a link standing at its
+/// place, under any spelling the disk opens, is not the row's, and Discard writes over or removes
+/// neither. `Ok(None)`: the place is empty, or a real folder (the folder checks decide those).
+/// `Ok(Some(line))`: something stands there. Only looks.
+fn stands_in_place(worktree: &Path, p: &str) -> Result<Option<String>, String> {
+    let row = p.trim_end_matches('/');
+    match fs::symlink_metadata(worktree.join(native(row))) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(_) => Err(unread(row, row)),
+        Ok(m) if m.is_symlink() => Ok(Some(format!("A link stands where {row} would come back, so Kolux leaves {row} as it is. Remove the link by hand, then discard again."))),
+        Ok(m) if m.is_dir() => Ok(None),
+        Ok(_) => Ok(Some(format!("A file stands where {row} would come back, so Kolux leaves {row} as it is. Use Unstage to keep that file, or move it away and discard again."))),
+    }
+}
+
+/// F94-01, rule D's one exception: rows `p` and `other` are one disk entry (a rename that only
+/// changes letter case). One parent folder, last parts equal ignoring letter case but not the
+/// same, a plain file (not a link, not a folder) stands at `p`, and the disk's own name for it is
+/// exactly `other`'s last part. F96-02 / F96-01: the disk is asked, never the letters, so a name
+/// Windows keeps apart (a Kelvin sign beside a Latin `K`) or a link is never one entry. False on
+/// any error.
+fn one_entry(worktree: &Path, p: &str, other: &str) -> bool {
+    fn split(r: &str) -> (&str, &str) {
+        let r = r.trim_end_matches('/');
+        r.rsplit_once('/').unwrap_or(("", r))
+    }
+    let ((dir, name), (other_dir, other_name)) = (split(p), split(other));
+    if dir != other_dir || name == other_name || name.to_lowercase() != other_name.to_lowercase() {
+        return false;
+    }
+    let full = worktree.join(native(p.trim_end_matches('/')));
+    fs::symlink_metadata(&full).is_ok_and(|m| m.is_file()) && fs::canonicalize(&full).is_ok_and(|real| real.file_name().is_some_and(|n| n == other_name))
+}
+
+/// F94-01: a row let through as one disk entry with `other` is left when `other` is left.
+fn leave_pairs(pairs: &[(String, String)], left: &mut Vec<String>, said: &mut Vec<String>) {
+    for (row, other) in pairs {
+        if left.contains(other) && !left.contains(row) {
+            said.push(shares_place(row, other));
+            left.push(row.clone());
+        }
+    }
+}
+
+/// F94-01: what Discard says about a row it leaves because `other`, its one disk entry, is left.
+fn shares_place(row: &str, other: &str) -> String {
+    format!("{row} shares its place on disk with {other}, so Kolux leaves it too.")
+}
+
+/// F-02: what Discard says about a row it leaves because a folder now sits in its file's place.
+fn now_folder(p: &str) -> String {
+    format!("{} is now a folder, so Kolux leaves it. Remove or move the folder by hand, then discard again.", p.trim_end_matches('/'))
 }
 
 /// R-06 / N-01: what Discard says about a nested repository it leaves.
@@ -2783,26 +3221,182 @@ fn with_paths(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), St
 /// VIEW-067: throws away the changes in one section of the panel. Staged rows go back to the last
 /// commit in the index and on disk (so a staged new file is deleted), changed rows go back to what
 /// is staged, untracked rows are deleted. git clean only ever removes untracked files, so a tracked
-/// name sent as untracked is left alone.
+/// name sent as untracked is left alone. F94-01 / F94-02: a staged deletion or a rename's old file
+/// comes back only into an empty place; a file or a link standing there is left, and so is its row.
 pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), String> {
+    if paths.is_empty() {
+        return Err("Nothing to discard.".into());
+    }
+    let paths: &[String] = &one_spelling(paths);
+    not_whole(paths)?;
     check_paths(paths)?;
+    let rows: Vec<&str> = paths.iter().map(|p| p.trim_end_matches('/')).collect();
     match section {
-        "staged" => piped(worktree, &["--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
-        "changed" => piped(worktree, &["--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
+        "staged" | "changed" => {
+            let k = kinds(worktree, &rows, true)?;
+            // F90-01: one answer per row, for the check and the link step alike. F94-02: the index only.
+            let held = |r: &str| k.at.contains(r);
+            // F-02: a row whose file Git would write over a folder with something in it is left as
+            // it is and named; the other rows still go. R59-01/R59-02: so is a row under a link or a
+            // file where a folder was; a link at the row itself is removed (only the link) first.
+            let (mut said, mut rest, mut left, mut links) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            let mut real = std::collections::HashSet::new();
+            let mut pairs: Vec<(String, String)> = Vec::new();
+            // R82-04: this loop only looks (a row whose kind cannot be read is left); no link is
+            // removed until every check, the rename look-up included, is done.
+            for p in paths {
+                let row = p.trim_end_matches('/').to_string();
+                let mut why = left_why(worktree, p, &mut real).or_else(|| k.folder(p).then(|| folder_line(p))).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p)));
+                // F94-01 / F94-02 (rule D): a row only the last commit holds comes back only into an
+                // empty place, unless what stands there is a row of this call the index holds (one
+                // disk entry); that pair stays together (`leave_pairs`).
+                if why.is_none() && k.head_file.contains(&row) && !k.at.contains(&row) {
+                    match stands_in_place(worktree, &row) {
+                        Ok(Some(line)) => match rows.iter().find(|o| k.at.contains(**o) && one_entry(worktree, &row, o)) {
+                            Some(o) => pairs.push((row.clone(), o.to_string())),
+                            None => why = Some(line),
+                        },
+                        Ok(None) => {}
+                        Err(e) => why = Some(e),
+                    }
+                }
+                match why.map_or_else(|| is_link(worktree, p, held(&row)), Err) {
+                    Err(why) => {
+                        said.push(why);
+                        left.push(row);
+                    }
+                    Ok(link) => {
+                        if link {
+                            links.push(row);
+                        }
+                        rest.push(p.clone());
+                    }
+                }
+            }
+            // R59-06: a staged rename goes whole or not at all; looked up only when a row is left
+            // or a link is to be removed. R70-03: a status that cannot be read leaves every row; a
+            // picked partner gets its own line.
+            let mut halves: Vec<(String, String)> = Vec::new();
+            leave_pairs(&pairs, &mut left, &mut said);
+            if section == "staged" && (!left.is_empty() || !links.is_empty()) {
+                match status(worktree) {
+                    Ok(st) => {
+                        for c in st.staged {
+                            let Some(from) = c.from else { continue };
+                            halves.push((from.clone(), c.path.clone()));
+                            halves.push((c.path, from));
+                        }
+                        // F94-01: until nothing more is left, so a pair and a rename both stay whole.
+                        loop {
+                            let n = left.len();
+                            for (half, other) in &halves {
+                                if left.contains(other) && !left.contains(half) {
+                                    if rest.iter().any(|p| p.trim_end_matches('/') == half) {
+                                        said.push(format!("{half} is the other half of a rename, so Kolux leaves it too."));
+                                    }
+                                    left.push(half.clone());
+                                }
+                            }
+                            leave_pairs(&pairs, &mut left, &mut said);
+                            if left.len() == n {
+                                break;
+                            }
+                        }
+                        rest.retain(|p| !left.iter().any(|l| l == p.trim_end_matches('/')));
+                    }
+                    Err(e) => {
+                        said.push(format!("Kolux could not check for renamed files, so it stopped before changing them: {e}"));
+                        rest.clear();
+                    }
+                }
+            }
+            // R82-04: only now are links removed, and only for rows still going. A link that cannot
+            // be removed leaves its row and, in a staged rename, its other half.
+            let mut removed: Vec<String> = Vec::new();
+            for p in &links {
+                if left.contains(p) || !rest.iter().any(|r| r.trim_end_matches('/') == p) {
+                    continue;
+                }
+                match remove_link(worktree, p, held(p)) {
+                    Ok(_) => removed.push(p.clone()),
+                    Err(e) => {
+                        said.push(e);
+                        left.push(p.clone());
+                        for (half, _) in halves.iter().filter(|(_, other)| other == p) {
+                            if !left.contains(half) && rest.iter().any(|r| r.trim_end_matches('/') == half) {
+                                said.push(if removed.contains(half) {
+                                    format!("{half} is the other half of a rename, so Kolux leaves it too. Its link was already removed; what it pointed to is untouched.")
+                                } else {
+                                    format!("{half} is the other half of a rename, so Kolux leaves it too.")
+                                });
+                                left.push(half.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            rest.retain(|p| !left.iter().any(|l| l == p.trim_end_matches('/')));
+            let args: &[&str] = if section == "staged" {
+                &["-c", "submodule.recurse=false", "--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
+            } else {
+                &["-c", "submodule.recurse=false", "--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
+            };
+            if !rest.is_empty() || said.is_empty() {
+                if let Err(e) = piped(worktree, args, &rest) {
+                    said.push(e);
+                }
+            }
+            if said.is_empty() {
+                Ok(())
+            } else {
+                Err(said.join("\n"))
+            }
+        }
         "untracked" => {
+            // R59-01: a row under a link or a file where a folder was is left and named. R59-04: a
+            // row that is itself a link is removed by Kolux (the link only): git clean keeps a link
+            // to a repository without a word.
+            // R82-02: a folder row with tracked files below it is left whole (R86-02: only when a
+            // real folder stands there).
+            let k = kinds(worktree, &rows, false)?;
+            let (mut said, mut rows) = (Vec::new(), Vec::new());
+            let mut real = std::collections::HashSet::new();
+            let mut lists = std::collections::HashMap::new();
+            for p in paths {
+                if let Some(why) = left_why(worktree, p, &mut real) {
+                    said.push(why);
+                } else if let Err(why) = on_disk_as_sent(worktree, p, &mut lists) {
+                    // R86-01: `git clean` is given a row only under the spelling the disk holds.
+                    said.push(why);
+                } else if k.below.contains(p.trim_end_matches('/')) && fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/')))).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
+                    // R86-02: only a real folder gets the folder line; a file or a link standing
+                    // where a tracked folder was goes on, as the file or link it is.
+                    said.push(folder_line(p));
+                } else {
+                    match remove_link(worktree, p, false) {
+                        Ok(true) => {}
+                        Ok(false) => rows.push(p),
+                        Err(e) => said.push(e),
+                    }
+                }
+            }
             // R-06: git clean -f leaves a nested repository without a word; say so, and clean the rest.
-            let (nested, rest): (Vec<&String>, Vec<&String>) = paths.iter().partition(|p| own_repo_at(worktree, p));
+            let (nested, rest): (Vec<&String>, Vec<&String>) = rows.into_iter().partition(|p| own_repo_at(worktree, p));
             // ponytail: git clean reads no list from its input, so the names go on the command line
-            // in chunks that stay well under the Windows command-line limit.
+            // in chunks that stay well under the Windows command-line limit. R59-05: a chunk that
+            // fails is named and the later chunks still go.
             for chunk in rest.chunks(100) {
                 let mut args = vec!["--literal-pathspecs", "clean", "-f", "-d", "-q", "--"];
                 args.extend(chunk.iter().map(|p| p.as_str()));
-                run(&args, Some(worktree))?;
+                if let Err(e) = run(&args, Some(worktree)) {
+                    said.push(e);
+                }
             }
-            if nested.is_empty() {
+            said.extend(nested.iter().map(|p| own_repo(p)));
+            if said.is_empty() {
                 return Ok(());
             }
-            Err(nested.iter().map(|p| own_repo(p)).collect::<Vec<_>>().join("\n"))
+            Err(said.join("\n"))
         }
         _ => Err(format!("the {section} section cannot be discarded")),
     }
@@ -2855,7 +3449,7 @@ pub async fn scm_count(worktree: String) -> Result<usize, String> {
 /// PROJ-062: how many files differ from HEAD in `worktree`, each path once wherever git lists it. The same
 /// status read the panel makes, without the numstat diff, the untracked line counts or the upstream look.
 fn count(worktree: &Path) -> Result<usize, String> {
-    let out = output(&["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
+    let out = output(&["-c", "status.renames=true", "status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
     Ok(count_paths(&parse_status(&String::from_utf8_lossy(&out))))
 }
 

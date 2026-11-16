@@ -1714,6 +1714,24 @@ fn run_within_raw(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration)
 /// git with a deadline, stdout byte for byte. Past the deadline git and every process it started
 /// are ended (GIT-070: the whole tree, not just git) and the error names the wait.
 fn bytes_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -> Result<Vec<u8>, String> {
+    let out = finished_within(args, cwd, limit)?;
+    if out.status.success() {
+        Ok(out.stdout)
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(if err.is_empty() { format!("git {} failed ({})", args.join(" "), out.status) } else { err })
+    }
+}
+
+/// R82-05: a short read through the same turn and time limit as `output`, with git's exit code and
+/// both streams kept, so a caller can tell one particular failure from any other.
+pub(crate) fn read_exit(args: &[&str], cwd: Option<&Path>) -> Result<std::process::Output, String> {
+    let _turn = cwd.map(|d| LIMITER.enter(d, FOREGROUND.get()));
+    finished_within(args, cwd, SHORT_READ_LIMIT)
+}
+
+/// `bytes_within` before the exit code is read: the error is only "could not run" or the wait.
+fn finished_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -> Result<std::process::Output, String> {
     use std::io::Read;
     use std::process::Stdio;
     let _changed = WorktreeChange::watch(args);
@@ -1750,12 +1768,7 @@ fn bytes_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -
         }
     };
     let err = err.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now())).unwrap_or_default();
-    if status.success() {
-        Ok(out)
-    } else {
-        let err = String::from_utf8_lossy(&err).trim().to_string();
-        Err(if err.is_empty() { format!("git {} failed ({status})", args.join(" ")) } else { err })
-    }
+    Ok(std::process::Output { status, stdout: out, stderr: err })
 }
 
 /// Runs git and returns its stdout, trimmed; a non-zero exit becomes an error carrying stderr.

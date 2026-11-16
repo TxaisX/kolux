@@ -405,10 +405,10 @@ fn t033g_a_known_base_skips_the_second_status_and_no_shared_history_is_labelled_
     let with = with.unwrap();
     assert_eq!((with.against.as_str(), with.since.as_str(), with.note.as_deref()), (known.as_str(), snapshot.as_str(), None));
     assert!(!argvs.is_empty(), "trace2 log missing");
-    assert_eq!(argvs.iter().filter(|a| a.starts_with("status")).count(), 0, "{argvs:?}");
+    assert_eq!(argvs.iter().filter(|a| a.split(' ').any(|w| w == "status")).count(), 0, "{argvs:?}");
     // Without it (first read before any status arrived) status finds the base, as before.
     let argvs = git_argvs(|| assert_eq!(base_changes(&dir, None, None).unwrap().since, snapshot));
-    assert!(argvs.iter().any(|a| a.starts_with("status")), "{argvs:?}");
+    assert!(argvs.iter().any(|a| a.split(' ').any(|w| w == "status")), "{argvs:?}");
     // A pin still wins over the known base; option-looking text is never handed to git.
     assert_eq!(base_changes(&dir, Some("feature"), Some(&known)).unwrap().against, "feature");
     let argvs = git_argvs(|| assert_eq!(base_changes(&dir, Some("--output=x"), Some("-x")).map(|b| b.against).ok(), status(&dir).unwrap().base));
@@ -2817,6 +2817,518 @@ fn n02_a_nested_repo_in_the_pick_does_not_stop_the_other_rows() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// F-02 set-up: committed `foo` and `bar.txt`; `foo` deleted (with `git rm` when `staged`) and a
+/// folder with one file put in its place, its own repository when `nested`; `bar.txt` changed
+/// (and staged when `staged`), the second row of the pick.
+fn folder_in_a_files_place(name: &str, nested: bool, staged: bool) -> PathBuf {
+    let dir = temp_repo(name);
+    commit_file(&dir, "foo", "f\n");
+    commit_file(&dir, "bar.txt", "b\n");
+    if staged {
+        plain(&["rm", "-q", "foo"], &dir);
+    } else {
+        fs::remove_file(dir.join("foo")).unwrap();
+    }
+    fs::create_dir(dir.join("foo")).unwrap();
+    if nested {
+        plain(&["init", "-q", "-b", "main"], &dir.join("foo"));
+    }
+    fs::write(dir.join("foo").join("work.txt"), "unpushed\n").unwrap();
+    fs::write(dir.join("bar.txt"), "changed\n").unwrap();
+    if staged {
+        plain(&["add", "bar.txt"], &dir);
+    }
+    dir
+}
+
+/// F-02: a folder that took a tracked file's place is never removed by Discard, on any route:
+/// the changed and staged sections and the section-free discard. The row is left as it was and
+/// named; the other row of the same pick is still put back.
+#[test]
+fn f02_discard_never_removes_a_folder_that_took_a_tracked_files_place() {
+    let said_foo = "foo is now a folder, so Kolux leaves it. Remove or move the folder by hand, then discard again.";
+    for nested in [true, false] {
+        for route in ["changed", "staged", "paths-changed", "paths-staged"] {
+            let staged = route.ends_with("staged");
+            let dir = folder_in_a_files_place(&format!("f02-{route}-{nested}"), nested, staged);
+            let rows = vec!["foo".to_string(), "bar.txt".to_string()];
+            let result = match route {
+                "changed" | "staged" => discard(&dir, route, &rows),
+                _ => discard_paths(&dir, &rows),
+            };
+            let what = format!("{route}, nested {nested}");
+            assert_eq!(result.expect_err(&what), said_foo, "{what}");
+            assert_eq!(fs::read_to_string(dir.join("foo").join("work.txt")).unwrap(), "unpushed\n", "{what}: the folder's file is kept");
+            assert_eq!(dir.join("foo").join(".git").is_dir(), nested, "{what}: a nested repository keeps its history");
+            assert_eq!(fs::read_to_string(dir.join("bar.txt")).unwrap(), "b\n", "{what}: the other row is put back");
+            if staged {
+                let st = status(&dir).unwrap();
+                assert!(st.staged.iter().any(|c| c.path == "foo" && c.status == "D"), "{what}: foo is still a staged deletion: {st:?}");
+            }
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+}
+
+/// F-02: an empty folder in a tracked file's place is left to Git, which removes it and writes
+/// the file back: nothing is lost with it.
+#[test]
+fn f02_an_empty_folder_in_a_tracked_files_place_gives_the_file_back() {
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("f02-empty-{route}"));
+        commit_file(&dir, "foo", "f\n");
+        fs::remove_file(dir.join("foo")).unwrap();
+        fs::create_dir(dir.join("foo")).unwrap();
+        let rows = vec!["foo".to_string()];
+        let result = if route == "changed" { discard(&dir, "changed", &rows) } else { discard_paths(&dir, &rows) };
+        result.unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!(fs::read_to_string(dir.join("foo")).unwrap(), "f\n", "{route}: the file is back");
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+/// F-01: one removal that fails (a file held open by another program) does not stop the rest,
+/// and every line already collected comes back with it.
+#[cfg(windows)]
+#[test]
+fn f01_one_failed_removal_does_not_stop_the_rest_or_drop_what_was_said() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let (dir, inner) = staged_inner_repo("f01-held");
+    let older = std::time::SystemTime::now() - std::time::Duration::from_secs(60);
+    for name in ["a.txt", "b.txt", "c.txt"] {
+        fs::write(dir.join(name), "new\n").unwrap();
+        // Older than the index, so git never has to open the held file to compare it.
+        fs::File::options().write(true).open(dir.join(name)).unwrap().set_modified(older).unwrap();
+    }
+    plain(&["add", "a.txt", "b.txt", "c.txt"], &dir);
+    let held = fs::File::options().read(true).share_mode(0).open(dir.join("b.txt")).unwrap();
+    let rows: Vec<String> = ["a.txt", "b.txt", "inner", "c.txt"].iter().map(|s| s.to_string()).collect();
+    let result = discard_paths(&dir, &rows);
+    drop(held);
+    let said = result.expect_err("the held file and the kept repository are named");
+    let lines: Vec<&str> = said.lines().collect();
+    assert_eq!(lines.len(), 2, "{said}");
+    assert!(lines.iter().any(|l| l.starts_with("b.txt: ")), "{said}");
+    assert!(lines.contains(&"inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to."), "{said}");
+    assert!(!dir.join("a.txt").exists() && !dir.join("c.txt").exists(), "the other two files are gone");
+    assert!(inner.join(".git").is_dir(), "the nested repository keeps its history");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// F-03: a `submodule.recurse=true` setting does not make Discard write inside a submodule; work
+/// in it that was not committed stays. The setting is the test repository's own, never global.
+#[test]
+fn f03_discard_never_writes_inside_a_submodule_even_when_git_is_set_to_recurse() {
+    let lib = temp_repo("f03-lib");
+    let top = temp_repo("f03-top");
+    let lib_url = lib.to_string_lossy().replace('\\', "/");
+    plain(&["-c", "protocol.file.allow=always", "submodule", "add", "-q", &lib_url, "sub"], &top);
+    plain(&["commit", "-q", "-m", "add sub"], &top);
+    let inner = top.join("sub");
+    run(&["config", "user.email", "test@example.com"], Some(&inner)).unwrap();
+    run(&["config", "user.name", "Kolux test"], Some(&inner)).unwrap();
+    commit_file(&inner, "x.txt", "x\n");
+    plain(&["add", "sub"], &top);
+    fs::write(inner.join("README.md"), "uncommitted\n").unwrap();
+    plain(&["config", "submodule.recurse", "true"], &top);
+    let result = discard(&top, "staged", &["sub".to_string()]);
+    assert_eq!(fs::read_to_string(inner.join("README.md")).unwrap(), "uncommitted\n", "the work inside the submodule is kept");
+    assert!(inner.join("x.txt").exists(), "the submodule's new commit is still checked out");
+    // The row still reaches git (a submodule's folder is not kept as a file's place): it is unstaged.
+    result.unwrap();
+    assert!(status(&top).unwrap().staged.is_empty(), "the submodule's new commit is no longer staged");
+    for d in [&lib, &top] {
+        let _ = fs::remove_dir_all(d);
+    }
+}
+
+/// F-04: a staged new link to a repository folder is removed as a link, not kept as "its own Git
+/// repository"; the folder it points at and its `.git` are never touched.
+#[test]
+fn f04_a_staged_link_to_a_repository_folder_is_removed_as_a_link() {
+    let dir = temp_repo("f04-link");
+    run(&["config", "core.symlinks", "true"], Some(&dir)).unwrap();
+    let target = temp_repo("f04-target");
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(&target, dir.join("ln"));
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_dir(&target, dir.join("ln"));
+    if let Err(e) = made {
+        eprintln!("f04: skipped, a link could not be made here ({e})");
+        for d in [&dir, &target] {
+            let _ = fs::remove_dir_all(d);
+        }
+        return;
+    }
+    plain(&["add", "ln"], &dir);
+    assert_eq!(paths(&status(&dir).unwrap().staged), ["ln"], "the link is staged");
+    discard_paths(&dir, &["ln".to_string()]).unwrap();
+    assert!(fs::symlink_metadata(dir.join("ln")).is_err(), "the link is removed");
+    assert!(target.join(".git").is_dir() && target.join("README.md").exists(), "the folder it pointed at is whole");
+    for d in [&dir, &target] {
+        let _ = fs::remove_dir_all(d);
+    }
+}
+
+/// R59-01: removes the test's junctions (the links only, never what they point at) and then its
+/// folders, also when an assert fails.
+#[cfg(windows)]
+struct LinksThenFolders(Vec<PathBuf>, Vec<PathBuf>);
+
+#[cfg(windows)]
+impl Drop for LinksThenFolders {
+    fn drop(&mut self) {
+        for link in &self.0 {
+            if fs::symlink_metadata(link).is_ok_and(|m| m.is_symlink()) {
+                let _ = fs::remove_dir(link);
+            }
+        }
+        for dir in &self.1 {
+            let _ = fs::remove_dir_all(dir);
+        }
+    }
+}
+
+/// A junction (a Windows folder link, needs no special right) at `link` pointing at `target`.
+#[cfg(windows)]
+fn junction(link: &Path, target: &Path) {
+    let out = quiet("cmd").args(["/c", "mklink", "/J"]).arg(link).arg(target).output().unwrap();
+    assert!(out.status.success(), "mklink /J: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(fs::symlink_metadata(link).unwrap().is_symlink(), "Rust sees the junction as a link");
+}
+
+/// A folder of the test's own, beside its repository, for a junction to point at.
+fn outside_folder(name: &str) -> PathBuf {
+    let out = std::env::temp_dir().join(format!("kolux-scm-{name}-out-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&out);
+    fs::create_dir_all(&out).unwrap();
+    out
+}
+
+fn by_route(dir: &Path, route: &str, rows: &[&str]) -> Result<(), String> {
+    let rows: Vec<String> = rows.iter().map(|s| s.to_string()).collect();
+    match route {
+        "paths" => discard_paths(dir, &rows),
+        _ => discard(dir, route, &rows),
+    }
+}
+
+/// R59-01: a junction where a tracked file was is removed as a link before Git writes the file
+/// back; the folder it points at keeps its files, on every route. F94-02: on the staged route the
+/// row is a staged deletion (the index no longer holds it), so the junction is left (rule D).
+/// R70-07: the "paths" route pins behaviour (it passed before R59 too); it is not a regression test.
+#[cfg(windows)]
+#[test]
+fn r59_a_junction_in_a_tracked_files_place_is_removed_as_a_link_and_its_target_kept() {
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r59a-{route}"));
+        let out = outside_folder(&format!("r59a-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("foo")], vec![dir.clone(), out.clone()]);
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        commit_file(&dir, "foo", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "foo"], &dir);
+        }
+        fs::remove_file(dir.join("foo")).unwrap();
+        junction(&dir.join("foo"), &out);
+        let result = by_route(&dir, route, &["foo"]);
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the junction's target keeps its file");
+        if route == "staged" {
+            // F94-02 (rule D): the index no longer holds foo, so the junction is not the row's.
+            assert_eq!(result, Err("A link stands where foo would come back, so Kolux leaves foo as it is. Remove the link by hand, then discard again.".to_string()));
+            assert!(fs::symlink_metadata(dir.join("foo")).is_ok_and(|m| m.is_symlink()), "staged: the junction stays");
+            continue;
+        }
+        result.unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!(fs::read_to_string(dir.join("foo")).unwrap(), "f\n", "{route}: foo is the committed file again");
+    }
+}
+
+/// R59-01: a junction where a tracked folder was: nothing is written or deleted through it, on
+/// every route, and the row is named.
+#[cfg(windows)]
+#[test]
+fn r59_nothing_is_written_or_deleted_through_a_junction_at_a_parent_folder() {
+    for route in ["changed", "staged", "paths", "untracked", "paths-untracked"] {
+        let dir = temp_repo(&format!("r59b-{route}"));
+        let out = outside_folder(&format!("r59b-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("d")], vec![dir.clone(), out.clone()]);
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d/f.txt", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "d/f.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        junction(&dir.join("d"), &out);
+        let row = if route.ends_with("untracked") { "d/p.txt" } else { "d/f.txt" };
+        let result = by_route(&dir, route.trim_end_matches("-untracked"), &[row]);
+        assert_eq!(fs::read_to_string(out.join("f.txt")).ok().as_deref(), Some("mine\n"), "{route}: the target's f.txt is not written");
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the target's p.txt is not deleted");
+        assert_eq!(result.expect_err(route), format!("d is a link, so Kolux leaves {row}. Remove the link by hand, then discard again."), "{route}");
+    }
+}
+
+/// R59-02: a plain file where a tracked folder was is never deleted to make room for the folder.
+#[test]
+fn r59_a_file_where_a_tracked_folder_was_is_never_deleted() {
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r59c-{route}"));
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d/f.txt", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "d/f.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(dir.join("d"), "my notes\n").unwrap();
+        let result = by_route(&dir, route, &["d/f.txt"]);
+        let notes = fs::read_to_string(dir.join("d")).ok();
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(notes.as_deref(), Some("my notes\n"), "{route}: the file d is kept");
+        assert_eq!(result.expect_err(route), "d is now a file, so Kolux leaves d/f.txt. Remove or move that file by hand, then discard again.", "{route}");
+    }
+}
+
+/// R59-01: a worktree reached through a junction works as before: only folders below the
+/// worktree's own root are looked at.
+#[cfg(windows)]
+#[test]
+fn r59_a_worktree_reached_through_a_junction_is_discarded_as_before() {
+    let outer = outside_folder("r59d");
+    let repo = temp_repo("r59d");
+    fs::create_dir(outer.join("real")).unwrap();
+    fs::rename(&repo, outer.join("real").join("repo")).unwrap();
+    let _clean = LinksThenFolders(vec![outer.join("via")], vec![outer.clone()]);
+    junction(&outer.join("via"), &outer.join("real"));
+    let worktree = outer.join("via").join("repo");
+    fs::write(worktree.join("README.md"), "changed\n").unwrap();
+    for route in ["changed", "paths"] {
+        fs::write(worktree.join("README.md"), "changed\n").unwrap();
+        by_route(&worktree, route, &["README.md"]).unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!(fs::read_to_string(worktree.join("README.md")).unwrap(), "hello\n", "{route}");
+    }
+}
+
+/// R59-01/R59-02, pinned: a row under real folders is discarded, and a row whose whole folder
+/// tree was deleted comes back; one row left among others leaves only its own sentence.
+#[test]
+fn r59_rows_under_real_or_missing_folders_still_go_and_a_left_row_does_not_stop_the_rest() {
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("r59e-{route}"));
+        fs::create_dir_all(dir.join("a").join("b")).unwrap();
+        fs::create_dir_all(dir.join("x").join("y")).unwrap();
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "a/b/c.txt", "c\n");
+        commit_file(&dir, "x/y/z.txt", "z\n");
+        commit_file(&dir, "d/f.txt", "f\n");
+        fs::write(dir.join("a").join("b").join("c.txt"), "changed\n").unwrap();
+        fs::remove_dir_all(dir.join("x")).unwrap();
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(dir.join("d"), "my notes\n").unwrap();
+        let ok = by_route(&dir, route, &["a/b/c.txt", "x/y/z.txt"]);
+        fs::write(dir.join("README.md"), "changed\n").unwrap();
+        let mixed = by_route(&dir, route, &["d/f.txt", "README.md"]);
+        let read = |p: &str| fs::read_to_string(dir.join(p)).ok();
+        let (c, z, d, readme) = (read("a/b/c.txt"), read("x/y/z.txt"), read("d"), read("README.md"));
+        let _ = fs::remove_dir_all(&dir);
+        ok.unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!((c.as_deref(), z.as_deref()), (Some("c\n"), Some("z\n")), "{route}: both rows are put back");
+        assert_eq!(mixed.expect_err(route), "d is now a file, so Kolux leaves d/f.txt. Remove or move that file by hand, then discard again.", "{route}");
+        assert_eq!((d.as_deref(), readme.as_deref()), (Some("my notes\n"), Some("hello\n")), "{route}: d is kept, the other row is put back");
+    }
+}
+
+/// R59-04: an untracked junction is removed as a link, also one that points at a repository
+/// (git clean keeps that one without a word); the folder it points at is whole.
+/// R70-07: ("untracked", false) pins behaviour (git clean removed only the junction before R59 too).
+#[cfg(windows)]
+#[test]
+fn r59_an_untracked_junction_is_removed_and_its_target_kept() {
+    // A junction to a plain folder is listed by its files (`ln/p.txt`), so through `discard_paths`
+    // its rows are left by the link check (see the parent-folder test); only the repository kind
+    // is listed as `ln/`.
+    for (route, repo) in [("untracked", true), ("untracked", false), ("paths", true)] {
+        let name = format!("r59g-{route}-{repo}");
+        let dir = temp_repo(&name);
+        let out = outside_folder(&name);
+        let _clean = LinksThenFolders(vec![dir.join("ln")], vec![dir.clone(), out.clone()]);
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        if repo {
+            plain(&["init", "-q"], &out);
+        }
+        junction(&dir.join("ln"), &out);
+        let row = if route == "paths" { "ln" } else { "ln/" };
+        let result = by_route(&dir, route, &[row]);
+        assert!(out.join("p.txt").is_file() && out.join(".git").is_dir() == repo, "{route} {repo}: the target is whole");
+        result.unwrap_or_else(|e| panic!("{route} {repo}: {e}"));
+        assert!(fs::symlink_metadata(dir.join("ln")).is_err(), "{route} {repo}: the junction is gone");
+    }
+}
+
+/// R59-05: in the untracked section, one chunk of git clean that fails (a file held open by
+/// another program) does not stop the later chunks, and the nested-repository line still comes.
+#[cfg(windows)]
+#[test]
+fn r59_one_failed_clean_chunk_does_not_stop_the_rest_or_drop_the_nested_line() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = temp_repo("r59h");
+    let mut rows: Vec<String> = (0..120).map(|i| format!("u{i:03}.txt")).collect();
+    for row in &rows {
+        fs::write(dir.join(row), "new\n").unwrap();
+    }
+    fs::create_dir(dir.join("inner")).unwrap();
+    plain(&["init", "-q"], &dir.join("inner"));
+    rows.push("inner/".to_string());
+    let held = fs::File::options().read(true).share_mode(0).open(dir.join("u005.txt")).unwrap();
+    let result = discard(&dir, "untracked", &rows);
+    drop(held);
+    let (late_gone, inner_kept) = (!dir.join("u110.txt").exists(), dir.join("inner").join(".git").is_dir());
+    let _ = fs::remove_dir_all(&dir);
+    let said = result.expect_err("the held file and the nested repository are named");
+    assert!(late_gone, "a row from the second chunk is cleaned: {said}");
+    assert!(inner_kept, "the nested repository keeps its history");
+    assert!(said.lines().any(|l| l.contains("u005.txt")), "git's line about the held file: {said}");
+    assert!(said.lines().any(|l| l == "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to."), "{said}");
+}
+
+/// R59-07: when the last commit cannot be read, a folder in a tracked file's place is kept; a
+/// repository with no commit yet is not such a failure, so a nested repository there is still
+/// named as one (not as "now a folder").
+#[test]
+fn r59_a_failed_read_of_the_last_commit_keeps_the_folder_but_no_commit_yet_does_not() {
+    let dir = temp_repo("r59i");
+    commit_file(&dir, "foo", "f\n");
+    plain(&["rm", "--cached", "-q", "foo"], &dir);
+    fs::remove_file(dir.join("foo")).unwrap();
+    fs::create_dir(dir.join("foo")).unwrap();
+    fs::write(dir.join("foo").join("work.txt"), "unpushed\n").unwrap();
+    // The last commit's tree object is taken away, so `ls-tree HEAD` fails while HEAD still names a commit.
+    let tree = run(&["rev-parse", "HEAD^{tree}"], Some(&dir)).unwrap();
+    let object = dir.join(".git").join("objects").join(&tree[..2]).join(&tree[2..]);
+    let mut perms = fs::metadata(&object).unwrap().permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
+    perms.set_readonly(false);
+    fs::set_permissions(&object, perms).unwrap();
+    fs::remove_file(&object).unwrap();
+    let kept = folder_in_place(&dir, "foo");
+    let _ = fs::remove_dir_all(&dir);
+    assert!(kept, "a failed read of the last commit keeps the folder");
+
+    let fresh = std::env::temp_dir().join(format!("kolux-scm-r59i-fresh-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&fresh);
+    fs::create_dir_all(fresh.join("inner")).unwrap();
+    plain(&["init", "-q"], &fresh);
+    plain(&["init", "-q"], &fresh.join("inner"));
+    fs::write(fresh.join("inner").join("a.txt"), "a\n").unwrap();
+    let result = discard_paths(&fresh, &["inner/".to_string()]);
+    let _ = fs::remove_dir_all(&fresh);
+    assert_eq!(result.expect_err("named"), "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
+}
+
+/// R59-06: when one half of a staged rename is left, the other half is left too. R70-03: and
+/// gets its own line saying why.
+#[test]
+fn r59_a_staged_rename_is_left_whole_when_one_half_is_left() {
+    let dir = temp_repo("r59j");
+    commit_file(&dir, "a.txt", "a\n");
+    plain(&["mv", "a.txt", "b.txt"], &dir);
+    fs::create_dir(dir.join("a.txt")).unwrap();
+    fs::write(dir.join("a.txt").join("x.txt"), "x\n").unwrap();
+    let result = discard(&dir, "staged", &["a.txt".to_string(), "b.txt".to_string()]);
+    let b = fs::read_to_string(dir.join("b.txt")).ok();
+    let st = status(&dir).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(result.expect_err("named"), "a.txt is now a folder, so Kolux leaves it. Remove or move the folder by hand, then discard again.\nb.txt is the other half of a rename, so Kolux leaves it too.");
+    assert_eq!(b.as_deref(), Some("a\n"), "the new half is kept on disk");
+    assert!(st.staged.iter().any(|c| c.path == "b.txt" && c.from.as_deref() == Some("a.txt")), "the rename is still staged: {st:?}");
+}
+
+/// R70-02: a last commit that cannot be read for a reason other than "no commit yet" (here a
+/// broken list of branch names, so `rev-parse` fails with code 128) keeps the folder.
+#[test]
+fn r70_a_broken_branch_list_is_not_read_as_no_commit_yet() {
+    let dir = temp_repo("r70f");
+    commit_file(&dir, "foo", "f\n");
+    plain(&["rm", "--cached", "-q", "foo"], &dir);
+    fs::remove_file(dir.join("foo")).unwrap();
+    fs::create_dir(dir.join("foo")).unwrap();
+    fs::write(dir.join("foo").join("work.txt"), "unpushed\n").unwrap();
+    plain(&["pack-refs", "--all"], &dir);
+    let refs = dir.join(".git").join("packed-refs");
+    fs::write(&refs, fs::read_to_string(&refs).unwrap() + "garbage line\n").unwrap();
+    let kept = folder_in_place(&dir, "foo");
+    let _ = fs::remove_dir_all(&dir);
+    assert!(kept, "a broken branch list is not \"no commit yet\": the folder is kept");
+}
+
+/// R70-07: a link two levels up (a real folder `a` holding a junction `b`) is found like one
+/// right above the row, on every route. Coverage: the walk already went this far before job 77.
+#[cfg(windows)]
+#[test]
+fn r70_a_junction_two_levels_up_is_never_written_through() {
+    for route in ["changed", "untracked", "paths", "paths-untracked"] {
+        let name = format!("r70b-{route}");
+        let dir = temp_repo(&name);
+        let out = outside_folder(&name);
+        let _clean = LinksThenFolders(vec![dir.join("a").join("b")], vec![dir.clone(), out.clone()]);
+        fs::create_dir_all(dir.join("a").join("b")).unwrap();
+        commit_file(&dir, "a/b/f.txt", "f\n");
+        fs::remove_dir_all(dir.join("a").join("b")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        junction(&dir.join("a").join("b"), &out);
+        let row = if route.ends_with("untracked") { "a/b/p.txt" } else { "a/b/f.txt" };
+        let result = by_route(&dir, route.trim_end_matches("-untracked"), &[row]);
+        assert_eq!(fs::read_to_string(out.join("f.txt")).ok().as_deref(), Some("mine\n"), "{route}: the target's f.txt is not written");
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the target's p.txt is not deleted");
+        assert_eq!(result.expect_err(route), format!("a/b is a link, so Kolux leaves {row}. Remove the link by hand, then discard again."), "{route}");
+    }
+}
+
+/// R70-05: a row whose kind cannot be read (here a name Windows refuses to look up) is left and
+/// named, never handed to Git as "not a link".
+#[cfg(windows)]
+#[test]
+fn r70_a_row_that_cannot_be_read_is_left_not_handed_to_git() {
+    for route in ["changed", "staged", "untracked", "paths"] {
+        let dir = temp_repo(&format!("r70e-{route}"));
+        let result = by_route(&dir, route, &["x?y.txt"]);
+        let _ = fs::remove_dir_all(&dir);
+        // R86-04: a failure, so it does not hold the words of a row left on purpose.
+        assert_eq!(result.expect_err(route), "x?y.txt could not be read. Kolux did not change it.", "{route}");
+    }
+}
+
+/// R70-01: on Windows a row spelled with `\` is checked like the same row spelled with `/`:
+/// nothing is written or deleted through a junction above it, and it is left with the same line.
+#[cfg(windows)]
+#[test]
+fn r70_a_row_spelled_with_backslashes_is_checked_like_one_with_slashes() {
+    for route in ["changed", "staged", "paths", "untracked", "paths-untracked"] {
+        let name = format!("r70a-{route}");
+        let dir = temp_repo(&name);
+        let out = outside_folder(&name);
+        let _clean = LinksThenFolders(vec![dir.join("d")], vec![dir.clone(), out.clone()]);
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d/f.txt", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "d/f.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        junction(&dir.join("d"), &out);
+        let file = if route.ends_with("untracked") { "p.txt" } else { "f.txt" };
+        let route = route.trim_end_matches("-untracked");
+        let back = by_route(&dir, route, &[&format!("d\\{file}")]);
+        assert_eq!(fs::read_to_string(out.join("f.txt")).ok().as_deref(), Some("mine\n"), "{route} {file}: the target's f.txt is not written");
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route} {file}: the target's p.txt is not deleted");
+        let slash = by_route(&dir, route, &[&format!("d/{file}")]);
+        assert_eq!(back.expect_err(route), slash.expect_err(route), "{route} {file}: the same line as the / spelling");
+    }
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {
@@ -2904,4 +3416,880 @@ fn t779c_source_control_writes_in_an_untrusted_filter_repo_are_refused() {
     stage(&dir, &["loose.txt".to_string()], true).unwrap();
     assert!(index_list(&dir).contains("loose.txt"));
     let _ = fs::remove_dir_all(&dir);
+}
+
+/// R82-01: a row spelled `./foo`, `sub//foo` or `sub/./foo` is checked as `foo` or `sub/foo`:
+/// the folder with a file in it that took the tracked file's place is kept on every route, and
+/// the line names the clean spelling.
+#[test]
+fn r82_a_dot_or_doubled_spelling_keeps_the_folder() {
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r82a-{route}"));
+        fs::create_dir(dir.join("sub")).unwrap();
+        commit_file(&dir, "foo", "f\n");
+        commit_file(&dir, "sub/foo", "s\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "foo", "sub/foo"], &dir);
+        }
+        for at in ["foo", "sub/foo"] {
+            fs::remove_file(dir.join(at)).unwrap();
+            fs::create_dir(dir.join(at)).unwrap();
+            fs::write(dir.join(at).join("keep.txt"), "mine\n").unwrap();
+        }
+        for (row, clean) in [("./foo", "foo"), ("sub//foo", "sub/foo"), ("sub/./foo", "sub/foo")] {
+            let said = by_route(&dir, route, &[row]);
+            if fs::read_to_string(dir.join(clean).join("keep.txt")).ok().as_deref() != Some("mine\n") {
+                wrong.push(format!("{route} {row}: {clean}/keep.txt is gone, said {said:?}"));
+                let _ = fs::remove_file(dir.join(clean));
+                let _ = fs::create_dir_all(dir.join(clean));
+                fs::write(dir.join(clean).join("keep.txt"), "mine\n").unwrap();
+            } else if said != Err(now_folder(clean)) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-01: what the clean-up makes of a rooted, climbing or prefixed row, and that each is still
+/// refused on every Discard route with nothing changed.
+#[test]
+fn r82_a_rooted_or_climbing_row_is_still_refused() {
+    let dir = temp_repo("r82b");
+    fs::create_dir(dir.join("d")).unwrap();
+    commit_file(&dir, "d/f", "f\n");
+    fs::write(dir.join("d").join("f"), "changed\n").unwrap();
+    fs::write(dir.join("u.txt"), "u\n").unwrap();
+    let mut bad = vec![("/x", "/x"), ("d/../d/f", "d/../d/f"), ("./../x", "../x")];
+    if cfg!(windows) {
+        bad.extend([("C:d\\f", "C:d/f"), ("d:stream", "d:stream"), ("\\\\?\\x", "//?/x"), ("\\\\.\\x", "//./x"), (".\\..\\x", "../x")]);
+    }
+    let mut wrong = Vec::new();
+    for (row, clean) in bad {
+        let turned = one_spelling(&[row.to_string()]);
+        if turned != [clean.to_string()] {
+            wrong.push(format!("{row}: turned into {turned:?}"));
+        }
+        for route in ["changed", "staged", "untracked", "paths"] {
+            let said = by_route(&dir, route, &[row]);
+            if said != Err(format!("{clean} is outside this workspace")) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+        }
+    }
+    let (f, u) = (fs::read_to_string(dir.join("d").join("f")).ok(), dir.join("u.txt").exists());
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(f.as_deref(), Some("changed\n"), "the change to d/f is kept");
+    assert!(u, "the untracked u.txt is kept");
+}
+
+/// R82-02: a row of `.`, `./` or `.\` names the whole repository: every route refuses the whole
+/// call before Git runs, and nothing changes.
+#[test]
+fn r82_a_dot_row_is_refused_whole() {
+    let dir = temp_repo("r82c");
+    commit_file(&dir, "s.txt", "s\n");
+    fs::write(dir.join("s.txt"), "staged\n").unwrap();
+    plain(&["add", "s.txt"], &dir);
+    fs::write(dir.join("u.txt"), "u\n").unwrap();
+    let mut rows = vec![".", "./"];
+    if cfg!(windows) {
+        rows.push(".\\");
+    }
+    let mut wrong = Vec::new();
+    for row in rows {
+        for route in ["changed", "staged", "untracked", "paths"] {
+            let said = by_route(&dir, route, &[row, "s.txt"]);
+            if said != Err("Kolux does not discard a whole folder at once. Pick the files instead.".to_string()) {
+                wrong.push(format!("{route} {row:?}: said {said:?}"));
+            }
+        }
+    }
+    let staged = run(&["diff", "--cached", "--name-only"], Some(&dir));
+    let (s, u) = (fs::read_to_string(dir.join("s.txt")).ok(), dir.join("u.txt").exists());
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(staged.as_deref(), Ok("s.txt"), "the staged change is still staged");
+    assert_eq!(s.as_deref(), Some("staged\n"));
+    assert!(u, "the untracked u.txt is kept");
+}
+
+/// R82-02: a row that names a folder of tracked files (a folder in the last commit, or files staged
+/// below it) is left on the changed, staged and paths routes with one line, and nothing is written
+/// there: an untracked file now in the folder's place stays, a deleted folder is not brought back.
+/// The other rows in the call still go.
+#[test]
+fn r82_a_folder_row_is_never_written_through() {
+    let line = |p: &str| format!("{p} is a folder, so Kolux leaves it. Discard the files inside it instead.");
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "paths", "untracked"] {
+        let dir = temp_repo(&format!("r82d-{route}"));
+        commit_file(&dir, "plain.txt", "p\n");
+        for f in ["kept", "gone"] {
+            fs::create_dir(dir.join(f)).unwrap();
+            fs::write(dir.join(f).join("a.txt"), "a\n").unwrap();
+        }
+        plain(&["add", "."], &dir);
+        plain(&["commit", "-q", "-m", "folders"], &dir);
+        fs::write(dir.join("plain.txt"), "changed\n").unwrap();
+        if route == "staged" {
+            plain(&["add", "plain.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("kept")).unwrap();
+        fs::write(dir.join("kept"), "mine\n").unwrap();
+        fs::remove_dir_all(dir.join("gone")).unwrap();
+        // R86-02: on the paths and untracked routes `kept` is listed as an untracked FILE, so it is
+        // deleted as the file it is, with no line; on the changed and staged routes it is left.
+        let as_file = route == "paths" || route == "untracked";
+        let rows: &[&str] = if route == "untracked" { &["kept"] } else { &["kept", "gone", "plain.txt"] };
+        let said = by_route(&dir, route, rows);
+        let want: Vec<String> = rows.iter().filter(|r| **r != "plain.txt" && !(as_file && **r == "kept")).map(|r| line(r)).collect();
+        if said != if want.is_empty() { Ok(()) } else { Err(want.join("\n")) } {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if !as_file && fs::read_to_string(dir.join("kept")).ok().as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: the untracked file kept is gone (a folder there now: {})", dir.join("kept").is_dir()));
+        }
+        if as_file && dir.join("kept").exists() {
+            wrong.push(format!("{route}: the untracked file kept is still there"));
+        }
+        if dir.join("gone").exists() {
+            wrong.push(format!("{route}: gone was brought back"));
+        }
+        if route != "untracked" && fs::read_to_string(dir.join("plain.txt")).ok().as_deref() != Some("p\n") {
+            wrong.push(format!("{route}: plain.txt was not discarded"));
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-02: a folder row whose tracked folder below was replaced by a junction to a folder outside
+/// the repository: Git is never asked to write there, on any route; nor through a `.` row.
+#[cfg(windows)]
+#[test]
+fn r82_a_folder_row_through_a_junction_is_never_written_through() {
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r82e-{route}"));
+        let out = outside_folder(&format!("r82e-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("sub").join("d")], vec![dir.clone(), out.clone()]);
+        fs::create_dir_all(dir.join("sub").join("d")).unwrap();
+        commit_file(&dir, "sub/d/f.txt", "orig\n");
+        fs::remove_dir_all(dir.join("sub").join("d")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        junction(&dir.join("sub").join("d"), &out);
+        for (row, want) in [("sub", "sub is a folder, so Kolux leaves it. Discard the files inside it instead."), (".", "Kolux does not discard a whole folder at once. Pick the files instead.")] {
+            let said = by_route(&dir, route, &[row]);
+            if said != Err(want.to_string()) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+            let now = fs::read_to_string(out.join("f.txt")).ok();
+            if now.as_deref() != Some("mine\n") {
+                wrong.push(format!("{route} {row}: the outside f.txt is now {now:?}"));
+                fs::write(out.join("f.txt"), "mine\n").unwrap();
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-02: in the untracked section, a folder row with tracked files below it is left with the
+/// folder line; its untracked file stays.
+#[test]
+fn r82_an_untracked_folder_row_with_tracked_files_is_left() {
+    let dir = temp_repo("r82k");
+    fs::create_dir(dir.join("t")).unwrap();
+    commit_file(&dir, "t/a.txt", "a\n");
+    fs::write(dir.join("t").join("new.txt"), "mine\n").unwrap();
+    fs::write(dir.join("loose.txt"), "u\n").unwrap();
+    let said = discard(&dir, "untracked", &["t/".to_string(), "loose.txt".to_string()]);
+    let (kept, loose) = (dir.join("t").join("new.txt").exists(), dir.join("loose.txt").exists());
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(said, Err("t is a folder, so Kolux leaves it. Discard the files inside it instead.".to_string()));
+    assert!(kept, "t/new.txt stays");
+    assert!(!loose, "loose.txt still goes");
+}
+
+/// R82-03: a row holding a NUL would reach Git as two names; it is refused whole on every route
+/// and by Stage, and nothing changes.
+#[test]
+fn r82_a_row_with_a_nul_is_refused() {
+    let dir = temp_repo("r82f");
+    commit_file(&dir, "b.txt", "b\n");
+    fs::write(dir.join("b.txt"), "changed\n").unwrap();
+    let mut wrong = Vec::new();
+    for route in ["paths", "changed", "staged", "stage"] {
+        let said = if route == "stage" { stage(&dir, &["b.txt\0x".to_string()], true) } else { by_route(&dir, route, &["b.txt\0x"]) };
+        if said != Err("A file name here holds a character Kolux cannot pass to Git. Nothing was changed.".to_string()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+    }
+    let b = fs::read_to_string(dir.join("b.txt")).ok();
+    let staged = run(&["diff", "--cached", "--name-only"], Some(&dir));
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(b.as_deref(), Some("changed\n"), "the change to b.txt is kept");
+    assert_eq!(staged.as_deref(), Ok(""), "nothing was staged");
+}
+
+/// R82-04: a link at one half of a staged rename stays when the other half is left: a link is
+/// removed only after every check, the rename look-up included, has passed.
+#[cfg(windows)]
+#[test]
+fn r82_a_link_in_a_rename_left_whole_is_not_removed() {
+    let dir = temp_repo("r82g");
+    let out = outside_folder("r82g");
+    let _clean = LinksThenFolders(vec![dir.join("a.txt")], vec![dir.clone(), out.clone()]);
+    commit_file(&dir, "a.txt", "a\n");
+    plain(&["mv", "a.txt", "b.txt"], &dir);
+    fs::remove_file(dir.join("b.txt")).unwrap();
+    fs::create_dir(dir.join("b.txt")).unwrap();
+    fs::write(dir.join("b.txt").join("x.txt"), "mine\n").unwrap();
+    fs::write(out.join("o.txt"), "o\n").unwrap();
+    junction(&dir.join("a.txt"), &out);
+    let said = by_route(&dir, "staged", &["a.txt", "b.txt"]);
+    let link = fs::symlink_metadata(dir.join("a.txt")).is_ok_and(|m| m.is_symlink());
+    // F94-02 (rule D): a.txt, the rename's old half, is left by its own check now.
+    assert_eq!(said, Err(format!("A link stands where a.txt would come back, so Kolux leaves a.txt as it is. Remove the link by hand, then discard again.\n{}", now_folder("b.txt"))));
+    assert!(link, "the link at a.txt is still there");
+    assert_eq!(fs::read_to_string(out.join("o.txt")).unwrap(), "o\n");
+    assert_eq!(fs::read_to_string(dir.join("b.txt").join("x.txt")).unwrap(), "mine\n");
+}
+
+/// R82-05: unstaging when the branch list cannot be read is not taken as "no commit yet": Git's
+/// words come back and the index is unchanged (that reading took the file out of the index).
+#[test]
+fn r82_a_broken_branch_list_does_not_unstage_by_removal() {
+    let dir = temp_repo("r82h");
+    commit_file(&dir, "foo", "f\n");
+    fs::write(dir.join("foo"), "staged\n").unwrap();
+    plain(&["add", "foo"], &dir);
+    plain(&["pack-refs", "--all"], &dir);
+    let refs = dir.join(".git").join("packed-refs");
+    fs::write(&refs, fs::read_to_string(&refs).unwrap() + "garbage line\n").unwrap();
+    let said = stage(&dir, &["foo".to_string()], false);
+    let listed = run(&["ls-files"], Some(&dir));
+    let _ = fs::remove_dir_all(&dir);
+    assert!(said.is_err(), "Git's words come back: {said:?}");
+    assert!(listed.as_ref().is_ok_and(|l| l.lines().any(|l| l == "foo")), "foo is still in the index: {listed:?}");
+}
+
+/// R82-08: a link that cannot be removed (held open by another program) leaves its row with
+/// Windows' words; the link and what it points at stay, and the other rows still go.
+#[cfg(windows)]
+#[test]
+fn r82_a_link_that_cannot_be_removed_leaves_its_row() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let mut wrong = Vec::new();
+    // R86-03: "paths-staged" is the paths route with `j` staged-modified before the link is made.
+    for case in ["changed", "staged", "paths", "paths-staged"] {
+        let route = case.trim_end_matches("-staged");
+        let dir = temp_repo(&format!("r82i-{case}"));
+        let out = outside_folder(&format!("r82i-{case}"));
+        let _clean = LinksThenFolders(vec![dir.join("j")], vec![dir.clone(), out.clone()]);
+        commit_file(&dir, "j", "j\n");
+        commit_file(&dir, "plain.txt", "p\n");
+        fs::write(dir.join("plain.txt"), "changed\n").unwrap();
+        if route == "staged" {
+            plain(&["add", "plain.txt"], &dir);
+        }
+        if case == "paths-staged" {
+            fs::write(dir.join("j"), "staged\n").unwrap();
+            plain(&["add", "j"], &dir);
+        }
+        fs::remove_file(dir.join("j")).unwrap();
+        fs::write(out.join("o.txt"), "o\n").unwrap();
+        junction(&dir.join("j"), &out);
+        // FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS: the junction itself is held.
+        let held = fs::File::options().read(true).share_mode(0).custom_flags(0x0020_0000 | 0x0200_0000).open(dir.join("j")).unwrap();
+        let said = by_route(&dir, route, &["j", "plain.txt"]);
+        drop(held);
+        if case == "paths-staged" && !run(&["diff", "--cached", "--name-only"], Some(&dir)).is_ok_and(|o| o.lines().any(|l| l == "j")) {
+            wrong.push(format!("{case}: the staged change to j was unstaged"));
+        }
+        if !matches!(&said, Err(e) if e.lines().count() == 1 && e.starts_with("j: ")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if !fs::symlink_metadata(dir.join("j")).is_ok_and(|m| m.is_symlink()) {
+            wrong.push(format!("{route}: the link j is gone"));
+        }
+        if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+            wrong.push(format!("{route}: the outside o.txt changed"));
+        }
+        if fs::read_to_string(dir.join("plain.txt")).ok().as_deref() != Some("p\n") {
+            wrong.push(format!("{route}: plain.txt was not discarded"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-08: off Windows `\` is a character of the file name, never a folder break: `d\f.txt` is
+/// discarded as itself and `d/f.txt` is untouched.
+#[cfg(not(windows))]
+#[test]
+fn r82_a_backslash_is_part_of_the_name_off_windows() {
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("r82j-{route}"));
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d\\f.txt", "f\n");
+        commit_file(&dir, "d/f.txt", "g\n");
+        fs::write(dir.join("d\\f.txt"), "changed\n").unwrap();
+        fs::write(dir.join("d").join("f.txt"), "changed\n").unwrap();
+        let said = by_route(&dir, route, &["d\\f.txt"]);
+        let (a, b) = (fs::read_to_string(dir.join("d\\f.txt")).ok(), fs::read_to_string(dir.join("d").join("f.txt")).ok());
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(said, Ok(()), "{route}");
+        assert_eq!(a.as_deref(), Some("f\n"), "{route}: d\\f.txt is discarded");
+        assert_eq!(b.as_deref(), Some("changed\n"), "{route}: d/f.txt is untouched");
+    }
+}
+
+/// R86-01: on Windows a second spelling of a tracked folder (`sub./`, `SUB/`) opens the folder
+/// `sub`, and `git clean` would delete it whole; such a row is left, on the untracked and paths
+/// routes. The plain row still goes.
+#[cfg(windows)]
+#[test]
+fn r86_an_alias_spelling_of_a_tracked_folder_is_never_cleaned() {
+    let mut wrong = Vec::new();
+    // F90-06: every row runs with `core.ignorecase` false and true (true is the Windows default).
+    for case in ["false", "true"] {
+    for (i, (route, row)) in [("untracked", "sub./"), ("untracked", "SUB/"), ("untracked", "SUB/d/f.txt"), ("untracked", "sub./new.txt"), ("paths", "sub./"), ("untracked", "sub::$INDEX_ALLOCATION/")].into_iter().enumerate() {
+        let dir = temp_repo(&format!("r86a-{case}-{i}"));
+        plain(&["config", "core.ignorecase", case], &dir);
+        fs::create_dir_all(dir.join("sub").join("d")).unwrap();
+        commit_file(&dir, "sub/d/f.txt", "orig\n");
+        fs::write(dir.join("sub").join("d").join("f.txt"), "changed\n").unwrap();
+        fs::write(dir.join("sub").join("new.txt"), "mine\n").unwrap();
+        fs::write(dir.join("sub").join("gone.txt"), "x\n").unwrap();
+        let said = by_route(&dir, route, &[row]);
+        if !matches!(&said, Err(e) if e.lines().count() == 1 && e.contains("so Kolux leaves")) {
+            wrong.push(format!("ignorecase {case} {route} {row}: said {said:?}"));
+        }
+        // F90-06: the walker stops this row: the disk opens it as the folder `sub`, but no entry
+        // of the listing is spelled so (`git clean` would remove the whole folder).
+        if i == 5 && said != Err("sub::$INDEX_ALLOCATION is not spelled the way it is on disk, so Kolux leaves it. Wait for the list to update, then discard again.".to_string()) {
+            wrong.push(format!("ignorecase {case} {route} {row}: not the spelling line: {said:?}"));
+        }
+        if fs::read_to_string(dir.join("sub").join("d").join("f.txt")).ok().as_deref() != Some("changed\n") {
+            wrong.push(format!("ignorecase {case} {route} {row}: the change in sub/d/f.txt is gone"));
+        }
+        if !dir.join("sub").join("new.txt").exists() {
+            wrong.push(format!("ignorecase {case} {route} {row}: sub/new.txt is gone"));
+        }
+        if i == 4 {
+            let said = by_route(&dir, "untracked", &["sub/gone.txt"]);
+            if said != Ok(()) || dir.join("sub").join("gone.txt").exists() {
+                wrong.push(format!("ignorecase {case} control sub/gone.txt: said {said:?}, still there: {}", dir.join("sub").join("gone.txt").exists()));
+            }
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R86-01: a link is removed only under the spelling the disk holds: `lnk.` and `LNK` leave the
+/// junction `lnk` standing on the untracked and changed routes; the row `lnk` removes it (only it).
+#[cfg(windows)]
+#[test]
+fn r86_a_link_is_removed_only_under_its_own_name() {
+    let dir = temp_repo("r86b");
+    let out = outside_folder("r86b");
+    let _clean = LinksThenFolders(vec![dir.join("lnk")], vec![dir.clone(), out.clone()]);
+    fs::write(out.join("o.txt"), "o\n").unwrap();
+    junction(&dir.join("lnk"), &out);
+    let mut wrong = Vec::new();
+    for route in ["untracked", "changed"] {
+        for row in ["lnk.", "LNK"] {
+            let said = by_route(&dir, route, &[row]);
+            if !matches!(&said, Err(e) if e.contains("so Kolux leaves")) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+            if !fs::symlink_metadata(dir.join("lnk")).is_ok_and(|m| m.is_symlink()) {
+                wrong.push(format!("{route} {row}: the link lnk is gone"));
+                junction(&dir.join("lnk"), &out);
+            }
+            if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+                wrong.push(format!("{route} {row}: the outside o.txt changed"));
+            }
+        }
+    }
+    let said = by_route(&dir, "untracked", &["lnk"]);
+    if said != Ok(()) || fs::symlink_metadata(dir.join("lnk")).is_ok() {
+        wrong.push(format!("control lnk: said {said:?}, link still there: {}", fs::symlink_metadata(dir.join("lnk")).is_ok()));
+    }
+    if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+        wrong.push("control lnk: the outside o.txt changed".into());
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R86-03: on the paths route a link at a staged rename's old half leaves the rename whole:
+/// nothing is unstaged and the new file stays. F94-02: the check leaves it (rule D) before any
+/// removal; the lock below would make a removal fail, so the exact line shows none was tried.
+#[cfg(windows)]
+#[test]
+fn r86_a_held_link_at_a_renames_old_half_leaves_the_rename_whole() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = temp_repo("r86c");
+    let out = outside_folder("r86c");
+    let _clean = LinksThenFolders(vec![dir.join("a")], vec![dir.clone(), out.clone()]);
+    commit_file(&dir, "a", "a\n");
+    plain(&["mv", "a", "b"], &dir);
+    fs::write(out.join("o.txt"), "o\n").unwrap();
+    junction(&dir.join("a"), &out);
+    let held = fs::File::options().read(true).share_mode(0).custom_flags(0x0020_0000 | 0x0200_0000).open(dir.join("a")).unwrap();
+    let said = by_route(&dir, "paths", &["b"]);
+    drop(held);
+    let renamed = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "b" && c.from.as_deref() == Some("a")));
+    // F94-02 (rule D): the link at the old half is left by the check; no removal is tried.
+    assert_eq!(said, Err("A link stands where a would come back, so Kolux leaves a as it is. Remove the link by hand, then discard again.".to_string()));
+    assert!(dir.join("b").exists(), "b still stands");
+    assert!(renamed, "the rename is still staged");
+    assert!(fs::symlink_metadata(dir.join("a")).is_ok_and(|m| m.is_symlink()), "the link a stays");
+    assert_eq!(fs::read_to_string(out.join("o.txt")).unwrap(), "o\n");
+}
+
+/// R86-05: an empty Discard list answers in Discard's words on every route; Stage keeps its own.
+#[test]
+fn r86_an_empty_discard_says_discard_words() {
+    let dir = temp_repo("r86d");
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "untracked", "paths"] {
+        let said = by_route(&dir, route, &[]);
+        if said != Err("Nothing to discard.".to_string()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+    }
+    let staged = stage(&dir, &[], true);
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(staged, Err("nothing to stage".to_string()));
+}
+
+/// F90-01: with `core.ignorecase` true Git can hold `Sub/a.txt` while the disk spells the folder
+/// `sub`, and Git prints the row as it holds it. A link at that row is the row's own link: it is
+/// removed (only it) and the file comes back, on the changed and paths routes.
+#[cfg(windows)]
+#[test]
+fn r93_a_link_at_a_row_git_holds_is_discarded_whatever_the_folder_case() {
+    let mut wrong = Vec::new();
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("r93a-{route}"));
+        let out = outside_folder(&format!("r93a-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("sub").join("a.txt")], vec![dir.clone(), out.clone()]);
+        plain(&["config", "core.ignorecase", "true"], &dir);
+        fs::create_dir_all(dir.join("Sub")).unwrap();
+        commit_file(&dir, "Sub/a.txt", "committed\n");
+        fs::rename(dir.join("Sub"), dir.join("sub-step")).unwrap();
+        fs::rename(dir.join("sub-step"), dir.join("sub")).unwrap();
+        assert!(fs::read_dir(&dir).unwrap().any(|e| e.unwrap().file_name() == "sub"), "the listing holds sub");
+        fs::remove_file(dir.join("sub").join("a.txt")).unwrap();
+        fs::write(out.join("o.txt"), "o\n").unwrap();
+        junction(&dir.join("sub").join("a.txt"), &out);
+        let said = by_route(&dir, route, &["Sub/a.txt"]);
+        if said != Ok(()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        let at = fs::symlink_metadata(dir.join("sub").join("a.txt"));
+        if !at.as_ref().is_ok_and(|m| m.is_file() && !m.is_symlink()) {
+            wrong.push(format!("{route}: sub/a.txt is not a plain file: {at:?}"));
+        } else if fs::read_to_string(dir.join("sub").join("a.txt")).ok().as_deref() != Some("committed\n") {
+            wrong.push(format!("{route}: sub/a.txt does not hold the committed text"));
+        }
+        if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+            wrong.push(format!("{route}: the outside o.txt changed"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F90-06: on Windows the untracked name `foo.` opens the tracked file `foo`, and `git clean --
+/// foo.` would delete it. The row is left on the untracked and paths routes: `foo` keeps its
+/// uncommitted text and `foo.` stands. `foo.` is made and removed through a `\\?\` path built from
+/// the test's own repository, before any assert, so the folder clean-up never meets it.
+#[cfg(windows)]
+#[test]
+fn r93_an_untracked_name_ending_in_a_dot_beside_a_tracked_file_is_left() {
+    let mut wrong = Vec::new();
+    for route in ["untracked", "paths"] {
+        let dir = temp_repo(&format!("r93b-{route}"));
+        assert!(dir.is_absolute(), "the repository path is absolute: {}", dir.display());
+        commit_file(&dir, "foo", "orig\n");
+        fs::write(dir.join("foo"), "mine\n").unwrap();
+        let dotted = PathBuf::from(format!(r"\\?\{}", dir.join("foo.").display()));
+        fs::write(&dotted, "dot\n").unwrap();
+        let said = by_route(&dir, route, &["foo."]);
+        let foo = fs::read_to_string(dir.join("foo")).ok();
+        let dot_stood = fs::symlink_metadata(&dotted).is_ok();
+        let removed = fs::remove_file(&dotted);
+        assert!(removed.is_ok() || !dot_stood, "{route}: the test could not remove foo. itself ({removed:?}); {} is left for a hand clean-up", dir.display());
+        assert!(fs::symlink_metadata(&dotted).is_err(), "{route}: foo. still stands; {} is left for a hand clean-up", dir.display());
+        let _ = fs::remove_dir_all(&dir);
+        if !matches!(&said, Err(e) if e.lines().count() == 1 && e.contains("ends in a dot or a space") && e.contains("so Kolux leaves")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        // F90-03: the line says what to do next.
+        if said != Err("foo. has a name that ends in a dot or a space. Windows reads that as another name, so Kolux leaves it. Rename or delete it with the tool that made it (WSL, for example), not in Explorer.".to_string()) {
+            wrong.push(format!("{route}: not the dot line: {said:?}"));
+        }
+        if foo.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: foo holds {foo:?}, not its uncommitted text"));
+        }
+        if !dot_stood {
+            wrong.push(format!("{route}: foo. is gone"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 / F94-02: the two lines Discard gives a row only the last commit holds when something
+/// stands at its place.
+fn r95_file(row: &str) -> String {
+    format!("A file stands where {row} would come back, so Kolux leaves {row} as it is. Use Unstage to keep that file, or move it away and discard again.")
+}
+
+#[cfg(windows)]
+fn r95_link(row: &str) -> String {
+    format!("A link stands where {row} would come back, so Kolux leaves {row} as it is. Remove the link by hand, then discard again.")
+}
+
+#[cfg(windows)]
+fn r95_listed(dir: &Path, name: &str) -> bool {
+    fs::read_dir(dir).unwrap().any(|e| e.unwrap().file_name() == name)
+}
+
+/// F94-01 (rule D): a staged deletion whose place holds a new file of the same name is left on
+/// the staged and paths routes: the new text stays and the deletion stays staged.
+#[test]
+fn r95_a_staged_deletion_never_writes_over_a_new_file_of_its_name() {
+    let mut wrong = Vec::new();
+    for route in ["staged", "paths"] {
+        let dir = temp_repo(&format!("r95a-{route}"));
+        commit_file(&dir, "notes", "old\n");
+        plain(&["rm", "-q", "notes"], &dir);
+        fs::write(dir.join("notes"), "mine\n").unwrap();
+        let said = by_route(&dir, route, &["notes"]);
+        let text = fs::read_to_string(dir.join("notes")).ok();
+        let deleted = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "notes" && c.status == "D"));
+        let _ = fs::remove_dir_all(&dir);
+        if said != Err(r95_file("notes")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: notes holds {text:?}, not the new text"));
+        }
+        if !deleted {
+            wrong.push(format!("{route}: the deletion of notes is no longer staged"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 (rule D): on Windows `notes` opens a new untracked `NOTES`. Discarding the staged
+/// deletion of `notes` leaves it: `NOTES` keeps its name and its text, on both routes.
+#[cfg(windows)]
+#[test]
+fn r95_a_staged_deletion_never_writes_over_a_file_in_other_letter_case() {
+    let mut wrong = Vec::new();
+    for route in ["staged", "paths"] {
+        let dir = temp_repo(&format!("r95b-{route}"));
+        commit_file(&dir, "notes", "old\n");
+        plain(&["rm", "-q", "notes"], &dir);
+        fs::write(dir.join("NOTES"), "mine\n").unwrap();
+        let said = by_route(&dir, route, &["notes"]);
+        let text = fs::read_to_string(dir.join("NOTES")).ok();
+        let (upper, lower) = (r95_listed(&dir, "NOTES"), r95_listed(&dir, "notes"));
+        let deleted = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "notes" && c.status == "D"));
+        let _ = fs::remove_dir_all(&dir);
+        if said != Err(r95_file("notes")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: NOTES holds {text:?}, not the new text"));
+        }
+        if !upper || lower {
+            wrong.push(format!("{route}: the listing holds NOTES {upper}, notes {lower}"));
+        }
+        if !deleted {
+            wrong.push(format!("{route}: the deletion of notes is no longer staged"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-02 (rule D): a junction standing where a staged deletion would come back, spelled `LNK`
+/// or `lnk`, is not the row's: it is left with the link line, on both routes, and what it points
+/// at is untouched.
+#[cfg(windows)]
+#[test]
+fn r95_a_link_where_a_staged_deletion_would_come_back_is_left() {
+    let mut wrong = Vec::new();
+    for (spelled, tag) in [("LNK", "upper"), ("lnk", "lower")] {
+        for route in ["staged", "paths"] {
+            let name = format!("r95c-{tag}-{route}");
+            let dir = temp_repo(&name);
+            let out = outside_folder(&name);
+            let _clean = LinksThenFolders(vec![dir.join(spelled)], vec![dir.clone(), out.clone()]);
+            commit_file(&dir, "lnk", "old\n");
+            plain(&["rm", "-q", "lnk"], &dir);
+            fs::write(out.join("o.txt"), "o\n").unwrap();
+            junction(&dir.join(spelled), &out);
+            let said = by_route(&dir, route, &["lnk"]);
+            if said != Err(r95_link("lnk")) {
+                wrong.push(format!("{spelled} {route}: said {said:?}"));
+            }
+            if !fs::symlink_metadata(dir.join(spelled)).is_ok_and(|m| m.is_symlink()) {
+                wrong.push(format!("{spelled} {route}: the junction is gone"));
+            }
+            if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+                wrong.push(format!("{spelled} {route}: the outside o.txt changed"));
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 (rule D): a new file standing at a staged rename's old half leaves the rename whole: on
+/// the paths route (row `b`) and on the staged route (rows `b` and `a`) `a` keeps its new text, `b`
+/// stands and the rename stays staged.
+#[test]
+fn r95_a_new_file_at_a_renames_old_half_leaves_the_rename_whole() {
+    let mut wrong = Vec::new();
+    for (route, rows) in [("paths", &["b"][..]), ("staged", &["b", "a"][..])] {
+        let dir = temp_repo(&format!("r95d-{route}"));
+        commit_file(&dir, "a", "old\n");
+        plain(&["mv", "a", "b"], &dir);
+        fs::write(dir.join("a"), "mine\n").unwrap();
+        let said = by_route(&dir, route, rows);
+        let text = fs::read_to_string(dir.join("a")).ok();
+        let b = dir.join("b").exists();
+        let renamed = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "b" && c.from.as_deref() == Some("a")));
+        let _ = fs::remove_dir_all(&dir);
+        let want = if route == "paths" { r95_file("a") } else { format!("{}\nb is the other half of a rename, so Kolux leaves it too.", r95_file("a")) };
+        if said != Err(want) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: a holds {text:?}, not the new text"));
+        }
+        if !b {
+            wrong.push(format!("{route}: b is gone"));
+        }
+        if !renamed {
+            wrong.push(format!("{route}: the rename is no longer staged"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F94-01 (rule D's exception): a rename that only changes letter case has its old half standing
+/// on disk as the new half itself. Discarded with both rows on the staged route, it comes back
+/// whole under its old name. (`guide.md`, since the test repository already holds `README.md`.)
+#[cfg(windows)]
+#[test]
+fn r95_a_letter_case_rename_discarded_whole_on_the_staged_route_comes_back() {
+    let dir = temp_repo("r95e");
+    commit_file(&dir, "guide.md", "old\n");
+    plain(&["mv", "guide.md", "GUIDE.md"], &dir);
+    let said = by_route(&dir, "staged", &["GUIDE.md", "guide.md"]);
+    let (lower, upper) = (r95_listed(&dir, "guide.md"), r95_listed(&dir, "GUIDE.md"));
+    let text = fs::read_to_string(dir.join("guide.md")).ok();
+    let st = status(&dir).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(said, Ok(()));
+    assert!(lower && !upper, "the listing holds guide.md {lower}, GUIDE.md {upper}");
+    assert_eq!(text.as_deref(), Some("old\n"));
+    assert!(st.staged.is_empty() && st.changed.is_empty() && st.untracked.is_empty(), "status lists {st:?}");
+}
+
+/// F94-03: the same rename discarded by the paths route (row `GUIDE.md` alone) gives the one disk
+/// entry its old name back instead of deleting it.
+#[cfg(windows)]
+#[test]
+fn r95_a_letter_case_rename_discarded_by_paths_keeps_its_file() {
+    let dir = temp_repo("r95g");
+    commit_file(&dir, "guide.md", "old\n");
+    plain(&["mv", "guide.md", "GUIDE.md"], &dir);
+    let said = by_route(&dir, "paths", &["GUIDE.md"]);
+    let (lower, upper) = (r95_listed(&dir, "guide.md"), r95_listed(&dir, "GUIDE.md"));
+    let text = fs::read_to_string(dir.join("guide.md")).ok();
+    let st = status(&dir).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(said, Ok(()));
+    assert!(lower && !upper, "the listing holds guide.md {lower}, GUIDE.md {upper}");
+    assert_eq!(text.as_deref(), Some("old\n"));
+    assert!(st.staged.is_empty() && st.changed.is_empty() && st.untracked.is_empty(), "status lists {st:?}");
+}
+
+/// F94-01 control: a staged deletion with nothing at its place still comes back on both routes.
+#[test]
+fn r95_a_staged_deletion_with_an_empty_place_comes_back() {
+    let mut wrong = Vec::new();
+    for route in ["staged", "paths"] {
+        let dir = temp_repo(&format!("r95f-{route}"));
+        commit_file(&dir, "notes", "old\n");
+        plain(&["rm", "-q", "notes"], &dir);
+        let said = by_route(&dir, route, &["notes"]);
+        let text = fs::read_to_string(dir.join("notes")).ok();
+        let st = status(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+        if said != Ok(()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if text.as_deref() != Some("old\n") {
+            wrong.push(format!("{route}: notes holds {text:?}"));
+        }
+        if !st.staged.is_empty() {
+            wrong.push(format!("{route}: still staged {:?}", st.staged));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F96-02: a rename `k` to the Kelvin sign (U+212A) with an untracked Latin `K` at `k`. Rust folds
+/// both signs to `k`, Windows keeps them apart, so the Latin `K` is not the rename's entry: `k` is
+/// left with the file line and nothing is written. None when the folder cannot hold both names.
+#[cfg(windows)]
+fn r97_kelvin(route: &str, rows: &[&str], want: String) -> Option<Vec<String>> {
+    let kelvin = "\u{212A}";
+    let dir = temp_repo(&format!("r97-kelvin-{route}"));
+    let _clean = LinksThenFolders(Vec::new(), vec![dir.clone()]);
+    commit_file(&dir, "k", "committed\n");
+    plain(&["mv", "k", kelvin], &dir);
+    fs::write(dir.join("K"), "mine-unpicked\n").unwrap();
+    if !(r95_listed(&dir, "K") && r95_listed(&dir, kelvin)) {
+        println!("r97 {route}: this folder cannot hold a Latin K beside a Kelvin sign; nothing to test");
+        return None;
+    }
+    let mut wrong = Vec::new();
+    let said = by_route(&dir, route, rows);
+    if said != Err(want) {
+        wrong.push(format!("{route}: said {said:?}"));
+    }
+    if !r95_listed(&dir, "K") || fs::read_to_string(dir.join("K")).ok().as_deref() != Some("mine-unpicked\n") {
+        wrong.push(format!("{route}: the untracked Latin K is gone or changed"));
+    }
+    if fs::read_to_string(dir.join(kelvin)).ok().as_deref() != Some("committed\n") {
+        wrong.push(format!("{route}: the Kelvin file no longer reads committed"));
+    }
+    if !status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == kelvin && c.from.as_deref() == Some("k"))) {
+        wrong.push(format!("{route}: the rename is no longer staged"));
+    }
+    Some(wrong)
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_kelvin_sign_rename_never_writes_over_a_latin_k_on_the_staged_route() {
+    let want = format!("{}\n\u{212A} is the other half of a rename, so Kolux leaves it too.", r95_file("k"));
+    if let Some(wrong) = r97_kelvin("staged", &["k", "\u{212A}"], want) {
+        assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_kelvin_sign_rename_never_writes_over_a_latin_k_by_paths() {
+    if let Some(wrong) = r97_kelvin("paths", &["\u{212A}"], r95_file("k")) {
+        assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    }
+}
+
+/// F96-01 / F96-05: a rename that only changes letter case whose one entry is a link (a junction
+/// put in place of `GUIDE.md`) is left with the link line, never the spelling line; the junction
+/// and the folder it points at stay.
+#[cfg(windows)]
+fn r97_link(route: &str, rows: &[&str], want: String) -> Vec<String> {
+    let name = format!("r97-link-{route}");
+    let dir = temp_repo(&name);
+    let out = outside_folder(&name);
+    let _clean = LinksThenFolders(vec![dir.join("GUIDE.md")], vec![dir.clone(), out.clone()]);
+    commit_file(&dir, "guide.md", "old\n");
+    plain(&["mv", "guide.md", "GUIDE.md"], &dir);
+    fs::remove_file(dir.join("GUIDE.md")).unwrap();
+    fs::write(out.join("keep.txt"), "keep\n").unwrap();
+    junction(&dir.join("GUIDE.md"), &out);
+    let mut wrong = Vec::new();
+    let said = by_route(&dir, route, rows);
+    if said != Err(want) {
+        wrong.push(format!("{route}: said {said:?}"));
+    }
+    if !fs::symlink_metadata(dir.join("GUIDE.md")).is_ok_and(|m| m.is_symlink()) {
+        wrong.push(format!("{route}: the junction is gone"));
+    }
+    if fs::read_to_string(out.join("keep.txt")).ok().as_deref() != Some("keep\n") {
+        wrong.push(format!("{route}: the outside keep.txt changed"));
+    }
+    if !status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "GUIDE.md" && c.from.as_deref() == Some("guide.md"))) {
+        wrong.push(format!("{route}: the rename is no longer staged"));
+    }
+    wrong
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_letter_case_rename_onto_a_link_is_left_with_the_link_line_on_the_staged_route() {
+    let want = format!("{}\nGUIDE.md is the other half of a rename, so Kolux leaves it too.", r95_link("guide.md"));
+    let wrong = r97_link("staged", &["guide.md", "GUIDE.md"], want);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_letter_case_rename_onto_a_link_is_left_with_the_link_line_by_paths() {
+    let wrong = r97_link("paths", &["GUIDE.md"], r95_link("guide.md"));
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F96-03 / F96-04: with the user's `status.renames` or `diff.renames` set to `copies`, a staged
+/// copy `b` of `a` is listed as what it is, a staged new file with no source. Discarding it (rows as
+/// the page sends them: the source first when a row has one) removes `b` and leaves `a`'s staged
+/// and unstaged lines alone.
+fn r97_copy(route: &str, key: &str) -> Vec<String> {
+    let dir = temp_repo(&format!("r97-copy-{route}-{key}"));
+    let text: String = (1..=20).map(|i| format!("line {i}\n")).collect();
+    plain(&["config", key, "copies"], &dir);
+    commit_file(&dir, "a", &text);
+    fs::write(dir.join("a"), format!("{text}first\n")).unwrap();
+    fs::copy(dir.join("a"), dir.join("b")).unwrap();
+    plain(&["add", "a", "b"], &dir);
+    fs::write(dir.join("a"), format!("{text}first\nsecond\n")).unwrap();
+    let mut wrong = Vec::new();
+    let row = status(&dir).ok().and_then(|st| st.staged.into_iter().find(|c| c.path == "b"));
+    if row.as_ref().map(|c| (c.status.as_str(), c.from.as_deref())) != Some(("A", None)) {
+        wrong.push(format!("{route} {key}: b is listed as {row:?}"));
+    }
+    let from = row.and_then(|c| c.from);
+    let rows: Vec<&str> = if route == "staged" { from.iter().map(String::as_str).chain(["b"]).collect() } else { vec!["b"] };
+    let said = by_route(&dir, route, &rows);
+    if said != Ok(()) {
+        wrong.push(format!("{route} {key}: said {said:?}"));
+    }
+    if dir.join("b").exists() || !run(&["ls-files", "b"], Some(&dir)).unwrap_or_default().is_empty() {
+        wrong.push(format!("{route} {key}: b is still on disk or in the index"));
+    }
+    let disk = fs::read_to_string(dir.join("a")).ok();
+    let index = run(&["show", ":a"], Some(&dir)).ok();
+    if disk != Some(format!("{text}first\nsecond\n")) || index.as_deref().map(str::trim_end) != Some(&format!("{text}first")[..]) {
+        wrong.push(format!("{route} {key}: a lost its lines: disk {disk:?}, index {index:?}"));
+    }
+    let _ = fs::remove_dir_all(&dir);
+    wrong
+}
+
+#[test]
+fn r97_a_staged_copy_discarded_on_the_staged_route_leaves_its_source_alone() {
+    let wrong: Vec<String> = ["status.renames", "diff.renames"].iter().flat_map(|key| r97_copy("staged", key)).collect();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[test]
+fn r97_a_staged_copy_discarded_by_paths_leaves_its_source_alone() {
+    let wrong: Vec<String> = ["status.renames", "diff.renames"].iter().flat_map(|key| r97_copy("paths", key)).collect();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }

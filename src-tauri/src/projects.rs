@@ -122,15 +122,22 @@ pub(crate) fn same_folder(a: &Path, b: &Path) -> bool {
     }
     // N-05: a side that cannot be resolved (a folder already gone) is matched on its text: one kind
     // of slash, no `\\?\` start and no slash at the end, which never name a different folder here.
-    let text = |s: String| {
-        let s = if cfg!(windows) { s.replace('/', "\\") } else { s };
-        let s = match s.strip_prefix(r"\\?\unc\") {
-            Some(rest) => format!(r"\\{rest}"),
-            None => s.strip_prefix(r"\\?\").unwrap_or(&s).to_string(),
-        };
-        s.trim_end_matches(['\\', '/']).to_string()
+    folder_text(a) == folder_text(b)
+}
+
+/// N-05: the text step of `same_folder`, on a lowercased path. F-05: a root keeps its slash: `c:` (the
+/// current folder on drive C) and the empty path name something else than `c:\` and `\`.
+fn folder_text(s: String) -> String {
+    let s = if cfg!(windows) { s.replace('/', "\\") } else { s };
+    let s = match s.strip_prefix(r"\\?\unc\") {
+        Some(rest) => format!(r"\\{rest}"),
+        None => s.strip_prefix(r"\\?\").unwrap_or(&s).to_string(),
     };
-    text(a) == text(b)
+    let trimmed = s.trim_end_matches(['\\', '/']);
+    if trimmed.is_empty() || (trimmed.len() == 2 && trimmed.ends_with(':')) {
+        return s[..trimmed.len() + (s.len() - trimmed.len()).min(1)].to_string();
+    }
+    trimmed.to_string()
 }
 
 /// For display and lookup only: an unreadable list shows empty (after being kept aside).
@@ -1232,9 +1239,13 @@ pub fn lock_held(err: &str) -> bool {
 /// add made it: it was not there before (`was_there`) and `git_made` says it is Git's. A folder that
 /// was there and empty before (`was_empty`, R-04) is emptied again and kept when `git_made` says what
 /// is in it now is Git's: nothing in it was there before, and a link inside is removed, never followed.
-fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool, was_empty: bool) {
+/// N-06: says whether something it meant to remove is still there, looking at the folder afterwards.
+fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool, was_empty: bool) -> bool {
+    let mut left = false;
     if !was_there && git_made(dest) {
         let _ = std::fs::remove_dir_all(dest);
+        // F4: an empty folder that could not go is no obstacle (Git adds into an empty folder).
+        left = still_holds(std::fs::read_dir(dest));
     } else if was_there && was_empty && git_made(dest) {
         for entry in std::fs::read_dir(dest).into_iter().flatten().flatten() {
             let path = entry.path();
@@ -1245,10 +1256,21 @@ fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: boo
                 _ => std::fs::remove_file(&path),
             };
         }
+        left = still_holds(std::fs::read_dir(dest));
     }
     let _ = crate::git::run(&["worktree", "prune"], Some(repo));
     if let Some(branch) = made.filter(|b| crate::git::run(&["rev-parse", "--verify", "--quiet", &format!("refs/heads/{b}")], Some(repo)).is_ok()) {
         let _ = crate::git::run(&["branch", "-D", branch], Some(repo));
+    }
+    left
+}
+
+/// F79-2: whether a folder read after the clean-up still holds something: an entry, or the folder
+/// is there but cannot be read. Only "not found" means nothing was left.
+fn still_holds<I: Iterator>(read: std::io::Result<I>) -> bool {
+    match read {
+        Ok(mut entries) => entries.next().is_some(),
+        Err(e) => e.kind() != std::io::ErrorKind::NotFound,
     }
 }
 
@@ -1297,15 +1319,28 @@ pub fn explain_create_error(raw: String) -> String {
     if raw.starts_with(OVERTAKEN) {
         return raw;
     }
+    // N-06: the sentence `add_retrying` adds when it could not clear the folder goes with Kolux's words.
+    let (raw, stuck) = match raw.find(NOT_CLEARED).or_else(|| raw.find(EMPTY_LEFT)) {
+        Some(at) => (raw[..at].to_string(), format!(" {}", &raw[at + 1..])),
+        None => (raw, String::new()),
+    };
     let (summary, next) = match create_kind(&raw) {
-        CreateKind::Stalled => return raw, // already in Kolux's words
+        CreateKind::Stalled => return format!("{raw}{stuck}"), // already in Kolux's words
         CreateKind::MissingBase => ("The workspace could not start: the commit or branch it was to start from is missing.", "Pick another start point, or fetch the project and try again."),
         CreateKind::NameInUse => ("The workspace could not be made: that name or branch is already in use.", "Choose a different name, or open the existing branch from the New workspace menu."),
         CreateKind::Permissions => ("The workspace could not be made: Windows refused access to the folder.", "Check the workspaces folder is writable and that no program has it open, then try again."),
         CreateKind::GitFailure => ("Git could not create the workspace.", "Try again; if it keeps failing, the details below say why."),
     };
-    format!("{summary} {next}{GIT_SAID}{raw}")
+    format!("{summary} {next}{stuck}{GIT_SAID}{raw}")
 }
+
+/// N-06: starts the sentence a failed add gets when its clean-up could not clear the folder.
+const NOT_CLEARED: &str = "
+Kolux could not clear the folder ";
+
+/// F79-3: starts the sentence a failed add gets when an empty folder Kolux made is still there.
+const EMPTY_LEFT: &str = "
+An empty folder was left at ";
 
 /// `add` (a `git worktree add` into `dest`, creating branch `made` if any) under the retry
 /// policy: each failed try is cleared away first, and a cancel stops the waiting.
@@ -1314,13 +1349,31 @@ pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dy
     let was_there = std::fs::symlink_metadata(dest).is_ok();
     let was_empty = was_there && git_made(dest) && std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none());
     while let Err(e) = add() {
-        clear_failed_add(repo, dest, made, was_there, was_empty);
+        let stuck = clear_failed_add(repo, dest, made, was_there, was_empty);
+        // F4: a folder that was there before the add is the user's own: it is emptied, not removed.
+        let verb = if was_there { "Empty" } else { "Remove" };
+        let left = || format!("{}. {verb} it by hand before you try again.", dest.display());
+        // F79-3: an empty folder that would not delete does not stop a retry, but is named at the end.
+        let empty = || (!was_there && std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none())).then(|| format!("{}. You can delete it.", dest.display()));
         if overtaken() {
-            return Err(OVERTAKEN.to_string());
+            // F5: the cancel text stays first and whole (the page reads it as a prefix); a folder left is named after it.
+            return Err(match (stuck, empty()) {
+                // F79-6: the user stopped it and may not try again, so no "before you try again".
+                (true, _) => format!("{OVERTAKEN}. {}{}. {verb} it by hand.", NOT_CLEARED.trim_start(), dest.display()),
+                (false, Some(empty)) => format!("{OVERTAKEN}. {}{empty}", EMPTY_LEFT.trim_start()),
+                (false, None) => OVERTAKEN.to_string(),
+            });
+        }
+        // N-06: a retry into what was left can only fail with a misleading "already exists": stop and say so.
+        if stuck {
+            return Err(format!("{e}{NOT_CLEARED}{}", left()));
         }
         match waits.next() {
             Some(ms) if lock_held(&e) => std::thread::sleep(std::time::Duration::from_millis(*ms)),
-            _ => return Err(e),
+            _ => return Err(match empty() {
+                Some(empty) => format!("{e}{EMPTY_LEFT}{empty}"),
+                None => e,
+            }),
         }
     }
     Ok(())

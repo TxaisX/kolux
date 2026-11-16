@@ -616,6 +616,142 @@ fn r04_a_folder_empty_before_a_failed_add_is_empty_again_after_it() {
     assert!(!root.exists(), "the test leaves nothing behind");
 }
 
+/// N-06: when the clean-up after a failed add cannot clear the folder (a file another program holds),
+/// the error says so in one sentence naming the folder, keeps the add's own error, and stops the
+/// retries (a retry could only fail with a misleading "already exists"). When it can, no sentence.
+#[cfg(windows)]
+#[test]
+fn n06_a_failed_add_whose_clean_up_left_files_says_so_and_names_the_folder() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let repo = temp_repo("n06-clear");
+    let root = temp("n06-clear-root");
+    let _clean = [crate::test_dir::TempDir(repo.clone()), crate::test_dir::TempDir(root.clone())];
+    let raw = "fatal: Unable to create 'C:/r/.git/index.lock': File exists.";
+    let held: std::cell::RefCell<Option<fs::File>> = std::cell::RefCell::new(None);
+    let tries = std::cell::Cell::new(0);
+    let dest = root.join("stuck");
+    let half_made = |hold: bool| {
+        tries.set(tries.get() + 1);
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(dest.join(".git"), "gitdir: C:/r/.git/worktrees/stuck\n").unwrap();
+        if !dest.join("pack.idx").exists() {
+            fs::write(dest.join("pack.idx"), "x").unwrap();
+        }
+        if hold && held.borrow().is_none() {
+            *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(0).open(dest.join("pack.idx")).unwrap());
+        }
+        Err::<(), String>(raw.to_string())
+    };
+    let said = add_retrying(&repo, &dest, None, &|| false, || half_made(true)).unwrap_err();
+    let sentence = format!("Kolux could not clear the folder {}. Remove it by hand before you try again.", dest.display());
+    assert_eq!(said, format!("{raw}\n{sentence}"), "the add's own error, then the sentence");
+    assert_eq!(tries.get(), 1, "no retry into the folder that was left");
+    let shown = explain_create_error(said.clone());
+    assert_eq!(shown, format!("Git could not create the workspace. Try again; if it keeps failing, the details below say why. {sentence}{GIT_SAID}{raw}"));
+    assert_eq!(create_kind(&said), create_kind(raw), "the sentence does not change the kind of problem");
+    assert_eq!(explain_create_error(format!("{OVERTAKEN}x")), format!("{OVERTAKEN}x"), "a cancel keeps its text");
+    drop(held.borrow_mut().take());
+    fs::remove_dir_all(&dest).unwrap();
+    // The clean-up works: the add's error alone, and the retries run as before.
+    tries.set(0);
+    let said = add_retrying(&repo, &dest, None, &|| false, || half_made(false)).unwrap_err();
+    assert_eq!(said, raw, "no sentence when the folder was cleared");
+    assert!(tries.get() > 1 && !dest.exists());
+    for d in [repo, root.clone()] {
+        let _ = fs::remove_dir_all(d);
+    }
+    assert!(!root.exists(), "the test leaves nothing behind");
+}
+
+/// F4: an empty folder the clean-up could not delete (a program holds the folder itself) does not
+/// stop the retries and gets no sentence: Git adds into an empty folder. A folder that was there and
+/// empty before the add is the user's own, so when files are left in it the sentence says to empty
+/// it, not to remove it.
+#[cfg(windows)]
+#[test]
+fn f4_an_empty_folder_left_is_retried_and_a_users_folder_is_to_be_emptied() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let repo = temp_repo("f4-clear");
+    let root = temp("f4-clear-root");
+    let _clean = [crate::test_dir::TempDir(repo.clone()), crate::test_dir::TempDir(root.clone())];
+    let raw = "fatal: Unable to create 'C:/r/.git/index.lock': File exists.";
+    let held: std::cell::RefCell<Option<fs::File>> = std::cell::RefCell::new(None);
+    let tries = std::cell::Cell::new(0);
+    // Made by the add, left empty, the folder itself held open (no delete share): retried as before.
+    let dest = root.join("held");
+    let said = add_retrying(&repo, &dest, None, &|| false, || {
+        tries.set(tries.get() + 1);
+        fs::create_dir_all(&dest).unwrap();
+        if held.borrow().is_none() {
+            *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(1).custom_flags(0x0200_0000).open(&dest).unwrap());
+        }
+        Err::<(), String>(raw.to_string())
+    })
+    .unwrap_err();
+    assert_eq!(said, format!("{raw}
+An empty folder was left at {}. You can delete it.", dest.display()), "an empty folder left behind is named once the retries end");
+    assert_eq!(tries.get(), 3, "the retries run");
+    let explained = explain_create_error(said);
+    assert!(explained.split(GIT_SAID).next().unwrap().ends_with(&format!(" An empty folder was left at {}. You can delete it.", dest.display())), "it goes with Kolux's words: {explained}");
+    drop(held.borrow_mut().take());
+    // There and empty before; a file Git wrote is held: the sentence says to empty it.
+    let mine = root.join("mine");
+    fs::create_dir_all(&mine).unwrap();
+    tries.set(0);
+    let said = add_retrying(&repo, &mine, None, &|| false, || {
+        tries.set(tries.get() + 1);
+        fs::write(mine.join(".git"), "gitdir: C:/r/.git/worktrees/mine\n").unwrap();
+        fs::write(mine.join("pack.idx"), "x").unwrap();
+        *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(0).open(mine.join("pack.idx")).unwrap());
+        Err::<(), String>(raw.to_string())
+    })
+    .unwrap_err();
+    assert_eq!(said, format!("{raw}\nKolux could not clear the folder {}. Empty it by hand before you try again.", mine.display()));
+    assert_eq!(tries.get(), 1);
+    assert!(mine.exists(), "the user's folder stays");
+    drop(held.borrow_mut().take());
+}
+
+/// F79-2: a folder the clean-up cannot read counts as left (the sentence is kept); only a folder
+/// that is not found, or one that reads empty, counts as cleared. Made errors, no folder's rights changed.
+#[test]
+fn f79_a_folder_that_cannot_be_read_counts_as_left() {
+    use std::io::{Error, ErrorKind};
+    assert!(still_holds(Err::<std::iter::Empty<()>, _>(Error::from(ErrorKind::PermissionDenied))), "cannot be read: left");
+    assert!(!still_holds(Err::<std::iter::Empty<()>, _>(Error::from(ErrorKind::NotFound))), "not found: nothing left");
+    assert!(still_holds(Ok::<_, Error>(std::iter::once(()))), "one entry: left");
+    assert!(!still_holds(Ok::<_, Error>(std::iter::empty::<()>())), "no entry: nothing left");
+}
+
+/// F5: a cancelled add whose clean-up left files keeps the cancel text first and whole, then names
+/// the folder. A cancel that left nothing is the cancel text alone, as before.
+#[cfg(windows)]
+#[test]
+fn f5_a_cancelled_add_that_left_files_still_names_the_folder() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let repo = temp_repo("f5-clear");
+    let root = temp("f5-clear-root");
+    let _clean = [crate::test_dir::TempDir(repo.clone()), crate::test_dir::TempDir(root.clone())];
+    let held: std::cell::RefCell<Option<fs::File>> = std::cell::RefCell::new(None);
+    let dest = root.join("stuck");
+    let half_made = |hold: bool| {
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(dest.join(".git"), "gitdir: C:/r/.git/worktrees/stuck\n").unwrap();
+        fs::write(dest.join("pack.idx"), "x").unwrap();
+        if hold {
+            *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(0).open(dest.join("pack.idx")).unwrap());
+        }
+        Err::<(), String>("fatal: invalid reference: nope".to_string())
+    };
+    let said = add_retrying(&repo, &dest, None, &|| true, || half_made(true)).unwrap_err();
+    assert_eq!(said, format!("{OVERTAKEN}. Kolux could not clear the folder {}. Remove it by hand.", dest.display()));
+    assert_eq!(explain_create_error(said.clone()), said, "a cancel is not rewritten");
+    drop(held.borrow_mut().take());
+    fs::remove_dir_all(&dest).unwrap();
+    assert_eq!(add_retrying(&repo, &dest, None, &|| true, || half_made(false)).unwrap_err(), OVERTAKEN, "nothing left: the cancel text alone");
+    assert!(!dest.exists());
+}
+
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
 fn project_with_workspaces(tag: &str) -> (Git, Store, Project, PathBuf, Vec<PathBuf>, Place) {
     let git = Git::detect().unwrap();
@@ -3715,4 +3851,22 @@ fn n05_a_gone_folder_matches_itself_written_another_way() {
     assert!(same_folder(&gone.join("sub").join(".."), &gone.join("sub").join("..")));
     assert!(!same_folder(Path::new(&forward), &base.join("other")), "two different gone folders");
     assert!(!same_folder(&gone, &base), "a gone folder is not its parent");
+}
+
+/// F-05: the text step keeps a root's slash, so a drive root is not the bare drive (the current folder
+/// on that drive) and a lone slash is not the empty path; any other end slash still goes.
+#[test]
+fn f05_a_root_keeps_its_slash_and_other_folders_still_lose_theirs() {
+    let t = |s: &str| folder_text(s.to_string());
+    assert_ne!(t(r"c:\"), t("c:"), "a drive root is not the bare drive");
+    assert_ne!(t(r"\"), t(""), "a lone backslash is not the empty path");
+    assert_ne!(t("/"), t(""), "a lone slash is not the empty path");
+    assert_eq!(t(r"c:\\"), t(r"c:\"), "a root keeps one slash");
+    assert_eq!(t(r"c:\a\"), t(r"c:\a"));
+    assert_eq!(t(r"\\?\c:\a\"), t(r"c:\a"));
+    assert_eq!(t(r"\\server\share\"), t(r"\\server\share"));
+    let gone = std::env::temp_dir().join(format!("kolux-f05-{}", std::process::id())).join("made-up");
+    assert!(!gone.exists());
+    assert!(same_folder(Path::new(&format!("{}\\", gone.display())), &gone), "still the same with an end slash");
+    assert!(!same_folder(&gone, &gone.with_file_name("made-up-2")), "a different gone folder is still different");
 }

@@ -175,13 +175,13 @@ pub fn group_delete(
     id: String,
     remove_projects: bool,
 ) -> Result<Groups, String> {
-    delete_with(&git, &store, &id, remove_projects, |d| terminals.kill_under(d).ended)
+    delete_with(&git, &store, &id, remove_projects, |d, spare| terminals.kill_under_sparing(d, spare).ended)
 }
 
 /// Deletes the group; with `remove_projects`, ends each removed project's terminals through
 /// `folder_projects::end_sessions` (Git and the kills run with the store let go), then forgets them.
-fn delete_with(git: &crate::git::Git, store: &Mutex<Store>, id: &str, remove_projects: bool, mut kill: impl FnMut(&std::path::Path) -> usize) -> Result<Groups, String> {
-    let (groups, removed, going) = {
+fn delete_with(git: &crate::git::Git, store: &Mutex<Store>, id: &str, remove_projects: bool, mut kill: impl FnMut(&std::path::Path, &mut dyn FnMut() -> Vec<std::path::PathBuf>) -> usize) -> Result<Groups, String> {
+    let (groups, removed, going, mut staying) = {
         let store = store.lock().map_err(|e| e.to_string())?;
         let (groups, removed) = change(&store, |g| g.delete(id, remove_projects))?;
         let going: Vec<_> = removed
@@ -192,13 +192,15 @@ fn delete_with(git: &crate::git::Git, store: &Mutex<Store>, id: &str, remove_pro
                 (p, folder)
             })
             .collect();
-        (groups, removed, going)
+        // R-02: one list of the projects that stay, shared by every removed project below.
+        let staying = crate::folder_projects::Staying::new(&store, &removed);
+        (groups, removed, going, staying)
     };
     if removed.is_empty() {
         return Ok(groups);
     }
     for (project, folder) in &going {
-        crate::folder_projects::end_sessions(git, project, *folder, &mut kill);
+        crate::folder_projects::end_sessions(git, project, *folder, &mut staying, &mut kill);
     }
     // Under one lock hold, as `remove_project` does: clear what was kept about each path, then forget.
     let store = store.lock().map_err(|e| e.to_string())?;
@@ -368,7 +370,7 @@ mod tests {
         let store = Mutex::new(s);
         let mut ended: Vec<std::path::PathBuf> = Vec::new();
         // Without "remove its projects": nothing is ended and every project stays.
-        let kept = delete_with(&git, &store, &sub.id, false, |d| {
+        let kept = delete_with(&git, &store, &sub.id, false, |d, _| {
             ended.push(d.to_path_buf());
             1
         })
@@ -378,7 +380,7 @@ mod tests {
         assert_eq!(crate::projects::load_projects(&store.lock().unwrap()).len(), 3);
         // b is at the top level now; put it back under Top, then delete Top with its projects.
         change(&store.lock().unwrap(), |g| g.put(&b.id, Some(&top.id))).unwrap();
-        let left = delete_with(&git, &store, &top.id, true, |d| {
+        let left = delete_with(&git, &store, &top.id, true, |d, _| {
             // The kill step runs while the projects are still known (the order project_remove uses).
             let s = store.try_lock().expect("the store is let go while terminals end");
             assert_eq!(crate::projects::load_projects(&s).len(), 3);
@@ -397,6 +399,113 @@ mod tests {
         assert!(dir.join("a").exists() && dir.join("b").exists(), "folders stay on disk");
         drop(s);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// R-02: deleting a group with its projects ends only their terminals. A project inside a removed
+    /// folder that stays keeps its terminals running; one removed in the same step spares nothing.
+    #[test]
+    fn r02_deleting_a_group_spares_the_terminals_of_a_nested_project_that_stays() {
+        // F79-4: the guard is declared first, so it drops last, after the store lets go of its file.
+        let _clean: crate::test_dir::TempDir;
+        let (s, dir) = store("r02");
+        _clean = crate::test_dir::TempDir(dir.clone());
+        let git = crate::git::Git::detect().unwrap();
+        let (outer, inner, deep) = (dir.join("outer"), dir.join("outer").join("inner"), dir.join("outer").join("inner").join("deep"));
+        std::fs::create_dir_all(&deep).unwrap();
+        let add = |f: &std::path::Path| crate::folder_projects::add_folder(&s, f).unwrap();
+        let (o, i, d) = (add(&outer), add(&inner), add(&deep));
+        // Outer only: inner (outside the group) stays.
+        let (_, top) = change(&s, |g| {
+            let top = g.create("Top", None)?;
+            g.put(&o.id, Some(&top.id))?;
+            Ok(top)
+        })
+        .unwrap();
+        let store = Mutex::new(s);
+        let mut asked: Vec<(std::path::PathBuf, Vec<std::path::PathBuf>)> = Vec::new();
+        delete_with(&git, &store, &top.id, true, |d, spare| {
+            asked.push((d.to_path_buf(), spare()));
+            0
+        })
+        .unwrap();
+        assert_eq!(asked.len(), 1);
+        assert_eq!(asked[0].0, outer);
+        assert!(asked[0].1.iter().any(|p| crate::projects::same_folder(p, &inner)), "the kill step is asked to spare outer\\inner");
+        let ids: Vec<String> = crate::projects::load_projects(&store.lock().unwrap()).into_iter().map(|p| p.id).collect();
+        assert!(ids.contains(&i.id) && !ids.contains(&o.id), "inner is still a project, outer is gone");
+        // Three levels: outer and deep go in one step, inner stays, with real (fake) terminals.
+        let o = crate::folder_projects::add_folder(&store.lock().unwrap(), &outer).unwrap();
+        let top = change(&store.lock().unwrap(), |g| {
+            let top = g.create("Top", None)?;
+            g.put(&o.id, Some(&top.id))?;
+            g.put(&d.id, Some(&top.id))?;
+            Ok(top)
+        })
+        .unwrap()
+        .1;
+        let t = crate::terminal::Terminals::default();
+        for (n, f) in [(1, &outer), (2, &inner), (3, &deep), (4, &inner.join("x"))] {
+            t.fake_session(n, &f.to_string_lossy(), None);
+        }
+        let mut ended = 0;
+        delete_with(&git, &store, &top.id, true, |d, spare| {
+            let n = t.kill_under_sparing(d, spare).ended;
+            ended += n;
+            n
+        })
+        .unwrap();
+        let mut left: Vec<String> = t.sessions().into_iter().map(|(_, d, _)| d).collect();
+        left.sort();
+        assert_eq!(ended, 2, "the terminals in outer and in outer\\inner\\deep end");
+        assert_eq!(left, vec![inner.to_string_lossy().to_string(), inner.join("x").to_string_lossy().to_string()], "outer\\inner's own stay");
+        let ids: Vec<String> = crate::projects::load_projects(&store.lock().unwrap()).into_iter().map(|p| p.id).collect();
+        assert_eq!(ids, vec![i.id.clone()]);
+        drop(store);
+    }
+
+    /// F1: two projects on one repository (A on the main checkout, B on a linked worktree) and a third
+    /// worktree. A group that removes only A ends A's terminals; one that removes A and B ends all.
+    #[test]
+    fn f1_a_group_delete_spares_a_shared_worktree_only_while_its_other_project_stays() {
+        let git = crate::git::Git::detect().unwrap();
+        for both in [false, true] {
+            let base = crate::test_dir::temp(&format!("groups-f1-{both}"));
+            let s = Store::open(&base.join("db")).unwrap();
+            let bdir = base.join("b");
+            let (a, b, repo, w3) = crate::folder_projects::shared_repo(&s, &base, &bdir);
+            let (_, top) = change(&s, |g| {
+                let top = g.create("Top", None)?;
+                g.put(&a.id, Some(&top.id))?;
+                if both {
+                    g.put(&b.id, Some(&top.id))?;
+                }
+                Ok(top)
+            })
+            .unwrap();
+            let t = crate::terminal::Terminals::default();
+            for (n, f) in [(1, repo.clone()), (2, repo.join("src")), (3, bdir.clone()), (4, bdir.join("src")), (5, w3.clone())] {
+                std::fs::create_dir_all(&f).unwrap();
+                t.fake_session(n, &f.to_string_lossy(), None);
+            }
+            let store = Mutex::new(s);
+            let mut ended = 0;
+            delete_with(&git, &store, &top.id, true, |d, spare| {
+                let n = t.kill_under_sparing(d, spare).ended;
+                ended += n;
+                n
+            })
+            .unwrap();
+            let mut left: Vec<String> = t.sessions().into_iter().map(|(_, d, _)| d).collect();
+            left.sort();
+            if both {
+                assert_eq!((ended, left.len()), (5, 0), "A and B go together: everything of both ends, the third worktree too");
+            } else {
+                let mut kept: Vec<String> = [bdir.clone(), bdir.join("src"), w3.clone()].iter().map(|d| d.to_string_lossy().to_string()).collect();
+                kept.sort();
+                assert_eq!((ended, left), (2, kept), "only A's own two end; B's two and the third worktree's one run on");
+            }
+            drop(store);
+        }
     }
 
     #[test]
@@ -421,7 +530,7 @@ mod tests {
         })
         .unwrap();
         let store = Mutex::new(s);
-        delete_with(&git, &store, &top.id, true, |_| 0).unwrap();
+        delete_with(&git, &store, &top.id, true, |_, _| 0).unwrap();
         let s = store.into_inner().unwrap();
         assert!(crate::projects::retired_names(&s, &scope(&a, &s)).is_empty(), "retired names for that folder are cleared");
         assert_eq!(s.get(&crate::bulk::space_key(&a.id)).unwrap().unwrap_or_default(), "", "cached scan results are cleared");
