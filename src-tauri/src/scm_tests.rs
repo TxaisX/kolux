@@ -3237,6 +3237,24 @@ fn r59_a_staged_rename_is_left_whole_when_one_half_is_left() {
     assert!(st.staged.iter().any(|c| c.path == "b.txt" && c.from.as_deref() == Some("a.txt")), "the rename is still staged: {st:?}");
 }
 
+/// R70-02: a last commit that cannot be read for a reason other than "no commit yet" (here a
+/// broken list of branch names, so `rev-parse` fails with code 128) keeps the folder.
+#[test]
+fn r70_a_broken_branch_list_is_not_read_as_no_commit_yet() {
+    let dir = temp_repo("r70f");
+    commit_file(&dir, "foo", "f\n");
+    plain(&["rm", "--cached", "-q", "foo"], &dir);
+    fs::remove_file(dir.join("foo")).unwrap();
+    fs::create_dir(dir.join("foo")).unwrap();
+    fs::write(dir.join("foo").join("work.txt"), "unpushed\n").unwrap();
+    plain(&["pack-refs", "--all"], &dir);
+    let refs = dir.join(".git").join("packed-refs");
+    fs::write(&refs, fs::read_to_string(&refs).unwrap() + "garbage line\n").unwrap();
+    let kept = folder_in_place(&dir, "foo");
+    let _ = fs::remove_dir_all(&dir);
+    assert!(kept, "a broken branch list is not \"no commit yet\": the folder is kept");
+}
+
 /// R70-07: a link two levels up (a real folder `a` holding a junction `b`) is found like one
 /// right above the row, on every route. Coverage: the walk already went this far before job 77.
 #[cfg(windows)]
