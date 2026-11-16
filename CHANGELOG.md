@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Kolux asks what to open.** When Kolux starts, one Start form asks which folders, how many agents, and which AI and model for each. The same form opens for a new pane and for the first folder you add after setup. The sessions it starts take an empty "pick an agent" pane first, so none is left beside them; an empty pane you already typed a task into is left as it is. Settings › General has "Ask what to open when Kolux starts"; off opens what was open last time.
+- **Discard is much more careful.** Discard in All Changes never deletes a folder that took a file's place, never writes or deletes through a folder link, never discards a whole folder at once, and never writes a deleted file back over a newer file of the same name, also when the two names differ only in letter case or by a look-alike letter. Discarding a copied file no longer undoes your changes to the file it was copied from (this could happen when Git is set to detect copies). When it leaves something alone, a yellow line under "Kolux left this as it is:" says why and what to do next. A real failure is red under "Could not discard".
+- **Taking a project out of Kolux ends only that project's terminals.** A project inside it that stays keeps its terminals, and so does a worktree another project on the same repository also lists. The question counts only what will close.
+- Closing shortcuts such as Ctrl+W wait while you type in a text field, on every keyboard layout and on the number pad.
+- The delete shortcut always asks first.
+- Resource Manager has one "End all" button. "Restart terminals" is gone.
+- A folder's dot in the sidebar turns yellow when one of its agents needs you and green when one has finished and none is still working. A folder where an agent finished while you were elsewhere shows its name in bold.
+- When an AI no longer offers a model you picked, the Start form says so and asks you to pick another. A search for agents that takes longer than 10 seconds no longer holds the form up: it shows the last list Kolux found and says so.
+- The agent status switch is named "Show what each agent is doing" and says what goes dark when it is off. "Delete Workspace" is now "Delete worktree".
+- A commit that fails says "Commit failed:" in red.
+- Adding a worktree that fails or is cancelled names the folder it left behind, and clears a folder only when that add made it.
+- The leftover code and styles of the old Source Control panel are gone. Its Settings switch now reads "Show the AI actions for Git".
+- Under the hood: an agent typed into a plain shell pane shows in `kolux terminal list`; one scheduled automation that cannot start no longer stops the others due at the same time; tokens are compared in constant time.
+
 ## 0.1.16
 
 - **One grid per project, with every worktree in it.** Sessions in a project's worktrees open side by side in the project's grid, each cell labeled with a colored chip naming its worktree and branch. The sidebar lists only your project folders. Click a chip for that worktree's menu. The file tree, checks, "open beside" and review notes follow the cell you are working in, and `kolux file open` from an agent in a worktree opens there.
