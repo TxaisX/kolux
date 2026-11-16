@@ -2925,6 +2925,8 @@ fn f03_discard_never_writes_inside_a_submodule_even_when_git_is_set_to_recurse()
     plain(&["-c", "protocol.file.allow=always", "submodule", "add", "-q", &lib_url, "sub"], &top);
     plain(&["commit", "-q", "-m", "add sub"], &top);
     let inner = top.join("sub");
+    run(&["config", "user.email", "test@example.com"], Some(&inner)).unwrap();
+    run(&["config", "user.name", "Kolux test"], Some(&inner)).unwrap();
     commit_file(&inner, "x.txt", "x\n");
     plain(&["add", "sub"], &top);
     fs::write(inner.join("README.md"), "uncommitted\n").unwrap();
