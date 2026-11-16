@@ -26,8 +26,9 @@ import { FeedbackDialog } from "../../lazy/pages";
 
 // Job 47 A6 (ONB-010): the first folder after setup opens the Start form on it, once it is on the list and in front.
 // Job 57 F1: "on the list" is the folder-to-project map openStart ticks the folder from (projectOf), matched with
-// sameDir, since firstStart is the opened worktree (a subfolder's repository root). On the list but not in front:
-// the user went elsewhere, so it is dropped unopened.
+// sameDir, since firstStart is the opened worktree. Job 68 F1: "in front" is that folder or its project's own
+// stored folder (the store shows a worktree in its project's grid, and git can spell one folder two ways: an 8.3
+// name, a subst drive, a link). On the list but not in front: the user went elsewhere, so it is dropped unopened.
 export function FirstFolderStart() {
   const { firstStart, doneFirstStart, activeDir, projects, owner, openStart } = useWindow();
   useEffect(() => {
@@ -35,7 +36,8 @@ export function FirstFolderStart() {
     const pid = Object.entries(owner).find(([dir]) => sameDir(dir, firstStart))?.[1];
     if (pid === undefined || !projects.some((p) => p.id === pid)) return;
     doneFirstStart();
-    if (sameDir(activeDir, firstStart)) openStart({ here: true });
+    const proj = projects.find((p) => p.id === pid);
+    if (sameDir(activeDir, firstStart) || (proj && sameDir(activeDir, proj.path))) openStart({ here: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstStart, activeDir, projects, owner]);
   return null;

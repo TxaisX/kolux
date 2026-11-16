@@ -1,5 +1,5 @@
-// Job 57 F1: the first folder added after setup opens the Start form once, even when the added folder is a
-// subfolder of a repository (openedWorktree falls back to the main checkout) or is spelled another way.
+// Job 57 F1, job 68 F1: the first folder added after setup opens the Start form once, even when the folder in
+// front is its project's stored folder spelled another way (8.3 name, subst drive, link).
 // FirstFolderStart is drawn under the window store; doneFirstStart clears firstStart as the real store does.
 import { act, createElement, useState } from "react";
 import { expect, test, vi } from "vitest";
@@ -38,8 +38,9 @@ async function draw(c: Case) {
   return { openStart, redraw: () => act(async () => redraw()), unmount };
 }
 
-test("F1: a subfolder of a repository (path is not the opened worktree) opens the Start form once", async () => {
-  const d = await draw({ firstStart: "C:\\w\\app", activeDir: "C:\\w\\app", projectPath: "C:\\w\\app\\web", ownerDir: "C:\\w\\app" });
+test("F1: the project's stored folder is spelled apart from the opened one (8.3 name, subst, link) and is in front: the Start form opens once", async () => {
+  // Job 68: the real store puts the project's own folder in front (gridOf of the opened worktree), not firstStart.
+  const d = await draw({ firstStart: "C:\\w\\app", activeDir: "C:\\w\\APP~1", projectPath: "C:\\w\\APP~1", ownerDir: "C:\\w\\app" });
   expect(d.openStart).toHaveBeenCalledTimes(1);
   expect(d.openStart).toHaveBeenCalledWith({ here: true });
   await d.redraw();
