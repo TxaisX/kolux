@@ -4293,3 +4293,151 @@ fn r97_a_staged_copy_discarded_by_paths_leaves_its_source_alone() {
     let wrong: Vec<String> = ["status.renames", "diff.renames"].iter().flat_map(|key| r97_copy("paths", key)).collect();
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
+
+/// F98-02: what is wrong after a letter-case rename `old` to `new` was discarded: the folder must
+/// list `old` in its own spelling and not `new`, the file must read `committed`, status must be clean.
+#[cfg(windows)]
+fn r99_back(dir: &Path, old: &str, new: &str) -> Vec<String> {
+    let mut wrong = Vec::new();
+    let (o, n) = (r95_listed(dir, old), r95_listed(dir, new));
+    if !o || n {
+        wrong.push(format!("the listing holds {old} {o}, {new} {n}"));
+    }
+    let text = fs::read_to_string(dir.join(old)).ok();
+    if text.as_deref() != Some("committed\n") {
+        wrong.push(format!("{old} holds {text:?}"));
+    }
+    match status(dir) {
+        Ok(st) if st.staged.is_empty() && st.changed.is_empty() && st.untracked.is_empty() => {}
+        st => wrong.push(format!("status lists {st:?}")),
+    }
+    wrong
+}
+
+/// F98-02: the rows each route gets for a rename `old` to `new`, and a name part for its folder.
+#[cfg(windows)]
+fn r99_rows<'a>(route: &str, old: &'a str, new: &'a str) -> (Vec<&'a str>, &'static str) {
+    let rows = if route == "staged" { vec![old, new] } else { vec![new] };
+    (rows, if old == "GUIDE.md" { "down" } else { "up" })
+}
+
+/// F98-02: discards a letter-case rename `old` to `new` on `route`, with the new half changed, or
+/// deleted by hand (`gone`). The old name must come back.
+#[cfg(windows)]
+fn r99_case(route: &str, old: &str, new: &str, gone: bool) -> Vec<String> {
+    let (rows, way) = r99_rows(route, old, new);
+    let dir = temp_repo(&format!("r99-{route}-{way}-{}", if gone { "gone" } else { "stands" }));
+    let _clean = LinksThenFolders(Vec::new(), vec![dir.clone()]);
+    commit_file(&dir, old, "committed\n");
+    plain(&["mv", old, new], &dir);
+    if gone {
+        fs::remove_file(dir.join(new)).unwrap();
+    } else {
+        fs::write(dir.join(new), "changed\n").unwrap();
+    }
+    let said = by_route(&dir, route, &rows);
+    let mut wrong = r99_back(&dir, old, new);
+    if said != Ok(()) {
+        wrong.insert(0, format!("said {said:?}"));
+    }
+    wrong.into_iter().map(|w| format!("{route}, {old} to {new}: {w}")).collect()
+}
+
+#[cfg(windows)]
+#[test]
+fn r99_an_upper_to_lower_case_rename_discarded_on_the_staged_route_comes_back() {
+    let wrong = r99_case("staged", "GUIDE.md", "guide.md", false);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[cfg(windows)]
+#[test]
+fn r99_an_upper_to_lower_case_rename_discarded_by_paths_comes_back() {
+    let wrong = r99_case("paths", "GUIDE.md", "guide.md", false);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[cfg(windows)]
+#[test]
+fn r99_a_case_rename_whose_new_half_was_deleted_comes_back_on_the_staged_route() {
+    let wrong: Vec<String> = [("GUIDE.md", "guide.md"), ("guide.md", "GUIDE.md")].iter().flat_map(|(o, n)| r99_case("staged", o, n, true)).collect();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[cfg(windows)]
+#[test]
+fn r99_a_case_rename_whose_new_half_was_deleted_comes_back_by_paths() {
+    let wrong: Vec<String> = [("GUIDE.md", "guide.md"), ("guide.md", "GUIDE.md")].iter().flat_map(|(o, n)| r99_case("paths", o, n, true)).collect();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F98-02 / F98-03: the link line's next step. A junction (to a folder the test made outside the
+/// repository) stands at a letter-case rename's place: the first Discard leaves it with the link
+/// line; the test removes the link only, as the line asks, and the second Discard brings the old
+/// name back. The folder the link pointed at keeps its file.
+#[cfg(windows)]
+fn r99_link(route: &str, old: &str, new: &str) -> Vec<String> {
+    let (rows, way) = r99_rows(route, old, new);
+    let name = format!("r99-link-{route}-{way}");
+    let dir = temp_repo(&name);
+    let out = outside_folder(&name);
+    let _clean = LinksThenFolders(vec![dir.join(new)], vec![dir.clone(), out.clone()]);
+    commit_file(&dir, old, "committed\n");
+    plain(&["mv", old, new], &dir);
+    fs::remove_file(dir.join(new)).unwrap();
+    fs::write(out.join("keep.txt"), "keep\n").unwrap();
+    junction(&dir.join(new), &out);
+    let want = if route == "staged" { format!("{}\n{new} is the other half of a rename, so Kolux leaves it too.", r95_link(old)) } else { r95_link(old) };
+    let mut wrong = Vec::new();
+    let said = by_route(&dir, route, &rows);
+    if said != Err(want) {
+        wrong.push(format!("the first discard said {said:?}"));
+    }
+    fs::remove_dir(dir.join(new)).unwrap();
+    let said = by_route(&dir, route, &rows);
+    if said != Ok(()) {
+        wrong.push(format!("the second discard said {said:?}"));
+    }
+    wrong.extend(r99_back(&dir, old, new));
+    if fs::read_to_string(out.join("keep.txt")).ok().as_deref() != Some("keep\n") {
+        wrong.push("the outside keep.txt changed".to_string());
+    }
+    wrong.into_iter().map(|w| format!("{route}, {old} to {new}: {w}")).collect()
+}
+
+#[cfg(windows)]
+#[test]
+fn r99_a_case_rename_onto_a_removed_link_comes_back_on_the_staged_route() {
+    let wrong: Vec<String> = [("GUIDE.md", "guide.md"), ("guide.md", "GUIDE.md")].iter().flat_map(|(o, n)| r99_link("staged", o, n)).collect();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[cfg(windows)]
+#[test]
+fn r99_a_case_rename_onto_a_removed_link_comes_back_by_paths() {
+    let wrong: Vec<String> = [("GUIDE.md", "guide.md"), ("guide.md", "GUIDE.md")].iter().flat_map(|(o, n)| r99_link("paths", o, n)).collect();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F98-02: the order (index rows first, then the rows only the last commit holds) still puts back
+/// a plain rename, a staged deletion and a staged change discarded together on the staged route.
+#[test]
+fn r99_a_rename_a_deletion_and_a_change_discarded_together_on_the_staged_route_come_back() {
+    let dir = temp_repo("r99i");
+    commit_file(&dir, "a.txt", "a\n");
+    commit_file(&dir, "gone.txt", "gone\n");
+    commit_file(&dir, "kept.txt", "kept\n");
+    plain(&["mv", "a.txt", "b.txt"], &dir);
+    plain(&["rm", "-q", "gone.txt"], &dir);
+    fs::write(dir.join("kept.txt"), "changed\n").unwrap();
+    plain(&["add", "kept.txt"], &dir);
+    let said = by_route(&dir, "staged", &["a.txt", "b.txt", "gone.txt", "kept.txt"]);
+    let texts: Vec<Option<String>> = ["a.txt", "gone.txt", "kept.txt"].iter().map(|f| fs::read_to_string(dir.join(f)).ok()).collect();
+    let b = dir.join("b.txt").exists();
+    let st = status(&dir).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(said, Ok(()));
+    assert_eq!(texts, [Some("a\n".to_string()), Some("gone\n".to_string()), Some("kept\n".to_string())]);
+    assert!(!b, "b.txt is still there");
+    assert!(st.staged.is_empty() && st.changed.is_empty() && st.untracked.is_empty(), "status lists {st:?}");
+}

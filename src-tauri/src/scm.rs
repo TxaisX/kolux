@@ -2853,6 +2853,11 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
             }
             continue;
         }
+        // F98-02: the rename's old half, checked out above, now stands here under its own name
+        // (one disk entry): nothing of the new half is left to delete.
+        if renames.iter().any(|(from, to)| to == p && one_entry(worktree, p, from)) {
+            continue;
+        }
         let Ok(meta) = fs::symlink_metadata(&full) else { continue };
         if own_repo_at(worktree, p) {
             kept.push(own_repo(p));
@@ -3341,8 +3346,16 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             } else {
                 &["-c", "submodule.recurse=false", "--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
             };
+            // F98-02: on the staged route the rows only the last commit holds go in a second call,
+            // after the rows the index holds, so a rename's new half is gone before its old half is
+            // written (a letter-case rename is one disk entry). Nothing more is written after a failure.
+            let (first, last): (Vec<String>, Vec<String>) = rest.iter().cloned().partition(|p| {
+                let r = p.trim_end_matches('/');
+                section != "staged" || k.at.contains(r) || !k.head_file.contains(r)
+            });
             if !rest.is_empty() || said.is_empty() {
-                if let Err(e) = piped(worktree, args, &rest) {
+                let done = if first.is_empty() && !last.is_empty() { Ok(()) } else { piped(worktree, args, &first) };
+                if let Err(e) = done.and_then(|()| if last.is_empty() { Ok(()) } else { piped(worktree, args, &last) }) {
                     said.push(e);
                 }
             }
