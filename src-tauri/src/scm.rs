@@ -231,7 +231,9 @@ pub fn status(worktree: &Path) -> Result<Status, String> {
 fn read_status(worktree: &Path) -> Result<Status, String> {
     // Every untracked file by name, not a collapsed folder, so each can be staged on its own.
     // GIT-070: a short read, so it takes the worktree's turn and has a time limit.
-    let out = output(&["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
+    // F96-03: renames only, never a copy (the user's `status.renames` or `diff.renames` may say
+    // `copies`); `count` reads the same way.
+    let out = output(&["-c", "status.renames=true", "status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
     let mut st = parse_status(&String::from_utf8_lossy(&out));
     if let (Some(branch), Some(_)) = (st.branch.as_deref(), st.upstream.as_deref()) {
         st.upstream_remote = run(&["config", "--get", &format!("branch.{branch}.remote")], Some(worktree)).ok().map(|t| t.trim().to_string()).filter(|r| !r.is_empty() && r != ".");
@@ -3447,7 +3449,7 @@ pub async fn scm_count(worktree: String) -> Result<usize, String> {
 /// PROJ-062: how many files differ from HEAD in `worktree`, each path once wherever git lists it. The same
 /// status read the panel makes, without the numstat diff, the untracked line counts or the upstream look.
 fn count(worktree: &Path) -> Result<usize, String> {
-    let out = output(&["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
+    let out = output(&["-c", "status.renames=true", "status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(worktree))?;
     Ok(count_paths(&parse_status(&String::from_utf8_lossy(&out))))
 }
 

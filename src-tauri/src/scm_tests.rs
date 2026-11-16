@@ -405,10 +405,10 @@ fn t033g_a_known_base_skips_the_second_status_and_no_shared_history_is_labelled_
     let with = with.unwrap();
     assert_eq!((with.against.as_str(), with.since.as_str(), with.note.as_deref()), (known.as_str(), snapshot.as_str(), None));
     assert!(!argvs.is_empty(), "trace2 log missing");
-    assert_eq!(argvs.iter().filter(|a| a.starts_with("status")).count(), 0, "{argvs:?}");
+    assert_eq!(argvs.iter().filter(|a| a.split(' ').any(|w| w == "status")).count(), 0, "{argvs:?}");
     // Without it (first read before any status arrived) status finds the base, as before.
     let argvs = git_argvs(|| assert_eq!(base_changes(&dir, None, None).unwrap().since, snapshot));
-    assert!(argvs.iter().any(|a| a.starts_with("status")), "{argvs:?}");
+    assert!(argvs.iter().any(|a| a.split(' ').any(|w| w == "status")), "{argvs:?}");
     // A pin still wins over the known base; option-looking text is never handed to git.
     assert_eq!(base_changes(&dir, Some("feature"), Some(&known)).unwrap().against, "feature");
     let argvs = git_argvs(|| assert_eq!(base_changes(&dir, Some("--output=x"), Some("-x")).map(|b| b.against).ok(), status(&dir).unwrap().base));
@@ -4243,5 +4243,53 @@ fn r97_a_letter_case_rename_onto_a_link_is_left_with_the_link_line_on_the_staged
 #[test]
 fn r97_a_letter_case_rename_onto_a_link_is_left_with_the_link_line_by_paths() {
     let wrong = r97_link("paths", &["GUIDE.md"], r95_link("guide.md"));
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F96-03 / F96-04: with the user's `status.renames` or `diff.renames` set to `copies`, a staged
+/// copy `b` of `a` is listed as what it is, a staged new file with no source. Discarding it (rows as
+/// the page sends them: the source first when a row has one) removes `b` and leaves `a`'s staged
+/// and unstaged lines alone.
+fn r97_copy(route: &str, key: &str) -> Vec<String> {
+    let dir = temp_repo(&format!("r97-copy-{route}-{key}"));
+    let text: String = (1..=20).map(|i| format!("line {i}\n")).collect();
+    plain(&["config", key, "copies"], &dir);
+    commit_file(&dir, "a", &text);
+    fs::write(dir.join("a"), format!("{text}first\n")).unwrap();
+    fs::copy(dir.join("a"), dir.join("b")).unwrap();
+    plain(&["add", "a", "b"], &dir);
+    fs::write(dir.join("a"), format!("{text}first\nsecond\n")).unwrap();
+    let mut wrong = Vec::new();
+    let row = status(&dir).ok().and_then(|st| st.staged.into_iter().find(|c| c.path == "b"));
+    if row.as_ref().map(|c| (c.status.as_str(), c.from.as_deref())) != Some(("A", None)) {
+        wrong.push(format!("{route} {key}: b is listed as {row:?}"));
+    }
+    let from = row.and_then(|c| c.from);
+    let rows: Vec<&str> = if route == "staged" { from.iter().map(String::as_str).chain(["b"]).collect() } else { vec!["b"] };
+    let said = by_route(&dir, route, &rows);
+    if said != Ok(()) {
+        wrong.push(format!("{route} {key}: said {said:?}"));
+    }
+    if dir.join("b").exists() || !run(&["ls-files", "b"], Some(&dir)).unwrap_or_default().is_empty() {
+        wrong.push(format!("{route} {key}: b is still on disk or in the index"));
+    }
+    let disk = fs::read_to_string(dir.join("a")).ok();
+    let index = run(&["show", ":a"], Some(&dir)).ok();
+    if disk != Some(format!("{text}first\nsecond\n")) || index.as_deref().map(str::trim_end) != Some(&format!("{text}first")[..]) {
+        wrong.push(format!("{route} {key}: a lost its lines: disk {disk:?}, index {index:?}"));
+    }
+    let _ = fs::remove_dir_all(&dir);
+    wrong
+}
+
+#[test]
+fn r97_a_staged_copy_discarded_on_the_staged_route_leaves_its_source_alone() {
+    let wrong: Vec<String> = ["status.renames", "diff.renames"].iter().flat_map(|key| r97_copy("staged", key)).collect();
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[test]
+fn r97_a_staged_copy_discarded_by_paths_leaves_its_source_alone() {
+    let wrong: Vec<String> = ["status.renames", "diff.renames"].iter().flat_map(|key| r97_copy("paths", key)).collect();
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
