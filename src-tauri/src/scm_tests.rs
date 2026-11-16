@@ -3622,3 +3622,26 @@ fn r82_a_row_with_a_nul_is_refused() {
     assert_eq!(b.as_deref(), Some("changed\n"), "the change to b.txt is kept");
     assert_eq!(staged.as_deref(), Ok(""), "nothing was staged");
 }
+
+/// R82-04: a link at one half of a staged rename stays when the other half is left: a link is
+/// removed only after every check, the rename look-up included, has passed.
+#[cfg(windows)]
+#[test]
+fn r82_a_link_in_a_rename_left_whole_is_not_removed() {
+    let dir = temp_repo("r82g");
+    let out = outside_folder("r82g");
+    let _clean = LinksThenFolders(vec![dir.join("a.txt")], vec![dir.clone(), out.clone()]);
+    commit_file(&dir, "a.txt", "a\n");
+    plain(&["mv", "a.txt", "b.txt"], &dir);
+    fs::remove_file(dir.join("b.txt")).unwrap();
+    fs::create_dir(dir.join("b.txt")).unwrap();
+    fs::write(dir.join("b.txt").join("x.txt"), "mine\n").unwrap();
+    fs::write(out.join("o.txt"), "o\n").unwrap();
+    junction(&dir.join("a.txt"), &out);
+    let said = by_route(&dir, "staged", &["a.txt", "b.txt"]);
+    let link = fs::symlink_metadata(dir.join("a.txt")).is_ok_and(|m| m.is_symlink());
+    assert_eq!(said, Err(format!("{}\na.txt is the other half of a rename, so Kolux leaves it too.", now_folder("b.txt"))));
+    assert!(link, "the link at a.txt is still there");
+    assert_eq!(fs::read_to_string(out.join("o.txt")).unwrap(), "o\n");
+    assert_eq!(fs::read_to_string(dir.join("b.txt").join("x.txt")).unwrap(), "mine\n");
+}

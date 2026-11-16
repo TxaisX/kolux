@@ -3041,32 +3041,44 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // F-02: a row whose file Git would write over a folder with something in it is left as
             // it is and named; the other rows still go. R59-01/R59-02: so is a row under a link or a
             // file where a folder was; a link at the row itself is removed (only the link) first.
-            let (mut said, mut rest, mut left) = (Vec::new(), Vec::new(), Vec::new());
+            let (mut said, mut rest, mut left, mut links) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
             let mut real = std::collections::HashSet::new();
-            // R70-03: the link is removed here, before the rename look-up, so a failure leaves its row.
+            // R82-04: this loop only looks (a row whose kind cannot be read is left); no link is
+            // removed until every check, the rename look-up included, is done.
             for p in paths {
-                match left_why(worktree, p, &mut real).or_else(|| k.folder(p).then(|| folder_line(p))).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p))).or_else(|| remove_link(worktree, p).err()) {
-                    Some(why) => {
+                let row = p.trim_end_matches('/').to_string();
+                let why = left_why(worktree, p, &mut real).or_else(|| k.folder(p).then(|| folder_line(p))).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p)));
+                match why.map_or_else(|| is_link(worktree, p), Err) {
+                    Err(why) => {
                         said.push(why);
-                        left.push(p.trim_end_matches('/').to_string());
+                        left.push(row);
                     }
-                    None => rest.push(p.clone()),
+                    Ok(link) => {
+                        if link {
+                            links.push(row);
+                        }
+                        rest.push(p.clone());
+                    }
                 }
             }
-            // R59-06: a staged rename goes whole or not at all; looked up only when a row is left.
-            // R70-03: a status that cannot be read leaves every row; a picked partner gets its own line.
-            if section == "staged" && !left.is_empty() {
+            // R59-06: a staged rename goes whole or not at all; looked up only when a row is left
+            // or a link is to be removed. R70-03: a status that cannot be read leaves every row; a
+            // picked partner gets its own line.
+            let mut halves: Vec<(String, String)> = Vec::new();
+            if section == "staged" && (!left.is_empty() || !links.is_empty()) {
                 match status(worktree) {
                     Ok(st) => {
                         for c in st.staged {
-                            let Some(from) = c.from.filter(|from| left.contains(from) || left.contains(&c.path)) else { continue };
-                            for half in [from, c.path] {
-                                if !left.contains(&half) {
-                                    if rest.iter().any(|p| p.trim_end_matches('/') == half) {
-                                        said.push(format!("{half} is the other half of a rename, so Kolux leaves it too."));
-                                    }
-                                    left.push(half);
+                            let Some(from) = c.from else { continue };
+                            halves.push((from.clone(), c.path.clone()));
+                            halves.push((c.path, from));
+                        }
+                        for (half, other) in &halves {
+                            if left.contains(other) && !left.contains(half) {
+                                if rest.iter().any(|p| p.trim_end_matches('/') == half) {
+                                    said.push(format!("{half} is the other half of a rename, so Kolux leaves it too."));
                                 }
+                                left.push(half.clone());
                             }
                         }
                         rest.retain(|p| !left.iter().any(|l| l == p.trim_end_matches('/')));
@@ -3077,6 +3089,32 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
                     }
                 }
             }
+            // R82-04: only now are links removed, and only for rows still going. A link that cannot
+            // be removed leaves its row and, in a staged rename, its other half.
+            let mut removed: Vec<String> = Vec::new();
+            for p in &links {
+                if left.contains(p) || !rest.iter().any(|r| r.trim_end_matches('/') == p) {
+                    continue;
+                }
+                match remove_link(worktree, p) {
+                    Ok(_) => removed.push(p.clone()),
+                    Err(e) => {
+                        said.push(e);
+                        left.push(p.clone());
+                        for (half, _) in halves.iter().filter(|(_, other)| other == p) {
+                            if !left.contains(half) && rest.iter().any(|r| r.trim_end_matches('/') == half) {
+                                said.push(if removed.contains(half) {
+                                    format!("{half} is the other half of a rename, so Kolux leaves it too. Its link was already removed; what it pointed to is untouched.")
+                                } else {
+                                    format!("{half} is the other half of a rename, so Kolux leaves it too.")
+                                });
+                                left.push(half.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            rest.retain(|p| !left.iter().any(|l| l == p.trim_end_matches('/')));
             let args: &[&str] = if section == "staged" {
                 &["-c", "submodule.recurse=false", "--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
             } else {
