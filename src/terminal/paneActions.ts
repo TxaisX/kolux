@@ -51,7 +51,7 @@ import { teamViewOf } from "../projects/rows";
 import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
 import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
-import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
+import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, freeCells, groupOf, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
 import { closeOne, pinQuestion, stripOrderOf } from "./pin";
 import { cancelHandOver, handOver, movedKeys } from "./handover";
 import { dropCell, dropTab, type Zone } from "./rearrange";
@@ -86,7 +86,10 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // SESS-007: a pane that asks what to run, in the workspace in front. SESS-008: a grid holds
   // up to MAX_PANES.
   const addChooser = () => {
-    if (cellsOf(panesIn(panes, activeDir)).length >= MAX_PANES) return setToast(`A workspace holds up to ${MAX_PANES} panes.`);
+    // TERM-007: the Start form fills a free cell first, so a full grid that still holds one has room for it. The
+    // classic look adds a pane of its own, so there every cell counts.
+    const cells = cellsOf(panesIn(panes, activeDir));
+    if (cells.length - (classic ? 0 : freeCells(cells).length) >= MAX_PANES) return setToast(`A workspace holds up to ${MAX_PANES} panes.`);
     if (!classic) return openStart({ here: true });
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: startDirOf(activeDir), branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }]);
@@ -293,7 +296,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setFocused(key);
   };
   // TERM-001: the layout strip sets how many cells the workspace in front holds. Growing opens the
-  // Start form for the cells it adds (nothing starts on its own); shrinking drops unstarted cells newest
+  // Start form for the cells it adds and the free ones (nothing starts on its own); shrinking drops unstarted cells newest
   // first and leaves started sessions alone: the ask before removing a started session is
   // TERM-003 on T-151, so until then the toast names the session in the way.
   const setCount = (n: number) => {
@@ -307,8 +310,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       if (add === 0 && drop.length === 0) return;
     }
     // Start form E: growing asks once, on the Start form, with How many set to the empty cells; Start fills them.
-    // No chooser panes or "pick me" slots are added.
-    const ask = stripAsk(add);
+    // No chooser panes or "pick me" slots are added. TERM-007: a pane that has not started is an empty cell too, and
+    // Start fills it first, so it is asked for together with the new cells.
+    const ask = stripAsk(add > 0 ? add + freeCells(shown).length : 0);
     if (ask > 0) openStart({ here: true, count: ask });
     if (drop.length === 0) return;
     const rest = panes.filter((p) => !drop.includes(groupOf(p)));

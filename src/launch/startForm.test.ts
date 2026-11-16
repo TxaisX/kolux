@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import { MAX_PANES } from "../terminal/grid";
 import { emptySeat, lineupOf, MAX_SESSIONS, TERMINAL, type Seat } from "./seats";
-import { acrossNote, startEach, askAtOpen, asksAtStart, everySeatStart, folderPlan, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, recountAll, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY, START_WAIT_MS } from "./startForm";
+import type { Pane } from "../App";
+import { acrossNote, startEach, askAtOpen, asksAtStart, everySeatStart, folderPlan, landOnFree, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, recountAll, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY, START_WAIT_MS } from "./startForm";
 
 const D = { model: "opus", effort: "high" };
 const none = { model: null };
@@ -156,4 +157,21 @@ test("job 13 F2: the quick counts, the big-count button and the typed field all 
   expect(src).toContain("onClick={() => recount(n)}");
   expect(src).toContain("onClick={() => recount(bigCount)}");
   expect(src).toContain("else recount(plan.n);");
+});
+
+// TERM-007 (review 101, F2): an own-folder team's Setup tabs open before its agents land, in the grid's first cell.
+// When that cell is the pane that has not started, the pane is still free: the agents take it and none is left over.
+// A Setup tab that is not this launch's is a tab of that cell like any other, so the pane is not free.
+test("TERM-007: the Start form's panes take the free cells first; this launch's own Setup tab does not take one", () => {
+  const pane = (key: number, more: Partial<Pane> = {}): Pane => ({ key, cwd: "C:\\w", branch: null, agent: "shell", program: null, args: [], ...more });
+  const keys = (ps: Pane[]) => ps.map((p) => p.key);
+  const empty = pane(2, { seats: [emptySeat()] });
+  const made = [pane(100, { cwd: "C:\\wt\\a", view: "C:\\w" }), pane(101, { cwd: "C:\\wt\\b", view: "C:\\w" })];
+  expect(keys(landOnFree([pane(1), empty, pane(3)], "C:\\w", made))).toEqual([1, 100, 3, 101]);
+  expect(keys(landOnFree([pane(1), pane(9, { cwd: "C:\\other", seats: [emptySeat()] })], "C:\\w", made))).toEqual([1, 9, 100, 101]);
+  const setup = pane(50, { cwd: "C:\\wt\\a", view: "C:\\w", group: 2, setupScript: true, title: "Setup" });
+  const after = landOnFree([empty, setup, pane(3)], "C:\\w", made, ["C:\\wt\\a", "C:\\wt\\b"]);
+  expect(keys(after)).toEqual([100, 50, 3, 101]);
+  expect(after.some((p) => p.seats)).toBe(false);
+  expect(keys(landOnFree([empty, setup, pane(3)], "C:\\w", made))).toEqual([2, 50, 3, 100, 101]);
 });

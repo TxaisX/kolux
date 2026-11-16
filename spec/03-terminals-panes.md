@@ -40,6 +40,7 @@ Acceptance:
   - [x] Going from 6 to 4 with 2 unstarted panes removes those 2 without any prompt. (cards; evidence/cards-TERM-001.txt)
   - [x] Asking for 13 panes yields 12. (cards; evidence/cards-TERM-001.txt)
 Compat: —
+  Amended 2026-11-16 (wave 2026-11-15; Txais 2026-11-15, one Start form): growing no longer adds empty panes. It opens the Start form with How many set to the cells it adds plus the panes that never started and hold no typed text; Start fills those panes first (TERM-007). Nothing starts until Start is pressed.
 Source: D-03-001
 
 ### TERM-004 · Grid layout arrangement for each pane count
@@ -454,6 +455,7 @@ Acceptance:
   - [ ] Launching into a grid that still has one empty pane fills that pane and creates no new
       split.
 Compat: —
+  Amended 2026-11-16 (wave 2026-11-15, review 101): for the Start form, an empty pane is one that never started and holds no typed task, tab name, seat name or prompt. The form's sessions take such panes first, in grid order, and the rest are added after the panes already there. A pane with typed text is left as it is and counts as a taken cell. A launch into a named place (Open in, Resume) takes the first pane that never started, as before.
 Source: D-03-007
 
 ### TERM-009 · Equalize pane sizes

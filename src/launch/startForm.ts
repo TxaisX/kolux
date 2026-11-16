@@ -3,8 +3,8 @@
 // behind "Make each one different". These are the form's pure rules; ChooserPane draws them, SeatChooser and
 // the window wire them (startSeats runs once per ticked folder).
 import type { Pane } from "../App";
-import { MAX_PANES } from "../terminal/grid";
-import { sameDir } from "../workspaces";
+import { cellsOf, freeCells, MAX_PANES } from "../terminal/grid";
+import { panesIn, sameDir } from "../workspaces";
 import { seatStart, type SeatDefault } from "./defaultSeat";
 import { applyLineup, emptySeat, MAX_SESSIONS, resizeLineup, TERMINAL, type Lineup, type Seat, type Shape } from "./seats";
 
@@ -70,7 +70,8 @@ export function recentFirst<P extends { path: string }>(projects: P[], recent: s
 }
 
 /** The whole launch across the ticked folders: its total, and why Start is off when it is. `used` is how many
- * cells each folder's grid already holds (SESS-008: a grid holds up to MAX_PANES). */
+ * cells of each folder's grid are taken: its cells less the free ones, which a Start fills first (TERM-007;
+ * SESS-008: a grid holds up to MAX_PANES). */
 export function folderPlan(perFolder: number, folders: { name: string; used: number }[]): { total: number; problem: string | null } {
   const total = perFolder * folders.length;
   if (folders.length === 0) return { total, problem: "Tick at least one folder." };
@@ -132,8 +133,19 @@ export function prefill(o: { projects: { id: string }[]; folders?: string[] | nu
   return { folders, shape: "custom", seats: Array.from({ length: count }, emptySeat) };
 }
 
-/** Rule E: the layout strip's count asks for the cells it adds, once, on the Start form (0 = nothing to ask). */
+/** Rule E: the layout strip's count asks for the cells it adds and the grid's free cells (TERM-007), once, on the
+ * Start form (0 = nothing to ask). */
 export const stripAsk = (add: number): number => Math.min(MAX_PANES, Math.max(0, add));
+
+/** TERM-007: where the Start form's new panes land. They take the free cells of `place`'s grid (grid.ts freeCells),
+ * first to last, and the rest are added after the panes already there. `newDirs` are the worktrees this launch
+ * made: the Setup tab of one waits in the grid's first cell until its agent lands (DT-C274), so it does not make
+ * that cell a taken one. */
+export function landOnFree(ps: Pane[], place: string | null, made: Pane[], newDirs: (string | null)[] = []): Pane[] {
+  const waiting = (p: Pane) => !!p.setupScript && newDirs.some((d) => sameDir(d, p.cwd));
+  const free = freeCells(cellsOf(panesIn(ps, place).filter((p) => !waiting(p)))).slice(0, made.length);
+  return [...ps.map((p) => (free.includes(p) ? made[free.indexOf(p)] : p)), ...made.slice(free.length)];
+}
 
 /** The plain words for the single row's pick, for the footer line. */
 export function pickWords(pick: OnePick | "mixed", nameOf: (id: string) => string, modelLabel: (agent: string, model: string) => string): string[] {

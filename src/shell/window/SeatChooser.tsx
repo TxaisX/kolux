@@ -6,7 +6,7 @@ import { seatDefault } from "../../launch/defaultSeat";
 import { defaultAgentId } from "../../launch/agents";
 import { SAVED_SHAPES_KEY, applyLineup, defaultCopies, offeredLineup, restoreShape, type SavedShape, type Seat } from "../../launch/seats";
 import { panesIn } from "../../workspaces";
-import { cellsOf } from "../../terminal/grid";
+import { cellsOf, freeCells } from "../../terminal/grid";
 import { ADD_PROJECT } from "../../onboarding/firstRun";
 import { addFolderVia, lastStart, prefill, recentFirst, type StartSheet } from "../../launch/startForm";
 import { addFolderHands } from "./sidebarScreens";
@@ -28,11 +28,17 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
     screen, setScreen, setSidebarOpen,
   } = useWindow();
   // Start form C: the folders row, on the sheet only. Each folder's grid size counts toward its MAX_PANES.
+  // TERM-007: Start fills a grid's unstarted panes with nothing typed in them first, so those are room, not used cells.
   const folders = sheetOf
     ? {
         rows: recentFirst(projects, recentDirs.current).map((x) => ({ id: x.id, name: x.name, path: x.path })),
         ticked: p.folders ?? [],
-        used: Object.fromEntries(projects.map((x) => [x.id, cellsOf(panesIn(panes, x.path)).length])),
+        used: Object.fromEntries(
+          projects.map((x) => {
+            const cells = cellsOf(panesIn(panes, x.path));
+            return [x.id, cells.length - freeCells(cells).length];
+          }),
+        ),
         onTick: (ids: string[]) => setChooser(p.key, { folders: ids }),
         usual: prefill({ projects, last: lastStart(settings), lineup: null, installed: [] }).folders, // job 47: ticked when the list lands late
         // the sidebar's Add project dialog; with the sidebar hidden or on Agents, its panel is shown first (job 13 F1)

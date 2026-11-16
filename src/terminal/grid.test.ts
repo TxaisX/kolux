@@ -1,6 +1,6 @@
 // The pane grid's arithmetic (TERM-001, TERM-004, TERM-006, TERM-040, VIEW-026), pure so it runs without a browser.
 import { expect, test } from "vitest";
-import { blocking, cellsOf, clampCount, columnsFor, insertBefore, MAX_PANES, neighbourTab, resizePlan, rowsFor, splitIndex, toggleCard, freeCell, PANE_COUNTS, seedCount, canExpand, toggleZoom, zoomedGroup } from "./grid";
+import { blocking, cellsOf, clampCount, columnsFor, insertBefore, MAX_PANES, neighbourTab, resizePlan, rowsFor, splitIndex, toggleCard, freeCell, freeCells, PANE_COUNTS, seedCount, canExpand, toggleZoom, zoomedGroup } from "./grid";
 
 const started = (key: number) => ({ key, started: true });
 const empty = (key: number) => ({ key, started: false });
@@ -158,6 +158,29 @@ test("TERM-007: a new session fills the first empty pane, and none when every ce
   expect(freeCell(cellsOf([shell, chooser]))).toBe(chooser);
   expect(freeCell(cellsOf([shell, ...tabbed]))).toBeUndefined();
   expect(freeCell(cellsOf([shell]))).toBeUndefined();
+});
+
+test("TERM-007: every empty pane is listed in grid order; a cell with tabs is not one", () => {
+  const shell = { key: 1, cwd: "a" };
+  const first = { key: 2, cwd: "a", seats: [] };
+  const second = { key: 5, cwd: "a", seats: [] };
+  const tabbed = [{ key: 3, cwd: "a", group: 3, seats: [] }, { key: 4, cwd: "a", group: 3 }];
+  expect(freeCells(cellsOf([first, shell, ...tabbed, second]))).toEqual([first, second]);
+  expect(freeCells(cellsOf([shell, ...tabbed]))).toEqual([]);
+});
+
+// Review 101, F1: the Start form puts a session in a free cell's place, so a pane that holds something the user
+// typed is not free for it. A picked agent or model is not typed text, and neither is white space.
+test("TERM-007: a pane holding a typed task, seat name or prompt is not free for the Start form", () => {
+  const blank = { key: 1, cwd: "a", seats: [{ agent: "claude", model: "opus", title: " ", prompt: "" }], task: "  " };
+  const task = { key: 2, cwd: "a", seats: [{}], task: "half typed" };
+  const named = { key: 3, cwd: "a", seats: [{}, { title: "Reviewer" }] };
+  const prompted = { key: 4, cwd: "a", seats: [{ prompt: "read the tests" }] };
+  // Review 102, N1: a tab name the user gave an unstarted pane (Classic look shows the tab strip on a lone pane).
+  const tabbed = { key: 5, cwd: "a", seats: [{}], title: "Mine" };
+  expect(freeCells(cellsOf([task, named, blank, prompted, tabbed]))).toEqual([blank]);
+  // One launch into a named place (freeCell) still takes the first pane that has not started, as before.
+  expect(freeCell(cellsOf([task, blank]))).toBe(task);
 });
 
 test("TERM-013: expanding a cell fills the grid, the same cell again restores, one per workspace", () => {

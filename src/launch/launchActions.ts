@@ -20,7 +20,7 @@ import { resumedFields, type ResumePlan } from "../sessions/resume";
 import { saveChanged } from "../settings/saveChanged";
 import { openDefaultTabs } from "../setup/DefaultTabs";
 import { trustedSetup } from "../setup/TrustPrompt";
-import { cellsOf, freeCell, groupOf, MAX_PANES } from "../terminal/grid";
+import { cellsOf, freeCell, freeCells, groupOf, MAX_PANES } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn, sameDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
@@ -29,7 +29,7 @@ import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
-import { acrossNote, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
+import { acrossNote, landOnFree, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
 import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
@@ -131,7 +131,11 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // cell gives its place), stay within MAX_PANES, as a chooser or a split does. DT-C274: an own-folder team
       // lands there whole too (each agent runs in its worktree, all are shown in the chooser's grid).
       const landing = makes && !team ? picked.filter((a) => a === null).length : seats.length;
-      if (cellsOf(panesIn(panes.filter((p) => p.key !== key), place)).length + landing > MAX_PANES) {
+      // TERM-007: a Start from the form fills the grid's unstarted panes first (below), so a pane it fills is not
+      // counted a second time.
+      const here = cellsOf(panesIn(panes.filter((p) => p.key !== key), place));
+      const filled = inGrid ? 0 : Math.min(freeCells(here).length, landing);
+      if (here.length - filled + landing > MAX_PANES) {
         say(`A workspace holds up to ${MAX_PANES} panes.`);
         return false;
       }
@@ -201,10 +205,12 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         return false;
       }
       if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", makes ? "separate" : "shared", seats) };
-      // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018). DT-C274: a team
-      // worktree's Setup tab, waiting in the chooser's cell, joins its agent's cell.
+      // A grid chooser gives its place to the new panes. The Start form (SESS-018) fills the grid's free cells first,
+      // in grid order, and adds the rest after them (TERM-007: an empty pane is used first when one exists; a pane
+      // with typed text is not empty, startForm.ts landOnFree).
+      // DT-C274: a team worktree's Setup tab, waiting in the chooser's cell or the grid's first, joins its agent's cell.
       setPanes((ps) => {
-        const landed = inGrid ? ps.flatMap((p) => (p.key === key ? made : [p])) : [...ps, ...made];
+        const landed = inGrid ? ps.flatMap((p) => (p.key === key ? made : [p])) : landOnFree(ps, place, made, madeNew.map((n) => n.cwd));
         if (!team) return landed;
         const agentIn = (p: Pane) => made.find((m) => m.agentId && sameDir(m.cwd, p.cwd));
         return landed.map((p) => {

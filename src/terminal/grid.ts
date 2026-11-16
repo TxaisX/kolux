@@ -50,7 +50,7 @@ export function rowsFor(count: number, stacked = false): number {
   return Math.max(1, Math.ceil(count / columnsFor(count, stacked)));
 }
 
-/** TERM-001: growing opens the Start form for the new cells (no empty panes are added); shrinking drops unstarted panes first, newest first, and
+/** TERM-001: growing opens the Start form for the new cells and the free ones (TERM-007; no empty panes are added); shrinking drops unstarted panes first, newest first, and
  * never a started session (TERM-003's "ask first" is T-151; until then `blocking` names the
  * sessions in the way), so `drop` may fall short of the request. */
 export function resizePlan(shown: { key: number; started: boolean }[], n: number): { add: number; drop: number[] } {
@@ -97,6 +97,14 @@ export const seedCount = (saved: unknown, classic: boolean): number => (classic 
  * (a chooser). None when every cell holds a session. */
 export function freeCell<P extends Tabbed & { seats?: unknown }>(cells: { panes: P[] }[]): P | undefined {
   return cells.find((c) => c.panes.length === 1 && c.panes[0].seats)?.panes[0];
+}
+
+/** TERM-007, for the Start form: every cell its sessions may take, in grid order. As freeCell, but a pane that holds
+ * something the user typed (a task, a tab name, a seat's name or its prompt) is not free: the form's Start would put
+ * a session in its place and the text would be gone without a word. */
+export function freeCells<P extends Tabbed & { seats?: { title?: string; prompt?: string }[]; task?: string; title?: string }>(cells: { panes: P[] }[]): P[] {
+  const blank = (p: P) => !!p.seats && !p.task?.trim() && !p.title?.trim() && p.seats.every((s) => !s.title?.trim() && !s.prompt?.trim());
+  return cells.filter((c) => c.panes.length === 1 && blank(c.panes[0])).map((c) => c.panes[0]);
 }
 
 /** TERM-013: the expanded cell of each workspace, with how many cells it had when expanded. */

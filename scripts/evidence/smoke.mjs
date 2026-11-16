@@ -163,7 +163,9 @@ const TERM = tid("terminal-pane");
 // Shell panes only: data-agent is the agent name, so a Claude pane matches TERM but not SHELL.
 const SHELL = `${tid("terminal-pane")}[data-agent="shell"]`;
 const CHOOSER = tid("chooser-pane");
-const CLAUDE = `${tid("terminal-pane")}[data-agent*="claude"]`;
+// The Start form: the same chooser drawn as a sheet in front of the grid, told apart by its own name.
+const START_FORM = `${tid("chooser-pane")}[aria-label="Start"]`;
+const CLAUDE =`${tid("terminal-pane")}[data-agent*="claude"]`;
 // The right sidebar's tab by name; the panel button opens the sidebar when it is closed.
 const RIGHT_TABS = `${tid("right-sidebar")} [role="tab"]`;
 const rightTab = async (name) => {
@@ -252,6 +254,7 @@ async function setup() {
   const before = await count(TERM);
   log(`zero panes after launch: ${before === 0 ? "PASS" : "FAIL"} (${before} ${TERM})`);
   if (!ATTACH && before !== 0) throw new Error(`a fresh profile opened with ${before} pane(s); T-543-b wants none until a workspace is opened`);
+  let skippedSetup = false;
   if (await exists(tid("onboarding-dialog"))) {
     // A first-run dialog covers the grid and its menu; close it the way a user would before the flows.
     // The corner close asks "Skip setup?" first, so the answer is the Skip button, not a click on the close.
@@ -260,6 +263,7 @@ async function setup() {
     await click(tid("ask-confirm"));
     await waitFor("the first-run dialog to close", async () => !(await exists(tid("onboarding-dialog"))), 5000);
     log("closed the first-run dialog");
+    skippedSetup = true;
   }
   await click(tid("sidebar-add-project"));
   await waitFor("the add-by-path link", () => exists(tid("add-project-by-path")), 5000);
@@ -269,20 +273,25 @@ async function setup() {
   await cdp("insert", repo, "enter");
   // T-569/T-577: a new workspace opens the launch chooser, not a shell; pick Terminal and Start, the way a user would.
   await waitFor("the launch chooser", async () => (await shown(CHOOSER)) >= 1, 30000);
-  await startTerminalFromChooser();
+  // ONB-010: setup was closed with no folder, so the first folder also opens the Start form in front of the grid's
+  // own chooser. The form is what a user sees and answers: wait for it, so the pick and the Start go to one box.
+  if (skippedSetup) await waitFor("the Start form on the first folder", () => exists(START_FORM), 30000);
+  await startTerminalFromChooser(skippedSetup ? START_FORM : CHOOSER);
   await waitFor("the first shell pane", async () => (await shown(TERM)) >= 1, 30000);
   await waitFor("the first shell pane's input field", () => exists(`${TERM} ${XTERM_INPUT}`), 30000);
-  log(`setup: ${repo} added as a project; ${await shown(TERM)} shell pane shown`);
+  // TERM-007: the session takes the grid's unstarted pane, so no empty "pick an agent" pane is left beside it.
+  await waitFor("no empty chooser pane left after the first Start", async () => (await shown(CHOOSER)) === 0, 5000);
+  log(`setup: ${repo} added as a project; ${await shown(TERM)} shell pane shown, no empty pane left`);
 }
 
-// The first chooser's seat 1 gets its "Terminal" button (a92dae95 replaced the seat dropdown with a row of agent
-// buttons), then its Start button, once the agent search has finished and enabled it.
-async function startTerminalFromChooser() {
-  const terminal = `${CHOOSER} ${tid("seat-1-agents")} ${tid("seat-agent-terminal")}`;
+// The chooser `box` (the grid's first one, or the Start form) gets seat 1's "Terminal" button (a92dae95 replaced the
+// seat dropdown with a row of agent buttons), then its Start button, once the agent search has finished and enabled it.
+async function startTerminalFromChooser(box = CHOOSER) {
+  const terminal = `${box} ${tid("seat-1-agents")} ${tid("seat-agent-terminal")}`;
   await waitFor("the chooser's Terminal choice", () => exists(terminal), 30000);
   await click(terminal);
   await waitFor("Terminal picked in seat 1", () => exists(`${terminal}[aria-pressed="true"]`), 5000);
-  const start = `${CHOOSER} ${tid("chooser-start")}`;
+  const start = `${box} ${tid("chooser-start")}`;
   await waitFor("the chooser's Start button", () => exists(`${start}:not(:disabled)`), 60000);
   await click(start);
 }

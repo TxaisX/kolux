@@ -103,6 +103,57 @@ test("growing the layout opens the Start form for the new cells and adds no choo
   expect(setSheet.mock.calls[0][0].seats).toHaveLength(3);
 });
 
+// TERM-007 (live check of 2026-11-16): a pane that has not started is an empty cell, and Start fills it first, so
+// the form asks for it together with the new cells. One unstarted pane grown to four asks for 4 sessions, not 3;
+// three sessions and one unstarted pane grown to six ask for 3. Picking the count the grid already has asks nothing.
+test("growing the layout asks for the unstarted pane too, so Start fills the grid to the picked count", () => {
+  const started = (key: number) => ({ key, cwd: "C:\w", branch: null, agent: "shell", program: null, args: [] });
+  const unstarted = (key: number) => ({ ...started(key), seats: [{}] });
+  const asked = (panes: object[], n: number) => {
+    const setPanes = vi.fn();
+    const setSheet = vi.fn();
+    const s = { panes, activeDir: "C:\w", projects: [], settings: {}, agents: [], installedIds: [], setPanes, setSheet, setToast: vi.fn(), titles: {}, nextKey: { current: 9 }, setFocused: vi.fn() } as unknown as WindowState;
+    const la = { lineupsOf: () => ({}), projectFor: () => null, inGitFor: () => false, launch: vi.fn(), pretrust: vi.fn() };
+    paneActions(s, {} as never, la as never, { projectOf: () => null } as unknown as WindowLate).setCount(n);
+    expect(setPanes).not.toHaveBeenCalled();
+    return setSheet.mock.calls.map((c) => c[0].seats.length);
+  };
+  expect(asked([unstarted(1)], 4)).toEqual([4]);
+  expect(asked([started(1), started(2), started(3), unstarted(4)], 6)).toEqual([3]);
+  expect(asked([started(1), unstarted(2)], 2)).toEqual([]);
+  // Review 101, F1: a pane that holds typed text is not an empty cell (Start leaves it alone), so it is not asked for.
+  expect(asked([started(1), { ...unstarted(2), task: "half typed" }], 4)).toEqual([2]);
+  expect(asked([started(1), { ...started(2), seats: [{ title: "Reviewer" }] }], 4)).toEqual([2]);
+});
+
+// Review 101, F4: "+" and the palette's Start agents open the Start form while the grid still holds a free cell for
+// it to fill: 23 sessions and one pane that has not started are not a full grid on the New look. 24 sessions are,
+// and so is a pane with typed text, and so is the same grid on the Classic look, where "+" adds a pane of its own.
+test("TERM-007: a grid of 24 with a free cell still opens the Start form; a grid of 24 taken cells says the limit", () => {
+  const started = (key: number) => ({ key, cwd: "C:\w", branch: null, agent: "shell", program: null, args: [] });
+  const plus = (panes: object[], classic: boolean) => {
+    const calls = { setPanes: vi.fn(), setSheet: vi.fn(), setToast: vi.fn() };
+    const s = { panes, activeDir: "C:\w", classic, projects: [], settings: {}, agents: [], installedIds: [], titles: {}, nextKey: { current: 99 }, setFocused: vi.fn(), ...calls } as unknown as WindowState;
+    const la = { lineupsOf: () => ({}), projectFor: () => null, inGitFor: () => false, launch: vi.fn(), pretrust: vi.fn() };
+    paneActions(s, {} as never, la as never, { projectOf: () => null } as unknown as WindowLate).addChooser();
+    return calls;
+  };
+  const sessions = Array.from({ length: 23 }, (_, i) => started(i + 1));
+  const withFree = [...sessions, { ...started(24), seats: [{}] }];
+  const open = plus(withFree, false);
+  expect(open.setSheet).toHaveBeenCalledTimes(1);
+  expect(open.setToast).not.toHaveBeenCalled();
+  const full = plus([...sessions, started(24)], false);
+  expect(full.setSheet).not.toHaveBeenCalled();
+  expect(full.setToast).toHaveBeenCalledWith("A workspace holds up to 24 panes.");
+  const typed = plus([...sessions, { ...started(24), seats: [{}], task: "half typed" }], false);
+  expect(typed.setSheet).not.toHaveBeenCalled();
+  expect(typed.setToast).toHaveBeenCalledWith("A workspace holds up to 24 panes.");
+  const classic = plus(withFree, true);
+  expect(classic.setPanes).not.toHaveBeenCalled();
+  expect(classic.setToast).toHaveBeenCalledWith("A workspace holds up to 24 panes.");
+});
+
 // Wave 2 item 6 (rewrite row 13): going smaller past a started session names it and says what to do.
 test("shrinking past a started session says to close it first", () => {
   const started = (key: number) => ({ key, cwd: "C:\w", branch: null, agent: "shell", program: null, args: [] });
