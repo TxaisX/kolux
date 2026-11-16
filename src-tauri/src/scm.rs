@@ -3137,14 +3137,17 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // R59-01: a row under a link or a file where a folder was is left and named. R59-04: a
             // row that is itself a link is removed by Kolux (the link only): git clean keeps a link
             // to a repository without a word.
-            // R82-02: a folder row with tracked files below it is left whole.
+            // R82-02: a folder row with tracked files below it is left whole (R86-02: only when a
+            // real folder stands there).
             let k = kinds(worktree, &rows, false)?;
             let (mut said, mut rows) = (Vec::new(), Vec::new());
             let mut real = std::collections::HashSet::new();
             for p in paths {
                 if let Some(why) = left_why(worktree, p, &mut real) {
                     said.push(why);
-                } else if k.below.contains(p.trim_end_matches('/')) {
+                } else if k.below.contains(p.trim_end_matches('/')) && fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/')))).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
+                    // R86-02: only a real folder gets the folder line; a file or a link standing
+                    // where a tracked folder was goes on, as the file or link it is.
                     said.push(folder_line(p));
                 } else {
                     match remove_link(worktree, p) {

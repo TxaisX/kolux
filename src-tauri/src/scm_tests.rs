@@ -3517,7 +3517,7 @@ fn r82_a_dot_row_is_refused_whole() {
 fn r82_a_folder_row_is_never_written_through() {
     let line = |p: &str| format!("{p} is a folder, so Kolux leaves it. Discard the files inside it instead.");
     let mut wrong = Vec::new();
-    for route in ["changed", "staged", "paths"] {
+    for route in ["changed", "staged", "paths", "untracked"] {
         let dir = temp_repo(&format!("r82d-{route}"));
         commit_file(&dir, "plain.txt", "p\n");
         for f in ["kept", "gone"] {
@@ -3533,20 +3533,25 @@ fn r82_a_folder_row_is_never_written_through() {
         fs::remove_dir_all(dir.join("kept")).unwrap();
         fs::write(dir.join("kept"), "mine\n").unwrap();
         fs::remove_dir_all(dir.join("gone")).unwrap();
-        // On the paths route `kept` is listed as an untracked file, and that row goes as one.
-        let rows: &[&str] = if route == "paths" { &["gone", "plain.txt"] } else { &["kept", "gone", "plain.txt"] };
+        // R86-02: on the paths and untracked routes `kept` is listed as an untracked FILE, so it is
+        // deleted as the file it is, with no line; on the changed and staged routes it is left.
+        let as_file = route == "paths" || route == "untracked";
+        let rows: &[&str] = if route == "untracked" { &["kept"] } else { &["kept", "gone", "plain.txt"] };
         let said = by_route(&dir, route, rows);
-        let want: Vec<String> = rows.iter().filter(|r| **r != "plain.txt").map(|r| line(r)).collect();
-        if said != Err(want.join("\n")) {
+        let want: Vec<String> = rows.iter().filter(|r| **r != "plain.txt" && !(as_file && **r == "kept")).map(|r| line(r)).collect();
+        if said != if want.is_empty() { Ok(()) } else { Err(want.join("\n")) } {
             wrong.push(format!("{route}: said {said:?}"));
         }
-        if route != "paths" && fs::read_to_string(dir.join("kept")).ok().as_deref() != Some("mine\n") {
+        if !as_file && fs::read_to_string(dir.join("kept")).ok().as_deref() != Some("mine\n") {
             wrong.push(format!("{route}: the untracked file kept is gone (a folder there now: {})", dir.join("kept").is_dir()));
+        }
+        if as_file && dir.join("kept").exists() {
+            wrong.push(format!("{route}: the untracked file kept is still there"));
         }
         if dir.join("gone").exists() {
             wrong.push(format!("{route}: gone was brought back"));
         }
-        if fs::read_to_string(dir.join("plain.txt")).ok().as_deref() != Some("p\n") {
+        if route != "untracked" && fs::read_to_string(dir.join("plain.txt")).ok().as_deref() != Some("p\n") {
             wrong.push(format!("{route}: plain.txt was not discarded"));
         }
         let _ = fs::remove_dir_all(&dir);
