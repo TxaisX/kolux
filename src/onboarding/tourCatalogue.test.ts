@@ -33,9 +33,10 @@ describe("the catalogue (ONB-033)", () => {
     expect(step.ko.body).not.toMatch(/각자 사이드바에 점이/);
     expect(step.ko.body).toMatch(/폴더 점/);
     // R83-03: the dot is green only when the strongest state is "finished": two idle agents give grey. Both languages say the same.
-    expect(step.en.body).toContain("The folder's dot in the sidebar turns yellow when one of them needs you and green when one has finished and none is still working or needs you.");
+    // F88-06: an agent waiting its turn ("queued") outranks "finished" and its dot is grey, so the sentence names it too.
+    expect(step.en.body).toContain("The folder's dot in the sidebar turns yellow when one of them needs you and green when one has finished and none is still working, waiting its turn or needs you.");
     expect(step.en.body).not.toMatch(/both are done|neither is working/);
-    expect(step.ko.body).toContain("사이드바의 폴더 점은 한 에이전트라도 도움이 필요하면 노란색, 한 에이전트가 일을 마쳤고 아직 일하거나 도움을 기다리는 에이전트가 없으면 초록색이 됩니다.");
+    expect(step.ko.body).toContain("사이드바의 폴더 점은 한 에이전트라도 도움이 필요하면 노란색, 한 에이전트가 일을 마쳤고 아직 일하거나 차례를 기다리거나 도움이 필요한 에이전트가 없으면 초록색이 됩니다.");
     expect(step.ko.body).not.toMatch(/둘 다 끝나면|둘 다 일을 멈추면/);
   });
   it("the parallel tour's second step opens the sidebar when it is hidden", () => {
