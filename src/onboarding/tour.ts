@@ -76,7 +76,7 @@ export const TOURS: Tour[] = [
     ring: true,
     steps: [
       { target: FOCUSED_SPLIT, side: "bottom", action: { en: "Split terminal", ko: "터미널 나누기", run: "split" }, en: { title: "Run agents side by side", body: "Split the pane to get a second terminal in the same folder." }, ko: { title: "에이전트를 나란히", body: "창을 나눠 같은 폴더에서 두 번째 터미널을 엽니다." } },
-      { target: GRID_STATUS, reveal: SIDEBAR_SHOW, side: "right", en: { title: "Tell them apart", body: "Both agents work in this project's folder. Each has its own dot in the sidebar: it turns yellow when it needs you and green when it is done. Give each a different task so they do not edit the same files." }, ko: { title: "구분하기", body: "두 에이전트 모두 이 프로젝트 폴더에서 일합니다. 각자 사이드바에 점이 있어 도움이 필요하면 노란색, 끝나면 초록색이 됩니다. 같은 파일을 고치지 않도록 서로 다른 작업을 맡기세요." } },
+      { target: GRID_STATUS, reveal: SIDEBAR_SHOW, side: "right", en: { title: "Tell them apart", body: "Both agents work in this project's folder. The folder's dot in the sidebar turns yellow when one of them needs you and green when both are done. Each pane's top bar shows its own agent's state. Give each a different task so they do not edit the same files." }, ko: { title: "구분하기", body: "두 에이전트 모두 이 프로젝트 폴더에서 일합니다. 사이드바의 폴더 점은 한 에이전트라도 도움이 필요하면 노란색, 둘 다 끝나면 초록색이 됩니다. 각 창 위쪽 막대에 그 에이전트의 상태가 나옵니다. 같은 파일을 고치지 않도록 서로 다른 작업을 맡기세요." } },
     ],
   },
   {

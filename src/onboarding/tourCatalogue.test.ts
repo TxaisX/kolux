@@ -25,6 +25,14 @@ describe("the catalogue (ONB-033)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
     expect(lane.ko.body).not.toMatch(/첫 열|한 단계/);
   });
+  it("the parallel tour says the sidebar has one dot per folder and each agent's own state is on its pane (job 66)", () => {
+    const step = tour("parallel").steps[1];
+    expect(step.en.body).not.toMatch(/each has its own dot/i);
+    expect(step.en.body).toMatch(/folder's dot/);
+    expect(step.en.body).toMatch(/pane's top bar/);
+    expect(step.ko.body).not.toMatch(/각자 사이드바에 점이/);
+    expect(step.ko.body).toMatch(/폴더 점/);
+  });
   it("the parallel tour's second step opens the sidebar when it is hidden", () => {
     expect(tour("parallel").steps[1].reveal).toBe(SIDEBAR_SHOW);
   });
