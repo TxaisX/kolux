@@ -2921,13 +2921,13 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // R-06: git clean -f leaves a nested repository without a word; say so, and clean the rest.
             let (nested, rest): (Vec<&String>, Vec<&String>) = rows.into_iter().partition(|p| own_repo_at(worktree, p));
             // ponytail: git clean reads no list from its input, so the names go on the command line
-            // in chunks that stay well under the Windows command-line limit.
+            // in chunks that stay well under the Windows command-line limit. R59-05: a chunk that
+            // fails is named and the later chunks still go.
             for chunk in rest.chunks(100) {
                 let mut args = vec!["--literal-pathspecs", "clean", "-f", "-d", "-q", "--"];
                 args.extend(chunk.iter().map(|p| p.as_str()));
                 if let Err(e) = run(&args, Some(worktree)) {
                     said.push(e);
-                    break;
                 }
             }
             said.extend(nested.iter().map(|p| own_repo(p)));

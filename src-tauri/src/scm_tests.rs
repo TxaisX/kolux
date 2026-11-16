@@ -3157,6 +3157,32 @@ fn r59_an_untracked_junction_is_removed_and_its_target_kept() {
     }
 }
 
+/// R59-05: in the untracked section, one chunk of git clean that fails (a file held open by
+/// another program) does not stop the later chunks, and the nested-repository line still comes.
+#[cfg(windows)]
+#[test]
+fn r59_one_failed_clean_chunk_does_not_stop_the_rest_or_drop_the_nested_line() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = temp_repo("r59h");
+    let mut rows: Vec<String> = (0..120).map(|i| format!("u{i:03}.txt")).collect();
+    for row in &rows {
+        fs::write(dir.join(row), "new\n").unwrap();
+    }
+    fs::create_dir(dir.join("inner")).unwrap();
+    plain(&["init", "-q"], &dir.join("inner"));
+    rows.push("inner/".to_string());
+    let held = fs::File::options().read(true).share_mode(0).open(dir.join("u005.txt")).unwrap();
+    let result = discard(&dir, "untracked", &rows);
+    drop(held);
+    let (late_gone, inner_kept) = (!dir.join("u110.txt").exists(), dir.join("inner").join(".git").is_dir());
+    let _ = fs::remove_dir_all(&dir);
+    let said = result.expect_err("the held file and the nested repository are named");
+    assert!(late_gone, "a row from the second chunk is cleaned: {said}");
+    assert!(inner_kept, "the nested repository keeps its history");
+    assert!(said.lines().any(|l| l.contains("u005.txt")), "git's line about the held file: {said}");
+    assert!(said.lines().any(|l| l == "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to."), "{said}");
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {
