@@ -3217,6 +3217,23 @@ fn r59_a_failed_read_of_the_last_commit_keeps_the_folder_but_no_commit_yet_does_
     assert_eq!(result.expect_err("named"), "inner is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.");
 }
 
+/// R59-06: when one half of a staged rename is left, the other half is left too.
+#[test]
+fn r59_a_staged_rename_is_left_whole_when_one_half_is_left() {
+    let dir = temp_repo("r59j");
+    commit_file(&dir, "a.txt", "a\n");
+    plain(&["mv", "a.txt", "b.txt"], &dir);
+    fs::create_dir(dir.join("a.txt")).unwrap();
+    fs::write(dir.join("a.txt").join("x.txt"), "x\n").unwrap();
+    let result = discard(&dir, "staged", &["a.txt".to_string(), "b.txt".to_string()]);
+    let b = fs::read_to_string(dir.join("b.txt")).ok();
+    let st = status(&dir).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(result.expect_err("named"), "a.txt is now a folder, so Kolux leaves it. Remove or move the folder by hand, then discard again.");
+    assert_eq!(b.as_deref(), Some("a\n"), "the new half is kept on disk");
+    assert!(st.staged.iter().any(|c| c.path == "b.txt" && c.from.as_deref() == Some("a.txt")), "the rename is still staged: {st:?}");
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {

@@ -2882,12 +2882,26 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // F-02: a row whose file Git would write over a folder with something in it is left as
             // it is and named; the other rows still go. R59-01/R59-02: so is a row under a link or a
             // file where a folder was; a link at the row itself is removed (only the link) first.
-            let (mut said, mut rest) = (Vec::new(), Vec::new());
+            let (mut said, mut rest, mut left) = (Vec::new(), Vec::new(), Vec::new());
             let mut real = std::collections::HashSet::new();
             for p in paths {
-                match left_why(worktree, p, &mut real).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p))).or_else(|| remove_link(worktree, p).err()) {
-                    Some(why) => said.push(why),
-                    None => rest.push(p.clone()),
+                if let Some(why) = left_why(worktree, p, &mut real).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p))) {
+                    said.push(why);
+                    left.push(p.trim_end_matches('/').to_string());
+                }
+            }
+            // R59-06: a staged rename goes whole or not at all; looked up only when a row is left.
+            if section == "staged" && !left.is_empty() {
+                for c in status(worktree).map(|st| st.staged).unwrap_or_default() {
+                    if let Some(from) = c.from.filter(|from| left.contains(from) || left.contains(&c.path)) {
+                        left.extend([from, c.path]);
+                    }
+                }
+            }
+            for p in paths.iter().filter(|p| !left.iter().any(|l| l == p.trim_end_matches('/'))) {
+                match remove_link(worktree, p) {
+                    Ok(_) => rest.push(p.clone()),
+                    Err(e) => said.push(e),
                 }
             }
             let args: &[&str] = if section == "staged" {
