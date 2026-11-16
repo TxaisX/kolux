@@ -3284,7 +3284,7 @@ fn r70_a_junction_two_levels_up_is_never_written_through() {
 #[cfg(windows)]
 #[test]
 fn r70_a_row_that_cannot_be_read_is_left_not_handed_to_git() {
-    for route in ["changed", "staged", "untracked"] {
+    for route in ["changed", "staged", "untracked", "paths"] {
         let dir = temp_repo(&format!("r70e-{route}"));
         let result = by_route(&dir, route, &["x?y.txt"]);
         let _ = fs::remove_dir_all(&dir);
@@ -3662,4 +3662,65 @@ fn r82_a_broken_branch_list_does_not_unstage_by_removal() {
     let _ = fs::remove_dir_all(&dir);
     assert!(said.is_err(), "Git's words come back: {said:?}");
     assert!(listed.as_ref().is_ok_and(|l| l.lines().any(|l| l == "foo")), "foo is still in the index: {listed:?}");
+}
+
+/// R82-08: a link that cannot be removed (held open by another program) leaves its row with
+/// Windows' words; the link and what it points at stay, and the other rows still go.
+#[cfg(windows)]
+#[test]
+fn r82_a_link_that_cannot_be_removed_leaves_its_row() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r82i-{route}"));
+        let out = outside_folder(&format!("r82i-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("j")], vec![dir.clone(), out.clone()]);
+        commit_file(&dir, "j", "j\n");
+        commit_file(&dir, "plain.txt", "p\n");
+        fs::write(dir.join("plain.txt"), "changed\n").unwrap();
+        if route == "staged" {
+            plain(&["add", "plain.txt"], &dir);
+        }
+        fs::remove_file(dir.join("j")).unwrap();
+        fs::write(out.join("o.txt"), "o\n").unwrap();
+        junction(&dir.join("j"), &out);
+        // FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS: the junction itself is held.
+        let held = fs::File::options().read(true).share_mode(0).custom_flags(0x0020_0000 | 0x0200_0000).open(dir.join("j")).unwrap();
+        let said = by_route(&dir, route, &["j", "plain.txt"]);
+        drop(held);
+        if !matches!(&said, Err(e) if e.lines().count() == 1 && e.starts_with("j: ")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if !fs::symlink_metadata(dir.join("j")).is_ok_and(|m| m.is_symlink()) {
+            wrong.push(format!("{route}: the link j is gone"));
+        }
+        if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+            wrong.push(format!("{route}: the outside o.txt changed"));
+        }
+        if fs::read_to_string(dir.join("plain.txt")).ok().as_deref() != Some("p\n") {
+            wrong.push(format!("{route}: plain.txt was not discarded"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-08: off Windows `\` is a character of the file name, never a folder break: `d\f.txt` is
+/// discarded as itself and `d/f.txt` is untouched.
+#[cfg(not(windows))]
+#[test]
+fn r82_a_backslash_is_part_of_the_name_off_windows() {
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("r82j-{route}"));
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d\\f.txt", "f\n");
+        commit_file(&dir, "d/f.txt", "g\n");
+        fs::write(dir.join("d\\f.txt"), "changed\n").unwrap();
+        fs::write(dir.join("d").join("f.txt"), "changed\n").unwrap();
+        let said = by_route(&dir, route, &["d\\f.txt"]);
+        let (a, b) = (fs::read_to_string(dir.join("d\\f.txt")).ok(), fs::read_to_string(dir.join("d").join("f.txt")).ok());
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(said, Ok(()), "{route}");
+        assert_eq!(a.as_deref(), Some("f\n"), "{route}: d\\f.txt is discarded");
+        assert_eq!(b.as_deref(), Some("changed\n"), "{route}: d/f.txt is untouched");
+    }
 }
