@@ -135,7 +135,9 @@ type Props = { id: number; root: string; hidden?: boolean; focused?: boolean; on
  *  draws each line on its own. */
 export const discardSay = (err: unknown, name: string): Say => {
   const text = String(err);
-  const kept = text.split("\n").every((l) => l.includes("so Kolux leaves"));
+  // R74-04: blank lines (a trailing line break) say nothing either way; an empty text is a plain "could not".
+  const lines = text.split("\n").filter((l) => l.trim());
+  const kept = lines.length > 0 && lines.every((l) => l.includes("so Kolux leaves"));
   return kept ? { text: `Kolux left this as it is:\n${text}`, bad: true } : { text: `Could not discard ${name}:\n${text}`, bad: true, error: true };
 };
 

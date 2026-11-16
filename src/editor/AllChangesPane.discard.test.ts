@@ -52,3 +52,11 @@ test("the result line keeps the engine's line breaks when it is drawn", () => {
 test("R74-05: the result line draws an error red (note error) and any other bad line yellow (note warn)", () => {
   expect(source).toContain('className={`note${outcome.error ? " error" : outcome.bad ? " warn" : ""}`}');
 });
+
+test.each([
+  ["a text ending in a line break", `${A}\n`, "Kolux left this as it is:"],
+  ["a blank line between two kept lines", `${A}\n\n${D}`, "Kolux left this as it is:"],
+  ["an empty text", "", "Could not discard x.txt:"],
+])("R74-04: %s", (_, err, head) => {
+  expect(discardSay(err, "x.txt").text.split("\n")[0]).toBe(head);
+});
