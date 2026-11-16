@@ -24,22 +24,23 @@ Proof is either a check name (`scripts/prove/live-*.mjs`, `scripts/evidence/smok
 
 ## 1. Sidebar
 
-The default list (grouped by project) shows one **folder** row per project and, since 0.1.16, no session rows under
-it. UI **session** rows are drawn only when "Group and sort" is set to something other than project (Goal 0, item 4 —
-worktrees never appear in the sidebar). Rows are reached with the mouse and the keyboard; every row has a right-click menu.
+The list shows project **folders** only: one folder row per project, and no session rows in any "Group and sort"
+setting (the default list since 0.1.16, the other groupings since the wave of 2026-11-15). A worktree has no row of its
+own (Goal 0, item 4); its old row shows only while a question or form of its own is open. Rows are reached with the
+mouse and the keyboard; every row has a right-click menu.
 
 | Control | Where | What it should do | What it does now | Verdict | Proof |
 |---|---|---|---|---|---|
-| Add project button | `src/projects/ProjectsPanel.tsx:2520` (`data-testid="sidebar-add-project"`) | open the add menu: clone, open a folder, start a new one | opens the add form (`adding` state) | `live-pass` | `live-latency` (round 4): `startPlain()` clicks it in every live run and the add form opened |
-| Add by path → folder field | `ProjectsPanel.tsx:2582` (`data-testid="add-project-folder-input"`) | take a path, Enter adds it as a project | `addPath(pathDraft)` on Enter | `live-pass` | `live-latency` (round 4): typed a repo path, Enter, and the workspace opened with a pane |
-| Folder row | `ProjectsPanel.tsx:2313-2321` (`div.proj.folder`, `data-testid="sidebar-folder"`) | select the workspace; its sessions show in the grid | selects it: the row carries `sel` and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
-| Session row | `ProjectsPanel.tsx:1763-1790` (`sessionRows`, `data-testid="sidebar-session"`) | none in the default list (grouped by project): since 0.1.16 the sidebar lists project folders only. With "Group and sort" set to anything else: one row per session, click selects that session's pane | grouped by project: no session rows. Other groupings: the rows are still drawn (`ProjectsPanel.tsx:2773`) | `code` | grouped by project: `scripts/evidence/smoke.mjs` flow 7 (2026-11-15) fails when a `sidebar-session` row shows: six sessions in one workspace → one folder row, no session rows, no `.pane-row`, clicking the folder shows all six panes, and a restart kept all six. The other groupings are read in the source only |
-| Folder row menu | `src/projects/menu.ts:54-59` | New workspace, Review changes (git folders), Project settings, Remove project… | the four items, Review disabled when the folder is not a repo | `code` | `menu.ts:54-59`; `live-GIT-038`/`live-EDIT-029` open All Changes through "Review changes" |
-| Session row menu | `menu.ts:68-98` | Delete, Sleep/Wake, Move to status, Set parent…, Details…, Review changes, Open in (Explorer/editors/Terminal), Move up/down, Hide from the sidebar, Developer (Alt) | all of the above, with the main checkout limited to New workspace + Remove project | `code` | `menu.ts:68-98` |
-| Status submenu | `menu.ts:74` | list the workspace's statuses plus Edit statuses… | lists them; edit opens the editor (`ProjectsPanel.tsx:1420`) | `code` | `menu.ts:74`, `ProjectsPanel.tsx:1420` |
-| Open in submenu | `menu.ts:79-90` | Explorer / each found editor / Terminal | runs the chosen door; Terminal shows the row (`ProjectsPanel.tsx:1443`) | `code` | `menu.ts:79-90` |
-| **Worktrees in the sidebar** | `menu.ts:68-98` still lists worktree-only items (Delete, Sleep, Set parent, Hide, Move up/down) | Goal 0 item 4: worktree rows never appear in the sidebar | the menu code is still worktree-shaped; whether rows are drawn is the panel's choice (`hideAuto`, team worktrees, `ProjectsPanel.tsx:259-266`) | `pending c2-agents` | `menu.ts:68-98`, `ProjectsPanel.tsx:259-266` |
-| Keyboard in a menu | `menu.ts:7-14` (`menuMove`) | Arrow/Home/End move focus and wrap | implemented; Esc closes (`ProjectsPanel.tsx:227-234`) | `code` | `menu.ts:7-14` |
+| Add project button | `src/projects/ProjectsPanel.tsx:2568` (`data-testid="sidebar-add-project"`) | open the add menu: clone, open a folder, start a new one | opens the add form (`adding` state) | `live-pass` | `live-latency` (round 4): `startPlain()` clicks it in every live run and the add form opened |
+| Add by path → folder field | `ProjectsPanel.tsx:2625` (`data-testid="add-project-folder-input"`) | take a path, Enter adds it as a project | `addPath(pathDraft)` on Enter | `live-pass` | `live-latency` (round 4): typed a repo path, Enter, and the workspace opened with a pane |
+| Folder row | `ProjectsPanel.tsx:2318-2322` (`div.proj.folder`, `data-testid="sidebar-folder"`) | select the workspace; its sessions show in the grid | selects it: the row carries `sel` and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
+| Session row | none: `ProjectsPanel.tsx` no longer has the `sessionRows` code | none in any "Group and sort" setting: the sidebar lists project folders only | no session rows in any grouping. In the other groupings the list holds one card per project folder (`ProjectsPanel.tsx:2748-2767`, main checkouts only) | `code` | grouped by project: `scripts/evidence/smoke.mjs` flow 7 (2026-11-15) fails when a `sidebar-session` row shows: six sessions in one workspace → one folder row, no session rows, no `.pane-row`, clicking the folder shows all six panes, and a restart kept all six. Every grouping: `src/projects/__cards__/VIEW-051.test.ts` finds no session row in the drawn list |
+| Folder row menu | `src/projects/menu.ts:54-59` | Review changes (git folders), Project settings, Remove project… | the three items, Review disabled when the folder is not a repo. New workspace is not listed: the panel calls `projectMenu(true, …)` (`ProjectsPanel.tsx:2333`) | `code` | `menu.ts:54-59`; `live-GIT-038`/`live-EDIT-029` open All Changes through "Review changes" |
+| Row menu (a folder's card) | `menu.ts:68-98` (`rowMenu`) | on a folder's card (a pinned folder, or the list in another grouping): Move to status, Details…, Review changes, Open in (Explorer/editors/Terminal), Developer (Alt), Remove project…, and New workspace while worktrees are on | those items for a folder's card. The worktree-only items (Delete, Sleep/Wake, Set parent…, Move up/down, Hide from the sidebar) are still in the code for a worktree's old row, which shows only while a question or form of its own is open | `code` | `menu.ts:68-98`, `ProjectsPanel.tsx:1389` |
+| Status submenu | `menu.ts:74` | list the workspace's statuses plus Edit statuses… | lists them; edit opens the editor (`ProjectsPanel.tsx:1475`) | `code` | `menu.ts:74`, `ProjectsPanel.tsx:1475` |
+| Open in submenu | `menu.ts:79-90` | Explorer / each found editor / Terminal | runs the chosen door; Terminal shows the row (`ProjectsPanel.tsx:1483`) | `code` | `menu.ts:79-90` |
+| **Worktrees in the sidebar** | `ProjectsPanel.tsx:1924-1927` (`row`), `:1780-1781` | Goal 0 item 4: worktree rows never appear in the sidebar | a worktree has no row: the default list draws its old row only while a question or form of its own is open (Delete, Sleep, Details, Move, Status), and Pinned and the other groupings hold main checkouts only. The menu code still lists the worktree-only items for that old row | `code` | `ProjectsPanel.tsx:1924-1927`, `:1780-1781`, `menu.ts:68-98` |
+| Keyboard in a menu | `menu.ts:7-14` (`menuMove`) | Arrow/Home/End move focus and wrap | implemented; Esc closes (`ProjectsPanel.tsx:233-240`) | `code` | `menu.ts:7-14` |
 
 ## 2. New session chooser
 
@@ -47,24 +48,24 @@ The pane a new workspace opens, and what the header's + and the sidebar's choose
 
 | Control | Where | What it should do | What it does now | Verdict | Proof |
 |---|---|---|---|---|---|
-| Chooser pane | `src/launch/ChooserPane.tsx:311` (`data-testid="chooser-pane"`) | ask what to run, in which shape | draws seats and the agent grid | `live-pass` | `live-latency` (round 4): a new workspace opened the chooser, every seat got Terminal, Start ran |
-| Close | `ChooserPane.tsx:387` (`aria-label="Close Start"`) | close the chooser; blocked while starting | `onClose`, disabled while `busy` | `code` | `ChooserPane.tsx:321` |
-| Seat count | `ChooserPane.tsx:412` (`aria-label="How many sessions"`) + `:425` (any number) | 1..N sessions for this launch | sets the seat count | `code` | `ChooserPane.tsx:412-425` |
-| Launch shape | `ChooserPane.tsx:353` (`aria-label="Launch shape"`) | own folder vs one grid | sets the shape | `code` | `ChooserPane.tsx:353` |
-| Where the AIs work | `ChooserPane.tsx:469` (`aria-label="Where the AIs work"`, radiogroup) | each in its own worktree vs one folder | sets it | `code` | `ChooserPane.tsx:469` |
-| Task for all of them | `ChooserPane.tsx:749` | one prompt applied to every seat | stores it on the launch | `code` | `ChooserPane.tsx:749` |
-| Folders (Start form, T-824) | `ChooserPane.tsx:413` (`aria-label="Folders"`) | tick the known projects to start in, most recent first; Add folder opens the add-project dialog | ticks are kept on the sheet; Start runs once per ticked folder | `code` | `src/launch/__cards__/START-FORM.test.ts` |
-| Which AI for all (Start form, T-824) | `ChooserPane.tsx:475` (`aria-label="Which AI"`) | one AI, model and effort for every seat; Mixed when seats differ | sets every seat at once | `code` | `src/launch/startForm.test.ts`, `START-FORM.test.ts` |
-| Make each one different (Start form, T-824) | `ChooserPane.tsx:534` (`details.chooser-each`) | the per-seat rows, shape, saved teams and Use last lineup, closed by default | native disclosure | `code` | `START-FORM.test.ts` |
-| Keep what was open (Start form, T-824) | `ChooserPane.tsx:777` | at app open, close the form and change nothing | same as Cancel, other words | `code` | `START-FORM.test.ts` |
+| Chooser pane | `src/launch/ChooserPane.tsx:445` (`data-testid="chooser-pane"`) | ask what to run, in which shape | draws seats and the agent grid | `live-pass` | `live-latency` (round 4): a new workspace opened the chooser, every seat got Terminal, Start ran |
+| Close | `ChooserPane.tsx:455` (`aria-label="Close the Start form"`), `:465` (the chooser inside a pane, "Close this chooser") | close the chooser; blocked while starting | `onClose`, disabled while `busy` | `code` | `ChooserPane.tsx:455`, `:465` |
+| Seat count | `ChooserPane.tsx:496` (`aria-label="How many sessions"`) + `:509` (any number) | 1..N sessions for this launch | sets the seat count | `code` | `ChooserPane.tsx:496-509` |
+| Launch shape | `ChooserPane.tsx:592` (`aria-label="Launch shape"`) | own folder vs one grid | sets the shape | `code` | `ChooserPane.tsx:592` |
+| Where the AIs work | `ChooserPane.tsx:663` (`aria-label="Where the AIs work"`, radiogroup) | each in its own worktree vs one folder | sets it | `code` | `ChooserPane.tsx:663` |
+| Task for all of them | `ChooserPane.tsx:767` | one prompt applied to every seat | stores it on the launch | `code` | `ChooserPane.tsx:767` |
+| Folders (Start form, T-824) | `ChooserPane.tsx:482` (`aria-label="Folders"`) | tick the known projects to start in, most recent first; Add folder opens the add-project dialog | ticks are kept on the sheet; Start runs once per ticked folder | `code` | `src/launch/__cards__/START-FORM.test.ts` |
+| Which AI for all (Start form, T-824) | `ChooserPane.tsx:544` (`aria-label="Which AI"`) | one AI, model and effort for every seat; Mixed when seats differ | sets every seat at once | `code` | `src/launch/startForm.test.ts`, `START-FORM.test.ts` |
+| Make each one different (Start form, T-824) | `ChooserPane.tsx:583` (`details.chooser-each`) | the per-seat rows, shape, saved teams and Use last lineup, closed by default | native disclosure | `code` | `START-FORM.test.ts` |
+| Keep what was open (Start form, T-824) | `ChooserPane.tsx:793` | at app open, close the form and change nothing | same as Cancel, other words | `code` | `START-FORM.test.ts` |
 | Ask what to open when Kolux starts (T-824) | `src/settings/GeneralPage.tsx:53` | Settings switch, on by default | saves `askWhatToOpen` | `code` | `src/launch/startForm.test.ts` |
-| Seat job title / opening prompt | `ChooserPane.tsx:517`, `:639` | optional per-seat name and opening line | stored per seat | `code` | `ChooserPane.tsx:517,639` |
-| Which AI | `ChooserPane.tsx:534` (`seat-<n>-agents`), tiles `seat-agent-<id>`, `seat-agent-terminal` | one tile per agent plus a plain terminal | `aria-pressed` marks the pick; a missing agent's tile offers install | `live-pass` (Terminal tile) | `live-latency` (round 4): the Terminal tile was pressed for the seat and the shell started; the four agent tiles are still smoke flow 6 only |
-| Model / effort / fast mode | `ChooserPane.tsx:601`, `:616`, `:628` | per-seat model pick, effort, fast mode | inputs per seat | `code` | `ChooserPane.tsx:601-628` |
-| Agent docs link | `ChooserPane.tsx:37` (`aria-label="<agent> docs"`) | open that agent's own docs in the browser | opens the install/docs URL | `code` | `ChooserPane.tsx:37` |
-| Other AI programs | `ChooserPane.tsx:55` (`aria-label="Other AI programs"`) | the long tail of runnable programs | dialog | `code` | `ChooserPane.tsx:55` |
-| Start | `ChooserPane.tsx:673` (`data-testid="chooser-start"`) | start every seat; disabled until each seat has an AI or Terminal | starts; tooltip says what is missing | `live-pass` | `live-latency` (round 4): `chooser-start:not(:disabled)` clicked, a shell pane appeared and took input |
-| Save as team / saved shapes | `ChooserPane.tsx:375`, `:386` | name and reuse a launch shape | name field, rename menu | `code` | `ChooserPane.tsx:375-387` |
+| Seat job title / opening prompt | `ChooserPane.tsx:703`, `:754` | optional per-seat name and opening line | stored per seat | `code` | `ChooserPane.tsx:703,754` |
+| Which AI | `ChooserPane.tsx:711` (`seat-<n>-agents`), tiles `seat-agent-<id>`, `seat-agent-terminal` | one tile per agent plus a plain terminal | `aria-pressed` marks the pick; a missing agent's tile offers install | `live-pass` (Terminal tile) | `live-latency` (round 4): the Terminal tile was pressed for the seat and the shell started; the four agent tiles are still smoke flow 6 only |
+| Model / effort / fast mode | `ChooserPane.tsx:716`, `:731`, `:743` | per-seat model pick, effort, fast mode | inputs per seat | `code` | `ChooserPane.tsx:716-743` |
+| Agent docs link | `ChooserPane.tsx:38` (`aria-label="<agent> docs"`) | open that agent's own docs in the browser | opens the install/docs URL | `code` | `ChooserPane.tsx:38` |
+| Other AI programs | `ChooserPane.tsx:56` (`aria-label="Other AI programs"`) | the long tail of runnable programs | dialog | `code` | `ChooserPane.tsx:56` |
+| Start | `ChooserPane.tsx:802` (`data-testid="chooser-start"`) | start every seat; disabled until each seat has an AI or Terminal | starts; tooltip says what is missing | `live-pass` | `live-latency` (round 4): `chooser-start:not(:disabled)` clicked, a shell pane appeared and took input |
+| Save as team / saved shapes | `ChooserPane.tsx:610`, `:599-604` | name and reuse a launch shape | name field (`:614`), rename menu (`:604`, `:625-628`) | `code` | `ChooserPane.tsx:599-628` |
 | **Goal 0 item 5: a chosen agent opens a terminal** | `src/terminal/paneActions.ts` (start path) | the seat opens a new terminal running the user's shell, then the agent starts inside it | c2-agents' round-2 bug: Claude Code and Grok did not start from "Start new session" | `pending c2-agents` | `smoke.mjs` flow 6 covers all five seat types; unqualified live |
 
 ## 3. Pane header
@@ -73,16 +74,16 @@ One header per terminal pane, drawn by `src/terminal/TerminalPane.tsx`.
 
 | Control | Where | What it should do | What it does now | Verdict | Proof |
 |---|---|---|---|---|---|
-| Status dot | `TerminalPane.tsx:1759` (`pane-status-dot`) | colour + word + tip for idle/working/done | `role="img"` with a status word | `code` | `TerminalPane.tsx:1759` |
-| Usage readout | `TerminalPane.tsx:1857` (`HeaderUsage`) | context/token use when the agent reports it | shown when a usage readout exists | `code` | `TerminalPane.tsx:1857` |
-| **Context used ring** | `TerminalPane.tsx:1857` (`ContextGauge`, the fallback when there is no readout) | Goal 0: this ring is being removed | still drawn for every pane with no usage readout | `pending c3-terminal` | `TerminalPane.tsx:1857` |
-| Pane menu (⋯) | `TerminalPane.tsx:1858-1869` (`title="Pane menu"`) | open the pane's menu at the button | opens `PaneMenu` at the button's corner | `live-pass` | `live-latency` (round 4): three real mouse presses (CDP `Input.dispatchMouseEvent`, not `element.click()`) each opened a `[role=menu]`, and each was timed for the click target |
-| Expand / restore | `TerminalPane.tsx:1870-1879` (`title^="Expand:"` / `title^="Restore:"`) | fill the grid with this pane; restore the others | toggles `expanded`; the tip says "the only pane already fills the grid" and the press is a no-op when the pane is alone | `live-pass` | `live-controls` (round 5): split first, then a real press on Expand took the grid from **2 panes to 1** and the button became `Restore: the other panes come back (Ctrl+Shift+Enter)`; a press on Restore brought **2** back |
-| Split right | `TerminalPane.tsx:1881` (`data-testid="pane-split-right"`) | split the pane, new pane on the right | `onSplit("right")`; the new shell prints its prompt | `live-pass` | `live-controls` (round 5): a real press took the grid 1 → 2 panes, and the new pane's last buffer line was `PS G:\Temp\…\CTRL> ` |
-| New session (+) | `TerminalPane.tsx:1885-1897` (`pane-new-session`) | menu of agents to start in a new pane | opens the menu under the button | `live-pass` | `live-latency` (round 4): opened the menu and started a pane from it; the new pane is also the 300 ms latency target |
-| **"Blank terminal" item in the + menu** | `src/launch/PlusMenu.tsx:206-214` (`.name` = "Blank terminal") | start a plain shell, no agent | opens a new pane running the user's shell | `live-pass` | `live-latency` (round 4). Note for the map: the item is labelled **"Blank terminal"**, not "Terminal"; a separate "Terminal…" submenu (`PlusMenu.tsx:214-230`) appears only when more than one shell is installed |
-| Close | `TerminalPane.tsx:1898` | close the pane, asking first when a program runs | `close()`; the tip names the rule | `code` | `TerminalPane.tsx:1898` |
-| Link menu | `TerminalPane.tsx:1903-1920` | Ctrl+click a link: open in browser / editor / copy | `linkMenuItems` per link | `code` | `TerminalPane.tsx:1903-1920` |
+| Status dot | `TerminalPane.tsx:1715` (`pane-status-dot`) | colour + word + tip for idle/working/done | `role="img"` with a status word | `code` | `TerminalPane.tsx:1715` |
+| Usage readout | `TerminalPane.tsx:1815` (`HeaderUsage`) | context/token use when the agent reports it | shown when a usage readout exists | `code` | `TerminalPane.tsx:1815` |
+| **Context used ring** | gone: `src/` has no `ContextGauge` any more | Goal 0: this ring is removed | removed: a pane with no usage readout draws nothing in that place (`TerminalPane.tsx:1815`) | `code` | `TerminalPane.tsx:1815` |
+| Pane menu (⋯) | `TerminalPane.tsx:1816-1818` (`title="Pane menu"`) | open the pane's menu at the button | opens `PaneMenu` at the button's corner | `live-pass` | `live-latency` (round 4): three real mouse presses (CDP `Input.dispatchMouseEvent`, not `element.click()`) each opened a `[role=menu]`, and each was timed for the click target |
+| Expand / restore | `TerminalPane.tsx:1830-1834` (`title^="Expand:"` / `title^="Restore:"`) | fill the grid with this pane; restore the others | toggles `expanded`; the tip says "the only pane already fills the grid" and the press is a no-op when the pane is alone | `live-pass` | `live-controls` (round 5): split first, then a real press on Expand took the grid from **2 panes to 1** and the button became `Restore: the other panes come back (Ctrl+Shift+Enter)`; a press on Restore brought **2** back |
+| Split right | `TerminalPane.tsx:1839` (`data-testid="pane-split-right"`) | split the pane, new pane on the right | `onSplit("right")`; the new shell prints its prompt | `live-pass` | `live-controls` (round 5): a real press took the grid 1 → 2 panes, and the new pane's last buffer line was `PS G:\Temp\…\CTRL> ` |
+| New session (+) | `TerminalPane.tsx:1843-1855` (`pane-new-session`) | menu of agents to start in a new pane | opens the menu under the button | `live-pass` | `live-latency` (round 4): opened the menu and started a pane from it; the new pane is also the 300 ms latency target |
+| **"Blank terminal" item in the + menu** | `src/launch/PlusMenu.tsx:210-217` (`.name` = "Blank terminal") | start a plain shell, no agent | opens a new pane running the user's shell | `live-pass` | `live-latency` (round 4). Note for the map: the item is labelled **"Blank terminal"**, not "Terminal"; a separate "Terminal…" submenu (`PlusMenu.tsx:218-237`) appears only when more than one shell is installed |
+| Close | `TerminalPane.tsx:1856` | close the pane, asking first when a program runs | `close()`; the tip names the rule | `code` | `TerminalPane.tsx:1856` |
+| Link menu | `TerminalPane.tsx:1865` | Ctrl+click a link: open in browser / editor / copy | `linkMenuItems` per link | `code` | `TerminalPane.tsx:1865` |
 
 ## 4. Latency (Goal 0, item 7)
 
@@ -115,11 +116,11 @@ test names today.
 
 | Screen | Controls mapped | `live-pass` | `live-fail` | `check-exists` | `code` | `pending` | Bug filed |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Sidebar | 10 | 3 | 0 | 0 | 6 | 1 | 0 |
-| New session chooser | 14 | 3 | 0 | 0 | 10 | 1 | 0 |
-| Pane header | 10 | 5 | 0 | 0 | 4 | 1 | 0 |
+| Sidebar | 10 | 3 | 0 | 0 | 7 | 0 | 0 |
+| New session chooser | 19 | 3 | 0 | 0 | 15 | 1 | 0 |
+| Pane header | 10 | 5 | 0 | 0 | 5 | 0 | 0 |
 | Latency targets (section 4) | 3 | 2 | 1 | 0 | 0 | 0 | 1 |
-| **Total** | **37** | **13** | **1** | **0** | **20** | **3** | **1** |
+| **Total** | **42** | **13** | **1** | **0** | **27** | **1** | **1** |
 
 Round 4 moved 7 controls from `code`/`check-exists` to `live-pass` by really driving them (the latency run adds a pane
 header row: the "Blank terminal" menu item), and added the three latency targets, one of which fails.
@@ -140,7 +141,12 @@ no session rows in the list grouped by project), so the Session row moved from `
 the grid through the Start form: a bigger number on the layout strip opens the form with one seat per cell to add,
 nothing starts before Start, and the shells that were running keep their processes.
 
-Three controls are `pending` on their owner lane, not on this lane: the sidebar's worktree rows (Goal 0 item 4,
-`c2-agents`), the chooser's agent-must-start-a-terminal path (Goal 0 item 5, `c2-agents`), and the pane header's
-Context-used ring (Goal 0, `c3-terminal`).
+2026-11-16 (the wave of 2026-11-15 merged): the session rows are gone from every grouping, so the Session row no longer
+names a test id, and the "Session row menu" row became "Row menu (a folder's card)". The sidebar's worktree rows and the
+pane header's Context-used ring are done in the code and now read `code`. The line numbers in sections 1 to 3 were read
+again against the merged code. The counts were counted again from the rows: the chooser has 19 rows since the Start form
+rows came in, not 14.
+
+One control is still `pending` on its owner lane, not on this lane: the chooser's agent-must-start-a-terminal path
+(Goal 0 item 5, `c2-agents`).
 <!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts at ade25b4c -->
