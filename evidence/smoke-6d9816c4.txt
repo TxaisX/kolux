@@ -1,0 +1,5 @@
+pnpm smoke at 2026-11-16T02:16:42.677Z on 6d9816c4 (G:\Dev\kolux-lanes\integrate)
+args: --offscreen --port 1461 --cdp 9361 --identifier com.txaisxiong.kolux.c1.smoke --timeout 30 --only 1,7; T-184 ticked: false; flow 5 report-only
+PASS 1: grid 3 -> 6 through the Start form (it asked for 3 seats and started nothing before Start); the 3 shells that were running each echoed the marker set before the change (same PTY processes)
+PASS 7: 6 sessions in one workspace: the sidebar lists the folder row once and no session rows (no .pane-row), clicking the folder shows 6 panes, and a restart kept 6 panes
+smoke: 2/2 flows passed
