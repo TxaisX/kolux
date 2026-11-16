@@ -2970,6 +2970,193 @@ fn f04_a_staged_link_to_a_repository_folder_is_removed_as_a_link() {
     }
 }
 
+/// R59-01: removes the test's junctions (the links only, never what they point at) and then its
+/// folders, also when an assert fails.
+#[cfg(windows)]
+struct LinksThenFolders(Vec<PathBuf>, Vec<PathBuf>);
+
+#[cfg(windows)]
+impl Drop for LinksThenFolders {
+    fn drop(&mut self) {
+        for link in &self.0 {
+            if fs::symlink_metadata(link).is_ok_and(|m| m.is_symlink()) {
+                let _ = fs::remove_dir(link);
+            }
+        }
+        for dir in &self.1 {
+            let _ = fs::remove_dir_all(dir);
+        }
+    }
+}
+
+/// A junction (a Windows folder link, needs no special right) at `link` pointing at `target`.
+#[cfg(windows)]
+fn junction(link: &Path, target: &Path) {
+    let out = quiet("cmd").args(["/c", "mklink", "/J"]).arg(link).arg(target).output().unwrap();
+    assert!(out.status.success(), "mklink /J: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(fs::symlink_metadata(link).unwrap().is_symlink(), "Rust sees the junction as a link");
+}
+
+/// A folder of the test's own, beside its repository, for a junction to point at.
+fn outside_folder(name: &str) -> PathBuf {
+    let out = std::env::temp_dir().join(format!("kolux-scm-{name}-out-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&out);
+    fs::create_dir_all(&out).unwrap();
+    out
+}
+
+fn by_route(dir: &Path, route: &str, rows: &[&str]) -> Result<(), String> {
+    let rows: Vec<String> = rows.iter().map(|s| s.to_string()).collect();
+    match route {
+        "paths" => discard_paths(dir, &rows),
+        _ => discard(dir, route, &rows),
+    }
+}
+
+/// R59-01: a junction where a tracked file was is removed as a link before Git writes the file
+/// back; the folder it points at keeps its files, on every route.
+#[cfg(windows)]
+#[test]
+fn r59_a_junction_in_a_tracked_files_place_is_removed_as_a_link_and_its_target_kept() {
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r59a-{route}"));
+        let out = outside_folder(&format!("r59a-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("foo")], vec![dir.clone(), out.clone()]);
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        commit_file(&dir, "foo", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "foo"], &dir);
+        }
+        fs::remove_file(dir.join("foo")).unwrap();
+        junction(&dir.join("foo"), &out);
+        let result = by_route(&dir, route, &["foo"]);
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the junction's target keeps its file");
+        result.unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!(fs::read_to_string(dir.join("foo")).unwrap(), "f\n", "{route}: foo is the committed file again");
+    }
+}
+
+/// R59-01: a junction where a tracked folder was: nothing is written or deleted through it, on
+/// every route, and the row is named.
+#[cfg(windows)]
+#[test]
+fn r59_nothing_is_written_or_deleted_through_a_junction_at_a_parent_folder() {
+    for route in ["changed", "staged", "paths", "untracked", "paths-untracked"] {
+        let dir = temp_repo(&format!("r59b-{route}"));
+        let out = outside_folder(&format!("r59b-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("d")], vec![dir.clone(), out.clone()]);
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d/f.txt", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "d/f.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        junction(&dir.join("d"), &out);
+        let row = if route.ends_with("untracked") { "d/p.txt" } else { "d/f.txt" };
+        let result = by_route(&dir, route.trim_end_matches("-untracked"), &[row]);
+        assert_eq!(fs::read_to_string(out.join("f.txt")).ok().as_deref(), Some("mine\n"), "{route}: the target's f.txt is not written");
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the target's p.txt is not deleted");
+        assert_eq!(result.expect_err(route), format!("d is a link to another folder, so Kolux leaves {row}. Remove the link by hand, then discard again."), "{route}");
+    }
+}
+
+/// R59-02: a plain file where a tracked folder was is never deleted to make room for the folder.
+#[test]
+fn r59_a_file_where_a_tracked_folder_was_is_never_deleted() {
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r59c-{route}"));
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d/f.txt", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "d/f.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(dir.join("d"), "my notes\n").unwrap();
+        let result = by_route(&dir, route, &["d/f.txt"]);
+        let notes = fs::read_to_string(dir.join("d")).ok();
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(notes.as_deref(), Some("my notes\n"), "{route}: the file d is kept");
+        assert_eq!(result.expect_err(route), "d is now a file, so Kolux leaves d/f.txt. Remove or move that file by hand, then discard again.", "{route}");
+    }
+}
+
+/// R59-01: a worktree reached through a junction works as before: only folders below the
+/// worktree's own root are looked at.
+#[cfg(windows)]
+#[test]
+fn r59_a_worktree_reached_through_a_junction_is_discarded_as_before() {
+    let outer = outside_folder("r59d");
+    let repo = temp_repo("r59d");
+    fs::create_dir(outer.join("real")).unwrap();
+    fs::rename(&repo, outer.join("real").join("repo")).unwrap();
+    let _clean = LinksThenFolders(vec![outer.join("via")], vec![outer.clone()]);
+    junction(&outer.join("via"), &outer.join("real"));
+    let worktree = outer.join("via").join("repo");
+    fs::write(worktree.join("README.md"), "changed\n").unwrap();
+    for route in ["changed", "paths"] {
+        fs::write(worktree.join("README.md"), "changed\n").unwrap();
+        by_route(&worktree, route, &["README.md"]).unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!(fs::read_to_string(worktree.join("README.md")).unwrap(), "hello\n", "{route}");
+    }
+}
+
+/// R59-01/R59-02, pinned: a row under real folders is discarded, and a row whose whole folder
+/// tree was deleted comes back; one row left among others leaves only its own sentence.
+#[test]
+fn r59_rows_under_real_or_missing_folders_still_go_and_a_left_row_does_not_stop_the_rest() {
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("r59e-{route}"));
+        fs::create_dir_all(dir.join("a").join("b")).unwrap();
+        fs::create_dir_all(dir.join("x").join("y")).unwrap();
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "a/b/c.txt", "c\n");
+        commit_file(&dir, "x/y/z.txt", "z\n");
+        commit_file(&dir, "d/f.txt", "f\n");
+        fs::write(dir.join("a").join("b").join("c.txt"), "changed\n").unwrap();
+        fs::remove_dir_all(dir.join("x")).unwrap();
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(dir.join("d"), "my notes\n").unwrap();
+        let ok = by_route(&dir, route, &["a/b/c.txt", "x/y/z.txt"]);
+        fs::write(dir.join("README.md"), "changed\n").unwrap();
+        let mixed = by_route(&dir, route, &["d/f.txt", "README.md"]);
+        let read = |p: &str| fs::read_to_string(dir.join(p)).ok();
+        let (c, z, d, readme) = (read("a/b/c.txt"), read("x/y/z.txt"), read("d"), read("README.md"));
+        let _ = fs::remove_dir_all(&dir);
+        ok.unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!((c.as_deref(), z.as_deref()), (Some("c\n"), Some("z\n")), "{route}: both rows are put back");
+        assert_eq!(mixed.expect_err(route), "d is now a file, so Kolux leaves d/f.txt. Remove or move that file by hand, then discard again.", "{route}");
+        assert_eq!((d.as_deref(), readme.as_deref()), (Some("my notes\n"), Some("hello\n")), "{route}: d is kept, the other row is put back");
+    }
+}
+
+/// R59-04: an untracked junction is removed as a link, also one that points at a repository
+/// (git clean keeps that one without a word); the folder it points at is whole.
+#[cfg(windows)]
+#[test]
+fn r59_an_untracked_junction_is_removed_and_its_target_kept() {
+    // A junction to a plain folder is listed by its files (`ln/p.txt`), so through `discard_paths`
+    // its rows are left by the link check (see the parent-folder test); only the repository kind
+    // is listed as `ln/`.
+    for (route, repo) in [("untracked", true), ("untracked", false), ("paths", true)] {
+        let name = format!("r59g-{route}-{repo}");
+        let dir = temp_repo(&name);
+        let out = outside_folder(&name);
+        let _clean = LinksThenFolders(vec![dir.join("ln")], vec![dir.clone(), out.clone()]);
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        if repo {
+            plain(&["init", "-q"], &out);
+        }
+        junction(&dir.join("ln"), &out);
+        let row = if route == "paths" { "ln" } else { "ln/" };
+        let result = by_route(&dir, route, &[row]);
+        assert!(out.join("p.txt").is_file() && out.join(".git").is_dir() == repo, "{route} {repo}: the target is whole");
+        result.unwrap_or_else(|e| panic!("{route} {repo}: {e}"));
+        assert!(fs::symlink_metadata(dir.join("ln")).is_err(), "{route} {repo}: the junction is gone");
+    }
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {
