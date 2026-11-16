@@ -2991,7 +2991,7 @@ fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<Strin
     // R86-01: Windows drops a trailing dot or space, so `sub.` opens `sub`: Git and the disk would
     // read two names. Any part of the row (its own name included) ending so is left.
     if cfg!(windows) && parts.iter().any(|s| s.ends_with('.') || s.ends_with(' ')) {
-        return Some(format!("{row} has a name that ends in a dot or a space. Windows reads that as another name, so Kolux leaves it."));
+        return Some(format!("{row} has a name that ends in a dot or a space. Windows reads that as another name, so Kolux leaves it. Rename or delete it with the tool that made it (WSL, for example), not in Explorer."));
     }
     let mut at = String::new();
     for part in &parts[..parts.len().saturating_sub(1)] {
@@ -3042,7 +3042,7 @@ fn on_disk_as_sent(worktree: &Path, p: &str, lists: &mut std::collections::HashM
             return match fs::symlink_metadata(worktree.join(native(&next))) {
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
                 Err(_) => Err(unread(&next, row)),
-                Ok(_) => Err(format!("{row} is not spelled the way it is on disk, so Kolux leaves it.")),
+                Ok(_) => Err(format!("{row} is not spelled the way it is on disk, so Kolux leaves it. Refresh the list, then discard again.")),
             };
         }
         at = next;

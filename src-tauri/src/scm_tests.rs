@@ -3763,7 +3763,7 @@ fn r86_an_alias_spelling_of_a_tracked_folder_is_never_cleaned() {
         }
         // F90-06: the walker stops this row: the disk opens it as the folder `sub`, but no entry
         // of the listing is spelled so (`git clean` would remove the whole folder).
-        if i == 5 && said != Err("sub::$INDEX_ALLOCATION is not spelled the way it is on disk, so Kolux leaves it.".to_string()) {
+        if i == 5 && said != Err("sub::$INDEX_ALLOCATION is not spelled the way it is on disk, so Kolux leaves it. Refresh the list, then discard again.".to_string()) {
             wrong.push(format!("ignorecase {case} {route} {row}: not the spelling line: {said:?}"));
         }
         if fs::read_to_string(dir.join("sub").join("d").join("f.txt")).ok().as_deref() != Some("changed\n") {
@@ -3922,6 +3922,10 @@ fn r93_an_untracked_name_ending_in_a_dot_beside_a_tracked_file_is_left() {
         let _ = fs::remove_dir_all(&dir);
         if !matches!(&said, Err(e) if e.lines().count() == 1 && e.contains("ends in a dot or a space") && e.contains("so Kolux leaves")) {
             wrong.push(format!("{route}: said {said:?}"));
+        }
+        // F90-03: the line says what to do next.
+        if said != Err("foo. has a name that ends in a dot or a space. Windows reads that as another name, so Kolux leaves it. Rename or delete it with the tool that made it (WSL, for example), not in Explorer.".to_string()) {
+            wrong.push(format!("{route}: not the dot line: {said:?}"));
         }
         if foo.as_deref() != Some("mine\n") {
             wrong.push(format!("{route}: foo holds {foo:?}, not its uncommitted text"));
