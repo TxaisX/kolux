@@ -662,6 +662,52 @@ fn n06_a_failed_add_whose_clean_up_left_files_says_so_and_names_the_folder() {
     assert!(!root.exists(), "the test leaves nothing behind");
 }
 
+/// F4: an empty folder the clean-up could not delete (a program holds the folder itself) does not
+/// stop the retries and gets no sentence: Git adds into an empty folder. A folder that was there and
+/// empty before the add is the user's own, so when files are left in it the sentence says to empty
+/// it, not to remove it.
+#[cfg(windows)]
+#[test]
+fn f4_an_empty_folder_left_is_retried_and_a_users_folder_is_to_be_emptied() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let repo = temp_repo("f4-clear");
+    let root = temp("f4-clear-root");
+    let _clean = [crate::test_dir::TempDir(repo.clone()), crate::test_dir::TempDir(root.clone())];
+    let raw = "fatal: Unable to create 'C:/r/.git/index.lock': File exists.";
+    let held: std::cell::RefCell<Option<fs::File>> = std::cell::RefCell::new(None);
+    let tries = std::cell::Cell::new(0);
+    // Made by the add, left empty, the folder itself held open (no delete share): retried as before.
+    let dest = root.join("held");
+    let said = add_retrying(&repo, &dest, None, &|| false, || {
+        tries.set(tries.get() + 1);
+        fs::create_dir_all(&dest).unwrap();
+        if held.borrow().is_none() {
+            *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(1).custom_flags(0x0200_0000).open(&dest).unwrap());
+        }
+        Err::<(), String>(raw.to_string())
+    })
+    .unwrap_err();
+    assert_eq!(said, raw, "an empty folder left behind gets no sentence");
+    assert_eq!(tries.get(), 3, "the retries run");
+    drop(held.borrow_mut().take());
+    // There and empty before; a file Git wrote is held: the sentence says to empty it.
+    let mine = root.join("mine");
+    fs::create_dir_all(&mine).unwrap();
+    tries.set(0);
+    let said = add_retrying(&repo, &mine, None, &|| false, || {
+        tries.set(tries.get() + 1);
+        fs::write(mine.join(".git"), "gitdir: C:/r/.git/worktrees/mine\n").unwrap();
+        fs::write(mine.join("pack.idx"), "x").unwrap();
+        *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(0).open(mine.join("pack.idx")).unwrap());
+        Err::<(), String>(raw.to_string())
+    })
+    .unwrap_err();
+    assert_eq!(said, format!("{raw}\nKolux could not clear the folder {}. Empty it by hand before you try again.", mine.display()));
+    assert_eq!(tries.get(), 1);
+    assert!(mine.exists(), "the user's folder stays");
+    drop(held.borrow_mut().take());
+}
+
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
 fn project_with_workspaces(tag: &str) -> (Git, Store, Project, PathBuf, Vec<PathBuf>, Place) {
     let git = Git::detect().unwrap();

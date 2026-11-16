@@ -1244,7 +1244,8 @@ fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: boo
     let mut left = false;
     if !was_there && git_made(dest) {
         let _ = std::fs::remove_dir_all(dest);
-        left = std::fs::symlink_metadata(dest).is_ok();
+        // F4: an empty folder that could not go is no obstacle (Git adds into an empty folder).
+        left = std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_some());
     } else if was_there && was_empty && git_made(dest) {
         for entry in std::fs::read_dir(dest).into_iter().flatten().flatten() {
             let path = entry.path();
@@ -1341,7 +1342,9 @@ pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dy
         }
         // N-06: a retry into what was left can only fail with a misleading "already exists": stop and say so.
         if stuck {
-            return Err(format!("{e}{NOT_CLEARED}{}. Remove it by hand before you try again.", dest.display()));
+            // F4: a folder that was there before the add is the user's own: it is emptied, not removed.
+            let verb = if was_there { "Empty" } else { "Remove" };
+            return Err(format!("{e}{NOT_CLEARED}{}. {verb} it by hand before you try again.", dest.display()));
         }
         match waits.next() {
             Some(ms) if lock_held(&e) => std::thread::sleep(std::time::Duration::from_millis(*ms)),
