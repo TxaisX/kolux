@@ -50,7 +50,7 @@ export async function stagePaths(call: Call, worktree: string, paths: string[], 
     await call("scm_stage", { worktree, paths, on });
     return null;
   } catch (e) {
-    return { text: `${on ? "Staging" : "Unstaging"} failed: ${String(e)}`, bad: true };
+    return { text: `${on ? "Staging" : "Unstaging"} failed: ${String(e)}`, bad: true, error: true };
   }
 }
 
@@ -75,7 +75,9 @@ export const commitWait = (s: Status | null, message: string): string | null =>
 export const remoteSay = (label: string, out: ActionOutcome): Say => {
   if (out.ok) return { text: `${label}: done`, bad: false };
   const tail = out.output.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(-3).join(" ");
-  return { text: `${failureTitle(label, out)}${tail ? `: ${tail}` : ""}`, bad: true };
+  // R83-05: red when the words say it failed (sign-in, network, submodule, other); refused, stopped or blocked stays yellow.
+  const failed = ["sign-in", "network", "submodule", "other"].includes(out.kind ?? "other");
+  return { text: `${failureTitle(label, out)}${tail ? `: ${tail}` : ""}`, bad: true, ...(failed ? { error: true } : {}) };
 };
 
 /** Runs push, pull or sync; the line to show either way. */
@@ -83,7 +85,7 @@ export async function runRemote(call: Call, worktree: string, action: RemoteButt
   try {
     return remoteSay(label, await call<ActionOutcome>("scm_remote", { worktree, action }));
   } catch (e) {
-    return { text: `${label} failed: ${String(e)}`, bad: true };
+    return { text: `${label} failed: ${String(e)}`, bad: true, error: true };
   }
 }
 

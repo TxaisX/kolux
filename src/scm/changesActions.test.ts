@@ -44,7 +44,7 @@ describe("the Changes tab's stage buttons", () => {
 
   it("turns a failed stage into an error line", async () => {
     const say = await stagePaths(() => Promise.reject("index.lock exists"), "C:/r", ["a.ts"], true);
-    expect(say).toEqual({ text: "Staging failed: index.lock exists", bad: true });
+    expect(say).toEqual({ text: "Staging failed: index.lock exists", bad: true, error: true });
   });
 });
 
@@ -75,7 +75,7 @@ describe("the Changes tab's push, pull and sync", () => {
 
   it("turns a thrown error into a line instead of leaving the button pending", async () => {
     const say = await runRemote(() => Promise.reject("no such command"), "C:/r", "sync", "Sync");
-    expect(say).toEqual({ text: "Sync failed: no such command", bad: true });
+    expect(say).toEqual({ text: "Sync failed: no such command", bad: true, error: true });
   });
 });
 
@@ -152,5 +152,29 @@ describe("P10: a waiting button says why", () => {
     const s: Status = { ...emptyStatus, branch: "main", upstream: null };
     expect(remoteButtons(s, true).map((b) => b.reason)).toEqual([NO_REMOTE, NO_REMOTE, NO_REMOTE]);
     expect(remoteButtons(s).map((b) => b.reason)).toEqual(["Branch unpublished", "Branch unpublished", "Branch unpublished"]);
+  });
+});
+
+// R83-05: a line whose words say something FAILED is red (`error`); one that says Git or Kolux stopped and the user must act
+// first stays yellow (`bad` alone).
+describe("R83-05: failure lines are red, stop lines stay yellow", () => {
+  it.each([
+    ["sign-in", true],
+    ["network", true],
+    ["submodule", true],
+    ["other", true],
+    [null, true],
+    ["protected", false],
+    ["non-fast-forward", false],
+    ["no-policy", false],
+    ["hook", false],
+  ])("remoteSay, kind %s: red %s", (kind, red) => {
+    const say = remoteSay("Push", { ok: false, kind: kind as never, output: "x" });
+    expect(say.bad).toBe(true);
+    expect(say.error === true).toBe(red);
+  });
+  it("a remote action that threw, and Unstaging failed, are red", async () => {
+    expect(await runRemote(() => Promise.reject("boom"), "C:/r", "pull", "Pull")).toEqual({ text: "Pull failed: boom", bad: true, error: true });
+    expect(await stagePaths(() => Promise.reject("locked"), "C:/r", ["a.ts"], false)).toEqual({ text: "Unstaging failed: locked", bad: true, error: true });
   });
 });

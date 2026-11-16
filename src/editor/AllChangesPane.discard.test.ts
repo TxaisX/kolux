@@ -56,7 +56,12 @@ test("R74-05: the result line draws an error red (note error) and any other bad 
 test.each([
   ["a text ending in a line break", `${A}\n`, "Kolux left this as it is:"],
   ["a blank line between two kept lines", `${A}\n\n${D}`, "Kolux left this as it is:"],
-  ["an empty text", "", "Could not discard x.txt:"],
+  ["an empty text (R83-05: no reason given)", "", "Could not discard x.txt. No reason was given."],
 ])("R74-04: %s", (_, err, head) => {
   expect(discardSay(err, "x.txt").text.split("\n")[0]).toBe(head);
+});
+
+// R83-05: an empty Discard error still says it could not, in one line, and says no reason was given (red).
+test.each([[""], ["\n"]])("R83-05: an empty Discard error %j reads as one line with no reason given", (err) => {
+  expect(discardSay(err, "x.txt")).toEqual({ text: "Could not discard x.txt. No reason was given.", bad: true, error: true });
 });

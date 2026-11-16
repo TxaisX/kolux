@@ -138,7 +138,9 @@ export const discardSay = (err: unknown, name: string): Say => {
   // R74-04: blank lines (a trailing line break) say nothing either way; an empty text is a plain "could not".
   const lines = text.split("\n").filter((l) => l.trim());
   const kept = lines.length > 0 && lines.every((l) => l.includes("so Kolux leaves"));
-  return kept ? { text: `Kolux left this as it is:\n${text}`, bad: true } : { text: `Could not discard ${name}:\n${text}`, bad: true, error: true };
+  if (kept) return { text: `Kolux left this as it is:\n${text}`, bad: true };
+  // R83-05: an empty error gives no reason; one red line says so instead of a bare "Could not discard x:".
+  return lines.length === 0 ? { text: `Could not discard ${name}. No reason was given.`, bad: true, error: true } : { text: `Could not discard ${name}:\n${text}`, bad: true, error: true };
 };
 
 export default function AllChangesPane({ id, root, hidden = false, focused = false, onFocus, onClose, onOpenDiff, pinnedBase = null }: Props) {
@@ -306,9 +308,10 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
             setMessage("");
             return { text: `Committed ${out.id}`, bad: false };
           }
-          return { text: `${out.blocked ? "A project check stopped this save" : "Commit failed"}: ${out.output}`, bad: true };
+          // R83-05: a failure is red; a project check that stopped the save stays yellow (the user fixes and retries).
+          return { text: `${out.blocked ? "A project check stopped this save" : "Commit failed"}: ${out.output}`, bad: true, ...(out.blocked ? {} : { error: true }) };
         },
-        (e): Say => ({ text: String(e), bad: true }),
+        (e): Say => ({ text: String(e), bad: true, error: true }),
       ),
     );
   };
@@ -346,7 +349,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     act(`Aborting the ${op}`, () =>
       invoke("scm_abort", { worktree: root }).then(
         (): Say => ({ text: `${abortLabel(op)}: the workspace is back where it was`, bad: false }),
-        (e): Say => ({ text: `${abortLabel(op)} failed: ${String(e)}`, bad: true }),
+        (e): Say => ({ text: `${abortLabel(op)} failed: ${String(e)}`, bad: true, error: true }),
       ),
     );
   };

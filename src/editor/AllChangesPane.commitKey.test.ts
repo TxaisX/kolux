@@ -6,13 +6,13 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
 import { emptyStatus, type Status } from "../scm/model";
 
-const h = vi.hoisted(() => ({ status: null as unknown as Status, calls: [] as [string, unknown][] }));
+const h = vi.hoisted(() => ({ status: null as unknown as Status, calls: [] as [string, unknown][], commit: null as null | (() => Promise<unknown>) }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: unknown) => {
     h.calls.push([cmd, args]);
     if (cmd === "scm_status") return Promise.resolve(h.status);
     if (cmd === "change_entries") return Promise.resolve([]);
-    if (cmd === "scm_commit") return Promise.resolve({ id: "abc1234", blocked: false, output: "" });
+    if (cmd === "scm_commit") return h.commit ? h.commit() : Promise.resolve({ id: "abc1234", blocked: false, output: "" });
     return Promise.resolve(null);
   },
 }));
@@ -89,4 +89,22 @@ test("a keystroke still inside an input-method composition commits nothing", asy
   await press(c, field(c, "Commit message"), { isComposing: true });
   await settle(40);
   expect(commits()).toEqual([]);
+});
+
+// R83-05: "Commit failed" and a commit that threw are red; "A project check stopped this save" stays yellow.
+test.each([
+  ["Commit failed", () => Promise.resolve({ id: null, blocked: false, output: "bad object" }), "Commit failed: bad object", "note error"],
+  ["the commit threw", () => Promise.reject("git crashed"), "git crashed", "note error"],
+  ["a project check stopped it", () => Promise.resolve({ id: null, blocked: true, output: "lint" }), "A project check stopped this save: lint", "note warn"],
+])("R83-05: %s: the result line's colour", async (_, answer, words, cls) => {
+  h.commit = answer;
+  try {
+    const c = await mounted();
+    await typeInto(c, field(c, "Commit message"), "Add the thing");
+    await press(c, field(c, "Commit message"));
+    await until(() => c.textContent.includes(words));
+    expect(find(c, (n) => n.attrs.role === "alert" && n.attrs.class === cls).length).toBe(1);
+  } finally {
+    h.commit = null;
+  }
 });
