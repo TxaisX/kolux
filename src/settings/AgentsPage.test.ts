@@ -35,14 +35,16 @@ test("the text under the status hooks switch says it starts on after the consent
 });
 
 // Job 49: the switch keeps its key and its section; its name says what it is for, and the text under it says what goes
-// dark while it is off (chat/send.ts, SafetyPage.tsx and board/chip.ts paneStatus: no hook word, only the title guess).
+// dark while it is off (chat/send.ts, SafetyPage.tsx and board/chip.ts paneStatus: no hook word, only the title and screen guess).
 test("the status hooks switch is called Show what each agent is doing, and says what stops while it is off", () => {
   const html = renderToString(createElement(HooksSwitch, { on: false, onSwitch: () => {} }));
   expect(html).toContain('aria-label="Show what each agent is doing"');
   expect(html).toContain('data-section="hooks"');
   expect(html).toMatch(/<span>Show what each agent is doing/);
   expect(html).not.toContain("Agent status hooks");
-  expect(html).toContain("While it is off, Kolux can only guess from each terminal&#x27;s title");
+  expect(html).toContain("While it is off, Kolux guesses from each terminal&#x27;s title and screen, so the status colours");
+  expect(html).not.toContain("can only guess");
+  expect(html).toContain("Kolux&#x27;s hooks (small scripts that let an agent tell Kolux what it is doing)");
   expect(html).toContain("Protected actions cannot ask first");
 });
 
