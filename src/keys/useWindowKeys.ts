@@ -159,9 +159,10 @@ export function useWindowKeys(w: WindowBag) {
         // by its place on the keyboard (letter chords match on the place, so Ctrl+W on a Russian layout types "ц" but is the
         // W place). Never when the key types A, C, V, X, Y or Z: those are the field's select all, copy, paste, cut, redo and
         // undo on any layout (on a French layout the W place types "z"). Every other key (arrows, Home, End, Page Up/Down,
-        // Tab, Escape, Enter, Space, Backspace, Delete) is the field's, untouched.
+        // Tab, Escape, Enter, Space, Backspace, Delete) is the field's, untouched. F88-02: the numpad's place is not checked:
+        // with NumLock on its key is the digit, and with NumLock off it is an arrow, Home, End or Page Up/Down.
         const byKey = /^([bd-uw]|[0-9]|F([1-9]|1[0-9]|2[0-4]))$/i.test(e.key);
-        const byPlace = /^(Key[BD-UW]|Digit[0-9]|Numpad[0-9])$/.test(e.code);
+        const byPlace = /^(Key[BD-UW]|Digit[0-9])$/.test(e.code);
         if ((byKey || byPlace) && !/^[acvxyz]$/i.test(e.key)) e.preventDefault();
         return;
       }

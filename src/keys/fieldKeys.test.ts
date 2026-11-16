@@ -152,6 +152,18 @@ test.each([
   expect(closed, "the binding is live outside a text box").toEqual(["p1"]);
 });
 
+// F88-02: numpad 4 with NumLock off arrives as key "ArrowLeft" on the "Numpad4" place. It moves the caret, so it stays the field's.
+test("F88-02: Close pane on Mod+ArrowLeft, numpad 4 with NumLock off, held by a text box: the field keeps the key", async () => {
+  await handler({ keybindings: { "terminal.closePane": "Mod+ArrowLeft" } });
+  Object.assign(doc, { activeElement: el("input", "text") });
+  const e = press("ArrowLeft", { ctrlKey: true, code: "Numpad4" });
+  expect(closed, "the command does not run").toEqual([]);
+  expect(e.defaultPrevented, "the field keeps the key").toBe(false);
+  Object.assign(doc, { activeElement: el("button") });
+  press("ArrowLeft", { ctrlKey: true, code: "Numpad4" });
+  expect(closed, "the binding is live outside a text box").toEqual(["p1"]);
+});
+
 test("R74-03: Ctrl+W and Ctrl+F4 held by a text box are still kept from the webview", async () => {
   await handler({ keybindings: { "terminal.closePane": "Mod+F4" } });
   Object.assign(doc, { activeElement: el("input", "text") });
