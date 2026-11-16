@@ -216,9 +216,14 @@ impl Staying {
         let projects = &self.projects;
         self.folders
             .get_or_insert_with(|| {
-                let mut failed = false;
-                let mut worktrees = |(p, folder): &(Project, bool)| if *folder { Vec::new() } else { listed(git, p).unwrap_or_else(|_| { failed = true; Vec::new() }) };
-                let folders = projects.iter().flat_map(|p| session_dirs(&p.0, &worktrees(p))).collect();
+                // F2: the Git lists run side by side; the folders keep the projects' order. A list
+                // that failed (or a thread that panicked) is `None`.
+                let lists: Vec<Option<Vec<String>>> = std::thread::scope(|s| {
+                    let asks: Vec<_> = projects.iter().map(|(p, folder)| s.spawn(move || if *folder { Some(Vec::new()) } else { listed(git, p).ok() })).collect();
+                    asks.into_iter().map(|ask| ask.join().ok().flatten()).collect()
+                });
+                let failed = lists.iter().any(Option::is_none);
+                let folders = projects.iter().zip(lists).flat_map(|((p, _), w)| session_dirs(p, &w.unwrap_or_default())).collect();
                 (folders, failed)
             })
             .clone()
@@ -407,6 +412,10 @@ mod tests {
                 assert_eq!(left(&t), names(&spared), "{tag}: removing {going:?}");
                 assert!(!staying.unchecked, "{tag}: removing {going:?} read every list");
             }
+            // F2: the lists made side by side give what one after another gives, in the same order.
+            let mut staying = Staying::new(&store, &[]);
+            let in_turn: Vec<PathBuf> = staying.projects.iter().flat_map(|(p, f)| session_dirs(p, &if *f { Vec::new() } else { listed(&git, p).unwrap() })).collect();
+            assert_eq!(staying.folders(&git), (in_turn, false), "{tag}: same folders, same order");
             drop(store);
         }
     }
