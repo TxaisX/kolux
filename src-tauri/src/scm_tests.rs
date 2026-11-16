@@ -4150,3 +4150,98 @@ fn r95_a_staged_deletion_with_an_empty_place_comes_back() {
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
+
+/// F96-02: a rename `k` to the Kelvin sign (U+212A) with an untracked Latin `K` at `k`. Rust folds
+/// both signs to `k`, Windows keeps them apart, so the Latin `K` is not the rename's entry: `k` is
+/// left with the file line and nothing is written. None when the folder cannot hold both names.
+#[cfg(windows)]
+fn r97_kelvin(route: &str, rows: &[&str], want: String) -> Option<Vec<String>> {
+    let kelvin = "\u{212A}";
+    let dir = temp_repo(&format!("r97-kelvin-{route}"));
+    let _clean = LinksThenFolders(Vec::new(), vec![dir.clone()]);
+    commit_file(&dir, "k", "committed\n");
+    plain(&["mv", "k", kelvin], &dir);
+    fs::write(dir.join("K"), "mine-unpicked\n").unwrap();
+    if !(r95_listed(&dir, "K") && r95_listed(&dir, kelvin)) {
+        println!("r97 {route}: this folder cannot hold a Latin K beside a Kelvin sign; nothing to test");
+        return None;
+    }
+    let mut wrong = Vec::new();
+    let said = by_route(&dir, route, rows);
+    if said != Err(want) {
+        wrong.push(format!("{route}: said {said:?}"));
+    }
+    if !r95_listed(&dir, "K") || fs::read_to_string(dir.join("K")).ok().as_deref() != Some("mine-unpicked\n") {
+        wrong.push(format!("{route}: the untracked Latin K is gone or changed"));
+    }
+    if fs::read_to_string(dir.join(kelvin)).ok().as_deref() != Some("committed\n") {
+        wrong.push(format!("{route}: the Kelvin file no longer reads committed"));
+    }
+    if !status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == kelvin && c.from.as_deref() == Some("k"))) {
+        wrong.push(format!("{route}: the rename is no longer staged"));
+    }
+    Some(wrong)
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_kelvin_sign_rename_never_writes_over_a_latin_k_on_the_staged_route() {
+    let want = format!("{}\n\u{212A} is the other half of a rename, so Kolux leaves it too.", r95_file("k"));
+    if let Some(wrong) = r97_kelvin("staged", &["k", "\u{212A}"], want) {
+        assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_kelvin_sign_rename_never_writes_over_a_latin_k_by_paths() {
+    if let Some(wrong) = r97_kelvin("paths", &["\u{212A}"], r95_file("k")) {
+        assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    }
+}
+
+/// F96-01 / F96-05: a rename that only changes letter case whose one entry is a link (a junction
+/// put in place of `GUIDE.md`) is left with the link line, never the spelling line; the junction
+/// and the folder it points at stay.
+#[cfg(windows)]
+fn r97_link(route: &str, rows: &[&str], want: String) -> Vec<String> {
+    let name = format!("r97-link-{route}");
+    let dir = temp_repo(&name);
+    let out = outside_folder(&name);
+    let _clean = LinksThenFolders(vec![dir.join("GUIDE.md")], vec![dir.clone(), out.clone()]);
+    commit_file(&dir, "guide.md", "old\n");
+    plain(&["mv", "guide.md", "GUIDE.md"], &dir);
+    fs::remove_file(dir.join("GUIDE.md")).unwrap();
+    fs::write(out.join("keep.txt"), "keep\n").unwrap();
+    junction(&dir.join("GUIDE.md"), &out);
+    let mut wrong = Vec::new();
+    let said = by_route(&dir, route, rows);
+    if said != Err(want) {
+        wrong.push(format!("{route}: said {said:?}"));
+    }
+    if !fs::symlink_metadata(dir.join("GUIDE.md")).is_ok_and(|m| m.is_symlink()) {
+        wrong.push(format!("{route}: the junction is gone"));
+    }
+    if fs::read_to_string(out.join("keep.txt")).ok().as_deref() != Some("keep\n") {
+        wrong.push(format!("{route}: the outside keep.txt changed"));
+    }
+    if !status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "GUIDE.md" && c.from.as_deref() == Some("guide.md"))) {
+        wrong.push(format!("{route}: the rename is no longer staged"));
+    }
+    wrong
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_letter_case_rename_onto_a_link_is_left_with_the_link_line_on_the_staged_route() {
+    let want = format!("{}\nGUIDE.md is the other half of a rename, so Kolux leaves it too.", r95_link("guide.md"));
+    let wrong = r97_link("staged", &["guide.md", "GUIDE.md"], want);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+#[cfg(windows)]
+#[test]
+fn r97_a_letter_case_rename_onto_a_link_is_left_with_the_link_line_by_paths() {
+    let wrong = r97_link("paths", &["GUIDE.md"], r95_link("guide.md"));
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}

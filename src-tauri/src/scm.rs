@@ -3157,8 +3157,10 @@ fn stands_in_place(worktree: &Path, p: &str) -> Result<Option<String>, String> {
 
 /// F94-01, rule D's one exception: rows `p` and `other` are one disk entry (a rename that only
 /// changes letter case). One parent folder, last parts equal ignoring letter case but not the
-/// same, and the parent's listing holds `other`'s last part exactly and not `p`'s. False when the
-/// listing cannot be read.
+/// same, a plain file (not a link, not a folder) stands at `p`, and the disk's own name for it is
+/// exactly `other`'s last part. F96-02 / F96-01: the disk is asked, never the letters, so a name
+/// Windows keeps apart (a Kelvin sign beside a Latin `K`) or a link is never one entry. False on
+/// any error.
 fn one_entry(worktree: &Path, p: &str, other: &str) -> bool {
     fn split(r: &str) -> (&str, &str) {
         let r = r.trim_end_matches('/');
@@ -3168,10 +3170,8 @@ fn one_entry(worktree: &Path, p: &str, other: &str) -> bool {
     if dir != other_dir || name == other_name || name.to_lowercase() != other_name.to_lowercase() {
         return false;
     }
-    let Ok(Ok(names)) = fs::read_dir(worktree.join(native(dir))).map(|d| d.map(|e| e.map(|e| e.file_name())).collect::<Result<Vec<_>, _>>()) else {
-        return false;
-    };
-    names.iter().any(|n| n.as_os_str() == other_name) && !names.iter().any(|n| n.as_os_str() == name)
+    let full = worktree.join(native(p.trim_end_matches('/')));
+    fs::symlink_metadata(&full).is_ok_and(|m| m.is_file()) && fs::canonicalize(&full).is_ok_and(|real| real.file_name().is_some_and(|n| n == other_name))
 }
 
 /// F94-01: a row let through as one disk entry with `other` is left when `other` is left.
