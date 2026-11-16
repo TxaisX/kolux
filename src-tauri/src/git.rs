@@ -2157,8 +2157,9 @@ impl Git {
     }
 
     /// The worktree's changed files, staged and unstaged, for the diff picker (EDIT-027).
+    /// Renames only, never a copy, as `scm.rs` `read_status` (F98-01).
     pub fn changes(&self, worktree: &Path) -> Result<Vec<Change>, String> {
-        let out = output(&["status", "--porcelain=v1", "-z", "--untracked-files=all"], Some(worktree))?;
+        let out = output(&["-c", "status.renames=true", "status", "--porcelain=v1", "-z", "--untracked-files=all"], Some(worktree))?;
         Ok(parse_status(&String::from_utf8_lossy(&out), worktree))
     }
 

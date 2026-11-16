@@ -589,6 +589,45 @@ fn change_entries_carry_a_staged_renames_old_path() {
     fs::remove_dir_all(&repo).unwrap();
 }
 
+/// F98-01: under the user's `copies` setting a staged copy is a staged new file with no `from`,
+/// in `changes()` and in `change_entries()`, so the page can never send the copy's source.
+#[test]
+fn r99_a_staged_copy_is_a_new_file_with_no_from_whatever_the_copies_setting() {
+    let git = Git::detect().unwrap();
+    for key in ["status.renames", "diff.renames"] {
+        let repo = temp_repo(&format!("r99-copy-{key}"));
+        run(&["config", "core.autocrlf", "false"], Some(&repo)).unwrap();
+        let text: String = (1..=20).map(|i| format!("line {i} of the file\n")).collect();
+        fs::write(repo.join("a"), &text).unwrap();
+        run(&["add", "a"], Some(&repo)).unwrap();
+        run(&["commit", "-q", "-m", "two"], Some(&repo)).unwrap();
+        fs::write(repo.join("a"), format!("{text}extra\n")).unwrap();
+        fs::copy(repo.join("a"), repo.join("b")).unwrap();
+        run(&["add", "a", "b"], Some(&repo)).unwrap();
+        run(&["config", key, "copies"], Some(&repo)).unwrap();
+        let rel = |p: &str| PathBuf::from(p).strip_prefix(&repo).unwrap().to_string_lossy().into_owned();
+        let listed: Vec<_> = git.changes(&repo).unwrap().into_iter().map(|c| (rel(&c.path), c.staged, c.code, c.from.as_deref().map(rel))).collect();
+        assert!(listed.contains(&("b".to_string(), true, 'A', None)), "{key}: {listed:?}");
+        let got: Vec<_> = git.change_entries(&repo).unwrap().into_iter().map(|e| (rel(&e.path), e.staged, e.code, e.from.as_deref().map(rel))).collect();
+        assert_eq!(got, [("a".to_string(), true, 'M', None), ("b".to_string(), true, 'A', None)], "{key}");
+        fs::remove_dir_all(&repo).unwrap();
+    }
+}
+
+/// F98-01: with the user's `status.renames=false` a staged rename still comes out as one rename
+/// with its `from`, as in the engine's own status read.
+#[test]
+fn r99_a_staged_rename_keeps_its_from_when_the_user_turned_renames_off() {
+    let git = Git::detect().unwrap();
+    let repo = temp_repo("r99-norenames");
+    run(&["config", "status.renames", "false"], Some(&repo)).unwrap();
+    run(&["mv", "README.md", "READ ME.md"], Some(&repo)).unwrap();
+    let rel = |p: &str| PathBuf::from(p).strip_prefix(&repo).unwrap().to_string_lossy().into_owned();
+    let got: Vec<_> = git.change_entries(&repo).unwrap().into_iter().map(|e| (rel(&e.path), e.staged, e.code, e.from.as_deref().map(rel))).collect();
+    assert_eq!(got, [("READ ME.md".to_string(), true, 'R', Some("README.md".to_string()))]);
+    fs::remove_dir_all(&repo).unwrap();
+}
+
 #[test]
 fn parses_porcelain_output_with_detached_head() {
     let text = "worktree C:/r\nHEAD aaaa\nbranch refs/heads/main\n\nworktree C:/r-wt/x\nHEAD bbbb\ndetached\n";
