@@ -409,7 +409,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     // T-798 (P4B-01): both rows are left out while worktrees are off, as their chords and menu items are.
     ...(singleFolder() ? [] : [{
       section: "Quick actions",
-      label: "Delete this workspace",
+      label: "Delete this worktree",
       needs: "worktree" as const,
       run: () => {
         setScreen("terminals");

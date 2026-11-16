@@ -184,7 +184,7 @@ test("Remove project from the header X goes to project_remove, never to workspac
 test("a clean workspace with quick delete on still asks while a terminal runs below its folder", async () => {
   h.settings = { confirmWorkspaceDelete: false };
   const c = await panel([{ key: 1, agent: "claude", title: "a", cwd: "C:\\w\\ws\\fix\\src", running: true }]);
-  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this workspace"))[0]);
+  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this worktree"))[0]);
   await settle(60);
   expect(find(c, (n) => n.textContent.includes("1 terminal is still running and will be closed.")).length).toBeGreaterThan(0);
   expect(h.calls).not.toContain("workspace_remove");

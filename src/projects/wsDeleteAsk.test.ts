@@ -84,8 +84,8 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this workspace");
-const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete workspace")[0];
+const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this worktree");
+const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete worktree")[0];
 const guardAsk = (c: FakeNode) => byLabel(c, "div", "Save changes before closing?")[0];
 
 test("a dirty tab in the workspace names its file and asks before the delete drops anything", async () => {

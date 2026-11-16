@@ -74,11 +74,11 @@ try {
   // Remove B through its own row control.
   const bKey = norm(B_DIR);
   const clicked = await app.evalJs(`(() => { const row = [...document.querySelectorAll("aside.sidebar [data-path]")].find((e) => e.getAttribute("data-path").replace(/\\\\/g, "/").toLowerCase() === ${JSON.stringify(bKey)});
-    if (!row) return "no B row"; const b = [...row.querySelectorAll("button")].find((x) => /^Delete this workspace/.test(x.title)); if (!b) return "no remove button on B"; b.click(); return "clicked"; })()`);
+    if (!row) return "no B row"; const b = [...row.querySelectorAll("button")].find((x) => /^Delete this worktree/.test(x.title)); if (!b) return "no remove button on B"; b.click(); return "clicked"; })()`);
   await sleep(1500);
-  const asked = await app.evalJs(`[...document.querySelectorAll('aside.sidebar [role=alertdialog][aria-label="Delete workspace"]')].filter((e) => e.getClientRects().length).map((e) => e.innerText.replace(/\\s+/g, " ").slice(0, 200))`);
+  const asked = await app.evalJs(`[...document.querySelectorAll('aside.sidebar [role=alertdialog][aria-label="Delete worktree"]')].filter((e) => e.getClientRects().length).map((e) => e.innerText.replace(/\\s+/g, " ").slice(0, 200))`);
   log(`remove B: ${clicked}; asked ${JSON.stringify(asked)}; ${await ctx.shot(`T-640-${look}-after-ask`)}`);
-  const confirmed = await app.evalJs(`(() => { const d = [...document.querySelectorAll('aside.sidebar [role=alertdialog][aria-label="Delete workspace"]')].find((e) => e.getClientRects().length); const b = d && [...d.querySelectorAll("button")].find((x) => /^Delete/.test(x.textContent.trim())); if (!b) return "no Delete button"; b.click(); return "confirmed"; })()`);
+  const confirmed = await app.evalJs(`(() => { const d = [...document.querySelectorAll('aside.sidebar [role=alertdialog][aria-label="Delete worktree"]')].find((e) => e.getClientRects().length); const b = d && [...d.querySelectorAll("button")].find((x) => /^Delete/.test(x.textContent.trim())); if (!b) return "no Delete button"; b.click(); return "confirmed"; })()`);
   await sleep(5000);
   let after = await app.evalJs(ROWS);
   check("B removed through its X: the question showed, the row is gone, its folder deleted", asked.length === 1 && confirmed === "confirmed" && !after.some((r) => norm(r.path) === bKey) && !existsSync(B_DIR), { rows: after.map((r) => r.text), folder: existsSync(B_DIR) });

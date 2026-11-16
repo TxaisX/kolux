@@ -142,19 +142,19 @@ try {
   const clickedDelete = await app.evalJs(`(() => {
     const e = [...document.querySelectorAll("aside.sidebar [data-worktree]")].find((x) => x.dataset.path === ${JSON.stringify(B)});
     if (!e) return "no row";
-    const b = [...e.querySelectorAll("button")].find((x) => /^Delete this workspace/.test(x.title));
-    if (!b) return "no Delete this workspace button";
+    const b = [...e.querySelectorAll("button")].find((x) => /^Delete this worktree/.test(x.title));
+    if (!b) return "no Delete this worktree button";
     b.click();
     return "clicked";
   })()`);
-  say(`Delete this workspace clicked: ${clickedDelete}`);
+  say(`Delete this worktree clicked: ${clickedDelete}`);
   let guard = await askFor(app, (d) => /notes\.txt/i.test(`${d.label} ${d.text}`), 10000);
   if (!guard) {
     // A fix may keep the existing Delete question and ask again on its Delete button: press it once
     // (a scratch workspace, nothing of the user's) and look for the second question.
     const first = await askFor(app, () => true, 6000);
     say(`no question named the file yet; first question ${JSON.stringify(first)}`);
-    if (first && /^Delete workspace$/i.test(first.label)) {
+    if (first && /^Delete worktree$/i.test(first.label)) {
       const pressed = await app.evalJs(`(() => {
         const d = [...document.querySelectorAll("[role=alertdialog]")].filter((e) => e.getClientRects().length).pop();
         const b = d && [...d.querySelectorAll("button")].find((x) => /^Delete/.test(x.textContent.trim()));

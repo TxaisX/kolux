@@ -2040,7 +2040,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {!asking && !w.isMain && (
             <button
               className="ib"
-              title="Delete this workspace: deletes its folder, and its branch unless it was opened on an existing one"
+              title="Delete this worktree: deletes its folder, and its branch unless it was opened on an existing one"
               disabled={busy !== ""}
               onClick={(e) => {
                 e.stopPropagation();
@@ -2117,11 +2117,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         )}
         {first && batch?.root === w.path && (
           <Ask
-            title="Delete workspace and children"
+            title="Delete worktree and children"
             body={
               <>
                 <div>
-                  Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
+                  Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} worktree{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
                 </div>
                 <ul style={{ margin: 0, paddingLeft: 16 }}>
                   {batch.order.map((d) => (
@@ -2130,7 +2130,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 </ul>
                 {batchNames.length > 0 && (
                   <>
-                    <span>{askText(batchNames)} Deleting these workspaces closes their tabs.</span>
+                    <span>{askText(batchNames)} Deleting these worktrees closes their tabs.</span>
                     <ul className="del-changes" aria-label="files with unsaved changes">
                       {batchNames.map((n) => (
                         <li key={n}>{n}</li>
@@ -2180,11 +2180,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         )}
         {first && asking && (
           <Ask
-            title="Delete workspace"
+            title="Delete worktree"
             body={
               <>
                 <span>
-                  Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
+                  Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the worktree was opened on a branch that already existed.{" "}
                   {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
                   {runNote([confirm.path])}
                 </span>
@@ -2198,7 +2198,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 )}
                 {dirtyNames.length > 0 && (
                   <>
-                    <span>{askText(dirtyNames)} Deleting the workspace closes its tabs.</span>
+                    <span>{askText(dirtyNames)} Deleting the worktree closes its tabs.</span>
                     <ul className="del-changes" aria-label="files with unsaved changes">
                       {dirtyNames.map((n) => (
                         <li key={n}>{n}</li>

@@ -165,8 +165,8 @@ async function press(key: string, shiftKey = false) {
   });
 }
 
-const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this workspace");
-const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete workspace")[0];
+const isDeleteX = (n: FakeNode) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Delete this worktree");
+const delAsk = (c: FakeNode) => byLabel(c, "div", "Delete worktree")[0];
 const guardAsk = (c: FakeNode) => byLabel(c, "div", "Save changes before closing?")[0];
 
 test("Tab stays in the unsaved question and the first Escape closes only it; the delete dialog works again after", async () => {
