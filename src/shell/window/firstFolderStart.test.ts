@@ -18,14 +18,17 @@ async function draw(c: Case) {
   const { FirstFolderStart } = await import("./Hosts");
   const openStart = vi.fn();
   let redraw = () => {};
+  let front = (_dir: string) => {};
   function Host() {
     const [firstStart, setFirstStart] = useState<string | null>(c.firstStart);
+    const [activeDir, setActiveDir] = useState(c.activeDir);
+    front = setActiveDir;
     const [n, setN] = useState(0);
     redraw = () => setN(n + 1);
     const bag = {
       firstStart,
       doneFirstStart: () => setFirstStart(null),
-      activeDir: c.activeDir,
+      activeDir,
       projects: [{ id: "p1", name: "App", path: c.projectPath }],
       owner: { [c.ownerDir]: "p1" },
       openStart,
@@ -35,7 +38,7 @@ async function draw(c: Case) {
   }
   const { unmount } = await mount(createElement(Host), doc);
   await settle();
-  return { openStart, redraw: () => act(async () => redraw()), unmount };
+  return { openStart, redraw: () => act(async () => redraw()), front: (dir: string) => act(async () => front(dir)), unmount };
 }
 
 test("F1: the project's stored folder is spelled apart from the opened one (8.3 name, subst, link) and is in front: the Start form opens once", async () => {
@@ -60,6 +63,10 @@ test("F1: the same folder spelled another way (C:/w/App/ against c:\\w\\app) ope
 
 test("F1: the user is on another folder once the added one is on the list: no form, and it stays off", async () => {
   const d = await draw({ firstStart: "C:\\w\\app", activeDir: "C:\\w\\other", projectPath: "C:\\w\\app", ownerDir: "C:\\w\\app" });
+  expect(d.openStart).not.toHaveBeenCalled();
+  // Job 68 F5: the user then brings the added folder to the front: the form was dropped, so it stays off.
+  await d.front("C:\\w\\app");
+  await settle();
   expect(d.openStart).not.toHaveBeenCalled();
   await d.unmount();
 });

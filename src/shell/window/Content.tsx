@@ -44,6 +44,9 @@ import { RecoveryMount } from "../../lazy/pages";
 import { ToolNotices } from "../../lazy/pages";
 import { TowerView } from "../../lazy/pages";
 
+/** Job 68: the close the ask at open hands useStartAsk: it drops only the form the ask opened, never one opened by hand. */
+export const dropAtOpen = (s: StartSheet | null): StartSheet | null => (s?.atOpen ? null : s);
+
 export default function WindowContent() {
   const {
     sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
@@ -55,7 +58,7 @@ export default function WindowContent() {
     standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
   // Start form D: asked once when Kolux starts, in the main window, in front of what was restored.
-  useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: ownPanes(panes), open: () => openStart({ atOpen: true }), close: () => setSheet((s) => (s?.atOpen ? null : s)) });
+  useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: ownPanes(panes), open: () => openStart({ atOpen: true }), close: () => setSheet(dropAtOpen) });
   return (
     <div className="content">
       {sheet?.seats && (
