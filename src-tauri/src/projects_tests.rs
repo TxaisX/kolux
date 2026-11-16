@@ -616,6 +616,52 @@ fn r04_a_folder_empty_before_a_failed_add_is_empty_again_after_it() {
     assert!(!root.exists(), "the test leaves nothing behind");
 }
 
+/// N-06: when the clean-up after a failed add cannot clear the folder (a file another program holds),
+/// the error says so in one sentence naming the folder, keeps the add's own error, and stops the
+/// retries (a retry could only fail with a misleading "already exists"). When it can, no sentence.
+#[cfg(windows)]
+#[test]
+fn n06_a_failed_add_whose_clean_up_left_files_says_so_and_names_the_folder() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let repo = temp_repo("n06-clear");
+    let root = temp("n06-clear-root");
+    let raw = "fatal: Unable to create 'C:/r/.git/index.lock': File exists.";
+    let held: std::cell::RefCell<Option<fs::File>> = std::cell::RefCell::new(None);
+    let tries = std::cell::Cell::new(0);
+    let dest = root.join("stuck");
+    let half_made = |hold: bool| {
+        tries.set(tries.get() + 1);
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(dest.join(".git"), "gitdir: C:/r/.git/worktrees/stuck\n").unwrap();
+        if !dest.join("pack.idx").exists() {
+            fs::write(dest.join("pack.idx"), "x").unwrap();
+        }
+        if hold && held.borrow().is_none() {
+            *held.borrow_mut() = Some(fs::File::options().read(true).share_mode(0).open(dest.join("pack.idx")).unwrap());
+        }
+        Err::<(), String>(raw.to_string())
+    };
+    let said = add_retrying(&repo, &dest, None, &|| false, || half_made(true)).unwrap_err();
+    let sentence = format!("Kolux could not clear the folder {}. Remove it by hand before you try again.", dest.display());
+    assert_eq!(said, format!("{raw}\n{sentence}"), "the add's own error, then the sentence");
+    assert_eq!(tries.get(), 1, "no retry into the folder that was left");
+    let shown = explain_create_error(said.clone());
+    assert_eq!(shown, format!("Git could not create the workspace. Try again; if it keeps failing, the details below say why. {sentence}{GIT_SAID}{raw}"));
+    assert_eq!(create_kind(&said), create_kind(raw), "the sentence does not change the kind of problem");
+    assert_eq!(explain_create_error(format!("{OVERTAKEN}x")), format!("{OVERTAKEN}x"), "a cancel keeps its text");
+    drop(held.borrow_mut().take());
+    fs::remove_dir_all(&dest).unwrap();
+    // The clean-up works: the add's error alone, and the retries run as before.
+    tries.set(0);
+    let said = add_retrying(&repo, &dest, None, &|| false, || half_made(false)).unwrap_err();
+    assert_eq!(said, raw, "no sentence when the folder was cleared");
+    assert!(tries.get() > 1 && !dest.exists());
+    for d in [repo, root.clone()] {
+        let _ = fs::remove_dir_all(d);
+    }
+    assert!(!root.exists(), "the test leaves nothing behind");
+}
+
 /// A project with two made workspaces ("one", "two") for the PROJ-068 / PROJ-072 tests.
 fn project_with_workspaces(tag: &str) -> (Git, Store, Project, PathBuf, Vec<PathBuf>, Place) {
     let git = Git::detect().unwrap();

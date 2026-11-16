@@ -1232,9 +1232,12 @@ pub fn lock_held(err: &str) -> bool {
 /// add made it: it was not there before (`was_there`) and `git_made` says it is Git's. A folder that
 /// was there and empty before (`was_empty`, R-04) is emptied again and kept when `git_made` says what
 /// is in it now is Git's: nothing in it was there before, and a link inside is removed, never followed.
-fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool, was_empty: bool) {
+/// N-06: says whether something it meant to remove is still there, looking at the folder afterwards.
+fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: bool, was_empty: bool) -> bool {
+    let mut left = false;
     if !was_there && git_made(dest) {
         let _ = std::fs::remove_dir_all(dest);
+        left = std::fs::symlink_metadata(dest).is_ok();
     } else if was_there && was_empty && git_made(dest) {
         for entry in std::fs::read_dir(dest).into_iter().flatten().flatten() {
             let path = entry.path();
@@ -1245,11 +1248,13 @@ fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: boo
                 _ => std::fs::remove_file(&path),
             };
         }
+        left = std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_some());
     }
     let _ = crate::git::run(&["worktree", "prune"], Some(repo));
     if let Some(branch) = made.filter(|b| crate::git::run(&["rev-parse", "--verify", "--quiet", &format!("refs/heads/{b}")], Some(repo)).is_ok()) {
         let _ = crate::git::run(&["branch", "-D", branch], Some(repo));
     }
+    left
 }
 
 /// Whether a folder a failed add left is Git's own: a real folder (never a link), empty, or holding
@@ -1297,15 +1302,24 @@ pub fn explain_create_error(raw: String) -> String {
     if raw.starts_with(OVERTAKEN) {
         return raw;
     }
+    // N-06: the sentence `add_retrying` adds when it could not clear the folder goes with Kolux's words.
+    let (raw, stuck) = match raw.find(NOT_CLEARED) {
+        Some(at) => (raw[..at].to_string(), format!(" {}", &raw[at + 1..])),
+        None => (raw, String::new()),
+    };
     let (summary, next) = match create_kind(&raw) {
-        CreateKind::Stalled => return raw, // already in Kolux's words
+        CreateKind::Stalled => return format!("{raw}{stuck}"), // already in Kolux's words
         CreateKind::MissingBase => ("The workspace could not start: the commit or branch it was to start from is missing.", "Pick another start point, or fetch the project and try again."),
         CreateKind::NameInUse => ("The workspace could not be made: that name or branch is already in use.", "Choose a different name, or open the existing branch from the New workspace menu."),
         CreateKind::Permissions => ("The workspace could not be made: Windows refused access to the folder.", "Check the workspaces folder is writable and that no program has it open, then try again."),
         CreateKind::GitFailure => ("Git could not create the workspace.", "Try again; if it keeps failing, the details below say why."),
     };
-    format!("{summary} {next}{GIT_SAID}{raw}")
+    format!("{summary} {next}{stuck}{GIT_SAID}{raw}")
 }
+
+/// N-06: starts the sentence a failed add gets when its clean-up could not clear the folder.
+const NOT_CLEARED: &str = "
+Kolux could not clear the folder ";
 
 /// `add` (a `git worktree add` into `dest`, creating branch `made` if any) under the retry
 /// policy: each failed try is cleared away first, and a cancel stops the waiting.
@@ -1314,9 +1328,13 @@ pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dy
     let was_there = std::fs::symlink_metadata(dest).is_ok();
     let was_empty = was_there && git_made(dest) && std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none());
     while let Err(e) = add() {
-        clear_failed_add(repo, dest, made, was_there, was_empty);
+        let stuck = clear_failed_add(repo, dest, made, was_there, was_empty);
         if overtaken() {
             return Err(OVERTAKEN.to_string());
+        }
+        // N-06: a retry into what was left can only fail with a misleading "already exists": stop and say so.
+        if stuck {
+            return Err(format!("{e}{NOT_CLEARED}{}. Remove it by hand before you try again.", dest.display()));
         }
         match waits.next() {
             Some(ms) if lock_held(&e) => std::thread::sleep(std::time::Duration::from_millis(*ms)),
