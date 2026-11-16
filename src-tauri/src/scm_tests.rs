@@ -3852,3 +3852,40 @@ fn r86_an_empty_discard_says_discard_words() {
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
     assert_eq!(staged, Err("nothing to stage".to_string()));
 }
+
+/// F90-01: with `core.ignorecase` true Git can hold `Sub/a.txt` while the disk spells the folder
+/// `sub`, and Git prints the row as it holds it. A link at that row is the row's own link: it is
+/// removed (only it) and the file comes back, on the changed and paths routes.
+#[cfg(windows)]
+#[test]
+fn r93_a_link_at_a_row_git_holds_is_discarded_whatever_the_folder_case() {
+    let mut wrong = Vec::new();
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("r93a-{route}"));
+        let out = outside_folder(&format!("r93a-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("sub").join("a.txt")], vec![dir.clone(), out.clone()]);
+        plain(&["config", "core.ignorecase", "true"], &dir);
+        fs::create_dir_all(dir.join("Sub")).unwrap();
+        commit_file(&dir, "Sub/a.txt", "committed\n");
+        fs::rename(dir.join("Sub"), dir.join("sub-step")).unwrap();
+        fs::rename(dir.join("sub-step"), dir.join("sub")).unwrap();
+        assert!(fs::read_dir(&dir).unwrap().any(|e| e.unwrap().file_name() == "sub"), "the listing holds sub");
+        fs::remove_file(dir.join("sub").join("a.txt")).unwrap();
+        fs::write(out.join("o.txt"), "o\n").unwrap();
+        junction(&dir.join("sub").join("a.txt"), &out);
+        let said = by_route(&dir, route, &["Sub/a.txt"]);
+        if said != Ok(()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        let at = fs::symlink_metadata(dir.join("sub").join("a.txt"));
+        if !at.as_ref().is_ok_and(|m| m.is_file() && !m.is_symlink()) {
+            wrong.push(format!("{route}: sub/a.txt is not a plain file: {at:?}"));
+        } else if fs::read_to_string(dir.join("sub").join("a.txt")).ok().as_deref() != Some("committed\n") {
+            wrong.push(format!("{route}: sub/a.txt does not hold the committed text"));
+        }
+        if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+            wrong.push(format!("{route}: the outside o.txt changed"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}

@@ -2698,6 +2698,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     check_paths(paths)?;
     let st = status(worktree)?;
     let k = kinds(worktree, &paths.iter().map(|p| p.trim_end_matches('/')).collect::<Vec<_>>(), true)?;
+    let held = |r: &str| k.at.contains(r) || k.head_file.contains(r);
     let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut kept = Vec::new();
     let mut renames: Vec<(String, String)> = Vec::new();
@@ -2708,7 +2709,8 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         // F-02: a row whose file (or a rename's old file) Git would write over a folder with
         // something in it is left exactly as it is: not unstaged, not written, not cleaned.
         // R59-01/R59-02: so is a row under a link or a file where a folder was.
-        if let Some(why) = std::iter::once(p).chain(index.and_then(|c| c.from.as_deref())).find_map(|at| left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at))).or_else(|| is_link(worktree, at).err())) {
+        // F90-01: Git holds the row itself when `k` says so, and a staged rename's old half always.
+        if let Some(why) = std::iter::once((p, held(p))).chain(index.and_then(|c| c.from.as_deref()).map(|f| (f, true))).find_map(|(at, h)| left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at))).or_else(|| is_link(worktree, at, h).err())) {
             kept.push(why);
             continue;
         }
@@ -2741,7 +2743,8 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     // half with it) keeps its staged change.
     let (mut removed, mut failed) = (Vec::new(), Vec::new());
     for p in &tracked {
-        match remove_link(worktree, p) {
+        // F90-01: the same answer the check above gave this row.
+        match remove_link(worktree, p, held(p) || renames.iter().any(|(from, _)| from == p)) {
             Ok(true) => removed.push(p.clone()),
             Ok(false) => {}
             Err(e) => {
@@ -3050,8 +3053,8 @@ fn on_disk_as_sent(worktree: &Path, p: &str, lists: &mut std::collections::HashM
 /// R59-01 / R59-04: removes a link (a junction, a folder or file symlink) at row `p` itself,
 /// never what it points at. True when there was one; a failure names the row. R70-05: a row whose
 /// kind cannot be read (for a reason other than "missing") is left, never taken as "not a link".
-fn remove_link(worktree: &Path, p: &str) -> Result<bool, String> {
-    if !is_link(worktree, p)? {
+fn remove_link(worktree: &Path, p: &str, held: bool) -> Result<bool, String> {
+    if !is_link(worktree, p, held)? {
         return Ok(false);
     }
     let p = p.trim_end_matches('/');
@@ -3061,10 +3064,13 @@ fn remove_link(worktree: &Path, p: &str) -> Result<bool, String> {
 
 /// R70-05 / R82-03: whether row `p` itself is a link, read only. A row whose kind cannot be read
 /// (for a reason other than "missing") is left, never taken as "not a link".
-fn is_link(worktree: &Path, p: &str) -> Result<bool, String> {
+/// F90-01: `held` is true when Git holds a file, link or submodule at exactly this row (index or
+/// last commit); Git then writes the same object Kolux removes, so the spelling walk is skipped.
+fn is_link(worktree: &Path, p: &str, held: bool) -> Result<bool, String> {
     let p = p.trim_end_matches('/');
     match fs::symlink_metadata(worktree.join(native(p))) {
         // R86-01: a link counts only under the spelling the disk holds; `LNK` or `lnk.` is left.
+        Ok(m) if m.is_symlink() && held => Ok(true),
         Ok(m) if m.is_symlink() => on_disk_as_sent(worktree, p, &mut Default::default()).map(|_| true),
         Ok(_) => Ok(false),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
@@ -3114,6 +3120,8 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
     match section {
         "staged" | "changed" => {
             let k = kinds(worktree, &rows, true)?;
+            // F90-01: one answer per row, for the check and the link step alike.
+            let held = |r: &str| k.at.contains(r) || k.head_file.contains(r);
             // F-02: a row whose file Git would write over a folder with something in it is left as
             // it is and named; the other rows still go. R59-01/R59-02: so is a row under a link or a
             // file where a folder was; a link at the row itself is removed (only the link) first.
@@ -3124,7 +3132,7 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             for p in paths {
                 let row = p.trim_end_matches('/').to_string();
                 let why = left_why(worktree, p, &mut real).or_else(|| k.folder(p).then(|| folder_line(p))).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p)));
-                match why.map_or_else(|| is_link(worktree, p), Err) {
+                match why.map_or_else(|| is_link(worktree, p, held(&row)), Err) {
                     Err(why) => {
                         said.push(why);
                         left.push(row);
@@ -3172,7 +3180,7 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
                 if left.contains(p) || !rest.iter().any(|r| r.trim_end_matches('/') == p) {
                     continue;
                 }
-                match remove_link(worktree, p) {
+                match remove_link(worktree, p, held(p)) {
                     Ok(_) => removed.push(p.clone()),
                     Err(e) => {
                         said.push(e);
@@ -3228,7 +3236,7 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
                     // where a tracked folder was goes on, as the file or link it is.
                     said.push(folder_line(p));
                 } else {
-                    match remove_link(worktree, p) {
+                    match remove_link(worktree, p, false) {
                         Ok(true) => {}
                         Ok(false) => rows.push(p),
                         Err(e) => said.push(e),
