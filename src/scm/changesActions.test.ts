@@ -136,6 +136,13 @@ describe("T-061: Discard on one All Changes file asks first, worded as Source Co
     const { discardOne } = await import("./changesActions");
     expect(discardOne({ rel: "gone.ts", staged: true, code: "D" }, null)).toMatchObject({ title: "Restore gone.ts?", confirm: "Restore" });
   });
+  it("F98-01: a row the last status does not hold sends an old name only for a rename; a copy goes alone, as the staged new file it is shown as", async () => {
+    const { discardOne } = await import("./changesActions");
+    expect(discardOne({ rel: "b.ts", staged: true, code: "C", from: "a.ts" }, null)).toMatchObject({ title: "Delete b.ts?", confirm: "Delete", section: "staged", paths: ["b.ts"] });
+    expect(discardOne({ rel: "b.ts", staged: true, code: "C", from: "a.ts" }, emptyStatus).paths).toEqual(["b.ts"]);
+    expect(discardOne({ rel: "b.ts", staged: true, code: "A", from: "a.ts" }, null).paths).toEqual(["b.ts"]);
+    expect(discardOne({ rel: "new.ts", staged: true, code: "R", from: "old.ts" }, null)).toMatchObject({ section: "staged", paths: ["old.ts", "new.ts"] });
+  });
 });
 
 describe("P10: a waiting button says why", () => {

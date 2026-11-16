@@ -106,10 +106,12 @@ export const treeWidthForKey = (width: number, key: string): number | null => {
 /** T-061 / T-153-a: what Discard on one All Changes file asks and sends, worded as the old Source Control panel
  *  worded it (model.discardAsk): an untracked or newly added file is deleted, a deleted one comes back, anything
  *  else loses its changes. `rel` is the file's path from the worktree; the status row (for its kind and a rename's
- *  old name) comes from the last status, else from the entry's own git code. `section` is scm_discard's. */
+ *  old name) comes from the last status, else from the entry's own git code. `section` is scm_discard's.
+ *  F98-01: from the entry, only a rename (R) carries an old name; a copy (C) goes as the staged new file Kolux
+ *  shows it as, so Discard never sends the file it was copied from. */
 export function discardOne(file: { rel: string; staged: boolean; code: string; from?: string | null }, s: Status | null): DiscardAsk & { section: "changed" | "staged" | "untracked" } {
   const side: Section = file.code === "?" ? "Untracked" : file.staged ? "Staged" : "Changes";
   const list = !s ? [] : side === "Untracked" ? s.untracked : side === "Staged" ? s.staged : s.changed;
-  const row: Change = list.find((c) => c.path === file.rel) ?? { path: file.rel, status: file.code, from: file.from ?? null };
+  const row: Change = list.find((c) => c.path === file.rel) ?? { path: file.rel, status: file.code === "C" ? "A" : file.code, from: file.code === "R" ? (file.from ?? null) : null };
   return { ...discardAsk(side, [row], false), section: side === "Changes" ? "changed" : side === "Staged" ? "staged" : "untracked" };
 }
