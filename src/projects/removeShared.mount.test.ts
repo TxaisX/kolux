@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][], extra: {} as Record<string, unknown>, parent: false }));
+const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][], extra: {} as Record<string, unknown>, parent: false, groupOne: false }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     if (cmd === "get_settings") return Promise.resolve({});
@@ -28,7 +28,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "workspace_scan") return Promise.resolve({ list: [appMain, appB, wt3], unseen: [] });
     if (cmd === "workspaces_place_get") return Promise.resolve({ dir: "", flat: false, used: [], fromEnv: false });
     if (cmd === "setup_suggestion") return Promise.resolve({ kind: "none" });
-    if (cmd === "groups_get") return Promise.resolve({ groups: [{ id: "g1", name: "Clients", parent: null }], members: { p1: "g1", p2: "g1" }, rev: 1 });
+    if (cmd === "groups_get") return Promise.resolve({ groups: [{ id: "g1", name: "Clients", parent: null }], members: h.groupOne ? { p1: "g1" } : { p1: "g1", p2: "g1" }, rev: 1 });
     if (cmd === "group_delete") return Promise.resolve({ groups: [], members: {}, rev: 2 });
     if (cmd === "project_remove") return Promise.resolve({ ...(args.projectId === "p1" ? { name: "app", path: "C:/w/app", ended: 1 } : { name: "app-b", path: "C:/w/app-b", ended: 1 }), ...h.extra });
     if (cmd === "activity_get" || cmd === "project_icons_list") return Promise.resolve({});
@@ -59,6 +59,7 @@ beforeEach(() => {
   h.closed = [];
   h.extra = {};
   h.parent = false;
+  h.groupOne = false;
 });
 afterEach(async () => {
   await unmount();
@@ -151,7 +152,7 @@ test.each([
     await settle(20);
     const text = ask(c).textContent;
     expect(text).toContain("1 terminal is still running and will be closed.");
-    expect(text).toContain("are cleared. A worktree that another project in Kolux also lists stays open. The folder and its files stay on disk.");
+    expect(text).toContain("are cleared. Terminals in a worktree that another project in Kolux also lists stay open. The folder and its files stay on disk.");
     await click(c, byText(c, "button", "Remove app")[0]);
     await settle(40);
     expect(h.unsaved).toEqual([["C:/w/app"]]);
@@ -186,4 +187,43 @@ test.each([
   if (warns) expect(text).toContain(`Its folder stays on disk. ${line}`);
   else expect(text).not.toContain("Git could not list");
   expect(text).not.toContain("Git did not list its worktrees");
+});
+
+// F88-03: the "stay open" sentence shows only when something open is really kept: an open folder or a running terminal
+// in a folder app lists that does not go and is not the other project's own folder.
+const keptLine = "Terminals in a worktree that another project in Kolux also lists stay open.";
+test.each([
+  ["nothing open in wt3 or app-b", ["C:/w/app"], [running(1, "C:/w/app")]],
+  ["only app-b's own folder open beside app", ["C:/w/app", "C:/w/app-b"], [running(1, "C:/w/app"), running(2, "C:/w/app-b")]],
+])("F88-03: %s: app's Remove question does not say a worktree stays open", async (_, openDirs, list) => {
+  const c = await panel({ openDirs, sessions: list });
+  await click(c, byLabel(c, "button", "Remove app")[0]);
+  await settle(20);
+  const text = ask(c).textContent;
+  expect(text).toContain("are cleared. The folder and its files stay on disk.");
+  expect(text).not.toContain("also lists");
+});
+
+async function groupQuestion(c: FakeNode) {
+  await click(c, byLabel(c, "button", "Delete group Clients")[0]);
+  await settle(20);
+  const box = byLabel(c, "input", "also remove the projects")[0];
+  Object.assign(box, { checked: true });
+  await click(c, box);
+  await settle(20);
+  return (byLabel(c, "div", "Delete group")[0] ?? c).textContent;
+}
+
+test("F88-03: the group question says so when a member's shared worktree stays open, before the count", async () => {
+  h.groupOne = true; // only app is in the group; app-b stays and also lists wt3, where a terminal runs
+  const c = await panel();
+  const text = await groupQuestion(c);
+  expect(text).toContain(`${keptLine} 1 terminal is still running and will be closed.`);
+});
+
+test("F88-03: the group question does not say so when nothing stays open (both projects go)", async () => {
+  const c = await panel();
+  const text = await groupQuestion(c);
+  expect(text).not.toContain("also lists");
+  expect(text).toContain("3 terminals are still running and will be closed.");
 });

@@ -28,7 +28,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { goesWith, goingFolders, sameDir } from "../workspaces";
+import { closesWith, goesWith, goingFolders, sameDir, underDir } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
@@ -756,6 +756,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // F88-01: the going folders, each once and in order (the scan lists the own folder again); `removedAll` closes their panes
   // and reads the first as the project's own, so a going worktree under a staying project's folder closes too.
   const once = (ds: string[]) => ds.filter((d, i) => ds.findIndex((x) => sameDir(x, d)) === i);
+  // F88-03: whether removing `gone` keeps something open that it lists: an open folder or a running terminal that does not
+  // close (`closesWith`), in a listed folder that does not go and is not a staying project's own folder (a shared worktree).
+  const keepsOpen = (gone: Project[], staying: string[]) => {
+    const going = gone.flatMap((p) => goingFolders(p.path, foldersOf(p), staying));
+    const owns = projects.filter((q) => !gone.includes(q)).map((q) => q.path);
+    const kept = gone.flatMap(foldersOf).filter((d) => !going.some((g) => sameDir(g, d)) && !owns.some((o) => sameDir(o, d)));
+    return [...openDirs.map((cwd) => ({ cwd })), ...sessions.filter((s) => s.running)].some((s) => kept.some((d) => underDir(s.cwd, d)) && !closesWith(s, going, staying));
+  };
   const removeProject = async (p: Project) => {
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
     const staying = stayingBut(new Set([p.id]));
@@ -2343,7 +2351,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {dropProject === p.id && (
             <Ask
               title="Remove project"
-              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared.{goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))).length < foldersOf(p).length && " A worktree that another project in Kolux also lists stays open."} The folder and its files stay on disk.{runNote(goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
+              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, the ones in its other worktrees too, and its list entries, saved setup and remembered names are cleared.{keepsOpen([p], stayingBut(new Set([p.id]))) && " Terminals in a worktree that another project in Kolux also lists stay open."} The folder and its files stay on disk.{runNote(goingFolders(p.path, foldersOf(p), stayingBut(new Set([p.id]))), stayingBut(new Set([p.id])))}</>}
               confirm={`Remove ${p.name}`}
               cancel="Keep it"
               onConfirm={() => removeProject(p)}
@@ -2469,6 +2477,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           body={
             <>
               Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
+              {dropGroup.remove && keepsOpen(projects.filter((q) => projectsInGroup(groups, g.id).includes(q.id)), stayingBut(new Set(projectsInGroup(groups, g.id)))) && " Terminals in a worktree that another project in Kolux also lists stay open."}
               {dropGroup.remove && runNote(projectsInGroup(groups, g.id).flatMap((pid) => projects.filter((q) => q.id === pid)).flatMap((q) => goingFolders(q.path, foldersOf(q), stayingBut(new Set(projectsInGroup(groups, g.id))))), stayingBut(new Set(projectsInGroup(groups, g.id))))}
               <label className="check">
                 <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
