@@ -10,7 +10,7 @@ import type { Page } from "./ProjectsPanel";
 import type { PendingCreate, Project, SetupLine, SetupWhere } from "./model";
 import { EMPTY_HISTORY } from "./nav";
 import { cellsOf, DEFAULT_PANES_FIELD, groupOf, MAX_PANES, seedCount } from "../terminal/grid";
-import { activeAfterRemove, focusIn, goesWith, gridOf, panesIn, sameDir, withoutDir } from "../workspaces";
+import { activeAfterRemove, focusIn, goesWith, gridOf, panesIn, sameDir, underDir, withoutDir } from "../workspaces";
 import { forgetStartDirs, startDirOf } from "./worktreeGrid";
 import { readLook } from "../settings/general";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
@@ -147,7 +147,8 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
     const pid = projectOf(paths[0]);
     const siblings = Object.entries(owner).filter(([d, p]) => p === pid && !gone(d) && panesIn(left, d).length > 0).map(([d]) => d);
     const hit = paths.find((x) => activeRef.current !== null && goesWith(activeRef.current, [x], staying));
-    const next = hit === undefined ? activeRef.current : activeAfterRemove(activeRef.current, hit, recentDirs.current.filter((d) => !gone(d)), siblings);
+    // R71-05: a project inside the removed one that stays (and still has terminals) can be shown next.
+    const next = hit === undefined ? activeRef.current : activeAfterRemove(activeRef.current, hit, recentDirs.current.filter((d) => !gone(d)), [...siblings, ...staying.filter((d) => underDir(d, hit) && panesIn(left, d).length > 0)], staying);
     setPanes(without);
     setActiveDir(next);
     setFocused((f) => focusIn(left, next, f));

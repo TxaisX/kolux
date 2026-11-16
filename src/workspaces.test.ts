@@ -57,6 +57,16 @@ test("removing the shown workspace moves to the most recently used sibling in it
   expect(activeAfterRemove("C:/repo/ws/alpha", "C:/repo/ws/alpha", ["C:/repo/ws/alpha"], siblings)).toBeNull();
 });
 
+test("R71-05: removing the project in front can fall back to a project inside it that stays", () => {
+  const inner = "C:/repo/inner";
+  const recent = ["C:/repo", inner, "D:/other/x"];
+  expect(activeAfterRemove("C:/repo", "C:/repo", recent, [inner], [inner])).toBe(inner);
+  // a nested folder that is not staying goes with the project, so it is never the fallback
+  expect(activeAfterRemove("C:/repo", "C:/repo", recent, [inner], [])).toBeNull();
+  // the shown folder is the staying one: nothing moves
+  expect(activeAfterRemove(inner, "C:/repo", recent, [inner], [inner])).toBe(inner);
+});
+
 test("a pane's header takes the typed workspace name of its folder, whatever the slash or case (T-013-fix-b)", () => {
   const names = { "C:\\ws\\app\\ship-it": "Ship it \u{1F9D1}\u{200D}\u{1F4BB}" };
   expect(nameOf(names, "c:/ws/app/ship-it/")).toBe("Ship it \u{1F9D1}\u{200D}\u{1F4BB}");
