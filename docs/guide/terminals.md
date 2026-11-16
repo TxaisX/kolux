@@ -16,7 +16,7 @@ The right end of the strip is the workspace spend ribbon. It totals the tokens a
 
 | Action | Result |
 |---|---|
-| Grow (for example 2 to 4) | Empty panes are added |
+| Grow (for example 2 to 4) | The Start form opens, with How many set to the new cells. Nothing starts until you press Start. No empty panes are added. This is the same on both looks |
 | Shrink (for example 4 to 2) | Panes that were never started are removed |
 | Shrink past a started session | Blocked. A toast says "<name> is a started session: close it to go smaller." |
 
