@@ -1320,7 +1320,7 @@ pub fn explain_create_error(raw: String) -> String {
         return raw;
     }
     // N-06: the sentence `add_retrying` adds when it could not clear the folder goes with Kolux's words.
-    let (raw, stuck) = match raw.find(NOT_CLEARED) {
+    let (raw, stuck) = match raw.find(NOT_CLEARED).or_else(|| raw.find(EMPTY_LEFT)) {
         Some(at) => (raw[..at].to_string(), format!(" {}", &raw[at + 1..])),
         None => (raw, String::new()),
     };
@@ -1338,6 +1338,10 @@ pub fn explain_create_error(raw: String) -> String {
 const NOT_CLEARED: &str = "
 Kolux could not clear the folder ";
 
+/// F79-3: starts the sentence a failed add gets when an empty folder Kolux made is still there.
+const EMPTY_LEFT: &str = "
+An empty folder was left at ";
+
 /// `add` (a `git worktree add` into `dest`, creating branch `made` if any) under the retry
 /// policy: each failed try is cleared away first, and a cancel stops the waiting.
 pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dyn Fn() -> bool, add: impl Fn() -> Result<(), String>) -> Result<(), String> {
@@ -1349,9 +1353,15 @@ pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dy
         // F4: a folder that was there before the add is the user's own: it is emptied, not removed.
         let verb = if was_there { "Empty" } else { "Remove" };
         let left = || format!("{}. {verb} it by hand before you try again.", dest.display());
+        // F79-3: an empty folder that would not delete does not stop a retry, but is named at the end.
+        let empty = || (!was_there && std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_none())).then(|| format!("{}. You can delete it.", dest.display()));
         if overtaken() {
             // F5: the cancel text stays first and whole (the page reads it as a prefix); a folder left is named after it.
-            return Err(if stuck { format!("{OVERTAKEN}. {}{}", NOT_CLEARED.trim_start(), left()) } else { OVERTAKEN.to_string() });
+            return Err(match (stuck, empty()) {
+                (true, _) => format!("{OVERTAKEN}. {}{}", NOT_CLEARED.trim_start(), left()),
+                (false, Some(empty)) => format!("{OVERTAKEN}. {}{empty}", EMPTY_LEFT.trim_start()),
+                (false, None) => OVERTAKEN.to_string(),
+            });
         }
         // N-06: a retry into what was left can only fail with a misleading "already exists": stop and say so.
         if stuck {
@@ -1359,7 +1369,10 @@ pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dy
         }
         match waits.next() {
             Some(ms) if lock_held(&e) => std::thread::sleep(std::time::Duration::from_millis(*ms)),
-            _ => return Err(e),
+            _ => return Err(match empty() {
+                Some(empty) => format!("{e}{EMPTY_LEFT}{empty}"),
+                None => e,
+            }),
         }
     }
     Ok(())

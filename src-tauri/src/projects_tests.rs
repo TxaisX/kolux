@@ -688,8 +688,11 @@ fn f4_an_empty_folder_left_is_retried_and_a_users_folder_is_to_be_emptied() {
         Err::<(), String>(raw.to_string())
     })
     .unwrap_err();
-    assert_eq!(said, raw, "an empty folder left behind gets no sentence");
+    assert_eq!(said, format!("{raw}
+An empty folder was left at {}. You can delete it.", dest.display()), "an empty folder left behind is named once the retries end");
     assert_eq!(tries.get(), 3, "the retries run");
+    let explained = explain_create_error(said);
+    assert!(explained.split(GIT_SAID).next().unwrap().ends_with(&format!(" An empty folder was left at {}. You can delete it.", dest.display())), "it goes with Kolux's words: {explained}");
     drop(held.borrow_mut().take());
     // There and empty before; a file Git wrote is held: the sentence says to empty it.
     let mine = root.join("mine");
