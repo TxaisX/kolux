@@ -1770,9 +1770,10 @@ impl Terminals {
         };
         let spare: Vec<std::path::PathBuf> = if found.is_empty() { Vec::new() } else { spare().into_iter().filter(|s| under(s, dir)).collect() };
         // F3: the folder checks run with no lock held; the lock below only looks up each process id.
-        let found: Vec<u32> = found.into_iter().filter(|(_, d)| !spare.iter().any(|s| under(std::path::Path::new(d), s))).map(|(id, _)| id).collect();
+        let found: Vec<(u32, String)> = found.into_iter().filter(|(_, d)| !spare.iter().any(|s| under(std::path::Path::new(d), s))).collect();
+        // F79-7: an id that ended between the two holds, or now names a session started elsewhere, is left.
         let found: Vec<(u32, Option<u32>)> = match self.inner.lock() {
-            Ok(inner) => found.into_iter().map(|id| (id, inner.sessions.get(&id).and_then(Session::pid))).collect(),
+            Ok(inner) => found.into_iter().filter(|(id, d)| inner.dirs.get(id) == Some(d)).map(|(id, _)| (id, inner.sessions.get(&id).and_then(Session::pid))).collect(),
             Err(_) => return Stopped::default(),
         };
         for (id, pid) in &found {
@@ -3590,6 +3591,24 @@ mod tests {
         assert_eq!(t.kill_under_sparing(&x, || vec![alias.clone()]).ended, 0, "x written another way spares x and x\\sub");
         assert_eq!(t.sessions().len(), 2);
         assert_eq!(t.kill_under_sparing(&x, || vec![base.to_path_buf()]).ended, 2, "a folder above x spares nothing");
+    }
+
+    /// F79-7: a session that ends while the spare list is made, and whose id a session in another
+    /// folder then takes, is not ended by the second lock hold. Records only, no process behind them.
+    #[test]
+    fn f79_an_id_taken_by_a_session_elsewhere_between_the_two_holds_is_left() {
+        let base = crate::test_dir::temp("f79-reused");
+        let (x, elsewhere) = (base.join("x"), base.join("elsewhere"));
+        std::fs::create_dir_all(&x).unwrap();
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        let t = Terminals::default();
+        t.fake_session(1, &x.to_string_lossy(), None);
+        let reuse = || {
+            t.fake_session(1, &elsewhere.to_string_lossy(), None);
+            Vec::new()
+        };
+        assert_eq!(t.kill_under_sparing(&x, reuse).ended, 0, "id 1 now runs elsewhere");
+        assert_eq!(t.sessions().len(), 1, "the session elsewhere still runs");
     }
 
     /// R-07: a pane key is compared in constant time; the right key is still found and a wrong one of
