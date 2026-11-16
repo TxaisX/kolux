@@ -101,3 +101,29 @@ test("job 57 F4: the same through one seat's own AI buttons", async () => {
   expect(box.textContent).not.toContain("no longer offers");
   act(() => root.unmount());
 });
+
+// Job 68 F3: Grok's saved pick names a model its live list dropped. Picking Grok again never brings it back:
+// the saved pick is read through clean (chat/controls.ts loadSaved), which checks the same list knownModel does.
+test("job 68 F3: a saved model the AI no longer offers is not restored when the AI is picked again", async () => {
+  const g = globalThis as { localStorage?: Storage };
+  g.localStorage = (window as unknown as { localStorage: Storage }).localStorage; // the saved picks read the global
+  g.localStorage.setItem("kolux.chat.launchChoices", JSON.stringify({ grok: { model: "grok-old" } }));
+  try {
+    const { root, pick } = await dropped();
+    await pick("seat-1-agents", "claude");
+    await pick("seat-1-agents", "grok");
+    expect(live.seats[0]).toMatchObject({ agent: "grok", model: null });
+    await pick("all-agents", "claude");
+    await pick("all-agents", "grok");
+    expect(live.seats[0]).toMatchObject({ agent: "grok", model: null });
+    // Control: a saved model the list still has does come back, so the saved pick really is read here.
+    g.localStorage.setItem("kolux.chat.launchChoices", JSON.stringify({ grok: { model: "grok-b" } }));
+    await pick("seat-1-agents", "claude");
+    await pick("seat-1-agents", "grok");
+    expect(live.seats[0]).toMatchObject({ agent: "grok", model: "grok-b" });
+    act(() => root.unmount());
+  } finally {
+    g.localStorage.removeItem("kolux.chat.launchChoices");
+    delete g.localStorage;
+  }
+});
