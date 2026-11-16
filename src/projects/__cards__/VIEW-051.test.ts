@@ -168,7 +168,7 @@ test("box 5: an old worktree request (the sidebar opened later) pops no menu", a
 
 // R61-03: an agent that finished in a folder's grid while it was not shown marks the folder's row, as the session rows did.
 test("R61-03: an unread folder's row carries the unread mark; a read one does not", async () => {
-  const cls = (c: FakeNode) => String(find(c, (n) => n.attrs["data-testid"] === "sidebar-folder")[0]?.attrs.className ?? "").split(" ");
+  const cls = (c: FakeNode) => { const row = find(c, (n) => n.attrs["data-testid"] === "sidebar-folder")[0]; return String(row?.attrs.className ?? row?.attrs.class ?? "").split(" "); };
   const read = await panel([]);
   expect(cls(read)).not.toContain("unread");
   await unmount();
