@@ -3676,15 +3676,21 @@ fn r82_a_broken_branch_list_does_not_unstage_by_removal() {
 fn r82_a_link_that_cannot_be_removed_leaves_its_row() {
     use std::os::windows::fs::OpenOptionsExt;
     let mut wrong = Vec::new();
-    for route in ["changed", "staged", "paths"] {
-        let dir = temp_repo(&format!("r82i-{route}"));
-        let out = outside_folder(&format!("r82i-{route}"));
+    // R86-03: "paths-staged" is the paths route with `j` staged-modified before the link is made.
+    for case in ["changed", "staged", "paths", "paths-staged"] {
+        let route = case.trim_end_matches("-staged");
+        let dir = temp_repo(&format!("r82i-{case}"));
+        let out = outside_folder(&format!("r82i-{case}"));
         let _clean = LinksThenFolders(vec![dir.join("j")], vec![dir.clone(), out.clone()]);
         commit_file(&dir, "j", "j\n");
         commit_file(&dir, "plain.txt", "p\n");
         fs::write(dir.join("plain.txt"), "changed\n").unwrap();
         if route == "staged" {
             plain(&["add", "plain.txt"], &dir);
+        }
+        if case == "paths-staged" {
+            fs::write(dir.join("j"), "staged\n").unwrap();
+            plain(&["add", "j"], &dir);
         }
         fs::remove_file(dir.join("j")).unwrap();
         fs::write(out.join("o.txt"), "o\n").unwrap();
@@ -3693,6 +3699,9 @@ fn r82_a_link_that_cannot_be_removed_leaves_its_row() {
         let held = fs::File::options().read(true).share_mode(0).custom_flags(0x0020_0000 | 0x0200_0000).open(dir.join("j")).unwrap();
         let said = by_route(&dir, route, &["j", "plain.txt"]);
         drop(held);
+        if case == "paths-staged" && !run(&["diff", "--cached", "--name-only"], Some(&dir)).is_ok_and(|o| o.lines().any(|l| l == "j")) {
+            wrong.push(format!("{case}: the staged change to j was unstaged"));
+        }
         if !matches!(&said, Err(e) if e.lines().count() == 1 && e.starts_with("j: ")) {
             wrong.push(format!("{route}: said {said:?}"));
         }
@@ -3800,4 +3809,28 @@ fn r86_a_link_is_removed_only_under_its_own_name() {
         wrong.push("control lnk: the outside o.txt changed".into());
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R86-03: on the paths route a link that cannot be removed at a staged rename's old half leaves
+/// the rename whole: nothing is unstaged and the new file stays.
+#[cfg(windows)]
+#[test]
+fn r86_a_held_link_at_a_renames_old_half_leaves_the_rename_whole() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = temp_repo("r86c");
+    let out = outside_folder("r86c");
+    let _clean = LinksThenFolders(vec![dir.join("a")], vec![dir.clone(), out.clone()]);
+    commit_file(&dir, "a", "a\n");
+    plain(&["mv", "a", "b"], &dir);
+    fs::write(out.join("o.txt"), "o\n").unwrap();
+    junction(&dir.join("a"), &out);
+    let held = fs::File::options().read(true).share_mode(0).custom_flags(0x0020_0000 | 0x0200_0000).open(dir.join("a")).unwrap();
+    let said = by_route(&dir, "paths", &["b"]);
+    drop(held);
+    let renamed = status(&dir).is_ok_and(|st| st.staged.iter().any(|c| c.path == "b" && c.from.as_deref() == Some("a")));
+    assert!(matches!(&said, Err(e) if e.starts_with("a: ") && e.ends_with("\nb is the other half of a rename, so Kolux leaves it too.")), "said {said:?}");
+    assert!(dir.join("b").exists(), "b still stands");
+    assert!(renamed, "the rename is still staged");
+    assert!(fs::symlink_metadata(dir.join("a")).is_ok_and(|m| m.is_symlink()), "the link a stays");
+    assert_eq!(fs::read_to_string(out.join("o.txt")).unwrap(), "o\n");
 }

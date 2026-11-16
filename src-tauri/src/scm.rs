@@ -2696,6 +2696,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     let k = kinds(worktree, &paths.iter().map(|p| p.trim_end_matches('/')).collect::<Vec<_>>(), true)?;
     let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut kept = Vec::new();
+    let mut renames: Vec<(String, String)> = Vec::new();
     let mut real = std::collections::HashSet::new();
     for p in paths {
         let p = p.trim_end_matches('/');
@@ -2719,6 +2720,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
             if let Some(from) = &c.from {
                 staged.push(from.clone());
                 tracked.push(from.clone());
+                renames.push((from.clone(), c.path.clone()));
             }
         }
         if listed_untracked {
@@ -2729,24 +2731,42 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
             tracked.push(p.to_string());
         }
     }
+    // A link is removed before git rewrites it, so git never writes through it. R82-03: a row
+    // whose kind cannot be read, or whose link cannot be removed, is named and left; the rest go.
+    // R86-03: this runs before anything is unstaged, so a left row (and a staged rename's other
+    // half with it) keeps its staged change.
+    let (mut removed, mut failed) = (Vec::new(), Vec::new());
+    for p in &tracked {
+        match remove_link(worktree, p) {
+            Ok(true) => removed.push(p.clone()),
+            Ok(false) => {}
+            Err(e) => {
+                kept.push(e);
+                failed.push(p.clone());
+            }
+        }
+    }
+    for (from, to) in &renames {
+        if failed.contains(from) && !failed.contains(to) {
+            kept.push(format!("{to} is the other half of a rename, so Kolux leaves it too."));
+            failed.push(to.clone());
+        }
+    }
+    staged.retain(|p| !failed.contains(p));
+    tracked.retain(|p| !failed.contains(p));
+    remove.retain(|p| !failed.contains(p));
+    let already = |kept: &mut Vec<String>| kept.extend(removed.iter().map(|p| format!("The link at {p} was already removed. What it pointed to is untouched.")));
     if !staged.is_empty() {
         if let Err(e) = with_paths(worktree, &["reset", "-q"], &staged) {
             kept.push(e);
+            already(&mut kept);
             return Err(kept.join("\n"));
         }
     }
-    // A link is removed before git rewrites it, so git never writes through it. R82-03: a row
-    // whose kind cannot be read, or whose link cannot be removed, is named and left; the rest go.
-    tracked.retain(|p| match remove_link(worktree, p) {
-        Ok(_) => true,
-        Err(e) => {
-            kept.push(e);
-            false
-        }
-    });
     if !tracked.is_empty() {
         if let Err(e) = with_paths(worktree, &["-c", "submodule.recurse=false", "checkout", "-q", "HEAD"], &tracked) {
             kept.push(e);
+            already(&mut kept);
             return Err(kept.join("\n"));
         }
     }
