@@ -2715,8 +2715,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     if !staged.is_empty() {
         if let Err(e) = with_paths(worktree, &["reset", "-q"], &staged) {
             kept.push(e);
-            return Err(kept.join("
-"));
+            return Err(kept.join("\n"));
         }
     }
     for p in &tracked {
@@ -2725,16 +2724,14 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         if fs::symlink_metadata(&full).is_ok_and(|m| m.is_symlink()) {
             if let Err(e) = fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)) {
                 kept.push(format!("{p}: {e}"));
-                return Err(kept.join("
-"));
+                return Err(kept.join("\n"));
             }
         }
     }
     if !tracked.is_empty() {
         if let Err(e) = with_paths(worktree, &["checkout", "-q", "HEAD"], &tracked) {
             kept.push(e);
-            return Err(kept.join("
-"));
+            return Err(kept.join("\n"));
         }
     }
     // N-02: a nested repository is taken out before git clean runs and named at the end, so the
