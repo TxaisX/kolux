@@ -3101,7 +3101,7 @@ fn on_disk_as_sent(worktree: &Path, p: &str, lists: &mut std::collections::HashM
             return match fs::symlink_metadata(worktree.join(native(&next))) {
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
                 Err(_) => Err(unread(&next, row)),
-                Ok(_) => Err(format!("{row} is not spelled the way it is on disk, so Kolux leaves it. Refresh the list, then discard again.")),
+                Ok(_) => Err(format!("{row} is not spelled the way it is on disk, so Kolux leaves it. Wait for the list to update, then discard again.")),
             };
         }
         at = next;

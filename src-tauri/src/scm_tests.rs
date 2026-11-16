@@ -3763,7 +3763,7 @@ fn r86_an_alias_spelling_of_a_tracked_folder_is_never_cleaned() {
         }
         // F90-06: the walker stops this row: the disk opens it as the folder `sub`, but no entry
         // of the listing is spelled so (`git clean` would remove the whole folder).
-        if i == 5 && said != Err("sub::$INDEX_ALLOCATION is not spelled the way it is on disk, so Kolux leaves it. Refresh the list, then discard again.".to_string()) {
+        if i == 5 && said != Err("sub::$INDEX_ALLOCATION is not spelled the way it is on disk, so Kolux leaves it. Wait for the list to update, then discard again.".to_string()) {
             wrong.push(format!("ignorecase {case} {route} {row}: not the spelling line: {said:?}"));
         }
         if fs::read_to_string(dir.join("sub").join("d").join("f.txt")).ok().as_deref() != Some("changed\n") {
