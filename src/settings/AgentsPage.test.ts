@@ -31,7 +31,8 @@ test("the text under the status hooks switch says it starts on after the consent
   expect(hooksDefault({})).toBe(true);
   const html = renderToString(createElement(HooksSwitch, { on: true, onSwitch: () => {} }));
   expect(html).not.toMatch(/Off until you turn it on/);
-  expect(html).toContain("It turns on when you answer yes in setup.");
+  expect(html).toContain("Setup turns it on unless you turn its switch off there. If you skip setup, it stays off.");
+  expect(html).not.toContain("answer yes");
 });
 
 // Job 49: the switch keeps its key and its section; its name says what it is for, and the text under it says what goes
