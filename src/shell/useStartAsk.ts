@@ -56,13 +56,18 @@ export function useStartAsk(o: {
   const close = useRef(o.close);
   close.current = o.close;
   const mine = useRef<"opening" | "up" | null>(null);
+  // Job 68 F2: only the render where the answer itself arrives (firstRunKnown turns true) closes it; setup opened
+  // later from Help > Onboarding leaves the form alone.
+  const knownBefore = useRef(firstRunKnown);
   useEffect(() => {
     if (mine.current === "opening" && sheetOpen) mine.current = "up";
     else if (mine.current === "up" && !sheetOpen) mine.current = null;
-    if (!firstRun || mine.current === null) return;
+    const arrived = !!firstRunKnown && !knownBefore.current;
+    knownBefore.current = firstRunKnown;
+    if (!firstRun || !arrived || mine.current === null) return;
     mine.current = null;
     close.current?.();
-  }, [firstRun, sheetOpen]);
+  }, [firstRun, firstRunKnown, sheetOpen]);
   // Job 13 F4: the user has moved on: a launch, a form they opened, or a pane added after the settings were read.
   // Job 29 R1: the pane count is taken only once last time's layout is in, so restored panes never count as added.
   const acted = useRef(false);

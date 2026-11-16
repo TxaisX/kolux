@@ -362,3 +362,18 @@ test("job 57 F3: the form the ask opened was closed and the user opened one by h
   expect(close).not.toHaveBeenCalled();
   act(() => root.unmount());
 });
+
+test("job 68 F2: Help > Onboarding while the form the ask opened is up does not close it", () => {
+  vi.useFakeTimers();
+  resetStartAsk();
+  const open = vi.fn();
+  const close = vi.fn();
+  const root = mount();
+  const known = { ...base(open), close, agentsDone: true, firstRunKnown: true, firstRun: false };
+  act(() => root.render(createElement(Probe, known)));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.render(createElement(Probe, { ...known, sheetOpen: true })));
+  act(() => root.render(createElement(Probe, { ...known, sheetOpen: true, firstRun: true })));
+  expect(close).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
