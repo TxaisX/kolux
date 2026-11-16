@@ -20,6 +20,12 @@ const FILES = import.meta.glob("./*.tsx", { query: "?raw", import: "default", ea
 const read = (f: string) => FILES[`./${f}`] ?? "";
 
 describe("search all settings (SET-007)", () => {
+  it("finds the status switch by its new name and by its old words (job 49)", () => {
+    expect(INDEX.find((e) => e.section === "hooks")?.title).toBe("Show what each agent is doing");
+    for (const q of ["show what each agent", "hooks", "status hooks", "agent status hooks"])
+      expect(searchSettings(q)?.pages.find((p) => p.page === "agents")?.sections, q).toContain("hooks");
+  });
+
   it("indexes only sections that are still drawn on their page", () => {
     for (const e of INDEX) {
       const src = SOURCES[e.page].map(read).join("\n");

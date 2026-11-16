@@ -559,7 +559,7 @@ export function HooksAskView({
 }) {
   return (
     <div className="tip-dock" style={dock} data-docked={dock.left !== undefined ? "" : undefined}>
-      <div className="tip-card" role="dialog" aria-modal="false" aria-label="Agent status hooks">
+      <div className="tip-card" role="dialog" aria-modal="false" aria-label="Show what each agent is doing">
         <span className="tip-badge">Status</span>
         <label className="onb-ping">
           <input type="checkbox" role="switch" checked={on} onChange={(e) => onSwitch(e.target.checked)} />

@@ -47,7 +47,7 @@ export const INDEX: Entry[] = [
   { page: "accounts", section: "minimax", parent: "agent-folders", title: "MiniMax", words: "minimax cookie session api key" },
   { page: "accounts", section: "gemini", parent: "agent-folders", title: "Gemini", words: "gemini google api key" },
   { page: "agents", section: "default", title: "Default agent", words: "default agent new tab start" },
-  { page: "agents", section: "hooks", title: "Agent status hooks", words: "hooks status working waiting finish tell kolux" },
+  { page: "agents", section: "hooks", title: "Show what each agent is doing", words: "agent status hooks working waiting finish tell kolux" },
   { page: "agents", section: "seat-default", title: "Default model and effort", words: "default model effort seat reasoning" },
   { page: "agents", section: "permissions", title: "Agent Permissions", words: "permission allow approve yolo skip ask safety" },
   { page: "agents", section: "agents", title: "Installed agents", words: "installed install cli programs " + agents.map(([id, name]) => `${id} ${name}`).join(" ") },

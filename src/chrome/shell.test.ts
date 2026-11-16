@@ -71,8 +71,8 @@ test("the status bar shows hooks, memory, terminals and agents on the right", ()
   expect(html).toContain('class="statusbar"');
   expect(html).toContain("On");
   // T-543-b: the badge is the real switch, and nothing while the settings are not read yet.
-  expect(renderToString(createElement(StatusBar, { terminals: 3, agents: 1, hooks: false }))).toContain("Agent status hooks are off");
-  expect(renderToString(createElement(StatusBar, { terminals: 3, agents: 1 }))).not.toContain("Agent status hooks");
+  expect(renderToString(createElement(StatusBar, { terminals: 3, agents: 1, hooks: false }))).toContain("Show what each agent is doing: off");
+  expect(renderToString(createElement(StatusBar, { terminals: 3, agents: 1 }))).not.toContain("Show what each agent is doing");
   expect(html).toContain("MB");
   expect(html).toMatch(/Terminals running[^>]*>.*3/);
   expect(html).toMatch(/Agents running[^>]*>.*1/);

@@ -22,7 +22,7 @@ test("the status bar's hooks item is a button that opens Settings > Agents at th
   const seen: unknown[] = [];
   win.addEventListener(OPEN_SETTINGS, (e) => seen.push((e as CustomEvent).detail));
   const tree = mount(StatusBar, { terminals: 3, agents: 1, hooks: false }).render();
-  const item = find(tree, (e) => String(e.props.title ?? "").startsWith("Agent status hooks are off"));
+  const item = find(tree, (e) => String(e.props.title ?? "").startsWith("Show what each agent is doing: off"));
   expect(item.type).toBe("button");
   item.props.onClick();
   expect(seen).toEqual([{ page: "agents", section: "hooks" }]);

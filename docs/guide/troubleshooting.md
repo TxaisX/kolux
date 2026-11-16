@@ -18,7 +18,7 @@ Find out what went wrong, get a safe report to share, and get back to work. Star
 | A new terminal opens with a dim line "<shell> did not start; opened <shell>" | The default terminal you chose in Settings would not start, so Kolux used the next automatic shell | Check that the shell is still installed, or pick another under Settings, Terminal & sessions, Default terminal. See [Settings](settings.md#default-terminal) |
 | The Skill folders list says "Not scanned: This folder links to another computer, which Kolux never opens" | The workspace is on a network share, or a skills folder is a link to one. Kolux never reads through those | Use a copy on a local drive, or a mapped drive letter for the workspace. See [Safety](safety.md#other-computers-and-network-shares) |
 | A pane stays blank after it opens | A known case: a shell sometimes stalls as it starts | Close the pane and open a new one |
-| The Board or Agents page shows no live status | Agent status hooks are off | Turn on "Agent status hooks" in Settings, Agents. See [Settings](settings.md) |
+| The Board or Agents page shows no live status | The switch "Show what each agent is doing" is off | Turn on "Show what each agent is doing" in Settings, Agents. See [Settings](settings.md) |
 | An agent halted | A usage limit, a lapsed sign-in or a provider error | The Board shows it in the Stopped lane with the reason. See [Board, Agents and Inbox](board-agents-inbox.md) |
 | "Sign in again" on a card | A sign-in lapsed | Use the button, or Settings, Accounts & keys |
 | A save was refused: "changed on disk since you opened it" | An agent or program changed the file | Choose Reload or Keep mine. See [Files and browser](files-and-browser.md) |
@@ -62,7 +62,7 @@ Kolux saves your tabs and layout as you work and brings them back at the next st
 
 - **Tabs and layout** return, with the active tab and focus. A tab whose folder is gone is dropped on its own; the rest stay.
 - **Terminal output** returns. The last text of each pane is replayed with a grey note: "restored after a restart, the shell below is new". The program is new; it does not carry on from where it was.
-- **Agent sessions** resume. An agent tab restarts on the same start line with the agent's own resume form, using the session it last reported (Claude Code, Codex and 15 more agents have one built in; Kiro and Aider also resume without a reported session). This needs the agent status hooks on. A pane marked "restored without resume" had no session to go back to and started at its prompt. See [Projects and folders](projects-and-worktrees.md#agent-sessions-after-a-restart).
+- **Agent sessions** resume. An agent tab restarts on the same start line with the agent's own resume form, using the session it last reported (Claude Code, Codex and 15 more agents have one built in; Kiro and Aider also resume without a reported session). This needs "Show what each agent is doing" on in Settings, Agents. A pane marked "restored without resume" had no session to go back to and started at its prompt. See [Projects and folders](projects-and-worktrees.md#agent-sessions-after-a-restart).
 - **Programs do not survive.** Closing a pane, quitting or a crash ends every program Kolux started, so none is left running in the background. A running build or server is stopped.
 - A tab you close on purpose stays closed, and its saved output is forgotten.
 - A slow start never drops your tabs: if the saved settings were slow to read, Kolux waits.
@@ -72,7 +72,7 @@ Kolux also reopens on the screen you left (Agents, Board or Terminals).
 
 ## Hooks messages and leftovers
 
-Two known problems with agent status hooks. Neither loses your own settings. Background is in [Safety](safety.md#agent-status-hooks).
+Two known problems with agent status hooks (the small scripts behind the switch "Show what each agent is doing"). Neither loses your own settings. Background is in [Safety](safety.md#agent-status-hooks).
 
 | What you see | Cause | What to do |
 |---|---|---|

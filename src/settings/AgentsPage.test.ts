@@ -34,6 +34,18 @@ test("the text under the status hooks switch says it starts on after the consent
   expect(html).toContain("On once you have answered the line in setup");
 });
 
+// Job 49: the switch keeps its key and its section; its name says what it is for, and the text under it says what goes
+// dark while it is off (chat/send.ts, SafetyPage.tsx and board/chip.ts paneStatus: no hook word, only the title guess).
+test("the status hooks switch is called Show what each agent is doing, and says what stops while it is off", () => {
+  const html = renderToString(createElement(HooksSwitch, { on: false, onSwitch: () => {} }));
+  expect(html).toContain('aria-label="Show what each agent is doing"');
+  expect(html).toContain('data-section="hooks"');
+  expect(html).toMatch(/<span>Show what each agent is doing/);
+  expect(html).not.toContain("Agent status hooks");
+  expect(html).toContain("While it is off, Kolux can only guess from each terminal&#x27;s title");
+  expect(html).toContain("Protected actions cannot ask first");
+});
+
 test("a failed hook install or removal is shown beside the switch instead of being dropped (T-152-c (3))", () => {
   // The reply shape of agent_hooks_sync: one {agent, done, error} per agent.
   expect(hookProblems([{ agent: "claude", done: null, error: "settings.json changed twice while installing; switch off and on again" }, { agent: "codex", done: "removed", error: null }]))
