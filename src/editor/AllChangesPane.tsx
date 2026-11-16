@@ -131,11 +131,12 @@ type Props = { id: number; root: string; hidden?: boolean; focused?: boolean; on
 /** A Discard error for the one row the Changes tab sends (`name`). When every line holds "so Kolux leaves", the engine
  *  left the row on purpose (a link, a file or folder in the way, its own Git repository); anything else is a plain
  *  "could not". The page cannot tell whether nothing went (one half of a staged rename may have), so it never says.
- *  Say has no "needs attention" tone, so a kept row stays `bad`. The result line draws each line on its own. */
+ *  R74-05: a kept row needs attention (`bad`, yellow); a "could not" is a real failure (`error`, red). The result line
+ *  draws each line on its own. */
 export const discardSay = (err: unknown, name: string): Say => {
   const text = String(err);
   const kept = text.split("\n").every((l) => l.includes("so Kolux leaves"));
-  return { text: `${kept ? "Kolux left this as it is:" : `Could not discard ${name}:`}\n${text}`, bad: true };
+  return kept ? { text: `Kolux left this as it is:\n${text}`, bad: true } : { text: `Could not discard ${name}:\n${text}`, bad: true, error: true };
 };
 
 export default function AllChangesPane({ id, root, hidden = false, focused = false, onFocus, onClose, onOpenDiff, pinnedBase = null }: Props) {
@@ -493,7 +494,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
             </button>
             {status && status.staged.length === 0 && message.trim() !== "" && !outcome && <span className="note">Nothing is staged yet: use Stage all, or Stage on a file in the Working tree view.</span>}
             {outcome && (
-              <span className={`note${outcome.bad ? " warn" : ""}`} role={outcome.bad ? "alert" : "status"} style={{ whiteSpace: "pre-line", display: "inline-block", maxHeight: "12em", overflowY: "auto" }}>
+              <span className={`note${outcome.error ? " error" : outcome.bad ? " warn" : ""}`} role={outcome.bad ? "alert" : "status"} style={{ whiteSpace: "pre-line", display: "inline-block", maxHeight: "12em", overflowY: "auto" }}>
                 {outcome.text}
               </span>
             )}

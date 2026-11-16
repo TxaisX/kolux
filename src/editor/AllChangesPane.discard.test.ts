@@ -22,8 +22,9 @@ test.each([
   const lines = say.text.split("\n");
   expect(lines[0]).toBe("Kolux left this as it is:");
   expect(lines.slice(1)).toEqual(err.split("\n"));
-  // Say has only "bad" as a tone; a kept row keeps it (no new tone added).
+  // R74-05: a row left on purpose needs attention (yellow, `note warn`), it is not an error.
   expect(say.bad).toBe(true);
+  expect(say.error).toBeFalsy();
 });
 
 test.each([
@@ -36,6 +37,7 @@ test.each([
   expect(lines[0]).toBe("Could not discard x.txt:");
   expect(lines.slice(1)).toEqual(err.split("\n"));
   expect(say.bad).toBe(true);
+  expect(say.error, "a real failure is red").toBe(true);
 });
 
 test("the page never claims that nothing, or not everything, was discarded", () => {
@@ -45,4 +47,8 @@ test("the page never claims that nothing, or not everything, was discarded", () 
 test("the result line keeps the engine's line breaks when it is drawn", () => {
   // Kept as a source pin: the line is drawn only after a real Discard, which this house pattern does not drive.
   expect(source).toMatch(/role=\{outcome\.bad \? "alert" : "status"\} style=\{\{ whiteSpace: "pre-line"/);
+});
+
+test("R74-05: the result line draws an error red (note error) and any other bad line yellow (note warn)", () => {
+  expect(source).toContain('className={`note${outcome.error ? " error" : outcome.bad ? " warn" : ""}`}');
 });

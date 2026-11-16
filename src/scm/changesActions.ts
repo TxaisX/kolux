@@ -4,8 +4,8 @@
 // and the guard that lets only one action run at a time (a double click sends one commit).
 import { discardAsk, remoteItems, failureTitle, type ActionOutcome, type Change, type DiscardAsk, type Section, type Status } from "./model";
 
-/** A line of the tab's notes: `bad` marks a failure. */
-export type Say = { text: string; bad: boolean };
+/** A line of the tab's notes: `bad` marks one that needs attention (yellow); `error` a real failure (red, R74-05). */
+export type Say = { text: string; bad: boolean; error?: boolean };
 
 /** The backend call, injected so a test needs no Tauri. */
 export type Call = <T>(cmd: string, args: Record<string, unknown>) => Promise<T>;
