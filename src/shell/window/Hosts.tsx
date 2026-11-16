@@ -14,6 +14,7 @@ import { BringSkillsUp } from "../../skills/SkillBarItem";
 import { toggleSkills } from "../../skills/nav";
 import { windowLoaded } from "../../status/manage";
 import { tabName } from "../../terminal/tabName";
+import { sameDir } from "../../workspaces";
 import { useWindow } from "./store";
 import { addFolderHands } from "./sidebarScreens";
 import { SkillUpdateNotice } from "../../lazy/pages";
@@ -24,14 +25,19 @@ import { UpdateCenter } from "../../lazy/pages";
 import { FeedbackDialog } from "../../lazy/pages";
 
 // Job 47 A6 (ONB-010): the first folder after setup opens the Start form on it, once it is on the list and in front.
-function FirstFolderStart() {
-  const { firstStart, doneFirstStart, activeDir, projects, openStart } = useWindow();
+// Job 57 F1: "on the list" is the folder-to-project map openStart ticks the folder from (projectOf), matched with
+// sameDir, since firstStart is the opened worktree (a subfolder's repository root). On the list but not in front:
+// the user went elsewhere, so it is dropped unopened.
+export function FirstFolderStart() {
+  const { firstStart, doneFirstStart, activeDir, projects, owner, openStart } = useWindow();
   useEffect(() => {
-    if (firstStart === null || activeDir !== firstStart || !projects.some((p) => p.path === firstStart)) return;
+    if (firstStart === null) return;
+    const pid = Object.entries(owner).find(([dir]) => sameDir(dir, firstStart))?.[1];
+    if (pid === undefined || !projects.some((p) => p.id === pid)) return;
     doneFirstStart();
-    openStart({ here: true });
+    if (sameDir(activeDir, firstStart)) openStart({ here: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firstStart, activeDir, projects]);
+  }, [firstStart, activeDir, projects, owner]);
   return null;
 }
 
