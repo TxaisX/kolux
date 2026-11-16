@@ -6,7 +6,7 @@ Use the Terminals view to run agents and shells in a grid of panes, split and re
 
 Each workspace (a folder) has its own grid. The grid holds one to twenty-four panes. It picks columns by count: 1 pane is one column, 2 panes two, up to 4 panes two columns, up to 9 panes three, and more than that four.
 
-An empty workspace shows "Nothing running here yet." with two buttons: "Open a terminal" and "Choose what to run".
+An empty workspace shows "Nothing running here yet." with the main button "Start agents" and the link "Open a terminal". "Start agents" opens the Start form (see [Start agents](#start-agents)).
 
 ### Layouts
 
@@ -100,7 +100,7 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 | Do this | How |
 |---|---|
 | Add a shell beside this pane | "Split right" on the pane header, or Ctrl+Shift+D; "Split down" with Alt+Shift+D |
-| Start a new session in a new pane | The pane header's plus, or the sidebar's "New session" |
+| Start a new session in a new pane | The pane header's plus, or the sidebar's "New session": pick an agent to start it in a new pane, or "Start agents…" to set up one or many first |
 | A shell tab in this pane's cell | Ctrl+T |
 | The default agent in a new tab | Ctrl+Alt+T; each installed agent also has its own command in the command palette |
 | A browser tab | Ctrl+Shift+B, or a link in an agent's reply |
@@ -108,17 +108,18 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 
 Files and diffs are covered in [Files and browser](files-and-browser.md).
 
-## Choose what to run
+## Start agents
 
-The chooser pane, titled "Choose what to run", sets up one or many sessions before they start.
+"Start agents" (on an empty grid) and "Start agents…" (in the plus menu) set up one or many sessions before they start. On the New look they open the Start form, a page titled "Start" with the project's name and folder. On the Classic look they open a chooser pane instead, headed "Session N" and "Choose what to run", with the same parts.
 
 | Part | Use it to |
 |---|---|
 | Use last lineup | Repeat the last lineup for this project (appears when there is one) |
 | Shape | Pick a built-in or saved arrangement. "Save as team" stores yours under a Team name |
-| Sessions | Pick a quick count, type any number, and press "Same for all" to copy one choice to every seat. Start opens every seat as its own pane in this folder |
-| Folder | Every seat works in the project folder. Kolux does not make extra copies |
-| Task for every seat | Optional first request for all sessions |
+| Folders | Start form only: tick the project folders to start in, or "Add folder" |
+| How many | Pick a quick count or type any number, and press "Same for all" to copy one choice to every seat. Start opens every seat as its own pane |
+| Folder or Folders | With **Own folder for each agent** on (Settings, Git) in a Git project: "Own folder for each AI", picked for two or more seats, gives each seat its own worktree; "Same folder for all" shares the project folder. With it off, every seat works in the project folder and Kolux makes no extra copies |
+| Task for all of them | Optional first request for all sessions |
 | Per seat | Pick the AI and its model, and an optional job title |
 
 Several AIs will edit the same files. Give each a separate task, or launch them one at a time.

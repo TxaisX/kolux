@@ -59,7 +59,7 @@ Use it to browse sessions by program rather than by state. The left rail, "Sessi
 - A footer line shows the picked session's 5-hour allowance and when it resets, for example "Claude 80% left".
 - The picked session's terminal (or its chooser), or its chat when it can show one (see below), fills the area beside the rail. Kolux remembers your pick; first run it picks the first agent's newest session.
 
-With no agent switched on the page says "No agents yet" with an "Open Settings" button. With agents but no open session it says "No sessions yet" and offers New session, and the page beside the rail offers it too.
+With no agent switched on the page says "No agents yet" with an "Open Settings" button. With agents but no open session it says "No sessions yet" and offers New session, and the page beside the rail offers it too. New session opens the Start form (a chooser pane on the Classic look).
 
 ### Chat on the Agents page
 
