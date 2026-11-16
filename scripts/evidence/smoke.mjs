@@ -12,9 +12,12 @@
 //            --self-test (T-560: check the temp-folder cleanup and the off-screen move, launching nothing)
 //            --require-quit (count flow 5 in the exit code before T-184 is ticked)
 //
-// Flow 1  a grid grows from 4 to 6 panes and the PTYs already running keep running: each shell gets a marker
-//         in an environment variable before the change and writes that variable to a file after it (only the
-//         same process can know it).
+// Flow 1  a grid grows to 6 panes and the PTYs already running keep running: each shell gets a marker in an
+//         environment variable before the change and writes that variable to a file after it (only the same
+//         process can know it). Start form E (2026-11-15): a bigger number on the layout strip adds no empty
+//         panes; it opens the Start form with one seat per cell to add, nothing starts until Start, and Start
+//         fills the cells. FAILs when a pane appears before Start, the seat count is not the cells to add, or
+//         a shell that was running loses its marker.
 // Flow 2  Mod+S in an editor tab writes the file: the bytes on disk carry what was typed.
 // Flow 3  Delete in the Explorer asks first, and Cancel keeps the file byte-identical on disk. (It used to test the
 //         Source Control Discard, which T-644/DT-C85 removed with the panel.)
@@ -62,7 +65,7 @@
 // class, so renaming a label or restyling a control cannot break a flow. The ids, by where they live:
 //   chrome/    layout-strip  layout-count-<n>  right-sidebar  right-sidebar-toggle  right-tab-<tab id>
 //   projects/  sidebar-add-project  add-project-by-path  add-project-folder-input
-//   launch/    chooser-pane  seat-<n>-agents  seat-agent-<agent id>  chooser-start  new-session-menu  new-session-item-<agent id>
+//   launch/    chooser-pane  all-agents  seat-<n>-agents  seat-agent-<agent id>  chooser-start  new-session-menu  new-session-item-<agent id>
 //   terminal/  terminal-pane  pane-status-dot  pane-split-right  pane-new-session
 //   editor/    editor-pane  explorer-row  explorer-tree
 //   other      onboarding-dialog (onboarding/Wizard)  ask-dialog  ask-body  ask-cancel  ask-confirm (chrome/Ask, flow 3)
@@ -299,6 +302,7 @@ async function shellWrites(index, line, file, what, tries = 3) {
 }
 
 // ---------- flow 1 ----------
+const GROW_TO = 6; // the layout count flow 1 grows the grid to
 async function flow1() {
   const start = await shown(TERM);
   for (const want of [start + 1, start + 2]) {
@@ -307,37 +311,54 @@ async function flow1() {
     await click(`${TERM}.focused ${tid("pane-split-right")}`);
     await waitFor(`${want} shell panes`, async () => (await shown(TERM)) === want, 30000);
   }
-  await pickLayout(4);
-  await waitFor("Layout 4", async () => (await layoutCount()) === "4", 5000);
-  const grid = async () => ({ cells: Number(await layoutCount()), shells: await shown(TERM), choosers: await shown(CHOOSER) });
-  const before = await grid();
-  if (before.shells !== start + 2 || before.choosers !== 4 - before.shells) throw new Error(`expected ${start + 2} shells and ${4 - start - 2} empty pane(s) at Layout 4, got ${JSON.stringify(before)}`);
+  // The shells that are running now, by the app's own pane key: the same keys must hold the same processes afterwards.
+  // Shell panes only (an agent pane cannot answer the marker line); the cells to add count every pane shown.
+  const keys = await evalJs(`[...document.querySelectorAll(${JSON.stringify(SHELL)})].filter(e => e.offsetParent !== null).map(e => e.dataset.key)`);
+  const cells = await shown(TERM);
+  const add = GROW_TO - cells;
+  if (keys.length < 2 || keys.some((k) => !k) || add < 1) throw new Error(`flow 1 grows a grid to ${GROW_TO} panes and needs keyed shells with room to grow, got ${cells} pane(s) and the shells ${JSON.stringify(keys)}`);
+  const paneOf = (k) => `${TERM}[data-key="${k}"]`;
   const stamp = Date.now().toString(36);
   const markOf = (i) => `smoke-${stamp}-${i}`;
-  for (let i = 0; i < before.shells; i++) {
-    await focusPane(TERM, i, XTERM_INPUT);
+  for (const [i, k] of keys.entries()) {
+    await focusPane(paneOf(k), 0, XTERM_INPUT);
     await cdp("insert", `$env:SMOKE_MARK = '${markOf(i)}'; 'ready' | Set-Content '${slash(join(marks, `ready-${i}.txt`))}'`, "enter");
     await waitFor(`shell ${i + 1} to answer`, () => read(join(marks, `ready-${i}.txt`))?.includes("ready"), 45000, 500);
   }
-  await pickLayout(6);
-  await waitFor("Layout 6", async () => (await layoutCount()) === "6", 5000);
-  const after = await grid();
-  if (after.shells !== before.shells || after.choosers !== 6 - after.shells) throw new Error(`after Layout 6 expected the ${before.shells} shells plus ${6 - before.shells} empty panes, got ${JSON.stringify(after)}`);
-  for (let i = 0; i < after.shells; i++) {
-    await focusPane(TERM, i, XTERM_INPUT);
-    await cdp("insert", `$env:SMOKE_MARK | Set-Content '${slash(join(marks, `after-${i}.txt`))}'`, "enter");
+  // Start form E: the bigger count opens the Start form with one seat per cell to add, and starts nothing by itself.
+  await pickLayout(GROW_TO);
+  await waitFor("the Start form after the layout strip", async () => (await shown(CHOOSER)) === 1, 5000);
+  const seat = (n) => `${CHOOSER} ${tid(`seat-${n}-agents`)}`;
+  await waitFor(`${add} seats on the Start form`, async () => (await exists(seat(add))) && !(await exists(seat(add + 1))), 30000);
+  // A start that should not happen may come a moment after the click, so the panes are counted after a pause.
+  await sleep(1500);
+  const early = await shown(TERM);
+  if (early !== cells) throw new Error(`the layout strip started ${early - cells} pane(s) before Start was pressed (${early} shown, ${cells} before)`);
+  const terminal = `${CHOOSER} ${tid("all-agents")} ${tid("seat-agent-terminal")}`;
+  await click(terminal);
+  await waitFor("Terminal picked for every seat", () => exists(`${terminal}[aria-pressed="true"]`), 5000);
+  const go = `${CHOOSER} ${tid("chooser-start")}`;
+  await waitFor("the Start form's Start button", () => exists(`${go}:not(:disabled)`), 60000);
+  await click(go);
+  await waitFor(`${GROW_TO} shell panes`, async () => (await shown(TERM)) === GROW_TO, 30000);
+  await waitFor(`Layout ${GROW_TO}`, async () => (await layoutCount()) === String(GROW_TO), 5000);
+  await waitFor("the Start form to close", async () => (await shown(CHOOSER)) === 0, 5000);
+  // Each shell from before writes its marker: only the same process still holds it. A shell that just started can
+  // take the focus for a moment and swallow the line (it writes an empty file), so the line is sent again.
+  for (const [i, k] of keys.entries()) {
+    const file = join(marks, `after-${i}.txt`);
+    for (let t = 1; ; t++) {
+      await focusPane(paneOf(k), 0, XTERM_INPUT);
+      await cdp("insert", `$env:SMOKE_MARK | Set-Content '${slash(file)}'`, "enter");
+      try {
+        await waitFor(`shell ${i + 1} to echo the marker it was given before the change`, () => read(file)?.trim() === markOf(i), 15000, 500);
+        break;
+      } catch (e) {
+        if (t >= 3) throw new Error(`${e.message} (its file holds ${JSON.stringify(read(file))})`);
+      }
+    }
   }
-  const wanted = new Set(Array.from({ length: before.shells }, (_, i) => markOf(i)));
-  await waitFor(
-    "every shell to echo its marker",
-    () => {
-      const got = Array.from({ length: after.shells }, (_, i) => read(join(marks, `after-${i}.txt`))?.trim()).filter(Boolean);
-      return got.length === wanted.size && got.every((m) => wanted.has(m)) && new Set(got).size === wanted.size;
-    },
-    45000,
-    500,
-  );
-  return `grid 4 -> 6 (${before.shells} shells + ${before.choosers} empty -> ${after.shells} shells + ${after.choosers} empty); all ${after.shells} shells echoed the marker set before the change (same PTY processes)`;
+  return `grid ${cells} -> ${GROW_TO} through the Start form (it asked for ${add} seats and started nothing before Start); the ${keys.length} shells that were running each echoed the marker set before the change (same PTY processes)`;
 }
 
 // ---------- flow 2 ----------
@@ -479,14 +500,15 @@ async function flow7() {
   const grid = await waitFor("the six-pane grid", async () => ((await shown(TERM)) >= 6 ? shown(TERM) : null), 20000);
   const dead = await count("aside.sidebar .pane-row");
   if (dead > 0) throw new Error(`the sidebar still renders ${dead} .pane-row element(s); a workspace row is .sess[role=button] now`);
-  // Txais 2026-11-12: the sidebar lists the workspace folder row and its sessions under it (never worktrees).
+  // 0.1.16 (one grid per project): the sidebar lists project folders only, so one folder row and no row per session.
   const folders = await count(`${tid("sidebar-folder")}`);
   if (folders !== 1) throw new Error(`the sidebar lists ${folders} folder rows for one workspace with ${panes} sessions; it should list the folder row once`);
-  const sessions = await count(`${tid("sidebar-session")}`);
-  if (sessions < panes) throw new Error(`the sidebar lists ${sessions} session rows for ${panes} sessions; it should list every session under the folder`);
+  // Asked for by its raw attribute, like .pane-row above: this id is checked for absence, so it need not exist in src/.
+  const sessions = await count('[data-testid="sidebar-session"]');
+  if (sessions > 0) throw new Error(`the sidebar lists ${sessions} session row(s) for ${panes} sessions; since 0.1.16 it lists project folders only`);
   await click(tid("sidebar-folder"));
   const back = await waitFor("every pane again", async () => ((await shown(TERM)) >= grid ? shown(TERM) : null), 20000);
-  const said = `${panes} sessions in one workspace: the sidebar lists the folder row and ${sessions} session rows (no .pane-row), clicking the folder shows ${back} panes`;
+  const said = `${panes} sessions in one workspace: the sidebar lists the folder row once and no session rows (no .pane-row), clicking the folder shows ${back} panes`;
   if (ATTACH) return `${said} (attach mode: no restart)`;
   await relaunch();
   const kept = await waitFor(`the ${panes} panes after the restart`, async () => ((await count(TERM)) >= panes ? count(TERM) : null), 90000, 500);

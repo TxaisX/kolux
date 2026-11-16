@@ -59,12 +59,24 @@ test("flow 6 starts every agent the New session menu offers, from that menu", ()
 });
 
 test("flow 7 asserts the sidebar's real folder row and that the removed pane-row class stays gone", () => {
-  // The folder row is data-testid="sidebar-folder" and its sessions are "sidebar-session" (src/projects/ProjectsPanel.tsx);
+  // The folder row is data-testid="sidebar-folder" (src/projects/ProjectsPanel.tsx). Since 0.1.16 the sidebar lists
+  // project folders only, so the smoke asks for "sidebar-session" by its raw attribute and fails when one shows: an
+  // id checked for absence is not one of the ids src/ must carry.
   // pane-row was removed and four live checks still queried it, so this keeps the smoke from ever re-adopting it.
   expect(smoke).toContain("sidebar-folder");
-  expect(smoke).toContain("sidebar-session");
+  expect(smoke).toContain('[data-testid="sidebar-session"]');
+  expect(used).not.toContain("sidebar-session");
+  expect(smoke).toContain("sessions > 0");
   expect(smoke).toContain(".pane-row");
   expect(src).not.toContain("pane-row");
+});
+
+test("flow 1 grows the grid through the Start form, by test id", () => {
+  // Start form E (2026-11-15): the layout strip opens the Start form for the cells it adds; no empty panes.
+  // Only flow 1 uses these two ids and this message; the other Start form ids are also used by the setup's first shell.
+  for (const id of ["all-agents", "seat-0-agents"]) expect(used, id).toContain(id);
+  expect(smoke).toContain("before Start was pressed");
+  expect(smoke).not.toContain("empty pane(s) at Layout 4");
 });
 
 test("smoke.mjs no longer matches the controls it clicks by label or class", () => {

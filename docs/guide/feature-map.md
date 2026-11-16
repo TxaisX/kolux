@@ -24,15 +24,16 @@ Proof is either a check name (`scripts/prove/live-*.mjs`, `scripts/evidence/smok
 
 ## 1. Sidebar
 
-Two kinds of row: a workspace **folder** row, and the UI **session** rows under it (Goal 0, item 4 — worktrees never
-appear in the sidebar). Rows are reached with the mouse and the keyboard; every row has a right-click menu.
+The default list (grouped by project) shows one **folder** row per project and, since 0.1.16, no session rows under
+it. UI **session** rows are drawn only when "Group and sort" is set to something other than project (Goal 0, item 4 —
+worktrees never appear in the sidebar). Rows are reached with the mouse and the keyboard; every row has a right-click menu.
 
 | Control | Where | What it should do | What it does now | Verdict | Proof |
 |---|---|---|---|---|---|
 | Add project button | `src/projects/ProjectsPanel.tsx:2520` (`data-testid="sidebar-add-project"`) | open the add menu: clone, open a folder, start a new one | opens the add form (`adding` state) | `live-pass` | `live-latency` (round 4): `startPlain()` clicks it in every live run and the add form opened |
 | Add by path → folder field | `ProjectsPanel.tsx:2582` (`data-testid="add-project-folder-input"`) | take a path, Enter adds it as a project | `addPath(pathDraft)` on Enter | `live-pass` | `live-latency` (round 4): typed a repo path, Enter, and the workspace opened with a pane |
 | Folder row | `ProjectsPanel.tsx:2313-2321` (`div.proj.folder`, `data-testid="sidebar-folder"`) | select the workspace; its sessions show in the grid | selects it: the row carries `sel` and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
-| Session row | `ProjectsPanel.tsx:1750-1777` (`sessionRows`, `data-testid="sidebar-session"`) | click selects that session's pane; one row per session | selects the pane | `live-pass` | `scripts/evidence/smoke.mjs` flow 7 (round 6): six sessions in one workspace → one folder row + six session rows, no `.pane-row`, clicking the folder shows all six panes, and a restart kept all six |
+| Session row | `ProjectsPanel.tsx:1763-1790` (`sessionRows`, `data-testid="sidebar-session"`) | none in the default list (grouped by project): since 0.1.16 the sidebar lists project folders only. With "Group and sort" set to anything else: one row per session, click selects that session's pane | grouped by project: no session rows. Other groupings: the rows are still drawn (`ProjectsPanel.tsx:2773`) | `code` | grouped by project: `scripts/evidence/smoke.mjs` flow 7 (2026-11-15) fails when a `sidebar-session` row shows: six sessions in one workspace → one folder row, no session rows, no `.pane-row`, clicking the folder shows all six panes, and a restart kept all six. The other groupings are read in the source only |
 | Folder row menu | `src/projects/menu.ts:54-59` | New workspace, Review changes (git folders), Project settings, Remove project… | the four items, Review disabled when the folder is not a repo | `code` | `menu.ts:54-59`; `live-GIT-038`/`live-EDIT-029` open All Changes through "Review changes" |
 | Session row menu | `menu.ts:68-98` | Delete, Sleep/Wake, Move to status, Set parent…, Details…, Review changes, Open in (Explorer/editors/Terminal), Move up/down, Hide from the sidebar, Developer (Alt) | all of the above, with the main checkout limited to New workspace + Remove project | `code` | `menu.ts:68-98` |
 | Status submenu | `menu.ts:74` | list the workspace's statuses plus Edit statuses… | lists them; edit opens the editor (`ProjectsPanel.tsx:1420`) | `code` | `menu.ts:74`, `ProjectsPanel.tsx:1420` |
@@ -133,6 +134,11 @@ workspace, one folder row, six session rows, no `.pane-row`, and a restart that 
 also closes the first-run dialog the way a user would (corner close → Skip). The new `rightclick` helper in
 `scripts/evidence/cdp.mjs` is ready for the sidebar's row menus; the first real right-click on the folder row did not
 open the menu under the harness's off-screen pointer, so that row stays `code` until a later run drives it.
+
+2026-11-15: two smoke flows were brought in line with the app. **Flow 7** now asserts the 0.1.16 rule (one folder row,
+no session rows in the list grouped by project), so the Session row moved from `live-pass` to `code`. **Flow 1** grows
+the grid through the Start form: a bigger number on the layout strip opens the form with one seat per cell to add,
+nothing starts before Start, and the shells that were running keep their processes.
 
 Three controls are `pending` on their owner lane, not on this lane: the sidebar's worktree rows (Goal 0 item 4,
 `c2-agents`), the chooser's agent-must-start-a-terminal path (Goal 0 item 5, `c2-agents`), and the pane header's
