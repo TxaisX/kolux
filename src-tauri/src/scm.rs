@@ -2823,6 +2823,8 @@ fn folder_in_place(worktree: &Path, p: &str) -> bool {
 /// folder it points at; one that is now a file would be deleted to make room.
 /// One `symlink_metadata` per folder not yet seen as real in this discard (`real`), no process; a
 /// missing folder ends the look (Git makes it again).
+// R70-06, accepted: a link made between this check and Git's write is not seen. Closing that needs
+// Git itself to refuse writing through a link (or a lock on the folders), which it does not offer.
 fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<String>) -> Option<String> {
     let row = p.trim_end_matches('/');
     let parts: Vec<&str> = row.split('/').filter(|s| !s.is_empty() && *s != ".").collect();
