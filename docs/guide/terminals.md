@@ -6,7 +6,7 @@ Use the Terminals view to run agents and shells in a grid of panes, split and re
 
 Each workspace (a folder) has its own grid. The grid holds one to twenty-four panes. It picks columns by count: 1 pane is one column, 2 panes two, up to 4 panes two columns, up to 9 panes three, and more than that four.
 
-An empty workspace shows "Nothing running here yet." with the main button "Start agents" and the link "Open a terminal". "Start agents" opens the Start form (see [Start agents](#start-agents)).
+An empty workspace shows "Nothing running here yet." with the main button "Start agents" and the link "Open a terminal". "Start agents" opens the Start form (a chooser pane on the Classic look; see [Start agents](#start-agents)).
 
 ### Layouts
 
@@ -100,7 +100,7 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 | Do this | How |
 |---|---|
 | Add a shell beside this pane | "Split right" on the pane header, or Ctrl+Shift+D; "Split down" with Alt+Shift+D |
-| Start a new session in a new pane | The pane header's plus, or the sidebar's "New session": pick an agent to start it in a new pane, or "Start agents…" to set up one or many first |
+| Start a new session in a new pane | The pane header's plus, or the sidebar's "New session": pick an agent to start it in a new pane, or "Start agents…" (on the Classic look, "Choose what to run…") to set up one or many first |
 | A shell tab in this pane's cell | Ctrl+T |
 | The default agent in a new tab | Ctrl+Alt+T; each installed agent also has its own command in the command palette |
 | A browser tab | Ctrl+Shift+B, or a link in an agent's reply |
@@ -110,7 +110,7 @@ Files and diffs are covered in [Files and browser](files-and-browser.md).
 
 ## Start agents
 
-"Start agents" (on an empty grid) and "Start agents…" (in the plus menu) set up one or many sessions before they start. On the New look they open the Start form, a page titled "Start" with the project's name and folder. On the Classic look they open a chooser pane instead, headed "Session N" and "Choose what to run", with the same parts.
+"Start agents" (on an empty grid) and "Start agents…" in the plus menu ("Choose what to run…" on the Classic look) set up one or many sessions before they start. On the New look they open the Start form, a page titled "Start" with the project's name and folder. On the Classic look they open a chooser pane instead, headed "Session N" and "Choose what to run", with the same parts.
 
 | Part | Use it to |
 |---|---|
