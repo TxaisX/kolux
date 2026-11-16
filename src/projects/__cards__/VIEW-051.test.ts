@@ -130,7 +130,18 @@ test("box 4: Pinned and the grouped lists hold folders only, never a worktree", 
   await unmount();
   const grouped = await panel(six.slice(0, 2), { workspaceGroupBy: "status" });
   expect(visible(grouped).filter((n) => n.attrs["data-worktree"] !== undefined).map((n) => n.attrs["data-path"])).toEqual(["C:/w/app"]);
-  expect(find(grouped, (n) => n.attrs["data-session"] !== undefined)).toHaveLength(2);
+  expect(find(grouped, (n) => n.attrs["data-session"] !== undefined)).toEqual([]);
+});
+
+// Txais (2026-11-12): the sidebar shows folders only; every session is already in the grid. Grouping by status,
+// pull request or one flat list still drew a session row under each folder.
+test("the sidebar draws no session rows in any grouping", async () => {
+  for (const workspaceGroupBy of ["project", "status", "pr", "none"]) {
+    const c = await panel(six, { workspaceGroupBy });
+    expect(find(c, (n) => n.attrs["data-session"] !== undefined || n.attrs["data-testid"] === "sidebar-session"), workspaceGroupBy).toEqual([]);
+    expect(find(c, (n) => n.attrs["data-path"] === "C:/w/app").length, workspaceGroupBy).toBeGreaterThan(0); // the folder row is still drawn
+    await unmount();
+  }
 });
 
 // Txais (2026-11-13): the worktree rows are gone from the ribbon, so what they offered is reached from the pane-header
