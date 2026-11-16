@@ -111,10 +111,15 @@ test("unticking Keep the branch is the user's own choice to delete it", async ()
   expect(removes()).toEqual([{ projectId: "p1", path: fix.path, force: false, stamp: "s-fix", keepBranch: false }]);
 });
 
+// Review R27-05: the delete shortcut always asks now, so this pin takes the row menu's Delete, which follows the setting.
 test("a workspace with nothing to lose still skips the question when it is switched off", async () => {
   h.checks[fix.path] = { ...clean, stamp: "s-fix" };
-  await panel();
-  await pressDelete();
+  const c = await panel();
+  const row = find(c, (n) => n.attrs["data-path"] === fix.path)[0].childNodes.find((n) => String(n.attrs.className ?? n.attrs.class ?? "").includes("sess"))!;
+  await fire(c, "contextmenu", row, { clientX: 5, clientY: 5, altKey: false });
+  await settle(60);
+  await click(c, byText(c, "button", "Delete")[0]);
+  await settle(60);
   expect(removes()).toEqual([{ projectId: "p1", path: fix.path, force: false, stamp: "s-fix", keepBranch: undefined }]);
 });
 

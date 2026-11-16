@@ -1095,9 +1095,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const act = pointerDelete(w, { fieldFocused: isTextField(document.activeElement), deleting: new Set(busy === "removing" && confirm ? [confirm.path] : []) });
       if (act === null) return;
       if (act.action === "forget") return void askForget({ projectId: p.id, path: act.path, label: worktreeLabel(w) });
-      return void ask(p.id, w.path, worktreeLabel(w));
+      return void ask(p.id, w.path, worktreeLabel(w), { always: true }); // R27-05: the shortcut always asks
     }
-    void startDelete(p, w); // the same route as Delete in the pane's worktree label menu
+    void startDelete(p, w, { always: true }); // the same route as Delete in the pane's worktree label menu, but it always asks
   }, [deleteRequest, worktrees, projects]);
   // T-611 (PROJ-059): workspace.rename opens the same inline rename as F2 on the workspace shown. A sidebar
   // the command just opened has no list yet, so the request stays pending until the lists come in; taking it
@@ -1270,14 +1270,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // PROJ-070: look at the workspace first; the question shows what would be lost, and a clean
   // one with the question switched off goes straight to deleting. T-613: commits found on no other
   // branch and on no remote always ask, with Keep the branch ticked at first.
-  const ask = async (projectId: string, path: string, branch: string) => {
+  // Review R27-05: `always` (the delete shortcut) shows the question whatever the setting says.
+  const ask = async (projectId: string, path: string, branch: string, opts: { always?: boolean } = {}) => {
     setBusy("checking");
     let asked = null;
     try {
       const check = await invoke<RemoveCheck>("workspace_remove_check", { projectId, path });
       const settings = await invoke<Record<string, unknown>>("get_settings");
       asked = { projectId, path, branch, check, force: false, keep: keepsAtFirst(check) };
-      if (!skipsQuestion(check, settings) || runNote([path])) {
+      if (opts.always || !skipsQuestion(check, settings) || runNote([path])) {
         setConfirm(asked);
         asked = null;
       }
@@ -1366,11 +1367,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   };
   const askGroup = (g: Group) => (openGroup(g), setDropGroup({ remove: false }));
   // T-055: a workspace with children offers only to delete them all; a lone one follows the question setting.
-  const startDelete = async (p: Project, w: Worktree) => {
+  const startDelete = async (p: Project, w: Worktree, opts: { always?: boolean } = {}) => {
     const now = await invoke<Record<string, unknown>>("get_settings");
     const plan = deletePlan([w.path], (worktrees[p.id] ?? []).map((x) => ({ path: x.path, parent: x.parent })), asksBeforeDelete(now));
     if (plan.withChildren) setBatch({ root: w.path, order: plan.order });
-    else await ask(p.id, w.path, worktreeLabel(w));
+    else await ask(p.id, w.path, worktreeLabel(w), opts);
   };
   const labelOf = (path: string) => {
     const w = Object.values(worktrees).flat().find((x) => same(x.path, path));

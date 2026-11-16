@@ -39,13 +39,13 @@ const renameEffect = effect("if (renameRequest === 0) return;");
 
 test("the delete shortcut takes the pane menu's route: startDelete, which asks first and names the worktree", () => {
   expect(delEffect).toContain("keyDeleteTarget(waited ? null : hovered, workDir ?? activeDir, rows, same)");
-  expect(delEffect).toContain("void startDelete(p, w);");
+  expect(delEffect).toContain("void startDelete(p, w, { always: true });"); // R27-05: the shortcut always asks
   expect(delEffect).toContain('say("warn", unlisted ? NOT_LISTED_WORKTREE : notInWorktree("delete"))'); // R27-02: a hidden or unreviewed worktree gets its own line
   // The pane label menu's Delete item goes the same way.
   expect(panelSrc).toContain('else if (id === "delete") await startDelete(p, w);');
   // startDelete asks the question with the worktree's name (or the children-first batch question).
   const start = panelSrc.slice(panelSrc.indexOf("const startDelete = async"), panelSrc.indexOf("const labelOf ="));
-  expect(start).toContain("await ask(p.id, w.path, worktreeLabel(w))");
+  expect(start).toContain("await ask(p.id, w.path, worktreeLabel(w), opts)");
   expect(start).toContain("setBatch(");
 });
 

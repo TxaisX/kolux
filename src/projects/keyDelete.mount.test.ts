@@ -5,12 +5,12 @@ import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], unsaved: [] as string[][], listGate: null as Promise<void> | null, projects: [{ id: "p1", name: "app", path: "C:/w/app" }] as unknown[] }));
+const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], unsaved: [] as string[][], listGate: null as Promise<void> | null, settings: {} as Record<string, unknown>, projects: [{ id: "p1", name: "app", path: "C:/w/app" }] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     h.calls.push({ cmd, args });
     if (cmd === "workspace_remove_check") return Promise.resolve({ changes: [], locked: null, nested: [], commits: [], stamp: "s" });
-    if (cmd === "get_settings") return Promise.resolve({});
+    if (cmd === "get_settings") return Promise.resolve(h.settings);
     if (cmd === "workspace_statuses") return Promise.resolve({ list: [] });
     if (cmd === "project_list") return (h.listGate ?? Promise.resolve()).then(() => h.projects);
     if (cmd === "workspace_scan") return Promise.resolve({ list: h.wt, unseen: [] });
@@ -45,6 +45,7 @@ beforeEach(() => {
   h.calls = [];
   h.unsaved = [];
   h.listGate = null;
+  h.settings = {};
   h.projects = [{ id: "p1", name: "app", path: "C:/w/app" }];
   activeDir = "C:/w/app";
 });
@@ -53,7 +54,7 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0, wait = 120) {
+async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0, wait = 120, more: Record<string, unknown> = {}) {
   const { default: ProjectsPanel } = await import("./ProjectsPanel");
   const { act } = await import("react");
   const props = {
@@ -61,7 +62,7 @@ async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0,
     activeDir, workDir, onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
-    onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true), renameRequest,
+    onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true), renameRequest, ...more,
   };
   const Host = () => {
     const [n, setN] = useState(firstDelete);
@@ -253,4 +254,40 @@ test("Deleting a worktree with a child worktree drops the editor drafts of each 
   await settle(60);
   expect(h.calls.filter((x) => x.cmd === "workspace_remove").map((x) => x.args.path)).toEqual([kid.path, fix.path]);
   expect(h.calls.filter((x) => x.cmd === "editor_drafts_drop").map((x) => x.args.worktree)).toEqual([kid.path, fix.path]);
+});
+
+// Review R27-05: the shortcut picks its target by pane focus, so it always asks, even with "ask before deleting"
+// (and "ask before closing") switched off. The setting keeps governing Delete in the pane's worktree label menu.
+const allOffSettings = { confirmWorkspaceDelete: false, confirmCloseRunning: false };
+const removed = () => h.calls.filter((x) => x.cmd === "workspace_remove").map((x) => x.args.path);
+
+test("the delete shortcut on the focused pane asks even with both questions switched off", async () => {
+  h.settings = allOffSettings;
+  const c = await panel(fix.path, 0, 0, 120, { settings: allOffSettings }); // mounts with no press: a count that went back resets the served one
+  await pressDelete();
+  expect(checks()).toEqual([fix.path]);
+  expect(question(c).length).toBe(1);
+  expect(question(c)[0].textContent).toContain("fix-login");
+  expect(removed()).toEqual([]);
+});
+
+test("the delete shortcut over a hovered worktree row asks even with both questions switched off", async () => {
+  h.settings = allOffSettings;
+  Object.assign(doc, { querySelectorAll: (sel: string) => (sel.includes(":hover") ? [{ dataset: { path: fix.path } }] : []) });
+  const c = await panel(main.path, 0, 0, 120, { settings: allOffSettings });
+  await pressDelete();
+  expect(checks()).toEqual([fix.path]);
+  expect(question(c).length).toBe(1);
+  expect(removed()).toEqual([]);
+});
+
+test("Delete in the pane's worktree label menu still deletes with no question when the setting is off", async () => {
+  h.settings = allOffSettings;
+  const c = await panel(fix.path, 0, 0, 120, { settings: allOffSettings, worktreeRequest: { path: fix.path, x: 40, y: 60, n: Date.now() } }); // no key press at all
+  const item = find(c, (n) => n.attrs.role === "menuitem" && n.textContent.trim().startsWith("Delete"));
+  expect(item.length).toBeGreaterThan(0);
+  await click(c, item[0]);
+  await settle(120);
+  expect(question(c).length).toBe(0);
+  expect(removed()).toEqual([fix.path]);
 });
