@@ -135,8 +135,8 @@ More detail is in [Projects and folders](projects-and-worktrees.md).
 
 ## Start your first agent
 
-1. In the sidebar, press "New session" at the bottom. A menu opens with one row for each AI program Kolux found, then "Blank terminal", "Terminal…" and "Choose what to run…". Picking an AI row starts that one agent in a new pane.
-2. To choose more, pick "Choose what to run…". The Start form opens. Under "Folders" tick the project folders to start in. Under "How many" pick how many agents open in each folder. Under "Which AI" pick the AI, its model and its effort; that one choice goes to every agent. "Make each one different" opens a row for each agent. Press Start (Ctrl+Enter also starts). In the Classic look this row opens a pane that asks the same questions.
+1. In the sidebar, press "New session" at the bottom. A menu opens with one row for each AI program Kolux found, then "Blank terminal", "Terminal…" and "Start agents…" (in the Classic look this row reads "Choose what to run…"). Picking an AI row starts that one agent in a new pane.
+2. To choose more, pick "Start agents…". The Start form opens. Under "Folders" tick the project folders to start in. Under "How many" pick how many agents open in each folder. Under "Which AI" pick the AI, its model and its effort; that one choice goes to every agent. "Make each one different" opens a row for each agent. Press Start (Ctrl+Enter also starts). In the Classic look this row opens a pane that asks the same questions.
 3. A pane opens for each agent and the agent starts. Type your request in the pane.
 4. Watch its status word in the pane header (Working, Needs you, Done). Press the bell to see every session that needs you.
 
