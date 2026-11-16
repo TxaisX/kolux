@@ -3600,3 +3600,25 @@ fn r82_an_untracked_folder_row_with_tracked_files_is_left() {
     assert!(kept, "t/new.txt stays");
     assert!(!loose, "loose.txt still goes");
 }
+
+/// R82-03: a row holding a NUL would reach Git as two names; it is refused whole on every route
+/// and by Stage, and nothing changes.
+#[test]
+fn r82_a_row_with_a_nul_is_refused() {
+    let dir = temp_repo("r82f");
+    commit_file(&dir, "b.txt", "b\n");
+    fs::write(dir.join("b.txt"), "changed\n").unwrap();
+    let mut wrong = Vec::new();
+    for route in ["paths", "changed", "staged", "stage"] {
+        let said = if route == "stage" { stage(&dir, &["b.txt\0x".to_string()], true) } else { by_route(&dir, route, &["b.txt\0x"]) };
+        if said != Err("A file name here holds a character Kolux cannot pass to Git. Nothing was changed.".to_string()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+    }
+    let b = fs::read_to_string(dir.join("b.txt")).ok();
+    let staged = run(&["diff", "--cached", "--name-only"], Some(&dir));
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(b.as_deref(), Some("changed\n"), "the change to b.txt is kept");
+    assert_eq!(staged.as_deref(), Ok(""), "nothing was staged");
+}

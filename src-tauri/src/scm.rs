@@ -2637,6 +2637,10 @@ fn check_paths(paths: &[String]) -> Result<(), String> {
         return Err("nothing to stage".into());
     }
     for p in paths {
+        // R82-03: a NUL would reach Git as a break between two names.
+        if p.contains('\0') {
+            return Err("A file name here holds a character Kolux cannot pass to Git. Nothing was changed.".into());
+        }
         let path = Path::new(p);
         let inside = !p.trim().is_empty() && path.components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
         if !inside {
@@ -2698,7 +2702,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         // F-02: a row whose file (or a rename's old file) Git would write over a folder with
         // something in it is left exactly as it is: not unstaged, not written, not cleaned.
         // R59-01/R59-02: so is a row under a link or a file where a folder was.
-        if let Some(why) = std::iter::once(p).chain(index.and_then(|c| c.from.as_deref())).find_map(|at| left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at)))) {
+        if let Some(why) = std::iter::once(p).chain(index.and_then(|c| c.from.as_deref())).find_map(|at| left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at))).or_else(|| is_link(worktree, at).err())) {
             kept.push(why);
             continue;
         }
@@ -2730,16 +2734,15 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
             return Err(kept.join("\n"));
         }
     }
-    for p in &tracked {
-        // A link is removed before git rewrites it, so git never writes through it.
-        let full = worktree.join(native(p));
-        if fs::symlink_metadata(&full).is_ok_and(|m| m.is_symlink()) {
-            if let Err(e) = fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)) {
-                kept.push(format!("{p}: {e}"));
-                return Err(kept.join("\n"));
-            }
+    // A link is removed before git rewrites it, so git never writes through it. R82-03: a row
+    // whose kind cannot be read, or whose link cannot be removed, is named and left; the rest go.
+    tracked.retain(|p| match remove_link(worktree, p) {
+        Ok(_) => true,
+        Err(e) => {
+            kept.push(e);
+            false
         }
-    }
+    });
     if !tracked.is_empty() {
         if let Err(e) = with_paths(worktree, &["-c", "submodule.recurse=false", "checkout", "-q", "HEAD"], &tracked) {
             kept.push(e);
@@ -2977,15 +2980,23 @@ fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<Strin
 /// never what it points at. True when there was one; a failure names the row. R70-05: a row whose
 /// kind cannot be read (for a reason other than "missing") is left, never taken as "not a link".
 fn remove_link(worktree: &Path, p: &str) -> Result<bool, String> {
+    if !is_link(worktree, p)? {
+        return Ok(false);
+    }
     let p = p.trim_end_matches('/');
     let full = worktree.join(native(p));
-    match fs::symlink_metadata(&full) {
-        Ok(m) if m.is_symlink() => {}
-        Ok(_) => return Ok(false),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(_) => return Err(format!("{p} could not be read, so Kolux leaves it.")),
-    }
     fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)).map(|_| true).map_err(|e| format!("{p}: {e}"))
+}
+
+/// R70-05 / R82-03: whether row `p` itself is a link, read only. A row whose kind cannot be read
+/// (for a reason other than "missing") is left, never taken as "not a link".
+fn is_link(worktree: &Path, p: &str) -> Result<bool, String> {
+    let p = p.trim_end_matches('/');
+    match fs::symlink_metadata(worktree.join(native(p))) {
+        Ok(m) => Ok(m.is_symlink()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(_) => Err(format!("{p} could not be read, so Kolux leaves it.")),
+    }
 }
 
 /// F-02: what Discard says about a row it leaves because a folder now sits in its file's place.
