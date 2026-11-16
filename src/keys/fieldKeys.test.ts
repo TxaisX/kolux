@@ -43,11 +43,11 @@ const el = (tag: string, type = "", inside: string | null = null) => ({
   closest: (s: string) => (inside && s.split(",").map((x) => x.trim()).includes(inside) ? {} : null),
 });
 
-async function handler() {
+async function handler(file: unknown = null) {
   const { useWindowKeys } = await import("./useWindowKeys");
   const pane = { key: "p1", kind: "terminal", cwd: "C:/w/app" };
   const bag = {
-    keymap: resolve(null, "win32"), screen: "terminals", panes: [pane], focused: "p1", activeDir: "C:/w/app", settings: {}, switcherRef: { current: false },
+    keymap: resolve(file, "win32"), screen: "terminals", panes: [pane], focused: "p1", activeDir: "C:/w/app", settings: {}, switcherRef: { current: false },
     closePane: (k: unknown) => void closed.push(k), newTab: () => void newTabs++, setToast: () => {},
   };
   const Host = () => (useWindowKeys(bag as never), null);
@@ -133,4 +133,29 @@ test("R54-04: Ctrl+Shift+Backspace held by a text box stays the field's own key 
   Object.assign(doc, { activeElement: el("input", "text") });
   const e = press("Backspace", { ctrlKey: true, shiftKey: true });
   expect(e.defaultPrevented).toBe(false);
+});
+
+// R74-03: while a text field holds a closing command, Kolux keeps the key from the webview only when the key can carry a
+// webview action of its own (a letter other than A, C, V, X, Y, Z, a digit, F1 to F24). A text-moving key stays the field's.
+test.each([
+  ["ArrowLeft", "Mod+ArrowLeft", { ctrlKey: true }],
+  ["Home", "Mod+Home", { ctrlKey: true }],
+  ["ArrowRight", "Mod+Shift+ArrowRight", { ctrlKey: true, shiftKey: true }],
+])("R74-03: Close pane bound to a text-moving key (%s) leaves that key to the text box", async (key, chord, mods) => {
+  await handler({ keybindings: { "terminal.closePane": chord } });
+  Object.assign(doc, { activeElement: el("input", "text") });
+  const e = press(key, mods);
+  expect(closed, "the command does not run").toEqual([]);
+  expect(e.defaultPrevented, "the field keeps the key").toBe(false);
+  Object.assign(doc, { activeElement: el("button") });
+  press(key, mods);
+  expect(closed, "the binding is live outside a text box").toEqual(["p1"]);
+});
+
+test("R74-03: Ctrl+W and Ctrl+F4 held by a text box are still kept from the webview", async () => {
+  await handler({ keybindings: { "terminal.closePane": "Mod+F4" } });
+  Object.assign(doc, { activeElement: el("input", "text") });
+  expect(press("w", { ctrlKey: true }).defaultPrevented).toBe(true);
+  expect(press("F4", { ctrlKey: true }).defaultPrevented).toBe(true);
+  expect(closed).toEqual([]);
 });
