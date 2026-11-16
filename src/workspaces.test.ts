@@ -1,7 +1,7 @@
 // PROJ-066: each workspace keeps its own panes; switching shows one set and hides the rest;
 // removing a workspace drops every pane inside it.
 import { expect, test } from "vitest";
-import { activeAfterRemove, focusIn, nameOf, panesIn, sameDir, underDir, viewOf, withoutDir } from "./workspaces";
+import { activeAfterRemove, focusIn, goesWith, nameOf, panesIn, sameDir, underDir, viewOf, withoutDir } from "./workspaces";
 
 const panes = [
   { key: 1, cwd: null },
@@ -101,4 +101,37 @@ test("DT-C274: removing a folder closes the panes running in it and the panes sh
   ];
   expect(withoutDir(team, "C:/r/wts/one").map((p) => p.key)).toEqual([1, 3]); // its worktree removed
   expect(withoutDir(team, "C:/r").map((p) => p.key)).toEqual([3]); // the folder its grid is in removed
+});
+
+// PROJ 008 / F21 (job 65): a folder belongs to the deepest removed or staying folder that holds it; it goes only with a removed owner.
+test("goesWith: the deepest listed folder owns a folder; a nested project that stays keeps its own", () => {
+  const A = "C:/x/a"; // the project being removed
+  const B = "C:/x/a/inner"; // a project inside it that stays
+  // a. a folder in A goes, a folder in B stays
+  expect(goesWith("C:/x/a/src", [A], [B])).toBe(true);
+  expect(goesWith("C:/x/a/inner/src", [A], [B])).toBe(false);
+  expect(goesWith(B, [A], [B])).toBe(false);
+  // b. a worktree of staying B that lies inside A stays
+  expect(goesWith("C:/x/a/wts/b-one/src", [A], [B, "C:/x/a/wts/b-one"])).toBe(false);
+  // c. a worktree of removed A that lies inside staying B's folder goes
+  expect(goesWith("C:/x/b/wts/a-one", [A, "C:/x/b/wts/a-one"], ["C:/x/b"])).toBe(true);
+  expect(goesWith("C:/x/b/src", [A, "C:/x/b/wts/a-one"], ["C:/x/b"])).toBe(false);
+  // d. a tie: the same folder removed and staying goes
+  expect(goesWith("C:/x/a/src", [A], [A])).toBe(true);
+  // a staying folder above the removed one spares nothing inside it
+  expect(goesWith("C:/x/a/src", [A], ["C:/x"])).toBe(true);
+  expect(goesWith("C:/x/other", [A], ["C:/x"])).toBe(false);
+  // f. letter case and slash style do not matter, and C:\x\ab is not inside C:\x\a
+  expect(goesWith("c:\\X\\A\\Inner\\src\\", ["C:/x/a/"], ["c:\\x\\A\\INNER"])).toBe(false);
+  expect(goesWith("C:\\X\\A\\SRC", ["c:/x/a"], ["C:/X/A/INNER"])).toBe(true);
+  expect(goesWith("C:/x/ab", [A], [])).toBe(false);
+  expect(goesWith(null, [A], [B])).toBe(false);
+});
+
+test("goesWith: with no staying folders it is underDir against the removed folders", () => {
+  const removed = ["C:/x/a", "D:\\q"];
+  for (const d of ["C:/x/a", "c:\\x\\a\\inner","C:/x/ab", "D:/q/z", "D:/", "E:/x/a", "C:/x/a/../b", "C:/x/a/./c"]) {
+    expect(goesWith(d, removed)).toBe(removed.some((r) => underDir(d, r)));
+    expect(goesWith(d, removed, [])).toBe(removed.some((r) => underDir(d, r)));
+  }
 });

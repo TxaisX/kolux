@@ -79,6 +79,15 @@ export function underDir(path: string | null, root: string): boolean {
   return p === r || p.startsWith(r + "\\");
 }
 
+/** PROJ 008 / F21: does `dir` go when the `removed` folders leave Kolux and the `staying` ones (the folders and worktrees of
+ *  the projects that remain) do not? The deepest listed folder that holds `dir` owns it; a tie goes to the removed one, as the
+ *  back end's does. With no staying folders this is `underDir` against the removed ones. */
+export function goesWith(dir: string | null, removed: string[], staying: string[] = []): boolean {
+  const depth = (list: string[]) => list.reduce((n, r) => (underDir(dir, r) ? Math.max(n, dirKey(r).length) : n), -1);
+  const gone = depth(removed);
+  return gone >= 0 && gone >= depth(staying);
+}
+
 /** The panes shown for a workspace (DT-C274: by the grid they are shown in, `viewOf`). */
 export function panesIn<P extends PaneLike>(panes: P[], dir: string | null): P[] {
   const at = gridOf(dir);
