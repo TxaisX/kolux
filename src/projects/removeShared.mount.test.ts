@@ -4,9 +4,9 @@
 // DOM, backend mocked as in removeNested.mount.test.ts.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][] }));
+const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][], extra: {} as Record<string, unknown> }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     if (cmd === "get_settings") return Promise.resolve({});
@@ -23,7 +23,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "setup_suggestion") return Promise.resolve({ kind: "none" });
     if (cmd === "groups_get") return Promise.resolve({ groups: [{ id: "g1", name: "Clients", parent: null }], members: { p1: "g1", p2: "g1" }, rev: 1 });
     if (cmd === "group_delete") return Promise.resolve({ groups: [], members: {}, rev: 2 });
-    if (cmd === "project_remove") return Promise.resolve(args.projectId === "p1" ? { name: "app", path: "C:/w/app", ended: 1 } : { name: "app-b", path: "C:/w/app-b", ended: 1 });
+    if (cmd === "project_remove") return Promise.resolve({ ...(args.projectId === "p1" ? { name: "app", path: "C:/w/app", ended: 1 } : { name: "app-b", path: "C:/w/app-b", ended: 1 }), ...h.extra });
     if (cmd === "activity_get" || cmd === "project_icons_list") return Promise.resolve({});
     if (cmd === "skills_scan") return Promise.resolve({ skills: [] });
     return Promise.resolve(null);
@@ -48,6 +48,7 @@ beforeEach(() => {
   Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
   h.unsaved = [];
   h.closed = [];
+  h.extra = {};
 });
 afterEach(async () => {
   await unmount();
@@ -131,4 +132,25 @@ test("R74-02: the shared worktree shown in the removed project's grid is counted
   } finally {
     setGridRoots({});
   }
+});
+
+// The engine answers `unchecked: true` when Git could not list a project's worktrees, and then leaves those terminals alone.
+test.each([
+  ["unchecked: true", { unchecked: true }, "warn", true],
+  ["unchecked: false", { unchecked: false }, "ok", false],
+  ["no unchecked field (the engine as it is today)", {}, "ok", false],
+])("the line after Remove, %s", async (_name, extra, kind, warns) => {
+  h.extra = extra;
+  const c = await panel();
+  await click(c, byLabel(c, "button", "Remove app")[0]);
+  await settle(20);
+  await click(c, byText(c, "button", "Remove app")[0]);
+  await settle(40);
+  const note = find(c, (n) => n.attrs["data-message-note"] !== undefined)[0];
+  const text = note.textContent;
+  expect(text).toContain("Removed app from Kolux; 1 terminal closed. Its folder stays on disk");
+  expect(String(note.attrs.class ?? note.attrs.className)).toBe(`note ${kind}`);
+  const line = "Git did not list its worktrees, so a terminal in one of them may still be running. To end it, click the memory number in the bottom bar";
+  if (warns) expect(text).toContain(`Its folder stays on disk. ${line}`);
+  else expect(text).not.toContain("Git did not list");
 });

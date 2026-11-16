@@ -757,11 +757,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const closed = askedOf(foldersOf(p), folders, staying);
     if (!(await onAskUnsaved(closed))) return;
     try {
-      const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });
+      // `unchecked`: Git could not list a project's worktrees, so the engine left their terminals running (missing = false).
+      const gone = await invoke<{ name: string; path: string; ended: number; unchecked?: boolean }>("project_remove", { projectId: p.id });
       onRemovedAll([gone.path], staying);
       setDropProject(null);
       setSettingsFor(null);
-      say("ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk`);
+      const unchecked = gone.unchecked ? ". Git did not list its worktrees, so a terminal in one of them may still be running. To end it, click the memory number in the bottom bar" : "";
+      say(gone.unchecked ? "warn" : "ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk${unchecked}`);
       await reload();
     } catch (err) {
       fail(err);
