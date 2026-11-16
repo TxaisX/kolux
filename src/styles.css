@@ -343,21 +343,10 @@ input { font: inherit; }
 .scm-head .count { margin-left: 8px; font-size: 11px; color: var(--fg); }
 .scm-commit { display: flex; flex-direction: column; gap: 6px; margin: 8px 8px 0; }
 .scm-commit .field.multi { min-height: 56px; }
-.scm-msg { position: relative; display: flex; flex-direction: column; }
-.scm-msg .field.multi { padding-right: 28px; }
-.scm-gen { position: absolute; right: 4px; top: 4px; }
-.scm-main { display: flex; gap: 6px; }
-.scm-main .btn.primary { flex: 1; min-width: 0; }
-.scm-main .btn.primary span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-item .reason { margin-left: auto; font-size: 11px; color: var(--fg-faint); }
-.scm-sec { display: flex; align-items: center; height: 28px; padding: 0 4px 0 12px; font-size: 12px; font-weight: 500; color: var(--fg-label); }
-.scm-sec .count { margin: 0 auto 0 6px; color: var(--fg-muted); }
 .scm-row { display: flex; align-items: center; height: 28px; padding: 0 4px 0 12px; gap: 8px; border-radius: 6px; font-size: 12.5px; color: var(--fg-row); white-space: nowrap; }
 .scm-row:hover { background: #1f1f1f; }
 .scm-row[aria-selected="true"] { background: var(--row-selected); color: var(--fg); }
-.scm-bulk { display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; font-size: 12px; color: var(--fg-label); border-top: 1px solid var(--chip-bg); }
-.scm-bulk .count { flex: 1; }
-.scm-bulk .btn { padding: 2px 8px; font-size: 12px; }
 .scm-row .letter { width: 14px; text-align: center; font: 11px var(--mono-font); color: var(--fg-muted); flex: none; }
 .scm-row .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .scm-row .ib { opacity: 0; width: 22px; height: 22px; }
@@ -397,31 +386,6 @@ input { font: inherit; }
 .scm-history { margin: 6px 8px 0; font-size: 12px; }
 .scm-history > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--fg-label); padding: 2px 0; }
 .scm-history > summary span { flex: 1; }
-.scm-hist-list { max-height: 260px; min-height: 60px; overflow: auto; resize: vertical; }
-.scm-commit-row { display: flex; align-items: center; gap: 6px; height: 22px; padding-right: 4px; border-radius: 4px; cursor: default; white-space: nowrap; }
-.scm-commit-row:hover, .scm-commit-row.sel { background: var(--row-selected); }
-.scm-commit-row:focus-visible { outline: 1px solid var(--focus-ring); }
-.scm-commit-row .subj { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg-row); }
-.scm-graph { flex: none; }
-.scm-graph line { stroke-width: 2; }
-.scm-graph .c0 { stroke: #4f8fe8; fill: #4f8fe8; }
-.scm-graph .c1 { stroke: #b07ae8; fill: #b07ae8; }
-.scm-graph .c2 { stroke: #3fb6b2; fill: #3fb6b2; }
-.scm-graph .c3 { stroke: #d9a43c; fill: #d9a43c; }
-.scm-graph .c4 { stroke: #e2737a; fill: #e2737a; }
-.scm-graph .c5 { stroke: #6fb35a; fill: #6fb35a; }
-.scm-io { flex: none; font-weight: 600; }
-.scm-io.out { color: #b07ae8; }
-.scm-io.in { color: #3fb6b2; }
-.scm-ref { flex: none; padding: 0 5px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg-muted); font-size: 11px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
-.scm-ref.k-current { color: #4f8fe8; border-color: #4f8fe8; }
-.scm-ref.k-upstream { color: #b07ae8; border-color: #b07ae8; }
-.scm-ref.k-base { color: #3fb6b2; border-color: #3fb6b2; }
-.scm-ref.k-tag { color: #d9a43c; border-color: #d9a43c; }
-.scm-commit-files { padding: 2px 0 4px 18px; }
-.scm-commit-files .scm-file { display: flex; gap: 6px; min-width: 0; }
-.scm-commit-files .st { flex: none; width: 12px; color: var(--fg-muted); }
-.scm-commit-files .path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scm-ask-title { font-weight: 600; }
 .menu-title.hash { text-transform: none; font-family: ui-monospace, Consolas, monospace; }
 .scm-prrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 8px 0; font-size: 12px; min-width: 0; }
@@ -998,17 +962,6 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .composer-advanced { display: flex; flex-direction: column; gap: 6px; }
 .field.multi.grow { field-sizing: content; max-height: 160px; resize: none; }
 .composer .btn-row { flex-wrap: wrap; align-items: center; }
-/* VIEW-068: the branch summary at the top of Source Control. */
-.scm-summary { margin: 8px 8px 0; padding: 6px 8px; border: 1px solid var(--line-subtle); border-radius: 8px; font-size: 12px; color: var(--fg-muted); }
-.scm-summary summary { display: flex; align-items: center; gap: 8px; cursor: pointer; min-width: 0; }
-.scm-summary .branch { color: var(--fg); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.scm-summary .ab { white-space: nowrap; }
-.scm-summary .lines { margin-left: auto; white-space: nowrap; font: 11.5px var(--mono-font); }
-.scm-summary .add { color: #73c991; }
-.scm-summary .del { color: #f0a07a; }
-.scm-sum-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; padding: 3px 0 0 16px; font: 11.5px var(--mono-font); }
-.scm-sum-row span:first-child { font-family: var(--ui-font); }
-.scm-summary .check { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
 /* EDIT-040: the Handoff note at the foot of the right sidebar. */
 .scm-handoff { margin: 0 8px 8px; padding: 6px 8px; border: 1px solid var(--line-subtle); border-radius: 8px; font-size: 12px; color: var(--fg-muted); display: flex; flex-direction: column; gap: 6px; }
 .scm-handoff summary { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--fg-label); font-weight: 500; }
@@ -1552,13 +1505,6 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .plan-sheet-foot { padding: 10px 14px; border-top: 1px solid var(--line); }
 .plan-sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .plan-review-btn { height: 20px; padding: 0 8px; font-size: 11.5px; }
-/* GIT-001: each file's lines added and removed, and the tree view's folder rows. */
-.scm-lines { display: flex; gap: 4px; flex: none; font: 11px var(--mono-font); }
-.scm-lines .add { color: #73c991; }
-.scm-lines .del { color: #f14c4c; }
-.scm-dir .chev { display: inline-flex; flex: none; width: 10px; color: var(--fg-muted); }
-.scm-dir .chev.shut { transform: rotate(-90deg); }
-.scm-dir .count { flex: none; font-size: 11px; color: var(--fg-muted); }
 
 /* GIT-040 / GIT-041: review notes on diff lines and their Source Control section. */
 .cm-note-gutter .cm-gutterElement { width: 14px; text-align: center; cursor: pointer; }
