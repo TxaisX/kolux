@@ -57,7 +57,7 @@ Inside All Changes:
 | Compare | **Working tree** (what you have not committed yet) or **Branch vs** its base |
 | Inline / Side by side | How each diff is drawn. Wrap long lines and Show whitespace changes sit beside them |
 | File tree | Shows or hides the list of files beside the diffs |
-| Each file | A Viewed checkbox, Stage or Unstage and Discard (in the Working tree view), and a button that opens the file as a diff tab. Discard asks first and says exactly what will be lost; an untracked file is deleted from disk. A staged delete reads "Deleted, staged" and a staged rename "Renamed, staged" |
+| Each file | A Viewed checkbox, Stage or Unstage and Discard (in the Working tree view), and a button that opens the file as a diff tab. Discard asks first and says exactly what will be lost; an untracked file is deleted from disk. A staged delete reads "Deleted, staged" and a staged rename "Renamed, staged"; a copied file shows as a new staged file. When Discard leaves a row as it is (a link, a folder standing where a file was, a file standing where a deleted one would come back), a yellow line under "Kolux left this as it is:" says why and what to do next; a real failure is red under "Could not discard" |
 | Stage all, Unstage all | Move every changed file in or out of the next commit |
 | Push, Pull, Sync | Offered when Git allows them; each says why when it is greyed out |
 | Commit box | Type a message and press Ctrl+Enter, or press **Commit**. It commits only what is staged |
