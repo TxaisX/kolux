@@ -128,6 +128,11 @@ export const sidesCall = (base: Base | null, root: string, e: Entry): [CommandNa
 
 type Props = { id: number; root: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onOpenDiff?: (path: string, staged: boolean) => void; pinnedBase?: string | null };
 
+/** A Discard error. The engine keeps some rows on purpose (a file that is now a folder, a nested Git repository) and
+ *  still discards the others, one line per row it kept or could not remove, so this is no "failed". The result line
+ *  draws each line on its own. */
+export const discardSay = (err: unknown): Say => ({ text: `Not everything was discarded:\n${String(err)}`, bad: true });
+
 export default function AllChangesPane({ id, root, hidden = false, focused = false, onFocus, onClose, onOpenDiff, pinnedBase = null }: Props) {
   const keymap = useKeymap();
   const [raw, setEntries] = useState<Entry[] | null>(null);
@@ -322,7 +327,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     act("Discarding", () =>
       invoke("scm_discard", { worktree: root, section: d.section, paths: d.paths }).then(
         () => null,
-        (err): Say => ({ text: `Discard failed: ${String(err)}`, bad: true }),
+        discardSay,
       ),
     );
   };
