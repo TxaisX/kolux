@@ -109,3 +109,26 @@ test("R71-02: the owner map the sidebar hands to the window maps each project's 
   expect(roots["C:/w/app-b"]).toBeUndefined();
   expect(["C:/w/app", "C:/w/app-b"]).toContain(roots["C:/w/wt3"]);
 });
+
+// R74-02 / R74-07: with the REAL grid map, the shared "wt3" shows in app's grid. Its session (no view) closes with app, so
+// app's Remove question counts it and asks about it; app-b's does not.
+test("R74-02: the shared worktree shown in the removed project's grid is counted and asked about", async () => {
+  const { setGridRoots } = await import("../workspaces");
+  setGridRoots({ "C:/w/wt3": "C:/w/app" }, ["C:/w/app", "C:/w/app-b"]);
+  try {
+    const c = await panel({ sessions: [running(3, "C:/w/wt3")] });
+    await click(c, byLabel(c, "button", "Remove app-b")[0]);
+    await settle(20);
+    expect(ask(c).textContent).not.toContain("still running");
+    await click(c, byText(c, "button", "Cancel")[0]);
+    await settle(20);
+    await click(c, byLabel(c, "button", "Remove app")[0]);
+    await settle(20);
+    expect(ask(c).textContent).toContain("1 terminal is still running and will be closed.");
+    await click(c, byText(c, "button", "Remove app")[0]);
+    await settle(40);
+    expect(h.unsaved).toEqual([["C:/w/app", "C:/w/wt3"]]);
+  } finally {
+    setGridRoots({});
+  }
+});

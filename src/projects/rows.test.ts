@@ -1,4 +1,5 @@
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
+import { setGridRoots } from "../workspaces";
 import { addTeamFolders, groupRows, hiddenTeamFolders, jumpUnhides, mergedTeamFolders, movedTeamFolders, paneState, prunedTeamFolders, sessionsUnder, smartOrder, sortFromSetting, strongest, TEAM_WORKTREES_SETTING, teamFoldersOf, teamViewOf, withoutAutomationMade, withoutTeamMade, type RowInfo } from "./rows";
 
 const at = (state: RowInfo["state"], changed: number, pr: RowInfo["pr"] = null): RowInfo => ({ state, changed, pr });
@@ -164,6 +165,19 @@ test("PROJ 008 / F21: a session of a nested project that stays is not counted; w
   expect(sessionsUnder(["C:/r", "D:/q/wts/r-two"], sessions, [])).toBe(5);
   expect(sessionsUnder(["C:/r", "D:/q/wts/r-two"], sessions, staying)).toBe(3);
   expect(sessionsUnder(["C:/r"], sessions, ["C:/r"]), "a tie counts").toBe(4);
+});
+
+// R74-02: two projects on one repository (A main checkout, B a linked worktree of it); the shared worktree W shows in
+// one project's grid. A session in W with no view closes with the project whose grid shows it, so that removal counts it.
+afterEach(() => setGridRoots({}));
+test.each([
+  ["W shows in A's grid", "C:/w/app", 1],
+  ["W shows in B's grid", "C:/w/app-b", 0],
+])("R74-02 %s: removing A counts a session in W only when A's grid shows it", (_name, grid, count) => {
+  const [A, B, W] = ["C:/w/app", "C:/w/app-b", "C:/w/wt3"];
+  setGridRoots({ [W]: grid }, [A, B]);
+  expect(sessionsUnder([A], [{ cwd: W }], [B, A, W])).toBe(count);
+  expect(sessionsUnder([A], [{ cwd: A }, { cwd: B }], [B, A, W]), "the projects' own sessions as before").toBe(1);
 });
 
 // DT-C274: a command-line file of a team worktree opens once its team's grid is shown (select() shows that grid).
