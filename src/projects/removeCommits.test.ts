@@ -62,7 +62,7 @@ async function panel(settings: Record<string, unknown> = {}) {
   const { act } = await import("react");
   const props = {
     openDirs: ["C:/w/app"], sessions: [], states: {}, unread: new Set<string>(), onUnread: () => {}, settings, onSetting: () => {},
-    activeDir: "C:/w/app", onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
+    activeDir: "C:/w/app", onSelect: () => {}, onRemoved: () => {}, onRemovedAll: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
   };
