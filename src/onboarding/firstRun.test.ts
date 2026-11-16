@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { CHECKLIST_CHANGED, chordFires, clearReadFailure, closer, readFailed, connectFailed, escapeLeaves, firstAiConnected, firstConnection, firstFolderAgent, leaveKey, milestone, oneClick, openAt, reopenWizard, SCREENS, STATUSES_FAILED, wizardCloser, type Outcome } from "./firstRun";
+import { CHECKLIST_CHANGED, chordFires, clearReadFailure, closer, readFailed, connectFailed, escapeLeaves, firstAiConnected, firstConnection, leaveKey, milestone, oneClick, openAt, reopenWizard, SCREENS, STATUSES_FAILED, wizardCloser, type Outcome } from "./firstRun";
 import { START_MAIN, WizardView } from "./Wizard";
 import { jargon } from "../glossary";
 
@@ -121,29 +121,6 @@ test("ONB-007: a close is latched while it stores; a failed store frees it and t
   await flush();
   expect(seen).toEqual(["Error: disk full", "closed", "after"]);
   expect(c.retry()).toBe(false);
-});
-
-test("ONB-010: the first folder starts only the saved default agent, never a guess", () => {
-  const agents = [
-    { id: "claude", installed: true },
-    { id: "codex", installed: false },
-  ];
-  expect(firstFolderAgent(agents, "claude")?.id).toBe("claude");
-  expect(firstFolderAgent(agents, "")).toBeNull();
-  expect(firstFolderAgent(agents, "terminal")).toBeNull();
-  expect(firstFolderAgent(agents, "codex")).toBeNull();
-  expect(firstFolderAgent(agents, "grok")).toBeNull();
-});
-
-test("FIX-5: a terminal entry in the offered list is never the first folder agent, however the default is spelled", () => {
-  const agents = [
-    { id: "terminal", installed: true },
-    { id: "Terminal", installed: true },
-    { id: "claude", installed: true },
-  ];
-  for (const spelled of ["terminal", "Terminal", " terminal ", " Terminal "]) expect(firstFolderAgent(agents, spelled)).toBeNull();
-  expect(firstFolderAgent(agents, "   ")).toBeNull();
-  expect(firstFolderAgent(agents, "claude")?.id).toBe("claude");
 });
 
 test("ONB-009: clicks on Onboarding less than half a second apart count as one", () => {

@@ -1,5 +1,5 @@
 // T-809 (P4a-11, P4a-12): the Agents rail says where the plain shells are, an ended pane reads "Ended" not
-// "Starting…", and the New session picker starts on the default agent with the installed ones above the rest.
+// "Starting…", and the Start agents picker starts on the default agent with the installed ones above the rest.
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { expect, test } from "vitest";

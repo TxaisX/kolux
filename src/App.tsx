@@ -58,6 +58,7 @@ import { useWorkspaceActions } from "./projects/useWorkspaces";
 import { useWizard } from "./onboarding/useWizard";
 import { hooksOn } from "./onboarding/hooksOn";
 import { startWatch } from "./launch/startWatch";
+import { handOver } from "./shell/useStartAsk";
 import { hearStates, setHooksOn } from "./chat/send";
 
 export type ShellTarget = { dir: string | null; branch: string | null };
@@ -126,7 +127,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const openFiles = useRef(openPreview);
   openFiles.current = openPreview;
   useEffect(() => {
-    const drain = () => void invoke<string[]>("open_files_take").then((fs) => fs.forEach((f) => openFiles.current(f))).catch(() => undefined);
+    const drain = () => void invoke<string[]>("open_files_take").then((fs) => fs.forEach((f) => (handOver(f), openFiles.current(f)))).catch(() => undefined); // job 47 F1: not the user acting
     const off = listen("open-files", drain);
     drain();
     return () => void off.then((f) => f()).catch(() => undefined);

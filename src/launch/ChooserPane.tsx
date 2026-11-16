@@ -101,10 +101,13 @@ function AgentButtons({ rows, pick, label, "data-testid": testid, onChoose, onOt
         <VendorMark agent="shell" size={28} />
         <span className="agent-btn-name">Terminal</span>
       </button>
-      <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={onOther}>
-        {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
-        <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
-      </button>
+      {/* job 47: while the search runs there are no rows, so only Terminal is offered */}
+      {rows.length > 0 && (
+        <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={onOther}>
+          {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
+          <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -184,7 +187,7 @@ type Props = {
   /** SESS-018: set on the New look: the chooser is the full-page New session sheet for this project. */
   sheet?: { project: string; path: string } | null;
   /** Start form C: the known project folders (most recent first), the ticked ones, each grid's cells in use, and Add folder. */
-  folders?: { rows: FolderRow[]; ticked: string[]; used: Record<string, number>; onTick: (ids: string[]) => void; onAdd: () => void } | null;
+  folders?: { rows: FolderRow[]; ticked: string[]; used: Record<string, number>; onTick: (ids: string[]) => void; onAdd: () => void; usual?: string[] } | null;
   /** Start form D: the close button's words when the form was asked at app open ("Keep what was open"). */
   keepLabel?: string;
 };
@@ -233,9 +236,18 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     if (start) onSeats(start);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detecting]);
+  // Job 47: a form opened before the folder list came (the wait at open ran out) ticks the usual folders once it lands.
+  const noRows = useRef(folders?.rows.length === 0);
+  useEffect(() => {
+    if (!folders || !noRows.current || folders.rows.length === 0) return;
+    noRows.current = false;
+    if (folders.ticked.length === 0 && folders.usual?.length) folders.onTick(folders.usual);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folders?.rows.length]);
   // A program with no model list has nothing to pick: its seat uses the program's own default.
   const pickAgent = (i: number, id: string) => {
     setShown(({ [i]: _gone, ...rest }) => rest);
+    forget(id);
     // T-571: the default model and effort start the seat (else the agent's saved pick, Row 389); the person can still change both.
     setSeat(i, seatStart(id, seatDefault_));
   };
@@ -253,12 +265,19 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   // Job 22 item 3: when the list lands while this form is open, a model it lacks is dropped in the parent's seats too.
   const seatsNow = useRef({ seats, onSeats });
   seatsNow.current = { seats, onSeats };
+  // Job 50 A5: each (AI, model) pair the live list dropped, once, so the form can say why a seat lost its model.
+  const [gone, setGone] = useState<{ agent: string; model: string }[]>([]);
+  // Job 57 F4: picking an AI is a fresh pick, so its old pairs are forgotten (else the line comes back for a model it never had).
+  const forget = (id: string) => setGone((g) => (g.some((x) => x.agent === id) ? g.filter((x) => x.agent !== id) : g));
   useEffect(() => {
     let on = true;
     const recheck = () => {
       const { seats: now, onSeats: put } = seatsNow.current;
       const kept = now.map(knownModel);
-      if (on && kept.some((s, i) => s !== now[i])) put(kept);
+      if (!on || !kept.some((s, i) => s !== now[i])) return;
+      const lost = now.flatMap((s, i) => (s.agent !== null && s.model !== null && kept[i].model === null ? [{ agent: s.agent, model: s.model }] : []));
+      setGone((g) => lost.reduce((acc, p) => (acc.some((x) => x.agent === p.agent && x.model === p.model) ? acc : [...acc, p]), g));
+      put(kept);
     };
     for (const a of agents) if (a.installed && LISTED.includes(a.id)) void liveModels(a.id).then((n) => n && (setLive((v) => v + 1), recheck()));
     return () => void (on = false);
@@ -272,6 +291,8 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const anyReady = seats.some(seatReady);
   // SESS-022: a line per provider near its limit, above Start; it never disables Start.
   const warnings = launchWarnings(seats.map((s) => s.agent), useLaunchUsage());
+  // Job 50 A5: a dropped model's line stays while a seat of that AI still has no model.
+  const goneLines = gone.filter((g) => seats.some((s) => s.agent === g.agent && s.model === null)).map((g) => `${nameOf(g.agent)} no longer offers ${g.model}. Pick another.`);
   const [naming, setNaming] = useState<string | null>(null); // the Save as team name field, open when set
   const [menu, setMenu] = useState<{ i: number; name: string } | null>(null); // a saved shape's rename/delete menu
   const [undo, setUndo] = useState<{ team: SavedShape; index: number } | null>(null); // the team just deleted, and where it sat
@@ -395,6 +416,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     const a = rows.find((x) => x.id === id);
     if (id === TERMINAL || a?.installed) {
       setShown({});
+      forget(id);
       return onSeats(pickForAll(seats, id, seatDefault_));
     }
     setShown(Object.fromEntries(seats.map((_, k) => [k, id])));
@@ -430,7 +452,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               {sheet.path}
             </span>
           </div>
-          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close Start">
+          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close the Start form">
             <Close size={12} />
           </button>
         </header>
@@ -455,6 +477,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         ) : pass && !pass.done ? (
           <p className="caption">Looking for agents…</p>
         ) : null}
+        {!pass?.error && pass?.slow && <p className="caption warn">The search took longer than 10 seconds. This is the last list Kolux found.</p>}
         {folders && (
           <div className="count-row" role="group" aria-label="Folders">
             <span className="label">Folders</span>
@@ -523,7 +546,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
           {one === "mixed" && <span className="caption">Mixed</span>}
           {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
           {none && noneNote}
-          {!detecting && <AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" data-testid="all-agents" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
+          {<AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" data-testid="all-agents" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
           {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length > 0 && (
             <div className="choices" role="radiogroup" aria-label="Which model for all of them">
               <span className="label">{one.model === null ? "Pick a model" : "Model"}</span>
@@ -685,7 +708,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               <div className="choices agent-pick">
                 {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
                 {none && noneNote}
-                {!detecting && <AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} data-testid={`seat-${i + 1}-agents`} onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
+                {<AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} data-testid={`seat-${i + 1}-agents`} onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
                 {installBits(shownPick(seats, shown, i), i)}
               </div>
               {seat.agent !== null && seat.agent !== TERMINAL && modelsFor(seat.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
@@ -760,7 +783,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             {plan.problem}
           </div>
         )}
-        {warnings.map((w) => (
+        {[...goneLines, ...warnings].map((w) => (
           <div key={w} className="note warn" role="status">
             {w}
           </div>

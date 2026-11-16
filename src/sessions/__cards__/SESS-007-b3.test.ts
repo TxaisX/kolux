@@ -27,6 +27,6 @@ test("SESS-007 b3: a chooser beside another pane has the Close this chooser butt
 
 test("SESS-007 b3: the Start form keeps its close button even with no other pane", () => {
   const html = render(1, { project: "demo", path: "C:\demo" });
-  expect(html).toContain("Close Start");
+  expect(html).toContain("Close the Start form");
   expect(chooserClosable(1, true)).toBe(true);
 });

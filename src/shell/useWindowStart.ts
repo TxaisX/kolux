@@ -12,9 +12,15 @@ import { onlyWindowState } from "../settings/settingsSync";
 import { sharedRead } from "../settings/sharedRead";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+
+/** Job 68: how long a search for agents may take before the window says so. The error is shown inside
+ *  "Kolux could not look for agents (…)", so it is a lower-case part of that sentence. */
+export const AGENT_SEARCH_LIMIT_MS = 10_000;
+export const AGENT_SEARCH_SLOW = "the search took longer than 10 seconds";
 
 export function useWindowStart({ agentPass, installedIds, setAgentPass, setAgents, setInfo, setPanes, setSettings, setSettingsRead, setShells }: Pick<WindowState, "agentPass" | "installedIds" | "setAgentPass" | "setAgents" | "setInfo" | "setPanes" | "setSettings" | "setSettingsRead" | "setShells">) {
+  const seq = useRef(0); // job 78 R73-2: which search is the newest, so an older one's timer does not end it
   useEffect(() => {
     invoke<AppInfo>("app_info").then(setInfo).catch(() => setInfo(null));
     refreshAgents();
@@ -50,7 +56,11 @@ export function useWindowStart({ agentPass, installedIds, setAgentPass, setAgent
   // launching until a search succeeds; nothing counts as missing before the first one is done.
   function refreshAgents() {
     setAgentPass((p) => ({ ...p, looking: true }));
-    invoke<AgentInfo[]>("agent_list").then(
+    const n = ++seq.current;
+    // Job 68: a search that never answers ends after AGENT_SEARCH_LIMIT_MS; an answer after that still lands.
+    // Job 78 R73-3: after a good search, a slow one only says so; Start keeps working with the last list found.
+    const slow = setTimeout(() => seq.current === n && setAgentPass((p) => (!p.looking ? p : p.done ? { ...p, looking: false, slow: true } : { ...p, looking: false, error: AGENT_SEARCH_SLOW })), AGENT_SEARCH_LIMIT_MS);
+    invoke<AgentInfo[]>("agent_list").finally(() => clearTimeout(slow)).then(
       (list) => {
         setAgents(list);
         setAgentPass({ looking: false, done: true, error: null });

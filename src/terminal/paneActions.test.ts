@@ -215,3 +215,43 @@ test("splitting a tab out of a grid not in front stacks that grid, not the one i
   a.splitTab(6, "down");
   expect(stacked).toEqual({ "C:\front": false, "C:\other": true });
 });
+
+// Job 68 item 8 (job 63, replaces startLabels.test.ts): the palette's Quick actions Start row, run for real. The New
+// look names it Start agents and opens the Start form; the Classic look names it New session and adds a chooser pane.
+test("job 68: the palette Start row says Start agents on the New look and opens the Start form, adding no pane", async () => {
+  const { resolve } = await import("../keys/keymap");
+  const setPanes = vi.fn();
+  const setSheet = vi.fn();
+  const s = {
+    panes: [], activeDir: "C:\w", keymap: resolve(null, "win32"), accountSwitcher: { groups: [] }, installedIds: [], screen: "terminals", classic: false,
+    projects: [], settings: {}, agents: [], titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setPage: vi.fn(), setScreen: vi.fn(), setToast: vi.fn(),
+    setFocused: vi.fn(), setPanes, setSheet, nextKey: { current: 9 },
+  } as unknown as WindowState;
+  const la = { lineupsOf: () => ({}), projectFor: () => null, inGitFor: () => false, launch: vi.fn(), pretrust: vi.fn() };
+  const rows = paneActions(s, {} as never, la as never, { projectOf: () => null } as unknown as WindowLate).paletteItems();
+  const row = rows.find((r) => r.section === "Quick actions" && (r.label === "Start agents" || r.label === "New session"));
+  expect(row?.label).toBe("Start agents");
+  row!.run();
+  expect(setSheet).toHaveBeenCalledTimes(1);
+  expect(setPanes).not.toHaveBeenCalled();
+});
+
+test("job 68: the palette Start row says New session on the Classic look and adds one chooser pane, opening no form", async () => {
+  const { resolve } = await import("../keys/keymap");
+  const setPanes = vi.fn();
+  const setSheet = vi.fn();
+  const s = {
+    panes: [], activeDir: "C:\w", keymap: resolve(null, "win32"), accountSwitcher: { groups: [] }, installedIds: [], screen: "terminals", classic: true,
+    projects: [], settings: {}, agents: [], titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setPage: vi.fn(), setScreen: vi.fn(), setToast: vi.fn(),
+    setFocused: vi.fn(), setPanes, setSheet, nextKey: { current: 9 },
+  } as unknown as WindowState;
+  const rows = paneActions(s, {} as never, {} as never, {} as WindowLate).paletteItems();
+  const row = rows.find((r) => r.section === "Quick actions" && (r.label === "Start agents" || r.label === "New session"));
+  expect(row?.label).toBe("New session");
+  row!.run();
+  expect(setSheet).not.toHaveBeenCalled();
+  expect(setPanes).toHaveBeenCalledTimes(1);
+  const added = (setPanes.mock.calls[0][0] as (ps: unknown[]) => { seats?: unknown[] }[])([]);
+  expect(added).toHaveLength(1);
+  expect(added[0].seats).toHaveLength(1);
+});

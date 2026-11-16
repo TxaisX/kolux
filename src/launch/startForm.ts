@@ -89,19 +89,23 @@ export function startSummary(perFolder: number, folderNames: string[], what: str
   return [`${count}${what.length || where ? ":" : ""}`, [...what, where].filter(Boolean).join(", ")].filter(Boolean).join(" ");
 }
 
+/** Job 47: how long the ask at open waits for slow reads before it asks with what is known. */
+export const START_WAIT_MS = 5000;
+
 /** Rule D: the Start form opens by itself once per app start, in the first window, after the settings and the
  * first agent search have answered, unless switched off, already shown, a launch is under way or a sheet is open. */
-export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; layoutIn?: boolean; agentsDone: boolean; projectsRead?: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean; firstRunKnown?: boolean; agentsFailed?: boolean; userActed?: boolean }): "ask" | "wait" | "skip" {
+export function askAtOpen(w: { on: boolean; firstWindow: boolean; asked: boolean; settingsRead: boolean; layoutIn?: boolean; agentsDone: boolean; projectsRead?: boolean; launching: boolean; sheetOpen: boolean; firstRun?: boolean; firstRunKnown?: boolean; agentsFailed?: boolean; userActed?: boolean; waitedOut?: boolean }): "ask" | "wait" | "skip" {
   // D-15: the first-run screens hand over to the Start form themselves (job 22), so the ask at open stays away.
   if (w.asked || !w.firstWindow || w.firstRun) return "skip";
   // Job 29 R1: on a slow start the saved panes join after the settings read; until they are in, nothing counts as acted.
-  if (w.layoutIn === false) return "wait";
+  // Job 47: past START_WAIT_MS none of the three waits holds; the form asks with what is known and follows late lists.
+  if (w.layoutIn === false && !w.waitedOut) return "wait";
   // Job 13 F4: it never jumps up over work. A first agent search that failed, or a user who has already started
   // something (a launch, a pane, a form), counts as answered: a later good search does not bring the form up.
   if (w.agentsFailed || w.userActed) return "skip";
-  if (w.firstRunKnown === false) return "wait"; // the first-run screens' state comes from an async read (job 11 D-15)
+  if (w.firstRunKnown === false && !w.waitedOut) return "wait"; // the first-run screens' state comes from an async read (job 11 D-15)
   // Job 13 F1: the folders are read too, so the form never says "Add a folder first." or ticks none because the list came late.
-  if (!w.settingsRead || !w.agentsDone || w.projectsRead === false) return "wait";
+  if (!w.waitedOut && (!w.settingsRead || !w.agentsDone || w.projectsRead === false)) return "wait";
   if (!w.on || w.launching || w.sheetOpen) return "skip";
   return "ask";
 }

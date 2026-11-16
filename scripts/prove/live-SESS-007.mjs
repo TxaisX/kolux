@@ -26,7 +26,7 @@ export async function run007b3(ctx, { check, log }, lookName = "classic") {
   log(`look marker: ${JSON.stringify(look)}`);
   await app.evalJs(`document.querySelector(${JSON.stringify(PLUS)}).click()`);
   await poll(() => app.exists('[role=menu][aria-label="New session"]'), 8000, 300);
-  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^Open a pane that asks/.test(b.title)); b.click(); return true; })()`);
+  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^(Open a pane that asks|Pick folders)/.test(b.title)); b.click(); return true; })()`);
   if (lookName === "new") return checkSheet(ctx, { check, log });
   const up = await poll(() => app.exists(CHOOSER), 10000, 300);
   check(`a chooser pane is in the grid (${lookName} look)`, !!up, `chooser present=${!!up}`);

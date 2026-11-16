@@ -165,24 +165,32 @@ test("Help > Onboarding reopens on screen one and tells the sidebar; a second cl
   expect(heard).toEqual([]);
 });
 
-test("every added project tells the sidebar before the first-folder check; the armed first folder starts the saved default agent once (VIEW-114, FIX-4)", async () => {
+test("every added project tells the sidebar before the first-folder check; job 47 A6: the armed first folder opens the Start form on it once and starts nothing (VIEW-114, FIX-4)", async () => {
   const app = await mountWizard({ defaultAgent: "claude" });
   app.now().projectAdded("C:/p", null);
   expect(heard).toEqual(["project"]);
-  expect(started).toEqual([]);
+  expect(app.now().firstStart).toBeNull();
   app.now().firstFolder.current = true;
   app.now().projectAdded("C:/q", "main");
   app.now().projectAdded("C:/r", null);
+  await app.settle();
   expect(heard).toEqual(["project", "project", "project"]);
-  expect(started).toEqual(["claude@C:/q"]);
+  expect(app.now().firstStart).toBe("C:/q");
+  app.now().doneFirstStart();
+  await app.settle();
+  expect(app.now().firstStart).toBeNull();
+  expect(started).toEqual([]);
 });
 
-test("a plain terminal as the saved default starts nothing in the first folder (VIEW-114, FIX-4)", async () => {
-  const app = await mountWizard({ defaultAgent: "terminal" });
-  app.now().firstFolder.current = true;
-  app.now().projectAdded("C:/q", null);
-  expect(heard).toEqual(["project"]);
-  expect(started).toEqual([]);
+test("job 47 A6: with a plain terminal or Auto as the saved default the first folder still opens the Start form and starts nothing (VIEW-114, FIX-4)", async () => {
+  for (const defaultAgent of ["terminal", ""]) {
+    const app = await mountWizard({ defaultAgent });
+    app.now().firstFolder.current = true;
+    app.now().projectAdded("C:/q", null);
+    await app.settle();
+    expect(app.now().firstStart).toBe("C:/q");
+    expect(started).toEqual([]);
+  }
 });
 
 // Job 29 R7: Pick a folder reaches Add Project the way the Start form's Add folder does (addFolderVia, the

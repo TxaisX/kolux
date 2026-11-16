@@ -2,10 +2,12 @@
 // were: the guides and the first-run wizard (ONB), the updater (APP-058..060), the skills bar and its
 // notice, Feedback, the Review changes sheet (GIT-042), the status bar (STAT-024, STAT-050) and the
 // Edit menu. They sit after the body, as they did.
+import { useEffect } from "react";
 import StatusBar from "../../chrome/StatusBar";
 import { FIELDS as STATUS_FIELDS, readStatusBar, toggleItem } from "../../chrome/statusItems";
 import EditMenuHost from "../../editmenu/EditMenuHost";
 import { plainNote } from "../../editor/fileNotes";
+import { asksAtStart } from "../../launch/startForm";
 import { reviewOn, startChoices } from "../../editor/notes";
 import { hooksOn } from "../../onboarding/hooksOn";
 import type { KindKey } from "../../settings/notifications";
@@ -13,6 +15,8 @@ import { BringSkillsUp } from "../../skills/SkillBarItem";
 import { toggleSkills } from "../../skills/nav";
 import { windowLoaded } from "../../status/manage";
 import { tabName } from "../../terminal/tabName";
+import { sameDir } from "../../workspaces";
+import { ownPanes } from "../useStartAsk";
 import { useWindow } from "./store";
 import { addFolderHands } from "./sidebarScreens";
 import { SkillUpdateNotice } from "../../lazy/pages";
@@ -22,16 +26,36 @@ import { ReviewNotes } from "../../lazy/pages";
 import { UpdateCenter } from "../../lazy/pages";
 import { FeedbackDialog } from "../../lazy/pages";
 
+// Job 47 A6 (ONB-010): the first folder after setup opens the Start form on it, once it is on the list and in front.
+// Job 57 F1: "on the list" is the folder-to-project map openStart ticks the folder from (projectOf), matched with
+// sameDir, since firstStart is the opened worktree. Job 68 F1: "in front" is that folder or its project's own
+// stored folder (the store shows a worktree in its project's grid, and git can spell one folder two ways: an 8.3
+// name, a subst drive, a link). On the list but not in front: the user went elsewhere, so it is dropped unopened.
+export function FirstFolderStart() {
+  const { firstStart, doneFirstStart, activeDir, projects, owner, openStart } = useWindow();
+  useEffect(() => {
+    if (firstStart === null) return;
+    const pid = Object.entries(owner).find(([dir]) => sameDir(dir, firstStart))?.[1];
+    if (pid === undefined || !projects.some((p) => p.id === pid)) return;
+    doneFirstStart();
+    const proj = projects.find((p) => p.id === pid);
+    if (sameDir(activeDir, firstStart) || (proj && sameDir(activeDir, proj.path))) openStart({ here: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstStart, activeDir, projects, owner]);
+  return null;
+}
+
 export default function WindowHosts() {
   const {
     wizard, settings, saveSetting, wizardSession, wizardClose, pickFolder, projects, endWizard, firstFolder,
     screen, setScreen, settingsRead, picked, notes, repoless, activeDir, putNote, setNotes, setPicked,
     reviewTargets, sendMenu, setSendMenu, sendReview, startReview, agents, defaultId, live, panes, ptys, titles,
-    owner, restoredKeys, setToast, openStart, setSidebarOpen,
+    owner, restoredKeys, setToast, openStart, setSidebarOpen, sheet,
   } = useWindow();
   return (
     <>
       <Guides />
+      <FirstFolderStart />
       {wizard !== null && (
         <Wizard
           start={wizard}
@@ -47,7 +71,14 @@ export default function WindowHosts() {
           onClose={() => {
             if (wizardClose.retry()) return;
             const none = projects.length === 0;
-            endWizard("dismissed", () => (firstFolder.current = none));
+            // Job 68 (decided): closed or skipped with a folder on the list, the Start form opens as finishing does,
+            // unless the ask at start is off or work is up (a pane, or a Start form: setup reopened from Help).
+            // Job 78 R73-1: a pane not started yet (it has seats: the one "Pick a folder" leaves) is not work.
+            const start = !none && asksAtStart(settings) && ownPanes(panes.filter((p) => !p.seats)) === 0 && !sheet;
+            endWizard("dismissed", () => {
+              firstFolder.current = none;
+              if (start) openStart({ here: activeDir !== null });
+            });
           }}
         />
       )}

@@ -42,7 +42,7 @@ export function allSwitchedOff(all: AgentInfo[], settings: Record<string, unknow
 
 /** SESS-002: where the agent search stands. Nothing counts as not installed before the first
  * pass is done, and an errored pass blocks launching until one succeeds. */
-export type AgentPass = { looking: boolean; done: boolean; error: string | null };
+export type AgentPass = { looking: boolean; done: boolean; error: string | null; slow?: boolean }; // job 78 R73-3: `slow`, a later search took too long; Start keeps the last list
 export const FIRST_PASS: AgentPass = { looking: true, done: false, error: null };
 export const canLaunch = (p: AgentPass): boolean => p.done && p.error === null;
 

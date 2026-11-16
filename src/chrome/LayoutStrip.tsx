@@ -30,7 +30,7 @@ export default function LayoutStrip({ count, onLayout, workspace = null }: Props
       <span>Layout</span>
       <div className="layouts" role="group" aria-label="Panes per screen" data-testid="layout-strip">
         {PANE_COUNTS.map((n) => (
-          <button key={n} data-testid={`layout-count-${n}`} aria-pressed={count === n} onClick={() => onLayout(n)} title={n === 1 ? "One pane" : `${n} panes: empty panes are added, unstarted ones removed`}>
+          <button key={n} data-testid={`layout-count-${n}`} aria-pressed={count === n} onClick={() => onLayout(n)} title={n === 1 ? "One pane" : `${n} panes. More panes: the Start form asks what to run in the new ones. Fewer: only panes not started yet close; anything running stays.`}>
             {n}
           </button>
         ))}

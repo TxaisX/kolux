@@ -128,6 +128,11 @@ test("SESS-002: Start waits for a search that succeeded, and an errored one says
   expect(first).toContain("Looking for agents");
   expect(start(first)).toContain("disabled");
   expect(view({ looking: false, done: true, error: null })).toContain("Refresh agents");
+  // Job 78 R73-3: a later search that took too long says so in yellow, and Start keeps the last list.
+  const slow = view({ looking: false, done: true, error: null, slow: true } as never);
+  expect(slow).toContain('<p class="caption warn">The search took longer than 10 seconds. This is the last list Kolux found.</p>');
+  expect(start(slow)).not.toContain("disabled");
+  expect(view({ looking: false, done: true, error: null })).not.toContain("took longer");
 });
 
 test("SESS-016: the effort picker and fast mode show on the seat whose model has them, and no other", () => {

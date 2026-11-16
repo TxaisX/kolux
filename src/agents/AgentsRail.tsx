@@ -22,7 +22,7 @@ export default function AgentsRail<S extends Session>({ groups, selected, classi
               <p>Start one and it will show up here.</p>
               {onNew && (
                 <button className="btn" onClick={onNew}>
-                  New session
+                  Start agents
                 </button>
               )}
             </div>

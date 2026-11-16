@@ -72,7 +72,7 @@ try {
   log(`opening the sheet at ${clock()}`);
   await app.evalJs(`document.querySelector(${JSON.stringify(PLUS)}).click()`);
   for (let i = 0; i < 30 && !(await app.exists('[role=menu][aria-label="New session"]')); i++) await sleep(300);
-  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^Open a pane that asks/.test(b.title)); b.click(); return true; })()`);
+  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^(Open a pane that asks|Pick folders)/.test(b.title)); b.click(); return true; })()`);
   let sheet = false;
   for (let i = 0; i < 40 && !sheet; i++) {
     sheet = await app.exists('[role=radiogroup][aria-label="Seat 1: which AI"]');

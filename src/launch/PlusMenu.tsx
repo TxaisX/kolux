@@ -9,11 +9,12 @@
 // SESS-039: opened from a pane with a worktree folder, it also offers "Open in <editor>" for each
 // outside editor installed (editors.ts). TERM-042: with `entry` the menu opens with an entry box for a
 // URL, a file or an open tab; TERM-043: on a local Windows client a "Terminal" row opens the shell choice.
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { watchEscape } from "../switcher/accounts";
 import { restoreFocus } from "../shell/paletteCaps";
 import { menuStep } from "../terminal/LinkActionMenu";
 import VendorMark, { type Agent } from "../chrome/VendorMark";
+import { WindowStore } from "../shell/window/store";
 import OutOfFlow from "../chrome/OutOfFlow";
 import AgentMark from "../marks/AgentMark";
 import { Kbd, useLabel } from "../keys/KeymapContext";
@@ -94,6 +95,8 @@ function ShellGlyph({ program }: { program: string }) {
 
 export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault, onChoose, onClose, onTerminal, onManage, busy = false, style, allOff = false, pass, onRefresh, dir, editors, entry, shells = [], onShell, local = true, windows, target }: Props) {
   const [shellsOpen, setShellsOpen] = useState(false);
+  // Job 50: the look, read as the chooser reads it (the window's store; absent outside the window, so the New look).
+  const classic = useContext(WindowStore)?.classic ?? false;
   const shellChoices = onShell ? windowsShellMenu(shells, { windows: windows ?? (typeof navigator !== "undefined" && navigator.userAgent.includes("Windows")), local }) : [];
   const [query, setQuery] = useState("");
   const looked = useEditors(!!dir && editors === undefined);
@@ -180,6 +183,7 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
           agents.length > 0 &&
           installed === 0 && <div className="menu-hint">No agent found. Kolux looked for {agents.map((a) => a.program).join(", ")} on the PATH and in the usual install folders.</div>
         )}
+        {!pass?.error && pass?.slow && <div className="menu-hint warn">The search took longer than 10 seconds. This is the last list Kolux found.</div>}
         {shown.map((a) => (
           <div className="menu-row" key={a.id}>
             <button role="menuitem" className="menu-item" data-testid={`new-session-item-${a.id}`} disabled={busy || !!pass?.error} onClick={() => onPick(a)} title={`Start ${a.name} (${a.path}) in a new pane inside a fresh workspace`}>
@@ -232,11 +236,11 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
           </>
         )}
         {onChoose && (
-          <button role="menuitem" className="menu-item" onClick={onChoose} title="Open a pane that asks which AI, model or terminal to run, and how many">
+          <button role="menuitem" className="menu-item" onClick={onChoose} title={classic ? "Open a pane that asks which AI, model or terminal to run, and how many" : "Pick folders, how many, and which AI"}>
             <span className="agent-mark" aria-hidden="true">
               ?
             </span>
-            <span className="name">Choose what to run…</span>
+            <span className="name">{classic ? "Choose what to run…" : "Start agents…"}</span>
           </button>
         )}
         {dir && outside.length > 0 && (
