@@ -175,7 +175,7 @@ type Props = {
   createName?: string;
   /** Bumped by Mod+Shift+Backspace (workspace.delete): asks to delete the workspace shown (PROJ-070). */
   deleteRequest: number;
-  /** Audit F13/F14: the folder the focused pane works in; Delete Workspace and Rename worktree act on it. */
+  /** Audit F13/F14: the folder the focused pane works in; Delete worktree and Rename worktree act on it. */
   workDir?: string | null;
   /** T-611: bumped by workspace.rename (PROJ-059): starts the inline rename of the workspace shown. */
   renameRequest?: number;

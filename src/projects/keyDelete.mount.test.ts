@@ -1,5 +1,5 @@
 // Audit F13/F14 on the real ProjectsPanel (small DOM, backend mocked, harness as in removeCommits.test.ts):
-// with no worktree row under the pointer, Delete Workspace and Rename worktree act on the worktree the focused
+// with no worktree row under the pointer, Delete worktree and Rename worktree act on the worktree the focused
 // pane works in (`workDir`); on a main folder they say so in one line and touch nothing.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -85,7 +85,7 @@ async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0,
 const checks = () => h.calls.filter((c) => c.cmd === "workspace_remove_check").map((c) => c.args.path);
 const question = (c: FakeNode) => find(c, (n) => n.attrs.role === "alertdialog" && n.textContent.includes("and its folder?"));
 
-test("Delete Workspace on a pane in a worktree asks first, names the worktree, and checks unsaved tabs", async () => {
+test("Delete worktree on a pane in a worktree asks first, names the worktree, and checks unsaved tabs", async () => {
   const c = await panel(fix.path);
   await pressDelete();
   expect(checks()).toEqual([fix.path]);
@@ -98,7 +98,7 @@ test("Delete Workspace on a pane in a worktree asks first, names the worktree, a
   expect(h.calls.filter((x) => x.cmd === "workspace_remove").map((x) => x.args.path)).toEqual([fix.path]);
 });
 
-test("Delete Workspace on a pane in the project's main folder says so and checks nothing", async () => {
+test("Delete worktree on a pane in the project's main folder says so and checks nothing", async () => {
   const c = await panel(main.path);
   await pressDelete();
   expect(checks()).toEqual([]);
@@ -108,7 +108,7 @@ test("Delete Workspace on a pane in the project's main folder says so and checks
 
 // Review R27-01: the shortcut opens a closed sidebar, so the panel mounts with the press already made and
 // an empty project list. It waits for the lists rather than saying "not in a worktree" and using up the press.
-test("Delete Workspace pressed with the sidebar closed waits for the lists, then asks about the focused pane's worktree", async () => {
+test("Delete worktree pressed with the sidebar closed waits for the lists, then asks about the focused pane's worktree", async () => {
   let open = () => {};
   h.listGate = new Promise<void>((r) => (open = r));
   const c = await panel(fix.path, 0, 7, 20); // 7: a press count no earlier test in this file has served
@@ -212,7 +212,7 @@ test("a held press asks about the focused pane's worktree, not a row hovered whe
   expect(question(c)[0].textContent).not.toContain("other");
 });
 
-test("Delete Workspace pressed with the sidebar closed and no projects at all says so once the list comes in", async () => {
+test("Delete worktree pressed with the sidebar closed and no projects at all says so once the list comes in", async () => {
   h.projects = [];
   const c = await panel(fix.path, 0, 9);
   expect(checks()).toEqual([]);
@@ -221,7 +221,7 @@ test("Delete Workspace pressed with the sidebar closed and no projects at all sa
 
 // Review R27-02: a worktree the user hid (or one made outside Kolux) is not in the list the key searches. The
 // note says Kolux does not list it, rather than that the pane is not in a worktree; nothing is checked or deleted.
-test("Delete Workspace on a pane in a hidden worktree says Kolux does not list it, and deletes nothing", async () => {
+test("Delete worktree on a pane in a hidden worktree says Kolux does not list it, and deletes nothing", async () => {
   h.wt = [main, { ...fix, hidden: true }];
   const c = await panel(fix.path);
   await pressDelete();

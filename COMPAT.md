@@ -843,7 +843,7 @@ Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emu
 | `worktree.navigateDown` | Next worktree | Mod+Shift+ArrowDown | no |
 | `workspace.create` | Create worktree | Mod+N, Mod+Shift+N | no |
 | `workspace.rename` | Rename worktree | none on Windows (macOS: Mod+Alt+R) | no |
-| `workspace.delete` | Delete Workspace | Mod+Shift+Backspace | no |
+| `workspace.delete` | Delete worktree | Mod+Shift+Backspace | no |
 | `workspace.openBoard` | Show Workspace Statuses (was "Toggle Workspace Board"; renamed by T-610, the id is unchanged) | none | yes |
 | `dashboard.toggle` | Toggle Agent Dashboard | none | yes |
 | `workspace.selectByIndex` | Select Workspace 1–9 | Mod+1 | no |
