@@ -3015,6 +3015,7 @@ fn by_route(dir: &Path, route: &str, rows: &[&str]) -> Result<(), String> {
 
 /// R59-01: a junction where a tracked file was is removed as a link before Git writes the file
 /// back; the folder it points at keeps its files, on every route.
+/// R70-07: the "paths" route pins behaviour (it passed before R59 too); it is not a regression test.
 #[cfg(windows)]
 #[test]
 fn r59_a_junction_in_a_tracked_files_place_is_removed_as_a_link_and_its_target_kept() {
@@ -3133,6 +3134,7 @@ fn r59_rows_under_real_or_missing_folders_still_go_and_a_left_row_does_not_stop_
 
 /// R59-04: an untracked junction is removed as a link, also one that points at a repository
 /// (git clean keeps that one without a word); the folder it points at is whole.
+/// R70-07: ("untracked", false) pins behaviour (git clean removed only the junction before R59 too).
 #[cfg(windows)]
 #[test]
 fn r59_an_untracked_junction_is_removed_and_its_target_kept() {
@@ -3233,6 +3235,30 @@ fn r59_a_staged_rename_is_left_whole_when_one_half_is_left() {
     assert_eq!(result.expect_err("named"), "a.txt is now a folder, so Kolux leaves it. Remove or move the folder by hand, then discard again.\nb.txt is the other half of a rename, so Kolux leaves it too.");
     assert_eq!(b.as_deref(), Some("a\n"), "the new half is kept on disk");
     assert!(st.staged.iter().any(|c| c.path == "b.txt" && c.from.as_deref() == Some("a.txt")), "the rename is still staged: {st:?}");
+}
+
+/// R70-07: a link two levels up (a real folder `a` holding a junction `b`) is found like one
+/// right above the row, on every route. Coverage: the walk already went this far before job 77.
+#[cfg(windows)]
+#[test]
+fn r70_a_junction_two_levels_up_is_never_written_through() {
+    for route in ["changed", "untracked", "paths", "paths-untracked"] {
+        let name = format!("r70b-{route}");
+        let dir = temp_repo(&name);
+        let out = outside_folder(&name);
+        let _clean = LinksThenFolders(vec![dir.join("a").join("b")], vec![dir.clone(), out.clone()]);
+        fs::create_dir_all(dir.join("a").join("b")).unwrap();
+        commit_file(&dir, "a/b/f.txt", "f\n");
+        fs::remove_dir_all(dir.join("a").join("b")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        junction(&dir.join("a").join("b"), &out);
+        let row = if route.ends_with("untracked") { "a/b/p.txt" } else { "a/b/f.txt" };
+        let result = by_route(&dir, route.trim_end_matches("-untracked"), &[row]);
+        assert_eq!(fs::read_to_string(out.join("f.txt")).ok().as_deref(), Some("mine\n"), "{route}: the target's f.txt is not written");
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route}: the target's p.txt is not deleted");
+        assert_eq!(result.expect_err(route), format!("a/b is a link, so Kolux leaves {row}. Remove the link by hand, then discard again."), "{route}");
+    }
 }
 
 /// R70-05: a row whose kind cannot be read (here a name Windows refuses to look up) is left and
