@@ -2685,8 +2685,10 @@ fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String>
 /// sends it (`git clean -f -d`), so a nested repository and ignored files are left alone.
 pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     let paths: &[String] = &one_spelling(paths);
+    not_whole(paths)?;
     check_paths(paths)?;
     let st = status(worktree)?;
+    let k = kinds(worktree, &paths.iter().map(|p| p.trim_end_matches('/')).collect::<Vec<_>>(), true)?;
     let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut kept = Vec::new();
     let mut real = std::collections::HashSet::new();
@@ -2700,6 +2702,13 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
             kept.push(why);
             continue;
         }
+        // R82-02: a row naming a folder of tracked files is left whole (a row listed as untracked
+        // goes as one, below).
+        let listed_untracked = st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p);
+        if !listed_untracked && k.folder(p) {
+            kept.push(folder_line(p));
+            continue;
+        }
         if let Some(c) = index {
             staged.push(c.path.clone());
             if let Some(from) = &c.from {
@@ -2707,7 +2716,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
                 tracked.push(from.clone());
             }
         }
-        if st.untracked.iter().any(|c| c.path.trim_end_matches('/') == p) {
+        if listed_untracked {
             untracked.push(p.to_string());
         } else if index.is_some_and(|c| c.status == "A" || c.from.is_some()) {
             remove.push(p.to_string());
@@ -2825,15 +2834,116 @@ fn folder_in_place(worktree: &Path, p: &str) -> bool {
     // The modes the index and the last commit hold at exactly `p`; a failed read keeps the folder.
     let modes = |args: &[&str]| run(args, Some(worktree)).map(|out| out.split('\0').filter_map(|e| e.split_once('\t')).filter(|(_, at)| *at == p).map(|(m, _)| m.split(' ').next().unwrap_or_default().to_string()).collect::<Vec<_>>());
     let Ok(index) = modes(&["--literal-pathspecs", "ls-files", "-s", "-z", "--", p]) else { return true };
-    // R59-07: so does a failed read of the last commit, unless there is no commit yet. R70-02: only
-    // `rev-parse` ending with code 1 and printing nothing means that; any other failure keeps it.
-    let no_commit = || command(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree)).output().is_ok_and(|o| o.status.code() == Some(1) && o.stdout.is_empty() && o.stderr.is_empty());
+    // R59-07: so does a failed read of the last commit, unless there is no commit yet.
     let head = match modes(&["--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", p]) {
         Ok(head) => head,
-        Err(_) if no_commit() => Vec::new(),
+        Err(_) if matches!(no_commit(worktree), Ok(true)) => Vec::new(),
         Err(_) => return true,
     };
     index.iter().chain(&head).any(|m| m != "160000" && m != "040000")
+}
+
+/// R70-02: true when the repository has no commit yet. Only `rev-parse` ending with code 1 and
+/// printing nothing means that; any other failure is Git's words, never "no commit yet".
+fn no_commit(worktree: &Path) -> Result<bool, String> {
+    let o = command(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree)).output().map_err(|e| format!("could not run git: {e}"))?;
+    match o.status.code() {
+        Some(0) => Ok(false),
+        Some(1) if o.stdout.is_empty() && o.stderr.is_empty() => Ok(true),
+        _ => {
+            let e = String::from_utf8_lossy(&o.stderr).trim().to_string();
+            Err(if e.is_empty() { format!("git rev-parse --verify -q HEAD failed ({})", o.status) } else { e })
+        }
+    }
+}
+
+/// R82-02: the line Discard said in place of a whole call with a row that names the repository.
+const WHOLE: &str = "Kolux does not discard a whole folder at once. Pick the files instead.";
+
+/// R82-02: a row that is empty after `one_spelling` (`.`, `./`, `.\`) names the whole repository;
+/// the whole call is refused before any Git command or removal.
+fn not_whole(paths: &[String]) -> Result<(), String> {
+    if paths.iter().any(|p| p.is_empty()) {
+        Err(WHOLE.into())
+    } else {
+        Ok(())
+    }
+}
+
+/// R82-02: what Discard says about a row it leaves because it names a folder of tracked files.
+fn folder_line(p: &str) -> String {
+    format!("{} is a folder, so Kolux leaves it. Discard the files inside it instead.", p.trim_end_matches('/'))
+}
+
+/// R82-02: what the index and the last commit hold at and below each row (rows without a trailing
+/// `/`), read with one `ls-files` and (when `with_head`) one `ls-tree` per call, in chunks that stay
+/// well under the Windows command-line limit.
+#[derive(Default)]
+struct Kinds {
+    at: std::collections::HashSet<String>,
+    below: std::collections::HashSet<String>,
+    head_dir: std::collections::HashSet<String>,
+    head_file: std::collections::HashSet<String>,
+}
+
+impl Kinds {
+    /// A folder of tracked files: no file or gitlink at the row in the index or the last commit,
+    /// and a folder there in the last commit or files below it in the index.
+    fn folder(&self, p: &str) -> bool {
+        let p = p.trim_end_matches('/');
+        !self.at.contains(p) && !self.head_file.contains(p) && (self.head_dir.contains(p) || self.below.contains(p))
+    }
+}
+
+fn kinds(worktree: &Path, rows: &[&str], with_head: bool) -> Result<Kinds, String> {
+    let stop = |e: String| format!("Kolux could not ask Git what these rows are, so it stopped before changing them: {e}");
+    let wanted: std::collections::HashSet<&str> = rows.iter().copied().collect();
+    let mut k = Kinds::default();
+    let (mut chunks, mut chunk, mut size) = (Vec::new(), Vec::new(), 0);
+    for r in rows {
+        if size + r.len() > 8000 && !chunk.is_empty() {
+            chunks.push(std::mem::take(&mut chunk));
+            size = 0;
+        }
+        size += r.len() + 3;
+        chunk.push(*r);
+    }
+    chunks.push(chunk);
+    let entries = |out: Vec<u8>| String::from_utf8_lossy(&out).split('\0').filter_map(|e| e.split_once('\t').map(|(m, at)| (m.split(' ').next().unwrap_or_default().to_string(), at.to_string()))).collect::<Vec<_>>();
+    for chunk in &chunks {
+        let mut args = vec!["--literal-pathspecs", "ls-files", "-s", "-z", "--"];
+        args.extend(chunk);
+        for (_, at) in entries(output(&args, Some(worktree)).map_err(stop)?) {
+            for (i, _) in at.match_indices('/') {
+                if wanted.contains(&at[..i]) {
+                    k.below.insert(at[..i].to_string());
+                }
+            }
+            if wanted.contains(at.as_str()) {
+                k.at.insert(at);
+            }
+        }
+        if !with_head {
+            continue;
+        }
+        let mut args = vec!["--literal-pathspecs", "ls-tree", "-z", "HEAD", "--"];
+        args.extend(chunk);
+        let head = match output(&args, Some(worktree)) {
+            Ok(out) => entries(out),
+            Err(_) if matches!(no_commit(worktree), Ok(true)) => Vec::new(),
+            Err(e) => return Err(stop(e)),
+        };
+        for (mode, at) in head {
+            if wanted.contains(at.as_str()) {
+                if mode == "040000" {
+                    k.head_dir.insert(at);
+                } else {
+                    k.head_file.insert(at);
+                }
+            }
+        }
+    }
+    Ok(k)
 }
 
 /// R59-01 / R59-02: why Discard must leave row `p`, or nothing. A folder above it (below the
@@ -2911,9 +3021,12 @@ fn with_paths(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), St
 /// name sent as untracked is left alone.
 pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), String> {
     let paths: &[String] = &one_spelling(paths);
+    not_whole(paths)?;
     check_paths(paths)?;
+    let rows: Vec<&str> = paths.iter().map(|p| p.trim_end_matches('/')).collect();
     match section {
         "staged" | "changed" => {
+            let k = kinds(worktree, &rows, true)?;
             // F-02: a row whose file Git would write over a folder with something in it is left as
             // it is and named; the other rows still go. R59-01/R59-02: so is a row under a link or a
             // file where a folder was; a link at the row itself is removed (only the link) first.
@@ -2921,7 +3034,7 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             let mut real = std::collections::HashSet::new();
             // R70-03: the link is removed here, before the rename look-up, so a failure leaves its row.
             for p in paths {
-                match left_why(worktree, p, &mut real).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p))).or_else(|| remove_link(worktree, p).err()) {
+                match left_why(worktree, p, &mut real).or_else(|| k.folder(p).then(|| folder_line(p))).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p))).or_else(|| remove_link(worktree, p).err()) {
                     Some(why) => {
                         said.push(why);
                         left.push(p.trim_end_matches('/').to_string());
@@ -2973,11 +3086,15 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // R59-01: a row under a link or a file where a folder was is left and named. R59-04: a
             // row that is itself a link is removed by Kolux (the link only): git clean keeps a link
             // to a repository without a word.
+            // R82-02: a folder row with tracked files below it is left whole.
+            let k = kinds(worktree, &rows, false)?;
             let (mut said, mut rows) = (Vec::new(), Vec::new());
             let mut real = std::collections::HashSet::new();
             for p in paths {
                 if let Some(why) = left_why(worktree, p, &mut real) {
                     said.push(why);
+                } else if k.below.contains(p.trim_end_matches('/')) {
+                    said.push(folder_line(p));
                 } else {
                     match remove_link(worktree, p) {
                         Ok(true) => {}

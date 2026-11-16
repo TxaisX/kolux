@@ -3477,3 +3477,126 @@ fn r82_a_rooted_or_climbing_row_is_still_refused() {
     assert_eq!(f.as_deref(), Some("changed\n"), "the change to d/f is kept");
     assert!(u, "the untracked u.txt is kept");
 }
+
+/// R82-02: a row of `.`, `./` or `.\` names the whole repository: every route refuses the whole
+/// call before Git runs, and nothing changes.
+#[test]
+fn r82_a_dot_row_is_refused_whole() {
+    let dir = temp_repo("r82c");
+    commit_file(&dir, "s.txt", "s\n");
+    fs::write(dir.join("s.txt"), "staged\n").unwrap();
+    plain(&["add", "s.txt"], &dir);
+    fs::write(dir.join("u.txt"), "u\n").unwrap();
+    let mut rows = vec![".", "./"];
+    if cfg!(windows) {
+        rows.push(".\\");
+    }
+    let mut wrong = Vec::new();
+    for row in rows {
+        for route in ["changed", "staged", "untracked", "paths"] {
+            let said = by_route(&dir, route, &[row, "s.txt"]);
+            if said != Err("Kolux does not discard a whole folder at once. Pick the files instead.".to_string()) {
+                wrong.push(format!("{route} {row:?}: said {said:?}"));
+            }
+        }
+    }
+    let staged = run(&["diff", "--cached", "--name-only"], Some(&dir));
+    let (s, u) = (fs::read_to_string(dir.join("s.txt")).ok(), dir.join("u.txt").exists());
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(staged.as_deref(), Ok("s.txt"), "the staged change is still staged");
+    assert_eq!(s.as_deref(), Some("staged\n"));
+    assert!(u, "the untracked u.txt is kept");
+}
+
+/// R82-02: a row that names a folder of tracked files (a folder in the last commit, or files staged
+/// below it) is left on the changed, staged and paths routes with one line, and nothing is written
+/// there: an untracked file now in the folder's place stays, a deleted folder is not brought back.
+/// The other rows in the call still go.
+#[test]
+fn r82_a_folder_row_is_never_written_through() {
+    let line = |p: &str| format!("{p} is a folder, so Kolux leaves it. Discard the files inside it instead.");
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r82d-{route}"));
+        commit_file(&dir, "plain.txt", "p\n");
+        for f in ["kept", "gone"] {
+            fs::create_dir(dir.join(f)).unwrap();
+            fs::write(dir.join(f).join("a.txt"), "a\n").unwrap();
+        }
+        plain(&["add", "."], &dir);
+        plain(&["commit", "-q", "-m", "folders"], &dir);
+        fs::write(dir.join("plain.txt"), "changed\n").unwrap();
+        if route == "staged" {
+            plain(&["add", "plain.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("kept")).unwrap();
+        fs::write(dir.join("kept"), "mine\n").unwrap();
+        fs::remove_dir_all(dir.join("gone")).unwrap();
+        // On the paths route `kept` is listed as an untracked file, and that row goes as one.
+        let rows: &[&str] = if route == "paths" { &["gone", "plain.txt"] } else { &["kept", "gone", "plain.txt"] };
+        let said = by_route(&dir, route, rows);
+        let want: Vec<String> = rows.iter().filter(|r| **r != "plain.txt").map(|r| line(r)).collect();
+        if said != Err(want.join("\n")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if route != "paths" && fs::read_to_string(dir.join("kept")).ok().as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: the untracked file kept is gone (a folder there now: {})", dir.join("kept").is_dir()));
+        }
+        if dir.join("gone").exists() {
+            wrong.push(format!("{route}: gone was brought back"));
+        }
+        if fs::read_to_string(dir.join("plain.txt")).ok().as_deref() != Some("p\n") {
+            wrong.push(format!("{route}: plain.txt was not discarded"));
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-02: a folder row whose tracked folder below was replaced by a junction to a folder outside
+/// the repository: Git is never asked to write there, on any route; nor through a `.` row.
+#[cfg(windows)]
+#[test]
+fn r82_a_folder_row_through_a_junction_is_never_written_through() {
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r82e-{route}"));
+        let out = outside_folder(&format!("r82e-{route}"));
+        let _clean = LinksThenFolders(vec![dir.join("sub").join("d")], vec![dir.clone(), out.clone()]);
+        fs::create_dir_all(dir.join("sub").join("d")).unwrap();
+        commit_file(&dir, "sub/d/f.txt", "orig\n");
+        fs::remove_dir_all(dir.join("sub").join("d")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        junction(&dir.join("sub").join("d"), &out);
+        for (row, want) in [("sub", "sub is a folder, so Kolux leaves it. Discard the files inside it instead."), (".", "Kolux does not discard a whole folder at once. Pick the files instead.")] {
+            let said = by_route(&dir, route, &[row]);
+            if said != Err(want.to_string()) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+            let now = fs::read_to_string(out.join("f.txt")).ok();
+            if now.as_deref() != Some("mine\n") {
+                wrong.push(format!("{route} {row}: the outside f.txt is now {now:?}"));
+                fs::write(out.join("f.txt"), "mine\n").unwrap();
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-02: in the untracked section, a folder row with tracked files below it is left with the
+/// folder line; its untracked file stays.
+#[test]
+fn r82_an_untracked_folder_row_with_tracked_files_is_left() {
+    let dir = temp_repo("r82k");
+    fs::create_dir(dir.join("t")).unwrap();
+    commit_file(&dir, "t/a.txt", "a\n");
+    fs::write(dir.join("t").join("new.txt"), "mine\n").unwrap();
+    fs::write(dir.join("loose.txt"), "u\n").unwrap();
+    let said = discard(&dir, "untracked", &["t/".to_string(), "loose.txt".to_string()]);
+    let (kept, loose) = (dir.join("t").join("new.txt").exists(), dir.join("loose.txt").exists());
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(said, Err("t is a folder, so Kolux leaves it. Discard the files inside it instead.".to_string()));
+    assert!(kept, "t/new.txt stays");
+    assert!(!loose, "loose.txt still goes");
+}
