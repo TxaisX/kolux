@@ -46,6 +46,7 @@ export default function FindBar({ focusTick = 0, count, current, slow = false, o
   const label = invalid ? "Invalid pattern" : slow ? "Pattern took too long" : countLabel(count, current, query);
   return (
     <div
+      className="term-find"
       role="search"
       aria-label="Find in terminal"
       style={bar}

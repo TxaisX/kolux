@@ -118,3 +118,12 @@ test("R54-01: Close tab picked from the palette, opened from a text box, closes 
   press("w", { ctrlKey: true });
   expect(closed).toEqual(["p1"]);
 });
+
+test("R54-05: Ctrl+W typed in a terminal's own Find box closes that pane, as in the code editor's search box", async () => {
+  await handler();
+  Object.assign(doc, { activeElement: el("input", "text", ".term-find") });
+  press("w", { ctrlKey: true });
+  expect(closed).toEqual(["p1"]);
+  const bar = (await import("../terminal/FindBar.tsx?raw")).default;
+  expect(bar, "the Find bar carries the class the guard looks for").toContain('className="term-find"');
+});

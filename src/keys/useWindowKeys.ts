@@ -73,8 +73,9 @@ export const WINDOW_TERMINAL = new Set([
  *  run, so Ctrl+W typed in a settings box or the palette never closes the pane behind it. R54-01: a command picked
  *  in the palette is no key typed into the field, so it always runs. */
 export const CLOSING_KEYS = new Set(["tab.close", "terminal.closePane", "tab.closeAll", "workspace.delete", "sessions.remove"]);
-/** The terminal's hidden text area, the code editor and the rich Markdown view are text fields too, but keep their own key rules. */
-const OWN_KEY_RULES = ".xterm, .cm-editor, .md-rich";
+/** The terminal's hidden text area, the code editor and the rich Markdown view are text fields too, but keep their own key rules.
+ *  R54-05: so does a terminal's own Find box, part of its pane: Ctrl+W there closes that pane. */
+const OWN_KEY_RULES = ".xterm, .cm-editor, .md-rich, .term-find";
 export const typingHolds = (id: string, active: Element | null): boolean =>
   !runningCommand() && CLOSING_KEYS.has(id) && isTextField(active) && !active?.closest(OWN_KEY_RULES);
 
