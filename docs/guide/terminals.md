@@ -213,7 +213,7 @@ On Windows, the main key is Ctrl. You can change every shortcut in Settings (see
 | Ctrl+Shift+0 | Focus the project list |
 | Ctrl+1 to Ctrl+9 | Select the sidebar row at that position |
 | Ctrl+N or Ctrl+Shift+N | Create a workspace. Kolux now works in one folder per project, so the sidebar shows no form for it |
-| Ctrl+Shift+Backspace | Delete a workspace left by an older version (it asks first) |
+| Ctrl+Shift+Backspace | Delete the worktree the focused pane works in (it asks first). A project's own folder is never deleted. While Own folder for each agent is off, it only says worktrees are off |
 | Ctrl+Alt+Left / Ctrl+Alt+Right | Back / forward through workspaces and pages |
 | Ctrl+J | Jump to the next session that needs you |
 | Ctrl+T | New shell tab |
