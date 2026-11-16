@@ -744,7 +744,7 @@ fn f5_a_cancelled_add_that_left_files_still_names_the_folder() {
         Err::<(), String>("fatal: invalid reference: nope".to_string())
     };
     let said = add_retrying(&repo, &dest, None, &|| true, || half_made(true)).unwrap_err();
-    assert_eq!(said, format!("{OVERTAKEN}. Kolux could not clear the folder {}. Remove it by hand before you try again.", dest.display()));
+    assert_eq!(said, format!("{OVERTAKEN}. Kolux could not clear the folder {}. Remove it by hand.", dest.display()));
     assert_eq!(explain_create_error(said.clone()), said, "a cancel is not rewritten");
     drop(held.borrow_mut().take());
     fs::remove_dir_all(&dest).unwrap();

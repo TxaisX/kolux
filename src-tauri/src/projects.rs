@@ -1358,7 +1358,8 @@ pub fn add_retrying(repo: &Path, dest: &Path, made: Option<&str>, overtaken: &dy
         if overtaken() {
             // F5: the cancel text stays first and whole (the page reads it as a prefix); a folder left is named after it.
             return Err(match (stuck, empty()) {
-                (true, _) => format!("{OVERTAKEN}. {}{}", NOT_CLEARED.trim_start(), left()),
+                // F79-6: the user stopped it and may not try again, so no "before you try again".
+                (true, _) => format!("{OVERTAKEN}. {}{}. {verb} it by hand.", NOT_CLEARED.trim_start(), dest.display()),
                 (false, Some(empty)) => format!("{OVERTAKEN}. {}{empty}", EMPTY_LEFT.trim_start()),
                 (false, None) => OVERTAKEN.to_string(),
             });
