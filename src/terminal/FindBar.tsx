@@ -16,6 +16,8 @@ type Props = {
   onSearch: (query: string, opts: FindOptions) => void;
   onStep: (dir: 1 | -1) => void;
   onClose: () => void;
+  /** R61-05: the pane takes the focus; the bar's mouse-down never reaches the pane, so it calls this first. */
+  onFocus?: () => void;
 };
 
 const bar: React.CSSProperties = { position: "absolute", top: 4, right: 12, zIndex: 3, display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", background: "var(--surface)", border: "1px solid var(--line-strong)", borderRadius: 6, boxShadow: "0 2px 8px rgba(0,0,0,.25)", font: "12px system-ui, sans-serif", color: "var(--fg)" };
@@ -25,7 +27,7 @@ const plain: React.CSSProperties = { padding: "2px 5px", border: "1px solid tran
 // T-696: Previous / Next are greyed out while there is nothing to step to (no query, or "No matches").
 const step = (off: boolean): React.CSSProperties => (off ? { ...plain, opacity: 0.4, cursor: "default" } : plain);
 
-export default function FindBar({ focusTick = 0, count, current, slow = false, onSearch, onStep, onClose }: Props) {
+export default function FindBar({ focusTick = 0, count, current, slow = false, onSearch, onStep, onClose, onFocus }: Props) {
   const [query, setQuery] = useState("");
   const [opts, setOpts] = useState<FindOptions>({ caseSensitive: false, regex: false });
   const input = useRef<HTMLInputElement>(null);
@@ -50,7 +52,10 @@ export default function FindBar({ focusTick = 0, count, current, slow = false, o
       role="search"
       aria-label="Find in terminal"
       style={bar}
-      onMouseDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => {
+        onFocus?.(); // R61-05: a closing key pressed next acts on this pane, not on the one that was in front
+        e.stopPropagation();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.preventDefault();

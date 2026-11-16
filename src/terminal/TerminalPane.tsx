@@ -1987,7 +1987,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         </div>
       )}
       <div ref={host} className="pane-body" />
-      {finding && <FindBar focusTick={findTick} count={hits.count} current={hits.current} slow={hits.slow} onSearch={runFind} onStep={stepFind} onClose={closeFind} />}
+      {finding && <FindBar focusTick={findTick} count={hits.count} current={hits.current} slow={hits.slow} onSearch={runFind} onStep={stepFind} onClose={closeFind} onFocus={onFocus} />}
       {notice && (
         <div className="pane-ask" onMouseDown={(e) => e.stopPropagation()}>
           <div
