@@ -3747,9 +3747,11 @@ fn r82_a_backslash_is_part_of_the_name_off_windows() {
 #[test]
 fn r86_an_alias_spelling_of_a_tracked_folder_is_never_cleaned() {
     let mut wrong = Vec::new();
-    for (i, (route, row)) in [("untracked", "sub./"), ("untracked", "SUB/"), ("untracked", "SUB/d/f.txt"), ("untracked", "sub./new.txt"), ("paths", "sub./")].into_iter().enumerate() {
-        let dir = temp_repo(&format!("r86a-{i}"));
-        plain(&["config", "core.ignorecase", "false"], &dir);
+    // F90-06: every row runs with `core.ignorecase` false and true (true is the Windows default).
+    for case in ["false", "true"] {
+    for (i, (route, row)) in [("untracked", "sub./"), ("untracked", "SUB/"), ("untracked", "SUB/d/f.txt"), ("untracked", "sub./new.txt"), ("paths", "sub./"), ("untracked", "sub::$INDEX_ALLOCATION/")].into_iter().enumerate() {
+        let dir = temp_repo(&format!("r86a-{case}-{i}"));
+        plain(&["config", "core.ignorecase", case], &dir);
         fs::create_dir_all(dir.join("sub").join("d")).unwrap();
         commit_file(&dir, "sub/d/f.txt", "orig\n");
         fs::write(dir.join("sub").join("d").join("f.txt"), "changed\n").unwrap();
@@ -3757,21 +3759,27 @@ fn r86_an_alias_spelling_of_a_tracked_folder_is_never_cleaned() {
         fs::write(dir.join("sub").join("gone.txt"), "x\n").unwrap();
         let said = by_route(&dir, route, &[row]);
         if !matches!(&said, Err(e) if e.lines().count() == 1 && e.contains("so Kolux leaves")) {
-            wrong.push(format!("{route} {row}: said {said:?}"));
+            wrong.push(format!("ignorecase {case} {route} {row}: said {said:?}"));
+        }
+        // F90-06: the walker stops this row: the disk opens it as the folder `sub`, but no entry
+        // of the listing is spelled so (`git clean` would remove the whole folder).
+        if i == 5 && said != Err("sub::$INDEX_ALLOCATION is not spelled the way it is on disk, so Kolux leaves it.".to_string()) {
+            wrong.push(format!("ignorecase {case} {route} {row}: not the spelling line: {said:?}"));
         }
         if fs::read_to_string(dir.join("sub").join("d").join("f.txt")).ok().as_deref() != Some("changed\n") {
-            wrong.push(format!("{route} {row}: the change in sub/d/f.txt is gone"));
+            wrong.push(format!("ignorecase {case} {route} {row}: the change in sub/d/f.txt is gone"));
         }
         if !dir.join("sub").join("new.txt").exists() {
-            wrong.push(format!("{route} {row}: sub/new.txt is gone"));
+            wrong.push(format!("ignorecase {case} {route} {row}: sub/new.txt is gone"));
         }
         if i == 4 {
             let said = by_route(&dir, "untracked", &["sub/gone.txt"]);
             if said != Ok(()) || dir.join("sub").join("gone.txt").exists() {
-                wrong.push(format!("control sub/gone.txt: said {said:?}, still there: {}", dir.join("sub").join("gone.txt").exists()));
+                wrong.push(format!("ignorecase {case} control sub/gone.txt: said {said:?}, still there: {}", dir.join("sub").join("gone.txt").exists()));
             }
         }
         let _ = fs::remove_dir_all(&dir);
+    }
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
@@ -3885,6 +3893,41 @@ fn r93_a_link_at_a_row_git_holds_is_discarded_whatever_the_folder_case() {
         }
         if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
             wrong.push(format!("{route}: the outside o.txt changed"));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// F90-06: on Windows the untracked name `foo.` opens the tracked file `foo`, and `git clean --
+/// foo.` would delete it. The row is left on the untracked and paths routes: `foo` keeps its
+/// uncommitted text and `foo.` stands. `foo.` is made and removed through a `\\?\` path built from
+/// the test's own repository, before any assert, so the folder clean-up never meets it.
+#[cfg(windows)]
+#[test]
+fn r93_an_untracked_name_ending_in_a_dot_beside_a_tracked_file_is_left() {
+    let mut wrong = Vec::new();
+    for route in ["untracked", "paths"] {
+        let dir = temp_repo(&format!("r93b-{route}"));
+        assert!(dir.is_absolute(), "the repository path is absolute: {}", dir.display());
+        commit_file(&dir, "foo", "orig\n");
+        fs::write(dir.join("foo"), "mine\n").unwrap();
+        let dotted = PathBuf::from(format!(r"\\?\{}", dir.join("foo.").display()));
+        fs::write(&dotted, "dot\n").unwrap();
+        let said = by_route(&dir, route, &["foo."]);
+        let foo = fs::read_to_string(dir.join("foo")).ok();
+        let dot_stood = fs::symlink_metadata(&dotted).is_ok();
+        let removed = fs::remove_file(&dotted);
+        assert!(removed.is_ok() || !dot_stood, "{route}: the test could not remove foo. itself ({removed:?}); {} is left for a hand clean-up", dir.display());
+        assert!(fs::symlink_metadata(&dotted).is_err(), "{route}: foo. still stands; {} is left for a hand clean-up", dir.display());
+        let _ = fs::remove_dir_all(&dir);
+        if !matches!(&said, Err(e) if e.lines().count() == 1 && e.contains("ends in a dot or a space") && e.contains("so Kolux leaves")) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+        if foo.as_deref() != Some("mine\n") {
+            wrong.push(format!("{route}: foo holds {foo:?}, not its uncommitted text"));
+        }
+        if !dot_stood {
+            wrong.push(format!("{route}: foo. is gone"));
         }
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
