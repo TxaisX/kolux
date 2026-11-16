@@ -6,12 +6,19 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][], extra: {} as Record<string, unknown> }));
+const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][], extra: {} as Record<string, unknown>, parent: false }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     if (cmd === "get_settings") return Promise.resolve({});
     if (cmd === "workspace_statuses") return Promise.resolve({ list: [] });
     if (cmd === "visibility_get") return Promise.resolve([]);
+    // F88-01: "home" (C:/x) stays and its folder lies ABOVE wt9, a worktree only "app" lists
+    if (cmd === "project_list" && h.parent)
+      return Promise.resolve([
+        { id: "p1", name: "app", path: "C:/w/app" },
+        { id: "p3", name: "home", path: "C:/x" },
+      ]);
+    if (cmd === "workspace_scan" && h.parent) return Promise.resolve({ list: args.projectId === "p1" ? [appMain, wt9] : [homeMain], unseen: [] });
     if (cmd === "project_list")
       return Promise.resolve([
         { id: "p1", name: "app", path: "C:/w/app" },
@@ -36,6 +43,8 @@ const base = { hidden: false, number: null, comment: "" };
 const appMain = { ...base, path: "C:/w/app", branch: "main", head: "abc1234", isMain: true };
 const appB = { ...base, path: "C:/w/app-b", branch: "b", head: "b2b2b2b", isMain: false };
 const wt3 = { ...base, path: "C:/w/wt3", branch: "three", head: "c3c3c3c", isMain: false };
+const wt9 = { ...base, path: "C:/x/wt9", branch: "nine", head: "d9d9d9d", isMain: false };
+const homeMain = { ...base, path: "C:/x", branch: "main", head: "e5e5e5e", isMain: true };
 const running = (key: number, cwd: string) => ({ key, agent: "claude", title: String(key), cwd, running: true });
 const sessions = [running(1, "C:/w/app"), running(2, "C:/w/app-b"), running(3, "C:/w/wt3")];
 let doc: FakeDocument;
@@ -49,6 +58,7 @@ beforeEach(() => {
   h.unsaved = [];
   h.closed = [];
   h.extra = {};
+  h.parent = false;
 });
 afterEach(async () => {
   await unmount();
@@ -98,6 +108,22 @@ test("k: deleting a group that removes both projects counts and asks about every
   await click(c, byText(c, "button", "Delete group")[0]);
   await settle(60);
   expect([...h.unsaved[0]].sort()).toEqual(["C:/w/app", "C:/w/app-b", "C:/w/wt3"]);
+  // F88-01: the window is handed the members' going folders, each once, not only their own folders
+  expect((h.closed[0] as [string[]])[0]).toEqual(["C:/w/app", "C:/w/app-b", "C:/w/wt3"]);
+});
+
+// F88-01: a staying project's folder (home, C:/x) lies ABOVE wt9, a worktree only app lists. Removing app hands the window
+// app's own folder first, then wt9, so wt9's pane closes as the question says and as the engine ends its terminal.
+test("F88-01: removing app hands its own folder, then the worktree under a staying project's folder", async () => {
+  h.parent = true;
+  const c = await panel({ openDirs: ["C:/w/app", "C:/x/wt9", "C:/x"], sessions: [running(1, "C:/w/app"), running(2, "C:/x/wt9"), running(3, "C:/x")] });
+  await click(c, byLabel(c, "button", "Remove app")[0]);
+  await settle(20);
+  expect(ask(c).textContent).toContain("2 terminals are still running and will be closed.");
+  await click(c, byText(c, "button", "Remove app")[0]);
+  await settle(40);
+  expect(h.unsaved).toEqual([["C:/w/app", "C:/x/wt9"]]);
+  expect((h.closed[0] as [string[]])[0]).toEqual(["C:/w/app", "C:/x/wt9"]);
 });
 
 test("R71-02: the owner map the sidebar hands to the window maps each project's own folder to its own grid", async () => {

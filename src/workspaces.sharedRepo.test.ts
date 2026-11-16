@@ -15,14 +15,14 @@ const own: Record<string, string> = { A, B };
 const at = (cwd: string) => ({ cwd, running: true });
 
 /** What removing `gone` (the rest stay) asks about, closes and counts, for terminals in `open`. Asked as `askedOf` in
- *  ProjectsPanel asks (with the grid that shows the folder); closed as `removedAll` closes (`withoutDir` per own folder). */
+ *  ProjectsPanel asks; closed as `removedAll` closes, handed the going folders (F88-01: `withoutDir` per going folder). */
 function remove(gone: string[], open: string[], all = lists, owner = own) {
   const staying = Object.keys(all).filter((k) => !gone.includes(k)).flatMap((k) => all[k]);
   const going = gone.flatMap((k) => goingFolders(owner[k], all[k], staying));
   const listed = gone.flatMap((k) => all[k]);
   const asked = open.filter((d) => goesWith(d, going, staying) || (goesWith(d, listed, staying) && closesWith({ cwd: d }, going, staying)));
   const panes = open.map((cwd, i) => ({ key: i, cwd }));
-  const kept = gone.reduce((ps, k) => withoutDir(ps, owner[k], staying), panes);
+  const kept = going.reduce((ps, d) => withoutDir(ps, d, staying), panes);
   const closed = panes.filter((p) => !kept.includes(p)).map((p) => p.cwd);
   return { going, asked, closed, counted: sessionsUnder(going, open.map(at), staying) };
 }
@@ -165,6 +165,17 @@ describe("R83-04: a worktree a staying project also lists stays open", () => {
     expect(r.closed).toEqual([A, B, W]);
     expect(r.asked).toEqual([A, B, W]);
     expect(r.counted).toBe(3);
+  });
+
+  test("F88-01: a worktree only the removed project lists, under a staying project's folder, closes, is asked about and is counted", () => {
+    const P = "C:/x";
+    const W9 = "C:/x/wt9";
+    setGridRoots({ [W9]: A }, [A, P]);
+    const r = remove(["A"], [A, W9, P], { A: [A, W9], P: [P] }, { A, P });
+    expect(r.going).toEqual([A, W9]);
+    expect(r.closed).toEqual([A, W9]);
+    expect(r.asked).toEqual([A, W9]);
+    expect(r.counted).toBe(2);
   });
 
   test("known limit: a pane in W with an explicit view naming the going grid still closes and is counted", () => {

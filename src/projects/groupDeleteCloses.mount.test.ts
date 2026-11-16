@@ -96,7 +96,7 @@ test("with the projects removed too, their unsaved tabs are asked about first, t
   // the folders of every project in the group and its sub-group, and the project's worktree outside its folder
   expect(h.unsaved).toEqual([["C:/w/app", fix.path, "C:/w/lib"]]);
   expect(deletes()).toEqual([{ id: "g1", removeProjects: true }]);
-  expect(h.closed).toEqual([["C:/w/app", "C:/w/lib"]]);
+  expect(h.closed).toEqual([["C:/w/app", fix.path, "C:/w/lib"]]); // F88-01: the going folders, the worktree too
   expect(question(c).length).toBe(0);
 });
 

@@ -126,7 +126,7 @@ test("PROJ 008: removing a project closes its panes but hands over the nested pr
   expect(h.calls).toContain("project_remove");
   expect(h.closed.length).toBe(1);
   const [paths, staying] = h.closed[0] as [string[], string[]];
-  expect(paths).toEqual(["C:/w/app"]);
+  expect(paths).toEqual(["C:/w/app", "C:/w/ws/fix"]); // F88-01: the going folders, own first; the nested project is not one
   expect(staying).toEqual(expect.arrayContaining(inner));
   expect(staying).not.toContain("C:/w/app");
   expect(staying).not.toContain("C:/w/ws/fix");
@@ -139,7 +139,7 @@ test("F21: deleting a group with its projects hands over the projects outside th
   await settle(60);
   expect(h.closed.length).toBe(1);
   const [paths, staying] = h.closed[0] as [string[], string[]];
-  expect(paths).toEqual(["C:/w/app"]);
+  expect(paths).toEqual(["C:/w/app", "C:/w/ws/fix"]); // F88-01: the going folders, own first; the nested project is not one
   expect(staying).toEqual(expect.arrayContaining(inner));
   expect(staying).not.toContain("C:/w/app");
 });

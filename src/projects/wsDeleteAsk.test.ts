@@ -293,5 +293,5 @@ test("Remove project asks about every editor tab it closes, hidden workspaces in
   await click(c, byText(guardAsk(c), "button", "Don't save")[0]);
   await settle(200);
   expect(h.calls).toContain("project_remove"); // only after the explicit choice
-  expect(removed).toEqual(["C:/w/app"]);
+  expect(removed).toEqual(["C:/w/app", "C:/w/ws/fix", "C:/w/app/ws/nested", "C:/w/app/ws/hidden"]); // F88-01: every going folder, own first
 });

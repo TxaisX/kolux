@@ -28,7 +28,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { closesWith, goesWith, goingFolders } from "../workspaces";
+import { closesWith, goesWith, goingFolders, sameDir } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
@@ -752,16 +752,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // that the removed grid shows is kept (R83-04), so it is not asked about. Alone on a repository, as before.
   // R83-04: not when its own folder stays (`closesWith`: a staying project lists it), whichever grid shows it.
   const askedOf = (listed: string[], folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying) || (goesWith(d, listed, staying) && closesWith({ cwd: d }, folders, staying)));
+  // F88-01: the going folders, each once and in order (the scan lists the own folder again); `removedAll` closes their panes
+  // and reads the first as the project's own, so a going worktree under a staying project's folder closes too.
+  const once = (ds: string[]) => ds.filter((d, i) => ds.findIndex((x) => sameDir(x, d)) === i);
   const removeProject = async (p: Project) => {
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
     const staying = stayingBut(new Set([p.id]));
-    const folders = goingFolders(p.path, foldersOf(p), staying);
+    const folders = once(goingFolders(p.path, foldersOf(p), staying));
     const closed = askedOf(foldersOf(p), folders, staying);
     if (!(await onAskUnsaved(closed))) return;
     try {
       // `unchecked`: Git could not list a project's worktrees, so the engine left their terminals running (missing = false).
       const gone = await invoke<{ name: string; path: string; ended: number; unchecked?: boolean }>("project_remove", { projectId: p.id });
-      onRemovedAll([gone.path], staying);
+      onRemovedAll(folders, staying);
       setDropProject(null);
       setSettingsFor(null);
       // R83-01: the list that failed may be a staying project's, so no owner is named. The memory number opens the
@@ -916,14 +919,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // project in the group and its sub-groups (the back end removes those too). On Cancel nothing is deleted.
     const going = new Set(projectsInGroup(groups, g.id));
     const members = remove ? projects.filter((p) => going.has(p.id)) : [];
+    const staying = stayingBut(going);
+    const folders = once(members.flatMap((p) => goingFolders(p.path, foldersOf(p), staying)));
     if (remove) {
-      const staying = stayingBut(going);
-      if (!(await onAskUnsaved(askedOf(members.flatMap(foldersOf), members.flatMap((p) => goingFolders(p.path, foldersOf(p), staying)), staying)))) return;
+      if (!(await onAskUnsaved(askedOf(members.flatMap(foldersOf), folders, staying)))) return;
     }
     try {
       const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
-      if (members.length > 0) onRemovedAll(members.map((p) => p.path), stayingBut(going));
+      if (members.length > 0) onRemovedAll(folders, staying);
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
       if (colours) live.current.onSetting(HEADER_COLOURS_SETTING, colours);
       setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away
