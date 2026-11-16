@@ -95,29 +95,31 @@ test("usage-status.md:14: each row's End button is named for its session", async
   expect(endButton(12).attrs["aria-label"]).toBe("End Tests");
 });
 
-test("usage-status.md:19: End all and Restart terminals are disabled while an End all run is going", async () => {
+test("usage-status.md:19: End all is the one bulk button, and it is disabled while an End all run is going", async () => {
   let release = () => {};
   back.killHold = new Promise<void>((r) => (release = r));
   await open();
   const offer = () => find(doc.body, (n) => n.attrs["data-bulk"] === "offer")[0];
   const buttons = () => find(offer(), (n) => n.localName === "button");
-  expect(buttons().map((b) => "disabled" in b.attrs)).toEqual([false, false]);
+  expect(buttons().map((b) => "disabled" in b.attrs)).toEqual([false]);
   await click(root, buttons()[0]);
   await until(() => find(doc.body, (n) => n.attrs["data-bulk"] === "ask").length === 1, "the End all question");
   await click(root, find(find(doc.body, (n) => n.attrs["data-bulk"] === "ask")[0], (n) => n.localName === "button" && n.textContent.trim() === "End all")[0]);
   await until(() => back.kills.length > 0 && find(doc.body, (n) => n.attrs["data-bulk"] === "offer").length === 1, "the run to start");
-  expect(buttons().map((b) => "disabled" in b.attrs)).toEqual([true, true]);
+  expect(buttons().map((b) => "disabled" in b.attrs)).toEqual([true]);
   await act(async () => release());
   await until(() => find(doc.body, (n) => n.attrs["data-bulk"] === "offer").length === 0 || buttons().every((b) => !("disabled" in b.attrs)), "the run to end");
 });
 
-test("usage-status.md:19: the End all and Restart terminals hover texts use the words of their question", async () => {
+test("usage-status.md:19: the End all hover text uses the words of its question, and nothing offers a restart", async () => {
   await open();
   const offer = find(doc.body, (n) => n.attrs["data-bulk"] === "offer")[0];
   const titles = find(offer, (n) => n.localName === "button").map((b) => b.attrs.title);
-  const q = bulkQuestion("restart", [1])!;
-  expect(titles).toEqual(["End every terminal. Running agents stop. Saved files are not touched. Asks first.", "Ends every terminal. Reopen a pane for a fresh one. Running agents and programs stop. Saved files are not touched. Asks first."]);
-  expect([titles[1], q.text].every((t) => t.includes("Reopen a pane for a"))).toBe(true); // R2: neither promises a restart that does not happen
+  const q = bulkQuestion("all", [1])!;
+  expect(titles).toEqual(["End every terminal. Running agents stop. Saved files are not touched. Asks first."]);
+  // Kolux runs its terminals inside the app: there is no service to restart, so no button may say so.
+  expect(offer.textContent).not.toMatch(/restart/i);
+  expect(rmSource).not.toContain("Restart terminals");
   expect(q.text).toContain("Running agents stop. Saved files are not touched.");
   expect(titles.join(" ")).not.toMatch(/kill/i);
 });

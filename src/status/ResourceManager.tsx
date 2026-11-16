@@ -100,7 +100,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   const ask = async (row: Row) => {
     if (endNeedsAsk(await read(), row.id)) setEnding(row);
   };
-  // SET-042 / SET-060 (T-285): End all and Restart end every session a fresh read lists at the click, after a question;
+  // SET-042 / SET-060 (T-285): End all ends every session a fresh read lists at the click, after a question;
   // the report comes from a read after the kills, so it says what really ended.
   const [bulk, setBulk] = useState<Bulk | null>(null);
   const [report, setReport] = useState<{ text: string; ok: boolean } | null>(null);
@@ -215,9 +215,6 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
           <div className="res-row res-bulk" data-bulk="offer" style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
             <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal. Running agents stop. Saved files are not touched. Asks first.">
               End all
-            </button>
-            <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Ends every terminal. Reopen a pane for a fresh one. Running agents and programs stop. Saved files are not touched. Asks first.">
-              Restart terminals
             </button>
           </div>
         )}
