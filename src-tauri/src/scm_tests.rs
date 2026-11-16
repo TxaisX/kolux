@@ -2817,6 +2817,76 @@ fn n02_a_nested_repo_in_the_pick_does_not_stop_the_other_rows() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+/// F-02 set-up: committed `foo` and `bar.txt`; `foo` deleted (with `git rm` when `staged`) and a
+/// folder with one file put in its place, its own repository when `nested`; `bar.txt` changed
+/// (and staged when `staged`), the second row of the pick.
+fn folder_in_a_files_place(name: &str, nested: bool, staged: bool) -> PathBuf {
+    let dir = temp_repo(name);
+    commit_file(&dir, "foo", "f\n");
+    commit_file(&dir, "bar.txt", "b\n");
+    if staged {
+        plain(&["rm", "-q", "foo"], &dir);
+    } else {
+        fs::remove_file(dir.join("foo")).unwrap();
+    }
+    fs::create_dir(dir.join("foo")).unwrap();
+    if nested {
+        plain(&["init", "-q", "-b", "main"], &dir.join("foo"));
+    }
+    fs::write(dir.join("foo").join("work.txt"), "unpushed\n").unwrap();
+    fs::write(dir.join("bar.txt"), "changed\n").unwrap();
+    if staged {
+        plain(&["add", "bar.txt"], &dir);
+    }
+    dir
+}
+
+/// F-02: a folder that took a tracked file's place is never removed by Discard, on any route:
+/// the changed and staged sections and the section-free discard. The row is left as it was and
+/// named; the other row of the same pick is still put back.
+#[test]
+fn f02_discard_never_removes_a_folder_that_took_a_tracked_files_place() {
+    let said_foo = "foo is now a folder, so Kolux leaves it. Remove or move the folder by hand if you want the file back.";
+    for nested in [true, false] {
+        for route in ["changed", "staged", "paths-changed", "paths-staged"] {
+            let staged = route.ends_with("staged");
+            let dir = folder_in_a_files_place(&format!("f02-{route}-{nested}"), nested, staged);
+            let rows = vec!["foo".to_string(), "bar.txt".to_string()];
+            let result = match route {
+                "changed" | "staged" => discard(&dir, route, &rows),
+                _ => discard_paths(&dir, &rows),
+            };
+            let what = format!("{route}, nested {nested}");
+            assert_eq!(result.expect_err(&what), said_foo, "{what}");
+            assert_eq!(fs::read_to_string(dir.join("foo").join("work.txt")).unwrap(), "unpushed\n", "{what}: the folder's file is kept");
+            assert_eq!(dir.join("foo").join(".git").is_dir(), nested, "{what}: a nested repository keeps its history");
+            assert_eq!(fs::read_to_string(dir.join("bar.txt")).unwrap(), "b\n", "{what}: the other row is put back");
+            if staged {
+                let st = status(&dir).unwrap();
+                assert!(st.staged.iter().any(|c| c.path == "foo" && c.status == "D"), "{what}: foo is still a staged deletion: {st:?}");
+            }
+            let _ = fs::remove_dir_all(&dir);
+        }
+    }
+}
+
+/// F-02: an empty folder in a tracked file's place is left to Git, which removes it and writes
+/// the file back: nothing is lost with it.
+#[test]
+fn f02_an_empty_folder_in_a_tracked_files_place_gives_the_file_back() {
+    for route in ["changed", "paths"] {
+        let dir = temp_repo(&format!("f02-empty-{route}"));
+        commit_file(&dir, "foo", "f\n");
+        fs::remove_file(dir.join("foo")).unwrap();
+        fs::create_dir(dir.join("foo")).unwrap();
+        let rows = vec!["foo".to_string()];
+        let result = if route == "changed" { discard(&dir, "changed", &rows) } else { discard_paths(&dir, &rows) };
+        result.unwrap_or_else(|e| panic!("{route}: {e}"));
+        assert_eq!(fs::read_to_string(dir.join("foo")).unwrap(), "f\n", "{route}: the file is back");
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {

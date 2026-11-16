@@ -2687,9 +2687,16 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     check_paths(paths)?;
     let st = status(worktree)?;
     let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let mut kept = Vec::new();
     for p in paths {
         let p = p.trim_end_matches('/');
         let index = st.staged.iter().find(|c| c.path == p);
+        // F-02: a row whose file (or a rename's old file) Git would write over a folder with
+        // something in it is left exactly as it is: not unstaged, not written, not cleaned.
+        if let Some(at) = std::iter::once(p).chain(index.and_then(|c| c.from.as_deref())).find(|at| folder_in_place(worktree, at)) {
+            kept.push(now_folder(at));
+            continue;
+        }
         if let Some(c) = index {
             staged.push(c.path.clone());
             if let Some(from) = &c.from {
@@ -2721,7 +2728,7 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     // N-02: a nested repository is taken out before git clean runs and named at the end, so the
     // other rows still go; any error from the untracked discard is then a real failure and stops.
     let (nested, untracked): (Vec<String>, Vec<String>) = untracked.into_iter().partition(|p| own_repo_at(worktree, p));
-    let mut kept: Vec<String> = nested.iter().map(|p| own_repo(p)).collect();
+    kept.extend(nested.iter().map(|p| own_repo(p)));
     if !untracked.is_empty() {
         discard(worktree, "untracked", &untracked)?;
     }
@@ -2758,6 +2765,30 @@ fn own_repo_at(worktree: &Path, p: &str) -> bool {
     fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/'))).join(".git")).is_ok()
 }
 
+/// F-02: true when Git's checkout or restore would write a file or a link at `p` while a real
+/// folder (not a link) with anything in it, or one that cannot be read, sits there: Git would
+/// remove that folder whole, a nested repository's history included. An empty folder is left to
+/// Git (nothing is lost with it), and so is a submodule's folder (its entry is a gitlink, which
+/// Git never writes as a file) or a tracked folder's.
+fn folder_in_place(worktree: &Path, p: &str) -> bool {
+    let p = p.trim_end_matches('/');
+    let full = worktree.join(native(p));
+    let real_folder = fs::symlink_metadata(&full).is_ok_and(|m| m.is_dir() && !m.is_symlink());
+    if !real_folder || fs::read_dir(&full).is_ok_and(|mut d| d.next().is_none()) {
+        return false;
+    }
+    // The modes the index and the last commit hold at exactly `p`; a failed read keeps the folder.
+    let modes = |args: &[&str]| run(args, Some(worktree)).map(|out| out.split('\0').filter_map(|e| e.split_once('\t')).filter(|(_, at)| *at == p).map(|(m, _)| m.split(' ').next().unwrap_or_default().to_string()).collect::<Vec<_>>());
+    let Ok(index) = modes(&["--literal-pathspecs", "ls-files", "-s", "-z", "--", p]) else { return true };
+    let head = modes(&["--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", p]).unwrap_or_default();
+    index.iter().chain(&head).any(|m| m != "160000" && m != "040000")
+}
+
+/// F-02: what Discard says about a row it leaves because a folder now sits in its file's place.
+fn now_folder(p: &str) -> String {
+    format!("{} is now a folder, so Kolux leaves it. Remove or move the folder by hand if you want the file back.", p.trim_end_matches('/'))
+}
+
 /// R-06 / N-01: what Discard says about a nested repository it leaves.
 fn own_repo(p: &str) -> String {
     format!("{} is its own Git repository, so Kolux leaves it. Delete it by hand if you mean to.", p.trim_end_matches('/'))
@@ -2787,8 +2818,27 @@ fn with_paths(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), St
 pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), String> {
     check_paths(paths)?;
     match section {
-        "staged" => piped(worktree, &["--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
-        "changed" => piped(worktree, &["--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], paths),
+        "staged" | "changed" => {
+            // F-02: a row whose file Git would write over a folder with something in it is left as
+            // it is and named; the other rows still go.
+            let (kept, rest): (Vec<String>, Vec<String>) = paths.iter().cloned().partition(|p| folder_in_place(worktree, p));
+            let args: &[&str] = if section == "staged" {
+                &["--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
+            } else {
+                &["--literal-pathspecs", "restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"]
+            };
+            let mut said: Vec<String> = kept.iter().map(|p| now_folder(p)).collect();
+            if !rest.is_empty() || said.is_empty() {
+                if let Err(e) = piped(worktree, args, &rest) {
+                    said.push(e);
+                }
+            }
+            if said.is_empty() {
+                Ok(())
+            } else {
+                Err(said.join("\n"))
+            }
+        }
         "untracked" => {
             // R-06: git clean -f leaves a nested repository without a word; say so, and clean the rest.
             let (nested, rest): (Vec<&String>, Vec<&String>) = paths.iter().partition(|p| own_repo_at(worktree, p));
