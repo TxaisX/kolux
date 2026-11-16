@@ -1382,6 +1382,7 @@ Acceptance:
   - [ ] The sidebar shows sessions, not per-card agent rows.
   - [ ] No setting brings the per-card agent rows back.
 Compat: —
+  Amended 2026-11-16 (wave 2026-11-15): Kolux's sidebar lists project folders only; neither sessions nor per-card agent rows are listed.
 Decision: H: default skip.
 Source: D-01-091
 

@@ -52,7 +52,7 @@ export default function AiRecipesSection({ settings, save }: Props) {
     <section className="conn-card" data-section="ai-recipes">
       <h2 className="conn-name">Let AI write Git text (branch names, pull request titles and descriptions)</h2>
       <label className="look-select">
-        <input type="checkbox" checked={aiControlsShown(settings)} onChange={(e) => void save({ [SCM_AI_HIDDEN_KEY]: !e.target.checked })} /> Show the AI actions in Source Control
+        <input type="checkbox" checked={aiControlsShown(settings)} onChange={(e) => void save({ [SCM_AI_HIDDEN_KEY]: !e.target.checked })} /> Show the AI actions for Git
       </label>
       <p className="conn-detail">One switch for the generate and Fix with AI controls. A repository below can follow it or override it.</p>
       {RECIPE_ACTIONS.map((a) => (
@@ -71,7 +71,7 @@ export default function AiRecipesSection({ settings, save }: Props) {
           </li>
         ))}
       </ul>
-      <input className="field" aria-label="Repository to override" title="Paste a remote URL or type host/owner/name, or a folder path when there is no remote; it is saved under the id the app resolves. Source Control also has a switch for the repository you are in." placeholder="https://github.com/owner/name, or a folder path" value={repo} onChange={(e) => (setRepo(e.target.value), setRepoError(false))} />
+      <input className="field" aria-label="Repository to override" title="Paste a remote URL or type host/owner/name, or a folder path when there is no remote; it is saved under the id the app resolves." placeholder="https://github.com/owner/name, or a folder path" value={repo} onChange={(e) => (setRepo(e.target.value), setRepoError(false))} />
       <button
         type="button"
         className="btn"

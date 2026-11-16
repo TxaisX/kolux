@@ -8,7 +8,7 @@ import { PIN_COPIES_SETTING } from "../projects/rows";
 import { densityPatch, DENSITIES, DENSITY_LABEL, DENSITY_NOTE, readCardDetails, type Density } from "./cards";
 
 const LOOK_NOTE: Record<SidebarLook, string> = {
-  standard: "The plain surface colour, the same as the Source Control sidebar.",
+  standard: "The plain surface colour.",
   terminal: "The sidebar takes the terminal's background colour.",
   tinted: "A colour of your choice laid over the standard surface.",
 };

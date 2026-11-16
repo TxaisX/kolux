@@ -194,9 +194,9 @@ Acceptance:
   - [x] Press Mod+Comma → Settings opens on the last page used, or the first. (cards; evidence/cards-SET-006.txt)
   - [x] Count the pages in the side list → exactly the eleven named, plus one per repository. (cards; evidence/cards-SET-006.txt)
   - [x] Follow an in-app link to the shortcut policy → Shortcuts opens, scrolled to that setting. (cards; evidence/cards-SET-006.txt)
-  - [x] Measure the Show the AI actions in Source Control row, a repository's Wait for setup row and an
+  - [x] Measure the Show the AI actions for Git row, a repository's Wait for setup row and an
       agent's switch row → each is at least 24px tall. (unit + headless browser; evidence/T-701.txt)
-  - [x] Look at Show the AI actions in Source Control → its text starts just right of its box, not at
+  - [x] Look at Show the AI actions for Git → its text starts just right of its box, not at
       the far edge. (unit + headless browser; evidence/T-707.txt)
 Compat: the keybinding command id app.settings stays, with Mod+Comma as its default.
 Source: D-17-006
@@ -784,6 +784,7 @@ Acceptance:
         reopening one starts a fresh shell at once and a success toast appears.
   - [ ] Open the confirmation and cancel → every terminal keeps running.
 Compat: —
+  Amended 2026-11-16 (wave 2026-11-15, job 49): Kolux has no restart action. The resource usage popover has one End all button; after it, new terminals open straight away.
 Source: D-17-060
 
 ### SET-062 · macOS warns when terminal commands lose the app's permission grants

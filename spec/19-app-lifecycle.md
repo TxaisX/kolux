@@ -46,6 +46,7 @@ Acceptance:
   - [x] An End that fails → its error stays past the next refresh; Escape with one of the popover's own End
         questions open closes only the question. (background sessions' question: known limit, DT-C105) (unit; evidence/T-669.txt)
 Compat: —
+  Amended 2026-11-16 (wave 2026-11-15, job 49): the popover has one bulk button, End all; Restart terminals is gone.
 Source: D-19-054
 
 ### APP-041 · Diagnostic logs stay on the computer and are scrubbed before sharing

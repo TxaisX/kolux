@@ -210,6 +210,7 @@ Acceptance:
         in it.
   - [ ] Add a second project later → no agent starts on its own.
 Compat: —
+  Amended 2026-11-16 (wave 2026-11-15, job 47; Txais 2026-11-15): the first folder added after onboarding opens the Start form with that folder ticked, once it is on the list and in front. No agent starts until the user presses Start.
 Source: D-16-010
 
 ### ONB-012 · Grid tour runs once when the first run ends

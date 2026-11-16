@@ -34,7 +34,7 @@ test.each(boxes)("%s: the checkbox has its name and a 24px hit area", (_, src, n
 // T-701 / DT-C137 (live verify G9): the three label rows still under 24px, each found by its page and its text
 
 const rows: [string, string, RegExp, string][] = [
-  ["Git and worktrees: Show the AI actions in Source Control", recipes, /<label className="look-select">\s*<input type="checkbox"[^]*?\/> Show the AI actions in Source Control/, ".look-select"],
+  ["Git and worktrees: Show the AI actions for Git", recipes, /<label className="look-select">\s*<input type="checkbox"[^]*?\/> Show the AI actions for Git/, ".look-select"],
   ["Repository: Wait for setup", repoSetup, /<label className="check">\s*<input type="checkbox" aria-label="Wait for setup"/, ":where(label).check"],
   ["Agents: each agent's switch", agents, /<label className="agent-on">(?:(?!<\/label>)[^])*?<input type="checkbox" role="switch"/, ".agent-on"],
 ];

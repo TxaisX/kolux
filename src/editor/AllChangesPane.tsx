@@ -670,7 +670,7 @@ export const Section = memo(function Section({ anchor, e, name, root, base, draw
           </button>
         )}
         {onOpenDiff && (
-          <button className="ib" onClick={() => onOpenDiff(e.path, e.staged)} title="Open as a diff tab, in the split chosen in Source Control" aria-label={`Open ${name} as a tab`}>
+          <button className="ib" onClick={() => onOpenDiff(e.path, e.staged)} title="Open as a diff tab" aria-label={`Open ${name} as a tab`}>
             <FileCode size={12} />
           </button>
         )}

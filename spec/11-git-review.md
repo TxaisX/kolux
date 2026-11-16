@@ -12,6 +12,11 @@ pull request page, and starts a workspace from any of them; GitHub Projects open
 table. GitHub is the only hosted service kept: GitLab, Bitbucket, Azure DevOps, Gitea, Jira and
 Linear are dropped by default, one card each, along with the settings pages that served them.
 
+Amended 2026-11-16 (T-644; wave 2026-11-15, job 48): Kolux has no Source Control panel. T-644 took
+it out of the right sidebar and the wave of 2026-11-15 removed its code. Changed files are read,
+staged, unstaged and discarded in the All Changes tab. A card below that names the panel describes
+the old screen; what Kolux built of it is in PLAN.md.
+
 Tier counts: P0 12 · P1 38 · P2 21 · H 0 · X 0 · D 15
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 07 Accounts, sign-in & keys · 12 Editor & files · 13 Browser pane & computer use · 15 Skills, plugins & starter kits · 16 Onboarding & guidance · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The `kolux` CLI
 

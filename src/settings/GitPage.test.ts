@@ -81,7 +81,7 @@ test("the Source Control group-order section is gone, and the AI card says what 
   expect(html).not.toContain('data-section="scm-groups"');
   expect(html).not.toContain("Group order");
   expect(html).toContain("Let AI write Git text (branch names, pull request titles and descriptions)");
-  expect(html).toContain("Show the AI actions in Source Control"); // still the scmAiHidden switch
+  expect(html).toContain("Show the AI actions for Git"); // still the scmAiHidden switch
 });
 
 test("F1 (job 56): the Own folder note says the pane header shows each agent's folder, not the sidebar", () => {

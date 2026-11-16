@@ -15,6 +15,12 @@ update progress. The Agent Dashboard drawer, the pet and the Activity page sit b
 switches that are off; the dashboard pop-out, the Swarm pane footer and the status-bar usage chips
 were retired. Views of remote machines left with area 18.
 
+Amended 2026-11-16 (T-644; wave 2026-11-15): Kolux has no Source Control panel. T-644 took it out of
+the right sidebar and the wave of 2026-11-15 removed its code. Changed files are read, staged,
+unstaged and discarded in the All Changes tab. The left sidebar lists project folders only. A card
+below that names the Source Control panel or sidebar session rows describes the old screen; what
+Kolux built of it is in PLAN.md.
+
 Tier counts: P0 24 · P1 58 · P2 15 · H 10 · X 1 · D 10
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes ·
 04 Agent status, hooks & notifications · 06 Usage & limits · 07 Accounts, sign-in & keys ·
@@ -369,6 +375,7 @@ Acceptance:
   - [x] Close a tab → its worktree's count drops. (cards; evidence/cards-VIEW-051.txt)
 Compat: —
   Amended 2026-11-02 (DT-C83, wave UI A.2): the sidebar lists projects, workspaces and groups with their live counts; terminals are tabs in the main area and no longer rows here.
+  Amended 2026-11-16 (wave 2026-11-15): the sidebar lists project folders only, one row per project in every "Group and sort" setting. Sessions and worktrees have no rows of their own; a folder's dot carries its agents' state, and each pane's top bar its own agent's.
 Source: D-05-051
 
 ### VIEW-005 · The app reopens on the screen and page you left

@@ -852,7 +852,7 @@ Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emu
 | `sidebar.right.toggle` | Toggle Right Sidebar | Mod+L | no |
 | `sidebar.explorer.toggle` | Show or hide Explorer | Mod+Shift+E | no |
 | `sidebar.search.toggle` | Show Search | Mod+Shift+F | no |
-| `sidebar.sourceControl.toggle` | Show Source Control | Mod+Shift+G | no |
+| `sidebar.sourceControl.toggle` | Show Source Control (removed by T-644: Kolux has no Source Control panel, so this id is not registered) | Mod+Shift+G | no |
 | `sidebar.checks.toggle` | Show Checks | none | yes |
 | `sidebar.ports.toggle` (not carried since T-611, see `DECISIONS.md` DT-C53) | Show Ports | none on Windows (macOS: Mod+Shift+I) | no |
 | `sidebar.sleepingWorkspaces.toggle` | Toggle Sleeping Workspaces | none | yes |
@@ -1323,7 +1323,7 @@ Each row names a value or record the importer brings across from a 0.15.0 profil
 | VIEW-011 | Each of the two View > Appearance button toggles; both off by default. |
 | VIEW-035 | Its View > Appearance toggle; off by default. The feature is cut, so the value is read and dropped. |
 | VIEW-052 | Sidebar appearance mode, tint colour and tint opacity. |
-| VIEW-062 | List or tree for Source Control; list by default. |
+| VIEW-062 | List or tree for Source Control; list by default. Kolux has no Source Control panel since T-644. |
 | VIEW-097, BROW-053 | Keep awake: On, Off or Auto; off by default. Areas 03, 05 and 19 card the same behaviour; area 03 owns it, so it is built once. |
 | VIEW-106 | The app-name toggle under View > Appearance; on by default. |
 | VIEW-108 | Parking hidden terminals to save memory. |
