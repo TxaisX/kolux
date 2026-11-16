@@ -31,6 +31,7 @@ import { scopesFor } from "./keyScopes";
 import { matchEvent, type KeyLike, type Keymap } from "./keymap";
 import { kPalette, richKeyTaken } from "./paletteKey";
 import { recording } from "./record";
+import { runningCommand } from "./runCommand";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
 import { settingsShown } from "../onboarding/settingsShown";
@@ -69,11 +70,13 @@ export const WINDOW_TERMINAL = new Set([
   "terminal.equalizePaneSizes",
 ]);
 /** Audit F28: the commands that close, end or delete something. While a plain text field has the focus they do not
- *  run, so Ctrl+W typed in a settings box or the palette never closes the pane behind it. */
+ *  run, so Ctrl+W typed in a settings box or the palette never closes the pane behind it. R54-01: a command picked
+ *  in the palette is no key typed into the field, so it always runs. */
 export const CLOSING_KEYS = new Set(["tab.close", "terminal.closePane", "tab.closeAll", "workspace.delete", "sessions.remove"]);
 /** The terminal's hidden text area, the code editor and the rich Markdown view are text fields too, but keep their own key rules. */
 const OWN_KEY_RULES = ".xterm, .cm-editor, .md-rich";
-export const typingHolds = (id: string, active: Element | null): boolean => CLOSING_KEYS.has(id) && isTextField(active) && !active?.closest(OWN_KEY_RULES);
+export const typingHolds = (id: string, active: Element | null): boolean =>
+  !runningCommand() && CLOSING_KEYS.has(id) && isTextField(active) && !active?.closest(OWN_KEY_RULES);
 
 /** The explorer's own Mod+Shift+F listener fires unless a menu or modal dialog holds the chord. It does not test
  *  defaultPrevented: a focused terminal cancels every Kolux chord (the shell never sees it) and the search still opens. */

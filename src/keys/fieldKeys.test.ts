@@ -104,3 +104,17 @@ test("Ctrl+W with the focus on a button or a checkbox closes the pane as before"
 test("the keys held while typing are the ones that close, end or delete something", () => {
   expect([...CLOSING_KEYS].sort()).toEqual(["sessions.remove", "tab.close", "tab.closeAll", "terminal.closePane", "workspace.delete"]);
 });
+
+test("R54-01: Close tab picked from the palette, opened from a text box, closes the pane; a typed Ctrl+W there still does not", async () => {
+  const { runCommand } = await import("./runCommand");
+  await handler();
+  const input = el("input", "text");
+  Object.assign(doc, { activeElement: input });
+  // The palette's stand-in: a keydown sent to the element that has the keyboard, which reaches the window's handler.
+  const target = { dispatchEvent: (ev: unknown) => (onKey!(ev), true) } as unknown as EventTarget;
+  const event = () => ({ type: "keydown", key: "Unidentified", isComposing: false, keyCode: 0, preventDefault() {}, stopPropagation() {} }) as unknown as Event;
+  runCommand("tab.close", undefined, { later: (f) => f(), target, event });
+  expect(closed).toEqual(["p1"]);
+  press("w", { ctrlKey: true });
+  expect(closed).toEqual(["p1"]);
+});
