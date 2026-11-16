@@ -3003,12 +3003,13 @@ fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<Strin
     None
 }
 
-/// What Discard says about a part `at` of row `row` that could not be read.
+/// What Discard says about a part `at` of row `row` that could not be read. R86-04: a failure, so
+/// it never holds the words of a row left on purpose.
 fn unread(at: &str, row: &str) -> String {
     if at == row {
-        format!("{row} could not be read, so Kolux leaves it.")
+        format!("{row} could not be read. Kolux did not change it.")
     } else {
-        format!("{at} could not be read, so Kolux leaves {row}.")
+        format!("{at} could not be read. Kolux did not change {row}.")
     }
 }
 

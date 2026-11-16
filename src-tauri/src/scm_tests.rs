@@ -3288,7 +3288,8 @@ fn r70_a_row_that_cannot_be_read_is_left_not_handed_to_git() {
         let dir = temp_repo(&format!("r70e-{route}"));
         let result = by_route(&dir, route, &["x?y.txt"]);
         let _ = fs::remove_dir_all(&dir);
-        assert_eq!(result.expect_err(route), "x?y.txt could not be read, so Kolux leaves it.", "{route}");
+        // R86-04: a failure, so it does not hold the words of a row left on purpose.
+        assert_eq!(result.expect_err(route), "x?y.txt could not be read. Kolux did not change it.", "{route}");
     }
 }
 
