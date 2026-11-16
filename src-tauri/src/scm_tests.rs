@@ -4099,6 +4099,25 @@ fn r95_a_letter_case_rename_discarded_whole_on_the_staged_route_comes_back() {
     assert!(st.staged.is_empty() && st.changed.is_empty() && st.untracked.is_empty(), "status lists {st:?}");
 }
 
+/// F94-03: the same rename discarded by the paths route (row `GUIDE.md` alone) gives the one disk
+/// entry its old name back instead of deleting it.
+#[cfg(windows)]
+#[test]
+fn r95_a_letter_case_rename_discarded_by_paths_keeps_its_file() {
+    let dir = temp_repo("r95g");
+    commit_file(&dir, "guide.md", "old\n");
+    plain(&["mv", "guide.md", "GUIDE.md"], &dir);
+    let said = by_route(&dir, "paths", &["GUIDE.md"]);
+    let (lower, upper) = (r95_listed(&dir, "guide.md"), r95_listed(&dir, "GUIDE.md"));
+    let text = fs::read_to_string(dir.join("guide.md")).ok();
+    let st = status(&dir).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(said, Ok(()));
+    assert!(lower && !upper, "the listing holds guide.md {lower}, GUIDE.md {upper}");
+    assert_eq!(text.as_deref(), Some("old\n"));
+    assert!(st.staged.is_empty() && st.changed.is_empty() && st.untracked.is_empty(), "status lists {st:?}");
+}
+
 /// F94-01 control: a staged deletion with nothing at its place still comes back on both routes.
 #[test]
 fn r95_a_staged_deletion_with_an_empty_place_comes_back() {

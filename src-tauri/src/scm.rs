@@ -2705,6 +2705,8 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     let mut renames: Vec<(String, String)> = Vec::new();
     let mut real = std::collections::HashSet::new();
     let mut pairs: Vec<(String, String)> = Vec::new();
+    // F94-03: a staged rename whose two halves are one disk entry, as (old half, new half).
+    let mut ones: Vec<(String, String)> = Vec::new();
     for p in paths {
         let p = p.trim_end_matches('/');
         let index = st.staged.iter().find(|c| c.path == p);
@@ -2716,12 +2718,12 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         // rename's old half always, when a file or a link stands at its place; unless what stands
         // there is one disk entry with the rename's own new half, or (for the row) with another
         // row of this call the index holds, which then must go too (`pairs`).
-        let (mut why, mut pair) = (None, None);
+        let (mut why, mut pair, mut one) = (None, None, false);
         for at in std::iter::once(p).chain(from) {
             why = left_why(worktree, at, &mut real).or_else(|| folder_in_place(worktree, at).then(|| now_folder(at)));
             if why.is_none() && (at != p || (k.head_file.contains(p) && !k.at.contains(p))) {
                 match stands_in_place(worktree, at) {
-                    Ok(Some(_)) if at != p && one_entry(worktree, at, p) => {}
+                    Ok(Some(_)) if at != p && one_entry(worktree, at, p) => one = true,
                     Ok(Some(line)) if at != p => why = Some(line),
                     Ok(Some(line)) => match paths.iter().map(|o| o.trim_end_matches('/')).find(|o| k.at.contains(*o) && one_entry(worktree, p, o)) {
                         Some(o) => pair = Some(o.to_string()),
@@ -2749,6 +2751,9 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
         }
         if let Some(o) = pair {
             pairs.push((p.to_string(), o));
+        }
+        if let (true, Some(f)) = (one, from) {
+            ones.push((f.to_string(), p.to_string()));
         }
         if let Some(c) = index {
             staged.push(c.path.clone());
@@ -2836,6 +2841,14 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     // folder holding `.git` is kept, and so is any folder that is not empty; only an empty one goes.
     for p in &remove {
         let full = worktree.join(native(p));
+        // F94-03: the new half is the old half's own disk entry (a rename that only changes letter
+        // case): it gets its old name back instead of being deleted.
+        if let Some((from, _)) = ones.iter().find(|(_, to)| to == p) {
+            if let Err(e) = fs::rename(&full, worktree.join(native(from))) {
+                kept.push(format!("{from}: {e}"));
+            }
+            continue;
+        }
         let Ok(meta) = fs::symlink_metadata(&full) else { continue };
         if own_repo_at(worktree, p) {
             kept.push(own_repo(p));
