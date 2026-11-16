@@ -232,7 +232,7 @@ test("T-799 (p4a-05): with the status hooks off the master switch reads off, eve
   const html = view({ agentStatusHooks: false }, RULES, null, { turnOnHooks: () => {} });
   expect(switchOf(html, "Ask before protected actions")).not.toContain("checked");
   expect(switchOf(html, "Ask before protected actions")).toContain("disabled");
-  expect(html).toMatch(/<small id="safety-master-note">Off: &quot;Show what each agent is doing&quot; is off, so nothing can ask yet\./);
+  expect(html).toMatch(/<small id="safety-master-note">Off until &quot;Show what each agent is doing&quot; is on\./);
   expect(html).toContain("&quot;Show what each agent is doing&quot; is off, so Claude cannot ask yet. Turn it on here or in Settings &gt; Agents.");
   expect(html).not.toContain("status hooks");
   for (const r of RULES) expect(switchOf(html, r.name), r.name).toContain("disabled");
@@ -266,11 +266,11 @@ test("T-799 (p4a-05): a Turn on that fails to reach the agents says why", async 
   const page = await mountPage();
   await (page as unknown as { view: () => { turnOnHooks: () => Promise<void> } }).view().turnOnHooks();
   await page.settle();
-  expect(page.html()).toContain("did not finish");
+  expect(page.html()).toContain("Could not turn on");
   expect(page.html()).toContain("the agent settings file is locked");
 });
 
 test("F5 (job 56): a Turn on that did not finish names the switch as Settings > Agents does", () => {
   const html = view({ agentStatusHooks: false }, RULES, null, { turnOnHooks: () => {}, turnOnError: "disk full" });
-  expect(html).toContain("Turning on &quot;Show what each agent is doing&quot; did not finish: <!-- -->disk full");
+  expect(html).toContain("Could not turn on &quot;Show what each agent is doing&quot;: <!-- -->disk full");
 });

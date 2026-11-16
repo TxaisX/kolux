@@ -66,14 +66,14 @@ export function SafetyView({ settings, rules, error = null, save, turnOnHooks, t
       </p>
       {turnOnError && (
         <p className="conn-detail warn" role="alert">
-          Turning on "Show what each agent is doing" did not finish: {turnOnError}
+          Could not turn on "Show what each agent is doing": {turnOnError}
         </p>
       )}
       <label className="conn-switch" data-hooks-off={hooks ? undefined : ""}>
         <input type="checkbox" role="switch" aria-label="Ask before protected actions" checked={master} disabled={!hooks} onChange={(e) => void save(switchAll(e.target.checked))} />
         <span>
           Ask before protected actions
-          <small id="safety-master-note">{!hooks ? 'Off: "Show what each agent is doing" is off, so nothing can ask yet.' : master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
+          <small id="safety-master-note">{!hooks ? 'Off until "Show what each agent is doing" is on.' : master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
         </span>
       </label>
       {error && (

@@ -23,7 +23,7 @@ export const AWAKE_HELP: Record<AwakeMode, string> = {
   on: "The computer stays awake while Kolux is open, even with no agent working. On a laptop that uses Modern Standby this can drain the battery; closing the lid may still put it to sleep, and on battery it may sleep a few minutes after its usual sleep timeout.",
 };
 /** Agent mode counts only panes whose agent reports through the status hooks; with them off it never holds. */
-export const HOOKS_OFF_HELP = 'Agent mode follows "Show what each agent is doing", which is off: turn it on above, or pick On.';
+export const HOOKS_OFF_HELP = 'Agent mode needs "Show what each agent is doing", which is off. Turn it on above, or pick On.';
 /** The setup stop card has no hooks switch and no On choice, so it points to the page that has both. */
 export const HOOKS_OFF_STOP = 'Agent mode only works while "Show what each agent is doing" is on. Turn it on in Settings > Agents.';
 export const LID_HELP =

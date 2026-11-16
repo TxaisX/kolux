@@ -27,7 +27,7 @@ describe("Explore Kolux stops carry their own setup cards (ONB-024)", () => {
     expect(stopCard("statuses", f({ keepAwake: "agent", agentStatusHooks: true }))).toMatchObject({ hooksOff: false });
     expect(stopCard("statuses", f({ keepAwake: "on" }))).toMatchObject({ hooksOff: false });
     expect(stopCard("statuses", f({ keepAwake: "off" }))).toMatchObject({ hooksOff: false });
-    expect(HOOKS_OFF_HELP).toMatch(/Show what each agent is doing/);
+    expect(HOOKS_OFF_HELP).toMatch(/needs "Show what each agent is doing"/);
   });
   it("ship shows the commit message writer settings", () => {
     expect(stopCard("ship", f({}))).toMatchObject({ kind: "writer", writer: { mode: "agent", agent: "claude" }, hasCommand: false });

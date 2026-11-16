@@ -81,7 +81,7 @@ export function HooksSwitch({ on, onSwitch, file, problems = [] }: { on: boolean
         <span>
           Show what each agent is doing
           {problems.map((p) => <small className="warn" role="alert" data-problem key={p}>{p}</small>)}
-          <small>Agents tell Kolux when they work, wait for you or finish. On once you have answered the line in setup: on adds Kolux's hooks (small scripts that let an agent tell Kolux what it is doing) to each agent's settings; off removes them and stops them being put back; your own hooks stay. While it is off, Kolux guesses from each terminal's title and screen, so the status colours, the Board and "Needs you" can be late or wrong. Protected actions cannot ask first, and the chat box cannot see an agent's prompts.</small>
+          <small>Agents tell Kolux when they work, wait for you or finish. It turns on when you answer yes in setup. On adds small scripts (hooks) to each agent's settings; off takes them out. Your own hooks stay. While it is off, Kolux guesses from each terminal's title and screen, so status colours, the Board and "Needs you" can be late or wrong. Protected actions cannot ask first, and the chat box cannot see an agent's questions.</small>
           {file && <small data-file>Claude Code settings: {file}</small>}
         </span>
       </label>
