@@ -3409,3 +3409,71 @@ fn t779c_source_control_writes_in_an_untrusted_filter_repo_are_refused() {
     assert!(index_list(&dir).contains("loose.txt"));
     let _ = fs::remove_dir_all(&dir);
 }
+
+/// R82-01: a row spelled `./foo`, `sub//foo` or `sub/./foo` is checked as `foo` or `sub/foo`:
+/// the folder with a file in it that took the tracked file's place is kept on every route, and
+/// the line names the clean spelling.
+#[test]
+fn r82_a_dot_or_doubled_spelling_keeps_the_folder() {
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "paths"] {
+        let dir = temp_repo(&format!("r82a-{route}"));
+        fs::create_dir(dir.join("sub")).unwrap();
+        commit_file(&dir, "foo", "f\n");
+        commit_file(&dir, "sub/foo", "s\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "foo", "sub/foo"], &dir);
+        }
+        for at in ["foo", "sub/foo"] {
+            fs::remove_file(dir.join(at)).unwrap();
+            fs::create_dir(dir.join(at)).unwrap();
+            fs::write(dir.join(at).join("keep.txt"), "mine\n").unwrap();
+        }
+        for (row, clean) in [("./foo", "foo"), ("sub//foo", "sub/foo"), ("sub/./foo", "sub/foo")] {
+            let said = by_route(&dir, route, &[row]);
+            if fs::read_to_string(dir.join(clean).join("keep.txt")).ok().as_deref() != Some("mine\n") {
+                wrong.push(format!("{route} {row}: {clean}/keep.txt is gone, said {said:?}"));
+                let _ = fs::remove_file(dir.join(clean));
+                let _ = fs::create_dir_all(dir.join(clean));
+                fs::write(dir.join(clean).join("keep.txt"), "mine\n").unwrap();
+            } else if said != Err(now_folder(clean)) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R82-01: what the clean-up makes of a rooted, climbing or prefixed row, and that each is still
+/// refused on every Discard route with nothing changed.
+#[test]
+fn r82_a_rooted_or_climbing_row_is_still_refused() {
+    let dir = temp_repo("r82b");
+    fs::create_dir(dir.join("d")).unwrap();
+    commit_file(&dir, "d/f", "f\n");
+    fs::write(dir.join("d").join("f"), "changed\n").unwrap();
+    fs::write(dir.join("u.txt"), "u\n").unwrap();
+    let mut bad = vec![("/x", "/x"), ("d/../d/f", "d/../d/f"), ("./../x", "../x")];
+    if cfg!(windows) {
+        bad.extend([("C:d\\f", "C:d/f"), ("d:stream", "d:stream"), ("\\\\?\\x", "//?/x"), ("\\\\.\\x", "//./x"), (".\\..\\x", "../x")]);
+    }
+    let mut wrong = Vec::new();
+    for (row, clean) in bad {
+        let turned = one_spelling(&[row.to_string()]);
+        if turned != [clean.to_string()] {
+            wrong.push(format!("{row}: turned into {turned:?}"));
+        }
+        for route in ["changed", "staged", "untracked", "paths"] {
+            let said = by_route(&dir, route, &[row]);
+            if said != Err(format!("{clean} is outside this workspace")) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+        }
+    }
+    let (f, u) = (fs::read_to_string(dir.join("d").join("f")).ok(), dir.join("u.txt").exists());
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(f.as_deref(), Some("changed\n"), "the change to d/f is kept");
+    assert!(u, "the untracked u.txt is kept");
+}

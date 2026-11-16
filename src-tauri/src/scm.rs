@@ -2780,8 +2780,26 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
 /// R70-01: Git for Windows reads `\` in a row as a folder break, so on Windows Discard turns every
 /// row to Git's own `/` spelling before any check: every check and every Git call sees one
 /// spelling. Elsewhere `\` is a legal character in a file name, and the row stays as it is.
+/// R82-01: empty and `.` parts are dropped (`./foo`, `sub//foo` and `sub/./foo` are checked as the
+/// file Git reads them as), a trailing `/` is kept once, and `..` stays so the check refuses it. A
+/// rooted or prefixed row (`/x`, `C:d/f`, `d:stream`, `//?/x`) stays as sent, refused the same way.
 fn one_spelling(paths: &[String]) -> Vec<String> {
-    paths.iter().map(|p| if cfg!(windows) { p.replace('\\', "/") } else { p.clone() }).collect()
+    paths
+        .iter()
+        .map(|p| {
+            let p = if cfg!(windows) { p.replace('\\', "/") } else { p.clone() };
+            let path = Path::new(&p);
+            if path.has_root() || matches!(path.components().next(), Some(Component::Prefix(_))) {
+                return p;
+            }
+            let clean = p.split('/').filter(|s| !s.is_empty() && *s != ".").collect::<Vec<_>>().join("/");
+            if p.ends_with('/') && !clean.is_empty() {
+                clean + "/"
+            } else {
+                clean
+            }
+        })
+        .collect()
 }
 
 /// R-06: true when the row's folder holds `.git` (a file or a folder), a nested repository.
