@@ -2893,24 +2893,38 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             // file where a folder was; a link at the row itself is removed (only the link) first.
             let (mut said, mut rest, mut left) = (Vec::new(), Vec::new(), Vec::new());
             let mut real = std::collections::HashSet::new();
+            // R70-03: the link is removed here, before the rename look-up, so a failure leaves its row.
             for p in paths {
-                if let Some(why) = left_why(worktree, p, &mut real).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p))) {
-                    said.push(why);
-                    left.push(p.trim_end_matches('/').to_string());
+                match left_why(worktree, p, &mut real).or_else(|| folder_in_place(worktree, p).then(|| now_folder(p))).or_else(|| remove_link(worktree, p).err()) {
+                    Some(why) => {
+                        said.push(why);
+                        left.push(p.trim_end_matches('/').to_string());
+                    }
+                    None => rest.push(p.clone()),
                 }
             }
             // R59-06: a staged rename goes whole or not at all; looked up only when a row is left.
+            // R70-03: a status that cannot be read leaves every row; a picked partner gets its own line.
             if section == "staged" && !left.is_empty() {
-                for c in status(worktree).map(|st| st.staged).unwrap_or_default() {
-                    if let Some(from) = c.from.filter(|from| left.contains(from) || left.contains(&c.path)) {
-                        left.extend([from, c.path]);
+                match status(worktree) {
+                    Ok(st) => {
+                        for c in st.staged {
+                            let Some(from) = c.from.filter(|from| left.contains(from) || left.contains(&c.path)) else { continue };
+                            for half in [from, c.path] {
+                                if !left.contains(&half) {
+                                    if rest.iter().any(|p| p.trim_end_matches('/') == half) {
+                                        said.push(format!("{half} is the other half of a rename, so Kolux leaves it too."));
+                                    }
+                                    left.push(half);
+                                }
+                            }
+                        }
+                        rest.retain(|p| !left.iter().any(|l| l == p.trim_end_matches('/')));
                     }
-                }
-            }
-            for p in paths.iter().filter(|p| !left.iter().any(|l| l == p.trim_end_matches('/'))) {
-                match remove_link(worktree, p) {
-                    Ok(_) => rest.push(p.clone()),
-                    Err(e) => said.push(e),
+                    Err(e) => {
+                        said.push(format!("Kolux could not check for renamed files, so it stopped before changing them: {e}"));
+                        rest.clear();
+                    }
                 }
             }
             let args: &[&str] = if section == "staged" {
