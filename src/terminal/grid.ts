@@ -50,7 +50,7 @@ export function rowsFor(count: number, stacked = false): number {
   return Math.max(1, Math.ceil(count / columnsFor(count, stacked)));
 }
 
-/** TERM-001: growing adds empty panes; shrinking drops unstarted panes first, newest first, and
+/** TERM-001: growing opens the Start form for the new cells (no empty panes are added); shrinking drops unstarted panes first, newest first, and
  * never a started session (TERM-003's "ask first" is T-151; until then `blocking` names the
  * sessions in the way), so `drop` may fall short of the request. */
 export function resizePlan(shown: { key: number; started: boolean }[], n: number): { add: number; drop: number[] } {
