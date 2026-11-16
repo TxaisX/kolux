@@ -8,7 +8,7 @@ import { SAVED_SHAPES_KEY, applyLineup, defaultCopies, offeredLineup, restoreSha
 import { panesIn } from "../../workspaces";
 import { cellsOf } from "../../terminal/grid";
 import { ADD_PROJECT } from "../../onboarding/firstRun";
-import { addFolderVia, recentFirst, type StartSheet } from "../../launch/startForm";
+import { addFolderVia, lastStart, prefill, recentFirst, type StartSheet } from "../../launch/startForm";
 import { addFolderHands } from "./sidebarScreens";
 import { useWindow } from "./store";
 import { ChooserPane } from "../../lazy/pages";
@@ -34,6 +34,7 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
         ticked: p.folders ?? [],
         used: Object.fromEntries(projects.map((x) => [x.id, cellsOf(panesIn(panes, x.path)).length])),
         onTick: (ids: string[]) => setChooser(p.key, { folders: ids }),
+        usual: prefill({ projects, last: lastStart(settings), lineup: null, installed: [] }).folders, // job 47: ticked when the list lands late
         // the sidebar's Add project dialog; with the sidebar hidden or on Agents, its panel is shown first (job 13 F1)
         onAdd: () =>
           void addFolderVia({ ...addFolderHands(setSidebarOpen, screen, setScreen), fire: () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)) }),

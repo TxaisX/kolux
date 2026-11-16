@@ -101,10 +101,13 @@ function AgentButtons({ rows, pick, label, "data-testid": testid, onChoose, onOt
         <VendorMark agent="shell" size={28} />
         <span className="agent-btn-name">Terminal</span>
       </button>
-      <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={onOther}>
-        {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
-        <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
-      </button>
+      {/* job 47: while the search runs there are no rows, so only Terminal is offered */}
+      {rows.length > 0 && (
+        <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={onOther}>
+          {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
+          <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -184,7 +187,7 @@ type Props = {
   /** SESS-018: set on the New look: the chooser is the full-page New session sheet for this project. */
   sheet?: { project: string; path: string } | null;
   /** Start form C: the known project folders (most recent first), the ticked ones, each grid's cells in use, and Add folder. */
-  folders?: { rows: FolderRow[]; ticked: string[]; used: Record<string, number>; onTick: (ids: string[]) => void; onAdd: () => void } | null;
+  folders?: { rows: FolderRow[]; ticked: string[]; used: Record<string, number>; onTick: (ids: string[]) => void; onAdd: () => void; usual?: string[] } | null;
   /** Start form D: the close button's words when the form was asked at app open ("Keep what was open"). */
   keepLabel?: string;
 };
@@ -233,6 +236,14 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     if (start) onSeats(start);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detecting]);
+  // Job 47: a form opened before the folder list came (the wait at open ran out) ticks the usual folders once it lands.
+  const noRows = useRef(folders?.rows.length === 0);
+  useEffect(() => {
+    if (!folders || !noRows.current || folders.rows.length === 0) return;
+    noRows.current = false;
+    if (folders.ticked.length === 0 && folders.usual?.length) folders.onTick(folders.usual);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folders?.rows.length]);
   // A program with no model list has nothing to pick: its seat uses the program's own default.
   const pickAgent = (i: number, id: string) => {
     setShown(({ [i]: _gone, ...rest }) => rest);
@@ -523,7 +534,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
           {one === "mixed" && <span className="caption">Mixed</span>}
           {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
           {none && noneNote}
-          {!detecting && <AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" data-testid="all-agents" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
+          {<AgentButtons rows={rows} pick={one === "mixed" ? null : oneShown} label="Which AI for all of them" data-testid="all-agents" onChoose={chooseAll} onOther={() => setOtherFor("all")} />}
           {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length > 0 && (
             <div className="choices" role="radiogroup" aria-label="Which model for all of them">
               <span className="label">{one.model === null ? "Pick a model" : "Model"}</span>
@@ -685,7 +696,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               <div className="choices agent-pick">
                 {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
                 {none && noneNote}
-                {!detecting && <AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} data-testid={`seat-${i + 1}-agents`} onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
+                {<AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} data-testid={`seat-${i + 1}-agents`} onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
                 {installBits(shownPick(seats, shown, i), i)}
               </div>
               {seat.agent !== null && seat.agent !== TERMINAL && modelsFor(seat.agent).length === 0 && <span className="caption">Uses the program's default model</span>}

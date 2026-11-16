@@ -5,7 +5,7 @@ import { act, createElement } from "react";
 import type { Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { installDom } from "../tasks/fakeDom";
-import { askAtOpen } from "../launch/startForm";
+import { askAtOpen, START_WAIT_MS } from "../launch/startForm";
 
 import { isFirstWindow, resetStartAsk, useStartAsk } from "./useStartAsk";
 
@@ -163,5 +163,75 @@ test("F5: a page reload in the same run does not ask again; refused storage stil
   act(() => root.render(createElement(Third, { ...base(open2), agentsDone: true })));
   act(() => root.render(createElement(Third, { ...base(open2), agentsDone: true, panes: 5 })));
   expect(open2).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
+// Job 47 item 1: the wait at open has a limit. After START_WAIT_MS the form asks with what is known, so one read that
+// never answers cannot stop it for good. Every "skip" rule still holds. The clock starts at the hook's first run.
+const local = (m: Map<string, string> | null) =>
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, writable: true, value: m && { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) } });
+afterEach(() => (vi.useRealTimers(), local(null)));
+const stuckCases: [string, Partial<In>][] = [
+  ["the settings are never read", { settingsRead: false, layoutIn: false, agentsDone: true }],
+  ["the settings are read but last time's layout never comes in", { settingsRead: true, layoutIn: false, agentsDone: true }],
+  ["the agent search never answers", { agentsDone: false }],
+  ["the folder list is never read", { agentsDone: true, projectsRead: false }],
+  ["the first-run state never settles", { agentsDone: true, firstRunKnown: false }],
+];
+for (const [name, stuck] of stuckCases)
+  test(`job 47: ${name}: no form before the limit, the form asks once after it`, () => {
+    vi.useFakeTimers();
+    resetStartAsk();
+    const open = vi.fn();
+    const root = mount();
+    act(() => root.render(createElement(Probe, { ...base(open), ...stuck })));
+    act(() => void vi.advanceTimersByTime(START_WAIT_MS - 1));
+    expect(open).not.toHaveBeenCalled();
+    act(() => void vi.advanceTimersByTime(1));
+    expect(open).toHaveBeenCalledTimes(1);
+    act(() => void vi.advanceTimersByTime(START_WAIT_MS));
+    act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, panes: 5 })));
+    expect(open).toHaveBeenCalledTimes(1);
+    act(() => root.unmount());
+  });
+
+test("job 47: the user switched the ask off last time and the settings never come: no form after the limit", () => {
+  vi.useFakeTimers();
+  local(new Map());
+  const open = vi.fn();
+  let root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), settings: { askWhatToOpen: false }, agentsDone: true })));
+  act(() => root.unmount());
+  resetStartAsk(); // the next app start: the module is fresh, the browser storage is kept
+  root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), settingsRead: false, layoutIn: false, agentsDone: true })));
+  act(() => void vi.advanceTimersByTime(START_WAIT_MS * 2));
+  expect(open).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
+
+test("job 47: the user opened a pane while the form waited: no form after the limit", () => {
+  for (const stuck of [{ settingsRead: true, layoutIn: false, agentsDone: true }, { agentsDone: false }] as Partial<In>[]) {
+    vi.useFakeTimers();
+    resetStartAsk();
+    const open = vi.fn();
+    const root = mount();
+    act(() => root.render(createElement(Probe, { ...base(open), ...stuck })));
+    act(() => root.render(createElement(Probe, { ...base(open), ...stuck, panes: 3 })));
+    act(() => void vi.advanceTimersByTime(START_WAIT_MS * 2));
+    expect(open).not.toHaveBeenCalled();
+    act(() => root.unmount());
+  }
+});
+
+test("job 47: a fast start asks at once, as before the limit", () => {
+  vi.useFakeTimers();
+  resetStartAsk();
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true })));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => void vi.advanceTimersByTime(START_WAIT_MS * 2));
+  expect(open).toHaveBeenCalledTimes(1);
   act(() => root.unmount());
 });

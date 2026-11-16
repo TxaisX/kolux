@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { MAX_PANES } from "../terminal/grid";
 import { emptySeat, lineupOf, MAX_SESSIONS, TERMINAL, type Seat } from "./seats";
-import { acrossNote, startEach, askAtOpen, asksAtStart, everySeatStart, folderPlan, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, recountAll, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY } from "./startForm";
+import { acrossNote, startEach, askAtOpen, asksAtStart, everySeatStart, folderPlan, lastStart, oneForAll, pickForAll, pickWords, prefill, recentFirst, recountAll, setAll, startSummary, stripAsk, START_ASK_KEY, LAST_START_KEY, START_WAIT_MS } from "./startForm";
 
 const D = { model: "opus", effort: "high" };
 const none = { model: null };
@@ -74,6 +74,17 @@ test("Start form D: asked once, first window only, after settings and the agent 
   expect(askAtOpen({ ...w, firstRun: true })).toBe("skip");
   expect(asksAtStart({})).toBe(true);
   expect(asksAtStart({ [START_ASK_KEY]: false })).toBe(false);
+});
+
+test("job 47: past the limit the three waits give way and every skip rule still holds", () => {
+  const w = { on: true, firstWindow: true, asked: false, settingsRead: true, layoutIn: true, agentsDone: true, projectsRead: true, launching: false, sheetOpen: false, firstRunKnown: true, waitedOut: true };
+  expect(START_WAIT_MS).toBe(5000);
+  for (const stuck of [{ layoutIn: false }, { firstRunKnown: false }, { settingsRead: false }, { agentsDone: false }, { projectsRead: false }]) {
+    expect(askAtOpen({ ...w, ...stuck, waitedOut: false })).toBe("wait");
+    expect(askAtOpen({ ...w, ...stuck })).toBe("ask");
+  }
+  for (const skip of [{ asked: true }, { firstWindow: false }, { firstRun: true }, { agentsFailed: true }, { userActed: true }, { launching: true }, { sheetOpen: true }, { on: false }])
+    expect(askAtOpen({ ...w, layoutIn: false, settingsRead: false, agentsDone: false, ...skip })).toBe("skip");
 });
 
 test("Start form E: the layout strip asks once for the cells it adds", () => {
