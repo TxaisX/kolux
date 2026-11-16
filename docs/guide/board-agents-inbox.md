@@ -59,7 +59,7 @@ Use it to browse sessions by program rather than by state. The left rail, "Sessi
 - A footer line shows the picked session's 5-hour allowance and when it resets, for example "Claude 80% left".
 - The picked session's terminal (or its chooser), or its chat when it can show one (see below), fills the area beside the rail. Kolux remembers your pick; first run it picks the first agent's newest session.
 
-With no agent switched on the page says "No agents yet" with an "Open Settings" button. With agents but no open session it says "No sessions yet" and offers New session, and the page beside the rail offers it too.
+With no agent switched on the page says "No agents yet" with an "Open Settings" button. With agents but no open session it says "No sessions yet" and offers Start agents, and so does the page beside the rail. Both open the Start form (a chooser pane on the Classic look).
 
 ### Chat on the Agents page
 
@@ -99,7 +99,7 @@ Your unsent draft is kept for each session. A message you sent shows faintly unt
 | The box says | Why |
 |---|---|
 | "The agent is asking something in its terminal. Answer there." | The agent wants permission or an answer. You can still write a draft, but it will not send until the agent is no longer asking |
-| "Kolux can't see this agent's prompts. Type in its terminal." | Kolux has no status report from this agent: its hooks are off, Codex has not been trusted, or no event has come yet |
+| "Kolux can't see this agent's questions. Type in its terminal." | Kolux has no status report from this agent: its hooks are off, Codex has not been trusted, or no event has come yet |
 
 Before each key it types, Kolux checks again for the session the message was sent to, not the session on screen now. If the agent starts asking half way through a send, the rest is dropped.
 
@@ -172,7 +172,7 @@ The same words appear in pane headers, tabs, the sidebar, the Board, the Tower a
 
 A plain shell reads "Ready" while it runs and "Ended (code)" after it exits. A session not yet started reads "Not started" on the Agents page.
 
-Until an agent's status hooks report, Kolux guesses its state from the title the program gives its terminal. A spinner or a word such as "thinking" reads Working, "ready" or "idle" reads Done, and "permission", "waiting" or "action required" reads Needs you. Gemini CLI's own title icons count too: ✦ reads Working, ✋ reads Needs you and ◇ reads Done, whatever words follow them. A title it does not recognise, such as a folder path, changes nothing. The first real status replaces the guess.
+Until an agent's status hooks report, Kolux guesses its state from the title the program gives its terminal and from what its screen shows (a permission or question menu reads Needs you). A spinner or a word such as "thinking" reads Working, "ready" or "idle" reads Done, and "permission", "waiting" or "action required" reads Needs you. Gemini CLI's own title icons count too: ✦ reads Working, ✋ reads Needs you and ◇ reads Done, whatever words follow them. A title it does not recognise, such as a folder path, changes nothing. The first real status replaces the guess.
 
 ### What Gemini CLI, Antigravity and Amp show
 
@@ -214,4 +214,4 @@ Settings, Notifications has three switches and a sound choice (System default, C
 
 The pill in the top bar shows how much of your weekly allowance is left for each installed AI program, for example "Claude 80% left". Click it to open Settings at Accounts & keys, on the AI connections section. Hover for the weekly limit and when it resets. It tints as the allowance runs down (warning at 70% used, danger above 90%). See [Getting started](getting-started.md) for the full description.
 
-<!-- verified against: src/board/chip.ts, src/board/review.ts, src/App.tsx, src/agents/AgentsRail.tsx, src/agents/rail.ts, src/inbox/inbox.ts, src/inbox/InboxView.tsx, src/inbox/exitedPrompt.ts, src/terminal/status.ts, src/terminal/notify.ts, src/chat/ChatView.tsx, src/chat/MessageBox.tsx, src/chat/StepRows.tsx, src/chat/send.ts, src/chat/model.ts, src/chat/composer.ts, src/status/useAgentStatus.ts, src/usage/meter.ts, src/tower/tower.ts, src/tower/TowerView.tsx, src/chrome/TopBar.tsx, src/keys/actions.ts, src-tauri/src/status.rs, src/floor/FloorView.tsx, src/floor/timeline.ts, src-tauri/src/activity.rs, src/automations/RunsDashboard.tsx, src/automations/usage.ts, src-tauri/src/terminal.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, PLAN.md at 6f0c159a -->
+<!-- verified against: src/board/chip.ts, src/board/review.ts, src/App.tsx, src/agents/AgentsRail.tsx, src/agents/rail.ts, src/inbox/inbox.ts, src/inbox/InboxView.tsx, src/inbox/exitedPrompt.ts, src/terminal/status.ts, src/terminal/notify.ts, src/chat/ChatView.tsx, src/chat/MessageBox.tsx, src/chat/StepRows.tsx, src/chat/send.ts, src/chat/model.ts, src/chat/composer.ts, src/status/useAgentStatus.ts, src/usage/meter.ts, src/tower/tower.ts, src/tower/TowerView.tsx, src/chrome/TopBar.tsx, src/keys/actions.ts, src-tauri/src/status.rs, src/floor/FloorView.tsx, src/floor/timeline.ts, src-tauri/src/activity.rs, src/automations/RunsDashboard.tsx, src/automations/usage.ts, src-tauri/src/terminal.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, PLAN.md, src/shell/window/Content.tsx, src/status/promptScan.ts, src-tauri/src/prompt_scan.rs, src/status/tabNameRule.ts at ae7fe255 -->

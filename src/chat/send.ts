@@ -11,7 +11,7 @@ import { hearAsks } from "./ask";
 
 /** CHAT-022: what the box says when Kolux has no hook reading for the pane (hooks off for it, Codex
  * trust not given, an agent with no hook route, no event yet, or only an event from an earlier run). */
-export const UNSEEN_NOTE = "Kolux can't see this agent's prompts. Type in its terminal.";
+export const UNSEEN_NOTE = "Kolux can't see this agent's questions. Type in its terminal.";
 /** CHAT-020: what the box says when a message is longer than one paste may be. */
 export const TOO_LONG_NOTE = "This message is too long to send from chat. Shorten it or paste it in the terminal.";
 /** What the box says when the pane has no running program to type into. */

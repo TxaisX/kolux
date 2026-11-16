@@ -21,7 +21,7 @@ test("the status hooks switch installs only on a saved true, says what off does 
   const html = renderToString(createElement(HooksSwitch, { on: true, onSwitch: () => {} }));
   expect(html).toContain('role="switch"');
   expect(html).toContain('checked=""');
-  expect(html).toContain("stops them being put back");
+  expect(html).toContain("off takes them out. Your own hooks stay.");
   expect(renderToString(createElement(HooksSwitch, { on: false, onSwitch: () => {} }))).not.toContain('checked=""');
 });
 
@@ -31,7 +31,22 @@ test("the text under the status hooks switch says it starts on after the consent
   expect(hooksDefault({})).toBe(true);
   const html = renderToString(createElement(HooksSwitch, { on: true, onSwitch: () => {} }));
   expect(html).not.toMatch(/Off until you turn it on/);
-  expect(html).toContain("On once you have answered the line in setup");
+  expect(html).toContain("Setup turns it on unless you turn its switch off there. If you skip setup, it stays off.");
+  expect(html).not.toContain("answer yes");
+});
+
+// Job 49: the switch keeps its key and its section; its name says what it is for, and the text under it says what goes
+// dark while it is off (chat/send.ts, SafetyPage.tsx and board/chip.ts paneStatus: no hook word, only the title and screen guess).
+test("the status hooks switch is called Show what each agent is doing, and says what stops while it is off", () => {
+  const html = renderToString(createElement(HooksSwitch, { on: false, onSwitch: () => {} }));
+  expect(html).toContain('aria-label="Show what each agent is doing"');
+  expect(html).toContain('data-section="hooks"');
+  expect(html).toMatch(/<span>Show what each agent is doing/);
+  expect(html).not.toContain("Agent status hooks");
+  expect(html).toContain("While it is off, Kolux guesses from each terminal&#x27;s title and screen, so status colours, the Board and &quot;Needs you&quot; can be late or wrong.");
+  expect(html).not.toContain("can only guess");
+  expect(html).toContain("On adds small scripts (hooks) to each agent&#x27;s settings");
+  expect(html).toContain("Protected actions cannot ask first");
 });
 
 test("a failed hook install or removal is shown beside the switch instead of being dropped (T-152-c (3))", () => {

@@ -31,7 +31,7 @@ The rules look inside wrappers: chained commands, `$( )` substitutions (four lev
 - A command that matches nothing gets no opinion, and a determined command can be written to slip past. The project's own review found four ways to do so.
 - It becomes a real control only when the project owner decides so.
 
-**Switching rules on and off.** Settings, Safety has a "Protected actions" section: one master switch, "Ask before protected actions", and under it one switch for each rule above, each with two example commands. Switch a rule off and Claude stops asking about that kind of command; switch the master off and no rule asks, whatever its own switch says. All of them are on until you change them. The page also tells you when the agent status hooks are off, because Claude cannot ask without them (Settings, Agents). The switches are saved in `settings.json` as `protectedAsk` (on unless saved otherwise) and `protectedOff` (the rules switched off), and changes apply on the next command. If a switch cannot be saved, the page shows what is saved, not what you clicked.
+**Switching rules on and off.** Settings, Safety has a "Protected actions" section: one master switch, "Ask before protected actions", and under it one switch for each rule above, each with two example commands. Switch a rule off and Claude stops asking about that kind of command; switch the master off and no rule asks, whatever its own switch says. All of them are on until you change them. The page also tells you when "Show what each agent is doing" is off, because Claude cannot ask without it (Settings, Agents). The switches are saved in `settings.json` as `protectedAsk` (on unless saved otherwise) and `protectedOff` (the rules switched off), and changes apply on the next command. If a switch cannot be saved, the page shows what is saved, not what you clicked.
 
 ## Where Kolux asks first
 
@@ -83,7 +83,7 @@ Kolux runs two small listeners on your own computer, one for the command line an
 
 ## Agent status hooks
 
-A status hook is a small script (or, for Amp, a plugin) that an agent program runs at each event and that reports to Kolux. Setting them up is described in [Settings](settings.md#hooks-for-gemini-cli-antigravity-and-amp). This section covers what the Gemini CLI, Antigravity and Amp hooks send and how your agents' settings files are kept safe.
+The switch for these hooks is called "Show what each agent is doing" (Settings, Agents). A status hook is a small script (or, for Amp, a plugin) that an agent program runs at each event and that reports to Kolux. Setting them up is described in [Settings](settings.md#hooks-for-gemini-cli-antigravity-and-amp). This section covers what the Gemini CLI, Antigravity and Amp hooks send and how your agents' settings files are kept safe.
 
 ### What each hook sends
 
@@ -132,4 +132,4 @@ Nothing about your use. The list of outside connections is in Settings, General,
 
 Kolux pre-trusts a working folder it creates itself, for Claude and Codex, so an agent's first prompt is not swallowed by a "do you trust this folder" question. Only folders Kolux made are pre-trusted. Your own project folder is not, so an agent may ask that question the first time it opens there; answer it in the pane. Pre-trust for Cursor and Copilot is not built.
 
-<!-- verified against: src-tauri/src/protected.rs, src-tauri/src/hooks.rs, src-tauri/src/fence.rs, src-tauri/src/links.rs, src-tauri/src/files.rs, src-tauri/src/cli/mod.rs, src-tauri/src/trust.rs, src-tauri/src/net.rs, src-tauri/src/web_icon.rs, src/chat/send.ts, src/chat/composer.ts, src/App.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/privacy.ts, src-tauri/src/scm.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs at 70fd90bd -->
+<!-- verified against: src-tauri/src/protected.rs, src-tauri/src/hooks.rs, src-tauri/src/fence.rs, src-tauri/src/links.rs, src-tauri/src/files.rs, src-tauri/src/cli/mod.rs, src-tauri/src/trust.rs, src-tauri/src/net.rs, src-tauri/src/web_icon.rs, src/chat/send.ts, src/chat/composer.ts, src/App.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/privacy.ts, src-tauri/src/scm.rs, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs, src/settings/SafetyPage.tsx at 4b4f7b5f -->

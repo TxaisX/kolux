@@ -18,7 +18,7 @@ import {
 import { markGuide, type GuideRecord, type Place } from "./guide";
 import { awakeToggle, stopCard, STOP_SKILLS, writerBack } from "./stopCards";
 import { SkillStop, UsageStop } from "./LiveStopCards";
-import { AWAKE_KEY, HOOKS_OFF_HELP } from "../launch/KeepAwakeCard";
+import { AWAKE_KEY, HOOKS_OFF_STOP } from "../launch/KeepAwakeCard";
 import { WRITER_INSTRUCTIONS_KEY, WRITER_KEY } from "../scm/generate";
 import { integrationSteps, readSeenCached, restale, taskSummary, UNSEEN, type Seen } from "./integrations";
 import { frontProjectPath } from "../projects/frontRow";
@@ -350,9 +350,16 @@ export function StopSetup({ stop, taskSource }: { stop: string; taskSource: bool
           Keep this computer awake while an agent is working
         </label>
         {card.hooksOff && (
-          <p className="guide-note warn" data-warn="hooks-off" role="note">
-            {HOOKS_OFF_HELP}
-          </p>
+          <>
+            <p className="guide-note warn" data-warn="hooks-off" role="note">
+              {HOOKS_OFF_STOP}
+            </p>
+            <div className="btn-row">
+              <button className="btn" onClick={() => openSettings("agents")}>
+                Open Agents settings
+              </button>
+            </div>
+          </>
         )}
       </div>
     );

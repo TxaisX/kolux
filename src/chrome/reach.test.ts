@@ -128,7 +128,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "tag"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
   ["onboarding/Guides.tsx", "Tip", "window"],
-  ["onboarding/Guides.tsx", "Agent status hooks", "exempt: a docked tip, not modal; Not now closes it"],
+  ["onboarding/Guides.tsx", "Show what each agent is doing", "exempt: a docked tip, not modal; Not now closes it"],
   ["onboarding/Tours.tsx", "${tour.name} tour", "window"],
   ["onboarding/Wizard.tsx", "Get started with Kolux", "window"],
   ["ports/PortsItem.tsx", "Ports", "window"],

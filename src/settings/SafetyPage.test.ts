@@ -77,7 +77,8 @@ test("SAFE-015: the section explains itself, says only Claude Code is covered an
   expect(html).toContain('data-section="protected"');
   expect(html).toContain("Protected actions");
   expect(html).toContain("Only Claude Code is covered");
-  expect(html).toContain("agent status hooks");
+  expect(html).toContain("Protected actions need &quot;Show what each agent is doing&quot;, which is on.");
+  expect(html).not.toContain("status hooks");
   expect(html).not.toContain('role="alert"');
   // With the hooks switch off (its default) the reminder is a warning that points at Settings > Agents.
   const off = view({ agentStatusHooks: false });
@@ -231,7 +232,9 @@ test("T-799 (p4a-05): with the status hooks off the master switch reads off, eve
   const html = view({ agentStatusHooks: false }, RULES, null, { turnOnHooks: () => {} });
   expect(switchOf(html, "Ask before protected actions")).not.toContain("checked");
   expect(switchOf(html, "Ask before protected actions")).toContain("disabled");
-  expect(html).toMatch(/<small id="safety-master-note">Off: the status hooks are off/);
+  expect(html).toMatch(/<small id="safety-master-note">Off until &quot;Show what each agent is doing&quot; is on\./);
+  expect(html).toContain("&quot;Show what each agent is doing&quot; is off, so Claude cannot ask yet. Turn it on here or in Settings &gt; Agents.");
+  expect(html).not.toContain("status hooks");
   for (const r of RULES) expect(switchOf(html, r.name), r.name).toContain("disabled");
   expect(html.match(/<div data-rules[^>]*>/)?.[0]).toContain("data-hooks-off");
   expect(html).toMatch(/<button[^>]*data-turn-on-hooks[^>]*>Turn on<[/]button>/);
@@ -263,6 +266,11 @@ test("T-799 (p4a-05): a Turn on that fails to reach the agents says why", async 
   const page = await mountPage();
   await (page as unknown as { view: () => { turnOnHooks: () => Promise<void> } }).view().turnOnHooks();
   await page.settle();
-  expect(page.html()).toContain("did not finish");
+  expect(page.html()).toContain("Could not turn on");
   expect(page.html()).toContain("the agent settings file is locked");
+});
+
+test("F5 (job 56): a Turn on that did not finish names the switch as Settings > Agents does", () => {
+  const html = view({ agentStatusHooks: false }, RULES, null, { turnOnHooks: () => {}, turnOnError: "disk full" });
+  expect(html).toContain("Could not turn on &quot;Show what each agent is doing&quot;: <!-- -->disk full");
 });

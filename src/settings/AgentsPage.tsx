@@ -75,13 +75,13 @@ export const hookProblems = (reply: unknown): string[] =>
 
 export function HooksSwitch({ on, onSwitch, file, problems = [] }: { on: boolean; onSwitch: (on: boolean) => void; file?: string; problems?: string[] }) {
   return (
-    <section className="conn-card" aria-label="Agent status hooks" data-section="hooks">
+    <section className="conn-card" aria-label="Show what each agent is doing" data-section="hooks">
       <label className="conn-switch">
         <input type="checkbox" role="switch" checked={on} onChange={(e) => onSwitch(e.target.checked)} />
         <span>
-          Agent status hooks
+          Show what each agent is doing
           {problems.map((p) => <small className="warn" role="alert" data-problem key={p}>{p}</small>)}
-          <small>Agents tell Kolux when they work, wait for you or finish. On once you have answered the line in setup: on adds Kolux's hooks to each agent's settings; off removes them and stops them being put back; your own hooks stay.</small>
+          <small>Agents tell Kolux when they work, wait for you or finish. Setup turns it on unless you turn its switch off there. If you skip setup, it stays off. On adds small scripts (hooks) to each agent's settings; off takes them out. Your own hooks stay. While it is off, Kolux guesses from each terminal's title and screen, so status colours, the Board and "Needs you" can be late or wrong. Protected actions cannot ask first, and the chat box cannot see an agent's questions.</small>
           {file && <small data-file>Claude Code settings: {file}</small>}
         </span>
       </label>

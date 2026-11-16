@@ -6,7 +6,7 @@ Use the Terminals view to run agents and shells in a grid of panes, split and re
 
 Each workspace (a folder) has its own grid. The grid holds one to twenty-four panes. It picks columns by count: 1 pane is one column, 2 panes two, up to 4 panes two columns, up to 9 panes three, and more than that four.
 
-An empty workspace shows "Nothing running here yet." with two buttons: "Open a terminal" and "Choose what to run".
+An empty workspace shows "Nothing running here yet." with the main button "Start agents" and the link "Open a terminal". "Start agents" opens the Start form (a chooser pane on the Classic look; see [Start agents](#start-agents)).
 
 ### Layouts
 
@@ -16,9 +16,9 @@ The right end of the strip is the workspace spend ribbon. It totals the tokens a
 
 | Action | Result |
 |---|---|
-| Grow (for example 2 to 4) | Empty panes are added |
+| Grow (for example 2 to 4) | The Start form opens, with How many set to the new cells. Nothing starts until you press Start. No empty panes are added. This is the same on both looks |
 | Shrink (for example 4 to 2) | Panes that were never started are removed |
-| Shrink past a started session | Blocked. A toast says "<name> is a started session: close it to go smaller." |
+| Shrink past a started session | Panes never started are removed; started sessions stay. A toast says "Close <name> first to use fewer panes." |
 
 When a split or a close changes the count, no quick button is pressed and the field shows the real number.
 
@@ -100,7 +100,7 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 | Do this | How |
 |---|---|
 | Add a shell beside this pane | "Split right" on the pane header, or Ctrl+Shift+D; "Split down" with Alt+Shift+D |
-| Start a new session in a new pane | The pane header's plus, or the sidebar's "New session" |
+| Start a new session in a new pane | The pane header's plus, or the sidebar's "New session": pick an agent to start it in a new pane, or "Start agents…" (on the Classic look, "Choose what to run…") to set up one or many first |
 | A shell tab in this pane's cell | Ctrl+T |
 | The default agent in a new tab | Ctrl+Alt+T; each installed agent also has its own command in the command palette |
 | A browser tab | Ctrl+Shift+B, or a link in an agent's reply |
@@ -108,17 +108,18 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 
 Files and diffs are covered in [Files and browser](files-and-browser.md).
 
-## Choose what to run
+## Start agents
 
-The chooser pane, titled "Choose what to run", sets up one or many sessions before they start.
+"Start agents" (on an empty grid) and "Start agents…" in the plus menu ("Choose what to run…" on the Classic look) set up one or many sessions before they start. On the New look they open the Start form, a page titled "Start" with the project's name and folder. On the Classic look they open a chooser pane instead, headed "Session N" and "Choose what to run", with the same parts.
 
 | Part | Use it to |
 |---|---|
 | Use last lineup | Repeat the last lineup for this project (appears when there is one) |
 | Shape | Pick a built-in or saved arrangement. "Save as team" stores yours under a Team name |
-| Sessions | Pick a quick count, type any number, and press "Same for all" to copy one choice to every seat. Start opens every seat as its own pane in this folder |
-| Folder | Every seat works in the project folder. Kolux does not make extra copies |
-| Task for every seat | Optional first request for all sessions |
+| Folders | Start form only: tick the project folders to start in, or "Add folder" |
+| How many | Pick a quick count or type any number, and press "Same for all" to copy one choice to every seat. Start opens every seat as its own pane |
+| Folder or Folders | With **Own folder for each agent** on (Settings, Git) in a Git project: "Own folder for each AI", picked for two or more seats, gives each seat its own worktree; "Same folder for all" shares the project folder. With it off, every seat works in the project folder and Kolux makes no extra copies |
+| Task for all of them | Optional first request for all sessions |
 | Per seat | Pick the AI and its model, and an optional job title |
 
 Several AIs will edit the same files. Give each a separate task, or launch them one at a time.
@@ -212,7 +213,7 @@ On Windows, the main key is Ctrl. You can change every shortcut in Settings (see
 | Ctrl+Shift+0 | Focus the project list |
 | Ctrl+1 to Ctrl+9 | Select the sidebar row at that position |
 | Ctrl+N or Ctrl+Shift+N | Create a workspace. Kolux now works in one folder per project, so the sidebar shows no form for it |
-| Ctrl+Shift+Backspace | Delete a workspace left by an older version (it asks first) |
+| Ctrl+Shift+Backspace | Delete the worktree the focused pane works in (it asks first). A project's own folder is never deleted. While Own folder for each agent is off, it only says worktrees are off |
 | Ctrl+Alt+Left / Ctrl+Alt+Right | Back / forward through workspaces and pages |
 | Ctrl+J | Jump to the next session that needs you |
 | Ctrl+T | New shell tab |
@@ -242,4 +243,4 @@ With "Terminal first", Kolux still keeps Ctrl+V, Ctrl+Tab, Ctrl+PageUp, Ctrl+Pag
 
 Keys that no Kolux shortcut uses always reach the program. Ctrl+R opens the shell's history search, for example, and Ctrl+Arrow moves by word. Alt+Left and Alt+Right move by word too. Ctrl+C with nothing selected is the program's interrupt. Ctrl+K and Ctrl+F belong to Kolux (clear and find); with "Terminal first" they go to the program instead, because they are not marked safe for terminals. A key you press while composing text with an input method is never taken by a Kolux shortcut.
 
-<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, src-tauri/src/pty.rs, PLAN.md at 76ce460d -->
+<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, src-tauri/src/pty.rs, PLAN.md, src/launch/PlusMenu.tsx, src/shell/window/Grid.tsx, src/terminal/paneActions.ts, src/launch/startForm.ts, src/shell/window/Content.tsx, src/keys/useWindowKeys.ts, src/projects/deleting.ts, src/projects/ProjectsPanel.tsx, src/projects/singleFolder.ts at a729d535 -->

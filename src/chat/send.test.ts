@@ -36,7 +36,7 @@ afterEach(() => forgetHearing());
 describe("the chat sends only when it can see the agent is not asking (council FB1)", () => {
   it("an unknown state holds the box with its own note: hooks off, Codex trust failed, OpenClaude, first mount", () => {
     expect(holdNote(undefined, undefined)).toBe(UNSEEN_NOTE);
-    expect(UNSEEN_NOTE).toBe("Kolux can't see this agent's prompts. Type in its terminal.");
+    expect(UNSEEN_NOTE).toBe("Kolux can't see this agent's questions. Type in its terminal.");
     expect(holdNote("some-new-word", undefined)).toBe(UNSEEN_NOTE);
   });
 
