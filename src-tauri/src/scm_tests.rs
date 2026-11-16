@@ -3729,3 +3729,75 @@ fn r82_a_backslash_is_part_of_the_name_off_windows() {
         assert_eq!(b.as_deref(), Some("changed\n"), "{route}: d/f.txt is untouched");
     }
 }
+
+/// R86-01: on Windows a second spelling of a tracked folder (`sub./`, `SUB/`) opens the folder
+/// `sub`, and `git clean` would delete it whole; such a row is left, on the untracked and paths
+/// routes. The plain row still goes.
+#[cfg(windows)]
+#[test]
+fn r86_an_alias_spelling_of_a_tracked_folder_is_never_cleaned() {
+    let mut wrong = Vec::new();
+    for (i, (route, row)) in [("untracked", "sub./"), ("untracked", "SUB/"), ("untracked", "SUB/d/f.txt"), ("untracked", "sub./new.txt"), ("paths", "sub./")].into_iter().enumerate() {
+        let dir = temp_repo(&format!("r86a-{i}"));
+        plain(&["config", "core.ignorecase", "false"], &dir);
+        fs::create_dir_all(dir.join("sub").join("d")).unwrap();
+        commit_file(&dir, "sub/d/f.txt", "orig\n");
+        fs::write(dir.join("sub").join("d").join("f.txt"), "changed\n").unwrap();
+        fs::write(dir.join("sub").join("new.txt"), "mine\n").unwrap();
+        fs::write(dir.join("sub").join("gone.txt"), "x\n").unwrap();
+        let said = by_route(&dir, route, &[row]);
+        if !matches!(&said, Err(e) if e.lines().count() == 1 && e.contains("so Kolux leaves")) {
+            wrong.push(format!("{route} {row}: said {said:?}"));
+        }
+        if fs::read_to_string(dir.join("sub").join("d").join("f.txt")).ok().as_deref() != Some("changed\n") {
+            wrong.push(format!("{route} {row}: the change in sub/d/f.txt is gone"));
+        }
+        if !dir.join("sub").join("new.txt").exists() {
+            wrong.push(format!("{route} {row}: sub/new.txt is gone"));
+        }
+        if i == 4 {
+            let said = by_route(&dir, "untracked", &["sub/gone.txt"]);
+            if said != Ok(()) || dir.join("sub").join("gone.txt").exists() {
+                wrong.push(format!("control sub/gone.txt: said {said:?}, still there: {}", dir.join("sub").join("gone.txt").exists()));
+            }
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// R86-01: a link is removed only under the spelling the disk holds: `lnk.` and `LNK` leave the
+/// junction `lnk` standing on the untracked and changed routes; the row `lnk` removes it (only it).
+#[cfg(windows)]
+#[test]
+fn r86_a_link_is_removed_only_under_its_own_name() {
+    let dir = temp_repo("r86b");
+    let out = outside_folder("r86b");
+    let _clean = LinksThenFolders(vec![dir.join("lnk")], vec![dir.clone(), out.clone()]);
+    fs::write(out.join("o.txt"), "o\n").unwrap();
+    junction(&dir.join("lnk"), &out);
+    let mut wrong = Vec::new();
+    for route in ["untracked", "changed"] {
+        for row in ["lnk.", "LNK"] {
+            let said = by_route(&dir, route, &[row]);
+            if !matches!(&said, Err(e) if e.contains("so Kolux leaves")) {
+                wrong.push(format!("{route} {row}: said {said:?}"));
+            }
+            if !fs::symlink_metadata(dir.join("lnk")).is_ok_and(|m| m.is_symlink()) {
+                wrong.push(format!("{route} {row}: the link lnk is gone"));
+                junction(&dir.join("lnk"), &out);
+            }
+            if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+                wrong.push(format!("{route} {row}: the outside o.txt changed"));
+            }
+        }
+    }
+    let said = by_route(&dir, "untracked", &["lnk"]);
+    if said != Ok(()) || fs::symlink_metadata(dir.join("lnk")).is_ok() {
+        wrong.push(format!("control lnk: said {said:?}, link still there: {}", fs::symlink_metadata(dir.join("lnk")).is_ok()));
+    }
+    if fs::read_to_string(out.join("o.txt")).ok().as_deref() != Some("o\n") {
+        wrong.push("control lnk: the outside o.txt changed".into());
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}

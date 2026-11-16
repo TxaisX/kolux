@@ -2961,6 +2961,11 @@ fn kinds(worktree: &Path, rows: &[&str], with_head: bool) -> Result<Kinds, Strin
 fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<String>) -> Option<String> {
     let row = p.trim_end_matches('/');
     let parts: Vec<&str> = row.split('/').filter(|s| !s.is_empty() && *s != ".").collect();
+    // R86-01: Windows drops a trailing dot or space, so `sub.` opens `sub`: Git and the disk would
+    // read two names. Any part of the row (its own name included) ending so is left.
+    if cfg!(windows) && parts.iter().any(|s| s.ends_with('.') || s.ends_with(' ')) {
+        return Some(format!("{row} has a name that ends in a dot or a space. Windows reads that as another name, so Kolux leaves it."));
+    }
     let mut at = String::new();
     for part in &parts[..parts.len().saturating_sub(1)] {
         at = if at.is_empty() { part.to_string() } else { format!("{at}/{part}") };
@@ -2972,10 +2977,49 @@ fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<Strin
             Ok(m) if m.is_dir() => drop(real.insert(at.clone())),
             Ok(_) => return Some(format!("{at} is now a file, so Kolux leaves {row}. Remove or move that file by hand, then discard again.")),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
-            Err(_) => return Some(format!("{at} could not be read, so Kolux leaves {row}.")),
+            Err(_) => return Some(unread(&at, row)),
         }
     }
     None
+}
+
+/// What Discard says about a part `at` of row `row` that could not be read.
+fn unread(at: &str, row: &str) -> String {
+    if at == row {
+        format!("{row} could not be read, so Kolux leaves it.")
+    } else {
+        format!("{at} could not be read, so Kolux leaves {row}.")
+    }
+}
+
+/// R86-01: on Windows one file or folder answers to more than one spelling (`SUB`, `sub.`, a
+/// short name such as `SUB~1`), and Git does not know that. Ok when every part of row `p` is
+/// spelled exactly as its folder's listing holds it, or when nothing stands there; otherwise the
+/// row is left. Each folder is listed once per call (`lists`). Off Windows Git may print another
+/// Unicode form of a name than the disk holds, so the rule is Windows only.
+fn on_disk_as_sent(worktree: &Path, p: &str, lists: &mut std::collections::HashMap<String, Option<std::collections::HashSet<std::ffi::OsString>>>) -> Result<(), String> {
+    if !cfg!(windows) {
+        return Ok(());
+    }
+    let row = p.trim_end_matches('/');
+    let mut at = String::new();
+    for part in row.split('/') {
+        let names = lists.entry(at.clone()).or_insert_with(|| fs::read_dir(worktree.join(native(&at))).ok().and_then(|d| d.map(|e| e.map(|e| e.file_name())).collect::<Result<_, _>>().ok()));
+        let Some(names) = names else {
+            let shown = if at.is_empty() { worktree.display().to_string() } else { at.clone() };
+            return Err(unread(&shown, row));
+        };
+        let next = if at.is_empty() { part.to_string() } else { format!("{at}/{part}") };
+        if !names.contains(std::ffi::OsStr::new(part)) {
+            return match fs::symlink_metadata(worktree.join(native(&next))) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(_) => Err(unread(&next, row)),
+                Ok(_) => Err(format!("{row} is not spelled the way it is on disk, so Kolux leaves it.")),
+            };
+        }
+        at = next;
+    }
+    Ok(())
 }
 
 /// R59-01 / R59-04: removes a link (a junction, a folder or file symlink) at row `p` itself,
@@ -2995,9 +3039,11 @@ fn remove_link(worktree: &Path, p: &str) -> Result<bool, String> {
 fn is_link(worktree: &Path, p: &str) -> Result<bool, String> {
     let p = p.trim_end_matches('/');
     match fs::symlink_metadata(worktree.join(native(p))) {
-        Ok(m) => Ok(m.is_symlink()),
+        // R86-01: a link counts only under the spelling the disk holds; `LNK` or `lnk.` is left.
+        Ok(m) if m.is_symlink() => on_disk_as_sent(worktree, p, &mut Default::default()).map(|_| true),
+        Ok(_) => Ok(false),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
-        Err(_) => Err(format!("{p} could not be read, so Kolux leaves it.")),
+        Err(_) => Err(unread(p, p)),
     }
 }
 
@@ -3142,8 +3188,12 @@ pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), S
             let k = kinds(worktree, &rows, false)?;
             let (mut said, mut rows) = (Vec::new(), Vec::new());
             let mut real = std::collections::HashSet::new();
+            let mut lists = std::collections::HashMap::new();
             for p in paths {
                 if let Some(why) = left_why(worktree, p, &mut real) {
+                    said.push(why);
+                } else if let Err(why) = on_disk_as_sent(worktree, p, &mut lists) {
+                    // R86-01: `git clean` is given a row only under the spelling the disk holds.
                     said.push(why);
                 } else if k.below.contains(p.trim_end_matches('/')) && fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/')))).is_ok_and(|m| m.is_dir() && !m.is_symlink()) {
                     // R86-02: only a real folder gets the folder line; a file or a link standing
