@@ -15,6 +15,7 @@ export const LABELS = [
   ["Folders", "src/projects/ProjectsPanel.tsx"],
   ["Group", "src/projects/ProjectsPanel.tsx"],
   ["Workspace", "src/projects/ProjectsPanel.tsx"],
+  ["Worktree", "src/shell/WorktreeChip.tsx"],
   ["Sleeping", "src/keys/actions.ts"],
   ["Go to / Run a command", "src/keys/actions.ts"],
   ["Branch", "src/editor/AllChangesPane.tsx"],
@@ -75,7 +76,7 @@ export const LABELS = [
 ];
 
 /** Words the old glossary defined that the app never shows. */
-export const DROPPED = ["Main checkout", "Worktree", "Worker", "Handoff note", "Fence"];
+export const DROPPED = ["Main checkout", "Worker", "Handoff note", "Fence"];
 
 const norm = (s) => s.toLowerCase().replace(/\s+/g, " ").trim().replace(/s$/, "");
 

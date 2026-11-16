@@ -5,7 +5,7 @@ Kolux uses a few words in a specific way. This page is the short version. The us
 ## Work and folders
 
 **Project**
-A folder you add to Kolux, usually a Git repository. Projects appear in the left sidebar under **Folders**. Kolux works in that one folder: every agent you start there works in the same files, and Kolux makes no extra copies.
+A folder you add to Kolux, usually a Git repository. Projects appear in the left sidebar under **Folders**. In a Git project, an agent started from **New session**, or each of two or more agents started together, works in a **Worktree** of its own. That is the default; turn off "Own folder for each agent" in Settings, Git, to have every agent work in the project's own folder. A folder that is not a Git project gets no copies.
 
 **Folders**
 The heading of the project list in the left sidebar. Each row is a project; a **Group** can gather several of them.
@@ -15,6 +15,9 @@ A named set of projects in the sidebar. Make one with **New group**, and put a p
 
 **Workspace**
 A project's folder together with its sessions and layout. Each project has one. Because every agent shares it, give each agent a different task, or launch them one at a time; the launch chooser warns when several AIs would edit the same files.
+
+**Worktree**
+A second copy of a project's folder on its own branch, made by Git on this computer, so two agents can change files without getting in each other's way. Nothing goes to GitHub until you push. In a Git project Kolux makes one for an agent started from **New session**, and one for each agent when you start two or more together. It does this while "Own folder for each agent" (Settings, Git) is on, and it is on unless you turn it off. Each pane shows the worktree its session works in as a label in its header. The sidebar lists project folders only, never worktrees.
 
 **Sleeping**
 A workspace row Kolux has put to rest. It stays in the list marked "sleeping". The **Group and sort** form in the sidebar has a checkbox to show or hide sleeping workspaces.
