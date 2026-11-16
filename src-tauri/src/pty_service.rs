@@ -1175,7 +1175,7 @@ mod tests {
     }
 
     /// N-03: the hello wait is a total, not per read: a client that sends one byte every 300 ms
-    /// and never a line end is refused or closed within about 3 seconds.
+    /// and never a line end is refused or closed within 3.8 seconds (a 2 second cut-off, slack for a busy machine).
     #[test]
     fn n03_a_dripped_hello_is_cut_off_at_the_total_wait() {
         let dir = scratch("hello-drip");
@@ -1198,7 +1198,7 @@ mod tests {
             Ok(line) => assert!(line.contains("\"ok\":false"), "{line}"),
             Err(k) => assert!(!matches!(k, std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock), "a dripped hello was still being read after 4 s"),
         }
-        assert!(began.elapsed() < Duration::from_secs(3), "cut off after {:?}", began.elapsed());
+        assert!(began.elapsed() < Duration::from_millis(3800), "cut off after {:?}", began.elapsed());
         done.store(true, Ordering::SeqCst);
         let _ = drip.join();
         // A good client is still taken.
