@@ -2296,7 +2296,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       return (
         <div key={p.id}>
           <div
-            className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}`}
+            className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}${folder && isUnread(main) ? " unread" : ""}`}
             title={p.path}
             data-path={folder ? main.path : undefined}
             data-testid={folder ? "sidebar-folder" : undefined}
