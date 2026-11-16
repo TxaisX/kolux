@@ -26,7 +26,7 @@ import { nameOf } from "../../workspaces";
 import Grid from "./Grid";
 import Notices from "./Notices";
 import SeatChooser from "./SeatChooser";
-import { useStartAsk } from "../useStartAsk";
+import { ownPanes, useStartAsk } from "../useStartAsk";
 import { useWindow } from "./store";
 import { PlanSheet } from "../../lazy/pages";
 import { RoutingPage } from "../../lazy/pages";
@@ -55,7 +55,7 @@ export default function WindowContent() {
     standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
   // Start form D: asked once when Kolux starts, in the main window, in front of what was restored.
-  useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: panes.length, open: () => openStart({ atOpen: true }) });
+  useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: ownPanes(panes), open: () => openStart({ atOpen: true }) });
   return (
     <div className="content">
       {sheet?.seats && (

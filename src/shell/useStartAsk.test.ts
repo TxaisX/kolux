@@ -7,7 +7,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { installDom } from "../tasks/fakeDom";
 import { askAtOpen, START_WAIT_MS } from "../launch/startForm";
 
-import { isFirstWindow, resetStartAsk, useStartAsk } from "./useStartAsk";
+import { handOver, isFirstWindow, ownPanes, resetStartAsk, useStartAsk } from "./useStartAsk";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let mount: () => Root;
@@ -233,5 +233,61 @@ test("job 47: a fast start asks at once, as before the limit", () => {
   expect(open).toHaveBeenCalledTimes(1);
   act(() => void vi.advanceTimersByTime(START_WAIT_MS * 2));
   expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
+// Job 47 item 2 (job 41 F1): a file the system hands Kolux at start opens a preview pane. That pane is not the user
+// acting, so a slow start and a fast start both ask, in front of it. A pane the user opens still counts.
+const term = (key: number): { key: number; kind?: string; path?: string } => ({ key });
+const handedPane = (key: number, path: string) => ({ key, kind: "preview", path });
+test("job 47 F1: a slow start with a handed file: the form asks once", () => {
+  resetStartAsk();
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: false, panes: ownPanes([]) })));
+  handOver("C:\notes\a.md");
+  act(() => root.render(createElement(Probe, { ...base(open), layoutIn: false, panes: ownPanes([handedPane(9, "C:\notes\a.md")]) })));
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, panes: ownPanes([term(1), term(2), term(3), handedPane(9, "C:\notes\a.md")]) })));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
+test("job 47 F1: a fast start with a handed file: the form asks", () => {
+  resetStartAsk();
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), panes: ownPanes([term(1), term(2)]) })));
+  handOver("C:\notes\b.md");
+  act(() => root.render(createElement(Probe, { ...base(open), panes: ownPanes([term(1), term(2), handedPane(9, "C:\notes\b.md")]) })));
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, panes: ownPanes([term(1), term(2), handedPane(9, "C:\notes\b.md")]) })));
+  expect(open).toHaveBeenCalledTimes(1);
+  act(() => root.unmount());
+});
+
+test("job 47 F1: a slow start where the user opens a terminal still skips, with or without a handed file", () => {
+  for (const handed of [false, true]) {
+    resetStartAsk();
+    const open = vi.fn();
+    const root = mount();
+    const file = handed ? [handedPane(9, "C:\notes\c.md")] : [];
+    if (handed) handOver("C:\notes\c.md");
+    act(() => root.render(createElement(Probe, { ...base(open), layoutIn: false, panes: ownPanes(file) })));
+    act(() => root.render(createElement(Probe, { ...base(open), layoutIn: false, panes: ownPanes([...file, term(5)]) })));
+    act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, panes: ownPanes([term(1), ...file, term(5)]) })));
+    expect(open).not.toHaveBeenCalled();
+    act(() => root.unmount());
+  }
+});
+
+test("job 47 F1: a handed file and then a terminal the user opens on a fast start: skips", () => {
+  resetStartAsk();
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), panes: ownPanes([term(1), term(2)]) })));
+  handOver("C:\notes\d.md");
+  act(() => root.render(createElement(Probe, { ...base(open), panes: ownPanes([term(1), term(2), handedPane(9, "C:\notes\d.md")]) })));
+  act(() => root.render(createElement(Probe, { ...base(open), panes: ownPanes([term(1), term(2), handedPane(9, "C:\notes\d.md"), term(10)]) })));
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, panes: ownPanes([term(1), term(2), handedPane(9, "C:\notes\d.md"), term(10)]) })));
+  expect(open).not.toHaveBeenCalled();
   act(() => root.unmount());
 });

@@ -27,6 +27,11 @@ const kept = (f: (s: Storage) => unknown) => {
     return null;
   }
 };
+/** Job 47 F1: files the system handed Kolux (App's open-files drain). Their preview panes are not the user acting,
+ *  so the pane count the ask reads leaves them out. Paths, not a count: openPreview can reuse an open preview pane. */
+const handed = new Set<string>();
+export const handOver = (path: string) => void handed.add(path);
+export const ownPanes = (ps: { kind?: string; path?: string }[]): number => ps.filter((p) => !(p.kind === "preview" && p.path !== undefined && handed.has(p.path))).length;
 /** Tests only. */
 export const resetStartAsk = () => void ((asked = false), (started = null), store((s) => s.removeItem(ASKED_KEY)));
 
