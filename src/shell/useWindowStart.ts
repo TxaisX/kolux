@@ -17,7 +17,7 @@ import { useEffect, useRef } from "react";
 /** Job 68: how long a search for agents may take before the window says so. The error is shown inside
  *  "Kolux could not look for agents (…)", so it is a lower-case part of that sentence. */
 export const AGENT_SEARCH_LIMIT_MS = 10_000;
-export const AGENT_SEARCH_SLOW = "it took longer than 10 seconds; press Refresh agents to try again";
+export const AGENT_SEARCH_SLOW = "the search took longer than 10 seconds";
 
 export function useWindowStart({ agentPass, installedIds, setAgentPass, setAgents, setInfo, setPanes, setSettings, setSettingsRead, setShells }: Pick<WindowState, "agentPass" | "installedIds" | "setAgentPass" | "setAgents" | "setInfo" | "setPanes" | "setSettings" | "setSettingsRead" | "setShells">) {
   const seq = useRef(0); // job 78 R73-2: which search is the newest, so an older one's timer does not end it

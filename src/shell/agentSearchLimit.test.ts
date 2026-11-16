@@ -47,7 +47,7 @@ test("job 68: a search for agents with no answer ends after 10 seconds and says 
   act(() => void vi.advanceTimersByTime(1));
   expect(held.pass.looking).toBe(false);
   expect(held.pass.done).toBe(false);
-  expect(held.pass.error).toContain("press Refresh agents to try again");
+  expect(held.pass.error).toBe("the search took longer than 10 seconds"); // job 78 R73-4: the Refresh agents button sits below it
   act(() => root.unmount());
 });
 
