@@ -1757,8 +1757,9 @@ impl Terminals {
 
     /// R-02: `kill_under`, but a session that started in a folder of `spare` that lies deeper than
     /// `dir` (or under one) is left running: that folder belongs to a project that stays. A spare
-    /// folder that is `dir` itself, or above it, spares nothing. `spare` runs only when some session
-    /// started under `dir`, with no lock held, so the Git calls behind it are skipped in the usual case.
+    /// folder above `dir` spares nothing; one that is `dir` itself spares all of it (F1: a worktree a
+    /// staying project also lists). `spare` runs only when some session started under `dir`, with no
+    /// lock held, so the Git calls behind it are skipped in the usual case.
     pub fn kill_under_sparing(&self, dir: &std::path::Path, spare: impl FnOnce() -> Vec<std::path::PathBuf>) -> Stopped {
         // R-01: a folder that cannot be resolved matches only by its path text, never another gone folder.
         let same = crate::projects::same_folder;
@@ -1767,7 +1768,7 @@ impl Terminals {
             Ok(inner) => inner.dirs.iter().filter(|(_, d)| under(std::path::Path::new(d), dir)).map(|(id, d)| (*id, d.clone())).collect(),
             Err(_) => return Stopped::default(),
         };
-        let spare: Vec<std::path::PathBuf> = if found.is_empty() { Vec::new() } else { spare().into_iter().filter(|s| !same(s, dir) && under(s, dir)).collect() };
+        let spare: Vec<std::path::PathBuf> = if found.is_empty() { Vec::new() } else { spare().into_iter().filter(|s| under(s, dir)).collect() };
         let found: Vec<(u32, Option<u32>)> = match self.inner.lock() {
             Ok(inner) => found.into_iter().filter(|(_, d)| !spare.iter().any(|s| under(std::path::Path::new(d), s))).map(|(id, _)| (id, inner.sessions.get(&id).and_then(Session::pid))).collect(),
             Err(_) => return Stopped::default(),
@@ -3535,8 +3536,8 @@ mod tests {
     }
 
     /// R-02: ending a project's terminals spares those in a deeper folder of a project that stays;
-    /// `kill_under` (a folder about to be deleted) still ends all of them, and a spare folder that is
-    /// the folder itself spares nothing. Records only, no process behind them.
+    /// `kill_under` (a folder about to be deleted) still ends all of them, and a spare folder above
+    /// the folder spares nothing. Records only, no process behind them.
     #[test]
     fn r02_the_sparing_route_leaves_a_deeper_staying_folder_running() {
         let base = std::env::temp_dir().join(format!("kolux-r02-{}", std::process::id()));
@@ -3564,12 +3565,29 @@ mod tests {
         assert_eq!(t.kill_under(&x).ended, 4, "kill_under still ends all four");
         let t = Terminals::default();
         fill(&t);
-        assert_eq!(t.kill_under_sparing(&x, || vec![x.clone(), base.clone()]).ended, 4, "x itself, or a folder above it, spares nothing");
+        assert_eq!(t.kill_under_sparing(&x, || vec![base.clone()]).ended, 4, "a folder above x spares nothing");
         let t = Terminals::default();
         let asked = std::cell::Cell::new(false);
         assert_eq!(t.kill_under_sparing(&x, || { asked.set(true); vec![inner.clone()] }).ended, 0);
         assert!(!asked.get(), "with no terminal under x the spare list is never asked for");
         std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// F1: a spare folder that is the folder itself (a worktree a staying project also lists) spares
+    /// everything under it; `end_sessions` keeps the removed project's own folder out of the spare
+    /// list, so its own folder still ends. Records only, no process behind them.
+    #[test]
+    fn f1_a_spare_folder_that_is_the_folder_itself_spares_all_of_it() {
+        let base = crate::test_dir::temp("f1-tie");
+        let x = base.join("x");
+        std::fs::create_dir_all(x.join("sub")).unwrap();
+        let t = Terminals::default();
+        t.fake_session(1, &x.to_string_lossy(), None);
+        t.fake_session(2, &x.join("sub").to_string_lossy(), None);
+        let alias = std::path::PathBuf::from(x.to_string_lossy().to_uppercase().replace('\\', "/"));
+        assert_eq!(t.kill_under_sparing(&x, || vec![alias.clone()]).ended, 0, "x written another way spares x and x\\sub");
+        assert_eq!(t.sessions().len(), 2);
+        assert_eq!(t.kill_under_sparing(&x, || vec![base.to_path_buf()]).ended, 2, "a folder above x spares nothing");
     }
 
     /// R-07: a pane key is compared in constant time; the right key is still found and a wrong one of

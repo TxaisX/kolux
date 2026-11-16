@@ -461,6 +461,51 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// F1: two projects on one repository (A on the main checkout, B on a linked worktree) and a third
+    /// worktree. A group that removes only A ends A's terminals; one that removes A and B ends all.
+    #[test]
+    fn f1_a_group_delete_spares_a_shared_worktree_only_while_its_other_project_stays() {
+        let git = crate::git::Git::detect().unwrap();
+        for both in [false, true] {
+            let base = crate::test_dir::temp(&format!("groups-f1-{both}"));
+            let s = Store::open(&base.join("db")).unwrap();
+            let bdir = base.join("b");
+            let (a, b, repo, w3) = crate::folder_projects::shared_repo(&s, &base, &bdir);
+            let (_, top) = change(&s, |g| {
+                let top = g.create("Top", None)?;
+                g.put(&a.id, Some(&top.id))?;
+                if both {
+                    g.put(&b.id, Some(&top.id))?;
+                }
+                Ok(top)
+            })
+            .unwrap();
+            let t = crate::terminal::Terminals::default();
+            for (n, f) in [(1, repo.clone()), (2, repo.join("src")), (3, bdir.clone()), (4, bdir.join("src")), (5, w3.clone())] {
+                std::fs::create_dir_all(&f).unwrap();
+                t.fake_session(n, &f.to_string_lossy(), None);
+            }
+            let store = Mutex::new(s);
+            let mut ended = 0;
+            delete_with(&git, &store, &top.id, true, |d, spare| {
+                let n = t.kill_under_sparing(d, spare).ended;
+                ended += n;
+                n
+            })
+            .unwrap();
+            let mut left: Vec<String> = t.sessions().into_iter().map(|(_, d, _)| d).collect();
+            left.sort();
+            if both {
+                assert_eq!((ended, left.len()), (5, 0), "A and B go together: everything of both ends, the third worktree too");
+            } else {
+                let mut kept: Vec<String> = [bdir.clone(), bdir.join("src"), w3.clone()].iter().map(|d| d.to_string_lossy().to_string()).collect();
+                kept.sort();
+                assert_eq!((ended, left), (2, kept), "only A's own two end; B's two and the third worktree's one run on");
+            }
+            drop(store);
+        }
+    }
+
     #[test]
     fn deleting_a_group_with_its_projects_clears_what_was_kept_about_their_paths() {
         let (s, dir) = store("traces");

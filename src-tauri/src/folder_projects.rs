@@ -154,9 +154,12 @@ pub fn project_add_folder(store: State<'_, Mutex<Store>>, path: String) -> Resul
 /// so call it with the store let go; a project whose folder is gone lists nothing. Shared by
 /// `project_remove` and `groups::group_delete` (F21), so both end the same folders in the same way.
 /// R-02: `kill` also gets the folders to spare, asked for only when a terminal runs under the folder.
+/// F1: the project's own folder is never spared, even when a staying project on the same repository
+/// lists it; a worktree that a staying project also lists is spared whole (nothing under it ends).
 pub(crate) fn end_sessions(git: &Git, project: &Project, folder: bool, staying: &mut Staying, mut kill: impl FnMut(&Path, &mut dyn FnMut() -> Vec<PathBuf>) -> usize) -> usize {
     let worktrees: Vec<String> = if folder { Vec::new() } else { git.worktrees(Path::new(&project.path)).map(|all| all.into_iter().map(|w| w.path).collect()).unwrap_or_default() };
-    session_dirs(project, &worktrees).iter().map(|d| kill(d, &mut || staying.folders(git))).sum()
+    let own = Path::new(&project.path);
+    session_dirs(project, &worktrees).iter().map(|d| kill(d, &mut || staying.folders(git).into_iter().filter(|s| !projects::same_folder(s, own)).collect())).sum()
 }
 
 /// R-02: the projects that stay in Kolux when others are taken out. A terminal belongs to the deepest
@@ -202,10 +205,103 @@ pub fn project_remove(git: State<'_, Git>, store: State<'_, Mutex<Store>>, termi
     Ok(Removed { name: project.name, path: project.path, ended })
 }
 
+/// F1 tests: one repository at `<base>/repo` with two linked worktrees, `b_at` and `<base>/w3`, and
+/// two Kolux projects on it: A on the main checkout and B on `b_at`. Local Git settings only.
+/// Returns A, B, the main checkout and the third worktree.
+#[cfg(test)]
+pub(crate) fn shared_repo(store: &Store, base: &Path, b_at: &Path) -> (Project, Project, PathBuf, PathBuf) {
+    let (repo, w3) = (base.join("repo"), base.join("w3"));
+    std::fs::create_dir_all(&repo).unwrap();
+    let run = |args: &[&str]| crate::git::run(args, Some(&repo)).unwrap();
+    run(&["init", "-q", "-b", "main"]);
+    run(&["config", "user.email", "test@example.invalid"]);
+    run(&["config", "user.name", "Kolux test"]);
+    std::fs::write(repo.join("a.txt"), "a").unwrap();
+    run(&["add", "."]);
+    run(&["commit", "-q", "-m", "first"]);
+    run(&["worktree", "add", "-q", "-b", "f1-b", &b_at.to_string_lossy()]);
+    run(&["worktree", "add", "-q", "-b", "f1-w3", &w3.to_string_lossy()]);
+    let project = |id: &str, path: &Path| Project { id: id.into(), name: id.into(), path: path.display().to_string(), workspaces_dir: None, base: None, display_name: None };
+    let (a, b) = (project("f1-a", &repo), project("f1-b", b_at));
+    let mut list = projects::load_projects_for_write(store).unwrap();
+    list.extend([a.clone(), b.clone()]);
+    projects::save_projects(store, &list).unwrap();
+    (a, b, repo, w3)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+
+    /// F1: fake terminals in A's folder, B's folder and the third worktree (two, two and one).
+    fn five_sessions(repo: &Path, b: &Path, w3: &Path) -> crate::terminal::Terminals {
+        let t = crate::terminal::Terminals::default();
+        for (n, f) in [(1, repo.to_path_buf()), (2, repo.join("src")), (3, b.to_path_buf()), (4, b.join("src")), (5, w3.to_path_buf())] {
+            fs::create_dir_all(&f).unwrap();
+            t.fake_session(n, &f.to_string_lossy(), None);
+        }
+        t
+    }
+
+    fn left(t: &crate::terminal::Terminals) -> Vec<String> {
+        let mut dirs: Vec<String> = t.sessions().into_iter().map(|(_, d, _)| d).collect();
+        dirs.sort();
+        dirs
+    }
+
+    fn names(dirs: &[PathBuf]) -> Vec<String> {
+        let mut dirs: Vec<String> = dirs.iter().map(|d| d.to_string_lossy().to_string()).collect();
+        dirs.sort();
+        dirs
+    }
+
+    /// F1: two projects on one repository, A on the main checkout and B on a linked worktree beside
+    /// it, and a third worktree both list. Removing either ends only the terminals in its own folder.
+    /// With nothing staying (A alone on the repository), its folder and both worktrees end.
+    #[test]
+    fn f1_two_projects_on_one_repository_each_ends_only_its_own_folder() {
+        let base = crate::test_dir::temp("f1-beside");
+        let store = store(&base);
+        let git = Git::detect().unwrap();
+        let (a, b, repo, w3) = shared_repo(&store, &base, &base.join("b"));
+        let bdir = base.join("b");
+        let remove = |p: &Project, going: &[String], t: &crate::terminal::Terminals| {
+            let mut staying = Staying::new(&store, going);
+            end_sessions(&git, p, false, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended)
+        };
+        let t = five_sessions(&repo, &bdir, &w3);
+        assert_eq!(remove(&b, std::slice::from_ref(&b.id), &t), 2, "removing B ends B's two");
+        assert_eq!(left(&t), names(&[repo.clone(), repo.join("src"), w3.clone()]));
+        let t = five_sessions(&repo, &bdir, &w3);
+        assert_eq!(remove(&a, std::slice::from_ref(&a.id), &t), 2, "removing A ends A's two");
+        assert_eq!(left(&t), names(&[bdir.clone(), bdir.join("src"), w3.clone()]));
+        let t = five_sessions(&repo, &bdir, &w3);
+        assert_eq!(remove(&a, &[a.id.clone(), b.id.clone()], &t), 5, "with nothing staying on the repository, all five end");
+        drop(store);
+    }
+
+    /// F1: the same with B's worktree inside A's folder. Removing A leaves B's terminals (and the
+    /// third worktree's) running; removing B still ends B's own, though it lies inside A's folder.
+    #[test]
+    fn f1_a_worktree_project_inside_the_main_checkout_keeps_its_terminals_when_the_main_goes() {
+        let base = crate::test_dir::temp("f1-inside");
+        let store = store(&base);
+        let git = Git::detect().unwrap();
+        let bdir = base.join("repo").join("wt").join("b");
+        let (a, b, repo, w3) = shared_repo(&store, &base, &bdir);
+        let remove = |p: &Project, t: &crate::terminal::Terminals| {
+            let mut staying = Staying::new(&store, std::slice::from_ref(&p.id));
+            end_sessions(&git, p, false, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended)
+        };
+        let t = five_sessions(&repo, &bdir, &w3);
+        assert_eq!(remove(&a, &t), 2, "only repo and repo\\src end");
+        assert_eq!(left(&t), names(&[bdir.clone(), bdir.join("src"), w3.clone()]));
+        let t = five_sessions(&repo, &bdir, &w3);
+        assert_eq!(remove(&b, &t), 2, "B's own folder ends though A, which stays, holds it");
+        assert_eq!(left(&t), names(&[repo.clone(), repo.join("src"), w3.clone()]));
+        drop(store);
+    }
 
     fn temp(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("kolux-folderproj-{name}-{}", std::process::id()));
