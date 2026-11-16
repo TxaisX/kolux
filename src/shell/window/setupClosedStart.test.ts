@@ -21,11 +21,12 @@ vi.mock("../../editmenu/EditMenuHost", () => ({ default: () => null }));
 vi.mock("../../skills/SkillBarItem", () => ({ BringSkillsUp: () => null }));
 import { START_ASK_KEY } from "../../launch/startForm";
 import { closer } from "../../onboarding/firstRun";
+import { startPanes } from "../../projects/workspaceStart";
 import { installDom, mount, settle } from "../../tasks/fakeDom";
 import type { WindowBag } from "../windowBag";
 import { WindowStoreProvider } from "./store";
 
-type Case = { folders: number; askOff?: boolean; panes?: number; sheet?: boolean };
+type Case = { folders: number; askOff?: boolean; panes?: number; sheet?: boolean; notStarted?: boolean };
 
 async function draw(c: Case) {
   const { doc, win } = installDom();
@@ -46,7 +47,9 @@ async function draw(c: Case) {
       pickFolder: () => {}, screen: "grid", setScreen: () => {}, settingsRead: true, picked: null, notes: [], repoless: false,
       putNote: () => {}, setNotes: () => {}, setPicked: () => {}, reviewTargets: [], sendMenu: null, setSendMenu: () => {},
       sendReview: () => {}, startReview: () => {}, agents: [], defaultId: null, live: [],
-      panes: Array.from({ length: c.panes ?? 0 }, (_, i) => ({ key: `k${i}`, agent: "claude" })),
+      panes: c.notStarted // job 78 R73-1: the pane setup's "Pick a folder" really leaves (select -> startPanes)
+        ? startPanes(projects[0].path, null, 1, () => 0)
+        : Array.from({ length: c.panes ?? 0 }, (_, i) => ({ key: `k${i}`, agent: "claude" })),
       ptys: { current: {} }, titles: {}, owner: {}, restoredKeys: { current: [] }, setToast: () => {}, openStart,
       setSidebarOpen: () => {}, sheet: c.sheet ? { key: "s", agent: "claude", seats: [] } : null,
       firstStart: null, doneFirstStart: () => {},
@@ -83,6 +86,15 @@ test("job 68: setup (reopened from Help) closed over an open pane: no Start form
   d.wizard.onClose();
   await settle();
   expect(d.openStart).not.toHaveBeenCalled();
+  await d.unmount();
+});
+
+test("job 78 R73-1: setup closed after Pick a folder left a pane not started yet: the Start form opens once", async () => {
+  const d = await draw({ folders: 1, notStarted: true });
+  d.wizard.onClose();
+  await settle();
+  expect(d.openStart).toHaveBeenCalledTimes(1);
+  expect(d.openStart).toHaveBeenCalledWith({ here: true });
   await d.unmount();
 });
 

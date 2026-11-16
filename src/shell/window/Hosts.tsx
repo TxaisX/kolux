@@ -73,7 +73,8 @@ export default function WindowHosts() {
             const none = projects.length === 0;
             // Job 68 (decided): closed or skipped with a folder on the list, the Start form opens as finishing does,
             // unless the ask at start is off or work is up (a pane, or a Start form: setup reopened from Help).
-            const start = !none && asksAtStart(settings) && ownPanes(panes) === 0 && !sheet;
+            // Job 78 R73-1: a pane not started yet (it has seats: the one "Pick a folder" leaves) is not work.
+            const start = !none && asksAtStart(settings) && ownPanes(panes.filter((p) => !p.seats)) === 0 && !sheet;
             endWizard("dismissed", () => {
               firstFolder.current = none;
               if (start) openStart({ here: activeDir !== null });
