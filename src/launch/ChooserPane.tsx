@@ -441,7 +441,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               {sheet.path}
             </span>
           </div>
-          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close Start">
+          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close the Start form">
             <Close size={12} />
           </button>
         </header>

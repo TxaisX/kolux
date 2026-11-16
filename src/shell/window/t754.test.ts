@@ -9,7 +9,7 @@ import { click, find, installDom, mount, settle } from "../../tasks/fakeDom";
 import type { WindowBag } from "../windowBag";
 import { WindowStoreProvider } from "./store";
 
-test("T-754: the empty Board shows a New session button, and a click runs addChooser", async () => {
+test("T-754: the empty Board shows a Start agents button, and a click runs addChooser", async () => {
   const { doc, win } = installDom();
   Object.assign(win, { setTimeout, clearTimeout, setInterval, clearInterval });
   const { default: WindowContent } = await import("./Content");
@@ -17,8 +17,8 @@ test("T-754: the empty Board shows a New session button, and a click runs addCho
   const bag = { board: true, panes: [], saved: [], waiting: [], standIns: [], projects: [], lanes: [], cells: [], shown: [], addChooser, settings: {}, agentPass: { looking: true, done: false, error: null } } as unknown as WindowBag;
   const { container, unmount } = await mount(createElement(WindowStoreProvider, { store: bag, children: createElement(WindowContent) }), doc);
   expect(container.textContent).toContain("No session yet.");
-  const button = find(container, (n) => n.localName === "button" && n.textContent.trim() === "New session")[0];
-  expect(button, "the empty Board has a New session button").toBeDefined();
+  const button = find(container, (n) => n.localName === "button" && n.textContent.trim() === "Start agents")[0];
+  expect(button, "the empty Board has a Start agents button").toBeDefined();
   await click(container, button);
   await settle();
   expect(addChooser).toHaveBeenCalledTimes(1);

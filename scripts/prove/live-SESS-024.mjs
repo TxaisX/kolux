@@ -15,7 +15,7 @@ const overlap = (a, b) => a.x < b.x + b.w - 2 && b.x < a.x + a.w - 2 && a.y < b.
 async function openChooserPane(app) {
   await app.evalJs(`document.querySelector(${JSON.stringify(PLUS)}).click()`);
   await poll(() => app.exists('[role=menu][aria-label="New session"]'), 8000, 300);
-  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^Open a pane that asks/.test(b.title)); b.click(); return true; })()`);
+  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^(Open a pane that asks|Pick folders)/.test(b.title)); b.click(); return true; })()`);
   return poll(() => app.exists('section.pane.chooser[aria-label$="chooser"]'), 10000, 300);
 }
 

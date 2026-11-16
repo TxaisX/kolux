@@ -177,7 +177,7 @@ export default function WindowContent() {
           {(
             <div className="btn-row">
               <button className="btn primary" onClick={addChooser}>
-                New session
+                Start agents
               </button>
             </div>
           )}
@@ -188,7 +188,7 @@ export default function WindowContent() {
           <h2>Board</h2>
           <p>No session yet.</p>
           <div className="btn-row">
-            <button className="btn" onClick={addChooser}>New session</button>
+            <button className="btn" onClick={addChooser}>Start agents</button>
           </div>
         </div>
       )}

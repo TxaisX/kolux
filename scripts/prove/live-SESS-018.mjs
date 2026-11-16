@@ -8,7 +8,7 @@ import { PLUS } from "./live-SESS-004.mjs";
 export async function openSheet(app) {
   await app.evalJs(`document.querySelector(${JSON.stringify(PLUS)}).click()`);
   await poll(() => app.exists('[role=menu][aria-label="New session"]'), 8000, 300);
-  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^Open a pane that asks/.test(b.title)); b.click(); return true; })()`);
+  await app.evalJs(`(() => { const b = [...document.querySelectorAll('[role=menu][aria-label="New session"] [role=menuitem]')].find(b => /^(Open a pane that asks|Pick folders)/.test(b.title)); b.click(); return true; })()`);
   return poll(() => app.exists('.sheet-wrap section[aria-label="New session"]'), 10000, 300);
 }
 

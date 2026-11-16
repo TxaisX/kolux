@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 import { KeymapContext } from "../keys/KeymapContext";
 import { resolve } from "../keys/keymap";
 import PlusMenu, { markFor, programWord, shellWord, type AgentInfo } from "./PlusMenu";
+import { WindowStore } from "../shell/window/store";
 
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: ["--permission-mode", "auto"], installed: true, path: "C:\\Users\\me\\.local\\bin\\claude.exe" };
 const codex: AgentInfo = { id: "codex", name: "Codex", program: "codex", args: ["--sandbox", "workspace-write", "--ask-for-approval", "never"], installed: true, path: "C:\\Users\\me\\AppData\\Roaming\\npm\\codex.cmd" };
@@ -80,8 +81,20 @@ test("agent ids map to vendor marks and header words", () => {
 });
 
 test("SESS-007: the chooser item appears only when a handler is given", () => {
-  expect(render({ onChoose: () => {} })).toContain("Choose what to run…");
+  expect(render({ onChoose: () => {} })).toContain("Start agents…");
+  expect(render({})).not.toContain("Start agents…");
   expect(render({})).not.toContain("Choose what to run…");
+});
+
+test("job 50: the row that opens the Start form says Start agents on the New look; Classic keeps its chooser words", () => {
+  const newLook = render({ onChoose: () => {} });
+  expect(newLook).toContain("Start agents…");
+  expect(newLook).toContain('title="Pick folders, how many, and which AI"');
+  expect(newLook).not.toContain("Choose what to run…");
+  const classic = renderToString(createElement(WindowStore.Provider, { value: { classic: true } as never }, createElement(PlusMenu, { agents: [claude], onPick: () => {}, onClose: () => {}, onChoose: () => {} })));
+  expect(classic).toContain("Choose what to run…");
+  expect(classic).toContain('title="Open a pane that asks which AI, model or terminal to run, and how many"');
+  expect(classic).not.toContain("Start agents…");
 });
 
 test("SESS-003 / SESS-010 / SESS-002: the default row is marked, all-off and errored searches say so", () => {
