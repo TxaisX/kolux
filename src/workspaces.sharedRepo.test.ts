@@ -96,6 +96,21 @@ describe("R71-02: the grid map with two projects on one repository", () => {
     expect(gridOf(W)).toBe(A);
   });
 
+  // R74-01 (coordinator): the saved map keeps old entries (mergeGridMap), so an old entry naming one project folder under
+  // the other project's grid is still handed in. Both project orders, both directions: the own folder wins and its pane stays.
+  test.each([
+    ["[A, B], saved B and W under A", [A, B], { [B]: A, [W]: A }, A, B],
+    ["[B, A], saved B and W under A", [B, A], { [B]: A, [W]: A }, A, B],
+    ["[A, B], saved A and W under B", [A, B], { [A]: B, [W]: B }, B, A],
+    ["[B, A], saved A and W under B", [B, A], { [A]: B, [W]: B }, B, A],
+  ])("R74-01 %s: the moved folder is its own grid, and removing the other project keeps its pane", (_, folders, saved, gone, kept) => {
+    setGridRoots(saved, folders);
+    expect(gridOf(kept)).toBe(kept);
+    expect(gridOf(gone)).toBe(gone);
+    const panes = [{ key: 1, cwd: gone }, { key: 2, cwd: kept }];
+    expect(withoutDir(panes, gone, lists[kept === A ? "A" : "B"]).map((p) => p.key)).toEqual([2]);
+  });
+
   test.each([
     ["[A, B]", [pa, pb]],
     ["[B, A]", [pb, pa]],
