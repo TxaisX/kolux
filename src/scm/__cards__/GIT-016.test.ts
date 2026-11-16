@@ -1,6 +1,6 @@
 // GIT-016 acceptance: the review prompt built from the statuses and branch summaries a REAL git repository produced.
 // evidence/cards-GIT-states.json is written by src-tauri/tests/cards_11.rs (git016_boxes_*: 60 files, then a clean branch).
-// MIRROR src/scm/SourceControlPanel.tsx:167-172: review() calls this same reviewPrompt(base, summary.committed, summary.files, rowOrder(status)) and, on null, only shows the message.
+// The Source Control panel that called this reviewPrompt(base, summary.committed, summary.files, rowOrder(status)) was removed (audit F16); the card pins the model helper alone.
 import { expect, test } from "vitest";
 import fixture from "../../../evidence/cards-GIT-states.json";
 import { reviewPrompt, rowOrder, type Status, type Summary } from "../model";

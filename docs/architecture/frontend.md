@@ -59,7 +59,7 @@ The element tree is:
 | `editor` | Editor, previews, diffs, explorer | `src/editor/EditorPane.tsx` |
 | `browser` | Browser tab and native child webview | `src/browser/BrowserPane.tsx` |
 | `chat` | Transcript view of a terminal-backed session | `src/chat/ChatView.tsx` |
-| `scm` | Source control, PRs, checks, review notes | `src/scm/SourceControlPanel.tsx` |
+| `scm` | Source control, PRs, checks, review notes | `src/scm/ChecksPanel.tsx` |
 | `sessions` | Past sessions and resume | `src/sessions/AgentsPanel.tsx` |
 | `projects` | Projects, workspaces, CLI bridge | `src/projects/ProjectsPanel.tsx` |
 | `usage` | Plan limits, pills, token analytics | `src/usage/plan.ts` |
