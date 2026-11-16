@@ -9,11 +9,12 @@ let answer: (list: unknown[]) => void = () => {};
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string) => (cmd === "agent_list" ? new Promise((r) => (answer = r)) : new Promise(() => {})),
 }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}), emit: () => Promise.resolve() }));
+const heard: Record<string, (e: { payload: unknown }) => void> = {};
+vi.mock("@tauri-apps/api/event", () => ({ listen: (name: string, f: (e: { payload: unknown }) => void) => ((heard[name] = f), Promise.resolve(() => {})), emit: () => Promise.resolve() }));
 import { installDom } from "../tasks/fakeDom";
 import { AGENT_SEARCH_LIMIT_MS, useWindowStart } from "./useWindowStart";
 
-type Pass = { looking: boolean; done: boolean; error: string | null };
+type Pass = { looking: boolean; done: boolean; error: string | null; slow?: boolean };
 afterEach(() => void vi.useRealTimers());
 
 async function draw() {
@@ -64,5 +65,17 @@ test("job 68: an answer in time leaves no error when the 10 seconds pass", async
   await act(async () => answer([]));
   act(() => void vi.advanceTimersByTime(AGENT_SEARCH_LIMIT_MS * 2));
   expect(held.pass).toEqual({ looking: false, done: true, error: null });
+  act(() => root.unmount());
+});
+
+test("job 78 R73-2: a second search started 9 s into the first is not ended by the first one's timer", async () => {
+  const { held, root } = await draw();
+  act(() => void vi.advanceTimersByTime(AGENT_SEARCH_LIMIT_MS - 1000));
+  act(() => heard["agents-changed"]({ payload: null })); // an install finished: search B starts
+  act(() => void vi.advanceTimersByTime(1000)); // search A's 10 s are up
+  expect(held.pass).toMatchObject({ looking: true, error: null });
+  act(() => void vi.advanceTimersByTime(AGENT_SEARCH_LIMIT_MS - 1000)); // search B's own 10 s are up
+  expect(held.pass.looking).toBe(false);
+  expect(held.pass.error).not.toBeNull();
   act(() => root.unmount());
 });
