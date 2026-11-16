@@ -2842,12 +2842,16 @@ fn left_why(worktree: &Path, p: &str, real: &mut std::collections::HashSet<Strin
 }
 
 /// R59-01 / R59-04: removes a link (a junction, a folder or file symlink) at row `p` itself,
-/// never what it points at. True when there was one; a failure names the row.
+/// never what it points at. True when there was one; a failure names the row. R70-05: a row whose
+/// kind cannot be read (for a reason other than "missing") is left, never taken as "not a link".
 fn remove_link(worktree: &Path, p: &str) -> Result<bool, String> {
     let p = p.trim_end_matches('/');
     let full = worktree.join(native(p));
-    if !fs::symlink_metadata(&full).is_ok_and(|m| m.is_symlink()) {
-        return Ok(false);
+    match fs::symlink_metadata(&full) {
+        Ok(m) if m.is_symlink() => {}
+        Ok(_) => return Ok(false),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(_) => return Err(format!("{p} could not be read, so Kolux leaves it.")),
     }
     fs::remove_file(&full).or_else(|_| fs::remove_dir(&full)).map(|_| true).map_err(|e| format!("{p}: {e}"))
 }

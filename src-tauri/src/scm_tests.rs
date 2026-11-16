@@ -3235,6 +3235,19 @@ fn r59_a_staged_rename_is_left_whole_when_one_half_is_left() {
     assert!(st.staged.iter().any(|c| c.path == "b.txt" && c.from.as_deref() == Some("a.txt")), "the rename is still staged: {st:?}");
 }
 
+/// R70-05: a row whose kind cannot be read (here a name Windows refuses to look up) is left and
+/// named, never handed to Git as "not a link".
+#[cfg(windows)]
+#[test]
+fn r70_a_row_that_cannot_be_read_is_left_not_handed_to_git() {
+    for route in ["changed", "staged", "untracked"] {
+        let dir = temp_repo(&format!("r70e-{route}"));
+        let result = by_route(&dir, route, &["x?y.txt"]);
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(result.expect_err(route), "x?y.txt could not be read, so Kolux leaves it.", "{route}");
+    }
+}
+
 /// R70-01: on Windows a row spelled with `\` is checked like the same row spelled with `/`:
 /// nothing is written or deleted through a junction above it, and it is left with the same line.
 #[cfg(windows)]
