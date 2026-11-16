@@ -123,7 +123,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         </label>
         <p className="conn-detail" data-own-folders-note>
           {ownFoldersOn(settings)
-            ? "On: in a Git project, each agent you launch works in its own folder (a Git worktree on its own branch, made on this computer; nothing goes to GitHub until you push). Agents no longer overwrite each other's files, and each one's changes are reviewed and merged on their own. The sidebar still lists only your project folders; each session there shows which folder it works in."
+            ? "On: in a Git project, each agent you launch works in its own folder (a Git worktree on its own branch, made on this computer; nothing goes to GitHub until you push). Agents no longer overwrite each other's files, and each one's changes are reviewed and merged on their own. The sidebar still lists only your project folders; each pane's header shows which folder it works in."
             : "Off: every agent works in the project's own folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other."}
         </p>
       </section>
