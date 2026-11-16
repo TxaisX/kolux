@@ -56,7 +56,7 @@ async function handler(file: unknown = null) {
   expect(onKey, "the handler listens on the window").not.toBeNull();
 }
 
-function press(key: string, mods: { ctrlKey?: boolean; shiftKey?: boolean } = {}) {
+function press(key: string, mods: { ctrlKey?: boolean; shiftKey?: boolean; code?: string } = {}) {
   const e = {
     type: "keydown", key, code: `Key${key.toUpperCase()}`, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods,
     isComposing: false, keyCode: key.toUpperCase().charCodeAt(0), repeat: false, defaultPrevented: false,
@@ -158,4 +158,23 @@ test("R74-03: Ctrl+W and Ctrl+F4 held by a text box are still kept from the webv
   expect(press("w", { ctrlKey: true }).defaultPrevented).toBe(true);
   expect(press("F4", { ctrlKey: true }).defaultPrevented).toBe(true);
   expect(closed).toEqual([]);
+});
+
+// R83-02: a letter chord matches on the key's place (e.code), so on a non-Latin layout Ctrl+W arrives as key "ц", code
+// "KeyW". The webview's own action is stopped by that place too, but never when the key types a, c, v, x, y or z: on a
+// French layout the W place types "z", and Ctrl+Z there is the field's own undo.
+test.each([
+  ["ц", "KeyW", "tab.close", "Mod+W", true],
+  ["z", "KeyW", "tab.close", "Mod+W", false],
+  ["a", "KeyQ", "tab.close", "Mod+Q", false],
+  ["к", "KeyR", "tab.close", "Mod+R", true],
+])("R83-02: key %s on the %s place, %s on %s, held by a text box: stopped %s", async (key, code, id, chord, stopped) => {
+  await handler({ keybindings: { [id]: chord } });
+  Object.assign(doc, { activeElement: el("input", "text") });
+  const e = press(key, { ctrlKey: true, code });
+  expect(closed, "the command does not run").toEqual([]);
+  expect(e.defaultPrevented).toBe(stopped);
+  Object.assign(doc, { activeElement: el("button") });
+  press(key, { ctrlKey: true, code });
+  expect(closed, "the same press closes the pane outside a text box, so the chord did match").toEqual(["p1"]);
 });

@@ -154,10 +154,15 @@ export function useWindowKeys(w: WindowBag) {
       const hit = kPalette(found, keymap, e, document.activeElement);
       if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
       if (typingHolds(hit.id, document.activeElement)) {
-        // F28: the command does not run; the key stays with the text field. R54-04 / R74-03: the webview's own action for it
-        // is stopped only when the key can carry one: a letter other than A, C, V, X, Y, Z, a digit, or F1 to F24. Every
-        // other key (arrows, Home, End, Page Up/Down, Tab, Escape, Enter, Space, Backspace, Delete) is the field's, untouched.
-        if (/^([bd-uw]|[0-9]|F([1-9]|1[0-9]|2[0-4]))$/i.test(e.key)) e.preventDefault();
+        // F28: the command does not run; the key stays with the text field. R54-04 / R74-03 / R83-02: the webview's own action
+        // for it is stopped only when the key can carry one: by the letter it types (B, D to U, W), a digit or F1 to F24, or
+        // by its place on the keyboard (letter chords match on the place, so Ctrl+W on a Russian layout types "ц" but is the
+        // W place). Never when the key types A, C, V, X, Y or Z: those are the field's select all, copy, paste, cut, redo and
+        // undo on any layout (on a French layout the W place types "z"). Every other key (arrows, Home, End, Page Up/Down,
+        // Tab, Escape, Enter, Space, Backspace, Delete) is the field's, untouched.
+        const byKey = /^([bd-uw]|[0-9]|F([1-9]|1[0-9]|2[0-4]))$/i.test(e.key);
+        const byPlace = /^(Key[BD-UW]|Digit[0-9]|Numpad[0-9])$/.test(e.code);
+        if ((byKey || byPlace) && !/^[acvxyz]$/i.test(e.key)) e.preventDefault();
         return;
       }
       if (heldByOverlay(hit.id, !!switcherRef.current)) {
