@@ -26,6 +26,7 @@ import { panesIn, sameDir, viewOf } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
 import { worktreesOffNote } from "../projects/singleFolder";
+import { isTextField } from "../projects/deleting";
 import { scopesFor } from "./keyScopes";
 import { matchEvent, type KeyLike, type Keymap } from "./keymap";
 import { kPalette, richKeyTaken } from "./paletteKey";
@@ -67,6 +68,12 @@ export const WINDOW_TERMINAL = new Set([
   "terminal.focusPreviousPane", "terminal.expandPane", "terminal.splitRight", "terminal.splitDown",
   "terminal.equalizePaneSizes",
 ]);
+/** Audit F28: the commands that close, end or delete something. While a plain text field has the focus they do not
+ *  run, so Ctrl+W typed in a settings box or the palette never closes the pane behind it. */
+export const CLOSING_KEYS = new Set(["tab.close", "terminal.closePane", "tab.closeAll", "workspace.delete", "sessions.remove"]);
+/** The terminal's hidden text area, the code editor and the rich Markdown view are text fields too, but keep their own key rules. */
+const OWN_KEY_RULES = ".xterm, .cm-editor, .md-rich";
+export const typingHolds = (id: string, active: Element | null): boolean => CLOSING_KEYS.has(id) && isTextField(active) && !active?.closest(OWN_KEY_RULES);
 
 /** The explorer's own Mod+Shift+F listener fires unless a menu or modal dialog holds the chord. It does not test
  *  defaultPrevented: a focused terminal cancels every Kolux chord (the shell never sees it) and the search still opens. */
@@ -142,6 +149,7 @@ export function useWindowKeys(w: WindowBag) {
       // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
       const hit = kPalette(found, keymap, e, document.activeElement);
       if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
+      if (typingHolds(hit.id, document.activeElement)) return; // F28: the key stays with the text field
       if (heldByOverlay(hit.id, !!switcherRef.current)) {
         e.preventDefault(); // the overlay's own key handlers still see it; the webview's built-in action does not run
         return;
