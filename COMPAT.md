@@ -1,6 +1,6 @@
 # COMPAT
 
-> **Retired 2026-11-12 (DT-C275): the embedded browser.** Kolux no longer has a web pane. Everything below about browser tabs, the `kolux browser` command and its verbs, `kolux exec --command`, the `BROW-*` rows and the `browser.*` / `tab.newBrowser` / browser zoom shortcuts is history, kept for the record and no longer a contract. Web pages open in the user's own browser (Chrome or the system default). The commands `browser_export_pdf`, `browser_pick_pdf_path`, `browser_preview` and `tower_window_open` keep their names.
+> **Retired 2026-11-12 (DT-C275): the embedded browser.** Kolux no longer has a web pane. Everything below about browser tabs, the `kolux browser` command and its verbs, `kolux exec --command`, the BROW rows and the browser shortcuts (`tab.newBrowser`, every id that starts with browser, and browser zoom) is history, kept for the record and no longer a contract. Web pages open in the user's own browser (Chrome or the system default). Four engine commands still carry the old words in their names: three for the HTML preview and the PDF export, one for the tower window. They keep those names.
 
 The outside surfaces Kolux must keep, so that Txais's habits, skills, agent setups and saved data keep working on the day he switches.
 
