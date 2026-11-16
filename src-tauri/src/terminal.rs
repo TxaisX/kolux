@@ -1752,14 +1752,24 @@ impl Terminals {
     /// it started, and waits up to three seconds for them to be shown gone, so the folder can be
     /// deleted. A record with no process behind it (stale) is swept and never counts as stuck.
     pub fn kill_under(&self, dir: &std::path::Path) -> Stopped {
-        let wanted = |d: &str| {
-            let d = std::path::Path::new(d);
-            // R-01: a folder that cannot be resolved matches only by its path text, never another gone folder.
-            let same = crate::projects::same_folder;
-            same(d, dir) || d.ancestors().skip(1).any(|a| same(a, dir))
+        self.kill_under_sparing(dir, Vec::new)
+    }
+
+    /// R-02: `kill_under`, but a session that started in a folder of `spare` that lies deeper than
+    /// `dir` (or under one) is left running: that folder belongs to a project that stays. A spare
+    /// folder that is `dir` itself, or above it, spares nothing. `spare` runs only when some session
+    /// started under `dir`, with no lock held, so the Git calls behind it are skipped in the usual case.
+    pub fn kill_under_sparing(&self, dir: &std::path::Path, spare: impl FnOnce() -> Vec<std::path::PathBuf>) -> Stopped {
+        // R-01: a folder that cannot be resolved matches only by its path text, never another gone folder.
+        let same = crate::projects::same_folder;
+        let under = |d: &std::path::Path, top: &std::path::Path| same(d, top) || d.ancestors().skip(1).any(|a| same(a, top));
+        let found: Vec<(u32, String)> = match self.inner.lock() {
+            Ok(inner) => inner.dirs.iter().filter(|(_, d)| under(std::path::Path::new(d), dir)).map(|(id, d)| (*id, d.clone())).collect(),
+            Err(_) => return Stopped::default(),
         };
+        let spare: Vec<std::path::PathBuf> = if found.is_empty() { Vec::new() } else { spare().into_iter().filter(|s| !same(s, dir) && under(s, dir)).collect() };
         let found: Vec<(u32, Option<u32>)> = match self.inner.lock() {
-            Ok(inner) => inner.dirs.iter().filter(|(_, d)| wanted(d)).map(|(id, _)| (*id, inner.sessions.get(id).and_then(Session::pid))).collect(),
+            Ok(inner) => found.into_iter().filter(|(_, d)| !spare.iter().any(|s| under(std::path::Path::new(d), s))).map(|(id, _)| (id, inner.sessions.get(&id).and_then(Session::pid))).collect(),
             Err(_) => return Stopped::default(),
         };
         for (id, pid) in &found {
@@ -3521,6 +3531,44 @@ mod tests {
         t.fake_session(2, &x.join("sub").to_string_lossy(), None);
         assert_eq!(t.kill_under(&y).ended, 0, "a different gone folder ends nothing");
         assert_eq!(t.kill_under(&x).ended, 2, "the gone folder itself and a folder under it are still ended");
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// R-02: ending a project's terminals spares those in a deeper folder of a project that stays;
+    /// `kill_under` (a folder about to be deleted) still ends all of them, and a spare folder that is
+    /// the folder itself spares nothing. Records only, no process behind them.
+    #[test]
+    fn r02_the_sparing_route_leaves_a_deeper_staying_folder_running() {
+        let base = std::env::temp_dir().join(format!("kolux-r02-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let x = base.join("x");
+        let (other, inner, deep) = (x.join("other"), x.join("inner"), x.join("inner").join("deep"));
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::create_dir_all(&other).unwrap();
+        let fill = |t: &Terminals| {
+            for (id, d) in [(1, &x), (2, &other), (3, &inner), (4, &deep)] {
+                t.fake_session(id, &d.to_string_lossy(), None);
+            }
+        };
+        let left = |t: &Terminals| {
+            let mut ids: Vec<u32> = t.inner.lock().unwrap().dirs.keys().copied().collect();
+            ids.sort();
+            ids
+        };
+        let t = Terminals::default();
+        fill(&t);
+        assert_eq!(t.kill_under_sparing(&x, || vec![inner.clone()]).ended, 2, "x and x\\other end");
+        assert_eq!(left(&t), vec![3, 4], "the two under x\\inner are left running");
+        let t = Terminals::default();
+        fill(&t);
+        assert_eq!(t.kill_under(&x).ended, 4, "kill_under still ends all four");
+        let t = Terminals::default();
+        fill(&t);
+        assert_eq!(t.kill_under_sparing(&x, || vec![x.clone(), base.clone()]).ended, 4, "x itself, or a folder above it, spares nothing");
+        let t = Terminals::default();
+        let asked = std::cell::Cell::new(false);
+        assert_eq!(t.kill_under_sparing(&x, || { asked.set(true); vec![inner.clone()] }).ended, 0);
+        assert!(!asked.get(), "with no terminal under x the spare list is never asked for");
         std::fs::remove_dir_all(&base).unwrap();
     }
 

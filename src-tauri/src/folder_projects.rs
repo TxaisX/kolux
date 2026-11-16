@@ -153,21 +153,51 @@ pub fn project_add_folder(store: State<'_, Mutex<Store>>, path: String) -> Resul
 /// is taken out of Kolux. `kill` ends the sessions under one folder and says how many. Git runs here,
 /// so call it with the store let go; a project whose folder is gone lists nothing. Shared by
 /// `project_remove` and `groups::group_delete` (F21), so both end the same folders in the same way.
-pub(crate) fn end_sessions(git: &Git, project: &Project, folder: bool, mut kill: impl FnMut(&Path) -> usize) -> usize {
+/// R-02: `kill` also gets the folders to spare, asked for only when a terminal runs under the folder.
+pub(crate) fn end_sessions(git: &Git, project: &Project, folder: bool, staying: &mut Staying, mut kill: impl FnMut(&Path, &mut dyn FnMut() -> Vec<PathBuf>) -> usize) -> usize {
     let worktrees: Vec<String> = if folder { Vec::new() } else { git.worktrees(Path::new(&project.path)).map(|all| all.into_iter().map(|w| w.path).collect()).unwrap_or_default() };
-    session_dirs(project, &worktrees).iter().map(|d| kill(d)).sum()
+    session_dirs(project, &worktrees).iter().map(|d| kill(d, &mut || staying.folders(git))).sum()
+}
+
+/// R-02: the projects that stay in Kolux when others are taken out. A terminal belongs to the deepest
+/// project folder or worktree that holds it, so theirs are spared. Built under the store lock; the
+/// folders (one Git call per Git project, at most once) are listed later with the store let go.
+pub(crate) struct Staying {
+    projects: Vec<(Project, bool)>,
+    folders: Option<Vec<PathBuf>>,
+}
+
+impl Staying {
+    pub(crate) fn new(store: &Store, going: &[String]) -> Staying {
+        let projects = projects::load_projects(store).into_iter().filter(|p| !going.contains(&p.id)).map(|p| {
+            let folder = is_folder(store, &p.id);
+            (p, folder)
+        });
+        Staying { projects: projects.collect(), folders: None }
+    }
+
+    fn folders(&mut self, git: &Git) -> Vec<PathBuf> {
+        let projects = &self.projects;
+        self.folders
+            .get_or_insert_with(|| {
+                let worktrees = |(p, folder): &(Project, bool)| if *folder { Vec::new() } else { git.worktrees(Path::new(&p.path)).map(|all| all.into_iter().map(|w| w.path).collect()).unwrap_or_default() };
+                projects.iter().flat_map(|p| session_dirs(&p.0, &worktrees(p))).collect()
+            })
+            .clone()
+    }
 }
 
 /// PROJ-008: the sidebar asks first; this ends the project's terminals and removes it.
 #[tauri::command(async)]
 pub fn project_remove(git: State<'_, Git>, store: State<'_, Mutex<Store>>, terminals: State<'_, crate::terminal::Terminals>, project_id: String) -> Result<Removed, String> {
-    let (project, folder) = {
+    let (project, folder, mut staying) = {
         let store = store.lock().map_err(|e| e.to_string())?;
         let project = projects::find_project(&store, &project_id)?;
         let folder = is_folder(&store, &project.id);
-        (project, folder)
+        let staying = Staying::new(&store, std::slice::from_ref(&project.id));
+        (project, folder, staying)
     };
-    let ended = end_sessions(&git, &project, folder, |d| terminals.kill_under(d).ended);
+    let ended = end_sessions(&git, &project, folder, &mut staying, |d, spare| terminals.kill_under_sparing(d, spare).ended);
     remove_project(&*store.lock().map_err(|e| e.to_string())?, &project.id)?;
     Ok(Removed { name: project.name, path: project.path, ended })
 }
@@ -269,6 +299,67 @@ mod tests {
         let p = Project { id: "p".into(), name: "p".into(), path: "C:/work/p".into(), workspaces_dir: None, base: None, display_name: None };
         let dirs = session_dirs(&p, &["C:/work/p".to_string(), "C:/ws/p/a".to_string(), "C:/ws/p/a".to_string()]);
         assert_eq!(dirs, vec![PathBuf::from("C:/work/p"), PathBuf::from("C:/ws/p/a")]);
+    }
+
+    /// R-02: removing one project (what `project_remove` does) ends only its own terminals: a nested
+    /// project that stays keeps its terminals, and a removed project never spares a folder of its own.
+    #[test]
+    fn r02_removing_a_folder_project_spares_a_nested_project_that_stays() {
+        let base = temp("r02");
+        let store = store(&base);
+        let git = Git::detect().unwrap();
+        let (outer, inner) = (base.join("outer"), base.join("outer").join("inner"));
+        fs::create_dir_all(&inner).unwrap();
+        let (o, i) = (add_folder(&store, &outer).unwrap(), add_folder(&store, &inner).unwrap());
+        let t = crate::terminal::Terminals::default();
+        for (n, f) in [(1, &outer), (2, &outer.join("other")), (3, &inner), (4, &inner.join("deep"))] {
+            t.fake_session(n, &f.to_string_lossy(), None);
+        }
+        let mut staying = Staying::new(&store, std::slice::from_ref(&o.id));
+        let ended = end_sessions(&git, &o, true, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended);
+        assert_eq!(ended, 2, "outer and outer\\other end");
+        let mut left: Vec<String> = t.sessions().into_iter().map(|(_, d, _)| d).collect();
+        left.sort();
+        assert_eq!(left, vec![inner.to_string_lossy().to_string(), inner.join("deep").to_string_lossy().to_string()]);
+        // Both removed in one step: nothing is spared.
+        let mut staying = Staying::new(&store, &[o.id.clone(), i.id.clone()]);
+        assert_eq!(end_sessions(&git, &o, true, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended), 2);
+        drop(store);
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// R-02: a Git project that stays and has a worktree inside a removed folder keeps that
+    /// worktree's terminals. Its repository and worktree are made here, with local settings only.
+    #[test]
+    fn r02_a_staying_git_projects_worktree_under_a_removed_folder_is_spared() {
+        let base = temp("r02git");
+        let store = store(&base);
+        let git = Git::detect().unwrap();
+        let (outer, repo) = (base.join("outer"), base.join("repo"));
+        fs::create_dir_all(&outer).unwrap();
+        fs::create_dir_all(&repo).unwrap();
+        let o = add_folder(&store, &outer).unwrap();
+        let run = |args: &[&str]| crate::git::run(args, Some(&repo)).unwrap();
+        run(&["init", "-q", "-b", "main"]);
+        run(&["config", "user.email", "test@example.invalid"]);
+        run(&["config", "user.name", "Kolux test"]);
+        fs::write(repo.join("a.txt"), "a").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "first"]);
+        let wt = outer.join("wt");
+        run(&["worktree", "add", "-q", "-b", "r02-wt", &wt.to_string_lossy()]);
+        let mut list = projects::load_projects_for_write(&store).unwrap();
+        list.push(Project { id: "r02-repo".into(), name: "repo".into(), path: repo.display().to_string(), workspaces_dir: None, base: None, display_name: None });
+        projects::save_projects(&store, &list).unwrap();
+        let t = crate::terminal::Terminals::default();
+        for (n, f) in [(1, &outer), (2, &wt), (3, &wt.join("src"))] {
+            t.fake_session(n, &f.to_string_lossy(), None);
+        }
+        let mut staying = Staying::new(&store, std::slice::from_ref(&o.id));
+        assert_eq!(end_sessions(&git, &o, true, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended), 1, "only outer's own terminal ends");
+        assert_eq!(t.sessions().len(), 2, "the worktree's two stay");
+        drop(store);
+        fs::remove_dir_all(&base).unwrap();
     }
 
     #[test]
