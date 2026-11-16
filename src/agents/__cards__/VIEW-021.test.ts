@@ -43,7 +43,7 @@ test("box 1: + under an agent adds a not-started row under that agent and select
   expect(pickSession(after, agentSel)).toBe(2);
   const html = renderToStaticMarkup(createElement(AgentsRail, props(after, pickSession(after, agentSel))));
   expect(html).toMatch(/class="sess sel pending"[^>]*data-session="2"/);
-  expect(html).toContain("New session");
+  expect(html).toContain('<span class="name">New session</span>'); // the row of a pane not started yet keeps its label
   expect(html).toContain(">Not started<");
 });
 
@@ -61,13 +61,13 @@ test("box 2: a fresh profile with no saved agents shows an empty state, not a bl
   expect(opened).toBe(1);
 });
 
-test("box 3: saved agents with no open session leave the rail empty and offer New session", () => {
+test("box 3: saved agents with no open session leave the rail empty and offer Start agents", () => {
   const groups = railGroups([], [{ id: "claude", name: "Claude Code" }]);
   expect(groups).toEqual([]);
   let started = 0;
   const html = renderToStaticMarkup(createElement(AgentsRail, props(groups, null, { hasAgents: true, onNew: () => started++ })));
   expect(html).toContain("No sessions yet");
-  expect(html).toContain("New session");
+  expect(html).toContain("Start agents"); // job 68: the same words as the page beside it (Content.tsx, Grid.tsx)
   expect(html).not.toContain("Claude Code");
   expect(html).not.toContain("rail-group");
   const rail = AgentsRail(props(groups, null, { hasAgents: true, onNew: () => started++ }) as never) as ReactElement;
