@@ -2940,6 +2940,34 @@ fn f03_discard_never_writes_inside_a_submodule_even_when_git_is_set_to_recurse()
     }
 }
 
+/// F-04: a staged new link to a repository folder is removed as a link, not kept as "its own Git
+/// repository"; the folder it points at and its `.git` are never touched.
+#[test]
+fn f04_a_staged_link_to_a_repository_folder_is_removed_as_a_link() {
+    let dir = temp_repo("f04-link");
+    run(&["config", "core.symlinks", "true"], Some(&dir)).unwrap();
+    let target = temp_repo("f04-target");
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(&target, dir.join("ln"));
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_dir(&target, dir.join("ln"));
+    if let Err(e) = made {
+        eprintln!("f04: skipped, a link could not be made here ({e})");
+        for d in [&dir, &target] {
+            let _ = fs::remove_dir_all(d);
+        }
+        return;
+    }
+    plain(&["add", "ln"], &dir);
+    assert_eq!(paths(&status(&dir).unwrap().staged), ["ln"], "the link is staged");
+    discard_paths(&dir, &["ln".to_string()]).unwrap();
+    assert!(fs::symlink_metadata(dir.join("ln")).is_err(), "the link is removed");
+    assert!(target.join(".git").is_dir() && target.join("README.md").exists(), "the folder it pointed at is whole");
+    for d in [&dir, &target] {
+        let _ = fs::remove_dir_all(d);
+    }
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {

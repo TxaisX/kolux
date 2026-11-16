@@ -2775,8 +2775,11 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
 }
 
 /// R-06: true when the row's folder holds `.git` (a file or a folder), a nested repository.
+/// F-04: a row that is itself a link is never one, even when it points at a repository: it is
+/// removed as a link, and what it points at is never touched.
 fn own_repo_at(worktree: &Path, p: &str) -> bool {
-    fs::symlink_metadata(worktree.join(native(p.trim_end_matches('/'))).join(".git")).is_ok()
+    let full = worktree.join(native(p.trim_end_matches('/')));
+    fs::symlink_metadata(&full).is_ok_and(|m| !m.is_symlink()) && fs::symlink_metadata(full.join(".git")).is_ok()
 }
 
 /// F-02: true when Git's checkout or restore would write a file or a link at `p` while a real
