@@ -28,7 +28,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { closesWith, goesWith, goingFolders, sameDir } from "../workspaces";
+import { goesWith, goingFolders, sameDir } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
@@ -750,8 +750,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const stayingBut = (going: Set<string>) => projects.filter((q) => !going.has(q.id)).flatMap(foldersOf);
   // Job 64 F1: a folder that a staying project on the same repository also lists does not go (`goingFolders`); a tab in it
   // that the removed grid shows is kept (R83-04), so it is not asked about. Alone on a repository, as before.
-  // R83-04: not when its own folder stays (`closesWith`: a staying project lists it), whichever grid shows it.
-  const askedOf = (listed: string[], folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying) || (goesWith(d, listed, staying) && closesWith({ cwd: d }, folders, staying)));
+  // R83-04: not when its own folder stays (a staying project lists it), whichever grid shows it. F88-04: so only the going
+  // folders are asked about; a folder under a listed one that is not going stays (`staysOwn`), so it never closes.
+  const askedOf = (folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying));
   // F88-01: the going folders, each once and in order (the scan lists the own folder again); `removedAll` closes their panes
   // and reads the first as the project's own, so a going worktree under a staying project's folder closes too.
   const once = (ds: string[]) => ds.filter((d, i) => ds.findIndex((x) => sameDir(x, d)) === i);
@@ -759,7 +760,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
     const staying = stayingBut(new Set([p.id]));
     const folders = once(goingFolders(p.path, foldersOf(p), staying));
-    const closed = askedOf(foldersOf(p), folders, staying);
+    const closed = askedOf(folders, staying);
     if (!(await onAskUnsaved(closed))) return;
     try {
       // `unchecked`: Git could not list a project's worktrees, so the engine left their terminals running (missing = false).
@@ -922,7 +923,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const staying = stayingBut(going);
     const folders = once(members.flatMap((p) => goingFolders(p.path, foldersOf(p), staying)));
     if (remove) {
-      if (!(await onAskUnsaved(askedOf(members.flatMap(foldersOf), folders, staying)))) return;
+      if (!(await onAskUnsaved(askedOf(folders, staying)))) return;
     }
     try {
       const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members

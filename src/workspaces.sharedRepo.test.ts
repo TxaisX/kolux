@@ -3,7 +3,7 @@
 // own folder and every worktree both share. A shared folder goes with a removed project only when it is that project's
 // own folder. The removed list goes through `goingFolders` before `goesWith` and `sessionsUnder` are asked.
 import { afterEach, describe, expect, test } from "vitest";
-import { closesWith, gridOf, goesWith, goingFolders, setGridRoots, withoutDir } from "./workspaces";
+import { gridOf, goesWith, goingFolders, setGridRoots, withoutDir } from "./workspaces";
 import { gridRootsOf, mergeGridMap } from "./projects/worktreeGrid";
 import { sessionsUnder } from "./projects/rows";
 
@@ -19,8 +19,7 @@ const at = (cwd: string) => ({ cwd, running: true });
 function remove(gone: string[], open: string[], all = lists, owner = own) {
   const staying = Object.keys(all).filter((k) => !gone.includes(k)).flatMap((k) => all[k]);
   const going = gone.flatMap((k) => goingFolders(owner[k], all[k], staying));
-  const listed = gone.flatMap((k) => all[k]);
-  const asked = open.filter((d) => goesWith(d, going, staying) || (goesWith(d, listed, staying) && closesWith({ cwd: d }, going, staying)));
+  const asked = open.filter((d) => goesWith(d, going, staying));
   const panes = open.map((cwd, i) => ({ key: i, cwd }));
   const kept = going.reduce((ps, d) => withoutDir(ps, d, staying), panes);
   const closed = panes.filter((p) => !kept.includes(p)).map((p) => p.cwd);
