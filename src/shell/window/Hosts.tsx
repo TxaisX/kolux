@@ -7,6 +7,7 @@ import StatusBar from "../../chrome/StatusBar";
 import { FIELDS as STATUS_FIELDS, readStatusBar, toggleItem } from "../../chrome/statusItems";
 import EditMenuHost from "../../editmenu/EditMenuHost";
 import { plainNote } from "../../editor/fileNotes";
+import { asksAtStart } from "../../launch/startForm";
 import { reviewOn, startChoices } from "../../editor/notes";
 import { hooksOn } from "../../onboarding/hooksOn";
 import type { KindKey } from "../../settings/notifications";
@@ -15,6 +16,7 @@ import { toggleSkills } from "../../skills/nav";
 import { windowLoaded } from "../../status/manage";
 import { tabName } from "../../terminal/tabName";
 import { sameDir } from "../../workspaces";
+import { ownPanes } from "../useStartAsk";
 import { useWindow } from "./store";
 import { addFolderHands } from "./sidebarScreens";
 import { SkillUpdateNotice } from "../../lazy/pages";
@@ -48,7 +50,7 @@ export default function WindowHosts() {
     wizard, settings, saveSetting, wizardSession, wizardClose, pickFolder, projects, endWizard, firstFolder,
     screen, setScreen, settingsRead, picked, notes, repoless, activeDir, putNote, setNotes, setPicked,
     reviewTargets, sendMenu, setSendMenu, sendReview, startReview, agents, defaultId, live, panes, ptys, titles,
-    owner, restoredKeys, setToast, openStart, setSidebarOpen,
+    owner, restoredKeys, setToast, openStart, setSidebarOpen, sheet,
   } = useWindow();
   return (
     <>
@@ -69,7 +71,13 @@ export default function WindowHosts() {
           onClose={() => {
             if (wizardClose.retry()) return;
             const none = projects.length === 0;
-            endWizard("dismissed", () => (firstFolder.current = none));
+            // Job 68 (decided): closed or skipped with a folder on the list, the Start form opens as finishing does,
+            // unless the ask at start is off or work is up (a pane, or a Start form: setup reopened from Help).
+            const start = !none && asksAtStart(settings) && ownPanes(panes) === 0 && !sheet;
+            endWizard("dismissed", () => {
+              firstFolder.current = none;
+              if (start) openStart({ here: activeDir !== null });
+            });
           }}
         />
       )}
