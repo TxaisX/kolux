@@ -1245,7 +1245,7 @@ fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: boo
     if !was_there && git_made(dest) {
         let _ = std::fs::remove_dir_all(dest);
         // F4: an empty folder that could not go is no obstacle (Git adds into an empty folder).
-        left = std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_some());
+        left = still_holds(std::fs::read_dir(dest));
     } else if was_there && was_empty && git_made(dest) {
         for entry in std::fs::read_dir(dest).into_iter().flatten().flatten() {
             let path = entry.path();
@@ -1256,13 +1256,22 @@ fn clear_failed_add(repo: &Path, dest: &Path, made: Option<&str>, was_there: boo
                 _ => std::fs::remove_file(&path),
             };
         }
-        left = std::fs::read_dir(dest).is_ok_and(|mut e| e.next().is_some());
+        left = still_holds(std::fs::read_dir(dest));
     }
     let _ = crate::git::run(&["worktree", "prune"], Some(repo));
     if let Some(branch) = made.filter(|b| crate::git::run(&["rev-parse", "--verify", "--quiet", &format!("refs/heads/{b}")], Some(repo)).is_ok()) {
         let _ = crate::git::run(&["branch", "-D", branch], Some(repo));
     }
     left
+}
+
+/// F79-2: whether a folder read after the clean-up still holds something: an entry, or the folder
+/// is there but cannot be read. Only "not found" means nothing was left.
+fn still_holds<I: Iterator>(read: std::io::Result<I>) -> bool {
+    match read {
+        Ok(mut entries) => entries.next().is_some(),
+        Err(e) => e.kind() != std::io::ErrorKind::NotFound,
+    }
 }
 
 /// Whether a folder a failed add left is Git's own: a real folder (never a link), empty, or holding

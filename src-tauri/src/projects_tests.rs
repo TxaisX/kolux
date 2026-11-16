@@ -709,6 +709,17 @@ fn f4_an_empty_folder_left_is_retried_and_a_users_folder_is_to_be_emptied() {
     drop(held.borrow_mut().take());
 }
 
+/// F79-2: a folder the clean-up cannot read counts as left (the sentence is kept); only a folder
+/// that is not found, or one that reads empty, counts as cleared. Made errors, no folder's rights changed.
+#[test]
+fn f79_a_folder_that_cannot_be_read_counts_as_left() {
+    use std::io::{Error, ErrorKind};
+    assert!(still_holds(Err::<std::iter::Empty<()>, _>(Error::from(ErrorKind::PermissionDenied))), "cannot be read: left");
+    assert!(!still_holds(Err::<std::iter::Empty<()>, _>(Error::from(ErrorKind::NotFound))), "not found: nothing left");
+    assert!(still_holds(Ok::<_, Error>(std::iter::once(()))), "one entry: left");
+    assert!(!still_holds(Ok::<_, Error>(std::iter::empty::<()>())), "no entry: nothing left");
+}
+
 /// F5: a cancelled add whose clean-up left files keeps the cancel text first and whole, then names
 /// the folder. A cancel that left nothing is the cancel text alone, as before.
 #[cfg(windows)]
