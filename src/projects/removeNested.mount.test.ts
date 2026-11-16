@@ -88,6 +88,19 @@ async function askGroupDelete(c: FakeNode) {
 }
 const inner = ["C:/w/app/inner", "C:/w/app/wts/inner-b"];
 
+test("PROJ 008: the removal question counts only the removed project's running terminals", async () => {
+  const c = await panel();
+  await removeApp(c);
+  expect(ask(c).textContent).toContain("2 terminals are still running and will be closed.");
+});
+
+test("F21: the group delete question counts only the running terminals of the projects in the group", async () => {
+  const c = await panel();
+  await askGroupDelete(c);
+  const q = byLabel(c, "div", "Delete group")[0] ?? c;
+  expect(q.textContent).toContain("2 terminals are still running and will be closed.");
+});
+
 test("PROJ 008: removing a project closes its panes but hands over the nested project that stays", async () => {
   const c = await panel();
   await removeApp(c);

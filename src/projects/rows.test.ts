@@ -151,6 +151,21 @@ test("DT-C274 (TERM-045): a session counts under a folder when it runs there or 
   expect(sessionsUnder(["C:/s"], [{ cwd: "C:/r/wts/one", view: "C:/s" }])).toBe(1);
 });
 
+test("PROJ 008 / F21: a session of a nested project that stays is not counted; with no staying list the count is as before", () => {
+  const sessions = [
+    { cwd: "C:/r" }, // the removed project's own
+    { cwd: "C:/r/wts/one", view: "C:/r" }, // its team agent
+    { cwd: "C:/r/inner/src" }, // a nested project that stays
+    { cwd: "C:/r/wts/inner-b", view: "C:/r/inner" }, // that project's worktree inside C:/r, shown in its grid
+    { cwd: "D:/q/wts/r-two" }, // a worktree of the removed project inside a staying folder
+  ];
+  const staying = ["c:\\R\\Inner", "C:/r/wts/inner-b", "D:/q"];
+  expect(sessionsUnder(["C:/r", "D:/q/wts/r-two"], sessions)).toBe(5);
+  expect(sessionsUnder(["C:/r", "D:/q/wts/r-two"], sessions, [])).toBe(5);
+  expect(sessionsUnder(["C:/r", "D:/q/wts/r-two"], sessions, staying)).toBe(3);
+  expect(sessionsUnder(["C:/r"], sessions, ["C:/r"]), "a tie counts").toBe(4);
+});
+
 // DT-C274: a command-line file of a team worktree opens once its team's grid is shown (select() shows that grid).
 test("cliFileShown: a team worktree's file is ready in its team's grid or in the worktree itself", async () => {
   const { cliFileShown, selectView } = await import("./rows");
