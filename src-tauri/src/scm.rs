@@ -2688,6 +2688,8 @@ fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String>
 /// removed or rewritten as a link: what it points at is never followed, so nothing outside the
 /// repository is touched. B-09: an untracked row goes exactly as the untracked section's discard
 /// sends it (`git clean -f -d`), so a nested repository and ignored files are left alone.
+/// F94-01 / F94-02: a deleted file, or a rename's old file, comes back only into an empty place; a
+/// file or a link standing there is left, and so is its row.
 pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     // R86-05: an empty list is answered in Discard's words, before the shared row checks.
     if paths.is_empty() {
@@ -3217,7 +3219,8 @@ fn with_paths(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), St
 /// VIEW-067: throws away the changes in one section of the panel. Staged rows go back to the last
 /// commit in the index and on disk (so a staged new file is deleted), changed rows go back to what
 /// is staged, untracked rows are deleted. git clean only ever removes untracked files, so a tracked
-/// name sent as untracked is left alone.
+/// name sent as untracked is left alone. F94-01 / F94-02: a staged deletion or a rename's old file
+/// comes back only into an empty place; a file or a link standing there is left, and so is its row.
 pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), String> {
     if paths.is_empty() {
         return Err("Nothing to discard.".into());
