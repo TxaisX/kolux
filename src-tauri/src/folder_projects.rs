@@ -402,6 +402,7 @@ mod tests {
     #[test]
     fn r02_removing_a_folder_project_spares_a_nested_project_that_stays() {
         let base = temp("r02");
+        let _clean = crate::test_dir::TempDir(base.clone());
         let store = store(&base);
         let git = Git::detect().unwrap();
         let (outer, inner) = (base.join("outer"), base.join("outer").join("inner"));
@@ -421,7 +422,6 @@ mod tests {
         let mut staying = Staying::new(&store, &[o.id.clone(), i.id.clone()]);
         assert_eq!(end_sessions(&git, &o, true, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended), 2);
         drop(store);
-        fs::remove_dir_all(&base).unwrap();
     }
 
     /// R-02: a Git project that stays and has a worktree inside a removed folder keeps that
@@ -429,6 +429,7 @@ mod tests {
     #[test]
     fn r02_a_staying_git_projects_worktree_under_a_removed_folder_is_spared() {
         let base = temp("r02git");
+        let _clean = crate::test_dir::TempDir(base.clone());
         let store = store(&base);
         let git = Git::detect().unwrap();
         let (outer, repo) = (base.join("outer"), base.join("repo"));
@@ -455,7 +456,6 @@ mod tests {
         assert_eq!(end_sessions(&git, &o, true, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended), 1, "only outer's own terminal ends");
         assert_eq!(t.sessions().len(), 2, "the worktree's two stay");
         drop(store);
-        fs::remove_dir_all(&base).unwrap();
     }
 
     #[test]

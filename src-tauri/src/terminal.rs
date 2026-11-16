@@ -3544,6 +3544,7 @@ mod tests {
     fn r02_the_sparing_route_leaves_a_deeper_staying_folder_running() {
         let base = std::env::temp_dir().join(format!("kolux-r02-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
+        let _clean = crate::test_dir::TempDir(base.clone());
         let x = base.join("x");
         let (other, inner, deep) = (x.join("other"), x.join("inner"), x.join("inner").join("deep"));
         std::fs::create_dir_all(&deep).unwrap();
@@ -3572,7 +3573,6 @@ mod tests {
         let asked = std::cell::Cell::new(false);
         assert_eq!(t.kill_under_sparing(&x, || { asked.set(true); vec![inner.clone()] }).ended, 0);
         assert!(!asked.get(), "with no terminal under x the spare list is never asked for");
-        std::fs::remove_dir_all(&base).unwrap();
     }
 
     /// F1: a spare folder that is the folder itself (a worktree a staying project also lists) spares

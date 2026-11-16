@@ -625,6 +625,7 @@ fn n06_a_failed_add_whose_clean_up_left_files_says_so_and_names_the_folder() {
     use std::os::windows::fs::OpenOptionsExt;
     let repo = temp_repo("n06-clear");
     let root = temp("n06-clear-root");
+    let _clean = [crate::test_dir::TempDir(repo.clone()), crate::test_dir::TempDir(root.clone())];
     let raw = "fatal: Unable to create 'C:/r/.git/index.lock': File exists.";
     let held: std::cell::RefCell<Option<fs::File>> = std::cell::RefCell::new(None);
     let tries = std::cell::Cell::new(0);
