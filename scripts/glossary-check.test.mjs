@@ -24,6 +24,7 @@ describe("glossary-check", () => {
     expect(text.match(/an agent picked from the \*\*New session\*\* menu/g)?.length).toBe(2);
     expect(text).not.toContain("Because every agent shares it");
     expect(text).toMatch(/While "Own folder for each agent" \(Settings, Git\) is off, every agent shares it/);
+    expect(text).not.toContain("in a new pane in the project folder");
   });
 
   it("reads bold terms, joins singular and plural, and splits 'A and B'", () => {

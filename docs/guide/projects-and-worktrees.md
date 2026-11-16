@@ -14,7 +14,7 @@ The project sidebar shows on the Terminals view. Toggle it with Ctrl+B. The head
 
 Each project block is one folder row: its name, state dot, current branch, running count, a gear for project settings and Remove. Clicking the row shows every session pane opened in that folder, together in the same terminal grid. With Own folder for each agent on (the default, below), the sidebar lists each agent's folder as a workspace under the project; with it off, Kolux works in one folder per project and the new-workspace button and the old worktree rows stay hidden; project settings still offers Clean up workspaces for folders made before this change.
 
-The bottom of the sidebar holds "New session" (start an agent in a new pane in the project folder), Model routing, Help and "Check for updates" (when the sidebar is dragged to its narrowest, that button shows its icon alone; hovering it still says what it does). A gear there lets you add a project by typing its path, or change the folder where old workspaces live. An empty sidebar reads "No projects yet." Projects must be Git repositories; one without Git can start Git from the sidebar.
+The bottom of the sidebar holds "New session" (start an agent in a new pane; with Own folder for each agent on it gets a folder of its own), Model routing, Help and "Check for updates" (when the sidebar is dragged to its narrowest, that button shows its icon alone; hovering it still says what it does). A gear there lets you add a project by typing its path, or change the folder where old workspaces live. An empty sidebar reads "No projects yet." Projects must be Git repositories; one without Git can start Git from the sidebar.
 
 ## The right sidebar
 

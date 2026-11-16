@@ -40,7 +40,7 @@ An AI coding CLI that Kolux can run in a pane, such as Claude Code, Codex, Gemin
 The main screen, in the top bar's Agents, Board, Terminals and Tower switcher. It holds the grid of tabs and panes where agents and shells run, with the right panel beside it.
 
 **New session**
-The button at the bottom of the left sidebar. It starts an agent in a new pane in the project folder.
+The button at the bottom of the left sidebar. It opens a menu: pick an agent to start it in a new pane. With Own folder for each agent on, that agent gets a worktree of its own.
 
 **Next that needs you**
 A button in the left sidebar that jumps to the next agent waiting for you, such as one asking for approval.
