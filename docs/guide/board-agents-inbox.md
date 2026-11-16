@@ -99,7 +99,7 @@ Your unsent draft is kept for each session. A message you sent shows faintly unt
 | The box says | Why |
 |---|---|
 | "The agent is asking something in its terminal. Answer there." | The agent wants permission or an answer. You can still write a draft, but it will not send until the agent is no longer asking |
-| "Kolux can't see this agent's prompts. Type in its terminal." | Kolux has no status report from this agent: its hooks are off, Codex has not been trusted, or no event has come yet |
+| "Kolux can't see this agent's questions. Type in its terminal." | Kolux has no status report from this agent: its hooks are off, Codex has not been trusted, or no event has come yet |
 
 Before each key it types, Kolux checks again for the session the message was sent to, not the session on screen now. If the agent starts asking half way through a send, the rest is dropped.
 
