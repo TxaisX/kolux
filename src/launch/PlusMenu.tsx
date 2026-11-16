@@ -183,6 +183,7 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
           agents.length > 0 &&
           installed === 0 && <div className="menu-hint">No agent found. Kolux looked for {agents.map((a) => a.program).join(", ")} on the PATH and in the usual install folders.</div>
         )}
+        {!pass?.error && pass?.slow && <div className="menu-hint warn">The search took longer than 10 seconds. This is the last list Kolux found.</div>}
         {shown.map((a) => (
           <div className="menu-row" key={a.id}>
             <button role="menuitem" className="menu-item" data-testid={`new-session-item-${a.id}`} disabled={busy || !!pass?.error} onClick={() => onPick(a)} title={`Start ${a.name} (${a.path}) in a new pane inside a fresh workspace`}>

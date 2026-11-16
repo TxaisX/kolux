@@ -477,6 +477,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         ) : pass && !pass.done ? (
           <p className="caption">Looking for agents…</p>
         ) : null}
+        {!pass?.error && pass?.slow && <p className="caption warn">The search took longer than 10 seconds. This is the last list Kolux found.</p>}
         {folders && (
           <div className="count-row" role="group" aria-label="Folders">
             <span className="label">Folders</span>

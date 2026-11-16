@@ -117,6 +117,10 @@ test("SESS-003 / SESS-010 / SESS-002: the default row is marked, all-off and err
   const first = render({ agents: [claude], pass: { looking: true, done: false, error: null } });
   expect(first).toContain("Looking for agents");
   expect(first).not.toContain("No agent found");
+  // Job 78 R73-3: a later search that took too long says so in yellow; the rows stay open.
+  const slow = render({ agents: [claude], pass: { looking: false, done: true, error: null, slow: true } });
+  expect(slow).toContain('<div class="menu-hint warn">The search took longer than 10 seconds. This is the last list Kolux found.</div>');
+  expect(items(slow).find((r) => r.includes("Claude Code"))).not.toContain('disabled=""');
 });
 
 test("SESS-039: from a pane with a worktree, each installed editor gets an 'Open in' row; without a folder there are none", () => {

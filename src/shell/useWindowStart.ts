@@ -58,7 +58,8 @@ export function useWindowStart({ agentPass, installedIds, setAgentPass, setAgent
     setAgentPass((p) => ({ ...p, looking: true }));
     const n = ++seq.current;
     // Job 68: a search that never answers ends after AGENT_SEARCH_LIMIT_MS; an answer after that still lands.
-    const slow = setTimeout(() => seq.current === n && setAgentPass((p) => (p.looking ? { ...p, looking: false, error: AGENT_SEARCH_SLOW } : p)), AGENT_SEARCH_LIMIT_MS);
+    // Job 78 R73-3: after a good search, a slow one only says so; Start keeps working with the last list found.
+    const slow = setTimeout(() => seq.current === n && setAgentPass((p) => (!p.looking ? p : p.done ? { ...p, looking: false, slow: true } : { ...p, looking: false, error: AGENT_SEARCH_SLOW })), AGENT_SEARCH_LIMIT_MS);
     invoke<AgentInfo[]>("agent_list").finally(() => clearTimeout(slow)).then(
       (list) => {
         setAgents(list);

@@ -11,6 +11,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 const heard: Record<string, (e: { payload: unknown }) => void> = {};
 vi.mock("@tauri-apps/api/event", () => ({ listen: (name: string, f: (e: { payload: unknown }) => void) => ((heard[name] = f), Promise.resolve(() => {})), emit: () => Promise.resolve() }));
+import { canLaunch } from "../launch/agents";
 import { installDom } from "../tasks/fakeDom";
 import { AGENT_SEARCH_LIMIT_MS, useWindowStart } from "./useWindowStart";
 
@@ -77,5 +78,18 @@ test("job 78 R73-2: a second search started 9 s into the first is not ended by t
   act(() => void vi.advanceTimersByTime(AGENT_SEARCH_LIMIT_MS - 1000)); // search B's own 10 s are up
   expect(held.pass.looking).toBe(false);
   expect(held.pass.error).not.toBeNull();
+  act(() => root.unmount());
+});
+
+test("job 78 R73-3: a search that never answers after a good one keeps Start working with the last list", async () => {
+  const { held, root } = await draw();
+  await act(async () => answer([{ id: "claude" }]));
+  act(() => heard["agents-changed"]({ payload: null })); // a second search that never answers
+  act(() => void vi.advanceTimersByTime(AGENT_SEARCH_LIMIT_MS));
+  expect(held.pass).toMatchObject({ looking: false, done: true, error: null, slow: true });
+  expect(canLaunch(held.pass)).toBe(true);
+  expect(held.agents).toEqual([{ id: "claude" }]);
+  await act(async () => answer([{ id: "codex" }])); // it answers late: the list lands and the note goes
+  expect(held.pass).toEqual({ looking: false, done: true, error: null });
   act(() => root.unmount());
 });
