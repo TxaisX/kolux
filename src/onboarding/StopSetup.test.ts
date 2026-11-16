@@ -24,6 +24,8 @@ vi.mock("../settings/useSettings", () => ({
   useSettings: () => ({ settings: hold.settings, error: null, save: (p: Settings) => (saves.push(p), Promise.resolve()) }),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.reject(new Error("no host in this test")) }));
+const opened: string[] = [];
+vi.mock("../settings/pages", async (orig) => ({ ...(await orig<object>()), openSettings: (p: string) => opened.push(p) }));
 
 type El = { type?: unknown; key?: unknown; props?: Record<string, unknown> };
 const kids = (n: unknown): unknown[] => (Array.isArray(n) ? n.flatMap(kids) : n && typeof n === "object" ? [n, ...kids((n as El).props?.children)] : []);
@@ -38,6 +40,7 @@ async function draw(stop: string, taskSource: boolean | null = false) {
 beforeEach(() => {
   h.slots = [];
   saves.length = 0;
+  opened.length = 0;
   hold.settings = null;
 });
 
@@ -103,6 +106,19 @@ describe("the keep-awake card on the Agent statuses stop (FIX-1)", () => {
     const note = find(await draw("statuses"), (e) => e.props?.["data-warn"] === "hooks-off");
     expect(note?.props?.children).toBe(HOOKS_OFF_STOP);
     expect(HOOKS_OFF_STOP).not.toMatch(/above|pick On/);
+  });
+
+  test("the hooks note comes with the button it points to, and only with the note (D6-1)", async () => {
+    const button = (card: unknown) => find(card, (e) => e.type === "button" && e.props?.children === "Open Agents settings");
+    hold.settings = { keepAwake: "agent" };
+    const b = button(await draw("statuses"));
+    expect(b).toBeDefined();
+    (b!.props!.onClick as () => void)();
+    expect(opened).toEqual(["agents"]);
+    for (const s of [{ keepAwake: "agent", agentStatusHooks: true }, { keepAwake: "on" }, { keepAwake: "off" }]) {
+      hold.settings = s;
+      expect(button(await draw("statuses"))).toBeUndefined();
+    }
   });
 
   test("no hooks line with the hooks on, in On mode or while keep-awake is off", async () => {

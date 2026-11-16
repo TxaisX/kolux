@@ -350,9 +350,16 @@ export function StopSetup({ stop, taskSource }: { stop: string; taskSource: bool
           Keep this computer awake while an agent is working
         </label>
         {card.hooksOff && (
-          <p className="guide-note warn" data-warn="hooks-off" role="note">
-            {HOOKS_OFF_STOP}
-          </p>
+          <>
+            <p className="guide-note warn" data-warn="hooks-off" role="note">
+              {HOOKS_OFF_STOP}
+            </p>
+            <div className="btn-row">
+              <button className="btn" onClick={() => openSettings("agents")}>
+                Open Agents settings
+              </button>
+            </div>
+          </>
         )}
       </div>
     );
