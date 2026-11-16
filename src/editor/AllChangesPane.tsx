@@ -128,10 +128,15 @@ export const sidesCall = (base: Base | null, root: string, e: Entry): [CommandNa
 
 type Props = { id: number; root: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onOpenDiff?: (path: string, staged: boolean) => void; pinnedBase?: string | null };
 
-/** A Discard error. The engine keeps some rows on purpose (a file that is now a folder, a nested Git repository) and
- *  still discards the others, one line per row it kept or could not remove, so this is no "failed". The result line
- *  draws each line on its own. */
-export const discardSay = (err: unknown): Say => ({ text: `Not everything was discarded:\n${String(err)}`, bad: true });
+/** A Discard error for the one row the Changes tab sends (`name`). When every line holds "so Kolux leaves", the engine
+ *  left the row on purpose (a link, a file or folder in the way, its own Git repository); anything else is a plain
+ *  "could not". The page cannot tell whether nothing went (one half of a staged rename may have), so it never says.
+ *  Say has no "needs attention" tone, so a kept row stays `bad`. The result line draws each line on its own. */
+export const discardSay = (err: unknown, name: string): Say => {
+  const text = String(err);
+  const kept = text.split("\n").every((l) => l.includes("so Kolux leaves"));
+  return { text: `${kept ? "Kolux left this as it is:" : `Could not discard ${name}:`}\n${text}`, bad: true };
+};
 
 export default function AllChangesPane({ id, root, hidden = false, focused = false, onFocus, onClose, onOpenDiff, pinnedBase = null }: Props) {
   const keymap = useKeymap();
@@ -327,7 +332,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     act("Discarding", () =>
       invoke("scm_discard", { worktree: root, section: d.section, paths: d.paths }).then(
         () => null,
-        discardSay,
+        (e) => discardSay(e, d.paths[d.paths.length - 1]),
       ),
     );
   };
