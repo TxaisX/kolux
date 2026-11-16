@@ -32,6 +32,11 @@ describe("the catalogue (ONB-033)", () => {
     expect(step.en.body).toMatch(/pane's top bar/);
     expect(step.ko.body).not.toMatch(/각자 사이드바에 점이/);
     expect(step.ko.body).toMatch(/폴더 점/);
+    // R74-06: green means neither agent is working or waiting (one done next to a plain shell is green too).
+    expect(step.en.body).toContain("green when neither is working or waiting");
+    expect(step.en.body).not.toMatch(/both are done/);
+    expect(step.ko.body).toContain("둘 다 일을 멈추면 초록색이 됩니다");
+    expect(step.ko.body).not.toMatch(/둘 다 끝나면/);
   });
   it("the parallel tour's second step opens the sidebar when it is hidden", () => {
     expect(tour("parallel").steps[1].reveal).toBe(SIDEBAR_SHOW);
