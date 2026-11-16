@@ -28,7 +28,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
-import { underDir } from "../workspaces";
+import { goesWith } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
@@ -751,7 +751,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
     const folders = foldersOf(p);
     const staying = stayingBut(new Set([p.id]));
-    const closed = openDirs.filter((d) => folders.some((r) => underDir(d, r)));
+    const closed = openDirs.filter((d) => goesWith(d, folders, staying));
     if (!(await onAskUnsaved(closed))) return;
     try {
       const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });
@@ -908,7 +908,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const members = remove ? projects.filter((p) => going.has(p.id)) : [];
     if (remove) {
       const folders = members.flatMap(foldersOf);
-      if (!(await onAskUnsaved(openDirs.filter((d) => folders.some((r) => underDir(d, r)))))) return;
+      if (!(await onAskUnsaved(openDirs.filter((d) => goesWith(d, folders, stayingBut(going)))))) return;
     }
     try {
       const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members

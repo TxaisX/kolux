@@ -88,6 +88,22 @@ async function askGroupDelete(c: FakeNode) {
 }
 const inner = ["C:/w/app/inner", "C:/w/app/wts/inner-b"];
 
+test("PROJ 008: the unsaved-tabs question before a removal asks only about the removed project's open folders", async () => {
+  const c = await panel();
+  await removeApp(c);
+  await click(c, byText(c, "button", "Remove app")[0]);
+  await settle(40);
+  expect(h.unsaved).toEqual([["C:/w/app", "C:/w/ws/fix"]]);
+});
+
+test("F21: the unsaved-tabs question before a group delete asks only about the group's projects' open folders", async () => {
+  const c = await panel();
+  await askGroupDelete(c);
+  await click(c, byText(c, "button", "Delete group")[0]);
+  await settle(60);
+  expect(h.unsaved).toEqual([["C:/w/app", "C:/w/ws/fix"]]);
+});
+
 test("PROJ 008: the removal question counts only the removed project's running terminals", async () => {
   const c = await panel();
   await removeApp(c);
