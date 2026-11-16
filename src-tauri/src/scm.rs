@@ -2689,6 +2689,10 @@ fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String>
 /// repository is touched. B-09: an untracked row goes exactly as the untracked section's discard
 /// sends it (`git clean -f -d`), so a nested repository and ignored files are left alone.
 pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
+    // R86-05: an empty list is answered in Discard's words, before the shared row checks.
+    if paths.is_empty() {
+        return Err("Nothing to discard.".into());
+    }
     let paths: &[String] = &one_spelling(paths);
     not_whole(paths)?;
     check_paths(paths)?;
@@ -3100,6 +3104,9 @@ fn with_paths(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), St
 /// is staged, untracked rows are deleted. git clean only ever removes untracked files, so a tracked
 /// name sent as untracked is left alone.
 pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), String> {
+    if paths.is_empty() {
+        return Err("Nothing to discard.".into());
+    }
     let paths: &[String] = &one_spelling(paths);
     not_whole(paths)?;
     check_paths(paths)?;

@@ -3835,3 +3835,20 @@ fn r86_a_held_link_at_a_renames_old_half_leaves_the_rename_whole() {
     assert!(fs::symlink_metadata(dir.join("a")).is_ok_and(|m| m.is_symlink()), "the link a stays");
     assert_eq!(fs::read_to_string(out.join("o.txt")).unwrap(), "o\n");
 }
+
+/// R86-05: an empty Discard list answers in Discard's words on every route; Stage keeps its own.
+#[test]
+fn r86_an_empty_discard_says_discard_words() {
+    let dir = temp_repo("r86d");
+    let mut wrong = Vec::new();
+    for route in ["changed", "staged", "untracked", "paths"] {
+        let said = by_route(&dir, route, &[]);
+        if said != Err("Nothing to discard.".to_string()) {
+            wrong.push(format!("{route}: said {said:?}"));
+        }
+    }
+    let staged = stage(&dir, &[], true);
+    let _ = fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    assert_eq!(staged, Err("nothing to stage".to_string()));
+}
