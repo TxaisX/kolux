@@ -24,6 +24,8 @@ export const AWAKE_HELP: Record<AwakeMode, string> = {
 };
 /** Agent mode counts only panes whose agent reports through the status hooks; with them off it never holds. */
 export const HOOKS_OFF_HELP = 'Agent mode follows "Show what each agent is doing", which is off: turn it on above, or pick On.';
+/** The setup stop card has no hooks switch and no On choice, so it points to the page that has both. */
+export const HOOKS_OFF_STOP = 'Agent mode only works while "Show what each agent is doing" is on. Turn it on in Settings > Agents.';
 export const LID_HELP =
   "Closing the lid still follows the system: on Windows, the lid setting in Power Options decides; a Mac sleeps on lid close unless it is plugged in with an outside display; on Linux keep-awake also stops lid-close sleep.";
 

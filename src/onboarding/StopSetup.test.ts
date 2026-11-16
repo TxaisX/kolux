@@ -4,7 +4,7 @@
 // is swapped for a slot that survives between draws. The returned element tree is walked for the
 // controls, and their handlers are called the way React would call them.
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { HOOKS_OFF_HELP } from "../launch/KeepAwakeCard";
+import { HOOKS_OFF_STOP } from "../launch/KeepAwakeCard";
 
 const h = { slots: [] as unknown[], i: 0 };
 vi.mock("react", async (orig) => {
@@ -98,10 +98,11 @@ describe("the keep-awake card on the Agent statuses stop (FIX-1)", () => {
     expect(await draw("statuses")).toBeNull();
   });
 
-  test("Agent mode with the status hooks off shows the same help line as the Settings page", async () => {
+  test("Agent mode with the status hooks off points to Settings > Agents, not to a switch this card lacks", async () => {
     hold.settings = { keepAwake: "agent" };
     const note = find(await draw("statuses"), (e) => e.props?.["data-warn"] === "hooks-off");
-    expect(note?.props?.children).toBe(HOOKS_OFF_HELP);
+    expect(note?.props?.children).toBe(HOOKS_OFF_STOP);
+    expect(HOOKS_OFF_STOP).not.toMatch(/above|pick On/);
   });
 
   test("no hooks line with the hooks on, in On mode or while keep-awake is off", async () => {
