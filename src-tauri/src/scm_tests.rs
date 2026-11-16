@@ -3234,6 +3234,35 @@ fn r59_a_staged_rename_is_left_whole_when_one_half_is_left() {
     assert!(st.staged.iter().any(|c| c.path == "b.txt" && c.from.as_deref() == Some("a.txt")), "the rename is still staged: {st:?}");
 }
 
+/// R70-01: on Windows a row spelled with `\` is checked like the same row spelled with `/`:
+/// nothing is written or deleted through a junction above it, and it is left with the same line.
+#[cfg(windows)]
+#[test]
+fn r70_a_row_spelled_with_backslashes_is_checked_like_one_with_slashes() {
+    for route in ["changed", "staged", "paths", "untracked", "paths-untracked"] {
+        let name = format!("r70a-{route}");
+        let dir = temp_repo(&name);
+        let out = outside_folder(&name);
+        let _clean = LinksThenFolders(vec![dir.join("d")], vec![dir.clone(), out.clone()]);
+        fs::create_dir(dir.join("d")).unwrap();
+        commit_file(&dir, "d/f.txt", "f\n");
+        if route == "staged" {
+            plain(&["rm", "--cached", "-q", "d/f.txt"], &dir);
+        }
+        fs::remove_dir_all(dir.join("d")).unwrap();
+        fs::write(out.join("f.txt"), "mine\n").unwrap();
+        fs::write(out.join("p.txt"), "keep\n").unwrap();
+        junction(&dir.join("d"), &out);
+        let file = if route.ends_with("untracked") { "p.txt" } else { "f.txt" };
+        let route = route.trim_end_matches("-untracked");
+        let back = by_route(&dir, route, &[&format!("d\\{file}")]);
+        assert_eq!(fs::read_to_string(out.join("f.txt")).ok().as_deref(), Some("mine\n"), "{route} {file}: the target's f.txt is not written");
+        assert_eq!(fs::read_to_string(out.join("p.txt")).ok().as_deref(), Some("keep\n"), "{route} {file}: the target's p.txt is not deleted");
+        let slash = by_route(&dir, route, &[&format!("d/{file}")]);
+        assert_eq!(back.expect_err(route), slash.expect_err(route), "{route} {file}: the same line as the / spelling");
+    }
+}
+
 #[test]
 fn paths_are_sorted_into_tests_generated_or_source() {
     for p in ["tests/a.rs", "src/__tests__/x.ts", "a/spec/b.rb", "src/x.test.tsx", "src/x.spec.js", "pkg/x_test.go", "py/test_x.py"] {

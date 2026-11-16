@@ -2684,6 +2684,7 @@ fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String>
 /// repository is touched. B-09: an untracked row goes exactly as the untracked section's discard
 /// sends it (`git clean -f -d`), so a nested repository and ignored files are left alone.
 pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
+    let paths: &[String] = &one_spelling(paths);
     check_paths(paths)?;
     let st = status(worktree)?;
     let (mut staged, mut tracked, mut untracked, mut remove) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
@@ -2774,6 +2775,13 @@ pub fn discard_paths(worktree: &Path, paths: &[String]) -> Result<(), String> {
     } else {
         Err(kept.join("\n"))
     }
+}
+
+/// R70-01: Git for Windows reads `\` in a row as a folder break, so on Windows Discard turns every
+/// row to Git's own `/` spelling before any check: every check and every Git call sees one
+/// spelling. Elsewhere `\` is a legal character in a file name, and the row stays as it is.
+fn one_spelling(paths: &[String]) -> Vec<String> {
+    paths.iter().map(|p| if cfg!(windows) { p.replace('\\', "/") } else { p.clone() }).collect()
 }
 
 /// R-06: true when the row's folder holds `.git` (a file or a folder), a nested repository.
@@ -2876,6 +2884,7 @@ fn with_paths(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), St
 /// is staged, untracked rows are deleted. git clean only ever removes untracked files, so a tracked
 /// name sent as untracked is left alone.
 pub fn discard(worktree: &Path, section: &str, paths: &[String]) -> Result<(), String> {
+    let paths: &[String] = &one_spelling(paths);
     check_paths(paths)?;
     match section {
         "staged" | "changed" => {
