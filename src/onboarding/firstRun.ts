@@ -1,6 +1,5 @@
 // ONB-001..005: the first-run wizard's pure rules; Wizard.tsx draws it, onboarding.rs keeps its record.
 import { invoke } from "@tauri-apps/api/core";
-import { isAiAgent } from "./agentKind";
 
 export const SCREENS = [
   { id: "welcome", name: "Welcome", heading: "Several AIs can work on your files at the same time", sub: "Claude, Codex and Grok each take a part of the job, side by side." },
@@ -142,12 +141,6 @@ export const reopenWizard = (reopen: () => Promise<unknown>, show: () => void, f
     },
     fail,
   );
-
-/** ONB-010: the agent the first folder after onboarding starts: the saved default only; none on
- * automatic (no default) and none for a plain terminal, which the new workspace opens anyway
- * (FIX-5: the same agentKind rule the guide uses, so no spelling of "terminal" gets through). */
-export const firstFolderAgent = <A extends { id: string; installed: boolean }>(offered: A[], defaultId: string): A | null =>
-  !isAiAgent(defaultId) ? null : (offered.find((a) => a.installed && a.id === defaultId && isAiAgent(a.id)) ?? null);
 
 /** ACCT-035: a failed connect attempt, worded so its toast names the agent it was for. */
 export function connectFailed(agent: string, err: unknown): string {

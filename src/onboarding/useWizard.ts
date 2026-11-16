@@ -2,24 +2,24 @@
 // where they used to sit.
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ADD_PROJECT, firstFolderAgent, oneClick, openAt, REOPEN_WIZARD, reopenWizard, wizardCloser, type Outcome } from "./firstRun";
+import { ADD_PROJECT, oneClick, openAt, REOPEN_WIZARD, reopenWizard, wizardCloser, type Outcome } from "./firstRun";
 import { projectAddedNote } from "./sidebar";
 import { starAfterClose } from "./star";
 import type { AgentInfo } from "../launch/PlusMenu";
-import { defaultAgentId, offeredAgents } from "../launch/agents";
 import { addFolderVia } from "../launch/startForm";
 
 type WizardDeps = {
   setToast: (text: string) => void;
   agents: AgentInfo[];
   settings: Record<string, unknown>;
-  startIn: (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra?: string[], title?: string) => Promise<number | null>;
+  /** Job 47 A6: no longer used here (the first folder opens the Start form); kept so App's call stays as it is. */
+  startIn?: (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra?: string[], title?: string) => Promise<number | null>;
 };
 
 /** 49-ux2: what Pick a folder says while Add Project is up and the wizard is out of its way. */
 export const PICK_FOLDER_NOTE = "Add a project to finish setup. If you cancel, Help > Onboarding brings the setup back.";
 
-export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
+export function useWizard({ setToast }: WizardDeps) {
   // ONB-001..005: the first-run wizard floats over the app while its record says it is open.
   const [wizard, setWizard] = useState<number | null>(null);
   const [wizardKnown, setWizardKnown] = useState(false); // job 13 F4: the Start form's ask at open waits for this answer
@@ -59,15 +59,15 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
     window.addEventListener(REOPEN_WIZARD, reopen);
     return () => window.removeEventListener(REOPEN_WIZARD, reopen);
   }, []);
-  // ONB-010: armed only by Pick a folder; the next project added
-  // starts the saved default agent in it, once.
+  // ONB-010 (job 47 A6): armed when setup is closed with no folder; the next project added opens the Start form
+  // with that folder ticked, once, and starts nothing by itself (FROZEN decision 8: one Start question).
   const firstFolder = useRef(false);
   // T-796: Pick a folder on Your work: once the folder is added the wizard comes back on the last screen, which asks what to start.
   const backToSession = useRef(false);
   // 49-ux2: Pick a folder hides the wizard but stores nothing; the close is stored once a project was really added.
   const finishOnAdd = useRef(false);
   // VIEW-114 (FIX-2): every added project tells the sidebar entry to read its steps again.
-  const projectAdded = (dir: string, branch: string | null) => {
+  const projectAdded = (dir: string, _branch: string | null) => {
     projectAddedNote();
     if (backToSession.current) {
       backToSession.current = firstFolder.current = finishOnAdd.current = false;
@@ -77,13 +77,15 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
     }
     if (!firstFolder.current) return;
     firstFolder.current = false;
-    const agent = firstFolderAgent(offeredAgents(agents, settings), defaultAgentId(settings));
     if (finishOnAdd.current) {
       finishOnAdd.current = false;
       void wizardClose.end("completed");
     }
-    if (agent) void startIn(agent, dir, branch, "", true);
+    setFirstStart(dir); // Hosts opens the form once the folder is on the list and in front
   };
+  // Job 47 A6: the folder the Start form opens on, until Hosts has opened it.
+  const [firstStart, setFirstStart] = useState<string | null>(null);
+  const doneFirstStart = () => setFirstStart(null);
   // ONB-004: Pick a folder hands over to Add Project and starts `agent` in the folder added next. 49-ux2: setup is
   // marked completed only once a folder was added (projectAdded), so cancelling the dialog does not finish it;
   // the wizard stays out of the dialog's way and Help > Onboarding brings it back.
@@ -111,5 +113,5 @@ export function useWizard({ setToast, agents, settings, startIn }: WizardDeps) {
     if (wizardClose.retry()) return;
     endWizard("completed", open);
   };
-  return { wizard, setWizard, wizardKnown, wizardClose, endWizard, firstFolder, projectAdded, wizardSession, pickFolder };
+  return { wizard, setWizard, wizardKnown, wizardClose, endWizard, firstFolder, projectAdded, wizardSession, pickFolder, firstStart, doneFirstStart };
 }

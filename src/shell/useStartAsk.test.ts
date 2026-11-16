@@ -236,6 +236,22 @@ test("job 47: a fast start asks at once, as before the limit", () => {
   act(() => root.unmount());
 });
 
+// Job 47 A6: setup closed with no folder, then the first folder opens the Start form. The ask at open does not
+// come a second time: the form being up counts as the user acting.
+test("job 47 A6: the Start form the first folder opens is the one ask; the ask at open does not follow it", () => {
+  resetStartAsk();
+  const open = vi.fn();
+  const root = mount();
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, firstRun: true })));
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, firstRun: false, sheetOpen: true })));
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, firstRun: false, sheetOpen: false, panes: 3 })));
+  vi.useFakeTimers();
+  act(() => vi.advanceTimersByTime(START_WAIT_MS));
+  act(() => root.render(createElement(Probe, { ...base(open), agentsDone: true, firstRun: false, sheetOpen: false, panes: 3 })));
+  expect(open).not.toHaveBeenCalled();
+  act(() => root.unmount());
+});
+
 // Job 47 item 2 (job 41 F1): a file the system hands Kolux at start opens a preview pane. That pane is not the user
 // acting, so a slow start and a fast start both ask, in front of it. A pane the user opens still counts.
 const term = (key: number): { key: number; kind?: string; path?: string } => ({ key });

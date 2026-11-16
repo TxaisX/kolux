@@ -4,7 +4,7 @@
 // described the "Try with sample data" and "Choose a kit ... Start kit" screens (STATE.md follow-up of 2026-10-30).
 import { expect, test } from "vitest";
 import guide from "../../docs/guide/getting-started.md?raw";
-import { firstFolderAgent, SCREENS } from "./firstRun";
+import { SCREENS } from "./firstRun";
 
 const table = () => guide.slice(guide.indexOf("## First launch"), guide.indexOf("## The Getting Started guide"));
 const rows = () =>
@@ -36,7 +36,6 @@ test("the step table says Your work offers Pick a folder, and the last step hand
 // opens Add Project and nothing starts; the row must say so instead of promising "your default agent".
 test("the Your work row says the folder starts an agent only once a default was chosen, not on Auto", () => {
   const [, , work] = rows();
-  expect(firstFolderAgent([{ id: "claude", installed: true }], "")).toBeNull();
   expect(work[2]).toMatch(/Default agent is Auto/);
   expect(work[2]).not.toMatch(/then starts your default agent/);
 });

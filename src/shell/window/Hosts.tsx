@@ -2,6 +2,7 @@
 // were: the guides and the first-run wizard (ONB), the updater (APP-058..060), the skills bar and its
 // notice, Feedback, the Review changes sheet (GIT-042), the status bar (STAT-024, STAT-050) and the
 // Edit menu. They sit after the body, as they did.
+import { useEffect } from "react";
 import StatusBar from "../../chrome/StatusBar";
 import { FIELDS as STATUS_FIELDS, readStatusBar, toggleItem } from "../../chrome/statusItems";
 import EditMenuHost from "../../editmenu/EditMenuHost";
@@ -22,6 +23,18 @@ import { ReviewNotes } from "../../lazy/pages";
 import { UpdateCenter } from "../../lazy/pages";
 import { FeedbackDialog } from "../../lazy/pages";
 
+// Job 47 A6 (ONB-010): the first folder after setup opens the Start form on it, once it is on the list and in front.
+function FirstFolderStart() {
+  const { firstStart, doneFirstStart, activeDir, projects, openStart } = useWindow();
+  useEffect(() => {
+    if (firstStart === null || activeDir !== firstStart || !projects.some((p) => p.path === firstStart)) return;
+    doneFirstStart();
+    openStart({ here: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstStart, activeDir, projects]);
+  return null;
+}
+
 export default function WindowHosts() {
   const {
     wizard, settings, saveSetting, wizardSession, wizardClose, pickFolder, projects, endWizard, firstFolder,
@@ -32,6 +45,7 @@ export default function WindowHosts() {
   return (
     <>
       <Guides />
+      <FirstFolderStart />
       {wizard !== null && (
         <Wizard
           start={wizard}
