@@ -111,8 +111,8 @@ type Props = {
   reveal?: number;
   /** Folders a pane is open in: those workspace rows show a live dot. */
   openDirs: string[];
-  /** VIEW-051: the window's agent and shell panes; a workspace lists its running ones as rows
-   * and counts them (the left pane no longer lists terminals as rows). */
+  /** VIEW-051: the window's agent and shell panes. The sidebar draws no rows for them; a delete, sleep or remove
+   * question counts the running ones it would close (runNote). */
   sessions?: FolderSession[];
   /** PROJ-063: each open folder's strongest agent state and when it last changed. */
   states: Record<string, RowInfo>;
