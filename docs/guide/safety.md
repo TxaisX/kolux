@@ -122,7 +122,7 @@ A public name that secretly points to a local address is caught too: the fetch d
 
 ## Chat messages and menus
 
-On the Agents page, the chat box types into the agent's terminal. A menu such as a permission prompt has "Yes" pre-picked, so an Enter typed into one would approve it. Kolux therefore sends a chat message only when it can see that the agent is not asking, and it checks again for the session the message belongs to before every key. If it cannot see the agent's prompts, or the agent is asking, the message is held with a note. "Request changes" on a plan follows the same rule: it waits until the agent has left its menu and otherwise tells you to answer in the terminal. See [Board, Agents and Inbox](board-agents-inbox.md).
+On the Agents page, the chat box types into the agent's terminal. A menu such as a permission prompt has "Yes" pre-picked, so an Enter typed into one would approve it. Kolux therefore sends a chat message only when it can see that the agent is not asking, and it checks again for the session the message belongs to before every key. If it cannot see the agent's questions, or the agent is asking, the message is held with a note. "Request changes" on a plan follows the same rule: it waits until the agent has left its menu and otherwise tells you to answer in the terminal. See [Board, Agents and Inbox](board-agents-inbox.md).
 
 ## What Kolux sends out
 
