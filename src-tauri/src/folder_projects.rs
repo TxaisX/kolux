@@ -142,6 +142,8 @@ pub struct Removed {
     pub path: String,
     /// How many terminals were ended.
     pub ended: usize,
+    /// F79-1: a Git list of worktrees failed, so some terminals may have been left running.
+    pub unchecked: bool,
 }
 
 #[tauri::command(async)]
@@ -156,10 +158,38 @@ pub fn project_add_folder(store: State<'_, Mutex<Store>>, path: String) -> Resul
 /// R-02: `kill` also gets the folders to spare, asked for only when a terminal runs under the folder.
 /// F1: the project's own folder is never spared, even when a staying project on the same repository
 /// lists it; a worktree that a staying project also lists is spared whole (nothing under it ends).
+/// F79-1: a terminal whose owner could not be checked is never ended. When the project's own list
+/// fails, only its own folder is handled; when a staying project's list fails, no worktree but the
+/// own folder ends. Either way `staying.unchecked` is set.
 pub(crate) fn end_sessions(git: &Git, project: &Project, folder: bool, staying: &mut Staying, mut kill: impl FnMut(&Path, &mut dyn FnMut() -> Vec<PathBuf>) -> usize) -> usize {
-    let worktrees: Vec<String> = if folder { Vec::new() } else { git.worktrees(Path::new(&project.path)).map(|all| all.into_iter().map(|w| w.path).collect()).unwrap_or_default() };
+    let worktrees = if folder { Ok(Vec::new()) } else { listed(git, project) };
+    staying.unchecked |= worktrees.is_err();
     let own = Path::new(&project.path);
-    session_dirs(project, &worktrees).iter().map(|d| kill(d, &mut || staying.folders(git).into_iter().filter(|s| !projects::same_folder(s, own)).collect())).sum()
+    session_dirs(project, &worktrees.unwrap_or_default())
+        .iter()
+        .map(|d| {
+            let mine = projects::same_folder(d, own);
+            kill(d, &mut || {
+                let (folders, failed) = staying.folders(git);
+                if failed && !mine {
+                    // Spared whole; it counts as left unchecked unless a staying project owns it anyway.
+                    staying.unchecked |= !folders.iter().any(|s| projects::same_folder(s, d));
+                    return vec![d.clone()];
+                }
+                folders.into_iter().filter(|s| !projects::same_folder(s, own)).collect()
+            })
+        })
+        .sum()
+}
+
+/// F79-1: the worktree folders Git lists for a Git project, or an error when the list failed. A
+/// project whose folder is gone lists nothing, so one dead project does not mark every remove.
+fn listed(git: &Git, project: &Project) -> Result<Vec<String>, String> {
+    match git.worktrees(Path::new(&project.path)) {
+        Ok(all) => Ok(all.into_iter().map(|w| w.path).collect()),
+        Err(_) if std::fs::metadata(&project.path).is_err_and(|e| e.kind() == std::io::ErrorKind::NotFound) => Ok(Vec::new()),
+        Err(e) => Err(e),
+    }
 }
 
 /// R-02: the projects that stay in Kolux when others are taken out. A terminal belongs to the deepest
@@ -167,7 +197,10 @@ pub(crate) fn end_sessions(git: &Git, project: &Project, folder: bool, staying: 
 /// folders (one Git call per Git project, at most once) are listed later with the store let go.
 pub(crate) struct Staying {
     projects: Vec<(Project, bool)>,
-    folders: Option<Vec<PathBuf>>,
+    /// The folders, and whether some staying project's list failed (F79-1).
+    folders: Option<(Vec<PathBuf>, bool)>,
+    /// F79-1: set by `end_sessions` when a failed list may have left terminals running.
+    pub(crate) unchecked: bool,
 }
 
 impl Staying {
@@ -176,15 +209,17 @@ impl Staying {
             let folder = is_folder(store, &p.id);
             (p, folder)
         });
-        Staying { projects: projects.collect(), folders: None }
+        Staying { projects: projects.collect(), folders: None, unchecked: false }
     }
 
-    fn folders(&mut self, git: &Git) -> Vec<PathBuf> {
+    fn folders(&mut self, git: &Git) -> (Vec<PathBuf>, bool) {
         let projects = &self.projects;
         self.folders
             .get_or_insert_with(|| {
-                let worktrees = |(p, folder): &(Project, bool)| if *folder { Vec::new() } else { git.worktrees(Path::new(&p.path)).map(|all| all.into_iter().map(|w| w.path).collect()).unwrap_or_default() };
-                projects.iter().flat_map(|p| session_dirs(&p.0, &worktrees(p))).collect()
+                let mut failed = false;
+                let mut worktrees = |(p, folder): &(Project, bool)| if *folder { Vec::new() } else { listed(git, p).unwrap_or_else(|_| { failed = true; Vec::new() }) };
+                let folders = projects.iter().flat_map(|p| session_dirs(&p.0, &worktrees(p))).collect();
+                (folders, failed)
             })
             .clone()
     }
@@ -202,7 +237,7 @@ pub fn project_remove(git: State<'_, Git>, store: State<'_, Mutex<Store>>, termi
     };
     let ended = end_sessions(&git, &project, folder, &mut staying, |d, spare| terminals.kill_under_sparing(d, spare).ended);
     remove_project(&*store.lock().map_err(|e| e.to_string())?, &project.id)?;
-    Ok(Removed { name: project.name, path: project.path, ended })
+    Ok(Removed { name: project.name, path: project.path, ended, unchecked: staying.unchecked })
 }
 
 /// F1 tests: one repository at `<base>/repo` with two linked worktrees, `b_at` and `<base>/w3`, and
@@ -301,6 +336,78 @@ mod tests {
         assert_eq!(remove(&b, &t), 2, "B's own folder ends though A, which stays, holds it");
         assert_eq!(left(&t), names(&[repo.clone(), repo.join("src"), w3.clone()]));
         drop(store);
+    }
+
+    /// F79-1: a `.git` that points nowhere makes Git's list of worktrees fail in that folder.
+    fn break_list(folder: &Path, base: &Path) {
+        fs::write(folder.join(".git"), format!("gitdir: {}", base.join("nowhere").display())).unwrap();
+        assert!(Git::detect().unwrap().worktrees(folder).is_err(), "the list in {} fails", folder.display());
+    }
+
+    /// F79-1: B's list fails. Removing A ends A's own folder only; B's folder and the third worktree,
+    /// whose owner only B's list could tell, run on, and the answer says terminals went unchecked.
+    #[test]
+    fn f79_a_staying_projects_failed_list_spares_the_removed_projects_worktrees() {
+        let base = crate::test_dir::temp("f79-staying");
+        let store = store(&base);
+        let git = Git::detect().unwrap();
+        let bdir = base.join("b");
+        let (a, _, repo, w3) = shared_repo(&store, &base, &bdir);
+        break_list(&bdir, &base);
+        let t = five_sessions(&repo, &bdir, &w3);
+        let mut staying = Staying::new(&store, std::slice::from_ref(&a.id));
+        assert_eq!(end_sessions(&git, &a, false, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended), 2, "only repo and repo\\src end");
+        assert_eq!(left(&t), names(&[bdir.clone(), bdir.join("src"), w3.clone()]));
+        assert!(staying.unchecked, "a failed list says so");
+        drop(store);
+    }
+
+    /// F79-1: A's own list fails (its `.git` moved away) and nothing on the repository stays (B goes
+    /// with it). Only A's own folder ends; its two worktrees run on, and the answer says so.
+    #[test]
+    fn f79_the_removed_projects_failed_list_ends_only_its_own_folder_and_says_so() {
+        let base = crate::test_dir::temp("f79-removed");
+        let store = store(&base);
+        let git = Git::detect().unwrap();
+        let bdir = base.join("b");
+        let (a, b, repo, w3) = shared_repo(&store, &base, &bdir);
+        fs::rename(repo.join(".git"), base.join("git-moved")).unwrap();
+        break_list(&repo, &base);
+        let t = five_sessions(&repo, &bdir, &w3);
+        let mut staying = Staying::new(&store, &[a.id.clone(), b.id.clone()]);
+        assert_eq!(end_sessions(&git, &a, false, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended), 2, "only repo and repo\\src end");
+        assert_eq!(left(&t), names(&[bdir.clone(), bdir.join("src"), w3.clone()]));
+        assert!(staying.unchecked, "a failed list says so");
+        drop(store);
+    }
+
+    /// F79-1: job 69's two layouts with every list read end and spare what they did, and nothing is
+    /// unchecked. A staying project whose folder is gone lists nothing; it is not a failed list.
+    #[test]
+    fn f79_with_every_list_read_nothing_is_unchecked() {
+        for (tag, inside) in [("f79-beside", false), ("f79-inside", true)] {
+            let base = crate::test_dir::temp(tag);
+            let store = store(&base);
+            let git = Git::detect().unwrap();
+            let bdir = if inside { base.join("repo").join("wt").join("b") } else { base.join("b") };
+            let (a, b, repo, w3) = shared_repo(&store, &base, &bdir);
+            let mut list = projects::load_projects_for_write(&store).unwrap();
+            list.push(Project { id: "f79-gone".into(), name: "gone".into(), path: base.join("gone").display().to_string(), workspaces_dir: None, base: None, display_name: None });
+            projects::save_projects(&store, &list).unwrap();
+            let cases = [
+                (&a, vec![a.id.clone()], 2, vec![bdir.clone(), bdir.join("src"), w3.clone()]),
+                (&b, vec![b.id.clone()], 2, vec![repo.clone(), repo.join("src"), w3.clone()]),
+                (&a, vec![a.id.clone(), b.id.clone()], 5, Vec::new()),
+            ];
+            for (p, going, ended, spared) in cases {
+                let t = five_sessions(&repo, &bdir, &w3);
+                let mut staying = Staying::new(&store, &going);
+                assert_eq!(end_sessions(&git, p, false, &mut staying, |d, spare| t.kill_under_sparing(d, spare).ended), ended, "{tag}: removing {going:?}");
+                assert_eq!(left(&t), names(&spared), "{tag}: removing {going:?}");
+                assert!(!staying.unchecked, "{tag}: removing {going:?} read every list");
+            }
+            drop(store);
+        }
     }
 
     fn temp(name: &str) -> PathBuf {
