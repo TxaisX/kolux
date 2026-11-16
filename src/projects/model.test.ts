@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import panelSrc from "./ProjectsPanel.tsx?raw";
 import { unlessSame } from "./ProjectsPanel";
-import { afterScan, prefixSample, folderName, matchLetters, middle, pathHints, rankProjects, shortcodes, openedWorktree, relPath, nestRows, orderWorktrees, parentChoices, placeFieldAction, previewSentence, worktreeLabel, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, splitGitSaid, type Linked, type PendingCreate, type PrHead } from "./model";
+import { afterScan, prefixSample, folderName, matchLetters, middle, pathHints, rankProjects, shortcodes, openedWorktree, relPath, nestRows, orderWorktrees, parentChoices, placeFieldAction, previewSentence, worktreeLabel, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, splitGitSaid, type Linked, type PendingCreate, type PrHead } from "./model";
 
 const main: Worktree = { path: "C:\\src\\app", branch: "main", head: "aaaaaaa1", isMain: true };
 const zeta: Worktree = { path: "C:\\ws\\app\\zeta", branch: "zeta", head: "bbbbbbb2", isMain: false };
@@ -245,4 +245,13 @@ test("T-726: an unchanged scan keeps the same state, so the sidebar does not rep
   expect(unlessSame(moved)(prev), "changed: the new one").toBe(moved);
   // every setter the 5 s poll calls goes through it
   for (const set of ["setWorktrees", "setHiddenWts", "setFresh", "setPushedBy"]) expect(panelSrc, set).toMatch(new RegExp(set + "\\(unlessSame\\("));
+});
+
+test("F79-6: a create a newer one took the place of says so in plain words, then the engine's own rest as it comes", () => {
+  const long = "cancelled: a newer workspace creation took its place. Kolux could not clear the folder C:/w/login. Remove it by hand before you try again.";
+  expect(overtakenNote("login", long)).toBe("Kolux stopped creating login because a newer one took its place. Kolux could not clear the folder C:/w/login. Remove it by hand before you try again.");
+  const short = "cancelled: a newer workspace creation took its place. Kolux could not clear the folder C:/w/login. Remove it by hand.";
+  expect(overtakenNote("login", short)).toBe("Kolux stopped creating login because a newer one took its place. Kolux could not clear the folder C:/w/login. Remove it by hand.");
+  expect(overtakenNote("login", "cancelled: a newer workspace creation took its place")).toBe("Kolux stopped creating login because a newer one took its place.");
+  expect(overtakenNote("login", "fatal: invalid reference: x"), "any other error as today").toBe("login: fatal: invalid reference: x");
 });

@@ -299,13 +299,22 @@ export const itemLabel = (l: Linked) => `${l.kind === "pull" ? "pull request" : 
 /** SESS-038: switching project drops a GitHub item of the old repository, keeps a link bound to none. */
 export const keepOnSwitch = (l: Linked | null): Linked | null => (l && l.repo === null ? l : null);
 
+/** The back end's lead for a create that a newer one replaced (SESS-038, F79-6). */
+const NEWER_LEAD = "cancelled: a newer workspace creation took its place";
+
+/** F79-6: what a create that a newer one took the place of says: plain words first, then the back end's rest as it comes
+ *  (for example "Kolux could not clear the folder X. Remove it by hand."). Any other error is shown as it comes. */
+export function overtakenNote(name: string, err: string): string {
+  if (!err.startsWith(NEWER_LEAD)) return `${name}: ${err}`;
+  return `Kolux stopped creating ${name} because a newer one took its place${err.slice(NEWER_LEAD.length) || "."}`;
+}
+
 /** SESS-038: what a create the user cancelled mid-submit says: `err` is the back end's answer, null
  * when Git had already finished (the workspace then stays). */
 export function stoppedNote(name: string, err: string | null): { kind: "ok" | "warn"; text: string } {
   if (err === null) return { kind: "warn", text: `${name} was already made when the cancel arrived, so it stays; delete it if you do not want it.` };
-  const lead = "cancelled: a newer workspace creation took its place";
-  if (!err.startsWith(lead)) return { kind: "warn", text: `${name}: ${err}` };
-  const rest = err.slice(lead.length);
+  if (!err.startsWith(NEWER_LEAD)) return { kind: "warn", text: `${name}: ${err}` };
+  const rest = err.slice(NEWER_LEAD.length);
   return rest ? { kind: "warn", text: `Stopped creating ${name}${rest}` } : { kind: "ok", text: `Stopped creating ${name}; nothing was left behind.` };
 }
 
