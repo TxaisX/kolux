@@ -334,15 +334,18 @@ pub fn program_like(path: &str, windows: bool) -> bool {
 
 /// `program_like` for this platform, plus the execute bit on POSIX.
 pub fn launchable(path: &Path) -> bool {
-    if program_like(&path.to_string_lossy(), cfg!(windows)) {
-        return true;
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::metadata(path).map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0).unwrap_or(false)
-    }
-    #[cfg(not(unix))]
+    program_like(&path.to_string_lossy(), cfg!(windows)) || execute_bit(path)
+}
+
+/// A file with an execute bit set. Only POSIX has the bit, so elsewhere this is never true.
+#[cfg(unix)]
+fn execute_bit(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(path).map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0).unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn execute_bit(_path: &Path) -> bool {
     false
 }
 
