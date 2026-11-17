@@ -138,6 +138,7 @@ export async function startProve(id, opts) {
   const seeded = {
     confirmCloseRunning: false,
     agentStatusHooks: true,
+    keepWorkspaces: true, // these scripts were written when tabs and folders came back; a plain start restores none (2026-11-16)
     agentOptions: { claude: { env: `CLAUDE_CONFIG_DIR=${ACCOUNT_A}`, args: opts.claudeArgs.replaceAll("${SETTINGS}", settingsFile) } },
     ...(opts.settings ?? {}), // e.g. uiLook: "new" for the screen switcher
   };
@@ -367,7 +368,7 @@ export async function startPlain(id, opts) {
   // opts.prepare(repo): more repo setup before the app starts, e.g. a second git worktree the app lists when the project is added.
   if (opts.prepare) await opts.prepare(repo);
   // uiLook is written down: a profile with any setting reads as Classic, and the clean (New) look is what a new install shows.
-  const seeded = { confirmCloseRunning: false, agentStatusHooks: true, uiLook: "new", ...(opts.settings ?? {}) };
+  const seeded = { confirmCloseRunning: false, agentStatusHooks: true, keepWorkspaces: true, uiLook: "new", ...(opts.settings ?? {}) };
   if (opts.standin) {
     seeded.agentOptions = { claude: { command: writeStandinClaude(join(TEMP, "standin"), opts.standin) } };
     // The stand-in is on the app's PATH before it starts, so the catalogue never finds (or starts) a real claude.

@@ -107,6 +107,7 @@
     "agentSleepTestFast",
     "agentOwnFolders",
     "askWhatToOpen",
-    "lastStart"
+    "lastStart",
+    "keepWorkspaces"
   ]
 }

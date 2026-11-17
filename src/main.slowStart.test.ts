@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
   gate: false, // PKG-4: while set, path_kind answers only once a history removal has been asked
   forgot: false,
   release: [] as Array<() => void>,
+  saves: [] as Array<[Record<string, unknown>, Record<string, unknown>]>,
 }));
 vi.mock("./App", () => ({ default: function App() { return null; } }));
 vi.mock("./tower/TowerWindow", () => ({ default: function TowerWindow() { return null; } }));
@@ -37,7 +38,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ show: async () => void h.shown++ }) }));
 vi.mock("./theme", () => ({ applyAppearance: () => {}, cachedAppearance: () => null, followSystemMode: () => {}, readAppearance: () => null }));
 vi.mock("./settings/general", () => ({ stampLook: () => null }));
-vi.mock("./settings/saveChanged", () => ({ saveChanged: async () => {} }));
+vi.mock("./settings/saveChanged", () => ({ saveChanged: async (prev: Record<string, unknown>, next: Record<string, unknown>) => void h.saves.push([prev, next]) }));
 // locale / onLanguageChange: the language-pack preload (i18n/packs.ts, i18n/lookup.ts) reads them before the first draw.
 vi.mock("./language", () => ({ applyLanguage: (l: unknown) => void h.langs.push(l), LANGUAGE_FIELD: "language", locale: () => "en", onLanguageChange: () => () => {} }));
 vi.mock("./settings/zoom", () => ({ applyZoom: () => {}, ZOOM_FIELD: "zoom" }));
@@ -58,6 +59,7 @@ async function boot() {
   h.gate = false;
   h.forgot = false;
   h.release = [];
+  h.saves = [];
   h.texts = [];
   h.langs = [];
   vi.resetModules();
@@ -75,7 +77,7 @@ test("a slow start draws the window without the saved tabs, then hands them to t
   expect(slow.props.read).toBe(false); // App writes no layout while this is false (next test)
   expect(slow.props.layout).toBeNull();
   expect(h.shown).toBeGreaterThan(0); // the window still shows on time
-  h.answer({ [LAYOUT_FIELD]: SAVED, language: "fr" });
+  h.answer({ [LAYOUT_FIELD]: SAVED, language: "fr", keepWorkspaces: true });
   await vi.waitFor(() => expect(h.drawn.length).toBe(2));
   const back = appOf(h.drawn[1]);
   expect(back.props.read).toBe(true);
@@ -114,9 +116,9 @@ test("a slow start whose settings never answer stays as it was drawn: no saved t
   expect(appOf(h.drawn[0]).props.read).toBe(false);
 });
 
-test("a timely start draws once, with the saved tabs and read true", async () => {
+test("a timely start draws once, with the saved tabs and read true (keepWorkspaces on)", async () => {
   await boot();
-  h.answer({ [LAYOUT_FIELD]: SAVED });
+  h.answer({ [LAYOUT_FIELD]: SAVED, keepWorkspaces: true });
   await vi.waitFor(() => expect(h.drawn.length).toBe(1));
   await new Promise((r) => setTimeout(r, 30)); // the answer has landed: nothing more is drawn
   expect(h.drawn.length).toBe(1);
@@ -125,13 +127,71 @@ test("a timely start draws once, with the saved tabs and read true", async () =>
   expect(app.props.layout?.panes.map((p) => p.key)).toEqual([1, 2, 3]);
 });
 
+// Txais (2026-11-16): a start keeps nothing of the last close. No saved tabs come back (the Start form asks what to open),
+// the last close's tabs and Start choice are taken out of the settings file, and every tab's saved output is cleared.
+test("a start with no keepWorkspaces switch puts back no tabs, drops the saved tabs and last Start choice, and clears saved output", async () => {
+  await boot();
+  h.answer({ [LAYOUT_FIELD]: SAVED, lastStart: { folders: ["p1"], count: 2 }, language: "fr" });
+  await vi.waitFor(() => expect(h.drawn.length).toBe(1));
+  await new Promise((r) => setTimeout(r, 30));
+  expect(h.drawn.length).toBe(1);
+  const app = appOf(h.drawn[0]);
+  expect(app.props.read).toBe(true);
+  expect(app.props.layout).toBeNull(); // nothing from the last close comes back
+  expect(app.props.initial).toMatchObject({ language: "fr" }); // the rest of the settings are untouched
+  // the window is not handed the last close's tabs or Start choice either, so nothing reads them or writes them back
+  expect(app.props.initial).not.toHaveProperty(LAYOUT_FIELD);
+  expect(app.props.initial).not.toHaveProperty("lastStart");
+  const names = h.calls.map(([c]) => c);
+  expect(names).not.toContain("terminal_forget_history"); // no tab was restored, so nothing per tab is asked
+  expect(names).not.toContain("path_kind");
+  expect(h.calls.filter(([c]) => c === "terminal_prune_history").map(([, a]) => a)).toEqual([{ keep: [] }]);
+  expect(h.saves.some(([prev, next]) => Object.keys(next).length === 0 && prev[LAYOUT_FIELD] !== undefined && "lastStart" in prev)).toBe(true); // removed, nothing set
+});
+
+test("keepWorkspaces off or anything but true behaves the same: nothing comes back", async () => {
+  for (const off of [false, "yes", 1, null]) {
+    await boot();
+    h.answer({ [LAYOUT_FIELD]: SAVED, keepWorkspaces: off });
+    await vi.waitFor(() => expect(h.drawn.length).toBe(1));
+    expect(appOf(h.drawn[0]).props.layout).toBeNull();
+    vi.unstubAllGlobals();
+  }
+});
+
+test("a start whose settings could not be read removes nothing from the settings file", async () => {
+  await boot();
+  await vi.waitFor(() => expect(h.drawn.length).toBe(1), { timeout: 4000 });
+  expect(h.saves).toEqual([]);
+  expect(h.calls.filter(([c]) => c === "terminal_prune_history")).toEqual([]);
+});
+
+test("a start with keepWorkspaces on removes nothing and keeps every tab's folder check as before", async () => {
+  await boot();
+  h.answer({ [LAYOUT_FIELD]: SAVED, lastStart: { folders: ["p1"], count: 2 }, keepWorkspaces: true });
+  await vi.waitFor(() => expect(h.drawn.length).toBe(1));
+  expect(h.saves).toEqual([]);
+  expect(appOf(h.drawn[0]).props.initial).toMatchObject({ lastStart: { folders: ["p1"], count: 2 } }); // kept as the switch says
+  expect(h.calls.some(([c]) => c === "path_kind")).toBe(true);
+});
+
+test("the window writes no layout unless keepWorkspaces is on, and the two copies of the Start choice's name agree", async () => {
+  const save = windowFiles["./shell/useWindowSave.ts"];
+  const set = save.indexOf("layoutSaver.set(l);");
+  const effect = save.slice(save.lastIndexOf("useEffect(() => {", set), set);
+  expect(effect).toMatch(/if \(!read\) return;[\s\S]*if \(!keepsWorkspaces\(settingsRef\.current\)\) return;[\s\S]*layoutOf\(/); // gate sits before anything is composed
+  const { LAST_START_FIELD, KEEP_WORKSPACES_FIELD } = await import("./terminal/keepWorkspaces");
+  expect(KEEP_WORKSPACES_FIELD).toBe("keepWorkspaces");
+  expect(LAST_START_FIELD).toBe((await import("./launch/startForm")).LAST_START_KEY);
+});
+
 // PKG-4: one wave before the first draw. The history removals are asked while the folder checks are still
 // unanswered (the checks here answer only after a removal was asked, so a second wave would never finish), and both
 // are done before the window draws (DT-C27: nothing old replays before a pane opens).
 test("a timely start asks the folder checks and the history removals together, and settles both before drawing", async () => {
   await boot();
   h.gate = true;
-  h.answer({ [LAYOUT_FIELD]: SAVED });
+  h.answer({ [LAYOUT_FIELD]: SAVED, keepWorkspaces: true });
   await vi.waitFor(() => expect(h.drawn.length).toBe(1));
   const names = h.calls.map(([c]) => c);
   expect(names.filter((c) => c === "terminal_forget_history").length).toBe(3);

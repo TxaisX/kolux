@@ -26,7 +26,7 @@ import { panesIn, sameDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
-import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
+import { bulkRefusal, failureNote, settleSetups, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 import { acrossNote, landOnFree, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
@@ -121,11 +121,13 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // fresh worktree of its own (SESS-014, SESS-023), made one after another so no two pick one name. A plain
       // terminal seat stays in the chooser's folder. Off (the default), nothing is made.
       const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
-      const makes = separate && picked.some(Boolean);
+      // A launch whose first own folder cannot be made (a plain folder, or a Git project with no commit yet) turns both
+      // off below and starts the agents together in the chooser's folder, so two agents never mean no agents.
+      let makes = separate && picked.some(Boolean);
       // DT-C274: AI seats in worktrees of their own are a team: one grid in the chooser's folder, the worktrees
       // recorded. Txais (2026-11-12): one AI seat counts too, so its agent shows as a session under the folder and
       // its worktree never gets a sidebar row or a grid of its own.
-      const team = makes;
+      let team = makes;
       if (makes && !pid) throw new Error("Add a project first: an agent needs a project folder to work in.");
       // SESS-008: the seats that land in the chooser's own grid, with the cells already there (the chooser's own
       // cell gives its place), stay within MAX_PANES, as a chooser or a split does. DT-C274: an own-folder team
@@ -150,7 +152,20 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
           places.push({ cwd: place, branch: chooser.branch });
           continue;
         }
-        const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
+        let wt: Worktree;
+        try {
+          wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
+        } catch (err) {
+          // A later copy failing after earlier ones were made stops the Start (those folders are listed: failureNote).
+          // The first one failing means nothing was made and nothing will be: the folder is not a Git project, or has
+          // no commit to copy from. Every agent then opens here together, as a one-agent Start already does.
+          if (kept.length > 0) throw err;
+          makes = false;
+          team = false;
+          setupTrouble.push(sharedFallback(err));
+          places.push({ cwd: place, branch: chooser.branch });
+          continue;
+        }
         // DT-C274: a team worktree is recorded the moment it is made, so its row never shows in the sidebar (not even
         // while its setup runs). A launch that then fails or is cancelled leaves the record; a stranded one is shown
         // as a plain workspace (select) and pruned once the folder is gone.
@@ -204,7 +219,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         if (kept.length) setRefresh((n) => n + 1);
         return false;
       }
-      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", makes ? "separate" : "shared", seats) };
+      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", separate ? "separate" : "shared", seats) };
       // A grid chooser gives its place to the new panes. The Start form (SESS-018) fills the grid's free cells first,
       // in grid order, and adds the rest after them (TERM-007: an empty pane is used first when one exists; a pane
       // with typed text is not empty, startForm.ts landOnFree).

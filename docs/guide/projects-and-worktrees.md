@@ -1,6 +1,6 @@
 # Projects and folders
 
-Use the sidebar to add projects, start agents in a project's folder, review and commit changes, and come back after a restart with everything where you left it.
+Use the sidebar to add projects, start agents in a project's folder, and review and commit changes. Kolux does not remember folders between runs; each start asks what to open.
 
 ## The sidebar
 
@@ -78,13 +78,17 @@ The Tasks page lists the GitHub issues and pull requests of the current project.
 
 ## Quitting and reopening
 
-Terminals do not keep running while Kolux is closed: quitting ends every pane and whatever runs in it. When you reopen, Kolux restores:
+Kolux does not remember your folders or tabs between runs. Terminals do not keep running while Kolux is closed: quitting ends every pane and whatever runs in it. When you reopen, the Folders list is empty, no tabs are open and the Start form asks what to open (see [Getting started](getting-started.md)). Earlier output is not shown again.
 
-- your tabs, pane layout, active workspace and tab, and which pane had focus;
+Taking the folders out of the list at start never touches their files or their Git worktrees; add a folder again and it is as you left it on disk. A folder you add again is a new project in Kolux, so what was tied to the old one does not follow it: an automation that named the folder is skipped ("its project is no longer in Kolux") until you edit it and pick the folder again, and a lineup or group saved for the folder starts fresh. A setup script you typed for the folder is kept.
+
+What still comes back:
+
 - whether the left sidebar was showing, and the right panel's tab;
-- the screen you left: Agents, Board, Terminals, the Inbox or Artifacts.
+- the screen you left: Agents, Board, Terminals, the Inbox or Artifacts;
+- your settings, look and saved start shapes.
 
-Every terminal tab, an agent's included, comes back as a new plain shell in its folder, marked "restored". No agent is started or resumed by a restart, and earlier output is not shown again; start the agent in the tab when you want it. Browser tabs reopen fresh. A tab whose folder is gone is dropped, and a damaged saved entry is dropped on its own without losing the rest. A tab you closed on purpose does not come back. A slow start never drops saved tabs.
+To get the older behaviour back (folders stay listed and tabs reopen as plain shells), add `"keepWorkspaces": true` to `settings.json`. There is no switch for it in Settings.
 
 ### Agent sessions after a restart
 

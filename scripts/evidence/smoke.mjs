@@ -220,7 +220,7 @@ const launch = () =>
     prepare: () => {
       rmSync(profile, { recursive: true, force: true });
       mkdirSync(profile, { recursive: true });
-      writeFileSync(koluxSettings, JSON.stringify({ confirmCloseRunning: false, agentStatusHooks: true }, null, 2));
+      writeFileSync(koluxSettings, JSON.stringify({ confirmCloseRunning: false, agentStatusHooks: true, keepWorkspaces: true }, null, 2)); // keepWorkspaces: flows 5 and 7 test the tabs and folders that come back (a plain start restores none, 2026-11-16)
     },
   });
 const relaunch = () => app.relaunch();

@@ -188,7 +188,7 @@ export const seedProfile = (app, settings = {}) => () => {
   rmSync(app.paths.profile, { recursive: true, force: true });
   mkdirSync(app.paths.profile, { recursive: true });
   // terminalGpu=false: panes draw on the DOM renderer, so their text can be read back from the page.
-  writeFileSync(app.paths.settings, JSON.stringify({ confirmCloseRunning: false, terminalGpu: false, ...settings, agentOptions: scratchAgentOptions(app, settings.agentOptions) }, null, 2));
+  writeFileSync(app.paths.settings, JSON.stringify({ confirmCloseRunning: false, terminalGpu: false, keepWorkspaces: true, ...settings, agentOptions: scratchAgentOptions(app, settings.agentOptions) }, null, 2));
 };
 
 // A throwaway git repo with one commit, added as a project through the sidebar (as scripts/evidence/smoke.mjs does).

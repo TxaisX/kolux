@@ -14,6 +14,7 @@ import { applyZoom, ZOOM_FIELD } from "./settings/zoom";
 import { applyText, followText } from "./terminal/text";
 import { installMenuWheel } from "./settings/menuWheel";
 import { freshShells, LAYOUT_FIELD, restoreAsks, restoreLayout, stillThere, type SavedLayout } from "./terminal/layout";
+import { forgetLastClose, keepsWorkspaces, withoutLastClose } from "./terminal/keepWorkspaces";
 import { sessionOrder } from "./sessions/restoreOrder";
 import "./styles.css";
 import "./look/glass.css";
@@ -133,8 +134,11 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
   await Promise.race([loadPack(), new Promise((r) => setTimeout(r, 300))]);
   // SET-019: and so is the saved interface zoom.
   applyZoom(saved?.[ZOOM_FIELD]);
-  // PROJ-067: the saved tabs come back, less those whose folder is gone.
-  let layout = restoreLayout((stamped || saved || {})[LAYOUT_FIELD]);
+  // Txais (2026-11-16): nothing from the last close comes back (no tabs, no folders): the Start form asks what to open.
+  // `keepWorkspaces: true` in the settings brings PROJ-067 back: the saved tabs return, less those whose folder is gone.
+  const keep = keepsWorkspaces(stamped || saved);
+  if (!keep) forgetLastClose(saved);
+  let layout = keep ? restoreLayout((stamped || saved || {})[LAYOUT_FIELD]) : null;
   if (layout) {
     const dirs = [...new Set([...layout.panes.flatMap((p) => [p.cwd, p.view ?? null]), layout.activeDir].filter((d): d is string => d !== null))]; // DT-C274: a team tab's grid folder is checked too
     // PKG-4: one wave, not two. The folder checks and the history removal start together and both are awaited
@@ -162,7 +166,8 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
       else p.resumed = false;
     }
   }
-  return { initial: stamped || saved || {}, layout };
+  const initial = stamped || saved || {};
+  return { initial: keep ? initial : withoutLastClose(initial), layout };
 }
 
 installMenuWheel(document);

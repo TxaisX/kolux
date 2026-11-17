@@ -13,6 +13,18 @@ test("T-571: nothing saved gives the shipped pair; an empty string saved means n
   expect(seatDefault({ defaultModel: 5 })).toEqual(SHIPPED_DEFAULT);
 });
 
+// Txais (2026-11-16): "the Kolux default for Claude Code is Opus Medium". Pinned by name, not through SHIPPED_DEFAULT, so
+// a change to the shipped pair fails here. A fresh install (nothing saved) opens Claude Code on Opus at medium effort,
+// and both are real choices of the Claude model list, so the seat keeps them rather than dropping the effort.
+test("a fresh install starts Claude Code on Opus at medium effort", () => {
+  expect(seatDefault({})).toEqual({ model: "opus", effort: "medium" });
+  const start = seatStart("claude", seatDefault({}), none);
+  expect(start).toMatchObject({ agent: "claude", model: "opus", effort: "medium" });
+  const choices = defaultChoices();
+  expect(choices.models.map((m) => m.id)).toContain("opus");
+  expect(choices.efforts).toContain("medium");
+});
+
 test("T-571: Claude starts on the default model and effort", () => {
   expect(seatStart("claude", D, none)).toEqual({ agent: "claude", model: "opus", effort: "xhigh", fast: undefined });
 });

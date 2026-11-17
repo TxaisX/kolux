@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Starting two or more agents opens their panes again.** When Kolux could not make a separate Git folder for the first agent (the folder is not a Git project, or it has no commit yet), nothing opened. The agents now open together in the folder you chose, and a line says why. If a later folder fails after earlier ones were made, the Start still stops and lists them, as before.
+- **Kolux no longer remembers folders or tabs between runs.** Each start opens with an empty Folders list and no tabs, and the Start form asks what to open. Files and Git worktrees on disk are not touched. A folder you add again is a new project, so an automation that named it is skipped until you edit it and pick the folder again. "Keep what was open" reads "Not now" when nothing is open, and with the Start form switched off Kolux starts with an empty window. Add `"keepWorkspaces": true` to settings.json for the older behaviour.
+
 ## 0.1.17
 
 - **Kolux asks what to open.** When Kolux starts, one Start form asks which folders, how many agents, and which AI and model for each. The same form opens for a new pane and for the first folder you add after setup. The sessions it starts take an empty "pick an agent" pane first, so none is left beside them; an empty pane you already typed a task into is left as it is. Settings › General has "Ask what to open when Kolux starts"; off opens what was open last time.

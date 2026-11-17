@@ -7,11 +7,12 @@ import { TEAM_WORKTREES_SETTING } from "../projects/rows";
 
 beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: true }));
 
-const h = vi.hoisted(() => ({ made: 0, calls: [] as string[], disk: null as Record<string, unknown> | null, failNotes: false }));
+const h = vi.hoisted(() => ({ made: 0, calls: [] as string[], disk: null as Record<string, unknown> | null, failNotes: false, refuseAt: 0, refusal: "fatal: not a git repository" }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args: Record<string, unknown>) => {
     h.calls.push(cmd);
     if (cmd === "workspace_create_fresh") {
+      if (h.refuseAt > 0 && h.made + 1 >= h.refuseAt) throw h.refusal;
       h.made++;
       return { path: `C:\\r\\wts\\wt${h.made}`, branch: `wt${h.made}` };
     }
@@ -25,6 +26,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
 
 const { launchActions } = await import("./launchActions");
+const { sharedFallback } = await import("./launchOrder");
+const { TERMINAL } = await import("./seats");
 
 type P = { key: number; cwd: string | null; branch: string | null; agent: string; program: null; args: string[]; seats?: unknown[]; copies?: string };
 const shell = (key: number): P => ({ key, cwd: "C:\\r", branch: null, agent: "shell", program: null, args: [] });
@@ -41,7 +44,7 @@ function setup(panes: P[]) {
   const settingsRef = { current: {} as Record<string, unknown> };
   const late = { projectOf: () => "p1", pendingLineup: { current: {} }, panesRef: { current: panes }, startSetup: vi.fn() };
   const a = launchActions(s as never, { settingsRef } as never, late as never);
-  return { a, settingsRef, ...calls };
+  return { a, settingsRef, late, ...calls };
 }
 
 test("a four-AI own-folder Start lands as one grid in the chooser's folder, each agent in its own worktree", async () => {
@@ -153,6 +156,102 @@ test("each team worktree is recorded as soon as it is made, and stays recorded w
     expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toEqual([1, 2].map((i) => ({ path: `C:\\r\\wts\\wt${i}`, view: "C:\\r" })));
   } finally {
     h.failNotes = false;
+  }
+});
+
+// Txais (2026-11-16): two agents in a folder that cannot be copied (a plain folder, or a Git project with no commit yet)
+// opened nothing, because every agent wanted a worktree of its own and Git refused the first. One agent worked, since it
+// shares the folder. Now the agents open together there, and the notice says why they share it.
+test("the first own folder cannot be made: every agent opens in the chooser's folder, together, with a line saying so", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  try {
+    const chooser: P = { ...shell(50), seats: [seat, seat], copies: "separate" };
+    const { a, setPanes, setNotice, settingsRef } = setup([chooser]);
+    expect(await a.startSeats(50, [seat, seat] as never)).toBe(true);
+    const next = setPanes.mock.calls[0][0]([chooser]) as { cwd: string; view?: string }[];
+    expect(next).toHaveLength(2);
+    expect(next.map((p) => p.cwd)).toEqual(["C:\\r", "C:\\r"]);
+    expect(next.some((p) => p.view !== undefined)).toBe(false); // no team grid: the folder's own grid
+    expect(setNotice).toHaveBeenCalledWith(sharedFallback("fatal: not a git repository"));
+    expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toBeUndefined();
+  } finally {
+    h.refuseAt = 0;
+  }
+});
+
+test("the notice gives the reason Git or the disk gave, so a full disk is not blamed on a missing commit", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  h.refusal = "could not create C:\\r\\wts: There is not enough space on the disk";
+  try {
+    const chooser: P = { ...shell(50), seats: [seat, seat], copies: "separate" };
+    const { a, setNotice } = setup([chooser]);
+    expect(await a.startSeats(50, [seat, seat] as never)).toBe(true);
+    expect(setNotice).toHaveBeenCalledWith(expect.stringContaining("not enough space on the disk"));
+  } finally {
+    h.refuseAt = 0;
+    h.refusal = "fatal: not a git repository";
+  }
+});
+
+test("a fallback Start keeps the folder's saved lineup on own folders: the choice is not turned into shared by one bad folder", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  try {
+    const chooser: P = { ...shell(50), seats: [seat, seat], copies: "separate" };
+    const { a, late } = setup([chooser]);
+    await a.startSeats(50, [seat, seat] as never);
+    expect((late.pendingLineup.current as Record<number, unknown>)[50]).toMatchObject({ pid: "p1", lineup: { copies: "separate" } });
+  } finally {
+    h.refuseAt = 0;
+  }
+});
+
+test("a terminal seat before the agents does not change the fallback: every seat opens in the chooser's folder", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  try {
+    const term = { agent: TERMINAL, model: null };
+    const chooser: P = { ...shell(50), seats: [term, seat, seat], copies: "separate" };
+    const { a, setPanes } = setup([chooser]);
+    expect(await a.startSeats(50, [term, seat, seat] as never)).toBe(true);
+    const next = setPanes.mock.calls[0][0]([chooser]) as { cwd: string; agent: string; view?: string }[];
+    expect(next.map((p) => p.cwd)).toEqual(["C:\\r", "C:\\r", "C:\\r"]);
+    expect(next.map((p) => p.agent === "shell")).toEqual([true, false, false]);
+    expect(next.some((p) => p.view !== undefined)).toBe(false);
+  } finally {
+    h.refuseAt = 0;
+  }
+});
+
+test("three agents in a folder that cannot be copied all open there, and the notice is said once", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  try {
+    const chooser: P = { ...shell(50), seats: [seat, seat, seat], copies: "separate" };
+    const { a, setPanes, setNotice } = setup([chooser]);
+    expect(await a.startSeats(50, [seat, seat, seat] as never)).toBe(true);
+    const next = setPanes.mock.calls[0][0]([chooser]) as { cwd: string }[];
+    expect(next.map((p) => p.cwd)).toEqual(["C:\\r", "C:\\r", "C:\\r"]);
+    expect(setNotice.mock.calls.filter(([m]) => String(m).includes("share this folder"))).toHaveLength(1);
+  } finally {
+    h.refuseAt = 0;
+  }
+});
+
+test("a later own folder failing, after the first was made, still stops the Start as before", async () => {
+  h.made = 0;
+  h.refuseAt = 2;
+  try {
+    const chooser: P = { ...shell(50), seats: [seat, seat], copies: "separate" };
+    const { a, setPanes, setNotice } = setup([chooser]);
+    expect(await a.startSeats(50, [seat, seat] as never)).toBe(false);
+    expect(setPanes).not.toHaveBeenCalled();
+    expect(setNotice).toHaveBeenCalledWith(expect.stringContaining("not a git repository"));
+    expect(setNotice).not.toHaveBeenCalledWith(expect.stringContaining("share this folder"));
+  } finally {
+    h.refuseAt = 0;
   }
 });
 

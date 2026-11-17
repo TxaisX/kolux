@@ -12,6 +12,7 @@ import { saveChanged } from "../settings/saveChanged";
 import { asksBeforeClose } from "../terminal/closing";
 import { LAYOUT_FIELD, layoutOf, panesWantingListedSession, withListedSession, type SavedLayout } from "../terminal/layout";
 import { layoutWriter } from "../terminal/layoutSave";
+import { keepsWorkspaces } from "../terminal/keepWorkspaces";
 import { losable, runningAgents, type Losable } from "./closeAsk";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -148,6 +149,9 @@ export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, p
   };
   useEffect(() => {
     if (!read) return;
+    // Txais (2026-11-16): a start keeps no tabs unless `keepWorkspaces` is on, so none are written down. (A slow start of a
+    // keepWorkspaces user writes its first layout at the next tab change: the ref holds the late settings by then.)
+    if (!keepsWorkspaces(settingsRef.current)) return;
     const l = layoutOf(panes, activeTab, focused, activeDir, stacked, { pinned, colors: tabColors });
     if (JSON.stringify(settings[LAYOUT_FIELD] ?? null) === JSON.stringify(l)) return;
     const next = { ...settingsRef.current, [LAYOUT_FIELD]: l };

@@ -58,7 +58,7 @@ One cell in the terminal grid. Each pane holds one session. Panes can be split, 
 A container for one or more panes in the grid. Tabs can be split right or down, and a tab's menu can close it or its neighbours.
 
 **Layout**
-The saved arrangement of panes and tabs in a workspace. Kolux restores it at the next launch.
+The arrangement of panes and tabs in a workspace. Kolux does not keep it between runs: each start opens with no tabs and the Start form asks what to open.
 
 **Seat**
 One agent slot in a launch lineup. A seat has an agent, a model, and an optional role.

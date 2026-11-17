@@ -51,7 +51,7 @@ export function GeneralView({ settings, onSave }: { settings: Record<string, unk
       {classic && <p className="conn-detail">Switch the look to New to open on Agents or Board.</p>}
       <label className="conn-switch">
         <input type="checkbox" aria-label="Ask what to open when Kolux starts" checked={asksAtStart(settings)} onChange={(e) => onSave({ [START_ASK_KEY]: e.target.checked })} />
-        <span>Ask what to open when Kolux starts: which folders, how many agents and which AI. Off opens what was open last time.</span>
+        <span>Ask what to open when Kolux starts: which folders, how many agents and which AI. Off starts with an empty window.</span>
       </label>
       <label className="conn-switch">
         <input type="checkbox" aria-label="Review notes" checked={reviewOn(settings)} onChange={(e) => onSave({ [REVIEW_FIELD]: e.target.checked })} />

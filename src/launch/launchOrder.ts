@@ -30,6 +30,14 @@ export function bulkRefusal(project: string, mode: SetupMode, makesWorkspaces: b
 
 export type NewPlace = { cwd: string; branch: string | null };
 
+/** Said when the first own folder of a Start could not be made, so the agents opened together in the one folder. It carries
+ *  the reason as Git or the disk gave it: a plain folder and a Git project with no commit are the usual causes, but a full
+ *  disk or a locked folder end here too, and a person has to see which one it was. */
+export function sharedFallback(err: unknown): string {
+  const why = (err instanceof Error ? err.message : String(err)).trim();
+  return `Kolux could not make a separate folder for each agent here, so the agents share this folder.${why ? ` Reason: ${why}` : ""} Own folders need a Git project with at least one commit.`;
+}
+
 /** The failure sentence, plus what happened to the workspaces made before it. */
 export function failureNote(err: unknown, made: number): string {
   const text = String(err);

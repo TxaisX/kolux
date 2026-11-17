@@ -79,7 +79,7 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
       onClose={onClose}
       sheet={sheetOf}
       folders={folders}
-      keepLabel={p.atOpen ? "Keep what was open" : "Cancel"}
+      keepLabel={p.atOpen ? (panes.length > 0 ? "Keep what was open" : "Not now") : "Cancel"} // Txais (2026-11-16): a start restores nothing, so with no tabs open there is nothing to keep
       saved={Array.isArray(settings[SAVED_SHAPES_KEY]) ? (settings[SAVED_SHAPES_KEY] as SavedShape[]) : []}
       onSaved={(list) => saveSetting(SAVED_SHAPES_KEY, list)}
       onPickSaved={(t) => setChooser(p.key, { shape: "custom", seats: restoreShape(t, installedIds), task: t.task ?? "", copies: t.copies })}

@@ -372,6 +372,12 @@ pub fn run() {
             activity::start(&store);
             // ACCT-010: a key this computer can no longer open is cleared before the window asks.
             secrets::drop_unreadable(&store, &dir);
+            // Txais (2026-11-16): a start has no folders; the Start form asks what to open (keepWorkspaces: true keeps them).
+            match folder_projects::forget_all_at_start(&store) {
+                Ok(n) if n > 0 => diag::write(&dir, &format!("start: forgot {n} listed folder(s); the Start form asks what to open")),
+                Ok(_) => {}
+                Err(e) => diag::write(&dir, &format!("start: the folder list could not be cleared ({e}); it stays as it was")),
+            }
             app.manage(Mutex::new(store));
             // APP-049 (PKG-5): the last good copy is refreshed a little after start-up instead of before
             // the store opens, so the full copy never holds up the window; whether it is worth taking is
