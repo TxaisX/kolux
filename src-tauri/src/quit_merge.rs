@@ -713,8 +713,13 @@ fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str)
     let before = read(&["rev-parse", "HEAD"], main_dir, clock).map_err(|e| format!("Kolux could not read the main folder ({})", short(&e)))?;
     let behind = ahead(repo, branch, target, clock)?;
     let theirs = format!("refs/heads/{branch}");
-    if behind > 0 && cx.git.predicts_merges() && read(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], repo, clock).is_err() {
-        return Err(format!("its changes clash with {target}"));
+    // The tree the no-ff merge will make, when git can predict it (`merge-tree --write-tree`: first line).
+    let mut merged_tree: Option<String> = None;
+    if behind > 0 && cx.git.predicts_merges() {
+        match read(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], repo, clock) {
+            Ok(out) => merged_tree = out.lines().next().map(str::trim).filter(|l| !l.is_empty()).map(str::to_string),
+            Err(_) => return Err(format!("its changes clash with {target}")),
+        }
     }
     let tip = read(&["rev-parse", "--verify", &theirs], repo, clock).map_err(|e| format!("Kolux could not read the branch's tip ({})", short(&e)))?;
     // F5: the reads above took time (a merge-tree of a big project can take seconds): the room a merge
@@ -722,7 +727,9 @@ fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str)
     if !clock.may_merge() {
         return Err(OUT_OF_TIME.into());
     }
-    let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip.clone()), time: now_secs() };
+    // A fast-forward leaves exactly the tip's tree; a merge commit leaves the predicted tree, if any.
+    let expected_tree = if behind == 0 { read(&["rev-parse", "--verify", &format!("{tip}^{{tree}}")], repo, clock).ok() } else { merged_tree };
+    let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip.clone()), expected_tree, time: now_secs() };
     note_merge(cx.data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
     let _busy = Busy::start();
     let tried = if behind == 0 {
@@ -772,6 +779,12 @@ struct Marker {
     /// exactly this commit. A marker without it (an older one) never resets anything.
     #[serde(rename = "theirsSha", default, skip_serializing_if = "Option::is_none")]
     theirs_sha: Option<String>,
+    /// The tree the merge leaves in the index (the tip's tree for a fast-forward, the predicted
+    /// `merge-tree` result for a merge commit). Recovery resets only an index that is exactly this
+    /// tree (or one with nothing staged): never one the user has since added work to. None when git
+    /// could not say; with staged changes such a marker never resets anything.
+    #[serde(rename = "expectedTree", default, skip_serializing_if = "Option::is_none")]
+    expected_tree: Option<String>,
     /// Seconds since 1970 when the merge began.
     time: u64,
 }
@@ -800,7 +813,7 @@ fn read_marker(data_dir: &Path) -> Option<Marker> {
 /// HEAD moved off where the marker says it was: the merge finished, nothing to do. A merge still open
 /// (MERGE_HEAD is the marker's branch tip), or the dead run's own `index.lock` (not newer than the
 /// merge's start plus the quit's hard cap) with HEAD still there: `git reset --merge` returns the
-/// checkout to how it was, but only when every changed path is one the merge of that tip could have
+/// checkout to how it was, but only when the index is exactly the merge's own tree (`expectedTree`) or holds nothing staged, and every changed path is one the merge of that tip could have
 /// changed (F1: the user may have staged work in main since). With no merge open and no lock nothing
 /// is ever reset (the marker is only cleared, with a notice when main holds changes), and a marker
 /// without a branch tip (an older one) never resets anything. The whole run is capped at `RECOVER_CAP`.
@@ -833,6 +846,14 @@ fn changed_in(main: &Path, clock: &Clock) -> Result<Vec<String>, String> {
 /// F1: every path the merge of `theirs` into `before` could have touched (`before` and `theirs` differ in it).
 fn merge_paths(main: &Path, before: &str, theirs: &str, clock: &Clock) -> Result<Vec<String>, String> {
     crate::git::bytes_within(&["diff", "--name-only", "--no-renames", "-z", before, theirs], Some(main), clock.read_limit()).map(paths)
+}
+
+/// Whether the index holds exactly the merge's own result (`expectedTree`) or nothing staged at all
+/// (equal to HEAD): the only two states a reset cannot cost the user staged work in. Any git
+/// failure counts as "no".
+fn index_is_the_merges(main: &Path, marker: &Marker, clock: &Clock) -> bool {
+    let same = |tree: &str| read(&["diff", "--cached", "--quiet", tree], main, clock).is_ok();
+    marker.expected_tree.as_deref().is_some_and(same) || same("HEAD")
 }
 
 fn recover(data_dir: &Path, marker: &Marker) -> Option<String> {
@@ -872,6 +893,12 @@ fn recover(data_dir: &Path, marker: &Marker) -> Option<String> {
         return cut("could not check what was changed in that folder: look at it before you work there");
     };
     if dirty.iter().any(|p| !allowed.contains(p)) {
+        return cut(&format!("that folder holds changes the merge did not make, {left}"));
+    }
+    // By content, not by path: the index must be exactly what the merge makes, or hold nothing staged
+    // (a cut merge plus the user's own `git add` on a merged file is what paths cannot tell apart).
+    // Checked before the lock is touched, so a refusal leaves everything as it is.
+    if !index_is_the_merges(main, marker, &clock) {
         return cut(&format!("that folder holds changes the merge did not make, {left}"));
     }
     if let Some(lock) = lock {

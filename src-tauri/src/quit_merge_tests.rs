@@ -685,7 +685,15 @@ fn half_merged_main(base: &Path, repo: &Path, store: &Mutex<Store>) -> String {
 
 fn marker_for(repo: &Path, before: &str, time: u64) -> Marker {
     let theirs_sha = Command::new("git").args(["rev-parse", "-q", "--verify", "refs/heads/side"]).current_dir(repo).output().ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
-    Marker { main_dir: repo.display().to_string(), before_sha: before.to_string(), branch: "side".into(), theirs_sha, time }
+    // What the quit notes: the tip's tree for a fast-forward, the predicted merge tree otherwise.
+    let expected_tree = theirs_sha.as_ref().and_then(|_| {
+        if git_try(repo, &["merge-base", "--is-ancestor", before, "side"]) {
+            Some(git_in(repo, &["rev-parse", "side^{tree}"]))
+        } else {
+            git_in(repo, &["merge-tree", "--write-tree", before, "side"]).lines().next().map(str::to_string)
+        }
+    });
+    Marker { main_dir: repo.display().to_string(), before_sha: before.to_string(), branch: "side".into(), theirs_sha, expected_tree, time }
 }
 
 #[test]
@@ -891,12 +899,114 @@ fn the_dead_runs_own_lock_is_cleared_only_where_every_changed_path_is_the_merges
     let _ = fs::remove_dir_all(&base);
 }
 
+/// Main with a no-ff half-merge of `side` (a.txt and c.txt changed on side, d.txt added on main): the index holds the merge result.
+fn half_merge_touching_a(base: &Path, repo: &Path, store: &Mutex<Store>) -> String {
+    let side = workspace(base, repo, store, "side", true);
+    commit(&side, "a.txt", "side a\n");
+    commit(&side, "c.txt", "c\n");
+    commit(repo, "d.txt", "d\n");
+    let before = head(repo, "HEAD");
+    assert!(git_try(repo, &["merge", "--no-commit", "--no-ff", "side"]));
+    before
+}
+
+#[test]
+fn a_cut_merge_is_not_reset_over_the_users_staged_edit_of_a_merged_file() {
+    let (base, repo, store) = repo("f1-content-merged");
+    let before = half_merge_touching_a(&base, &repo, &store);
+    fs::write(repo.join("a.txt"), "the user's edit on top of the merge\n").unwrap();
+    git_in(&repo, &["add", "a.txt"]);
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists(), "nothing was reset");
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap(), "the user's edit on top of the merge\n");
+    assert!(repo.join("c.txt").exists());
+    assert!(git_in(&repo, &["status", "--porcelain"]).contains("a.txt"));
+    assert!(!marker_file(&base).exists());
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn a_cut_merge_is_not_reset_over_the_users_staged_edit_of_a_main_side_file_in_the_diff() {
+    let (base, repo, store) = repo("f1-content-mainside");
+    let before = half_merge_touching_a(&base, &repo, &store);
+    // d.txt is in `git diff before side` (main has it, side does not), so a path check lets it through.
+    fs::write(repo.join("d.txt"), "the user's edit of a main-side file\n").unwrap();
+    git_in(&repo, &["add", "d.txt"]);
+    fs::write(repo.join("a.txt"), "the user's edit of a merged file\n").unwrap();
+    git_in(&repo, &["add", "a.txt"]);
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists(), "nothing was reset");
+    assert_eq!(fs::read_to_string(repo.join("d.txt")).unwrap(), "the user's edit of a main-side file\n");
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap(), "the user's edit of a merged file\n");
+    assert!(!marker_file(&base).exists());
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn an_untouched_cut_merge_that_touched_the_same_files_is_still_reset_to_the_clean_before() {
+    let (base, repo, store) = repo("f1-content-untouched");
+    let before = half_merge_touching_a(&base, &repo, &store);
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("put the folder back"), "{notes:?}");
+    assert_eq!((head(&repo, "HEAD"), git_in(&repo, &["status", "--porcelain"])), (before, String::new()));
+    assert!(!repo.join(".git").join("MERGE_HEAD").exists() && !repo.join("c.txt").exists());
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap().replace("\r\n", "\n"), "a\n");
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn a_marker_without_an_expected_tree_never_resets_staged_changes() {
+    let (base, repo, store) = repo("f1-content-no-tree");
+    let before = half_merge_touching_a(&base, &repo, &store);
+    let mut m = marker_for(&repo, &before, now_secs());
+    m.expected_tree = None;
+    note_merge(&data(&base), &m).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists() && repo.join("c.txt").exists(), "the half merge is left as it is");
+    assert!(!marker_file(&base).exists());
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn a_cut_fast_forward_whose_index_is_the_tips_tree_is_restored_but_not_over_a_staged_edit() {
+    let (base, repo, store) = repo("f1-content-ff");
+    let before = untouched_main(&base, &repo, &store);
+    // Files written and index moved to the tip's tree, HEAD not yet: what a cut fast-forward leaves.
+    git_in(&repo, &["read-tree", "-u", "--reset", "side"]);
+    assert_eq!(git_in(&repo, &["diff", "--cached", "--name-only"]), "c.txt");
+    // A cut checkout leaves its index.lock (no merge is open: a fast-forward has no MERGE_HEAD).
+    let lock = repo.join(".git").join("index.lock");
+    fs::write(&lock, "").unwrap();
+    let m = marker_for(&repo, &before, now_secs());
+    assert_eq!(m.expected_tree.as_deref(), Some(git_in(&repo, &["rev-parse", "side^{tree}"]).as_str()));
+    note_merge(&data(&base), &m).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("put the folder back"), "{notes:?}");
+    assert_eq!((head(&repo, "HEAD"), git_in(&repo, &["status", "--porcelain"])), (before.clone(), String::new()));
+    assert!(!repo.join("c.txt").exists());
+    // The same cut, then the user stages an edit of c.txt: kept.
+    git_in(&repo, &["read-tree", "-u", "--reset", "side"]);
+    fs::write(repo.join("c.txt"), "the user's edit\n").unwrap();
+    git_in(&repo, &["add", "c.txt"]);
+    note_merge(&data(&base), &m).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
+    assert_eq!(fs::read_to_string(repo.join("c.txt")).unwrap(), "the user's edit\n");
+    let _ = fs::remove_dir_all(&base);
+}
+
 #[test]
 fn the_marker_names_the_main_folder_the_sha_before_and_the_branch() {
     let base = temp("b3-marker-shape");
-    note_merge(&data(&base), &Marker { main_dir: "C:/p".into(), before_sha: "abc".into(), branch: "fix".into(), theirs_sha: Some("def".into()), time: 7 }).unwrap();
+    note_merge(&data(&base), &Marker { main_dir: "C:/p".into(), before_sha: "abc".into(), branch: "fix".into(), theirs_sha: Some("def".into()), expected_tree: Some("abc".into()), time: 7 }).unwrap();
     let json: serde_json::Value = serde_json::from_str(&fs::read_to_string(marker_file(&base)).unwrap()).unwrap();
-    assert_eq!(json, serde_json::json!({ "mainDir": "C:/p", "beforeSha": "abc", "branch": "fix", "theirsSha": "def", "time": 7 }));
+    assert_eq!(json, serde_json::json!({ "mainDir": "C:/p", "beforeSha": "abc", "branch": "fix", "theirsSha": "def", "expectedTree": "abc", "time": 7 }));
     // A marker written before the tip was noted still reads, with no tip.
     fs::write(marker_file(&base), r#"{"mainDir":"C:/p","beforeSha":"abc","branch":"fix","time":7}"#).unwrap();
     assert_eq!(read_marker(&data(&base)).unwrap().theirs_sha, None);
