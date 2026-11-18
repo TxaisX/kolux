@@ -1222,6 +1222,66 @@ fn an_ignored_folder_holding_a_separate_git_project_keeps_the_workspace_and_its_
     let _ = fs::remove_dir_all(&base);
 }
 
+// ------------------------------------------------------------------ F3: files the include file copied from main are no loss
+
+#[test]
+fn files_the_include_file_copied_from_main_keep_the_workspace_only_when_they_changed() {
+    let (base, repo, store) = repo("f3");
+    fs::write(repo.join(".gitignore"), "*.log\n.env\n*.local.json\n").unwrap();
+    fs::write(repo.join(".worktreeinclude"), ".env\nconfig/app.local.json\n").unwrap();
+    git_in(&repo, &["add", "."]);
+    git_in(&repo, &["commit", "-q", "-m", "ignore and include the local files"]);
+    fs::create_dir_all(repo.join("config")).unwrap();
+    fs::write(repo.join(".env"), "TOKEN=1\n").unwrap();
+    fs::write(repo.join("config").join("app.local.json"), "{\"a\":1}\n").unwrap();
+    let made = |name: &str| {
+        let ws = workspace(&base, &repo, &store, name, true);
+        let warnings = crate::include::bring_along(&repo, &ws);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert!(ws.join(".env").is_file() && ws.join("config").join("app.local.json").is_file(), "the include file copied both");
+        commit(&ws, &format!("{name}.txt"), "new\n");
+        ws
+    };
+    let same = made("same");
+    let env = made("env-edited");
+    fs::write(env.join(".env"), "TOKEN=2\n").unwrap();
+    let nested = made("nested-edited");
+    fs::write(nested.join("config").join("app.local.json"), "{\"a\":2}\n").unwrap();
+    let longer = made("longer");
+    fs::write(longer.join(".env"), "TOKEN=1\nMORE=1\n").unwrap();
+    // A local file main does not have is the workspace's own, whatever its name is.
+    let own = made("own");
+    fs::write(own.join("other.local.json"), "{}\n").unwrap();
+    let out = tidy(&base, &store);
+    assert_eq!(out.removed.iter().filter(|p| Path::new(p.as_str()) == same.as_path()).count(), 1, "unchanged copies: merged and removed: {out:?}");
+    assert!(!same.exists() && out.merged.iter().any(|p| Path::new(p.as_str()) == same.as_path()));
+    for (ws, file) in [(&env, ".env"), (&nested, "app.local.json"), (&longer, ".env"), (&own, "other.local.json")] {
+        let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{file}: not kept: {out:?}"));
+        assert!(left.why.contains("ignored file") && left.why.contains(file), "{file}: {}", left.why);
+        assert!(ws.is_dir());
+    }
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// The same workspace once main's copy has changed since the workspace was made: kept.
+#[test]
+fn a_copy_of_a_file_main_has_since_changed_keeps_the_workspace() {
+    let (base, repo, store) = repo("f3-main-changed");
+    fs::write(repo.join(".gitignore"), ".env\n").unwrap();
+    fs::write(repo.join(".worktreeinclude"), ".env\n").unwrap();
+    git_in(&repo, &["add", "."]);
+    git_in(&repo, &["commit", "-q", "-m", "include"]);
+    fs::write(repo.join(".env"), "TOKEN=1\n").unwrap();
+    let ws = workspace(&base, &repo, &store, "stale", true);
+    assert!(crate::include::bring_along(&repo, &ws).is_empty());
+    commit(&ws, "s.txt", "s\n");
+    fs::write(repo.join(".env"), "TOKEN=changed in main\n").unwrap();
+    let out = tidy(&base, &store);
+    assert!(out.left.len() == 1 && out.left[0].why.contains(".env"), "{out:?}");
+    assert!(ws.is_dir());
+    let _ = fs::remove_dir_all(&base);
+}
+
 // ------------------------------------------------------------------ m4: a folder that is itself a project is not a workspace
 
 #[test]

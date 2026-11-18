@@ -350,7 +350,7 @@ fn tidy_project(cx: &Cx, project: &Project, project_paths: &[PathBuf], origins: 
         // Listed first, so a quit cut short while this one is under way still names it at the next start.
         out.keep(project, w, WAS_CUT);
         progress(out);
-        let result = tidy_one(cx, project, w, &origin, target.as_deref(), &ready);
+        let result = tidy_one(cx, project, w, &origin, target.as_deref(), main.map(|m| Path::new(&m.path)), &ready);
         out.left.pop();
         match result {
             Ok(merged) => {
@@ -399,7 +399,7 @@ fn main_ready(main: Option<&Worktree>, target: Option<&str>, clock: &Clock) -> R
 }
 
 /// One workspace: checked, saved, merged when it has something new, then removed. Ok(true) when it was merged.
-fn tidy_one(cx: &Cx, project: &Project, w: &Worktree, origin: &serde_json::Value, target: Option<&str>, ready: &dyn Fn() -> Result<PathBuf, String>) -> Result<bool, String> {
+fn tidy_one(cx: &Cx, project: &Project, w: &Worktree, origin: &serde_json::Value, target: Option<&str>, main: Option<&Path>, ready: &dyn Fn() -> Result<PathBuf, String>) -> Result<bool, String> {
     let clock = &cx.clock;
     if w.locked.is_some() {
         return Err(LOCKED.into());
@@ -423,7 +423,7 @@ fn tidy_one(cx: &Cx, project: &Project, w: &Worktree, origin: &serde_json::Value
         None
     };
     // M7: removal deletes ignored files too; ones that look like the user's own local files stop it.
-    local_files(here, clock)?;
+    local_files(here, main, clock)?;
     if dirty {
         save_changes(cx, here)?;
     }
@@ -514,22 +514,127 @@ enum Found {
     Local(PathBuf),
 }
 
+/// The scan of one workspace's ignored files: where it is, the main checkout (to tell a file the
+/// include file copied from a file the person made here), and how many entries it may still look at.
+struct Scan<'a> {
+    here: &'a Path,
+    main: Option<&'a Path>,
+    budget: usize,
+}
+
+impl Scan<'_> {
+    fn spend(&mut self) -> Result<(), String> {
+        self.budget = self.budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
+        Ok(())
+    }
+
+    /// F3: a file named like the person's own (`local_name`) that is not just a copy of main's own
+    /// file: `.worktreeinclude` copies `.env` and the like into every workspace, and an unchanged
+    /// copy is no loss when the workspace goes.
+    fn own_file(&self, path: &Path) -> bool {
+        path.file_name().is_some_and(|n| local_name(&n.to_string_lossy())) && !self.copy_of_main(path)
+    }
+
+    fn copy_of_main(&self, path: &Path) -> bool {
+        let (Some(main), Ok(rel)) = (self.main, path.strip_prefix(self.here)) else { return false };
+        same_bytes(path, &main.join(rel))
+    }
+
+    /// The first separate Git project or local-looking file under `dir`; a build folder met on the
+    /// way is only looked through for a Git project (`repo_in`). A link (a shared folder) is not
+    /// followed: removing the workspace removes the link and leaves what it points at.
+    fn local_in(&mut self, dir: &Path) -> Result<Option<Found>, String> {
+        if is_link(dir) {
+            return Ok(None);
+        }
+        if dir.join(".git").exists() {
+            return Ok(Some(Found::Repo(dir.to_path_buf())));
+        }
+        let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
+        for entry in entries.flatten() {
+            self.spend()?;
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let is_dir = entry.file_type().is_ok_and(|t| t.is_dir());
+            let found = if is_dir {
+                if BUILD_FOLDERS.contains(&name.as_str()) {
+                    self.repo_in(&entry.path())?
+                } else {
+                    self.local_in(&entry.path())?
+                }
+            } else {
+                self.own_file(&entry.path()).then(|| Found::Local(entry.path()))
+            };
+            if found.is_some() {
+                return Ok(found);
+            }
+        }
+        Ok(None)
+    }
+
+    /// F2: whether a build or dependency folder holds a separate Git project: in the folder itself, in
+    /// a folder directly inside it, or in a folder inside an `@scope` folder. Deeper is not looked at
+    /// (a `node_modules` has thousands of folders), and the files in it are never read.
+    fn repo_in(&mut self, dir: &Path) -> Result<Option<Found>, String> {
+        if is_link(dir) {
+            return Ok(None);
+        }
+        if dir.join(".git").exists() {
+            return Ok(Some(Found::Repo(dir.to_path_buf())));
+        }
+        let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
+        for entry in entries.flatten() {
+            self.spend()?;
+            if !entry.file_type().is_ok_and(|t| t.is_dir()) {
+                continue;
+            }
+            let path = entry.path();
+            if path.join(".git").exists() {
+                return Ok(Some(Found::Repo(path)));
+            }
+            if entry.file_name().to_string_lossy().starts_with('@') {
+                for inner in std::fs::read_dir(&path).into_iter().flatten().flatten() {
+                    self.spend()?;
+                    if inner.path().join(".git").exists() {
+                        return Ok(Some(Found::Repo(inner.path())));
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
+}
+
+/// Whether `path` is a symbolic link or a folder junction.
+fn is_link(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink())
+}
+
+/// F3: whether the two paths are files with exactly the same bytes (a file bigger than `LARGE_FILE` never is).
+fn same_bytes(a: &Path, b: &Path) -> bool {
+    let (Ok(ma), Ok(mb)) = (std::fs::metadata(a), std::fs::metadata(b)) else { return false };
+    if !ma.is_file() || !mb.is_file() || ma.len() != mb.len() || ma.len() > LARGE_FILE {
+        return false;
+    }
+    matches!((std::fs::read(a), std::fs::read(b)), (Ok(x), Ok(y)) if x == y)
+}
+
 /// M7 and F2: Err when removal would delete something that is not build output. That is ignored
 /// files that look like local settings, secrets or data (`.env*`, `*.local.*`, `CLAUDE.local.md`,
-/// `*.db`, `*.sqlite`), and any separate Git project (a `.git` anywhere in an ignored folder: its
-/// commits live nowhere else). Ignored output inside the build and dependency folders is deleted
-/// without a question, but those folders are still looked through for a separate Git project, at
-/// their top (the folder, its folders, and the folders inside `@scope` ones).
-fn local_files(here: &Path, clock: &Clock) -> Result<(), String> {
+/// `*.db`, `*.sqlite`) unless they are only unchanged copies of the main checkout's own (F3), and any
+/// separate Git project (a `.git` anywhere in an ignored folder: its commits live nowhere else).
+/// Ignored output inside the build and dependency folders is deleted without a question, but those
+/// folders are still looked through for a separate Git project, at their top (`Scan::repo_in`).
+/// `main` is the project's main checkout.
+fn local_files(here: &Path, main: Option<&Path>, clock: &Clock) -> Result<(), String> {
     let listing = crate::git::bytes_within(&["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"], Some(here), clock.read_limit()).map_err(|e| format!("Kolux could not read its ignored files ({})", short(&e)))?;
-    let mut budget = IGNORED_SCAN_LIMIT;
+    let mut scan = Scan { here, main, budget: IGNORED_SCAN_LIMIT };
     for entry in String::from_utf8_lossy(&listing).split('\0').filter(|e| !e.is_empty()) {
         let built = entry.trim_end_matches('/').split('/').any(|c| BUILD_FOLDERS.contains(&c));
         let found = match entry.strip_suffix('/') {
-            Some(dir) if built => find_repo(&here.join(dir), &mut budget)?,
-            Some(dir) => find_local(&here.join(dir), &mut budget)?,
+            Some(dir) if built => scan.repo_in(&here.join(dir))?,
+            Some(dir) => scan.local_in(&here.join(dir))?,
             None if last_part(entry) == ".git" => Some(Found::Repo(here.join(entry))),
-            None => (!built && local_name(last_part(entry))).then(|| Found::Local(here.join(entry))),
+            None => (!built && scan.own_file(&here.join(entry))).then(|| Found::Local(here.join(entry))),
         };
         let shown = |f: &Path| f.strip_prefix(here).map(|p| p.display().to_string()).unwrap_or(f.display().to_string()).replace('\\', "/");
         match found {
@@ -544,62 +649,6 @@ fn local_files(here: &Path, clock: &Clock) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-/// The first separate Git project or local-looking file under `dir`; a build folder met on the way is
-/// only looked through for a Git project (`find_repo`).
-fn find_local(dir: &Path, budget: &mut usize) -> Result<Option<Found>, String> {
-    if dir.join(".git").exists() {
-        return Ok(Some(Found::Repo(dir.to_path_buf())));
-    }
-    let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
-    for entry in entries.flatten() {
-        *budget = budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let is_dir = entry.file_type().is_ok_and(|t| t.is_dir());
-        let found = if is_dir {
-            if BUILD_FOLDERS.contains(&name.as_str()) {
-                find_repo(&entry.path(), budget)?
-            } else {
-                find_local(&entry.path(), budget)?
-            }
-        } else {
-            local_name(&name).then(|| Found::Local(entry.path()))
-        };
-        if found.is_some() {
-            return Ok(found);
-        }
-    }
-    Ok(None)
-}
-
-/// F2: whether a build or dependency folder holds a separate Git project: in the folder itself, in a
-/// folder directly inside it, or in a folder inside an `@scope` folder. Deeper is not looked at (a
-/// `node_modules` has thousands of folders), and the files in it are never read.
-fn find_repo(dir: &Path, budget: &mut usize) -> Result<Option<Found>, String> {
-    if dir.join(".git").exists() {
-        return Ok(Some(Found::Repo(dir.to_path_buf())));
-    }
-    let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
-    for entry in entries.flatten() {
-        *budget = budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
-        if !entry.file_type().is_ok_and(|t| t.is_dir()) {
-            continue;
-        }
-        let path = entry.path();
-        if path.join(".git").exists() {
-            return Ok(Some(Found::Repo(path)));
-        }
-        if entry.file_name().to_string_lossy().starts_with('@') {
-            for inner in std::fs::read_dir(&path).into_iter().flatten().flatten() {
-                *budget = budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
-                if inner.path().join(".git").exists() {
-                    return Ok(Some(Found::Repo(inner.path())));
-                }
-            }
-        }
-    }
-    Ok(None)
 }
 
 /// Commits everything in the workspace (untracked files too, ignored files not). Err, with nothing
