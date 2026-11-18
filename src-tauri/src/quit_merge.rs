@@ -608,7 +608,8 @@ fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str)
     if behind > 0 && cx.git.predicts_merges() && read(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], repo, clock).is_err() {
         return Err(format!("its changes clash with {target}"));
     }
-    let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), time: now_secs() };
+    let tip = read(&["rev-parse", "--verify", &theirs], repo, clock).map_err(|e| format!("Kolux could not read the branch's tip ({})", short(&e)))?;
+    let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip), time: now_secs() };
     note_merge(cx.data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
     let _busy = Busy::start();
     let tried = if behind == 0 {
@@ -654,6 +655,10 @@ struct Marker {
     #[serde(rename = "beforeSha")]
     before_sha: String,
     branch: String,
+    /// The merged branch's tip when the merge began (F1): recovery puts main back only for a merge of
+    /// exactly this commit. A marker without it (an older one) never resets anything.
+    #[serde(rename = "theirsSha", default, skip_serializing_if = "Option::is_none")]
+    theirs_sha: Option<String>,
     /// Seconds since 1970 when the merge began.
     time: u64,
 }
@@ -679,11 +684,14 @@ fn read_marker(data_dir: &Path) -> Option<Marker> {
 }
 
 /// At start: a merge the last quit began and never finished (the marker is still there) is put right.
-/// HEAD moved off where the marker says it was: the merge finished, nothing to do. HEAD still there
-/// with a merge open, a half-written index or a leftover `index.lock`: the lock is removed when it can
-/// only be the dead run's (it is not newer than the merge's start plus the quit's hard cap), and
-/// `git reset --merge` returns the checkout to how it was (it had no changes of its own: the merge
-/// only starts on a clean one). Returns what the start's notice should say, if anything.
+/// HEAD moved off where the marker says it was: the merge finished, nothing to do. A merge still open
+/// (MERGE_HEAD is the marker's branch tip), or the dead run's own `index.lock` (not newer than the
+/// merge's start plus the quit's hard cap) with HEAD still there: `git reset --merge` returns the
+/// checkout to how it was, but only when every changed path is one the merge of that tip could have
+/// changed (F1: the user may have staged work in main since). With no merge open and no lock nothing
+/// is ever reset (the marker is only cleared, with a notice when main holds changes), and a marker
+/// without a branch tip (an older one) never resets anything. The whole run is capped at `RECOVER_CAP`.
+/// Returns what the start's notice should say, if anything.
 pub fn recover_at_start(data_dir: &Path) -> Vec<String> {
     let Some(marker) = read_marker(data_dir) else {
         clear_marker(data_dir); // an unreadable one is no use to anyone
@@ -694,22 +702,64 @@ pub fn recover_at_start(data_dir: &Path) -> Vec<String> {
     note.into_iter().collect()
 }
 
+/// The longest a start spends putting main right (m2): every git step of `recover` is cut by this
+/// one clock, so a stuck folder costs the launch at most this much (plus one short step), never more.
+const RECOVER_CAP: Duration = Duration::from_secs(10);
+
+/// Paths git lists with `-z`, as text.
+fn paths(raw: Vec<u8>) -> Vec<String> {
+    String::from_utf8_lossy(&raw).split('\0').filter(|p| !p.is_empty()).map(|p| p.to_string()).collect()
+}
+
+/// Every path of tracked files that differs from HEAD in the main checkout, staged or not (a new file
+/// that was staged counts; a file nobody ever added does not). Renames are not paired, so both names show.
+fn changed_in(main: &Path, clock: &Clock) -> Result<Vec<String>, String> {
+    crate::git::bytes_within(&["diff", "HEAD", "--name-only", "--no-renames", "-z"], Some(main), clock.read_limit()).map(paths)
+}
+
+/// F1: every path the merge of `theirs` into `before` could have touched (`before` and `theirs` differ in it).
+fn merge_paths(main: &Path, before: &str, theirs: &str, clock: &Clock) -> Result<Vec<String>, String> {
+    crate::git::bytes_within(&["diff", "--name-only", "--no-renames", "-z", before, theirs], Some(main), clock.read_limit()).map(paths)
+}
+
 fn recover(data_dir: &Path, marker: &Marker) -> Option<String> {
     let main = Path::new(&marker.main_dir);
     if !main.is_dir() {
         return None;
     }
-    let clock = Clock::until(Instant::now() + Duration::from_secs(30));
+    let clock = Clock::until(Instant::now() + RECOVER_CAP);
     let cut = |what: &str| Some(format!("Kolux was closing while it merged {} into {}, and {what}", marker.branch, marker.main_dir));
+    let left = "so Kolux left it as it is: look at the main folder before you work there";
     let Ok(head) = read(&["rev-parse", "HEAD"], main, &clock) else { return cut("could not look at that folder now: check it before you work there") };
     if head != marker.before_sha {
         return None; // the merge got as far as moving the branch: it finished
     }
-    let open = read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main, &clock).is_ok();
+    let merge_head = read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main, &clock).ok();
     let lock = read(&["rev-parse", "--git-path", "index.lock"], main, &clock).ok().map(|p| main.join(p.trim())).filter(|p| p.exists());
-    let clean = |clock: &Clock| read(&["status", "--porcelain", "--untracked-files=no"], main, clock).is_ok_and(|s| s.trim().is_empty());
-    if !open && lock.is_none() && clean(&clock) {
-        return None; // never got going, or was undone
+    if merge_head.is_none() && lock.is_none() {
+        // The merge never got going or was undone: there is nothing of its to put back, so nothing is reset,
+        // whatever main holds now is the user's own (F1). A leftover marker never costs anybody their work.
+        return match changed_in(main, &clock) {
+            Ok(dirty) if dirty.is_empty() => None,
+            _ => cut(&format!("main has changes in it Kolux did not make, {left}")),
+        };
+    }
+    // Something of the merge is left. It is undone only when it is certainly this merge's, and only
+    // where every changed path is one the merge could have changed.
+    let Some(theirs) = marker.theirs_sha.as_deref() else {
+        return cut(&format!("the note of that merge is from an older Kolux and cannot be checked, {left}"));
+    };
+    if merge_head.as_deref().is_some_and(|m| m != theirs) {
+        return cut(&format!("the merge open in that folder is not the one Kolux began, {left}"));
+    }
+    if !clock.may_start() {
+        return cut("it took too long to look at that folder: check it before you work there");
+    }
+    let (Ok(dirty), Ok(allowed)) = (changed_in(main, &clock), merge_paths(main, &marker.before_sha, theirs, &clock)) else {
+        return cut("could not check what was changed in that folder: look at it before you work there");
+    };
+    if dirty.iter().any(|p| !allowed.contains(p)) {
+        return cut(&format!("that folder holds changes the merge did not make, {left}"));
     }
     if let Some(lock) = lock {
         // Only the dead run can have made a lock this old: git processes end with the app.
@@ -719,8 +769,15 @@ fn recover(data_dir: &Path, marker: &Marker) -> Option<String> {
             return cut("a lock file in that folder is newer than the merge, so Kolux left it: look at it before you work there");
         }
     }
+    if merge_head.is_none() && dirty.is_empty() {
+        return None; // only the dead run's lock was left, and it is gone
+    }
+    if !clock.may_start() {
+        return cut("it took too long to look at that folder: check it before you work there");
+    }
     let Ok(hooks) = no_hooks(data_dir) else { return cut("could not put it back: look at it before you work there") };
     let reset = write(&["reset", "--merge"], main, &clock, &hooks);
+    let clean = |clock: &Clock| read(&["status", "--porcelain", "--untracked-files=no"], main, clock).is_ok_and(|s| s.trim().is_empty());
     let whole = read(&["rev-parse", "HEAD"], main, &clock).is_ok_and(|h| h == marker.before_sha) && clean(&clock) && read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main, &clock).is_err();
     if reset.is_ok() && whole {
         cut("put the folder back the way it was before the merge")

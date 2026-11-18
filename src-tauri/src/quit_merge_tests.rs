@@ -684,7 +684,8 @@ fn half_merged_main(base: &Path, repo: &Path, store: &Mutex<Store>) -> String {
 }
 
 fn marker_for(repo: &Path, before: &str, time: u64) -> Marker {
-    Marker { main_dir: repo.display().to_string(), before_sha: before.to_string(), branch: "side".into(), time }
+    let theirs_sha = Command::new("git").args(["rev-parse", "-q", "--verify", "refs/heads/side"]).current_dir(repo).output().ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+    Marker { main_dir: repo.display().to_string(), before_sha: before.to_string(), branch: "side".into(), theirs_sha, time }
 }
 
 #[test]
@@ -756,12 +757,149 @@ fn a_marker_whose_merge_finished_or_never_began_changes_nothing() {
     let _ = fs::remove_dir_all(&base);
 }
 
+// ------------------------------------------------------------------ F1: recovery never costs the user's own work
+
+/// Main with a `side` branch that is one commit ahead (c.txt), HEAD untouched: what a merge killed before it touched main leaves.
+fn untouched_main(base: &Path, repo: &Path, store: &Mutex<Store>) -> String {
+    let side = workspace(base, repo, store, "side", true);
+    commit(&side, "c.txt", "c\n");
+    head(repo, "HEAD")
+}
+
+/// The user stages an edit of a tracked file and a brand new file in main.
+fn stage_users_work(repo: &Path) {
+    fs::write(repo.join("a.txt"), "the user's staged edit\n").unwrap();
+    fs::write(repo.join("mine.txt"), "the user's new file\n").unwrap();
+    git_in(repo, &["add", "a.txt", "mine.txt"]);
+}
+
+fn users_work_is_intact(repo: &Path) {
+    assert_eq!(git_in(repo, &["status", "--porcelain"]), "M  a.txt\nA  mine.txt", "still staged, as the user left it");
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap(), "the user's staged edit\n");
+    assert_eq!(fs::read_to_string(repo.join("mine.txt")).unwrap(), "the user's new file\n");
+}
+
+#[test]
+fn a_leftover_marker_with_main_untouched_never_wipes_what_the_user_staged_since() {
+    let (base, repo, store) = repo("f1-leftover");
+    let before = untouched_main(&base, &repo, &store);
+    // The marker outlived its merge (killed before main was touched, or before the marker was cleared).
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    stage_users_work(&repo);
+    let notes = recover_at_start(&data(&base));
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(notes[0].contains("look at the main folder"), "{notes:?}");
+    users_work_is_intact(&repo);
+    assert_eq!(head(&repo, "HEAD"), before);
+    assert!(!marker_file(&base).exists(), "the marker is cleared all the same");
+    // Clean main: nothing to say.
+    git_in(&repo, &["reset", "-q", "--hard"]);
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    assert!(recover_at_start(&data(&base)).is_empty());
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Opens the `side` merge in main again (after a reset undid it).
+fn half_merge_again(repo: &Path) -> String {
+    let before = head(repo, "HEAD");
+    assert!(git_try(repo, &["merge", "--no-commit", "--no-ff", "side"]));
+    before
+}
+
+#[test]
+fn an_open_merge_is_reset_only_for_the_marked_tip_and_never_over_work_it_did_not_make() {
+    let (base, repo, store) = repo("f1-unrelated");
+    let before = half_merged_main(&base, &repo, &store);
+    // The user's own staged file sits beside the merge's changes.
+    fs::write(repo.join("mine.txt"), "the user's new file\n").unwrap();
+    git_in(&repo, &["add", "mine.txt"]);
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists(), "nothing was reset");
+    assert!(git_in(&repo, &["status", "--porcelain"]).contains("A  mine.txt") && repo.join("c.txt").exists());
+    assert_eq!(fs::read_to_string(repo.join("mine.txt")).unwrap(), "the user's new file\n");
+    assert!(!marker_file(&base).exists());
+    // Without the user's file the same half-merge is put back, as in the real-recovery test.
+    git_in(&repo, &["rm", "-q", "-f", "mine.txt"]);
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("put the folder back"), "{notes:?}");
+    assert_eq!(git_in(&repo, &["status", "--porcelain"]), "");
+    // An open merge of some other commit than the marked one is not touched either.
+    let before2 = half_merge_again(&repo);
+    let mut other = marker_for(&repo, &before2, now_secs());
+    other.theirs_sha = Some(before2.clone());
+    note_merge(&data(&base), &other).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("not the one Kolux began"), "{notes:?}");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists(), "still open: it is not this marker's merge");
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn a_marker_without_the_branch_tip_never_resets_anything() {
+    let (base, repo, store) = repo("f1-old-marker");
+    let before = half_merged_main(&base, &repo, &store);
+    // The marker as an older Kolux wrote it: no tip.
+    let old = serde_json::json!({ "mainDir": repo.display().to_string(), "beforeSha": before, "branch": "side", "time": now_secs() }).to_string();
+    fs::create_dir_all(data(&base)).unwrap();
+    fs::write(marker_file(&base), &old).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists() && repo.join("c.txt").exists(), "the half merge is left as it is");
+    assert!(!marker_file(&base).exists());
+    // Nor with no merge open and the user's staged work.
+    git_in(&repo, &["merge", "--abort"]);
+    stage_users_work(&repo);
+    fs::write(marker_file(&base), &old).unwrap();
+    assert_eq!(recover_at_start(&data(&base)).len(), 1);
+    users_work_is_intact(&repo);
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn the_dead_runs_own_lock_is_cleared_only_where_every_changed_path_is_the_merges() {
+    let (base, repo, store) = repo("f1-lock");
+    let before = untouched_main(&base, &repo, &store);
+    // A fast-forward killed with its files written and the index not yet moved: c.txt staged from side, lock left.
+    git_in(&repo, &["checkout", "-q", "side", "--", "c.txt"]);
+    let lock = repo.join(".git").join("index.lock");
+    fs::write(&lock, "").unwrap();
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("put the folder back"), "{notes:?}");
+    assert!(!lock.exists() && !repo.join("c.txt").exists(), "lock gone, the merge's file put back");
+    assert_eq!((head(&repo, "HEAD"), git_in(&repo, &["status", "--porcelain"])), (before.clone(), String::new()));
+    // The same lock with the user's own staged work in the folder: nothing is touched, not even the lock.
+    git_in(&repo, &["checkout", "-q", "side", "--", "c.txt"]);
+    stage_users_work(&repo);
+    fs::write(&lock, "").unwrap();
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
+    assert!(lock.exists() && repo.join("c.txt").exists());
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap(), "the user's staged edit\n");
+    assert_eq!(fs::read_to_string(repo.join("mine.txt")).unwrap(), "the user's new file\n");
+    // Only the lock left (nothing changed): it goes quietly.
+    fs::remove_file(&lock).unwrap();
+    git_in(&repo, &["reset", "-q", "--hard"]);
+    fs::write(&lock, "").unwrap();
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    assert!(recover_at_start(&data(&base)).is_empty());
+    assert!(!lock.exists());
+    let _ = fs::remove_dir_all(&base);
+}
+
 #[test]
 fn the_marker_names_the_main_folder_the_sha_before_and_the_branch() {
     let base = temp("b3-marker-shape");
-    note_merge(&data(&base), &Marker { main_dir: "C:/p".into(), before_sha: "abc".into(), branch: "fix".into(), time: 7 }).unwrap();
+    note_merge(&data(&base), &Marker { main_dir: "C:/p".into(), before_sha: "abc".into(), branch: "fix".into(), theirs_sha: Some("def".into()), time: 7 }).unwrap();
     let json: serde_json::Value = serde_json::from_str(&fs::read_to_string(marker_file(&base)).unwrap()).unwrap();
-    assert_eq!(json, serde_json::json!({ "mainDir": "C:/p", "beforeSha": "abc", "branch": "fix", "time": 7 }));
+    assert_eq!(json, serde_json::json!({ "mainDir": "C:/p", "beforeSha": "abc", "branch": "fix", "theirsSha": "def", "time": 7 }));
+    // A marker written before the tip was noted still reads, with no tip.
+    fs::write(marker_file(&base), r#"{"mainDir":"C:/p","beforeSha":"abc","branch":"fix","time":7}"#).unwrap();
+    assert_eq!(read_marker(&data(&base)).unwrap().theirs_sha, None);
     let _ = fs::remove_dir_all(&base);
 }
 
