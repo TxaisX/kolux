@@ -1168,6 +1168,60 @@ fn ignored_local_settings_secrets_and_data_keep_the_workspace_and_build_output_d
     let _ = fs::remove_dir_all(&base);
 }
 
+// ------------------------------------------------------------------ F2: a separate Git project inside an ignored folder
+
+/// A Git project of its own, with one commit that exists nowhere else.
+fn nested_repo(dir: &Path) {
+    fs::create_dir_all(dir).unwrap();
+    git_in(dir, &["init", "-q", "-b", "main"]);
+    git_in(dir, &["config", "user.email", "t@example.com"]);
+    git_in(dir, &["config", "user.name", "t"]);
+    fs::write(dir.join("lib.txt"), "the only copy\n").unwrap();
+    git_in(dir, &["add", "."]);
+    git_in(dir, &["commit", "-q", "-m", "only copy"]);
+}
+
+/// A workspace whose own commit sets its .gitignore.
+fn ignoring_text(base: &Path, repo: &Path, store: &Mutex<Store>, name: &str, gitignore: &str) -> PathBuf {
+    let ws = workspace(base, repo, store, name, true);
+    commit(&ws, ".gitignore", gitignore);
+    ws
+}
+
+#[test]
+fn an_ignored_folder_holding_a_separate_git_project_keeps_the_workspace_and_its_commits() {
+    let (base, repo, store) = repo("f2");
+    let vendor = ignoring_text(&base, &repo, &store, "has-vendor", "vendor/\n");
+    nested_repo(&vendor.join("vendor").join("lib"));
+    let deep = ignoring_text(&base, &repo, &store, "has-deep", "data/\n");
+    nested_repo(&deep.join("data").join("a").join("b").join("proj"));
+    let dep = ignoring_text(&base, &repo, &store, "has-dep", "node_modules/\n");
+    nested_repo(&dep.join("node_modules").join("dep"));
+    let scoped = ignoring_text(&base, &repo, &store, "has-scoped", "node_modules/\n");
+    nested_repo(&scoped.join("node_modules").join("@org").join("pkg"));
+    let gitfile = ignoring_text(&base, &repo, &store, "has-gitfile", "vendor/\n");
+    fs::create_dir_all(gitfile.join("vendor").join("sub")).unwrap();
+    fs::write(gitfile.join("vendor").join("sub").join(".git"), "gitdir: ../../elsewhere\n").unwrap();
+    // Ignored folders without a Git project in them are deleted as before.
+    let plain = ignoring_text(&base, &repo, &store, "plain", "vendor/\nnode_modules/\n");
+    fs::create_dir_all(plain.join("vendor").join("lib")).unwrap();
+    fs::write(plain.join("vendor").join("lib").join("x.go"), "package x\n").unwrap();
+    fs::create_dir_all(plain.join("node_modules").join("x")).unwrap();
+    fs::write(plain.join("node_modules").join("x").join("index.js"), "1\n").unwrap();
+    let out = tidy(&base, &store);
+    for (ws, at) in [(&vendor, "vendor/lib"), (&deep, "data/a/b/proj"), (&dep, "node_modules/dep"), (&scoped, "node_modules/@org/pkg"), (&gitfile, "vendor/sub")] {
+        let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{at}: not kept: {out:?}"));
+        assert!(left.why.contains("separate Git project") && left.why.contains(&format!("({at})")) && left.why.contains("would delete"), "{at}: {}", left.why);
+        assert!(ws.is_dir() && branch_exists(&repo, ws.file_name().unwrap().to_str().unwrap()), "{at}: workspace and branch stay");
+    }
+    let log = git_in(&vendor.join("vendor").join("lib"), &["log", "--oneline"]);
+    assert!(log.contains("only copy"), "the nested project's commit is still there: {log}");
+    assert_eq!(out.left.len(), 5, "{:?}", out.left);
+    assert_eq!(out.removed.len(), 1, "{out:?}");
+    assert!(!plain.exists());
+    let _ = fs::remove_dir_all(&base);
+}
+
 // ------------------------------------------------------------------ m4: a folder that is itself a project is not a workspace
 
 #[test]

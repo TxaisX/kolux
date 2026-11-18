@@ -506,42 +506,97 @@ fn last_part(path: &str) -> &str {
     path.trim_end_matches('/').rsplit('/').next().unwrap_or(path)
 }
 
-/// M7: Err when removal would delete ignored files that look like local settings, secrets or data
-/// (`.env*`, `*.local.*`, `CLAUDE.local.md`, `*.db`, `*.sqlite`) outside the build and dependency
-/// folders. Ignored output inside those is deleted without a question.
+/// What the scan of ignored files found that removal would delete.
+enum Found {
+    /// A separate Git project (a folder with its own `.git`, a file or a folder) in an ignored folder (F2).
+    Repo(PathBuf),
+    /// A file that looks like the person's own settings, secrets or data (M7).
+    Local(PathBuf),
+}
+
+/// M7 and F2: Err when removal would delete something that is not build output. That is ignored
+/// files that look like local settings, secrets or data (`.env*`, `*.local.*`, `CLAUDE.local.md`,
+/// `*.db`, `*.sqlite`), and any separate Git project (a `.git` anywhere in an ignored folder: its
+/// commits live nowhere else). Ignored output inside the build and dependency folders is deleted
+/// without a question, but those folders are still looked through for a separate Git project, at
+/// their top (the folder, its folders, and the folders inside `@scope` ones).
 fn local_files(here: &Path, clock: &Clock) -> Result<(), String> {
     let listing = crate::git::bytes_within(&["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"], Some(here), clock.read_limit()).map_err(|e| format!("Kolux could not read its ignored files ({})", short(&e)))?;
     let mut budget = IGNORED_SCAN_LIMIT;
     for entry in String::from_utf8_lossy(&listing).split('\0').filter(|e| !e.is_empty()) {
-        if entry.trim_end_matches('/').split('/').any(|c| BUILD_FOLDERS.contains(&c)) {
-            continue;
-        }
+        let built = entry.trim_end_matches('/').split('/').any(|c| BUILD_FOLDERS.contains(&c));
         let found = match entry.strip_suffix('/') {
-            Some(dir) => find_local(&here.join(dir), &mut budget)?.map(|f| f.strip_prefix(here).map(|p| p.display().to_string()).unwrap_or(f.display().to_string())),
-            None => local_name(last_part(entry)).then(|| entry.to_string()),
+            Some(dir) if built => find_repo(&here.join(dir), &mut budget)?,
+            Some(dir) => find_local(&here.join(dir), &mut budget)?,
+            None if last_part(entry) == ".git" => Some(Found::Repo(here.join(entry))),
+            None => (!built && local_name(last_part(entry))).then(|| Found::Local(here.join(entry))),
         };
-        if let Some(file) = found {
-            return Err(format!("it holds an ignored file that looks like your own settings or data ({}), which removing the workspace would delete", file.replace('\\', "/")));
+        let shown = |f: &Path| f.strip_prefix(here).map(|p| p.display().to_string()).unwrap_or(f.display().to_string()).replace('\\', "/");
+        match found {
+            Some(Found::Repo(at)) => {
+                let at = if at.file_name().is_some_and(|n| n == ".git") { at.parent().map(Path::to_path_buf).unwrap_or(at) } else { at };
+                return Err(format!("it holds a separate Git project inside an ignored folder ({}), which removing the workspace would delete", shown(&at)));
+            }
+            Some(Found::Local(file)) => {
+                return Err(format!("it holds an ignored file that looks like your own settings or data ({}), which removing the workspace would delete", shown(&file)));
+            }
+            None => {}
         }
     }
     Ok(())
 }
 
-/// The first local-looking file under `dir`, leaving the build folders alone.
-fn find_local(dir: &Path, budget: &mut usize) -> Result<Option<PathBuf>, String> {
+/// The first separate Git project or local-looking file under `dir`; a build folder met on the way is
+/// only looked through for a Git project (`find_repo`).
+fn find_local(dir: &Path, budget: &mut usize) -> Result<Option<Found>, String> {
+    if dir.join(".git").exists() {
+        return Ok(Some(Found::Repo(dir.to_path_buf())));
+    }
     let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
     for entry in entries.flatten() {
         *budget = budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
         let name = entry.file_name().to_string_lossy().into_owned();
         let is_dir = entry.file_type().is_ok_and(|t| t.is_dir());
-        if is_dir {
-            if !BUILD_FOLDERS.contains(&name.as_str()) {
-                if let Some(found) = find_local(&entry.path(), budget)? {
-                    return Ok(Some(found));
+        let found = if is_dir {
+            if BUILD_FOLDERS.contains(&name.as_str()) {
+                find_repo(&entry.path(), budget)?
+            } else {
+                find_local(&entry.path(), budget)?
+            }
+        } else {
+            local_name(&name).then(|| Found::Local(entry.path()))
+        };
+        if found.is_some() {
+            return Ok(found);
+        }
+    }
+    Ok(None)
+}
+
+/// F2: whether a build or dependency folder holds a separate Git project: in the folder itself, in a
+/// folder directly inside it, or in a folder inside an `@scope` folder. Deeper is not looked at (a
+/// `node_modules` has thousands of folders), and the files in it are never read.
+fn find_repo(dir: &Path, budget: &mut usize) -> Result<Option<Found>, String> {
+    if dir.join(".git").exists() {
+        return Ok(Some(Found::Repo(dir.to_path_buf())));
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
+    for entry in entries.flatten() {
+        *budget = budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
+        if !entry.file_type().is_ok_and(|t| t.is_dir()) {
+            continue;
+        }
+        let path = entry.path();
+        if path.join(".git").exists() {
+            return Ok(Some(Found::Repo(path)));
+        }
+        if entry.file_name().to_string_lossy().starts_with('@') {
+            for inner in std::fs::read_dir(&path).into_iter().flatten().flatten() {
+                *budget = budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
+                if inner.path().join(".git").exists() {
+                    return Ok(Some(Found::Repo(inner.path())));
                 }
             }
-        } else if local_name(&name) {
-            return Ok(Some(entry.path()));
         }
     }
     Ok(None)
