@@ -72,10 +72,10 @@ const IGNORED_SCAN_LIMIT: usize = 20_000;
 const MARKER_FILE: &str = "quit-merge-marker.json";
 const NO_HOOKS_DIR: &str = "quit-merge-no-hooks";
 
-/// How many merges, undos and removals are under way in a main checkout: the quit waits for them.
+/// How many saves, merges, undos and removals are under way: the quit waits for them.
 static BUSY: AtomicUsize = AtomicUsize::new(0);
 
-/// True while a merge (or its undo, or a removal) runs, so the quit waits for it to end.
+/// True while a save, a merge (or its undo) or a removal runs, so the quit waits for it to end.
 pub fn merging() -> bool {
     BUSY.load(Ordering::SeqCst) > 0
 }
@@ -675,6 +675,9 @@ fn save_changes(cx: &Cx, here: &Path) -> Result<(), String> {
     if !clock.may_start() {
         return Err(OUT_OF_TIME.into());
     }
+    // m1: an `add` or `commit` the quit cuts off leaves an index.lock in the workspace that stops every
+    // later save of it, so the exit waits for the save like it waits for a merge (the same hard cap).
+    let _busy = Busy::start();
     let failed = |e: String| format!("its changes could not be saved ({})", short(&e));
     write(&["add", "-A"], here, clock, &cx.hooks).map_err(failed)?;
     // The same check again on what was really staged: a new link to another repository (mode 160000).
