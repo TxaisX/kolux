@@ -488,7 +488,7 @@ fn names_before(repo: &Path, branch: &str, clock: &Clock) -> Vec<String> {
 }
 
 /// Folders of build output and dependencies, which removal may delete without asking.
-const BUILD_FOLDERS: [&str; 16] = ["node_modules", "target", "dist", "build", "out", ".next", "__pycache__", ".venv", "venv", ".turbo", ".cache", "coverage", ".pytest_cache", ".mypy_cache", ".gradle", ".parcel-cache"];
+const BUILD_FOLDERS: [&str; 25] = ["node_modules", "target", "dist", "build", "out", ".next", "__pycache__", ".venv", "venv", ".turbo", ".cache", "coverage", ".pytest_cache", ".mypy_cache", ".gradle", ".parcel-cache", "bin", "obj", "vendor", "Pods", ".nuxt", ".svelte-kit", ".angular", ".dart_tool", ".terraform"];
 
 /// Whether an ignored file looks like one a person made for this checkout (settings, secrets, data).
 fn local_name(name: &str) -> bool {

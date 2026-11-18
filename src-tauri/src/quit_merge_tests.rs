@@ -1311,6 +1311,35 @@ fn ignored_keys_certificates_and_credentials_keep_the_workspace() {
     let _ = fs::remove_dir_all(&base);
 }
 
+// ------------------------------------------------------------------ m3: more build and dependency folders
+
+#[test]
+fn bin_obj_vendor_pods_and_the_other_build_folders_are_deleted_without_a_question_unless_a_project_is_in_them() {
+    let (base, repo, store) = repo("m3");
+    let folders = ["bin", "obj", "vendor", "Pods", ".nuxt", ".svelte-kit", ".angular", ".dart_tool", ".terraform"];
+    let ignore: String = folders.iter().map(|f| format!("{f}/\n")).collect();
+    let builds = ignoring_text(&base, &repo, &store, "builds", &ignore);
+    for f in folders {
+        let d = builds.join(f).join("pkg");
+        fs::create_dir_all(&d).unwrap();
+        fs::write(d.join(".env"), "x").unwrap();
+        fs::write(d.join("cache.db"), "x").unwrap();
+    }
+    // A project of its own in one of them is still not build output.
+    let pods = ignoring_text(&base, &repo, &store, "pods", &ignore);
+    nested_repo(&pods.join("Pods").join("Dep"));
+    let vendor = ignoring_text(&base, &repo, &store, "vendored", &ignore);
+    nested_repo(&vendor.join("vendor").join("lib"));
+    let out = tidy(&base, &store);
+    assert!(!builds.exists(), "ignored output in the new build folders goes with the merged workspace: {out:?}");
+    for (ws, at) in [(&pods, "Pods/Dep"), (&vendor, "vendor/lib")] {
+        let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{at}: not kept: {out:?}"));
+        assert!(left.why.contains("separate Git project") && left.why.contains(at), "{at}: {}", left.why);
+    }
+    assert_eq!((out.left.len(), out.removed.len()), (2, 1), "{out:?}");
+    let _ = fs::remove_dir_all(&base);
+}
+
 // ------------------------------------------------------------------ m4: a folder that is itself a project is not a workspace
 
 #[test]
