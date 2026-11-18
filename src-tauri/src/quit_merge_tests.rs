@@ -1282,6 +1282,35 @@ fn a_copy_of_a_file_main_has_since_changed_keeps_the_workspace() {
     let _ = fs::remove_dir_all(&base);
 }
 
+// ------------------------------------------------------------------ F4: ignored keys and credentials keep the workspace too
+
+#[test]
+fn ignored_keys_certificates_and_credentials_keep_the_workspace() {
+    let (base, repo, store) = repo("f4");
+    let ignore = "config/master.key\n*.pem\nid_rsa*\nid_ed25519*\n*credentials*\n*secret*\nsecrets/\n";
+    let cases = [("master-key", "config/master.key"), ("pem", "server.pem"), ("ssh", "id_rsa"), ("ssh-new", "id_ed25519.pub"), ("creds", "aws-credentials.json"), ("secret", "my-secret.txt"), ("nested", "secrets/deep/Client_Secret.json")];
+    let mut kept = Vec::new();
+    for (name, file) in cases {
+        let ws = ignoring_text(&base, &repo, &store, name, ignore);
+        let path = ws.join(file);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, "not for the bin\n").unwrap();
+        kept.push((ws, file));
+    }
+    // Ordinary ignored output next to them does not.
+    let plain = ignoring_text(&base, &repo, &store, "plain", ignore);
+    fs::write(plain.join("noise.log"), "x\n").unwrap();
+    let out = tidy(&base, &store);
+    for (ws, file) in &kept {
+        let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{file}: not kept: {out:?}"));
+        assert!(left.why.contains("ignored file") && left.why.contains(last_part(file)) && left.why.contains("would delete"), "{file}: {}", left.why);
+        assert!(ws.join(file).is_file(), "{file} is still there");
+    }
+    assert_eq!(out.left.len(), kept.len(), "{:?}", out.left);
+    assert!(!plain.exists() && out.removed.len() == 1, "{out:?}");
+    let _ = fs::remove_dir_all(&base);
+}
+
 // ------------------------------------------------------------------ m4: a folder that is itself a project is not a workspace
 
 #[test]

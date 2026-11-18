@@ -528,11 +528,12 @@ impl Scan<'_> {
         Ok(())
     }
 
-    /// F3: a file named like the person's own (`local_name`) that is not just a copy of main's own
+    /// F3 and F4: a file named like the person's own (`local_name`) or like a secret (`secret_name`: `*.key`, `*.pem`,
+    /// `id_rsa*`, `*credentials*`, `*secret*`) that is not just a copy of main's own
     /// file: `.worktreeinclude` copies `.env` and the like into every workspace, and an unchanged
     /// copy is no loss when the workspace goes.
     fn own_file(&self, path: &Path) -> bool {
-        path.file_name().is_some_and(|n| local_name(&n.to_string_lossy())) && !self.copy_of_main(path)
+        path.file_name().is_some_and(|n| local_name(&n.to_string_lossy()) || secret_name(&n.to_string_lossy())) && !self.copy_of_main(path)
     }
 
     fn copy_of_main(&self, path: &Path) -> bool {
@@ -643,7 +644,7 @@ fn local_files(here: &Path, main: Option<&Path>, clock: &Clock) -> Result<(), St
                 return Err(format!("it holds a separate Git project inside an ignored folder ({}), which removing the workspace would delete", shown(&at)));
             }
             Some(Found::Local(file)) => {
-                return Err(format!("it holds an ignored file that looks like your own settings or data ({}), which removing the workspace would delete", shown(&file)));
+                return Err(format!("it holds an ignored file that looks like your own settings, keys or data ({}), which removing the workspace would delete", shown(&file)));
             }
             None => {}
         }
