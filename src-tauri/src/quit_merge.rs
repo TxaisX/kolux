@@ -572,9 +572,10 @@ impl Scan<'_> {
         Ok(None)
     }
 
-    /// F2: whether a build or dependency folder holds a separate Git project: in the folder itself, in
-    /// a folder directly inside it, or in a folder inside an `@scope` folder. Deeper is not looked at
-    /// (a `node_modules` has thousands of folders), and the files in it are never read.
+    /// F2: whether a build or dependency folder holds a separate Git project: in the folder itself or in a
+    /// folder up to `REPO_DEPTH` levels inside it (`build/sub/clone/.git`, `vendor/acme/lib/.git`). A
+    /// `node_modules` inside is not looked into (thousands of folders), and a `node_modules` folder itself is
+    /// only looked at one level down, plus inside an `@scope` folder, as before. The files in it are never read.
     fn repo_in(&mut self, dir: &Path) -> Result<Option<Found>, String> {
         if is_link(dir) {
             return Ok(None);
@@ -582,7 +583,15 @@ impl Scan<'_> {
         if dir.join(".git").exists() {
             return Ok(Some(Found::Repo(dir.to_path_buf())));
         }
+        let own_depth = if dir.file_name().is_some_and(|n| n == "node_modules") { 1 } else { REPO_DEPTH };
+        self.repo_below(dir, own_depth, own_depth == 1)
+    }
+
+    /// The folders directly in `dir` that hold a `.git`, then (while `depth` allows) those folders' own folders.
+    /// `scoped`: a `node_modules`, where an `@scope` folder gets one more level.
+    fn repo_below(&mut self, dir: &Path, depth: usize, scoped: bool) -> Result<Option<Found>, String> {
         let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
+        let mut inside = Vec::new();
         for entry in entries.flatten() {
             self.spend()?;
             if !entry.file_type().is_ok_and(|t| t.is_dir()) {
@@ -592,18 +601,27 @@ impl Scan<'_> {
             if path.join(".git").exists() {
                 return Ok(Some(Found::Repo(path)));
             }
-            if entry.file_name().to_string_lossy().starts_with('@') {
-                for inner in std::fs::read_dir(&path).into_iter().flatten().flatten() {
-                    self.spend()?;
-                    if inner.path().join(".git").exists() {
-                        return Ok(Some(Found::Repo(inner.path())));
-                    }
-                }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name == "node_modules" || name == ".git" {
+                continue;
+            }
+            if depth > 1 {
+                inside.push((path, depth - 1, false));
+            } else if scoped && name.starts_with('@') {
+                inside.push((path, 1, false));
+            }
+        }
+        for (path, depth, scoped) in inside {
+            if let Some(found) = self.repo_below(&path, depth, scoped)? {
+                return Ok(Some(found));
             }
         }
         Ok(None)
     }
 }
+
+/// How many folder levels below a build folder are looked through for a separate Git project.
+const REPO_DEPTH: usize = 3;
 
 /// Whether `path` is a symbolic link or a folder junction.
 fn is_link(path: &Path) -> bool {

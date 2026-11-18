@@ -1470,6 +1470,30 @@ fn bin_obj_vendor_pods_and_the_other_build_folders_are_deleted_without_a_questio
     let _ = fs::remove_dir_all(&base);
 }
 
+#[test]
+fn a_git_project_up_to_three_levels_inside_a_build_folder_keeps_the_workspace_but_a_plain_node_modules_tree_does_not() {
+    let (base, repo, store) = repo("m3-depth");
+    let build = ignoring_text(&base, &repo, &store, "has-build", "build/\n");
+    nested_repo(&build.join("build").join("sub").join("clone"));
+    let vendor = ignoring_text(&base, &repo, &store, "has-vendor", "vendor/\n");
+    nested_repo(&vendor.join("vendor").join("acme").join("lib"));
+    let plain = ignoring_text(&base, &repo, &store, "plain", "node_modules/\nbuild/\n");
+    for dir in ["node_modules/a/lib/deep", "node_modules/@s/b/dist", "build/x/y/z"] {
+        let d = plain.join(dir);
+        fs::create_dir_all(&d).unwrap();
+        fs::write(d.join("index.js"), "1\n").unwrap();
+    }
+    let out = tidy(&base, &store);
+    for (ws, at) in [(&build, "build/sub/clone"), (&vendor, "vendor/acme/lib")] {
+        let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{at}: not kept: {out:?}"));
+        assert!(left.why.contains("separate Git project") && left.why.contains(at), "{at}: {}", left.why);
+        assert!(ws.is_dir(), "{at}: the workspace stays");
+    }
+    assert_eq!((out.left.len(), out.removed.len()), (2, 1), "{out:?}");
+    assert!(!plain.exists(), "a tree with no project in it still goes");
+    let _ = fs::remove_dir_all(&base);
+}
+
 // ------------------------------------------------------------------ m4: a folder that is itself a project is not a workspace
 
 #[test]
