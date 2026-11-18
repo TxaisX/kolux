@@ -4,4 +4,4 @@ export const MERGE_ON_QUIT_FIELD = "workspacesMergeOnQuit";
 export const mergesOnQuit = (settings: Record<string, unknown>): boolean => settings[MERGE_ON_QUIT_FIELD] !== false;
 /** The one line under the switch, in plain words. */
 export const MERGE_ON_QUIT_NOTE =
-  "When you close Kolux, each workspace it made is saved, merged into main on this computer and removed. One that clashes or is locked stays, and Kolux tells you at the next start. Nothing goes to GitHub.";
+  "When you close Kolux, each workspace it made is saved, merged into main on this computer and removed. Files Git ignores inside a merged workspace, such as build output, are deleted with it. One that clashes, is locked, or holds passwords, keys or local settings that are not saved in Git stays, and Kolux tells you at the next start. Nothing goes to GitHub.";

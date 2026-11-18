@@ -319,6 +319,12 @@ pub fn item_number(origin: &serde_json::Value) -> Option<u64> {
 /// pull request's branch is never pre-trusted again (`trust::made_by_kolux`).
 pub const PR_EVER_KEY: &str = "prEver";
 
+/// The ref a workspace was started from (`Created::base`), kept in its record for diagnostics.
+pub const BASE_REF_KEY: &str = "baseRef";
+/// The branch Kolux made for a workspace (kept current when Kolux renames it). The quit's merge
+/// removes a branch only when the workspace is still on it.
+pub const MADE_BRANCH_KEY: &str = "madeBranch";
+
 /// Records (or with `None`, forgets) how the workspace at `path` came to be. T-780 (round 3): a
 /// record that holds the sticky marker `PR_EVER_KEY` keeps it through every rewrite, so no later
 /// writer (the details form, the CLI's `worktree set`, a link to an issue) can bring the pre-trust
@@ -332,6 +338,17 @@ pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>)
             // The carry-over honours every marker shape `trust::holds_pull_request` honours: present, not null, not false.
             if o.is_object() && all.get(&key).is_some_and(|was| !was[PR_EVER_KEY].is_null() && was[PR_EVER_KEY] != false) {
                 o[PR_EVER_KEY] = true.into();
+            }
+            // What the workspace was made from and on (quit_merge reads them) is a fact about its
+            // creation: a later rewrite that does not name it keeps it.
+            if o.is_object() {
+                for kept in [BASE_REF_KEY, MADE_BRANCH_KEY] {
+                    if o[kept].is_null() {
+                        if let Some(was) = all.get(&key).map(|was| was[kept].clone()).filter(|v| !v.is_null()) {
+                            o[kept] = was;
+                        }
+                    }
+                }
             }
             all.insert(key, o)
         }
@@ -568,6 +585,10 @@ pub fn record_made(store: &Store, project: &Project, made: &Created, origin: ser
     let mut origin = if origin.is_object() { origin } else { serde_json::json!({}) };
     if !made.own {
         origin[PR_EVER_KEY] = true.into();
+    }
+    origin[BASE_REF_KEY] = made.base.clone().into();
+    if let Some(branch) = &made.worktree.branch {
+        origin[MADE_BRANCH_KEY] = branch.clone().into();
     }
     set_origin(store, &made.worktree.path, Some(&origin))?;
     note_seen(store, project, &made.worktree.path)
@@ -1077,23 +1098,21 @@ pub fn ensure_excluded(repo: &Path) -> Result<bool, String> {
     let common = crate::git::run(&["rev-parse", "--git-common-dir"], Some(repo))?;
     let common = repo.join(common.trim());
     let file = common.join("info").join("exclude");
-    let had = match std::fs::read_to_string(&file) {
-        Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(e) => return Err(format!("{} could not be read: {e}", file.display())),
-    };
+    // The line is looked for in the file's contents as they are at the moment of the append (one open
+    // handle reads, then appends), under one lock, so two callers (a create and the quit's tidy) can
+    // never both decide it is missing and write it twice.
+    static EXCLUDE_LOCK: Mutex<()> = Mutex::new(());
+    let _one_at_a_time = EXCLUDE_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+    std::fs::create_dir_all(common.join("info")).map_err(|e| format!("{} could not be made: {e}", common.join("info").display()))?;
+    use std::io::{Read, Write};
+    let mut f = std::fs::OpenOptions::new().read(true).append(true).create(true).open(&file).map_err(|e| format!("{} could not be opened: {e}", file.display()))?;
+    let mut had = String::new();
+    f.read_to_string(&mut had).map_err(|e| format!("{} could not be read: {e}", file.display()))?;
     if had.lines().any(|l| EXCLUDE_FORMS.contains(&l.trim())) {
         return Ok(false);
     }
     let sep = if had.is_empty() || had.ends_with('\n') { "" } else { "\n" };
-    std::fs::create_dir_all(common.join("info")).map_err(|e| format!("{} could not be made: {e}", common.join("info").display()))?;
-    use std::io::Write;
-    std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&file)
-        .and_then(|mut f| f.write_all(format!("{sep}# Kolux: workspaces made inside the project\n/{PROJECT_LOCAL_DIR}/\n").as_bytes()))
-        .map_err(|e| format!("{} could not be written: {e}", file.display()))?;
+    f.write_all(format!("{sep}# Kolux: workspaces made inside the project\n/{PROJECT_LOCAL_DIR}/\n").as_bytes()).map_err(|e| format!("{} could not be written: {e}", file.display()))?;
     Ok(true)
 }
 
@@ -2306,6 +2325,11 @@ pub fn rename_after_work(git: &Git, store: &Mutex<Store>, project: &Project, pat
     let store = store.lock().map_err(|e| e.to_string())?;
     set_name(&store, path, Some(&shown))?;
     mark_suggested(&store, path, false)?;
+    // The branch Kolux made has a new name: the record follows it (the quit's merge reads it).
+    if let Some(mut record) = origin(&store, path).filter(|o| o[MADE_BRANCH_KEY] == old.as_str()) {
+        record[MADE_BRANCH_KEY] = new.clone().into();
+        set_origin(&store, path, Some(&record))?;
+    }
     Ok(RenameAnswer { renamed: true, reason: None, old: Some(old), branch: Some(new), name: Some(shown), tracking, folder })
 }
 

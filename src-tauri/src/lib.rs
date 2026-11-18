@@ -381,6 +381,8 @@ pub fn run() {
             }
             // Txais (2026-11-17): what the last quit kept instead of merging joins the start's notice, told once.
             if let Ok(mut held) = app.state::<resources::recovery::StartupNotes>().0.lock() {
+                // A merge the last quit began and never finished is put right first (and says so).
+                held.extend(quit_merge::recover_at_start(&dir));
                 held.extend(quit_merge::take_notes(&store));
             }
             app.manage(Mutex::new(store));
@@ -1136,8 +1138,8 @@ pub fn run() {
                 // T-552: the window's WebView2 processes let go of the profile folder before the app
                 // ends (up to 3 s), so a relaunch right after finds it free.
                 let webviews_left = tools::wait_webviews_closed();
-                if let Some((done, started)) = merging {
-                    quit_merge::finish(app, done, started);
+                if let Some((running, started)) = merging {
+                    quit_merge::finish(app, running, started);
                 }
                 if let Ok(dir) = app.path().app_data_dir() {
                     if webviews_left > 0 {

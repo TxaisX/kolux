@@ -4,22 +4,35 @@
 //! tools are never touched) is tidied away:
 //!
 //! 1. Uncommitted work, untracked files included and ignored files left out, is committed as
-//!    "Kolux: saved on quit".
-//! 2. A branch with commits main lacks is merged into the project's main branch in the main
-//!    checkout, locally (nothing is pushed), only while that checkout is on main with no
-//!    uncommitted changes to tracked files. A fast-forward when it can be, else a merge commit; a
-//!    merge Git predicts would clash is not tried, and a failed one is aborted so main is left
-//!    exactly as it was.
+//!    "Kolux: saved on quit". Never while a merge, cherry-pick, revert or rebase is unfinished in the
+//!    workspace, never with a separate Git project inside it, a password-like file or a very large
+//!    new file in it (the workspace stays instead), and the commit skips hooks and signing.
+//! 2. A branch with commits main lacks is merged into the project's main branch (origin's HEAD, else
+//!    `main`, else `master`) in the main checkout, locally (nothing is pushed), only while that
+//!    checkout is on it with no uncommitted changes to tracked files. A fast-forward when it can be,
+//!    else a merge commit; a merge Git predicts would clash is not tried, and a failed one is undone
+//!    so main is left exactly as it was. Branches with a pull request, a remote copy or another base
+//!    are merged the same way (owner decision, 2026-11-17).
 //! 3. Only once the branch's tip is in main (or it had nothing new) does the workspace go, through the
-//!    same removal the delete button uses, never forced: its branch goes with it when nothing is lost.
+//!    same removal the delete button uses, never forced: its branch goes with it when nothing is lost,
+//!    unless the workspace had been moved onto a branch Kolux did not make (that branch stays).
 //!
-//! Anything locked, still holding changes, clashing, or out of time stays, with its reason; it is tried
-//! again at the next quit, and the next start shows one notice naming what was kept and why.
+//! A quit that is cut short mid-merge leaves a marker (`quit-merge-marker.json` in the app's data
+//! folder) that the next start reads: it puts the main checkout back to how it was before the merge
+//! (`recover_at_start`).
+//!
+//! Anything locked, still holding changes, clashing, holding local files that removal would delete, or
+//! out of time stays, with its reason; it is tried again at the next quit, and the next start shows
+//! one notice naming what was kept and why.
+//!
+//! m5 (tool visibility, noted here for the commit): the git calls of this module go through the
+//! trust layer in `git.rs`, so a folder it refuses to write in (a hook, filter or merge driver of its
+//! own in a folder the user never trusted) is kept with Git's reason, not worked around.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, TryLockError};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::git::{Git, Worktree};
 use crate::projects::{self, Project};
@@ -33,6 +46,9 @@ pub const MERGE_ON_QUIT_SETTING: &str = "workspacesMergeOnQuit";
 pub(crate) const RECORD_KEY: &str = "quitMergeRecord";
 /// The commit message for work saved at quit.
 pub const SAVE_MESSAGE: &str = "Kolux: saved on quit";
+/// The second paragraph of every commit the quit makes (decision, 2026-11-17: an automatic commit at
+/// quit skips hooks and signing, because either can wait for a person or fail with nobody there).
+const AUTOMATIC: &str = "Made by Kolux when the app closed. Git hooks and commit signing are skipped for this automatic commit.";
 /// How long the quit gives the merge. A new step starts only while `MIN_TO_START` of it is left.
 pub const BUDGET: Duration = Duration::from_secs(5);
 /// How long past `BUDGET` the quit waits for a step that already started.
@@ -40,18 +56,60 @@ pub const GRACE: Duration = Duration::from_secs(2);
 /// The quit's whole wait for the merge (lifecycle::quit_deadline counts it).
 pub const WAIT: Duration = Duration::from_secs(BUDGET.as_secs() + GRACE.as_secs());
 const MIN_TO_START: Duration = Duration::from_millis(1500);
-/// A commit or merge that started is not cut short before this (a cut merge could leave main half done).
-const WRITE_LIMIT: Duration = Duration::from_secs(60);
+/// The longest a quit lets a merge into a main checkout run, from the moment the quit began: the
+/// watchdog in lifecycle.rs holds the exit this long while a merge is half done, and not a moment more.
+pub const HARD_CAP: Duration = Duration::from_secs(30);
+/// The merge's own clock ends this long before the watchdog's, so an undo has room.
+const CAP_MARGIN: Duration = Duration::from_secs(4);
+/// A merge starts only with this much of the hard cap left: a clean merge takes a second or two, and
+/// a failed one needs the time to be undone.
+const MERGE_MIN: Duration = Duration::from_secs(8);
+/// A new file bigger than this is not committed by the quit (the workspace stays).
+const LARGE_FILE: u64 = 20 * 1024 * 1024;
+/// How many entries of one ignored folder are looked through for local files before giving up.
+const IGNORED_SCAN_LIMIT: usize = 20_000;
+/// The marker's file name in the app's data folder, and the empty folder git is told to look for hooks in.
+const MARKER_FILE: &str = "quit-merge-marker.json";
+const NO_HOOKS_DIR: &str = "quit-merge-no-hooks";
 
-/// True while a merge (or its undo) runs in a main checkout, so the quit waits for it to end.
-static MERGING: AtomicBool = AtomicBool::new(false);
+/// How many merges, undos and removals are under way in a main checkout: the quit waits for them.
+static BUSY: AtomicUsize = AtomicUsize::new(0);
+
+/// True while a merge (or its undo, or a removal) runs, so the quit waits for it to end.
+pub fn merging() -> bool {
+    BUSY.load(Ordering::SeqCst) > 0
+}
+
+/// Counts one step under way until it is dropped, a panic included.
+struct Busy<'a>(&'a AtomicUsize);
+
+impl<'a> Busy<'a> {
+    fn on(counter: &'a AtomicUsize) -> Self {
+        counter.fetch_add(1, Ordering::SeqCst);
+        Self(counter)
+    }
+}
+
+impl Busy<'static> {
+    fn start() -> Self {
+        Self::on(&BUSY)
+    }
+}
+
+impl Drop for Busy<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
 
 const OUT_OF_TIME: &str = "Kolux ran out of time while closing";
 const LOCKED: &str = "it is locked";
 const DETACHED: &str = "it is not on a branch";
-const OWN_BRANCH: &str = "it was opened on a branch that already existed (or a pull request), so it is left for you";
 const NO_MAIN: &str = "Kolux could not tell which branch is main";
-const BUSY: &str = "Kolux was still busy with this project";
+const BUSY_PROJECT: &str = "Kolux was still busy with this project";
+const UNFINISHED: &str = "a merge, cherry-pick, revert or rebase is unfinished in it";
+const CONFLICTED: &str = "it has files with unresolved conflicts";
+const WAS_CUT: &str = "Kolux was still tidying it when the app closed, so look at it";
 
 pub fn wanted(settings: &serde_json::Value) -> bool {
     settings[MERGE_ON_QUIT_SETTING].as_bool() != Some(false)
@@ -104,25 +162,42 @@ fn save_record(store: &Store, record: &Record) -> Result<(), String> {
     store.set(RECORD_KEY, &serde_json::to_string(record).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
-/// The deadline every step checks.
+/// The deadlines every step checks: the soft one (no new step starts near it) and the hard one (the
+/// quit's cap: a merge needs room before it, and a write is cut at it).
 #[derive(Clone, Copy, Debug)]
 pub struct Clock {
     deadline: Instant,
+    hard: Instant,
 }
 
 impl Clock {
     pub fn until(deadline: Instant) -> Self {
-        Self { deadline }
+        Self { deadline, hard: deadline }
+    }
+    pub fn with_hard(deadline: Instant, hard: Instant) -> Self {
+        Self { deadline, hard }
     }
     fn left(&self) -> Duration {
         self.deadline.saturating_duration_since(Instant::now())
     }
+    fn hard_left(&self) -> Duration {
+        self.hard.saturating_duration_since(Instant::now())
+    }
     fn may_start(&self) -> bool {
         self.left() >= MIN_TO_START
+    }
+    /// A merge also needs `MERGE_MIN` of the hard cap, so a cut one is rare and an undo has room.
+    fn may_merge(&self) -> bool {
+        self.may_start() && self.hard_left() >= MERGE_MIN
     }
     /// A read is cut at the deadline (with a floor, so a read that starts always gets a fair try).
     fn read_limit(&self) -> Duration {
         self.left().clamp(Duration::from_secs(1), Duration::from_secs(10))
+    }
+    /// A commit or merge that started runs to the hard cap (a cut merge could leave main half done),
+    /// less a second, and at least two seconds.
+    fn write_limit(&self) -> Duration {
+        self.hard_left().saturating_sub(Duration::from_secs(1)).max(Duration::from_secs(2))
     }
 }
 
@@ -136,8 +211,22 @@ fn read(args: &[&str], dir: &Path, clock: &Clock) -> Result<String, String> {
     crate::git::run_within(args, Some(dir), clock.read_limit())
 }
 
-fn write(args: &[&str], dir: &Path) -> Result<String, String> {
-    crate::git::run_within(args, Some(dir), WRITE_LIMIT)
+/// A write at quit: no hook runs (`core.hooksPath` is an empty folder, `--no-verify` where git has
+/// one), nothing is signed (a signing program may wait for a passphrase nobody is there to type),
+/// nothing prompts, and no editor opens. `GIT_EDITOR=:` is git's own no-op (`true` is not always on
+/// the path on Windows).
+fn write(args: &[&str], dir: &Path, clock: &Clock, hooks: &Path) -> Result<String, String> {
+    let hooks_path = format!("core.hooksPath={}", hooks.to_string_lossy().replace('\\', "/"));
+    let mut all: Vec<&str> = vec!["-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", "-c", &hooks_path];
+    all.extend_from_slice(args);
+    crate::git::run_within_env(&all, Some(dir), clock.write_limit(), &[("GIT_TERMINAL_PROMPT", "0"), ("GIT_EDITOR", ":")])
+}
+
+/// The empty folder the quit points `core.hooksPath` at.
+fn no_hooks(data_dir: &Path) -> Result<PathBuf, String> {
+    let dir = data_dir.join(NO_HOOKS_DIR);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{} could not be made: {e}", dir.display()))?;
+    Ok(dir)
 }
 
 /// How many commits `to` has that `from` lacks (both local branches).
@@ -176,26 +265,59 @@ fn projects_to_tidy(listed: Vec<Project>, origins: &serde_json::Map<String, serd
     out
 }
 
-/// Tidies every workspace Kolux made, as the module says, stopping cleanly at `clock`.
-pub fn run(git: &Git, store: &Mutex<Store>, terminals: &Terminals, clock: Clock) -> Outcome {
+/// What every step of one quit's tidy shares.
+struct Cx<'a> {
+    git: &'a Git,
+    store: &'a Mutex<Store>,
+    terminals: &'a Terminals,
+    clock: Clock,
+    data_dir: &'a Path,
+    /// The empty folder git looks for hooks in.
+    hooks: PathBuf,
+}
+
+/// Tidies every workspace Kolux made, as the module says, stopping cleanly at `clock`. `data_dir` is
+/// the app's data folder (the marker and the empty hooks folder live there). The app itself goes
+/// through `run_with` (it saves progress); this is the plain form the tests use.
+#[cfg(test)]
+pub fn run(git: &Git, store: &Mutex<Store>, terminals: &Terminals, clock: Clock, data_dir: &Path) -> Outcome {
+    run_with(git, store, terminals, clock, data_dir, &mut |_| {})
+}
+
+/// `run`, telling `progress` what is known after every workspace (and before each one starts, with
+/// that one listed as still being worked on), so a quit that is cut short leaves the notice for the
+/// next start.
+pub fn run_with(git: &Git, store: &Mutex<Store>, terminals: &Terminals, clock: Clock, data_dir: &Path, progress: &mut dyn FnMut(&Outcome)) -> Outcome {
     let (listed, origins) = match store.lock() {
         Ok(s) => (projects::load_projects(&s), projects::load_origins(&s)),
         Err(_) => return Outcome::default(),
     };
     let mut out = Outcome::default();
-    for project in projects_to_tidy(listed, &origins) {
-        tidy_project(git, store, terminals, &project, &origins, clock, &mut out);
+    let hooks = match no_hooks(data_dir) {
+        Ok(h) => h,
+        Err(_) => return out,
+    };
+    let cx = Cx { git, store, terminals, clock, data_dir, hooks };
+    let all = projects_to_tidy(listed, &origins);
+    let project_paths: Vec<PathBuf> = all.iter().map(|p| PathBuf::from(&p.path)).collect();
+    for project in &all {
+        tidy_project(&cx, project, &project_paths, &origins, &mut out, progress);
     }
     out
 }
 
-fn tidy_project(git: &Git, store: &Mutex<Store>, terminals: &Terminals, project: &Project, origins: &serde_json::Map<String, serde_json::Value>, clock: Clock, out: &mut Outcome) {
+fn tidy_project(cx: &Cx, project: &Project, project_paths: &[PathBuf], origins: &serde_json::Map<String, serde_json::Value>, out: &mut Outcome, progress: &mut dyn FnMut(&Outcome)) {
+    let clock = cx.clock;
     let repo = Path::new(&project.path);
     if !clock.may_start() {
         return;
     }
-    let Ok(all) = git.worktrees(repo) else { return };
-    let ours: Vec<Worktree> = projects::kolux_made(origins, all.clone()).into_iter().filter(|w| !w.is_main && Path::new(&w.path).is_dir()).collect();
+    let Ok(all) = cx.git.worktrees(repo) else { return };
+    // A folder that is itself a listed project (a worktree the user opened as a project) is theirs, not a workspace.
+    let ours: Vec<Worktree> = projects::kolux_made(origins, all.clone())
+        .into_iter()
+        .filter(|w| !w.is_main && Path::new(&w.path).is_dir() && !project_paths.iter().any(|p| projects::same_folder(p, Path::new(&w.path))))
+        .collect();
     if ours.is_empty() {
         return;
     }
@@ -207,7 +329,7 @@ fn tidy_project(git: &Git, store: &Mutex<Store>, terminals: &Terminals, project:
         Err(TryLockError::Poisoned(p)) => p.into_inner(),
         Err(TryLockError::WouldBlock) => {
             for w in &ours {
-                out.keep(project, w, BUSY);
+                out.keep(project, w, BUSY_PROJECT);
             }
             return;
         }
@@ -215,15 +337,22 @@ fn tidy_project(git: &Git, store: &Mutex<Store>, terminals: &Terminals, project:
     if repo.join(projects::PROJECT_LOCAL_DIR).is_dir() {
         let _ = projects::ensure_excluded(repo);
     }
-    let target = git.default_branch(repo).map(|b| b.strip_prefix("origin/").map(str::to_string).unwrap_or(b));
-    let ready = main_ready(all.iter().find(|w| w.is_main), target.as_deref(), &clock);
+    let target = target_branch(repo, project, &clock);
+    let main = all.iter().find(|w| w.is_main);
+    // Looked at again before each merge: an earlier one that could not be undone leaves main unready.
+    let ready = || main_ready(main, target.as_deref(), &clock);
     for w in &ours {
         if !clock.may_start() {
             out.keep(project, w, OUT_OF_TIME);
             continue;
         }
         let origin = origins.get(&projects::name_key(&w.path)).cloned().unwrap_or_default();
-        match tidy_one(git, store, terminals, project, w, &origin, target.as_deref(), &ready, &clock) {
+        // Listed first, so a quit cut short while this one is under way still names it at the next start.
+        out.keep(project, w, WAS_CUT);
+        progress(out);
+        let result = tidy_one(cx, project, w, &origin, target.as_deref(), &ready);
+        out.left.pop();
+        match result {
             Ok(merged) => {
                 if merged {
                     out.merged.push(w.path.clone());
@@ -232,12 +361,24 @@ fn tidy_project(git: &Git, store: &Mutex<Store>, terminals: &Terminals, project:
             }
             Err(why) => out.keep(project, w, why),
         }
+        progress(out);
     }
 }
 
+/// M6: the branch a merge goes into. The project's own saved base when it names a local branch, else
+/// origin's HEAD, else `main`, else `master`. Never "whatever the main checkout happens to be on":
+/// a checkout that is on another branch is kept with that reason (`main_ready`), not merged into.
+fn target_branch(repo: &Path, project: &Project, clock: &Clock) -> Option<String> {
+    let local = |b: &str| !b.is_empty() && read(&["rev-parse", "-q", "--verify", &format!("refs/heads/{b}")], repo, clock).is_ok();
+    let bare = |b: &str| b.strip_prefix("origin/").unwrap_or(b).to_string();
+    let explicit = project.base.as_deref().map(str::trim).filter(|b| !b.is_empty()).map(bare);
+    let origin_head = read(&["symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"], repo, clock).ok().filter(|b| !b.is_empty()).map(|b| bare(&b));
+    explicit.into_iter().chain(origin_head).chain(["main", "master"].map(String::from)).find(|b| local(b))
+}
+
 /// The main checkout's folder when a merge may go into it: on `target`, with no uncommitted changes
-/// to tracked files. Untracked files do not count: Git itself refuses a merge that would overwrite
-/// one, before it changes anything.
+/// to tracked files and no merge left open. Untracked files do not count: Git itself refuses a merge
+/// that would overwrite one, before it changes anything.
 fn main_ready(main: Option<&Worktree>, target: Option<&str>, clock: &Clock) -> Result<PathBuf, String> {
     let main = main.ok_or("Kolux could not find the project's main folder")?;
     let target = target.ok_or(NO_MAIN)?;
@@ -251,26 +392,44 @@ fn main_ready(main: Option<&Worktree>, target: Option<&str>, clock: &Clock) -> R
     if !status.trim().is_empty() {
         return Err("the main folder has changes that are not committed".into());
     }
+    if read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], &dir, clock).is_ok() {
+        return Err("a merge is unfinished in the main folder".into());
+    }
     Ok(dir)
 }
 
-/// One workspace: saved, merged when it has something new, then removed. Ok(true) when it was merged.
-#[allow(clippy::too_many_arguments)]
-fn tidy_one(git: &Git, store: &Mutex<Store>, terminals: &Terminals, project: &Project, w: &Worktree, origin: &serde_json::Value, target: Option<&str>, ready: &Result<PathBuf, String>, clock: &Clock) -> Result<bool, String> {
+/// One workspace: checked, saved, merged when it has something new, then removed. Ok(true) when it was merged.
+fn tidy_one(cx: &Cx, project: &Project, w: &Worktree, origin: &serde_json::Value, target: Option<&str>, ready: &dyn Fn() -> Result<PathBuf, String>) -> Result<bool, String> {
+    let clock = &cx.clock;
     if w.locked.is_some() {
         return Err(LOCKED.into());
     }
+    let (repo, here) = (Path::new(&project.path), Path::new(&w.path));
+    // B1: never save over a half-done merge, cherry-pick, revert or rebase (a rebase leaves the
+    // workspace on no branch, so this comes before that check): that would commit its conflict markers.
+    unfinished(here, clock)?;
     let Some(branch) = w.branch.as_deref() else { return Err(DETACHED.into()) };
-    // A branch the user opened (or a pull request's) is theirs to merge; Kolux never merges it for them.
-    if origin["existingBranch"] == true || origin["pr"].is_string() {
-        return Err(OWN_BRANCH.into());
-    }
-    let repo = Path::new(&project.path);
-    save_changes(Path::new(&w.path), clock)?;
     let target = target.ok_or(NO_MAIN)?;
+    let dirty = !read(&["status", "--porcelain"], here, clock).map_err(|e| format!("Kolux could not read its changes ({})", short(&e)))?.trim().is_empty();
+    let commits = ahead(repo, target, branch, clock)?;
+    // m2: main is looked at before anything is saved, so a main that cannot take the merge costs no "saved on quit" commit.
+    // A merge also needs room before the hard cap; without it nothing is saved either.
+    let main_dir = if dirty || commits > 0 {
+        if !clock.may_merge() {
+            return Err(OUT_OF_TIME.into());
+        }
+        Some(ready()?)
+    } else {
+        None
+    };
+    // M7: removal deletes ignored files too; ones that look like the user's own local files stop it.
+    local_files(here, clock)?;
+    if dirty {
+        save_changes(cx, here)?;
+    }
     let merged = if ahead(repo, target, branch, clock)? > 0 {
-        let main_dir = ready.as_ref().map_err(Clone::clone)?;
-        merge_into(git, repo, main_dir, target, branch, clock)?;
+        let main_dir = main_dir.ok_or_else(|| "Kolux could not tell whether main can take the merge".to_string())?;
+        merge_into(cx, repo, &main_dir, target, branch)?;
         true
     } else {
         false
@@ -281,70 +440,292 @@ fn tidy_one(git: &Git, store: &Mutex<Store>, terminals: &Terminals, project: &Pr
     if !clock.may_start() {
         return Err(OUT_OF_TIME.into());
     }
-    let check = projects::remove_check(git, project, &w.path).map_err(|e| format!("it could not be removed ({})", short(&e)))?;
-    projects::remove_with(git, store, terminals, project, &w.path, false, &check.stamp, None, false).map_err(|e| format!("it could not be removed ({})", short(&e)))?;
+    // The branch goes with the folder only when Kolux made it: one the workspace was moved onto stays.
+    let keep_branch = (!made_branch(repo, branch, origin, here, clock)).then_some(true);
+    // The folder goes as the last step and the quit waits for it, so it is never half removed.
+    let _removing = Busy::start();
+    let check = projects::remove_check(cx.git, project, &w.path).map_err(|e| format!("it could not be removed ({})", short(&e)))?;
+    projects::remove_with(cx.git, cx.store, cx.terminals, project, &w.path, false, &check.stamp, keep_branch, false).map_err(|e| format!("it could not be removed ({})", short(&e)))?;
     Ok(merged)
 }
 
-/// Commits everything in the workspace (untracked files too, ignored files not).
-fn save_changes(here: &Path, clock: &Clock) -> Result<(), String> {
-    let status = read(&["status", "--porcelain"], here, clock).map_err(|e| format!("Kolux could not read its changes ({})", short(&e)))?;
-    if status.trim().is_empty() {
-        return Ok(());
+/// B1: Err when the workspace is in the middle of a merge, cherry-pick, revert or rebase, or has files
+/// with unresolved conflicts. Each marker is looked for in the workspace's own git folder
+/// (`rev-parse --git-path`), which is not the same folder for a linked worktree.
+fn unfinished(here: &Path, clock: &Clock) -> Result<(), String> {
+    for name in ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "sequencer"] {
+        let at = read(&["rev-parse", "--git-path", name], here, clock).map_err(|e| format!("Kolux could not read its state ({})", short(&e)))?;
+        if here.join(at.trim()).exists() {
+            return Err(UNFINISHED.into());
+        }
+    }
+    let unmerged = read(&["ls-files", "-u"], here, clock).map_err(|e| format!("Kolux could not read its state ({})", short(&e)))?;
+    if unmerged.trim().is_empty() {
+        Ok(())
+    } else {
+        Err(CONFLICTED.into())
+    }
+}
+
+/// Whether the branch the workspace is on is the one Kolux made for it. The record names that branch
+/// (kept current when Kolux renames it); a branch renamed by another path is found in the branch's
+/// own reflog; a record from before the name was kept (or none) counts the placeholder name the
+/// workspace was made with. Anything else, a branch the workspace was moved onto, is not Kolux's.
+fn made_branch(repo: &Path, branch: &str, origin: &serde_json::Value, here: &Path, clock: &Clock) -> bool {
+    let before = names_before(repo, branch, clock);
+    let folder = here.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let placeholder = |name: &str| crate::scm::writers::is_placeholder(name, &folder);
+    match origin[projects::MADE_BRANCH_KEY].as_str() {
+        Some(made) => made == branch || before.iter().any(|n| n == made),
+        None => placeholder(branch) || before.iter().any(|n| placeholder(n)),
+    }
+}
+
+/// The names `branch` was renamed from, read from its reflog (`Branch: renamed refs/heads/a to refs/heads/b`).
+fn names_before(repo: &Path, branch: &str, clock: &Clock) -> Vec<String> {
+    let Ok(log) = read(&["reflog", "show", "--format=%gs", &format!("refs/heads/{branch}")], repo, clock) else { return Vec::new() };
+    log.lines().filter_map(|l| l.split_once("renamed refs/heads/")).filter_map(|(_, rest)| rest.split_once(" to refs/heads/")).map(|(old, _)| old.to_string()).collect()
+}
+
+/// Folders of build output and dependencies, which removal may delete without asking.
+const BUILD_FOLDERS: [&str; 16] = ["node_modules", "target", "dist", "build", "out", ".next", "__pycache__", ".venv", "venv", ".turbo", ".cache", "coverage", ".pytest_cache", ".mypy_cache", ".gradle", ".parcel-cache"];
+
+/// Whether an ignored file looks like one a person made for this checkout (settings, secrets, data).
+fn local_name(name: &str) -> bool {
+    let n = name.to_lowercase();
+    n.starts_with(".env") || n.contains(".local.") || n == "claude.local.md" || n.ends_with(".db") || n.ends_with(".sqlite") || n.ends_with(".sqlite3")
+}
+
+/// Whether a new file looks like it holds a password or key.
+fn secret_name(name: &str) -> bool {
+    let n = name.to_lowercase();
+    n == ".env" || n.starts_with(".env.") || n.ends_with(".pem") || n.ends_with(".key") || n.starts_with("id_rsa") || n.starts_with("id_ed25519") || n.contains("credentials") || n.contains("secret")
+}
+
+fn last_part(path: &str) -> &str {
+    path.trim_end_matches('/').rsplit('/').next().unwrap_or(path)
+}
+
+/// M7: Err when removal would delete ignored files that look like local settings, secrets or data
+/// (`.env*`, `*.local.*`, `CLAUDE.local.md`, `*.db`, `*.sqlite`) outside the build and dependency
+/// folders. Ignored output inside those is deleted without a question.
+fn local_files(here: &Path, clock: &Clock) -> Result<(), String> {
+    let listing = crate::git::bytes_within(&["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"], Some(here), clock.read_limit()).map_err(|e| format!("Kolux could not read its ignored files ({})", short(&e)))?;
+    let mut budget = IGNORED_SCAN_LIMIT;
+    for entry in String::from_utf8_lossy(&listing).split('\0').filter(|e| !e.is_empty()) {
+        if entry.trim_end_matches('/').split('/').any(|c| BUILD_FOLDERS.contains(&c)) {
+            continue;
+        }
+        let found = match entry.strip_suffix('/') {
+            Some(dir) => find_local(&here.join(dir), &mut budget)?.map(|f| f.strip_prefix(here).map(|p| p.display().to_string()).unwrap_or(f.display().to_string())),
+            None => local_name(last_part(entry)).then(|| entry.to_string()),
+        };
+        if let Some(file) = found {
+            return Err(format!("it holds an ignored file that looks like your own settings or data ({}), which removing the workspace would delete", file.replace('\\', "/")));
+        }
+    }
+    Ok(())
+}
+
+/// The first local-looking file under `dir`, leaving the build folders alone.
+fn find_local(dir: &Path, budget: &mut usize) -> Result<Option<PathBuf>, String> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Ok(None) };
+    for entry in entries.flatten() {
+        *budget = budget.checked_sub(1).ok_or("it holds too many ignored files to look through")?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let is_dir = entry.file_type().is_ok_and(|t| t.is_dir());
+        if is_dir {
+            if !BUILD_FOLDERS.contains(&name.as_str()) {
+                if let Some(found) = find_local(&entry.path(), budget)? {
+                    return Ok(Some(found));
+                }
+            }
+        } else if local_name(&name) {
+            return Ok(Some(entry.path()));
+        }
+    }
+    Ok(None)
+}
+
+/// Commits everything in the workspace (untracked files too, ignored files not). Err, with nothing
+/// staged, when a new file is a separate Git project (B2), looks like a password or key (M5), or is
+/// very large (M5).
+fn save_changes(cx: &Cx, here: &Path) -> Result<(), String> {
+    let clock = &cx.clock;
+    let new = crate::git::bytes_within(&["ls-files", "--others", "--exclude-standard", "-z"], Some(here), clock.read_limit()).map_err(|e| format!("Kolux could not read its changes ({})", short(&e)))?;
+    for entry in String::from_utf8_lossy(&new).split('\0').filter(|e| !e.is_empty()) {
+        // A folder with its own .git is listed as one entry with a trailing slash; staging it would record a link to a
+        // repository nobody can fetch, and removing the workspace would delete that repository's own commits.
+        if entry.ends_with('/') {
+            return Err(format!("it holds a separate Git project ({}), which cannot be saved as part of it", entry.trim_end_matches('/')));
+        }
+        if secret_name(last_part(entry)) {
+            return Err(format!("it holds a new file that looks like a password or key ({entry}), which Kolux will not save for you"));
+        }
+        let size = std::fs::metadata(here.join(entry)).map(|m| m.len()).unwrap_or(0);
+        if size > LARGE_FILE {
+            return Err(format!("it holds a very large new file ({entry}, {} MB), which Kolux will not save for you", size / (1024 * 1024)));
+        }
     }
     if !clock.may_start() {
         return Err(OUT_OF_TIME.into());
     }
     let failed = |e: String| format!("its changes could not be saved ({})", short(&e));
-    write(&["add", "-A"], here).map_err(failed)?;
+    write(&["add", "-A"], here, clock, &cx.hooks).map_err(failed)?;
+    // The same check again on what was really staged: a new link to another repository (mode 160000).
+    let staged = read(&["diff", "--cached", "--raw", "--no-renames"], here, clock).map_err(failed)?;
+    if let Some(link) = staged.lines().find_map(new_gitlink) {
+        let _ = write(&["reset", "-q"], here, clock, &cx.hooks);
+        return Err(format!("it holds a separate Git project ({link}), which cannot be saved as part of it"));
+    }
     // Only changes inside a submodule: nothing is staged, so there is nothing to commit here.
     if read(&["diff", "--cached", "--quiet"], here, clock).is_ok() {
         return Ok(());
     }
-    write(&["commit", "-q", "-m", SAVE_MESSAGE], here).map(drop).map_err(failed)
+    write(&["commit", "-q", "--no-verify", "-m", SAVE_MESSAGE, "-m", AUTOMATIC], here, clock, &cx.hooks).map(drop).map_err(failed)
+}
+
+/// The path of a new gitlink in one `diff --cached --raw` line (`:000000 160000 <sha> <sha> A<TAB>path`).
+fn new_gitlink(line: &str) -> Option<String> {
+    let (meta, path) = line.split_once('\t')?;
+    let mut fields = meta.trim_start_matches(':').split_whitespace();
+    let (old_mode, new_mode) = (fields.next()?, fields.next()?);
+    (old_mode == "000000" && new_mode == "160000").then(|| path.to_string())
 }
 
 /// Merges `branch` into `target` in the main checkout: a fast-forward when main has nothing of its
-/// own, else a merge commit, tried only when Git predicts no clash. A failure is undone.
-fn merge_into(git: &Git, repo: &Path, main_dir: &Path, target: &str, branch: &str, clock: &Clock) -> Result<(), String> {
-    if !clock.may_start() {
+/// own, else a merge commit, tried only when Git predicts no clash. A failure is undone. A marker in
+/// the app's data folder says what is under way until main is whole again, so a quit that is cut
+/// short is put right at the next start (`recover_at_start`).
+fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str) -> Result<(), String> {
+    let clock = &cx.clock;
+    if !clock.may_merge() {
         return Err(OUT_OF_TIME.into());
     }
     let before = read(&["rev-parse", "HEAD"], main_dir, clock).map_err(|e| format!("Kolux could not read the main folder ({})", short(&e)))?;
     let behind = ahead(repo, branch, target, clock)?;
     let theirs = format!("refs/heads/{branch}");
-    if behind > 0 && git.predicts_merges() && read(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], repo, clock).is_err() {
+    if behind > 0 && cx.git.predicts_merges() && read(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], repo, clock).is_err() {
         return Err(format!("its changes clash with {target}"));
     }
-    MERGING.store(true, Ordering::SeqCst);
+    let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), time: now_secs() };
+    note_merge(cx.data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
+    let _busy = Busy::start();
     let tried = if behind == 0 {
-        write(&["merge", "--ff-only", "-q", &theirs], main_dir)
+        write(&["merge", "--ff-only", "--no-verify", "-q", &theirs], main_dir, clock, &cx.hooks)
     } else {
-        write(&["merge", "--no-ff", "--no-edit", "-q", "-m", &format!("Kolux: merge {branch} on quit"), &theirs], main_dir)
+        write(&["merge", "--no-ff", "--no-edit", "--no-verify", "-q", "-m", &format!("Kolux: merge {branch} on quit"), "-m", AUTOMATIC, &theirs], main_dir, clock, &cx.hooks)
     };
-    let result = match tried {
-        Ok(_) => Ok(()),
-        Err(e) => Err(format!("it could not be merged into {target} ({}){}", short(&e), undo_merge(main_dir, &before, clock))),
-    };
-    MERGING.store(false, Ordering::SeqCst);
-    result
+    match tried {
+        Ok(_) => {
+            clear_marker(cx.data_dir);
+            Ok(())
+        }
+        Err(e) => {
+            let whole = undo_merge(main_dir, &before, clock, &cx.hooks);
+            if whole {
+                clear_marker(cx.data_dir);
+            }
+            let note = if whole { "" } else { ". The main folder may not be exactly as it was: look at it before you work there" };
+            Err(format!("it could not be merged into {target} ({}){note}", short(&e)))
+        }
+    }
 }
 
 /// Puts the main checkout back after a failed merge: an open merge is aborted, and changes a cut
-/// merge left are reset (the checkout had none of its own: `main_ready`). Says so when it could not.
-fn undo_merge(main_dir: &Path, before: &str, clock: &Clock) -> String {
+/// merge left are reset (the checkout had none of its own: `main_ready`). True when it is as it was.
+fn undo_merge(main_dir: &Path, before: &str, clock: &Clock, hooks: &Path) -> bool {
     if read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main_dir, clock).is_ok() {
-        let _ = write(&["merge", "--abort"], main_dir);
+        let _ = write(&["merge", "--abort"], main_dir, clock, hooks);
     }
     let head = || read(&["rev-parse", "HEAD"], main_dir, clock).ok();
     let clean = || read(&["status", "--porcelain", "--untracked-files=no"], main_dir, clock).is_ok_and(|s| s.trim().is_empty());
     if head().as_deref() == Some(before) && !clean() {
-        let _ = write(&["reset", "--merge"], main_dir);
+        let _ = write(&["reset", "--merge"], main_dir, clock, hooks);
     }
-    if head().as_deref() == Some(before) && clean() {
-        String::new()
+    head().as_deref() == Some(before) && clean()
+}
+
+/// What a merge in a main checkout leaves behind while it runs, so a start can tell a cut one.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct Marker {
+    #[serde(rename = "mainDir")]
+    main_dir: String,
+    #[serde(rename = "beforeSha")]
+    before_sha: String,
+    branch: String,
+    /// Seconds since 1970 when the merge began.
+    time: u64,
+}
+
+fn now_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+fn note_merge(data_dir: &Path, marker: &Marker) -> Result<(), String> {
+    std::fs::create_dir_all(data_dir).map_err(|e| e.to_string())?;
+    let file = data_dir.join(MARKER_FILE);
+    let tmp = data_dir.join(format!("{MARKER_FILE}.tmp"));
+    std::fs::write(&tmp, serde_json::to_string(marker).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, &file).map_err(|e| e.to_string())
+}
+
+fn clear_marker(data_dir: &Path) {
+    let _ = std::fs::remove_file(data_dir.join(MARKER_FILE));
+}
+
+fn read_marker(data_dir: &Path) -> Option<Marker> {
+    serde_json::from_str(&std::fs::read_to_string(data_dir.join(MARKER_FILE)).ok()?).ok()
+}
+
+/// At start: a merge the last quit began and never finished (the marker is still there) is put right.
+/// HEAD moved off where the marker says it was: the merge finished, nothing to do. HEAD still there
+/// with a merge open, a half-written index or a leftover `index.lock`: the lock is removed when it can
+/// only be the dead run's (it is not newer than the merge's start plus the quit's hard cap), and
+/// `git reset --merge` returns the checkout to how it was (it had no changes of its own: the merge
+/// only starts on a clean one). Returns what the start's notice should say, if anything.
+pub fn recover_at_start(data_dir: &Path) -> Vec<String> {
+    let Some(marker) = read_marker(data_dir) else {
+        clear_marker(data_dir); // an unreadable one is no use to anyone
+        return Vec::new();
+    };
+    let note = recover(data_dir, &marker);
+    clear_marker(data_dir);
+    note.into_iter().collect()
+}
+
+fn recover(data_dir: &Path, marker: &Marker) -> Option<String> {
+    let main = Path::new(&marker.main_dir);
+    if !main.is_dir() {
+        return None;
+    }
+    let clock = Clock::until(Instant::now() + Duration::from_secs(30));
+    let cut = |what: &str| Some(format!("Kolux was closing while it merged {} into {}, and {what}", marker.branch, marker.main_dir));
+    let Ok(head) = read(&["rev-parse", "HEAD"], main, &clock) else { return cut("could not look at that folder now: check it before you work there") };
+    if head != marker.before_sha {
+        return None; // the merge got as far as moving the branch: it finished
+    }
+    let open = read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main, &clock).is_ok();
+    let lock = read(&["rev-parse", "--git-path", "index.lock"], main, &clock).ok().map(|p| main.join(p.trim())).filter(|p| p.exists());
+    let clean = |clock: &Clock| read(&["status", "--porcelain", "--untracked-files=no"], main, clock).is_ok_and(|s| s.trim().is_empty());
+    if !open && lock.is_none() && clean(&clock) {
+        return None; // never got going, or was undone
+    }
+    if let Some(lock) = lock {
+        // Only the dead run can have made a lock this old: git processes end with the app.
+        let made = std::fs::metadata(&lock).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs());
+        let ours = made.is_some_and(|m| m <= marker.time + HARD_CAP.as_secs());
+        if !ours || std::fs::remove_file(&lock).is_err() {
+            return cut("a lock file in that folder is newer than the merge, so Kolux left it: look at it before you work there");
+        }
+    }
+    let Ok(hooks) = no_hooks(data_dir) else { return cut("could not put it back: look at it before you work there") };
+    let reset = write(&["reset", "--merge"], main, &clock, &hooks);
+    let whole = read(&["rev-parse", "HEAD"], main, &clock).is_ok_and(|h| h == marker.before_sha) && clean(&clock) && read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main, &clock).is_err();
+    if reset.is_ok() && whole {
+        cut("put the folder back the way it was before the merge")
     } else {
-        ". The main folder may not be exactly as it was: look at it before you work there".into()
+        cut("could not put it back the way it was: look at it before you work there")
     }
 }
 
@@ -401,44 +782,69 @@ pub fn notes(left: &[Left]) -> Vec<String> {
     out
 }
 
-/// The quit's merge, on its own thread so the WebView2 wait runs beside it. Returns what `finish`
-/// waits on; the thread saves the outcome and writes the log line itself.
-pub fn start(app: tauri::AppHandle) -> std::sync::mpsc::Receiver<()> {
+/// What `start` hands `finish`: the merge thread's end signal, and the instant past which nothing waits.
+pub struct Running {
+    done: std::sync::mpsc::Receiver<()>,
+    hard: Instant,
+}
+
+/// The quit's merge, on its own thread so the WebView2 wait runs beside it. The thread saves what it
+/// knows after every workspace, so a quit that gives up on it still leaves the notice, and writes
+/// the log line itself.
+pub fn start(app: tauri::AppHandle) -> Running {
     use tauri::Manager;
     let (tx, rx) = std::sync::mpsc::channel();
-    let clock = Clock::until(Instant::now() + BUDGET);
+    // The hard cap counts from when the quit began (the watchdog's first arming), the soft budget from now.
+    let began = crate::lifecycle::quit_began().unwrap_or_else(Instant::now);
+    let hard = (began + HARD_CAP).checked_sub(CAP_MARGIN).unwrap_or(began);
+    let clock = Clock::with_hard(Instant::now() + BUDGET, hard);
     std::thread::spawn(move || {
-        let out = run(&app.state::<Git>(), &app.state::<Mutex<Store>>(), &app.state::<Terminals>(), clock);
-        if let Ok(store) = app.state::<Mutex<Store>>().lock() {
-            if let Err(e) = save_outcome(&store, &out) {
-                if let Ok(dir) = app.path().app_data_dir() {
+        let Ok(dir) = app.path().app_data_dir() else {
+            let _ = tx.send(());
+            return;
+        };
+        let mut save = |out: &Outcome| {
+            if let Ok(store) = app.state::<Mutex<Store>>().lock() {
+                if let Err(e) = save_outcome(&store, out) {
                     crate::diag::write(&dir, &format!("quit merge: what it kept could not be saved ({e})"));
                 }
             }
-        }
-        if let Ok(dir) = app.path().app_data_dir() {
-            crate::diag::write(&dir, &out.line());
-        }
+        };
+        let out = run_with(&app.state::<Git>(), &app.state::<Mutex<Store>>(), &app.state::<Terminals>(), clock, &dir, &mut save);
+        save(&out);
+        crate::diag::write(&dir, &out.line());
         let _ = tx.send(());
     });
-    rx
+    Running { done: rx, hard }
 }
 
-/// Waits for `start`'s thread up to `WAIT`, and past it only while a merge is under way in a main
-/// checkout (the quit's watchdog still ends the process at its hard limit).
-pub fn finish(app: &tauri::AppHandle, done: std::sync::mpsc::Receiver<()>, started: Instant) {
+/// Waits for `start`'s thread up to `WAIT`, and past it only while a merge (or a removal) is under way,
+/// never past the hard cap (the quit's watchdog ends the process there too).
+pub fn finish(app: &tauri::AppHandle, running: Running, started: Instant) {
     use tauri::Manager;
-    if done.recv_timeout(WAIT.saturating_sub(started.elapsed())).is_ok() {
+    if wait_for_merge(&running.done, WAIT.saturating_sub(started.elapsed()), running.hard, merging) {
         return;
-    }
-    while MERGING.load(Ordering::SeqCst) {
-        if done.recv_timeout(Duration::from_millis(50)).is_ok() {
-            return;
-        }
     }
     if let Ok(dir) = app.path().app_data_dir() {
         crate::diag::write(&dir, "quit merge: still going at its deadline; the rest is tried at the next quit");
     }
+}
+
+/// Waits up to `first` for the merge thread to end, then (only while `busy` says a merge, an undo or
+/// a removal is under way) up to `hard`. True when the thread ended. A thread that died (a panic drops
+/// its sender) ends the wait at once: a closed channel is never polled in a loop.
+fn wait_for_merge(done: &std::sync::mpsc::Receiver<()>, first: Duration, hard: Instant, busy: impl Fn() -> bool) -> bool {
+    use std::sync::mpsc::RecvTimeoutError::Timeout;
+    let going = |d: Duration| matches!(done.recv_timeout(d), Err(Timeout));
+    if !going(first) {
+        return true;
+    }
+    while busy() && Instant::now() < hard {
+        if !going(Duration::from_millis(50)) {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]

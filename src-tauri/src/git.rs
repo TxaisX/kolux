@@ -1724,7 +1724,7 @@ fn run_within_raw(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration)
 
 /// git with a deadline, stdout byte for byte. Past the deadline git and every process it started
 /// are ended (GIT-070: the whole tree, not just git) and the error names the wait.
-fn bytes_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -> Result<Vec<u8>, String> {
+pub(crate) fn bytes_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -> Result<Vec<u8>, String> {
     let out = finished_within(args, cwd, limit)?;
     if out.status.success() {
         Ok(out.stdout)
@@ -1743,10 +1743,31 @@ pub(crate) fn read_exit(args: &[&str], cwd: Option<&Path>) -> Result<std::proces
 
 /// `bytes_within` before the exit code is read: the error is only "could not run" or the wait.
 fn finished_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -> Result<std::process::Output, String> {
+    finished_within_env(args, cwd, limit, &[])
+}
+
+/// `run_within` with extra environment variables for the one git process (the quit's merge sets
+/// `GIT_TERMINAL_PROMPT` and `GIT_EDITOR` so nothing can wait for a person). The same trust checks
+/// as every other run: the variables are added after them.
+pub(crate) fn run_within_env(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration, env: &[(&str, &str)]) -> Result<String, String> {
+    let out = finished_within_env(args, cwd, limit, env)?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(if err.is_empty() { format!("git {} failed ({})", args.join(" "), out.status) } else { err })
+    }
+}
+
+fn finished_within_env(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration, env: &[(&str, &str)]) -> Result<std::process::Output, String> {
     use std::io::Read;
     use std::process::Stdio;
     let _changed = WorktreeChange::watch(args);
-    let mut child = command_checked(args, cwd)?.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+    let mut command = command_checked(args, cwd)?;
+    for (name, value) in env {
+        command.env(name, value);
+    }
+    let mut child = command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
     let drain = |mut r: Box<dyn Read + Send>| {
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {

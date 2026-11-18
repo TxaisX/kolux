@@ -552,16 +552,25 @@ pub fn quit_watchdog<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     }
     let dir = app.path().app_data_dir().ok();
     arm_once(&WATCHDOG_ARMED, move || {
+        let began = *QUIT_BEGAN.get_or_init(std::time::Instant::now);
         std::thread::spawn(move || {
             let log = move || {
                 if let Some(dir) = dir {
-                    let (sleep, deadline) = (watchdog_sleep(quit_deadline()), quit_deadline());
-                    crate::diag::write(&dir, &format!("quit: still running {:.1} s after the window closed; exiting before the {} s deadline (APP-006)", sleep.as_secs_f64(), deadline.as_secs()));
+                    let deadline = quit_deadline();
+                    crate::diag::write(&dir, &format!("quit: still running {:.1} s after the window closed; exiting (APP-006: the {} s deadline, or {} s while a merge into a main folder runs)", began.elapsed().as_secs_f64(), deadline.as_secs(), crate::quit_merge::HARD_CAP.as_secs()));
                 }
             };
-            watchdog_run(quit_deadline(), log, || std::process::exit(0));
+            watchdog_run(quit_deadline(), crate::quit_merge::HARD_CAP, crate::quit_merge::merging, log, || std::process::exit(0));
         });
     });
+}
+
+/// When the quit began (the watchdog's first arming), for steps that budget against the whole quit.
+static QUIT_BEGAN: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// When the quit began, if the watchdog was armed (never on macOS, where there is none).
+pub fn quit_began() -> Option<std::time::Instant> {
+    QUIT_BEGAN.get().copied()
 }
 
 /// Window close and RunEvent::Exit (lib.rs) both arm the watchdog; the first arming wins so its deadline counts from the window going.
@@ -578,9 +587,14 @@ fn arm_once(flag: &AtomicBool, spawn: impl FnOnce()) -> bool {
 
 /// The watchdog body: sleep until `watchdog_sleep(deadline)`, log, exit, so the exit call lands inside the total
 /// `deadline`. The log write may stall on the profile drive (an oplock held elsewhere), so it runs detached
-/// and is waited for only briefly.
-fn watchdog_run(deadline: Duration, log: impl FnOnce() + Send + 'static, exit: impl FnOnce()) {
+/// and is waited for only briefly. While `hold` says a merge is half done in a main checkout (a cut
+/// merge leaves that folder in a state of its own), the exit waits for it, but never past `cap`.
+fn watchdog_run(deadline: Duration, cap: Duration, hold: impl Fn() -> bool, log: impl FnOnce() + Send + 'static, exit: impl FnOnce()) {
+    let began = std::time::Instant::now();
     std::thread::sleep(watchdog_sleep(deadline));
+    while hold() && began.elapsed() < watchdog_sleep(cap) {
+        std::thread::sleep(Duration::from_millis(50));
+    }
     let (done, wait) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         log();
@@ -807,11 +821,38 @@ mod tests {
         let deadline = Duration::from_secs(2);
         let start = std::time::Instant::now();
         let mut exited = None;
-        watchdog_run(deadline, || std::thread::sleep(Duration::from_secs(5)), || exited = Some(start.elapsed()));
+        watchdog_run(deadline, Duration::from_secs(30), || false, || std::thread::sleep(Duration::from_secs(5)), || exited = Some(start.elapsed()));
         let at = exited.expect("the watchdog exits");
         assert!(at >= deadline - WATCHDOG_LOG_WAIT - EXIT_MARGIN, "exit came {at:?}, before the sleep and log wait had run");
         // Lands near deadline - EXIT_MARGIN; the bound is the deadline itself so a loaded runner can't flake it.
         assert!(at < deadline, "exit came {at:?}; past the {deadline:?} deadline");
+    }
+
+    /// The quit's merge (quit_merge): a merge half done in a main checkout holds the exit past the
+    /// deadline, up to the cap, and never longer, however long the merge claims to run.
+    #[test]
+    fn the_quit_watchdog_waits_for_a_merge_up_to_the_cap_and_no_longer() {
+        let (deadline, cap) = (Duration::from_secs(2), Duration::from_secs(4));
+        let start = std::time::Instant::now();
+        let merging_until = start + Duration::from_millis(1700);
+        let mut exited = None;
+        watchdog_run(deadline, cap, || std::time::Instant::now() < merging_until, || {}, || exited = Some(start.elapsed()));
+        let at = exited.expect("the watchdog exits");
+        assert!(at >= Duration::from_millis(1700), "a merge was under way until 1.7 s: exit came {at:?}");
+        assert!(at < deadline, "the merge ended before the deadline's sleep: no extra wait ({at:?})");
+
+        let start = std::time::Instant::now();
+        let mut exited = None;
+        watchdog_run(deadline, cap, || true, || {}, || exited = Some(start.elapsed()));
+        let at = exited.expect("the watchdog exits");
+        assert!(at >= watchdog_sleep(cap) && at < cap, "a merge that never ends is cut at the cap: exit came {at:?}");
+    }
+
+    /// The cap the quit's merge budgets against is the one the watchdog holds to, and it is a real extension.
+    #[test]
+    fn the_merge_cap_is_longer_than_the_quit_deadline() {
+        assert!(crate::quit_merge::HARD_CAP > quit_deadline(), "{:?} vs {:?}", crate::quit_merge::HARD_CAP, quit_deadline());
+        assert!(crate::quit_merge::HARD_CAP <= Duration::from_secs(30), "the cap stays modest: {:?}", crate::quit_merge::HARD_CAP);
     }
 
     /// APP-050 box 2 (row 979): sleep + log wait + teardown margin fit the quit deadline, and a normal quit (grok hooks, final save, WebView2 wait) finishes first.
