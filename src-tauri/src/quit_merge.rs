@@ -885,6 +885,9 @@ fn recover(data_dir: &Path, marker: &Marker, clock: &Clock) -> (Option<String>, 
     (note, cut_short)
 }
 
+/// A lock is the dead run's only when it is at least this old now (the previous quit ended before this launch began).
+const LOCK_MIN_AGE: Duration = Duration::from_secs(10);
+
 /// The notice for a recovery that finished: nothing is left to retry.
 const DONE_NOTE: &str = "put the folder back the way it was before the merge";
 
@@ -935,7 +938,9 @@ fn recover_with(data_dir: &Path, marker: &Marker, clock: &Clock) -> Option<Strin
     if let Some(lock) = lock {
         // Only the dead run can have made a lock this old: git processes end with the app.
         let made = std::fs::metadata(&lock).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_secs());
-        let ours = made.is_some_and(|m| m <= marker.time + HARD_CAP.as_secs());
+        // Not newer than the merge could have made it, and not fresh either: a lock made in the last few
+        // seconds (an editor's git at this very launch) is somebody else's, whatever the marker says.
+        let ours = made.is_some_and(|m| m <= marker.time + HARD_CAP.as_secs() && m + LOCK_MIN_AGE.as_secs() <= now_secs());
         if !ours || std::fs::remove_file(&lock).is_err() {
             return cut("a lock file in that folder is newer than the merge, so Kolux left it: look at it before you work there");
         }

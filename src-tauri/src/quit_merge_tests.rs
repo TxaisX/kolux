@@ -683,6 +683,12 @@ fn half_merged_main(base: &Path, repo: &Path, store: &Mutex<Store>) -> String {
     before
 }
 
+/// An index.lock as the dead run left it: made a minute ago (a lock younger than `LOCK_MIN_AGE` is never taken for it).
+fn dead_runs_lock(lock: &Path) {
+    fs::write(lock, "").unwrap();
+    fs::File::options().write(true).open(lock).unwrap().set_modified(SystemTime::now() - Duration::from_secs(60)).unwrap();
+}
+
 fn marker_for(repo: &Path, before: &str, time: u64) -> Marker {
     let theirs_sha = Command::new("git").args(["rev-parse", "-q", "--verify", "refs/heads/side"]).current_dir(repo).output().ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
     // What the quit notes: the tip's tree for a fast-forward, the predicted merge tree otherwise.
@@ -717,7 +723,7 @@ fn a_leftover_index_lock_from_the_cut_run_is_removed_during_recovery() {
     let (base, repo, store) = repo("b3-lock");
     let before = half_merged_main(&base, &repo, &store);
     let lock = repo.join(".git").join("index.lock");
-    fs::write(&lock, "").unwrap();
+    dead_runs_lock(&lock);
     note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
     let notes = recover_at_start(&data(&base));
     assert!(notes.len() == 1 && notes[0].contains("put the folder back"), "{notes:?}");
@@ -739,6 +745,20 @@ fn a_lock_newer_than_the_merge_could_have_made_is_left_for_the_user() {
     assert!(lock.exists(), "another program's lock is not removed");
     assert!(repo.join(".git").join("MERGE_HEAD").exists(), "and nothing else was touched");
     assert!(!marker_file(&base).exists());
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn a_lock_made_in_the_last_seconds_is_not_the_dead_runs_even_inside_the_merges_window() {
+    let (base, repo, store) = repo("b3-fresh-lock");
+    let before = half_merged_main(&base, &repo, &store);
+    let lock = repo.join(".git").join("index.lock");
+    fs::write(&lock, "").unwrap(); // an editor's git at this launch: made just now, well inside marker.time + the cap
+    note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("look at it"), "{notes:?}");
+    assert!(lock.exists(), "the fresh lock is not removed");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists(), "and nothing else was touched");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -873,7 +893,7 @@ fn the_dead_runs_own_lock_is_cleared_only_where_every_changed_path_is_the_merges
     // A fast-forward killed with its files written and the index not yet moved: c.txt staged from side, lock left.
     git_in(&repo, &["checkout", "-q", "side", "--", "c.txt"]);
     let lock = repo.join(".git").join("index.lock");
-    fs::write(&lock, "").unwrap();
+    dead_runs_lock(&lock);
     note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
     let notes = recover_at_start(&data(&base));
     assert!(notes.len() == 1 && notes[0].contains("put the folder back"), "{notes:?}");
@@ -882,7 +902,7 @@ fn the_dead_runs_own_lock_is_cleared_only_where_every_changed_path_is_the_merges
     // The same lock with the user's own staged work in the folder: nothing is touched, not even the lock.
     git_in(&repo, &["checkout", "-q", "side", "--", "c.txt"]);
     stage_users_work(&repo);
-    fs::write(&lock, "").unwrap();
+    dead_runs_lock(&lock);
     note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
     let notes = recover_at_start(&data(&base));
     assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
@@ -892,7 +912,7 @@ fn the_dead_runs_own_lock_is_cleared_only_where_every_changed_path_is_the_merges
     // Only the lock left (nothing changed): it goes quietly.
     fs::remove_file(&lock).unwrap();
     git_in(&repo, &["reset", "-q", "--hard"]);
-    fs::write(&lock, "").unwrap();
+    dead_runs_lock(&lock);
     note_merge(&data(&base), &marker_for(&repo, &before, now_secs())).unwrap();
     assert!(recover_at_start(&data(&base)).is_empty());
     assert!(!lock.exists());
@@ -982,7 +1002,7 @@ fn a_cut_fast_forward_whose_index_is_the_tips_tree_is_restored_but_not_over_a_st
     assert_eq!(git_in(&repo, &["diff", "--cached", "--name-only"]), "c.txt");
     // A cut checkout leaves its index.lock (no merge is open: a fast-forward has no MERGE_HEAD).
     let lock = repo.join(".git").join("index.lock");
-    fs::write(&lock, "").unwrap();
+    dead_runs_lock(&lock);
     let m = marker_for(&repo, &before, now_secs());
     assert_eq!(m.expected_tree.as_deref(), Some(git_in(&repo, &["rev-parse", "side^{tree}"]).as_str()));
     note_merge(&data(&base), &m).unwrap();
@@ -994,6 +1014,7 @@ fn a_cut_fast_forward_whose_index_is_the_tips_tree_is_restored_but_not_over_a_st
     git_in(&repo, &["read-tree", "-u", "--reset", "side"]);
     fs::write(repo.join("c.txt"), "the user's edit\n").unwrap();
     git_in(&repo, &["add", "c.txt"]);
+    dead_runs_lock(&lock);
     note_merge(&data(&base), &m).unwrap();
     let notes = recover_at_start(&data(&base));
     assert!(notes.len() == 1 && notes[0].contains("look at the main folder"), "{notes:?}");
