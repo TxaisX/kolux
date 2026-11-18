@@ -714,13 +714,18 @@ fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str)
         return Err(format!("its changes clash with {target}"));
     }
     let tip = read(&["rev-parse", "--verify", &theirs], repo, clock).map_err(|e| format!("Kolux could not read the branch's tip ({})", short(&e)))?;
-    let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip), time: now_secs() };
+    // F5: the reads above took time (a merge-tree of a big project can take seconds): the room a merge
+    // needs before the hard cap is checked again right before it is noted and started.
+    if !clock.may_merge() {
+        return Err(OUT_OF_TIME.into());
+    }
+    let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip.clone()), time: now_secs() };
     note_merge(cx.data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
     let _busy = Busy::start();
     let tried = if behind == 0 {
-        write(&["merge", "--ff-only", "--no-verify", "-q", &theirs], main_dir, clock, &cx.hooks)
+        write(&["merge", "--ff-only", "--no-verify", "-q", &tip], main_dir, clock, &cx.hooks)
     } else {
-        write(&["merge", "--no-ff", "--no-edit", "--no-verify", "-q", "-m", &format!("Kolux: merge {branch} on quit"), "-m", AUTOMATIC, &theirs], main_dir, clock, &cx.hooks)
+        write(&["merge", "--no-ff", "--no-edit", "--no-verify", "-q", "-m", &format!("Kolux: merge {branch} on quit"), "-m", AUTOMATIC, &tip], main_dir, clock, &cx.hooks)
     };
     match tried {
         Ok(_) => {
