@@ -1002,6 +1002,26 @@ fn a_cut_fast_forward_whose_index_is_the_tips_tree_is_restored_but_not_over_a_st
 }
 
 #[test]
+fn a_recovery_the_cap_cut_short_keeps_the_marker_for_the_next_launch() {
+    let (base, repo, store) = repo("f1-cap");
+    let before = half_merged_main(&base, &repo, &store);
+    let m = marker_for(&repo, &before, now_secs());
+    // A clock that is already out: nothing could be looked at, so the run is cut short and says so.
+    let (note, cut_short) = recover(&data(&base), &m, &Clock::until(Instant::now()));
+    assert!(note.is_some() && cut_short, "{note:?}");
+    assert!(repo.join(".git").join("MERGE_HEAD").exists(), "nothing was touched");
+    // The same marker on a real clock finishes, and is cleared by recover_at_start.
+    note_merge(&data(&base), &m).unwrap();
+    let notes = recover_at_start(&data(&base));
+    assert!(notes.len() == 1 && notes[0].contains("put the folder back"), "{notes:?}");
+    assert!(!marker_file(&base).exists());
+    // A recovery that is not cut short reports no retry, whatever it says.
+    let (note, cut_short) = recover(&data(&base), &m, &Clock::until(Instant::now() + Duration::from_secs(60)));
+    assert!(note.is_none() && !cut_short, "{note:?}");
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
 fn the_marker_names_the_main_folder_the_sha_before_and_the_branch() {
     let base = temp("b3-marker-shape");
     note_merge(&data(&base), &Marker { main_dir: "C:/p".into(), before_sha: "abc".into(), branch: "fix".into(), theirs_sha: Some("def".into()), expected_tree: Some("abc".into()), time: 7 }).unwrap();
