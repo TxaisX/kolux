@@ -267,9 +267,7 @@ pub fn open(git: &Git, place: &Place, project: &Project, pr: &PrHead, fork: Opti
         .map(|n| crate::projects::workspace_path(place, project, &if n == 1 { stem.clone() } else { format!("{stem}-{n}") }))
         .find(|d| !d.exists())
         .ok_or("no free folder")?;
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("could not create {}: {e}", parent.display()))?;
-    }
+    crate::projects::make_workspace_parent(place, project, &dest)?;
     let dest_s = dest.to_string_lossy().to_string();
     // SESS-038: the same retry policy as a new workspace's
     if reuse {

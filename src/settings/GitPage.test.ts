@@ -90,3 +90,14 @@ test("F1 (job 56): the Own folder note says the pane header shows each agent's f
   expect(note).toContain("each pane&#x27;s header shows which folder it works in.");
   expect(note).not.toContain("each session there");
 });
+
+test("Txais 2026-11-17: the merge-on-quit switch sits with Where agents work, on by default, with its one-line note", () => {
+  const on = view({});
+  const card = on.slice(on.indexOf('data-section="agent-folders"'), on.indexOf('data-section="base"'));
+  expect(card).toContain('aria-label="Merge workspaces into main when Kolux closes"');
+  expect(card).toMatch(/aria-label="Merge workspaces into main when Kolux closes"[^>]*checked=""/);
+  expect(card).toContain("data-merge-on-quit-note");
+  expect(card).toContain("Nothing goes to GitHub.");
+  const off = view({ workspacesMergeOnQuit: false });
+  expect(off.slice(off.indexOf('data-section="agent-folders"'), off.indexOf('data-section="base"'))).not.toMatch(/aria-label="Merge workspaces into main when Kolux closes"[^>]*checked=""/);
+});

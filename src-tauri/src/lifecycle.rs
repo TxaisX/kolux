@@ -426,9 +426,10 @@ pub const ASK_LIMIT: Duration = Duration::from_secs(10);
 /// Once the main window is gone, the process ends by this deadline whatever still hangs.
 pub const QUIT_HARD_LIMIT: Duration = Duration::from_secs(15);
 
-/// The quit's hard deadline: enough for the final save and the WebView2 wait with room to spare.
+/// The quit's hard deadline: enough for the final save and then the WebView2 wait and the merge of
+/// Kolux's workspaces (quit_merge, which run side by side) with room to spare.
 pub fn quit_deadline() -> Duration {
-    QUIT_HARD_LIMIT.max(final_save::QUIT_DEADLINE + crate::tools::WEBVIEW_EXIT_WAIT + Duration::from_secs(2))
+    QUIT_HARD_LIMIT.max(final_save::QUIT_DEADLINE + crate::tools::WEBVIEW_EXIT_WAIT.max(crate::quit_merge::WAIT) + Duration::from_secs(2))
 }
 
 /// Close requests so far, and the latest one the page answered.
@@ -514,6 +515,11 @@ pub static EXIT_ASKED: std::sync::atomic::AtomicBool = std::sync::atomic::Atomic
 /// system says the session is shutting down, or no exit was asked for by the app or its last window.
 pub fn session_end(windows: bool, shutting_down: bool, exit_asked: bool) -> bool {
     windows && (shutting_down || !exit_asked)
+}
+
+/// Whether this exit is Windows ending the user's session (`session_end`, read now).
+pub fn ending_session() -> bool {
+    session_end(cfg!(windows), session_shutting_down(), EXIT_ASKED.load(Ordering::SeqCst))
 }
 
 #[cfg(windows)]

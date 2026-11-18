@@ -34,6 +34,7 @@ import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/mod
 import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
+import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "./mergeOnQuit";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
 import { ArrowRight, Bell, Chip, ChevronDown, Close, EyeOff, Funnel, Minus, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
 import { AddProject, StatusEditor, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
@@ -301,7 +302,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [visOwn, setVisOwn] = useState<VisSource[]>([]); // PROJ-042: the open project's own, over the global
   const [rootPath, setRootPath] = useState("");
   const [rootError, setRootError] = useState("");
-  const [place, setPlace] = useState<PlaceInfo>({ dir: "", flat: false, used: [], fromEnv: false });
+  const [place, setPlace] = useState<PlaceInfo>({ dir: "", flat: false, used: [], fromEnv: false, projectLocal: false });
   const [rootDraft, setRootDraft] = useState("");
   const [flatDraft, setFlatDraft] = useState(false);
   const [settingsFor, setSettingsFor] = useState<string | null>(null); // project id whose folder / base form is open
@@ -839,7 +840,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const p = await invoke<PlaceInfo>("workspaces_place_set", { dir, flat: flatDraft });
       setPlace(p);
       setRootDraft(p.dir);
-      say("ok", `workspaces go under ${p.dir}, ${p.flat ? "side by side" : "a folder per project"}`);
+      say("ok", p.projectLocal ? "workspaces go in a hidden folder inside each project" : `workspaces go under ${p.dir}, ${p.flat ? "side by side" : "a folder per project"}`);
     } catch (err) {
       fail(err);
     }
@@ -2373,7 +2374,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {settingsFor === p.id && (
             <div className="sb-form" data-project-settings={p.id}>
               <label>Workspaces folder for {p.name}</label>
-              <input aria-label="project workspaces folder" className="field" list="used-dirs" placeholder={`global: ${place.dir}`} value={dirDraft} onChange={(e) => setDirDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveProject(p)} />
+              <input aria-label="project workspaces folder" className="field" list="used-dirs" placeholder={place.projectLocal ? "a hidden folder inside the project" : `global: ${place.dir}`} value={dirDraft} onChange={(e) => setDirDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveProject(p)} />
               {hiddenList(p)}
               {ownVis(p)}
               <label>Base ref</label>
@@ -2635,7 +2636,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 </button>
               </div>
               <label>Workspaces folder{place.fromEnv && rootDraft === place.dir ? " (from KOLUX_WORKSPACES_DIR)" : ""}</label>
-              <input aria-label="workspaces folder" className="field" list="used-dirs" value={rootDraft} onChange={(e) => setRootDraft(e.target.value)} onKeyDown={rootKey} onBlur={() => rootDraft !== place.dir && saveRoot()} />
+              <input aria-label="workspaces folder" className="field" list="used-dirs" placeholder={place.projectLocal ? "empty: a hidden folder inside each project" : undefined} title={place.projectLocal ? "Empty: each project keeps its workspaces in its own .worktrees folder, which Git ignores." : undefined} value={rootDraft} onChange={(e) => setRootDraft(e.target.value)} onKeyDown={rootKey} onBlur={() => rootDraft !== place.dir && saveRoot()} />
               <label>Layout</label>
               <select aria-label="workspaces layout" className="field" value={flatDraft ? "flat" : "nested"} onChange={(e) => setFlatDraft(e.target.value === "flat")}>
                 <option value="nested">Nested: a folder per project</option>
@@ -2662,6 +2663,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 <input type="checkbox" checked={nest} onChange={(e) => onNest(e.target.checked)} />
                 Nest child workspaces under their parent
               </label>
+              <label className="check" title={MERGE_ON_QUIT_NOTE}>
+                <input type="checkbox" aria-label="merge workspaces into main when Kolux closes" checked={mergesOnQuit(settings)} onChange={(e) => onSetting(MERGE_ON_QUIT_FIELD, e.target.checked)} />
+                Merge workspaces into main when Kolux closes
+              </label>
+              <span className="note" data-merge-on-quit-note>{MERGE_ON_QUIT_NOTE}</span>
               {globalVis()}
             </div>
           )}

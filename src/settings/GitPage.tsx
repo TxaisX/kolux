@@ -2,6 +2,7 @@
 // then the gh login; custom text; or none), the default compare base, and whether a new
 // workspace refreshes its base first, and the order of the Source Control groups. PROJ-070: whether deleting one clean workspace asks first. T-116-a-fix moved the prefix and compare base here from the sidebar gear.
 import { OWN_FOLDERS_FIELD, ownFoldersOn } from "../projects/singleFolder";
+import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "../projects/mergeOnQuit";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { CONFIRM_DELETE_FIELD, asksBeforeDelete } from "../projects/deleting";
@@ -126,6 +127,11 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
             ? "On: in a Git project, each agent you launch works in its own folder (a Git worktree on its own branch, made on this computer; nothing goes to GitHub until you push). Agents no longer overwrite each other's files, and each one's changes are reviewed and merged on their own. The sidebar still lists only your project folders; each pane's header shows which folder it works in."
             : "Off: every agent works in the project's own folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other."}
         </p>
+        <label className="conn-switch">
+          <input type="checkbox" role="switch" aria-label="Merge workspaces into main when Kolux closes" checked={mergesOnQuit(settings)} onChange={(e) => void save({ [MERGE_ON_QUIT_FIELD]: e.target.checked })} />
+          Merge workspaces into main when Kolux closes
+        </label>
+        <p className="conn-detail" data-merge-on-quit-note>{MERGE_ON_QUIT_NOTE}</p>
       </section>
       <section className="conn-card" data-section="base">
         <h2 className="conn-name">Base branch</h2>

@@ -1038,18 +1038,90 @@ pub fn workspaces_dir(store: &Store) -> PathBuf {
     resolve_workspaces_dir(std::env::var(WORKSPACES_DIR_ENV).ok().as_deref(), store.settings()[WORKSPACES_DIR_SETTING].as_str())
 }
 
+/// Txais (2026-11-17): "temporary worktrees in the actual folders that we are in". With no folder
+/// saved (on the project or in settings) and no KOLUX_WORKSPACES_DIR, a project's workspaces sit
+/// side by side in this folder inside the project, which Git is told to ignore (`ensure_excluded`).
+pub const PROJECT_LOCAL_DIR: &str = ".worktrees";
+
+/// The folder the user chose for a project's workspaces (SET-032 / PROJ-026 precedence): the
+/// project's own, then the saved setting, then the environment variable. None means nothing was
+/// chosen, so the workspaces go in `PROJECT_LOCAL_DIR` inside the project. Blank counts as unset.
+pub fn chosen_workspaces_dir(own: Option<&str>, env: Option<&str>, setting: Option<&str>) -> Option<PathBuf> {
+    non_blank(own).or(non_blank(setting)).or(non_blank(env)).map(PathBuf::from)
+}
+
+/// The root and layout for a project at `project_path`: a chosen folder (relative counts from the
+/// project root) with the saved layout, else `<project>\.worktrees`, always flat (the folder is the
+/// project's own, so a folder per project inside it would only repeat the name).
+pub fn place_root(project_path: &Path, chosen: Option<PathBuf>, flat_saved: bool) -> (PathBuf, bool) {
+    match chosen {
+        Some(dir) => (project_path.join(dir), flat_saved),
+        None => (project_path.join(PROJECT_LOCAL_DIR), true),
+    }
+}
+
+/// Whether `place` is the project-local default for `project` (`PROJECT_LOCAL_DIR`).
+pub fn is_project_local(place: &Place, project: &Project) -> bool {
+    same_folder(&place.root, &Path::new(&project.path).join(PROJECT_LOCAL_DIR))
+}
+
+/// The lines in an exclude file that already keep `PROJECT_LOCAL_DIR` out of Git's view.
+const EXCLUDE_FORMS: [&str; 4] = [".worktrees", "/.worktrees", ".worktrees/", "/.worktrees/"];
+
+/// Adds `/.worktrees/` to the repository's own exclude list (`info/exclude` in the common Git
+/// folder, shared by every worktree), so the main checkout never shows the workspaces as new files
+/// and "add everything" never stages them. The project's tracked `.gitignore` is never touched.
+/// Idempotent: a line already there (with or without the slashes) is left as it is. Returns
+/// whether a line was added.
+pub fn ensure_excluded(repo: &Path) -> Result<bool, String> {
+    let common = crate::git::run(&["rev-parse", "--git-common-dir"], Some(repo))?;
+    let common = repo.join(common.trim());
+    let file = common.join("info").join("exclude");
+    let had = match std::fs::read_to_string(&file) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(format!("{} could not be read: {e}", file.display())),
+    };
+    if had.lines().any(|l| EXCLUDE_FORMS.contains(&l.trim())) {
+        return Ok(false);
+    }
+    let sep = if had.is_empty() || had.ends_with('\n') { "" } else { "\n" };
+    std::fs::create_dir_all(common.join("info")).map_err(|e| format!("{} could not be made: {e}", common.join("info").display()))?;
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file)
+        .and_then(|mut f| f.write_all(format!("{sep}# Kolux: workspaces made inside the project\n/{PROJECT_LOCAL_DIR}/\n").as_bytes()))
+        .map_err(|e| format!("{} could not be written: {e}", file.display()))?;
+    Ok(true)
+}
+
+/// Makes the folder a new workspace at `dest` goes in. In the project-local default, Git is told
+/// to ignore `.worktrees` first; a repository whose exclude list cannot be written gets no
+/// workspace there (its main checkout would otherwise list the workspace as new files).
+pub fn make_workspace_parent(place: &Place, project: &Project, dest: &Path) -> Result<(), String> {
+    if is_project_local(place, project) {
+        ensure_excluded(Path::new(&project.path)).map_err(|e| format!("Kolux could not tell Git to ignore the {PROJECT_LOCAL_DIR} folder ({e}). Choose a workspaces folder in Settings > Git, or fix that file."))?;
+    }
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("could not create {}: {e}", parent.display()))?;
+    }
+    Ok(())
+}
+
 /// The folder and layout for `project`'s workspaces (PROJ-025): the project's own folder when it
-/// has one, else the global setting, else the default; a relative folder counts from the
-/// project root (joining an absolute one leaves it as it is). It asks Git for the user name and
-/// checks the prefix, so commands read `settings` under the store lock and call this with the
-/// lock let go (T-442-b; `locked_place`).
+/// has one, else the global setting, else KOLUX_WORKSPACES_DIR, else `.worktrees` inside the
+/// project (`place_root`); a relative folder counts from the project root (joining an absolute one
+/// leaves it as it is). It asks Git for the user name and checks the prefix, so commands read
+/// `settings` under the store lock and call this with the lock let go (T-442-b; `locked_place`).
 pub fn place_from(project: &Project, settings: &serde_json::Value) -> Place {
-    let own = project.workspaces_dir.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(PathBuf::from);
     let user = || prefix_user(|| crate::git::run(&["config", "user.name"], Some(Path::new(&project.path))).ok(), crate::scm::gh_login);
     let (prefix, prefix_warning) = branch_prefix(settings[PREFIX_SETTING].as_str(), settings[PREFIX_CUSTOM_SETTING].as_str(), user, &git_accepts);
     let refresh = settings[REFRESH_BASE_SETTING].as_bool() == Some(true);
-    let dir = || resolve_workspaces_dir(std::env::var(WORKSPACES_DIR_ENV).ok().as_deref(), settings[WORKSPACES_DIR_SETTING].as_str());
-    Place { root: Path::new(&project.path).join(own.unwrap_or_else(dir)), flat: settings[LAYOUT_SETTING].as_str() == Some("flat"), prefix, prefix_warning, refresh }
+    let chosen = chosen_workspaces_dir(project.workspaces_dir.as_deref(), std::env::var(WORKSPACES_DIR_ENV).ok().as_deref(), settings[WORKSPACES_DIR_SETTING].as_str());
+    let (root, flat) = place_root(Path::new(&project.path), chosen, settings[LAYOUT_SETTING].as_str() == Some("flat"));
+    Place { root, flat, prefix, prefix_warning, refresh }
 }
 
 /// GIT-066: the name behind the default prefix: the configured git user name, else the gh login.
@@ -1418,9 +1490,7 @@ pub fn create_workspace_until(git: &Git, place: &Place, project: &Project, typed
         })
         .find(|(s, d)| !d.exists() && !git.branch_taken(repo, &format!("{}{s}", place.prefix)))
         .ok_or("no free name")?;
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("could not create {}: {e}", parent.display()))?;
-    }
+    make_workspace_parent(place, project, &dest)?;
     let new_branch = format!("{}{safe}", place.prefix);
     add_retrying(repo, &dest, Some(&new_branch), overtaken, || git.worktree_add(repo, &dest, &new_branch, &from)).map_err(explain_create_error)?;
     let mut warnings: Vec<String> = place.prefix_warning.iter().cloned().chain(refreshed).collect();
@@ -1707,9 +1777,7 @@ pub fn open_branch_workspace_until(git: &Git, place: &Place, project: &Project, 
         .map(|n| workspace_path(place, project, &if n == 1 { base.clone() } else { format!("{base}-{n}") }))
         .find(|d| !d.exists())
         .ok_or("no free folder")?;
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("could not create {}: {e}", parent.display()))?;
-    }
+    make_workspace_parent(place, project, &dest)?;
     let limit = crate::git::add_timeout(std::env::var("KOLUX_WORKTREE_ADD_TIMEOUT_MS").ok().as_deref());
     add_retrying(repo, &dest, None, overtaken, || crate::git::run_within(&["worktree", "add", &dest.to_string_lossy(), branch], Some(repo), limit).map(drop)).map_err(explain_create_error)?;
     let warnings = crate::include::bring_along(repo, &dest);
@@ -2875,13 +2943,19 @@ pub struct PlaceInfo {
     pub used: Vec<String>,
     /// True while KOLUX_WORKSPACES_DIR supplies the folder (nothing saved), so the field can say so.
     pub from_env: bool,
+    /// True when nothing is chosen, so each project's workspaces go in its own `.worktrees`
+    /// folder (`PROJECT_LOCAL_DIR`); `dir` is then empty, as the field shows the default.
+    pub project_local: bool,
 }
 
 fn place_info(store: &Store) -> PlaceInfo {
     let settings = store.settings();
+    let env = std::env::var(WORKSPACES_DIR_ENV).ok();
     let saved = non_blank(settings[WORKSPACES_DIR_SETTING].as_str()).is_some();
-    let from_env = !saved && non_blank(std::env::var(WORKSPACES_DIR_ENV).ok().as_deref()).is_some();
-    PlaceInfo { dir: workspaces_dir(store).display().to_string(), flat: settings[LAYOUT_SETTING].as_str() == Some("flat"), used: used_dirs(store), from_env }
+    let from_env = !saved && non_blank(env.as_deref()).is_some();
+    let project_local = chosen_workspaces_dir(None, env.as_deref(), settings[WORKSPACES_DIR_SETTING].as_str()).is_none();
+    let dir = if project_local { String::new() } else { workspaces_dir(store).display().to_string() };
+    PlaceInfo { dir, flat: settings[LAYOUT_SETTING].as_str() == Some("flat"), used: used_dirs(store), from_env, project_local }
 }
 
 #[tauri::command]
@@ -3074,7 +3148,13 @@ pub fn forget_gone_at_start(app: tauri::AppHandle) {
         let busy: Vec<String> = app.state::<crate::terminal::Terminals>().list().into_iter().filter_map(|(_, _, dir)| dir).collect();
         let dir = app.path().app_data_dir().ok();
         // PROJ-074: trash folders a run left behind are cleared (this is off the startup path).
-        let folders = trash_folders(&app.state::<Mutex<Store>>(), &app.state::<Git>(), &projects, &origins);
+        let mut folders = trash_folders(&app.state::<Mutex<Store>>(), &app.state::<Git>(), &projects, &origins);
+        // The `.worktrees` folders the last quit removed workspaces from (a start forgets the list).
+        if let Ok(store) = app.state::<Mutex<Store>>().lock() {
+            folders.extend(crate::quit_merge::swept_folders(&store));
+        }
+        folders.sort();
+        folders.dedup();
         for swept in folders.iter().map(|f| crate::git::sweep_trash(f)) {
             if let Some(dir) = dir.as_deref() {
                 for gone in &swept.gone {
@@ -3094,8 +3174,8 @@ pub fn forget_gone_at_start(app: tauri::AppHandle) {
     });
 }
 
-/// PROJ-074: the folders a trash folder can sit in: each workspaces folder in use, and the parent
-/// of every workspace Kolux made. Only names the trash uses are ever touched inside them.
+/// PROJ-074: the folders a trash folder can sit in: each workspaces folder in use (each project's
+/// `.worktrees` included), and the parent of every workspace Kolux made. Only names the trash uses are ever touched inside them.
 pub(crate) fn trash_folders(store: &Mutex<Store>, git: &Git, projects: &[Project], origins: &serde_json::Map<String, serde_json::Value>) -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = Vec::new();
     if let Ok(store) = store.lock() {
@@ -3104,6 +3184,8 @@ pub(crate) fn trash_folders(store: &Mutex<Store>, git: &Git, projects: &[Project
     }
     for p in projects {
         out.extend(p.workspaces_dir.iter().map(PathBuf::from));
+        // The project-local default: removed workspaces leave their trash beside the others there.
+        out.push(Path::new(&p.path).join(PROJECT_LOCAL_DIR));
         if let Ok(all) = git.worktrees(Path::new(&p.path)) {
             out.extend(kolux_made(origins, all).iter().filter_map(|w| Path::new(&w.path).parent().map(Path::to_path_buf)));
         }

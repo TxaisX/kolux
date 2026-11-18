@@ -1865,10 +1865,22 @@ fn workspaces_live_where_the_project_or_the_layout_says() {
     let repo = outer.join("app.git");
     init_repo(&repo);
     let mut project = add_project(&git, &store, &repo).unwrap();
-    // the default: the global folder, nested under the project's name without its .git ending
+    // the default (nothing saved anywhere): a `.worktrees` folder inside the project, side by side
+    if std::env::var(WORKSPACES_DIR_ENV).is_err() {
+        let place = place_for(&store, &project);
+        assert!(place.flat);
+        assert_eq!(workspace_path(&place, &project, "x"), repo.join(".worktrees").join("x"));
+        assert!(is_project_local(&place, &project));
+    }
+    // a global folder that was saved wins: nested under the project's name without its .git ending
+    let global = outer.join("global-ws");
+    let mut settings = store.settings();
+    settings[WORKSPACES_DIR_SETTING] = global.to_string_lossy().into_owned().into();
+    store.save_settings(&settings).unwrap();
     let place = place_for(&store, &project);
     assert!(!place.flat);
-    assert_eq!(workspace_path(&place, &project, "x"), workspaces_dir(&store).join("app").join("x"));
+    assert_eq!(workspace_path(&place, &project, "x"), global.join("app").join("x"));
+    assert!(!is_project_local(&place, &project));
     // a folder set for one project wins, a relative one resolved from the project root
     project.workspaces_dir = Some("ws".into());
     let place = place_for(&store, &project);
@@ -3869,4 +3881,107 @@ fn f05_a_root_keeps_its_slash_and_other_folders_still_lose_theirs() {
     assert!(!gone.exists());
     assert!(same_folder(Path::new(&format!("{}\\", gone.display())), &gone), "still the same with an end slash");
     assert!(!same_folder(&gone, &gone.with_file_name("made-up-2")), "a different gone folder is still different");
+}
+
+#[test]
+fn nothing_chosen_means_dot_worktrees_inside_the_project() {
+    assert_eq!(chosen_workspaces_dir(None, None, None), None);
+    assert_eq!(chosen_workspaces_dir(Some("  "), Some(""), Some("	")), None, "blank counts as not set");
+    let (root, flat) = place_root(Path::new(r"C:\repos\app"), None, false);
+    assert_eq!(root, Path::new(r"C:\repos\app").join(".worktrees"));
+    assert!(flat, "the folder is the project's own, so it is always side by side");
+}
+
+#[test]
+fn a_chosen_folder_beats_the_project_local_default_in_the_documented_order() {
+    // the project's own, then the saved setting, then the environment variable (SET-032 / PROJ-026)
+    let order = |own, env, setting| chosen_workspaces_dir(own, env, setting);
+    assert_eq!(order(Some("own"), Some("env"), Some("setting")), Some(PathBuf::from("own")));
+    assert_eq!(order(None, Some("env"), Some("setting")), Some(PathBuf::from("setting")), "a folder the user saved still wins over the variable");
+    assert_eq!(order(None, Some(" env "), None), Some(PathBuf::from("env")));
+    let (root, flat) = place_root(Path::new(r"C:\repos\app"), Some(PathBuf::from(r"D:\ws")), true);
+    assert_eq!((root, flat), (PathBuf::from(r"D:\ws"), true), "the saved layout applies to a chosen folder");
+    let (root, _) = place_root(Path::new(r"C:\repos\app"), Some(PathBuf::from("ws")), false);
+    assert_eq!(root, Path::new(r"C:\repos\app").join("ws"), "a relative folder counts from the project root");
+}
+
+#[test]
+fn the_exclude_line_is_added_once_to_the_repos_own_file_and_gitignore_is_never_touched() {
+    let base = temp("exclude");
+    let repo = base.join("r");
+    init_repo(&repo);
+    fs::write(repo.join(".gitignore"), "target/
+").unwrap();
+    git_in(&repo, &["add", ".gitignore"]);
+    git_in(&repo, &["commit", "-q", "-m", "ignore"]);
+    let exclude = repo.join(".git").join("info").join("exclude");
+    assert_eq!(ensure_excluded(&repo), Ok(true));
+    assert_eq!(ensure_excluded(&repo), Ok(false), "idempotent");
+    assert_eq!(ensure_excluded(&repo), Ok(false));
+    let text = fs::read_to_string(&exclude).unwrap();
+    assert_eq!(text.lines().filter(|l| l.trim() == "/.worktrees/").count(), 1, "{text}");
+    assert_eq!(fs::read_to_string(repo.join(".gitignore")).unwrap(), "target/
+", "the tracked .gitignore is left alone");
+    // a workspace inside it never shows up as new files in the main checkout
+    let ws = repo.join(".worktrees").join("x");
+    git_in(&repo, &["worktree", "add", "-q", &ws.to_string_lossy(), "-b", "x"]);
+    fs::write(ws.join("new.txt"), "n
+").unwrap();
+    assert_eq!(crate::git::run(&["status", "--porcelain"], Some(&repo)).unwrap().trim(), "");
+    // asked from the workspace itself, it finds the same shared file: nothing more is added
+    assert_eq!(ensure_excluded(&ws), Ok(false));
+    assert_eq!(fs::read_to_string(&exclude).unwrap(), text);
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn an_exclude_line_already_there_in_any_of_its_forms_is_left_as_it_is() {
+    for form in [".worktrees", "/.worktrees", ".worktrees/", "/.worktrees/"] {
+        let base = temp("exclude-forms");
+        let repo = base.join("r");
+        init_repo(&repo);
+        let exclude = repo.join(".git").join("info").join("exclude");
+        fs::create_dir_all(exclude.parent().unwrap()).unwrap();
+        let before = format!("# mine
+{form}");
+        fs::write(&exclude, &before).unwrap();
+        assert_eq!(ensure_excluded(&repo), Ok(false), "{form}");
+        assert_eq!(fs::read_to_string(&exclude).unwrap(), before);
+        let _ = fs::remove_dir_all(&base);
+    }
+    // an exclude file whose last line has no newline gets the new line on a line of its own
+    let base = temp("exclude-nonl");
+    let repo = base.join("r");
+    init_repo(&repo);
+    let exclude = repo.join(".git").join("info").join("exclude");
+    fs::create_dir_all(exclude.parent().unwrap()).unwrap();
+    fs::write(&exclude, "*.tmp").unwrap();
+    assert_eq!(ensure_excluded(&repo), Ok(true));
+    assert!(fs::read_to_string(&exclude).unwrap().starts_with("*.tmp
+"));
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn a_new_workspace_with_nothing_chosen_lands_in_dot_worktrees_and_the_main_checkout_stays_clean() {
+    if std::env::var(WORKSPACES_DIR_ENV).is_ok() {
+        return; // the variable would choose a folder
+    }
+    let git = Git::detect().unwrap();
+    let profile = temp("profile-local");
+    let store = Store::open(&profile).unwrap();
+    let outer = temp("repo-local");
+    let repo = outer.join("app");
+    init_repo(&repo);
+    let project = add_project(&git, &store, &repo).unwrap();
+    let place = place_for(&store, &project);
+    let made = create_workspace(&git, &place, &project, "amber-otter", None).unwrap();
+    assert!(same_folder(Path::new(&made.worktree.path), &repo.join(".worktrees").join("amber-otter")), "{}", made.worktree.path);
+    assert!(Path::new(&made.worktree.path).is_dir());
+    assert_eq!(crate::git::run(&["status", "--porcelain"], Some(&repo)).unwrap().trim(), "", "the main checkout does not list .worktrees as new");
+    remove_workspace(&git, &project, &made.worktree.path, false).unwrap();
+    drop(store);
+    for d in [profile, outer] {
+        let _ = fs::remove_dir_all(d);
+    }
 }

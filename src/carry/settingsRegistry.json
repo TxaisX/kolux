@@ -108,6 +108,7 @@
     "agentOwnFolders",
     "askWhatToOpen",
     "lastStart",
-    "keepWorkspaces"
+    "keepWorkspaces",
+    "workspacesMergeOnQuit"
   ]
 }

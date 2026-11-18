@@ -13,8 +13,8 @@ export function projectLabel(p: Pick<Project, "name" | "displayName">): string {
 export type Preview = { branch: string; folder: string };
 /** A workspace just made: the worktree, the ref it started from, a note when the saved base was gone (PROJ-028), and what could not be brought along (GIT-067). */
 export type Created = Worktree & { base: string; note: string | null; warnings: string[] };
-/** The global workspaces settings (PROJ-025): folder in use, layout, folders used before, and whether KOLUX_WORKSPACES_DIR supplies the folder (SET-032). */
-export type PlaceInfo = { dir: string; flat: boolean; used: string[]; fromEnv: boolean };
+/** The global workspaces settings (PROJ-025): folder in use, layout, folders used before, and whether KOLUX_WORKSPACES_DIR supplies the folder (SET-032). With nothing chosen (`projectLocal`) `dir` is empty and each project's workspaces go in its own `.worktrees` folder. */
+export type PlaceInfo = { dir: string; flat: boolean; used: string[]; fromEnv: boolean; projectLocal?: boolean };
 
 /** What a key does in the workspaces-folder field (SET-032): Enter saves, Escape puts the saved folder back, and nothing happens while an input method is still composing. */
 export function placeFieldAction(key: string, composing: boolean): "save" | "revert" | null {

@@ -1959,6 +1959,12 @@ impl Terminals {
         }
     }
 
+    /// Whether the sessions outlive the window: the background terminal service is linked
+    /// (`KOLUX_TERMINAL_SERVICE=1`), so quitting leaves them running. Read before `kill_all`.
+    pub fn outlive_window(&self) -> bool {
+        self.linked().is_some()
+    }
+
     /// T-184-b: waits (up to `limit`) while the link is starting, so a pane's question about its
     /// terminal is answered after the service's terminals were taken back.
     fn wait_linked(&self, limit: Duration) {

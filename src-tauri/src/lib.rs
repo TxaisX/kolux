@@ -81,6 +81,7 @@ mod tidy;
 mod resources;
 pub mod projects;
 mod prompt_answer;
+mod quit_merge;
 mod prompt_scan;
 pub mod scm;
 mod scm_open;
@@ -377,6 +378,10 @@ pub fn run() {
                 Ok(n) if n > 0 => diag::write(&dir, &format!("start: forgot {n} listed folder(s); the Start form asks what to open")),
                 Ok(_) => {}
                 Err(e) => diag::write(&dir, &format!("start: the folder list could not be cleared ({e}); it stays as it was")),
+            }
+            // Txais (2026-11-17): what the last quit kept instead of merging joins the start's notice, told once.
+            if let Ok(mut held) = app.state::<resources::recovery::StartupNotes>().0.lock() {
+                held.extend(quit_merge::take_notes(&store));
             }
             app.manage(Mutex::new(store));
             // APP-049 (PKG-5): the last good copy is refreshed a little after start-up instead of before
@@ -1111,10 +1116,29 @@ pub fn run() {
                 if let Ok(dir) = app.path().app_data_dir() {
                     diag::write(&dir, &report.line());
                 }
+                // Txais (2026-11-17): on a real quit, the workspaces Kolux made are saved, merged into
+                // main and removed (quit_merge), beside the WebView2 wait. Decided before kill_all,
+                // which lets go of the terminal service's link.
+                let merge = {
+                    let settings = app.state::<Mutex<Store>>().lock().map(|s| s.settings()).unwrap_or_default();
+                    quit_merge::skip_reason(&settings, lifecycle::restart_requested(), lifecycle::ending_session(), app.state::<Terminals>().outlive_window())
+                };
                 app.state::<Terminals>().kill_all();
+                let merging = match merge {
+                    None => Some((quit_merge::start(app.clone()), std::time::Instant::now())),
+                    Some(why) => {
+                        if let Ok(dir) = app.path().app_data_dir() {
+                            diag::write(&dir, &format!("quit merge: skipped ({why})"));
+                        }
+                        None
+                    }
+                };
                 // T-552: the window's WebView2 processes let go of the profile folder before the app
                 // ends (up to 3 s), so a relaunch right after finds it free.
                 let webviews_left = tools::wait_webviews_closed();
+                if let Some((done, started)) = merging {
+                    quit_merge::finish(app, done, started);
+                }
                 if let Ok(dir) = app.path().app_data_dir() {
                     if webviews_left > 0 {
                         diag::write(&dir, &format!("app exit: {webviews_left} WebView2 process(es) still running after 3 s (T-552)"));
