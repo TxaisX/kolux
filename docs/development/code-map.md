@@ -24,39 +24,31 @@ This page is the map of the repository. It names the files that matter for commo
 
 ## Rust
 
-The crate is `kolux`, library `kolux_lib`, in `src-tauri/`. The command-line program is the crate's `kolux-cli` binary (`src/bin/kolux-cli.rs`); the installer ships it as `bin\kolux.exe`, so the app and the command never share a file name (T-790).
+The crate is `kolux`, library `kolux_lib`, in `src-tauri/`. It builds one program, the desktop app; the `kolux` command line was removed in the 2026-11 slim-down.
 
 | Module | Responsibility |
 |---|---|
-| `src/main.rs` | Process dispatch: terminal service, uninstall PATH repair, agent install, desktop app |
+| `src/main.rs` | Process dispatch: the terminal service (`--terminal-service`) or the desktop app |
 | `src/lib.rs` | Tauri setup, command registration, startup, exit, background loops |
-| `src/bin/kolux-cli.rs` | The shipped command-line binary (installed as `bin\kolux.exe`), gated on `release-cli` |
-| `src/bin/kolux-dev.rs` | The development CLI binary |
-| `src/cli/` | Parser, command group handlers, local CLI server, `cli_register` |
 | `src/terminal.rs` | Window-side terminal registry, `terminal_*` commands, reattach, generations |
 | `src/pty.rs` | PTY layer, shell discovery, `portable-pty` session |
 | `src/pty_service.rs` | The detached terminal service and its endpoint file |
 | `src/pty_link.rs` | Window-side TCP link, attach, flow control |
 | `src/pty_pump.rs` | Output pumping and back-pressure |
-| `src/hooks.rs` | Agent hook listener, status mapping, protected-command answer |
-| `src/agent_hooks/` | Per-agent hook installers, backups, removal, saved events |
+| `src/hooks.rs` | Agent hook listener and status mapping |
+| `src/agent_hooks/` | Claude Code and Codex hook installers, backups, removal, saved events |
 | `src/state.rs` | SQLite store, settings file, atomic writes |
 | `src/secrets.rs` | DPAPI sealing, vault, secret settings, profile ACL |
 | `src/fence.rs` | File access rules and single-file grants |
-| `src/protected.rs` | Built-in protected-command rules and parser |
-| `src/protected_custom.rs` | User rules, project scopes, masking |
 | `src/update.rs` | Update check, download, signature verification, install |
 | `src/resources/update_guard.rs` | Authenticode publisher check |
 | `src/resources/recovery.rs` | Crash recovery, database backup, safe graphics, permissions |
-| `src/browser*.rs` | Browser engine, child webviews, preview, profiles, popups |
+| `src/webview_*.rs` | The main window's WebView2: start arguments, engine events, telling it when the window is hidden |
 | `src/scm*.rs`, `src/git.rs` | Source control, diffs, pull requests, checks |
-| `src/orchestration.rs`, `src/orchestration/` | Workers, tasks, mail, gates |
-| `src/automations.rs`, `src/automations/` | Timetables, event triggers, runs |
-| `src/artifacts.rs` | Artifact library and viewer scheme |
-| `src/skills/` | Skill scan, install, delete |
+| `src/skills.rs` | Skill scan for the chat composer's list |
 | `src/claude_accounts.rs`, `src/codex_accounts.rs` | Managed sign-ins and homes |
 | `src-tauri/capabilities/` | Tauri capability files |
-| `src-tauri/installer-hooks.nsh` | PATH add/remove and the long-PATH hand-off |
+| `src-tauri/installer-hooks.nsh` | Takes the old command line's `bin` folder off the PATH and deletes its files |
 
 The command table is the `generate_handler![...]` block in `src/lib.rs`. If you add a command, register it there or `scripts/invoke-contract.mjs` will fail.
 
@@ -72,20 +64,11 @@ The window is in `src/`.
 | `src/chrome/` | Top bar, status bar, sidebar frame, icons, screen switcher |
 | `src/terminal/` | Grid, tabs, xterm pane, reattach, renderer, layout save |
 | `src/status/` | Agent status, notifications, restored rows, status surfaces |
-| `src/board/` | Board lanes, cards, one status vocabulary |
-| `src/agents/` | Agents rail and Tower figures |
-| `src/tower/` | Tower screen and its own window |
-| `src/floor/` | Activity timeline |
-| `src/tasks/` | GitHub issues and pull requests |
-| `src/automations/` | Automation list, dialog, runs |
-| `src/skills/` | Skills page and installs |
-| `src/artifacts/` | Artifact page and viewer |
+| `src/agents/` | What is left of the Agents rail: saved agent names and other accounts' usage figures for panes |
 | `src/settings/` | Settings pages, registry, save plumbing, sync |
 | `src/onboarding/` | First-run wizard, guides, tours, help |
-| `src/editor/` | CodeMirror, Lexical, preview, PDF, diffs, explorer |
-| `src/browser/` | Browser pane, toolbar, child webview |
 | `src/scm/` | Source control, checks, review notes |
-| `src/projects/` | Projects, workspaces, CLI bridge |
+| `src/projects/` | Projects and workspaces |
 | `src/sessions/` | Past sessions and resume |
 | `src/usage/` | Plan limits, pills, token analytics |
 | `src/update/` | Update center and schedule |
@@ -140,7 +123,7 @@ These are build records. Read `PLAN.md` and `DECISIONS.md` before changing behav
 | New screen | `src/chrome/TopBar.tsx`, `src/shell/useWindowSave.ts`, page table |
 | New pane kind | `src/shell/window/Pane.tsx`, `src/lazy/panes.tsx` |
 | New agent | `src-tauri/src/agents.rs` CATALOGUE, `agent_hooks/`, install page, status mapping |
-| New setting | `src/settings/pages.ts`, settings registry, `useAppSettings`, Rust settings reader |
+| New setting | `src/settings/pages.ts`, `useAppSettings`, Rust settings reader |
 | New file operation | `src-tauri/src/fence.rs` first, then `files.rs`; never bypass the fence |
 | New local endpoint | Loopback bind, random token, document it in `docs/architecture/security.md` |
 | New release step | `scripts/release.mjs`, `.github/workflows/release.yml`, tests |
@@ -154,7 +137,6 @@ Do not hand-edit these:
 - `src-tauri/gen/schemas/` (generated Tauri schemas);
 - `src-tauri/release.conf.json` (generated in the release checkout);
 - `public/pdfjs/**` (copied files must stay byte-exact);
-- `src/editor/__fixtures__/*` (exact line endings on purpose);
 - any `docs/**/*.html` twin generated by `scripts/docs/build.mjs`.
 
 `pnpm-lock.yaml` and `Cargo.lock` are tracked. Change them through pnpm or Cargo, not by hand.

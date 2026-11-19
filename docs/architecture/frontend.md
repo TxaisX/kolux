@@ -45,14 +45,14 @@ The element tree is:
 
 | Module | Responsibility | Entry point |
 |---|---|---|
-| `agents` | Agents rail and pane chips | `src/agents/useRailAndTower.ts` |
+| `agents` | What is left of the Agents rail: saved agent names and other accounts' usage figures for panes | `src/agents/useRailAndTower.ts` |
 | `terminals` | Grid, tabs, panes, terminal session | `src/shell/window/Grid.tsx` |
 | `settings` | Settings pages and per-repo settings | `src/settings/SettingsPage.tsx` |
 | `onboarding` | First-run wizard, guides, tours | `src/onboarding/Wizard.tsx` |
 | `chat` | Transcript view of a terminal-backed session | `src/chat/ChatView.tsx` |
 | `scm` | Source control, PRs, checks, review notes | `src/scm/ChecksPanel.tsx` |
 | `sessions` | Past sessions and resume | `src/sessions/AgentsPanel.tsx` |
-| `projects` | Projects, workspaces, CLI bridge | `src/projects/ProjectsPanel.tsx` |
+| `projects` | Projects and workspaces | `src/projects/ProjectsPanel.tsx` |
 | `usage` | Plan limits, pills, token analytics | `src/usage/plan.ts` |
 | `update` | Update center and timetable | `src/update/UpdateCenter.tsx` |
 | `recovery` | Heartbeat, crash screen, error boundary | `src/recovery/RecoveryMount.tsx` |
@@ -123,6 +123,6 @@ The first-load JavaScript budget is 1,442,000 bytes (`CEILING` in `scripts/bundl
 - A new screen: add it to the screen union, the top bar switcher, and the page table; persist it through `lastScreen` or `openPage`.
 - A new pane kind: add it to `src/shell/window/Pane.tsx` and the lazy pane table.
 - A new status surface: read `paneStatus`, do not add a second derivation.
-- A new setting: add it to `src/settings/pages.ts` and the settings registry, then read it through `useAppSettings`.
+- A new setting: add it to `src/settings/pages.ts`, then read it through `useAppSettings`.
 - A new theme token: add it to `theme.ts` and the first-frame whitelist in `index.html`.
 - A new Tauri command: register it in `lib.rs` and add the TypeScript wrapper; `scripts/invoke-contract.mjs` will fail if the name does not match.
