@@ -58,11 +58,12 @@ test("C17-R1-01: Tower is a first screen the page can pick and the start honours
 });
 
 test("VIEW-005: the screen left at quit comes back, an unknown one falls back", () => {
-  expect(startScreen({ uiLook: "new", firstScreen: "agents", lastScreen: "board" })).toBe("board");
-  expect(startScreen({ uiLook: "new", lastScreen: "artifacts" })).toBe("artifacts");
+  expect(startScreen({ uiLook: "new", firstScreen: "tower", lastScreen: "board" })).toBe("board");
+  expect(startScreen({ uiLook: "new", lastScreen: "tower" })).toBe("tower");
+  expect(startScreen({ uiLook: "new", lastScreen: "artifacts" })).toBe("terminals"); // a removed screen falls back
   expect(startScreen({ uiLook: "classic", lastScreen: "inbox" })).toBe("inbox");
   expect(startScreen({ uiLook: "classic", lastScreen: "board" })).toBe("terminals");
-  expect(startScreen({ uiLook: "new", firstScreen: "agents", lastScreen: "settings" })).toBe("agents");
+  expect(startScreen({ uiLook: "new", firstScreen: "tower", lastScreen: "settings" })).toBe("tower");
   expect(startScreen({ uiLook: "new", lastScreen: 7 })).toBe("terminals"); // DT-C40
 });
 
@@ -85,14 +86,12 @@ test("VIEW-005: quick switches are one write, a close flushes the last one", () 
 
 test("VIEW-011: the page open at quit comes back", () => {
   expect(openPageAt({ openPage: "tasks" })).toBe("tasks");
-  expect(openPageAt({ openPage: "automations" })).toBe("automations");
-  expect(openPageAt({ openPage: "routing" })).toBe("routing");
+    expect(openPageAt({ openPage: "automations" })).toBe(null); // its page is gone
   expect(openPageAt({ openPage: "skills" })).toBe(null);
   expect(openPageAt({})).toBe(null);
 });
 
-test("VIEW-011: Skills open at quit is shown again at start, in either look, and an unknown value is not", () => {
-  expect(startScreen({ uiLook: "new", lastScreen: "skills" })).toBe("skills");
-  expect(startScreen({ uiLook: "classic", lastScreen: "skills" })).toBe("skills");
-  expect(startScreen({ uiLook: "new", lastScreen: "skill" })).toBe("terminals");
+test("VIEW-011: a Skills screen open at quit falls back now that the screen is gone", () => {
+  expect(startScreen({ uiLook: "new", lastScreen: "skills" })).toBe("terminals");
+  expect(startScreen({ uiLook: "classic", lastScreen: "skills" })).toBe("terminals");
 });

@@ -50,7 +50,7 @@ const picked = (c: FakeNode, label: string) => radios(c, label).filter((n) => n.
 const switcher = (c: FakeNode) => find(c, (n) => n.localName === "nav" && n.attrs.class === "switcher")[0];
 const switcherButtons = (c: FakeNode) => (switcher(c) ? find(switcher(c), (n) => n.localName === "button").map((n) => n.textContent.trim()) : []);
 
-test("box 1: a profile that existed before the redesign reads Classic (no Agents/Board/Terminals bar); choosing New shows the bar", async () => {
+test("box 1: a profile that existed before the redesign reads Classic (no Board/Terminals bar); choosing New shows the bar", async () => {
   expect(replay.legacy.uiLook).toBe("classic"); // what the start-up stamp left on a real pre-redesign profile
   const { c, saved } = await window_(replay.legacy);
   expect(picked(c, "Look")).toEqual(["Classic"]);
@@ -59,7 +59,7 @@ test("box 1: a profile that existed before the redesign reads Classic (no Agents
   await settle();
   expect(saved).toEqual([{ uiLook: "new" }]);
   expect(picked(c, "Look")).toEqual(["New"]);
-  expect(switcherButtons(c).slice(0, 3)).toEqual(["Agents", "Board", "Terminals"]);
+  expect(switcherButtons(c).slice(0, 2)).toEqual(["Board", "Terminals"]);
 });
 
 test("box 2: Board saved as the first screen with New, then a restart (profile reopened) opens on Board", async () => {
@@ -77,11 +77,11 @@ test("box 2: Board saved as the first screen with New, then a restart (profile r
   expect(picked(c, "Opens first")).toEqual(["Board"]);
 });
 
-test("under Classic the first-screen choice shows only Terminals and greys Agents and Board with a hint", async () => {
+test("under Classic the first-screen choice shows only Terminals and greys Board with a hint", async () => {
   const { c } = await window_(replay.legacy);
   expect(picked(c, "Opens first")).toEqual(["Terminals"]);
   const off = radios(c, "Opens first").filter((n) => "disabled" in n.attrs && n.attrs.disabled !== "false").map((n) => n.textContent.trim());
-  expect(off).toEqual(["Agents", "Board"]);
+  expect(off).toEqual(["Board"]);
 });
 
 test("C17-R1-01: Opens first keeps Tower, and the next start opens on Tower", async () => {
