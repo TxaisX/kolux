@@ -13,10 +13,6 @@ pub mod sendonce;
 pub mod pointer;
 /// ORCH-017 (T-172-d): worker-start waits for the window to run the trust question and the setup once.
 pub mod setup_gate;
-/// ORCH-038 (T-173-d): workers cut short by a quit or crash come back with an unknown outcome.
-pub mod restart;
-/// ORCH-034 (T-173-c): the orchestration store upgrades in place from every earlier layout of its own.
-pub mod upgrade;
 /// ORCH-062..064 (T-312): the runtime commands agents call for files, git and GitHub, past sessions
 /// and automations.
 pub mod runtime;

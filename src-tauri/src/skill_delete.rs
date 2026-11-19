@@ -1,9 +1,9 @@
 //! SKILL-023: deleting skills is all or nothing, even across a crash. Each item (a skill folder, a
 //! link to one, or its install receipt) is first renamed aside next to where it sits, with a
 //! journal in the app's folder saying what moved where. Only once every item is aside is the
-//! journal marked done and the set-aside copies removed. A failed rename puts everything back. At
-//! startup an unfinished journal is finished: not yet done means every item goes back, done means
-//! the removal is completed. The skills list (T-243) leaves set-aside items out.
+//! journal marked done and the set-aside copies removed. A failed rename puts everything back. The
+//! next delete finishes an unfinished journal first: not yet done means every item goes back, done
+//! means the removal is completed. The skills list (T-243) leaves set-aside items out.
 //!
 //! SKILL-022 (T-180): the Skills page's delete. A request names 1 to 512 skills by the path the
 //! list showed and the change time it showed. Each is planned first: bundled and plugin skills, a
@@ -107,9 +107,6 @@ struct Trust {
 }
 
 impl Trust {
-    fn startup(live: Vec<PathBuf>) -> Trust {
-        Trust { live, idle_ok: true }
-    }
     fn delete(live: &[PathBuf]) -> Trust {
         Trust { live: live.to_vec(), idle_ok: false }
     }
@@ -412,25 +409,8 @@ fn read(app_dir: &Path) -> Result<Journal, ReadError> {
     serde_json::from_str(&text).map_err(ReadError::Parse)
 }
 
-/// What the start-up recovery did.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Startup {
-    /// The lock was taken and the record (if any) was dealt with.
-    Recovered,
-    /// Another running instance holds the lock; its delete may be under way, so nothing was touched.
-    /// The next delete and the next start recover.
-    Skipped,
-    /// The lock file could not be opened, twice: logged, and recovered without the lock, because
-    /// leaving the record would hide a skill at every start. Another instance mid-delete cannot be
-    /// ruled out (see `startup_recover`).
-    RecoveredUnlocked,
-}
-
 #[cfg(test)]
 type Hook = Box<dyn FnOnce() + Send>;
-/// Tests: run once, for that app folder, right before start-up recovery tries the lock again.
-#[cfg(test)]
-static ON_RETRY: Mutex<Vec<(PathBuf, Hook)>> = Mutex::new(Vec::new());
 /// Tests: run once, keyed by an item's original path, right after a delete renamed that item (so
 /// before it renames the next one).
 #[cfg(test)]
@@ -450,49 +430,6 @@ fn run_hook(list: &Mutex<Vec<(PathBuf, Hook)>>, key: &Path) {
     };
     if let Some(hook) = hook {
         hook();
-    }
-}
-
-/// SKILL-023: what the app runs at start. An interrupted delete is undone or completed under the
-/// skill lock, so a second instance never puts back a delete the first one is still running.
-pub fn startup_recover(app_dir: &Path) -> Startup {
-    // FIX-6 (4): at start-up the record may act on the home skill folders of this environment and
-    // on folders shaped like a workspace skills folder; nothing else it names counts.
-    startup_recover_as(app_dir, &Trust::startup(skills::home_roots(&skills::Env::current())))
-}
-
-fn startup_recover_as(app_dir: &Path, trust: &Trust) -> Startup {
-    let mut tried = false;
-    loop {
-        match lock(app_dir) {
-            Ok(_one) => {
-                recover(app_dir, trust);
-                return Startup::Recovered;
-            }
-            Err(LockError::Busy) => {
-                crate::diag::write(app_dir, "skill delete: start-up recovery skipped, another instance holds the skill lock");
-                return Startup::Skipped;
-            }
-            // Busy is the usual answer while another instance holds the lock, but Failed does not
-            // rule one out: a backup or antivirus tool that opens the lock file without sharing, or
-            // sets it read-only, makes a second instance's open fail while the first is mid-delete.
-            // So one more try after a pause for a passing holder of the file; if it still fails,
-            // recovery runs without the lock, because leaving the record would hide a skill at every
-            // start. The only data that could then be put back or half-removed is what the other
-            // instance's user chose to delete.
-            Err(LockError::Failed(why)) if !tried => {
-                tried = true;
-                crate::diag::write(app_dir, &format!("skill delete: {why}; retrying the skill lock once"));
-                #[cfg(test)]
-                run_hook(&ON_RETRY, app_dir);
-                std::thread::sleep(PAUSE);
-            }
-            Err(LockError::Failed(why)) => {
-                crate::diag::write(app_dir, &format!("skill delete: {why}; recovering without it"));
-                recover(app_dir, trust);
-                return Startup::RecoveredUnlocked;
-            }
-        }
     }
 }
 
@@ -608,15 +545,10 @@ fn verdict(roots: &[PathBuf], trust: &Trust, from: Option<&Path>, aside: &Path) 
     }
 }
 
-/// At startup: an unfinished delete is undone (not yet done) or completed (done). Returns one line
-/// per entry that is in the way, or about the record itself when it could not be cleared (also
-/// written to the log); empty when the record is cleared or done.
-fn recover(app_dir: &Path, trust: &Trust) -> Vec<String> {
-    recover_with(app_dir, trust, true)
-}
-
-/// The same, for a caller that is a delete: it passes false for `say_kept` and says the kept lines
-/// itself, so one delete never says them twice.
+/// An unfinished delete is undone (not yet done) or completed (done). Returns one line per entry
+/// that is in the way, or about the record itself when it could not be cleared (also written to the
+/// log); empty when the record is cleared or done. A delete passes false for `say_kept` and says the
+/// kept lines itself, so one delete never says them twice.
 fn recover_with(app_dir: &Path, trust: &Trust, say_kept: bool) -> Vec<String> {
     let mut stuck = vec![];
     let path = app_dir.join(JOURNAL);
@@ -1144,6 +1076,18 @@ mod tests {
     }
 
     /// Start-up recovery that treats `root` as the one home skill folder.
+    impl Trust {
+        /// The trust the retired start-up recovery used: home folders, plus workspace-shaped ones.
+        fn startup(live: Vec<PathBuf>) -> Trust {
+            Trust { live, idle_ok: true }
+        }
+    }
+
+    /// A recovery that says its kept lines itself.
+    fn recover(app_dir: &Path, trust: &Trust) -> Vec<String> {
+        recover_with(app_dir, trust, true)
+    }
+
     fn trust(root: &Path) -> Trust {
         Trust::startup(vec![root.to_path_buf()])
     }
@@ -1763,48 +1707,6 @@ mod tests {
     }
 
     #[test]
-    fn fix3_start_up_recovery_under_the_lock_puts_a_hidden_skill_back() {
-        let t = temp("fix3-a");
-        let (app, root) = (t.join("app"), t.join("skills"));
-        not_done_record(&app, &root);
-        assert_eq!(startup_recover(&app), Startup::Recovered);
-        assert_eq!(names(&root), ["alpha"]);
-        assert!(!app.join(JOURNAL).exists());
-        assert!(lock(&app).is_ok(), "the lock is released again");
-    }
-
-    #[test]
-    fn fix3_start_up_recovery_leaves_everything_alone_and_says_so_while_another_instance_holds_the_lock() {
-        let t = temp("fix3-b");
-        let (app, root) = (t.join("app"), t.join("skills"));
-        let aside = not_done_record(&app, &root);
-        // FIX-4 (6): the other instance is a second handle holding the system lock on the file, not
-        // this process's own guard, so the Busy comes from the system lock as it would across processes.
-        std::fs::create_dir_all(&app).unwrap();
-        let other = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(app.join(LOCK)).unwrap();
-        other.lock().unwrap();
-        assert!(!HELD.lock().unwrap().contains(&app), "nothing in this process holds it");
-        assert_eq!(startup_recover(&app), Startup::Skipped);
-        assert_eq!(names(&root), [aside.file_name().unwrap().to_string_lossy().into_owned()], "nothing moved");
-        assert!(app.join(JOURNAL).exists());
-        assert!(log_of(&app).contains("skipped, another instance holds the skill lock"), "{}", log_of(&app));
-    }
-
-    #[test]
-    fn fix3_start_up_recovery_logs_and_still_recovers_when_the_lock_cannot_be_opened() {
-        let t = temp("fix3-c");
-        let (app, root) = (t.join("app"), t.join("skills"));
-        not_done_record(&app, &root);
-        // A folder where the lock file should be: the lock can never be opened.
-        std::fs::create_dir_all(app.join(LOCK)).unwrap();
-        assert!(matches!(lock(&app), Err(LockError::Failed(_))));
-        assert_eq!(startup_recover(&app), Startup::RecoveredUnlocked);
-        assert_eq!(names(&root), ["alpha"], "the skill is not left hidden");
-        assert!(!app.join(JOURNAL).exists());
-        assert!(log_of(&app).contains("recovering without it"), "{}", log_of(&app));
-    }
-
-    #[test]
     fn fix3_a_set_aside_copy_whose_original_came_back_counts_as_stuck_and_nothing_is_overwritten() {
         let t = temp("fix3-d");
         let (app, root) = (t.join("app"), t.join("skills"));
@@ -1918,24 +1820,6 @@ mod tests {
         drop(held);
         assert_eq!(delete(&app, &[beta]), Ok(Outcome::Deleted), "the same request goes through once the file is free");
         assert_eq!(names(&root), ["alpha"], "the hidden skill came back first");
-    }
-
-    /// FIX-SOON 3 (parse): a damaged record is named as such, and the message says that folders
-    /// named `.kolux-deleting-*` in the skill folders are hidden skills to rename back by hand.
-    #[test]
-    fn fix5_c_a_damaged_record_says_so_and_names_the_hidden_folders_to_rename_back() {
-        let t = temp("fix5-c2");
-        let (app, root) = (t.join("app"), t.join("skills"));
-        std::fs::create_dir_all(&app).unwrap();
-        std::fs::write(app.join(JOURNAL), "{not json").unwrap();
-        let beta = skill(&root, "beta");
-        let err = delete(&app, std::slice::from_ref(&beta)).unwrap_err();
-        assert!(err.starts_with("Nothing was deleted") && err.contains("damaged") && err.contains(&app.join(JOURNAL).display().to_string()), "{err}");
-        assert!(err.contains(ASIDE) && err.contains("rename"), "{err}");
-        assert!(!err.contains("could not be read") && !err.contains("try again"), "{err}");
-        assert!(root.join("beta").is_dir() && app.join(JOURNAL).exists());
-        assert_eq!(startup_recover(&app), Startup::Recovered, "start-up logs the damaged record and goes on");
-        assert!(log_of(&app).contains("damaged"), "{}", log_of(&app));
     }
 
     /// FIX-SOON 3 (rewrite): a not-done record whose copies were all put back but which could not be
@@ -2137,32 +2021,6 @@ mod tests {
         }
     }
 
-    /// FIX-6 (4), FIX-SOON 1 scenario A: at start-up only the home skill folders of this environment
-    /// and folders shaped like a workspace skills folder count; a record naming any other folder
-    /// never makes the app remove anything under it.
-    #[test]
-    fn fix6_b_start_up_acts_only_on_home_skill_folders_and_workspace_shaped_ones() {
-        let t = temp("fix6-b");
-        let (app, home, work) = (t.join("app"), t.join("home"), t.join("work"));
-        let claude = home.join(".claude").join("skills");
-        let ws = t.join("repo").join(".agents").join("skills");
-        let in_home = skill(&claude, ".kolux-deleting-1-2-a");
-        let in_ws = skill(&ws, ".kolux-deleting-1-2-b");
-        let in_work = skill(&work, ".kolux-deleting-1-2-c");
-        let live = skills::home_roots(&env(&home));
-        assert!(live.iter().any(|r| same(r, &claude)), "{live:?}");
-        assert_eq!(classify(&claude, &live), RootClass::Live);
-        assert_eq!(classify(&ws, &live), RootClass::Idle);
-        assert_eq!(classify(&work, &live), RootClass::Bogus, "an existing folder that is no skill folder");
-        assert_eq!(classify(&t.join("repo").join(".claude"), &live), RootClass::Bogus, "shape needs the skills folder itself");
-        write(&app, &Journal { done: true, moves: vec![], left: vec![in_home.clone(), in_ws.clone(), in_work.clone()], roots: vec![claude.clone(), ws.clone(), work.clone()], ..Default::default() }).unwrap();
-        assert_eq!(startup_recover_as(&app, &Trust::startup(live)), Startup::Recovered);
-        assert!(!in_home.exists() && !in_ws.exists(), "the home and workspace-shaped copies go");
-        assert!(in_work.is_dir(), "the copy under a plain folder stays, whatever the record says");
-        assert!(!app.join(JOURNAL).exists(), "dropped, so it is not reported again at every start");
-        assert!(log_of(&app).contains(&format!("dropped {} from the record and left it alone, it is not under a skill folder this app scans", in_work.display())), "{}", log_of(&app));
-    }
-
     /// FIX-6 (2): a delete carries a leftover only when it sits under a folder the delete scans; one
     /// under a workspace skills folder it does not scan stays on the record, untouched and logged,
     /// and the next start clears it. One under a folder that is no skill folder is dropped.
@@ -2240,62 +2098,6 @@ mod tests {
     }
 
     // Fix round 7 (stand-in review of d9e2c699).
-
-    /// FIX-7 (1), not-done half: a delete in a skill folder that has stopped being a home folder (here
-    /// a Hermes folder: the app-data one appeared since) crashed before its done mark. The hidden copy
-    /// is put back at the next start, because the root it recorded is an existing skills folder.
-    #[test]
-    fn fix7_a_a_not_done_put_back_goes_through_when_its_recorded_root_is_no_longer_a_home_root() {
-        let t = temp("fix7-a");
-        let (app, home) = (t.join("app"), t.join("home"));
-        let old = home.join(".hermes").join("skills");
-        let aside = skill(&old, ".kolux-deleting-1-2-alpha");
-        std::fs::create_dir_all(env(&home).local_app_data.unwrap().join("hermes")).unwrap();
-        let live = skills::home_roots(&env(&home));
-        assert!(!live.iter().any(|l| same(l, &old)), "the old Hermes folder is not a home root now: {live:?}");
-        write(&app, &Journal { done: false, moves: vec![(old.join("alpha"), aside.clone())], left: vec![], roots: vec![old.clone()], ..Default::default() }).unwrap();
-        assert_eq!(startup_recover_as(&app, &Trust::startup(live.clone())), Startup::Recovered);
-        assert_eq!(names(&old), ["alpha"], "the skill is back under its own name");
-        assert!(!app.join(JOURNAL).exists());
-        assert!(!log_of(&app).contains("dropped"), "{}", log_of(&app));
-        // A root that is no skills folder at all still puts nothing back: the copy is dropped.
-        let work = t.join("work");
-        let stray = skill(&work, ".kolux-deleting-1-2-beta");
-        write(&app, &Journal { done: false, moves: vec![(work.join("beta"), stray.clone())], left: vec![], roots: vec![work.clone()], ..Default::default() }).unwrap();
-        assert!(recover(&app, &Trust::startup(live)).is_empty());
-        assert!(stray.is_dir() && !work.join("beta").exists() && !app.join(JOURNAL).exists());
-    }
-
-    /// FIX-7 (1), done half: a finished delete's leftover under such a root is not dropped from the
-    /// record, at start-up or in a later delete: it stays, untouched, with its root, and is said once.
-    #[test]
-    fn fix7_b_a_done_entry_under_a_root_that_is_no_longer_a_home_root_is_kept_not_dropped() {
-        let t = temp("fix7-b");
-        let (app, home, root) = (t.join("app"), t.join("home"), t.join("skills"));
-        let old = home.join(".hermes").join("skills");
-        let hidden = skill(&old, ".kolux-deleting-1-2-alpha");
-        std::fs::create_dir_all(env(&home).local_app_data.unwrap().join("hermes")).unwrap();
-        let live = skills::home_roots(&env(&home));
-        assert!(!live.iter().any(|l| same(l, &old)), "{live:?}");
-        write(&app, &Journal { done: true, moves: vec![(old.join("alpha"), hidden.clone())], left: vec![], roots: vec![old.clone()], ..Default::default() }).unwrap();
-        assert_eq!(startup_recover_as(&app, &Trust::startup(live)), Startup::Recovered);
-        assert!(hidden.is_dir(), "nothing outside a skill folder the app scans is removed");
-        let kept = read(&app).expect("the record keeps the entry");
-        assert!(kept.done && kept.moves == [(old.join("alpha"), hidden.clone())] && kept.roots.iter().any(|r| same(r, &old)), "{:?} {:?}", kept.moves, kept.roots);
-        let log = log_of(&app);
-        assert_eq!(log.matches("kept").count(), 1, "{log}");
-        assert!(!log.contains("dropped"), "{log}");
-        // A later delete elsewhere carries it, with its root, and does not block on it.
-        let beta = skill(&root, "beta");
-        assert_eq!(delete(&app, &[beta]), Ok(Outcome::Deleted));
-        assert!(hidden.is_dir());
-        let kept = read(&app).expect("still on the record after a delete");
-        assert!(kept.left == [hidden.clone()] && kept.roots.iter().any(|r| same(r, &old)), "{:?} {:?}", kept.left, kept.roots);
-        assert!(!log_of(&app).contains("dropped"), "{}", log_of(&app));
-        // Once that folder is a home root again, the entry is removed as any other.
-        recover(&app, &Trust::startup(vec![old.clone()]));
-        assert!(!hidden.exists() && !app.join(JOURNAL).exists());
-    }
 
     /// FIX-7 (2): a record without skill folders (an older one) puts a copy back only when it sits in
     /// a folder scanned right now or one shaped like a workspace skills folder; a hand-edited one
@@ -2392,41 +2194,6 @@ mod tests {
     }
 
     // Fix round 8 (stand-in review of ccb2b3e0).
-
-    /// FIX-8 AFTER 1: a leftover kept because its skills folder is not scanned is counted at each
-    /// start-up (said once per start); a delete in between neither counts nor says it. At the
-    /// `STALE_STARTS`th start it is taken off the record, left on disk, and the hint is logged.
-    #[test]
-    fn fix8_b_a_stale_leftover_is_kept_for_a_few_starts_then_dropped_with_the_hint() {
-        let t = temp("fix8-b");
-        let (app, home, root) = (t.join("app"), t.join("home"), t.join("skills"));
-        let old = home.join(".hermes").join("skills");
-        let hidden = skill(&old, ".kolux-deleting-1-2-alpha");
-        std::fs::create_dir_all(env(&home).local_app_data.unwrap().join("hermes")).unwrap();
-        let live = skills::home_roots(&env(&home));
-        assert!(!live.iter().any(|l| same(l, &old)), "{live:?}");
-        write(&app, &Journal { done: true, moves: vec![(old.join("alpha"), hidden.clone())], left: vec![], roots: vec![old.clone()], ..Default::default() }).unwrap();
-        for n in 1..STALE_STARTS {
-            assert_eq!(startup_recover_as(&app, &Trust::startup(live.clone())), Startup::Recovered);
-            assert_eq!(read(&app).expect("still on the record").stale_counts, [(hidden.clone(), n)]);
-            assert_eq!(log_of(&app).matches("kept").count(), n as usize, "one kept line per start: {}", log_of(&app));
-            if n == 2 {
-                // A delete elsewhere carries it, says nothing about it and does not count it.
-                let beta = skill(&root, "beta");
-                assert_eq!(delete(&app, &[beta]), Ok(Outcome::Deleted));
-                let kept = read(&app).expect("still on the record after a delete");
-                assert!(kept.left == [hidden.clone()] && kept.stale_counts == [(hidden.clone(), 2)], "{:?} {:?}", kept.left, kept.stale_counts);
-                assert_eq!(log_of(&app).matches("kept").count(), 2, "{}", log_of(&app));
-            }
-        }
-        assert!(hidden.is_dir());
-        assert_eq!(startup_recover_as(&app, &Trust::startup(live)), Startup::Recovered);
-        assert!(hidden.is_dir(), "left on disk");
-        assert!(!app.join(JOURNAL).exists(), "off the record");
-        let log = log_of(&app);
-        assert!(log.contains(&format!("dropped {} from the record and left it alone", hidden.display())) && log.contains("look in the skill folders for folders named .kolux-deleting-"), "{log}");
-        assert_eq!(log.matches("kept").count(), (STALE_STARTS - 1) as usize, "{log}");
-    }
 
     /// FIX-8 AFTER 2: when a delete stops before it rewrites the record (an item gone, an item outside
     /// the scanned folders), what settling decided is still logged: the kept lines as they are, the
@@ -2528,42 +2295,6 @@ mod tests {
         assert!(!app.join(JOURNAL).exists(), "the record is back to nothing");
     }
 
-    /// FIX-9 AFTER 1: the count of start-ups belongs to each leftover, not to the record: a leftover
-    /// that only now sits under a skills folder that is not scanned starts at 1, while an older one
-    /// next to it is retired at its own 5th start.
-    #[test]
-    fn fix9_b_a_newly_stale_leftover_is_not_retired_with_an_older_one() {
-        let t = temp("fix9-b");
-        let (app, home) = (t.join("app"), t.join("home"));
-        let (old1, old2) = (home.join(".hermes").join("skills"), home.join(".other").join("skills"));
-        let first = skill(&old1, ".kolux-deleting-1-2-alpha");
-        let later = skill(&old2, ".kolux-deleting-1-2-beta");
-        std::fs::create_dir_all(env(&home).local_app_data.unwrap().join("hermes")).unwrap();
-        let live = skills::home_roots(&env(&home));
-        assert!(!live.iter().any(|l| same(l, &old1) || same(l, &old2)), "{live:?}");
-        write(&app, &Journal { done: true, moves: vec![(old1.join("alpha"), first.clone())], left: vec![], roots: vec![old1.clone()], ..Default::default() }).unwrap();
-        for _ in 1..STALE_STARTS {
-            assert_eq!(startup_recover_as(&app, &Trust::startup(live.clone())), Startup::Recovered);
-        }
-        // Only now does a second leftover join the record (as if its skills folder had just moved away).
-        let mut rec = read(&app).expect("the first is still on the record");
-        rec.left.push(later.clone());
-        rec.roots.push(old2.clone());
-        write(&app, &rec).unwrap();
-        let before = log_of(&app);
-        assert_eq!(startup_recover_as(&app, &Trust::startup(live)), Startup::Recovered);
-        let log = log_of(&app);
-        // Only what this last start wrote counts: the older leftover's first start already said "(start 1 of".
-        let new = log.strip_prefix(&before).unwrap_or(&log);
-        assert!(new.contains(&format!("dropped {} from the record", first.display())), "the older one is retired: {new}");
-        assert!(!new.contains(&format!("dropped {} from the record", later.display())), "the newer one is not: {new}");
-        assert!(first.is_dir() && later.is_dir(), "nothing is deleted");
-        let rec = read(&app).expect("the newer one stays on the record");
-        assert!(rec.left == [later.clone()], "{:?}", rec.left);
-        assert!(new.contains(&format!("kept {} on the record", later.display())) && new.contains("(start 1 of"), "{new}");
-        assert!(rec.stale_counts == [(later.clone(), 1)], "the newer one is on its own first start: {:?}", rec.stale_counts);
-    }
-
     /// FIX-9 AFTER 5: `run_hook` takes its hook out of the list under one lock, so threads that each
     /// register and run their own hook never run another's or miss their own.
     #[test]
@@ -2589,29 +2320,6 @@ mod tests {
         ran.dedup();
         assert_eq!(ran.len(), 16 * 300, "every hook ran exactly once");
         assert!(LIST.lock().unwrap().is_empty());
-    }
-
-    /// AFTER 1: a passing holder of the lock file (a backup or antivirus tool) gets one retry before
-    /// recovery runs without the lock.
-    #[cfg(windows)]
-    #[test]
-    fn fix4_start_up_recovery_tries_the_lock_once_more_before_going_without_it() {
-        use std::os::windows::fs::OpenOptionsExt;
-        let t = temp("fix4-e");
-        let (app, root) = (t.join("app"), t.join("skills"));
-        not_done_record(&app, &root);
-        let held = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).share_mode(0).open(app.join(LOCK)).unwrap();
-        assert!(matches!(lock(&app), Err(LockError::Failed(_))), "the file cannot be opened while it is held without sharing");
-        // FIX-5 AFTER 2: the holder lets go only once the first try has failed and the retry is
-        // about to happen, so the test proves the retry ran (and not a release that beat the first try).
-        ON_RETRY.lock().unwrap().push((app.clone(), Box::new(move || drop(held))));
-        let start = std::time::Instant::now();
-        assert_eq!(startup_recover(&app), Startup::Recovered, "the second try gets the lock");
-        assert!(start.elapsed() >= PAUSE, "the retry waited {:?}", start.elapsed());
-        assert!(log_of(&app).contains("retrying the skill lock"), "{}", log_of(&app));
-        assert!(ON_RETRY.lock().unwrap().iter().all(|(dir, _)| dir != &app), "the hook ran");
-        assert_eq!(names(&root), ["alpha"]);
-        assert!(!log_of(&app).contains("recovering without it"), "{}", log_of(&app));
     }
 
     #[test]
