@@ -366,7 +366,7 @@ pub fn diag_review(app: tauri::AppHandle) -> Result<String, String> {
     let path = dir.join(REVIEW);
     fs::write(&path, bundle(&dir, &app.package_info().version.to_string())).map_err(|e| format!("could not write the review copy: {e}"))?;
     let shown = path.to_string_lossy().into_owned();
-    crate::artifacts::system_open(&shown)?;
+    crate::links::system_open(&shown)?;
     Ok(shown)
 }
 

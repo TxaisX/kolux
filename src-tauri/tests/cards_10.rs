@@ -477,9 +477,8 @@ fn safe015_box2_master_switch_off_means_no_protected_command_asks() {
 }
 
 // ---- SAFE-021 / SAFE-022 (batch 4): only fake path strings; no opener, no explorer, no network is ever called ----
-use kolux_lib::artifacts::open_external;
 use kolux_lib::fence::{check, Fence};
-use kolux_lib::links::{fence as file_fence, fence_key, host_path, launchable, program_like, refuse_host};
+use kolux_lib::links::{fence as file_fence, fence_key, host_path, launchable, open_external, program_like, refuse_host};
 use kolux_lib::state::Store;
 use std::collections::HashSet;
 

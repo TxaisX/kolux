@@ -14,8 +14,9 @@ test("T-500: the release build's main web view has a policy that keeps pages to 
   expect(release).toContain("default-src 'self'");
   expect(release).toContain("script-src 'self'");
   expect(release).toContain("object-src 'none'");
-  expect(release).toMatch(/frame-src http:\/\/kolux-artifact\.localhost kolux-artifact:/);
   expect(release).not.toContain("unsafe-eval");
+  // No frame or media source of its own: both fall back to default-src 'self'.
+  expect(release).not.toMatch(/\b(?:frame|media)-src\b/);
 });
 
 // T-590 (L1-tauri.1, R07-browser.1): a web page in a browser tab could load Kolux's own screen in a
@@ -37,16 +38,4 @@ test("T-500: the dev server sends the same policy, so the policy is proven while
     expect(devRule, name).toBeTruthy();
     for (const src of rule.split(" ").slice(1)) expect(devRule, `${name} keeps ${src}`).toContain(src);
   }
-});
-
-// T-624: an image or a video artifact is shown straight in the main page from the artifact scheme, which
-// is another origin than 'self' (http://tauri.localhost), so img-src and media-src name that origin and
-// nothing else widens: default-src, connect-src and script-src stay as they were.
-test("T-624: the main page may show an artifact's picture and play its video from the artifact scheme, and nothing else widens", () => {
-  const rules = Object.fromEntries(release.split(";").map((r) => r.trim()).filter(Boolean).map((r) => { const [name, ...src] = r.split(" "); return [name, src]; }));
-  expect(rules["img-src"]).toEqual(expect.arrayContaining(["http://kolux-artifact.localhost", "kolux-artifact:"]));
-  expect(rules["media-src"]).toEqual(["http://kolux-artifact.localhost", "kolux-artifact:"]);
-  expect(rules["default-src"]).toEqual(["'self'"]);
-  expect(rules["script-src"]).toEqual(["'self'"]);
-  expect(rules["connect-src"]).not.toContain("http://kolux-artifact.localhost");
 });

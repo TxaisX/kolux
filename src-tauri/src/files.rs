@@ -1514,7 +1514,7 @@ pub fn open_in(path: String, command: Option<String>, fence: tauri::State<'_, cr
     }
     let dir = open_target(&path, |p| fence.allow(p, &store, &git, false))?;
     match command.as_deref() {
-        None => crate::artifacts::system_open(&dir.to_string_lossy()),
+        None => crate::links::system_open(&dir.to_string_lossy()),
         Some(c) => launch_in(&dir, c, std::env::var_os("PATH")),
     }
 }

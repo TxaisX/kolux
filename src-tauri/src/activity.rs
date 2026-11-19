@@ -229,7 +229,7 @@ fn with<T>(f: impl FnOnce(&mut Activity) -> T) -> T {
 }
 
 fn now_ms() -> u64 {
-    crate::artifacts::now_ms()
+    crate::links::now_ms()
 }
 
 /// Reads last run's counts; called once at start, before any pane reports.

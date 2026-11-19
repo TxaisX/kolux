@@ -329,7 +329,7 @@ pub(crate) async fn fetch_icon_within(clients: &IconClients, near: bool, url: Ur
 
 /// Whether a tab may go to `url` (T-500): http, https or the blank page only. A `*.localhost`
 /// host is where the app itself (tauri.localhost), its IPC (ipc.localhost) and every custom scheme
-/// (kolux-artifact.localhost) answer, and `app` is the app's own origin in a development build;
+/// (<scheme>.localhost) answer, and `app` is the app's own origin in a development build;
 /// Tauri counts a page at any of those as its own and opens every app command to it, so a tab
 /// never goes there. Plain `localhost` (a user's own dev server) is fine.
 pub fn allowed(url: &Url, app: Option<&Url>) -> Result<(), String> {

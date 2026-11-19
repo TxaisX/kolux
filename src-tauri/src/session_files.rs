@@ -136,7 +136,7 @@ pub async fn session_reveal(store: tauri::State<'_, Mutex<crate::state::Store>>,
 #[tauri::command]
 pub async fn session_open(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, id: String) -> Result<(), String> {
     let file = file_of(store, agent, id).await?;
-    crate::artifacts::system_open(&file.to_string_lossy())
+    crate::links::system_open(&file.to_string_lossy())
 }
 
 #[cfg(test)]

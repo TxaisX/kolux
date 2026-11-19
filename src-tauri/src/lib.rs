@@ -4,7 +4,6 @@ mod activity;
 mod agent_sleep;
 pub mod agents;
 mod app_look;
-pub mod artifacts;
 pub mod automations;
 mod badge;
 mod awake;
@@ -427,7 +426,6 @@ pub fn run() {
             app.manage(codex_accounts::SignIns::default());
             app.manage(install::Installs::default());
             app.manage(grok::GrokSignIn::default());
-            app.manage(artifacts::Library::new(dir.join("artifacts")));
             app.manage(update::Updates::default());
             // Without Git the app still opens, and the landing screen says so (APP-023).
             app.manage(startup_marks::joined(git)?.unwrap_or(git::Git { version: String::new() }));
@@ -521,21 +519,6 @@ pub fn run() {
             startup_marks::mark("setup");
             Ok(())
         })
-        })
-        // The Artifacts viewer (SKILL-036) loads stored pages through this scheme, one entry at a time.
-        // T-500: only the app's own web view may read artifacts; a Browser pane page gets nothing.
-        // T-624: asynchronous, so the file read (up to 8 MB of a ranged clip, or a whole page) runs on a
-        // blocking worker and never on the window's thread; the responder answers from there. `serve`
-        // itself takes one of 4 read slots, which bound how many reads run at once, not their size.
-        .register_asynchronous_uri_scheme_protocol(artifacts::SCHEME, |ctx, req, responder| {
-            if ctx.webview_label() != "main" {
-                responder.respond(tauri::http::Response::builder().status(403).body(b"not for this page".to_vec()).unwrap_or_default());
-                return;
-            }
-            let app = ctx.app_handle().clone();
-            tauri::async_runtime::spawn_blocking(move || {
-                responder.respond(artifacts::serve(&app.state::<artifacts::Library>(), &req));
-            });
         })
         // T-033-e (FIX-1): a reload of the main page (F5 / Ctrl+R) destroys no window, and the old
         // page never gets to release its git watches, so they are all let go as the new page starts
@@ -941,12 +924,7 @@ pub fn run() {
             files::dir_list,
             files::dir_ignored,
             files::path_kind,
-            artifacts::artifacts_list,
-            artifacts::artifacts_scan,
-            artifacts::artifact_add,
-            artifacts::artifact_remove,
-            artifacts::artifact_open,
-            artifacts::open_external,
+            links::open_external,
             links::open_path, links::file_grant, links::editor_open,
             fsops::fs_create,
             fsops::fs_rename,

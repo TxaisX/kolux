@@ -21,7 +21,6 @@ const TCP_CONNECT_ALL = new RegExp(TCP_CONNECT.source, "g");
 // http.request (Node) and urllib.request (Python) cover a script Kolux embeds for a vendor's extension or plugin.
 const CLIENTS = [/\bfetch\(\s*["'`]https?:/, /XMLHttpRequest/, /sendBeacon/, /new WebSocket\(/, /\breqwest::/, /tauri_plugin_updater/, /\bureq::/, /\bhyper::/, /\bhttp\.request\(/, /\burllib\.request\b/, TCP_CONNECT];
 const ALLOWED = {
-  "src-tauri/src/artifacts.rs": [/\breqwest::/], // the script CDNs, when saving an artifact for offline use
   "src-tauri/src/resources/provider_net.rs": [/\breqwest::/], // T-547: the Kimi and MiniMax balance check, only when the user presses Check now with a key they added
   "src-tauri/src/net.rs": [/\breqwest::/], // project and site icons (APP-070); moved here from browser.rs when the web pane was removed (2026-11-12)
   "src-tauri/src/update.rs": [/tauri_plugin_updater/], // GitHub Releases
@@ -32,7 +31,7 @@ const ALLOWED = {
 // The one loopback call each file may make, as exact text: it is cut out before the scan, so any
 // other fetch in the same file is still caught (an ALLOWED entry would pass the whole file).
 // A whole-file reqwest pass covers one client only: a second builder in the same file fails the audit.
-const ONE_CLIENT = { "src-tauri/src/artifacts.rs": "reqwest::Client::builder(", "src-tauri/src/resources/provider_net.rs": "reqwest::Client::builder(" };
+const ONE_CLIENT = { "src-tauri/src/resources/provider_net.rs": "reqwest::Client::builder(" };
 // net.rs (council FIX-4, Ruling 1; was browser.rs until the web pane went): its icon clients both come from one builder line, kept as
 // exact text with the public-only lookup and no proxy, and from exactly three calls of the function
 // that holds it; any other way of making a client (a bare constructor, an imported Client, the
