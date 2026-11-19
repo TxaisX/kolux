@@ -457,6 +457,8 @@ pub const RETIRED: &[(&str, &[&str])] = &[
     ("skip the artifact delete confirmation", &["skipArtifactDeleteConfirm", "skipArtifactDeleteConfirmation", "artifactDeleteConfirmSkip", "confirmArtifactDelete"]),
     ("skill sharing", &["skillSharing", "skillsSharing", "shareSkills"]),
     ("phone-pairing connection mode", &["pairingConnectionMode", "phonePairingMode", "mobilePairingMode"]),
+    // A secret taken off `secrets::SECRET_SETTINGS`: dropped here, so a sealed value left in a profile never reaches the window.
+    ("xAI key for Grok panes", &["xaiApiKey"]),
 ];
 
 /// A saved setting's name as the retired list spells it: a name a profile saved under the old
@@ -872,7 +874,7 @@ mod tests {
 
     #[test]
     fn t331_hid036_every_retired_setting_is_named_and_none_collides_with_a_live_one() {
-        assert_eq!(RETIRED.len(), 12, "the full list in the card's Compat line");
+        assert_eq!(RETIRED.len(), 13, "the full list in the card's Compat line, and the retired xAI key");
         for live in ["theme", "language", "artifacts", "skills", "rightSidebarOpen", "leftSidebarWidth", "sidebar", "scrollback", "agentStatusHooks", "confirmWorkspaceDelete"] {
             assert!(!is_retired(live), "{live} is a live setting");
         }

@@ -50,8 +50,6 @@ mod profile_move;
 #[cfg_attr(not(test), allow(dead_code))]
 mod keychain;
 mod agent_creds;
-pub mod grok;
-mod grok_status;
 pub mod install;
 mod keybindings;
 mod edit_menu;
@@ -434,7 +432,6 @@ pub fn run() {
             app.manage(claude_accounts::SignIns::default());
             app.manage(codex_accounts::SignIns::default());
             app.manage(install::Installs::default());
-            app.manage(grok::GrokSignIn::default());
             app.manage(artifacts::Library::new(dir.join("artifacts")));
             app.manage(update::Updates::default());
             // Without Git the app still opens, and the landing screen says so (APP-023).
@@ -896,10 +893,6 @@ pub fn run() {
             install::agent_can_install,
             install::agent_install,
             install::agent_install_cancel,
-            grok::grok_status,
-            grok::grok_sign_in,
-            grok::grok_cancel,
-            grok::grok_key_set,
             agent_creds::agent_creds_view,
             agent_creds::codex_sessions_home_set,
             agent_creds::minimax_credential_set,

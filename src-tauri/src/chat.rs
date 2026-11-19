@@ -812,7 +812,7 @@ fn env_of<'a>(pane_env: &'a [(String, String)], key: &str) -> Option<&'a str> {
 /// The environment variables whose value decides where an agent keeps its transcripts. A pane's
 /// own copies of these (the account it was started with) come first in `homes`.
 #[allow(dead_code)] // used by terminal.rs once evidence/chat-T-325-b-terminal.rs.patch is applied
-pub const HOME_KEYS: [&str; 5] = [crate::claude_accounts::CONFIG_ENV, crate::codex_accounts::HOME_ENV, crate::grok::HOME_ENV, "OMP_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"];
+pub const HOME_KEYS: [&str; 5] = [crate::claude_accounts::CONFIG_ENV, crate::codex_accounts::HOME_ENV, crate::agents::GROK_HOME_ENV, "OMP_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"];
 
 /// CHAT-007: the home folders to look in, in order. Claude (and OpenClaude, read the same way):
 /// the config folder the pane was started with, then Kolux's own CLAUDE_CONFIG_DIR, then
@@ -824,7 +824,7 @@ pub fn homes(agent: &str, pane_env: &[(String, String)], process_env: impl Fn(&s
     let (keys, dot): (&[&str], PathBuf) = match agent {
         "claude" | "openclaude" => (&[crate::claude_accounts::CONFIG_ENV], PathBuf::from(".claude")),
         "codex" => (&[crate::codex_accounts::HOME_ENV], PathBuf::from(".codex")),
-        "grok" => (&[crate::grok::HOME_ENV], PathBuf::from(".grok")),
+        "grok" => (&[crate::agents::GROK_HOME_ENV], PathBuf::from(".grok")),
         "omp" => {
             let root = process_env("PI_CONFIG_DIR").filter(|v| !v.trim().is_empty()).unwrap_or_else(|| ".omp".to_string());
             (&["OMP_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"], PathBuf::from(root.trim()).join("agent"))

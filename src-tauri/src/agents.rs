@@ -73,6 +73,18 @@ pub fn opencode_env(program: Option<&str>) -> Option<(&'static str, &'static str
     (program.and_then(crate::tools::credited_program) == Some("opencode")).then_some((OPENCODE_CONFIG_ENV, OPENCODE_TABS_OFF))
 }
 
+/// The Grok CLI's home variable (Grok's public authentication guide). Its home holds Grok's skills
+/// folder and its own sign-in, which a Grok pane uses as it is.
+pub const GROK_HOME_ENV: &str = "GROK_HOME";
+
+/// The Grok CLI's home: `GROK_HOME`, else `.grok` in the user's home.
+pub fn grok_home(env: Option<&str>, user: Option<&Path>) -> Option<PathBuf> {
+    match env.filter(|e| !e.trim().is_empty()) {
+        Some(e) => Some(PathBuf::from(e)),
+        None => user.map(|u| u.join(".grok")),
+    }
+}
+
 /// The 35 visible agents: the 34 of SESS-001 in its order, then OpenCode, which Txais brought back on
 /// 2026-10-28 (reverses SESS-043; appended so the SESS-001 numbering of the others does not move).
 /// Claude Agent Teams (SESS-042) is skipped (DECISIONS.md).
@@ -1099,6 +1111,15 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_grok_home_follows_grok_home_then_the_user_folder() {
+        let user = Path::new("C:/Users/me");
+        assert_eq!(grok_home(Some("D:/g"), Some(user)), Some(PathBuf::from("D:/g")));
+        assert_eq!(grok_home(Some("  "), Some(user)), Some(user.join(".grok")));
+        assert_eq!(grok_home(None, Some(user)), Some(user.join(".grok")));
+        assert_eq!(grok_home(None, None), None);
+    }
 
     #[test]
     fn program_finder_answers_as_find_program_does() {

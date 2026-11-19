@@ -8,7 +8,6 @@
 use kolux_lib::claude_accounts as ca;
 use kolux_lib::claude_key as ck;
 use kolux_lib::codex_accounts as cx;
-use kolux_lib::grok;
 use kolux_lib::install;
 use kolux_lib::routing;
 use kolux_lib::secrets;
@@ -401,7 +400,7 @@ fn acct013_box1_a_key_refused_mid_session_turns_the_card_to_key_expired_with_the
 
 // ---------------------------------------------------------------- ACCT-009
 
-const CLEAR_XAI: &str = "xai-FAKE-NOT-A-REAL-KEY-1111111111111111";
+const CLEAR_PROXY: &str = "http://me:FAKE-NOT-A-REAL-PASSWORD-1111@proxy.invalid:8080";
 const CLEAR_VAULT: &str = r#"{"claudeAiOauth":{"accessToken":"fake-access-CLEARTEXT-0000","refreshToken":"fake-refresh-CLEARTEXT-0000"}}"#;
 
 fn on_disk(dir: &Path) -> String {
@@ -415,14 +414,14 @@ fn acct009_box1_after_quit_the_settings_file_holds_no_key_text_and_reopening_is_
     {
         let store = Store::open(&dir).unwrap();
         ck::keep(&store, KEY, NOW).unwrap();
-        secrets::write_setting(&store, grok::KEY_FIELD, CLEAR_XAI).unwrap();
+        secrets::write_setting(&store, "httpProxy", CLEAR_PROXY).unwrap();
     } // Kolux quits: the store is dropped
     let raw = on_disk(&dir);
-    for secret in [KEY, CLEAR_XAI, "TEST-ONLY", "FAKE-NOT-A-REAL"] {
+    for secret in [KEY, CLEAR_PROXY, "TEST-ONLY", "FAKE-NOT-A-REAL"] {
         assert!(!raw.contains(secret), "{secret} must not be readable in settings.json");
     }
     let file: Value = serde_json::from_str(&raw).unwrap();
-    for field in [ck::TOKEN_FIELD, grok::KEY_FIELD] {
+    for field in [ck::TOKEN_FIELD, "httpProxy"] {
         assert!(secrets::is_sealed(file[field].as_str().unwrap()), "{field} is stored sealed");
     }
     // Reopen: a new store over the same folder.
@@ -430,10 +429,10 @@ fn acct009_box1_after_quit_the_settings_file_holds_no_key_text_and_reopening_is_
     assert_eq!(secrets::read_setting(&store, ck::TOKEN_FIELD).unwrap().as_deref(), Some(KEY));
     let status = ck::status_checked(&store.settings(), true, false, NOW + DAY);
     assert!(status.connected && !status.expired, "the Claude key is still connected after reopening");
-    assert_eq!(grok::connection(false, secrets::read_setting(&store, grok::KEY_FIELD).unwrap().is_some()), "key", "the xAI key too");
+    assert_eq!(secrets::read_setting(&store, "httpProxy").unwrap().as_deref(), Some(CLEAR_PROXY), "the proxy address too");
     // And the window never receives either key (lib.rs:131 sends settings through without_secrets).
     let shown = secrets::without_secrets(store.settings()).to_string();
-    assert!(!shown.contains(KEY) && !shown.contains(CLEAR_XAI) && !shown.contains("claudeOauthToken"));
+    assert!(!shown.contains(KEY) && !shown.contains(CLEAR_PROXY) && !shown.contains("claudeOauthToken"));
 }
 
 #[test]
@@ -444,7 +443,7 @@ fn acct009_box2_a_profile_with_clear_credentials_is_sealed_by_the_first_launch_a
     {
         let store = Store::open(&dir).unwrap();
         // A profile from the previous release: every secret stored in the clear.
-        store.save_settings(&json!({"claudeOauthToken": KEY, "claudeConnectionMode": "key", "claudeKeyCreatedAt": NOW, "xaiApiKey": CLEAR_XAI})).unwrap();
+        store.save_settings(&json!({"claudeOauthToken": KEY, "claudeConnectionMode": "key", "claudeKeyCreatedAt": NOW, "httpProxy": CLEAR_PROXY})).unwrap();
         std::fs::write(vault.join("claude-a1.json"), CLEAR_VAULT).unwrap();
         std::fs::write(vault.join("codex-c1.json"), r#"{"tokens":{"access_token":"fake-codex-CLEARTEXT-0000"}}"#).unwrap();
     }
@@ -454,7 +453,7 @@ fn acct009_box2_a_profile_with_clear_credentials_is_sealed_by_the_first_launch_a
     let report = secrets::sealing_pass(&store, &dir);
     assert_eq!((report.settings_sealed, report.files_sealed, report.files_moved, report.skipped), (2, 2, 0, false));
     let raw = on_disk(&dir);
-    assert!(!raw.contains(KEY) && !raw.contains(CLEAR_XAI), "settings.json no longer holds either key");
+    assert!(!raw.contains(KEY) && !raw.contains(CLEAR_PROXY), "settings.json no longer holds either secret");
     for name in ["claude-a1.json", "codex-c1.json"] {
         let text = std::fs::read_to_string(vault.join(name)).unwrap();
         assert!(secrets::is_sealed(text.trim_end()) && !text.contains("CLEARTEXT"), "{name} is sealed");
@@ -466,7 +465,7 @@ fn acct009_box2_a_profile_with_clear_credentials_is_sealed_by_the_first_launch_a
     assert_eq!(token.as_deref(), Some(KEY));
     assert!(ck::status_checked(&store.settings(), true, false, NOW + DAY).connected);
     assert_eq!(ck::pane_env(Some("claude"), &store.settings(), token), Some((ck::ENV, KEY.to_string())));
-    assert_eq!(secrets::read_setting(&store, grok::KEY_FIELD).unwrap().as_deref(), Some(CLEAR_XAI));
+    assert_eq!(secrets::read_setting(&store, "httpProxy").unwrap().as_deref(), Some(CLEAR_PROXY));
     assert_eq!(secrets::read_file(&vault.join("claude-a1.json"), &dir).unwrap().as_deref(), Some(CLEAR_VAULT));
     drop(store);
     // The pass runs once per profile: the next launch skips it and everything is still readable.
@@ -647,33 +646,6 @@ fn acct003_box2_an_install_that_hangs_is_stopped_at_the_limit_and_shown_as_faile
     assert!(failed.message.contains("15 minutes"));
     // MIRROR install.rs:238: agent_install hands LIMIT to run_hidden; the live spawn re-confirms the card.
     assert!(include_str!("../src/install.rs").contains("run_hidden(cmd, LIMIT, cancel,"));
-}
-
-// ---------------------------------------------------------------- ACCT-008
-
-#[test]
-fn acct008_the_xai_key_is_kept_sealed_once_never_shown_and_a_cli_sign_in_wins() {
-    let (dir, store) = profile("grok-key");
-    let typed = format!("  {CLEAR_XAI}  ");
-    // MIRROR grok.rs:219-227 (grok_key_set): trim, refuse empty, write sealed; the page is not sent it back.
-    let key = typed.trim();
-    assert!(!key.is_empty());
-    secrets::write_setting(&store.lock().unwrap(), grok::KEY_FIELD, key).unwrap();
-    let raw = on_disk(&dir);
-    assert!(!raw.contains(CLEAR_XAI) && !raw.contains("FAKE-NOT-A-REAL"), "sealed in the settings file");
-    assert!(secrets::is_sealed(serde_json::from_str::<Value>(&raw).unwrap()[grok::KEY_FIELD].as_str().unwrap()));
-    let store = store.lock().unwrap();
-    assert!(!secrets::without_secrets(store.settings()).to_string().contains("xaiApiKey"), "the window's copy of the settings has no key field");
-    let saved = secrets::read_setting(&store, grok::KEY_FIELD).unwrap();
-    assert_eq!(saved.as_deref(), Some(CLEAR_XAI));
-    // The card reports the key alone as connected, and the CLI sign-in when both exist.
-    assert_eq!(grok::connection(false, saved.is_some()), "key");
-    assert_eq!(grok::connection(true, saved.is_some()), "cli", "a CLI sign-in wins over a saved key");
-    assert_eq!(grok::connection(true, false), "cli", "a sign-in made earlier is connected with nothing to do");
-    assert_eq!(grok::connection(false, false), "none");
-    // A new Grok pane gets the saved key; a pane of another agent does not.
-    assert_eq!(grok::pane_env(Some("grok"), saved.clone()), Some((grok::KEY_ENV, CLEAR_XAI.to_string())));
-    assert_eq!(grok::pane_env(Some("claude"), saved), None);
 }
 
 // ---------------------------------------------------------------- ACCT-034

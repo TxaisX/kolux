@@ -9,7 +9,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 test("the note names each cleared key and says where to reconnect it", () => {
   expect(lostText(["claudeOauthToken"])).toBe("Your Claude 1-year key could not be opened on this computer, so it was cleared. Reconnect it in Settings › Accounts & keys.");
-  expect(lostText(["claudeOauthToken", "xaiApiKey"])).toBe("Your Claude 1-year key and xAI key could not be opened on this computer, so they were cleared. Reconnect them in Settings › Accounts & keys.");
+  expect(lostText(["claudeOauthToken", "httpProxy"])).toBe("Your Claude 1-year key and proxy address could not be opened on this computer, so they were cleared. Reconnect them in Settings › Accounts & keys.");
   expect(lostText(["somethingNew"])).toContain("A stored key could not be opened");
   expect(lostText([])).toBeNull();
 });

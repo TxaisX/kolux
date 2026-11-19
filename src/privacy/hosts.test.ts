@@ -87,7 +87,6 @@ test("t791: the list says what the installers, skills, artifacts ticker and pane
   expect(list).toContain("npx --yes skills");
   expect(list).toContain("every 3 seconds");
   expect(list).toContain("claude_code_oauth_token");
-  expect(list).toContain("xai_api_key");
   expect(list).toContain("avatars.githubusercontent.com");
 });
 

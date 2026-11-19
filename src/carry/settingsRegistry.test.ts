@@ -44,6 +44,6 @@ describe("settings registry", () => {
   });
 
   test("a secret-bearing field is never on the carried side", () => {
-    for (const secret of ["xaiApiKey", "httpProxy", "claudeOauthToken", "minimaxApiKey", "moonshotApiKey", "minimaxCookie"]) expect(carried).not.toContain(secret);
+    for (const secret of ["httpProxy", "claudeOauthToken", "minimaxApiKey", "moonshotApiKey", "minimaxCookie"]) expect(carried).not.toContain(secret);
   });
 });

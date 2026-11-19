@@ -85,7 +85,7 @@ async function mount() {
 }
 
 test("the first render has the window's values; the page's own read replaces them when it lands", async () => {
-  (await import("./windowSettings")).holdWindowSettings({ editorAutoSave: true, branchPrefix: "old", xaiApiKey: "secret" });
+  (await import("./windowSettings")).holdWindowSettings({ editorAutoSave: true, branchPrefix: "old", httpProxy: "secret" });
   io.disk = { editorAutoSave: true, branchPrefix: "new", diffView: "split" };
   const page = await mount();
   expect(page.now().settings).toEqual({ editorAutoSave: true, branchPrefix: "old" }); // drawn at once, no secret
