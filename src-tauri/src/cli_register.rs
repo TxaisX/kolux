@@ -1166,7 +1166,6 @@ mod tests {
         assert!(wants_uninstall_path(&[UNINSTALL_PATH_FLAG.to_string()]));
         assert!(!wants_uninstall_path(&[]));
         assert!(!wants_uninstall_path(&["--install-agents".to_string()]));
-        assert!(!crate::agents::agent_install::wants_install(&[UNINSTALL_PATH_FLAG.to_string()]));
     }
 
     #[cfg(windows)]

@@ -21,9 +21,6 @@ pub mod inventory;
 // ux card 11: the window's `agent_list` command runs off the UI thread; Rust callers keep the plain `agent_list` below.
 #[path = "agent_list_command.rs"]
 pub mod list_command;
-// T-573: the install table, the `agents_install` command and the installer's `--install-agents` run.
-#[path = "agent_install.rs"]
-pub mod agent_install;
 // c2-agents top bug 1: an agent pane runs the user's shell, which starts the agent (via_shell).
 #[path = "agent_shell.rs"]
 pub mod agent_shell;
@@ -45,13 +42,6 @@ pub struct AgentInfo {
     pub path: Option<String>,
     /// SESS-017: Kolux knows the agent's own documentation page (`install_page`).
     pub docs: bool,
-    /// T-573: Kolux knows an official install route for this agent on this OS (`install` is the command).
-    pub installable: bool,
-    /// T-573: the human-readable install command, the Install button's tooltip; `None` when not installable.
-    pub install: Option<String>,
-    /// T-787 (P3-14): set when installing this agent first needs a runtime that is not on the PC and that Windows installs
-    /// machine-wide (Node.js), so the Install button can say a Windows admin prompt is coming. `None` otherwise.
-    pub install_note: Option<String>,
 }
 
 /// id, name, program names (the first is the main one, the rest also count), fixed arguments.
@@ -138,7 +128,6 @@ pub const CATALOGUE: [Entry; 35] = [
 /// The catalogue with each agent's installed state, in menu order.
 pub fn catalogue() -> Vec<AgentInfo> {
     let dirs = search_dirs();
-    let have_npm = find_in(&dirs, "npm").is_some();
     CATALOGUE
         .iter()
         .map(|(id, name, programs, args)| {
@@ -151,9 +140,6 @@ pub fn catalogue() -> Vec<AgentInfo> {
                 installed: found.is_some(),
                 path: found.map(|(_, f)| f.display().to_string()),
                 docs: install_page(id).is_some(),
-                installable: agent_install::install_text(id).is_some(),
-                install: agent_install::install_text(id),
-                install_note: agent_install::install_note(id, have_npm),
             }
         })
         .collect()

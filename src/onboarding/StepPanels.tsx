@@ -10,7 +10,6 @@ import ConnectGithub from "./ConnectGithub";
 import { playTone, readNotifications, SOUND_FIELD, testPlan, VOLUME_FIELD, type Sound } from "../settings/notifications";
 import { DEFAULT_AGENT_KEY } from "../launch/agents";
 import type { AgentInfo } from "../launch/PlusMenu";
-import AgentPicker from "../launch/AgentPicker";
 import {
   agentPanel, CARD_WORDS, composeTarget, composerRequests, foldLabel, permissionCard, platformOf, soundPanel,
   type Hands, type Proj,
@@ -202,12 +201,10 @@ export function AgentPanel() {
   const { settings, save, error } = useSettings();
   const [agents, setAgents] = useState<AgentInfo[] | null>(null);
   const [open, setOpen] = useState(false);
-  const offered = useRef(false); // T-579: the install checklist stays on screen once it was offered, so its results can be read
   const look = () => void invoke<AgentInfo[]>("agent_list").then(setAgents, () => setAgents([]));
   useEffect(look, []);
   if (!settings || !agents) return null;
   const p = agentPanel(agents, settings);
-  if (p.picker.length === 0 && p.fallback.length === 0) offered.current = true;
   const row = (a: AgentInfo) => (
     <label key={a.id} className="conn-switch">
       <input type="radio" name="default-agent" checked={p.current === a.id} onChange={() => void save({ [DEFAULT_AGENT_KEY]: a.id })} />
@@ -217,7 +214,7 @@ export function AgentPanel() {
   return (
     <>
       <SaveFailed error={error} />
-      {offered.current && (agents.length > 0 ? <AgentPicker agents={agents} onChanged={setAgents} level={3} /> : <NoAgent onCheck={look} />)}
+      {p.picker.length === 0 && p.fallback.length === 0 && <NoAgent onCheck={look} />}
       {p.picker.length > 0 && (
         <div role="radiogroup" aria-label="Default agent">
           {p.picker.map(row)}

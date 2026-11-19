@@ -757,8 +757,6 @@ pub fn run() {
             models::agent_models,
             agents::agent_start_line,
             agents::agent_prompt_send,
-            agents::agent_install::agents_install,
-            agents::agent_install::agents_install_many,
             agents::open_install_page,
             agents::inventory::session_tabs,
             orchestration::worker_labels,

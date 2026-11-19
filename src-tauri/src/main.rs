@@ -11,9 +11,5 @@ fn main() {
     if let Some(code) = kolux_lib::cli::cli_register::uninstall_main(&args) {
         std::process::exit(code);
     }
-    // T-573: the installer's run installs the agents and never opens the window.
-    if let Some(code) = kolux_lib::agents::agent_install::cli_main(&args) {
-        std::process::exit(code);
-    }
     kolux_lib::run()
 }
