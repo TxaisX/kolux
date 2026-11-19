@@ -1,6 +1,6 @@
 // T-611: a command picked in the palette runs through the same code its shortcut runs. A stand-in keydown
 // goes to the element that has the keyboard, as the chord would, and matchEvent (keymap.ts) answers that one
-// event with the command, so the window's key switch, a pane's or the editor's handles it as it handles the
+// event with the command, so the window's key switch or a pane's handles it as it handles the
 // chord, and an unbound command runs too. ponytail: a stand-in key event, not a command registry; the
 // upgrade path is a registry the key listeners call as well, once the window's key switch leaves App.tsx.
 
@@ -15,8 +15,6 @@ export const answerCommand = (p: Pending): void => void (p.answered = true);
 
 /** Review of PR #16: what the palette says when no live place took a command, by the command's scope. */
 const NOTES: Record<string, string> = {
-  editor: "Open a file in an editor tab first.",
-  explorer: "Open the file explorer first.",
   settings: "Open Settings first.",
   terminal: "Focus a terminal first.",
   tabs: "Open a workspace with tabs first.",
@@ -42,8 +40,8 @@ export function runCommand(id: string, index?: number, where: Where = {}): void 
     } finally {
       pending = null;
     }
-    // Review of PR #16: never silent. A command whose place (an editor, a browser pane, the explorer,
-    // Settings) is not open says so instead of doing nothing; the command stays listed.
+    // Review of PR #16: never silent. A command whose place (a terminal, a tab strip, Settings) is not open
+    // says so instead of doing nothing; the command stays listed.
     if (!mine.answered) where.unanswered?.(scopeNote(where.scope));
   });
 }

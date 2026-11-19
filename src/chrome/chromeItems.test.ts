@@ -73,7 +73,7 @@ describe("T-248-a menu bar state (APP-009, SET-020, SET-009)", () => {
   });
 
   it("DT-C68: the Workspace View items carry no accelerator, so on a Mac the menu's key equivalent cannot fire beside the window's own key for the same chord", () => {
-    const st = menuBarState({}, "terminals", (id) => (id === "view.cycleWorkspaceView" ? ["Mod+Alt+F"] : undefined));
+    const st = menuBarState({}, "terminals", (id) => (id === "screen.terminals" ? ["Mod+Alt+F"] : undefined));
     expect(st.screen).toBe("terminals");
     expect(MENU_SHORTCUT_IDS.filter((id) => id.startsWith("screen."))).toEqual([]);
     expect(Object.keys(st.accelerators).filter((id) => id.startsWith("screen."))).toEqual([]);

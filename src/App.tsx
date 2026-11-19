@@ -35,7 +35,7 @@ import { useStatusSurfaces } from "./status/useStatusSurfaces";
 import { paneGrid } from "./terminal/paneGrid";
 import { useRailAndTower } from "./agents/useRailAndTower";
 import { useLayoutReport } from "./terminal/useLayoutReport";
-import { nextScreen, useWindowKeys } from "./keys/useWindowKeys";
+import { useWindowKeys } from "./keys/useWindowKeys";
 import type { WindowBag } from "./shell/windowBag";
 import { windowView } from "./shell/WindowView";
 import { tabName } from "./terminal/tabName";
@@ -66,9 +66,6 @@ export default function App({ initial = {}, layout = null, read = true, late = n
     </KeymapProvider>
   );
 }
-
-/** The next screen in the Agents / Board / Terminals cycle (keys/useWindowKeys.ts). */
-export { nextScreen };
 
 function Window({ initial, layout, read, late }: { initial: Record<string, unknown>; layout: SavedLayout | null; read: boolean; late: SavedLayout | null }) {
   // Cycle 2: everything this render makes, filled at the end; the actions, the key handler and the drawing read it (shell/windowBag.ts).
