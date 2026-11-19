@@ -327,7 +327,7 @@ pub fn places(path: &Path) -> Result<Places, String> {
 /// cannot be relied on; the 4 s read is the retry that never goes quiet. Decided from the spelling
 /// alone, before the drive-type call, so no share is contacted.
 pub fn unwatchable(root: &Path) -> Option<String> {
-    if crate::fsops::is_wsl(root) {
+    if crate::links::is_wsl(root) {
         return Some("it is inside a WSL distribution, which is read every 4 s rather than watched".into());
     }
     #[cfg(windows)]

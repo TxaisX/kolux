@@ -5,7 +5,6 @@ mod agent_sleep;
 pub mod agents;
 mod app_look;
 pub mod artifacts;
-pub mod automations;
 mod badge;
 mod awake;
 mod capture;
@@ -62,10 +61,9 @@ mod notices;
 mod onboarding;
 mod foreground;
 pub mod procs;
-pub mod protected;
+pub mod mask;
 #[cfg(test)]
 mod s9_fuzz_tests;
-pub mod protected_custom;
 mod ports;
 mod labels;
 mod tidy;
@@ -87,8 +85,6 @@ mod pr_checkout;
 mod auto_pr;
 pub mod pty;
 mod setup;
-pub mod routing;
-pub mod schedule;
 mod resume;
 pub mod secrets;
 pub mod sendonce;
@@ -97,7 +93,6 @@ mod session_rows;
 mod sessions;
 mod shell_marks;
 mod shell_history;
-mod skill_delete;
 pub mod state;
 pub mod status;
 mod sub_work;
@@ -498,9 +493,6 @@ pub fn run() {
                 foreground::poll(&handle);
                 // STAT-028: a cancelled turn that never sends its Stop reads interrupted.
                 for status in status::settle_cancels() {
-                    // C25-R2-01: a settled cancel never passes through the hook line, so the run
-                    // following that pane is told here, as `hooks.rs:814` tells it a hook status.
-                    automations::settled(&handle, &status);
                     let _ = tauri::Emitter::emit(&handle, hooks::EVENT, status);
                 }
                 // STAT-032: a working reading with no signal for 30 minutes is marked unverified.
@@ -599,10 +591,6 @@ pub fn run() {
                     }
                 }
             }
-            // ACCT-055: files dropped in from outside may be copied into the Explorer, nothing else.
-            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
-                window.state::<fence::Fence>().dropped(paths);
-            }
         })
         .invoke_handler(|invoke: tauri::ipc::Invoke<tauri::Wry>| {
             let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
@@ -624,10 +612,6 @@ pub fn run() {
             hooks::agent_hooks::saved::agent_status_saved,
             tray::tray_close_requested, // APP-007 (tray FIX-1): the page asks before the main window closes
             tray::tray_ping, // STAT-047: the tray dot lights before any toast switch is consulted
-            protected::protected_rules,
-            protected_custom::protected_rule_check,
-            protected_custom::protected_attempts,
-            protected_custom::protected_attempts_clear,
             hooks::claude_usage,
             hooks::claude_usage_of,
             sysmem::process_memory,
@@ -842,19 +826,6 @@ pub fn run() {
             pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
             pdf_export::browser_pick_pdf_path,
             html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
-            automations::automations_list,
-            automations::automations_external_refresh,
-            automations::automation_external_act,
-            automations::automation_external_history,
-            automations::automation_set_enabled,
-            automations::automation_delete,
-            automations::automation_run_now,
-            automations::automation_run_cancel,
-            automations::automation_preview,
-            automations::automation_save,
-            automations::carry::session_carry_context,
-            automations::carry::agent_dir_ready,
-            routing::routing_catalog,
             secrets::secret_status,
             secrets::secrets_dropped,
             secrets::secrets_dropped_dismiss,
@@ -929,16 +900,6 @@ pub fn run() {
             editor_search::editor_search,
             editor_search::editor_search_cancel,
             skills::skills_scan,
-            skill_delete::skills_delete_plan,
-            skill_delete::skills_delete,
-            skills::update::skills_update_check,
-            skills::update::skills_update_dismiss,
-            skills::update::skills_update_start,
-            skills::update::skills_update_stop,
-            skills::update::skills_update_status,
-            skills::update::skills_update_clear,
-            skills::installer::skills_install_command,
-            skills::skills_reveal,
             files::open_in,
             files::worktree_branches,
             files::file_list,
@@ -958,13 +919,6 @@ pub fn run() {
             artifacts::artifact_open,
             artifacts::open_external,
             links::open_path, links::file_grant, links::editor_open,
-            fsops::fs_create,
-            fsops::fs_rename,
-            fsops::fs_trash,
-            fsops::fs_restore,
-            fsops::fs_copy,
-            fsops::fs_bytes,
-            fsops::fs_move,
             clipboard::clip_copy_text,
             clipboard::clip_copy_files,
             clipboard::feedback_facts,

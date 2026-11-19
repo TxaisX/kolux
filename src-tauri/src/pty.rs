@@ -1301,7 +1301,7 @@ mod tests {
         }
         // Bare `Command::new("name")` literals left in production code: only editor_search's rg and git (out of T-663's list).
         let allowed = [("editor_search.rs", "rg"), ("editor_search.rs", "git")];
-        for file in ["automations.rs", "codex_usage.rs", "editor_search.rs", "fonts.rs", "include.rs", "session_scan.rs", "scm.rs", "scm_recipe.rs", "pty.rs"] {
+        for file in ["codex_usage.rs", "editor_search.rs", "fonts.rs", "include.rs", "session_scan.rs", "scm.rs", "scm_recipe.rs", "pty.rs"] {
             let text = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(file)).unwrap();
             let prod = text.split("\nmod tests {").next().unwrap();
             for part in prod.split("Command::new(\"").skip(1) {

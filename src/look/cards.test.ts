@@ -104,50 +104,6 @@ test("PROJ-062: a preset marker survives the settings file, wins over the densit
   expect(readCardDetails({ [CARD_DETAILS_FIELD]: ["preset:nonsense"] }).density, "an unknown marker is just an empty list").toBe("default");
 });
 
-// AUTO-024 (T-291-d): the Automation property. A worktree made by an automation run wears an
-// "Automation" tag on its card line when the property is ticked; one made by hand never does. It is
-// in no preset, so it is the user's own tick (and the chooser, the saved forms and the hover all
-// read the one list in cards.ts).
-test("AUTO-024: the chooser offers an Automation detail that no preset shows", async () => {
-  const { CARD_DETAILS, PRESETS } = await import("./cards");
-  expect(CARD_DETAILS.map((d) => d.id)).toContain("automation");
-  expect(CARD_DETAILS.find((d) => d.id === "automation")?.label).toBe("Automation");
-  for (const p of Object.values(PRESETS)) expect(p).not.toContain("automation");
-  expect(readCardDetails({}).shown).not.toContain("automation");
-});
-
-test("AUTO-024: with the property ticked a worktree made by a run carries the tag and one made by hand does not", () => {
-  const shown = readCardDetails({ [CARD_DETAILS_FIELD]: ["status", "agents", "automation"] }).shown;
-  expect(shown).toEqual(["status", "agents", "automation"]);
-  expect(cardLine(shown, facts({ automation: true }))).toBe("Automation");
-  expect(cardLine(shown, facts({ automation: false })), "made by hand: no tag").toBeNull();
-  expect(cardLine(shown, facts()), "the field missing: no tag").toBeNull();
-  expect(cardLine(shown, facts({ automation: true, agents: 1, state: "working" }))).toBe("1 agent · Working · Automation");
-  expect(cardLine(["status", "agents"], facts({ automation: true })), "property off: no tag on the line").toBeNull();
-});
-
-test("AUTO-024: ticking Automation in the chooser saves a custom list; unticking it follows the preset again", () => {
-  expect(detailsAfter({}, "automation", true)).toEqual(["status", "agents", "changes", "automation"]);
-  const ticked = settle({}, [["automation", true]]);
-  expect(readCardDetails(ticked)).toEqual({ shown: ["status", "agents", "changes", "automation"], density: "custom" });
-  const off = settle(ticked, [["automation", false]]);
-  expect(off[CARD_DETAILS_FIELD]).toEqual([presetMark("default")]);
-});
-
-test("AUTO-024: a card that hides the property still tells the hover that a run made it", () => {
-  expect(hoverLines(["status", "agents"], facts({ automation: true }))).toEqual(["Automation"]);
-  expect(hoverLines(["status", "agents", "automation"], facts({ automation: true }))).toEqual([]);
-  expect(hoverLines(["status", "agents"], facts())).toEqual([]);
-});
-
-test("AUTO-024: madeByAutomation reads the worktree's origin", async () => {
-  const { madeByAutomation } = await import("./cards");
-  expect(madeByAutomation({ madeBy: "automation" })).toBe(true);
-  expect(madeByAutomation({ madeBy: "app" })).toBe(false);
-  expect(madeByAutomation({ madeBy: null })).toBe(false);
-  expect(madeByAutomation({})).toBe(false);
-});
-
 test("PROJ-062 (T-266-b): Compact's hover lists the pull request, the ports and the task", () => {
   const f = facts({ pr: "open", ports: [5173, 3000], task: 42 });
   expect(hoverLines(["status"], f)).toEqual(["Pull request open", "Ports 3000, 5173", "Task #42"]);

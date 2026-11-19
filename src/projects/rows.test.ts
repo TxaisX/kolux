@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { setGridRoots } from "../workspaces";
-import { addTeamFolders, groupRows, hiddenTeamFolders, jumpUnhides, mergedTeamFolders, movedTeamFolders, paneState, prunedTeamFolders, sessionsUnder, smartOrder, sortFromSetting, strongest, TEAM_WORKTREES_SETTING, teamFoldersOf, teamViewOf, withoutAutomationMade, withoutTeamMade, type RowInfo } from "./rows";
+import { addTeamFolders, groupRows, hiddenTeamFolders, mergedTeamFolders, movedTeamFolders, paneState, prunedTeamFolders, sessionsUnder, smartOrder, sortFromSetting, strongest, TEAM_WORKTREES_SETTING, teamFoldersOf, teamViewOf, withoutTeamMade, type RowInfo } from "./rows";
 
 const at = (state: RowInfo["state"], changed: number, pr: RowInfo["pr"] = null): RowInfo => ({ state, changed, pr });
 
@@ -46,21 +46,6 @@ test("the sort setting: Smart by default, and an old Recent choice is moved over
   expect(sortFromSetting("recent")).toBe("smart");
   expect(sortFromSetting("name")).toBe("name");
   expect(sortFromSetting("bogus")).toBe("smart");
-});
-
-test("AUTO-024: the switch hides worktrees made by automations, and jumping to one turns it off", () => {
-  const run = { path: "C:/r/wts/otter", madeBy: "automation" };
-  const hand = { path: "C:/r/wts/lead", madeBy: "app" };
-  const lists = { p1: [run, hand, { path: "C:/r", madeBy: null }] };
-  expect(withoutAutomationMade(lists, true).p1.map((w) => w.path)).toEqual(["C:/r/wts/lead", "C:/r"]);
-  expect(withoutAutomationMade(lists, false)).toBe(lists);
-  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-  // Moving to a hidden run worktree turns the switch off; staying on it, or the switch off, does nothing.
-  expect(jumpUnhides("C:/r/wts/lead", "c:/R/wts/otter", lists, true, same)).toBe(true);
-  expect(jumpUnhides("C:/r/wts/otter", "C:/r/wts/otter", lists, true, same)).toBe(false);
-  expect(jumpUnhides("C:/r/wts/lead", "C:/r/wts/otter", lists, false, same)).toBe(false);
-  expect(jumpUnhides("C:/r/wts/otter", "C:/r/wts/lead", lists, true, same)).toBe(false);
-  expect(jumpUnhides(null, null, lists, true, same)).toBe(false);
 });
 
 test("DT-C274: the worktrees a team launch made are left out of the sidebar; the main checkout and hand-made ones stay", () => {

@@ -1,4 +1,4 @@
-//! spec/07 accounts and keys (ACCT-001..013 and 034; the card each test proves is in its name). Needs `claude_key`, `claude_accounts`,
+//! spec/07 accounts and keys (ACCT-001..013; the card each test proves is in its name). Needs `claude_key`, `claude_accounts`,
 //! `codex_accounts` and `secrets` public in lib.rs. Every sign-in file, key and token here is a
 //! hand-written fake in a folder under this crate's target directory; the three agents are stood in
 //! for by small batch files that print hand-written lines and write fake sign-in files. Nothing real
@@ -9,7 +9,6 @@ use kolux_lib::claude_accounts as ca;
 use kolux_lib::claude_key as ck;
 use kolux_lib::codex_accounts as cx;
 use kolux_lib::install;
-use kolux_lib::routing;
 use kolux_lib::secrets;
 use kolux_lib::state::Store;
 use serde_json::{json, Value};
@@ -646,26 +645,4 @@ fn acct003_box2_an_install_that_hangs_is_stopped_at_the_limit_and_shown_as_faile
     assert!(failed.message.contains("15 minutes"));
     // MIRROR install.rs:238: agent_install hands LIMIT to run_hidden; the live spawn re-confirms the card.
     assert!(include_str!("../src/install.rs").contains("run_hidden(cmd, LIMIT, cancel,"));
-}
-
-// ---------------------------------------------------------------- ACCT-034
-
-#[test]
-fn acct034_claude_and_codex_ladders_and_what_reset_gives_back() {
-    // The same JSON the page is rendered from in src/settings/__cards__/ACCT-034.test.ts.
-    let fixture: Value = serde_json::from_str(include_str!("../../src/settings/__cards__/ACCT-034.catalogue.json")).unwrap();
-    assert_eq!(serde_json::to_value(routing::providers()).unwrap(), fixture, "the catalogue the page gets is the shipped one");
-    let all = routing::providers();
-    let pick = |p: &routing::Provider| p.defaults.iter().map(|d| (d.model, d.effort)).collect::<Vec<_>>();
-    assert_eq!(routing::TIERS, ["major", "deep", "build", "light"]);
-    assert_eq!(pick(&all[0]), [("fable", Some("high")), ("opus", Some("high")), ("sonnet", Some("medium")), ("haiku", None)], "Claude: top model high, Opus high, Sonnet medium, Haiku");
-    assert_eq!(all[1].id, "codex");
-    assert_ne!(pick(&all[0]), pick(&all[1]), "Codex has a ladder of its own");
-    // Build set to Opus at high routes there; after Reset Claude (its entry removed, Codex's kept)
-    // Build is Sonnet at medium and Codex's pick is as it was.
-    let set = json!({"modelRouting": {"claude": {"build": {"model": "opus", "effort": "high"}}, "codex": {"build": {"model": "gpt-5.5", "effort": "low"}}}});
-    assert_eq!(routing::route(&set, "claude", "build").unwrap(), (Some("opus".into()), Some("high".into())));
-    let reset = json!({"modelRouting": {"codex": {"build": {"model": "gpt-5.5", "effort": "low"}}}});
-    assert_eq!(routing::route(&reset, "claude", "build").unwrap(), (Some("sonnet".into()), Some("medium".into())));
-    assert_eq!(routing::route(&reset, "codex", "build").unwrap(), (Some("gpt-5.5".into()), Some("low".into())));
 }

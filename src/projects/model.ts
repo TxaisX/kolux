@@ -163,9 +163,9 @@ export function previewSentence(typed: string, preview: Preview | null, project:
   return `branch ${preview.branch} · folder ${preview.folder}`;
 }
 
-/** The "start" notice the window got from the retired command line's worker starts (ORCH-016) and from automations;
- *  startArgs.ts's startTail still reads its shape. */
-export type CliWorkspace = { kind: "start"; path: string; branch: string | null; agent: string; prompt: string; extra: string[]; title: string | null; runId?: string; dispatch?: string };
+/** The "start" notice the window got from the retired command line's worker starts (ORCH-016); startArgs.ts's
+ *  startTail still reads its shape. */
+export type CliWorkspace = { kind: "start"; path: string; branch: string | null; agent: string; prompt: string; extra: string[]; title: string | null; dispatch?: string };
 
 // SESS-035: the composer's project search. The typed letters in order inside `text`: one run when
 // they appear together, else the first letters that fit; null when they are not all there.

@@ -198,7 +198,7 @@ impl Inner {
         self.keys.remove(&id);
         let hist = self.hist.remove(&id);
         // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
-        // waiter, which keeps an automation run's tail and then drops it; `read` already refuses it).
+        // waiter, which reads the pane's tail for its resume hint and then drops it; `read` already refuses it).
         self.owned.remove(&id);
         self.typed.remove(&id);
         self.snaps.remove(&id);
@@ -966,7 +966,7 @@ impl OutputLog {
     }
 }
 
-/// GIT-063: an agent pane (automation runs start theirs the same way) gets git's prompts turned
+/// GIT-063: an agent pane gets git's prompts turned
 /// off, so a remote that wants a password fails the command instead of stalling the agent; a shell
 /// keeps prompting. Set before the user's own variables, which can turn them back on.
 fn unattended(command: &mut portable_pty::CommandBuilder, is_program: bool) {
@@ -1344,10 +1344,10 @@ impl Terminals {
                 if !warm_gone.is_empty() {
                     std::thread::spawn(move || warm_gone.into_iter().for_each(end_taken));
                 }
-                // AUTO-014: keep the end of a followed run's output before the log goes. Its lock waits
-                // for a chunk the pump counted before the registry was taken above (P2 perf).
-                let tail = log.map(|l| crate::automations::screen_text(&lock(&l).read(None, Some(crate::automations::RUN_OUTPUT_LINES))));
-                let session = agent.zip(tail.as_ref()).and_then(|(agent, (text, _))| session_id::hint_session(agent, text));
+                // SESS-030: the end of the pane's output, read for the agent's resume hint before the log
+                // goes. Its lock waits for a chunk the pump counted before the registry was taken above (P2 perf).
+                let tail = log.map(|l| session_id::screen_text(&lock(&l).read(None, Some(session_id::SCREEN_LINES))));
+                let session = agent.zip(tail.as_ref()).and_then(|(agent, text)| session_id::hint_session(agent, text));
                 // The history file is left alone from here: a write already counted finishes first, and
                 // the file handle goes at once.
                 if let Some(h) = hist {
@@ -1356,14 +1356,6 @@ impl Terminals {
                 // Row 784: the PTY closes here, not under the registry the pump needs.
                 drop(removed);
                 turns_end(id);
-                // AUTO-012: an automation run followed in this pane is over with it.
-                crate::automations::follow(&exit_app, |s| {
-                    let run = crate::automations::pane_ended(s, id, code, crate::automations::now_ms())?;
-                    if let (Some(r), Some((text, cut))) = (&run, &tail) {
-                        crate::automations::keep_output(s, r, text, *cut)?;
-                    }
-                    Ok(run)
-                });
                 if let Some(d) = &exit_dir {
                     crate::diag::write(d, &format!("terminal {id} exited ({code:?})"));
                 }
@@ -2027,7 +2019,6 @@ impl Terminals {
     /// (T-184-b) do the ones the background service runs go on; the window lets go of them and records
     /// how much of each one's output it drew, so the next window adds only what it missed.
     pub fn kill_all(&self) {
-        crate::automations::QUITTING.store(true, std::sync::atomic::Ordering::SeqCst);
         self.let_go();
     }
 
@@ -2371,13 +2362,10 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
             crate::hooks::install_codex_home(std::path::Path::new(home));
         }
     }
-    let agent = program.as_deref().and_then(crate::tools::credited_program);
     let dir = cwd.clone();
     // Kept-warm shell: only a plain new terminal (the default shell, nothing added) is one a warm shell can stand in for.
     let warm_like = program.is_none() && args.is_empty() && env_own.is_empty() && shell.is_some();
     let warm_shell = shell.clone();
-    // T-690: the run this pane belongs to, read before the environment is handed over.
-    let run = crate::automations::run_in(&env_own);
     let id = terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history, agent_settings.as_ref())?;
     if warm_like {
         let on = store.lock().map(|s| warm_on(&s.settings())).unwrap_or(false);
@@ -2386,10 +2374,6 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
             _ if !on => terminals.drop_warm(),
             _ => {}
         }
-    }
-    // AUTO-012: an automation run dispatched to this worktree for this agent is followed here.
-    if let Some(dir) = dir {
-        crate::automations::follow(&app, |s| crate::automations::claim(s, id, pane_key, &dir, agent, run.as_deref(), crate::automations::now_ms()));
     }
     Ok(Spawned { id, program: terminals.started(id), account })
 }

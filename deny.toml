@@ -27,7 +27,6 @@ ignore = [
   { id = "RUSTSEC-2026-0370", reason = "zvariant is unmaintained (not a vulnerability; merged into zbus 6). Linux-only D-Bus path (tauri-plugin-notification -> notify-rust -> zbus 5), not built into the Windows app; zbus 6 is not reachable because notify-rust 4.18.2 pins zbus 5. Revisit when tauri moves off zbus. Recorded 2026-10-28 by T-581." },
   { id = "RUSTSEC-2026-0371", reason = "zbus_names is unmaintained (not a vulnerability; merged into zbus 6). Linux-only D-Bus path (tauri-plugin-notification -> notify-rust -> zbus 5), not built into the Windows app; zbus 6 is not reachable because notify-rust 4.18.2 pins zbus 5. Revisit when tauri moves off zbus. Recorded 2026-10-28 by T-581." },
   { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is unmaintained (not a vulnerability; merged into zbus 6). Linux-only D-Bus path (tauri-plugin-notification -> notify-rust -> zbus 5), not built into the Windows app; zbus 6 is not reachable because notify-rust 4.18.2 pins zbus 5. Revisit when tauri moves off zbus. Recorded 2026-10-28 by T-581." },
-  { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained (not a vulnerability) and the advisory lists no safe upgrade. It comes in only through trash 5.3 (Recycle Bin delete and restore in fsops), which leaves with the slim-down wave B engine removals; drop this line then. Recorded 2026-11-19." },
 ]
 
 [bans]
