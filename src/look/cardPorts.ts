@@ -12,8 +12,6 @@ export type PortRow = {
   addr: string;
   pid: number;
   external: boolean;
-  /** When the holder started, as the system counts it, as text; the Stop that once sent it back is gone with the Ports item. */
-  started: string;
   /** The Kolux terminal whose shell started the holder; null for an external port. */
   terminal: number | null;
 };

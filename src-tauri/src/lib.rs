@@ -805,7 +805,7 @@ pub fn run() {
             scm::scm_history, scm::scm_commit_files, scm::scm_github_repo, scm::repo_id::scm_repo_id, scm::repo_id::scm_repo_id_of,
             bulk::workspace_forget, bulk::workspace_forget_check,
             bulk::workspace_statuses, bulk::workspace_statuses_set, bulk::workspace_status_set,
-            ports::ports_list, ports::ports_stop,
+            ports::ports_list,
             keybindings::keybindings_read,
             menu::menu_sync, menu::menu_popup,
             keybindings::keybindings_write,
