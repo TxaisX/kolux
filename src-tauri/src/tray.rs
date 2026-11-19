@@ -344,6 +344,8 @@ pub fn refocused(app: &tauri::AppHandle) -> bool {
 /// The backstop for `refocused`, run by lib.rs's two-second background loop: the focus event may not
 /// come for a window whose view was told it is out of sight, so a window hidden to the tray that is
 /// on screen again (the library reads the system's own visibility) is shown through the library too.
+/// A minimised window waits for its restore. Nothing is restored or focused here, so the check never
+/// pulls the window in front of what the user switched to; the tray dot clears as for any show.
 pub fn resync_if_shown(app: &tauri::AppHandle) {
     use std::sync::atomic::Ordering;
     use tauri::Manager;
@@ -352,11 +354,14 @@ pub fn resync_if_shown(app: &tauri::AppHandle) {
     if now == HIDDEN_NO {
         return;
     }
-    let visible = app.get_webview_window(MAIN_LABEL).is_some_and(|w| w.is_visible().unwrap_or(false));
-    let (next, show) = hidden_step(now, visible);
+    let Some(w) = app.get_webview_window(MAIN_LABEL) else { return };
+    let on_screen = w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(true);
+    let (next, show) = hidden_step(now, on_screen);
     // Only this loop moves ASKED to SEEN; a show or a hide meanwhile wins over the stale reading.
     if state.hidden.compare_exchange(now, next, Ordering::SeqCst, Ordering::SeqCst).is_ok() && show {
-        let _ = show_main(app);
+        crate::webview_power::main_shown(app);
+        let _ = w.show();
+        window_shown(app);
     }
 }
 

@@ -466,7 +466,7 @@ const IMPORT_MAX: u64 = 64 * 1024;
 const IMPORT_FILES: [&str; 2] = ["conductor.json", ".codex/environments/environment.toml"];
 
 /// VIEW-112: what one other tool's file offers, or why it was refused.
-#[derive(serde::Serialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SetupImport {
     pub file: String,
     pub setup: Option<String>,

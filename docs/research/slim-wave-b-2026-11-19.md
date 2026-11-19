@@ -62,7 +62,13 @@ The build lanes also updated the tests that named removed commands, settings, st
 - Fixed now: the Settings > Agents hooks text promised to remove hooks from every agent and still named the Board; Explore Kolux still had a review-notes stop; COMPAT.md now states the long-PATH exception; the add-project setup import offer is gone.
 - Moved to the next wave: a one-time clean-up of the hook entries an earlier Kolux wrote into other agents' settings, and the rest of the half-retired setup-script feature.
 
-**Second review** of the fixes: see below.
+**Second review** of the fixes (no P0 or P1):
+- Fixed now: the focus event the tray fix waited for comes from the web view, which may stay silent while it is told it is out of sight. A check in the app's existing two-second background loop now backs it up: a tray-hidden window that something outside put back on screen is shown again properly, but only after the loop has seen it hidden, so a hide still on its way is never undone. A unit test covers that rule.
+- Fixed now: two engine commands for the setup import lost their last caller and went, with the file writer behind them.
+- Noted: one fix commit on the branch carried three file deletions that belonged to the next commit, so it does not build on its own. The pull request is squashed, so main gets a single commit and nothing on main is affected.
+- Moved to the next wave: the sidebar's setup suggestion card and Settings > Repo setup still describe setup scripts that no longer run.
+
+**Third look** at the background check: see below.
 
 ## Left for the next wave
 
