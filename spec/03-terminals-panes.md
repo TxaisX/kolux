@@ -14,7 +14,7 @@ group. The standalone terminal window, the attention ring and agent hibernation 
 floating workspace panel is removed (DECISIONS.md DT-C216); remote, WSL and web-client terminals,
 phone control of desktop terminals and the quick commands menu are cut by default.
 
-Tier counts: P0 25 · P1 62 · P2 35 · H 8 · X 1 · D 6
+Tier counts: P0 24 · P1 62 · P2 32 · H 8 · X 1 · D 6
 
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 04 Agent status, hooks &
 notifications · 05 Views & navigation · 06 Usage & limits · 08 Orchestration · 10 Plan review &
@@ -392,30 +392,6 @@ Acceptance:
 Compat: —
 Source: D-03-106
 
-### TERM-125 · Terminal commands in the CLI
-Tier: P0 · Pushed: 11 · State at 0.15.0: live
-User does: runs kolux terminal commands from a shell or agent.
-User sees: terminals can be listed, read, written to, created, split, renamed, focused and closed.
-Rules: list shows terminals and can narrow to one worktree, cap how many are returned, include
-  visual layouts or print JSON; show and read print a terminal's content, optionally with the cursor
-  position, only the visible screen, or a line cap; send types text and can also press Enter, send
-  an interrupt, hold until an agent has taken the prompt, and retry the request; wait blocks until
-  the program exits or a full-screen program goes quiet, up to a time limit; create opens a terminal
-  in a worktree with an optional title, start command and focus; split divides a terminal
-  horizontally or vertically, optionally running a command; switch (also accepted as focus) brings a
-  terminal forward; rename changes its title; close is destructive and shuts one terminal, one tab,
-  or every terminal of a worktree; a terminal created from the command line without focus starts in
-  the background, stays alive and is listed.
-Acceptance:
-  - [x] kolux terminal send --enter types text and submits it. (cards; evidence/cards-TERM-125.txt)
-  - [x] kolux terminal close --worktree X --all closes every terminal there. (cards; evidence/cards-TERM-125.txt)
-Compat: CLI group kolux terminal with the subcommands list, show, read, send, wait, create, switch
-  (also focus), rename, split and close. Flags, alphabetically: --all, --command, --cursor,
-  --direction (horizontal or vertical), --enter, --focus, --for (exit or tui-idle),
-  --include-visual-layouts, --interrupt, --json, --limit, --retry-request, --screen, --tab,
-  --terminal, --text, --timeout-ms, --title, --wait-submit, --worktree.
-Source: D-03-125
-
 ### TERM-002 · Add and remove session shortcuts
 Tier: P1 · Pushed: 1 · State at 0.15.0: live
 User does: presses the add-session or remove-session shortcut.
@@ -735,7 +711,7 @@ User does: changes Font size in Settings > Terminal & sessions (or in Appearance
   Reset to 13 pt.
 User sees: every terminal, including ones already open, redraws at that size.
 Rules: one saved size (13 pt by default) is the size of every pane; there is no per-pane terminal zoom
-  and no Terminal zoom menu. Mod+= / Mod+- / Mod+0 stay a browser tab's own zoom (BROW-012) and do
+  and no Terminal zoom menu. Mod+= / Mod+- / Mod+0 stay a browser tab's own zoom (BROW 012) and do
   nothing in a terminal. The interface has its own zoom (SET-019).
 Acceptance:
   - [ ] Set 10 pt → every open terminal and a newly opened one draw at 10 pt.
@@ -1699,37 +1675,6 @@ Acceptance:
 Compat: —
 Source: D-03-094
 
-### TERM-099 · Import settings from Ghostty
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: imports an existing Ghostty config.
-User sees: matching Kolux terminal settings and themes are filled in; unsupported keys are listed.
-Rules: maps font, cursor, colours and palette, padding, split divider colour, unfocused split
-  opacity, scrollback, Option-as-Alt, bold colour, selection characters and hide-mouse-while-typing;
-  theme references are resolved from Ghostty's theme folders; keys with no Kolux equivalent are
-  reported, not silently dropped; focus follows mouse is imported; an invalid value is reported, not
-  guessed; an oversized config file is skipped and reported while settings already imported are
-  kept; middle-click paste behaviour (paste the selection) is imported too; a background blur
-  setting maps to the app's window blur setting; zero means off and is not reported as dropped.
-Acceptance:
-  - [ ] Importing a config with an unknown key shows it in the unsupported list.
-  - [ ] Importing a config with an invalid value reports that value instead of guessing.
-Compat: file format: Ghostty config (key = value) and Ghostty theme files.
-Source: D-03-099
-
-### TERM-100 · Import Warp themes
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: imports a theme from Warp.
-User sees: a preview of the found Warp themes, then the chosen one is added as a custom theme.
-Rules: looks in Warp's theme folders; parsing is time-limited so a bad file cannot hang the app;
-  theme files that are skipped are listed with a reason, and the reason never shows full folder
-  paths; background images and gradients in a Warp theme are left out and reported as skipped.
-Acceptance:
-  - [ ] A malformed theme file fails with a message instead of hanging.
-  - [ ] A theme with a background image is added without the image, and the image is reported as
-      skipped.
-Compat: file format: Warp theme YAML.
-Source: D-03-100
-
 ### TERM-101 · Cursor style
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: chooses block, bar or underline, blink on or off.
@@ -1754,17 +1699,6 @@ Acceptance:
   - [ ] Wide characters take two cells and the cursor lands right after them.
 Compat: —
 Source: D-03-104
-
-### TERM-121 · Setup script runs in its own tab
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: creates a worktree whose repo has a setup script.
-User sees: the setup script runs in a new terminal tab by default.
-Rules: launch mode default: new tab.
-Acceptance:
-  - [ ] A new worktree opens a tab running its setup script.
-  - [ ] Creating a worktree in a repo without a setup script opens no setup tab.
-Compat: —
-Source: D-03-121
 
 ### TERM-133 · Colour-code a tab
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified

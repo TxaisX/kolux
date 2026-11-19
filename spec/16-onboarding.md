@@ -14,7 +14,7 @@ GitHub star prompt asks for a star at a few chosen moments. Other code hosts and
 use, the remote-browser tour and the settings section are cut. No card here is P0: nothing in this
 area is named as daily use.
 
-Tier counts: P0 0 · P1 19 · P2 13 · H 5 · X 1 · D 4
+Tier counts: P0 0 · P1 17 · P2 11 · H 5 · X 1 · D 4
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 06 Usage & limits · 07 Accounts, sign-in & keys · 08 Orchestration · 09 Automations · 11 Git, source control & review · 13 Browser pane & computer use · 15 Skills, plugins & starter kits · 17 Settings, appearance & input · 19 App lifecycle & operations · 20 The `kolux` CLI · 21 H — retired, hidden, removed, dev-only
 
 ## Cards
@@ -163,7 +163,7 @@ Rules: every step forward stores the last completed screen, and the move goes ah
   fails; closing stores when it closed and whether the outcome was completed or dismissed; a
   completed close counts the last screen as done; closing is latched: a second close while the first
   is still being stored does nothing, and a failed store frees it again so another attempt is
-  possible; a completed close asks the star prompt (ONB-037) to show its onboarding-finished toast
+  possible; a completed close asks the star prompt (ONB 037) to show its onboarding-finished toast
   straight afterwards.
 Acceptance:
   - [ ] Reach the third screen, quit, relaunch → the wizard opens on the third screen.
@@ -265,42 +265,6 @@ Acceptance:
 Compat: —
 Source: D-16-014
 
-### ONB-017 · Enable Kolux CLI step installs the CLI and agent skills
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: ticks the capabilities to set up (the CLI, and skills such as orchestration and browser
-  use) and runs setup.
-User sees: a list of capabilities where missing ones start ticked and ready ones start unticked; a
-  short explanation of what registering the CLI means, shown before install; a small terminal inside
-  the panel with the install command already typed at its prompt, waiting for Enter; and a command
-  the user can copy.
-Rules: all setup items begin switched on, so setup on the first launch can run right away; the
-  chosen skills install with one combined command; choosing orchestration alone never touches
-  browser or desktop-control setup; on Windows with WSL, commands go through the selected WSL
-  distro; if that environment needs repair they fall back to the Windows host, and whichever
-  environment was chosen at the start stays for the whole run (owner to confirm: area 18 cuts WSL
-  execution, so this WSL routing may go while the host path stays); a copied command is written for
-  the target shell, and a failed copy shows a warning; if PATH cannot be read from the registry, a
-  warning shows and PATH is left alone; on macOS a Full Disk Access prompt appears only for states
-  the user can fix, refreshes when Kolux regains focus, opens the system setting, and never appears
-  on other systems; clearing every tick clears the setup markers; the inline terminal opens in the
-  user's shell, waits until a prompt is visible (or, when no prompt text can be read, until the
-  terminal has been open a short while), then types the setup command without running it; a short
-  note beneath says to press Enter; it stops waiting for a prompt after a capped number of checks,
-  about fifty, rather than polling forever; if the shell the terminal lands in changes, for example
-  from a WSL distro to the host, the command is reshaped for that shell and typed again; one
-  terminal never receives the same command twice; when the setup shell exits, installed skills are
-  detected again so the step can tick; exits from any other terminal are ignored; when the setup
-  panel goes away its terminal is closed, so no installer keeps running unseen.
-Acceptance:
-  - [ ] CLI installed, skills missing → only the skills start ticked.
-  - [ ] Broken WSL distro → setup runs on the Windows host.
-  - [ ] Windows → no Full Disk Access prompt.
-  - [ ] Open the CLI step → the inline terminal shows the install command at the prompt, not yet
-        run; press Enter → it runs, and when the shell exits the step checks again and ticks if the
-        skills are now present.
-Compat: —
-Source: D-16-017
-
 ### ONB-022 · Explore Kolux workflow tour
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens Help › 'Explore Kolux' and steps through workflows with Continue or with the rail
@@ -340,22 +304,6 @@ Acceptance:
   - [ ] First-time user → no tip during onboarding or later in that session.
 Compat: Which tips have been seen is data the importer should bring across.
 Source: D-16-027
-
-### ONB-028 · CLI tip installs the CLI and skills
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: clicks 'Install CLI & Skills' in the CLI tip.
-User sees: a tip naming concrete things the CLI makes possible, an install button with an inline
-  setup terminal, and an outcome of either installed or needs attention.
-Rules: the outcome is installed only after registration finishes cleanly; it is needs attention when
-  install did not finish cleanly or the launcher is installed but missing from PATH; on Windows with
-  a broken WSL environment, setup runs on the host instead; the tip's inline terminal acts like the
-  Setup Guide's CLI step (ONB-017): the command is typed at the prompt and runs only when the user
-  presses Enter.
-Acceptance:
-  - [ ] Install succeeds and the CLI is on PATH → installed.
-  - [ ] Installed but not on PATH → needs attention.
-Compat: —
-Source: D-16-028
 
 ### ONB-031 · Contextual tour overlay: callouts with Back, Next, Skip and Done
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
@@ -609,50 +557,6 @@ Acceptance:
   - [ ] Reduced motion on → the demo shows its end state without moving.
 Compat: —
 Source: D-16-029
-
-### ONB-037 · GitHub star prompt: when it shows
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: uses Kolux: launches many agents, gets a task finished, or completes onboarding.
-User sees: a card asking for a star on GitHub after enough agents or after a finished task, or a
-  toast just after onboarding completes.
-Rules: the threshold is 35 agents launched since a baseline taken for the current app version; each
-  update resets the baseline unless the user already completed the prompt; 'Later' starts a
-  three-day cooldown and doubles the next threshold; the finished-task moment fires once per app
-  version, after a prompted session completes without interruption and once other live agents and
-  typing have been quiet for about a second; the onboarding-complete prompt is a toast that replaces
-  any threshold card on screen; if a check is under way it waits behind it; if the user has already
-  starred, nothing shows and any card on screen is hidden; prompts never show during a cooldown,
-  after completion, or when no window can take them, though a forced show skips the cooldown; a
-  finished-task moment that comes during a cooldown is spent for that app version and does not show
-  later in it, while one that finds no window to show in is not spent; a dismissal counts only while
-  a prompt is on screen and only once per prompt, so stray or repeated dismissals neither restart
-  the cooldown nor double the threshold again.
-Acceptance:
-  - [ ] Launch 35 agents in a new version → the card shows.
-  - [ ] 'Later' → nothing for three days, and after that only once 70 more agents have launched.
-  - [ ] Finish onboarding → the star toast appears.
-Compat: Star-prompt state (the baseline, the next threshold, the cooldown, whether it was completed)
-  is data the importer should bring across.
-Source: D-16-037
-
-### ONB-038 · GitHub star prompt: starring and its states
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: clicks 'Star on GitHub', 'Later' or 'Dismiss' in the card or toast, or uses the star
-  button in Settings › General or on the landing screen.
-User sees: the star is placed directly through the user's GitHub sign-in, with a busy state and then
-  a thank-you; when direct starring cannot be done, an 'Open GitHub' button opens the repository
-  page instead.
-Rules: success is shown only after the direct star has worked; if the star state cannot be checked,
-  the browser fallback is offered, and a failed direct star switches to the fallback; while busy,
-  Dismiss and closing are disabled; duplicate stars in flight are ignored, and an attempt that threw
-  can be tried again; replacing or hiding the toast does not count as the user dismissing it; the
-  landing-screen star changes at once, before confirmation arrives; if the user dismisses while a
-  direct star is still running and it then fails, the cooldown stays and the prompt does not return.
-Acceptance:
-  - [ ] Signed in to GitHub → 'Star on GitHub' → busy → thank-you.
-  - [ ] Not signed in → 'Open GitHub' opens the repository in the browser.
-Compat: —
-Source: D-16-038
 
 ### ONB-042 · Kolux remembers on this machine which features each profile has used
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified

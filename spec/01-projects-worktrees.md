@@ -12,7 +12,7 @@ back and forward history; safe deletion, forgetting, the cleanup dialog and the 
 sparse-checkout presets, shared folder links, fork sync, repo hooks, host setups, remote and WSL
 execution, and work-item providers other than GitHub.
 
-Tier counts: P0 15 · P1 56 · P2 18 · H 2 · X 0 · D 10
+Tier counts: P0 14 · P1 39 · P2 13 · H 2 · X 0 · D 10
 Related areas: 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 08 Orchestration · 09 Automations · 11 Git, source control & review · 12 Editor & files · 16 Onboarding & guidance · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The `kolux` CLI · 21 Retired, hidden, removed, dev-only
 
 ## Cards
@@ -164,25 +164,6 @@ Acceptance:
   - [x] Create with an agent and a prompt → no additional empty default tab is opened. (cards live; evidence/cards-PROJ-038.txt)
 Compat: —
 Source: D-01-038
-
-### PROJ-077 · `kolux worktree` create and remove
-Tier: P0 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: creates or removes workspaces from a terminal or from an orchestrating agent.
-User sees: a workspace made with a name and, optionally, an agent and prompt, a base branch, a
-  linked issue, a parent and a setup choice; removal with an optional force.
-Rules: rm also answers to remove and delete and is marked as destructive; create can make the new
-  workspace active in the app; setup can be run, skipped, or left to the project default.
-Acceptance:
-  - [x] Create one with a name, an agent, a prompt and JSON output → the JSON includes the new
-        folder path; remove it by name → it is gone. (cards; evidence/cards-PROJ-077.txt)
-  - [x] Create with setup skipped → no setup script runs for it. (cards live; evidence/cards-PROJ-077.txt)
-Compat: kolux worktree create takes --name plus optional --repo, --agent, --prompt, --setup (run,
-  skip or inherit), --base-branch, --issue, --comment, --parent-worktree or --no-parent, --activate,
-  --run-hooks (the older spelling that runs setup and activates) and --json; kolux worktree rm (also
-  remove and delete) takes --worktree plus optional --force, --run-hooks (runs the archive script)
-  and --json. The --project, --host, --project-host-setup and --linear-issue flags belong to cut
-  features.
-Source: D-01-077
 
 ### PROJ-045 · Group the workspace list by project, status or pull request
 Tier: P0 · Pushed: 3 · State at 0.15.0: live-unverified
@@ -351,21 +332,6 @@ Acceptance:
 Compat: KOLUX_WORKSPACES_DIR takes an absolute path; it is trimmed and ignored when empty.
 Source: D-01-026
 
-### PROJ-030 · Open an existing branch or pull request as a workspace
-Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: picks an existing branch or a pull request when creating a workspace.
-User sees: the workspace checks out that very branch rather than starting a new one.
-Rules: changing the folder name still uses the existing branch; when the remote name for a pull
-  request clashes with one already present, a suffix is added; branches opened this way stay when
-  the workspace is deleted; a local branch for the pull request is reused only if it points at the
-  pull request's latest commit.
-Acceptance:
-  - [ ] Create from the existing branch feat/x → the workspace is on feat/x with its earlier
-        commits.
-  - [ ] Open a pull request whose local branch lags behind it → that local branch is not reused.
-Compat: —
-Source: D-01-030
-
 ### PROJ-032 · Ignored local files the repo lists are copied into new workspaces, within a budget
 Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
 User does: keeps, at the repo root, a list of ignored local files to bring along (env files, for
@@ -381,39 +347,6 @@ Acceptance:
 Compat: Reads `.worktreeinclude` at the repo root, one literal path per line; wildcard and negation
   lines are skipped with a warning (COMPAT 5.6).
 Source: D-01-032
-
-### PROJ-033 · A project setup script runs when a workspace is created
-Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: sets a setup script on the per-project page or in kolux.yaml, then creates a workspace.
-User sees: a Setup tab runs the script in the background; the agent can start alongside it or wait
-  until it is done.
-Rules: where it opens: a new tab (the default), a vertical split or a horizontal split; in new-tab
-  mode with wait for setup on, the agent starts only once setup has finished; on Windows the script
-  runs through the configured shell when that shell is a POSIX one; creating from the CLI can force
-  the script to run, skip it, or follow the project's default; on Windows, a script whose first line
-  names a POSIX shell runs through that shell with the flags it declares; Windows line endings are
-  accepted, and other interpreters are not mistaken for POSIX shells; on Windows, a script that
-  would go through cmd is refused when it holds characters cmd would misinterpret.
-Acceptance:
-  - [ ] Set the setup to install dependencies with wait for setup on → the agent tab starts only
-        after the install exits.
-  - [ ] Create from the CLI with setup skipped → no Setup tab runs.
-Compat: —
-Source: D-01-033
-
-### PROJ-037 · Create a workspace straight from a GitHub issue or pull request
-Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: pastes an issue or pull request URL into the palette, or uses the CLI's issue flag.
-User sees: the create action is already selected; the new workspace is linked to the item and named
-  after its title.
-Rules: plain names and repository home pages are not taken as links to work items; free text offers
-  create but leaves the first matching workspace selected.
-Acceptance:
-  - [ ] Paste a pull request URL into the palette and press Enter → a workspace named after the pull
-        request's title opens, linked to it.
-  - [ ] Paste a repository's home page URL → it is not treated as a work item.
-Compat: —
-Source: D-01-037
 
 ### PROJ-039 · The branch is renamed to fit the work once it begins
 Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
@@ -446,57 +379,6 @@ Acceptance:
 Compat: —
 Source: D-01-041
 Amended 2026-10-09 (DT-O2): new worktrees are noticed by a 5 s poll of Git's worktree list while the window is visible, in both layouts, rather than a folder watcher.
-
-### PROJ-042 · Show or hide individual worktrees, with defaults for new projects
-Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: opens the worktree visibility dialog for a project.
-User sees: the hidden worktrees, each listed by its path relative to the repository with show and
-  hide controls, and a link to the global defaults.
-Rules: in new projects, worktrees made outside Kolux start hidden; long lists are shown a page at a
-  time; existing projects keep their earlier behaviour when the default changes; visibility is
-  chosen per source: the worktree folder of each built-in agent tool, other locations, and custom
-  folders the user adds; custom folders start hidden and are limited to 32; invalid, repeated,
-  over-limit and failed-to-save entries each get their own error; a project-level override shows the
-  global value it replaces and can be reset to it.
-Acceptance:
-  - [ ] Hide a worktree → it leaves the sidebar; show it again → it comes back.
-  - [ ] Try to add a 33rd custom folder → an over-limit error appears.
-Compat: —
-Source: D-01-042
-
-### PROJ-044 · Kolux tells its own worktrees apart from external and scratch ones
-Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: has worktrees made by Kolux, by hand and by agent tools in the same repository.
-User sees: Kolux-made ones act as managed workspaces; the rest count as external; scratch folders
-  from tools stay hidden.
-Rules: Kolux's own records mark a worktree as managed even when it sits outside the workspaces
-  folder; a folder under the workspaces folder that Kolux has no record of is external; a base
-  folder the user set explicitly takes priority over the built-in rule for scratch paths.
-Acceptance:
-  - [ ] Make a worktree by hand inside the workspaces folder → it is listed as external.
-  - [ ] A Kolux-made workspace that lives outside the workspaces folder → still treated as managed.
-Compat: —
-Source: D-01-044
-
-### PROJ-034 · kolux.yaml shares setup, issue command and tabs with the whole team
-Tier: P1 · Pushed: 5 · State at 0.15.0: live-unverified
-User does: commits a kolux.yaml file at the root of the repository.
-User sees: Kolux asks once whether to trust the file before running its setup script, and asks again
-  whenever that script changes; after that it applies the setup, the default issue command and the
-  default terminal tabs to every new workspace.
-Rules: trust is granted per repository and per exact script text; values are trimmed, and an empty
-  file means no shared settings; local per-repo settings can run in place of the shared ones or in
-  addition to them; a file that is too big, or whose aliases expand out of control, is refused
-  before it is read, and fields or lists beyond their limits are dropped.
-Acceptance:
-  - [ ] Change the setup line in kolux.yaml → the next create asks for approval again.
-  - [ ] Commit an empty kolux.yaml → no shared settings apply.
-Compat: The kolux.yaml file at the repo root holds a setup script, whether the agent starts at once
-  or waits for setup, an issue command, and a list of default tabs, each with a title, a colour and
-  a command; its archive script and shared-folders list stay as well (STAT-055, GIT-067 and OD-14
-  in DECISIONS.md), while its environment recipes belong to a cut feature and are ignored. Files
-  already in users' repositories must keep working; the exact key spellings are in COMPAT.md 5.6.
-Source: D-01-034
 
 ### PROJ-082 · Bulk remove from cleanup runs in the background
 Tier: P1 · Pushed: 5 · State at 0.15.0: live-unverified
@@ -531,25 +413,6 @@ Acceptance:
         with no clone running it closes at once. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-002
-
-### PROJ-085 · Workspace board: lanes by status
-Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
-User does: opens the workspace board and drags cards between lanes.
-User sees: a lane for each status holding its workspaces; dragging changes the status; search
-  filters every lane where it stands.
-Rules: the command that opens the board has no default shortcut; a row dragged from the sidebar can
-  be dropped on a lane; a drop in a gap goes to the nearest lane, and column widths are kept within
-  limits; Escape does not close the board while a popover is open; the board's search is cleared
-  when the board closes; a board that fails to load shows the error with a Retry, projects whose
-  workspaces could not be listed are named, a board with no workspaces says so, and a failed
-  move says the cards were put back.
-Acceptance:
-  - [ ] Drag a card from Todo to Review → the sidebar shows Review too.
-  - [ ] Close and reopen the board → its search is empty.
-  - [ ] A move is refused → the cards go back and the board says so. (unit tests: evidence/T-670.txt)
-Compat: The open-board command is a keybinding command with no default key; its command id is an
-  allowlist candidate.
-Source: D-01-085
 
 ### PROJ-027 · Worktree work on cloud-synced folders fails fast instead of hanging
 Tier: P1 · Pushed: 9 · State at 0.15.0: live-unverified
@@ -714,32 +577,6 @@ Acceptance:
 Compat: —
 Source: D-01-048
 
-### PROJ-078 · `kolux worktree` list, show, current and set
-Tier: P1 · Pushed: 11 · State at 0.15.0: live-unverified
-User does: looks up or edits workspaces from the CLI.
-User sees: a list (per project if asked, with a limit), one workspace's details, the current
-  workspace, and edits to the shown name, linked issue, comment, status or parent.
-Rules: every one accepts --json.
-Acceptance:
-  - [ ] Set a workspace's shown name to A from the CLI → the sidebar shows A.
-  - [ ] Ask for the current workspace from a terminal inside one → that workspace is reported.
-Compat: kolux worktree list with optional --repo and --limit; show --worktree; current; set
-  --worktree with optional --display-name, --issue, --comment, --workspace-status, and
-  --parent-worktree or --no-parent; all accept --json.
-Source: D-01-078
-
-### PROJ-079 · `kolux worktree changes` and `kolux worktree overlap`
-Tier: P1 · Pushed: 11 · State at 0.15.0: live-unverified
-User does: asks which files a workspace has changed, or which workspaces touch the same files.
-User sees: a list of changed files, or the files shared between workspaces, to catch conflicts
-  between agents early.
-Rules: both accept --json.
-Acceptance:
-  - [ ] Two workspaces edit the same file → overlap lists that file.
-  - [ ] Change two files in a workspace → changes lists both.
-Compat: kolux worktree changes and kolux worktree overlap, each with an optional --json.
-Source: D-01-079
-
 ### PROJ-003 · Clone a repository from a URL into a suggested folder
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: pastes a Git URL into the clone step and confirms.
@@ -831,74 +668,6 @@ Acceptance:
   - [ ] Run it while the app is open → nothing in the sidebar changes.
 Compat: `kolux project list`, with an optional `--json`.
 Source: D-01-011
-
-### PROJ-012 · Scan a parent folder for the repositories inside it
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: picks a folder that is not a repository itself but holds several.
-User sees: a scan with running progress that lists each repository it finds; the user can stop it
-  and keep everything found so far.
-Rules: the scan goes level by level in alphabetical order, honours ignore files, and neither enters
-  heavy dependency folders nor follows symbolic links; bare repositories are recognised without
-  being entered; depth and count limits bound the scan, and there is no time limit unless one is
-  asked for.
-Acceptance:
-  - [ ] Scan a folder holding three repositories and a large package-dependency folder → three
-        repositories are listed and the dependency folder is never opened.
-  - [ ] Stop the scan early → the repositories found so far can still be selected.
-  - [x] Close the scan dialog while it is scanning → that scan is stopped; closing after it ends stops
-        nothing. (T-687; evidence/T-687.txt)
-Compat: —
-Source: D-01-012
-
-### PROJ-013 · Import found repositories as one group or as separate projects
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: ticks repositories in the checklist and says whether to group them.
-User sees: grouped, they become one project group named after the parent folder (the name can be
-  edited) with the repositories nested to mirror the folder layout; separate, each repository is its
-  own top-level project.
-Rules: a blank group name falls back to the parent folder's name; in-between folders that lead to
-  only one repository are folded away instead of becoming empty groups; with nothing ticked, the
-  parent itself can be opened as a folder project; repositories that share a name get steady labels
-  that tell them apart in the checklist; a linked worktree found by the scan is mapped to its main
-  checkout.
-Acceptance:
-  - [ ] Bring in x and z as one group, where z sits one folder deeper inside y → one group, with x
-        directly inside it and z inside a sub-group for y.
-  - [ ] Untick everything → the parent can be opened as a folder project.
-Compat: —
-Source: D-01-013
-
-### PROJ-014 · Project groups organise the sidebar
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: creates, renames and nests project groups and moves projects into them.
-User sees: group headers that fold open and closed, holding projects and sub-groups; empty groups,
-  and projects with no workspaces, still appear.
-Rules: groups are kept across restarts; an empty name is replaced by a default name; a group made
-  while the sidebar is refreshing is not lost.
-Acceptance:
-  - [ ] Create a group and restart → it is still there, empty.
-  - [ ] Create a group while the sidebar is refreshing → the group survives the refresh.
-  - [x] Make a new group, then close its form before Save → the group is removed again, once, and only
-        while it still exists. (T-687; evidence/T-687.txt)
-  - [x] Press New group twice while the first new group is still unsaved → only one new group is
-        left; a group saved in between stays. (T-689; evidence/T-689.txt)
-Compat: —
-Source: D-01-014
-
-### PROJ-015 · Delete a project group, with or without its projects
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: deletes a project group.
-User sees: a confirmation with a choice to also remove the projects inside it, sub-groups included;
-  without that choice the projects move out of the group.
-Rules: removing projects never deletes their folders on disk.
-Acceptance:
-  - [ ] Delete a group with the choice off → its projects are back at the top level.
-  - [ ] Delete a group with the choice on → its projects, those in sub-groups too, leave the sidebar
-        while their folders stay on disk.
-  - [x] Press Escape anywhere in the delete-group question → the group stays; Keep it puts focus
-        back on the group's delete button, and after deleting, focus goes to New group. (T-689; evidence/T-689.txt)
-Compat: —
-Source: D-01-015
 
 ### PROJ-016 · Drag project and group headers into order
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
@@ -1046,60 +815,6 @@ Acceptance:
 Compat: —
 Source: D-01-065
 
-### PROJ-071 · Delete many workspaces at once
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: selects several rows and deletes them.
-User sees: one confirmation for the whole set, deletions running side by side, and a single summary
-  of any branches kept.
-Rules: main checkouts are taken out of a batch; each item is checked again just before it runs, and
-  rows that changed are reported rather than quietly skipped; duplicates count once.
-Acceptance:
-  - [ ] Delete 100 workspaces → one confirmation and one summary.
-  - [ ] Include the main checkout in the selection → it is left out of the batch.
-Compat: —
-Source: D-01-071
-
-### PROJ-076 · Forget a workspace locally without touching disk
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: chooses forget on a workspace whose folder or project is gone.
-User sees: the row and Kolux's records for it disappear; nothing on disk changes.
-Rules: it works even after the project itself was removed; a folder project's root cannot be
-  forgotten this way.
-Acceptance:
-  - [ ] Forget a workspace whose folder was deleted by hand → the row is gone with no error.
-  - [ ] Look for forget on a folder project's root → it is not offered.
-Compat: —
-Source: D-01-076
-
-### PROJ-083 · Space view: what each workspace costs on disk
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens the Space view.
-User sees: a disk-usage map of projects and workspaces, counting reclaimable space only for linked
-  worktrees, with delete actions.
-Rules: scans report progress and are shared between requests; if the system's size tool never
-  finishes, size reading switches to a fallback; scan budgets cap memory, and a scan that goes over
-  is marked incomplete rather than showing wrong numbers; results are saved and shown next time, and
-  leftover worktree registrations that no longer exist are left out; deleting from Space uses the
-  safety-checked confirmation without force; Git status checks cover every row that can be deleted,
-  not just the first 50.
-Acceptance:
-  - [ ] Open Space → the main checkout is not counted as reclaimable.
-  - [ ] Reopen Space after a scan → the saved result shows right away.
-Compat: —
-Source: D-01-083
-
-### PROJ-084 · Workspace statuses form a workflow
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: moves a workspace to a status, or edits the list of statuses.
-User sees: each workspace carries a status from an ordered workflow: the default set, or the user's
-  own labels and order.
-Rules: every status the user defines is kept, in order, none cut off.
-Acceptance:
-  - [ ] Add a custom status → it shows in Move to Status and on the board.
-  - [ ] Reorder the statuses → the menu and the board follow the new order.
-Compat: —
-Source: D-01-084
-
 ### PROJ-086 · Folder workspaces for projects without Git
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: adds more workspaces to a folder project.
@@ -1115,24 +830,6 @@ Acceptance:
         failing.
 Compat: —
 Source: D-01-086
-
-### PROJ-035 · Sidebar card that suggests adding a setup script
-Tier: P2 · Pushed: 6 · State at 0.15.0: live-unverified
-User does: works in a project that has no setup script in effect.
-User sees: a small card above the sidebar toolbar offers to set one up; it goes away once a script
-  takes effect or the user dismisses it.
-Rules: while the card is up, it re-checks whenever the Kolux window comes back into focus or a
-  workspace is made active; dismissal is remembered per project; it suggests the install command of
-  the package manager the project declares; when another worktree tool's settings or a Codex
-  environment file holds a setup command, the card offers to save it as a local setup, lists any
-  fields it skipped as unsupported, and the confirmation links to the project's settings; when the
-  shared setup file cannot be read, the card shows an error with Retry and recovers once the file is
-  fixed.
-Acceptance:
-  - [ ] Save a setup script from the card → the card goes away.
-  - [ ] Dismiss the card, then reopen the project → it stays dismissed.
-Compat: —
-Source: D-01-035
 
 ### PROJ-017 · Project headers have a colour
 Tier: P2 · Pushed: 7 · State at 0.15.0: live-unverified
@@ -1199,17 +896,6 @@ Acceptance:
 Compat: —
 Source: D-01-024
 
-### PROJ-036 · Linked issues can start with a per-project issue command
-Tier: P2 · Pushed: 11 · State at 0.15.0: live-unverified
-User does: creates a workspace linked to a GitHub issue in a project that has an issue command.
-User sees: the issue command runs inside the new workspace with the issue filled in.
-Rules: a local setting wins over the value shared in kolux.yaml when both exist.
-Acceptance:
-  - [ ] Set an issue command and create from issue #12 → the command runs with #12.
-  - [ ] Give the project different local and shared issue commands → the local one runs.
-Compat: —
-Source: D-01-036
-
 ### PROJ-009 · Projects with the same folder name stay distinguishable
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: has two projects whose folders share a name.
@@ -1223,23 +909,6 @@ Acceptance:
   - [ ] Add a project with a name no other project has → its header shows the folder name alone.
 Compat: —
 Source: D-01-009
-
-### PROJ-018 · Projects pick up an icon from the repository
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: adds a project.
-User sees: the project shows the app's own icon when one is found, otherwise the avatar of the owner
-  on the hosting site, otherwise a folder symbol.
-Rules: places are tried in this order: a small favicon inside the repository, icons from desktop app
-  bundles, an image published on the web, the favicon of the homepage named in the package manifest,
-  then icon links declared in the source; only files inside the repository are used, and files that
-  are too large are passed over; for a fork, the upstream owner's avatar wins; a fork that was
-  renamed uses its own owner's avatar instead.
-Acceptance:
-  - [ ] Add a repository with a small favicon image → that image becomes the project icon.
-  - [ ] Add a repository with no icon of any kind → the hosting owner's avatar shows, or a folder
-        symbol when there is none.
-Compat: —
-Source: D-01-018
 
 ### PROJ-029 · Hint when the local base branch is behind its remote
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
@@ -1306,18 +975,6 @@ Acceptance:
 Compat: —
 Source: D-01-061
 
-### PROJ-069 · Repositories are tidied quietly in the background
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: leaves Kolux idle.
-User sees: nothing visible; Git maintenance happens only once a repository has gone quiet for a
-  while.
-Rules: maintenance waits for a complete quiet period and never runs while there is activity.
-Acceptance:
-  - [ ] Keep editing in a repository → no maintenance starts.
-  - [ ] Leave a repository untouched past the quiet period → maintenance runs.
-Compat: —
-Source: D-01-069
-
 ### PROJ-075 · Delete the workspace under the pointer
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: hovers a row and presses the delete shortcut.
@@ -1347,18 +1004,6 @@ Acceptance:
         all change only the rows the filters show. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-081
-
-### PROJ-088 · Friendly local addresses for each workspace's dev server
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: turns on workspace localhost labels.
-User sees: each workspace's local web server can be reached under a readable local name.
-Rules: off by default; only plain http targets are served, responses pass through unchanged, and
-  targets on 0.0.0.0 are sent to loopback.
-Acceptance:
-  - [ ] Turn it on and run a dev server in workspace a → its label address serves that server.
-  - [ ] Leave it off → no label addresses exist.
-Compat: —
-Source: D-01-088
 
 ### PROJ-090 · Experimental new workspace card style
 Tier: H · Pushed: 7 · State at 0.15.0: hidden
@@ -1436,7 +1081,7 @@ Rules: the lock state was checked again after the archive script ran.
 Acceptance:
   - [ ] No per-repository repo-hooks settings exist; the archive script comes from kolux.yaml only.
   - [ ] Removing a workspace still runs the kolux.yaml archive script after the trust dialog, and
-        the CLI create and remove commands keep their run-hooks flag (STAT-055, CLI-018, CLI-020;
+        the CLI create and remove commands keep their run-hooks flag (STAT-055, CLI 018, CLI 020;
         owner to confirm, see OD-14).
 Compat: —
 Decision: default cut: owner cut table 1b, repo hooks (the per-repository settings control only;

@@ -11,7 +11,7 @@ opening prompt reaches an agent, how sessions come back after a quit, the side d
 agent from a failing check, an issue or another agent's conversation, and the new workspace
 composer. The custom-agent builder is cut by default.
 
-Tier counts: P0 14 · P1 25 · P2 2 · H 3 · X 1 · D 6
+Tier counts: P0 14 · P1 22 · P2 2 · H 3 · X 1 · D 6
 
 Related areas: 01 Projects, repos & worktrees · 03 Terminals & panes · 04 Agent status, hooks &
 notifications · 05 Views & navigation · 06 Usage & limits · 07 Accounts, sign-in & keys ·
@@ -307,7 +307,7 @@ Rules: one program name per agent decides that it is installed and also marks it
   input box and submits once, the prompt is handed over so that tools Hermes later runs never see
   it, the user's own Hermes arguments are kept but any query or interface-mode arguments the user
   set give way to Kolux's, and a start line plus prompt past about 24,000 characters is refused
-  and reported (SESS-005); typed in once the agent is ready (SESS-032) for Autohand Code, Ante,
+  and reported (SESS-005); typed in once the agent is ready (SESS 032) for Autohand Code, Ante,
   Aider, Goose, Amp, Kilo Code, Kiro, Crush, Auggie, Cline, Codebuff, Continue, Kimi, Mistral
   Vibe, Qwen Code, Rovo Dev, OpenClaw, Devin and Claude Agent Teams, where Ante and Devin take
   this route on purpose, since Ante's own prompt option runs once and quits and Devin's start-up
@@ -553,20 +553,6 @@ Acceptance:
 Compat: —
 Source: D-02-022
 
-### SESS-026 · Setup scripts and hook trust are settled before any agent starts
-Tier: P1 · Pushed: 5 · State at 0.15.0: live-unverified
-User does: launches agents in a project that has a setup script or repo hooks.
-User sees: Kolux asks the user to trust the project's setup before it runs; by default the setup
-  runs in a new tab; a project set to ask about setup for each workspace cannot be bulk-launched,
-  and Kolux says so.
-Rules: the default setup mode is a new tab; a bulk launch refuses a project that asks per
-  workspace, with an error toast.
-Acceptance:
-  - [ ] Launch two seats in a project whose setup script is not yet trusted → a trust prompt appears before any agent starts.
-  - [ ] Set a project to ask about setup for each workspace, then bulk-launch → an error toast appears and nothing starts.
-Compat: the importer carries the launch mode for setup scripts (new tab by default).
-Source: D-02-026
-
 ### SESS-017 · Featured agent cards show what is missing and how to set it up
 Tier: P1 · Pushed: 6 · State at 0.15.0: live-unverified
 User does: looks over the agent grid on the launch screen.
@@ -630,24 +616,6 @@ Acceptance:
 Compat: —
 Source: D-02-005
 
-### SESS-032 · The opening prompt reaches the agent exactly once, or the user is told
-Tier: P1 · Pushed: 9 · State at 0.15.0: live-unverified
-User does: launches an agent with a prompt.
-User sees: the prompt goes in as soon as the agent is ready for input; if it cannot be delivered,
-  a toast says it was not sent.
-Rules: delivery waits until the agent can take input; one prompt is never delivered twice; each
-  agent takes its opening prompt in its own way: as a command-line argument, through a prompt
-  flag, through its own start-up question (Hermes), or typed in after it starts; a typed prompt
-  goes in as one pasted block so its line breaks stay inside the prompt, and is submitted as a
-  separate step; on Windows the pause before submitting grows with the prompt's length; for agents
-  started behind an interpreter wrapper, the prompt is typed only once the real agent is running,
-  never into the bare shell.
-Acceptance:
-  - [ ] Launch a slow-starting agent with a prompt → the prompt appears once, after the agent is ready.
-  - [ ] Launch with a multi-line prompt → it arrives as one prompt with its line breaks intact and is submitted once.
-Compat: —
-Source: D-02-032
-
 ### SESS-020 · Save a lineup as a shape or team and use it again
 Tier: P1 · Pushed: 11 · State at 0.15.0: live-unverified
 User does: clicks "Save as team" on the New session page (or the save-as-shape action in the
@@ -665,22 +633,6 @@ Acceptance:
 Compat: the importer carries saved shapes: the name, each seat's agent, model, options and role,
   the files choice and the optional prompt.
 Source: D-02-020
-
-### SESS-031 · Carry a conversation over to a different agent
-Tier: P1 · Pushed: 11 · State at 0.15.0: live-unverified
-User does: chooses to continue the current session in another agent.
-User sees: a dialog for choosing the target agent; the new session starts with the earlier
-  conversation's transcript as context.
-Rules: the dialog pre-selects the source agent if it is still available, otherwise the saved
-  default, otherwise the first available agent; the new session opens in the same workspace and
-  folder; an unavailable target means nothing launches; a failed hand-over of the prompt is
-  reported apart from a failed launch; the context passed along is a trimmed transcript, not the
-  raw log.
-Acceptance:
-  - [ ] From a Claude Code session, continue in Codex → Codex opens with the earlier conversation as its context.
-  - [ ] Pick a target agent that has just been uninstalled → nothing launches.
-Compat: —
-Source: D-02-031
 
 ### SESS-033 · Start an agent to fix failing checks
 Tier: P1 · Pushed: 11 · State at 0.15.0: live-unverified
