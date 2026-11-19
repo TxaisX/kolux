@@ -1,4 +1,4 @@
-// Which pane is in view (TERM-118) and the layout report the command line reads (CLI-023), moved out of App.tsx
+// Which pane is in view (TERM-118) and the layout report the session tab inventory reads (CLI-023, ORCH-060), moved out of App.tsx
 // as they were (cycle 2, the App.tsx split). Called where they sat, so the window's hook order is unchanged.
 import { sameDir, viewOf } from "../workspaces";
 import { tabName } from "./tabName";
@@ -8,7 +8,7 @@ import type { WindowState } from "../shell/windowStore";
 import type { PaneGrid } from "./paneGrid";
 import type { Screens } from "../chrome/useScreens";
 
-export function useLayoutReport({ activeDir, activeOf, cells, cliFailed, ptys, terminals, titles }: Pick<WindowState, "activeDir" | "cliFailed" | "ptys" | "titles"> & Pick<PaneGrid, "activeOf" | "cells"> & Pick<Screens, "terminals">) {
+export function useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, titles }: Pick<WindowState, "activeDir" | "ptys" | "titles"> & Pick<PaneGrid, "activeOf" | "cells"> & Pick<Screens, "terminals">) {
   // TERM-118: a pane is in view when its workspace is in front and it is the tab on top; a finish or bell anywhere else marks tab, pane and workspace row unread
   // and says so in the window. A desktop notification and the settings that gate it are T-026.
   const inView = (key: number) => {
@@ -16,8 +16,8 @@ export function useLayoutReport({ activeDir, activeOf, cells, cliFailed, ptys, t
     if (!cell) return false;
     return (terminals && sameDir(viewOf(cell.panes[0]), activeDir) && activeOf(cell) === key);
   };
-  // CLI-023: the command line learns where each terminal sits (its worktree pane, its tab, its
-  // name, whether it is in view) from this report, sent whenever that changes.
+  // CLI-023: the back end learns where each terminal sits (its worktree pane, its tab, its name,
+  // whether it is in view) from this report, sent whenever that changes; session_tabs reads it.
   const layoutSent = useRef("");
   const reportLayout = () => {
     const rows: Record<string, unknown>[] = [];
@@ -25,10 +25,9 @@ export function useLayoutReport({ activeDir, activeOf, cells, cliFailed, ptys, t
       const here = cells.filter((x) => sameDir(viewOf(x.panes[0]), viewOf(c.panes[0]))); // the cells of its grid (DT-C274)
       c.panes.forEach((p, i) => {
         const id = ptys.current[p.key];
-        if (id !== undefined) rows.push({ handle: `term-${id}`, dir: p.cwd, view: viewOf(p), cell: here.indexOf(c) + 1, tab: i + 1, title: tabName(p, titles), custom: p.title ?? null, shown: inView(p.key), ask: p.ask ?? null });
+        if (id !== undefined) rows.push({ handle: `term-${id}`, dir: p.cwd, view: viewOf(p), cell: here.indexOf(c) + 1, tab: i + 1, title: tabName(p, titles), custom: p.title ?? null, shown: inView(p.key) });
       });
     }
-    for (const [ask, error] of Object.entries(cliFailed.current)) rows.push({ ask, error });
     const sent = JSON.stringify(rows);
     if (sent === layoutSent.current) return;
     layoutSent.current = sent;

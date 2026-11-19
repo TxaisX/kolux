@@ -1,5 +1,5 @@
 // Which screen is up and what follows from it, moved out of App.tsx as it was (cycle 2, the App.tsx split): the
-// screen flags, worker task labels (T-050-b), the tab-name rule and its beat (STAT-035), the status clock
+// screen flags, the tab-name rule and its beat (STAT-035), the status clock
 // (STAT-050, `now`, no longer ticked here) and Settings as a full page (VIEW-009). Called where it sat, so the window's hook order is unchanged.
 import type { Pane } from "../App";
 import { programWord } from "../launch/PlusMenu";
@@ -13,19 +13,16 @@ import type { WindowState } from "../shell/windowStore";
 
 export function useScreens({ classic, hook, liveIds, panes, screen, settings, settingsOpen, titles }: Pick<WindowState, "classic" | "hook" | "liveIds" | "panes" | "screen" | "settings" | "settingsOpen" | "titles">) {
   const terminals = screen === "terminals";
-  // T-050-b: a worker's task label named its tab (orchestration's worker_labels); the orchestration engine is
-  // gone, so no tab has one now and the tab-name rules below get none.
-  const labelOf = (_p: Pane): string | undefined => undefined;
   // TERM-056 / T-258: the tab's text and its hover (the full title); generated titles (off by default) touch only
   // terminal panes without a name of their own.
   // STAT-035 / T-124-b: the tab-name rule on top of the followed title: Kolux names ready and action required for agents whose own titles do not, and one shared beat animates its spinners.
-  const ruleOf = (p: Pane) => ({ named: Boolean(labelOf(p) || p.title?.trim()), agent: p.kind ? null : launchedAgent(p), name: launchedName(p) ?? programWord(p.agent), live: liveIds[p.key]?.title, state: hook[p.key] });
+  const ruleOf = (p: Pane) => ({ named: Boolean(p.title?.trim()), agent: p.kind ? null : launchedAgent(p), name: launchedName(p) ?? programWord(p.agent), live: liveIds[p.key]?.title, state: hook[p.key] });
   // The beat runs while some tab animates, but its frames re-render only those tab labels (BeatLabel), not the window.
   useBeatKeys(panes.filter((p) => needsBeat(ruleOf(p))).map((p) => p.key));
   const tabLabel = (p: Pane) => {
     const rule = ruleOf(p);
-    const shownName = tabName(p, titles, labelOf(p), liveIds);
-    const textOf = (full: string) => (p.kind ? full : tabText({ full, own: p.title, on: generatedOn(settings), generated: generatedTitle({ label: labelOf(p), word: p.agent === "shell" ? "Shell" : programWord(p.agent), branch: p.branch, cwd: p.cwd }) }));
+    const shownName = tabName(p, titles, liveIds);
+    const textOf = (full: string) => (p.kind ? full : tabText({ full, own: p.title, on: generatedOn(settings), generated: generatedTitle({ word: p.agent === "shell" ? "Shell" : programWord(p.agent), branch: p.branch, cwd: p.cwd }) }));
     return <BeatLabel animate={needsBeat(rule)} full={(frame) => statusTitle({ ...rule, shown: shownName, frame })} text={textOf} />;
   };
   // STAT-050: the clock the status chips read; no screen needs it to tick now.
@@ -34,7 +31,7 @@ export function useScreens({ classic, hook, liveIds, panes, screen, settings, se
   const fullPage = settingsOpen;
   useEffect(() => showScreen(screen, classic), [screen, classic]); // VIEW-006: each screen's own theme
   return {
-    terminals, labelOf, ruleOf, tabLabel, now, setNow,
+    terminals, ruleOf, tabLabel, now, setNow,
     fullPage,
   };
 }

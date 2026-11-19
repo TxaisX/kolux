@@ -26,7 +26,7 @@ test("C13-R1-01: Open in Code shows Terminals", () => {
 test("two start failures in a row remove both panes", () => {
   let list = [5, 6, 7].map((key) => ({ key, cwd: "C:\\w", branch: null, agent: "claude", program: null, args: [], batch: 1 }));
   const setPanes = vi.fn((v: unknown) => (list = typeof v === "function" ? (v as (ps: typeof list) => typeof list)(list) : (v as typeof list)));
-  const s = { panes: list, activeDir: "C:\\w", setPanes, setFocused: vi.fn(), setToast: vi.fn(), restoredKeys: { current: new Set() }, cliFailed: { current: {} } } as unknown as WindowState;
+  const s = { panes: list, activeDir: "C:\\w", setPanes, setFocused: vi.fn(), setToast: vi.fn(), restoredKeys: { current: new Set() } } as unknown as WindowState;
   // both callbacks come from the same render, as two failures that land before React draws again
   const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   a.failedPane(5, "not found");
@@ -34,8 +34,8 @@ test("two start failures in a row remove both panes", () => {
   expect(list.map((p) => p.key)).toEqual([7]);
 });
 
-// CLI-026: a split from the command line of a lone pane in a workspace not in front stacks that workspace, not the one in front.
-test("a command-line split down stacks the split pane's own workspace", () => {
+// CLI-026: a split down of a lone pane in a workspace not in front stacks that workspace, not the one in front.
+test("a split down stacks the split pane's own workspace", () => {
   let stacked: Record<string, boolean> = { "C:\\front": false };
   const setStacked = vi.fn((f: (st: typeof stacked) => typeof stacked) => (stacked = f(stacked)));
   const panes = [
@@ -43,9 +43,9 @@ test("a command-line split down stacks the split pane's own workspace", () => {
     { key: 2, cwd: "C:\\front", branch: null, agent: "shell", program: null, args: [] },
     { key: 5, cwd: "C:\\other", branch: null, agent: "shell", program: null, args: [] },
   ];
-  const s = { panes, activeDir: "C:\\front", setPanes: vi.fn(), setFocused: vi.fn(), setStacked, setToast: vi.fn(), cliFailed: { current: {} }, nextKey: { current: 9 } } as unknown as WindowState;
+  const s = { panes, activeDir: "C:\\front", setPanes: vi.fn(), setFocused: vi.fn(), setStacked, setToast: vi.fn(), nextKey: { current: 9 } } as unknown as WindowState;
   const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
-  a.splitPane(5, "down", { ask: "q", command: null });
+  a.splitPane(5, "down");
   expect(stacked).toEqual({ "C:\\front": false, "C:\\other": true });
 });
 

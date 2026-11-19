@@ -55,7 +55,7 @@ import { hearStates, setHooksOn } from "./chat/send";
 export type ShellTarget = { dir: string | null; branch: string | null };
 
 /** A pane with `seats` is a chooser (SESS-007): nothing runs in it until Start. */
-export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; /** DT-C274: the folder whose grid shows the pane when not its own `cwd` (workspaces.ts `viewOf`). */ view?: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; /** TERM-123 (T-817): the pane's agent is asleep to save memory; Wake resumes the recorded session (sleep/agentSleep.ts); not saved with the layout. */ asleep?: { since: number; idleMin: number; session: string }; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
+export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; /** DT-C274: the folder whose grid shows the pane when not its own `cwd` (workspaces.ts `viewOf`). */ view?: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; /** TERM-123 (T-817): the pane's agent is asleep to save memory; Wake resumes the recorded session (sleep/agentSleep.ts); not saved with the layout. */ asleep?: { since: number; idleMin: number; session: string }; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
 
 /** Columns for a pane count: 1, side by side for 2, two rows for 3-4, then three across. */
 /** `initial`: the settings read before the first frame (main.tsx), so the first screen is right at once. */
@@ -76,7 +76,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, dragLeft,
     panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
     needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
-    markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
+    markDir, rowRef, ptys, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
     setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, installedIds, owner, refresh, recentDirs, activeRef,
     setHist, stacked, setNotice, setToast
   } = store;
@@ -161,8 +161,8 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // Answers, the plan sheet and review notes (terminal/reviewActions.ts).
   const reviewA = reviewActions(state, w);
   const reviewPane = reviewing && panes.find((p) => p.key === reviewing.key);
-  // What is in view, and the layout report for the command line (terminal/useLayoutReport.ts).
-  const layoutReport = useLayoutReport({ activeDir, activeOf, cells, cliFailed, ptys, terminals, titles });
+  // What is in view, and the layout report the session tab inventory reads (terminal/useLayoutReport.ts).
+  const layoutReport = useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, titles });
   const { inView } = layoutReport;
   const { noticed, panesRef } = useAgentEvents({ panes, setPanes, titles, settings, inView, setToast, tabName, setCrew, setTurn, setStale, hookRef, setHook, stamp, setStamp, setContext, unreadPanes, setUnreadPanes, winFocused, markDir, muted: muteRef });
   useRestoredStatus({ panes, hookRef, setHook, setStale, setCrew, setTurn });

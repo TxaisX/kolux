@@ -8,8 +8,7 @@ describe("term-056 tab titles", () => {
     expect(generatedOn({ generatedTabTitles: true })).toBe(true);
   });
 
-  it("the generated name comes from the task label, else agent and branch, else agent and folder, clipped", () => {
-    expect(generatedTitle({ label: "Fix the login bug", word: "Claude", branch: "main", cwd: "C:/w/app" })).toBe("Fix the login bug");
+  it("the generated name is the agent and branch, else agent and folder, clipped", () => {
     expect(generatedTitle({ word: "Claude", branch: "feat/login", cwd: "C:/w/app" })).toBe("Claude · feat/login");
     expect(generatedTitle({ word: "Codex", branch: null, cwd: "C:\\w\\app" })).toBe("Codex · app");
     expect(generatedTitle({ word: "Codex", branch: null, cwd: null })).toBe("Codex");

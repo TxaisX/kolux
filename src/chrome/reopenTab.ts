@@ -67,7 +67,7 @@ export function createClosedPanes(): ClosedPanes {
 /** The window's one memory. */
 export const closedPanes = createClosedPanes();
 
-/** The pane to add: a fresh key, the old folder (null when it had none), no session, typed line or ask. */
+/** The pane to add: a fresh key, the old folder (null when it had none), no session or typed line. */
 export function paneFor(rec: ClosedPane, key: number, group?: number): Pane {
   const { cwd, ...rest } = rec;
   return { ...rest, key, cwd: cwd === "" ? null : cwd, group };

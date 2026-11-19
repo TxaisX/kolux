@@ -31,7 +31,7 @@ export default function Grid() {
     weightsOf, shown, activeDir, addShell, addChooser, cells, activeOf, dropHint, dragging,
     setDropHint, dropTabOn, dropCellOn, pinned, tabColors, titles, renamingTab, closePane, setFocused,
     setRenamingTab, setTabMenu, liveIds, running, statusOf, unreadPanes, hook, context, settings, plan,
-    accountSwitcher, labelOf, tabLabel, renamePane,
+    accountSwitcher, tabLabel, renamePane,
   } = useWindow();
   const frame = gridFrame({ zoomed, classic, terminals });
   return (
@@ -163,7 +163,7 @@ export default function Grid() {
                     {!p.kind && !p.seats && <TabBadge kind={tabBadge(p.agent, running[p.key], needsYou(statusOf(p)), unreadPanes.has(p.key), hook[p.key])} />}
                     {context[p.key] && <Ring percent={contextFill(context[p.key], capOn(settings))} size={10} title={meterText(meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) ?? {})} />}
                     {renamingTab === p.key ? (
-                      <NameField value={tabName(p, titles, labelOf(p), liveIds)} label="Tab name" onSave={(name) => (setRenamingTab(null), renamePane(p.key, name))} onCancel={() => setRenamingTab(null)} />
+                      <NameField value={tabName(p, titles, liveIds)} label="Tab name" onSave={(name) => (setRenamingTab(null), renamePane(p.key, name))} onCancel={() => setRenamingTab(null)} />
                     ) : (
                       tabLabel(p)
                     )}

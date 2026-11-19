@@ -42,7 +42,7 @@ const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {
     terminals, focused, closePane, setFocused, settings, titles, liveIds, openFile, restoredKeys, projects, setExpanded,
-    answer, context, agents, defaultId, setDefault, launching, launch, addChooser, savedName, labelOf, ptys, unreadPanes,
+    answer, context, agents, defaultId, setDefault, launching, launch, addChooser, savedName, ptys, unreadPanes,
     hook, hookRef, turn, crew, setNeeds, setStamp, setRunning, runRef, liveRef, muteRef, setGuess, setLiveIds, setHook,
     setPanes, noticed, report,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
@@ -121,7 +121,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     moveToTab: () => moveOutToTab(p.key),
     expand: () => expandPane(p.key),
     rename: (name: string | undefined) => renamePane(p.key, name),
-    sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", undefined, { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
+    sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
     entry: (t: EntryTarget) => (t.kind === "web" ? void openExternal(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
     shell: (sh: ShellEntry) => void newTab({ shell: sh }), // TERM-043: the plus menu's shell choice, a tab like the New tab menu's
     copyId: (what: "session" | "terminal" | "pane") => copyId(p, what),
@@ -165,7 +165,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       worktree={worktreeTag(p.cwd, p.branch ?? null, { projects, owner, names })}
       onWorktree={act.worktree}
       agent={p.agent}
-      name={savedName(p) ?? labelOf(p)}
+      name={savedName(p)}
       program={p.program}
       args={p.args}
       env={p.env}
@@ -200,7 +200,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       sessionKnown={!!p.session}
       session={p.session}
       onSessionLaunch={act.sessionLaunch} // after-list #117: Continue / Fork open a second pane beside this one
-      entryTabs={panes.filter((q) => sameDir(viewOf(q), activeDir)).map((q) => ({ key: q.key, name: tabName(q, titles, labelOf(q), liveIds) }))}
+      entryTabs={panes.filter((q) => sameDir(viewOf(q), activeDir)).map((q) => ({ key: q.key, name: tabName(q, titles, liveIds) }))}
       onEntry={act.entry}
       shells={shells}
       onShell={act.shell}
