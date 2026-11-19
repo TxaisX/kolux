@@ -181,14 +181,10 @@ test.each([
   expect(sessionsUnder([A], [{ cwd: A }, { cwd: B }], [B, A, W]), "the projects' own sessions as before").toBe(1);
 });
 
-// DT-C274: a command-line file of a team worktree opens once its team's grid is shown (select() shows that grid).
-test("cliFileShown: a team worktree's file is ready in its team's grid or in the worktree itself", async () => {
-  const { cliFileShown, selectView } = await import("./rows");
+// DT-C274: select() shows a team worktree in its team's grid.
+test("selectView: a team worktree is shown in its team's grid while that grid has panes", async () => {
+  const { selectView } = await import("./rows");
   const settings = { teamWorktrees: [{ path: "C:\\r\\wts\\wt1", view: "C:\\r" }] };
-  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\r")).toBe(true);
-  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\r\\wts\\wt1")).toBe(true);
-  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\other")).toBe(false);
-  expect(cliFileShown({}, "C:\\r\\wts\\wt1", "C:\\r")).toBe(false);
   // selectView: the team's grid while it has panes; none once it is empty (a stranded worktree)
   expect(selectView(settings, [{ key: 1, cwd: "C:\\r\\wts\\wt1", view: "C:\\r" }], "C:\\r\\wts\\wt1")).toBe("C:\\r");
   expect(selectView(settings, [], "C:\\r\\wts\\wt1")).toBeUndefined();

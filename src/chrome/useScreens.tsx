@@ -9,18 +9,15 @@ import { needsBeat, statusTitle, useBeatKeys, useBeatText } from "../status/tabN
 import { tabName } from "../terminal/tabName";
 import { showScreen } from "../theme";
 import { useEscapeLeaves } from "./fullPage";
-import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import type { WindowState } from "../shell/windowStore";
 import type { PaneActions } from "../terminal/paneActions";
 
-export function useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles }: Pick<WindowState, "classic" | "hook" | "liveIds" | "page" | "panes" | "ptys" | "screen" | "settings" | "settingsOpen" | "titles"> & Pick<PaneActions, "leavePage">) {
+export function useScreens({ classic, hook, leavePage, liveIds, page, panes, screen, settings, settingsOpen, titles }: Pick<WindowState, "classic" | "hook" | "liveIds" | "page" | "panes" | "screen" | "settings" | "settingsOpen" | "titles"> & Pick<PaneActions, "leavePage">) {
   const terminals = screen === "terminals";
-  // T-050-b: an orchestrator-started session with no name or title is named after its worker's task
-  // (orchestration worker_labels, by terminal handle), looked up while
-  // the tab strip is open (ORCH-066 / T-129-d: generated titles read the same label).
-  const [workerNames, setWorkerNames] = useState<Record<string, string>>({});
-  const labelOf = (p: Pane) => workerNames[`term-${ptys.current[p.key]}`];
+  // T-050-b: a worker's task label named its tab (orchestration's worker_labels); the orchestration engine is
+  // gone, so no tab has one now and the tab-name rules below get none.
+  const labelOf = (_p: Pane): string | undefined => undefined;
   // TERM-056 / T-258: the tab's text and its hover (the full title); generated titles (off by default) touch only
   // terminal panes without a name of their own.
   // STAT-035 / T-124-b: the tab-name rule on top of the followed title: Kolux names ready and action required for agents whose own titles do not, and one shared beat animates its spinners.
@@ -33,13 +30,6 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
     const textOf = (full: string) => (p.kind ? full : tabText({ full, own: p.title, on: generatedOn(settings), generated: generatedTitle({ label: labelOf(p), word: p.agent === "shell" ? "Shell" : programWord(p.agent), branch: p.branch, cwd: p.cwd }) }));
     return <BeatLabel animate={needsBeat(rule)} full={(frame) => statusTitle({ ...rule, shown: shownName, frame })} text={textOf} />;
   };
-  useEffect(() => {
-    if (!terminals) return;
-    const look = () => void invoke<Record<string, string>>("worker_labels").then(setWorkerNames, () => {});
-    look();
-    const t = window.setInterval(look, 5000);
-    return () => window.clearInterval(t);
-  }, [terminals]);
   // STAT-050: the clock the status chips read; no screen needs it to tick now.
   const [now, setNow] = useState(Date.now());
   // VIEW-009: a full page fills the workspace area; Show Code (view.code) and an Escape nothing else used leave it.
@@ -47,7 +37,7 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
   useEscapeLeaves(fullPage && !settingsOpen, leavePage);
   useEffect(() => showScreen(screen, classic), [screen, classic]); // VIEW-006: each screen's own theme
   return {
-    terminals, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow,
+    terminals, labelOf, ruleOf, tabLabel, now, setNow,
     fullPage,
   };
 }

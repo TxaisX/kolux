@@ -163,25 +163,9 @@ export function previewSentence(typed: string, preview: Preview | null, project:
   return `branch ${preview.branch} · folder ${preview.folder}`;
 }
 
-/** What the command line tells the window after `worktree create` or `worktree rm` (PROJ-077). */
-export type CliWorkspace =
-  | { kind: "created"; projectId: string; worktree: Created; agent: string | null; prompt: string; activate: boolean; setup?: "run" | "skip" | "inherit" }
-  | { kind: "start"; path: string; branch: string | null; agent: string; prompt: string; extra: string[]; title: string | null; runId?: string; dispatch?: string }
-  | { kind: "removed"; path: string }
-  // CLI-015 / CLI-019: a repo setting or a worktree's name, link, comment or parent changed; only a redraw.
-  | { kind: "repo"; projectId: string }
-  | { kind: "changed"; projectId: string; path: string }
-  // CLI-026, CLI-027: the terminal commands; ask is the request the window answers through its layout.
-  | { kind: "terminal-create"; path: string; branch: string | null; command: string | null; title: string | null; focus: boolean; ask: string }
-  | { kind: "terminal-split"; handle: string; dir: "right" | "down"; command: string | null; ask: string }
-  | { kind: "terminal-rename"; handle: string; title: string | null }
-  | { kind: "terminal-switch"; handle: string }
-  | { kind: "terminal-close"; handles: string[] }
-  // CLI-022: a file to open as an editing tab or as a diff, in the named worktree.
-  | CliFile;
-
-// T-250-c: `ack` is the request number the window answers through cli_file_result once the tab is open.
-export type CliFile = { kind: "file-open"; path: string; worktree: string; branch: string | null; ack?: number } | { kind: "file-diff"; path: string; staged: boolean; worktree: string; branch: string | null; ack?: number };
+/** The "start" notice the window got from the retired command line's worker starts (ORCH-016) and from automations;
+ *  startArgs.ts's startTail still reads its shape. */
+export type CliWorkspace = { kind: "start"; path: string; branch: string | null; agent: string; prompt: string; extra: string[]; title: string | null; runId?: string; dispatch?: string };
 
 // SESS-035: the composer's project search. The typed letters in order inside `text`: one run when
 // they appear together, else the first letters that fit; null when they are not all there.

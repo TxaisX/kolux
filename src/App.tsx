@@ -29,7 +29,7 @@ import { launchActions } from "./launch/launchActions";
 import { paneActions } from "./terminal/paneActions";
 import { reviewActions } from "./terminal/reviewActions";
 import { useWindowSave } from "./shell/useWindowSave";
-import { useCliBridge } from "./projects/useCliBridge";
+import { useResumeHint } from "./terminal/useResumeHint";
 import { useScreens } from "./chrome/useScreens";
 import { useStatusSurfaces } from "./status/useStatusSurfaces";
 import { paneGrid } from "./terminal/paneGrid";
@@ -80,7 +80,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
     needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
     markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
-    setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, installedIds, owner, refresh, setRefresh, recentDirs, activeRef,
+    setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, installedIds, owner, refresh, recentDirs, activeRef,
     setHist, stacked, setNotice, setToast
   } = store;
   // The rest of the window's state (shell/windowStore.ts). DT-C270: the pull-request rows (VIEW-043) are read by the
@@ -110,7 +110,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const launchA = launchActions(state, plumb, w);
   const { startIn } = launchA;
   const paneA = paneActions(state, plumb, launchA, w);
-  const { openFile, splitPane, keyOfHandle, termCreate, termSwitch, termRename, dropPane, leavePage, openPane } = paneA;
+  const { leavePage, openPane } = paneA;
   // The automatic pull request flow says its stops in the notice line through this.
   useEffect(() => {
     setNoticeSink(setNotice);
@@ -132,18 +132,14 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // VIEW-093 (T-127-b): an agent tab takes its session's name (the user's own tab name still wins).
   useSessionNames(panes);
   const workspaceActions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, setPage, owner, recentDirs, activeRef });
-  const { select, removed } = workspaceActions;
   // The page, screen and layout writes, and the quit question (shell/useWindowSave.ts).
   const save = useWindowSave({
     activeDir, activeTab, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings,
     settings, settingsRead, settingsRef, stacked, tabColors
   });
 
-  // The command line's requests: files, terminals, workspaces, worker starts (projects/useCliBridge.ts).
-  const cliBridge = useCliBridge({
-    activeDir, activeRef, agents, dropPane, keyOfHandle, openFile, ptys, removed, select,
-    setPanes, setRefresh, settingsRef, splitPane, startIn, termCreate, termRename, termSwitch
-  });
+  // A program's printed resume hint names its pane's session (terminal/useResumeHint.ts).
+  useResumeHint({ ptys, setPanes });
 
   const wizardState = useWizard({ setToast, agents, settings, startIn });
 
@@ -153,7 +149,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useEffect(() => setHooksOn(hooksOn(settings)), [settings]);
 
   // The screen in front, tab labels, the clock and full pages (chrome/useScreens.tsx).
-  const screenState = useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles });
+  const screenState = useScreens({ classic, hook, leavePage, liveIds, page, panes, screen, settings, settingsOpen, titles });
   const { terminals, now } = screenState;
   // The Inbox's sources and the sidebar rows' states (status/useStatusSurfaces.ts).
   const surfaces = useStatusSurfaces({ agentOf, hook, liveIds, panes, rowRef, running, settings, stamp, statusOf, titles });
@@ -184,7 +180,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useNotificationClick(panesRef, jumpToPane);
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
-    ...state, ...plumb, ...chrome, ...start, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
+    ...state, ...plumb, ...chrome, ...start, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...wizardState,
     ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewPane, pendingLineup, panesRef,
   };
   Object.assign(w, bag);
