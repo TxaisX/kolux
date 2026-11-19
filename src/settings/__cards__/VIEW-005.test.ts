@@ -3,9 +3,9 @@
 import { expect, test } from "vitest";
 import { openPageAt, startScreen } from "../general";
 
-test("box 1 (restore half): openPage routing is read back as the Routing page, whichever screen was saved; a saved Tasks page (gone) opens nothing", () => {
-  expect(openPageAt({ openPage: "routing", lastScreen: "terminals" })).toBe("routing");
-  expect(openPageAt({ openPage: "routing", uiLook: "classic" })).toBe("routing");
+test("box 1 (restore half): a saved Routing or Tasks page (both gone) opens nothing, and the window still opens on Terminals", () => {
+  expect(openPageAt({ openPage: "routing", lastScreen: "terminals" })).toBeNull();
+  expect(openPageAt({ openPage: "routing", uiLook: "classic" })).toBeNull();
   expect(startScreen({ openPage: "routing", lastScreen: "terminals" })).toBe("terminals");
   expect(openPageAt({ openPage: "tasks", lastScreen: "terminals" })).toBeNull();
 });

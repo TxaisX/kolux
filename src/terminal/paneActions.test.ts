@@ -155,8 +155,8 @@ test("shrinking past a started session says to close it first", () => {
   expect(setToast.mock.calls[0][0]).toMatch(/^Close .+ first to use fewer panes\.$/);
 });
 
-// The palette reaches All Changes without a finished agent, and finds pages and commands by the words people type.
-test("the palette finds All Changes, the Appearance page and the new shell command by everyday words", async () => {
+// The palette finds pages and commands by the words people type. (The Open All Changes row went with the changes tab.)
+test("the palette finds the Appearance page and the new shell command by everyday words", async () => {
   const { resolve } = await import("../keys/keymap");
   const { paletteRows, nothingFound } = await import("../projects/WorktreePalette");
   const s = {
@@ -166,7 +166,7 @@ test("the palette finds All Changes, the Appearance page and the new shell comma
   const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   const items = a.paletteItems();
   const top = (q: string) => paletteRows(items, q).map((r) => r.label);
-  for (const q of ["changes", "review", "diff", "commit", "stage"]) expect(top(q)).toContain("Open All Changes");
+  for (const q of ["changes", "review", "diff", "commit", "stage"]) expect(top(q), q).not.toContain("Open All Changes");
   expect(top("theme")).toContain("Appearance");
   expect(top("new shell")).toContain("New terminal tab");
   expect(nothingFound(paletteRows(items, "zzzqq").length, "zzzqq")).toBe(true);

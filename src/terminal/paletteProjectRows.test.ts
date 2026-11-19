@@ -1,10 +1,8 @@
 // T-692 (E3, palette.md:7): the palette offers the sidebar's project commands as Quick actions that run
-// them (runProjectCommand itself is tested in projects/uxRows4.test.ts), and lists the unbound Open Automations.
+// them (runProjectCommand itself is tested in projects/uxRows4.test.ts).
 import { afterEach, expect, test, vi } from "vitest";
 
 afterEach(() => void vi.useRealTimers());
-import { resolve } from "../keys/keymap";
-import { commandRows } from "../keys/commands";
 import { projectRows } from "./projectRows";
 
 test("each project command is a Quick action with its hint; running it shows the sidebar, then runs that command", () => {
@@ -23,8 +21,4 @@ test("each project command is a Quick action with its hint; running it shows the
   rows[2].run();
   vi.runAllTimers();
   expect(seen).toEqual(["show", "project.add", "show", "show", "project.newGroup", "project.scan"]);
-});
-
-test("view.automations has no chord but is still a Commands row", () => {
-  expect(commandRows(resolve(null, "win32"), []).some((r) => r.label === "Open Automations")).toBe(true);
 });
