@@ -202,25 +202,56 @@ pub fn allow_foreground(pid: u32) {
     let _ = pid;
 }
 
-/// The visible top-level windows `pid` owns (a minimised window counts as visible).
+/// The window class tauri-runtime-wry gives every Tauri window on Windows (tauri.conf.json names no other).
+#[cfg_attr(not(windows), allow(dead_code))]
+const TAURI_CLASS: &str = "Tauri Window";
+
+/// One top-level window of the running copy, as the fallback raise sees it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(not(windows), allow(dead_code))]
+pub struct TopWindow {
+    pub handle: isize,
+    pub class: String,
+    /// Another window owns it (a dialog, an IME window), so it is never the main window.
+    pub owned: bool,
+    pub visible: bool,
+}
+
+/// APP-001: the running copy's window a second launch brings back: a Tauri top-level window that no other
+/// window owns, a shown one before a hidden one (a window hidden to the tray is not visible and must still
+/// come back), in the order the system listed them. WebView2's windows, tao's message target, the tray
+/// icon's and the single-instance plugin's hidden windows and any owned window are never picked.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn main_window(windows: &[TopWindow]) -> Option<isize> {
+    let mut picked: Vec<&TopWindow> = windows.iter().filter(|w| w.class == TAURI_CLASS && !w.owned).collect();
+    picked.sort_by_key(|w| !w.visible);
+    picked.first().map(|w| w.handle)
+}
+
+/// The top-level windows `pid` owns, shown or hidden, in z order. Only queries that send the window no
+/// message, so a hung window cannot hold up the launch.
 #[cfg(windows)]
-pub fn windows_of(pid: u32) -> Vec<isize> {
+pub fn windows_of(pid: u32) -> Vec<TopWindow> {
     use windows_sys::Win32::Foundation::{HWND, LPARAM};
-    use windows_sys::Win32::UI::WindowsAndMessaging::{EnumWindows, GetWindowThreadProcessId, IsWindowVisible};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{EnumWindows, GetClassNameW, GetWindow, GetWindowThreadProcessId, IsWindowVisible, GW_OWNER};
     unsafe extern "system" fn each(hwnd: HWND, lparam: LPARAM) -> i32 {
         // SAFETY: lparam is the pointer to `state` below, alive for the whole enumeration.
-        let state = unsafe { &mut *(lparam as *mut (u32, Vec<isize>)) };
+        let state = unsafe { &mut *(lparam as *mut (u32, Vec<TopWindow>)) };
         let mut owner = 0u32;
-        // SAFETY: plain window queries on a handle the system just handed over.
+        // SAFETY: plain window queries on a handle the system just handed over; the class name is
+        // written into `name`, whose length is passed, and read back only up to the count returned.
         unsafe {
             GetWindowThreadProcessId(hwnd, &mut owner);
-            if owner == state.0 && IsWindowVisible(hwnd) != 0 {
-                state.1.push(hwnd as isize);
+            if owner == state.0 {
+                let mut name = [0u16; 64];
+                let n = GetClassNameW(hwnd, name.as_mut_ptr(), name.len() as i32);
+                let class = String::from_utf16_lossy(&name[..usize::try_from(n).unwrap_or(0)]);
+                state.1.push(TopWindow { handle: hwnd as isize, class, owned: !GetWindow(hwnd, GW_OWNER).is_null(), visible: IsWindowVisible(hwnd) != 0 });
             }
         }
         1
     }
-    let mut state: (u32, Vec<isize>) = (pid, Vec::new());
+    let mut state: (u32, Vec<TopWindow>) = (pid, Vec::new());
     // SAFETY: the callback only reads `state` through the pointer, which outlives the call.
     unsafe {
         EnumWindows(Some(each), &mut state as *mut _ as LPARAM);
@@ -228,28 +259,31 @@ pub fn windows_of(pid: u32) -> Vec<isize> {
     state.1
 }
 
-/// Restores and focuses the running copy's window by its process id, retrying briefly when the
-/// system refuses to bring it forward. True once it is the foreground window.
+/// Shows, restores and focuses the running copy's main window by its process id, retrying briefly when
+/// the system refuses to bring it forward. A window hidden to the tray is shown first. True once it is
+/// the foreground window.
 #[cfg(windows)]
 pub fn raise_by_pid(pid: u32, tries: usize, mut sleep: impl FnMut(Duration)) -> bool {
     use windows_sys::Win32::Foundation::HWND;
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, SetForegroundWindow, ShowWindowAsync, SW_RESTORE};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, IsWindowVisible, SetForegroundWindow, ShowWindowAsync, SW_RESTORE, SW_SHOW};
     for i in 0..tries {
         if i > 0 {
             sleep(RAISE_WAIT);
         }
-        for h in windows_of(pid) {
-            let hwnd = h as HWND;
-            // SAFETY: plain window calls on handles enumerated a moment ago; a stale one just fails.
-            // The restore is posted, not waited on, so a hung window cannot block this launch.
-            unsafe {
-                if IsIconic(hwnd) != 0 {
-                    ShowWindowAsync(hwnd, SW_RESTORE);
-                }
-                SetForegroundWindow(hwnd);
-                if GetForegroundWindow() == hwnd {
-                    return true;
-                }
+        let Some(h) = main_window(&windows_of(pid)) else { continue };
+        let hwnd = h as HWND;
+        // SAFETY: plain window calls on a handle enumerated a moment ago; a stale one just fails.
+        // The show and the restore are posted, not waited on, so a hung window cannot block this launch.
+        unsafe {
+            if IsWindowVisible(hwnd) == 0 {
+                ShowWindowAsync(hwnd, SW_SHOW);
+            }
+            if IsIconic(hwnd) != 0 {
+                ShowWindowAsync(hwnd, SW_RESTORE);
+            }
+            SetForegroundWindow(hwnd);
+            if GetForegroundWindow() == hwnd {
+                return true;
             }
         }
     }
@@ -930,6 +964,27 @@ mod tests {
         assert!(matches!(claim_named(&channel_name_for(&id, &mine)), Claim::Second), "looking did not take or free the lock");
         drop(held);
         assert!(!named_exists(&channel_name_for(&id, &mine)), "looking created nothing that outlives the owner");
+    }
+
+    #[test]
+    fn app001_the_fallback_raise_picks_the_tauri_window_even_hidden_and_never_a_helper_window() {
+        let w = |handle: isize, class: &str, owned: bool, visible: bool| TopWindow { handle, class: class.into(), owned, visible };
+        // Hidden to the tray: the only Tauri window is hidden, beside the process's helper windows.
+        let tray = [
+            w(1, "Tao Thread Event Target", false, false),
+            w(2, "Chrome_WidgetWin_0", false, false),
+            w(3, "IME", true, false),
+            w(4, "Tauri Window", false, false),
+            w(5, "com.txaisxiong.kolux-sic", false, false),
+        ];
+        assert_eq!(main_window(&tray), Some(4), "the hidden main window comes back");
+        // A shown one wins over a hidden one, and an owned Tauri window (a dialog) is never picked.
+        let both = [w(6, "Tauri Window", true, true), w(7, "Tauri Window", false, false), w(8, "Tauri Window", false, true)];
+        assert_eq!(main_window(&both), Some(8));
+        assert_eq!(main_window(&both[..2]), Some(7));
+        // Nothing of Tauri's: nothing is raised.
+        assert_eq!(main_window(&tray[..3]), None);
+        assert_eq!(main_window(&[]), None);
     }
 
     #[cfg(windows)]
