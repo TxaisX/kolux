@@ -933,7 +933,6 @@ pub fn run() {
             fsops::fs_bytes,
             fsops::fs_move,
             clipboard::clip_copy_text,
-            clipboard::clip_copy_files,
             clipboard::feedback_facts,
             pasted_image::paste_image_save,
             cli::cli_register::cli_register_state,
