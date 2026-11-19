@@ -692,7 +692,6 @@ pub fn run() {
             tools::tools_check,
             tools::tools_dismiss,
             tools::editors_list,
-            tools::teams_host,
             awake::keep_awake_state,
             app_look::app_look_apply,
             token_usage::token_usage,

@@ -11,7 +11,6 @@ import { useChrome } from "../chrome/useChrome";
 import { useKeymap } from "../keys/KeymapContext";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { FIRST_PASS, defaultAgentId, offeredAgents, type AgentPass } from "../launch/agents";
-import { useTeamsHost, withTeams } from "../launch/teams";
 import type { AgentState, RowInfo } from "../projects/rows";
 import { useWorkspaces } from "../projects/useWorkspaces";
 import { startScreen } from "../settings/general";
@@ -169,8 +168,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // Start form (2026-11-15): the sheet also holds the ticked folders and whether it is the ask at app open.
   const [sheet, setSheet] = useState<StartSheet | null>(null);
   // SET-027: everywhere but Settings, only agents that are switched on are offered.
-  const teamsHost = useTeamsHost();
-  const agents = useMemo(() => withTeams(offeredAgents(allAgents, settings), settings, teamsHost), [allAgents, settings, teamsHost]);
+  const agents = useMemo(() => offeredAgents(allAgents, settings), [allAgents, settings]);
   const defaultId = defaultAgentId(settings);
   const installedIds = agents.filter((a) => a.installed).map((a) => a.id);
   const [renameRequest, setRenameRequest] = useState(0); // T-611: workspace.rename (PROJ-059) asks the sidebar to rename the workspace in front
@@ -244,7 +242,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, cliFailed, asking, setAsking, pinned, setPinned,
     switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
-    settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents,
+    settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, agents,
     defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, projectsRead, layoutIn, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
     setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,

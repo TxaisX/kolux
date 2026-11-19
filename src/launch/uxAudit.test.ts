@@ -8,7 +8,6 @@ import PlusMenu, { type AgentInfo } from "./PlusMenu";
 import { DISMISS_FAILED, dismissFailedNotice, ToolNoticesView } from "./ToolNotices";
 import { failureNote } from "./launchOrder";
 import { ASK_ABOVE, countPlan, MAX_SESSIONS, resizeSeats, restoreTeam, sheetStart, shownPick, emptySeat, tooManySeats, type SavedShape, type Seat } from "./seats";
-import { pickableModes } from "./teams";
 import { CHECK_FAILED, toolNotices, type Tools } from "./toolChecks";
 
 const agent = (id: string, o: Partial<AgentInfo> = {}): AgentInfo => ({ id, name: id.toUpperCase(), program: id, args: [], installed: false, path: null, ...o });
@@ -84,12 +83,6 @@ test("F4: a missing agent with no docs page says to install it by hand", () => {
   expect(selfInstallHint(agent("ante"))).toContain("Install it yourself, then press Refresh agents");
   expect(selfInstallHint(agent("ante", { docs: true }))).toBeNull();
   expect(selfInstallHint(claude)).toBeNull();
-});
-
-test("F4: Native panes is offered in Agent Teams only to a profile that already has it", () => {
-  expect(pickableModes("off")).toEqual(["off", "in-process"]);
-  expect(pickableModes("in-process")).toEqual(["off", "in-process"]);
-  expect(pickableModes("native")).toEqual(["off", "in-process", "native"]);
 });
 
 const tools: Tools = { git: "ok", gh: "ok", ghSignedIn: "ok", glab: "ok", githubProjects: [], gitlabProjects: [], dismissed: {} };
