@@ -438,8 +438,12 @@ export function run(o, env = process.env, exec = sh) {
   fs.mkdirSync(path.dirname(dir), { recursive: true });
   if (acquire(dir) === "queued") return void say("a release build is running; one more build from the newest main is queued after it");
   try {
-    do buildOnce(o, env, exec);
-    while (takeQueued(dir) && (say("a ship landed during the build; building again from the newest main"), true));
+    // An asked-for --version is for the first build only; a queued rebuild takes the next patch above it.
+    let opts = o;
+    do {
+      buildOnce(opts, env, exec);
+      opts = { ...o, version: null };
+    } while (takeQueued(dir) && (say("a ship landed during the build; building again from the newest main"), true));
   } finally {
     unlock(dir);
   }
@@ -449,6 +453,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   const a = process.argv.slice(2);
   const o = { dryRun: a.includes("--dry-run"), noPublish: a.includes("--no-publish"), buildOnly: a.includes("--build-only"), finish: a.includes("--finish"), repo: a.includes("--repo") ? a[a.indexOf("--repo") + 1] : null, version: a.includes("--version") ? (a[a.indexOf("--version") + 1] ?? "") : null };
   try {
+    // A malformed --version stops here, before any fetch (an already-released main would otherwise exit quietly).
+    if (o.version !== null) releaseVersion("0.0.0", null, o.version);
     run(o);
   } catch (e) {
     // The failure goes to the log; the ship that started this job has already succeeded.

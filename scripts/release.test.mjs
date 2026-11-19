@@ -180,6 +180,22 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
     }
   });
 
+  it("releases the version asked for with --version, and refuses one that is already a tag before building", () => {
+    const s = scratch();
+    try {
+      const t = tools(s.checkout, { tagName: "v0.1.18", body: "- Older\n\n<!-- kolux-source: 1234567 -->\n" });
+      const r = buildOnce({ repo: s.origin, version: "0.2.0" }, s.env, t.exec);
+      expect(r).toMatchObject({ version: "0.2.0", published: true });
+      expect(t.gh().find((c) => c.args[1] === "create").args[2]).toBe("v0.2.0");
+      git(s.origin, "tag", "v0.2.1");
+      const t2 = tools(s.checkout, { tagName: "v0.1.18", body: "- Older\n\n<!-- kolux-source: 1234567 -->\n" });
+      expect(() => buildOnce({ repo: s.origin, version: "0.2.1" }, s.env, t2.exec)).toThrow(/tag v0\.2\.1 already exists/);
+      expect(t2.calls.some((c) => c.name === "pnpm")).toBe(false);
+    } finally {
+      s.done();
+    }
+  });
+
   it("refuses a commit whose CI is red, before it builds or publishes anything", () => {
     const s = scratch();
     try {
