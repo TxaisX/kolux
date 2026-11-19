@@ -1,5 +1,5 @@
 // T-702 (DT-C138): the right sidebar's other tabs. Checks' Refresh is driven
-// through its real handler, and the content search's small targets are held to 24px.
+// through its real handler. (The content search's 24px targets went with the editor.)
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeNode, byLabel, click, find, installDom, mount, until, type FakeDocument } from "../test/fakeDom";
@@ -47,15 +47,5 @@ describe("T-702 Checks tab", () => {
     open();
     await until(() => byLabel(container, "button", "Refresh the checks")[0].attrs["aria-busy"] === "false", "the refresh to end");
     expect(spinning(byLabel(container, "button", "Refresh the checks")[0])).toBe(false);
-  });
-});
-
-describe("T-702 24px targets", () => {
-  const fs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
-  const css = (p: string) => fs.readFileSync(new URL(p, import.meta.url), "utf8");
-  it("the content search's boxes, toggles and result rows are at least 24px", () => {
-    const extras = css("../editor/editor-extras.css");
-    expect(extras).toContain(".content-search input, .cs-file > button { min-height: 24px; }");
-    expect(extras).toContain(".content-search .cs-row .ib { min-width: 24px; }");
   });
 });

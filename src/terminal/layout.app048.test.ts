@@ -20,17 +20,17 @@ const settings: Record<string, unknown> = JSON.parse(fs.readFileSync(file, "utf8
 
 const base = { branch: null, program: null, args: [] as string[] };
 
-test("app048: today's restoreLayout reads the v0.1.5 saved layout back as the panes, tabs and focus that were saved", () => {
+// The v0.1.5 layout also saved two editor tabs (keys 2 and 3, README.md and main.rs; the focus and alpha's active tab sat on key 3). The code
+// editor is gone and restoreLayout drops its tabs, so the active tab with it goes and the focus falls to alpha's first pane.
+test("app048: today's restoreLayout reads the v0.1.5 saved layout back, minus the editor tabs the app no longer has", () => {
   const layout = restoreLayout(settings[LAYOUT_FIELD]);
   expect(layout).not.toBeNull();
   expect(layout!.panes).toEqual([
     { ...base, key: 1, cwd: "C:/fixture/alpha", agent: "claude", agentId: "claude", program: "claude", session: "5b0f6c1e-7a52-4c1d-9e0b-3f2a8d4c6b71", account: null, title: "alpha main", group: 1, pinned: true, color: "blue" },
-    { ...base, key: 2, cwd: "C:/fixture/alpha", agent: "shell", title: "README.md", group: 1, kind: "editor", path: "C:/fixture/alpha/README.md" },
-    { ...base, key: 3, cwd: "C:/fixture/alpha", agent: "shell", title: "main.rs", group: 1, kind: "editor", path: "C:/fixture/alpha/src/main.rs" },
     { ...base, key: 4, cwd: "C:/fixture/beta", agent: "shell", title: "beta shell", group: 4, color: "green" },
   ]);
-  expect(layout!.activeTab).toEqual({ 1: 3, 4: 4 });
-  expect(layout!.focused).toBe(3);
+  expect(layout!.activeTab).toEqual({ 4: 4 });
+  expect(layout!.focused).toBe(1);
   expect(layout!.activeDir).toBe("C:/fixture/alpha");
   expect(layout!.stacked).toEqual({ "C:/fixture/beta": true });
 });

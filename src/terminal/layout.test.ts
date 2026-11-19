@@ -11,14 +11,13 @@ test("proj067: what is written down is each started tab, stripped to what a rest
     shell(1, null),
     { ...shell(2, "C:\\w\\a"), agent: "claude" as const, agentId: "claude", program: "claude", args: ["--prompt", "do the thing"], env: [["X", "1"]], typed: "do", task: "t", account: "acct-1", title: "Claude", group: 2 },
     shell(3, "C:\\w\\a", { seats: [{}] }), // a chooser never started
-    shell(4, "C:\\w\\b", { kind: "editor", path: "C:\\w\\b\\README.md", group: 4 }),
-    shell(5, "C:\\w\\b", { kind: "changes", path: "C:\\w\\b" }),
+    shell(4, "C:\\w\\b", { group: 4 }),
   ];
   const l = layoutOf(panes, { 1: 1, 2: 2, 4: 4, 9: 3 }, 2, "C:\\w\\a", { "C:\\w\\b": true });
-  expect(l.panes.map((p) => p.key)).toEqual([1, 2, 3, 4, 5]);
+  expect(l.panes.map((p) => p.key)).toEqual([1, 2, 3, 4]);
   expect(l.panes[2]).toEqual({ key: 3, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [], chooser: true }); // an unstarted chooser keeps its place as an empty chooser
   expect(l.panes[1]).toEqual({ key: 2, cwd: "C:\\w\\a", branch: null, agent: "claude", agentId: "claude", program: "claude", args: [], account: "acct-1", title: "Claude", group: 2 });
-  expect(l.panes[3]).toEqual({ key: 4, cwd: "C:\\w\\b", branch: null, agent: "shell", program: null, args: [], group: 4, kind: "editor", path: "C:\\w\\b\\README.md" });
+  expect(l.panes[3]).toEqual({ key: 4, cwd: "C:\\w\\b", branch: null, agent: "shell", program: null, args: [], group: 4 });
   expect(l.activeTab).toEqual({ 1: 1, 2: 2, 4: 4, 9: 3 });
   expect(l.focused).toBe(2);
   expect(l.activeDir).toBe("C:\\w\\a");
@@ -37,8 +36,8 @@ test("proj067: a damaged entry is dropped and the other tabs still come back", (
       { ...shell(4, "C:\\w\\a"), kind: "editor" }, // an editor tab without a path
       { ...shell(4, "C:\\w\\a"), kind: "browser" }, // a retired tab kind
       { ...shell(5, "C:\\w\\a"), args: [1, 2] },
-      { ...shell(6, "C:\\w\\a"), kind: "diff", path: "x.ts", staged: true, group: 6, title: 7 },
-      shell(6, "C:\\w\\c"), // a repeated key: the first one stands
+      { ...shell(6, "C:\\w\\a"), kind: "diff", path: "x.ts", staged: true, group: 6, title: 7 }, // a file tab: the editor's tabs are gone, so it is dropped
+      shell(6, "C:\\w\\c"), // a repeated key: the first one that reads stands, and the diff tab above no longer reads
     ],
     activeTab: { 1: 1, 6: 6, 7: 3, 8: "x" },
     focused: 3, // the dropped one
@@ -47,14 +46,37 @@ test("proj067: a damaged entry is dropped and the other tabs still come back", (
   };
   const l = restoreLayout(saved)!;
   expect(l.panes.map((p) => p.key)).toEqual([1, 6]);
-  expect(l.panes[1]).toEqual({ key: 6, cwd: "C:\\w\\a", branch: null, agent: "shell", program: null, args: [], group: 6, kind: "diff", path: "x.ts", staged: true });
+  expect(l.panes[1]).toEqual({ key: 6, cwd: "C:\\w\\c", branch: null, agent: "shell", program: null, args: [] });
   expect(l.activeTab).toEqual({ 1: 1, 6: 6 });
-  expect(l.focused).toBe(6); // the first tab of the active workspace
+  expect(l.focused).toBe(1); // the dropped one's workspace now holds no tab, so the focus falls to the first tab
   expect(l.stacked).toEqual({ "C:\\w\\a": true });
   expect(restoreLayout(null)).toBeNull();
   expect(restoreLayout("{}")).toBeNull();
   expect(restoreLayout({ panes: ["x", 1] })).toBeNull();
   expect(restoreLayout({ panes: [shell(1, null)], focused: "1", activeDir: 5 })).toEqual({ panes: [shell(1, null)], activeTab: {}, focused: 1, activeDir: null, stacked: {} });
+});
+
+// The code editor, previews, diffs and the changes tab are gone: a layout saved by an older release comes back without them.
+test("proj067: saved editor, preview, diff and changes tabs are dropped on restore, and the tabs that stay keep their marks", () => {
+  const saved = {
+    panes: [
+      shell(1, "C:\\w\\a", { group: 1 }),
+      shell(2, "C:\\w\\a", { kind: "editor", path: "C:\\w\\a\\README.md", group: 1 }),
+      shell(3, "C:\\w\\a", { kind: "preview", path: "C:\\w\\a\\index.html", group: 1 }),
+      shell(4, "C:\\w\\a", { kind: "diff", path: "x.ts", group: 1 }),
+      shell(5, "C:\\w\\a", { kind: "changes", path: "C:\\w\\a", group: 1 }),
+      shell(6, "C:\\w\\a", { group: 6 }),
+    ],
+    activeTab: { 1: 2, 6: 6 },
+    focused: 5,
+    activeDir: "C:\\w\\a",
+    stacked: {},
+  };
+  const l = restoreLayout(saved)!;
+  expect(l.panes.map((p) => p.key)).toEqual([1, 6]);
+  expect(l.panes.some((p) => "kind" in p)).toBe(false);
+  expect(l.activeTab).toEqual({ 6: 6 }); // cell 1's active tab was the editor's, which is gone
+  expect(l.focused).toBe(1);
 });
 
 test("proj067: the active workspace and tab come back when they still exist, else the tabs in a gone folder go", () => {

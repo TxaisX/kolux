@@ -67,10 +67,9 @@ describe("T-248-a menu bar state (APP-009, SET-020, SET-009)", () => {
     expect(menuSettingFlip({}, "set.titleBarAppName")).toEqual(["titleBarAppName", true]);
     expect(menuSettingFlip({ automationsButton: false }, "set.automationsButton")).toEqual(["automationsButton", true]);
     expect(menuSettingFlip({}, "app.settings")).toBeNull();
-    expect(menuScreen("screen.agents")).toBe("agents");
-    // The View menu lists the switcher's two, so each click shows its screen; the items for the removed screens show nothing.
+    // The View menu lists only the Terminals screen now; the items for every removed screen show nothing.
     expect(menuScreen("screen.terminals")).toBe("terminals");
-    for (const gone of ["board", "tower", "floor", "space", "inbox"]) expect(menuScreen(`screen.${gone}`), gone).toBeNull();
+    for (const gone of ["agents", "board", "tower", "floor", "space", "inbox"]) expect(menuScreen(`screen.${gone}`), gone).toBeNull();
     expect(menuScreen("app.settings")).toBeNull();
   });
 

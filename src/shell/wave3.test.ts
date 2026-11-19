@@ -43,19 +43,21 @@ test("F3: the top bar's Terminals switch closes a full page first", () => {
   expect(topBar).toMatch(/onScreen=\{\(s\) => \{\s*if \(s === "terminals"\) setPage\(null\);/);
 });
 
-test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Board' is its first row, and Enter opens the Board", () => {
+test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Terminals' is its first row, and Enter keeps the Terminals screen (the Board is gone)", () => {
   expect(windowKeys).toMatch(/case "worktree\.palette":\s*setPalette\(true\);/);
   expect(actions).toContain('...screenRows((s) => setScreen(s === screen ? "terminals" : s), classic)');
-  let screen: Screen = "terminals";
-  const setScreen = (s: Screen) => void (screen = s);
+  const screen: Screen = "terminals";
+  const shown: Screen[] = [];
+  const setScreen = (s: Screen) => void shown.push(s);
   const items = [
     ...commandRows(resolve(null, "win32"), [], undefined, () => {}),
     ...screenRows((s) => setScreen(s === screen ? "terminals" : s)),
   ];
-  const rows = paletteRows(items, "Show Board");
-  expect(rows[0].label).toBe("Show Board");
+  const rows = paletteRows(items, "Show Terminals");
+  expect(rows[0].label).toBe("Show Terminals");
   rows[0].run();
-  expect(screen).toBe("board");
+  expect(shown).toEqual(["terminals"]);
+  expect(paletteRows(items, "Show Board").map((r) => r.label)).not.toContain("Show Board");
 });
 
 test("F11: an open sidebar form does not hold the palette chord; a menu left open does", () => {

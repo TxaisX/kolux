@@ -10,7 +10,6 @@ const read = async (rel: string): Promise<string> => ((await import(/* @vite-ign
 const styles = await read("../../styles.css");
 const rows = await read("../../sessions/rows.css");
 const chat = await read("../../chat/chat.css");
-const extras = await read("../../editor/editor-extras.css");
 
 test("failed and cannot reach have their own red tone, apart from needs you", () => {
   expect(VOCAB.failed.tone).toBe("bad");
@@ -47,7 +46,7 @@ test("failures the first pass missed are red too, and needs you is the pane head
   // Only the error lines (role="alert") are held to red: a later --danger elsewhere, say a delete button, is fine.
   const alerts = (src: string) => src.split("\n").filter((l) => l.includes('role="alert"'));
   const red = (src: string) => alerts(src).length > 0 && alerts(src).every((l) => /var\(--status-bad/.test(l) && !/var\(--danger/.test(l));
-  for (const [f, n] of [["../../feedback/FeedbackDialog.tsx", 2], ["../../usage/ShareCard.tsx", 1], ["../../editor/NamePrompt.tsx", 1]] as const) {
+  for (const [f, n] of [["../../feedback/FeedbackDialog.tsx", 2], ["../../usage/ShareCard.tsx", 1]] as const) {
     const src = await read(f);
     expect(alerts(src).length, f).toBeGreaterThanOrEqual(n);
     expect(red(src), f).toBe(true);
@@ -60,8 +59,6 @@ test("failures the first pass missed are red too, and needs you is the pane head
 test("errors and deleted lines are red; stopped is grey", () => {
   expect(chat).toMatch(/\.chat-error \{ color: var\(--status-bad\); \}/);
   expect(chat).toMatch(/\.chat-out \.dl\.del \{ color: var\(--status-bad\); \}/);
-  expect(extras).toMatch(/\.cs-status\.bad \{ color: var\(--status-bad\); \}/);
-  expect(extras).toMatch(/kx-hl-del\) \{ color: var\(--status-bad\); \}/);
 });
 
 test("the status colours read on every built-in theme, dark and light (3:1 dot, 4.5:1 word)", () => {
