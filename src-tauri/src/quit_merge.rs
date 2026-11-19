@@ -223,7 +223,7 @@ fn write(args: &[&str], dir: &Path, clock: &Clock, hooks: &Path) -> Result<Strin
 }
 
 /// The empty folder the quit points `core.hooksPath` at.
-fn no_hooks(data_dir: &Path) -> Result<PathBuf, String> {
+pub(crate) fn no_hooks(data_dir: &Path) -> Result<PathBuf, String> {
     let dir = data_dir.join(NO_HOOKS_DIR);
     std::fs::create_dir_all(&dir).map_err(|e| format!("{} could not be made: {e}", dir.display()))?;
     Ok(dir)
@@ -379,7 +379,7 @@ fn target_branch(repo: &Path, project: &Project, clock: &Clock) -> Option<String
 /// The main checkout's folder when a merge may go into it: on `target`, with no uncommitted changes
 /// to tracked files and no merge left open. Untracked files do not count: Git itself refuses a merge
 /// that would overwrite one, before it changes anything.
-fn main_ready(main: Option<&Worktree>, target: Option<&str>, clock: &Clock) -> Result<PathBuf, String> {
+pub(crate) fn main_ready(main: Option<&Worktree>, target: Option<&str>, clock: &Clock) -> Result<PathBuf, String> {
     let main = main.ok_or("Kolux could not find the project's main folder")?;
     let target = target.ok_or(NO_MAIN)?;
     match main.branch.as_deref() {
@@ -724,7 +724,22 @@ fn new_gitlink(line: &str) -> Option<String> {
 /// the app's data folder says what is under way until main is whole again, so a quit that is cut
 /// short is put right at the next start (`recover_at_start`).
 fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str) -> Result<(), String> {
-    let clock = &cx.clock;
+    merge_branch(&MergeEnv { git: cx.git, clock: cx.clock, data_dir: cx.data_dir, hooks: &cx.hooks }, repo, main_dir, target, branch)
+}
+
+/// What a merge needs besides the folders: the same pieces the quit's `Cx` holds, without the store
+/// and the terminals, so a chat that ends can merge its branch through the very same code.
+pub(crate) struct MergeEnv<'a> {
+    pub git: &'a Git,
+    pub clock: Clock,
+    pub data_dir: &'a Path,
+    pub hooks: &'a Path,
+}
+
+/// `merge_into` over `MergeEnv`: the one merge routine, used at quit and when a chat is finished.
+pub(crate) fn merge_branch(env: &MergeEnv, repo: &Path, main_dir: &Path, target: &str, branch: &str) -> Result<(), String> {
+    let clock = &env.clock;
+    let (git, data_dir, hooks) = (env.git, env.data_dir, env.hooks);
     if !clock.may_merge() {
         return Err(OUT_OF_TIME.into());
     }
@@ -733,7 +748,7 @@ fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str)
     let theirs = format!("refs/heads/{branch}");
     // The tree the no-ff merge will make, when git can predict it (`merge-tree --write-tree`: first line).
     let mut merged_tree: Option<String> = None;
-    if behind > 0 && cx.git.predicts_merges() {
+    if behind > 0 && git.predicts_merges() {
         match read(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], repo, clock) {
             Ok(out) => merged_tree = out.lines().next().map(str::trim).filter(|l| !l.is_empty()).map(str::to_string),
             Err(_) => return Err(format!("its changes clash with {target}")),
@@ -748,22 +763,22 @@ fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str)
     // A fast-forward leaves exactly the tip's tree; a merge commit leaves the predicted tree, if any.
     let expected_tree = if behind == 0 { read(&["rev-parse", "--verify", &format!("{tip}^{{tree}}")], repo, clock).ok() } else { merged_tree };
     let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip.clone()), expected_tree, time: now_secs() };
-    note_merge(cx.data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
+    note_merge(data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
     let _busy = Busy::start();
     let tried = if behind == 0 {
-        write(&["merge", "--ff-only", "--no-verify", "-q", &tip], main_dir, clock, &cx.hooks)
+        write(&["merge", "--ff-only", "--no-verify", "-q", &tip], main_dir, clock, hooks)
     } else {
-        write(&["merge", "--no-ff", "--no-edit", "--no-verify", "-q", "-m", &format!("Kolux: merge {branch} on quit"), "-m", AUTOMATIC, &tip], main_dir, clock, &cx.hooks)
+        write(&["merge", "--no-ff", "--no-edit", "--no-verify", "-q", "-m", &format!("Kolux: merge {branch} on quit"), "-m", AUTOMATIC, &tip], main_dir, clock, hooks)
     };
     match tried {
         Ok(_) => {
-            clear_marker(cx.data_dir);
+            clear_marker(data_dir);
             Ok(())
         }
         Err(e) => {
-            let whole = undo_merge(main_dir, &before, clock, &cx.hooks);
+            let whole = undo_merge(main_dir, &before, clock, hooks);
             if whole {
-                clear_marker(cx.data_dir);
+                clear_marker(data_dir);
             }
             let note = if whole { "" } else { ". The main folder may not be exactly as it was: look at it before you work there" };
             Err(format!("it could not be merged into {target} ({}){note}", short(&e)))

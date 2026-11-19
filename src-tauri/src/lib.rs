@@ -124,6 +124,9 @@ mod web_icon;
 mod webview_power;
 pub(crate) mod winproc;
 mod usage_alerts;
+// stage 3 (s3-publish)
+mod project_new;
+mod chat_finish;
 
 use state::Store;
 use std::sync::Mutex;
@@ -1071,7 +1074,9 @@ pub fn run() {
             lifecycle::open_files_take, // APP-019: the page drains the markdown files the system handed over
             tray::tray_close_switch_available, // APP-007: Settings hides the close-to-tray switch where it cannot work
             usage_alerts::usage_alerts_fired,
-            usage_alerts::usage_alert_send
+            usage_alerts::usage_alert_send,
+            // stage 3 (s3-publish)
+            project_new::github_badge
             ];
             handler(invoke)
         })
