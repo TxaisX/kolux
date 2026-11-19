@@ -6,7 +6,7 @@ import { type ComponentProps, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, installDom, mount, settle } from "../test/fakeDom";
 
-const h = vi.hoisted(() => ({ calls: [] as string[], unsaved: [] as string[][], closed: [] as unknown[][], removed: [] as string[], extra: [] as unknown[] }));
+const h = vi.hoisted(() => ({ calls: [] as string[], closed: [] as unknown[][], removed: [] as string[], extra: [] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     h.calls.push(cmd);
@@ -49,7 +49,6 @@ beforeEach(() => {
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
   Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
   h.calls = [];
-  h.unsaved = [];
   h.closed = [];
   h.removed = [];
   h.extra = [];
@@ -66,7 +65,6 @@ async function panel(more: unknown[] = []) {
     activeDir: null, onSelect: () => {}, onRemoved: (path: string) => void h.removed.push(path), onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
-    onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true),
     onRemovedAll: (paths: string[], staying?: string[]) => void h.closed.push([paths, staying]),
   };
   const m = await mount(createElement(ProjectsPanel, props as never), doc);
@@ -88,22 +86,6 @@ async function askGroupDelete(c: FakeNode) {
   await settle(20);
 }
 const inner = ["C:/w/app/inner", "C:/w/app/wts/inner-b"];
-
-test("PROJ 008: the unsaved-tabs question before a removal asks only about the removed project's open folders", async () => {
-  const c = await panel();
-  await removeApp(c);
-  await click(c, byText(c, "button", "Remove app")[0]);
-  await settle(40);
-  expect(h.unsaved).toEqual([["C:/w/app", "C:/w/ws/fix"]]);
-});
-
-test("F21: the unsaved-tabs question before a group delete asks only about the group's projects' open folders", async () => {
-  const c = await panel();
-  await askGroupDelete(c);
-  await click(c, byText(c, "button", "Delete group")[0]);
-  await settle(60);
-  expect(h.unsaved).toEqual([["C:/w/app", "C:/w/ws/fix"]]);
-});
 
 test("PROJ 008: the removal question counts only the removed project's running terminals", async () => {
   const c = await panel();
@@ -144,7 +126,7 @@ test("F21: deleting a group with its projects hands over the projects outside th
   expect(staying).not.toContain("C:/w/app");
 });
 
-// R71-01: one folder list feeds the count and the unsaved question. A hidden worktree of app that lies inside the nested
+// R71-01: one folder list feeds the count. A hidden worktree of app that lies inside the nested
 // project "inner" (which stays) is still app's: the page closes its pane and the engine ends its terminal, so the count
 // includes it.
 const hiddenIn = { ...base, path: "C:/w/app/inner/.wt/h", branch: "h", head: "f5f5f5f", isMain: false, hidden: true };

@@ -103,7 +103,7 @@ test("the running-terminal line is left out when the ask is switched off or noth
 test("right-click on the project header lists Remove project last; Escape closes the menu", async () => {
   const c = await panel();
   await rightClick(c, find(c, (n) => hasClass(n, "proj"))[0]);
-  expect(items(c)).toEqual(["Review changes", "Project settings", "Remove project…"]); // T-798: no New workspace while worktrees are off; the folder row offers its Review changes
+  expect(items(c)).toEqual(["Project settings", "Remove project…"]); // T-798: no New workspace while worktrees are off; Review changes went with the screens that showed it
   await fire(doc, "keydown", doc, { key: "Escape" });
   expect(menu(c)).toBeUndefined();
 });
@@ -131,7 +131,7 @@ test("own-folder mode (the default) shows the same folder row: worktree rows sta
   expect(wtRows.every(inHidden), "every worktree row is in a hidden wrapper").toBe(true);
   expect(find(c, (n) => String(n.attrs.title ?? "").startsWith("New workspace"))).toEqual([]);
   await rightClick(c, folder);
-  expect(items(c)).toEqual(["Review changes", "Project settings", "Remove project…"]);
+  expect(items(c)).toEqual(["Project settings", "Remove project…"]);
   await fire(doc, "keydown", doc, { key: "Escape" });
   await click(c, folder);
   expect(h.calls).toContain(`select:${main.path}`);

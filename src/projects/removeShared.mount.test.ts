@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../test/fakeDom";
 
-const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][], extra: {} as Record<string, unknown>, parent: false, groupOne: false }));
+const h = vi.hoisted(() => ({ closed: [] as unknown[][], extra: {} as Record<string, unknown>, parent: false, groupOne: false }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     if (cmd === "get_settings") return Promise.resolve({});
@@ -55,7 +55,6 @@ beforeEach(() => {
   doc = dom.doc;
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
   Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
-  h.unsaved = [];
   h.closed = [];
   h.extra = {};
   h.parent = false;
@@ -73,7 +72,6 @@ async function panel(extra: Record<string, unknown> = {}) {
     activeDir: null, onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
-    onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true),
     onRemovedAll: (paths: string[], staying?: string[]) => void h.closed.push([paths, staying]),
   };
   const m = await mount(createElement(ProjectsPanel, { ...props, ...extra } as never), doc);
@@ -86,18 +84,17 @@ const ask = (c: FakeNode) => byLabel(c, "div", "Remove project")[0];
 test.each([
   ["app-b", "C:/w/app-b"],
   ["app", "C:/w/app"],
-])("g/h: removing %s counts, asks about and closes only its own folder, not the other project's or the shared worktree", async (name, path) => {
+])("g/h: removing %s counts and closes only its own folder, not the other project's or the shared worktree", async (name, path) => {
   const c = await panel();
   await click(c, byLabel(c, "button", `Remove ${name}`)[0]);
   await settle(20);
   expect(ask(c).textContent).toContain("1 terminal is still running and will be closed.");
   await click(c, byText(c, "button", `Remove ${name}`)[0]);
   await settle(40);
-  expect(h.unsaved).toEqual([[path]]);
   expect((h.closed[0] as [string[]])[0]).toEqual([path]);
 });
 
-test("k: deleting a group that removes both projects counts and asks about every folder", async () => {
+test("k: deleting a group that removes both projects counts and closes every folder", async () => {
   const c = await panel();
   await click(c, byLabel(c, "button", "Delete group Clients")[0]);
   await settle(20);
@@ -108,7 +105,6 @@ test("k: deleting a group that removes both projects counts and asks about every
   expect((byLabel(c, "div", "Delete group")[0] ?? c).textContent).toContain("3 terminals are still running and will be closed.");
   await click(c, byText(c, "button", "Delete group")[0]);
   await settle(60);
-  expect([...h.unsaved[0]].sort()).toEqual(["C:/w/app", "C:/w/app-b", "C:/w/wt3"]);
   // F88-01: the window is handed the members' going folders, each once, not only their own folders
   expect((h.closed[0] as [string[]])[0]).toEqual(["C:/w/app", "C:/w/app-b", "C:/w/wt3"]);
 });
@@ -123,7 +119,6 @@ test("F88-01: removing app hands its own folder, then the worktree under a stayi
   expect(ask(c).textContent).toContain("2 terminals are still running and will be closed.");
   await click(c, byText(c, "button", "Remove app")[0]);
   await settle(40);
-  expect(h.unsaved).toEqual([["C:/w/app", "C:/x/wt9"]]);
   expect((h.closed[0] as [string[]])[0]).toEqual(["C:/w/app", "C:/x/wt9"]);
 });
 
@@ -139,11 +134,11 @@ test("R71-02: the owner map the sidebar hands to the window maps each project's 
 });
 
 // R83-04 (reverses R74-02): with the REAL grid map, in both scan orders, the shared "wt3" is listed by app-b, which stays.
-// Removing app counts, asks about and closes only app's own folder; wt3's terminal stays open and the question says so.
+// Removing app counts and closes only app's own folder; wt3's terminal stays open and the question says so.
 test.each([
   ["wt3 in app's grid", "C:/w/app"],
   ["wt3 in app-b's grid", "C:/w/app-b"],
-])("R83-04: %s: app's Remove question does not count or ask about wt3 and says a shared worktree stays open", async (_, grid) => {
+])("R83-04: %s: app's Remove question does not count wt3 and says a shared worktree stays open", async (_, grid) => {
   const { setGridRoots } = await import("../workspaces");
   setGridRoots({ "C:/w/wt3": grid }, ["C:/w/app", "C:/w/app-b"]);
   try {
@@ -155,7 +150,7 @@ test.each([
     expect(text).toContain("are cleared. Terminals in a worktree that another project in Kolux also lists stay open. The folder and its files stay on disk.");
     await click(c, byText(c, "button", "Remove app")[0]);
     await settle(40);
-    expect(h.unsaved).toEqual([["C:/w/app"]]);
+    expect((h.closed[0] as [string[]])[0]).toEqual(["C:/w/app"]);
   } finally {
     setGridRoots({});
   }

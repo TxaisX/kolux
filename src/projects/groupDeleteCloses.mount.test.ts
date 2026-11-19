@@ -1,13 +1,12 @@
 // Audit F21 (screen half) on the real ProjectsPanel (small DOM, backend mocked, harness as in uxRows5.test.ts):
-// "Delete group" with "Also remove its projects" does what removing one project does. It asks about the
-// unsaved editor tabs of the member projects' folders and worktrees first (Cancel: nothing is deleted and the
-// question stays), and after group_delete answers it closes their panes through onRemovedAll. Unticked, nothing
-// is asked or closed. A failed group_delete closes nothing.
+// "Delete group" with "Also remove its projects" does what removing one project does: after group_delete
+// answers it closes the panes of the member projects' folders and worktrees through onRemovedAll. Unticked,
+// nothing is closed. A failed group_delete closes nothing.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../test/fakeDom";
 
-const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[], answer: true, failDelete: false, unsaved: [] as string[][], closed: [] as string[][] }));
+const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[], failDelete: false, closed: [] as string[][] }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     h.calls.push({ cmd, args });
@@ -50,9 +49,7 @@ beforeEach(() => {
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
   Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
   h.calls = [];
-  h.answer = true;
   h.failDelete = false;
-  h.unsaved = [];
   h.closed = [];
 });
 afterEach(async () => {
@@ -67,7 +64,6 @@ async function panel() {
     activeDir: null, onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
-    onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), h.answer),
     onRemovedAll: (paths: string[]) => void h.closed.push(paths),
   };
   const m = await mount(createElement(ProjectsPanel, props as never), doc);
@@ -90,31 +86,19 @@ async function askDelete(c: FakeNode, remove: boolean) {
   await settle(60);
 }
 
-test("with the projects removed too, their unsaved tabs are asked about first, then their panes close", async () => {
+test("with the projects removed too, their panes close", async () => {
   const c = await panel();
   await askDelete(c, true);
   // the folders of every project in the group and its sub-group, and the project's worktree outside its folder
-  expect(h.unsaved).toEqual([["C:/w/app", fix.path, "C:/w/lib"]]);
   expect(deletes()).toEqual([{ id: "g1", removeProjects: true }]);
   expect(h.closed).toEqual([["C:/w/app", fix.path, "C:/w/lib"]]); // F88-01: the going folders, the worktree too
   expect(question(c).length).toBe(0);
 });
 
-test("Cancel on the unsaved-tabs question deletes nothing, closes nothing, and the question stays", async () => {
-  h.answer = false;
-  const c = await panel();
-  await askDelete(c, true);
-  expect(h.unsaved).toEqual([["C:/w/app", fix.path, "C:/w/lib"]]);
-  expect(deletes()).toEqual([]);
-  expect(h.closed).toEqual([]);
-  expect(question(c).length).toBe(1);
-});
-
-test("with the projects kept, nothing is asked and no pane closes", async () => {
+test("with the projects kept, no pane closes", async () => {
   const c = await panel();
   await askDelete(c, false);
   expect(deletes()).toEqual([{ id: "g1", removeProjects: false }]);
-  expect(h.unsaved).toEqual([]);
   expect(h.closed).toEqual([]);
 });
 
