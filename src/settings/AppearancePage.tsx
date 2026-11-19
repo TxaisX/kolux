@@ -232,7 +232,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
         </div>
         {custom && <p className="conn-detail" data-note="custom-mode">A custom theme sets its own light or dark look, so these are off while it is on.</p>}
         {look.mode === "system" && <p className="conn-detail">Follows Windows, also while Kolux is running.</p>}
-        {/* VIEW-006: one of the three workspace screens can paint in its own mode. */}
+        {/* VIEW-006: the Terminals screen can paint in its own mode (the Agents and Board screens went on 2026-11-19). */}
         {THEMED_SCREENS.map((s) => (
           <div key={s} className="look-select" data-screen-theme={s}>
             <span>{s[0].toUpperCase() + s.slice(1)} screen</span>
@@ -248,7 +248,6 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
             />
           </div>
         ))}
-        <p className="conn-detail">Inbox and Artifacts follow the Terminals screen. The classic look uses the Terminals choice everywhere.</p>
       </section>
       <ZoomControl />
       {languagePart}
@@ -288,14 +287,13 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
       <section className="conn-card" data-section="fonts">
         <h2 className="conn-name">Fonts</h2>
         <FontField label="App font" value={look.appFont} placeholder={`Default (${firstFamily(uiFont)})`} onPick={(appFont) => onChange({ ...look, appFont })} />
-        <FontField label="Editor font" value={look.editorFont} placeholder="Same as the terminal font" onPick={(editorFont) => onChange({ ...look, editorFont })} />
-        <p className="conn-detail">Leave a field empty for the default. A font that is not installed falls back to the default, so text always shows.</p>
+        <p className="conn-detail">Leave the field empty for the default. A font that is not installed falls back to the default, so text always shows.</p>
       </section>
       </Fold>
       <Fold id="terminal" title="Terminal" summary={[look.termFont || firstFamily(monoFont), `${look.termSize} pt`, look.lightTerminal ? `${name(look.terminal)} / ${name(look.lightScheme)}` : name(look.terminal)].join(" · ")} {...fold("terminal")}>
       <section className="conn-card" data-section="terminal-font">
         <h2 className="conn-name">Terminal font</h2>
-        {/* TERM-097: every pane and, unless it has its own font, the editor redraw with these. */}
+        {/* TERM-097: every pane redraws with these. */}
         <FontField label="Terminal font" word="Font" value={look.termFont} placeholder={`Default (${firstFamily(monoFont)})`} onPick={(termFont) => onChange({ ...look, termFont })} />
         <label className="look-slider">
           <span>Size</span>

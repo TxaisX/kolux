@@ -1,6 +1,9 @@
 import { expect, test } from "vitest";
 import { createDraft } from "./draft";
-import { delayFromText } from "./editorPrefs";
+
+/** A number box like the old auto-save delay (200 to 10000 ms): an empty or unreadable box reads as null. */
+const delayFromText = (text: string): number | null =>
+  text.trim() !== "" && Number.isFinite(Number(text)) ? Math.round(Math.min(10000, Math.max(200, Number(text)))) : null;
 
 /** A timer the test steps by hand. */
 function clock() {

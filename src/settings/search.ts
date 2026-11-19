@@ -12,7 +12,6 @@ export type Entry = { page: PageId; section: string; title: string; words: strin
 export const INDEX: Entry[] = [
   { page: "general", section: "views", title: "Look and first screen", words: "start open launch home new classic look startup" },
   { page: "general", section: "confirmations", title: "Confirmations", words: "confirm confirmation ask again dont skipped prompt delete automation warning" },
-  { page: "general", section: "editor", title: "Editor and diffs", words: "editor auto save autosave minimap word wrap spellcheck spelling diff inline split side whitespace file tree" },
   { page: "general", section: "open-in", title: "Open in", words: "open in outside external app apps editor vscode code cursor zed explorer" },
   { page: "general", section: "diagnostics", title: "Diagnostics", words: "diagnostics log copy report problem bug support crash" },
   { page: "general", section: "privacy", title: "Privacy", words: "privacy data telemetry network connections offline feedback" },
@@ -24,7 +23,7 @@ export const INDEX: Entry[] = [
   { page: "appearance", section: "theme", title: "Colour theme", words: "color colors accent palette contrast hue swatch", fold: "interface" },
   { page: "appearance", section: "custom-themes", title: "Custom themes", words: "custom theme themes create edit import export colour color", fold: "interface", parent: "theme" },
   { page: "appearance", section: "finish", title: "Finish", words: "finish glass glassy metal metallic see-through translucent frosted glow steel silver gold copper colour color strength", fold: "interface" },
-  { page: "appearance", section: "fonts", title: "Fonts", words: "font typeface app editor family text", fold: "interface" },
+  { page: "appearance", section: "fonts", title: "Fonts", words: "font typeface app family text", fold: "interface" },
   { page: "appearance", section: "terminal-font", title: "Terminal font", words: "terminal font size typeface family weight", fold: "terminal" },
   { page: "appearance", section: "terminal-colours", title: "Terminal colours", words: "terminal color colors scheme ansi console import warp ghostty", fold: "terminal" },
   { page: "appearance", section: "panes", title: "Panes", words: "pane border focus dim split tabs", fold: "terminal" },
