@@ -1249,7 +1249,7 @@ impl Panes for crate::terminal::Terminals {
 /// character except line feed and tab dropped first (`sendonce::paste_safe`), so its text (a
 /// pull-request title, say) cannot end the paste early.
 fn bracketed(text: &str) -> String {
-    format!("\u{1b}[200~{}\u{1b}[201~", crate::orchestration::sendonce::paste_safe(text))
+    format!("\u{1b}[200~{}\u{1b}[201~", crate::sendonce::paste_safe(text))
 }
 
 /// AUTO-009: the session this run may continue in: the automation asks for reuse (existing

@@ -29,6 +29,9 @@ pub const LOG_LINES: usize = 2000;
 /// P2 perf (DT-C235): the most text a terminal's line log keeps, on top of `LOG_LINES`; long lines
 /// (up to `PENDING_CAP` each) would otherwise let one pane hold ~32 MB.
 pub const LOG_BYTES: usize = 1024 * 1024;
+/// The variable that names, in each pane, the profile folder of the Kolux that opened it; a lane,
+/// smoke or evidence run that points it at scratch fences the agents' files (T-580, T-152-c).
+pub const APP_DIR_ENV: &str = "KOLUX_APP_DIR";
 /// Fix-term 786: the most a log keeps of a line that has not ended yet.
 const PENDING_CAP: usize = 16 * 1024;
 /// The most one paste may carry. Files are written through `file_write`, which has its own limit.
@@ -1218,7 +1221,7 @@ impl Terminals {
         // Council MERGE 51: a shell (a chosen default shell too, SET-026) stays a plain terminal, not a program session.
         let is_program = program.as_deref().map(str::trim).is_some_and(|p| !p.is_empty() && !is_shell_program(p));
         let link_dir = cwd.clone();
-        let key = crate::cli::secret();
+        let key = crate::local_token::secret();
         let strip_key = crate::claude_key::strip_inherited(program.as_deref(), &env);
         for (command, history_var) in commands.iter_mut().zip(history_vars) {
             // APP-020 on macOS and Linux: what the login shell sets (read at startup), so tools set up in
@@ -1269,7 +1272,7 @@ impl Terminals {
                 // override (COMPAT 7) it may have inherited from the shell that started Kolux, stripped
                 // above with the rest of the noise (CLI-010), is pointed at this app's own folder.
                 command.env("KOLUX_USER_DATA_PATH", &dir);
-                command.env(crate::cli::APP_DIR_ENV, dir);
+                command.env(APP_DIR_ENV, dir);
             }
             unattended(command, is_program);
             // ACCT-024: a Claude pane not handed the 1-year key drops one Kolux itself was started
@@ -2525,7 +2528,7 @@ pub async fn terminal_write(app: AppHandle, terminals: tauri::State<'_, Terminal
     // USAGE-007: the user's own typing after a limit stop cancels the resume.
     crate::resume::user_typed(&app, id);
     // ORCH-055: a prompt the command line is typing holds its Enter back once the user writes here.
-    crate::orchestration::sendonce::other_writer(id, &data);
+    crate::sendonce::other_writer(id, &data);
     terminals.write(id, &data)
 }
 

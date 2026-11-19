@@ -547,7 +547,7 @@ pub fn main(args: &[String]) -> i32 {
             return 1;
         }
     };
-    let token = crate::cli::secret();
+    let token = crate::local_token::secret();
     let pid = std::process::id();
     let port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
     if let Err(e) = write_endpoint(&dir, &Endpoint { port, token: token.clone(), pid, generation: generation(), protocol: PROTOCOL }) {
@@ -834,7 +834,7 @@ mod tests {
 
     fn start(dir: &Path, protocol: u32, idle: Duration) -> Running {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
-        let ep = Endpoint { port: listener.local_addr().unwrap().port(), token: crate::cli::secret(), pid: std::process::id(), generation: generation(), protocol };
+        let ep = Endpoint { port: listener.local_addr().unwrap().port(), token: crate::local_token::secret(), pid: std::process::id(), generation: generation(), protocol };
         write_endpoint(dir, &ep).unwrap();
         let service = Service::default();
         let stop = Arc::new(AtomicBool::new(false));

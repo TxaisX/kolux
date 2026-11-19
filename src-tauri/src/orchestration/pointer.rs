@@ -11,7 +11,7 @@
 //! check made before the line goes out drops it; arrivals while a line is being typed or right
 //! after one was typed never type a second one; mail sent straight to a pane names no Run.
 
-use super::sendonce as so;
+use crate::sendonce as so;
 use super::{finished, terminal_of, Mail, Peer, CLI};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};

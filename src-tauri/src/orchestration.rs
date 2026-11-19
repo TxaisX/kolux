@@ -7,8 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
 
-/// ORCH-055 (T-174-b): prompts typed into agents land exactly once.
-pub mod sendonce;
 /// ORCH-007 (T-030-b): the one-line mail pointer typed into an idle agent.
 pub mod pointer;
 /// ORCH-017 (T-172-d): worker-start waits for the window to run the trust question and the setup once.
@@ -595,7 +593,7 @@ fn keep_open(dispatches: &[Value], d: &Value, agent_of: &dyn Fn(&str) -> Option<
     // ORCH-036 (T-155-b): typing into the worker's terminal makes it the user's; stop and release
     // then leave it open and say so. The window's terminal_write reports the user's keystrokes to
     // sendonce::other_writer; Kolux's own sends go through sendonce::claim and never count.
-    if d["terminal"].as_u64().and_then(|t| u32::try_from(t).ok()).is_some_and(|t| sendonce::taken_over_since(t, d["created"].as_u64().unwrap_or(0))) {
+    if d["terminal"].as_u64().and_then(|t| u32::try_from(t).ok()).is_some_and(|t| crate::sendonce::taken_over_since(t, d["created"].as_u64().unwrap_or(0))) {
         return Some(format!("the user typed into {h} after the worker started, so it was taken over and is theirs now, not the worker's to close"));
     }
     let agent = d["agent"].as_str().unwrap_or("its agent");
@@ -3231,7 +3229,7 @@ mod tests {
         let me = std::process::id();
         let now = wall_ms();
         // The user typed into terminal 3636 now: dispatch-1 was made before that, dispatch-2 after.
-        sendonce::other_writer(3636, "x");
+        crate::sendonce::other_writer(3636, "x");
         let typed = wall_ms();
         let mut d = vec![
             json!({ "id": "dispatch-1", "runId": "run-1", "taskId": "task-1", "status": "completed", "terminal": 3636, "runtime": me, "agent": "claude", "created": now.saturating_sub(10_000) }),
@@ -3248,13 +3246,13 @@ mod tests {
         let (r, h) = release_with(&mut d, &live, "dispatch-2", Some("run-1"), 2, &agent_of).unwrap();
         assert_eq!(h.as_deref(), Some("term-3636"), "{r}");
         // A stop leaves a taken-over terminal running and says so; the task is freed all the same.
-        sendonce::other_writer(3637, "y");
+        crate::sendonce::other_writer(3637, "y");
         let mut tasks = vec![json!({ "id": "task-3", "runId": "run-1", "status": "dispatched", "dispatchId": "dispatch-3" })];
         let (r, kill) = stop_with(&mut tasks, &mut d, "dispatch-3", Some("run-1"), 3, &agent_of).unwrap();
         assert_eq!(kill, None, "{r}");
         assert!(r["terminalLeftOpen"].as_str().unwrap().contains("taken over") && r["process"] == "unverifiable", "{r}");
         assert_eq!(tasks[0]["status"], "ready");
         // A terminal nobody typed into is nobody's but the worker's.
-        assert!(!sendonce::taken_over_since(3638, 0));
+        assert!(!crate::sendonce::taken_over_since(3638, 0));
     }
 }

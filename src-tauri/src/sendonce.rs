@@ -422,6 +422,141 @@ pub fn drive(send: &mut Send, text: Option<&str>, agent: bool, mut look: impl Fn
     }
 }
 
+// ---------------------------------------------------------------- a prompt into a Kolux terminal (GIT-031)
+
+/// How long a prompt to an idle agent is watched for its turn to begin.
+const SUBMIT_WATCH: Duration = Duration::from_secs(3);
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// TERM-126: what became of a prompt sent with Enter.
+struct Submit {
+    /// turn_began (taken), queued (the agent was working), not_submitted (it was idle and no turn
+    /// began within the watch), unknown (no status hooks report for the pane).
+    receipt: &'static str,
+    /// true = taken, false = not taken (yet), None = cannot be told.
+    submitted: Option<bool>,
+    /// The pane's hook state when the watch ended, where one is reported.
+    state: Option<&'static str>,
+    warning: Option<String>,
+}
+
+/// Watches `activity` (the newest hooks history mark and whether the pane works) for up to `watch`.
+/// An idle pane took the prompt once a new history entry appears or it turns working; a busy one
+/// queues it behind its turn at once. Without a hooks report (`before` is None) nothing can be told.
+fn submit_verdict(handle: &str, before: Option<((u64, usize), bool)>, watch: Duration, mut activity: impl FnMut() -> Option<((u64, usize), bool)>, state: impl Fn() -> Option<&'static str>) -> Submit {
+    let Some((mark, busy)) = before else {
+        return Submit { receipt: "unknown", submitted: None, state: None, warning: Some(format!("no status hooks report for {handle}; whether the prompt was taken cannot be told")) };
+    };
+    if busy {
+        return Submit { receipt: "queued", submitted: Some(false), state: state(), warning: Some(format!("{handle} is working; the prompt waits behind its turn")) };
+    }
+    let start = std::time::Instant::now();
+    let mut took = false;
+    while !took && start.elapsed() < watch {
+        took = activity().is_some_and(|(m, working)| m != mark || working);
+        if !took {
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+    if took {
+        return Submit { receipt: "turn_began", submitted: Some(true), state: state(), warning: None };
+    }
+    Submit { receipt: "not_submitted", submitted: Some(false), state: state(), warning: Some(format!("{handle} did not start a turn within {} s, so Enter may have been lost", watch.as_secs())) }
+}
+
+/// ORCH-055: why Enter was held back after the text went in.
+fn held_line(handle: &str, o: &Outcome) -> String {
+    match o {
+        Outcome::Stale => format!("another writer typed into {handle} between the text and Enter, so Enter was held back and the send is stale"),
+        Outcome::Cancelled => format!("the prompt was cancelled in {handle} while Kolux checked that the text arrived, so no Enter was sent"),
+        Outcome::HeldPermission(why) => format!("{handle} showed a permission prompt mid-paste ({why}), so Enter was held back"),
+        other => format!("the send to {handle} ended {}", other.word()),
+    }
+}
+
+/// Types `text` (and Enter) into terminal `id` exactly once, behind the terminal's other senders:
+/// waits for the input box to settle, pastes, holds Enter back for the size-scaled pause and while a
+/// large paste is taken in, and never presses it when another writer, a cancel or a permission
+/// prompt comes between the text and Enter.
+fn send_once(terminals: &crate::terminal::Terminals, id: u32, text: &str, agent: bool) -> Result<Delivery, String> {
+    let turn = lane(id);
+    let _turn = turn.lock().unwrap_or_else(|p| p.into_inner());
+    let ticket = claim(id);
+    let mut send = Send::new(text.len(), true, cfg!(windows), now_ms());
+    let handle = crate::terminal::handle_of(id);
+    let look = || {
+        let now = now_ms();
+        let tail = terminals.read(id, None, Some(8)).map(|r| r.lines.iter().map(|l| l.text.clone()).chain(std::iter::once(r.pending)).collect::<Vec<_>>().join("\n")).unwrap_or_default();
+        let seen = current(id);
+        Look {
+            now_ms: now,
+            last_output_ms: terminals.quiet_for(id).map(|q| now.saturating_sub(q.as_millis() as u64)),
+            hooks_state: crate::status::state_of(id).map(str::to_string),
+            screen_tail: tail,
+            other_writer: seen.writer != ticket.writer,
+            cancelled: seen.cancel != ticket.cancel,
+            live: terminals.live(&handle),
+        }
+    };
+    drive(&mut send, Some(text), agent, look, |s| terminals.write(id, s), std::thread::sleep)
+}
+
+/// GIT-031: sends `text` to Kolux terminal `handle` (term-<n>) and presses Enter once, then says what
+/// became of it: `delivered` (what was typed), `receipt` (turn_began, queued, not_submitted, unknown,
+/// or the held outcome's word), `enterHeld` when the text sits in the box unsubmitted. A prompt to an
+/// agent with hooks is watched for its turn to begin. Text that is blank sends Enter alone.
+pub fn send_prompt(terminals: &crate::terminal::Terminals, handle: &str, text: &str) -> Result<Value, String> {
+    let id = handle.strip_prefix("term-").and_then(|n| n.parse::<u32>().ok()).ok_or_else(|| format!("{handle} is not a terminal handle (term-<n>)"))?;
+    let gone = || format!("no open Kolux terminal is called {handle}");
+    if !terminals.live(handle) {
+        return Err(gone());
+    }
+    let body = Some(text.trim()).filter(|t| !t.is_empty());
+    let agent = terminals.program(id).flatten();
+    let prompt = agent.is_some() && body.is_some();
+    let before = if prompt { Some(crate::status::activity(id)) } else { None };
+    let mut delivered = Vec::new();
+    let mut sent_ms = now_ms();
+    let mut held = None;
+    if let Some(body) = body {
+        let d = send_once(terminals, id, body, agent.is_some())?;
+        match &d.outcome {
+            Outcome::Blocked(why) => return Err(format!("{handle} shows a permission or approval prompt ({why}); nothing was pasted. Answer it first, then send again")),
+            Outcome::Gone => return Err(gone()),
+            Outcome::Sent | Outcome::TextOnly => {}
+            other => held = Some(other.clone()),
+        }
+        delivered.extend(d.delivered);
+        sent_ms = d.pasted_ms.unwrap_or(sent_ms);
+    } else {
+        // A bare Enter answers what the agent shows; it is not a prompt, so it goes at once.
+        terminals.write(id, "\r")?;
+        delivered.push("enter");
+    }
+    let mut out = serde_json::json!({ "terminal": handle, "delivered": delivered, "agent": agent, "prompt": prompt });
+    if let Some(h) = held {
+        // The text is in the box and Enter was held back: say why; no retry pastes it again.
+        out["receipt"] = serde_json::json!(h.word());
+        out["submitted"] = serde_json::json!(false);
+        out["enterHeld"] = serde_json::json!(true);
+        out["state"] = serde_json::json!(crate::status::state_of(id));
+        out["warnings"] = serde_json::json!([held_line(handle, &h)]);
+    } else if let Some(before) = before {
+        // ORCH-055: a report dated before the send is the old turn's, not proof the prompt arrived.
+        let old_mark = before.map(|(m, _)| m);
+        let activity = || crate::status::activity(id).map(|(m, working)| (if proves_arrival(m.0, sent_ms) { m } else { old_mark.unwrap_or(m) }, working));
+        let v = submit_verdict(handle, before, SUBMIT_WATCH, activity, || crate::status::state_of(id));
+        out["receipt"] = serde_json::json!(v.receipt);
+        out["submitted"] = serde_json::json!(v.submitted);
+        out["state"] = serde_json::json!(v.state);
+        out["warnings"] = serde_json::json!(v.warning.into_iter().collect::<Vec<_>>());
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -670,5 +805,44 @@ mod tests {
         assert_eq!(store.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// TERM-126 / MERGE 49: a prompt to an idle agent is taken once a turn begins, and named not
+    /// submitted when none begins within the watch; a busy agent queues it at once; a pane without a
+    /// hooks report cannot tell, and says so without waiting.
+    #[test]
+    fn term126_a_sent_prompt_is_taken_queued_lost_or_unknown() {
+        use std::time::Instant;
+        let working = |m: u64| Some(((m, 1usize), true));
+        let idle = |m: u64| Some(((m, 1usize), false));
+        let v = submit_verdict("term-2", idle(10), Duration::from_secs(5), || working(10), || Some("working"));
+        assert_eq!((v.receipt, v.submitted, v.warning), ("turn_began", Some(true), None));
+        let v = submit_verdict("term-2", idle(10), Duration::from_secs(5), || idle(11), || Some("working"));
+        assert_eq!((v.receipt, v.submitted), ("turn_began", Some(true)), "a new history entry is the prompt's turn");
+        let start = Instant::now();
+        let v = submit_verdict("term-2", idle(10), Duration::from_millis(200), || idle(10), || Some("done"));
+        assert_eq!((v.receipt, v.submitted, v.state), ("not_submitted", Some(false), Some("done")));
+        assert!(start.elapsed() >= Duration::from_millis(200), "the whole watch is spent");
+        let start = Instant::now();
+        let v = submit_verdict("term-2", working(10), Duration::from_secs(5), || working(10), || Some("working"));
+        assert!(start.elapsed() < Duration::from_millis(500), "a busy agent is not waited on");
+        assert_eq!((v.receipt, v.submitted, v.state), ("queued", Some(false), Some("working")));
+        assert_eq!(v.warning.as_deref(), Some("term-2 is working; the prompt waits behind its turn"));
+        let start = Instant::now();
+        let v = submit_verdict("term-3", None, Duration::from_secs(5), || None, || None);
+        assert!(start.elapsed() < Duration::from_millis(500));
+        assert_eq!((v.receipt, v.submitted, v.state), ("unknown", None, None));
+        assert_eq!(v.warning.as_deref(), Some("no status hooks report for term-3; whether the prompt was taken cannot be told"));
+    }
+
+    #[test]
+    fn git031_a_send_to_a_missing_terminal_or_a_bad_handle_fails_in_words() {
+        let terminals = crate::terminal::Terminals::default();
+        assert_eq!(send_prompt(&terminals, "term-9", "hello").unwrap_err(), "no open Kolux terminal is called term-9");
+        assert_eq!(send_prompt(&terminals, "shell", "hello").unwrap_err(), "shell is not a terminal handle (term-<n>)");
+        let h = |o: Outcome| held_line("term-1", &o);
+        assert!(h(Outcome::Stale).contains("Enter was held back"));
+        assert!(h(Outcome::HeldPermission("x".into())).contains("permission prompt mid-paste (x)"));
+        assert!(h(Outcome::Cancelled).contains("no Enter was sent"));
     }
 }

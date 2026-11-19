@@ -397,7 +397,7 @@ fn term105_box1_a_build_running_at_quit_goes_on_and_its_output_continues_in_the_
 /// MIRROR src-tauri/src/cli.rs:3673 (send_once): the `Look` built from the terminal and the `write` callback are rebuilt here around the real driver.
 #[test]
 fn term125_box1_send_enter_types_the_text_and_submits_it() {
-    use kolux_lib::orchestration::sendonce::{drive, Look, Outcome, Send};
+    use kolux_lib::sendonce::{drive, Look, Outcome, Send};
     let parse = |line: &str| {
         let words: Vec<String> = line.split(' ').map(String::from).collect();
         kolux_lib::cli::parse(&words).1.expect("the flags parse").expect("a command").args

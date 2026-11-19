@@ -7,7 +7,7 @@
 use crate::cli_accounts;
 use crate::git::{Git, Worktree};
 use crate::projects::{self, Project};
-use crate::orchestration::sendonce as so;
+use crate::sendonce as so;
 use crate::state::Store;
 use crate::terminal::Terminals;
 use serde_json::{json, Map, Value};
