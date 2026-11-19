@@ -362,9 +362,6 @@ pub fn run() {
                 }
             }
             store.stamp_look(); // row 785: the look and mode are written now, not left to a page read that may time out
-            // SKILL-023: an interrupted skill delete is undone or completed under the skill lock (a busy
-            // lock or a lock that cannot be opened is logged; the latter still recovers).
-            skill_delete::startup_recover(&dir);
             let starts = onboarding::count_start(&store)?; // a failed count write is logged inside, never fatal
             if let Err(e) = onboarding::first_start(&store, starts) {
                 eprintln!("kolux: onboarding start failed ({e}); startup goes on");
@@ -373,12 +370,6 @@ pub fn run() {
             activity::start(&store);
             // ACCT-010: a key this computer can no longer open is cleared before the window asks.
             secrets::drop_unreadable(&store, &dir);
-            // Txais (2026-11-16): a start has no folders; the Start form asks what to open (keepWorkspaces: true keeps them).
-            match folder_projects::forget_all_at_start(&store) {
-                Ok(n) if n > 0 => diag::write(&dir, &format!("start: forgot {n} listed folder(s); the Start form asks what to open")),
-                Ok(_) => {}
-                Err(e) => diag::write(&dir, &format!("start: the folder list could not be cleared ({e}); it stays as it was")),
-            }
             // Txais (2026-11-17): what the last quit kept instead of merging joins the start's notice, told once.
             if let Ok(mut held) = app.state::<resources::recovery::StartupNotes>().0.lock() {
                 // A merge the last quit began and never finished is put right first (and says so).
@@ -392,18 +383,6 @@ pub fn run() {
             // this whole session (the new version's first, the riskiest); the next start refreshes it.
             let upgrade_kept = matches!(upgrade_copy, Some(Ok(())));
             resources::recovery::backup_after(dir.clone(), prep.backup_worthwhile() && !upgrade_kept, resources::recovery::BACKUP_DELAY);
-            // APP-004 (T-213): settings saved under the former product name carry over once, through the
-            // importer's allow-list, in the background after the window shows; the page re-reads them.
-            {
-                let (h, profile) = (app.handle().clone(), dir.clone());
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_secs(8));
-                    let Some(store) = h.try_state::<Mutex<Store>>() else { return };
-                    if import::first_launch(&profile, &store).is_some_and(|p| !p.add.is_empty()) {
-                        let _ = tauri::Emitter::emit(&h, "settings-saved", ());
-                    }
-                });
-            }
             // T-183 (APP-042): the interface watch; RecoveryMount's heartbeat feeds it.
             resources::recovery::watch_start(app.handle().clone(), perm_problem);
             // TERM-122: the keep-awake watcher reads the saved choice every tick, and counts a
@@ -455,8 +434,6 @@ pub fn run() {
             app.manage(install::Installs::default());
             app.manage(grok::GrokSignIn::default());
             app.manage(artifacts::Library::new(dir.join("artifacts")));
-            // Pages Claude sessions publish are kept in the library as they happen (SKILL-035).
-            capture::start(app.handle().clone());
             app.manage(update::Updates::default());
             // Without Git the app still opens, and the landing screen says so (APP-023).
             app.manage(startup_marks::joined(git)?.unwrap_or(git::Git { version: String::new() }));
@@ -466,14 +443,8 @@ pub fn run() {
             let fence = fence::Fence::load(&app.state::<Mutex<Store>>());
             app.manage(fence);
             app.manage(token_usage::Flights::default());
-            // ORCH-034: the orchestration store is brought up to today's layout before anything reads it.
-            if let Ok(store) = app.state::<Mutex<Store>>().lock() {
-                orchestration::upgrade::at_start(&store);
-            }
             // The command line reaches the app through a loopback port (PROJ-077).
             cli::serve(app.handle().clone(), &dir)?;
-            // AUTO-001: the automations clock.
-            automations::start_clock(app.handle().clone());
             // Agents report their status through hooks (STAT-001): the listener, then the scripts
             // and each found, switched-on agent's entries (STAT-004), off the launch path.
             // STAT-006 / STAT-030: the last run's statuses, with what hooks held while Kolux was

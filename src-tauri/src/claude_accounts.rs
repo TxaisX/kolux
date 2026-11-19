@@ -69,7 +69,7 @@ pub fn load(store: &Store) -> Vec<Account> {
 /// cannot be read gives the default and changes nothing. Coordinator default (Txais may overrule):
 /// keep aside and start fresh, rather than refusing every save.
 pub(crate) fn load_kept<T: serde::de::DeserializeOwned + serde::Serialize + Default>(store: &Store, key: &str) -> T {
-    crate::orchestration::kept::or_default(store, key)
+    crate::state::kept::or_default(store, key)
 }
 
 fn save(store: &Store, list: &[Account]) -> Result<(), String> {
@@ -218,7 +218,7 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
     }
     // Row 932: `existing` at an id that is not listed (a stale screen) is a new account too, so it claims a free id; an unreadable list fails here, before the login.
     let (listed_ids, existing) = if existing {
-        let ids: Vec<String> = crate::orchestration::kept::load::<Vec<Account>>(&*store.lock().map_err(|e| e.to_string())?, LIST_KEY)?.into_iter().map(|a| a.id).collect();
+        let ids: Vec<String> = crate::state::kept::load::<Vec<Account>>(&*store.lock().map_err(|e| e.to_string())?, LIST_KEY)?.into_iter().map(|a| a.id).collect();
         // Row 940: an unlisted id whose account folder is there (a list set aside as corrupt leaves the folders) is still that sign-in; a removed account keeps its folder too (only its sign-in goes), so a stale screen lands in that folder again.
         let listed = ids.iter().any(|l| l == id) || profile.join(FOLDER).join(id).is_dir();
         (ids, listed)
@@ -304,7 +304,7 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
     let store = store.lock().map_err(|e| e.to_string())?;
     // Row 916: a list that cannot be read or saved leaves no credentials behind for an account that was never listed.
     let listed = (|| {
-        let mut list: Vec<Account> = crate::orchestration::kept::load(&store, LIST_KEY)?;
+        let mut list: Vec<Account> = crate::state::kept::load(&store, LIST_KEY)?;
         match list.iter_mut().find(|a| a.id == id) {
             Some(a) => *a = account.clone(),
             None => list.push(account.clone()),
@@ -627,7 +627,7 @@ fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), Stri
     if !crate::cli_accounts::safe_id(id) {
         return Err("That Claude account id is not valid.".into());
     }
-    let mut list: Vec<Account> = crate::orchestration::kept::load(store, LIST_KEY)?;
+    let mut list: Vec<Account> = crate::state::kept::load(store, LIST_KEY)?;
     let Some(at) = list.iter().position(|a| a.id == id) else {
         return Err("That Claude account is no longer listed.".into());
     };
@@ -664,7 +664,7 @@ pub async fn claude_account_remove(app: AppHandle, sign_ins: tauri::State<'_, Si
 
 /// Marks an account stale or fresh (ACCT-012); true when that changed anything.
 pub fn mark_stale(store: &Store, id: &str, stale: bool) -> Result<bool, String> {
-    let mut list: Vec<Account> = crate::orchestration::kept::load(store, LIST_KEY)?;
+    let mut list: Vec<Account> = crate::state::kept::load(store, LIST_KEY)?;
     let Some(a) = list.iter_mut().find(|a| a.id == id && a.stale != stale) else {
         return Ok(false);
     };
@@ -885,9 +885,9 @@ mod tests {
             assert!(load(&store).is_empty());
             assert!(load(&store).is_empty(), "a second read sets nothing aside again");
             assert_eq!(store.get(LIST_KEY).unwrap().as_deref(), Some("[]"), "the key starts fresh");
-            assert!(crate::orchestration::kept::asides(&store, LIST_KEY).contains(&broken.to_string()), "{broken}: byte-identical copy");
+            assert!(crate::state::kept::asides(&store, LIST_KEY).contains(&broken.to_string()), "{broken}: byte-identical copy");
         }
-        assert_eq!(crate::orchestration::kept::asides(&store, LIST_KEY).len(), 3, "one copy per broken value, none replaced");
+        assert_eq!(crate::state::kept::asides(&store, LIST_KEY).len(), 3, "one copy per broken value, none replaced");
     }
 
     // Row 888: a write that lands while the copy is being made is never overwritten by the reset.
@@ -905,7 +905,7 @@ mod tests {
         .unwrap();
         assert!(load(&store).is_empty());
         assert_eq!(store.get(LIST_KEY).unwrap().as_deref(), Some(broken), "the reset was refused: nothing was changed");
-        assert!(crate::orchestration::kept::asides(&store, LIST_KEY).is_empty(), "the copy rolled back with the refused reset");
+        assert!(crate::state::kept::asides(&store, LIST_KEY).is_empty(), "the copy rolled back with the refused reset");
     }
 
     // Row 912: a list that could not be read or kept aside is never saved over by a sign-in.
@@ -914,7 +914,7 @@ mod tests {
         let (dir, store) = profile("row912");
         let broken = "[{\"id\":\"a1\",\"email\":\"sam@exa\u{0}\u{fffd} half written";
         store.lock().unwrap().set(LIST_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         let got = sign_in(&store, &dir, "a9", false, 7, writes(CREDS, Ended::Exited(Some(0))), |_| Some(SIGNED_IN.into()));
         assert!(got.is_err(), "the save is refused, not made over an empty list");
         assert!(!dir.join(secrets::VAULT).join("claude-a9.json").exists(), "a refused sign-in leaves no sealed copy");
@@ -929,7 +929,7 @@ mod tests {
         let (dir, store) = profile("row916");
         let old = Account { id: "a1".into(), email: Some("old@example.com".into()), organization: None, config_dir: "x".into(), last_sign_in: 1, stale: false };
         store.lock().unwrap().set(LIST_KEY, &serde_json::to_string(&vec![old]).unwrap()).unwrap();
-        let side = crate::orchestration::kept::Unreadable::new(&dir);
+        let side = crate::state::kept::Unreadable::new(&dir);
         assert!(sign_in(&store, &dir, "a9", false, 7, writes(CREDS, Ended::Exited(Some(0))), |_| Some(SIGNED_IN.into())).is_err());
         assert!(!dir.join(secrets::VAULT).join("claude-a9.json").exists(), "no sealed copy left behind");
         assert!(!dir.join(FOLDER).join("a9").exists(), "no account folder left behind");
@@ -946,7 +946,7 @@ mod tests {
         let a = Account { id: "a1".into(), email: None, organization: None, config_dir: "x".into(), last_sign_in: 1, stale: false };
         let store = store.lock().unwrap();
         store.set(LIST_KEY, &serde_json::to_string(&vec![a]).unwrap()).unwrap();
-        let side = crate::orchestration::kept::Unreadable::new(&dir);
+        let side = crate::state::kept::Unreadable::new(&dir);
         assert!(mark_stale(&store, "a1", true).is_err());
         assert!(remove_in(&store, &dir, "a1").is_err());
         side.restore();
@@ -964,7 +964,7 @@ mod tests {
         let sealed = fs::read(&vault).unwrap();
         let broken = "[{\"id\":\"a1\",\"email\":\"sam@exa\u{0}\u{fffd} half written";
         store.lock().unwrap().set(LIST_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         let other = r#"{"loggedIn":true,"authMethod":"claude.ai","email":"kim@example.com","orgName":"Other Org"}"#;
         let got = sign_in(&store, &dir, "a1", false, 8, writes(r#"{"claudeAiOauth":{"accessToken":"fake-new"}}"#, Ended::Exited(Some(0))), |_| Some(other.into()));
         assert!(got.is_err(), "the list save is refused");
@@ -1302,7 +1302,7 @@ mod tests {
         let (dir, store) = profile("row938-unreadable");
         sign_in(&store, &dir, "a1", false, 7, writes(CREDS, Ended::Exited(Some(0))), |_| Some(SIGNED_IN.into())).unwrap();
         let ran = std::cell::Cell::new(false);
-        let side = crate::orchestration::kept::Unreadable::new(&dir);
+        let side = crate::state::kept::Unreadable::new(&dir);
         let got = sign_in(&store, &dir, "a1", true, 9, |d: &Path| { ran.set(true); writes(CREDS, Ended::Exited(Some(0)))(d) }, |_| Some(SIGNED_IN.into()));
         side.restore();
         assert!(got.is_err(), "an unreadable list is an error, not a new account");
@@ -1317,7 +1317,7 @@ mod tests {
         let (dir, store) = profile("row912-ro");
         let store = store.lock().unwrap();
         store.set(LIST_KEY, "[{\"id\":").unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert!(load(&store).is_empty());
         assert!(active(&store).is_none());
         store.set("unrelated.key", "1").unwrap();
@@ -1352,7 +1352,7 @@ mod tests {
     fn breaks_list<'a>(store: &'a Mutex<Store>, dir: &'a Path, broken: &'a str, creds: &'static str) -> impl FnOnce(&Path) -> (String, Ended) + 'a {
         move |d| {
             store.lock().unwrap().set(LIST_KEY, broken).unwrap();
-            crate::orchestration::kept::refuse_copies(dir);
+            crate::state::kept::refuse_copies(dir);
             writes(creds, Ended::Exited(Some(0)))(d)
         }
     }

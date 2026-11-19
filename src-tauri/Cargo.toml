@@ -53,6 +53,8 @@ tauri-plugin-notification = "2"
 # AUTO-001: timetables are worked out in the IANA zone saved with an automation (already in the tree via tauri).
 jiff = "0.2"
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
+# APP-001: a second launch of the same profile hands its arguments to the running copy and exits.
+tauri-plugin-single-instance = "2.5.5"
 trash = "5"
 # Already in the build through the updater; fetches CDN scripts for offline artifacts (SKILL-035).
 reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }

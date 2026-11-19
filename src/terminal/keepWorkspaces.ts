@@ -1,7 +1,7 @@
-// Txais (2026-11-16): Kolux does not remember workspaces across a close. A start opens with no tabs and no folders, and the
-// Start form asks what to open. The saved tabs (`savedLayout`) are neither put back nor written, and the Rust side forgets the
-// folder list at launch (folder_projects::forget_all_at_start). `keepWorkspaces: true` in settings.json brings the old
-// behaviour back; there is no page for it on purpose.
+// Txais (2026-11-16): Kolux does not put tabs back across a close. A start opens with no tabs, and the Start form asks what to
+// open. The saved tabs (`savedLayout`) are neither put back nor written. `keepWorkspaces: true` in settings.json brings the tab
+// restore back; there is no page for it on purpose. The folder list is not part of this: folders stay listed across a restart
+// (the start-up wipe of the folder list was removed in the slim-down), so this setting only gates tabs, layout and the Start choice.
 import { LAYOUT_FIELD } from "./layout";
 import { saveChanged } from "../settings/saveChanged";
 import { invoke } from "@tauri-apps/api/core";
