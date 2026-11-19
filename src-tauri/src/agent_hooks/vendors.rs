@@ -9,7 +9,7 @@
 //! - Amp: a plugin file in `~/.config/amp/plugins/` that posts each event itself.
 
 use super::super::{codex_change, home_dir, install_groups, script, write_atomic, write_json, write_script, Change};
-use super::{back_up, backup_of, drop_created, fenced, kept, names_mine, read_opt, remove_groups, saved::SPOOL_FILE, scratch_only, switch, target_dir, Plan, BACKUP_RECORD};
+use super::{back_up, backup_of, drop_created, fenced, kept, names_mine, read_opt, refuse_shape, remove_groups, saved::SPOOL_FILE, scratch_only, switch, target_dir, Plan, BACKUP_RECORD};
 use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -295,20 +295,6 @@ fn write_back(home: &Path, file: &Path, v: &Value, text: &str) -> Result<(), Str
         Some((bytes, _)) => write_atomic(file, &bytes, Some(text)),
         None if drop_created(file, &target_dir(home, file).join(BACKUP_RECORD), v, text)? => Ok(()),
         None => write_json(file, v, Some(text)),
-    }
-}
-
-/// FIX-1 (c): a value Kolux would have to replace to add its own groups is the user's, so the
-/// file is refused, never rewritten.
-/// Shared by Codex's `hooks.json` install (`hooks::install_codex_mirroring`).
-pub(crate) fn refuse_shape(file: &Path, v: &Value, events: &[&str]) -> Result<(), String> {
-    let bad = |what: String| Err(format!("{} has {what}; left alone", file.display()));
-    let Some(root) = v.as_object() else { return bad("a top level that is not an object".into()) };
-    let Some(hooks) = root.get("hooks") else { return Ok(()) };
-    let Some(hooks) = hooks.as_object() else { return bad("a \"hooks\" value that is not an object".into()) };
-    match events.iter().find(|e| hooks.get(**e).is_some_and(|g| !g.is_array())) {
-        Some(e) => bad(format!("a \"{e}\" value that is not a list")),
-        None => Ok(()),
     }
 }
 

@@ -1526,7 +1526,7 @@ pub(crate) fn install_codex_mirroring(home: &Path, command: &str, user: Option<&
     // P3 (wave job 7): a top level that is not an object, a `hooks` value that is not an object or an
     // event that is not a list is refused, as for every other agent, so `install_groups` never
     // swaps the user's broken entries for empty ones.
-    agent_hooks::vendors::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
+    agent_hooks::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
     let config_text = read(&config)?.unwrap_or_default();
     let mut doc: toml_edit::DocumentMut = config_text.parse().map_err(|e| format!("{} is not valid TOML ({}); left alone", config.display(), crate::trust::toml_fault(&e, &config_text)))?;
     let config_before = doc.to_string();

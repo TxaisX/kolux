@@ -118,6 +118,19 @@ pub fn without_empty_lists(v: &Value) -> Value {
     v
 }
 
+/// FIX-1 (c): a value Kolux would have to replace to add its own groups is the user's, so the
+/// file is refused, never rewritten. Used by Codex's `hooks.json` install (`hooks::install_codex_mirroring`).
+pub(crate) fn refuse_shape(file: &Path, v: &Value, events: &[&str]) -> Result<(), String> {
+    let bad = |what: String| Err(format!("{} has {what}; left alone", file.display()));
+    let Some(root) = v.as_object() else { return bad("a top level that is not an object".into()) };
+    let Some(hooks) = root.get("hooks") else { return Ok(()) };
+    let Some(hooks) = hooks.as_object() else { return bad("a \"hooks\" value that is not an object".into()) };
+    match events.iter().find(|e| hooks.get(**e).is_some_and(|g| !g.is_array())) {
+        Some(e) => bad(format!("a \"{e}\" value that is not a list")),
+        None => Ok(()),
+    }
+}
+
 /// Takes every Kolux entry out of a `{"hooks": {...}}` file. A `hooks` object left empty goes
 /// too only when `drop_empty` (Kolux created it); T-152-b (4): one the user had, even `{}`, stays.
 pub fn remove_groups(root: &mut Value, drop_empty: bool) -> bool {

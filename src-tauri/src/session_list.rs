@@ -431,6 +431,15 @@ fn own_folder(settings: &Value, agent: &str) -> Option<PathBuf> {
     settings.get(crate::agents::OPTIONS_FIELD)?.get(agent)?.get("sessionFolder")?.as_str().map(str::trim).filter(|s| !s.is_empty()).map(PathBuf::from)
 }
 
+/// ACCT-022: the setting naming the folder past Codex sessions are read from.
+pub const SESSIONS_HOME: &str = "codexSessionsHome";
+
+/// ACCT-022: the folder past Codex sessions are read from: the chosen one (blank means none), else
+/// the standard one (`CODEX_HOME`, else `.codex` in the user's home).
+pub fn sessions_home(settings: &Value, codex_home_env: Option<&str>, user_home: Option<&Path>) -> Option<PathBuf> {
+    settings.get(SESSIONS_HOME).and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty()).map(PathBuf::from).or_else(|| crate::codex_accounts::user_dir(codex_home_env, user_home))
+}
+
 /// The folders to read, the user's choice first (VIEW-091, ACCT-022), then what the chat reader
 /// would look in, then (when `profile` is the app's profile folder) each managed account's folder
 /// (`<profile>\claude-accounts\<id>`) and the OpenRouter route's (`<profile>\providers\openrouter`),
@@ -443,7 +452,7 @@ pub fn roots_for(settings: &Value, process_env: impl Fn(&str) -> Option<String>,
         claude.extend(profile_claude_folders(profile));
     }
     let mut codex: Vec<PathBuf> = own_folder(settings, "codex").into_iter().collect();
-    let chosen = crate::agent_creds::sessions_home(settings, process_env(crate::codex_accounts::HOME_ENV).as_deref(), user.as_deref());
+    let chosen = sessions_home(settings, process_env(crate::codex_accounts::HOME_ENV).as_deref(), user.as_deref());
     codex.extend(chosen);
     codex.extend(crate::chat::homes("codex", &[], &process_env, user));
     for v in [&mut claude, &mut codex] {
@@ -876,6 +885,16 @@ mod tests {
         assert!(roots.codex.contains(&PathBuf::from(r"C:\Users\me").join(".codex")));
         let plain = roots_for(&json!({}), |_| None, Some(PathBuf::from(r"C:\Users\me")), None);
         assert_eq!(plain.codex, [PathBuf::from(r"C:\Users\me").join(".codex")], "an empty field means the standard folder, once");
+    }
+
+    // ACCT-022: an empty or blank field is the standard folder; a chosen path wins.
+    #[test]
+    fn acct_022_an_empty_field_means_the_standard_codex_folder() {
+        let user = PathBuf::from(r"C:\Users\me");
+        assert_eq!(sessions_home(&json!({}), None, Some(&user)), Some(user.join(".codex")));
+        assert_eq!(sessions_home(&json!({ SESSIONS_HOME: "   " }), None, Some(&user)), Some(user.join(".codex")), "a blank field is no choice");
+        assert_eq!(sessions_home(&json!({}), Some(r"E:\own"), Some(&user)), Some(PathBuf::from(r"E:\own")), "CODEX_HOME before the user folder");
+        assert_eq!(sessions_home(&json!({ SESSIONS_HOME: r"  D:\elsewhere  " }), Some(r"E:\own"), Some(&user)), Some(PathBuf::from(r"D:\elsewhere")), "the chosen folder wins, trimmed");
     }
 
     #[test]
