@@ -9,7 +9,6 @@ import { matchEvent, resolve, type KeyLike } from "./keymap";
 import { commandRows, forceReload, reloadAsk, renameTarget, windowCommand } from "./commands";
 import { runCommand } from "./runCommand";
 import { heldByTerminal } from "./terminalPolicy";
-import { SCREEN_OF } from "../chrome/reach";
 import { paletteRows } from "../projects/WorktreePalette";
 import keysSrc from "./useWindowKeys.ts?raw";
 import panelSrc from "../projects/ProjectsPanel.tsx?raw";
@@ -32,11 +31,11 @@ function spies() {
 }
 
 /** A command has a handler when the window's or a pane's key code names it, windowCommand runs it, it shows a
- *  screen (T-610: the window's key switch reads chrome/reach.ts SCREEN_OF), it is another command under an old id
+ *  screen, it is another command under an old id
  *  (sameAs), or it is one of the per-agent new-tab commands App.tsx runs by prefix. */
 function handled(id: string): boolean {
   if (sameAs[id]) return handled(sameAs[id]);
-  if (windowCommand(id, spies().calls) || SCREEN_OF[id]) return true;
+  if (windowCommand(id, spies().calls)) return true;
   if (id.startsWith("tab.newAgent.")) return app.includes(`hit.id.startsWith("tab.newAgent.")`);
   return named(id);
 }
@@ -48,11 +47,11 @@ test("T-611: every action id in actions.ts has a handler", () => {
 test("T-611: the five the audit found, Force Reload and Hard Reload each do something (or are gone)", () => {
   // An old id kept for keybindings files that name it runs another command's code.
   expect(sameAs["sidebar.sleepingWorkspaces.toggle"]).toBe("sidebar.sleeping.toggle"); // PROJ-053 / VIEW-053
-  expect(sameAs["dashboard.toggle"]).toBe("view.tower"); // VIEW-029 / HID-020: the drawer's always-on successor (OD-09)
+  expect(sameAs["dashboard.toggle"]).toBeUndefined(); // the Agent Dashboard drawer's old id went with the Tower
   const { did, calls } = spies();
   for (const id of ["sidebar.checks.toggle", "workspace.rename", "app.forceReload"]) expect(windowCommand(id, calls), id).toBe(true);
   expect(did).toEqual(["right:checks", "rename", "reload"]);
-  expect(windowCommand("view.tower", calls)).toBe(false); // the rest stay with the window's own switch
+  expect(windowCommand("view.routing", calls)).toBe(false); // the rest stay with the window's own switch
   // VIEW-079 (dropped): the Ports tab is cut, so its command is not registered: a file naming it gets the unknown-id warning.
   expect(actionById.has("sidebar.ports.toggle")).toBe(false);
   expect(resolve({ keybindings: { "sidebar.ports.toggle": "Mod+Shift+I" } }, "darwin").warnings.join(" ")).toMatch(/"sidebar\.ports\.toggle" .* is not a command Kolux knows/);
@@ -61,7 +60,8 @@ test("T-611: the five the audit found, Force Reload and Hard Reload each do some
 test("T-611: a chord bound to an old id runs the command it stands for", () => {
   const map = resolve({ keybindings: { "dashboard.toggle": "Mod+Alt+9", "sidebar.sleepingWorkspaces.toggle": "Mod+Alt+8" } }, "win32");
   const key = (k: string, code: string): KeyLike => ({ key: k, code, ctrlKey: true, altKey: true, shiftKey: false, metaKey: false });
-  expect(matchEvent(map, key("9", "Digit9"), ["global"])).toEqual({ id: "view.tower" });
+  expect(matchEvent(map, key("9", "Digit9"), ["global"])).toBeNull(); // the Tower is gone, so its old id stands for nothing
+  expect(map.warnings.join(" ")).toMatch(/"dashboard\.toggle" .* is not a command Kolux knows/);
   expect(matchEvent(map, key("8", "Digit8"), ["global"])).toEqual({ id: "sidebar.sleeping.toggle" });
 });
 
@@ -77,11 +77,11 @@ test("T-611: the palette's Commands section lists every command, the unbound one
   expect(actions.filter((a) => !sameAs[a.id] && !ids.has(a.id)).map((a) => a.id)).toEqual([]);
   expect(Object.keys(sameAs).filter((id) => ids.has(id) || !ids.has(sameAs[id]))).toEqual([]);
   expect(rows.map((r) => r.label)).not.toContain("Toggle Agent Dashboard");
-  expect(rows.find((r) => r.label === "Show Tower")?.keywords).toContain("agent dashboard");
+  expect(rows.map((r) => r.label)).not.toContain("Show Tower");
   expect(rows.find((r) => r.label === "Show or Hide Sleeping Workspaces")?.keywords).toContain("toggle");
   // Each unbound command has its row; a bound one shows its keys.
   expect(actions.filter((a) => a.win32.length === 0 && !a.darwin && !sameAs[a.id]).every((a) => ids.has(a.id))).toBe(true);
-  expect(rows.find((r) => r.label === "Show Floor")).toMatchObject({ hint: undefined });
+  expect(rows.find((r) => r.label === "Model Routing")).toMatchObject({ hint: undefined });
   expect(rows.find((r) => r.label === "Open Settings")).toMatchObject({ hint: "Ctrl+," });
   // The two 1 to 9 commands are nine rows each, each with its own digit.
   expect(rows.filter((r) => /^Select Tab \d$/.test(r.label)).map((r) => r.hint)).toEqual(["Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5", "Alt+6", "Alt+7", "Alt+8", "Alt+9"]);
@@ -100,8 +100,8 @@ test("T-611: a command picked in the palette runs the same code its shortcut run
   target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["global"])?.id ?? null));
   target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["editor"])?.id ?? null));
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }) };
-  runCommand("view.floor", undefined, now); // unbound: no chord could ever have reached it
-  expect(heard).toEqual(["view.floor", null]);
+  runCommand("view.routing", undefined, now); // unbound: no chord could ever have reached it
+  expect(heard).toEqual(["view.routing", null]);
   heard.length = 0;
   runCommand("editor.find", undefined, now);
   expect(heard).toEqual([null, "editor.find"]);
@@ -119,11 +119,11 @@ test("T-611: a command picked in the palette runs the same code its shortcut run
 test("T-611: with Terminal first, a command picked in the palette is never left to the terminal program", () => {
   const settings = { terminalShortcuts: "terminal" };
   const xterm = { closest: (s: string) => (s === ".xterm" ? {} : null) } as unknown as Element;
-  expect(heldByTerminal("view.floor", settings, xterm)).toBe(true); // a chord pressed in a terminal goes to its program
+  expect(heldByTerminal("view.routing", settings, xterm)).toBe(true); // a chord pressed in a terminal goes to its program
   const target = new EventTarget();
   let held: boolean | null = null;
-  target.addEventListener("keydown", () => void (held = heldByTerminal("view.floor", settings, xterm)));
-  runCommand("view.floor", undefined, { later: (f) => f(), target, event: () => new Event("keydown") });
+  target.addEventListener("keydown", () => void (held = heldByTerminal("view.routing", settings, xterm)));
+  runCommand("view.routing", undefined, { later: (f) => f(), target, event: () => new Event("keydown") });
   expect(held).toBe(false);
 });
 
@@ -149,7 +149,7 @@ test("review of PR #16: a command whose place is not open says so instead of doi
   const notes: string[] = [];
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }), unanswered: (t: string) => void notes.push(t) };
   runCommand("editor.find", undefined, { ...now, scope: "editor" });
-  runCommand("view.floor", undefined, { ...now, scope: "global" }); // the window took it: no note
+  runCommand("view.routing", undefined, { ...now, scope: "global" }); // the window took it: no note
   expect(notes).toEqual(["Open a file in an editor tab first."]);
   // With an editor listening, the same command runs there and nothing is said.
   target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["editor"]));
@@ -201,7 +201,7 @@ test("T-727: the palette finds Model Routing by routing, model or route, and run
   }
   expect(ran).toEqual(["view.routing", "view.routing", "view.routing", "view.routing"]);
   // every case of the window's page switch is a page: the id after "view." must be one of ProjectsPanel's pages
-  const PAGES = { automations: 1, routing: 1, tasks: 1 } satisfies Record<Page, 1>;
+  const PAGES = { automations: 1, routing: 1 } satisfies Record<Page, 1>;
   const group = keysSrc.match(/((?:case "view\.\w+":\s*)+)\{[^]*?hit\.id\.slice\(5\)/)?.[1] ?? "";
   const ids = [...group.matchAll(/"view\.(\w+)"/g)].map((m) => m[1]);
   expect(ids.sort()).toEqual(Object.keys(PAGES).sort());
@@ -218,7 +218,7 @@ test("T-798 (P4B-01): worktrees off hides Create, Rename and Delete worktree fro
     expect(worktreesOffNote(id, true), id).toBe(WORKTREES_OFF);
     expect(worktreesOffNote(id, false), id).toBeNull();
   }
-  expect(worktreesOffNote("workspace.openBoard", true)).toBeNull(); // the rest of the workspace commands still run
+  expect(worktreesOffNote("workspace.selectByIndex", true)).toBeNull(); // the rest of the workspace commands still run
   expect(labels(true)).toContain("Go to / Run a command");
   // The build ships with worktrees off, and the window's key switch asks before it acts.
   expect(singleFolder()).toBe(true);

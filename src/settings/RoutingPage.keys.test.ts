@@ -2,7 +2,7 @@
 // the panel below, and Left, Right, Home and End move along the tabs and open the one reached.
 import { createElement } from "react";
 import { afterEach, expect, test } from "vitest";
-import { find, fire, installDom, mount, type FakeNode } from "../tasks/fakeDom";
+import { find, fire, installDom, mount, type FakeNode } from "../test/fakeDom";
 import RoutingPage from "./RoutingPage";
 import type { Provider } from "./routing";
 

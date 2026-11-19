@@ -1,12 +1,10 @@
-// T-697 / DT-C133 (UX live audit W3 G9b): the five lone checkboxes are named for what they tick and sit in a
+// T-697 / DT-C133 (UX live audit W3 G9b): the lone checkboxes are named for what they tick and sit in a
 // label at least 24px square. No DOM in this run, so each box is found in its source by its role (a checkbox
 // input) and its accessible name (its aria-label), and its wrapper and the wrapper's rule are checked.
 import { expect, test } from "vitest";
 import allChanges from "../editor/AllChangesPane.tsx?raw";
 import changeTree from "../editor/ChangeTree.tsx?raw";
 import skills from "../skills/SkillsPage.tsx?raw";
-import space from "../space/SpaceView.tsx?raw";
-import pullRequest from "../tasks/PullRequestPage.tsx?raw";
 import agents from "../settings/AgentsPage.tsx?raw";
 import recipes from "../settings/AiRecipesSection.tsx?raw";
 import repoSetup from "../settings/RepoSetup.tsx?raw";
@@ -19,8 +17,6 @@ const boxes: [string, string, string][] = [
   ["AllChangesPane", allChanges, "Viewed ${name}"],
   ["ChangeTree", changeTree, "Viewed ${rel}"],
   ["SkillsPage", skills, "Choose ${s.name}"],
-  ["SpaceView", space, "Select ${labelOf(r)}"],
-  ["PullRequestPage", pullRequest, "Viewed ${f.filename}"],
 ];
 
 test.each(boxes)("%s: the checkbox has its name and a 24px hit area", (_, src, name) => {

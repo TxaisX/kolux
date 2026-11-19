@@ -35,7 +35,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 const { useAgentEvents } = await import("../useAgentStatus");
 const { resetPacer } = await import("../../settings/notifications");
 const { resetWords, stopLine } = await import("../../terminal/notify");
-const { chipOf } = await import("../../board/chip");
+const { chipOf } = await import("../chip");
 
 const pane = (key: number, cwd: string) => ({ key, cwd, branch: null, agent: "claude", program: null, args: [] });
 const noop = () => {};

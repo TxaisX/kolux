@@ -2,7 +2,7 @@
 // cells view goes away (a tab switch hides it and every cell unmounts) must still reach the buffer.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { find, installDom, mount, typeInto, type FakeDocument } from "../tasks/fakeDom";
+import { find, installDom, mount, typeInto, type FakeDocument } from "../test/fakeDom";
 
 const NB = JSON.stringify({ cells: [{ cell_type: "code", source: "x = 1", metadata: {}, outputs: [], execution_count: null }], metadata: {}, nbformat: 4, nbformat_minor: 5 });
 vi.mock("./buffers", () => ({ textOf: () => NB, subscribe: () => () => {} }));

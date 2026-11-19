@@ -1,5 +1,6 @@
 // T-176-d (GIT-028): the banner for "GitHub is unavailable" and the sign-in help. For a rate limit it reads
 // the budgets (reading them costs none) to learn when GitHub resets, then asks again by itself at that time.
+import "./ghBanner.css";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { bannerOf, type BudgetRow, classify, resetOf, type Trouble, waitMs } from "./ghHealth";

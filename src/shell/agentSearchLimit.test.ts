@@ -12,7 +12,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 const heard: Record<string, (e: { payload: unknown }) => void> = {};
 vi.mock("@tauri-apps/api/event", () => ({ listen: (name: string, f: (e: { payload: unknown }) => void) => ((heard[name] = f), Promise.resolve(() => {})), emit: () => Promise.resolve() }));
 import { canLaunch } from "../launch/agents";
-import { installDom } from "../tasks/fakeDom";
+import { installDom } from "../test/fakeDom";
 import { AGENT_SEARCH_LIMIT_MS, useWindowStart } from "./useWindowStart";
 
 type Pass = { looking: boolean; done: boolean; error: string | null; slow?: boolean };

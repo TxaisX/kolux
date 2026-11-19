@@ -2,7 +2,7 @@
 // error with no controls (a failed settings read) or a Repositories group that silently vanishes.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until, withText } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until, withText } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ projectFails: 0, settingsFails: 0 }));
 vi.mock("@tauri-apps/api/core", () => ({

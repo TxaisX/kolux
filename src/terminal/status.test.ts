@@ -181,7 +181,7 @@ test("DT-C52: the Stopped tip covers a blocked agent whose program still runs an
 
 test("DT-C52: an agent launched with no vendor mark speaks as an agent in its header, as on the Board", async () => {
   const { statusAgent } = await import("./status");
-  const { chipOf } = await import("../board/chip");
+  const { chipOf } = await import("../status/chip");
   // a catalogue agent run as a shell-class pane (Gemini CLI), program up, no hook yet
   const agent = statusAgent("shell", "gemini");
   expect(headerOf(agent, "running", undefined, false, null, 0).word).toBe("Working");

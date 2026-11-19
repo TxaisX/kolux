@@ -1,7 +1,7 @@
 // T-740: the window toast clears itself after 4 s, but not while the pointer is on it (it is still being read).
 import { act, createElement } from "react";
 import { afterEach, expect, test, vi } from "vitest";
-import { installDom, mount } from "../tasks/fakeDom";
+import { installDom, mount } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.reject("not stubbed") }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

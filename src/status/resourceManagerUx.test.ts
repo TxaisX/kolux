@@ -2,7 +2,7 @@
 // The chrome's dialog helper is stood in too, so the test can press "Escape" the way it does: by calling the onClose it was given.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, find, installDom, mount, settle, until, withText, type FakeDocument, type FakeNode } from "../tasks/fakeDom";
+import { click, find, installDom, mount, settle, until, withText, type FakeDocument, type FakeNode } from "../test/fakeDom";
 import { escapeStep, singleFlight } from "./resources";
 import { bulkQuestion } from "../shell/endAll";
 import rmSource from "./ResourceManager.tsx?raw";

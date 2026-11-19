@@ -4,7 +4,7 @@
 // groupDeleteCloses.mount.test.ts): a project "inner" lies inside "app" and stays, with a worktree inside app too.
 import { type ComponentProps, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, installDom, mount, settle } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ calls: [] as string[], unsaved: [] as string[][], closed: [] as unknown[][], removed: [] as string[], extra: [] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({

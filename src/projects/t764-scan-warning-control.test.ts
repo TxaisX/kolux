@@ -2,7 +2,7 @@
 // workspace scan DOES show its warning (so the "(a) the error stays" result is not just a dead warning path).
 import { createElement } from "react";
 import { expect, test, vi } from "vitest";
-import { find, installDom, mount, until } from "../tasks/fakeDom";
+import { find, installDom, mount, until } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string) => {

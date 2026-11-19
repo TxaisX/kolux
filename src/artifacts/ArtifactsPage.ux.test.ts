@@ -3,7 +3,7 @@
 import { createElement } from "react";
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle, until } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ pickFails: false }));
 vi.mock("@tauri-apps/api/core", () => ({

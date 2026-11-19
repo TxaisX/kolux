@@ -1,6 +1,6 @@
 // T-235-b (EDIT-030): the card rules the CI check tab alone needs (path guard, card text, Fix with AI),
 // kept out of checkCard.ts so the first-load bundle carries only the tab's identity helpers.
-import { fixBlocker, type PrCheck } from "../tasks/prModel";
+import { fixBlocker, type PrCheck } from "./prCheckRules";
 import type { CheckDetail, CheckRef, CheckStep } from "./checkCard";
 
 // T-235-b: kept here, not in checkCard.ts, because only the check tab (loaded on demand) uses it; checkCard.ts
@@ -76,7 +76,7 @@ export function cardText(c: CheckRef, d: CheckDetail | null): string {
   return lines.join("\n").trimEnd();
 }
 
-/** The PrCheck shape the Fix with AI rules (tasks/prModel) read. */
+/** The PrCheck shape the Fix with AI rules (prCheckRules) read. */
 export function asPrCheck(c: CheckRef): PrCheck {
   const run = /\/actions\/runs\/(\d+)/.exec(c.link);
   const conclusion = c.outcome === "failed" ? "failure" : c.outcome === "passed" ? "success" : c.outcome;

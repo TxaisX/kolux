@@ -4,7 +4,7 @@
 // the terminal, the code editor and the rich Markdown view keep the rules they had.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, installDom, mount } from "../tasks/fakeDom";
+import { type FakeDocument, installDom, mount } from "../test/fakeDom";
 import { resolve } from "./keymap";
 import { CLOSING_KEYS } from "./useWindowKeys";
 

@@ -1,7 +1,7 @@
 // T-597 (F05-app-shell-launch.2, VIEW-107, PROJ-067): a start whose settings read loses the 1.5 s race draws
 // the window without the saved tabs and writes no layout; when the settings answer after all, the same restore
 // runs on them and the saved tabs join the window already drawn (C26-R3-01: the same App, not a new one).
-// main.tsx is booted for real over mocked commands (as tower/entry.test.ts does), with the real layout restore;
+// main.tsx is booted for real over mocked commands, with the real layout restore;
 // App itself cannot be drawn here, so its save guard is read from its source (as skills/noticeMount.test.ts does).
 import { afterEach, expect, test, vi } from "vitest";
 import { LAYOUT_FIELD, layoutOf, type SavedLayout } from "./terminal/layout";
@@ -23,7 +23,6 @@ const h = vi.hoisted(() => ({
   saves: [] as Array<[Record<string, unknown>, Record<string, unknown>]>,
 }));
 vi.mock("./App", () => ({ default: function App() { return null; } }));
-vi.mock("./tower/TowerWindow", () => ({ default: function TowerWindow() { return null; } }));
 vi.mock("react-dom/client", () => ({ default: { createRoot: () => ({ render: (el: unknown) => void h.drawn.push(el) }) } }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {

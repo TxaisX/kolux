@@ -4,7 +4,7 @@
 // the "Restart to update?" question is open it closes only the question (the question's own Escape, T-667). Each test fails when its line in UpdateCenterView.tsx is reverted.
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, withText } from "../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, withText } from "../test/fakeDom";
 import { cardTitle, errorText, feed, info, installUpdateDom, mountCenter, popup, popupButton, pump, sendWindow, sent } from "./__cards__/updateHarness";
 
 const status = vi.hoisted(() => ({ fail: null as string | null, held: null as null | ((why: string) => void) }));

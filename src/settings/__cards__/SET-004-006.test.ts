@@ -5,7 +5,7 @@
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { defaultsOnly, matchEvent } from "../../keys/keymap";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../test/fakeDom";
 
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
 const readFileSync = (rel: string) => nodeFs.readFileSync(new URL(rel, import.meta.url), "utf8");

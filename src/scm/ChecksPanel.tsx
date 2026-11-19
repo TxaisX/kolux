@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Refresh } from "../chrome/icons";
 import { fixChecks } from "../agentstart/host";
 import { useSettings } from "../settings/useSettings";
-import GhBanner, { classify } from "../tasks/GhBanner";
+import GhBanner, { classify } from "./GhBanner";
 import CommentsPanel from "./CommentsPanel";
 import ConflictPanel from "./ConflictPanel";
 import PrStart from "./PrStart";

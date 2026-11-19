@@ -59,6 +59,6 @@ test("T-715: every removal command the page sends is preceded by its own archive
       from = m.index + m[0].length;
     }
   }
-  // the panel's two (one workspace, a parent with its children), the picked bar, the cleanup dialog, Space
-  expect(callers.sort()).toEqual(["projects/ProjectsPanel.tsx", "projects/ProjectsPanel.tsx", "projects/bulkRemove.ts", "shell/ProjectsExtras.tsx", "space/SpaceView.tsx"]);
+  // the panel's two (one workspace, a parent with its children), the picked bar, the cleanup dialog
+  expect(callers.sort()).toEqual(["projects/ProjectsPanel.tsx", "projects/ProjectsPanel.tsx", "projects/bulkRemove.ts", "shell/ProjectsExtras.tsx"]);
 });

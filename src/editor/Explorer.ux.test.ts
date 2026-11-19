@@ -3,7 +3,7 @@
 // Explorer and its content search, and the test asserts what the person sees change.
 import { createElement, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until, type FakeDocument } from "../tasks/fakeDom";
+import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until, type FakeDocument } from "../test/fakeDom";
 
 type Node = { name: string; path: string; kind: "dir" | "file" };
 const f = (path: string): Node => ({ name: path.split("/").pop()!, path, kind: "file" });

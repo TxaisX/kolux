@@ -2,7 +2,7 @@
 // and leaving the page with it moved saves it too. Audit N-52: this page's real logic had no test.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { fire, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto } from "../tasks/fakeDom";
+import { fire, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ calls: [] as string[] }));
 vi.mock("@tauri-apps/api/core", () => ({

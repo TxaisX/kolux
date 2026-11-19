@@ -6,7 +6,7 @@ import { expect, test, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => new Promise(() => {}) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
-import { installDom, mount, settle } from "../../tasks/fakeDom";
+import { installDom, mount, settle } from "../../test/fakeDom";
 import type { WindowBag } from "../windowBag";
 import { WindowStoreProvider } from "./store";
 

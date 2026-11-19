@@ -5,7 +5,7 @@
 // terminal, so a layout change never remounts it (TERM-017).
 import type { Pane } from "../../App";
 import { keyOf } from "../../editor/buffers";
-import { forget, hooksMuted, promptReturned } from "../../board/chip";
+import { forget, hooksMuted, promptReturned } from "../../status/chip";
 import { touchRunTab } from "../../automations/runTab";
 import { BELL_NOTE } from "../../terminal/bellNote";
 import { canExpand, groupOf, toggleCard } from "../../terminal/grid";
@@ -16,9 +16,8 @@ import { gpuOn } from "../../terminal/renderer";
 import { showsReview } from "../../terminal/planReview";
 import { tabName } from "../../terminal/tabName";
 import { codexSetup, spawnRecord } from "../../terminal/accountChange";
-import { onRunning } from "../../inbox/exitedPrompt";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
-import { capOn, claudeOf, codexOf, meterOf, readsLeft } from "../../usage/meter";
+import { capOn, readsLeft } from "../../usage/meter";
 import { nameOf, sameDir, viewOf } from "../../workspaces";
 import { worktreeTag } from "../../projects/worktreeGrid";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
@@ -48,12 +47,12 @@ const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
 
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {
-    terminals, board, focused, closePane, setFocused, settings, agentsScreen, titles, liveIds, notes,
+    terminals, focused, closePane, setFocused, settings, agentsScreen, titles, liveIds, notes,
     setNotes, notesFor, putNote, dropNotes, openDiff, openFile, followLink, restoredKeys, projects,
-    projectOf, expanded, setExpanded, chipFor, columnOf, answer, reviewChanges, plan, accountSwitcher,
+    projectOf, setExpanded, answer, reviewChanges,
     context, agents, defaultId, setDefault, launching, launch, addChooser, savedName, labelOf, planLine,
     setDirty, ptys, unreadPanes, hook, hookRef, turn, crew, setNeeds, setStamp, setRunning, runRef,
-    liveRef, muteRef, setGuess, setLiveIds, setHook, setPanes, exitedPrompt, afterSetup, noticed, report, runTabs,
+    liveRef, muteRef, setGuess, setLiveIds, setHook, setPanes, afterSetup, noticed, report, runTabs,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
     splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu,
@@ -79,9 +78,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       setRunning((r) => (r[p.key] === on ? r : { ...r, [p.key]: on }));
       // STAT-050: a pane that just started counts from now in the Inbox.
       if (on) setStamp((m) => (m[p.key] ? m : { ...m, [p.key]: { at: Date.now(), interrupted: false } }));
-      // The program is gone: its last hook state goes with it everywhere. An open question or
-      // permission is remembered for the Inbox alone (T-035-b); a stop is not a prompt.
-      exitedPrompt.current = onRunning(exitedPrompt.current, p.key, on, hookRef.current[p.key]);
+      // The program is gone: its last hook state goes with it everywhere.
       if (!on && p.key in hookRef.current) setHook((h) => Object.fromEntries(Object.entries(h).filter(([k]) => Number(k) !== p.key)));
       const then = !on && runRef.current[p.key] && afterSetup.current[p.key];
       if (then) {
@@ -217,17 +214,17 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     );
   }
   if (p.seats) {
-    return <SeatChooser pane={p as Pane & { seats: NonNullable<Pane["seats"]> }} hidden={!board && p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
+    return <SeatChooser pane={p as Pane & { seats: NonNullable<Pane["seats"]> }} hidden={p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   }
   // A restored tab that kept its kind but lost its data is a placeholder, never a live terminal (UX lane A, shell.md row 12).
   if (p.kind) return <LostPane kind={p.kind} hidden={!terminals || p.key !== active} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
-  if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={!board && p.key !== active} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
+  if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={p.key !== active} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
   const notice = noticeFor(p);
   return (
     <TerminalPane
       key={p.key}
-      hidden={!board && p.key !== active}
+      hidden={p.key !== active}
       restored={restoredKeys.current.has(p.key)}
       identityBefore={liveRef.current[p.key]}
       resumed={p.resumed}
@@ -235,7 +232,6 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       onOpenLink={(url: string) => void openExternal(url)}
       linksOpenInKolux={settings.linksOpenInKolux === true}
       gpu={gpuOn(settings)}
-      card={board ? { expanded: expanded === p.key, onToggle: act.toggleCard, chip: chipFor(p), column: columnOf(p), onAnswer: act.answer, onReview: act.review, meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
       cwd={p.cwd}
       branch={p.branch}
       worktree={worktreeTag(p.cwd, p.branch ?? null, { projects, owner, names })}
@@ -266,10 +262,10 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       onFailed={act.failed}
       onRestoreFailed={act.restoreFailed}
       onSplit={act.split}
-      dragCell={!board && showsDragHandle(shown.length) ? { onStart: act.dragStart, onEnd: act.dragEnd } : undefined}
+      dragCell={showsDragHandle(shown.length) ? { onStart: act.dragStart, onEnd: act.dragEnd } : undefined}
       onEqualize={terminals && gridCount > 1 ? act.equalize : undefined}
       onMoveToTab={terminals && gridCount > 1 && moveToTab(panes, p.key) ? act.moveToTab : undefined}
-      expand={board ? undefined : { on: zoomed === groupOf(p), can: canExpand(shown.length, classic), toggle: act.expand }}
+      expand={{ on: zoomed === groupOf(p), can: canExpand(shown.length, classic), toggle: act.expand }}
       title={p.title || nameOf(names, p.cwd)}
       custom={!!p.title}
       onRename={act.rename}

@@ -12,7 +12,7 @@ import { workItem } from "../../projects/model";
 import { movedTeamFolders, TEAM_WORKTREES_SETTING } from "../../projects/rows";
 import { SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { tabName } from "../../terminal/tabName";
-import { pasteHosts } from "../../tasks/pasteHosts";
+import { pasteHosts } from "../../scm/pasteHosts";
 import { openExternal } from "../../open/openExternal";
 import { sameDir } from "../../workspaces";
 import { AboutPanel } from "../../lazy/pages";
@@ -26,7 +26,6 @@ import { useWindow } from "./store";
 import { setPaletteOpen, usePaletteOpen } from "../../chrome/paletteOpen";
 import { usePrRows } from "../../scm/usePrRows";
 import { SettingsPage } from "../../lazy/pages";
-import { WorkspaceBoard } from "../../lazy/pages";
 import { FolderRenameAsk } from "../../lazy/pages";
 import { TrustPrompt } from "../../lazy/pages";
 
@@ -37,7 +36,7 @@ const TabMenu = deferred(() => import("./TabMenuView"), undefined, { prefetch: t
 export default function WindowDialogs() {
   const {
     paletteItems, panes, activeDir, setAsking, asking, dropPanes, guard, quitAsk, quitting, setQuitAsk, reloadAsking,
-    setReloadAsk, switcher, titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt, boardOpen, setBoardOpen, setPanes,
+    setReloadAsk, switcher, titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt, setPanes,
     setActiveDir, setRefresh, saveSetting, settingsRef,
   } = useWindow();
   return (
@@ -101,7 +100,6 @@ export default function WindowDialogs() {
       )}
       {tabMenu && <TabMenu />}
       {settingsOpen && <SettingsPage onClose={() => setSettingsOpen(false)} target={settingsAt.target} n={settingsAt.n} active={activeDir ?? ""} />}
-      {boardOpen && <WorkspaceBoard onClose={() => setBoardOpen(false)} />}
     </>
   );
 }

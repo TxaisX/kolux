@@ -8,7 +8,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { useCloseGuard } from "../editor/CloseDialog";
 import type { GuardPane } from "../editor/closeGuard";
 import { FOCUSABLE } from "../chrome/dialogFocus";
-import { type FakeDocument, FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../test/fakeDom";
 import { sameDir } from "../workspaces";
 import ProjectsPanel from "./ProjectsPanel";
 import { namesOf, panesInDirs, unsavedInDirs } from "./wsUnsaved";

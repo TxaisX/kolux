@@ -8,7 +8,7 @@ import { labelOf } from "../keys/keymap";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Close, CheckCircle } from "../chrome/icons";
-import { fixText } from "../tasks/prModel";
+import { fixText } from "./prCheckRules";
 import type { CheckDetail, CheckRef } from "./checkCard";
 import { asPrCheck, cardText, checkKey, fixBlockerFor, insideWorktree } from "./checkText";
 import { REFRESH, RETRY } from "./panelUx";

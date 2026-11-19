@@ -5,7 +5,7 @@
 // is asked or closed. A failed group_delete closes nothing.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[], answer: true, failDelete: false, unsaved: [] as string[][], closed: [] as string[][] }));
 vi.mock("@tauri-apps/api/core", () => ({

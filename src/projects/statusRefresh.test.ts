@@ -1,11 +1,10 @@
 import { expect, test, vi } from "vitest";
-import board from "../board/WorkspaceBoard.tsx?raw";
 import panel from "./ProjectsPanel.tsx?raw";
 import { onWorkspaceStatus, WORKSPACE_STATUS } from "./statusRefresh";
 
 const status = () => new CustomEvent(WORKSPACE_STATUS, { detail: { paths: ["C:\w\a"], status: "done" } });
 
-test("a Board status event refreshes the sidebar right away, and not after unmount", () => {
+test("a workspace status event refreshes the sidebar right away, and not after unmount", () => {
   const bus = new EventTarget();
   const refresh = vi.fn();
   const off = onWorkspaceStatus(bus, refresh);
@@ -18,7 +17,6 @@ test("a Board status event refreshes the sidebar right away, and not after unmou
   expect(refresh).toHaveBeenCalledTimes(1);
 });
 
-test("the Board dispatches the event the sidebar listens for, and the sidebar refreshes the worktrees on it", () => {
-  expect(board).toContain(`new CustomEvent("${WORKSPACE_STATUS}"`);
+test("the sidebar refreshes the worktrees when the workspace status event arrives", () => {
   expect(panel).toMatch(/onWorkspaceStatus\(window, \(\) => void refreshWorktrees\(projects\)/);
 });

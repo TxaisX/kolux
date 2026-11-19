@@ -8,9 +8,6 @@
 // layout strip sets the count, a pane splits right or down and closes (T-009, src/terminal/grid.ts).
 // A cell holds tabs: Ctrl+T adds a shell tab beside the focused pane, and the pane header's plus
 // (or the sidebar's New session) starts a session in a new pane, in the workspace folder (T-010).
-// Insights is a card on the right (Mod+L or the top bar's panel button): tokens, estimated cost
-// and what every open agent session is doing, across all workspaces (T-646, src/insights/; it
-// replaced Source Control in the layout, T-644).
 // An editor tab is one file in CodeMirror (T-093-a, src/editor/EditorPane.tsx): the file finder
 // opens one, and Mod+S saves the focused editor while the terminals screen is up.
 // Markdown (T-093-b): Mod+Shift+V opens a read-only preview tab, Mod+Shift+O picks one of the
@@ -25,7 +22,6 @@ import { sendTargets } from "./editor/notes";
 import { useCloseGuard } from "./editor/CloseDialog";
 import { useSessionNames } from "./sessions/tabTitles";
 import { type Agent } from "./chrome/VendorMark";
-import { type Kept } from "./inbox/exitedPrompt";
 import { type Copies, type Seat, type Shape, type Lineup } from "./launch/seats";
 import { panesIn, sameDir } from "./workspaces";
 import { namesOf, panesInDirs, unsavedInDirs } from "./projects/wsUnsaved";
@@ -88,7 +84,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, setExplorerFocus, dragLeft,
     panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
     needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
-    markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, guess, agentOf, statusOf, setAgents, agentPass, setAgentPass,
+    markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
     setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, dirty, installedIds, owner, refresh, setRefresh, recentDirs, activeRef,
     setHist, stacked, setStacked, setNotice, setToast
   } = store;
@@ -170,9 +166,6 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // Stand-in review of 1e9613e, FIX-SOON 2: hooks off in Settings drop the chat's readings.
   useEffect(() => setHooksOn(hooksOn(settings)), [settings]);
 
-  // T-035-b: the question or permission a program left open when it exited; only the Inbox reads it (inbox/exitedPrompt).
-  const exitedPrompt = useRef<Kept>({});
-
   const guard = useCloseGuard({ panes, dirty, close: (keys) => void closeTab(keys, true), toast: setToast });
   // EDIT-031: deleting, forgetting or sleeping a workspace closes every tab in it, so its unsaved
   // editor text is asked about first, with the same Save / Don't save / Cancel question a closing tab gets.
@@ -181,16 +174,16 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
 
   // The screen in front, tab labels, the clock and full pages (chrome/useScreens.tsx).
   const screenState = useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles });
-  const { terminals, board, agentsScreen, now } = screenState;
+  const { terminals, agentsScreen, now } = screenState;
   // The Inbox's sources and the sidebar rows' states (status/useStatusSurfaces.ts).
-  const surfaces = useStatusSurfaces({ agentOf, exitedPrompt, hook, liveIds, panes, rowRef, running, settings, stamp, statusOf, titles });
+  const surfaces = useStatusSurfaces({ agentOf, hook, liveIds, panes, rowRef, running, settings, stamp, statusOf, titles });
   // The grid's cells, weights, dividers and the needs strip (terminal/paneGrid.ts).
   const grid = paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, setFocused, setPanes, setWeights, settings, stacked, statusOf, terminals, weights, zoom });
   const { cells, activeOf } = grid;
-  // The Agents rail, the Board's chips and lanes and the Tower (agents/useRailAndTower.ts).
+  // The Agents rail and the pane chips (agents/useRailAndTower.ts).
   const rail = useRailAndTower({
-    accountSwitcher, agentOf, agentSel, agents, agentsScreen, board, context, guess, hook, liveIds, now, openPane, panes, plan, running, setAgentSel, settings,
-    stale, stamp, statusOf, titles, turn
+    accountSwitcher, agentOf, agentSel, agents, agentsScreen, context, now, panes, plan, running, setAgentSel, settings,
+    stale, stamp, statusOf, turn
   });
   // Answers, the plan sheet and review notes (editor/reviewActions.ts).
   const reviewA = reviewActions(state, plumb, launchA, w);
@@ -198,7 +191,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const reviewTargets = sendMenu ? sendTargets(panes, inWorktree, stamp, Date.now(), (p) => tabName(p, titles)) : [];
   const reviewPane = reviewing && panes.find((p) => p.key === reviewing.key);
   // What is in view, and the layout report for the command line (terminal/useLayoutReport.ts).
-  const layoutReport = useLayoutReport({ activeDir, activeOf, board, cells, cliFailed, ptys, terminals, titles });
+  const layoutReport = useLayoutReport({ activeDir, activeOf, cells, cliFailed, ptys, terminals, titles });
   const { inView } = layoutReport;
   const { noticed, panesRef } = useAgentEvents({ panes, setPanes, titles, settings, inView, setToast, tabName, setCrew, setTurn, setStale, hookRef, setHook, stamp, setStamp, setContext, unreadPanes, setUnreadPanes, winFocused, markDir, muted: muteRef });
   useRestoredStatus({ panes, hookRef, setHook, setStale, setCrew, setTurn });
@@ -214,7 +207,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
     ...state, ...plumb, ...chrome, ...start, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
-    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
+    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, guard, panesRef, wsUnsaved, askWsUnsaved,
   };
   Object.assign(w, bag);
   // T-699 (DT-C135): the right sidebar as the left one's setter sees it (shell/window/narrow.ts nextLeft).

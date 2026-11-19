@@ -5,9 +5,8 @@
 import type { Pane } from "../App";
 import type { WindowBag } from "../shell/windowBag";
 import type { Page } from "../projects/ProjectsPanel";
-import { needsYou } from "../board/chip";
+import { needsYou } from "../status/chip";
 import { screens, type Screen } from "../chrome/TopBar";
-import { SCREEN_OF } from "../chrome/reach";
 import { closedPanes, folderKind, paneFor, placement } from "../chrome/reopenTab";
 import { isMarkdown } from "../editor/mdFiles";
 import { copiers, diffNav, editors } from "../keys/handles";
@@ -91,15 +90,13 @@ export const WORKSPACE_ROWS = ".sidebar .proj.folder[data-path]";
 export const CHROME_FIRST = "header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']";
 export const focusChrome = (doc: Pick<ParentNode, "querySelector"> = document): void => doc.querySelector<HTMLElement>(CHROME_FIRST)?.focus();
 
-/** The native menu items that come to the page: Force Reload asks over unsaved editor text; View > Workspace View > Space
- *  (the classic layout has one view, as every other screen item). */
+/** The native menu items that come to the page: Force Reload asks over unsaved editor text. */
 export function menuAction(
   id: string,
-  b: { unsaved: { current: readonly string[] }; setReloadAsk: (files: string[]) => void; setScreen: (s: Screen) => void; classic: boolean },
+  b: { unsaved: { current: readonly string[] }; setReloadAsk: (files: string[]) => void },
   reload: () => void = () => location.reload(),
 ): void {
   if (id === "app.forceReload") forceReload(b.unsaved.current, b.setReloadAsk, reload);
-  else if (id === "screen.space") b.setScreen(b.classic ? "terminals" : "space");
 }
 
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
@@ -131,7 +128,7 @@ export function useWindowKeys(w: WindowBag) {
       const {
         accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
         focused, keymap, leavePage, newTab, nextKey, notes, notesFor, openPane, openPreview, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
-        right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
+        right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setCreateName, setCreateRequest, setDeleteRequest,
         setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
         setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
         switcherRef, terminals, toggleExplorer, unsaved, workDir
@@ -261,10 +258,9 @@ export function useWindowKeys(w: WindowBag) {
           if (classic) setToast("The classic layout has one view; turn it off in Settings > Appearance to switch views.");
           else setScreen((s) => nextScreen(s));
           break;
-        case "view.tasks":
         case "view.automations":
         case "view.routing": {
-          // UX lane C (palette F2): Automations gets a command (and so a palette row), as Tasks has.
+          // UX lane C (palette F2): Automations gets a command (and so a palette row).
           const page = hit.id.slice(5) as Page; // the id after "view." names the page (T-727 adds routing)
           setScreen("terminals");
           setPage((p) => (terminals && p === page ? null : page));
@@ -272,9 +268,6 @@ export function useWindowKeys(w: WindowBag) {
         }
         case "sidebar.sleeping.toggle":
           saveSetting(SHOW_SLEEPING_SETTING, !showSleepingFrom(settings[SHOW_SLEEPING_SETTING]));
-          break;
-        case "workspace.openBoard":
-          setBoardOpen((o) => !o);
           break;
         case "account.switchClaude":
         case "account.switchCodex": {
@@ -487,12 +480,6 @@ export function useWindowKeys(w: WindowBag) {
           equalizePanes();
           break;
         default: {
-          // T-610: a command that shows a screen (chrome/reach.ts) toggles it with Terminals.
-          const to = SCREEN_OF[hit.id];
-          if (to) {
-            setScreen((s) => (s === to ? "terminals" : to));
-            break;
-          }
           // T-611: the commands this switch had no case for (keys/commands.ts).
           if (windowCommand(hit.id, {
             toggleRight: (tab) => (terminals && right.open && right.tab === tab ? saveRight({ open: false }) : showRight(tab)),

@@ -5,7 +5,18 @@
 // answer (or none): a hover must never show an error.
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { PortRow } from "../ports/ports";
+
+/** One listening port as the back end's `ports_list` answers it. */
+export type PortRow = {
+  port: number;
+  addr: string;
+  pid: number;
+  external: boolean;
+  /** When the holder started, as the system counts it, as text; the Stop that once sent it back is gone with the Ports item. */
+  started: string;
+  /** The Kolux terminal whose shell started the holder; null for an external port. */
+  terminal: number | null;
+};
 
 /** The workspace's own ports in `rows`, each once, smallest first; ports held outside it are left out. */
 export const ownPorts = (rows: readonly PortRow[]): number[] => [...new Set(rows.filter((r) => !r.external).map((r) => r.port))].sort((a, b) => a - b);

@@ -1,7 +1,7 @@
 // Row 350 (T-315-b): the palette accepts a pasted link from the GitHub hosts this window already works with.
 import { describe, expect, it } from "vitest";
 import { pasteHosts } from "./pasteHosts";
-import { githubItem } from "../scm/paste";
+import { githubItem } from "./paste";
 
 describe("paste hosts", () => {
   it("github.com plus the Enterprise hosts the workspaces are linked to, each once", () => {

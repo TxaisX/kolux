@@ -54,7 +54,7 @@ export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, p
     ready: settingsRead,
     onScreen: (to) => {
       shownScreen.current = to;
-      setScreen(classic && (to === "agents" || to === "board") ? "terminals" : to);
+      setScreen(classic && to === "agents" ? "terminals" : to);
     },
   });
   // VIEW-107: closing the window writes what is pending first; unsaved editor text stops the quit

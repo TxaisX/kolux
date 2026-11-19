@@ -2,7 +2,7 @@
 // The product's openSettings runs for real; the window event it dispatches is the seam. SET-006-link.test.ts proves what Settings does with that target.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../test/fakeDom";
 import { OPEN_SETTINGS, type SettingsTarget } from "../pages";
 
 vi.mock("@tauri-apps/api/core", () => ({

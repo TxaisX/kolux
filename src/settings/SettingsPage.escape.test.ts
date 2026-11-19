@@ -4,7 +4,7 @@
 // (CoreBrowserTerminal.cancel), sends a key it handles to the program and stops it there.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, FakeNode, find, installDom, mount, settle, until, withText } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, FakeNode, find, installDom, mount, settle, until, withText } from "../test/fakeDom";
 import type { SettingsTarget } from "./pages";
 import { FOCUSABLE } from "../chrome/dialogFocus";
 

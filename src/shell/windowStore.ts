@@ -4,7 +4,7 @@
 // calls between the two, so the window's hook and effect order is unchanged.
 import type { Pane } from "../App";
 import type { AppInfo } from "../app-info";
-import { paneAgent, paneStatus } from "../board/chip";
+import { paneAgent, paneStatus } from "../status/chip";
 import type { ShellInfo } from "../terminal/newTab";
 import type { Screen } from "../chrome/TopBar";
 import { useChrome } from "../chrome/useChrome";
@@ -58,7 +58,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [screen, setScreen] = useState<Screen>(() => startScreen(initial)); // SET-037
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [boardOpen, setBoardOpen] = useState(false); // T-142: the workspace board
   const [settingsAt, setSettingsAt] = useState<{ target: SettingsTarget | null; n: number }>({ target: null, n: 0 }); // SET-006: a link's page and section
   const [expanded, setExpanded] = useState<number | null>(null); // VIEW-026: the Board card showing its terminal
   const [zoom, setZoom] = useState<Zoom>({}); // TERM-013: each workspace's expanded cell
@@ -250,7 +249,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   }, [late, read]);
   const { setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
-    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
+    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, settingsAt, setSettingsAt, expanded,
     setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
     setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, workDir,
     worktreeMenu, setWorktreeMenu, setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,

@@ -6,7 +6,7 @@
 // here without this file changing.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, FakeNode, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, click, find, installDom, mount, settle } from "../test/fakeDom";
 import { publishClaude } from "../usage/plan";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -81,7 +81,7 @@ afterEach(async () => {
 });
 
 const noop = () => {};
-const barProps = (classic: boolean) => ({ screen: "terminals", classic, sidebarWidth: 260, onScreen: noop, sidebarOpen: true, onToggleSidebar: noop, rightOpen: false, onToggleRight: noop, appName: true, automations: { open: false, onToggle: noop }, installed: ["claude"], onSearch: noop, onBack: noop, onForward: noop, appMenu: true, needsYou: 3 });
+const barProps = (classic: boolean) => ({ screen: "terminals", classic, sidebarWidth: 260, onScreen: noop, sidebarOpen: true, onToggleSidebar: noop, rightOpen: false, onToggleRight: noop, appName: true, automations: { open: false, onToggle: noop }, installed: ["claude"], onSearch: noop, onBack: noop, onForward: noop, appMenu: true });
 
 async function mountBar(classic: boolean) {
   const { default: TopBar } = await import("./TopBar");

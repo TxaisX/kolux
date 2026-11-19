@@ -19,8 +19,7 @@ import { sessionOrder } from "./sessions/restoreOrder";
 import "./styles.css";
 import "./look/glass.css";
 import { prefetch } from "./lazy/deferred";
-import { isTowerWindow } from "./tower/ownWindow";
-import { showStartFailure } from "./tower/startFailed";
+import { showStartFailure } from "./recovery/startFailed";
 import { sharedRead } from "./settings/sharedRead";
 
 // PKG-4: the page's start-up timeline. Marks are short and stable (ms since performance.timeOrigin); the page sends
@@ -51,22 +50,14 @@ async function start() {
   mark("entry");
   applyAppearance(cachedAppearance());
   followSystemMode();
-  // T-546-c: the Tower's own window draws only the Tower; the panes, the settings and the layout stay the main window's.
-  if (isTowerWindow(location.hash)) {
-    // The Tower window is rare: its view stays out of the main window's first load.
-    const { default: TowerWindow } = await import("./tower/TowerWindow");
-    ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<TowerWindow />);
-    return;
-  }
-  // DT-C236: the main window's page tells the engine its background (the Tower has its own view and look).
+  // DT-C236: the main window's page tells the engine its background.
   // Cosmetic only: a page that cannot read its colour must never stop the start.
   try {
     installWindowBackground();
   } catch {
     /* the engine keeps its default background */
   }
-  // FIX-4 (council d2 AFTER 8): the App module (and everything it imports) is loaded for the main
-  // window only; the Tower window never evaluates it. The load starts now and runs beside the settings read.
+  // FIX-4 (council d2 AFTER 8): the App module (and everything it imports) load starts now and runs beside the settings read.
   const loadApp = import("./App");
   // FIX-6 (council d2 AFTER 3): the load is awaited much later; a fast failure is already handled by then (the await below still throws).
   loadApp.catch(() => {});

@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { botToggle, relabelAsBot, toggleBotIn } from "../settings/reviewBots";
 import { useSettings } from "../settings/useSettings";
-import Markdown from "../tasks/MarkdownView";
+import Markdown from "./MarkdownView";
 import "./comments.css";
 import "./scmUx.css";
 import { emptyBook, rowBusy, rowDone, rowStart, replyBlock, type RowBook } from "./panelUx";

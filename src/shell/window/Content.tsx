@@ -1,27 +1,23 @@
 // Cycle 3 (the WindowView split): the content column, moved out of shell/WindowView.tsx as it was:
 // the New session sheet (SESS-018), the window notices, the plan sheet (SAFE-002..007), the pages over
 // the grid (VIEW-011, DT-17), the layout strip and the file pickers (EDIT-027, EDIT-036), the screens
-// (artifacts, skills, inbox, agents, tower, floor, space), the empty states, the needs strip and the
+// (artifacts, skills, agents), the empty states, the needs strip and the
 // stand-ins (PROJ-020), then the grid itself (Grid.tsx).
 import { invoke } from "@tauri-apps/api/core";
 import ScreenBoundary from "../../recovery/ScreenBoundary";
-import { cardPanes } from "../../agents/rail";
 import { AgentsChat } from "../../lazy/pages";
 import { linksOpenInKolux } from "../../chat/chatLinks";
 import LayoutStrip from "../../chrome/LayoutStrip";
 import { StatusGlyph, Spinner } from "../../chrome/icons";
 import { openExternal } from "../../open/openExternal";
 import FilePicker, { quickOpenList, type Pick } from "../../editor/FilePicker";
-import { inboxItems } from "../../inbox/inbox";
 import type { Seat } from "../../launch/seats";
 import type { StartSheet } from "../../launch/startForm";
 import { folderName, projectLabel } from "../../projects/model";
 import { closeSkills } from "../../skills/nav";
-import { tasksRepo } from "../../tasks/model";
 import { draftKey, keepDraft, stillPending } from "../../terminal/planReview";
 import { VOCAB } from "../../terminal/status";
 import { tabName } from "../../terminal/tabName";
-import { towerRows } from "../../tower/tower";
 import { nameOf } from "../../workspaces";
 import Grid from "./Grid";
 import Notices from "./Notices";
@@ -32,17 +28,12 @@ import { PlanSheet } from "../../lazy/pages";
 import { RoutingPage } from "../../lazy/pages";
 import { SignInNotice } from "../../lazy/pages";
 import { KeyLostNotice } from "../../lazy/pages";
-import { TasksPage } from "../../lazy/pages";
 import { AutomationsPage } from "../../lazy/pages";
 import { SkillsPage } from "../../lazy/pages";
 import { ArtifactsPage } from "../../lazy/pages";
-import { SpaceView } from "../../lazy/pages";
-import { FloorView } from "../../lazy/pages";
-import { InboxView } from "../../lazy/pages";
 import { TemplatePicker } from "../../lazy/pages";
 import { RecoveryMount } from "../../lazy/pages";
 import { ToolNotices } from "../../lazy/pages";
-import { TowerView } from "../../lazy/pages";
 
 /** Job 68: the close the ask at open hands useStartAsk: it drops only the form the ask opened, never one opened by hand. */
 export const dropAtOpen = (s: StartSheet | null): StartSheet | null => (s?.atOpen ? null : s);
@@ -51,11 +42,11 @@ export default function WindowContent() {
   const {
     sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
     turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, setPage, runPane, openPane,
-    select, agents, settings, savePageSettings, activeDir, workDir, fromItem, cli, shown, setCount,
+    select, agents, settings, savePageSettings, activeDir, workDir, shown, setCount,
     setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
-    screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
-    focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, running,
-    standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
+    screen, setScreen, panes, selected,
+    focused, ptys, hookRef, setAgentSel, waiting, statusOf, running,
+    standIns, saved, agentsScreen, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
   // Start form D: asked once when Kolux starts, in the main window, in front of what was restored.
   useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: ownPanes(panes), open: () => openStart({ atOpen: true }), close: () => setSheet(dropAtOpen) });
@@ -109,7 +100,6 @@ export default function WindowContent() {
           onSettings={(built) => savePageSettings(settings, built)}
         />
       )}
-      {terminals && page === "tasks" && <TasksPage repo={tasksRepo(projects, activeDir)} onStart={fromItem} onResume={(dir) => cli.current.select(dir, null, true)} />}
       {terminals && page === "routing" && (
         <RoutingPage
           agents={agents}
@@ -164,14 +154,10 @@ export default function WindowContent() {
         />
       )}
       {screen === "skills" && <SkillsPage workspace={activeDir} onClose={() => closeSkills(setScreen)} />}
-      {inbox && <InboxView items={inboxItems(inboxSeen.sources, now)} now={now} onOpen={openPane} onReview={reviewChanges} />}
       {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: (url: string) => void openExternal(url), inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} endedOf={(k) => running[k] === false} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
         setAgentSel(key);
         setFocused(key);
       }} />}
-      {tower && <TowerView rows={towerRows(towerSeats)} usage={towerUsage} now={now} onOpen={openPane} />}
-      {floor && <FloorView onOpen={openPane} />}
-      {space && <SpaceView projectId={projectFor(projectOf(activeDir))} projectName={(() => { const p = projects.find((x) => x.id === projectFor(projectOf(activeDir))); return p ? projectLabel(p) : ""; })()} openDirs={openDirs} />}
       </ScreenBoundary>
       {agentsScreen && selected === null && (
         <div className="empty">
@@ -184,15 +170,6 @@ export default function WindowContent() {
               </button>
             </div>
           )}
-        </div>
-      )}
-      {board && cardPanes(panes).length === 0 && (
-        <div className="empty">
-          <h2>Board</h2>
-          <p>No session yet.</p>
-          <div className="btn-row">
-            <button className="btn" onClick={addChooser}>Start agents</button>
-          </div>
         </div>
       )}
       {terminals && page === null && waiting.length > 0 && (

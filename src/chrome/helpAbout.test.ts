@@ -1,7 +1,7 @@
 // Row 401: choosing Help > About opens the About panel from the chrome layer itself (not only via App.tsx's fall-through).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { installDom, mount, settle } from "../tasks/fakeDom";
+import { installDom, mount, settle } from "../test/fakeDom";
 import { ABOUT_EVENT } from "../shell/about";
 import { helpAction } from "./chromeItems";
 

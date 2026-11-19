@@ -3,7 +3,7 @@
 // existing create-from-item command does that) and an agent starts there with the item as its opening
 // prompt. Bad per-launch arguments are refused before any workspace is made, and a saved agent that is
 // switched off is never launched. Trackers other than GitHub are cut (SESS-046).
-import type { WorkItem } from "../tasks/workStart";
+import type { WorkItem } from "../projects/model";
 import { NO_AGENT, parseArgs, pickSaved, startChecked, type Launch, type StartAgent, type StartResult } from "./rules";
 
 /** The item's web address on its host. */

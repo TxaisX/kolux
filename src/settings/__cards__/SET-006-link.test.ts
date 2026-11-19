@@ -2,7 +2,7 @@
 // Finding: the only in-app caller that targets Shortcuts opens "shortcuts-file" (App.tsx keymap notice); none opens "terminal-first".
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string) => (cmd === "project_list" ? Promise.resolve([]) : cmd === "get_settings" ? Promise.resolve({}) : Promise.reject("not stubbed")),

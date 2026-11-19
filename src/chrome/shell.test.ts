@@ -16,7 +16,7 @@ test("the top bar carries the screen switcher, search hint, usage pill and windo
   const html = renderToString(createElement(TopBar, { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} }));
   expect(html).toContain('class="topbar"');
   expect(html).toContain("data-tauri-drag-region");
-  for (const label of ["Agents", "Board", "Terminals"]) expect(html).toContain(`>${label}</button>`);
+  for (const label of ["Agents", "Terminals"]) expect(html).toContain(`>${label}</button>`);
   expect(html).toMatch(/aria-pressed="true"[^>]*>Terminals<\/button>/);
   expect(html).toContain('class="searchbox"');
   expect(html).toContain("Ctrl");
@@ -86,14 +86,3 @@ test("VIEW-011: the Automations button shows only when it is turned on, pressed 
   expect(on).toMatch(/aria-pressed="true"[^>]*title="Automations"|title="Automations"[^>]*aria-pressed="true"/);
 });
 
-test("ux fix 2: the bell carries the count of panes that need you and clears at 0", () => {
-  const base: TopBarProps = { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} };
-  const two = renderToString(createElement(TopBar, { ...base, needsYou: 2 }));
-  expect(two).toContain('aria-label="Inbox, 2 need you"');
-  expect(two).toMatch(/class="bell-count"[^>]*>2</);
-  expect(renderToString(createElement(TopBar, { ...base, needsYou: 1 }))).toContain('aria-label="Inbox, 1 needs you"');
-  for (const html of [renderToString(createElement(TopBar, { ...base, needsYou: 0 })), renderToString(createElement(TopBar, base))]) {
-    expect(html).toContain('aria-label="Inbox"');
-    expect(html).not.toContain("bell-count");
-  }
-});

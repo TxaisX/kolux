@@ -4,7 +4,7 @@
 // Box 1 (cycle order) and box 2 (the chord in Classic) are decided in App.tsx (nextScreen, and `if (!classic)` at :727), see the ledger.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../test/fakeDom";
 
 const synced: Record<string, unknown>[] = [];
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (cmd: string, args: { state?: Record<string, unknown> } = {}) => (cmd === "menu_sync" && args.state && synced.push(args.state), Promise.resolve(null)) }));
@@ -30,7 +30,7 @@ async function open() {
   const { useMenuBar } = await import("../useChrome");
   const { menuBarState } = await import("../chromeItems");
   const Bar = () => {
-    const [screen, setScreen] = useState<"agents" | "board" | "terminals">("agents");
+    const [screen, setScreen] = useState<"agents" | "terminals">("agents");
     const [classic, setClassic] = useState(false);
     ctl.setClassic = setClassic;
     useMenuBar(menuBarState({}, screen, () => undefined, classic), () => {});
@@ -44,21 +44,21 @@ async function open() {
 const label = (c: FakeNode, text: string) => find(c, (n) => n.localName === "button" && n.attrs["aria-pressed"] !== undefined && n.textContent.trim() === text)[0];
 const last = () => synced[synced.length - 1];
 
-test("box 3: switching to Board with the mouse sends the menu screen board (Rust ticks screen.board for it)", async () => {
+test("box 3: switching to Terminals with the mouse sends the menu screen terminals (Rust ticks screen.terminals for it)", async () => {
   const c = await open();
   expect(last()).toMatchObject({ screen: "agents", classic: false });
-  await click(c, label(c, "Board"));
+  await click(c, label(c, "Terminals"));
   await settle();
-  expect(label(c, "Board").attrs["aria-pressed"]).toBe("true");
-  expect(last()).toMatchObject({ screen: "board", classic: false });
+  expect(label(c, "Terminals").attrs["aria-pressed"]).toBe("true");
+  expect(last()).toMatchObject({ screen: "terminals", classic: false });
 });
 
 test("box 4: turning the new look off sends classic, and the top-bar switch is gone", async () => {
   const c = await open();
-  expect(label(c, "Board")).toBeDefined();
+  expect(label(c, "Terminals")).toBeDefined();
   const { act } = await import("react");
   await act(async () => ctl.setClassic(true));
   await settle();
   expect(last()).toMatchObject({ classic: true });
-  expect(label(c, "Board")).toBeUndefined();
+  expect(label(c, "Terminals")).toBeUndefined();
 });

@@ -3,7 +3,7 @@
 // description) is that field's own key and writes nothing.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
 import { emptyStatus, type Status } from "../scm/model";
 
 const h = vi.hoisted(() => ({ status: null as unknown as Status, calls: [] as [string, unknown][], commit: null as null | (() => Promise<unknown>) }));

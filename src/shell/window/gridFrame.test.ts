@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { gridFrame } from "./gridFrame";
 
 const frame = (o: Partial<Parameters<typeof gridFrame>[0]> = {}) =>
-  gridFrame({ board: false, agentsScreen: false, zoomed: null, classic: false, terminals: true, pageOpen: false, selected: null, ...o });
+  gridFrame({ agentsScreen: false, zoomed: null, classic: false, terminals: true, pageOpen: false, selected: null, ...o });
 
 test("TERM-013 / VIEW-026: the grid's class follows the screen, the zoomed cell and Classic", () => {
   expect(frame().className).toBe("grid");
@@ -12,7 +12,6 @@ test("TERM-013 / VIEW-026: the grid's class follows the screen, the zoomed cell 
   expect(frame({ classic: true }).className).toBe("grid classic");
   expect(frame({ zoomed: 3, classic: true }).className).toBe("grid zoomed classic");
   expect(frame({ agentsScreen: true }).className).toBe("grid agents");
-  expect(frame({ board: true }).className).toBe("board");
 });
 
 test("VIEW-011 / T-142: the grid stays mounted (hidden) behind a page, off-screen, or behind an empty Agents screen", () => {
