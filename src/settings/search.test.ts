@@ -10,7 +10,6 @@ const SOURCES: Record<string, string[]> = {
   agents: ["AgentsPage.tsx"],
   terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx", "NativeTerminalCard.tsx"],
   git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
-  safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
   notifications: ["NotificationsPage.tsx", "SettingsPage.tsx"],
   shortcuts: ["ShortcutsPage.tsx"],
   usage: ["SettingsPage.tsx"],
@@ -111,10 +110,6 @@ describe("search all settings (SET-007)", () => {
     expect(searchSettings("accounts keys")!.pages[0]).toEqual({ page: "accounts", sections: "all" });
     expect(hideRule(searchSettings("accounts keys")!)).toBe("");
   });
-  it("finds the Protected actions section on the Safety page by its everyday words (SAFE-015)", () => {
-    for (const q of ["protected", "force push", "stripe", "terraform", "rule"]) expect(searchSettings(q)!.pages.find((p) => p.page === "safety")?.sections, q).toContain("protected");
-    expect(searchSettings("safety")!.pages[0]).toEqual({ page: "safety", sections: "all" });
-  });
   it("every section a page draws is indexed, so a search can find it and never hides it (UX-audit)", () => {
     // The Claude page also draws cards from a list (data-section={id}); its fixed ones are checked here. Repo pages are not searched pages.
     const drawn: Record<string, string[]> = {
@@ -124,7 +119,6 @@ describe("search all settings (SET-007)", () => {
       agents: ["AgentsPage.tsx"],
       terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx", "NativeTerminalCard.tsx"],
       git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
-      safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
       notifications: ["NotificationsPage.tsx"],
       shortcuts: ["ShortcutsPage.tsx"],
       claude: ["ClaudeSetupPage.tsx"],

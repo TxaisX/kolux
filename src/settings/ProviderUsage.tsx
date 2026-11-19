@@ -4,7 +4,7 @@
 // last four characters, and the key itself never comes back to this page (provider_usage.rs keeps
 // it sealed). A check runs only when Check now is pressed. Claude, Codex and Gemini figures stay
 // on what their own sessions report.
-import { ResetButton } from "./SafetyRules";
+import { ResetButton } from "./ResetButton";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 

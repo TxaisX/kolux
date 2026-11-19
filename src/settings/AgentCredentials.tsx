@@ -5,7 +5,7 @@
 // only where MiniMax is detected, and ACCT-029 the experimental Gemini CLI credentials switch,
 // shown only where Gemini is detected and off until turned on. The backend is agent_creds.rs;
 // secrets never come back to this page, only whether one is kept.
-import { ResetButton } from "./SafetyRules";
+import { ResetButton } from "./ResetButton";
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";

@@ -14,7 +14,7 @@ import { DELAY, delayFromText, prefPatch, readEditorPrefs, type DiffView } from 
 import { addApp, addCustom, draftReady, moveApp, OPEN_IN_FIELD, presetsLeft, readOpenIn, removeApp, type OpenInApp } from "./openIn";
 import { alreadyListed, editApp } from "../open/openInEdit";
 import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy";
-import { ResetButton } from "./SafetyRules";
+import { ResetButton } from "./ResetButton";
 import CliCard from "./CliCard";
 import ExperimentalCard from "./ExperimentalCard";
 

@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount } from "../tasks/fakeDom";
-import { ResetButton } from "./SafetyRules";
+import { ResetButton } from "./ResetButton";
 import ConfirmClear from "../shell/ConfirmClear";
 
 let doc: FakeDocument;

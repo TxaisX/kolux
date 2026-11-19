@@ -8,7 +8,6 @@ export const PAGES = {
   agents: "Agents",
   terminal: "Terminal & sessions",
   git: "Git",
-  safety: "Safety",
   notifications: "Notifications",
   shortcuts: "Shortcuts",
   usage: "Usage",
@@ -23,7 +22,7 @@ export type SettingsTarget = { page: Page; section?: string };
 export const PAGE_GROUPS: ReadonlyArray<{ title: string; pages: readonly PageId[] }> = [
   { title: "Personal", pages: ["general", "appearance", "notifications", "shortcuts"] },
   { title: "AI", pages: ["accounts", "agents", "claude"] },
-  { title: "Workspace", pages: ["terminal", "git", "safety"] },
+  { title: "Workspace", pages: ["terminal", "git"] },
   { title: "Usage", pages: ["usage"] },
 ];
 
