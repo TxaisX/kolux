@@ -103,7 +103,7 @@ mod tests {
         once.sort();
         once.dedup();
         assert_eq!(names.len(), once.len(), "no variable twice");
-        assert!(BYPASSES_ACCT_024);
+        const { assert!(BYPASSES_ACCT_024) };
     }
 
     #[test]

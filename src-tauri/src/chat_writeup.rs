@@ -366,7 +366,7 @@ mod tests {
         start(&root, "F", "Old one", datetime(2026, 11, 1, 9, 0, 0, 0)).unwrap();
         start(&root, "F", "Newest", datetime(2026, 11, 19, 23, 59, 0, 0)).unwrap();
         let mid = start(&root, "F", "Middle", datetime(2026, 11, 10, 8, 5, 0, 0)).unwrap();
-        mid.copy_transcript(&mid.path().to_path_buf()).unwrap();
+        mid.copy_transcript(mid.path()).unwrap();
         folder_log(&root, "F", "a line").unwrap();
         fs::write(root.join("F").join("notes.md"), "mine").unwrap();
         fs::create_dir_all(root.join("F").join("2026-11-30 1200 a folder.md")).unwrap();
