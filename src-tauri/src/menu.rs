@@ -38,13 +38,9 @@ impl Os {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MenuState {
-    /// "agents", "board", "terminals", "tower", "floor" or "space" (SCREENS; UX lane C added Space so it is reachable outside the palette); any other screen leaves every item unticked.
+    /// "terminals", the one screen left (SCREENS); any other screen leaves every item unticked.
     pub screen: String,
     pub status_bar_visible: bool,
-    pub tasks_button: bool,
-    pub automations_button: bool,
-    /// T-766: SKILL-018's sidebar Skills button, off on a fresh install; this tick turns it on outside Settings.
-    pub skills_button: bool,
     pub title_bar_app_name: bool,
     /// The Classic look has no screen switcher, so View drops Workspace View (T-049-b).
     pub classic: bool,
@@ -133,10 +129,10 @@ pub enum Node {
     Sub { label: &'static str, items: Vec<Node> },
 }
 
-/// The screens the View menu picks between (T-054): the switcher's four in its cycle order (VIEW-002), then Floor,
-/// which has no sidebar item and is reached from the palette and this menu (VIEW-013, DT-08; T-610). None of the five
-/// carries a chord (DT-C68): the page sends no accelerator under these ids (chromeItems.ts MENU_SHORTCUT_IDS).
-pub const SCREENS: [(&str, &str, &str); 6] = [("screen.agents", "Agents", "agents"), ("screen.board", "Board", "board"), ("screen.terminals", "Terminals", "terminals"), ("screen.tower", "Tower", "tower"), ("screen.floor", "Floor", "floor"), ("screen.space", "Space", "space")];
+/// The screens the View menu picks between (T-054): the top bar switcher's, which is Terminals alone since the
+/// 2026-11-19 slim-down (VIEW-002). No item carries a chord (DT-C68): the page sends no accelerator under these ids
+/// (chromeItems.ts MENU_SHORTCUT_IDS).
+pub const SCREENS: [(&str, &str, &str); 1] = [("screen.terminals", "Terminals", "terminals")];
 
 /// The whole menu bar for one platform and one page state.
 pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
@@ -184,14 +180,11 @@ pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
                     item("sidebar.right.toggle", "Toggle Right Sidebar"),
                     Node::Sep,
                     check("set.statusBarVisible", "Show Status Bar", s.status_bar_visible),
-                    check("set.tasksButton", "Show Tasks Button", s.tasks_button),
-                    check("set.automationsButton", "Show Automations Button", s.automations_button),
-                    check("set.skillsButton", "Show Skills Button", s.skills_button),
                     check("set.titleBarAppName", "Show Titlebar App Name", s.title_bar_app_name),
                 ],
             }],
-            // One reload, carried out by the page so unsaved editor text is asked about first (keys/commands.ts
-            // forceReload); Developer Tools only where they open (a debug build).
+            // One reload, carried out by the page (keys/useWindowKeys.ts menuAction); Developer Tools only where
+            // they open (a debug build).
             vec![Node::Sep, item("app.forceReload", "Force Reload")],
             if cfg!(debug_assertions) { vec![item("view.devtools", "Toggle Developer Tools")] } else { vec![] },
             vec![Node::Sep,
@@ -501,7 +494,7 @@ mod tests {
         nodes.iter().filter_map(|n| match n { Node::Check { id, checked: true, .. } => Some(*id), _ => None }).collect()
     }
     fn state(screen: &str) -> MenuState {
-        MenuState { screen: screen.into(), status_bar_visible: true, tasks_button: true, automations_button: false, skills_button: false, title_bar_app_name: false, classic: false, accelerators: HashMap::new() }
+        MenuState { screen: screen.into(), status_bar_visible: true, title_bar_app_name: false, classic: false, accelerators: HashMap::new() }
     }
 
     #[test]
@@ -526,10 +519,10 @@ mod tests {
 
     #[test]
     fn app_009_macos_edit_is_stock_and_windows_linux_edit_goes_to_the_page_never_as_a_key_press() {
-        let edit: Vec<Stock> = sub(&spec(Os::Mac, &state("agents")), "Edit").iter().filter_map(|n| if let Node::Stock(s) = n { Some(*s) } else { None }).collect();
+        let edit: Vec<Stock> = sub(&spec(Os::Mac, &state("terminals")), "Edit").iter().filter_map(|n| if let Node::Stock(s) = n { Some(*s) } else { None }).collect();
         assert_eq!(edit, [Stock::Undo, Stock::Redo, Stock::Cut, Stock::Copy, Stock::Paste, Stock::SelectAll]);
         for os in [Os::Windows, Os::Linux] {
-            let bar = spec(os, &state("agents"));
+            let bar = spec(os, &state("terminals"));
             let edit = sub(&bar, "Edit");
             assert!(!edit.iter().any(|n| matches!(n, Node::Stock(_))), "{os:?} must not replay Ctrl+key");
             assert_eq!(ids(edit), ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "edit.paste", "edit.selectAll"]);
@@ -552,11 +545,11 @@ mod tests {
 
     #[test]
     fn t054_view_menu_ticks_exactly_the_current_screen_and_none_for_other_screens() {
-        // T-610 / DT-08: the switcher's four and Floor; the Inbox (behind the bell) and the sidebar's screens tick nothing.
-        for (screen, want) in [("agents", vec!["screen.agents"]), ("board", vec!["screen.board"]), ("terminals", vec!["screen.terminals"]), ("tower", vec!["screen.tower"]), ("floor", vec!["screen.floor"]), ("space", vec!["screen.space"]), ("inbox", vec![]), ("skills", vec![])] {
+        // The switcher's one screen; a removed screen's saved name (Board, Tower, Floor) ticks nothing.
+        for (screen, want) in [("terminals", vec!["screen.terminals"]), ("agents", vec![]), ("board", vec![]), ("tower", vec![]), ("floor", vec![]), ("space", vec![])] {
             let bar = spec(Os::Windows, &state(screen));
             let views = sub(sub(&bar, "View"), "Workspace View");
-            assert_eq!(ids(views), ["screen.agents", "screen.board", "screen.terminals", "screen.tower", "screen.floor", "screen.space"]);
+            assert_eq!(ids(views), ["screen.terminals"]);
             assert_eq!(ticked(views), want, "screen {screen}");
         }
     }
@@ -566,17 +559,14 @@ mod tests {
         let mut s = state("terminals");
         let bar = spec(Os::Windows, &s);
         let look = sub(sub(&bar, "View"), "Appearance");
-        assert_eq!(ids(look), ["sidebar.left.toggle", "sidebar.right.toggle", "set.statusBarVisible", "set.tasksButton", "set.automationsButton", "set.skillsButton", "set.titleBarAppName"]);
-        assert_eq!(ticked(look), ["set.statusBarVisible", "set.tasksButton"]);
-        // Flipping the Automations button and hiding the status bar rebuild a different menu.
-        s.automations_button = true;
+        assert_eq!(ids(look), ["sidebar.left.toggle", "sidebar.right.toggle", "set.statusBarVisible", "set.titleBarAppName"]);
+        assert_eq!(ticked(look), ["set.statusBarVisible"]);
+        // Showing the app name and hiding the status bar rebuild a different menu.
+        s.title_bar_app_name = true;
         s.status_bar_visible = false;
         let again = spec(Os::Windows, &s);
         assert_ne!(again, bar);
-        assert_eq!(ticked(sub(sub(&again, "View"), "Appearance")), ["set.tasksButton", "set.automationsButton"]);
-        // T-766: the Skills button tick follows its switch, so the Skills page is reachable without the palette.
-        s.skills_button = true;
-        assert_eq!(ticked(sub(sub(&spec(Os::Windows, &s), "View"), "Appearance")), ["set.tasksButton", "set.automationsButton", "set.skillsButton"]);
+        assert_eq!(ticked(sub(sub(&again, "View"), "Appearance")), ["set.titleBarAppName"]);
     }
 
     #[test]
@@ -605,7 +595,7 @@ mod tests {
         assert_eq!(route("view.devtools"), Route::DevTools);
         assert_eq!(route("view.fullscreen"), Route::FullScreen);
         assert_eq!(route("file.exit"), Route::Exit);
-        for id in ["app.settings", "app.forceReload", "screen.board", "sidebar.left.toggle", "set.tasksButton", "set.skillsButton", "help.checkUpdates", "help.reportCrash"] {
+        for id in ["app.settings", "app.forceReload", "screen.terminals", "sidebar.left.toggle", "set.statusBarVisible", "set.titleBarAppName", "help.checkUpdates", "help.reportCrash"] {
             assert_eq!(route(id), Route::Page(id.into()));
         }
     }
@@ -654,7 +644,7 @@ mod tests {
 
     #[test]
     fn set_010_the_synced_answer_serialises_for_the_page() {
-        let native = native_chords(Os::Mac, &spec(Os::Mac, &state("agents")));
+        let native = native_chords(Os::Mac, &spec(Os::Mac, &state("terminals")));
         let synced = Synced { accelerators: vec!["CmdOrCtrl+Comma".into()], native };
         let v = serde_json::to_value(&synced).unwrap();
         assert_eq!(v["accelerators"][0], "CmdOrCtrl+Comma");
@@ -798,15 +788,16 @@ mod tests {
             assert_eq!(view.contains(&"view.devtools"), cfg!(debug_assertions), "{os:?}");
             assert!(ids(sub(&bar, "Help")).contains(&"help.reportCrash"), "{os:?}");
         }
-        // The page asks about unsaved editor text before it reloads, so the click is never a native reload.
+        // The page carries out the reload, so the click is never a native reload.
         assert_eq!(route("app.forceReload"), Route::Page("app.forceReload".into()));
     }
 
     #[test]
     fn menu_state_reads_the_pages_camel_case_and_tolerates_missing_fields() {
-        let s: MenuState = serde_json::from_value(serde_json::json!({ "screen": "board", "statusBarVisible": true, "accelerators": { "app.settings": "CmdOrCtrl+Comma" } })).unwrap();
-        assert_eq!(s.screen, "board");
-        assert!(s.status_bar_visible && !s.tasks_button);
+        let s: MenuState = serde_json::from_value(serde_json::json!({ "screen": "terminals", "statusBarVisible": true, "tasksButton": true, "accelerators": { "app.settings": "CmdOrCtrl+Comma" } })).unwrap();
+        assert_eq!(s.screen, "terminals");
+        // A field an older page still sends (the retired Tasks button) is ignored.
+        assert!(s.status_bar_visible && !s.title_bar_app_name);
         assert_eq!(s.accelerators["app.settings"], "CmdOrCtrl+Comma");
     }
 }

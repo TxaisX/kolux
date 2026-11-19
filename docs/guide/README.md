@@ -4,20 +4,18 @@
 
 Use this guide to run several AI coding agents and shells side by side and see at a glance which one needs you.
 
-Kolux is a Windows desktop app. It starts AI coding agents (such as Claude Code and Codex) and plain shells in a grid of panes. Every session in a project works in that project's one folder, so give each agent its own task. The top bar switches between four screens that show the same sessions: Agents (a chat view), Board (lanes by state), Terminals (the pane grid) and Tower (every agent at once).
+Kolux is a Windows desktop app. It starts AI coding agents (such as Claude Code and Codex) and plain shells in a grid of panes, on one screen, Terminals. Every session in a project works in that project's folder, or in a folder of its own beside it, so give each agent its own task.
 
 ## Contents
 
 | Page | What you can do there |
 |---|---|
 | [Getting started](getting-started.md) | Finish first-run setup, learn the top bar, add a project, start your first agent |
-| [Terminals](terminals.md) | Arrange panes, split, resize, expand, manage tabs, paste, use shortcuts |
-| [Board, Agents and Inbox](board-agents-inbox.md) | See which sessions work, wait or finish; approve or deny a tool request |
-| [Projects and folders](projects-and-worktrees.md) | Add projects, switch between them, review and commit changes |
+| [Terminals](terminals.md) | Arrange panes, split, resize, expand, manage tabs, paste, read status words, use shortcuts |
+| [Projects and folders](projects-and-worktrees.md) | Add projects, switch between them, give agents folders of their own |
 | [Safety](safety.md) | See how Kolux protects your work |
-| [Settings](settings.md) | Change look, terminal, notification and shortcut preferences |
-| [Files and browser](files-and-browser.md) | Open files, diffs, markdown and web pages in tabs |
-| [Command line](command-line.md) | Drive Kolux from a shell |
+| [Settings](settings.md) | Change look, terminal, agent and notification preferences |
+| [Files and web pages](files-and-browser.md) | Open a project in your own editor; where web links go |
 | [Troubleshooting](troubleshooting.md) | Fix common problems |
 | [Feature index](feature-index.md) | Find any feature by name |
 

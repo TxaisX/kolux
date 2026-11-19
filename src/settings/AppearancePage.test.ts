@@ -11,7 +11,7 @@ test("SET-016: Interface, Terminal and Window & Sidebar, all open at first; font
   expect(html).toContain("Window &amp; Sidebar");
   expect(html).toContain("status switch");
   expect(html.indexOf("App font")).toBeLessThan(html.indexOf('data-fold="terminal"'));
-  expect(html).toContain("Editor font");
+  expect(html).not.toContain("Editor font"); // the editor went, so its font field went too
 });
 
 test("SET-023: the Panes card in Terminal holds divider width, a colour per mode and the dim", () => {

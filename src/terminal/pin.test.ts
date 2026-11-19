@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bulkCloseSet, closeOne, editorCloseSet, middleClickCloses, orderPinnedFirst, pinAsks, pinMenu, pinQuestion } from "./pin";
-import windowKeys from "../keys/useWindowKeys.ts?raw";
+import { bulkCloseSet, closeOne, middleClickCloses, orderPinnedFirst, pinAsks, pinMenu, pinQuestion } from "./pin";
 
 describe("TERM-046 pinned tabs", () => {
   const pinned = new Set([3]);
@@ -42,37 +41,5 @@ describe("TERM-046 pinned tabs", () => {
   it("never closes a pinned tab on middle-click", () => {
     expect(middleClickCloses(3, pinned)).toBe(false);
     expect(middleClickCloses(1, pinned)).toBe(true);
-  });
-});
-
-describe("C01-R4-01 Close all editor tabs", () => {
-  const strip = [
-    { key: 11, kind: undefined }, // a terminal
-    { key: 12, kind: "editor" },
-    { key: 13, kind: "terminal" },
-    { key: 14, kind: "diff" },
-    { key: 15, kind: "preview" },
-    { key: 16, kind: "changes" },
-    { key: 17, kind: "check" },
-  ];
-  const order = strip.map((p) => p.key);
-
-  it("takes the strip's editor tabs and never a terminal", () => {
-    expect(editorCloseSet(order, strip, new Set())).toEqual([12, 14, 15, 16, 17]);
-    // A strip of terminals has nothing for this command to close.
-    expect(editorCloseSet([11, 13], strip, new Set())).toEqual([]);
-    // A key with no pane behind it closes nothing.
-    expect(editorCloseSet([99], strip, new Set())).toEqual([]);
-    // The drawn order is kept.
-    expect(editorCloseSet([17, 12], strip, new Set())).toEqual([17, 12]);
-  });
-
-  it("spares a pinned editor tab, like every bulk close", () => {
-    expect(editorCloseSet(order, strip, new Set([14]))).toEqual([12, 15, 16, 17]);
-  });
-
-  it("the chord's handler closes that set, never the whole strip", () => {
-    expect(windowKeys).toMatch(/case "tab\.closeAll": \{[\s\S]{0,400}?editorCloseSet\(orderOf\(focused\), panes, pinned\)/);
-    expect(windowKeys).not.toContain('bulkCloseSet(orderOf(focused), focused, "all", pinned)');
   });
 });

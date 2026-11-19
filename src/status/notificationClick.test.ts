@@ -67,7 +67,7 @@ test("C26-R2-01: the jump reads the live pane list, so a pane opened after the f
   expect(jump).toHaveBeenCalledWith(2);
 });
 
-test("C26-R2-01: the App's jump is the page-clearing openPane, so the click lands on the pane", () => {
+test("C26-R2-01: the App's jump leaves Settings and runs openPane, so the click lands on the pane", () => {
   expect(app).toMatch(/useNotificationClick\(panesRef, jumpToPane\)/);
   expect(app).toMatch(/jumpToPane\.current = \(key\) => \{\s*leavePage\(\);\s*openPane\(key\);/);
   expect(app).not.toMatch(/notification-click[\s\S]{0,200}setFocused\(key\)/);

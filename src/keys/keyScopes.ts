@@ -7,7 +7,7 @@ export type KeySurface = { screen: string; kind?: "editor" | "preview" | "diff" 
 
 export function scopesFor({ screen, kind, inTree }: KeySurface): Scope[] {
   if (inTree) return ["global", "tabs"]; // the explorer's own keys come with T-094-b
-  if (kind === "editor" || kind === "diff") return ["editor", "global", "tabs"];
-  if (kind === "preview" || kind === "check") return ["global", "tabs"];
+  // A file, diff, preview or check tab: the editor scope went with the editor, so none has a command of its own.
+  if (kind === "editor" || kind === "diff" || kind === "preview" || kind === "check") return ["global", "tabs"];
   return screen === "terminals" ? ["global", "terminal", "tabs"] : ["global"];
 }

@@ -11,7 +11,7 @@ in a file the user owns, `~/.kolux/keybindings.json`; the Shortcuts page records
 key chords, reports clashes scope by scope, and plenty of commands come without any chord. Settings save
 while the user types, reach every open window, and never hand secrets to the interface.
 
-Tier counts: P0 11 · P1 19 · P2 10 · H 4 · X 1 · D 9
+Tier counts: P0 11 · P1 19 · P2 9 · H 4 · X 1 · D 9
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 06 Usage & limits · 07 Accounts, sign-in & keys · 08 Orchestration · 09 Automations · 10 Plan review & protected actions · 11 Git, source control & review · 12 Editor & files · 13 Browser pane & computer use · 14 Native chat · 15 Skills, plugins & starter kits · 16 Onboarding & guidance · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The `kolux` CLI · 21 H — retired, hidden, removed, dev-only
 
 ## Cards
@@ -97,15 +97,15 @@ Rules: Classic is the default and comes first, then 16 hued themes in colour-whe
   Copper, Sand, Moss, Fern, Jade, Teal, Lagoon, Sky, Cobalt, Indigo, Iris, Violet, Orchid, Rose,
   Graphite; Graphite has no colour at all (a greyscale look); a theme name that is absent or unknown
   counts as Classic, both when loading and when saving; a preview beside the swatches shows the chosen
-  theme, and a violet sample when no hued theme is chosen; pop-out windows share the main window's
-  theme.
+  theme, and a violet sample when no hued theme is chosen.
 Acceptance:
   - [x] Fresh profile → Classic is selected; click Teal → sidebar, top bar and accent colours turn
         teal within one frame. (cards; evidence/cards-SET-001.txt)
   - [x] Save an unknown theme name in the settings and start → Classic is shown and selected. (cards; evidence/cards-SET-001.txt)
-  - [x] With Rose chosen, open a pop-out window → it is Rose as well. (cards live; evidence/cards-SET-001.txt)
 Compat: a saved theme imports by its name; anything other than Classic or one of the 16 hues imports
   as Classic.
+Amended 2026-11-19 (slim-down): Kolux has no pop-out window any more (the control tower's window went),
+  so the rule that pop-out windows share the theme and its acceptance box were retired.
 Source: D-17-001
 
 ### SET-002 · Tint, saturation and depth sliders adjust the theme
@@ -215,6 +215,9 @@ Acceptance:
   - [x] Set Board as the first screen, restart with New → Board shows first. (cards; evidence/cards-SET-037.txt)
 Compat: the command that steps through workspace screens keeps its old keybinding command id (written
   with a capital letter, so it is held back pending the allowlist) and Mod+Alt+V.
+Amended 2026-11-19 (slim-down): Terminals is the one workspace screen left, so the first-screen choice
+  and the View menu's group hold Terminals alone, and the command that stepped through the screens went
+  with its chord; a keybindings file that still names it gets the unknown-command warning.
 Source: D-17-037
 
 ### SET-013 · Default chords out of the box, and the commands left without one
@@ -346,9 +349,9 @@ Acceptance:
 Compat: —
 Source: D-17-016
 
-### SET-018 · App font and editor font
+### SET-018 · App font
 Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
-User does: types or picks a font family for the interface and one for the code editor.
+User does: types or picks a font family for the interface.
 User sees: suggestions taken from the fonts on the machine while typing; the chosen font applies at
   once.
 Rules: the installed fonts are read from the system (on Windows by asking PowerShell) only once a font
@@ -356,32 +359,32 @@ Rules: the installed fonts are read from the system (on Windows by asking PowerS
   text rank above names that merely contain it; entering a picker that already holds a font shows the
   full list, not just matches for the current value; Up and Down move through the suggestions and
   Enter picks the one reached (DT-C178); a safe fallback list always follows the chosen
-  family so text never disappears; an empty field means the default font, and an empty editor font
-  means the editor uses the terminal font.
+  family so text never disappears; an empty field means the default font.
 Acceptance:
   - [ ] Type Cas → installed Cascadia faces are suggested; pick one → the interface font changes.
   - [ ] Enter a font that is not installed → text is still drawn, in the fallback font.
 Compat: —
+Amended 2026-11-19 (slim-down): the editor font field went with the code editor.
 Source: D-17-018
 
-### SET-020 · Show or hide the title, toolbar buttons and status bar items
+### SET-020 · Show or hide the title and status bar items
 Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
 User does: flips items in Window & Sidebar, or ticks them in the View menu's Appearance submenu.
-User sees: the app name in the title bar, the Tasks and Automations buttons, and the status bar or
-  single items on it come and go at once.
-Rules: by default the app name shows, the Tasks button shows, the Automations button is hidden, and
-  the status bar shows; menu ticks and settings switches always agree, and changing the Automations
-  button rebuilds the menu; usage can read as amount used or amount left; the Claude and Codex usage
-  items left the status bar on 2026-10-05 (usage now sits at the top right), and which status bar items
-  remain still needs confirming; the submenu holds Toggle Left Sidebar, Toggle Right Sidebar and tick
-  boxes for the status bar, Tasks button, Automations button and title bar app name, while its tick box
-  for the mobile button went with the dropped mobile feature.
+User sees: the app name in the title bar, and the status bar or single items on it, come and go at
+  once.
+Rules: by default the app name shows and the status bar shows; menu ticks and settings switches
+  always agree, and changing one rebuilds the menu; usage can read as amount used or amount left; the
+  Claude and Codex usage items left the status bar on 2026-10-05 (usage now sits at the top right), and
+  which status bar items remain still needs confirming; the submenu holds Toggle Left Sidebar, Toggle
+  Right Sidebar and tick boxes for the status bar and title bar app name, while its tick box for the
+  mobile button went with the dropped mobile feature.
 Acceptance:
-  - [ ] Untick Show Tasks Button in the View menu → the button disappears and the switch in Settings
-        turns off.
   - [ ] Switch Show Titlebar App Name off → the title bar shows no name.
 Compat: —
-Amended 2026-10-12 (DT-A6): the app name is off by default; the Automations button is on by default until the command palette exists.
+Amended 2026-10-12 (DT-A6): the app name is off by default.
+Amended 2026-11-19 (slim-down): the Tasks and Automations buttons, and the Skills button added beside
+  them, went with their screens, together with their switches, their menu ticks and the acceptance box
+  for the Tasks button.
 Source: D-17-020
 
 ### SET-023 · Terminal colour schemes for dark and for light
@@ -708,20 +711,6 @@ Acceptance:
   - [ ] Turn minimise to tray on and close the window → the app stays in the tray.
 Compat: —
 Source: D-17-041
-
-### SET-038 · Editor and diff preferences
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: sets editor auto-save, minimap, word wrap, spellcheck and diff defaults in General.
-User sees: the built-in editor and the diff views follow these choices.
-Rules: auto-save is off by default and takes a delay once on; the minimap is off, word wrap is on, and
-  spellcheck in rich markdown is on; diffs open inline, without word wrap and with whitespace changes
-  hidden; the combined diff's file tree is hidden by default; editor word wrap and diff word wrap are
-  separate choices, and changing one leaves the other alone.
-Acceptance:
-  - [ ] Turn auto-save on with 1000 ms → edits are saved a second after typing stops.
-  - [ ] Turn whitespace display on → changes made only of whitespace appear in diffs.
-Compat: —
-Source: D-17-038
 
 ### SET-039 · Pick the outside apps listed under Open in
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified

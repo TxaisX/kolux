@@ -55,7 +55,9 @@ describe("APP-013 tab keys from every focus", () => {
 
   test("the surfaces keep the scopes they had before the tree was added", () => {
     expect(scopesFor({ screen: "terminals", inTree: false })).toEqual(["global", "terminal", "tabs"]);
-    expect(scopesFor({ screen: "terminals", kind: "editor", inTree: false })).toEqual(["editor", "global", "tabs"]);
+    // The editor scope went with the editor: a file or diff tab takes only the window's and the tab strip's keys.
+    expect(scopesFor({ screen: "terminals", kind: "editor", inTree: false })).toEqual(["global", "tabs"]);
+    expect(scopesFor({ screen: "terminals", kind: "diff", inTree: false })).toEqual(["global", "tabs"]);
     expect(scopesFor({ screen: "terminals", kind: "preview", inTree: false })).toEqual(["global", "tabs"]);
     expect(scopesFor({ screen: "settings", inTree: false })).toEqual(["global"]);
   });
@@ -78,8 +80,7 @@ describe("T-717 every default chord is unique per live scope set", () => {
     scopesFor({ screen: "settings", inTree: false }),
     ["global", "terminal", "tabs"],
     ["global", "tabs"],
-    ["global", "tabs", "editor"],
-    ["editor"], ["explorer"], ["settings"],
+    ["settings"],
   ];
   // "Mod" is Ctrl or Cmd, and modifier order does not matter: Mod+Shift+W and Shift+Ctrl+W are one chord on Windows.
   const norm = (chord: string, platform: Platform) => {

@@ -1,7 +1,6 @@
 import { expect, test, vi } from "vitest";
 import { actionById } from "./actions";
-import { defaultsOnly } from "./keymap";
-import { CHROME_FIRST, explorerSearchKey, focusChrome, heldByOverlay, menuAction, OVERLAYS, PANE_LOCAL, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_TERMINAL } from "./useWindowKeys";
+import { CHROME_FIRST, focusChrome, heldByOverlay, menuAction, OVERLAYS, PANE_LOCAL, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_TERMINAL } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -95,7 +94,7 @@ test("the menu's Force Reload asks over unsaved text and reloads without; no oth
   menuAction("app.forceReload", b([]), reload);
   expect(reload).toHaveBeenCalledTimes(1);
   const s = b([]);
-  menuAction("screen.agents", s, reload); // the screens go through the settings plumbing, not here
+  menuAction("screen.terminals", s, reload); // the screens go through the settings plumbing, not here
   expect(s.setReloadAsk).not.toHaveBeenCalled();
   expect(reload).toHaveBeenCalledTimes(1);
 });
@@ -115,15 +114,6 @@ test("Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the p
   }
   expect(heldByOverlay("terminal.splitRight", false, dom([palette]) as never)).toBe(true);
   for (const id of WINDOW_TERMINAL) expect(actionById.get(id)?.scope, id).toBe("terminal");
-});
-
-test("Show Search (Mod+Shift+F) opens from a terminal that already cancelled the press; it waits under a dialog", () => {
-  const map = defaultsOnly("win32");
-  const press = { key: "F", code: "KeyF", ctrlKey: true, shiftKey: true, altKey: false, metaKey: false, defaultPrevented: true };
-  expect(explorerSearchKey(map, press, dom([]) as never), "cancelled by the terminal").toBe(true);
-  expect(explorerSearchKey(map, press, dom([real("chat-question", { role: "dialog" })]) as never)).toBe(true);
-  expect(explorerSearchKey(map, press, dom([real("crash-report", { role: "dialog" })]) as never), "under a dialog").toBe(false);
-  expect(explorerSearchKey(map, { ...press, shiftKey: false }, dom([]) as never), "Ctrl+F is not Show Search").toBe(false);
 });
 
 test("the Ctrl+Tab list (itself a menu) still steps while it is open", () => {

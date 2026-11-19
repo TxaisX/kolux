@@ -101,16 +101,12 @@ test("VIEW-080: workspace is the default; an unavailable scope widens and return
 const valid = ["agents", "terminals", "tower"] as const;
 
 test("VIEW-007: a screen another window just saved moves this window", () => {
-  expect(syncedScreen("tower", "terminals", "terminals", null, valid)).toBe("tower");
-});
-
-test("VIEW-007: a window on a page (Tasks) stays on it when another window changes screen", () => {
-  expect(syncedScreen("tower", "terminals", "terminals", "tasks", valid)).toBeNull();
+  expect(syncedScreen("tower", "terminals", "terminals", valid)).toBe("tower");
 });
 
 test("VIEW-007: a save that left the screen value unchanged, or an unknown or same screen, moves nothing", () => {
-  expect(syncedScreen("tower", "tower", "terminals", null, valid)).toBeNull();
-  expect(syncedScreen("terminals", "tower", "terminals", null, valid)).toBeNull();
-  expect(syncedScreen("nowhere", "tower", "terminals", null, valid)).toBeNull();
-  expect(syncedScreen(undefined, "tower", "terminals", null, valid)).toBeNull();
+  expect(syncedScreen("tower", "tower", "terminals", valid)).toBeNull();
+  expect(syncedScreen("terminals", "tower", "terminals", valid)).toBeNull();
+  expect(syncedScreen("nowhere", "tower", "terminals", valid)).toBeNull();
+  expect(syncedScreen(undefined, "tower", "terminals", valid)).toBeNull();
 });

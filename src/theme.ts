@@ -143,10 +143,11 @@ export type TerminalScheme = string;
 export type Mode = "system" | "light" | "dark";
 export const MODES: Mode[] = ["system", "light", "dark"];
 /** `lightTerminal`: in light mode terminals use `lightScheme`; off keeps `terminal` for both. */
-export type Appearance = { theme: ThemeName; tint: number; saturation: number; depth: number; terminal: TerminalScheme; mode: Mode; lightTerminal: boolean; lightScheme: TerminalScheme; custom: CustomScheme[]; appFont: string; editorFont: string; dividerWidth: number; dividerDark: string; dividerLight: string; paneDim: number; termFont: string; termSize: number; termLineHeight: number; termWeight: FontWeight; termWeightBold: FontWeight; screens: ScreenModes; sidebarLook: SidebarLook; sidebarTint: string; sidebarStrength: number; userThemes: CustomTheme[]; userTheme: string; finish: Finish; finishTint: string; finishStrength: number };
-/** VIEW-006: a mode of its own for one of the three workspace screens; a screen not listed follows `mode`. */
-export type ScreenModes = Partial<Record<"agents" | "board" | "terminals", Mode>>;
-export const THEMED_SCREENS = ["agents", "board", "terminals"] as const;
+export type Appearance = { theme: ThemeName; tint: number; saturation: number; depth: number; terminal: TerminalScheme; mode: Mode; lightTerminal: boolean; lightScheme: TerminalScheme; custom: CustomScheme[]; appFont: string; dividerWidth: number; dividerDark: string; dividerLight: string; paneDim: number; termFont: string; termSize: number; termLineHeight: number; termWeight: FontWeight; termWeightBold: FontWeight; screens: ScreenModes; sidebarLook: SidebarLook; sidebarTint: string; sidebarStrength: number; userThemes: CustomTheme[]; userTheme: string; finish: Finish; finishTint: string; finishStrength: number };
+/** VIEW-006: a mode of its own for the Terminals screen, the one workspace screen left (the Agents and Board
+ *  screens and their choices went on 2026-11-19); unset follows `mode`. */
+export type ScreenModes = Partial<Record<"terminals", Mode>>;
+export const THEMED_SCREENS = ["terminals"] as const;
 const screenModesOf = (v: unknown): ScreenModes =>
   v && typeof v === "object" ? Object.fromEntries(THEMED_SCREENS.flatMap((k) => ((MODES as unknown[]).includes((v as Record<string, unknown>)[k]) ? [[k, (v as Record<string, Mode>)[k]]] : []))) : {};
 /** TERM-097: the weights a terminal font can be drawn in (what xterm takes). */
@@ -154,7 +155,7 @@ export const WEIGHTS = ["normal", "bold", "100", "200", "300", "400", "500", "60
 export type FontWeight = (typeof WEIGHTS)[number];
 const weightOr = (v: unknown, dflt: FontWeight): FontWeight => (typeof v === "string" && (WEIGHTS as readonly string[]).includes(v) ? (v as FontWeight) : typeof v === "number" && (WEIGHTS as readonly string[]).includes(String(v)) ? (String(v) as FontWeight) : dflt);
 /** The settings fields the appearance lives in. */
-export const FIELD = { theme: "appTheme", tint: "themeTint", saturation: "themeSaturation", depth: "themeDepth", terminal: "terminalScheme", mode: "appearanceMode", lightTerminal: "terminalLightScheme", lightScheme: "terminalSchemeLight", custom: "terminalCustomSchemes", appFont: "appFont", editorFont: "editorFont", dividerWidth: "paneDividerWidth", dividerDark: "paneDividerDark", dividerLight: "paneDividerLight", paneDim: "paneDim", termFont: "terminalFont", termSize: "terminalFontSize", termLineHeight: "terminalLineHeight", termWeight: "terminalFontWeight", termWeightBold: "terminalFontWeightBold", screens: "screenThemes", sidebarLook: "sidebarLook", sidebarTint: "sidebarTint", sidebarStrength: "sidebarTintStrength", userThemes: "customThemes", userTheme: "customThemeActive", finish: "appFinish", finishTint: "appFinishTint", finishStrength: "appFinishStrength" } as const;
+export const FIELD = { theme: "appTheme", tint: "themeTint", saturation: "themeSaturation", depth: "themeDepth", terminal: "terminalScheme", mode: "appearanceMode", lightTerminal: "terminalLightScheme", lightScheme: "terminalSchemeLight", custom: "terminalCustomSchemes", appFont: "appFont", dividerWidth: "paneDividerWidth", dividerDark: "paneDividerDark", dividerLight: "paneDividerLight", paneDim: "paneDim", termFont: "terminalFont", termSize: "terminalFontSize", termLineHeight: "terminalLineHeight", termWeight: "terminalFontWeight", termWeightBold: "terminalFontWeightBold", screens: "screenThemes", sidebarLook: "sidebarLook", sidebarTint: "sidebarTint", sidebarStrength: "sidebarTintStrength", userThemes: "customThemes", userTheme: "customThemeActive", finish: "appFinish", finishTint: "appFinishTint", finishStrength: "appFinishStrength" } as const;
 export const SPAN = { tint: [-180, 180, 0], saturation: [0, 160, 100], depth: [-3, 6, 0], dividerWidth: [2, 12, 6], paneDim: [30, 100, 100], termSize: [8, 32, 13], termLineHeight: [1, 2, 1], sidebarStrength: STRENGTH_SPAN, finishStrength: GLASS_SPAN } as const;
 /** A divider colour is #rrggbb or empty (the window shows through, as DESIGN.md measured). */
 const hexOrEmpty = (v: unknown) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v.trim()) ? v.trim().toLowerCase() : "");
@@ -191,7 +192,6 @@ export function readAppearance(s: Record<string, unknown>): Appearance {
     lightScheme: knownScheme(s[FIELD.lightScheme], custom, terminal === "match" ? "match" : "tango-light"),
     custom,
     appFont: typeof s[FIELD.appFont] === "string" ? (s[FIELD.appFont] as string).trim().slice(0, 100) : "",
-    editorFont: typeof s[FIELD.editorFont] === "string" ? (s[FIELD.editorFont] as string).trim().slice(0, 100) : "",
     dividerWidth: Math.round(clampNum(s[FIELD.dividerWidth], SPAN.dividerWidth)),
     dividerDark: hexOrEmpty(s[FIELD.dividerDark]),
     dividerLight: hexOrEmpty(s[FIELD.dividerLight]),
@@ -436,7 +436,6 @@ export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
     "--sidebar-tab-track-border": ink["tab-track-border"],
     "--sidebar-kbd-bg": ink["kbd-bg"],
     "--ui-font": fontStack(a.appFont, uiFont),
-    "--editor-font": fontStack(a.editorFont, fontStack(a.termFont, monoFont)),
     "--term-font": fontStack(a.termFont, monoFont),
     "--divider-width": a.dividerWidth + "px",
     "--divider": (dark ? a.dividerDark : a.dividerLight) || "transparent",
@@ -497,12 +496,10 @@ let last: Appearance | null = null;
 /** VIEW-006: the screen in front and whether the Classic look is on (App.tsx tells, showScreen). */
 let shown = { screen: "terminals", classic: false };
 
-/** VIEW-006: the mode a screen paints in: its own override, else the app's. A screen with no saved
- *  value (Inbox, Artifacts, anything unknown) counts as Terminals; the Classic look ignores the
- *  Board and Agents overrides. */
-export function screenMode(a: Appearance, screen: string, classic: boolean): Mode {
-  const s = (screen === "agents" || screen === "board") && !classic ? screen : "terminals";
-  return a.screens[s] ?? a.mode;
+/** VIEW-006: the mode a screen paints in: the Terminals screen's own override, else the app's. Every screen
+ *  counts as Terminals, the one left, in either look. */
+export function screenMode(a: Appearance, _screen: string, _classic: boolean): Mode {
+  return a.screens.terminals ?? a.mode;
 }
 
 /** VIEW-006: the window moved to `screen`; the look is put on again only when that screen paints in the

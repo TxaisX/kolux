@@ -45,7 +45,7 @@ async function panel(sessions: Session[], settings: Record<string, unknown> = {}
   const props = {
     openDirs: ["C:/w/app"], sessions, states: {}, unread: new Set<string>(), onUnread: () => {}, settings, onSetting: () => {},
     activeDir: "C:/w/app", onSelect: (dir: string) => void selected.push(dir), onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
-    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
+    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {}, ...extra,
   };
   const m = await mount(createElement(ProjectsPanel, props as never), doc);

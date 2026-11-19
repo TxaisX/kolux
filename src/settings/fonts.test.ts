@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { fontStack, rankFonts } from "./fonts";
-import { appearanceVars, readAppearance, writeAppearance, uiFont, monoFont } from "../theme";
+import { appearanceVars, readAppearance, writeAppearance, uiFont } from "../theme";
 
 const LIST = ["Arial", "Cascadia Code", "Cascadia Mono", "Consolas", "Lucida Console", "Segoe UI"];
 
@@ -16,12 +16,12 @@ test("SET-018: a safe fallback always follows the chosen family; empty means the
   expect(fontStack("  ", uiFont)).toBe(uiFont);
 });
 
-test("SET-018: app and editor fonts are kept; an empty editor font uses the terminal font", () => {
-  const a = readAppearance({ appFont: "Segoe UI", editorFont: "" });
+test("SET-018: the app font is kept; the editor font went with the editor and a saved one is not written back", () => {
+  const a = readAppearance({ appFont: "Segoe UI", editorFont: "Consolas" });
   expect(a.appFont).toBe("Segoe UI");
-  expect(writeAppearance({}, a)).toMatchObject({ appFont: "Segoe UI", editorFont: "" });
+  expect(writeAppearance({}, a)).toMatchObject({ appFont: "Segoe UI" });
+  expect(writeAppearance({}, a)).not.toHaveProperty("editorFont");
   expect(appearanceVars(a)["--ui-font"]).toBe(`"Segoe UI", ${uiFont}`);
-  expect(appearanceVars(a)["--editor-font"]).toBe(monoFont);
-  expect(appearanceVars(readAppearance({ editorFont: "Consolas" }))["--editor-font"]).toBe(`"Consolas", ${monoFont}`);
+  expect(appearanceVars(a)).not.toHaveProperty("--editor-font");
   expect(readAppearance({ appFont: 42 }).appFont).toBe("");
 });

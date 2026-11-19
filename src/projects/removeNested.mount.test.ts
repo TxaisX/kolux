@@ -63,7 +63,7 @@ async function panel(more: unknown[] = []) {
   const props = {
     openDirs: ["C:/w/app", "C:/w/ws/fix", "C:/w/app/inner", "C:/w/app/wts/inner-b"], sessions: [...sessions, ...more], states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
     activeDir: null, onSelect: () => {}, onRemoved: (path: string) => void h.removed.push(path), onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
-    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
+    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
     onRemovedAll: (paths: string[], staying?: string[]) => void h.closed.push([paths, staying]),
   };

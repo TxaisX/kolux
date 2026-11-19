@@ -19,56 +19,38 @@ You can reopen the dialog later: click the "?" (Help) button at the bottom of th
 
 Click the Help button and choose "Getting Started with Kolux". It is a checklist dialog, separate from the first-run dialog above. The "x" closes it, and so does Escape.
 
-- **Left side:** a progress ring with "N of 6 done", then the steps in two groups. Under "Setup": Turn on notifications, Choose a default agent, Enable Kolux CLI, Use Kolux's browser (optional) and Connect integrations (optional). Under "Parallel work": Multi-task, Automate workspace setup and Start work in multiple repos. The six steps that are not optional fill the ring. Click a step to read what it is for. The checklist removes itself from the sidebar as soon as its item is done; the small eye-off button hides it sooner.
+- **Left side:** a progress ring with "N of 4 done", then the steps in two groups. Under "Setup": Turn on notifications and Choose a default agent. Under "Parallel work": Multi-task and Start work in multiple repos. Click a step to read what it is for. The checklist removes itself from the sidebar as soon as its item is done; the small eye-off button hides it sooner.
 - **Right side:** the step's name and a line about why it matters.
 
-Every step ticks by itself from what Kolux can see, so you never tick one by hand. Turn on notifications ticks when notifications are on. Choose a default agent ticks when the default is an AI agent (a plain terminal does not count). Enable Kolux CLI ticks when the `kolux` command is set up. Use Kolux's browser ticks once you have opened a real page in it (a blank page does not count). Connect integrations ticks when GitHub is connected for reviews. Multi-task ticks when you split a pane to run a second agent. Start work in multiple repos ticks when two Git projects have been added. Automate workspace setup ticks when a setup script is set. A profile that finished the older setup, or hid the sidebar checklist, shows every step done.
+Every step ticks by itself from what Kolux can see, so you never tick one by hand. Turn on notifications ticks when notifications are on. Choose a default agent ticks when the default is an AI agent (a plain terminal does not count). Multi-task ticks once an agent works in a folder of its own beside the project folder (Own folder for each agent, on by default, gives each agent you launch one). Start work in multiple repos ticks when two Git projects have been added. A profile that finished the older setup, or hid the sidebar checklist, shows every step done.
 
-The Enable Kolux CLI step lists three things and marks each "Ready" or "Not set up": "Kolux CLI" (the `kolux` command in terminals outside Kolux), "Kolux CLI skill" and "Orchestration skill". A "Re-check" button reads the state again. The check for the `kolux` command looks through your `PATH` (the list of folders Windows searches for commands) without holding up the window: a folder that does not answer within a second, such as one on an offline drive, is passed over, and a folder on another computer is never looked up (see [Other computers and network shares](safety.md#other-computers-and-network-shares)). The **Set up** button registers the `kolux` command for every terminal on the computer and, for the skills, types the community skills installer's command at a prompt in a small terminal inside the step. That command runs only when you press Enter; **Copy command** copies it instead. The result reads "Installed" or "Needs attention" with the reason. See [Command line](command-line.md) for what the command does.
-
-The Help button's menu lists Settings, then Getting Started with Kolux, Explore Kolux, Docs, Changelog, GitHub, Milestones (only while a required step is open), Keyboard Shortcuts, Onboarding, Send Feedback, Report Crash, Copy terminal diagnostics, Check for Updates and Restart Kolux, followed by a Tours group. Docs, Changelog and GitHub open in your browser. Keyboard Shortcuts opens Settings at the Shortcuts page. Onboarding reopens the first-run dialog. Three of the entries open something described below:
+The Help button's menu lists Settings, then Getting Started with Kolux, Explore Kolux, Docs, Changelog, GitHub, Milestones (only while a step is open), Onboarding, Send Feedback, Report Crash, Copy terminal diagnostics, Check for Updates and Restart Kolux, followed by a Tours group. Docs, Changelog and GitHub open in your browser. Onboarding reopens the first-run dialog. Three of the entries open something described below:
 
 | Entry | What it opens |
 |---|---|
-| Explore Kolux | A short walk through five workflows: Projects, Tasks, Agents, Workbench and Review. Continue (or Ctrl+Enter) moves on; the last stop says Done. A workflow shows "Completed" once you have seen its required stops |
-| Milestones | The same guide, with its ring. It shows only while a required step is open |
-| Tours | One entry per tour: Tasks, Automations and Agents in parallel. See below |
+| Explore Kolux | A short walk through four workflows: Projects, Agents, Workbench and Review. Continue (or Ctrl+Enter) moves on; the last stop says Done. A stop is complete once you have visited it, and a workflow shows "Completed" once you have seen its required stops |
+| Milestones | The same guide, with its ring. It shows only while a step is open |
+| Tours | The Agents in parallel tour. See below |
 
 ### Tips
 
-At most one tip appears per launch, as a small dialog marked "Tip". It never appears in a launch that showed the first-run dialog, and each tip appears only once. The first is "Let your agents drive Kolux", with the buttons "Not now" and "Install CLI & Skills" (which opens the Enable Kolux CLI step). It is skipped if the command is already set up. If the command is installed but terminals outside Kolux cannot find it, the tip adds "Needs attention". The second is "Jump to any workspace with" the workspace-switcher key, with a "Got it" button. A launch that shows the one-time status-hooks card (the line from step 2, for a profile that never answered it) shows no tip. The card's Done button records the switch, Turn off records no, and Not now closes it without answering, so it asks again at the next launch. Escape closes a tip from wherever the keyboard is, even a terminal pane; the press still reaches that pane's program (in Claude Code it also interrupts Claude), and while a dialog is open Escape belongs to the dialog instead.
+At most one tip appears per launch, as a small dialog marked "Tip". It never appears in a launch that showed the first-run dialog, and each tip appears only once. The tip is "Jump to any workspace with" the workspace-switcher key, with a "Got it" button. A launch that shows the one-time status-hooks card (the line from step 2, for a profile that never answered it) shows no tip. The card's Done button records the switch, Turn off records no, and Not now closes it without answering, so it asks again at the next launch. Escape closes a tip from wherever the keyboard is, even a terminal pane; the press still reaches that pane's program (in Claude Code it also interrupts Claude), and while a dialog is open Escape belongs to the dialog instead.
 
 ### Tours
 
-A tour is a small callout beside a part of the window. It shows a title, a sentence, and these buttons: Skip, Back (from the second callout on), and Next (Done on the last one). Several-step tours show a count such as "2 of 3". Escape also skips.
+A tour is a small callout beside a part of the window. It shows a title, a sentence, and these buttons: Skip, Back (from the second callout on), and Next (Done on the last one). Several-step tours show a count such as "2 of 2". Escape also skips.
 
 | Tour | Points at |
 |---|---|
-| Tasks | A row, the Preset picker and the search box on the Tasks page |
-| Automations | The create button and the button for every run's results on the Automations page |
 | Agents in parallel | The Split button on the focused terminal pane, then the folder's status dot in the sidebar (one dot per folder; each agent's own state is on its pane's top bar) |
 
-A tour starts by itself once, the first time its screen is showing, and only on a profile where the first-run dialog showed. An older profile never gets automatic tours. Only one tour starts by itself per launch. Skip or Done marks it seen. Under Tours in the Help menu you can replay any tour, seen or not. The replay waits until its screen is showing. The Agents in parallel tour does not start by itself if you have already split a pane. Its first callout has a "Split terminal" button in place of Next.
+The tour starts by itself once, the first time a project's terminal is in front, and only on a profile where the first-run dialog showed. An older profile never gets it by itself, and it does not start by itself if you have already split a pane. Skip or Done marks it seen. Under Tours in the Help menu you can replay it, seen or not; the replay waits until a terminal pane is showing. Its first callout has a "Split terminal" button in place of Next.
 
-## The Skills page
+## When Kolux starts
 
-A skill is a folder with a `SKILL.md` file that teaches an AI how to do a job. The Skills page lists every skill the AIs on your computer can see. Turn on the sidebar button first: Settings, Appearance, Window & Sidebar, "Show Skills button in the sidebar" (off by default). Click the "Skills" button in the sidebar to open the page. Click it again, press Escape, or use the x to go back to the screen you were on. Right-click the button and choose "Hide Skills button" to remove it.
+Kolux opens on the Terminals screen, its one screen.
 
-| Part | What it does |
-|---|---|
-| Heading | "Skills" and a count, such as "12 skills" |
-| Search skills | Every word you type must appear in a skill's name, description or path. Up to 200 characters |
-| Filter by agent | All agents, Claude Code, Codex, Grok, Hermes or Shared skills folder |
-| Source chips | Home, Workspace, Bundled and Plugin, each with a count. Press one to show only that source |
-| Clear filters | Appears when a search, agent or chip is set |
-| Skill folders | Lists each folder Kolux scanned and what it found, such as "3 skills" or "Not found" |
-| Refresh | Scans every folder again |
-
-Each row shows the skill's name, where it came from (a plugin shows "Plugin: name"), its last-changed date, its description and its path. Skills built into Kolux say "Built into Kolux". The "Delete skills" item in the "..." menu opens a selection mode: tick the skills to remove, press Delete..., read the confirmation (it counts the folders and links that will go, names where a linked skill's content stays, and lists anything it cannot delete and why) and confirm; each skill then gets its own outcome. Bundled and plugin skills cannot be chosen. If a folder cannot be read the page says "Scan failed" with a Retry button, rather than showing a shorter list. When the open project lives inside a WSL (Linux on Windows) distribution, that distribution's own skill folders are scanned by asking the distribution, and deleting such a skill runs inside that distribution too: a skill from another distribution or outside those skill folders is refused as "Outside Kolux's skill folders", removing a link leaves what it points at, a skill that WSL cannot check is left alone and says so while the rest of the request goes on, and a delete that fails or runs out of time inside the distribution shows "Not confirmed: some of it may already be removed" with the reason, because it may have taken part of the folder before it stopped. Kolux also never scans through a network share: a workspace on `\\server\share` gets no workspace skills scan, a mapped drive letter does, and a link inside a skills folder that leads to another computer is not followed. See [Other computers and network shares](safety.md#other-computers-and-network-shares).
-
-When you have never picked a view, Kolux opens on Terminals. After that it opens on the view you were on when you quit.
-
-A fresh start has no terminal pane yet. The Terminals view says "Nothing running here yet." and offers two buttons: Start agents, which opens the Start form, and Open a terminal, which opens a plain shell in the project folder.
+A fresh start has no terminal pane yet. The Terminals screen says "Nothing running here yet." and offers two buttons: Start agents, which opens the Start form, and Open a terminal, which opens a plain shell in the project folder.
 
 Each time Kolux starts, its first window opens the Start form once. Kolux does not reopen tabs between runs, but the Folders list keeps your folders, and the form asks which folders to open, how many agents and which AI. "Not now" or Escape closes it and leaves the window empty. The switch "Ask what to open when Kolux starts" in Settings, General turns the form off; Kolux then starts with an empty window.
 
@@ -82,50 +64,35 @@ The bar across the top is 36 pixels tall and replaces the Windows title bar. Dra
 |---|---|
 | Kolux mark | Opens the Kolux menu (File, Edit, View, Window, Help). See the next section |
 | Sidebar button | Hides or shows the project sidebar (Ctrl+B) |
-| Back / Forward | Return to the last workspace or page you were on, and go forward again (Ctrl+Alt+Left, Ctrl+Alt+Right) |
-| Screen switcher | Four buttons: Agents, Board, Terminals, Tower. See the next section |
-| Right-panel button | Shows or hides the right panel, which holds Explorer, Insights, Checks, Attached, PR Checks and History. Hidden while a full page is open |
-| Go to / Run a command | Jump to a workspace, tab, project or setting, or run a command. It opens on Ctrl+Shift+P or Ctrl+Shift+J anywhere, and on Ctrl+K except in a terminal (where Ctrl+K clears the pane) and in a rich Markdown view. The box shows the key that works from where you are |
-| Bell | Opens the Inbox. Press it again to return to the screen you were on before |
+| Back / Forward | Return to the last workspace you were on, and go forward again (Ctrl+Alt+Left, Ctrl+Alt+Right) |
+| Screen switcher | One button, Terminals, the screen Kolux has today |
+| Right-panel button | Shows or hides the right panel, which holds Checks, Attached, PR Checks and History. Hidden while Settings is open |
+| Go to / Run a command | Jump to a workspace, tab, project or setting, or run a command. It opens on Ctrl+Shift+P or Ctrl+Shift+J anywhere, and on Ctrl+K except in a terminal (where Ctrl+K clears the pane). The box shows the key that works from where you are |
+| Account switcher | Names the Claude and Codex accounts new panes use. Click it to pick another account for new panes; panes already running keep theirs. With no account added yet it leads to Settings, Accounts & keys |
 | Usage pill | Shows how much of your weekly AI allowance is left, for example "Claude 80% left". Click it to open Settings at Accounts & keys. Hover for the reset time |
 | Minimize, Maximize, Close | The usual window controls |
 
 The usage pill turns to a warning tint at 70% used and a danger tint above 90%. A Codex pill shows only when Codex is installed and you have added at least one Codex account. It reads "Codex N% left", or "Codex · sign in again" when its sign-in has lapsed. A pill shows only for an AI program that is installed and reports a weekly figure.
 
-In the Classic look (Settings, Appearance) the screen switcher is absent and the window stays on Terminals.
-
-Press Escape to leave a full page such as the Inbox.
+In the Classic look (Settings, Appearance) the screen switcher is absent.
 
 ### The Kolux menu
 
-Click the Kolux mark at the left end of the top bar (its tooltip says "Kolux menu"). A menu opens under it with the usual menu names. The window has no menu bar across the top, so this is where they live. Where a command has a keyboard shortcut, the menu shows it as a hint, and it follows any shortcut you change on the Shortcuts page.
+Click the Kolux mark at the left end of the top bar (its tooltip says "Kolux menu"). A menu opens under it with the usual menu names. The window has no menu bar across the top, so this is where they live. Where a command has a keyboard shortcut, the menu shows it as a hint, and it follows any key you change in your shortcuts file.
 
 | Menu | What is in it |
 |---|---|
 | File | **Settings...** opens Settings (Ctrl+, by default). **Exit** closes the window the way its close button does, which stops every terminal |
 | Edit | Undo, Redo, Cut, Copy, Paste, Select All. In a text box they act on the text. In a terminal pane only **Copy** (the selected text; nothing is copied when nothing is selected) and **Select All** work; Undo, Redo and Cut do nothing there. **Paste** does nothing yet from this menu: use Ctrl+V |
-| View | **Workspace View** has Agents, Board, Terminals, Tower and Floor with the current screen ticked (absent in the Classic look); Floor has no sidebar button, so this menu and the palette's **Show Floor** are its two ways in. **Appearance** has Toggle Left Sidebar, Toggle Right Sidebar and five ticks: Show Status Bar, Show Tasks Button, Show Automations Button, Show Skills Button and Show Titlebar App Name. Each tick matches its switch in [Settings](settings.md) and changes it. Then come Force Reload (Ctrl+Shift+R; the one reload, which asks about unsaved editor text first), Reset Interface Zoom, Zoom Interface In, Zoom Interface Out and Toggle Full Screen |
+| View | **Workspace View** has Terminals, ticked (absent in the Classic look). **Appearance** has Toggle Left Sidebar, Toggle Right Sidebar and two ticks: Show Status Bar and Show Titlebar App Name. Each tick matches its switch in [Settings](settings.md) and changes it. Then come Force Reload (Ctrl+Shift+R), Reset Interface Zoom, Zoom Interface In, Zoom Interface Out and Toggle Full Screen |
 | Window | Minimize, and Zoom (which maximizes the window) |
 | Help | Explore Kolux, Getting Started and Report Crash, then **About Kolux** (the version, Safe Graphics Mode and GPU status) and Check for Updates |
 
 The menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0) change the whole interface size, the same one as "Zoom: Interface size" in Settings, Appearance. Terminal text has one size for every terminal; set it under Settings > Terminal & sessions.
 
-## The views
-
-Use the screen switcher in the middle of the top bar.
-
-| View | Use it to |
-|---|---|
-| Agents | See one list of sessions grouped by agent, with the picked session beside it. See [Board, Agents and Inbox](board-agents-inbox.md) |
-| Board | See every session as a card in a lane: Needs you, Working, Done, Stopped, Idle. Approve or deny from the card |
-| Terminals | Work in the pane grid. The project sidebar shows only here (and on the Artifacts page). See [Terminals](terminals.md) |
-| Tower | See every agent at a glance on one full-width screen, the ones that need you first, with usage per AI provider across the top. One click opens a pane. See [Board, Agents and Inbox](board-agents-inbox.md) |
-
-The Board, Agents and Tower views list sessions from every workspace at once. The Terminals view shows the panes of one workspace.
-
 ## Add a project
 
-A project is a Git repository (a folder whose history Git tracks). In the sidebar, click the folder-plus button in the "Projects" header: "Add project". A dialog offers three choices. Arrow keys move between them, Enter takes one, Escape closes.
+A project is a Git repository (a folder whose history Git tracks). In the sidebar, click the folder-plus button in the "Folders" header: "Add project". A dialog offers three choices. Arrow keys move between them, Enter takes one, Escape closes.
 
 | Choice | What happens |
 |---|---|
@@ -140,7 +107,7 @@ More detail is in [Projects and folders](projects-and-worktrees.md).
 1. In the sidebar, press "New session" at the bottom. A menu opens with one row for each AI program Kolux found, then "Blank terminal", "Terminal…" and "Start agents…" (in the Classic look this row reads "Choose what to run…"). Picking an AI row starts that one agent in a new pane.
 2. To choose more, pick "Start agents…". The Start form opens. Under "Folders" tick the project folders to start in. Under "How many" pick how many agents open in each folder. Under "Which AI" pick the AI, its model and its effort; that one choice goes to every agent. "Make each one different" opens a row for each agent. Press Start (Ctrl+Enter also starts). In the Classic look this row opens a pane that asks the same questions.
 3. A pane opens for each agent and the agent starts. Type your request in the pane.
-4. Watch its status word in the pane header (Working, Needs you, Done). Press the bell to see every session that needs you.
+4. Watch its status word in the pane header (Working, Needs you, Done). Ctrl+J jumps to the next session that needs you. See [Status words](terminals.md#status-words).
 
 Other ways in: press Ctrl+T for a plain shell, or the pane header's plus for a menu of the AI programs Kolux found (Claude Code, Codex and Grok lead; the others sit behind "Show more agents").
 

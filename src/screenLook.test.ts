@@ -1,5 +1,5 @@
-// VIEW-006 / DT-C267: moving between screens. A screen may have a mode (light, dark) of its own; the look is
-// put on the window again only when the screen moved to paints in the other mode, never to change nothing.
+// VIEW-006 / DT-C267: moving between screens. The Terminals screen may have a mode (light, dark) of its own; the
+// look is put on the window again only when the screen moved to paints in the other mode, never to change nothing.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { applyAppearance, FIELD, forgetApplied, readAppearance, showScreen, TERMINAL_EVENT } from "./theme";
 
@@ -36,20 +36,14 @@ test("DT-C267: moving to a screen that paints in the same mode puts nothing on t
   expect(dataset.mode).toBe("dark");
 });
 
-test("VIEW-006: a screen with a mode of its own still repaints on the way in and on the way out", () => {
-  applyAppearance(readAppearance({ [FIELD.mode]: "dark", [FIELD.screens]: { board: "light" } }));
-  let before = state();
-  showScreen("board", false);
+test("VIEW-006: the Terminals screen's own mode paints the window, and no screen name moves it off that mode", () => {
+  // The Board and Agents screens and their own modes went on 2026-11-19: every screen counts as Terminals.
+  applyAppearance(readAppearance({ [FIELD.mode]: "dark", [FIELD.screens]: { terminals: "light", board: "dark" } }));
   expect(dataset.mode).toBe("light");
-  expect(sets).toBeGreaterThan(before[0]);
-  expect(events.length, "terminals and editors follow").toBe(before[2] + 1);
-  before = state();
-  showScreen("agents", false); // no mode of its own: the app's dark
-  expect(dataset.mode).toBe("dark");
-  expect(sets).toBeGreaterThan(before[0]);
-  before = state();
-  showScreen("terminals", false); // dark to dark: nothing
-  expect(state()).toEqual(before);
+  const before = state();
+  for (const screen of ["board", "agents", "terminals"]) showScreen(screen, false);
+  expect(state(), "nothing repainted").toEqual(before);
+  expect(dataset.mode).toBe("light");
 });
 
 test("VIEW-006: the Classic look ignores the Board's and Agents' own modes, so moving there repaints nothing", () => {
@@ -61,16 +55,13 @@ test("VIEW-006: the Classic look ignores the Board's and Agents' own modes, so m
   expect(dataset.mode).toBe("dark");
 });
 
-test("VIEW-006: a look applied while a light screen is in front paints light, and the next move back is the only repaint", () => {
+test("VIEW-006: a look applied while a removed screen's name is in front paints in the Terminals choice", () => {
   showScreen("board", false);
-  applyAppearance(readAppearance({ [FIELD.mode]: "dark", [FIELD.screens]: { board: "light" } }));
+  applyAppearance(readAppearance({ [FIELD.mode]: "dark", [FIELD.screens]: { terminals: "light" } }));
   expect(dataset.mode).toBe("light");
   const before = state();
-  showScreen("board", false);
-  expect(state(), "the same screen again").toEqual(before);
   showScreen("terminals", false);
-  expect(dataset.mode).toBe("dark");
-  expect(sets).toBeGreaterThan(before[0]);
+  expect(state(), "the same mode: nothing repainted").toEqual(before);
 });
 
 test("DT-C267: the same look put on again writes nothing; a changed look, or the same look on another root, is written", () => {

@@ -3,7 +3,7 @@ import { doneFrom, nextTip, type Facts } from "./guide";
 import { MOVED, movedHint, SPLIT_RETIRED, splitCredit } from "./moved";
 
 const before = MOVED[0].before;
-const facts: Facts = { workspaces: [], gitProjects: 0, integrations: null, cli: false, notifications: null, agent: null, setupScript: null };
+const facts: Facts = { workspaces: [], gitProjects: 0, cli: false, notifications: null, agent: null };
 const base = { seen: [] as string[], tried: [] as string[], cli: { installed: true, onPath: true } as never, onboarding: false };
 
 describe("the moved-control hint (ONB-042)", () => {

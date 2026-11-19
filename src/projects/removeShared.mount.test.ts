@@ -70,7 +70,7 @@ async function panel(extra: Record<string, unknown> = {}) {
   const props = {
     openDirs: ["C:/w/app", "C:/w/app-b", "C:/w/wt3"], sessions, states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
     activeDir: null, onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
-    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
+    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
     onRemovedAll: (paths: string[], staying?: string[]) => void h.closed.push([paths, staying]),
   };

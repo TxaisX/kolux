@@ -131,8 +131,9 @@ describe("the real repository (T-540)", () => {
     let boxes = 0;
     for (const c of r.cards.values()) boxes += c.boxes.length;
     // Was 2737 before the 2026-11-19 slim-down moved 114 P0 cards (and their boxes) to spec/21-retired-hidden.md; 1480 remained,
-    // and 1478 after the P2 card APP-019 (two boxes) was retired there too.
-    expect(boxes).toBeGreaterThanOrEqual(1478);
+    // and 1478 after the P2 card APP-019 (two boxes) was retired there too. The second wave took six more: the pop-out
+    // box of SET-001, the Tasks button box of SET-020, and the P2 cards SET-038 and GIT-044 (two boxes each), leaving 1472.
+    expect(boxes).toBeGreaterThanOrEqual(1472);
   });
   it("counts the P0 cards whose boxes are all ticked today (STAT-040, the one of the six the council found that the 2026-11-19 slim-down kept)", () => {
     for (const id of ["STAT-040"]) {

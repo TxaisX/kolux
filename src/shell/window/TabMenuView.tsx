@@ -88,8 +88,6 @@ export default function TabMenuView() {
             }}
           >
             <span className="name">{label}</span>
-            {/* C01-R4-01: the chord on `tab.closeAll` is the editor's close-all, so it no longer
-                stands for this row, which still closes every tab in the strip. */}
             {which === "one" && <Kbd id="tab.close" />}
           </button>
         ))}

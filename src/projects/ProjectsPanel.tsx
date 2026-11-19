@@ -96,9 +96,6 @@ import { projectsInGroup } from "./groupMembers";
 /** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
 
-/** The pages that open over the content column from the sidebar footer. */
-export type Page = never;
-
 type Props = {
   /** EDIT-041: bumped by Open in Code; the selected row is scrolled into sight once it is drawn. */
   reveal?: number;
@@ -143,9 +140,6 @@ type Props = {
   allOff?: boolean;
   pass?: AgentPass;
   onRefresh?: () => void;
-  /** Which page (Tasks) is open over the content column, if any. */
-  page: Page | null;
-  onPage: (page: Page) => void;
   /** Bump to reload the list after something outside the sidebar made a workspace. */
   refresh: number;
   /** Hands the window the project list and which project owns each workspace folder. */

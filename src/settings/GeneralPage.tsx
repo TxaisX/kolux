@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 import { screens } from "../chrome/TopBar";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
-import { NumberDraftField } from "./NumberDraftField";
 import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook, shownFirst, stripOn, type Look } from "./general";
 import { START_ASK_KEY, asksAtStart } from "../launch/startForm";
 import { askAgainPatch, skippedOf, skippedSentence } from "./confirmations";
 import { OUTBOUND } from "./outbound";
 import { requestFeedback } from "../feedback/request";
-import { DELAY, delayFromText, prefPatch, readEditorPrefs, type DiffView } from "./editorPrefs";
 import { addApp, addCustom, draftReady, moveApp, OPEN_IN_FIELD, presetsLeft, readOpenIn, removeApp, type OpenInApp } from "./openIn";
 import { alreadyListed, editApp } from "../open/openInEdit";
 import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy";
@@ -40,12 +38,11 @@ export function GeneralView({ settings, onSave }: { settings: Record<string, unk
         <span>Look</span>
         <Segmented<Look> label="Look" options={[{ id: "classic", label: "Classic" }, { id: "new", label: "New" }]} value={look} onPick={(v) => onSave({ [LOOK_FIELD]: v })} />
       </div>
-      <p className="conn-detail">New shows the redesigned screens with Agents, Board and Terminals in the top bar; Classic keeps the earlier layout.</p>
+      <p className="conn-detail">New shows the redesigned top bar; Classic keeps the earlier layout.</p>
       <div className="look-select">
         <span>Opens first</span>
-        <Segmented label="Opens first" options={screens} value={shownFirst(settings, classic)} off={classic ? ["agents"] : []} onPick={(v) => onSave({ [FIRST_FIELD]: v, [LAST_SCREEN_FIELD]: v })} />
+        <Segmented label="Opens first" options={screens} value={shownFirst(settings, classic)} onPick={(v) => onSave({ [FIRST_FIELD]: v, [LAST_SCREEN_FIELD]: v })} />
       </div>
-      {classic && <p className="conn-detail">Switch the look to New to open on Agents or Board.</p>}
       <label className="conn-switch">
         <input type="checkbox" aria-label="Ask what to open when Kolux starts" checked={asksAtStart(settings)} onChange={(e) => onSave({ [START_ASK_KEY]: e.target.checked })} />
         <span>Ask what to open when Kolux starts: which folders, how many agents and which AI. Off starts with an empty window.</span>
@@ -125,44 +122,6 @@ function Confirmations({ settings, onSave }: { settings: Record<string, unknown>
       </button>
     </section>
   );
-}
-
-/** SET-038: editor and diff preferences; the built-in editor and the diff views follow them. */
-function EditorCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => Promise<boolean> }) {
-  const p = readEditorPrefs(settings);
-  const box = (key: "autoSave" | "minimap" | "wordWrap" | "spellcheck" | "diffWordWrap" | "diffWhitespace" | "diffTree", label: string) => (
-    <label className="conn-switch">
-      <input type="checkbox" role="switch" aria-label={label} checked={p[key]} onChange={(e) => onSave(prefPatch(key, e.target.checked))} />
-      <span>{label}</span>
-    </label>
-  );
-  return (
-    <section className="conn-card" data-section="editor">
-      <h2 className="conn-name">Editor and diffs</h2>
-      {box("autoSave", "Save files by themselves after typing stops")}
-      {p.autoSave && (
-        <label className="look-select">
-          <span>Wait before saving (ms)</span>
-          <DelayField value={p.autoSaveDelay} onSave={(v) => onSave(prefPatch("autoSaveDelay", v))} />
-        </label>
-      )}
-      {box("minimap", "Minimap beside the editor")}
-      {box("wordWrap", "Word wrap in the editor")}
-      {box("spellcheck", "Spellcheck in rich markdown")}
-      <div className="look-select">
-        <span>Diffs open</span>
-        <Segmented<DiffView> label="Diffs open" options={[{ id: "inline", label: "Inline" }, { id: "split", label: "Side by side" }]} value={p.diffView} onPick={(v) => onSave(prefPatch("diffView", v))} />
-      </div>
-      {box("diffWordWrap", "Word wrap in diffs")}
-      {box("diffWhitespace", "Show changes made only of whitespace")}
-      {box("diffTree", "File tree beside the combined diff")}
-    </section>
-  );
-}
-
-/** The auto-save delay box: the typed text stays as typed (so 3000 can be entered digit by digit). A pause saves only a finished delay in range; leaving the box clamps and saves what is there (SET-036). */
-function DelayField({ value, onSave }: { value: number; onSave: (v: number) => Promise<boolean> }) {
-  return <NumberDraftField value={value} parse={delayFromText} onSave={onSave} label="Auto-save delay" min={DELAY.min} max={DELAY.max} step={100} />;
 }
 
 /** SET-039: the apps every Open in menu lists, from presets or by name and command. */
@@ -315,7 +274,6 @@ export default function GeneralPage() {
       <SettingsError error={error} loaded={settings !== null} onRetry={retry} />
       {settings && <GeneralView settings={settings} onSave={save} />}
       {settings && <Confirmations settings={settings} onSave={save} />}
-      {settings && <EditorCard settings={settings} onSave={save} />}
       {settings && <OpenInCard settings={settings} onSave={save} />}
       {settings && <ProxyCard settings={settings} onSave={save} />}
       {settings && <ExperimentalCard settings={settings} onSave={save} />}

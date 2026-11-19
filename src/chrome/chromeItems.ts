@@ -1,16 +1,11 @@
 // SET-020: what the window chrome shows, kept in the settings file as booleans. DT-A6: the app name
-// is off by default (DESIGN.md draws it nowhere) and the Automations button and the sidebar's Automations row (AUTO-023) stay on until the
-// command palette gives Automations a second way in. One switch per item: `automationsButton` is
-// both SET-020's Automations button and VIEW-011's title-bar button (title bar and sidebar alike).
+// is off by default (DESIGN.md draws it nowhere). The Tasks, Automations and Skills buttons went with
+// their screens in the 2026-11-19 slim-down; a saved switch for one of them is ignored.
 import { readStatusBar, STATUS_ITEMS } from "./statusItems";
 import type { Screen } from "./TopBar";
 
 export const CHROME = [
   { id: "titleBarAppName", label: "Show app name in the title bar", short: "App name", dflt: false },
-  { id: "tasksButton", label: "Show Tasks button", short: "Tasks", dflt: true },
-  { id: "automationsButton", label: "Show Automations row in the sidebar", short: "Automations", dflt: true },
-  // SKILL-018: hidden on a fresh install; this switch is the way to turn it on (SKILL-019 cut the Skills section).
-  { id: "skillsButton", label: "Show Skills button in the sidebar", short: "Skills", dflt: false },
 ] as const;
 export type ChromeItem = (typeof CHROME)[number]["id"];
 
@@ -50,7 +45,7 @@ export function toAccelerator(chord: string | undefined): string {
   return [...parts.map((m) => MENU_MOD[m]), key].join("+");
 }
 
-export type MenuBarState = { screen: string; statusBarVisible: boolean; tasksButton: boolean; automationsButton: boolean; skillsButton: boolean; titleBarAppName: boolean; classic: boolean; accelerators: Record<string, string> };
+export type MenuBarState = { screen: string; statusBarVisible: boolean; titleBarAppName: boolean; classic: boolean; accelerators: Record<string, string> };
 
 /** `chords(id)`: the keymap's chords for an action, first one shown (empty when unbound). `classic`:
  * the Classic look, whose View menu has no Workspace View (T-049-b). Zoom shows the interface zoom keys
@@ -59,16 +54,12 @@ export function menuBarState(s: Record<string, unknown>, screen: string, chords:
   return {
     screen,
     statusBarVisible: readStatusBar(s).visible,
-    tasksButton: chromeShown(s, "tasksButton"),
-    automationsButton: chromeShown(s, "automationsButton"),
-    skillsButton: chromeShown(s, "skillsButton"),
     titleBarAppName: chromeShown(s, "titleBarAppName"),
     classic,
     accelerators: Object.fromEntries(MENU_SHORTCUT_IDS.map((id) => [id, toAccelerator(chords(HINT_FROM[id] ?? id)?.[0])])),
   };
 }
 
-/** A menu tick box was clicked: the settings field it flips and the value to save, or null. */
 /** APP-009 Edit on Windows and Linux: what an edit.* menu click does. A focused text field outside a
  * terminal takes the page's own command. Otherwise only Copy and Select All go to the focused
  * terminal, as calls and never as a key press, so a rebound chord or an empty selection can't reach the
@@ -82,13 +73,15 @@ export function menuEdit(id: string, inField: boolean): MenuEdit {
   return op === "copy" || op === "selectAll" ? { terminal: op } : null;
 }
 
+/** A menu tick box was clicked (Show Status Bar, Show Titlebar App Name): the settings field it flips and
+ *  the value to save, or null. */
 export function menuSettingFlip(s: Record<string, unknown>, id: string): [string, boolean] | null {
   if (id === "set.statusBarVisible") return ["statusBarVisible", !readStatusBar(s).visible];
   const item = CHROME.find((c) => `set.${c.id}` === id);
   return item ? [item.id, !chromeShown(s, item.id)] : null;
 }
 
-/** The screens View > Workspace View lists (menu.rs SCREENS): the switcher's one. */
+/** The screens View > Workspace View lists (menu.rs SCREENS): the switcher's one, Terminals. */
 const MENU_SCREENS: readonly Screen[] = ["terminals"];
 /** A Workspace View pick: the screen it shows, or null for any other item. */
 export function menuScreen(id: string): Screen | null {

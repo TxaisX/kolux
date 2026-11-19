@@ -1,7 +1,7 @@
 // ONB-016 / ONB-018: the action panel of a selected Setup Guide step. Multi-task opens the
 // new-workspace composer with a short tour, notifications offers sound choices (and on macOS a
 // permission card), the default-agent step shows an agent picker with a fold-out list of fallback
-// agents, and the setup-script step offers to automate workspace setup. The rules are in actions.ts.
+// agents. The rules are in actions.ts.
 import { useContext, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "../settings/useSettings";
@@ -16,8 +16,8 @@ import {
   type Hands, type Proj,
 } from "./actions";
 import { markGuide, type GuideRecord, type Place } from "./guide";
-import { awakeToggle, stopCard, STOP_SKILLS, writerBack } from "./stopCards";
-import { SkillStop, UsageStop } from "./LiveStopCards";
+import { awakeToggle, stopCard, writerBack } from "./stopCards";
+import { UsageStop } from "./LiveStopCards";
 import { AWAKE_KEY, HOOKS_OFF_STOP } from "../launch/KeepAwakeCard";
 import { WRITER_INSTRUCTIONS_KEY, WRITER_KEY } from "../scm/generate";
 import { integrationSteps, readSeenCached, restale, taskSummary, UNSEEN, type Seen } from "./integrations";
@@ -235,40 +235,6 @@ export function AgentPanel() {
   );
 }
 
-const SNIPPET = "scripts:\n  setup: pnpm install\n";
-
-export function AutomatePanel({ onCheck }: { onCheck: () => void }) {
-  const [copied, setCopied] = useState<boolean | null>(null);
-  const box = useRef<HTMLPreElement>(null);
-  const copy = () =>
-    navigator.clipboard.writeText(SNIPPET).then(
-      () => setCopied(true),
-      () => {
-        setCopied(false);
-        const sel = window.getSelection();
-        if (box.current && sel) sel.selectAllChildren(box.current);
-      },
-    );
-  return (
-    <>
-      <p className="guide-note">
-        Put a setup script in a file called <code>kolux.yaml</code> at the top of your repository. Every new workspace runs it before an agent starts.
-      </p>
-      <pre ref={box} className="guide-code">{SNIPPET}</pre>
-      <div className="btn-row">
-        <button className="btn" onClick={() => void copy()}>
-          Copy the example
-        </button>
-        <button className="btn" onClick={onCheck}>
-          Re-check
-        </button>
-        {copied === true && <span className="hint">Copied</span>}
-        {copied === false && <span className="hint">Copy failed; the example is selected, press Ctrl+C</span>}
-      </div>
-    </>
-  );
-}
-
 /** ONB-018: Connect integrations. Two steps, review first; the task step waits behind it (folded, but
  *  openable) and folds into a one-line summary once GitHub answers. Re-check makes the old answers stale. */
 export function IntegrationsPanel({ onCheck }: { onCheck: () => void }) {
@@ -315,8 +281,8 @@ export function IntegrationsPanel({ onCheck }: { onCheck: () => void }) {
   );
 }
 
-/** ONB-024: the setup an Explore Kolux stop carries, right on the stop. Usage and the skill stops
- *  (orchestration) read live facts, so they are their own components (LiveStopCards.tsx). */
+/** ONB-024: the setup an Explore Kolux stop carries, right on the stop. Usage reads live facts, so it is its
+ *  own component (LiveStopCards.tsx). */
 export function StopSetup({ stop, taskSource }: { stop: string; taskSource: boolean | null }) {
   const { settings, save, error } = useSettings();
   // The writer mode the switch had before it was turned off, so turning it on again puts that back.
@@ -324,7 +290,6 @@ export function StopSetup({ stop, taskSource }: { stop: string; taskSource: bool
   // The settings cards draw nothing until the saved settings have arrived (stopCard), so a switch or box
   // is never built from a guessed default and written back over what is saved.
   if (stop === "usage") return <UsageStop />;
-  if (STOP_SKILLS[stop]) return <SkillStop stop={stop} />;
   const card = stopCard(stop, { taskSource, settings });
   if (!card) return null;
   if (card.kind !== "provider" && card.kind !== "awake" && card.kind !== "writer") return null;

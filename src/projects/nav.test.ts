@@ -15,13 +15,13 @@ test("next and previous wrap, a number picks a row", () => {
   expect(navTarget(0, -1, { step: 1 })).toBeNull();
 });
 
-const a: Place = { dir: "C:/a", page: null };
-const b: Place = { dir: "C:/b", page: null };
-const c: Place = { dir: "C:/c", page: null };
+const a: Place = { dir: "C:/a" };
+const b: Place = { dir: "C:/b" };
+const c: Place = { dir: "C:/c" };
 
 test("history keeps a place once at its newest visit and drops what was ahead", () => {
   let h = [a, b, c].reduce(visit, EMPTY_HISTORY);
-  expect(visit(h, { dir: "c:/C/", page: null })).toBe(h);
+  expect(visit(h, { dir: "c:/C/" })).toBe(h);
   h = visit(h, a);
   expect(h.list).toEqual([b, c, a]);
   h = { ...h, at: 0 };

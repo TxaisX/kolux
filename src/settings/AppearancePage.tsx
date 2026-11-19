@@ -232,7 +232,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
         </div>
         {custom && <p className="conn-detail" data-note="custom-mode">A custom theme sets its own light or dark look, so these are off while it is on.</p>}
         {look.mode === "system" && <p className="conn-detail">Follows Windows, also while Kolux is running.</p>}
-        {/* VIEW-006: one of the three workspace screens can paint in its own mode. */}
+        {/* VIEW-006: the Terminals screen can paint in its own mode (the Agents and Board screens went on 2026-11-19). */}
         {THEMED_SCREENS.map((s) => (
           <div key={s} className="look-select" data-screen-theme={s}>
             <span>{s[0].toUpperCase() + s.slice(1)} screen</span>
@@ -248,7 +248,6 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
             />
           </div>
         ))}
-        <p className="conn-detail">Inbox and Artifacts follow the Terminals screen. The classic look uses the Terminals choice everywhere.</p>
       </section>
       <ZoomControl />
       {languagePart}
@@ -288,14 +287,13 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
       <section className="conn-card" data-section="fonts">
         <h2 className="conn-name">Fonts</h2>
         <FontField label="App font" value={look.appFont} placeholder={`Default (${firstFamily(uiFont)})`} onPick={(appFont) => onChange({ ...look, appFont })} />
-        <FontField label="Editor font" value={look.editorFont} placeholder="Same as the terminal font" onPick={(editorFont) => onChange({ ...look, editorFont })} />
-        <p className="conn-detail">Leave a field empty for the default. A font that is not installed falls back to the default, so text always shows.</p>
+        <p className="conn-detail">Leave the field empty for the default. A font that is not installed falls back to the default, so text always shows.</p>
       </section>
       </Fold>
       <Fold id="terminal" title="Terminal" summary={[look.termFont || firstFamily(monoFont), `${look.termSize} pt`, look.lightTerminal ? `${name(look.terminal)} / ${name(look.lightScheme)}` : name(look.terminal)].join(" · ")} {...fold("terminal")}>
       <section className="conn-card" data-section="terminal-font">
         <h2 className="conn-name">Terminal font</h2>
-        {/* TERM-097: every pane and, unless it has its own font, the editor redraw with these. */}
+        {/* TERM-097: every pane redraws with these. */}
         <FontField label="Terminal font" word="Font" value={look.termFont} placeholder={`Default (${firstFamily(monoFont)})`} onPick={(termFont) => onChange({ ...look, termFont })} />
         <label className="look-slider">
           <span>Size</span>
@@ -508,7 +506,7 @@ function TerminalColours({ look, onChange }: { look: Appearance; onChange: (a: A
   );
 }
 
-/** USAGE-025: how plan usage percentages read. Only the Agents screen's usage footer follows it. */
+/** USAGE-025: how usage percentages read. A pane header's context reading follows it (the Agents screen it also set went on 2026-11-19). */
 export function UsagePercentPick({ value, onPick }: { value: PercentMode; onPick: (v: PercentMode) => void }) {
   return (
     <>
@@ -519,12 +517,12 @@ export function UsagePercentPick({ value, onPick }: { value: PercentMode; onPick
           <option value="remaining">Remaining</option>
         </select>
       </div>
-      <p className="conn-detail">How the Agents screen's usage footer reads plan use; the top bar always shows what is left.</p>
+      <p className="conn-detail">How a pane header's context reading counts; the top bar always shows what is left.</p>
     </>
   );
 }
 
-/** SET-020: the app name, the Tasks and Automations buttons, and the status bar with its items.
+/** SET-020: the app name and the status bar with its items.
  *  VIEW-096: a status bar hidden from its right-click menu comes back here. */
 function WindowSwitches({ settings, error, save }: ReturnType<typeof useSettings>) {
   if (!settings) return null;
@@ -535,7 +533,7 @@ function WindowSwitches({ settings, error, save }: ReturnType<typeof useSettings
         <CardDensityBody settings={settings} save={(p) => void save(p)} />
       </section>
       <section className="conn-card" data-section="window-items">
-        <h2 className="conn-name">Title bar and sidebar</h2>
+        <h2 className="conn-name">Title bar</h2>
         {CHROME.map((c) => (
           <label key={c.id} className="conn-switch">
             <input type="checkbox" role="switch" checked={chromeShown(settings, c.id)} onChange={(e) => void save({ [c.id]: e.target.checked })} />
