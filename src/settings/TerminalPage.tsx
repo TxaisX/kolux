@@ -22,7 +22,6 @@ import { detectPlatform } from "../keys/keymap";
 import { readLook } from "./general";
 import { useSearching } from "./search";
 import { NumberField } from "./NumberField";
-import TerminalImport from "./TerminalImport";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
 import { DENSITIES, DENSITY_FIELD, readDensity } from "../shell/paneChrome";
@@ -208,7 +207,6 @@ export default function TerminalPage() {
           <Switch label="Right-click pastes (or copies the selection)" checked={text.rightClickPaste} onChange={(on) => save({ [FIELDS.rightClickPaste]: on })} />
         </section>
       )}
-      {settings && <TerminalImport settings={settings} save={save} />}
       {settings && <InputCard settings={settings} platform={platform} onSave={save} />}
       {settings && <NativeTerminalCard settings={settings} platform={platform} onSave={save} />}
       {settings && shells && (
