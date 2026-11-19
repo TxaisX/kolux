@@ -142,12 +142,12 @@ fn folder_text(s: String) -> String {
 
 /// For display and lookup only: an unreadable list shows empty (after being kept aside).
 pub fn load_projects(store: &Store) -> Vec<Project> {
-    crate::orchestration::kept::or_default(store, PROJECTS_KEY)
+    crate::state::kept::or_default(store, PROJECTS_KEY)
 }
 
 /// The list a save starts from (row 895): a store or copy that fails is an error, never an empty list.
 pub(crate) fn load_projects_for_write(store: &Store) -> Result<Vec<Project>, String> {
-    crate::orchestration::kept::load(store, PROJECTS_KEY)
+    crate::state::kept::load(store, PROJECTS_KEY)
 }
 
 pub(crate) fn save_projects(store: &Store, projects: &[Project]) -> Result<(), String> {

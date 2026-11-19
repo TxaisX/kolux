@@ -210,7 +210,7 @@ pub fn write_setting(store: &Store, key: &str, plain: &str) -> Result<(), String
     check_api_key(key, plain)?;
     let sealed = seal(plain).map_err(|e| format!("{e}; nothing was saved"))?;
     // Card 13: the reconnect note is read first, so a note that cannot be kept aside refuses before the key is stored.
-    let mut left: Vec<String> = crate::orchestration::kept::load(store, DROPPED_KEY).map_err(|e| format!("{e}; nothing was saved"))?;
+    let mut left: Vec<String> = crate::state::kept::load(store, DROPPED_KEY).map_err(|e| format!("{e}; nothing was saved"))?;
     let mut settings = store.settings();
     if !settings.is_object() {
         settings = serde_json::json!({});
@@ -244,7 +244,7 @@ pub fn drop_unreadable(store: &Store, dir: &Path) -> Vec<String> {
         return Vec::new();
     }
     // Card 13: the note is read before anything is cleared, so a note that cannot be kept aside leaves the keys sealed as they are.
-    let mut all: Vec<String> = match crate::orchestration::kept::load(store, DROPPED_KEY) {
+    let mut all: Vec<String> = match crate::state::kept::load(store, DROPPED_KEY) {
         Ok(all) => all,
         Err(e) => {
             log(dir, &format!("secrets: {e}; keys that cannot be opened are left as they are"));
@@ -270,12 +270,12 @@ pub fn drop_unreadable(store: &Store, dir: &Path) -> Vec<String> {
 
 /// ACCT-010: the secret fields waiting for a reconnect, for the note in the main window.
 pub fn dropped(store: &Store) -> Vec<String> {
-    crate::orchestration::kept::or_default(store, DROPPED_KEY)
+    crate::state::kept::or_default(store, DROPPED_KEY)
 }
 
 pub fn dismiss_dropped(store: &Store) -> Result<(), String> {
     // Read first: a blob that cannot be kept aside fails the dismiss rather than being overwritten blind.
-    crate::orchestration::kept::load::<Vec<String>>(store, DROPPED_KEY)?;
+    crate::state::kept::load::<Vec<String>>(store, DROPPED_KEY)?;
     store.set(DROPPED_KEY, "[]").map_err(|e| e.to_string())
 }
 
@@ -681,7 +681,7 @@ mod tests {
         let mut s = store.settings();
         s["claudeOauthToken"] = Value::String(format!("{PREFIX}AAAA"));
         store.save_settings(&s).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert!(drop_unreadable(&store, &dir).is_empty(), "nothing is cleared while the note cannot be read");
         assert_eq!(store.settings()["claudeOauthToken"].as_str(), Some(format!("{PREFIX}AAAA").as_str()), "the key stays as it was");
         let err = write_setting(&store, "xaiApiKey", "xai-NEW").unwrap_err();
@@ -697,7 +697,7 @@ mod tests {
         let dir = temp_dir("note-display");
         let store = Store::open(&dir).unwrap();
         store.set(DROPPED_KEY, "[\"xaiApiKey\"]").unwrap();
-        let side = crate::orchestration::kept::Unreadable::new(&dir);
+        let side = crate::state::kept::Unreadable::new(&dir);
         assert!(dropped(&store).is_empty(), "the display falls back to nothing");
         side.restore();
         write_setting(&store, "xaiApiKey", "xai-NEW").unwrap();
@@ -713,7 +713,7 @@ mod tests {
         let store = Store::open(&dir).unwrap();
         let broken = "[\"claudeOauthTok";
         store.set(DROPPED_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         let err = dismiss_dropped(&store).unwrap_err();
         assert!(err.contains(DROPPED_KEY), "{err}");
         assert_eq!(store.get(DROPPED_KEY).unwrap().as_deref(), Some(broken), "the note blob is byte-identical");

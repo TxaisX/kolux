@@ -38,7 +38,7 @@ fn none_finished() -> i32 {
 }
 
 fn raw(store: &Store) -> Option<Onboarding> {
-    crate::orchestration::kept::or_default::<Option<Onboarding>>(store, KEY)
+    crate::state::kept::or_default::<Option<Onboarding>>(store, KEY)
 }
 
 /// ONB-008 (T-208-c): the version that had a view-choice screen after the welcome. Coordinator
@@ -81,7 +81,7 @@ fn load(store: &Store) -> Option<Onboarding> {
 
 /// Card 13: the record a save starts from; a store or copy that fails is an error, never "no record".
 fn try_raw(store: &Store) -> Result<Option<Onboarding>, String> {
-    crate::orchestration::kept::load(store, KEY)
+    crate::state::kept::load(store, KEY)
 }
 
 fn try_load(store: &Store) -> Result<Option<Onboarding>, String> {
@@ -292,12 +292,12 @@ fn known(v: Vec<String>, ids: &[&str]) -> Vec<String> {
 
 /// The stored record; tips this build no longer knows are dropped and each tip counts once.
 fn guide_load(store: &Store) -> Guide {
-    known_only(crate::orchestration::kept::or_default(store, GUIDE))
+    known_only(crate::state::kept::or_default(store, GUIDE))
 }
 
 /// Card 13: the record a save starts from; a store or copy that fails is an error, never an empty guide.
 fn try_guide_load(store: &Store) -> Result<Guide, String> {
-    Ok(known_only(crate::orchestration::kept::load(store, GUIDE)?))
+    Ok(known_only(crate::state::kept::load(store, GUIDE)?))
 }
 
 fn known_only(mut g: Guide) -> Guide {
@@ -909,7 +909,7 @@ mod tests {
         let (s, dir) = store("c13");
         let broken = "{\"version\": 3, \"step\": 2";
         s.set(KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert_eq!(first_start(&s, 1), Ok(()), "startup never fails on an unreadable record");
         assert_eq!(s.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");
         drop(s);
@@ -921,7 +921,7 @@ mod tests {
         let (s, dir) = store("c13b-tours");
         let broken = "{\"toursSeen\": [\"x\"";
         s.set(GUIDE, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         let g = tours_read(&s).unwrap();
         assert_eq!(g.tours_auto, Some(false), "no record: no wizard showing, so no automatic tours");
         assert_eq!(s.get(GUIDE).unwrap().as_deref(), Some(broken), "the blob is byte-identical");
@@ -975,7 +975,7 @@ mod tests {
         assert!(load(&s).is_some_and(|r| r.closed_at.is_none()), "a new profile with its wizard showing");
         let broken = "{\"toursSeen\": [\"x\"";
         s.set(GUIDE, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert_eq!(tours_read(&s).unwrap().tours_auto, Some(false), "a damaged guide never nags");
         assert_eq!(tours_read(&s).unwrap().tours_auto, Some(false), "and not on the next launch either");
         assert!(guide_mark_in(&s, "toursSeen", TOURS[0]).is_err(), "marking a tour seen is refused, without a panic");

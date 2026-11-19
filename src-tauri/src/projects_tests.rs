@@ -3713,7 +3713,7 @@ fn row882_a_refused_flag_or_setup_read_leaves_the_project_listed() {
     let project = project_at("p882", &profile);
     save_projects(&store, std::slice::from_ref(&project)).unwrap();
     store.set("folderProjects", "[1,2").unwrap(); // does not read, so it must be kept aside first
-    crate::orchestration::kept::refuse_copies(&profile); // and the store refuses that copy
+    crate::state::kept::refuse_copies(&profile); // and the store refuses that copy
     assert!(forget_projects(&store, std::slice::from_ref(&project.id)).is_err());
     assert_eq!(load_projects(&store).len(), 1, "the project is still listed");
     assert_eq!(store.get("folderProjects").unwrap().as_deref(), Some("[1,2"), "the flags are untouched");
@@ -3761,7 +3761,7 @@ fn row882_a_refused_setup_read_leaves_the_project_listed() {
     save_projects(&store, std::slice::from_ref(&project)).unwrap();
     store.set("setupCardDismissed", r#"["keep"]"#).unwrap();
     store.set("localSetups", "{not json").unwrap();
-    crate::orchestration::kept::refuse_copies(&profile);
+    crate::state::kept::refuse_copies(&profile);
     assert!(forget_projects(&store, std::slice::from_ref(&project.id)).is_err());
     assert_eq!(load_projects(&store).len(), 1, "the project is still listed");
     assert_eq!(store.get("localSetups").unwrap().as_deref(), Some("{not json"), "the saved setups are untouched");
@@ -3770,7 +3770,7 @@ fn row882_a_refused_setup_read_leaves_the_project_listed() {
     conn.execute_batch("DROP TRIGGER no_copies;").unwrap();
     forget_projects(&store, std::slice::from_ref(&project.id)).unwrap();
     assert!(load_projects(&store).is_empty(), "a retry finishes the job");
-    assert_eq!(crate::orchestration::kept::asides(&store, "localSetups"), vec!["{not json".to_string()], "the unreadable blob was kept aside byte for byte on the retry");
+    assert_eq!(crate::state::kept::asides(&store, "localSetups"), vec!["{not json".to_string()], "the unreadable blob was kept aside byte for byte on the retry");
     store.set("localSetups", "{}").unwrap();
     drop(conn);
     drop(store);
@@ -3786,7 +3786,7 @@ fn broken_list_store(tag: &str, refuse_copy: bool) -> (Store, PathBuf) {
     let store = Store::open(&profile).unwrap();
     store.set("projects", BROKEN_LIST).unwrap();
     if refuse_copy {
-        crate::orchestration::kept::refuse_copies(&profile);
+        crate::state::kept::refuse_copies(&profile);
     }
     (store, profile)
 }
@@ -3808,7 +3808,7 @@ fn row895_forget_refuses_when_the_project_list_does_not_read_and_cannot_be_kept_
 fn row895_forget_keeps_an_unreadable_list_aside_before_it_saves() {
     let (store, profile) = broken_list_store("row895-aside", false);
     forget_projects(&store, &["keep-1".to_string()]).unwrap();
-    assert_eq!(crate::orchestration::kept::asides(&store, "projects"), vec![BROKEN_LIST.to_string()], "the unreadable list survives under a corrupt- name");
+    assert_eq!(crate::state::kept::asides(&store, "projects"), vec![BROKEN_LIST.to_string()], "the unreadable list survives under a corrupt- name");
     assert_eq!(store.get("projects").unwrap().as_deref(), Some("[]"), "the key starts fresh once the copy is safe");
     drop(store);
     let _ = fs::remove_dir_all(profile);

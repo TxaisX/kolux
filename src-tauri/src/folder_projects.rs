@@ -16,12 +16,12 @@ use tauri::State;
 const FOLDERS_KEY: &str = "folderProjects";
 
 fn folder_ids(store: &Store) -> Vec<String> {
-    crate::orchestration::kept::or_default(store, FOLDERS_KEY)
+    crate::state::kept::or_default(store, FOLDERS_KEY)
 }
 
 /// Card 13: the list a save starts from; a store or copy that fails is an error, never an empty list.
 fn ids_to_change(store: &Store) -> Result<Vec<String>, String> {
-    crate::orchestration::kept::load(store, FOLDERS_KEY)
+    crate::state::kept::load(store, FOLDERS_KEY)
 }
 
 fn put_ids(store: &Store, ids: &[String]) -> Result<(), String> {
@@ -646,7 +646,7 @@ mod tests {
         let store = store(&base);
         let list = r#"[{"id":"keep-1","name":"keep","path":"C:/keep"},{"id":"ke"#;
         store.set("projects", list).unwrap();
-        crate::orchestration::kept::refuse_copies(&base.join("db"));
+        crate::state::kept::refuse_copies(&base.join("db"));
         let folder = base.join("notes");
         fs::create_dir_all(&folder).unwrap();
         let err = add_folder(&store, &folder).unwrap_err();
@@ -662,7 +662,7 @@ mod tests {
         let store = store(&base);
         let broken = "[\"p-1\", \"p-2\"";
         store.set(FOLDERS_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&base.join("db"));
+        crate::state::kept::refuse_copies(&base.join("db"));
         let folder = base.join("notes");
         fs::create_dir_all(&folder).unwrap();
         let err = add_folder(&store, &folder).unwrap_err();

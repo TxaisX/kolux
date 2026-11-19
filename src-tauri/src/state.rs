@@ -6,6 +6,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+/// Row 193: a saved blob that no longer reads is kept aside, never saved over.
+pub mod kept;
+
 /// What `Store::keep_aside` did; only `Done` wrote anything.
 #[derive(Debug, PartialEq, Eq)]
 pub enum KeepAside {

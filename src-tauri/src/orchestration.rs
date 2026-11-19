@@ -17,8 +17,6 @@ pub mod setup_gate;
 pub mod restart;
 /// ORCH-034 (T-173-c): the orchestration store upgrades in place from every earlier layout of its own.
 pub mod upgrade;
-/// Row 193: a saved blob that no longer reads is kept aside, never saved over.
-pub mod kept;
 /// ORCH-062..064 (T-312): the runtime commands agents call for files, git and GitHub, past sessions
 /// and automations.
 pub mod runtime;
@@ -927,7 +925,7 @@ pub fn labels_by_terminal(tasks: &[Value], dispatches: &[Value]) -> Value {
 #[tauri::command]
 pub fn worker_labels(store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>) -> Result<Value, String> {
     let store = store.lock().map_err(|e| e.to_string())?;
-    let load = |k: &str| kept::load::<Vec<Value>>(&store, k);
+    let load = |k: &str| crate::state::kept::load::<Vec<Value>>(&store, k);
     Ok(labels_by_terminal(&load(TASKS_KEY)?, &load(DISPATCHES_KEY)?))
 }
 
@@ -949,7 +947,7 @@ impl Mail {
     /// The saved mail. A blob that does not read is kept aside first (row 193, `kept`); a store that
     /// cannot be read at all loads empty but marked `unread`, so it is never saved over.
     pub fn load(store: &crate::state::Store) -> Mail {
-        kept::load(store, KEY).unwrap_or_else(|why| {
+        crate::state::kept::load(store, KEY).unwrap_or_else(|why| {
             eprintln!("kolux: {why}");
             Mail { unread: true, ..Mail::default() }
         })

@@ -418,7 +418,7 @@ pub fn checks_failed(seen: &mut std::collections::HashMap<String, String>, polle
 
 /// AUTO-004 (T-085-d): one round's checks readings through the saved state; returns what to fire.
 pub fn checks_round(store: &Store, polled: &[crate::scm::PolledPr], checks: &std::collections::HashMap<String, String>) -> Result<Vec<(String, crate::scm::Pr)>, String> {
-    let mut seen: std::collections::HashMap<String, String> = crate::orchestration::kept::load(store, CHECKS_SEEN_KEY)?;
+    let mut seen: std::collections::HashMap<String, String> = crate::state::kept::load(store, CHECKS_SEEN_KEY)?;
     let before = seen.clone();
     let fired = checks_failed(&mut seen, polled, checks);
     if seen != before {
@@ -1915,7 +1915,7 @@ mod tests {
         let mut next = polled("C:/a", Some("OPEN"));
         next.pr.as_mut().unwrap().number = 8;
         assert!(checks_round(&store, &[next], &checked(&[("C:/a", "failing")])).unwrap().is_empty());
-        assert_eq!(crate::orchestration::kept::load::<std::collections::HashMap<String, String>>(&store, CHECKS_SEEN_KEY).unwrap().len(), 1);
+        assert_eq!(crate::state::kept::load::<std::collections::HashMap<String, String>>(&store, CHECKS_SEEN_KEY).unwrap().len(), 1);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -3261,7 +3261,7 @@ mod tests {
         let store = Store::open(&db).unwrap();
         let broken = "{\"c:/a#1\": \"running";
         store.set(CHECKS_SEEN_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&db);
+        crate::state::kept::refuse_copies(&db);
         let open = [polled("C:/a", Some("OPEN"))];
         let err = checks_round(&store, &open, &checked(&[("C:/a", "failing")])).unwrap_err();
         assert!(err.contains(CHECKS_SEEN_KEY), "{err}");

@@ -77,7 +77,7 @@ impl Receipts {
 
     /// For a writer: a store that cannot be read or kept aside is an Err, never an empty list.
     pub fn try_load(store: &crate::state::Store) -> Result<Receipts, String> {
-        let items: Vec<Value> = crate::orchestration::kept::load(store, KEY)?;
+        let items: Vec<Value> = crate::state::kept::load(store, KEY)?;
         Ok(Receipts { items: items.into_iter().filter_map(|v| Some((v["key"].as_str()?.to_string(), v["at"].as_u64()?, v["receipt"].clone()))).collect() })
     }
 
@@ -664,7 +664,7 @@ mod tests {
         let store = crate::state::Store::open(&dir).unwrap();
         let broken = "[{\"key\": \"term-1|r\", \"at\": 5";
         store.set(KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert!(Receipts::try_load(&store).unwrap_err().contains(KEY));
         assert!(Receipts::load(&store).is_empty(), "a read still answers");
         assert_eq!(store.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");

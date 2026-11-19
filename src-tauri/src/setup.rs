@@ -496,7 +496,7 @@ pub fn trust_grant(store: &crate::state::Store, root: &Path, kind: &str, script:
     kind_ok(kind)?;
     let project = trust_project(store, root)?;
     let key = format!("{TRUST_PREFIX}{}", project.id);
-    let mut trust: Trust = crate::orchestration::kept::load(store, &key)?;
+    let mut trust: Trust = crate::state::kept::load(store, &key)?;
     trust.scripts.insert(kind.into(), fingerprint(script));
     trust.all |= always;
     store.set(&key, &serde_json::to_string(&trust).map_err(|e| e.to_string())?).map_err(|e| format!("Kolux could not save the trust ({e})"))
@@ -862,7 +862,7 @@ fn ignores_local(policy: Option<&str>) -> bool {
 
 /// The local setup kept for the repository whose main folder is `root`.
 pub fn local_setup(store: &crate::state::Store, root: &Path) -> Option<String> {
-    let all: std::collections::BTreeMap<String, String> = crate::orchestration::kept::or_default(store, LOCAL_KEY);
+    let all: std::collections::BTreeMap<String, String> = crate::state::kept::or_default(store, LOCAL_KEY);
     all.get(&crate::projects::name_key(&root.to_string_lossy())).filter(|s| !s.trim().is_empty()).cloned()
 }
 
@@ -872,7 +872,7 @@ fn save_local(store: &crate::state::Store, root: &Path, script: &str) -> Result<
     if script.trim().is_empty() || script.len() > LOCAL_MAX {
         return Err(format!("A setup script has to be between 1 character and {} KB.", LOCAL_MAX / 1024));
     }
-    let mut all: std::collections::BTreeMap<String, String> = crate::orchestration::kept::load(store, LOCAL_KEY)?;
+    let mut all: std::collections::BTreeMap<String, String> = crate::state::kept::load(store, LOCAL_KEY)?;
     all.insert(crate::projects::name_key(&root.to_string_lossy()), script.to_string());
     store.set(LOCAL_KEY, &serde_json::to_string(&all).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
@@ -891,12 +891,12 @@ pub const DEFAULT_MODE: &str = "tab";
 const REPO_MODES: [&str; 4] = ["tab", "right", "down", "ask"];
 
 fn repo_map<T: serde::de::DeserializeOwned + serde::Serialize>(store: &crate::state::Store, key: &str) -> std::collections::BTreeMap<String, T> {
-    crate::orchestration::kept::or_default(store, key)
+    crate::state::kept::or_default(store, key)
 }
 
 /// Card 13: the map a save starts from; a store or copy that fails is an error, never an empty map.
 fn repo_map_to_change<T: serde::de::DeserializeOwned + serde::Serialize>(store: &crate::state::Store, key: &str) -> Result<std::collections::BTreeMap<String, T>, String> {
-    crate::orchestration::kept::load(store, key)
+    crate::state::kept::load(store, key)
 }
 
 fn put_repo_map<T: serde::Serialize>(store: &crate::state::Store, key: &str, map: &std::collections::BTreeMap<String, T>) -> Result<(), String> {
@@ -1093,7 +1093,7 @@ pub fn repo_trust_clear(store: StoreState<'_>, path: String) -> Result<(), Strin
 }
 
 fn dismissed_ids(store: &crate::state::Store) -> Vec<String> {
-    crate::orchestration::kept::or_default(store, DISMISSED_KEY)
+    crate::state::kept::or_default(store, DISMISSED_KEY)
 }
 
 /// A forgotten project's card state goes with it: its dismissal (by id) and its saved local setup
@@ -1113,12 +1113,12 @@ fn as_json<T: serde::Serialize>(v: &T) -> Result<String, String> {
 
 pub(crate) fn prune_setup_writes(store: &crate::state::Store, ids: &[String], roots: &[String]) -> Result<Vec<(String, String)>, String> {
     let mut out = Vec::new();
-    let before: Vec<String> = crate::orchestration::kept::load(store, DISMISSED_KEY)?;
+    let before: Vec<String> = crate::state::kept::load(store, DISMISSED_KEY)?;
     let kept: Vec<String> = before.iter().filter(|i| !ids.contains(i)).cloned().collect();
     if kept.len() != before.len() {
         out.push((DISMISSED_KEY.to_string(), as_json(&kept)?));
     }
-    let mut all: std::collections::BTreeMap<String, String> = crate::orchestration::kept::load(store, LOCAL_KEY)?;
+    let mut all: std::collections::BTreeMap<String, String> = crate::state::kept::load(store, LOCAL_KEY)?;
     let count = all.len();
     for r in roots {
         all.remove(&crate::projects::name_key(r));
@@ -1154,7 +1154,7 @@ pub fn card_dismissed(store: &crate::state::Store, project_id: &str) -> bool {
 }
 
 pub fn dismiss_card(store: &crate::state::Store, project_id: &str) -> Result<(), String> {
-    let mut ids: Vec<String> = crate::orchestration::kept::load(store, DISMISSED_KEY)?;
+    let mut ids: Vec<String> = crate::state::kept::load(store, DISMISSED_KEY)?;
     if !ids.iter().any(|i| i == project_id) {
         ids.push(project_id.to_string());
         store.set(DISMISSED_KEY, &serde_json::to_string(&ids).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
@@ -1902,7 +1902,7 @@ mod tests {
         assert_eq!(saved["future"], serde_json::json!({ "a": [1, 2] }), "the unknown field survives the save");
         assert_eq!(saved["scripts"]["archive"], "abc", "the earlier approval is kept");
         assert!(saved["scripts"]["setup"].is_string());
-        assert!(crate::orchestration::kept::asides(&store, &key).is_empty(), "a readable newer record is not kept aside");
+        assert!(crate::state::kept::asides(&store, &key).is_empty(), "a readable newer record is not kept aside");
         let _ = std::fs::remove_dir_all(dir);
         let _ = std::fs::remove_dir_all(root);
     }
@@ -1914,7 +1914,7 @@ mod tests {
             let key = format!("{TRUST_PREFIX}{}", trust_project(&store, &root).unwrap().id);
             store.set(&key, blob).unwrap();
             trust_grant(&store, &root, "setup", "echo shared", false).unwrap();
-            assert_eq!(crate::orchestration::kept::asides(&store, &key), vec![blob.to_string()], "{blob}: a byte-identical copy is kept");
+            assert_eq!(crate::state::kept::asides(&store, &key), vec![blob.to_string()], "{blob}: a byte-identical copy is kept");
             assert_eq!(trust_ask(&store, &root, "setup", "echo shared").unwrap(), None, "{blob}: the grant started a fresh record");
             let _ = std::fs::remove_dir_all(dir);
             let _ = std::fs::remove_dir_all(root);
@@ -2708,7 +2708,7 @@ mod tests {
         let policies = "{\"c:/a\": \"loc";
         store.set(DISMISSED_KEY, broken).unwrap();
         store.set(POLICIES_KEY, policies).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         let err = dismiss_card(&store, "p-9").unwrap_err();
         assert!(err.contains(DISMISSED_KEY) && !err.contains("p-1"), "{err}");
         let err = set_repo_policy(&store, Path::new("C:/a"), Some("local")).unwrap_err();

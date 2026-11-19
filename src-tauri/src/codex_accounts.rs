@@ -59,7 +59,7 @@ pub const LABEL_MAX: usize = 40;
 
 /// Names an account (trimmed, at most LABEL_MAX characters); a blank name clears it.
 pub fn set_label(store: &Store, id: &str, label: &str) -> Result<(), String> {
-    let mut list: Vec<Account> = crate::orchestration::kept::load(store, LIST_KEY)?;
+    let mut list: Vec<Account> = crate::state::kept::load(store, LIST_KEY)?;
     let Some(a) = list.iter_mut().find(|a| a.id == id) else {
         return Err("That Codex account is no longer listed.".into());
     };
@@ -87,7 +87,7 @@ pub fn active_account(store: &Store) -> Option<Account> {
 
 /// Flags or clears an account's sign-in error (ACCT-012); true when that changed anything.
 pub fn mark_sign_in_error(store: &Store, id: &str, error: bool) -> Result<bool, String> {
-    let mut list: Vec<Account> = crate::orchestration::kept::load(store, LIST_KEY)?;
+    let mut list: Vec<Account> = crate::state::kept::load(store, LIST_KEY)?;
     let Some(a) = list.iter_mut().find(|a| a.id == id && a.sign_in_error != error) else {
         return Ok(false);
     };
@@ -304,7 +304,7 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
     // Row 923: a NEW account never reuses a taken id, so a clash cannot overwrite a listed account's home or sealed copy.
     // Row 929: `existing` at an id that is not listed (a stale screen) is a new account too, so it claims a free id.
     // Row 932: a list that cannot be read fails here, before the login; it never routes a listed account to a new id.
-    let listed_ids: Vec<String> = crate::orchestration::kept::load::<Vec<Account>>(&*store.lock().map_err(|e| e.to_string())?, LIST_KEY)?.into_iter().map(|a| a.id).collect();
+    let listed_ids: Vec<String> = crate::state::kept::load::<Vec<Account>>(&*store.lock().map_err(|e| e.to_string())?, LIST_KEY)?.into_iter().map(|a| a.id).collect();
     // Row 940: an unlisted id whose home is there (a list set aside as corrupt leaves the homes) is still that sign-in; a removed account keeps its home too (only its sign-in goes), so a stale screen lands in that home again.
     let (id, home, created) = if existing && (listed_ids.iter().any(|l| l == id) || profile.join(FOLDER).join(id).is_dir()) {
         let home = profile.join(FOLDER).join(id);
@@ -346,7 +346,7 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
             crate::claude_accounts::remove_sealed_copy(&vault);
         }
     };
-    let mut list: Vec<Account> = match crate::orchestration::kept::load(&store, LIST_KEY) {
+    let mut list: Vec<Account> = match crate::state::kept::load(&store, LIST_KEY) {
         Ok(l) => l,
         Err(e) => {
             drop_new_copy();
@@ -905,7 +905,7 @@ fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), Stri
     if !crate::cli_accounts::safe_id(id) {
         return Err("That Codex account id is not valid.".into());
     }
-    let mut list: Vec<Account> = crate::orchestration::kept::load(store, LIST_KEY)?;
+    let mut list: Vec<Account> = crate::state::kept::load(store, LIST_KEY)?;
     let Some(at) = list.iter().position(|a| a.id == id) else {
         return Err("That Codex account is no longer listed.".into());
     };
@@ -1007,7 +1007,7 @@ mod tests {
         // The list breaks while the login runs: one that is broken at the start fails before the login (row 932).
         let got = sign_in(&store, &profile, "c9", false, 1, |home: &Path| {
             store.lock().unwrap().set(LIST_KEY, broken).unwrap();
-            crate::orchestration::kept::refuse_copies(&profile);
+            crate::state::kept::refuse_copies(&profile);
             fs::write(home.join("auth.json"), token("kim@example.com")).unwrap();
             (String::new(), Ended::Exited(Some(0)), None)
         });
@@ -1029,7 +1029,7 @@ mod tests {
             fs::write(home.join("auth.json"), token("kim@example.com")).unwrap();
             (String::new(), Ended::Exited(Some(0)), None)
         };
-        let side = crate::orchestration::kept::Unreadable::new(&profile);
+        let side = crate::state::kept::Unreadable::new(&profile);
         assert!(sign_in(&store, &profile, "c9", false, 1, login).is_err());
         side.restore();
         let got = sign_in(&store, &profile, "c10", false, 1, login);
@@ -1064,7 +1064,7 @@ mod tests {
         let store = Store::open(&profile).unwrap();
         let a = Account { id: "c1".into(), email: None, home: "x".into(), last_sign_in: 1, sign_in_error: false, label: None };
         store.set(LIST_KEY, &serde_json::to_string(&vec![a]).unwrap()).unwrap();
-        let side = crate::orchestration::kept::Unreadable::new(&profile);
+        let side = crate::state::kept::Unreadable::new(&profile);
         assert!(set_label(&store, "c1", "Work").is_err());
         assert!(mark_sign_in_error(&store, "c1", true).is_err());
         assert!(remove(&store, &profile, "c1").is_err());
@@ -1406,7 +1406,7 @@ mod tests {
         };
         sign_in(&store, &profile, "c1", false, 1, ok).unwrap();
         let ran = std::cell::Cell::new(false);
-        let side = crate::orchestration::kept::Unreadable::new(&profile);
+        let side = crate::state::kept::Unreadable::new(&profile);
         let got = sign_in(&store, &profile, "c1", true, 2, |h: &Path| {
             ran.set(true);
             ok(h)
@@ -1473,7 +1473,7 @@ mod tests {
         let odd = Account { id: "c1".into(), email: None, home: elsewhere.to_string_lossy().into_owned(), last_sign_in: 0, sign_in_error: false, label: None };
         s.set(LIST_KEY, &serde_json::to_string(&[odd]).unwrap()).unwrap();
         remove(&s, &profile, "c1").unwrap();
-        assert!(crate::orchestration::kept::load::<Vec<Account>>(&s, LIST_KEY).unwrap().is_empty(), "the account is unlisted");
+        assert!(crate::state::kept::load::<Vec<Account>>(&s, LIST_KEY).unwrap().is_empty(), "the account is unlisted");
         assert!(marker.exists(), "the home outside the accounts folder is untouched");
         assert!(sign_in_outside.is_file(), "and so is the sign-in in it");
     }
@@ -1506,7 +1506,7 @@ mod tests {
         s.set(ACTIVE_KEY, "c1").unwrap();
         s.poison(ACTIVE_KEY);
         assert!(remove(&s, &profile, "c1").is_err(), "the failure to clear the marker is still reported");
-        assert!(crate::orchestration::kept::load::<Vec<Account>>(&s, LIST_KEY).unwrap().is_empty(), "the list was saved");
+        assert!(crate::state::kept::load::<Vec<Account>>(&s, LIST_KEY).unwrap().is_empty(), "the list was saved");
         assert!(!profile.join(secrets::VAULT).join("codex-c1.json").exists(), "the sealed copy is gone");
         assert!(!profile.join(FOLDER).join("c1").join("auth.json").exists(), "and the sign-in file");
         assert!(profile.join(FOLDER).join("c1").is_dir(), "the home stays");

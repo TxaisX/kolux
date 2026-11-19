@@ -826,7 +826,7 @@ mod tests {
         let db = d.join("data");
         let store = std::sync::Mutex::new(crate::state::Store::open(&db).unwrap());
         store.lock().unwrap().set("file_grants", "[\"C:/picked.txt\", tru").unwrap();
-        crate::orchestration::kept::refuse_copies(&db);
+        crate::state::kept::refuse_copies(&db);
         let fence = crate::fence::Fence::load(&store);
         let git = crate::git::Git { version: String::new() };
         let picked = d.join("picked.txt");
