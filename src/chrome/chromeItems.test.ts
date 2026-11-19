@@ -19,7 +19,7 @@ test("SET-020: Tasks and Automations buttons show and the app name is hidden by 
 test("SET-016: the folded Window & Sidebar header sums up what shows", () => {
   expect(windowSummary({})).toBe("Tasks · Automations · Status bar");
   expect(windowSummary({ titleBarAppName: true, automationsButton: false, statusBarVisible: false })).toBe("App name · Tasks · Status bar hidden");
-  expect(windowSummary({ tasksButton: false, automationsButton: false, statusBarHidden: ["memory"] })).toBe("Status bar, 7 of 8 items");
+  expect(windowSummary({ tasksButton: false, automationsButton: false, statusBarHidden: ["memory"] })).toBe("Status bar, 6 of 7 items");
   expect(windowSummary({ skillsButton: true })).toBe("Tasks · Automations · Skills · Status bar");
 });
 
@@ -37,8 +37,8 @@ describe("T-248-a menu bar state (APP-009, SET-020, SET-009)", () => {
 
   it("ticks agree with each Settings switch, defaults included", () => {
     const chords: Record<string, string[]> = { "app.settings": ["Mod+Comma"], "zoom.in": ["Mod+Equal", "Mod+NumpadAdd"], "ui.zoomIn": ["Mod+Alt+Equal"] };
-    const st = menuBarState({ statusBarVisible: false, automationsButton: false }, "board", (id) => chords[id]);
-    expect(st).toMatchObject({ screen: "board", statusBarVisible: false, tasksButton: true, automationsButton: false, titleBarAppName: false });
+    const st = menuBarState({ statusBarVisible: false, automationsButton: false }, "agents", (id) => chords[id]);
+    expect(st).toMatchObject({ screen: "agents", statusBarVisible: false, tasksButton: true, automationsButton: false, titleBarAppName: false });
     expect(st.accelerators["app.settings"]).toBe("CmdOrCtrl+Comma");
     // The menu zoom is the interface zoom (SET-019): it shows ui.zoom* keys, never the terminal zoom ones (TERM-078).
     expect(st.accelerators["zoom.in"]).toBe("CmdOrCtrl+Alt+Equal");
@@ -67,19 +67,18 @@ describe("T-248-a menu bar state (APP-009, SET-020, SET-009)", () => {
     expect(menuSettingFlip({}, "set.titleBarAppName")).toEqual(["titleBarAppName", true]);
     expect(menuSettingFlip({ automationsButton: false }, "set.automationsButton")).toEqual(["automationsButton", true]);
     expect(menuSettingFlip({}, "app.settings")).toBeNull();
-    expect(menuScreen("screen.board")).toBe("board");
-    // T-610 / DT-08: the View menu lists the switcher's four and Floor, so each click shows its screen.
-    expect(menuScreen("screen.tower")).toBe("tower");
-    expect(menuScreen("screen.floor")).toBe("floor");
-    expect(menuScreen("screen.inbox")).toBeNull();
+    expect(menuScreen("screen.agents")).toBe("agents");
+    // The View menu lists the switcher's two, so each click shows its screen; the items for the removed screens show nothing.
+    expect(menuScreen("screen.terminals")).toBe("terminals");
+    for (const gone of ["board", "tower", "floor", "space", "inbox"]) expect(menuScreen(`screen.${gone}`), gone).toBeNull();
     expect(menuScreen("app.settings")).toBeNull();
   });
 
-  it("T-610 / DT-C68: the Floor item carries no accelerator even with view.floor bound, so on a Mac the menu's key equivalent cannot fire beside the window's toggle of the same chord", () => {
-    const st = menuBarState({}, "floor", (id) => (id === "view.floor" ? ["Mod+Alt+F"] : undefined));
-    expect(st.screen).toBe("floor");
-    expect(MENU_SHORTCUT_IDS).not.toContain("screen.floor");
-    expect(st.accelerators).not.toHaveProperty("screen.floor"); // the palette row "Show Floor" is where the chord is printed (reach.test.ts)
+  it("DT-C68: the Workspace View items carry no accelerator, so on a Mac the menu's key equivalent cannot fire beside the window's own key for the same chord", () => {
+    const st = menuBarState({}, "agents", (id) => (id === "view.cycleWorkspaceView" ? ["Mod+Alt+F"] : undefined));
+    expect(st.screen).toBe("agents");
+    expect(MENU_SHORTCUT_IDS.filter((id) => id.startsWith("screen."))).toEqual([]);
+    expect(Object.keys(st.accelerators).filter((id) => id.startsWith("screen."))).toEqual([]);
   });
 
   it("Edit goes to a focused field, else only Copy and Select All reach the terminal, and Paste waits", () => {

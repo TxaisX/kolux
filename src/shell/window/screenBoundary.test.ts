@@ -7,5 +7,5 @@ test("the full-page screens sit inside a boundary that restarts when the screen 
   expect(open).toBeGreaterThan(0);
   expect(close).toBeGreaterThan(open);
   const inside = content.slice(open, close);
-  for (const screen of ["<ArtifactsPage", "<SkillsPage", "<InboxView", "<AgentsChat", "<TowerView", "<FloorView", "<SpaceView"]) expect(inside, screen).toContain(screen);
+  for (const screen of ["<ArtifactsPage", "<SkillsPage", "<AgentsChat"]) expect(inside, screen).toContain(screen);
 });

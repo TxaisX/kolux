@@ -1,14 +1,14 @@
 // The 36 px top bar (DESIGN.md section 4): app mark, overflow, sidebar toggle, back/forward on
-// the left; the centred Agents / Board / Terminals switcher; panel toggle, search hint, bell,
+// the left; the centred Agents / Terminals switcher; panel toggle, search hint,
 // usage pill and the window's own minimize / maximize / close on the right. The bar is the
 // window's drag region (the window has no OS title bar): T-620, a press anywhere on it that is not a
 // control moves the window ("deep"); the switcher's frame and the pop-up menus drawn inside the bar opt
 // out ("false"), so a press that just misses a segment does not move the window and a click on a
 // menu's backdrop still closes it. The search box shows the palette chord
 // from the keymap (T-005), so an edit to ~/.kolux/keybindings.json changes the chips.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowLeft, ArrowRight, Bell, Clock, Close, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
+import { ArrowLeft, ArrowRight, Clock, Close, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
 import { Kbd, useKeymap } from "../keys/KeymapContext";
 import { usePaletteHint } from "../keys/paletteKey";
 import UsagePill from "../usage/UsagePill";
@@ -17,42 +17,32 @@ import { weeklyOf } from "../usage/claude";
 import { usePlan } from "../usage/plan";
 import { APP_MENU_FAILED, popAppMenu } from "./useChrome";
 import { chromeLayout } from "./titleHeader";
-import { t } from "../i18n/lookup";
 import { usePackLoaded } from "../shell/usePackLoaded";
 import { useSettings } from "../settings/useSettings";
 import { readStatusBar, usagePills } from "./statusItems";
-import { AgentsPanel, Explorer, InboxView, TowerView, WorkspaceBoard } from "../lazy/pages";
+import { AgentsPanel, Explorer } from "../lazy/pages";
 
 /** The surface each control opens, read on hover and focus so the click draws it in its own frame. A screen
  *  not listed here (Terminals) has nothing to read. */
-const screenWarm: Partial<Record<Screen, () => void>> = { agents: AgentsPanel.warm, board: WorkspaceBoard.warm, tower: TowerView.warm, inbox: InboxView.warm };
+const screenWarm: Partial<Record<Screen, () => void>> = { agents: AgentsPanel.warm };
 
 /** Artifacts is reached from the sidebar only, so it is not in the top bar's cycle. */
-/** The three switcher screens, and the Inbox behind the bell (STAT-050: its own top-level view).
- *  T-610: every one is reached from the switcher or the palette (chrome/reach.ts, reach.test.ts). */
-export const SCREEN_IDS = ["agents", "board", "terminals", "artifacts", "inbox", "tower", "floor", "skills", "space"] as const;
+/** The switcher screens. T-610: every one is reached from the switcher or the palette (chrome/reach.ts, reach.test.ts). */
+export const SCREEN_IDS = ["agents", "terminals", "artifacts", "skills"] as const;
 export type Screen = (typeof SCREEN_IDS)[number];
 export const screens: Array<{ id: Screen; label: string }> = [
   { id: "agents", label: "Agents" },
-  { id: "board", label: "Board" },
   { id: "terminals", label: "Terminals" },
-  { id: "tower", label: "Tower" },
 ];
 
 /** `classic` (SET-037): the Classic look has no screen switcher; the window stays on Terminals.
  * `sidebarWidth` (T-049-c): Classic draws a title header exactly as wide as the left sidebar card, so it follows the card. */
 /** `automations` (VIEW-011): the Automations page button, present only when it is turned on in Settings > Appearance. */
-export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; automations?: { open: boolean; onToggle: () => void }; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; needsYou?: number; onNotice?: (text: string) => void };
-
-/** The bell opens the Inbox, and closes it back to the screen that was showing before (never past it to Terminals). */
-export const bellTarget = (screen: Screen, before: Screen): Screen => (screen === "inbox" ? before : "inbox");
+export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; automations?: { open: boolean; onToggle: () => void }; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; onNotice?: (text: string) => void };
 
 /** `appName` (SET-020): the app name beside the mark, off by default (DT-A6). */
-export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, needsYou = 0, onNotice }: TopBarProps) {
-  // The screen the bell returns to when the Inbox is closed: the one that was showing before it opened.
-  const before = useRef<Screen>("terminals");
+export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, onNotice }: TopBarProps) {
   usePackLoaded();
-  if (screen !== "inbox") before.current = screen;
   const [maximized, setMaximized] = useState(false);
   // USAGE-008 / VIEW-008: a pill per provider, only with a weekly figure (or Codex's refused
   // sign-in) and an installed CLI; with neither, nothing is drawn. T-550: the pill is one button
@@ -143,10 +133,6 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
           <Search />
           <span className="ph">Go to / Run a command</span>
           <Kbd id="worktree.palette" shown={paletteKeys} />
-        </button>
-        <button className="ib bell" aria-label={needsYou > 0 ? t(needsYou === 1 ? "inbox.bell.needs.one" : "inbox.bell.needs.many", { count: needsYou }) : "Inbox"} title="Inbox" aria-pressed={screen === "inbox"} onPointerEnter={InboxView.warm} onFocus={InboxView.warm} onClick={() => onScreen(bellTarget(screen, before.current))}>
-          <Bell />
-          {needsYou > 0 && <span className="bell-count" aria-hidden="true">{needsYou > 99 ? "99+" : needsYou}</span>}
         </button>
         <AccountSwitcher />
         <UsagePill hidden={!anyPill} claudeOn={claudeOn} codexOn={codexOn} />

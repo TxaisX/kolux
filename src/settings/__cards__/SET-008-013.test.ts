@@ -89,7 +89,7 @@ test("SET-008 box 1: the Unassigned filter lists exactly the commands that show 
   const everyone = ids(c);
   const noChord = everyone.filter((id) => chords(row(c, id)).length === 0);
   expect(noChord.length).toBeGreaterThan(10);
-  expect(noChord).toContain("view.tasks");
+  expect(noChord).toContain("view.routing");
   expect(noChord).not.toContain("terminal.clear");
   await pickFilter(c, "Unassigned");
   await settle();
@@ -153,7 +153,7 @@ test("SET-010 box 1: Mod+P bound to a second global command flags both rows Conf
   const { c } = await page(file({ version: 1, keybindings: {} }));
   const holders = find(c, (n) => n.localName === "tr").filter((r) => chords(r).includes("Ctrl+P")).map((r) => r.attrs["data-id"]);
   expect(holders).toHaveLength(1); // the shipped holder of Mod+P (quick open)
-  const second = "workspace.openBoard";
+  const second = "view.automations";
   await click(c, button(row(c, second), "Add"));
   await press({ key: "P", code: "KeyP", ctrlKey: true });
   await until(() => chords(row(c, second)).includes("Ctrl+P"));
@@ -214,5 +214,5 @@ test("SET-013 box 2: the Unassigned filter lists the board, dashboard, tasks, in
   const { c } = await page(file({ version: 1, keybindings: {} }));
   await pickFilter(c, "Unassigned");
   await settle();
-  for (const id of ["workspace.openBoard", "dashboard.toggle", "view.tasks", "view.inbox", "view.floor"]) expect(ids(c), id).toContain(id);
+  for (const id of ["view.automations", "view.routing"]) expect(ids(c), id).toContain(id);
 });

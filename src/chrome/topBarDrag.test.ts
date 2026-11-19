@@ -81,7 +81,7 @@ afterEach(async () => {
 });
 
 const noop = () => {};
-const barProps = (classic: boolean) => ({ screen: "terminals", classic, sidebarWidth: 260, onScreen: noop, sidebarOpen: true, onToggleSidebar: noop, rightOpen: false, onToggleRight: noop, appName: true, automations: { open: false, onToggle: noop }, installed: ["claude"], onSearch: noop, onBack: noop, onForward: noop, appMenu: true, needsYou: 3 });
+const barProps = (classic: boolean) => ({ screen: "terminals", classic, sidebarWidth: 260, onScreen: noop, sidebarOpen: true, onToggleSidebar: noop, rightOpen: false, onToggleRight: noop, appName: true, automations: { open: false, onToggle: noop }, installed: ["claude"], onSearch: noop, onBack: noop, onForward: noop, appMenu: true });
 
 async function mountBar(classic: boolean) {
   const { default: TopBar } = await import("./TopBar");

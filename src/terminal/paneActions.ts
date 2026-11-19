@@ -10,8 +10,8 @@ import type { useSettingsPlumbing } from "../settings/useSettingsPlumbing";
 import type { launchActions } from "../launch/launchActions";
 import type { WindowLate } from "../shell/windowLate";
 import { forgetRunTab, runPaneKey } from "../automations/runTab";
-import { needsYou } from "../board/chip";
-import { reviewTab } from "../board/review";
+import { needsYou } from "../status/chip";
+import { reviewTab } from "../status/review";
 import { openExternal } from "../open/openExternal";
 import { fileJump } from "../chat/chatLinks";
 import { savedArgs } from "../chat/controls";
@@ -23,7 +23,6 @@ import { missingFileToast } from "../editor/missingFile";
 import type { Action } from "../editor/noteLinks";
 import { trashUnusedNotes } from "../editor/trashUnused";
 import { discardDraftsOf } from "../editor/useFileMoves";
-import { onClose } from "../inbox/exitedPrompt";
 import { dirsToClear } from "../notify/seen";
 import { commandRows } from "../keys/commands";
 import { runCommand } from "../keys/runCommand";
@@ -546,7 +545,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     // EDIT-004: a tab closed on purpose keeps no draft; a file another open tab still shows keeps its copy
     discardDraftsOf(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)));
     trashUnusedNotes(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)), setToast); // EDIT-031: a new note never typed in goes with its tab
-    late.exitedPrompt.current = onClose(late.exitedPrompt.current, keys);
     cancelHandOver(keys); // DT-C248: a closing tab reaps its terminal even if a move was marked for it
     // DT-C248 review 2: a tab closed while its terminal was still on its way back to its view (moved, or back
     // from the saved layout) has no id yet to kill by; the close ends what still runs for the key. Here and

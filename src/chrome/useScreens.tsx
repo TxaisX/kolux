@@ -1,6 +1,6 @@
 // Which screen is up and what follows from it, moved out of App.tsx as it was (cycle 2, the App.tsx split): the
-// screen flags, worker task labels (T-050-b), the tab-name rule and its beat (STAT-035), the Inbox and Board
-// clock (STAT-050) and full pages (VIEW-009). Called where it sat, so the window's hook order is unchanged.
+// screen flags, worker task labels (T-050-b), the tab-name rule and its beat (STAT-035), the status clock
+// (STAT-050, `now`, no longer ticked here) and full pages (VIEW-009). Called where it sat, so the window's hook order is unchanged.
 import type { Pane } from "../App";
 import { programWord } from "../launch/PlusMenu";
 import { generatedOn, generatedTitle, tabText, tabTip } from "../shell/tabTitle";
@@ -16,15 +16,10 @@ import type { PaneActions } from "../terminal/paneActions";
 
 export function useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles }: Pick<WindowState, "classic" | "hook" | "liveIds" | "page" | "panes" | "ptys" | "screen" | "settings" | "settingsOpen" | "titles"> & Pick<PaneActions, "leavePage">) {
   const terminals = screen === "terminals";
-  const board = screen === "board";
-  const inbox = screen === "inbox";
-  const tower = screen === "tower";
-  const floor = screen === "floor";
-  const space = screen === "space";
   const agentsScreen = screen === "agents";
   // T-050-b: an orchestrator-started session with no name or title is named after its worker's task
-  // (orchestration worker_labels, by terminal handle), looked up while the Agents screen, the Board or
-  // the tab strip is open (ORCH-066 / T-129-d: Board rows and generated titles read the same label).
+  // (orchestration worker_labels, by terminal handle), looked up while the Agents screen or
+  // the tab strip is open (ORCH-066 / T-129-d: generated titles read the same label).
   const [workerNames, setWorkerNames] = useState<Record<string, string>>({});
   const labelOf = (p: Pane) => workerNames[`term-${ptys.current[p.key]}`];
   // TERM-056 / T-258: the tab's text and its hover (the full title); generated titles (off by default) touch only
@@ -40,28 +35,21 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
     return <BeatLabel animate={needsBeat(rule)} full={(frame) => statusTitle({ ...rule, shown: shownName, frame })} text={textOf} />;
   };
   useEffect(() => {
-    if (!agentsScreen && !board && !terminals) return;
+    if (!agentsScreen && !terminals) return;
     const look = () => void invoke<Record<string, string>>("worker_labels").then(setWorkerNames, () => {});
     look();
     const t = window.setInterval(look, 5000);
     return () => window.clearInterval(t);
-  }, [agentsScreen, board, terminals]);
-  // STAT-050: the Inbox and the Board read the panes the window already tracks; the clock ticks while one is open.
+  }, [agentsScreen, terminals]);
+  // STAT-050: the clock the status chips read; no screen needs it to tick now.
   const [now, setNow] = useState(Date.now());
-  const timed = inbox || board || tower;
   // VIEW-009: a full page fills the workspace area; Show Code (view.code) and an Escape nothing else used leave it.
-  // T-146-e: Skills and Space are full pages too; Skills keeps its own Escape (closeSkills returns to the screen it came from).
-  const fullPage = settingsOpen || (terminals && page !== null) || inbox || tower || floor || space || screen === "artifacts" || screen === "skills";
+  // T-146-e: Skills is a full page too; Skills keeps its own Escape (closeSkills returns to the screen it came from).
+  const fullPage = settingsOpen || (terminals && page !== null) || screen === "artifacts" || screen === "skills";
   useEscapeLeaves(fullPage && !settingsOpen && page !== "automations" && screen !== "skills", leavePage);
   useEffect(() => showScreen(screen, classic), [screen, classic]); // VIEW-006: each screen's own theme
-  useEffect(() => {
-    if (!timed) return;
-    setNow(Date.now());
-    const t = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(t);
-  }, [timed]);
   return {
-    terminals, board, inbox, tower, floor, space, agentsScreen, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow, timed,
+    terminals, agentsScreen, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow,
     fullPage,
   };
 }

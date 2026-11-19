@@ -1,5 +1,5 @@
 // VIEW-003 acceptance: the real TopBar's search hint and bell buttons.
-// MIRROR src/App.tsx:2533 onSearch={() => setPalette(true)} and onScreen={setScreen}; the Inbox renders when screen === "inbox" (App.tsx:2098).
+// MIRROR src/App.tsx onSearch={() => setPalette(true)}. The bell button went with the Inbox screen, so only the search hint is left.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../test/fakeDom";
@@ -36,18 +36,4 @@ test("box 1 (the click half): the search hint is one button that asks for the wo
   expect(hint[0].textContent).toContain("Go to / Run a command");
   await click(c, hint[0]);
   expect(calls).toEqual(["search"]);
-});
-
-test("box 2 (the click half): the bell asks for the Inbox screen; on the Inbox it returns to Terminals", async () => {
-  const { c, calls } = await open("terminals");
-  const bell = find(c, (n) => n.localName === "button" && n.attrs["aria-label"] === "Inbox");
-  expect(bell).toHaveLength(1);
-  await click(c, bell[0]);
-  expect(calls).toEqual(["screen inbox"]);
-  await unmount();
-  const again = await open("inbox");
-  const bell2 = find(again.c, (n) => n.attrs["aria-label"] === "Inbox")[0];
-  expect(bell2.attrs["aria-pressed"]).toBe("true");
-  await click(again.c, bell2);
-  expect(again.calls).toEqual(["screen terminals"]);
 });

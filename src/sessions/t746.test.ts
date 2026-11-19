@@ -18,10 +18,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
 
-test("T-746: New agent tab is Mod+Alt+T and Show Space is Mod+Alt+S on every platform; Floor stays unbound (HID-003)", () => {
+test("T-746: New agent tab is Mod+Alt+T on every platform, with no clashes", () => {
   for (const os of ["win32", "linux", "darwin"] as const) {
     const map = resolve({}, os);
-    expect([chordsOf(map, "tab.newAgent"), chordsOf(map, "view.space"), chordsOf(map, "view.floor"), map.clashes]).toEqual([["Mod+Alt+T"], ["Mod+Alt+S"], [], []]);
+    expect([chordsOf(map, "tab.newAgent"), map.clashes]).toEqual([["Mod+Alt+T"], []]);
   }
 });
 

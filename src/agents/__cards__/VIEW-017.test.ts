@@ -1,7 +1,7 @@
 // VIEW-017 acceptance: the Agents rail's status word. MIRROR src/App.tsx:2777 (statusOf = rowStatus(p, chipFor(p)))
 // and src/App.tsx:2299 (chipFor); a preset pane has `seats` (App.tsx addPreset).
 import { expect, test } from "vitest";
-import { chipOf } from "../../board/chip";
+import { chipOf } from "../../status/chip";
 import { rowStatus } from "../rail";
 
 const MIN = 60_000;

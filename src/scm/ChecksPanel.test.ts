@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 const replies: Record<string, unknown> = {};
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async (cmd: string) => replies[cmd] ?? null }));
 
-import GhBanner, { classify } from "../tasks/GhBanner";
+import GhBanner, { classify } from "./GhBanner";
 import { panelBody, reusableNoPr, type PrChecks } from "./checks";
 import type { Status } from "./model";
 import { readReview, reviewLines } from "./prFind";

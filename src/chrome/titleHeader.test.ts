@@ -53,7 +53,7 @@ test("the New look renders the top bar exactly as before: switcher, no inline wi
   const html = bar(false, true, 333);
   expect(html).toContain('class="topbar"');
   expect(html).not.toContain('class="titlebar"');
-  for (const label of ["Agents", "Board", "Terminals"]) expect(html).toContain(`>${label}</button>`);
+  for (const label of ["Agents", "Terminals"]) expect(html).toContain(`>${label}</button>`);
   expect(html).toContain('class="topbar-left"');
   expect(html).not.toContain("width:");
   expect(bar(false)).toBe(bar(false, true, 289));

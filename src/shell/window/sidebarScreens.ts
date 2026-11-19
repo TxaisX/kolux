@@ -7,9 +7,9 @@ import { ADD_PROJECT as ADD_PROJECT_BUTTON } from "../../onboarding/actions";
 /** Whether the project card (and its resize grip) is drawn on `screen` while the sidebar is open. */
 export const showsProjects = (screen: Screen): boolean => screen !== "agents";
 
-/** Screens that show the picked project themselves (Skills rescans its workspace, Space reads the active folder),
+/** Screens that show the picked project themselves (Skills rescans its workspace),
  *  so picking a project there stays put, as it did before the card showed on every screen. */
-const STAYS: readonly Screen[] = ["agents", "skills", "artifacts", "space"];
+const STAYS: readonly Screen[] = ["agents", "skills", "artifacts"];
 
 /** The screen a project picked in the card leaves you on: the same screen when it shows that project, else its
  *  workspace, Terminals. */

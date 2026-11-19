@@ -1,4 +1,4 @@
-// UX lane A: small chrome fixes with a pure part: the bell's way back, the failed app menu, and the stylesheet rules
+// UX lane A: small chrome fixes with a pure part: the failed app menu, and the stylesheet rules
 // (read from disk, since a .css import is empty under vitest).
 import { expect, test, vi } from "vitest";
 
@@ -8,14 +8,6 @@ vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({}) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 
 import { popAppMenu } from "./useChrome";
-import { bellTarget } from "./TopBar";
-
-test("chrome.md:20: closing the Inbox goes back to the screen shown before it, not always Terminals", () => {
-  expect(bellTarget("terminals", "terminals")).toBe("inbox");
-  expect(bellTarget("agents", "agents")).toBe("inbox");
-  expect(bellTarget("inbox", "board")).toBe("board");
-  expect(bellTarget("inbox", "terminals")).toBe("terminals");
-});
 
 test("chrome.md:10: when the app menu cannot open, the click says so instead of doing nothing", async () => {
   const onFail = vi.fn();

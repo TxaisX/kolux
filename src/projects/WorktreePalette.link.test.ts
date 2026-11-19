@@ -1,6 +1,6 @@
 // T-315-b (GIT-058): a GitHub link pasted into the worktree switcher opens the workspace linked to
 // it, else the item; Alt and a digit pick the numbered row. Pure helpers first, then the real
-// switcher on the small DOM in src/tasks/fakeDom.ts with the commands mocked.
+// switcher on the small DOM in src/test/fakeDom.ts with the commands mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../test/fakeDom";

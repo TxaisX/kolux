@@ -18,10 +18,10 @@ test("VIEW-057: a folder workspace hides the git tabs and shows Attached worktre
   expect(offeredTabs(true)).toEqual(FOLDER_TABS);
   expect(FOLDER_TABS).not.toContain("scm" as never); // T-644: Source Control left the layout
   expect(FOLDER_TABS).not.toContain("checks");
-  expect(FOLDER_TABS).toEqual(expect.arrayContaining(["attached", "prchecks", "explorer", "agents", "insights"]));
+  expect(FOLDER_TABS).toEqual(expect.arrayContaining(["attached", "prchecks", "explorer", "agents"]));
   expect(offeredTabs(false)).toEqual(GIT_TABS);
-  expect(GIT_TABS).toEqual(["explorer", "insights", "checks", "agents"]);
-  expect(offeredTabs(true)).toContain("insights"); // T-646: Insights is app-wide, so a folder workspace offers it too
+  expect(GIT_TABS).toEqual(["explorer", "checks", "agents"]);
+  expect(offeredTabs(true)).not.toContain("insights"); // the Insights tab left with the Insights screen
 });
 
 test("VIEW-057: a remembered tab that is not offered here gives the first one offered", () => {

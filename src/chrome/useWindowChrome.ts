@@ -3,13 +3,13 @@
 // and Settings links. Called where they sat, so the window's hook order is unchanged.
 import type { WindowState } from "../shell/windowStore";
 import { windowTitle } from "../app-info";
-import { ringsBell } from "../board/chip";
+import { ringsBell } from "../status/chip";
 import { OPEN_SETTINGS, type SettingsTarget } from "../settings/pages";
 import { needsYouCount } from "../terminal/status";
 import { useEffect } from "react";
 
 export function useWindowChrome({ classic, info, keymap, needs, panes, setNotice, setScreen, setSettingsAt, setSettingsOpen, statusOf }: Pick<WindowState, "classic" | "info" | "keymap" | "needs" | "panes" | "setNotice" | "setScreen" | "setSettingsAt" | "setSettingsOpen" | "statusOf">) {
-  // ux fix 2: one count of waiting panes feeds the bell and the window title. Review of PR #16: a stop (blocked, interrupted) still counts, as on main.
+  // ux fix 2: one count of waiting panes feeds the window title. Review of PR #16: a stop (blocked, interrupted) still counts, as on main.
   // Review of PR #16 (c): the bell also rings for a pane whose header flags it, a failed start included, as on main.
   const needing = needsYouCount(panes.map((p) => p.key), new Set(panes.filter((p) => ringsBell(statusOf(p), needs[p.key] ?? false)).map((p) => p.key)));
   useEffect(() => {

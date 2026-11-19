@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Check } from "../scm/checks";
-import type { WorkItem } from "../tasks/workStart";
+import type { WorkItem } from "../projects/model";
 import { carryLine, carryPrompt, runCarry, type CarryContext } from "./carry";
 import { failingChecks, fixChecksPrompt, FIX_LIST_MAX, runFixChecks } from "./fixChecks";
 import { itemPrompt, itemUrl, runFromItem } from "./fromItem";

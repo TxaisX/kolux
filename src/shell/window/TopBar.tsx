@@ -11,7 +11,7 @@ import { useWindow } from "./store";
 
 export default function WindowTopBar() {
   const {
-    settings, screen, setScreen, needing, classic, leftWidth, terminals, page, setPage, setPalette,
+    settings, screen, setScreen, classic, leftWidth, terminals, page, setPage, setPalette,
     installedIds, codex, sidebarOpen, setSidebarOpen, fullPage, right, saveRight, showRight, step,
     hist, stillThere, settingsOpen, setNotice, rightAside,
   } = useWindow();
@@ -32,7 +32,6 @@ export default function WindowTopBar() {
           : undefined
       }
       screen={screen}
-      needsYou={needing}
       classic={classic}
       sidebarWidth={leftWidth}
       appMenu

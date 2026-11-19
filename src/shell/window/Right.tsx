@@ -4,7 +4,6 @@
 // attached-worktrees and checks tabs, the Continue / Fix / Start host (T-187-b, T-189-b) and the Explorer (EDIT-033).
 import { invoke } from "@tauri-apps/api/core";
 import RightSidebar, { RIGHT_KEYS, clampWidth } from "../../chrome/RightSidebar";
-import { liveSessions } from "../../insights/model";
 import { AttachedWorktreesTab, FolderChecksTab } from "../../projects/AttachedTabs.tsx";
 import { type Created } from "../../projects/model";
 import { applySettings } from "../../projects/settingWrite";
@@ -20,7 +19,6 @@ import { AgentsPanel } from "../../lazy/pages";
 import Explorer from "./ExplorerMemo";
 import { AddProjectRow } from "../../lazy/pages";
 import { ChecksPanel } from "../../lazy/pages";
-import { InsightsPanel } from "../../lazy/pages";
 import { AgentStartHost } from "../../lazy/pages";
 
 
@@ -31,7 +29,7 @@ export default function WindowRight() {
     projectOf, setScreen,
     select, defaultId, openIn, panes, agents, classic, resumeOrFocus, resumeIn, wsKind, cli,
     runSetup, setRefresh, explorerOpen, explorerFocus, showRight, owner, saveSetting, shells,
-    setActiveDir, setToast, openCheck, openPane, agentOf, statusOf, turn, stamp, running, stale,
+    setActiveDir, setToast, openCheck,
   } = useWindow();
   const fit = (w: number) => clampWidth(w, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0);
   // PKG-2: the file tree runs these from handlers and a key listener only; they keep one identity (stable.ts), so a
@@ -50,8 +48,6 @@ export default function WindowRight() {
       setDragWidth(done ? null : used);
       if (done) saveRight({ width: used });
     }}>
-      {/* T-646: the Insights tab is app-wide: tokens, estimated cost and what every open agent session is doing (T-644 took Source Control out of this sidebar). */}
-      {right.open && right.tab === "insights" && <InsightsPanel sessions={liveSessions(panes, agentOf, statusOf, turn, stamp, running, stale)} onJump={openPane} />}
       {/* VIEW-080 (T-168, T-169): the Agents tab lists past sessions of every agent in the saved scope. */}
       {right.open && right.tab === "agents" && (
         <AgentsPanel settings={settings} onSave={saveSetting} activeDir={activeDir} projects={projects} projectDirs={Object.entries(owner).filter(([, p]) => p === projectOf(activeDir)).map(([d]) => d)} rescanKey={panes.length} visible={terminals && !fullPage} shell={shells[0]?.program ?? null} onResume={(s, plan) => resumeOrFocus(s, plan)} onResumeChat={(s, plan) => void resumeIn(s.agent, plan, s.id).then((ok) => ok && setScreen(classic ? "terminals" : "agents"))} openDirs={[...new Set(panes.map((p) => p.cwd).filter((d): d is string => d !== null))]} onJump={(d) => setActiveDir(d)} openPanes={openSessions(panes)} />

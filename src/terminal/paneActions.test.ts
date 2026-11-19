@@ -70,7 +70,7 @@ test("closing unread tabs drops their marks and the workspace dot only when none
     setUnreadPanes: vi.fn((f: (u: Set<number>) => Set<number>) => (unread = f(unread))), setPanes: vi.fn(), setRunning: vi.fn(), setDirty: vi.fn(), setFocused: vi.fn(), setTabColors: vi.fn(), setToast: vi.fn(),
     ptys: { current: {} }, runTabs: { current: {} }, recentTabs: { current: [] }, pinned: new Set(),
   } as unknown as WindowState;
-  const late = { exitedPrompt: { current: {} } } as unknown as WindowLate;
+  const late = {} as unknown as WindowLate;
   const a = paneActions(s, {} as never, {} as never, late);
   a.dropPanes([1, 3]);
   expect([...unread]).toEqual([2]);

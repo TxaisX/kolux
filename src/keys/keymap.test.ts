@@ -6,15 +6,15 @@ import { chordMatches, chordsOf, labelOf, labelParts, matchEvent, parseChord, re
 
 const key = (k: Partial<KeyLike>): KeyLike => ({ key: "", code: "", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...k });
 
-test("the table registers the 128 carried commands (the embedded-browser removal dropped the 8 browser ones; T-727 added view.routing, UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 57 ship unbound (T-746 bound view.space; T-727: view.routing unbound, UX lane C: view.automations added unbound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound; T-717 left terminal.closePane unbound, Mod+W is tab.close's) and only workspace rename has a macOS chord only (T-746 gave New agent tab Mod+Alt+T everywhere) (UX lane C gave three Ctrl+Shift chords)", () => {
-  expect(actions.length).toBe(128);
+test("the table registers the 121 carried commands (the embedded-browser removal dropped the 8 browser ones; T-727 added view.routing, UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-611 dropped sidebar.ports.toggle; the slim-down dropped the seven that opened the removed screens: Tasks, Inbox, Tower, Floor, Space, the Board statuses and the dashboard toggle); 51 ship unbound (T-727: view.routing unbound, UX lane C: view.automations added unbound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound; T-717 left terminal.closePane unbound, Mod+W is tab.close's) and only workspace rename has a macOS chord only (T-746 gave New agent tab Mod+Alt+T everywhere) (UX lane C gave three Ctrl+Shift chords)", () => {
+  expect(actions.length).toBe(121);
   const ids = new Set(actions.map((a) => a.id));
-  expect(ids.size).toBe(128);
+  expect(ids.size).toBe(121);
   expect(ids.has("sidebar.sourceControl.toggle")).toBe(false); // T-644
   expect(ids.has("tab.newSimulator")).toBe(false);
   expect(ids.has("tab.openQuickCommandsMenu")).toBe(false);
   expect(ids.has("sidebar.ports.toggle")).toBe(false); // T-611: VIEW-079's Ports tab is dropped
-  expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).length).toBe(57);
+  expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).length).toBe(51);
   expect(actions.filter((a) => a.win32.length === 0 && a.darwin).map((a) => a.id).sort()).toEqual(["workspace.rename"]);
   expect(actions.filter((a) => a.id.startsWith("tab.newAgent.")).length).toBe(36);
 });
@@ -46,7 +46,8 @@ test("fresh Windows profile: Ctrl+Shift+J opens the palette, Alt+1 selects tab 1
   expect(matchEvent(map, key({ key: "f", code: "KeyF", ctrlKey: true }), ["global"])).toBeNull();
   expect(matchEvent(map, key({ key: "f", code: "KeyF", ctrlKey: true }), ["terminal"])).toEqual({ id: "terminal.search" });
   // The unassigned set from SET-013's second check.
-  for (const id of ["workspace.openBoard", "dashboard.toggle", "view.tasks", "view.inbox", "view.floor"]) expect(chordsOf(map, id)).toEqual([]);
+  for (const id of ["view.routing", "view.automations"]) expect(chordsOf(map, id)).toEqual([]);
+  for (const id of ["workspace.openBoard", "dashboard.toggle", "view.tasks", "view.inbox", "view.tower", "view.floor", "view.space"]) expect(actions.map((a) => a.id), id).not.toContain(id); // the screens they opened are gone
 });
 
 test("macOS differs where SET-013 says so, and Mod means Cmd there", () => {
@@ -65,7 +66,7 @@ test("labels read as the keys on the keyboard", () => {
   expect(labelParts("Mod+Shift+J", "win32")).toEqual(["Ctrl", "Shift", "J"]);
   expect(labelParts("Mod+Comma", "win32")).toEqual(["Ctrl", ","]);
   expect(labelParts("Mod+Shift+ArrowUp", "linux")).toEqual(["Ctrl", "Shift", "Up"]);
-  expect(labelOf(resolve(null, "win32"), "view.tasks")).toEqual([]);
+  expect(labelOf(resolve(null, "win32"), "view.routing")).toEqual([]);
 });
 
 test("null unbinds, a win32 section beats the shared map, and the older top-level form still loads", () => {
@@ -120,11 +121,11 @@ test("two custom chords that clash inside their scope are dropped and the defaul
 });
 
 test("SET-010: a clash names every command on the chord, scope by scope; agents switched off never count", () => {
-  const map = resolve({ keybindings: { "view.tasks": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } }, "win32");
-  expect(map.clashes).toEqual([{ chord: "Mod+Alt+Q", ids: ["worktree.quickOpen", "view.tasks"] }]);
-  expect(chordsOf(map, "view.tasks"), "the override is ignored").toEqual([]);
-  expect(resolve({ keybindings: { "view.tasks": "Mod+K" } }, "win32").clashes, "terminal scope is apart").toEqual([]);
-  expect(resolve({ keybindings: { "view.tasks": null } }, "win32").clashes, "no chord never clashes").toEqual([]);
+  const map = resolve({ keybindings: { "view.routing": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } }, "win32");
+  expect(map.clashes).toEqual([{ chord: "Mod+Alt+Q", ids: ["worktree.quickOpen", "view.routing"] }]);
+  expect(chordsOf(map, "view.routing"), "the override is ignored").toEqual([]);
+  expect(resolve({ keybindings: { "view.routing": "Mod+K" } }, "win32").clashes, "terminal scope is apart").toEqual([]);
+  expect(resolve({ keybindings: { "view.routing": null } }, "win32").clashes, "no chord never clashes").toEqual([]);
   const agent = { keybindings: { "tab.newTerminal": "Mod+Alt+Q", "tab.newAgent.aider": "Mod+Alt+Q" } };
   expect(resolve(agent, "win32").clashes[0].ids).toEqual(["tab.newTerminal", "tab.newAgent.aider"]);
   const off = resolve(agent, "win32", ["tab.newAgent.aider"]);

@@ -1,6 +1,6 @@
 // DT-C239: the usePulseRest hook as a real component sees it (rests after 10 s of quiet, wakes on input, wakes when
 // a tour moves to another step, shows no stale resting class on the render a new run starts). The repo has no jsdom,
-// so the page is src/tasks/fakeDom with a window whose listeners the test can fire, and the clock is vitest's.
+// so the page is src/test/fakeDom with a window whose listeners the test can fire, and the clock is vitest's.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Root } from "react-dom/client";

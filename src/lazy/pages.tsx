@@ -25,17 +25,12 @@ export const SignInNotice = deferred(() => import("../settings/SignInNotice"));
 export const KeyLostNotice = deferred(() => import("../settings/KeyLostNotice"));
 
 // The full-page screens: Tasks, Automations, Skills, Artifacts, Space and Floor.
-export const TasksPage = deferred(() => import("../tasks/TasksPage"), loading);
 export const AutomationsPage = deferred(() => import("../automations/AutomationsPage"), loading);
 export const SkillsPage = deferred(() => import("../skills/SkillsPage"), loading);
 export const SkillUpdateNotice = deferred(() => import("../skills/SkillUpdateNotice"));
 export const ArtifactsPage = deferred(() => import("../artifacts/ArtifactsPage"), loading);
-export const SpaceView = deferred(() => import("../space/SpaceView"), loading);
-export const FloorView = deferred(() => import("../floor/FloorView"), loading);
 
 // The Inbox, the Board and the Agents list.
-export const InboxView = deferred(() => import("../inbox/InboxView"), loading, { warm: 2 });
-export const WorkspaceBoard = deferred(() => import("../board/WorkspaceBoard"), undefined, { warm: 2 });
 export const AgentsPanel = deferred(() => import("../sessions/AgentsPanel"), undefined, { warm: 2 });
 
 /** chat/ChatView exports its head, its row and its hand-off menu too, so the chat body is named out of it. */
@@ -57,7 +52,6 @@ export const CleanupDialog = deferred(() => import("../projects/CleanupDialog"))
 
 // The right sidebar's panels: the pull request checks, and Insights (tokens / cost / live sessions, app-wide).
 export const ChecksPanel = deferred(() => import("../scm/ChecksPanel"));
-export const InsightsPanel = deferred(() => import("../insights/InsightsPanel")); // T-646
 
 // Dialogs and hosts that open on their own: updates, about, feedback, a link ask, trust, recovery.
 export const UpdateCenter = deferred(() => import("../update/UpdateCenter"));
@@ -71,4 +65,3 @@ export const AgentStartHost = deferred(() => import("../agentstart/AgentStartHos
 
 // A chooser pane (SESS-007) and the Tower's own drawing.
 export const ChooserPane = deferred(() => import("../launch/ChooserPane"), undefined, { warm: 1 }); // DT-C230: a new pane; keys typed before it loads would reach the old one
-export const TowerView = deferred(() => import("../tower/TowerView"), loading);

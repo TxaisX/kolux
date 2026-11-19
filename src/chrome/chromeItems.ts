@@ -34,9 +34,7 @@ export const MENU_SHORTCUT_IDS = ["app.settings", "app.forceReload", "sidebar.le
 /** Menu items whose hint is the chord of a keymap action with another id: the menu zoom is the saved
  *  interface zoom (SET-019), which has its own keys, while zoom.* in the keymap is a browser tab's own
  *  zoom (BROW-012). No terminal has a zoom of its own: TERM-078 sizes every terminal from one setting.
- *  The Workspace View items carry no chord (DT-C68): on a Mac a menu accelerator is a real key equivalent, and
- *  Floor's would fire beside the window's toggle of the same chord (view.floor, useWindowKeys.ts), so the
- *  palette's "Show Floor" row is where view.floor's keys are printed. */
+ *  The Workspace View items carry no chord (DT-C68). */
 const HINT_FROM: Record<string, string> = { "zoom.in": "ui.zoomIn", "zoom.out": "ui.zoomOut", "zoom.reset": "ui.zoomReset" };
 
 const MENU_KEY = /^([A-Z]|[0-9]|F([1-9]|1[0-9]|2[0-4])|Comma|Equal|Minus|Period|Slash|Backslash|BracketLeft|BracketRight|Semicolon|Quote|Backquote|Tab|Enter|Space|Arrow(Up|Down|Left|Right)|Numpad(Add|Subtract|Multiply|Divide|[0-9]))$/;
@@ -90,8 +88,8 @@ export function menuSettingFlip(s: Record<string, unknown>, id: string): [string
   return item ? [item.id, !chromeShown(s, item.id)] : null;
 }
 
-/** The screens View > Workspace View lists (menu.rs SCREENS): the switcher's four and Floor (DT-08, T-610). */
-const MENU_SCREENS: readonly Screen[] = ["agents", "board", "terminals", "tower", "floor"];
+/** The screens View > Workspace View lists (menu.rs SCREENS): the switcher's two. */
+const MENU_SCREENS: readonly Screen[] = ["agents", "terminals"];
 /** A Workspace View pick: the screen it shows, or null for any other item. */
 export function menuScreen(id: string): Screen | null {
   return MENU_SCREENS.find((s) => id === `screen.${s}`) ?? null;

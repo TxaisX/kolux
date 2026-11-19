@@ -9,7 +9,7 @@ import { sameCard, sameSettings, sameNotice, sameTerminal, type TerminalProps } 
 import { sameProjects, type ProjectsProps } from "./projectsProps";
 import { sameExplorer, type ExplorerProps } from "./explorerProps";
 
-// The repo has no jsdom: src/tasks/fakeDom is the page, enough for components that draw nothing.
+// The repo has no jsdom: src/test/fakeDom is the page, enough for components that draw nothing.
 let mount: () => Root;
 beforeAll(async () => {
   const { doc } = installDom();
@@ -151,7 +151,7 @@ test("sameProjects: fresh lists with the same rows do not redraw the project lis
   const changes: Partial<ProjectsProps>[] = [
     { openDirs: ["C:/w", "C:/x"] }, { sessions: [{ key: 1, agent: "claude", title: "w", cwd: "C:/w", running: false }] },
     { states: { "C:/w": { state: "permission", changed: 6, pr: null } } }, { unread: new Set(["C:/w"]) }, { settings: { ...settings, sortBy: "manual" } },
-    { activeDir: "C:/x" }, { page: "tasks" }, { refresh: 1 }, { createRequest: 1 }, { deleteRequest: 1 }, { renameRequest: 1 }, { reveal: 1 },
+    { activeDir: "C:/x" }, { page: "routing" }, { refresh: 1 }, { createRequest: 1 }, { deleteRequest: 1 }, { renameRequest: 1 }, { reveal: 1 },
     { launching: true }, { defaultId: "codex" }, { agents: [] }, { nest: false }, { artifactsOn: true }, { skillsOn: true }, { allOff: true },
     { unsavedIn: (() => []) as never }, // the selector it calls while drawing: a new identity is new data
   ];

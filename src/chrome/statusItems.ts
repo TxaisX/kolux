@@ -7,7 +7,6 @@ export const STATUS_ITEMS = [
   { id: "terminals", label: "Terminals running" },
   { id: "agents", label: "Agents running" },
   { id: "awake", label: "Keep awake" },
-  { id: "ports", label: "Ports" },
   { id: "pill-claude", label: "Claude usage in the top pill" },
   { id: "pill-codex", label: "Codex usage in the top pill" },
 ] as const;

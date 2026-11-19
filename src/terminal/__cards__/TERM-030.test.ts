@@ -3,7 +3,7 @@
 import { expect, test } from "vitest";
 import { chordsOf, matchEvent, resolve, type KeyLike } from "../../keys/keymap";
 import { nextNeedsYou } from "../status";
-import { needsYou, paneStatus } from "../../board/chip";
+import { needsYou, paneStatus } from "../../status/chip";
 
 type Seat = { key: number; hook?: "permission" | "waiting" | "working" | "done" | "blocked" | "interrupted" };
 

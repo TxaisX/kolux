@@ -11,29 +11,29 @@ const rows = (file: unknown = null) => shortcutRows(resolve(file, "win32"));
 const ids = (r: ReturnType<typeof rows>) => r.map((x) => x.id);
 
 test("every command is listed under its area with its chords and badges", () => {
-  const all = rows({ keybindings: { "zoom.reset": "Mod+Alt+9", "zoom.in": null, "view.tasks": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } });
-  expect(all.length).toBe(128); // every command (view.routing added (T-727), Source Control toggle removed, T-644), OpenCode's new-tab command included (T-572), Reopen closed tab included again (T-239), view.space added (T-146-e), view.automations and focus.chrome added (UX lane C); the floating workspace commands are gone with the panel; the 8 browser commands went with the web pane (goal 0)
+  const all = rows({ keybindings: { "zoom.reset": "Mod+Alt+9", "zoom.in": null, "view.routing": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } });
+  expect(all.length).toBe(121); // every command (view.routing added (T-727), Source Control toggle removed, T-644), OpenCode's new-tab command included (T-572), Reopen closed tab included again (T-239), view.space added (T-146-e), view.automations and focus.chrome added (UX lane C); the floating workspace commands are gone with the panel; the 8 browser commands went with the web pane (goal 0); the 7 commands for the removed Tasks, Tower, Inbox, Floor, Space and Board screens are gone too
   expect(ids(all)).toContain("tab.reopenClosed");
   const by = (id: string) => all.find((r) => r.id === id)!;
   expect(by("terminal.clear")).toMatchObject({ area: "Terminal", labels: ["Ctrl+K"], badges: [] });
   expect(by("zoom.reset").badges).toEqual(["Modified"]);
   expect(by("zoom.in").badges).toEqual(["Unassigned"]);
   expect(by("view.code").badges).toEqual([]);
-  expect(by("workspace.openBoard").badges).toEqual(["Unassigned"]);
-  expect(by("view.tasks").badges).toEqual(["Unassigned", "Conflicts"]);
+  expect(by("view.automations").badges).toEqual(["Unassigned"]);
+  expect(by("view.routing").badges).toEqual(["Unassigned", "Conflicts"]);
   // Both overrides were dropped (user against user), but the file still holds them, so the rows still offer Reset.
-  expect([by("view.tasks").custom, by("worktree.quickOpen").custom]).toEqual([true, true]);
+  expect([by("view.routing").custom, by("worktree.quickOpen").custom]).toEqual([true, true]);
   expect(by("worktree.quickOpen").badges).toEqual(["Conflicts"]);
-  expect(by("worktree.quickOpen").hint).toBe("Ctrl+Alt+Q is also used by Open Tasks here. Give one of them other keys.");
+  expect(by("worktree.quickOpen").hint).toBe("Ctrl+Alt+Q is also used by Model Routing here. Give one of them other keys.");
 });
 
 test("filters: all, modified, unassigned, conflicting", () => {
-  const all = rows({ keybindings: { "zoom.reset": "Mod+Alt+9", "zoom.in": null, "view.tasks": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } });
-  expect(filterRows(all, "all", "").length).toBe(128);
+  const all = rows({ keybindings: { "zoom.reset": "Mod+Alt+9", "zoom.in": null, "view.routing": "Mod+Alt+Q", "worktree.quickOpen": "Mod+Alt+Q" } });
+  expect(filterRows(all, "all", "").length).toBe(121);
   expect(ids(filterRows(all, "modified", ""))).toEqual(["zoom.in", "zoom.reset"]);
   expect(filterRows(all, "unassigned", "").every((r) => r.labels.length === 0)).toBe(true);
   expect(ids(filterRows(all, "unassigned", ""))).toContain("zoom.in");
-  expect(ids(filterRows(all, "conflicting", ""))).toEqual(["worktree.quickOpen", "view.tasks"]);
+  expect(ids(filterRows(all, "conflicting", ""))).toEqual(["worktree.quickOpen", "view.routing"]);
 });
 
 test("search: titles, areas, ids and chords for every platform, as written or as drawn", () => {
@@ -63,17 +63,17 @@ test("SET-010 (T-248-b): a global command on a chord the macOS menu owns conflic
   const by = (r: ReturnType<typeof rows>, id: string) => r.find((x) => x.id === id)!;
   // Nothing bound there by default: no clash, with or without the menu's chords.
   expect(mac(null).filter((r) => r.badges.includes("Conflicts"))).toEqual([]);
-  const hit = by(mac({ keybindings: { "view.tasks": "Mod+Q" } }), "view.tasks");
+  const hit = by(mac({ keybindings: { "view.routing": "Mod+Q" } }), "view.routing");
   expect(hit.badges).toContain("Conflicts");
   expect(hit.hint).toBe("Cmd+Q is also used by Quit Kolux in the menu here. Give one of them other keys.");
-  expect(ids(filterRows(mac({ keybindings: { "view.tasks": "Mod+Q" } }), "conflicting", ""))).toEqual(["view.tasks"]);
+  expect(ids(filterRows(mac({ keybindings: { "view.routing": "Mod+Q" } }), "conflicting", ""))).toEqual(["view.routing"]);
   // Another spelling of the same chord still counts; a smaller scope is not shadowed by the menu.
-  expect(by(mac({ keybindings: { "view.tasks": "Cmd+Q" } }), "view.tasks").badges).toContain("Conflicts");
+  expect(by(mac({ keybindings: { "view.routing": "Cmd+Q" } }), "view.routing").badges).toContain("Conflicts");
   expect(by(mac({ keybindings: { "terminal.clear": "Mod+Q" } }), "terminal.clear").badges).not.toContain("Conflicts");
   // Windows and Linux report no native chords, so nothing changes there.
-  expect(by(shortcutRows(resolve({ keybindings: { "view.tasks": "Mod+Q" } }, "win32"), []), "view.tasks").badges).not.toContain("Conflicts");
+  expect(by(shortcutRows(resolve({ keybindings: { "view.routing": "Mod+Q" } }, "win32"), []), "view.routing").badges).not.toContain("Conflicts");
   // Two commands on the menu's chord clash with each other first (the keymap drops both), as before.
-  expect(by(mac({ keybindings: { "view.tasks": "Mod+Q", "view.code": "Mod+Q" } }), "view.tasks").hint).toContain("is also used by Show Code here");
+  expect(by(mac({ keybindings: { "view.routing": "Mod+Q", "view.code": "Mod+Q" } }), "view.routing").hint).toContain("is also used by Show Code here");
 });
 
 test("SET-019 (T-246-c): the interface zoom has its own keys, apart from the terminal zoom ones", () => {
@@ -103,19 +103,19 @@ test("commands with no handler yet are not listed, wired ones still are", () => 
 test("SET-010 box 1: a custom chord on a default's chord flags both rows Conflicts and lists them under Conflicting", () => {
   const holder = rows().find((r) => r.chords.join() === "Mod+P")!; // the shipped holder of Mod+P
   expect(holder).toBeDefined();
-  const all = rows({ keybindings: { "workspace.openBoard": "Mod+P" } });
+  const all = rows({ keybindings: { "view.automations": "Mod+P" } });
   const by = (id: string) => all.find((r) => r.id === id)!;
-  expect(by("workspace.openBoard").badges).toEqual(["Modified", "Conflicts"]);
+  expect(by("view.automations").badges).toEqual(["Modified", "Conflicts"]);
   expect(by(holder.id).badges).toContain("Conflicts");
-  expect(by(holder.id).hint).toContain("Ctrl+P is also used by Show Workspace Statuses"); // T-610: the workspace board's new name
-  expect(ids(filterRows(all, "conflicting", "")).sort()).toEqual(["workspace.openBoard", holder.id].sort());
+  expect(by(holder.id).hint).toContain("Ctrl+P is also used by Open Automations");
+  expect(ids(filterRows(all, "conflicting", "")).sort()).toEqual(["view.automations", holder.id].sort());
   // The custom binding still wins the chord (yieldToUser).
-  expect(by("workspace.openBoard").chords).toEqual(["Mod+P"]);
+  expect(by("view.automations").chords).toEqual(["Mod+P"]);
   expect(by(holder.id).chords).not.toContain("Mod+P");
 });
 
 test("SET-010 box 1: a custom chord that shares nothing with a default raises no Conflicts", () => {
-  const all = rows({ keybindings: { "workspace.openBoard": "Mod+Alt+9" } });
+  const all = rows({ keybindings: { "view.automations": "Mod+Alt+9" } });
   expect(filterRows(all, "conflicting", "")).toEqual([]);
 });
 

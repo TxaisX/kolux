@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useSyncExternalStore } from "react";
 import type { Check } from "../scm/checks";
-import type { WorkItem } from "../tasks/workStart";
+import type { WorkItem } from "../projects/model";
 import type { CarrySource } from "./carry";
 import { runFixChecks } from "./fixChecks";
 import { runFromItem } from "./fromItem";

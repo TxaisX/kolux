@@ -1,4 +1,4 @@
-// VIEW-037 acceptance: the real worktree palette mounted on the small DOM (src/tasks/fakeDom.ts), commands mocked.
+// VIEW-037 acceptance: the real worktree palette mounted on the small DOM (src/test/fakeDom.ts), commands mocked.
 // MIRROR src/App.tsx:1632 paletteItems(): the Settings rows are { section: "Settings", label: PAGES[id], hint: "Settings page", run: openSettings(id) }.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";

@@ -1,5 +1,5 @@
-// C02-R5-01: the sidebar's Tasks, Automations and Model routing rows set only `page`, but those pages
-// draw only on the Terminals screen, so from the other seven screens the click changed nothing while
+// C02-R5-01: the sidebar's Automations and Model routing rows set only `page`, but those pages
+// draw only on the Terminals screen, so from the other screens the click changed nothing while
 // the row marked itself current. The rows now bring Terminals up, and the toggle and the current mark
 // are guarded by the screen so a stale page cannot close the page the user asked for.
 import { createElement } from "react";
@@ -67,20 +67,20 @@ async function sidebar(screen: string, start: string | null) {
   };
 }
 
-test("Tasks from Board brings Terminals up with the Tasks page", async () => {
-  const s = await sidebar("board", null);
-  await click(s.c, s.row("Tasks"));
+test("Automations from Artifacts brings Terminals up with the Automations page", async () => {
+  const s = await sidebar("artifacts", null);
+  await click(s.c, s.row("Automations"));
   await settle(40);
   expect(s.screens, "the click asks for the Terminals screen").toContain("terminals");
-  expect(s.pageNow()).toBe("tasks");
+  expect(s.pageNow()).toBe("automations");
 }, 20000);
 
-test("Tasks from Artifacts with a stale page still opens Tasks", async () => {
-  const s = await sidebar("artifacts", "tasks");
-  await click(s.c, s.row("Tasks"));
+test("Automations from Artifacts with a stale page still opens Automations", async () => {
+  const s = await sidebar("artifacts", "automations");
+  await click(s.c, s.row("Automations"));
   await settle(40);
   expect(s.screens).toContain("terminals");
-  expect(s.pageNow(), "keeps the page open, not toggling a page the user cannot see").toBe("tasks");
+  expect(s.pageNow(), "keeps the page open, not toggling a page the user cannot see").toBe("automations");
 }, 20000);
 
 test("Model routing from Skills brings Terminals up with the routing page", async () => {
@@ -91,8 +91,8 @@ test("Model routing from Skills brings Terminals up with the routing page", asyn
   expect(s.pageNow()).toBe("routing");
 }, 20000);
 
-test("Automations from Inbox brings Terminals up with the Automations page", async () => {
-  const s = await sidebar("inbox", null);
+test("Automations from Skills brings Terminals up with the Automations page", async () => {
+  const s = await sidebar("skills", null);
   await click(s.c, s.row("Automations"));
   await settle(40);
   expect(s.screens).toContain("terminals");
@@ -100,8 +100,8 @@ test("Automations from Inbox brings Terminals up with the Automations page", asy
 }, 20000);
 
 test("on Terminals the row still toggles the page shut", async () => {
-  const s = await sidebar("terminals", "tasks");
-  await click(s.c, s.row("Tasks"));
+  const s = await sidebar("terminals", "automations");
+  await click(s.c, s.row("Automations"));
   await settle(40);
   expect(s.pageNow()).toBe(null);
 }, 20000);

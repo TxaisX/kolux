@@ -36,7 +36,7 @@ import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
 import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "./mergeOnQuit";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
-import { ArrowRight, Bell, Chip, ChevronDown, Close, EyeOff, Funnel, Minus, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
+import { ArrowRight, Bell, Chip, ChevronDown, Close, EyeOff, Funnel, Minus, FileCode, FolderPlus, Gear, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
 import { AddProject, StatusEditor, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
 import { CleanupDialog, SettingsPage } from "../lazy/pages";
 import { addKept, type KeptBranch, type KeptItem } from "./cleanup";
@@ -106,7 +106,7 @@ import { projectsInGroup } from "./groupMembers";
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
 
 /** The pages that open over the content column from the sidebar footer. */
-export type Page = "automations" | "routing" | "tasks";
+export type Page = "automations" | "routing";
 
 type Props = {
   /** EDIT-041: bumped by Open in Code; the selected row is scrolled into sight once it is drawn. */
@@ -2537,14 +2537,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     <div className="sidebar-wrap">
       <aside className="sidebar" aria-label="Sidebar">
         <nav className="sb-nav">
-          {chromeShown(settings, "tasksButton") && (
-            <button className={`row${page === "tasks" ? " on" : ""}`} aria-current={page === "tasks" ? "page" : undefined} onClick={() => onPage("tasks")}>
-              <span className="ic">
-                <List />
-              </span>
-              Tasks
-            </button>
-          )}
           <button className={`row${artifactsOn ? " on" : ""}`} aria-current={artifactsOn ? "page" : undefined} onClick={onArtifacts}>
             <span className="ic">
               <FileCode />

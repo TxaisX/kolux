@@ -281,7 +281,7 @@ test("DT-C230 amended: the stages are the ones named, by source", () => {
   const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
   const marks = (rel: string, stage: string) => [...nodeFs.readFileSync(new URL(rel, import.meta.url), "utf8").matchAll(new RegExp(`const (\\w+) = deferred\\(.*\\{ ${stage} \\}`, "g"))].map((m) => m[1]);
   expect(marks("./pages.tsx", "warm: 1")).toEqual(["HelpSheet", "ChooserPane"]);
-  expect(marks("./pages.tsx", "warm: 2")).toEqual(["SettingsPage", "InboxView", "WorkspaceBoard", "AgentsPanel", "Explorer"]);
+  expect(marks("./pages.tsx", "warm: 2")).toEqual(["SettingsPage", "AgentsPanel", "Explorer"]);
   expect(marks("./pages.tsx", "warm: 3")).toEqual(["PlanSheet"]); // imports the Markdown preview: far too big for stage 1
   expect(marks("./panes.tsx", "warm: 3")).toEqual(["EditorPane"]);
   expect(marks("../shell/window/Dialogs.tsx", "prefetch: true")).toEqual(["TabMenu"]); // the tab menu keeps the older spelling: stage 1

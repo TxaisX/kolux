@@ -8,14 +8,13 @@ import type { WindowState } from "../shell/windowStore";
 import type { PaneGrid } from "./paneGrid";
 import type { Screens } from "../chrome/useScreens";
 
-export function useLayoutReport({ activeDir, activeOf, board, cells, cliFailed, ptys, terminals, titles }: Pick<WindowState, "activeDir" | "cliFailed" | "ptys" | "titles"> & Pick<PaneGrid, "activeOf" | "cells"> & Pick<Screens, "board" | "terminals">) {
-  // TERM-118: a pane is in view when its workspace is in front and it is the tab on top (the Board
-  // shows every pane); a finish or bell anywhere else marks tab, pane and workspace row unread
+export function useLayoutReport({ activeDir, activeOf, cells, cliFailed, ptys, terminals, titles }: Pick<WindowState, "activeDir" | "cliFailed" | "ptys" | "titles"> & Pick<PaneGrid, "activeOf" | "cells"> & Pick<Screens, "terminals">) {
+  // TERM-118: a pane is in view when its workspace is in front and it is the tab on top; a finish or bell anywhere else marks tab, pane and workspace row unread
   // and says so in the window. A desktop notification and the settings that gate it are T-026.
   const inView = (key: number) => {
     const cell = cells.find((c) => c.panes.some((p) => p.key === key));
     if (!cell) return false;
-    return board || (terminals && sameDir(viewOf(cell.panes[0]), activeDir) && activeOf(cell) === key);
+    return (terminals && sameDir(viewOf(cell.panes[0]), activeDir) && activeOf(cell) === key);
   };
   // CLI-023: the command line learns where each terminal sits (its worktree pane, its tab, its
   // name, whether it is in view) from this report, sent whenever that changes.

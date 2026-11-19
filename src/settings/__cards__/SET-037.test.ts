@@ -50,7 +50,9 @@ const picked = (c: FakeNode, label: string) => radios(c, label).filter((n) => n.
 const switcher = (c: FakeNode) => find(c, (n) => n.localName === "nav" && n.attrs.class === "switcher")[0];
 const switcherButtons = (c: FakeNode) => (switcher(c) ? find(switcher(c), (n) => n.localName === "button").map((n) => n.textContent.trim()) : []);
 
-test("box 1: a profile that existed before the redesign reads Classic (no Agents/Board/Terminals bar); choosing New shows the bar", async () => {
+const pressed = (c: FakeNode) => find(switcher(c), (n) => n.localName === "button" && n.attrs["aria-pressed"] === "true").map((n) => n.textContent.trim());
+
+test("box 1: a profile that existed before the redesign reads Classic (no Agents/Terminals bar); choosing New shows the bar", async () => {
   expect(replay.legacy.uiLook).toBe("classic"); // what the start-up stamp left on a real pre-redesign profile
   const { c, saved } = await window_(replay.legacy);
   expect(picked(c, "Look")).toEqual(["Classic"]);
@@ -59,41 +61,39 @@ test("box 1: a profile that existed before the redesign reads Classic (no Agents
   await settle();
   expect(saved).toEqual([{ uiLook: "new" }]);
   expect(picked(c, "Look")).toEqual(["New"]);
-  expect(switcherButtons(c).slice(0, 3)).toEqual(["Agents", "Board", "Terminals"]);
+  expect(switcherButtons(c).slice(0, 2)).toEqual(["Agents", "Terminals"]);
 });
 
-test("box 2: Board saved as the first screen with New, then a restart (profile reopened) opens on Board", async () => {
-  // Setting it on the page: Board is offered under New and writes the choice.
+test("box 2: Agents saved as the first screen with New, then a restart opens on Agents; a profile that saved Board opens on Terminals now", async () => {
+  // Setting it on the page: Agents is offered under New and writes the choice.
   const first = await window_({ ...replay.legacy, uiLook: "new" });
-  await click(first.c, radios(first.c, "Opens first").find((n) => n.textContent.trim() === "Board")!);
+  await click(first.c, radios(first.c, "Opens first").find((n) => n.textContent.trim() === "Agents")!);
   await settle();
-  expect(first.saved).toEqual([{ firstScreen: "board", lastScreen: "board" }]);
+  expect(first.saved).toEqual([{ firstScreen: "agents", lastScreen: "agents" }]);
   await unmount();
-  // The restart: the settings the reopened profile holds (real Store) are what the window starts from.
+  // The restart: the settings the reopened profile holds are what the window starts from. The profile in the replay saved
+  // Board, a screen the app no longer has, so it opens on Terminals; the same profile with Agents saved opens on Agents.
   expect(replay.reopened).toMatchObject({ uiLook: "new", firstScreen: "board" });
-  const { c } = await window_(replay.reopened);
-  const pressed = find(switcher(c), (n) => n.localName === "button" && n.attrs["aria-pressed"] === "true").map((n) => n.textContent.trim());
-  expect(pressed).toEqual(["Board"]);
-  expect(picked(c, "Opens first")).toEqual(["Board"]);
+  const gone = await window_(replay.reopened);
+  expect(pressed(gone.c)).toEqual(["Terminals"]);
+  expect(picked(gone.c, "Opens first")).toEqual(["Terminals"]);
+  await unmount();
+  const { c } = await window_({ ...replay.reopened, firstScreen: "agents", lastScreen: "agents" });
+  expect(pressed(c)).toEqual(["Agents"]);
+  expect(picked(c, "Opens first")).toEqual(["Agents"]);
 });
 
-test("under Classic the first-screen choice shows only Terminals and greys Agents and Board with a hint", async () => {
+test("under Classic the first-screen choice shows only Terminals and greys Agents with a hint", async () => {
   const { c } = await window_(replay.legacy);
   expect(picked(c, "Opens first")).toEqual(["Terminals"]);
   const off = radios(c, "Opens first").filter((n) => "disabled" in n.attrs && n.attrs.disabled !== "false").map((n) => n.textContent.trim());
-  expect(off).toEqual(["Agents", "Board"]);
+  expect(off).toEqual(["Agents"]);
 });
 
-test("C17-R1-01: Opens first keeps Tower, and the next start opens on Tower", async () => {
-  const first = await window_({ ...replay.legacy, uiLook: "new" });
-  await click(first.c, radios(first.c, "Opens first").find((n) => n.textContent.trim() === "Tower")!);
-  await settle();
-  expect(first.saved).toEqual([{ firstScreen: "tower", lastScreen: "tower" }]);
-  expect(picked(first.c, "Opens first")).toEqual(["Tower"]);
-  await unmount();
+test("C17-R1-01: a saved first screen the app no longer has (Tower) opens on Terminals and shows Terminals under Opens first", async () => {
   const { c } = await window_({ ...replay.legacy, uiLook: "new", firstScreen: "tower", lastScreen: "tower" });
-  expect(picked(c, "Opens first")).toEqual(["Tower"]);
-  expect(find(switcher(c), (n) => n.localName === "button" && n.attrs["aria-pressed"] === "true").map((n) => n.textContent.trim())).toEqual(["Tower"]);
+  expect(picked(c, "Opens first")).toEqual(["Terminals"]);
+  expect(pressed(c)).toEqual(["Terminals"]);
 });
 
 test("C17-R1-01 guard: every screen in the top bar switcher can be Opens first", async () => {

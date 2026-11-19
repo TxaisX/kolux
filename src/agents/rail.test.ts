@@ -1,6 +1,6 @@
 // The Agents screen's rail (VIEW-015, VIEW-021) and the Board's card list (VIEW-024), pure so they run without a browser.
 import { expect, test } from "vitest";
-import { chipOf } from "../board/chip";
+import { chipOf } from "../status/chip";
 import { cardPanes, pickSession, railGroups, rowStatus, sessionLabel } from "./rail";
 
 const saved = [

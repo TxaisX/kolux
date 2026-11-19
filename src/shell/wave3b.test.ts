@@ -1,4 +1,4 @@
-// T-696 (DT-C132): UX audit Wave 3 part B, lane D's rows, reproduced on the small DOM in src/tasks/fakeDom.ts
+// T-696 (DT-C132): UX audit Wave 3 part B, lane D's rows, reproduced on the small DOM in src/test/fakeDom.ts
 // before any change. G1 palette filters, G5 the Explorer shortcut, G6 the find bar, S24 the tab menu.
 import { type FunctionComponent, act, createElement, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

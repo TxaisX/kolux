@@ -85,8 +85,8 @@ test("Move Focus to the Top Bar focuses the top bar's first enabled control", ()
   expect(() => focusChrome({ querySelector: () => null })).not.toThrow(); // no top bar (classic layout)
 });
 
-test("the menu's Force Reload asks over unsaved text and reloads without; View > Space opens Space (Terminals in classic)", () => {
-  const b = (unsaved: string[], classic = false) => ({ unsaved: { current: unsaved }, setReloadAsk: vi.fn(), setScreen: vi.fn(), classic });
+test("the menu's Force Reload asks over unsaved text and reloads without; no other menu id comes here", () => {
+  const b = (unsaved: string[]) => ({ unsaved: { current: unsaved }, setReloadAsk: vi.fn() });
   const reload = vi.fn();
   const dirty = b(["a.ts"]);
   menuAction("app.forceReload", dirty, reload);
@@ -95,13 +95,9 @@ test("the menu's Force Reload asks over unsaved text and reloads without; View >
   menuAction("app.forceReload", b([]), reload);
   expect(reload).toHaveBeenCalledTimes(1);
   const s = b([]);
-  menuAction("screen.space", s, reload);
-  expect(s.setScreen).toHaveBeenCalledWith("space");
-  const c = b([], true);
-  menuAction("screen.space", c, reload);
-  expect(c.setScreen).toHaveBeenCalledWith("terminals");
-  menuAction("screen.agents", s, reload); // the other screens go through the settings plumbing, not here
-  expect(s.setScreen).toHaveBeenCalledTimes(1);
+  menuAction("screen.agents", s, reload); // the screens go through the settings plumbing, not here
+  expect(s.setReloadAsk).not.toHaveBeenCalled();
+  expect(reload).toHaveBeenCalledTimes(1);
 });
 
 test("an editor chord is not held under a dialog, while the app's own chords are", () => {
