@@ -293,6 +293,32 @@ pub fn paint_badge(text: &str) -> (Vec<u8>, u32, u32) {
 #[derive(Default)]
 pub struct TrayState {
     dot: Mutex<Dot>,
+    /// The main window was hidden to the tray through Kolux's own hide, and nothing has shown it through
+    /// Kolux since (`show_main`). The window library keeps its own "visible" flag, which only its own show
+    /// sets again: a second launch's fallback raise shows the window from outside (lifecycle.rs), the flag
+    /// stays off, and the next minimise or maximise would hide the window again. `refocused` puts that right.
+    hidden: std::sync::atomic::AtomicBool,
+}
+
+/// Remembers (or forgets) that the main window is hidden to the tray by Kolux's own hide.
+fn mark_hidden(app: &tauri::AppHandle, hidden: bool) {
+    use tauri::Manager;
+    if let Some(state) = app.try_state::<TrayState>() {
+        state.hidden.store(hidden, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+/// The main window gained focus. When Kolux had hidden it to the tray and it comes back without
+/// `show_main` (a second launch raised it from outside, lifecycle.rs's fallback), it is shown again
+/// through the window library, so the library's own state agrees that the window is on screen. True
+/// when it did that. Called from lib.rs's focus event.
+pub fn refocused(app: &tauri::AppHandle) -> bool {
+    use tauri::Manager;
+    let was = app.try_state::<TrayState>().is_some_and(|s| s.hidden.swap(false, std::sync::atomic::Ordering::SeqCst));
+    if was {
+        let _ = show_main(app);
+    }
+    was
 }
 
 /// Puts Kolux's icon in the tray on Windows and macOS. Nothing happens on Linux, or in a build
@@ -360,6 +386,7 @@ pub fn show_main(app: &tauri::AppHandle) -> tauri::Result<()> {
     let Some(w) = app.get_webview_window(MAIN_LABEL) else {
         return Err(tauri::Error::WebviewNotFound);
     };
+    mark_hidden(app, false);
     crate::webview_power::main_shown(app);
     w.show()?;
     let _ = w.unminimize();
@@ -524,6 +551,7 @@ pub fn on_close_requested(app: &tauri::AppHandle, quitting: bool) -> bool {
     }
     if let Some(w) = app.get_webview_window(MAIN_LABEL) {
         let _ = w.hide();
+        mark_hidden(app, true);
     }
     crate::webview_power::main_hidden(app); // DT-C236: the engine learns the view is out of sight
     if let Some(state) = app.try_state::<TrayState>() {

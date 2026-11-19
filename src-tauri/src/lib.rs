@@ -535,6 +535,9 @@ pub fn run() {
                 // A focus while minimised (a tab's view created under a minimised window takes it) is
                 // not a show: the view stays out of sight until the restore's resize.
                 if window.label() == "main" && !window.is_minimized().unwrap_or(false) {
+                    // A window hidden to the tray and raised from outside (a second launch's fallback) is
+                    // shown again through the window library first, so a later minimise does not hide it.
+                    tray::refocused(window.app_handle());
                     tray::window_shown(window.app_handle());
                     webview_power::main_shown(window.app_handle());
                 }
