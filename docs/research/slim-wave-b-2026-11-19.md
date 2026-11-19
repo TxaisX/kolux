@@ -27,23 +27,23 @@ Kept on purpose, though no screen uses them yet: the chat engine, the History wr
 
 ## Size
 
-- 81 commits on top of main: five parallel build lanes merged into one branch, a cleanup pass, the check fixes and two review rounds. Squashed into one commit on main.
-- About 425 files changed: 3,750 lines added, 73,600 removed. 131 files deleted.
-- Engine (src-tauri): about 66,600 lines removed. The engine's registered commands went from 464 to 305.
+- 82 commits on top of main (77 changes and 5 merges of the parallel build lanes), squashed into one commit on main.
+- 429 files changed: 3,868 lines added, 73,725 removed. 131 files deleted, 83 of them in the engine.
+- Engine (src-tauri): 171 files, 2,491 lines added, 66,697 removed. The engine's registered commands went from 464 to 303.
 - Engine files deleted include the command line (13,100 lines), orchestration, automations (6,400), protected actions and routing (5,700), the skills installer and skill delete (4,000), the other agents' hooks and installers (5,900), Grok's key engine, the provider and credential modules, the Recycle Bin file actions, artifacts, and the editor, notebook, PDF, HTML-preview and terminal-import engines.
 - Dependencies: the Recycle Bin library (`trash`) left, taking the unmaintained chrono with it; `libc` left too. The chrono exception came out of the dependency check's list.
-- Front end: about 3,300 lines removed; the first load is 1,349,774 bytes (wave A: 1,365,238).
+- Front end (src): 187 files, 702 lines added, 3,464 removed. The first load is 1,348,853 bytes (wave A: 1,365,238).
 
 ## Checks
 
 | Check | Result |
 |---|---|
-| Invoke contract and the other front-end checks (`pnpm check`) | green: 472 invoke calls against 305 registered commands; plan, glossary, guide (10 pages), workflow and licence checks OK |
-| Whole vitest suite | 4,733 passed, 2 failed, 1 skipped. Both failures were stale tests (below); fixed, and the affected files re-run green |
-| Production build + bundle budget | first load 1,349,774 bytes in 42 chunks, under the 1,499,000 ceiling |
+| Invoke contract and the other front-end checks (`pnpm check`) | green: 472 invoke calls against 303 registered commands; plan, glossary, guide (10 pages), workflow and licence checks OK |
+| Whole vitest suite | first run: 4,733 passed, 2 failed (stale tests, below). Final run on the last commit: 702 files, 4,733 passed, 0 failed, 1 skipped |
+| Production build + bundle budget | first load 1,348,853 bytes in 42 chunks, under the 1,499,000 ceiling |
 | Rust lint for the Windows target (clippy, warnings as errors) | clean |
-| Rust lint on Linux | 68 errors, all Linux-only unused-code notes that main already has (71 on main); none new |
-| Full Rust test suite (Linux, scratch homes) | 2,071 passed, 69 failed, 3 ignored. All 69 also fail on unchanged main on Linux: they test Windows-only behaviour. None new. GitHub runs the suite on Windows |
+| Rust lint on Linux | 68 errors, all Linux-only unused-code notes that main already has (71 on main); none new. GitHub lints on Windows |
+| Full Rust test suite (Linux, scratch homes) | final run: 2,070 passed, 70 failed, 3 ignored (233 s). Every failure also fails on unchanged main on this Linux machine (main: 3,172 passed, 100 failed): they test Windows-only behaviour, and one log-rotation test is timing-sensitive. None new. GitHub runs the suite on Windows |
 | Dependency check (cargo-deny 0.20.2, the version GitHub uses) | advisories, bans, licences and sources all OK |
 | Spec firewall | 25 known hits in 13 files, 0 new |
 | Live smoke on the second screen | not run: it needs the Windows app, WebView2 and a desktop, and this session had no Windows PC attached. Run `node scripts/evidence/smoke.mjs -- --offscreen` on the PC |
@@ -68,7 +68,11 @@ The build lanes also updated the tests that named removed commands, settings, st
 - Noted: one fix commit on the branch carried three file deletions that belonged to the next commit, so it does not build on its own. The pull request is squashed, so main gets a single commit and nothing on main is affected.
 - Moved to the next wave: the sidebar's setup suggestion card and Settings > Repo setup still describe setup scripts that no longer run.
 
-**Third look** at the background check: see below.
+**Third look** at the background check (no P0 or P1):
+- Fixed now: the check showed the window but left the tray dot thinking it was hidden; it now clears the dot as any show does.
+- Fixed now: the check could restore a window the user had just minimised and pull it in front. It now acts only on a window that is on screen and not minimised, and never restores or focuses it.
+- Fixed now: the import dialog's leftover styles, its row in the Base UI migration list and an unused derive.
+- Accepted: a window raised from outside within two to four seconds of being hidden is not caught by the background check, only by the focus event. Nothing is lost: the tray's Open Kolux brings it back fully.
 
 ## Left for the next wave
 
