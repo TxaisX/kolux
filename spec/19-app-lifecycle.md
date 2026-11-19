@@ -18,7 +18,7 @@ Linux and macOS paths, extra update channels, local-build switching, the hang wa
 development-copy behaviour are tier H; headless serve, remote reconnection and WSL start-up work
 went with area 18.
 
-Tier counts: P0 13 · P1 28 · P2 13 · H 13 · X 0 · D 3
+Tier counts: P0 13 · P1 26 · P2 13 · H 13 · X 0 · D 3
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 06 Usage & limits · 07 Accounts, sign-in & keys · 10 Plan review & protected actions · 11 Git, source control & review · 12 Editor & files · 13 Browser pane & computer use · 16 Onboarding & guidance · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 20 The `kolux` CLI · 21 H — retired, hidden, removed, dev-only
 
 ## Cards
@@ -599,25 +599,6 @@ Acceptance:
 Compat: —
 Source: D-19-062
 
-### APP-004 · Settings and data from the app's former name carry over on first launch
-Tier: P1 · Pushed: 10 · State at 0.15.0: live
-User does: installs this version over an install that still used the old product name.
-User sees: projects, settings and history are all present; nothing has to be set up again.
-Rules: the old profile folder is copied into the new one once, and repeating it changes nothing; a
-  file already present in the new profile is never overwritten; files locked by another program are
-  skipped rather than stopping the migration; the packaged release smoke test checks this migration
-  on every release; development and test profiles never get it; small interface preferences stored
-  under the former name's prefix move once to the new prefix; saved settings stored under the former
-  product's names are renamed once to the current names, a value already saved under the current
-  name wins, and repeating the rename changes nothing.
-Acceptance:
-  - [ ] Seed an old-name profile with a project and a setting, then launch → both appear; launch
-        again → no duplicates.
-  - [ ] Pre-create one target file with different content → it is unchanged after the migration.
-Compat: the former product was called Nightshift; its whole user-data profile folder in the system's
-  application-data location, matched in any letter case, is migrated into the Kolux profile folder.
-Source: D-19-004
-
 ### APP-008 · Tray icon with a short menu and an attention dot
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: looks at or clicks the tray icon.
@@ -765,17 +746,6 @@ Acceptance:
   - [ ] With the app already open, run it → the existing window comes forward and no second copy starts.
 Compat: `kolux open`, with `--json`.
 Source: D-19-056
-
-### APP-057 · `kolux status` reports whether the app and its runtime are ready
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: runs the status command.
-User sees: whether the app is running, whether its runtime answers, and whether its data has loaded.
-Rules: JSON output is available for scripts and agents.
-Acceptance:
-  - [ ] With the app closed → status says it is not running; open the app → status reports ready.
-  - [ ] Run it with JSON → a machine-readable answer carrying the same three facts.
-Compat: `kolux status`, with `--json`.
-Source: D-19-057
 
 ### APP-030 · An update whose Windows signature does not match is stopped, with no bypass
 Tier: P2 · Pushed: 8 · State at 0.15.0: live-unverified

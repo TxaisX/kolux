@@ -17,7 +17,7 @@ it out of the right sidebar and the wave of 2026-11-15 removed its code. Changed
 staged, unstaged and discarded in the All Changes tab. A card below that names the panel describes
 the old screen; what Kolux built of it is in PLAN.md.
 
-Tier counts: P0 12 · P1 38 · P2 21 · H 0 · X 0 · D 15
+Tier counts: P0 11 · P1 29 · P2 15 · H 0 · X 0 · D 15
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 07 Accounts, sign-in & keys · 12 Editor & files · 13 Browser pane & computer use · 15 Skills, plugins & starter kits · 16 Onboarding & guidance · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The `kolux` CLI
 
 ## Cards
@@ -35,7 +35,7 @@ Rules: acting on a folder covers every file beneath it; paths are matched exactl
   (Kolux, T-018-c: rows select on click, Ctrl adds or removes, Shift spans in list order, Esc
   clears; the bulk bar reads N selected · Stage k · Unstage m; a file with staged and unstaged
   parts is one selection counted on both sides. Folder rows come with the tree view, T-033.)
-  (Kolux, T-676: the live Changes tab (EDIT-029) has Stage and Unstage on each file and Stage all
+  (Kolux, T-676: the live Changes tab (EDIT 029) has Stage and Unstage on each file and Stage all
   and Unstage all above the commit box. Stage all takes the changed and new files, never the
   conflicted ones, which are resolved by hand; when the list was cut short (GIT-012) the rows shown
   are only some of the changes, so both buttons send the whole worktree instead, except that Stage
@@ -107,7 +107,7 @@ Rules: fetch refreshes remote refs and merges nothing; publish pushes to origin 
   run with terminal and credential prompts off and no input, and are stopped, with the git processes
   they started, after 600 seconds; a stopped step comes back as a network failure that says it timed
   out and names likely causes. A rebase from base is a local step and has no limit. The live Changes
-  tab (EDIT-029) offers Push, Pull and Sync with the counts and the reason a disabled one waits;
+  tab (EDIT 029) offers Push, Pull and Sync with the counts and the reason a disabled one waits;
   the rest of this menu is not in the live layout.)
 Acceptance:
   - [x] Make two local commits → the menu offers to push 2 commits; push → the counts fall to zero. (cards; evidence/cards-GIT-007.txt)
@@ -235,24 +235,6 @@ Acceptance:
 Compat: Add Review Note defaults to Mod+Shift+A (its command id is an allowlist candidate).
 Source: D-11-040
 
-### GIT-041 · Gather review notes and send them to the agent
-Tier: P0 · Pushed: 3 · State at 0.15.0: live-unverified
-User does: opens the notes section of Source Control and sends the notes to the workspace's agent,
-  or copies them.
-User sees: every note listed by file; sending pastes them into the agent as a single message and
-  marks them sent.
-Rules: a note can be opened at its line, copied or deleted, and notes can be cleared per file or all
-  together; each note becomes a short block with file, line and text, with a blank line between
-  notes; clearing delivered notes keeps any note edited while the send was still in flight; if
-  saving a note fails, the change is reverted and the user is told; folder workspaces without Git
-  keep notes as well; an empty notes section explains how to add one; sending notes has no default
-  key and the user may bind one.
-Acceptance:
-  - [x] Add three notes across two files and send → the agent gets all three and they show as sent. (cards; evidence/cards-GIT-041.txt)
-  - [x] Edit a note while a send is running, then clear delivered → the edited note remains. (cards; evidence/cards-GIT-041.txt)
-Compat: the send-notes command has no default key (its command id is an allowlist candidate).
-Source: D-11-041
-
 ### GIT-003 · Discard asks first and spells out what will be lost
 Tier: P0 · Pushed: 5 · State at 0.15.0: live-unverified
 User does: clicks discard on a file, a folder or a whole section.
@@ -372,21 +354,6 @@ Acceptance:
         not synced.
 Compat: —
 Source: D-11-065
-
-### GIT-068 · Worktree changes and overlap from the CLI
-Tier: P1 · Pushed: 11 · State at 0.15.0: live-unverified
-User does: runs `kolux worktree changes` or `kolux worktree overlap`, optionally for a chosen
-  worktree and with JSON output.
-User sees: the worktree's committed and uncommitted changes since its base, or the other worktrees
-  that touch the same files and whether merging them would conflict.
-Rules: the conflict forecast reads clean, conflicting with the paths involved, or unverifiable on
-  Git older than 2.38; an unsupported Git is remembered and not probed again.
-Acceptance:
-  - [ ] Edit one file in two worktrees and run overlap → both worktrees show, with that file.
-  - [ ] Run changes with JSON output → a machine-readable list of committed and uncommitted files.
-Compat: `kolux worktree changes [--worktree <selector>] [--json]` and
-  `kolux worktree overlap [--worktree <selector>] [--json]`.
-Source: D-11-068
 
 ### GIT-005 · Commit together with push, sync or force push
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
@@ -613,49 +580,6 @@ Acceptance:
 Compat: —
 Source: D-11-026
 
-### GIT-029 · Checks panel shows CI results and hands failures to AI
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens Checks in the right sidebar of a workspace that has a PR.
-User sees: checks grouped into failing, pending and passing; each opens into jobs, annotations and
-  output, with copy log, open file at line, rerun, and fix with AI.
-Rules: long lists show the first 100 checks or jobs and the first 20 annotations, with a note about
-  the rest; fix with AI lets the user pick the agent and sends the failing output, trimmed to its
-  final part; a blocked check that needs action counts as failing, never passing, and neutral checks
-  are not counted as passed; folder workspaces get a separate PR checks panel. (Kolux, T-686: the
-  button words are Rerun failed jobs, Retry (a read failed), Refresh (read again) and Fix with AI;
-  Rerun waits while it is asking, reads the checks again afterwards, and shows a failure in a red
-  note; a link that will not open says so in that note; the check card has a Refresh button, and a
-  Retry beside a read error; its close button names the check for a screen reader; the PR row has
-  the collapsed stack map, GIT-034.)
-Acceptance:
-  - [ ] Break a test and push → the failing job is listed; expand it → its log shows; fix with AI →
-        an agent opens with the failure. (button words, Rerun and Refresh; evidence/T-686.txt)
-  - [ ] A run with 150 jobs → 100 are listed with a note about the rest.
-Compat: keybinding id sidebar.checks.toggle, unbound by default.
-Source: D-11-029
-
-### GIT-030 · Read and answer PR review comments in Kolux
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: reads PR comments in the Checks panel; adds, replies to, edits, deletes, resolves or
-  reacts to them.
-User sees: comments grouped by file and thread, or laid out as a timeline; every change shows up on
-  GitHub.
-Rules: deleting asks for confirmation; authors can be marked as bots so their comments sit apart,
-  and that list is a setting; long threads show the first 100 comments with a note; blank comments
-  cannot be sent, and text is trimmed first; times are compact, relative when recent, and an invalid
-  time shows nothing. (Kolux, T-686: every comment box says "Enter sends. Shift+Enter adds a new
-  line."; each comment or thread shows its own waiting state and error, so one card's action does
-  not block or blame another, and the errors clear when the folder or pull request changes; Reply
-  is disabled, with the reason as its tooltip and a hint, for a thread whose first comment GitHub
-  gave no id.)
-Acceptance:
-  - [ ] Reply to a review thread and resolve it → GitHub shows the reply and the thread resolved.
-  - [ ] Try to send a comment made only of spaces → nothing is sent.
-  - [ ] Make one comment's save fail → the error sits under that comment and the others still work.
-        (unit; evidence/T-686.txt)
-Compat: —
-Source: D-11-030
-
 ### GIT-031 · Send review comments to the agent
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: queues PR comments for the agent, or uses resolve comments with AI.
@@ -669,22 +593,6 @@ Acceptance:
   - [ ] Make delivery fail → the threads stay unresolved.
 Compat: —
 Source: D-11-031
-
-### GIT-032 · PR merge conflicts are explained, with Resolve with AI
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens Checks for a PR that GitHub reports as conflicting.
-User sees: a conflict section stating that the conflicts must be fixed before checks run and the PR
-  can merge, listing the conflicting files, with a Resolve with AI action (T-686: renamed from
-  "AI resolve"; a failed copy of the commands shows "Copy failed" on the button and a red note).
-Rules: when GitHub reports conflicts that do not happen locally, the panel says so and offers
-  commands to copy that make GitHub recompute whether the PR can merge.
-Acceptance:
-  - [ ] Open a PR that conflicts with its base → the files are listed; resolve with AI starts an
-        agent. (button name; evidence/T-686.txt)
-  - [ ] A PR that GitHub flags as conflicting but that merges cleanly here → the panel says so and
-        offers the commands.
-Compat: —
-Source: D-11-032
 
 ### GIT-033 · Merge, auto-merge, merge queue and PR state actions
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
@@ -748,56 +656,6 @@ Acceptance:
 Compat: —
 Source: D-11-042
 
-### GIT-043 · Tasks page lists GitHub issues and pull requests
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens Tasks, picks repositories, and chooses a preset (all open, mine, assigned, needs
-  review and others) or types a GitHub search query.
-User sees: a paged list of matching issues or PRs with state, labels, assignees and a checks pill,
-  and numbered page buttons at the foot.
-Rules: whether issues or PRs show follows the preset and any is:issue or is:pr typed in the query;
-  the repository picker has one row per GitHub project, folding local and duplicate checkouts
-  together; repositories with no GitHub remote are left out, and ones still being checked stay
-  visible; pages beyond GitHub's search window say they cannot be reached; scroll position and
-  recent pages are restored on return; the pager stays on an empty page after the first, so the user can go back; the checks pill reads passing, failing, running or
-  unresolved; merged and open PRs each have their own muted status colour; the repository choice
-  becomes the default for next time; a source label names the GitHub host and the signed-in account,
-  shows a count when several repositories are chosen, and warns about hosts that cannot be reached.
-Acceptance:
-  - [ ] Choose the assigned preset → only items assigned to the user; add is:pr → the list switches
-        to PRs.
-  - [ ] Go to page 3, open an item, come back → still on page 3 at the same scroll position.
-  - [ ] Go to a page past the last result → it says nothing matches and the pager still lets the user go back. (unit tests: evidence/T-670.txt)
-Compat: —
-Source: D-11-043
-
-### GIT-046 · Create a GitHub issue from Tasks
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: clicks new issue, chooses the repository, enters a title, an optional Markdown
-  description, labels and assignees, and creates it.
-User sees: the issue on GitHub and at the top of the list.
-Rules: the target starts as the first selected repository; an unfinished draft is kept; changing
-  repository drops labels and assignees that belonged to the previous one; if the chosen repository
-  goes away the draft falls back to the first selected one; a very long body that cannot be saved as
-  a draft still creates the issue, and the draft is kept for recovery.
-Acceptance:
-  - [ ] Fill in a draft, close the dialog and reopen it → the fields come back.
-  - [ ] Create an issue with a label → GitHub shows the issue with that label.
-Compat: —
-Source: D-11-046
-
-### GIT-047 · Close, reopen and comment on issues
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: closes an issue as completed, not planned, or a duplicate of another number; reopens it;
-  adds a comment.
-User sees: the state changes on GitHub and in the list; the comment is posted.
-Rules: a duplicate target is checked before anything is sent, and suggestions list other matching
-  issues; validation failures read as plain messages.
-Acceptance:
-  - [ ] Close an issue as a duplicate of an existing number → GitHub shows it closed as a duplicate.
-  - [ ] Give a duplicate number that does not exist → a readable message, and nothing is sent.
-Compat: —
-Source: D-11-047
-
 ### GIT-049 · Start or resume a workspace from an issue or PR
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: clicks start workspace on an issue or PR in Tasks, or resume when one already exists.
@@ -814,44 +672,6 @@ Acceptance:
   - [ ] Type a PR URL into the issue field → it is refused.
 Compat: `kolux worktree create --issue <number>` and `kolux worktree set --issue <number>`.
 Source: D-11-049
-
-### GIT-050 · Issue and PR preview dialog
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: clicks an item in Tasks.
-User sees: a dialog with the description, a timeline (closed, reopened, assigned, mentioned and
-  similar events), labels, assignees and actions, including opening a workspace.
-Rules: body edits keep an unsaved draft for that item for as long as Kolux runs and put it back in
-  the editor when the item is opened again (it is dropped once saved or put back); a load that
-  fails says so with a Retry, never "Loading…" for ever; closing the dialog returns focus to what had
-  it; the dialog does not redraw for list updates while it is closed; while the body is not being
-  edited it shows GitHub's latest version.
-Acceptance:
-  - [ ] Open an issue and add a label in the dialog → the label shows in the dialog and in the list.
-  - [ ] Change the issue body on GitHub while the dialog is open but not being edited → the dialog
-        shows the new body.
-  - [ ] Type in the description, close the dialog without saving, open the same item → the typed text is back in the editor. (unit tests: evidence/T-670.txt)
-  - [ ] Open an item while GitHub cannot be read → the dialog says so and Retry reads it again. (unit tests: evidence/T-670.txt)
-Compat: —
-Source: D-11-050
-
-### GIT-051 · Full pull request page
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens a PR from Tasks.
-User sees: Conversation, Checks and Files changed tabs; editable description, assignees, labels and
-  reviewers; reactions; review threads with replies; close or reopen; rerun all checks or only
-  failed ones; fix broken checks with AI; copy link; open GitHub's merge box; start or resume a
-  workspace.
-Rules: copy link briefly shows that it copied; merging from the page needs the repository added in
-  Kolux, and says so otherwise; the Checks tab keeps its state between visits; a Back button with an
-  arrow, and Escape, return to Tasks unless a text field, menu, dialog or edit is open (an open merge
-  confirm closes first); a Refresh button reads the PR again; a failed checks or review-threads read
-  leaves a note above the tabs instead of an empty list; "Yes, merge it" is the red danger button.
-Acceptance:
-  - [ ] Open a PR, go to Checks, rerun failed → GitHub reruns the failed jobs.
-  - [ ] Click copy link → the clipboard holds the PR URL and the button briefly confirms it.
-  - [ ] Press Escape on a PR page with a merge confirm open → the confirm closes; press it again → back at Tasks. (unit tests: evidence/T-670.txt)
-Compat: —
-Source: D-11-051
 
 ### GIT-052 · Review a PR's files and mark them viewed
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
@@ -1017,52 +837,6 @@ Acceptance:
 Compat: —
 Source: D-11-013
 
-### GIT-014 · Filter the changes and act on a file from its menu
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: types in the panel's filter box, or right-clicks a changed file.
-User sees: the list narrows to matching paths; the menu copies the full or the relative path, opens
-  the file in an outside app, or shows it in the file manager.
-Rules: Escape empties the filter and closes the box; the list of apps to open with can be edited
-  from the same menu.
-Acceptance:
-  - [ ] Type part of a file name → only matching rows stay; press Escape → the full list is back.
-  - [ ] Right-click a file and copy its relative path → the clipboard holds the path from the
-        repository root.
-Compat: —
-Source: D-11-014
-
-### GIT-019 · Source Control AI actions tuned per action and per repository
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: edits the AI recipes for the commit, PR, branch-name and fix actions (agent, extra CLI
-  arguments, or a command template) and sets per-repository overrides.
-User sees: each recipe offers variable chips to insert; a repository can follow the global choice,
-  force AI actions on, or force them off.
-Rules: one switch hides every Source Control AI action; the linked-issue variable is available only
-  in the commit and PR recipes; configurations from before recipes existed are turned into recipes
-  on first launch; an invalid recipe cannot be saved and the reason is shown.
-Acceptance:
-  - [ ] Turn the switch off → the generate and fix with AI controls vanish from the panel.
-  - [ ] Force one repository off → it shows no AI actions while others still do.
-Compat: —
-Source: D-11-019
-
-### GIT-034 · Stacked pull requests
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: works on a branch built on top of another PR's branch.
-User sees: a collapsible stack map of the PRs with each one's state; actions to open the next PR in
-  the stack, and to merge or queue everything up to a chosen PR after confirming.
-Rules: creating a stacked PR makes the current PR first and then records the stack, and a retry
-  never duplicates anything; parent links that do not form one chain create nothing; merging up to a
-  PR is refused when a lower one cannot merge. (Kolux, T-686: the map sits under the PR row in
-  the Checks tab, collapsed, and reads GitHub only once opened; it is per folder and pull request,
-  so an answer for another one is dropped; a link that will not open shows the reason in its note.)
-Acceptance:
-  - [ ] Build two stacked branches and create their PRs → the map shows both; merge through the top
-        one → both merge in order. (the map's place in the Checks tab; evidence/T-686.txt)
-  - [ ] Make the lower PR unmergeable → merging through the top one is refused.
-Compat: —
-Source: D-11-034
-
 ### GIT-044 · Opening Tasks and its default view
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens Tasks from the title-bar button, the View menu or a bound key, and hides the button
@@ -1116,39 +890,6 @@ Acceptance:
 Compat: —
 Source: D-11-055
 
-### GIT-056 · GitHub Projects as an editable table
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: picks a GitHub Project (pinned, recent, by browsing, or by pasting a URL or an owner and
-  number) and opens one of its views.
-User sees: a table of project items whose columns sort and group, with editable cells (labels,
-  assignees, numbers, text, issue type, iteration).
-Rules: board and roadmap views are marked unsupported, with a suggestion to switch to a table view;
-  rows can be limited to repositories open in Kolux or to chosen ones, and a repository not in Kolux
-  offers to add it; items the user cannot see show as restricted; pinned and recent projects and
-  each project's last view are remembered; the view can be opened on GitHub; "Chosen repositories"
-  starts with the project's repositories that are open in Kolux ticked, else all of the project's
-  repositories, so the table is never empty before the user picks; a failed read shows the error
-  with a Retry.
-Acceptance:
-  - [ ] Paste a project URL → its table loads; edit a status cell → GitHub shows the new value.
-  - [ ] Pick a board view → it is marked unsupported, with the table suggestion.
-  - [ ] Open a project with none of its repositories open in Kolux → all its repositories start ticked. (unit tests: evidence/T-670.txt)
-Compat: —
-Source: D-11-056
-
-### GIT-057 · GitHub Projects roadmap timeline
-Tier: P2 · Pushed: — · State at 0.15.0: half-done
-User does: opens a project view laid out as a roadmap.
-User sees: items placed on a date timeline by their start and end fields.
-Rules: the project picker still calls roadmap views unsupported, so whether a user can reach this
-  timeline at all is an open question.
-Acceptance:
-  - [ ] Open a roadmap view → either the items sit on the timeline at their dates or the unsupported
-        notice shows; the owner picks which.
-  - [ ] Whichever is picked, the picker and the view agree about roadmap views.
-Compat: —
-Source: D-11-057
-
 ### GIT-058 · Paste a GitHub URL into the quick switcher
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: pastes an issue or PR URL into the Cmd+J switcher, or uses a digit chord.
@@ -1182,17 +923,6 @@ Acceptance:
   - [ ] Switch back to a branch → the label shows the branch name.
 Compat: —
 Source: D-11-064
-
-### GIT-069 · Open changed files from the CLI
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: runs `kolux file open-changed` with a mode.
-User sees: the changed files open in the editor, as diffs, or both.
-Rules: edit mode opens the files, diff mode opens diffs, and both does each.
-Acceptance:
-  - [ ] Change two files and run it in diff mode → two diff tabs open.
-  - [ ] Run it in edit mode → the two files open as ordinary editor tabs.
-Compat: `kolux file open-changed --mode edit|diff|both`.
-Source: D-11-069
 
 ### GIT-071 · Invitation to star the project on GitHub
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified

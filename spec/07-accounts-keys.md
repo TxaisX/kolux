@@ -16,7 +16,7 @@ lived in the status-bar usage menus, which stopped showing on 2026-10-05, so it 
 profiles per install is developer-only. Accounts inside WSL, account handling for remote hosts,
 and files, git and terminals on SSH hosts went with area 18.
 
-Tier counts: P0 12 · P1 27 · P2 16 · H 4 · X 0 · D 6
+Tier counts: P0 9 · P1 25 · P2 13 · H 4 · X 0 · D 6
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes ·
 04 Agent status, hooks & notifications · 05 Views & navigation · 06 Usage & limits ·
 08 Orchestration · 09 Automations · 10 Plan review & protected actions ·
@@ -240,63 +240,6 @@ Acceptance:
 Compat: Seven ways to connect must exist: Claude by 1-year key, Claude by account, Codex by ChatGPT
   sign-in, Codex by device code, Grok by CLI login, Grok by device code, Grok by API key.
 Source: D-07-002
-
-### ACCT-003 · A missing agent tool installs from its Connect card
-Tier: P0 · Pushed: 6 · State at 0.15.0: live-unverified
-User does: clicks "Install" on the card of an agent that is not on the machine.
-User sees: a progress bar with Cancel during the install; when it finishes the card moves on to not
-  connected, with no Kolux restart.
-Rules: on Windows the install goes through the system package manager, and progress is read from
-  what that tool prints; once installed, the program search path is read again so the new tool is
-  found at once, and any remembered version check is thrown away; an install still going after 15
-  minutes is stopped and shown as failed; agents with no automatic installer get "Open install page"
-  instead; the package manager's known exit codes are turned into plain reasons such as already
-  installed, blocked by SmartScreen, or not available; starting another install for the same agent
-  ends the earlier one.
-Acceptance:
-  - [x] Click Install on a missing Codex → progress moves, then the card shows not connected and
-        Connect works with no restart. (cards; evidence/cards-ACCT-003.txt)
-  - [x] Make an install hang → after 15 minutes the card shows a failure with "Try installing
-        again". (cards; evidence/cards-ACCT-003.txt)
-Compat: —
-Source: D-07-003
-
-### ACCT-008 · Grok connects by its CLI login, a device code or a pasted xAI key
-Tier: P0 · Pushed: 6 · State at 0.15.0: live-unverified
-User does: clicks "Connect" on the Grok card, or picks "Sign in with a code" or "Use an xAI API
-  key".
-User sees: the Grok CLI login completes and the card turns connected; on the key route a small
-  dialog takes the key a single time.
-Rules: the key route is labelled advanced and pay-per-use, unlike the subscription sign-in; the
-  dialog's Connect stays disabled until something is typed, sends the key once, and the key never
-  appears on screen again; Cancel empties the field, even when the dialog is reopened without being
-  rebuilt; the key is stored sealed like every other secret (ACCT-009); when both a Grok CLI sign-in
-  and a saved xAI key exist, the card reports the sign-in; a sign-in the user had already made shows
-  as connected with nothing to do.
-Acceptance:
-  - [x] Open the key dialog → Connect is disabled; type a key → it enables; submit → the card is
-        connected and the key text appears nowhere on the page. (cards; evidence/cards-ACCT-008.txt)
-  - [x] Type a key, press Cancel, reopen → the field is blank. (cards; evidence/cards-ACCT-008.txt)
-Compat: A saved xAI key carries over from an older profile.
-Source: D-07-008
-
-### ACCT-034 · Model routing tiers per provider for workers
-Tier: P0 · Pushed: 11 · State at 0.15.0: live-unverified
-User does: opens model routing in the Agents settings, chooses a provider, and sets a model and an
-  effort level for each tier.
-User sees: four tiers named Major, Deep, Build and Light, each with a model picker and an effort
-  picker, plus a reset for the chosen provider.
-Rules: providers that are not installed still appear, each carrying a mark that this computer lacks
-  it; Claude's defaults: the newest top model at high effort for Major, Opus at high for Deep,
-  Sonnet at medium for Build, Haiku for Light; Codex has a separate default ladder of models and
-  efforts; reset puts back the defaults of that one provider.
-Acceptance:
-  - [x] Set Claude's Build tier to Opus at high, then reset Claude → Build goes back to Sonnet at
-        medium and Codex is unchanged. (cards; evidence/cards-ACCT-034.txt)
-  - [x] On a machine without Codex → the Codex tab can still be selected and shows a not-detected
-        mark. (cards; evidence/cards-ACCT-034.txt)
-Compat: Each provider's table of tier to model and effort, for all four tiers, carries over.
-Source: D-07-034
 
 ### ACCT-046 · Windows terminals choose the best shell on the machine
 Tier: P1 · Pushed: 1 · State at 0.15.0: live-unverified
@@ -526,36 +469,6 @@ Acceptance:
   - [ ] Remove account A → the pane shows that it needs a new account.
 Compat: —
 Source: D-07-023
-
-### ACCT-027 · The Grok section shows the CLI sign-in and credit use
-Tier: P1 · Pushed: 4 · State at 0.15.0: live-unverified
-User does: opens the Grok section, or clicks "Refresh usage".
-User sees: whether the Grok CLI is signed in, the weekly credit used and the monthly spend on
-  unified billing; when signed out it tells the user to run Grok's login command.
-Rules: Kolux reads the Grok CLI's own session from disk and keeps no second login of its own; an
-  expired session shows how to sign back in.
-Acceptance:
-  - [ ] Sign the Grok CLI out → the section says to run the login command; sign in again and click
-        Refresh usage → the credit figures come back.
-  - [ ] Let the Grok session expire → the section explains how to sign in again.
-Compat: —
-Source: D-07-027
-
-### ACCT-031 · `kolux account add` and `kolux account list`
-Tier: P1 · Pushed: 4 · State at 0.15.0: live-unverified
-User does: runs the account commands in a terminal on the machine where Kolux is running.
-User sees: add runs the agent's own login right in that terminal and registers the outcome as a
-  managed account; list prints the managed Claude and Codex accounts.
-Rules: add assumes Claude unless `--agent` names Claude or Codex; adding Codex uses device
-  authorisation, so the browser can be on another machine; both commands take `--json`; the Kolux
-  app must be running, and the commands say so when it is not; flags for environments and pairing
-  codes are rejected, not silently ignored.
-Acceptance:
-  - [ ] Run `kolux account add --agent codex` → a device code is printed; after sign-in the account
-        appears in Settings.
-  - [ ] Run `kolux account list --json` → valid JSON that lists every managed account.
-Compat: `kolux account add [--agent claude|codex] [--json]` and `kolux account list [--json]`.
-Source: D-07-031
 
 ### ACCT-032 · Model choice per agent; the live per-account lookup exists but is off the main path
 Tier: P1 · Pushed: 4 · State at 0.15.0: half-done
@@ -839,44 +752,6 @@ Acceptance:
   - [ ] Close a tab, then let a late reattach for it arrive → the tab stays closed.
 Compat: —
 Source: D-07-063
-
-### ACCT-022 · Choose which Codex folder past sessions come from
-Tier: P2 · Pushed: 4 · State at 0.15.0: live-unverified
-User does: sets the Codex home that session history is read from, or clicks "Reset".
-User sees: an empty field means the standard Codex folder; a custom path makes Kolux read session
-  history there instead.
-Rules: Reset empties the field, which means the standard folder.
-Acceptance:
-  - [ ] Enter a custom folder that holds Codex sessions → those sessions can be resumed in Kolux.
-  - [ ] Click Reset → the field is empty and history comes from the standard Codex folder.
-Compat: —
-Source: D-07-022
-
-### ACCT-028 · MiniMax credentials for usage tracking
-Tier: P2 · Pushed: 4 · State at 0.15.0: live-unverified
-User does: pastes a MiniMax session cookie or API key, chooses the endpoint, and may override the
-  group id or the model names.
-User sees: each credential can be saved, replaced or forgotten and is marked as kept on this
-  computer; usage refreshes right after a save or a clear.
-Rules: the section appears only when MiniMax is detected; a help popover explains how to copy the
-  session cookie; the endpoint starts as overseas and the usage model as general.
-Acceptance:
-  - [ ] Save a MiniMax key → a usage refresh runs; Forget → the key is removed and usage clears.
-  - [ ] On a machine where MiniMax is not detected → the section does not appear.
-Compat: The MiniMax group id, usage-model names and endpoint choice carry over.
-Source: D-07-028
-
-### ACCT-029 · Use Gemini CLI credentials (experimental)
-Tier: P2 · Pushed: 4 · State at 0.15.0: live-unverified
-User does: switches on the experimental setting for Gemini CLI credentials.
-User sees: Kolux reads the Gemini CLI's own sign-in to show usage; the setting appears only when
-  Gemini is detected.
-Rules: off by default.
-Acceptance:
-  - [ ] With Gemini installed and signed in, switch the setting on → Gemini usage shows.
-  - [ ] On a fresh profile → the setting is off.
-Compat: The on or off choice (off unless turned on) carries over.
-Source: D-07-029
 
 ### ACCT-035 · The first connection is recorded; failures name the agent
 Tier: P2 · Pushed: 6 · State at 0.15.0: live-unverified
