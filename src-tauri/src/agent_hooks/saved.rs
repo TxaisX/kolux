@@ -118,7 +118,8 @@ fn agent_of(route: &str) -> Option<(Agent, &'static str)> {
     match route.trim_start_matches('/') {
         "claude" => Some((Agent::Claude, "claude")),
         "codex" => Some((Agent::Codex, "codex")),
-        r => super::vendors::agent_of(r).or_else(|| super::more::agent_of(r)).map(|name| (Agent::Vendor, name)),
+        // Another agent's line (an older Kolux's hook still in that agent's settings) is skipped.
+        _ => None,
     }
 }
 
@@ -204,11 +205,8 @@ pub fn note(app: &tauri::AppHandle, route: &str, body: &[u8], status: &Status, h
 }
 
 /// Folds the holding file's lines (`route|identity|config|event`) onto `rows`. Each pane's events
-/// run through a fresh session of its own, never the live ones; a vendor's line, though, goes
-/// through `vendors::normalize`, whose ended-turn memory (STAT-062, `ENDED`) is the one the live
-/// listener shares, so a replayed end is remembered by the listener too (startup replay runs
-/// before the listener serves; the memory is not kept across a restart). A broken or partial
-/// line is skipped.
+/// run through a fresh session of its own, never the live ones. A broken or partial line, or one
+/// for an agent other than Claude Code and Codex, is skipped.
 pub fn replay(text: &str, rows: &mut Vec<Row>, now: u64) -> usize {
     let mut sessions: HashMap<u32, Session> = HashMap::new();
     let mut applied = 0;
@@ -218,8 +216,6 @@ pub fn replay(text: &str, rows: &mut Vec<Row>, now: u64) -> usize {
         let Some((agent, name)) = agent_of(route) else { continue };
         let Some((pane_key, terminal)) = identity(who) else { continue };
         let Ok(event) = serde_json::from_str::<Value>(body.trim()) else { continue };
-        // T-120-b: a vendor's line holds its raw event, normalized as the listener would.
-        let event = if agent == Agent::Vendor { match super::more::normalize_any(route, &event) { Some(e) => e, None => continue } } else { event };
         let session = sessions.entry(pane_key).or_default();
         let Some((change, child)) = session.apply(agent, &event) else { continue };
         let status = Status { pane_key, terminal, change, children: Vec::new(), stop: session.stop.clone(), reply: None, child, interrupted: false, monitoring: session.monitoring() };

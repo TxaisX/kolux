@@ -21,7 +21,7 @@ import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
 import { seatStart, type SeatDefault } from "./defaultSeat";
 import { everySeatStart, folderPlan, oneForAll, pickForAll, pickWords, recountAll, setAll, startSummary, type FolderRow } from "./startForm";
-import { canInstall, FEATURED, featuredRows, installNoteOf, installTip, otherRows, pickList, runInstall } from "./agentInstall";
+import { FEATURED, featuredRows, otherRows, pickList } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
 import { useDialogFocus } from "../chrome/dialogFocus";
 import { WindowStore } from "../shell/window/store";
@@ -91,7 +91,7 @@ function AgentButtons({ rows, pick, label, "data-testid": testid, onChoose, onOt
   return (
     <div className="agent-grid" role="group" data-testid={testid} aria-label={label}>
       {featuredRows(rows).map((a) => (
-        <button key={a.id} className="btn agent-btn" data-testid={`seat-agent-${a.id}`} aria-pressed={pick === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => onChoose(a.id)}>
+        <button key={a.id} className="btn agent-btn" data-testid={`seat-agent-${a.id}`} aria-pressed={pick === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to see how to get it.`} onClick={() => onChoose(a.id)}>
           <AgentMark id={a.id} size={28} />
           <span className="agent-btn-name">{a.name}</span>
           {!a.installed && <span className="agent-btn-note">not installed</span>}
@@ -112,8 +112,8 @@ function AgentButtons({ rows, pick, label, "data-testid": testid, onChoose, onOt
   );
 }
 
-/** UX audit F4: what a missing agent with no Install route and no docs page tells the person to do. */
-export const selfInstallHint = (a: AgentInfo): string | null => (!a.installed && !canInstall(a) && !a.docs ? `Kolux cannot install ${a.name} for you. Install it yourself, then press Refresh agents.` : null);
+/** UX audit F4: what a missing agent with no docs page tells the person to do. */
+export const selfInstallHint = (a: AgentInfo): string | null => (!a.installed && !a.docs ? `Kolux cannot install ${a.name} for you. Install it yourself, then press Refresh agents.` : null);
 
 /** UX audit F4: Esc inside a text box that holds typing only leaves the box, so a stray Esc does not throw the typing away. */
 export const holdsTyping = (el: { tagName?: string; value?: string; type?: string } | null): boolean => {
@@ -198,18 +198,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const [nudged, setNudged] = useState(false);
   const gap = seatGap(seats);
   const sessions = seats.length;
-  // T-570: one dropdown per seat lists every agent; a missing one can be picked, which shows Install. `fixed` holds agents
-  // installed from here until the next detection pass; `shown` is a seat's pick that is not startable yet.
-  const [fixed, setFixed] = useState<Record<string, AgentInfo>>({});
+  // T-570: every agent is offered; a missing one can be picked, which shows how to get it. `shown` is a seat's pick
+  // that is not startable yet.
   const [shown, setShown] = useState<Record<number, string>>({});
-  const [installing, setInstalling] = useState<string | null>(null);
-  const [installError, setInstallError] = useState<Record<string, string>>({});
-  const rows = pickList(agents.map((a) => fixed[a.id] ?? a), detecting);
+  const rows = pickList(agents, detecting);
   const none = !detecting && !rows.some((a) => a.installed);
   const nameOf = (id: string) => agents.find((a) => a.id === id)?.name ?? id;
   const noneNote = (
     <span className="caption">
-      No AI programs have been found yet. Pick one below to install it, or{" "}
+      No AI programs have been found yet. Install one, then press Refresh agents, or{" "}
       <button className="btn link" onClick={() => openSettings("accounts")}>
         open Settings
       </button>
@@ -219,11 +216,8 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   // TERM-012: a chooser Kolux focuses takes the keyboard, so typing no longer lands in the last pane.
   const box = useRef<HTMLElement>(null);
   const win = useContext(WindowStore);
-  // An install finishes later: what it writes is worked out from the seats as they are then, not as they were at the click.
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
-  const shownRef = useRef(shown);
-  shownRef.current = shown;
   useEffect(() => {
     if (focused && !hidden && !box.current?.contains(document.activeElement)) box.current?.focus();
   }, [focused, hidden]);
@@ -251,7 +245,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     // T-571: the default model and effort start the seat (else the agent's saved pick, Row 389); the person can still change both.
     setSeat(i, seatStart(id, seatDefault_));
   };
-  // An installed agent (or Terminal) starts the seat; a missing one is shown so its Install button appears.
+  // An installed agent (or Terminal) starts the seat; a missing one is shown with how to get it.
   const chooseAgent = (i: number, id: string) => {
     const a = rows.find((x) => x.id === id);
     if (id === TERMINAL || a?.installed) return pickAgent(i, id);
@@ -367,48 +361,18 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       setNudged(true);
     }
   };
-  // SESS-017: the Install route, notes and docs for a picked agent, on a seat or on the one row (seat 0 then stands for all).
-  const installBits = (pick: string | null, i: number) => {
+  // SESS-017: how to get a picked agent that is missing, and its docs, on a seat or on the one row.
+  const installBits = (pick: string | null) => {
     const a = rows.find((x) => x.id === pick);
     if (!a) return null;
     return (
       <>
-        {canInstall(a) && (
-        <button
-          className="btn"
-          disabled={installing !== null}
-          title={installTip(a)}
-          onClick={() => {
-            setInstalling(a.id);
-            setInstallError(({ [a.id]: _gone, ...rest }) => rest);
-            void runInstall(a).then((r) => {
-              setInstalling(null);
-              if ("error" in r) return setInstallError((x) => ({ ...x, [a.id]: r.error }));
-              setFixed((x) => ({ ...x, [a.id]: r.agent }));
-              // Every empty seat that was showing this same missing agent takes it too.
-              const now = seatsRef.current;
-              const same = new Set(now.flatMap((_, j) => (j === i || shownPick(now, shownRef.current, j) === a.id ? [j] : [])));
-              setShown((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !same.has(Number(k)))));
-              onSeats(now.map((s, j) => (same.has(j) && (j === i || s.agent === null) ? { ...s, ...seatStart(a.id, seatDefault_) } : s)));
-              onRefresh?.();
-            });
-          }}
-        >
-          {installing === a.id ? "Installing…" : "Install"}
-        </button>
-        )}
-        {installNoteOf(a) && <span className="caption" data-install-note>{installNoteOf(a)}</span>}
         {selfInstallHint(a) && <span className="caption">{selfInstallHint(a)}</span>}
-        {installError[a.id] && (
-          <span className="agent-missing" role="alert">
-            {installError[a.id]}
-          </span>
-        )}
         <DocsLink agent={a} />
       </>
     );
   };
-  // Start form A: the one row's pick for every seat; a missing agent is shown on every seat so Install appears once.
+  // Start form A: the one row's pick for every seat; a missing agent is shown on every seat so how to get it shows once.
   const one = oneForAll(seats);
   const oneShown = one === "mixed" ? null : (one.agent ?? shown[0] ?? null);
   const oneMissing = oneShown !== null && oneShown !== TERMINAL && !rows.find((a) => a.id === oneShown)?.installed ? oneShown : null;
@@ -578,7 +542,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             </label>
           )}
           {one !== "mixed" && one.agent !== null && one.agent !== TERMINAL && modelsFor(one.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
-          {oneMissing && installBits(oneMissing, 0)}
+          {oneMissing && installBits(oneMissing)}
         </div>
         <details className="chooser-each" open={eachOpen} onToggle={(e) => setEachOpen(e.currentTarget.open)}>
           <summary className="btn link">Make each one different</summary>
@@ -709,7 +673,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                 {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
                 {none && noneNote}
                 {<AgentButtons rows={rows} pick={shownPick(seats, shown, i)} label={`Seat ${i + 1}: which AI`} data-testid={`seat-${i + 1}-agents`} onChoose={(id) => chooseAgent(i, id)} onOther={() => setOtherFor(i)} />}
-                {installBits(shownPick(seats, shown, i), i)}
+                {installBits(shownPick(seats, shown, i))}
               </div>
               {seat.agent !== null && seat.agent !== TERMINAL && modelsFor(seat.agent).length === 0 && <span className="caption">Uses the program's default model</span>}
               {seat.agent !== null && modelsFor(seat.agent).length > 0 && (

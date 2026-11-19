@@ -422,12 +422,7 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
     let (agent, event) = match req.path.as_str() {
         "/claude" => (crate::status::Agent::Claude, event),
         "/codex" => (crate::status::Agent::Codex, event),
-        // T-120-b: Gemini CLI, Antigravity and Amp, each turned into the shape the rules read.
-        // T-121: Cursor Agent, Droid and Kimi Code too.
-        p if agent_hooks::vendors::is_route(p) || agent_hooks::more::is_route(p) => match agent_hooks::more::normalize_any(p, &event) {
-            Some(e) => (crate::status::Agent::Vendor, e),
-            None => return (200, None),
-        },
+        // Any other route (an older Kolux's hook for another agent, still in that agent's settings) gets the empty 404.
         _ => return (404, None),
     };
     (200, crate::status::report(pane_key, terminal, agent, &event))
@@ -438,20 +433,6 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
 /// event, Codex, a body that cannot be read) gets `{}`, no opinion, so Claude's own permission
 /// flow carries on and Kolux never blocks by itself.
 pub fn reply_body(path: &str, body: &[u8], settings: &Value) -> String {
-    // T-120-b: Antigravity's PreToolUse hook must answer; "allow" hands the call to its own policy.
-    if path == "/antigravity/PreToolUse" {
-        return json!({ "decision": "allow" }).to_string();
-    }
-    // STAT-012: only an older hooks.json still posts Cursor's shell/MCP permission events (never installed now, DT-C49);
-    // "ask" defers to the user (cursor.com/docs/agent/hooks), never "allow". preToolUse stays `{}`: the doc says ask
-    // "is accepted by the schema but not enforced for preToolUse".
-    if path == "/cursor" && serde_json::from_slice::<Value>(body).ok().is_some_and(|e| matches!(e.get("hook_event_name").and_then(Value::as_str), Some("beforeShellExecution" | "beforeMCPExecution"))) {
-        return json!({ "permission": "ask" }).to_string();
-    }
-    // STAT-012: Cursor's beforeSubmitPrompt output is {"continue": bool} (cursor.com/docs/agent/hooks); the prompt always proceeds.
-    if path == "/cursor" && serde_json::from_slice::<Value>(body).ok().is_some_and(|e| e.get("hook_event_name").and_then(Value::as_str) == Some("beforeSubmitPrompt")) {
-        return json!({ "continue": true }).to_string();
-    }
     // T-156-b: the rules in force for the command's folder (built-ins, the user's own, per project)
     // and the recent-attempts list, both in protected_custom.rs.
     crate::protected_custom::listen(path, body, settings).unwrap_or_else(|| "{}".into())
@@ -1248,7 +1229,7 @@ pub fn install_codex_hooks(file: &mut Value, command: &str) -> bool {
 
 /// One Kolux group under each of `events`; a stale one is replaced where it stands, a new one
 /// goes last. `matched` events get the match-everything matcher (COMPAT 3.4).
-/// `timeout` is in the agent's own unit (seconds for Claude Code and Codex, ms for Gemini CLI).
+/// `timeout` is in the agent's own unit (seconds for Claude Code and Codex).
 fn install_groups(root: &mut Value, events: &[&str], matched: &[&str], command: &str, timeout: u64) -> bool {
     let before = root.clone();
     if !root.is_object() {
@@ -1526,7 +1507,7 @@ pub(crate) fn install_codex_mirroring(home: &Path, command: &str, user: Option<&
     // P3 (wave job 7): a top level that is not an object, a `hooks` value that is not an object or an
     // event that is not a list is refused, as for every other agent, so `install_groups` never
     // swaps the user's broken entries for empty ones.
-    agent_hooks::vendors::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
+    agent_hooks::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
     let config_text = read(&config)?.unwrap_or_default();
     let mut doc: toml_edit::DocumentMut = config_text.parse().map_err(|e| format!("{} is not valid TOML ({}); left alone", config.display(), crate::trust::toml_fault(&e, &config_text)))?;
     let config_before = doc.to_string();
@@ -2015,36 +1996,6 @@ Content-Length: {}
         // The Claude script prints the answer for Claude to read; Codex's still discards it.
         assert!(claude_script().contains("%KP%/claude\" 2>NUL") && !claude_script().contains("-o NUL"));
         assert!(codex_script().contains("-o NUL"));
-    }
-
-    /// STAT-012 (kolux-87 ruling): a /cursor shell or MCP permission post can only come from an older hooks.json
-    /// that was never reinstalled; it gets "ask", which defers to the user, and never "allow".
-    #[test]
-    fn stat_012_legacy_cursor_shell_and_mcp_permission_hooks_get_ask() {
-        let s = json!({});
-        let ev = |name: &str| format!(r#"{{"hook_event_name":"{name}","conversation_id":"c1","command":"git push -f"}}"#);
-        for name in ["beforeShellExecution", "beforeMCPExecution"] {
-            assert_eq!(reply_body("/cursor", ev(name).as_bytes(), &s), r#"{"permission":"ask"}"#, "{name}");
-        }
-        assert_eq!(reply_body("/cursor", ev("preToolUse").as_bytes(), &s), "{}", "ask is not enforced for preToolUse");
-        assert_eq!(reply_body("/claude", ev("beforeShellExecution").as_bytes(), &s), "{}", "only the Cursor route");
-    }
-
-    /// STAT-012: Cursor's prompt hook is answered in its documented shape and every other state event with
-    /// the neutral `{}`; Kolux never says "allow" to a permission hook (SAFE-009 guards only Claude Code).
-    #[test]
-    fn stat_012_cursor_prompt_hook_gets_continue_and_the_rest_stay_neutral() {
-        let s = json!({});
-        let ev = |name: &str| format!(r#"{{"hook_event_name":"{name}","conversation_id":"c1","command":"git push -f"}}"#);
-        assert_eq!(reply_body("/cursor", ev("beforeSubmitPrompt").as_bytes(), &s), r#"{"continue":true}"#);
-        // Every event Kolux installs, so a new one is covered without editing this list.
-        for name in super::agent_hooks::more::CURSOR_EVENTS.into_iter().filter(|e| *e != "beforeSubmitPrompt").chain(["preToolUse"]) {
-            assert_eq!(reply_body("/cursor", ev(name).as_bytes(), &s), "{}", "{name}");
-        }
-        for name in ["beforeShellExecution", "beforeMCPExecution"] {
-            assert_eq!(reply_body("/cursor", ev(name).as_bytes(), &s), r#"{"permission":"ask"}"#, "{name}");
-        }
-        assert_eq!(reply_body("/cursor", b"not json {", &s), "{}");
     }
 
     #[test]

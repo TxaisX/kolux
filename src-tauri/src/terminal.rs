@@ -2347,8 +2347,6 @@ pub(crate) fn agent_env(store: &crate::state::Store, settings: &serde_json::Valu
         .or(managed)
         // ACCT-007: a Codex pane runs in the active Codex account's private home.
         .or_else(|| crate::codex_accounts::pane_env(program, codex_home))
-        // ACCT-008: a Grok pane gets the saved xAI key; Grok itself prefers its own sign-in.
-        .or_else(|| crate::grok::pane_env(program, crate::secrets::read_setting(store, crate::grok::KEY_FIELD).ok().flatten()))
         .map(|(k, v)| (k.to_string(), v))
         .into_iter()
         .collect();

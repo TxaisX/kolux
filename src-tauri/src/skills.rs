@@ -112,7 +112,7 @@ impl Env {
             home: var(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from).unwrap_or_else(std::env::temp_dir),
             claude: var("CLAUDE_CONFIG_DIR"),
             codex: var("CODEX_HOME"),
-            grok: var(crate::grok::HOME_ENV),
+            grok: var(crate::agents::GROK_HOME_ENV),
             hermes: var("HERMES_HOME"),
             local_app_data: var("LOCALAPPDATA").map(PathBuf::from),
             windows: cfg!(windows),
@@ -161,7 +161,7 @@ fn hermes_home(env: &Env) -> PathBuf {
 fn home_spots(env: &Env) -> Vec<Spot> {
     let claude = claude_home(env);
     let codex = codex_home(env);
-    let grok = crate::grok::home(usable(&env.grok).as_deref().and_then(Path::to_str), Some(&env.home)).unwrap_or_else(|| env.home.join(".grok"));
+    let grok = crate::agents::grok_home(usable(&env.grok).as_deref().and_then(Path::to_str), Some(&env.home)).unwrap_or_else(|| env.home.join(".grok"));
     vec![
         Spot::new(claude.join("skills"), "Claude Code", "home", &["claude"]),
         Spot::new(codex.join("skills"), "Codex", "home", &["codex"]),

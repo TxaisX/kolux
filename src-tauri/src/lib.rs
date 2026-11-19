@@ -46,12 +46,6 @@ pub mod hooks;
 mod include;
 mod import;
 mod profile_move;
-// T-043-e: the macOS keychain rule table; the Mac wiring that calls it is T-043-f.
-#[cfg_attr(not(test), allow(dead_code))]
-mod keychain;
-mod agent_creds;
-pub mod grok;
-mod grok_status;
 pub mod install;
 mod keybindings;
 mod edit_menu;
@@ -434,7 +428,6 @@ pub fn run() {
             app.manage(claude_accounts::SignIns::default());
             app.manage(codex_accounts::SignIns::default());
             app.manage(install::Installs::default());
-            app.manage(grok::GrokSignIn::default());
             app.manage(artifacts::Library::new(dir.join("artifacts")));
             app.manage(update::Updates::default());
             // Without Git the app still opens, and the landing screen says so (APP-023).
@@ -758,8 +751,6 @@ pub fn run() {
             models::agent_models,
             agents::agent_start_line,
             agents::agent_prompt_send,
-            agents::agent_install::agents_install,
-            agents::agent_install::agents_install_many,
             agents::open_install_page,
             agents::inventory::session_tabs,
             orchestration::worker_labels,
@@ -894,20 +885,6 @@ pub fn run() {
             install::agent_can_install,
             install::agent_install,
             install::agent_install_cancel,
-            grok::grok_status,
-            grok::grok_sign_in,
-            grok::grok_cancel,
-            grok::grok_key_set,
-            agent_creds::agent_creds_view,
-            agent_creds::codex_sessions_home_set,
-            agent_creds::minimax_credential_set,
-            agent_creds::minimax_credential_forget,
-            agent_creds::minimax_options_set,
-            agent_creds::gemini_cli_credentials_set,
-            resources::provider_usage::provider_keys,
-            resources::provider_usage::provider_key_set,
-            resources::provider_usage::provider_key_forget,
-            resources::provider_usage::provider_usage_check,
             codex_accounts::codex_accounts,
             codex_accounts::codex_account_sign_in,
             codex_accounts::codex_account_cancel,
@@ -1076,11 +1053,6 @@ pub fn run() {
                 // the deadline leaves, so a stalled profile drive caps the wait and never freezes the
                 // quit. Settings need no step: every change is already on disk (APP-048).
                 final_save::begin();
-                // T-122 (STAT-018): Grok's Kolux-written hook file goes, unless another running
-                // Kolux owns it; the removal is cut short after grok::QUIT_LIMIT.
-                if let Ok(dir) = app.path().app_data_dir() {
-                    hooks::agent_hooks::more::grok::at_quit(&dir);
-                }
                 // T-182 (APP-011): the same steps make the save point a restart waits for.
                 let report = final_save::run(final_save::QUIT_DEADLINE, lifecycle::quit_steps(app));
                 if let Ok(dir) = app.path().app_data_dir() {

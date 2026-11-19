@@ -5,7 +5,7 @@ import { fixDoes, fixFor, type Fix } from "./Attention";
 test("Check again re-detects and never connects; the other fixes keep their own job", () => {
   const plan = { reason: "plan", message: "", resetsAt: null } as const;
   const missing = { reason: "not-found", message: "", resetsAt: null } as const;
-  for (const route of ["claude-key", "claude-account", "codex", "grok"] as const) {
+  for (const route of ["claude-key", "claude-account", "codex"] as const) {
     expect(fixFor(plan, route)).toBe("Check again");
     expect(fixDoes(fixFor(missing, route)!)).toBe("check");
   }

@@ -4,7 +4,6 @@ import { SearchFolds } from "./search";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import type { AgentInfo } from "../launch/PlusMenu";
-import AgentPicker from "../launch/AgentPicker";
 import { defaultChoices, DEFAULT_EFFORT_KEY, DEFAULT_MODEL_KEY, seatDefault } from "../launch/defaultSeat";
 import { DEFAULT_AGENT_KEY, defaultAgentId, disabledAgents, switchAgent } from "../launch/agents";
 import { Segmented } from "./GeneralPage";
@@ -224,7 +223,6 @@ export default function AgentsPage() {
           );
         })}
       </section>
-      {agents !== null && agents.length > 0 && <AgentPicker agents={agents} onChanged={(list) => (setAgents(list), void emit("agents-changed", list))} />}
       <HooksSwitch on={hooksOn(settings)} file={hooksFile} problems={problems} onSwitch={(on) => void save({ [HOOKS_FIELD]: on }).then((ok) => syncIfSaved(ok, () => invoke("agent_hooks_sync", { clear: !on }))).then(synced, syncFailed)} />
       <AgentsPageView cap={capOn(settings ?? {})} onCap={(on) => void save({ [CAP_FIELD]: on })} />
       <TeamsModeCard settings={settings} save={save} host={teamsHost} />

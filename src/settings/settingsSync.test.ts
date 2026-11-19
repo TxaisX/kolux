@@ -13,17 +13,17 @@ test("SET-035: a broadcast with no change in it means read again; secrets in one
   expect(readBroadcast(undefined)).toBeNull();
   expect(readBroadcast("saved")).toBeNull();
   expect(readBroadcast({ set: [1] })).toBeNull();
-  const b = readBroadcast({ set: { theme: "dark", xaiApiKey: "k", httpProxy: "http://u:p@h:1" }, remove: ["claudeOauthToken", "zoom"] });
-  expect(JSON.stringify(b)).not.toMatch(/xaiApiKey|httpProxy|claudeOauthToken|u:p@h/);
+  const b = readBroadcast({ set: { theme: "dark", claudeOauthToken: "k", httpProxy: "http://u:p@h:1" }, remove: ["claudeOauthToken", "zoom"] });
+  expect(JSON.stringify(b)).not.toMatch(/httpProxy|claudeOauthToken|u:p@h/);
   expect(b).toEqual({ set: { theme: "dark" }, remove: ["zoom"] });
-  expect(withoutSecrets({ a: 1, minimaxCookie: "c" })).toEqual({ a: 1 });
+  expect(withoutSecrets({ a: 1, openrouterApiKey: "c" })).toEqual({ a: 1 });
 });
 
 test("SET-035: a change made while settings are still loading wins over the load that arrives afterwards", () => {
   const race = createLoadRace();
   race.change({ terminalFont: "Fira Code" }); // the user switches before the first read comes back
   race.change({ zoom: 1.5 });
-  expect(race.loaded({ terminalFont: "Consolas", zoom: 1, theme: "dark", xaiApiKey: "k" })).toEqual({ terminalFont: "Fira Code", zoom: 1.5, theme: "dark" });
+  expect(race.loaded({ terminalFont: "Consolas", zoom: 1, theme: "dark", httpProxy: "k" })).toEqual({ terminalFont: "Fira Code", zoom: 1.5, theme: "dark" });
   race.change({ zoom: 9 }); // after the load, later changes are the page's own business
   expect(race.loaded({ zoom: 1 })).toEqual({ zoom: 1 }); // a later re-read is plain
 });

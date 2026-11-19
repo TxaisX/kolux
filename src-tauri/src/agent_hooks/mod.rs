@@ -26,7 +26,7 @@ const LOCK_STALE: Duration = Duration::from_secs(30);
 const LOCK_WAIT: Duration = Duration::from_secs(35);
 
 /// The agents whose hooks Kolux manages, by catalogue id.
-pub const MANAGED: [&str; 14] = ["claude", "codex", "gemini", "antigravity", "amp", "cursor", "droid", "kimi", "copilot", "grok", "devin", "pi", "hermes", "command-code"];
+pub const MANAGED: [&str; 2] = ["claude", "codex"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Plan {
@@ -118,6 +118,19 @@ pub fn without_empty_lists(v: &Value) -> Value {
     v
 }
 
+/// FIX-1 (c): a value Kolux would have to replace to add its own groups is the user's, so the
+/// file is refused, never rewritten. Used by Codex's `hooks.json` install (`hooks::install_codex_mirroring`).
+pub(crate) fn refuse_shape(file: &Path, v: &Value, events: &[&str]) -> Result<(), String> {
+    let bad = |what: String| Err(format!("{} has {what}; left alone", file.display()));
+    let Some(root) = v.as_object() else { return bad("a top level that is not an object".into()) };
+    let Some(hooks) = root.get("hooks") else { return Ok(()) };
+    let Some(hooks) = hooks.as_object() else { return bad("a \"hooks\" value that is not an object".into()) };
+    match events.iter().find(|e| hooks.get(**e).is_some_and(|g| !g.is_array())) {
+        Some(e) => bad(format!("a \"{e}\" value that is not a list")),
+        None => Ok(()),
+    }
+}
+
 /// Takes every Kolux entry out of a `{"hooks": {...}}` file. A `hooks` object left empty goes
 /// too only when `drop_empty` (Kolux created it); T-152-b (4): one the user had, even `{}`, stays.
 pub fn remove_groups(root: &mut Value, drop_empty: bool) -> bool {
@@ -136,23 +149,6 @@ fn read_opt(file: &Path) -> Result<Option<String>, String> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(format!("{}: {e}", file.display())),
     }
-}
-
-/// Kolux's own hook file's name in Grok's and Copilot's hooks folders before the rename to Kolux.
-pub const LEGACY_HOOK_FILE: &str = "kolux-rs.json";
-
-/// Takes away the old-named sibling `legacy` of Kolux's own file `file` with `rm` (which leaves a
-/// file that is not Kolux's alone), so an upgrade does not leave two sets of hooks. Nothing happens
-/// when `file` itself has the old name; a failure is logged, never fatal. True when one went.
-fn drop_legacy(file: &Path, legacy: &str, rm: impl FnOnce(&Path) -> Result<bool, String>) -> bool {
-    if file.file_name().is_none_or(|n| n == legacy) {
-        return false;
-    }
-    let old = file.with_file_name(legacy);
-    rm(&old).unwrap_or_else(|e| {
-        eprintln!("kolux: agent hooks: old hook file {}: {e}", old.display());
-        false
-    })
 }
 
 /// Takes Kolux's hooks and status line out of Claude Code's settings. The status line the user
@@ -683,10 +679,6 @@ fn install_claude_once(file: &Path, dir: &Path, prev: &Path, hook: &str, status:
     Ok(())
 }
 
-fn codex_home() -> Option<PathBuf> {
-    crate::trust::codex_config_file().parent().map(Path::to_path_buf)
-}
-
 /// The private Codex homes of the accounts Kolux manages (ACCT-007), which get Kolux's hooks as a
 /// pane starts in them.
 fn managed_codex_homes(profile: &Path) -> Vec<PathBuf> {
@@ -707,10 +699,6 @@ fn apply(home: &Path, profile: &Path, settings: &Value, id: &str, plan: Plan) ->
             }
             Ok("removed")
         }
-        // T-120-b: Gemini CLI, Antigravity and Amp.
-        (id @ ("gemini" | "antigravity" | "amp"), Plan::Install | Plan::Remove) => vendors::apply(home, profile, id, plan),
-        // T-121: Cursor Agent, Droid, Kimi Code and Hermes; T-122: Copilot CLI, Grok, Devin and Pi.
-        (id @ ("cursor" | "droid" | "command-code" | "kimi" | "copilot" | "grok" | "devin" | "pi" | "hermes"), Plan::Install | Plan::Remove) => more::apply(home, profile, id, plan),
         _ => Ok("left as it was"),
     }
 }
@@ -758,7 +746,7 @@ pub fn sync(settings: &Value, profile: &Path) -> Vec<(&'static str, Result<&'sta
         }
     };
     migrate_scripts(&home);
-    for refresh in [write_claude_script, write_status_script, write_codex_script, vendors::write_gemini_script, vendors::write_antigravity_script, more::write_scripts] {
+    for refresh in [write_claude_script, write_status_script, write_codex_script] {
         if let Err(e) = refresh(&home) {
             eprintln!("kolux: agent hook script: {e}");
         }
@@ -783,7 +771,7 @@ pub fn clear(settings: &Value, profile: &Path) -> Vec<(&'static str, Result<&'st
     clear_in(&home_dir(), settings, profile)
 }
 
-/// `clear` with the home folder (scripts, install lock, vendor files) named, so a test stays in a scratch one.
+/// `clear` with the home folder (scripts, install lock) named, so a test stays in a scratch one.
 fn clear_in(home: &Path, settings: &Value, profile: &Path) -> Vec<(&'static str, Result<&'static str, String>)> {
     let _lock = match Lock::take(&home.join(SCRIPT_DIR)) {
         Ok(l) => l,
@@ -821,10 +809,8 @@ pub fn agent_hooks_file() -> String {
 }
 
 pub mod codex_mirror;
-pub mod more;
 pub mod saved;
 pub mod switch;
-pub mod vendors;
 
 #[cfg(test)]
 mod tests;

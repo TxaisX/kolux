@@ -6,9 +6,7 @@ import AgentsRail from "../agents/AgentsRail";
 import ChooserPane, { holdsTyping, selfInstallHint, sheetKey } from "./ChooserPane";
 import PlusMenu, { type AgentInfo } from "./PlusMenu";
 import { DISMISS_FAILED, dismissFailedNotice, ToolNoticesView } from "./ToolNotices";
-import { canInstall as installRule } from "./agentInstall";
 import { failureNote } from "./launchOrder";
-import { canInstall as checklistRule } from "./pickerRules";
 import { ASK_ABOVE, countPlan, MAX_SESSIONS, resizeSeats, restoreTeam, sheetStart, shownPick, emptySeat, tooManySeats, type SavedShape, type Seat } from "./seats";
 import { pickableModes } from "./teams";
 import { CHECK_FAILED, toolNotices, type Tools } from "./toolChecks";
@@ -82,17 +80,10 @@ test("F4: undo puts back only the deleted team at its old place, keeping newer e
   expect(taken.map((x) => x.name)).toEqual(["A 2", "A", "C", "New"]);
 });
 
-test("F4: a missing agent with no install route and no docs page says to install it by hand", () => {
-  expect(selfInstallHint(agent("ante", { installable: false }))).toContain("Install it yourself, then press Refresh agents");
-  expect(selfInstallHint(agent("ante", { installable: false, docs: true }))).toBeNull();
-  expect(selfInstallHint(agent("ante", { installable: true }))).toBeNull();
+test("F4: a missing agent with no docs page says to install it by hand", () => {
+  expect(selfInstallHint(agent("ante"))).toContain("Install it yourself, then press Refresh agents");
+  expect(selfInstallHint(agent("ante", { docs: true }))).toBeNull();
   expect(selfInstallHint(claude)).toBeNull();
-});
-
-test("F5: the chooser's Install and the checklist use one canInstall rule", () => {
-  for (const a of [agent("x"), agent("x", { installable: true }), agent("x", { installable: false }), agent("x", { installable: true, installed: true }), agent("x", { installed: true })]) {
-    expect(checklistRule(a)).toBe(installRule(a));
-  }
 });
 
 test("F4: Native panes is offered in Agent Teams only to a profile that already has it", () => {

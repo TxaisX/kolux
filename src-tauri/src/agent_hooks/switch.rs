@@ -1,12 +1,10 @@
-//! STAT-002 / STAT-003 (T-120-a): the one switch for every agent's status hooks, and what the
-//! `kolux agent hooks` commands report. Off, `sync` takes Kolux's entries out of every agent and
+//! STAT-002 / STAT-003 (T-120-a): the one switch for the agents' status hooks, and the install
+//! check that reads a hooks file. Off, `sync` takes Kolux's entries out of Claude Code and Codex and
 //! nothing puts them back at launch; on, they return. Off is the default (T-152-gate): no saved or an
-//! unreadable value installs nothing, and turning it on is the user's recorded approval. The
-//! commands answer from the files themselves, so they work whether or not Kolux is open.
+//! unreadable value installs nothing, and turning it on is the user's recorded approval.
 
-use super::{clear, codex_home, names_mine, read_opt, sync};
-use crate::hooks::{claude_settings_file, CLAUDE_EVENTS, CODEX_EVENTS};
-use serde_json::{json, Map, Value};
+use super::{names_mine, read_opt};
+use serde_json::{Map, Value};
 use std::path::Path;
 
 /// The Settings key; only a saved `true` turns the hooks on.
@@ -53,47 +51,4 @@ pub fn inspect(file: &Path, events: &[&str]) -> (&'static str, Option<String>) {
             ("partial", Some(why.join("; ")))
         }
     }
-}
-
-fn row(agent: &str, name: &str, file: &Path, events: &[&str]) -> Value {
-    let (state, reason) = inspect(file, events);
-    json!({ "agent": agent, "name": name, "state": state, "file": file.display().to_string(), "reason": reason })
-}
-
-/// `kolux agent hooks status`: the switch and one entry per agent Kolux manages.
-pub fn report(settings: &Value) -> Value {
-    let mut agents = vec![row("claude", "Claude Code", &claude_settings_file(), &CLAUDE_EVENTS)];
-    if let Some(home) = codex_home() {
-        agents.push(row("codex", "Codex", &home.join("hooks.json"), &CODEX_EVENTS));
-    }
-    agents.extend(super::vendors::rows(&super::home_dir()));
-    agents.extend(super::more::rows(&super::home_dir()));
-    json!({ "on": on(settings), "agents": agents })
-}
-
-/// `kolux agent hooks on|off`: saves the choice in the profile at `dir`, brings every agent in
-/// line with it, and reports. ponytail: the settings file is read and written without the app's
-/// lock; a change saved from the window in the same instant could be lost.
-pub fn set(dir: &Path, want: bool) -> Result<Value, String> {
-    let store = crate::state::Store::open(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    let mut set = Map::new();
-    set.insert(SWITCH_KEY.into(), Value::Bool(want));
-    store.patch_settings(&set, &[]).map_err(|e| format!("{}: {e}", dir.display()))?;
-    let settings = store.settings();
-    drop(store);
-    let outcomes = super::outcomes(if want { sync(&settings, dir) } else { clear(&settings, dir) });
-    let mut out = report(&settings);
-    out["changed"] = json!(outcomes);
-    Ok(out)
-}
-
-/// `kolux agent hooks prepare-codex`: Kolux's Codex hooks and their trust, in the Codex home this
-/// shell uses, before Codex is first started there.
-pub fn prepare_codex(settings: &Value) -> Result<Value, String> {
-    if !on(settings) {
-        return Err("agent status hooks are off; run kolux agent hooks on first".into());
-    }
-    // T-152 (6): the user's own Codex home is not written while T-025-e is off the cutline.
-    let home = codex_home().ok_or("no Codex home could be found")?;
-    Err(format!("Kolux does not write Codex hooks into {} yet (T-025-e); nothing changed", home.display()))
 }

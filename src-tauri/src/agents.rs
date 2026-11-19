@@ -21,9 +21,6 @@ pub mod inventory;
 // ux card 11: the window's `agent_list` command runs off the UI thread; Rust callers keep the plain `agent_list` below.
 #[path = "agent_list_command.rs"]
 pub mod list_command;
-// T-573: the install table, the `agents_install` command and the installer's `--install-agents` run.
-#[path = "agent_install.rs"]
-pub mod agent_install;
 // c2-agents top bug 1: an agent pane runs the user's shell, which starts the agent (via_shell).
 #[path = "agent_shell.rs"]
 pub mod agent_shell;
@@ -45,13 +42,6 @@ pub struct AgentInfo {
     pub path: Option<String>,
     /// SESS-017: Kolux knows the agent's own documentation page (`install_page`).
     pub docs: bool,
-    /// T-573: Kolux knows an official install route for this agent on this OS (`install` is the command).
-    pub installable: bool,
-    /// T-573: the human-readable install command, the Install button's tooltip; `None` when not installable.
-    pub install: Option<String>,
-    /// T-787 (P3-14): set when installing this agent first needs a runtime that is not on the PC and that Windows installs
-    /// machine-wide (Node.js), so the Install button can say a Windows admin prompt is coming. `None` otherwise.
-    pub install_note: Option<String>,
 }
 
 /// id, name, program names (the first is the main one, the rest also count), fixed arguments.
@@ -71,6 +61,18 @@ pub const OPENCODE_TABS_OFF: &str = r#"{"tabs":{"mode":"off"}}"#;
 /// program. `program` is the spawn program, credited the same way the pane mark is.
 pub fn opencode_env(program: Option<&str>) -> Option<(&'static str, &'static str)> {
     (program.and_then(crate::tools::credited_program) == Some("opencode")).then_some((OPENCODE_CONFIG_ENV, OPENCODE_TABS_OFF))
+}
+
+/// The Grok CLI's home variable (Grok's public authentication guide). Its home holds Grok's skills
+/// folder and its own sign-in, which a Grok pane uses as it is.
+pub const GROK_HOME_ENV: &str = "GROK_HOME";
+
+/// The Grok CLI's home: `GROK_HOME`, else `.grok` in the user's home.
+pub fn grok_home(env: Option<&str>, user: Option<&Path>) -> Option<PathBuf> {
+    match env.filter(|e| !e.trim().is_empty()) {
+        Some(e) => Some(PathBuf::from(e)),
+        None => user.map(|u| u.join(".grok")),
+    }
 }
 
 /// The 35 visible agents: the 34 of SESS-001 in its order, then OpenCode, which Txais brought back on
@@ -126,7 +128,6 @@ pub const CATALOGUE: [Entry; 35] = [
 /// The catalogue with each agent's installed state, in menu order.
 pub fn catalogue() -> Vec<AgentInfo> {
     let dirs = search_dirs();
-    let have_npm = find_in(&dirs, "npm").is_some();
     CATALOGUE
         .iter()
         .map(|(id, name, programs, args)| {
@@ -139,9 +140,6 @@ pub fn catalogue() -> Vec<AgentInfo> {
                 installed: found.is_some(),
                 path: found.map(|(_, f)| f.display().to_string()),
                 docs: install_page(id).is_some(),
-                installable: agent_install::install_text(id).is_some(),
-                install: agent_install::install_text(id),
-                install_note: agent_install::install_note(id, have_npm),
             }
         })
         .collect()
@@ -1099,6 +1097,15 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_grok_home_follows_grok_home_then_the_user_folder() {
+        let user = Path::new("C:/Users/me");
+        assert_eq!(grok_home(Some("D:/g"), Some(user)), Some(PathBuf::from("D:/g")));
+        assert_eq!(grok_home(Some("  "), Some(user)), Some(user.join(".grok")));
+        assert_eq!(grok_home(None, Some(user)), Some(user.join(".grok")));
+        assert_eq!(grok_home(None, None), None);
+    }
 
     #[test]
     fn program_finder_answers_as_find_program_does() {
