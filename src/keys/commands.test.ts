@@ -49,7 +49,7 @@ test("T-611: the five the audit found, Force Reload and Hard Reload each do some
   const { did, calls } = spies();
   for (const id of ["sidebar.checks.toggle", "workspace.rename", "app.forceReload"]) expect(windowCommand(id, calls), id).toBe(true);
   expect(did).toEqual(["right:checks", "rename", "reload"]);
-  expect(windowCommand("view.routing", calls)).toBe(false); // the rest stay with the window's own switch
+  expect(windowCommand("sidebar.left.toggle", calls)).toBe(false); // the rest stay with the window's own switch
   // VIEW-079 (dropped): the Ports tab is cut, so its command is not registered: a file naming it gets the unknown-id warning.
   expect(actionById.has("sidebar.ports.toggle")).toBe(false);
   expect(resolve({ keybindings: { "sidebar.ports.toggle": "Mod+Shift+I" } }, "darwin").warnings.join(" ")).toMatch(/"sidebar\.ports\.toggle" .* is not a command Kolux knows/);
@@ -79,7 +79,7 @@ test("T-611: the palette's Commands section lists every command, the unbound one
   expect(rows.find((r) => r.label === "Show or Hide Sleeping Workspaces")?.keywords).toContain("toggle");
   // Each unbound command has its row; a bound one shows its keys.
   expect(actions.filter((a) => a.win32.length === 0 && !a.darwin && !sameAs[a.id]).every((a) => ids.has(a.id))).toBe(true);
-  expect(rows.find((r) => r.label === "Model Routing")).toMatchObject({ hint: undefined });
+  expect(rows.find((r) => r.label === "Show Checks")).toMatchObject({ hint: undefined });
   expect(rows.find((r) => r.label === "Open Settings")).toMatchObject({ hint: "Ctrl+," });
   // The two 1 to 9 commands are nine rows each, each with its own digit.
   expect(rows.filter((r) => /^Select Tab \d$/.test(r.label)).map((r) => r.hint)).toEqual(["Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5", "Alt+6", "Alt+7", "Alt+8", "Alt+9"]);
@@ -98,8 +98,8 @@ test("T-611: a command picked in the palette runs the same code its shortcut run
   target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["global"])?.id ?? null));
   target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["settings"])?.id ?? null));
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }) };
-  runCommand("view.routing", undefined, now); // unbound: no chord could ever have reached it
-  expect(heard).toEqual(["view.routing", null]);
+  runCommand("sidebar.checks.toggle", undefined, now); // unbound: no chord could ever have reached it
+  expect(heard).toEqual(["sidebar.checks.toggle", null]);
   heard.length = 0;
   runCommand("settings.search", undefined, now);
   expect(heard).toEqual([null, "settings.search"]);
@@ -117,11 +117,11 @@ test("T-611: a command picked in the palette runs the same code its shortcut run
 test("T-611: with Terminal first, a command picked in the palette is never left to the terminal program", () => {
   const settings = { terminalShortcuts: "terminal" };
   const xterm = { closest: (s: string) => (s === ".xterm" ? {} : null) } as unknown as Element;
-  expect(heldByTerminal("view.routing", settings, xterm)).toBe(true); // a chord pressed in a terminal goes to its program
+  expect(heldByTerminal("sidebar.checks.toggle", settings, xterm)).toBe(true); // a chord pressed in a terminal goes to its program
   const target = new EventTarget();
   let held: boolean | null = null;
-  target.addEventListener("keydown", () => void (held = heldByTerminal("view.routing", settings, xterm)));
-  runCommand("view.routing", undefined, { later: (f) => f(), target, event: () => new Event("keydown") });
+  target.addEventListener("keydown", () => void (held = heldByTerminal("sidebar.checks.toggle", settings, xterm)));
+  runCommand("sidebar.checks.toggle", undefined, { later: (f) => f(), target, event: () => new Event("keydown") });
   expect(held).toBe(false);
 });
 

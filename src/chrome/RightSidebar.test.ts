@@ -86,7 +86,8 @@ test("T-146-b: a remembered tab not offered here opens the first offered tab", (
   expect(pickTab("checks", [])).toBe(null);
   const html = renderToString(createElement(RightSidebar, { tab: "checks", width: 320, max: 600, offered: ["agents", "attached"], onTab: () => {}, onWidth: () => {}, children: "body" }));
   expect(html).not.toContain("Checks");
-  expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>History/);
+  // the first offered tab in the strip order (Attached comes before History)
+  expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Attached/);
 });
 
 test("VIEW 056 rest: a panel whose code throws shows a notice with Try again, and the sidebar stays", () => {
