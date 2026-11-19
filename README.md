@@ -97,7 +97,7 @@ The full list of outbound connections is in Settings, General, Privacy and in th
 
 | Read | For |
 |---|---|
-| [User guide](docs/guide/README.md) | The full guide: setup, terminals, projects, reviewing changes, settings, CLI |
+| [User guide](docs/guide/README.md) | The full guide: setup, terminals, projects, settings, safety |
 | [Getting started](docs/guide/getting-started.md) | First launch, the top bar, your first agent |
 | [Status](docs/STATUS.md) | What is verified, what is missing, and what alpha means here |
 | [Glossary](docs/GLOSSARY.md) | The words the app uses |
@@ -107,7 +107,6 @@ The full list of outbound connections is in Settings, General, Privacy and in th
 | [Architecture infographic](docs/architecture/architecture.svg) | The one-page visual map |
 | [Development](docs/development/README.md) | Building, testing, releasing, code map |
 | [Troubleshooting](docs/guide/troubleshooting.md) | Fix common problems and produce a safe report |
-| [Command line](docs/guide/command-line.md) | Drive Kolux from a shell |
 | [Feature index](docs/guide/feature-index.md) | Find a feature by name |
 
 The [documentation home](docs/README.md) has the full index.
