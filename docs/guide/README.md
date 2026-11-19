@@ -19,4 +19,4 @@ Kolux is a Windows desktop app. It starts AI coding agents (such as Claude Code 
 | [Troubleshooting](troubleshooting.md) | Fix common problems |
 | [Feature index](feature-index.md) | Find any feature by name |
 
-<!-- verified against: src/chrome/TopBar.tsx, src/App.tsx at c2ef69fc -->
+<!-- verified against: src/chrome/TopBar.tsx, src/App.tsx at 01b39757 -->

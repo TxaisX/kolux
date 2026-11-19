@@ -16,4 +16,4 @@ Kolux no longer shows web pages inside its own window (Txais, 2026-11-12: this f
 
 The built-in code editor, the Markdown notes, the file Explorer panel, the diff and All Changes tabs, the browser tabs and the Artifacts library were taken out on 2026-11-19. Review and commit changes in your own editor or with Git; the Checks panel on the right still follows a pull request's checks.
 
-<!-- verified against: src/scm/split.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/open/openExternal.ts, src-tauri/src/scm.rs at 6f0c159a -->
+<!-- verified against: src/scm/split.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/open/openExternal.ts, src-tauri/src/scm.rs at 01b39757 -->
