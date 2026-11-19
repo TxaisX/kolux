@@ -252,10 +252,8 @@ pub struct Use {
 
 /// ONB-042: the fixed list of features whose use the profile keeps.
 pub const FEATURES: &[&str] = &[
-    "board", "palette", "browser", "browser-page", "tasks", "automations", "split", "workspace-create", "workspace-switch", "skill-setup",
-    "editor", "diff", "notes", "pr", "ship", "commit", "push", "usage",
-    "inbox", "artifacts", "settings", "shortcuts", "search", "file-find", "markdown", "layout", "zoom",
-    "rename", "orchestration", "cli", "notifications", "default-agent", "setup-script", "second-repo", "explore", "setup-guide", "parallel",
+    "palette", "split", "workspace-create", "workspace-switch", "diff", "notes", "pr", "ship", "commit", "push", "usage",
+    "settings", "search", "layout", "zoom", "rename", "notifications", "default-agent", "second-repo", "explore", "setup-guide", "parallel",
 ];
 
 fn features_de<'de, D: serde::Deserializer<'de>>(d: D) -> Result<std::collections::BTreeMap<String, Use>, D::Error> {
@@ -275,9 +273,9 @@ fn used(mut g: Guide, id: &str, now: u64) -> Result<Guide, String> {
     Ok(g)
 }
 
-/// ONB-033: every contextual tour id, built or planned; a seen entry for any other id (one an older
-/// version saved) is dropped on load.
-pub const TOURS: &[&str] = &["tasks", "automations", "parallel", "browser", "board", "create", "grid"];
+/// ONB-033: every contextual tour id; a seen entry for any other id (one an older version saved, such as the
+/// retired board, Tasks and Automations tours) is dropped on load.
+pub const TOURS: &[&str] = &["parallel", "grid"];
 
 /// Keeps the known ids of `v` once each, in order.
 fn known(v: Vec<String>, ids: &[&str]) -> Vec<String> {
@@ -614,10 +612,10 @@ mod tests {
         assert!(!fresh && g.tours_auto == Some(false), "the decision is not taken again later");
         assert_eq!(tours_decided(Guide::default(), true).0.tours_auto, Some(true), "a new profile qualifies");
         let (s, dir) = store("tours");
-        s.set(GUIDE, r#"{"toursSeen":["retired-tour","tasks","tasks"]}"#).unwrap();
-        assert_eq!(guide_load(&s).tours_seen, ["tasks"]);
+        s.set(GUIDE, r#"{"toursSeen":["tasks","grid","grid"]}"#).unwrap();
+        assert_eq!(guide_load(&s).tours_seen, ["grid"]);
         let g = marked(guide_load(&s), "toursSeen", "parallel").unwrap();
-        assert_eq!(g.tours_seen, ["tasks", "parallel"]);
+        assert_eq!(g.tours_seen, ["grid", "parallel"]);
         assert!(marked(g, "toursSeen", "nope").is_err());
         drop(s);
         let _ = std::fs::remove_dir_all(dir);
@@ -868,14 +866,15 @@ mod tests {
         let g = used(g, "split", 20).unwrap();
         assert_eq!(g.features["split"], Use { first: 10, count: 2 }, "the first time stays, the count goes up");
         assert!(used(g.clone(), "lunch", 30).unwrap_err().contains("lunch"));
-        assert_eq!(marked(g, "used", "board").unwrap().features["board"].count, 1, "guide_mark's used list records a use");
-        assert!(FEATURES.len() >= 35 && FEATURES.len() <= 45, "roughly forty features");
+        assert_eq!(marked(g, "used", "palette").unwrap().features["palette"].count, 1, "guide_mark's used list records a use");
+        assert!(used(Guide::default(), "board", 1).is_err(), "a retired screen's feature is no longer kept");
+        assert!(FEATURES.len() >= 18 && FEATURES.len() <= 26, "roughly twenty features");
     }
 
     #[test]
     fn unknown_or_damaged_feature_entries_are_dropped_on_load() {
         let (s, dir) = store("features");
-        s.set(GUIDE, r#"{"tried":["usage"],"features":{"split":{"first":5,"count":3},"teleport":{"first":1,"count":1},"board":{"first":"x"},"palette":7,"tasks":{"first":2,"count":0}}}"#).unwrap();
+        s.set(GUIDE, r#"{"tried":["usage"],"features":{"split":{"first":5,"count":3},"teleport":{"first":1,"count":1},"diff":{"first":"x"},"palette":7,"commit":{"first":2,"count":0}}}"#).unwrap();
         let g = guide_load(&s);
         assert_eq!(g.tried, ["usage"], "the rest of the record survives a damaged entry");
         assert_eq!(g.features.keys().collect::<Vec<_>>(), ["split"], "unknown, damaged and zero-count entries go");

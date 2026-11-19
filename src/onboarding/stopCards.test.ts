@@ -4,10 +4,12 @@ import { awakeToggle, stopCard, writerBack } from "./stopCards";
 
 describe("Explore Kolux stops carry their own setup cards (ONB-024)", () => {
   const f = (settings: Record<string, unknown> | null = {}, taskSource: boolean | null = false) => ({ taskSource, settings });
-  it("tasks and PR view show GitHub, connected or not, and say so while it is still being read", () => {
-    expect(stopCard("tasks", f({}, true))).toEqual({ kind: "provider", connected: true, label: "Tasks come from GitHub" });
+  it("PR view shows GitHub, connected or not, and says so while it is still being read", () => {
+    expect(stopCard("pr", f({}, true))).toEqual({ kind: "provider", connected: true, label: "Pull requests come from GitHub" });
     expect(stopCard("pr", f({}, false))).toEqual({ kind: "provider", connected: false, label: "Pull requests come from GitHub" });
-    expect(stopCard("tasks", f({}, null))).toMatchObject({ kind: "provider", connected: null });
+    expect(stopCard("pr", f({}, null))).toMatchObject({ kind: "provider", connected: null });
+    // The Tasks stop went with its screen (2026-11-19).
+    expect(stopCard("tasks", f({}, true))).toBeNull();
   });
   it("agent statuses: keep-awake off turns on the automatic mode, and either on mode can be switched off", () => {
     expect(stopCard("statuses", f({ keepAwake: "off" }))).toMatchObject({ kind: "awake", mode: "off", on: false });
@@ -20,7 +22,7 @@ describe("Explore Kolux stops carry their own setup cards (ONB-024)", () => {
     expect(stopCard("statuses", f(null))).toBeNull();
     expect(stopCard("ship", f(null))).toBeNull();
     // a stop that needs no setting still draws
-    expect(stopCard("tasks", f(null, true))).toMatchObject({ kind: "provider", connected: true });
+    expect(stopCard("pr", f(null, true))).toMatchObject({ kind: "provider", connected: true });
   });
   it("keep-awake in Agent mode says so when the status hooks are off, as the Settings page does (FIX-1)", () => {
     expect(stopCard("statuses", f({ keepAwake: "agent" }))).toMatchObject({ mode: "agent", hooksOff: true });
@@ -43,8 +45,8 @@ describe("Explore Kolux stops carry their own setup cards (ONB-024)", () => {
     expect(writerBack(null, true)).toBe("custom");
     expect(writerBack(null, false)).toBe("claude");
   });
-  it("stops with no setup card draw nothing; usage and orchestration have theirs (T-321-c)", () => {
-    for (const id of ["terminal", "workspaces"]) expect(stopCard(id, f())).toBeNull();
-    for (const id of ["usage", "orchestration"]) expect(stopCard(id, f())).not.toBeNull();
+  it("stops with no setup card draw nothing; usage has its own (T-321-c)", () => {
+    for (const id of ["terminal", "workspaces", "orchestration"]) expect(stopCard(id, f())).toBeNull();
+    expect(stopCard("usage", f())).not.toBeNull();
   });
 });

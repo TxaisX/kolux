@@ -10,19 +10,16 @@ import { type Features } from "./features";
 import { movedHint, type MovedId } from "./moved";
 import { isAiAgent } from "./agentKind";
 
-export type StepId = "notifications" | "agent" | "cli" | "integrations" | "multitask" | "automate" | "repos";
+export type StepId = "notifications" | "agent" | "cli" | "multitask" | "repos";
 type Words = { name: string; about: string };
 export type Step = { id: StepId; group: "setup" | "parallel"; core: boolean; en: Words; ko: Words };
 
-/** The seven steps: the Setup group first, then the numbered parallel-work group. Connect
- *  integrations is optional, so it never keeps Milestones in the help menu. */
+/** The steps: the Setup group first, then the numbered parallel-work group. */
 export const STEPS: Step[] = [
   { id: "notifications", group: "setup", core: true, en: { name: "Turn on notifications", about: "Hear when an agent finishes or needs you, even with Kolux in the background." }, ko: { name: "알림 켜기", about: "Kolux가 백그라운드에 있어도 에이전트가 끝나거나 도움이 필요할 때 알려 줍니다." } },
   { id: "agent", group: "setup", core: true, en: { name: "Choose a default agent", about: "Pick the AI that starts when you open a new session." }, ko: { name: "기본 에이전트 선택", about: "새 세션을 열 때 시작할 AI를 고릅니다." } },
   { id: "cli", group: "setup", core: true, en: { name: "Enable Kolux CLI", about: "Let your agents drive Kolux: open terminals, run orchestration and read the skills that teach them how." }, ko: { name: "Kolux CLI 사용", about: "에이전트가 Kolux를 직접 다루게 합니다: 터미널 열기, 오케스트레이션 실행, 사용법을 알려 주는 스킬 읽기." } },
-  { id: "integrations", group: "setup", core: false, en: { name: "Connect integrations", about: "Bring in GitHub reviews and tasks so work arrives where you run it." }, ko: { name: "통합 연결", about: "GitHub 리뷰와 작업을 가져와 일하는 곳에서 바로 받습니다." } },
   { id: "multitask", group: "parallel", core: true, en: { name: "Multi-task", about: "Run more than one agent at once, each in its own pane." }, ko: { name: "멀티태스킹", about: "여러 에이전트를 각자의 창에서 동시에 실행합니다." } },
-  { id: "automate", group: "parallel", core: true, en: { name: "Automate workspace setup", about: "Have each new workspace install and prepare itself before an agent starts." }, ko: { name: "작업 공간 설정 자동화", about: "새 작업 공간마다 에이전트가 시작하기 전에 스스로 설치하고 준비하게 합니다." } },
   { id: "repos", group: "parallel", core: true, en: { name: "Start work in multiple repos", about: "Add a second project and keep agents busy in both." }, ko: { name: "여러 저장소에서 작업 시작", about: "두 번째 프로젝트를 추가하고 두 곳 모두에서 에이전트를 일하게 합니다." } },
 ];
 
@@ -80,7 +77,6 @@ export type Workflow = Stop & { stops: Stop[] };
 
 export const WORKFLOWS: Workflow[] = [
   { id: "workspaces", title: "Projects", caption: "Kolux works in one folder per project. Run several agents in it side by side, each in its own pane, and give each a different task so they do not edit the same files.", stops: [] },
-  { id: "tasks", title: "Tasks", caption: "Tasks gather what needs doing: from GitHub, from your notes or typed in. Start an agent on any of them with one click, and its progress shows on the task.", stops: [] },
   {
     id: "agents",
     title: "Agents",
@@ -88,7 +84,6 @@ export const WORKFLOWS: Workflow[] = [
     stops: [
       { id: "statuses", title: "Statuses", caption: "Every pane says whether its agent is working, done or waiting for you, and the sidebar sums it up." },
       { id: "usage", title: "Usage", caption: "See how much of each plan's limit is left and what your sessions cost.", optional: true },
-      { id: "orchestration", title: "Orchestration", caption: "One agent splits a job, hands the parts to others and gathers their results.", optional: true },
     ],
   },
   {
@@ -97,7 +92,6 @@ export const WORKFLOWS: Workflow[] = [
     caption: "Everything an agent's work needs sits in one window.",
     stops: [
       { id: "terminal", title: "Terminal", caption: "Terminals in a grid of one, two, four or six panes." },
-      { id: "editor", title: "Editor", caption: "Open and edit the files an agent touched without leaving Kolux." },
     ],
   },
   {
@@ -184,15 +178,11 @@ export type Facts = {
   workspaces: Place[][] | null;
   /** The git projects seen together at the most, kept on the profile (the lasting count). */
   gitProjects: number | null;
-  /** "checking" while the provider checks are still out. */
-  integrations: "connected" | "checking" | "none" | null;
   /** The CLI step's capabilities, all in place. */
   cli: boolean;
   notifications: boolean | null;
   /** The saved default agent's id; "" when there is none. */
   agent: string | null;
-  /** Some git project has a workspace setup script; a check that failed settles as false. */
-  setupScript: boolean | null;
   /** ONB-015 legacy rule: an old profile (see legacyProfile); null when it could not be read. */
   legacy?: boolean | null;
   /** ONB-042: the legacy split-pane credit (moved.ts splitCredit); ticks Multi-task. */
@@ -209,11 +199,9 @@ export function doneFrom(f: Facts): Set<StepId> {
   const done = new Set<StepId>();
   if (f.workspaces?.some(realWorkspace) || f.splitCredit === true) done.add("multitask");
   if ((f.gitProjects ?? 0) >= 2) done.add("repos");
-  if (f.integrations === "connected") done.add("integrations");
   if (f.cli) done.add("cli");
   if (f.notifications === true) done.add("notifications");
   if (isAiAgent(f.agent)) done.add("agent"); // FIX-4: a blank or plain-terminal default does not count (agentKind.ts)
-  if (f.setupScript === true) done.add("automate");
   return done;
 }
 
@@ -238,29 +226,7 @@ export const HIDE_PATCH: Record<string, unknown> = { [HIDDEN_FIELD]: true };
 /** The tried-list ids that keep facts on the profile: the lasting repo count. */
 export const TWO_REPOS = "repos-two";
 
-/** ONB-015 setup-script step: answers to an older check are dropped. `begin` starts a check for new
- *  inputs (and resets readiness to unknown); `settle` takes its answer only if it is still the latest,
- *  and a check that failed settles as having no script. */
-export function latest<T>(set: (v: T | null) => void) {
-  let n = 0;
-  return {
-    begin: () => {
-      n += 1;
-      set(null);
-      return n;
-    },
-    settle: (ticket: number, v: T) => void (ticket === n && set(v)),
-  };
-}
-
 // ---- ONB-023: a stop is complete only after a visit and real setup ----
-
-/** Stops whose setup is part of the stop, and the fact it needs. */
-export type Setup = { taskSource: boolean; skills: readonly string[] };
-const NEEDS: Record<string, (s: Setup) => boolean> = {
-  tasks: (s) => s.taskSource,
-  orchestration: (s) => s.skills.includes("orchestration"),
-};
 
 /** Every id the tour knows: the workflows and their stops. */
 export const TOUR_IDS: ReadonlySet<string> = new Set(WORKFLOWS.flatMap((w) => [w.id, ...w.stops.map((s) => s.id)]));
@@ -271,15 +237,14 @@ export const visits = (ids: readonly string[]): string[] => [...new Set(ids.filt
 /** The tried-list id that keeps a stop complete for good. */
 export const doneId = (id: string) => `explore-${id}`;
 
-/** ONB-023: a stop (or workflow) is complete after a visit, plus its setup where the stop carries one;
- *  nothing is ticked just because it is already configured. Once complete (`kept`), it stays so even
- *  if detection later says unavailable. */
-export const stopDone = (id: string, seen: ReadonlySet<string>, setup: Setup, kept: ReadonlySet<string>): boolean =>
-  kept.has(doneId(id)) || (seen.has(id) && (NEEDS[id]?.(setup) ?? true));
+/** ONB-023: a stop (or workflow) is complete after a visit; nothing is ticked just because it is already
+ *  configured. Once complete (`kept`), it stays so. (The stops that also needed a setup, Tasks and
+ *  Orchestration, went with their features on 2026-11-19.) */
+export const stopDone = (id: string, seen: ReadonlySet<string>, kept: ReadonlySet<string>): boolean => kept.has(doneId(id)) || seen.has(id);
 
 /** ONB-023: a workflow is Completed once it and each stop that is not optional are complete. */
-export const workflowDone = (wf: Workflow, seen: ReadonlySet<string>, setup: Setup, kept: ReadonlySet<string>): boolean =>
-  stopDone(wf.id, seen, setup, kept) && wf.stops.every((s) => s.optional || stopDone(s.id, seen, setup, kept));
+export const workflowDone = (wf: Workflow, seen: ReadonlySet<string>, kept: ReadonlySet<string>): boolean =>
+  stopDone(wf.id, seen, kept) && wf.stops.every((s) => s.optional || stopDone(s.id, seen, kept));
 
 /** ONB-023: the visits and kept stops once the saved record arrives, merged into what this window
  *  already saw (a stop visited before the record loaded is never lost). */

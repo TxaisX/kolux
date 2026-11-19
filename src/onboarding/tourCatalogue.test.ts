@@ -1,30 +1,15 @@
-// ONB-032 rest and ONB-033 rest (T-245-b): the board tour, how a waiting tour behaves
-// and the naming rule. T-776 dropped the workspace-creation tour and its hand-over: Kolux makes no extra folders.
+// ONB-032 rest and ONB-033 rest (T-245-b): the parallel tour, how a waiting tour behaves and the naming rule.
+// The board, Tasks and Automations tours went with their screens (2026-11-19). T-776 dropped the
+// workspace-creation tour and its hand-over: Kolux makes no extra folders.
 import { describe, expect, it } from "vitest";
 import {
-  autoStarts, BOARD_LANE, FIRST_TARGET_TRIES, gaveUp, lookAt, nameAfterToggle, nextShown, ownerOff, progress,
+  autoStarts, FIRST_TARGET_TRIES, gaveUp, lookAt, nameAfterToggle, nextShown, progress,
   replayOf, SIDEBAR_SHOW, TOURS, type Look, type Want,
 } from "./tour";
 
 const tour = (id: string) => TOURS.find((t) => t.id === id)!;
 
 describe("the catalogue (ONB-033)", () => {
-  it("has the board tour: plan, then cards through the lanes", () => {
-    const t = tour("board");
-    expect(t.steps).toHaveLength(2);
-    expect(t.trigger).toBe(BOARD_LANE);
-    expect(t.steps[1].alt).toContain(".board");
-  });
-  it("p4a-09: the board tour names the columns as states, in the board's own order, not stages", async () => {
-    const { LANES } = await import("../status/chip");
-    const lane = tour("board").steps.find((s) => s.target === BOARD_LANE)!;
-    const body = lane.en.body;
-    expect(body).not.toMatch(/stage|first one/i);
-    const at = LANES.map((l) => body.indexOf(l.title));
-    expect(at.every((i) => i >= 0)).toBe(true);
-    expect([...at].sort((a, b) => a - b)).toEqual(at);
-    expect(lane.ko.body).not.toMatch(/첫 열|한 단계/);
-  });
   it("the parallel tour says the sidebar has one dot per folder and each agent's own state is on its pane (job 66)", () => {
     const step = tour("parallel").steps[1];
     expect(step.en.body).not.toMatch(/each has its own dot/i);
@@ -50,9 +35,6 @@ describe("the parallel tour only on a workspace's terminal tab (ONB-033)", () =>
     expect(autoStarts({ ...base, workspaceTab: true })).toBe(true);
     expect(autoStarts({ ...base, workspaceTab: false })).toBe(false);
   });
-  it("the other tours do not care", () => {
-    expect(autoStarts({ ...base, id: "board", workspaceTab: false })).toBe(true);
-  });
 });
 
 describe("progress (ONB-033: a tour with a fixed count always counts it)", () => {
@@ -70,8 +52,8 @@ describe("progress (ONB-033: a tour with a fixed count always counts it)", () =>
   });
 });
 
-const want = (o: Partial<Want> = {}): Want => ({ id: "board", forced: false, tries: 0, page: "|", ...o });
-const look = (o: Partial<Look> = {}): Look => ({ running: null, page: "|", firstShown: true, blocked: false, off: false, detached: false, ...o });
+const want = (o: Partial<Want> = {}): Want => ({ id: "parallel", forced: false, tries: 0, page: "|", ...o });
+const look = (o: Partial<Look> = {}): Look => ({ running: null, page: "|", firstShown: true, blocked: false, ...o });
 
 describe("a waiting tour (ONB-032)", () => {
   it("starts when its first target shows, but an automatic one not over a confirmation dialog", () => {
@@ -82,24 +64,19 @@ describe("a waiting tour (ONB-032)", () => {
   it("keeps looking while the target is not there", () => {
     expect(lookAt(want({ forced: true }), look({ firstShown: false }))).toBe("miss");
   });
-  it("is held back while the feature that owns it is switched off, unless it is detached", () => {
-    expect(lookAt(want(), look({ off: true }))).toBe("drop");
-    expect(lookAt(want({ forced: true }), look({ off: true }))).toBe("drop");
-    expect(lookAt(want({ id: "parallel", forced: true }), look({ off: true, detached: true }))).toBe("start");
-  });
   it("a forced request stops when the user moves to another page", () => {
-    expect(lookAt(want({ forced: true }), look({ page: ".board" }))).toBe("drop");
-    expect(lookAt(want(), look({ page: ".board" }))).toBe("start");
+    expect(lookAt(want({ forced: true }), look({ page: ".settings" }))).toBe("drop");
+    expect(lookAt(want(), look({ page: ".settings" }))).toBe("start");
   });
   it("a forced request stops when another tour starts, unless it holds off for that one", () => {
-    expect(lookAt(want({ forced: true }), look({ running: "tasks" }))).toBe("drop");
-    expect(lookAt(want({ forced: true, after: "tasks" }), look({ running: "tasks" }))).toBe("wait");
-    expect(lookAt(want({ forced: true, after: "tasks" }), look({ running: "automations" }))).toBe("drop");
+    expect(lookAt(want({ forced: true }), look({ running: "grid" }))).toBe("drop");
+    expect(lookAt(want({ forced: true, after: "grid" }), look({ running: "grid" }))).toBe("wait");
+    expect(lookAt(want({ forced: true, after: "grid" }), look({ running: "parallel" }))).toBe("drop");
     // and goes ahead once the one it waited for has finished
-    expect(lookAt(want({ forced: true, after: "tasks" }), look({ running: null }))).toBe("start");
+    expect(lookAt(want({ forced: true, after: "grid" }), look({ running: null }))).toBe("start");
   });
   it("an automatic request simply waits while another tour shows", () => {
-    expect(lookAt(want(), look({ running: "tasks" }))).toBe("wait");
+    expect(lookAt(want(), look({ running: "grid" }))).toBe("wait");
   });
   it("gives up after about twenty looks (forced: eighty), and a grid kit start has its own limit", () => {
     expect(gaveUp(want({ tries: FIRST_TARGET_TRIES - 1 }))).toBe(false);
@@ -110,21 +87,11 @@ describe("a waiting tour (ONB-032)", () => {
   });
 });
 
-describe("the owning feature's switch", () => {
-  it("only an explicit false switches a feature off", () => {
-    expect(ownerOff({ boardView: false }, "board")).toBe(true);
-    expect(ownerOff({ boardView: true }, "board")).toBe(false);
-    expect(ownerOff({}, "board")).toBe(false);
-    expect(ownerOff(null, "board")).toBe(false);
-    expect(ownerOff({ boardView: false }, "parallel")).toBe(false);
-  });
-});
-
 describe("replay requests", () => {
   it("accepts the old plain id and the new object with a tour to wait for", () => {
-    expect(replayOf("tasks")).toEqual({ id: "tasks" });
-    expect(replayOf({ id: "board", after: "tasks" })).toEqual({ id: "board", after: "tasks" });
-    expect(replayOf({ id: "board" })).toEqual({ id: "board", after: undefined });
+    expect(replayOf("parallel")).toEqual({ id: "parallel" });
+    expect(replayOf({ id: "parallel", after: "grid" })).toEqual({ id: "parallel", after: "grid" });
+    expect(replayOf({ id: "parallel" })).toEqual({ id: "parallel", after: undefined });
     expect(replayOf(null)).toBeNull();
     expect(replayOf({ id: 4 })).toBeNull();
   });

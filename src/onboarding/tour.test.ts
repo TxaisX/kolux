@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { autoStarts, FOCUSED_SPLIT, GRID_PANE, GRID_RESULTS, GRID_STATUS, gridStarts, nextShown, place, prevShown, stepLabel, tourFeature, TOURS } from "./tour";
 
-const base = { id: "tasks" as const, auto: true, seen: [], slotUsed: false, blocked: false, tried: [] };
+const base = { id: "parallel" as const, auto: true, seen: [], slotUsed: false, blocked: false, tried: [] };
 
 describe("tour overlay (ONB-031)", () => {
   it("labels steps only when more than one shows and skips missing targets", () => {
@@ -32,7 +32,7 @@ describe("when tours start by themselves (ONB-032)", () => {
     expect(autoStarts(base)).toBe(true);
     expect(autoStarts({ ...base, auto: false })).toBe(false);
     expect(autoStarts({ ...base, auto: null })).toBe(false);
-    expect(autoStarts({ ...base, seen: ["tasks"] })).toBe(false);
+    expect(autoStarts({ ...base, seen: ["parallel"] })).toBe(false);
     expect(autoStarts({ ...base, slotUsed: true })).toBe(false);
     expect(autoStarts({ ...base, blocked: true })).toBe(false);
   });
@@ -41,7 +41,7 @@ describe("when tours start by themselves (ONB-032)", () => {
     expect(autoStarts({ ...base, id: "parallel", tried: ["split"] })).toBe(false);
   });
   it("has the catalogue the store keeps, translated", () => {
-    expect(TOURS.map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "grid", "board"]);
+    expect(TOURS.map((t) => t.id)).toEqual(["parallel", "grid"]);
     expect(TOURS.every((t) => t.steps.every((s) => s.ko.title && s.en.title))).toBe(true);
   });
 });
@@ -74,6 +74,6 @@ describe("the tours promise one folder per project (T-776)", () => {
 
 describe("tours and the feature memory (ONB-042, FIX-1)", () => {
   it("tourFeature names a kept feature for every tour but the grid tour (the predicate only; the Tours.tsx call is not covered here)", () => {
-    expect(TOURS.filter((t) => tourFeature(t.id)).map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "board"]);
+    expect(TOURS.filter((t) => tourFeature(t.id)).map((t) => t.id)).toEqual(["parallel"]);
   });
 });

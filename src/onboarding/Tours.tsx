@@ -7,7 +7,7 @@ import { markGuide, type GuideRecord } from "./guide";
 import { usePulseRest } from "../chrome/pulseRest";
 import { restingLoop, wakeOnChange } from "./followLoop";
 import { features, hasUsed, noteUse } from "./features";
-import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, lookAt, START_GRID, nextShown, ownerOff, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
+import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, lookAt, START_GRID, nextShown, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
 import { frontProjectRow } from "../projects/frontRow";
 
 
@@ -29,8 +29,9 @@ const stepEl = (st: TourStep): HTMLElement | null => {
   return null;
 };
 
-/** Where the user is, as far as the window shows it: a change means they moved to another page (ONB-032). */
-const pageKey = () => [".board", "[data-tasks]", ".autos:not(.tasks)"].filter((q) => shown(q)).join("|");
+/** Where the user is, as far as the window shows it: a change means they moved to another page (ONB-032). Settings is
+ *  the one page left over the terminals (the board, Tasks and Automations screens went on 2026-11-19). */
+const pageKey = () => [".settings[role='dialog']"].filter((q) => shown(q)).join("|");
 
 /** Another dialog (the first-run wizard, a confirmation) holds the window. */
 const blocked = () => [...document.querySelectorAll("[role=dialog]")].some((d) => !d.classList.contains("tour"));
@@ -173,13 +174,11 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
   );
 }
 
-/** 49-ux2: what to tell the user when a tour they asked for (Help > a tour) is dropped or gives up, so a
- *  replay is never silent. `off` is the owning feature being switched off. A page change or another tour
- *  starting is the user's own doing and says nothing; an automatic tour never speaks. Kept here, not in
- *  tour.ts, so the code loaded at start does not carry it. */
-export function tourNotice(name: string, w: Want, act: ReturnType<typeof lookAt>, gave: boolean, off: boolean): string | null {
+/** 49-ux2: what to tell the user when a tour they asked for (Help > a tour) gives up, so a replay is never
+ *  silent. A page change or another tour starting is the user's own doing and says nothing; an automatic tour
+ *  never speaks. Kept here, not in tour.ts, so the code loaded at start does not carry it. */
+export function tourNotice(name: string, w: Want, act: ReturnType<typeof lookAt>, gave: boolean): string | null {
   if (!w.forced) return null;
-  if (act === "drop" && off) return `The ${name} tour is off because its feature is switched off in Settings.`;
   if (act === "miss" && gave) return `The ${name} tour needs its screen showing. Open that screen, then replay the tour from Help.`;
   return null;
 }
@@ -188,7 +187,6 @@ export default function Tours() {
   const rec = useRef<GuideRecord | null>(null);
   const slot = useRef(false);
   const want = useRef<Want | null>(null);
-  const settings = useRef<Record<string, unknown> | null>(null);
   const [run, setRun] = useState<{ tour: Tour; at: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null); // 49-ux2: why a replay did not start
   const running = useRef<TourId | null>(null);
@@ -202,7 +200,6 @@ export default function Tours() {
       },
       () => {},
     );
-    invoke<Record<string, unknown>>("get_settings").then((x) => (settings.current = x), () => {});
     const surfaced = new Set<TourId>();
     // ONB-012: nothing replays the grid tour.
     const replay = (e: Event) => {
@@ -239,8 +236,7 @@ export default function Tours() {
       if (w) {
         const tour = TOURS.find((t) => t.id === w.id);
         const first = tour && nextShown(tour.steps.map((st) => !!stepEl(st)), -1);
-        const off = ownerOff(settings.current, w.id);
-        const act = lookAt(w, { running: running.current, page: pageKey(), firstShown: first !== null && first !== undefined, blocked: blocked(), off, detached: !!tour?.detached });
+        const act = lookAt(w, { running: running.current, page: pageKey(), firstShown: first !== null && first !== undefined, blocked: blocked() });
         const gave = act === "miss" && (++w.tries, gaveUp(w));
         if (act === "start" && tour && first !== null && first !== undefined) {
           want.current = null;
@@ -248,7 +244,7 @@ export default function Tours() {
         } else if (act === "drop" || gave) {
           // Gave up or was called off without showing: an automatic tour hands its slot back and is not marked seen.
           want.current = null;
-          const why = tourNotice(tour?.name ?? w.id, w, act, gave, off && !tour?.detached);
+          const why = tourNotice(tour?.name ?? w.id, w, act, gave);
           if (why) setNotice(why);
           if (!w.forced) slot.current = false;
         }
@@ -259,7 +255,7 @@ export default function Tours() {
       // ONB-042: opening a surface that has a tour counts as using that feature, once per window.
       for (const t of TOURS) if (!surfaced.has(t.id) && tourFeature(t.id) && shown(t.trigger) && noteUse(t.id)) surfaced.add(t.id);
       const workspaceTab = !!frontProjectRow(); // F25: a project's terminals are in front (ONB-033), read from its visible header
-      const auto = TOURS.find((t) => autoStarts({ id: t.id, auto: r.toursAuto, seen: r.toursSeen, slotUsed: slot.current, blocked: blocked(), tried: hasUsed("split") ? [...r.tried, "split"] : r.tried, workspaceTab }) && shown(t.trigger) && !ownerOff(settings.current, t.id));
+      const auto = TOURS.find((t) => autoStarts({ id: t.id, auto: r.toursAuto, seen: r.toursSeen, slotUsed: slot.current, blocked: blocked(), tried: hasUsed("split") ? [...r.tried, "split"] : r.tried, workspaceTab }) && shown(t.trigger));
       if (auto) {
         slot.current = true;
         want.current = { id: auto.id, forced: false, tries: 0, page: pageKey() };
