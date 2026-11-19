@@ -32,7 +32,6 @@ function hostsInCode(): Map<string, string[]> {
 const CONNECTS: Record<string, string> = {
   "api.github.com": "github account",
   "github.com": "github account",
-  "avatars.githubusercontent.com": "avatars.githubusercontent.com",
   "raw.githubusercontent.com": "raw.githubusercontent.com",
   "api.moonshot.ai": "api.moonshot.ai",
   "www.minimax.io": "www.minimax.io",
@@ -58,7 +57,6 @@ const CONNECTS: Record<string, string> = {
 const NOT_A_CONNECTION: Record<string, string> = {
   "127.0.0.1": "this computer: local agent hook callbacks",
   "git-scm.com": "words in an error message; the person decides whether to open it",
-  "avatars.": "the start of the GitHub Enterprise picture host, built from the repository's own host",
   host: "a placeholder in a code comment or doc string",
 };
 

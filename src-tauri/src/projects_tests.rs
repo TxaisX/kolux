@@ -2854,7 +2854,7 @@ fn fix4_only_the_hosting_sites_own_avatar_hosts_are_ever_returned() {
     let repo = temp_repo("fix4-hosts");
     git_in(&repo, &["remote", "add", "origin", "https://github.com/octo/widget.git"]);
     let src = src_of(auto_icon(&repo), "avatar");
-    assert!(crate::github::avatar_ok(&src, "github.com"), "{src}");
+    assert!(["https://github.com/", "https://avatars.githubusercontent.com/"].iter().any(|h| src.starts_with(h)), "{src}");
     for host in ["evil.example", "github.com.evil.example", "127.0.0.1", "localhost"] {
         git_in(&repo, &["remote", "set-url", "origin", &format!("https://{host}/octo/widget.git")]);
         assert_eq!(auto_icon(&repo), None, "{host}");

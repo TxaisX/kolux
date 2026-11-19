@@ -971,7 +971,7 @@ pub fn gh_words(said: &str) -> String {
         "Sign in to GitHub first: run gh auth login".into()
     } else if !low.contains("rate limit") && (low.contains("resource not accessible") || low.contains("http 403")) {
         // A search refused over one repository (HTTP 422) and "Could not resolve to a Repository" keep
-        // gh's words: Tasks names the refused repository from them (repo_trouble, github::lookup_error).
+        // gh's own words.
         "The account gh is signed in with cannot see this repository: run gh auth status to check which account it is, or gh auth login with one that has access".into()
     } else {
         said.trim().to_string()
