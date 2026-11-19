@@ -526,7 +526,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const openPane = (key: number) => {
     const p = panes.find((x) => x.key === key);
     if (!p) return;
-    setPage(null); // C13-R1-01: Open in Code leaves a full page (Automations, Tasks, Routing) behind
+    setPage(null); // C13-R1-01: Open in Code leaves a full page behind
     setScreen("terminals");
     if (!sameDir(viewOf(p), activeDir)) setActiveDir(viewOf(p)); // DT-C274: the grid the pane is shown in
     setFocused(key);

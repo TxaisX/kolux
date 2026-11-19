@@ -46,7 +46,8 @@ test("the status hooks switch is called Show what each agent is doing, and says 
   expect(html).toContain("While it is off, Kolux guesses from each terminal&#x27;s title and screen, so status colours, the Board and &quot;Needs you&quot; can be late or wrong.");
   expect(html).not.toContain("can only guess");
   expect(html).toContain("On adds small scripts (hooks) to each agent&#x27;s settings");
-  expect(html).toContain("Protected actions cannot ask first");
+  expect(html).toContain("The chat box cannot see an agent&#x27;s questions.");
+  expect(html).not.toContain("Protected actions");
 });
 
 test("a failed hook install or removal is shown beside the switch instead of being dropped (T-152-c (3))", () => {

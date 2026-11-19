@@ -173,7 +173,7 @@ pub fn install_cause(raw: &str) -> String {
     } else {
         format!("The installer could not start: {}", raw.trim())
     };
-    crate::protected::mask(&scrub_paths(&why))
+    crate::mask::mask(&scrub_paths(&why))
 }
 
 // ---------------------------------------------------------------- APP-031: download problems

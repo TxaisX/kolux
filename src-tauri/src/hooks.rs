@@ -433,11 +433,10 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
     (200, crate::status::report(pane_key, terminal, agent, &event))
 }
 
-/// SAFE-009: what the hook prints back to Claude. A Bash or PowerShell command that trips a
-/// protected rule gets the PreToolUse ask block naming the rule; everything else (another tool or
-/// event, Codex, a body that cannot be read) gets `{}`, no opinion, so Claude's own permission
-/// flow carries on and Kolux never blocks by itself.
-pub fn reply_body(path: &str, body: &[u8], settings: &Value) -> String {
+/// What the hook prints back to the agent: `{}`, no opinion, so the agent's own permission flow
+/// carries on and Kolux never blocks by itself (the protected-action asks of SAFE-009 were retired
+/// in slim-down wave B), except for the answers below that an agent's hook format requires.
+pub fn reply_body(path: &str, body: &[u8], _settings: &Value) -> String {
     // T-120-b: Antigravity's PreToolUse hook must answer; "allow" hands the call to its own policy.
     if path == "/antigravity/PreToolUse" {
         return json!({ "decision": "allow" }).to_string();
@@ -452,9 +451,7 @@ pub fn reply_body(path: &str, body: &[u8], settings: &Value) -> String {
     if path == "/cursor" && serde_json::from_slice::<Value>(body).ok().is_some_and(|e| e.get("hook_event_name").and_then(Value::as_str) == Some("beforeSubmitPrompt")) {
         return json!({ "continue": true }).to_string();
     }
-    // T-156-b: the rules in force for the command's folder (built-ins, the user's own, per project)
-    // and the recent-attempts list, both in protected_custom.rs.
-    crate::protected_custom::listen(path, body, settings).unwrap_or_else(|| "{}".into())
+    "{}".into()
 }
 
 /// One rate-limit window as Claude Code's status line reports it (STAT-040), reset in ms.
@@ -712,7 +709,7 @@ static ORDER: Mutex<()> = Mutex::new(());
 /// waits on the store; `raise` and `after` only hand things on.
 struct Line {
     token: String,
-    /// The settings the protected-command answer reads (SAFE-009).
+    /// The settings handed to `reply_body` (SAFE-009's protected-command answer read them; nothing does now).
     settings: Box<dyn Fn() -> Arc<Value> + Send + Sync>,
     /// The window hears a status before its reply goes, under ORDER, so a pane's events reach it in the order the
     /// status machine stepped them.
@@ -736,10 +733,8 @@ impl Read for Within<'_> {
     }
 }
 
-/// T-583: the settings the protected-command answer reads (SAFE-009). Read fresh whenever the store is free, as before,
-/// so a rule switched off applies to the next command; while slow work holds the store, the last read stands in.
-// ponytail: a rule changed while the store is busy applies from the first hook after it frees; a snapshot that every
-// settings save refreshes (state.rs) would close that.
+/// T-583: the settings handed to `reply_body`. Read fresh whenever the store is free; while slow work holds the store,
+/// the last read stands in.
 fn settings_now(store: Option<&Mutex<crate::state::Store>>, last: &Mutex<Arc<Value>>) -> Arc<Value> {
     let fresh = store.and_then(|s| s.try_lock().ok().map(|s| s.settings()));
     let mut last = last.lock().unwrap_or_else(PoisonError::into_inner);
@@ -780,7 +775,7 @@ impl Drop for InFlight {
 
 /// T-583: every connection gets a thread of its own, so a slow or silent client holds up nothing but itself; a silent
 /// one is cut off within READ_WITHIN. Above MAX_IN_FLIGHT, or when no thread can be made, the connection is closed
-/// and the loop goes on: it never panics, so status and the protected-command check outlive any flood.
+/// and the loop goes on: it never panics, so status outlives any flood.
 fn accept(listener: TcpListener, line: Arc<Line>) {
     let busy = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     // Logged once per flood: set at the first refusal, cleared when a connection is taken again.
@@ -829,8 +824,8 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
             let req = Arc::new(req);
             // T-583: one thread per connection, so a pane's step in the status machine, its emit and its queued
             // after-work are taken under one lock: the window and saved::note hear the steps in the machine's order.
-            // Only those three quick steps sit under it; the reply body (a protected command's check and mask,
-            // which can take long on a huge command) is worked out after, so it holds up its own connection only.
+            // Only those three quick steps sit under it; the reply body is worked out after, so it holds up its own
+            // connection only.
             let code = {
                 let _order = ORDER.lock().unwrap_or_else(PoisonError::into_inner);
                 let (code, status) = answer(&req, &line.token);
@@ -841,7 +836,7 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
                 code
             };
             if code == 200 {
-                // SAFE-009: the settings as last read, fresh whenever the store is free.
+                // The settings as last read, fresh whenever the store is free.
                 body = reply_body(&req.path, &req.body, &(line.settings)());
             }
             code
@@ -1022,8 +1017,8 @@ impl Hooks {
 }
 
 /// The Claude hook script (COMPAT 3.2): guards first, reads the endpoint file, posts stdin with the
-/// system curl inside 1.5 s, always exits 0. It prints Kolux's answer, which is `{}` or the
-/// PreToolUse ask of a protected command (SAFE-009); nothing when Kolux cannot be reached.
+/// system curl inside 1.5 s, always exits 0. It prints Kolux's answer, which is `{}`; nothing when
+/// Kolux cannot be reached.
 pub fn claude_script() -> String {
     script("Claude Code (STAT-001, STAT-007, SAFE-009)", "claude", true)
 }
@@ -1991,27 +1986,18 @@ Content-Length: {}
         assert!(codex_script().contains("%KP%/codex\" >NUL") && !codex_script().contains("/claude"));
     }
 
-    /// SAFE-009: a protected shell command makes the hook answer Claude's PreToolUse with an ask;
-    /// everything else, a garbled body included, gets the neutral `{}` so Claude carries on.
+    /// Every Claude and Codex hook, a shell command that once asked (SAFE-009, retired) and a garbled
+    /// body included, gets the neutral `{}` so the agent carries on.
     #[test]
-    fn safe009_a_protected_command_asks_and_everything_else_is_neutral() {
+    fn a_claude_or_codex_hook_is_answered_with_the_neutral_reply() {
         let s = json!({});
         let pre = |tool: &str, cmd: &str| format!(r#"{{"hook_event_name":"PreToolUse","tool_name":"{tool}","tool_input":{{"command":"{cmd}"}}}}"#);
-        let ask = reply_body("/claude", pre("Bash", "git push --force origin main").as_bytes(), &s);
-        let v: Value = serde_json::from_str(&ask).unwrap();
-        let out = &v["hookSpecificOutput"];
-        assert_eq!((out["hookEventName"].as_str(), out["permissionDecision"].as_str()), (Some("PreToolUse"), Some("ask")));
-        assert!(out["permissionDecisionReason"].as_str().unwrap().contains("Force-push to main"));
-        assert_ne!(reply_body("/claude", pre("PowerShell", "git reset --hard").as_bytes(), &s), "{}", "PowerShell is read too");
+        assert_eq!(reply_body("/claude", pre("Bash", "git push --force origin main").as_bytes(), &s), "{}");
+        assert_eq!(reply_body("/claude", pre("PowerShell", "git reset --hard").as_bytes(), &s), "{}");
         assert_eq!(reply_body("/claude", pre("Bash", "git status").as_bytes(), &s), "{}");
-        assert_eq!(reply_body("/claude", pre("Write", "git push -f").as_bytes(), &s), "{}", "only shells are inspected");
         assert_eq!(reply_body("/claude", br#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"git push -f"}}"#, &s), "{}");
         assert_eq!(reply_body("/claude", b"not json {", &s), "{}", "a garbled body fails open");
-        assert_eq!(reply_body("/codex", pre("Bash", "git push -f").as_bytes(), &s), "{}", "Codex is not guarded");
-        let body = br#"{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/home/me/app","tool_input":{"command":"rm -rf .git"}}"#;
-        assert!(reply_body("/claude", body, &json!({})).contains("Deleting folders outside the workspace"), "SAFE-013 through the hook, judged against cwd");
-        let off = json!({ "protectedOff": ["force-push"] });
-        assert_eq!(reply_body("/claude", pre("Bash", "git push -f").as_bytes(), &off), "{}", "a switched-off rule asks no more");
+        assert_eq!(reply_body("/codex", pre("Bash", "git push -f").as_bytes(), &s), "{}");
         // The Claude script prints the answer for Claude to read; Codex's still discards it.
         assert!(claude_script().contains("%KP%/claude\" 2>NUL") && !claude_script().contains("-o NUL"));
         assert!(codex_script().contains("-o NUL"));
@@ -2572,8 +2558,7 @@ Content-Length: {}
         stalled.write_all(b"POST /claude HTTP/1.1\r\nX-Kolux-").unwrap();
         std::thread::sleep(Duration::from_millis(200));
         let (body, took) = hook(port, 58_301, &shell("git push --force origin main"));
-        assert!(took < LIMIT, "answered after {took:?}");
-        assert!(body.contains(r#""permissionDecision":"ask""#), "the protected command still asks: {body}");
+        assert!(took < LIMIT && body == "{}", "answered after {took:?}: {body}");
     }
 
     #[test]
@@ -2608,7 +2593,7 @@ Content-Length: {}
     }
 
     #[test]
-    fn t583_a_protected_command_is_answered_while_an_agent_finished_automation_is_still_in_its_precheck() {
+    fn t583_a_command_is_answered_while_the_work_after_an_earlier_reply_is_still_running() {
         let (started, begun) = std::sync::mpsc::channel::<()>();
         let (release, held) = std::sync::mpsc::channel::<()>();
         // The work after each reply, as `serve` runs it: one queue in arrival order. The first job stands for an
@@ -2623,20 +2608,19 @@ Content-Length: {}
         assert!(took < LIMIT, "the finish itself is answered at once ({took:?})");
         begun.recv_timeout(Duration::from_secs(5)).expect("the work after the first reply began and is still running");
         let (body, took) = hook(port, 58_303, &shell("git push --force origin main"));
-        assert!(took < LIMIT, "answered after {took:?}");
-        assert!(body.contains(r#""permissionDecision":"ask""#), "{body}");
+        assert!(took < LIMIT && body == "{}", "answered after {took:?}: {body}");
         let _ = release.send(());
     }
 
     #[test]
-    fn t583_a_huge_protected_command_still_being_checked_holds_up_no_other_pane() {
+    fn t583_a_huge_command_whose_reply_is_still_being_worked_out_holds_up_no_other_pane() {
         use std::sync::atomic::{AtomicBool, Ordering};
         let (checking, begun) = std::sync::mpsc::channel::<()>();
         let (release, held) = std::sync::mpsc::channel::<()>();
         let (checking, held) = (Mutex::new(checking), Mutex::new(held));
         let first = AtomicBool::new(true);
-        // The first reply's work (its rules read, then a mask of up to 8 passes over a 2 MiB command) stands still
-        // until released; under the round-1 ORDER lock every other pane's hook queued behind it.
+        // The first reply's work (its settings read) stands still until released; under the round-1 ORDER lock every
+        // other pane's hook queued behind it.
         let port = line_with(
             move || {
                 if first.swap(false, Ordering::SeqCst) {
@@ -2652,9 +2636,9 @@ Content-Length: {}
         let (_, took) = hook(port, 58_306, r#"{"hook_event_name":"UserPromptSubmit","prompt":"go","session_id":"t583b"}"#);
         assert!(took < LIMIT, "another pane's status answered after {took:?}");
         let (body, took) = hook(port, 58_307, &shell("git push --force origin main"));
-        assert!(took < LIMIT && body.contains(r#""permissionDecision":"ask""#), "another pane's protected command: {took:?} {body}");
+        assert!(took < LIMIT && body == "{}", "another pane's command: {took:?} {body}");
         let _ = release.send(());
-        assert!(huge.join().unwrap().0.contains(r#""permissionDecision":"ask""#), "the huge command still asks");
+        assert_eq!(huge.join().unwrap().0, "{}", "the huge command is still answered");
     }
 
     #[test]
@@ -2675,8 +2659,6 @@ Content-Length: {}
         // The silent clients go; their handlers end and free their places. The line still answers.
         drop(silent);
         std::thread::sleep(Duration::from_millis(300));
-        // A plain command: a protected one would also wait on protected_custom's attempts lock, which another test's
-        // huge command holds while it is masked (a follow-up in STATE.md), and this test is about the accept loop.
         let (body, took) = hook(port, 58_308, &shell("git status"));
         assert!(took < LIMIT && body == "{}", "the listener keeps accepting: {took:?} {body}");
     }
@@ -2697,34 +2679,20 @@ Content-Length: {}
     }
 
     #[test]
-    fn t583_a_protected_command_is_answered_from_the_last_settings_read_while_slow_work_holds_the_store() {
+    fn t583_the_settings_are_read_fresh_while_the_store_is_free_and_the_last_read_stands_in_while_it_is_held() {
         use crate::state::Store;
         let dir = std::env::temp_dir().join(format!("kolux-hooks-t583-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store = Arc::new(Mutex::new(Store::open(&dir).unwrap()));
-        store.lock().unwrap().save_settings(&json!({ "protectedRules": [{ "id": "t583", "name": "Pod deletes", "kind": "starts-with", "pattern": "kubectl delete" }] })).unwrap();
-        let last = Arc::new(Mutex::new(Arc::new(Value::Null)));
-        let (s, l) = (store.clone(), last.clone());
-        let port = line_with(move || settings_now(Some(&s), &l), |_| {});
-        let (body, _) = hook(port, 58_304, &shell("kubectl delete pod web"));
-        assert!(body.contains("Pod deletes"), "the user's own rule, read while the store is free: {body}");
-        // Slow work (a git scan for every project, say) takes the store and keeps it.
-        let (taken, ready) = std::sync::mpsc::channel::<()>();
-        let (release, held) = std::sync::mpsc::channel::<()>();
-        let holder = {
-            let store = store.clone();
-            std::thread::spawn(move || {
-                let _guard = store.lock().unwrap();
-                let _ = taken.send(());
-                let _ = held.recv_timeout(Duration::from_secs(30));
-            })
-        };
-        ready.recv().unwrap();
-        let (body, took) = hook(port, 58_304, &shell("kubectl delete pod api"));
-        assert!(took < LIMIT, "answered after {took:?}");
-        assert!(body.contains("Pod deletes") && body.contains(r#""permissionDecision":"ask""#), "the last read stands in: {body}");
-        let _ = release.send(());
-        holder.join().unwrap();
+        let store = Mutex::new(Store::open(&dir).unwrap());
+        store.lock().unwrap().save_settings(&json!({ "language": "fr" })).unwrap();
+        let last = Mutex::new(Arc::new(Value::Null));
+        assert_eq!(settings_now(Some(&store), &last)["language"], "fr", "read while the store is free");
+        // Slow work (a git scan for every project, say) holds the store: the last read stands in, without waiting.
+        let held = store.lock().unwrap();
+        let started = Instant::now();
+        assert_eq!(settings_now(Some(&store), &last)["language"], "fr", "the last read stands in");
+        assert!(started.elapsed() < LIMIT);
+        drop(held);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

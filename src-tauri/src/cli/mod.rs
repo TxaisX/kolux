@@ -3493,16 +3493,10 @@ fn worker_start_as(ctx: &Ctx, req: &Request, coordinator: Option<String>) -> Res
         // ORCH-019: with no tier the worker takes the coordinator's own agent unless one is named.
         None => text("agent").or_else(|| coordinator.as_deref().and_then(|h| own_agent(ctx, h))).unwrap_or(default),
     };
-    if let (None, Some(m)) = (&tier, text("model")) {
-        crate::routing::model_fits(&agent_id, &m).map_err(Fail::args)?;
-    }
     let agent = installed_agent(&agent_id)?;
-    // ORCH-018 / SET-028: a tier means the model and effort picked for it in model routing.
+    // ORCH-018 / SET-028: model routing was retired (slim-down wave B), so a tier has no model to mean.
     let (model, effort) = match &tier {
-        Some(t) => {
-            let settings = ctx.store.lock().map_err(|e| e.to_string())?.settings();
-            crate::routing::route(&settings, &agent_id, t).map_err(|m| Fail::new("no_route", m))?
-        }
+        Some(t) => return Err(Fail::new("no_route", format!("{agent_id} has no model route for the {t} tier"))),
         None => (text("model"), text("effort")),
     };
     let extra = model_args(&agent_id, model.as_deref(), effort.as_deref())?;

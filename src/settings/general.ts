@@ -98,7 +98,7 @@ export async function saveLayout(l: SavedLayout, write: (l: SavedLayout) => Prom
 /** VIEW-011: the page that was open at quit, shown again at start (none when unset or unknown). */
 export const OPEN_PAGE_FIELD = "openPage";
 export function openPageAt(_s: Record<string, unknown>): Page | null {
-  return null; // no page is left to reopen (the Automations, Routing and Tasks pages were removed)
+  return null; // no full page is left to reopen
 }
 
 /** TERM-029: the needs-you strip above the grid, on unless turned off. */

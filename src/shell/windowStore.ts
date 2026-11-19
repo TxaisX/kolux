@@ -65,9 +65,8 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const leftNow = useRef(sidebarOpen);
   leftNow.current = sidebarOpen;
   const setSidebarOpen = useCallback((v: boolean | ((shown: boolean) => boolean)) => setLeftState((leftNow.current = nextLeft(leftNow.current, v, isNarrow(), rightAside.current))), []);
-  // DT-17: Automations is a page of its own over the content column, opened from the sidebar;
-  // the grid stays mounted (hidden) behind it.
-  // SET-028: Model routing opens the same way until Settings > Agents exists.
+  // A full page over the content column, the grid staying mounted (hidden) behind it; none is left
+  // since the Automations, Routing and Tasks pages were removed.
   const [page, setPage] = useState<Page | null>(() => openPageAt(initial)); // VIEW-011: the page open at quit
   // GIT-004: a half-written commit message per worktree, kept through closing the panel.
   const [drafts, setDrafts] = useState<Record<string, string>>({});

@@ -654,6 +654,17 @@ pub fn parse_env(typed: &str) -> Vec<(String, String)> {
     typed.lines().filter_map(|l| l.trim().split_once('=')).filter(|(k, _)| !k.trim().is_empty()).map(|(k, v)| (k.trim().to_string(), v.trim().to_string())).collect()
 }
 
+/// The models a Settings > Agents default may name for Claude Code, each with the effort levels it
+/// takes (none: no effort is passed). ponytail: built in, as Claude Code publishes no model listing
+/// (SESS-029); this was Claude's row of the retired model-routing catalogue.
+const CLAUDE_MODELS: &[(&str, &[&str])] = &[
+    ("fable", CLAUDE_EFFORTS),
+    ("opus", CLAUDE_EFFORTS),
+    ("sonnet", CLAUDE_EFFORTS),
+    ("haiku", &[]),
+];
+const CLAUDE_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
+
 /// C11-R1-01: the default model and effort from Settings > Agents (`defaultModel`, `defaultEffort`,
 /// shipped as opus at medium), as the flags the agent takes. An untouched profile keeps the old line;
 /// an empty string means "no default: pick a model for each seat" and adds nothing; a model this
@@ -671,11 +682,11 @@ fn default_model_args(settings: &serde_json::Value, id: &str) -> Vec<String> {
         Some("") => None,
         Some(e) => Some(e),
     };
-    let Some(p) = crate::routing::providers().into_iter().find(|p| p.id == id) else { return Vec::new() };
-    let Some(m) = p.models.iter().find(|m| m.id == model) else { return Vec::new() };
+    let models: &[(&str, &[&str])] = if id == "claude" { CLAUDE_MODELS } else { &[] };
+    let Some((_, efforts)) = models.iter().find(|(m, _)| *m == model) else { return Vec::new() };
     let mut out = vec!["--model".to_string(), model];
     if let Some(e) = effort {
-        if m.efforts.contains(&e) {
+        if efforts.contains(&e) {
             out.extend(["--effort".to_string(), e.to_string()]);
         }
     }

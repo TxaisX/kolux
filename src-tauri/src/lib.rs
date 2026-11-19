@@ -70,10 +70,9 @@ mod onboarding;
 pub mod orchestration;
 mod foreground;
 pub mod procs;
-pub mod protected;
+pub mod mask;
 #[cfg(test)]
 mod s9_fuzz_tests;
-pub mod protected_custom;
 mod ports;
 mod labels;
 mod tidy;
@@ -95,7 +94,6 @@ mod pr_checkout;
 mod auto_pr;
 pub mod pty;
 mod setup;
-pub mod routing;
 pub mod schedule;
 mod resume;
 pub mod secrets;
@@ -630,10 +628,6 @@ pub fn run() {
             hooks::agent_hooks::saved::agent_status_saved,
             tray::tray_close_requested, // APP-007 (tray FIX-1): the page asks before the main window closes
             tray::tray_ping, // STAT-047: the tray dot lights before any toast switch is consulted
-            protected::protected_rules,
-            protected_custom::protected_rule_check,
-            protected_custom::protected_attempts,
-            protected_custom::protected_attempts_clear,
             hooks::claude_usage,
             hooks::claude_usage_of,
             sysmem::process_memory,
@@ -865,7 +859,6 @@ pub fn run() {
             automations::automation_save,
             automations::carry::session_carry_context,
             automations::carry::agent_dir_ready,
-            routing::routing_catalog,
             secrets::secret_status,
             secrets::secrets_dropped,
             secrets::secrets_dropped_dismiss,
