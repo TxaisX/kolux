@@ -10,7 +10,6 @@ import { Close, Mark } from "../chrome/icons";
 import { ConnectGrid } from "../settings/ConnectGrid";
 import { ClaudeCard } from "../settings/SettingsPage";
 import CodexCard from "../settings/CodexCard";
-import GrokCard from "../settings/GrokCard";
 import { t } from "../i18n/lookup";
 import { usePackLoaded } from "../shell/usePackLoaded";
 import { chordFires, escapeLeaves, leaveKey, milestone, SCREENS } from "./firstRun";
@@ -265,7 +264,7 @@ export default function Wizard(props: Props) {
     document.querySelector<HTMLElement>(".onb")?.focus();
   }, []);
   const [mark] = useState(() => (id: string) => (v: boolean) => setOn((o) => (o[id] === v ? o : { ...o, [id]: v })));
-  const [cards] = useState(() => ({ claude: <ClaudeCard onConnected={mark("claude")} />, codex: <CodexCard onConnected={mark("codex")} />, grok: <GrokCard onConnected={mark("grok")} /> }));
+  const [cards] = useState(() => ({ claude: <ClaudeCard onConnected={mark("claude")} />, codex: <CodexCard onConnected={mark("codex")} /> }));
   return (
     <WizardView
       at={at}

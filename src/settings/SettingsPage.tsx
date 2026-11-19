@@ -10,15 +10,12 @@ import { listen } from "@tauri-apps/api/event";
 import VendorMark from "../chrome/VendorMark";
 import { actionLabel, keyCard, ownSignInLine, RESUME_FIELD, resumeOn, type KeyAction, type KeyStatus, type OwnSignIn } from "./claudeKey";
 import ClaudeAccounts, { addClaudeAccount } from "./ClaudeAccounts";
-import AgentCredentials from "./AgentCredentials";
-import ProviderUsage from "./ProviderUsage";
 import CodexAccounts from "./CodexAccounts";
 import CodexCard from "./CodexCard";
 import { ConnectGrid, liveCheck, OtherWays, taglineOf } from "./ConnectGrid";
 import { settleWithin } from "./pending";
 import Ask from "../chrome/Ask";
 import { trapTab } from "../chrome/dialogFocus";
-import GrokCard from "./GrokCard";
 import { AttentionNote, fixDoes, openInstallPage, type Fix } from "./Attention";
 import type { Project } from "../projects/model";
 import RepoPage from "./RepoPage";
@@ -229,7 +226,7 @@ function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project;
         <>
           <p className="settings-sub">Link Kolux to the AI services you already pay for. Kolux charges nothing and ships no models or keys of its own: each agent runs on your plan or key and talks straight to its provider, and Kolux neither relays nor records that traffic. Keys and sign-ins are sealed on this PC for your Windows account only.</p>
           <div data-section="connections">
-            <ConnectGrid cards={{ claude: <ClaudeCard onConnected={firstAiConnected} />, codex: <CodexCard onConnected={firstAiConnected} />, grok: <GrokCard onConnected={firstAiConnected} /> }} />
+            <ConnectGrid cards={{ claude: <ClaudeCard onConnected={firstAiConnected} />, codex: <CodexCard onConnected={firstAiConnected} /> }} />
           </div>
           <div className="conn-advanced" data-section="accounts-advanced">
             <h3 className="conn-advanced-head">Manage accounts (advanced)</h3>
@@ -238,12 +235,6 @@ function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project;
             </div>
             <div data-section="accounts-codex">
               <CodexAccounts />
-            </div>
-            <div data-section="agent-folders">
-              <AgentCredentials />
-            </div>
-            <div data-section="provider-usage">
-              <ProviderUsage />
             </div>
           </div>
         </>

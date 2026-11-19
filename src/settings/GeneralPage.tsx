@@ -15,7 +15,6 @@ import { addApp, addCustom, draftReady, moveApp, OPEN_IN_FIELD, presetsLeft, rea
 import { alreadyListed, editApp } from "../open/openInEdit";
 import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy";
 import { ResetButton } from "./ResetButton";
-import CliCard from "./CliCard";
 import ExperimentalCard from "./ExperimentalCard";
 
 /** A row of buttons that behaves as one radio group. */
@@ -320,7 +319,6 @@ export default function GeneralPage() {
       {settings && <OpenInCard settings={settings} onSave={save} />}
       {settings && <ProxyCard settings={settings} onSave={save} />}
       {settings && <ExperimentalCard settings={settings} onSave={save} />}
-      <CliCard />
       <DiagnosticsCard />
       <PrivacyCard />
     </>

@@ -13,12 +13,12 @@ import { findAll, mount } from "./shallow-react";
 vi.mock("react", async (orig) => (await import("./shallow-react")).patchReact(await orig<object>()));
 
 const mk = (id: string, installed: boolean): AgentInfo => ({ id, name: id, program: id, args: [], installed, path: installed ? `<bin>\\${id}.exe` : null });
-const without = [mk("claude", true), mk("codex", false), mk("grok", false)];
-const withCodex = [mk("claude", true), mk("codex", true), mk("grok", false)];
+const without = [mk("claude", true), mk("codex", false)];
+const withCodex = [mk("claude", true), mk("codex", true)];
 const none: CodexView = { accounts: [], active: null, systemDefault: "signed-out", signingIn: null, inBrowser: false, deviceLink: null, deviceCode: null, attention: null, drifted: [], missing: [], settingsWarning: null };
 const noop = () => {};
 const codexSlot = (tree: unknown) => findAll(tree, (e) => e.props["data-section"] === "connect-codex")[0].props.children;
-const cards = () => ({ claude: createElement("i"), grok: createElement("i"), codex: createElement(CodexCardView, { view: none, onAction: noop }) }) as Record<ConnectId, ReturnType<typeof createElement>>;
+const cards = () => ({ claude: createElement("i"), codex: createElement(CodexCardView, { view: none, onAction: noop }) }) as Record<ConnectId, ReturnType<typeof createElement>>;
 
 test("box 1: Install shows progress that moves, then the same grid shows the Codex card ready to Connect, with no restart", () => {
   const page = mount(ConnectGrid, { cards: cards() }, { 0: without, 2: { codex: true } });
