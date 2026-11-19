@@ -125,12 +125,13 @@ describe("Explore Kolux stops need a visit (ONB-023)", () => {
   it("once complete a stop stays complete", () => {
     expect(stopDone("ship", new Set(), new Set([doneId("ship")]))).toBe(true);
     const review = WORKFLOWS.find((w) => w.id === "review")!;
-    expect(workflowDone(review, new Set(["review", "notes"]), kept)).toBe(true);
-    expect(workflowDone(review, new Set(["review"]), kept)).toBe(false);
+    // Review keeps only optional stops since its line notes went with the diff view (2026-11-19).
+    expect(workflowDone(review, new Set(["review"]), kept)).toBe(true);
+    expect(workflowDone(review, new Set<string>(), kept)).toBe(false);
   });
 
   it("visits come back on reopen with unknown and repeated entries dropped, the retired stops included", () => {
-    expect(visits(["tasks", "nope", "notes", "orchestration", "notes", "editor", "split-terminal"])).toEqual(["notes"]);
+    expect(visits(["tasks", "nope", "notes", "pr", "orchestration", "pr", "editor", "split-terminal"])).toEqual(["pr"]);
   });
 });
 

@@ -79,7 +79,6 @@ export const WORKFLOWS: Workflow[] = [
     title: "Review",
     caption: "Check the work before it ships.",
     stops: [
-      { id: "notes", title: "Notes", caption: "Leave notes on lines of a change for the agent to act on." },
       { id: "pr", title: "PR view", caption: "Read a pull request's changes and checks in one place.", optional: true },
       { id: "ship", title: "Ship", caption: "Commit, push and open the pull request when it is ready.", optional: true },
     ],

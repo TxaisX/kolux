@@ -33,7 +33,7 @@ import { createStart } from "./workspaceStart";
 import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "./mergeOnQuit";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead } from "./model";
 import { ArrowRight, Bell, ChevronDown, Close, EyeOff, Funnel, Minus, FolderPlus, Gear, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
-import { AddProject, StatusEditor, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
+import { AddProject, StatusEditor, ScanRepos, StartGit, KeptBranches, IconPicker } from "../lazy/menus";
 import { CleanupDialog, SettingsPage } from "../lazy/pages";
 import { addKept, type KeptBranch, type KeptItem } from "./cleanup";
 import CardLine from "../look/CardLine";
@@ -77,7 +77,6 @@ import { deferred } from "../lazy/deferred";
 const SidebarStart = deferred(() => import("../onboarding/SidebarStart"));
 import { asksBeforeClose } from "../terminal/closing";
 import "./sidebar.css";
-import { refusedLine, type SetupImport } from "./setupImport";
 import { NO_GROUPS, groupChoices, groupTree, keepNewer, type Group, type Groups, type Node } from "./groups";
 import { dropBand, parentDropTarget } from "./parentDrop";
 import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds, stepRow, stepSiblings } from "./order";
@@ -334,7 +333,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [forgetAsk, setForgetAsk] = useState<{ projectId: string; path: string; label: string; refused?: string } | null>(null); // row 364: the question before a folder workspace is taken out of Kolux; `refused` is why it cannot be (364b)
   const [busy, setBusy] = useState("");
   const [startGit, setStartGit] = useState<{ folder: string; files: FirstFile[] } | null>(null);
-  const [importing, setImporting] = useState<{ project: string; path: string; list: SetupImport[] } | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "warn" | "error"; text: string; undo?: () => void } | null>(null);
   const [gitVersion, setGitVersion] = useState("");
   const indexed = useRef(""); // the last project list and owner map handed to the window
@@ -602,7 +600,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
 
   // PROJ-007: the new project's main checkout becomes the workspace in front, its worktrees listed.
   // PROJ-003: a project just cloned goes straight to its checkout, with no setup question first.
-  const added = async (p: Project, offerSetup = true) => {
+  const added = async (p: Project) => {
     say("ok", `${p.name} is a project (${p.path})`);
     setPathDraft("");
     setShowAdd(false);
@@ -611,24 +609,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (open) {
       onSelect(open.path, open.branch);
       onAdded(open.path, open.branch);
-    }
-    if (!offerSetup) return;
-    // VIEW-112: another tool's setup file in the new project is offered for import.
-    const list = await invoke<SetupImport[]>("setup_imports_list", { path: p.path }).catch(() => [] as SetupImport[]);
-    if (list.some((i) => !i.refused)) setImporting({ project: p.name, path: p.path, list });
-    else if (refusedLine(list)) say("warn", `No setup commands imported. ${refusedLine(list)}`);
-  };
-  const importSetup = async (file: string) => {
-    if (!importing) return;
-    setBusy("importing");
-    try {
-      await invoke("setup_import", { path: importing.path, file });
-      say("ok", `The setup commands from ${file} are in kolux.yaml; commit it so new workspaces run them.`);
-      setImporting(null);
-    } catch (err) {
-      fail(err);
-    } finally {
-      setBusy("");
     }
   };
   // quiet: several folders at once, so nothing is asked or shown here; the caller reads the outcome (see addReport).
@@ -670,7 +650,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (!startGit) return;
     setBusy("adding");
     try {
-      await added(await invoke<Project>("project_add_folder", { path: startGit.folder }), false);
+      await added(await invoke<Project>("project_add_folder", { path: startGit.folder }));
       setStartGit(null);
     } catch (err) {
       fail(err);
@@ -2696,7 +2676,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             }}
           />
         )}
-        {adding && <AddProject onBrowse={browse} onByPath={() => { setAdding(false); if (!showAdd) loadVis(null); setShowAdd(true); }} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p, false); }} />}
+        {adding && <AddProject onBrowse={browse} onByPath={() => { setAdding(false); if (!showAdd) loadVis(null); setShowAdd(true); }} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p); }} />}
         <SidebarStart />
         <div className="sb-foot">
           <button className="ib" title={`Settings${gitVersion ? ` · ${gitVersion}` : ""}`} aria-label="Settings" data-sidebar-settings onPointerEnter={SettingsPage.warm} onFocus={SettingsPage.warm} onClick={() => openSettingsPage("general")}>
@@ -2715,7 +2695,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           )}
         </div>
       </aside>
-      {importing && <ImportSetup {...importing} busy={busy !== ""} onImport={importSetup} onClose={() => setImporting(null)} />}
       {startGit && <StartGit {...startGit} busy={busy !== ""} onStart={startGitAndAdd} onFolder={openAsFolder} onScan={() => (setScanRoot(startGit.folder), setStartGit(null))} onCancel={() => setStartGit(null)} />}
       {scanRoot !== null && (
         <ScanRepos

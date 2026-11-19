@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
 const read = (f: string) => nodeFs.readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
 const heavy = [
-  ["projects/ProjectsPanel.tsx", /from "\.\/(AddProject|ScanRepos|StartGit|ImportSetup|KeptBranches|IconPicker|StatusEditorForm)"/],
+  ["projects/ProjectsPanel.tsx", /from "\.\/(AddProject|ScanRepos|StartGit|KeptBranches|IconPicker|StatusEditorForm)"/],
   ["chrome/StatusBar.tsx", /from "\.\.\/status\/ResourceManager"/],
   ["chrome/LayoutStrip.tsx", /from "\.\.\/usage\/WorkspaceSpend"/],
   ["crash.tsx", /from "\.\/feedback\/FeedbackDialog"/],
@@ -21,5 +21,5 @@ test.each(heavy)("%s does not import the code that opens on a click", (file, pat
 
 test("the dialogs in menus.tsx are the real ones", async () => {
   const m = await import("./menus");
-  for (const n of ["AddProject", "ScanRepos", "StartGit", "ImportSetup", "KeptBranches", "IconPicker", "StatusEditor", "ResourceManager", "WorkspaceSpend"]) expect(typeof (m as Record<string, unknown>)[n]).toBe("function");
+  for (const n of ["AddProject", "ScanRepos", "StartGit", "KeptBranches", "IconPicker", "StatusEditor", "ResourceManager", "WorkspaceSpend"]) expect(typeof (m as Record<string, unknown>)[n]).toBe("function");
 });
