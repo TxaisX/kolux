@@ -34,7 +34,6 @@ export const LABELS = [
   ["Pair", "src/launch/seats.ts"],
   ["Workbench", "src/launch/seats.ts"],
   ["Swarm", "src/launch/seats.ts"],
-  ["Model routing", "src/settings/RoutingPage.tsx"],
   ["Board", "src/chrome/TopBar.tsx"],
   ["Show Workspace Statuses", "src/keys/actions.ts"],
   ["Inbox", "src/chrome/TopBar.tsx"],

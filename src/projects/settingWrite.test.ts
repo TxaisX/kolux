@@ -2,8 +2,17 @@ import { describe, expect, it } from "vitest";
 import { CLEAR_FILTERS, FILTER_DEFAULT_SETTING, FILTER_PROJECTS_SETTING, filtersFrom, toggleProject } from "./filter";
 import { applySetting, applySettings, pendingWrites, rebaseSettings, type Settings } from "./settingWrite";
 import { FOLDER_TAB_KEY, rememberTab } from "../sessions/folderTabs";
-import { ROUTING_KEY, resetProvider, withPick } from "../settings/routing";
 import { settingsDiff } from "../settings/saveChanged";
+
+// A page that writes one nested object (the shape the old model routing page saved), to prove page writes merge.
+const ROUTING_KEY = "modelRouting";
+type Pick = { model: string; effort: string };
+const routingOf = (s: Record<string, unknown>) => (s[ROUTING_KEY] ?? {}) as Record<string, Record<string, Pick>>;
+const withPick = (s: Record<string, unknown>, provider: string, tier: string, pick: Pick) => ({ ...s, [ROUTING_KEY]: { ...routingOf(s), [provider]: { ...routingOf(s)[provider], [tier]: pick } } });
+const resetProvider = (s: Record<string, unknown>, provider: string) => {
+  const { [provider]: _dropped, ...rest } = routingOf(s);
+  return { ...s, [ROUTING_KEY]: rest };
+};
 
 // Stands in for App and the Projects panel: state moves only on render, the ref follows each render
 // (as App.settingsRef does), and every save goes to a fake disk as a diff (as saveChanged does).
@@ -132,7 +141,7 @@ describe("the other settings writers build on the latest settings (after-list ro
       // App.onNest / onTab
       patch: (p: Settings) => save(applySettings(cell, p)),
       latest: () => cell.current,
-      // App.onSettings of AutomationsPage / RoutingPage: the page builds the whole object from what it rendered
+      // App.onSettings of a settings page: the page builds the whole object from what it rendered
       page: (build: (rendered: Settings) => Settings) => save(rebaseSettings(cell, state, build(state))),
     };
   }
