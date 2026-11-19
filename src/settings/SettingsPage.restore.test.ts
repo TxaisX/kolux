@@ -55,10 +55,10 @@ test("a repository page used last comes back once the project list is read", asy
 });
 
 test("a fixed page used last comes back", async () => {
-  store.set(KEY, "shortcuts");
+  store.set(KEY, "notifications");
   const m = await open();
-  expect(current(m.container)).toEqual(["Shortcuts"]);
-  expect(store.get(KEY)).toBe("shortcuts");
+  expect(current(m.container)).toEqual(["Notifications"]);
+  expect(store.get(KEY)).toBe("notifications");
 });
 
 test("a repository that no longer exists shows General and the stored value is kept", async () => {

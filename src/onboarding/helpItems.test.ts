@@ -2,7 +2,6 @@
 // diagnostics and the Restart Kolux click that fires once.
 import { describe, expect, it, vi } from "vitest";
 import sheet from "./HelpSheet.tsx?raw";
-import { PAGES } from "../settings/pages";
 import { CHANGELOG_URL, copyDiagnostics, createRestart, DIAG_COPIED, DOCS_URL, GITHUB_URL, helpItems, HINTS, RESTARTING, TOURS_HINT, type HelpCtx } from "./helpItems";
 
 /** Every action is a spy; `invoke` records what the three web links hand to the back end. */
@@ -49,7 +48,7 @@ describe("49-ux2 the help menu says what each entry is", () => {
 describe("APP-010 the help menu list", () => {
   it("has every named entry, in the card's order, Settings first", () => {
     const names = helpItems(ctx().c).map((i) => i.label);
-    const card = ["Settings", "Docs", "Changelog", "GitHub", "Milestones", "Keyboard Shortcuts", "Onboarding", "Send Feedback", "Copy terminal diagnostics", "Check for Updates", "Restart Kolux"];
+    const card = ["Settings", "Docs", "Changelog", "GitHub", "Milestones", "Onboarding", "Send Feedback", "Copy terminal diagnostics", "Check for Updates", "Restart Kolux"];
     expect(names.filter((n) => card.includes(n))).toEqual(card);
     expect(names[0]).toBe("Settings");
     expect(helpItems(ctx().c).find((i) => i.id === "settings")!.group).toBe("top");
@@ -76,17 +75,14 @@ describe("APP-010 the help menu list", () => {
     for (const u of [DOCS_URL, CHANGELOG_URL, GITHUB_URL]) expect(u.startsWith("https://")).toBe(true);
   });
 
-  it("Settings, Keyboard Shortcuts, Send Feedback, Check for Updates and Onboarding reach their own actions", () => {
+  it("Settings, Send Feedback, Check for Updates and Onboarding reach their own actions", () => {
     const { c } = ctx();
     label(c, "settings").run();
-    label(c, "shortcuts").run();
     label(c, "feedback").run();
     label(c, "updates").run();
     label(c, "onboarding").run();
     label(c, "milestones").run();
     expect(c.openSettings).toHaveBeenNthCalledWith(1, "general");
-    expect(c.openSettings).toHaveBeenNthCalledWith(2, "shortcuts");
-    expect("shortcuts" in PAGES, "the Shortcuts page id exists").toBe(true);
     expect(c.requestFeedback).toHaveBeenCalledOnce();
     expect(c.checkForUpdates).toHaveBeenCalledOnce();
     expect(c.reopenWizard).toHaveBeenCalledOnce();

@@ -20,7 +20,7 @@ import { AttentionNote, fixDoes, openInstallPage, type Fix } from "./Attention";
 import type { Project } from "../projects/model";
 import RepoPage from "./RepoPage";
 import { PAGE_GROUPS, PAGES, pageOf, rememberPage, lastPage, type Page, type PageId, type SettingsTarget } from "./pages";
-import { Bell, FolderPlus, Gear, Keyboard, List, Merge, Plug, Pulse, Shell, Sliders, Spark } from "../chrome/icons";
+import { Bell, FolderPlus, Gear, List, Merge, Plug, Pulse, Shell, Sliders, Spark } from "../chrome/icons";
 import { markGuide } from "../onboarding/guide";
 import { clearReadFailure, connectFailed, firstAiConnected, readFailed } from "../onboarding/firstRun";
 import { useKeymap } from "../keys/KeymapContext";
@@ -41,7 +41,6 @@ const GeneralPage = deferred(() => import("./GeneralPage"));
 const NotificationsPage = deferred(() => import("./NotificationsPage"));
 // STAT-041 / STAT-045: the finish, stopped and quiet-alert switches (T-026-a, T-039-a).
 const Notifications = deferred(() => import("./NotificationSwitches"));
-const ShortcutsPage = deferred(() => import("./ShortcutsPage"));
 const TerminalPage = deferred(() => import("./TerminalPage"));
 const GitPage = deferred(() => import("./GitPage"));
 const AgentsPage = deferred(() => import("./AgentsPage"));
@@ -53,7 +52,6 @@ export const PAGE_CODE: Partial<Record<PageId, Loader[]>> = {
   general: [GeneralPage.read],
   appearance: [AppearancePage.read],
   notifications: [NotificationsPage.read, Notifications.read],
-  shortcuts: [ShortcutsPage.read],
   agents: [AgentsPage.read],
   claude: [ClaudeSetupPage.read],
   terminal: [TerminalPage.read],
@@ -74,7 +72,6 @@ const PAGE_ICON: Record<PageId, ComponentType<{ size?: number }>> = {
   terminal: Shell,
   git: Merge,
   notifications: Bell,
-  shortcuts: Keyboard,
   usage: Pulse,
   claude: Spark,
 };
@@ -239,7 +236,6 @@ function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project;
           </div>
         </>
       )}
-      {page === "shortcuts" && <ShortcutsPage />}
       {page === "terminal" && <TerminalPage />}
       {page === "git" && <GitPage />}
       {page === "agents" && <AgentsPage />}

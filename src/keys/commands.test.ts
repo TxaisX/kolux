@@ -20,7 +20,7 @@ beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 /** Every source file of the window, as text (tests left out). */
 const SOURCES = import.meta.glob(["../**/*.ts", "../**/*.tsx", "!../**/*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 /** Files that only list command ids (the table, the palette's rows, the menu's labels, the Shortcuts page's hidden set). */
-const LISTS = new Set(["./actions.ts", "./commands.ts", "../chrome/chromeItems.ts", "../settings/shortcutRows.ts"]);
+const LISTS = new Set(["./actions.ts", "./commands.ts", "../chrome/chromeItems.ts"]);
 const named = (id: string) => Object.entries(SOURCES).some(([file, text]) => !LISTS.has(file) && text.includes(`"${id}"`));
 
 /** What the window's key switch hands windowCommand (evidence/product-ux-App.patch). */

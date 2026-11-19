@@ -54,7 +54,7 @@ test("T-695 help sheet (S33): a menu labelled Help lists Settings, the Help grou
   const { TOURS } = await import("./tour");
   const labels = find(root, (n) => n.attrs.role === "menuitem").map((n) => n.textContent);
   expect(labels[0]).toBe("Settings");
-  for (const l of ["Docs", "Changelog", "GitHub", "Milestones", "Keyboard Shortcuts", "Send Feedback", "Check for Updates", "Restart Kolux"]) item(l);
+  for (const l of ["Docs", "Changelog", "GitHub", "Milestones", "Send Feedback", "Check for Updates", "Restart Kolux"]) item(l);
   for (const t of TOURS.filter((t) => t.id !== "grid")) item(t.name);
   expect(byText(root, "div", "Help")).toHaveLength(1);
   expect(byText(root, "div", "Tours")).toHaveLength(1);
@@ -66,7 +66,6 @@ test("T-695 help sheet (S33): each item does its job and closes the sheet", asyn
   const tour = TOURS.find((t) => t.id !== "grid")!;
   const cases: [string, () => void][] = [
     ["Settings", () => expect(spy.calls).toEqual(["settings:general"])],
-    ["Keyboard Shortcuts", () => expect(spy.calls).toEqual(["settings:shortcuts"])],
     ["Docs", () => expect(spy.invoked).toContainEqual(["open_external", { url: DOCS_URL }])],
     ["Send Feedback", () => expect(spy.calls).toEqual(["feedback"])],
     ["Check for Updates", () => expect(spy.calls).toEqual(["updates"])],

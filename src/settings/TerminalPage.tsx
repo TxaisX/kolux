@@ -23,7 +23,6 @@ import { readLook } from "./general";
 import { useSearching } from "./search";
 import { NumberField } from "./NumberField";
 import TerminalImport from "./TerminalImport";
-import { openSettings } from "./pages";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
 import { DENSITIES, DENSITY_FIELD, readDensity } from "../shell/paneChrome";
@@ -212,18 +211,6 @@ export default function TerminalPage() {
       {settings && <TerminalImport settings={settings} save={save} />}
       {settings && <InputCard settings={settings} platform={platform} onSave={save} />}
       {settings && <NativeTerminalCard settings={settings} platform={platform} onSave={save} />}
-      {settings && (
-        <section className="conn-card" data-section="keys">
-          <h2 className="conn-name">Keys in terminals</h2>
-          <p className="conn-detail">
-            Which keys reach the terminal and which Kolux keeps for itself is set in{" "}
-            <button className="btn link" onClick={() => openSettings("shortcuts", "terminal-first")}>
-              Shortcuts settings
-            </button>
-            .
-          </p>
-        </section>
-      )}
       {settings && shells && (
         <section className="conn-card" data-section="shell">
           <h2 className="conn-name">Default terminal</h2>

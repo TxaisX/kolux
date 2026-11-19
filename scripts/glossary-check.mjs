@@ -55,7 +55,6 @@ export const LABELS = [
   ["Accounts & keys", "src/settings/pages.ts"],
   ["Terminal & sessions", "src/settings/pages.ts"],
   ["Git", "src/settings/pages.ts"],
-  ["Shortcuts", "src/settings/pages.ts"],
   ["Resource Manager", "src/chrome/statusItems.ts"],
   ["Classic", "src/chrome/appLook.ts"],
   ["Getting Started", "src/onboarding/helpItems.ts"],

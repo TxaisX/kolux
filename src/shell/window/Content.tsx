@@ -38,7 +38,7 @@ export const dropAtOpen = (s: StartSheet | null): StartSheet | null => (s?.atOpe
 
 export default function WindowContent() {
   const {
-    sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook, turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, openPane, settings, activeDir, fromItem, cli, shown, setCount, toast, notice, keymapNotice, setNotice, screen, inbox, inboxSeen, now, panes, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, standIns, board, openDirs, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
+    sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook, turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, openPane, settings, activeDir, fromItem, cli, shown, setCount, toast, notice, setNotice, screen, inbox, inboxSeen, now, panes, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, standIns, board, openDirs, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
   // Start form D: asked once when Kolux starts, in the main window, in front of what was restored.
   useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: ownPanes(panes), open: () => openStart({ atOpen: true }), close: () => setSheet(dropAtOpen) });
@@ -55,7 +55,7 @@ export default function WindowContent() {
           })()}
         </div>
       )}
-      <Notices toast={toast} notice={notice} keymapNotice={keymapNotice} onDismiss={() => setNotice(null)} />
+      <Notices toast={toast} notice={notice} onDismiss={() => setNotice(null)} />
       <SignInNotice />
       <KeyLostNotice />
       <RecoveryMount />
