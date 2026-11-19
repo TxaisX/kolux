@@ -2,6 +2,8 @@
 
 > **Retired 2026-11-12 (DT-C275): the embedded browser.** Kolux no longer has a web pane. Everything below about browser tabs, the `kolux browser` command and its verbs, `kolux exec --command`, the BROW rows and the browser shortcuts (`tab.newBrowser`, every id that starts with browser, and browser zoom) is history, kept for the record and no longer a contract. Web pages open in the user's own browser (Chrome or the system default). Four engine commands still carry the old words in their names: three for the HTML preview and the PDF export, one for the tower window. They keep those names.
 
+> **Retired 2026-11-19 (slim-down, waves A and B): the `kolux` command line and the features it drove.** Kolux no longer ships a command. Everything in section 2 (launchers and PATH, help, grammar, output, exit codes, every command word, alias, flag and JSON envelope, `kolux.cmd`, the dev build's `kolux-dev`, the cross-checks and the cards in 2.10 to 2.12) is history, kept for the record and no longer a contract. The installer takes the old `bin` folder off the user PATH and deletes the `kolux.exe` and `kolux.cmd` left in it. The same slim-down retired orchestration (workers, tasks, mail), automations, protected actions and command routing, the skills installer, the Claude Agent Teams entry (`kolux claude-teams`), the editor, the explorer and the Board, Dashboard, Tasks, Inbox and Floor screens; the rows below that describe them are history too. Hooks are installed for Claude Code and Codex only, and their reply is always the empty JSON object, so the hook rows for other agents in section 3 describe what the old app did, not what Kolux writes. The keybinding ids those features owned are marked retired in 4.3.
+
 The outside surfaces Kolux must keep, so that Txais's habits, skills, agent setups and saved data keep working on the day he switches.
 
 ## 1. Why the contracts exist, and the rule
@@ -20,6 +22,8 @@ The rule:
 Versions: the installed CLI reported 0.15.2 when its help was captured; the source tree read for the registries was 0.15.0. Command words agree between the two. Where wording differs, the installed help wins.
 
 ## 2. The kolux CLI
+
+> Retired 2026-11-19: Kolux no longer has a command line (see the note at the top). This section is the record of the old one.
 
 ### 2.1 Launchers and PATH
 
@@ -833,9 +837,11 @@ Windows default shows every chord the action answers to. "Ships unbound" means n
 
 Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emulator went with remote and hosts), `tab.openQuickCommandsMenu` (the quick commands menu was cut), `sidebar.ports.toggle` (deleted 2026-10-30 by T-611, DT-C53: its Ports tab went with remote hosts, VIEW-079) and `floatingTerminal.toggle`, `floatingWorkspace.maximize` and `floatingWorkspace.minimize` (the floating workspace panel was removed 2026-11-06, DT-C216). They stay in this table only so an old keybindings file that names them still loads: the rebuild registers none of these ids and wires no shortcut for any, so each is an unknown id, warned about and ignored, as `voice.dictation` is. The 129 count above includes them.
 
+The 27 rows marked "retired 2026-11-19" lost their feature in the slim-down (the editor and explorer, and the Board, Dashboard, Tasks, Inbox and Floor screens). They stay for the same reason: an old keybindings file that names one still loads, and the id is warned about and ignored.
+
 | Action id | Title | Windows default | Ships unbound |
 |---|---|---|---|
-| `worktree.quickOpen` | Go to File | Mod+P | no |
+| `worktree.quickOpen` | Go to File (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+P | no |
 | `app.settings` | Open Settings | Mod+Comma | no |
 | `app.forceReload` | Force Reload | Mod+Shift+R | no |
 | `worktree.palette` | Switch worktree | Mod+Shift+J | no |
@@ -844,14 +850,14 @@ Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emu
 | `workspace.create` | Create worktree | Mod+N, Mod+Shift+N | no |
 | `workspace.rename` | Rename worktree | none on Windows (macOS: Mod+Alt+R) | no |
 | `workspace.delete` | Delete worktree | Mod+Shift+Backspace | no |
-| `workspace.openBoard` | Show Workspace Statuses (was "Toggle Workspace Board"; renamed by T-610, the id is unchanged) | none | yes |
-| `dashboard.toggle` | Toggle Agent Dashboard | none | yes |
+| `workspace.openBoard` | Show Workspace Statuses (was "Toggle Workspace Board"; renamed by T-610, the id is unchanged) (retired 2026-11-19 by the slim-down: the Board, Dashboard, Tasks, Inbox and Floor screens went, so this id is not registered) | none | yes |
+| `dashboard.toggle` | Toggle Agent Dashboard (retired 2026-11-19 by the slim-down: the Board, Dashboard, Tasks, Inbox and Floor screens went, so this id is not registered) | none | yes |
 | `workspace.selectByIndex` | Select Workspace 1–9 | Mod+1 | no |
-| `view.tasks` | Open Tasks | none | yes |
+| `view.tasks` | Open Tasks (retired 2026-11-19 by the slim-down: the Board, Dashboard, Tasks, Inbox and Floor screens went, so this id is not registered) | none | yes |
 | `sidebar.left.toggle` | Toggle Sidebar | Mod+B | no |
 | `sidebar.right.toggle` | Toggle Right Sidebar | Mod+L | no |
-| `sidebar.explorer.toggle` | Show or hide Explorer | Mod+Shift+E | no |
-| `sidebar.search.toggle` | Show Search | Mod+Shift+F | no |
+| `sidebar.explorer.toggle` | Show or hide Explorer (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Shift+E | no |
+| `sidebar.search.toggle` | Show Search (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Shift+F | no |
 | `sidebar.sourceControl.toggle` | Show Source Control (removed by T-644: Kolux has no Source Control panel, so this id is not registered) | Mod+Shift+G | no |
 | `sidebar.checks.toggle` | Show Checks | none | yes |
 | `sidebar.ports.toggle` (not carried since T-611, see `DECISIONS.md` DT-C53) | Show Ports | none on Windows (macOS: Mod+Shift+I) | no |
@@ -859,8 +865,8 @@ Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emu
 | `sidebar.focusWorktreeList` | Focus worktree list | Mod+Shift+0 | no |
 | `floatingTerminal.toggle` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216) | Toggle Floating Terminal | Mod+Alt+A | no |
 | `floatingWorkspace.maximize` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216) | Maximize Floating Workspace Panel | none on Windows (macOS: Mod+Alt+Shift+A) | no |
-| `view.inbox` | Show Inbox | none | yes |
-| `view.floor` | Show Floor | none | yes |
+| `view.inbox` | Show Inbox (retired 2026-11-19 by the slim-down: the Board, Dashboard, Tasks, Inbox and Floor screens went, so this id is not registered) | none | yes |
+| `view.floor` | Show Floor (retired 2026-11-19 by the slim-down: the Board, Dashboard, Tasks, Inbox and Floor screens went, so this id is not registered) | none | yes |
 | `view.code` | Show Code | Mod+Shift+3 | no |
 | `floatingWorkspace.minimize` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216) | Minimize Floating Workspace Panel | none | yes |
 | `zoom.in` | Zoom Browser In | Mod+Equal, Mod+Shift+Plus, Mod+NumpadAdd | no |
@@ -872,10 +878,10 @@ Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emu
 | `tab.newAgent` | New agent tab (default agent) | none on Windows (macOS: Mod+Alt+T) | no |
 | `tab.newBrowser` | New browser tab | Mod+Shift+B | no |
 | `tab.newSimulator` (not carried, see `DECISIONS.md`) | New mobile emulator tab | none on Windows (macOS: Mod+Alt+Shift+E) | no |
-| `tab.newMarkdown` | New markdown tab | Mod+Shift+M | no |
-| `tab.openMarkdown` | Open markdown tab | Mod+Shift+O | no |
+| `tab.newMarkdown` | New markdown tab (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Shift+M | no |
+| `tab.openMarkdown` | Open markdown tab (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Shift+O | no |
 | `tab.close` | Close active tab | Mod+W | no |
-| `tab.closeAll` | Close all editor tabs | Mod+Alt+W | no |
+| `tab.closeAll` | Close all editor tabs (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Alt+W | no |
 | `tab.rename` | Rename active tab | none on Windows (macOS: Mod+R) | no |
 | `tab.reopenClosed` | Reopen closed tab | Mod+Shift+T | no |
 | `tab.nextSameType` | Next tab (same type) | Mod+Alt+BracketRight | no |
@@ -894,21 +900,21 @@ Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emu
 | `browser.hardReload` | Hard Reload Browser Page | Mod+Shift+R | no |
 | `browser.focusAddressBar` | Focus Browser Address Bar | Mod+L | no |
 | `browser.grabElement` | Grab Page Element | Mod+C | no |
-| `editor.find` | Find in editor | Mod+F | no |
-| `editor.replace` | Replace in editor | Mod+H | no |
-| `editor.save` | Save File | Mod+S | no |
-| `editor.markdownPreview` | Show Markdown Preview | Mod+Shift+V | no |
-| `editor.toggleWordWrap` | Toggle Word Wrap | Alt+Z | no |
-| `editor.copyContext` | Copy Context | Mod+Alt+C | no |
-| `editor.previousChange` | Go to Previous Change | Shift+F7 | no |
-| `editor.nextChange` | Go to Next Change | F7 | no |
-| `editor.addReviewNote` | Add Review Note | Mod+Shift+A | no |
-| `sourceControl.sendReviewNotes` | Send Review Notes to Agent | none | yes |
-| `fileExplorer.undo` | Undo file operation | Mod+Z | no |
-| `fileExplorer.redo` | Redo file operation | Mod+Shift+Z, Ctrl+Y | no |
-| `fileExplorer.copyPath` | Copy file path | Alt+Shift+C | no |
-| `fileExplorer.copyRelativePath` | Copy relative file path | Mod+Alt+Shift+C | no |
-| `fileExplorer.delete` | Delete file | Delete | no |
+| `editor.find` | Find in editor (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+F | no |
+| `editor.replace` | Replace in editor (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+H | no |
+| `editor.save` | Save File (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+S | no |
+| `editor.markdownPreview` | Show Markdown Preview (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Shift+V | no |
+| `editor.toggleWordWrap` | Toggle Word Wrap (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Alt+Z | no |
+| `editor.copyContext` | Copy Context (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Alt+C | no |
+| `editor.previousChange` | Go to Previous Change (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Shift+F7 | no |
+| `editor.nextChange` | Go to Next Change (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | F7 | no |
+| `editor.addReviewNote` | Add Review Note (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Shift+A | no |
+| `sourceControl.sendReviewNotes` | Send Review Notes to Agent (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | none | yes |
+| `fileExplorer.undo` | Undo file operation (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Z | no |
+| `fileExplorer.redo` | Redo file operation (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Shift+Z, Ctrl+Y | no |
+| `fileExplorer.copyPath` | Copy file path (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Alt+Shift+C | no |
+| `fileExplorer.copyRelativePath` | Copy relative file path (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Mod+Alt+Shift+C | no |
+| `fileExplorer.delete` | Delete file (retired 2026-11-19 by the slim-down: the editor and the explorer went, so this id is not registered) | Delete | no |
 | `settings.search` | Search Settings | Mod+F | no |
 | `terminal.copySelection` | Copy terminal selection | Ctrl+Shift+C, Ctrl+C | no |
 | `terminal.selectAll` | Select all terminal text | Ctrl+Shift+A | no |
@@ -925,7 +931,7 @@ Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emu
 | `terminal.splitRight` | Split terminal right | Mod+Shift+D | no |
 | `terminal.splitDown` | Split terminal down | Alt+Shift+D | no |
 | `terminal.switchInputSource` | Switch input source / language (native) | none | yes |
-| `view.cycleWorkspaceView` | Cycle Workspace View (Agents / Board / Terminals) | Mod+Alt+V | no |
+| `view.cycleWorkspaceView` | Cycle Workspace View (Agents / Board / Terminals) (retired 2026-11-19 by the slim-down: the Board, Dashboard, Tasks, Inbox and Floor screens went, so this id is not registered) | Mod+Alt+V | no |
 | `sessions.add` | Add a Session | none | yes |
 | `sessions.remove` | Remove a Session | none | yes |
 | `terminals.focusNextNeedsYou` | Next That Needs You | Mod+J | no |
