@@ -461,10 +461,7 @@ impl Session {
                 self.own = Some("working");
             }
             "Stop" => {
-                // T-120-b: Amp says itself when a turn was cancelled.
-                // STAT-013: Droid's stops never count a Ctrl+C as an interruption.
-                let ctrl_c = self.drop_cancel() && event.get("kolux_no_cancel").and_then(Value::as_bool) != Some(true);
-                self.interrupted = ctrl_c || event.get("kolux_interrupted").and_then(Value::as_bool) == Some(true);
+                self.interrupted = self.drop_cancel();
                 self.pending = None;
                 self.reply = str_of(event, "last_assistant_message").map(clean_reply);
                 // STAT-024: Claude Code's own lists of background tasks and session crons decide.

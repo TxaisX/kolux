@@ -1121,7 +1121,7 @@ fn stat_002_the_switch_off_takes_every_agent_out_and_off_is_the_default() {
     assert_eq!(plan(&off, &found, true)[..2], [("claude", Plan::Remove), ("codex", Plan::Remove)]);
     assert_eq!(plan(&off, &[], false)[..2], [("claude", Plan::Remove), ("codex", Plan::Remove)], "off even when no agent could be looked for");
     assert_eq!(plan(&json!({ "agentStatusHooks": true }), &found, true)[..2], [("claude", Plan::Install), ("codex", Plan::Install)]);
-    assert!(plan(&off, &found, true).iter().all(|(_, p)| *p == Plan::Remove), "T-120-b: Gemini CLI, Antigravity and Amp come out too");
+    assert!(plan(&off, &found, true).iter().all(|(_, p)| *p == Plan::Remove), "every managed agent comes out");
 }
 
 #[test]
