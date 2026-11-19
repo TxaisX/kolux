@@ -33,8 +33,6 @@ const CONNECTS: Record<string, string> = {
   "api.github.com": "github account",
   "github.com": "github account",
   "avatars.githubusercontent.com": "avatars.githubusercontent.com",
-  "api.moonshot.ai": "api.moonshot.ai",
-  "www.minimax.io": "www.minimax.io",
   "openrouter.ai": "openrouter.ai",
   "cdnjs.cloudflare.com": "cdnjs",
   "cdn.jsdelivr.net": "jsdelivr",

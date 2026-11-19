@@ -11,9 +11,7 @@ import { onlyWindowState } from "./settingsSync";
 const LABELS: Record<string, string> = {
   claudeOauthToken: "Claude 1-year key",
   httpProxy: "proxy address",
-  minimaxCookie: "MiniMax cookie",
-  minimaxApiKey: "MiniMax key",
-  moonshotApiKey: "Moonshot key",
+  openrouterApiKey: "OpenRouter key",
 };
 
 /** The note's sentence for the cleared settings fields; null when there are none. */

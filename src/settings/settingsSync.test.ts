@@ -16,7 +16,7 @@ test("SET-035: a broadcast with no change in it means read again; secrets in one
   const b = readBroadcast({ set: { theme: "dark", claudeOauthToken: "k", httpProxy: "http://u:p@h:1" }, remove: ["claudeOauthToken", "zoom"] });
   expect(JSON.stringify(b)).not.toMatch(/httpProxy|claudeOauthToken|u:p@h/);
   expect(b).toEqual({ set: { theme: "dark" }, remove: ["zoom"] });
-  expect(withoutSecrets({ a: 1, minimaxCookie: "c" })).toEqual({ a: 1 });
+  expect(withoutSecrets({ a: 1, openrouterApiKey: "c" })).toEqual({ a: 1 });
 });
 
 test("SET-035: a change made while settings are still loading wins over the load that arrives afterwards", () => {

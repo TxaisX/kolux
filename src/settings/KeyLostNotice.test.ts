@@ -27,7 +27,7 @@ test("nothing shows when no key was cleared", () => {
 test("every secret field the app stores has a label in the note", async () => {
   const { SECRET_KEYS } = await import("./settingsSync");
   for (const k of SECRET_KEYS) expect(lostText([k]), k).toContain("Your ");
-  expect(lostText(["moonshotApiKey", "minimaxApiKey"])).toContain("Moonshot key and MiniMax key");
+  expect(lostText(["httpProxy", "openrouterApiKey"])).toContain("proxy address and OpenRouter key");
 });
 
 // AFTER row 892: a refused dismiss keeps the note and says why; only a successful one lets it go.

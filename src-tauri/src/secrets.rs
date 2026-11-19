@@ -22,11 +22,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-/// Settings fields that hold secrets (SAFE-026): the Claude 1-year key (ACCT-004), the Moonshot key for the Kimi
-/// balance (T-547), and the HTTP proxy address and browser search-session link, which have no screen
-/// yet (OD-18; their settings come with T-240 and T-323 under these names). A name taken off this list goes on
-/// `import::RETIRED`, so a sealed value left in a profile never reaches the window.
-pub const SECRET_SETTINGS: &[&str] = &["claudeOauthToken", "httpProxy", "browserSearchSessionUrl", "minimaxCookie", "minimaxApiKey", "moonshotApiKey"];
+/// Settings fields that hold secrets (SAFE-026): the Claude 1-year key (ACCT-004), the HTTP proxy address, which has
+/// no screen yet (OD-18; its setting comes with T-240 under this name), and the OpenRouter key (`openrouter::KEY_FIELD`).
+/// A name taken off this list goes on `import::RETIRED`, so a sealed value left in a profile never reaches the window.
+pub const SECRET_SETTINGS: &[&str] = &["claudeOauthToken", "httpProxy", "openrouterApiKey"];
 /// SAFE-026: what a save says while the system's secret store is not answering.
 const STORE_DOWN: &str = "the system secret store is not answering";
 /// Marks a sealed value; the part after it is base64 of the sealed bytes.
@@ -179,7 +178,7 @@ pub fn read_setting(store: &Store, key: &str) -> Result<Option<String>, String> 
 }
 
 /// Rows 653/654: the fields that hold one API key, which goes into an Authorization header.
-pub const API_KEY_FIELDS: &[&str] = &["moonshotApiKey", "minimaxApiKey"];
+pub const API_KEY_FIELDS: &[&str] = &["openrouterApiKey"];
 /// Rows 654: the longest an API key may be (bytes).
 pub const API_KEY_MAX: usize = 512;
 
@@ -269,9 +268,11 @@ pub fn drop_unreadable(store: &Store, dir: &Path) -> Vec<String> {
     gone
 }
 
-/// ACCT-010: the secret fields waiting for a reconnect, for the note in the main window.
+/// ACCT-010: the secret fields waiting for a reconnect, for the note in the main window. A name no longer on
+/// SECRET_SETTINGS (a retired feature's key) has nothing to reconnect, so it is not shown.
 pub fn dropped(store: &Store) -> Vec<String> {
-    crate::state::kept::or_default(store, DROPPED_KEY)
+    let all: Vec<String> = crate::state::kept::or_default(store, DROPPED_KEY);
+    all.into_iter().filter(|k| SECRET_SETTINGS.contains(&k.as_str())).collect()
 }
 
 pub fn dismiss_dropped(store: &Store) -> Result<(), String> {
@@ -602,16 +603,39 @@ mod tests {
     fn row653_an_api_key_field_refuses_line_breaks_spaces_and_a_huge_paste() {
         let dir = temp_dir("row653");
         let store = Store::open(&dir).unwrap();
-        for bad in ["sk-moon\r\nX-Evil: 1", "two parts", "tab\tkey", "caf\u{e9}-key"] {
-            assert!(write_setting(&store, "moonshotApiKey", bad).is_err(), "{bad:?}");
-            assert!(write_setting(&store, "minimaxApiKey", bad).is_err(), "{bad:?}");
+        for bad in ["sk-or\r\nX-Evil: 1", "two parts", "tab\tkey", "caf\u{e9}-key"] {
+            assert!(write_setting(&store, "openrouterApiKey", bad).is_err(), "{bad:?}");
         }
-        assert!(write_setting(&store, "moonshotApiKey", &"k".repeat(API_KEY_MAX + 1)).is_err(), "over the cap");
-        assert!(store.settings().get("moonshotApiKey").is_none(), "a refused key stores nothing");
-        // Other secret fields (a cookie can be long and has spaces) are not held to the key rule.
-        write_setting(&store, "minimaxCookie", &format!("a=1; b={}", "x".repeat(2000))).unwrap();
-        write_setting(&store, "moonshotApiKey", &"k".repeat(API_KEY_MAX)).unwrap();
-        assert_eq!(read_setting(&store, "moonshotApiKey").unwrap().map(|k| k.len()), Some(API_KEY_MAX));
+        assert!(write_setting(&store, "openrouterApiKey", &"k".repeat(API_KEY_MAX + 1)).is_err(), "over the cap");
+        assert!(store.settings().get("openrouterApiKey").is_none(), "a refused key stores nothing");
+        // Other secret fields are not held to the key rule.
+        write_setting(&store, "httpProxy", &format!("a=1; b={}", "x".repeat(2000))).unwrap();
+        write_setting(&store, "openrouterApiKey", &"k".repeat(API_KEY_MAX)).unwrap();
+        assert_eq!(read_setting(&store, "openrouterApiKey").unwrap().map(|k| k.len()), Some(API_KEY_MAX));
+    }
+
+    // The OpenRouter route's key (openrouter.rs) is one of the secret fields, so it is stored sealed and never shown.
+    #[test]
+    fn the_openrouter_key_is_stored_sealed_and_kept_from_the_window() {
+        let dir = temp_dir("openrouter");
+        let store = Store::open(&dir).unwrap();
+        write_setting(&store, crate::openrouter::KEY_FIELD, "sk-or-v1-FAKE-NOT-A-REAL-KEY").unwrap();
+        assert!(!fs::read_to_string(dir.join("settings.json")).unwrap().contains("FAKE-NOT-A-REAL"));
+        assert_eq!(crate::openrouter::saved_key(&store).unwrap().as_deref(), Some("sk-or-v1-FAKE-NOT-A-REAL-KEY"));
+        assert!(without_secrets(store.settings()).get(crate::openrouter::KEY_FIELD).is_none());
+        drop(store);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    // ACCT-010: a reconnect note naming a key of a retired feature shows only the keys that can still be reconnected.
+    #[test]
+    fn a_retired_key_in_the_reconnect_note_is_not_shown() {
+        let dir = temp_dir("note-retired");
+        let store = Store::open(&dir).unwrap();
+        store.set(DROPPED_KEY, "[\"moonshotApiKey\",\"claudeOauthToken\",\"xaiApiKey\"]").unwrap();
+        assert_eq!(dropped(&store), ["claudeOauthToken"]);
+        drop(store);
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
@@ -772,7 +796,7 @@ mod tests {
         // On disk no secret is ever in the clear, and the window gets none of them.
         let disk = fs::read_to_string(dir.join("settings.json")).unwrap();
         assert!(!disk.contains("-FIRST") && !disk.contains("SECOND"), "{disk}");
-        assert_eq!(SECRET_SETTINGS.len(), 6);
+        assert_eq!(SECRET_SETTINGS.len(), 3);
         let shown = without_secrets(store.settings());
         assert!(SECRET_SETTINGS.iter().all(|k| shown.get(*k).is_none()), "{shown}");
         drop(store);
@@ -898,8 +922,8 @@ mod secrets_dropped_async_tests {
     fn secrets_dropped_is_an_async_command_that_matches_the_sync_one() {
         is_async(secrets_dropped);
         let store = Mutex::new(Store::open(&crate::test_dir::temp("secrets-dropped-async")).unwrap());
-        store.lock().unwrap().set(DROPPED_KEY, "[\"moonshotApiKey\"]").unwrap();
-        assert_eq!(secrets_dropped_on(&store), Ok(vec!["moonshotApiKey".to_string()]));
+        store.lock().unwrap().set(DROPPED_KEY, "[\"httpProxy\"]").unwrap();
+        assert_eq!(secrets_dropped_on(&store), Ok(vec!["httpProxy".to_string()]));
         assert_eq!(secrets_dropped_on(&store), Ok(dropped(&store.lock().unwrap())));
     }
 }

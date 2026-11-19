@@ -46,10 +46,6 @@ pub mod hooks;
 mod include;
 mod import;
 mod profile_move;
-// T-043-e: the macOS keychain rule table; the Mac wiring that calls it is T-043-f.
-#[cfg_attr(not(test), allow(dead_code))]
-mod keychain;
-mod agent_creds;
 pub mod install;
 mod keybindings;
 mod edit_menu;
@@ -891,16 +887,6 @@ pub fn run() {
             install::agent_can_install,
             install::agent_install,
             install::agent_install_cancel,
-            agent_creds::agent_creds_view,
-            agent_creds::codex_sessions_home_set,
-            agent_creds::minimax_credential_set,
-            agent_creds::minimax_credential_forget,
-            agent_creds::minimax_options_set,
-            agent_creds::gemini_cli_credentials_set,
-            resources::provider_usage::provider_keys,
-            resources::provider_usage::provider_key_set,
-            resources::provider_usage::provider_key_forget,
-            resources::provider_usage::provider_usage_check,
             codex_accounts::codex_accounts,
             codex_accounts::codex_account_sign_in,
             codex_accounts::codex_account_cancel,

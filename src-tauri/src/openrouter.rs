@@ -18,9 +18,8 @@
 use crate::state::Store;
 use std::path::{Path, PathBuf};
 
-/// The vault field that holds the OpenRouter key.
-/// NOTE for the glue: `secrets::SECRET_SETTINGS` must list this name before `secrets::write_setting`
-/// will store it (that list is in `secrets.rs`, outside this lane).
+/// The vault field that holds the OpenRouter key. `secrets::SECRET_SETTINGS` and `secrets::API_KEY_FIELDS` list
+/// it, so `secrets::write_setting` stores it sealed, as one line, and the window never receives it.
 pub const KEY_FIELD: &str = "openrouterApiKey";
 /// Where Claude Code is pointed.
 pub const BASE_URL: &str = "https://openrouter.ai/api";

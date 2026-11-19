@@ -13,8 +13,8 @@
 //! left to Claude Code itself, which refreshes its own sign-in in every pane it runs; Kolux sends
 //! nothing to Anthropic's token service and never flags an account as needing re-auth for a
 //! renewal. Kolux's own renewal (opt-out off) is T-043-d.
-//! ponytail: the macOS keychain rules (ACCT-005) are a rule table in keychain.rs (T-043-e), not yet
-//! called from here; wiring them in needs a Mac (T-043-f). This build keeps the credentials file.
+//! ponytail: the macOS keychain rules (ACCT-005) are not built; wiring them in needs a Mac (T-043-f).
+//! This build keeps the credentials file.
 
 use crate::claude_key::{run_hidden, Attention, Ended};
 use crate::{secrets, state::Store};

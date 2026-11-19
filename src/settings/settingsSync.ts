@@ -7,7 +7,7 @@ type Settings = Record<string, unknown>;
 
 /** The settings fields that hold secrets; the window never holds them (mirror of the backend's
  * list, so a payload that somehow carried one is still stripped here). */
-export const SECRET_KEYS = ["claudeOauthToken", "httpProxy", "minimaxCookie", "minimaxApiKey", "moonshotApiKey"] as const;
+export const SECRET_KEYS = ["claudeOauthToken", "httpProxy", "openrouterApiKey"] as const;
 
 export type Broadcast = { set: Settings; remove: string[] };
 
