@@ -2,9 +2,9 @@
 //! refused as text, before any filesystem call, so Windows never offers the user's credentials to
 //! that host; a file link aimed at a program, script, installer or shortcut is revealed in its
 //! folder instead of run. EDIT-045: `fence` guards every command that takes a path from the
-//! interface: inside a registered root (or granted exactly, through `file_grant`), never out
-//! through a link; `open_path` is the one door for handing a file to the system. SESS-039:
-//! `editor_open` opens a worktree folder (fenced the same way) in an outside editor.
+//! interface: inside a registered root (or granted exactly), never out through a link; `open_path`
+//! is the one door for handing a file to the system. SESS-039: `editor_open` opens a worktree
+//! folder (fenced the same way) in an outside editor.
 //! `open_external` hands a clean web or mail link to the system's own handler.
 //!
 //! ponytail: there are no terminal or note links yet; when they land they call `open_path` and
@@ -368,20 +368,6 @@ pub fn fence(path: &str, roots: &[String], grants: &HashSet<String>, follow: boo
         return Err(format!("{path} leads outside your projects through a link"));
     }
     Ok(p.to_path_buf())
-}
-
-/// EDIT-045: allows `path` for this run, that exact path and nothing beneath it.
-#[tauri::command]
-pub fn file_grant(store: tauri::State<'_, Mutex<crate::state::Store>>, grants: tauri::State<'_, Grants>, fence: tauri::State<'_, crate::fence::Fence>, path: String) -> Result<(), String> {
-    refuse_host(&path, &roots(&store))?;
-    if !Path::new(&path).is_absolute() {
-        return Err(format!("{path} is not a full path"));
-    }
-    grants.0.lock().unwrap_or_else(|e| e.into_inner()).insert(fence_key(&path));
-    // The editor reads and saves through ACCT-055's fence, so a file is granted there too; a
-    // folder or a missing file is not (that fence grants only existing files).
-    let _ = fence.grant(Path::new(&path), &store.lock().unwrap_or_else(|e| e.into_inner()));
-    Ok(())
 }
 
 /// SAFE-022: a file name of a type that runs when opened. On Windows an alternate-data-stream

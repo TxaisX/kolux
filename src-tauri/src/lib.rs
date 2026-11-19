@@ -909,7 +909,7 @@ pub fn run() {
             files::file_list,
             files::path_kind,
             links::open_external,
-            links::open_path, links::file_grant, links::editor_open,
+            links::open_path, links::editor_open,
             fsops::fs_create,
             fsops::fs_rename,
             fsops::fs_trash,
