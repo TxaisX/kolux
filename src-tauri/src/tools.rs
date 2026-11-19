@@ -308,7 +308,8 @@ pub async fn editors_list() -> Result<Vec<Editor>, String> {
 }
 
 /// The facts the Agent Teams picker entry depends on (T-191-b): native Windows and WSL never offer
-/// it, and it starts through the Kolux command line found on the system search path.
+/// it, and it started through the Kolux command line, which no longer ships, so `cli` is always none
+/// and the entry is not offered.
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct TeamsHost {
     pub windows: bool,
@@ -330,9 +331,8 @@ pub async fn teams_host() -> Result<TeamsHost, String> {
     tauri::async_runtime::spawn_blocking(|| {
         let distro = std::env::var("WSL_DISTRO_NAME").ok();
         let osrelease = std::fs::read_to_string("/proc/sys/kernel/osrelease").unwrap_or_default();
-        // CLI-007: run by its bare name, which a Kolux pane finds first on its own search path.
-        let cli = if cfg!(windows) { None } else { crate::agents::find_program(crate::orchestration::CLI).map(|_| PathBuf::from(crate::orchestration::CLI)) };
-        teams_host_from(cfg!(windows), distro.as_deref(), &osrelease, cli)
+        // The entry started the Kolux command line's `claude-teams`, which is gone: none is ever found.
+        teams_host_from(cfg!(windows), distro.as_deref(), &osrelease, None)
     })
     .await
     .map_err(|e| e.to_string())

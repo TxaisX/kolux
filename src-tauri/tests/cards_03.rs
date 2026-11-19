@@ -390,29 +390,21 @@ fn term105_box1_a_build_running_at_quit_goes_on_and_its_output_continues_in_the_
     let _ = std::fs::remove_dir_all(&ws);
 }
 
-/// TERM-125 box 1: `kolux terminal send --text <t> --enter` types the text and submits it; without `--enter` the text only sits typed.
-/// The real command-line parser reads the flags, the real send driver (`sendonce::drive`, the one `send_once` in cli.rs runs) decides
+/// TERM-125 box 1: a send with Enter types the text and submits it; without Enter the text only sits typed.
+/// The real send driver (`sendonce::drive`, the one `sendonce::send_prompt` and the opening prompt run) decides
 /// the writes, and a real shell receives them. The text is a command whose output (`SENT125`) the typed characters never contain,
 /// so the output line proves the shell ran it.
-/// MIRROR src-tauri/src/cli.rs:3673 (send_once): the `Look` built from the terminal and the `write` callback are rebuilt here around the real driver.
+/// MIRROR src-tauri/src/sendonce.rs (send_once): the `Look` built from the terminal and the `write` callback are rebuilt here around the real driver.
 #[test]
 fn term125_box1_send_enter_types_the_text_and_submits_it() {
     use kolux_lib::sendonce::{drive, Look, Outcome, Send};
-    let parse = |line: &str| {
-        let words: Vec<String> = line.split(' ').map(String::from).collect();
-        kolux_lib::cli::parse(&words).1.expect("the flags parse").expect("a command").args
-    };
-    let run = |tag: &str, flags: &str| -> (bool, Vec<&'static str>, Outcome, String) {
+    let run = |tag: &str, enter: bool| -> (bool, Vec<&'static str>, Outcome, String) {
         let ws = workspace(tag);
         let leaf = ws.file_name().unwrap().to_string_lossy().into_owned();
         let mut sh = Shell::start(&ws.to_string_lossy());
         assert!(sh.until(40, |s| s.text().contains(&leaf)), "the prompt names the folder: {:?}", sh.text());
-        // the flag parser is given one word per space here, so the space of the command is spelled `_`
-        let command = if cfg!(windows) { "echo_(\"SENT\"+(100+25))" } else { "echo_SENT$((100+25))" };
-        let args = parse(&format!("terminal send --terminal term-1 --text {command}{flags}"));
-        let text = args["text"].as_str().unwrap().replacen("echo_", "echo ", 1);
+        let text = if cfg!(windows) { "echo (\"SENT\"+(100+25))" } else { "echo SENT$((100+25))" };
         assert!(!text.contains("SENT125"), "the typed text never holds the output line");
-        let enter = args.get("enter").and_then(|v| v.as_bool()).unwrap_or(false);
         let started = Instant::now();
         let mut send = Send::new(text.len(), enter, cfg!(windows), 0);
         let out = sh.out.clone();
@@ -425,17 +417,17 @@ fn term125_box1_send_enter_types_the_text_and_submits_it() {
             }
             Look { now_ms: started.elapsed().as_millis() as u64, last_output_ms: Some(last.duration_since(started).as_millis() as u64), live: true, ..Look::default() }
         };
-        let d = drive(&mut send, Some(&text), false, look, |s| sh.session.write(s.as_bytes()), std::thread::sleep).expect("the send finishes");
+        let d = drive(&mut send, Some(text), false, look, |s| sh.session.write(s.as_bytes()), std::thread::sleep).expect("the send finishes");
         let made = sh.until(if enter { 30 } else { 4 }, |s| has_line(&s.text(), "SENT125"));
         let shown = sh.text();
         sh.session.kill();
         let _ = std::fs::remove_dir_all(&ws);
         (made, d.delivered, d.outcome, shown)
     };
-    let (made, delivered, outcome, shown) = run("term125-enter", " --enter");
+    let (made, delivered, outcome, shown) = run("term125-enter", true);
     assert_eq!((delivered.as_slice(), outcome), (["text", "enter"].as_slice(), Outcome::Sent));
-    assert!(made, "the shell ran the typed command after --enter: {shown:?}");
-    let (made, delivered, outcome, shown) = run("term125-plain", "");
+    assert!(made, "the shell ran the typed command after Enter: {shown:?}");
+    let (made, delivered, outcome, shown) = run("term125-plain", false);
     assert_eq!((delivered.as_slice(), outcome), (["text"].as_slice(), Outcome::TextOnly));
-    assert!(!made, "without --enter the text is only typed, never run: {shown:?}");
+    assert!(!made, "without Enter the text is only typed, never run: {shown:?}");
 }

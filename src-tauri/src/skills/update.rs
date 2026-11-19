@@ -395,7 +395,7 @@ fn locked<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 pub fn fresh(env: &Env, workspace: Option<&Path>) -> Report {
-    check(env, &super::scan(env, workspace), &crate::cli::bundled_skills())
+    check(env, &super::scan(env, workspace), &[])
 }
 
 impl Job {
@@ -574,8 +574,11 @@ mod tests {
         Env { home: home.to_path_buf(), claude: None, codex: None, grok: None, hermes: None, local_app_data: Some(home.join("AppData").join("Local")), windows: true }
     }
 
+    /// A bundled guide as the command line's skill folder carried it (no bundled guides ship any more).
+    const GUIDE: &str = "---\nname: orchestration\ndescription: Coordinate several agents in Kolux.\n---\n\n# Coordinating agents\n";
+
     fn guide() -> String {
-        crate::cli::bundled_skills().into_iter().find(|b| b.0 == NAME).unwrap().1.replace("\r\n", "\n")
+        GUIDE.to_string()
     }
 
     fn put(folder: &Path, text: &str) {
@@ -606,7 +609,7 @@ mod tests {
 
     fn report(home: &Path, ws: Option<&Path>) -> Report {
         let e = env(home);
-        check(&e, &super::super::scan(&e, ws), &crate::cli::bundled_skills())
+        check(&e, &super::super::scan(&e, ws), &[(NAME, GUIDE)])
     }
 
     fn row(r: &Report) -> &UpdateRow {

@@ -1,23 +1,17 @@
 //! ORCH-055 (T-174-b): prompts typed into agents land exactly once. One `Send` is a small state
-//! machine the command line drives: wait until the agent's input box has drawn and settled (a late
-//! redraw restarts that wait), paste the text once, hold Enter back for a pause that grows with the
+//! machine the opening prompt (`agents::agent_prompt_send`) and the review panel's send
+//! (`send_prompt`) drive: wait until the agent's input box has drawn and settled (a late redraw
+//! restarts that wait), paste the text once, hold Enter back for a pause that grows with the
 //! prompt's size (and, for a large paste, until the agent has taken it in), then press Enter exactly
 //! once. Enter is held back when another writer takes the session, when a permission prompt shows,
-//! or when the user cancels; nothing is pasted while a permission prompt shows. `Receipts` keeps a
-//! `terminal send` receipt in the store, so a retry after a restart answers instead of sending
-//! again; `lane` serialises the senders of one terminal so sixteen queued prompts give sixteen
-//! turns; `proves_arrival` says a working report dated before the send is no proof it arrived.
+//! or when the user cancels; nothing is pasted while a permission prompt shows. `lane` serialises
+//! the senders of one terminal so sixteen queued prompts give sixteen turns; `proves_arrival` says a
+//! working report dated before the send is no proof it arrived.
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-/// The store key the `terminal send` receipts live under (ORCH-034: part of the orchestration store).
-pub const KEY: &str = "orchestration.sends";
-/// How many receipts are kept, newest last.
-pub const RECEIPTS_KEPT: usize = 100;
-/// A receipt older than this is dropped when the next one is written.
-pub const RECEIPT_TTL_MS: u64 = 24 * 60 * 60 * 1000;
 /// The input box has drawn and settled when the agent wrote nothing for this long.
 pub const SETTLE_QUIET_MS: u64 = 250;
 /// An agent that never stops writing is not waited on past this.
@@ -60,59 +54,6 @@ pub fn proves_arrival(report_ms: u64, sent_ms: u64) -> bool {
     report_ms >= sent_ms
 }
 
-// ---------------------------------------------------------------- receipts that last
-
-/// `terminal send` receipts by terminal and `--retry-request` id, kept in the store so a retry
-/// after a Kolux restart answers without sending again (ORCH-030, ORCH-055).
-#[derive(Default, Debug, PartialEq)]
-pub struct Receipts {
-    /// (key, written at, receipt), oldest first.
-    items: Vec<(String, u64, Value)>,
-}
-
-impl Receipts {
-    pub fn load(store: &crate::state::Store) -> Receipts {
-        Self::try_load(store).unwrap_or_default()
-    }
-
-    /// For a writer: a store that cannot be read or kept aside is an Err, never an empty list.
-    pub fn try_load(store: &crate::state::Store) -> Result<Receipts, String> {
-        let items: Vec<Value> = crate::state::kept::load(store, KEY)?;
-        Ok(Receipts { items: items.into_iter().filter_map(|v| Some((v["key"].as_str()?.to_string(), v["at"].as_u64()?, v["receipt"].clone()))).collect() })
-    }
-
-    pub fn save(&self, store: &crate::state::Store) -> Result<(), String> {
-        let items: Vec<Value> = self.items.iter().map(|(k, at, r)| serde_json::json!({ "key": k, "at": at, "receipt": r })).collect();
-        store.set(KEY, &Value::Array(items).to_string()).map_err(|e| e.to_string())
-    }
-
-    /// The receipt of an earlier send with this key, if one is kept.
-    pub fn find(&self, key: &str) -> Option<&Value> {
-        self.items.iter().rev().find(|(k, _, _)| k == key).map(|(_, _, r)| r)
-    }
-
-    /// Keeps `receipt` under `key`, replacing an older one, dropping receipts past the TTL and
-    /// keeping at most `RECEIPTS_KEPT`.
-    pub fn record(&mut self, key: &str, now_ms: u64, receipt: Value) {
-        self.items.retain(|(k, at, _)| k != key && now_ms.saturating_sub(*at) <= RECEIPT_TTL_MS);
-        self.items.push((key.to_string(), now_ms, receipt));
-        if self.items.len() > RECEIPTS_KEPT {
-            let extra = self.items.len() - RECEIPTS_KEPT;
-            self.items.drain(..extra);
-        }
-    }
-
-    #[cfg(test)]
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
-
-    #[cfg(test)]
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
-}
-
 // ---------------------------------------------------------------- who else writes
 
 /// What a sender holds while it types: the writer and cancel counts of the terminal when it claimed it.
@@ -134,8 +75,6 @@ pub fn claim(id: u32) -> Ticket {
 
 /// Another writer (the user's own typing) wrote `data` into terminal `id`; Ctrl+C or Escape on its
 /// own is also a cancel, so a prompt whose text is being checked gets no Enter.
-/// ORCH-036 (T-155-b): the same typing takes the terminal over: `TAKEN` remembers when the user
-/// last wrote into it, so a worker dispatched to it before then is no longer its owner.
 pub fn other_writer(id: u32, data: &str) {
     let mut w = WRITERS.lock().unwrap_or_else(|p| p.into_inner());
     let t = w.entry(id).or_insert(Ticket { writer: 0, cancel: 0 });
@@ -143,22 +82,6 @@ pub fn other_writer(id: u32, data: &str) {
     if data == "\u{3}" || data == "\u{1b}" {
         t.cancel += 1;
     }
-    drop(w);
-    TAKEN.lock().unwrap_or_else(|p| p.into_inner()).insert(id, wall_ms());
-}
-
-/// ORCH-036: when the user last typed into each terminal (wall-clock ms), this run of Kolux only.
-static TAKEN: Mutex<BTreeMap<u32, u64>> = Mutex::new(BTreeMap::new());
-
-/// ORCH-036: whether the user has typed into terminal `id` since `created_ms` (a dispatch's wall
-/// time), so the terminal is the user's now and not the worker's to close. Ownership moves on the
-/// user's input only: Kolux's own sends go through `claim`, and a click never writes.
-pub fn taken_over_since(id: u32, created_ms: u64) -> bool {
-    TAKEN.lock().unwrap_or_else(|p| p.into_inner()).get(&id).is_some_and(|&at| at >= created_ms)
-}
-
-fn wall_ms() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
 /// The terminal's counts now, to compare with a `Ticket`.
@@ -759,52 +682,6 @@ mod tests {
         // A fresh claim starts clean against what came before.
         let t2 = claim(id);
         assert_eq!(current(id), t2);
-    }
-
-    #[test]
-    fn orch055_a_terminal_send_receipt_lasts_across_a_reload_and_is_bounded() {
-        let dir = std::env::temp_dir().join(format!("kolux-sendonce-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let store = crate::state::Store::open(&dir).unwrap();
-        let mut r = Receipts::load(&store);
-        assert!(r.is_empty());
-        r.record("term-1|req-a", 1_000, serde_json::json!({ "delivered": ["text", "enter"] }));
-        r.save(&store).unwrap();
-        // A new process loads the same receipt: the retry answers without sending again.
-        let again = Receipts::load(&store);
-        assert_eq!(again.find("term-1|req-a").unwrap()["delivered"][1], "enter");
-        assert_eq!(again.find("term-1|req-b"), None);
-        // The same key written again replaces, never doubles.
-        r.record("term-1|req-a", 2_000, serde_json::json!({ "x": 2 }));
-        assert_eq!((r.len(), r.find("term-1|req-a").unwrap()["x"].as_u64()), (1, Some(2)));
-        // Past the TTL a receipt is dropped; at most RECEIPTS_KEPT are kept, oldest first out.
-        r.record("term-1|req-old", 2_000, serde_json::json!({}));
-        r.record("term-1|req-new", 2_000 + RECEIPT_TTL_MS + 1, serde_json::json!({}));
-        assert_eq!(r.find("term-1|req-old"), None);
-        for n in 0..(RECEIPTS_KEPT + 5) {
-            r.record(&format!("term-2|req-{n}"), 3_000_000_000, serde_json::json!({}));
-        }
-        assert_eq!(r.len(), RECEIPTS_KEPT);
-        assert_eq!(r.find("term-2|req-0"), None);
-        assert!(r.find(&format!("term-2|req-{}", RECEIPTS_KEPT + 4)).is_some());
-        drop(store);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn card13_receipts_that_could_not_be_kept_aside_are_never_saved_over() {
-        let dir = std::env::temp_dir().join(format!("kolux-sendonce-c13-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let store = crate::state::Store::open(&dir).unwrap();
-        let broken = "[{\"key\": \"term-1|r\", \"at\": 5";
-        store.set(KEY, broken).unwrap();
-        crate::state::kept::refuse_copies(&dir);
-        assert!(Receipts::try_load(&store).unwrap_err().contains(KEY));
-        assert!(Receipts::load(&store).is_empty(), "a read still answers");
-        assert_eq!(store.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");
-        drop(store);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// TERM-126 / MERGE 49: a prompt to an idle agent is taken once a turn begins, and named not

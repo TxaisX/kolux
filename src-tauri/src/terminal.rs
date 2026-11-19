@@ -1010,12 +1010,6 @@ pub fn terminal_screen_reply(request: String, rows: Vec<String>) {
     }
 }
 
-/// `dir` at the front of a search path (CLI-007).
-fn cli_first(dir: &std::path::Path, path: Option<std::ffi::OsString>) -> std::ffi::OsString {
-    let rest: Vec<std::path::PathBuf> = path.map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
-    std::env::join_paths(std::iter::once(dir.to_path_buf()).chain(rest)).unwrap_or_else(|_| dir.as_os_str().to_os_string())
-}
-
 /// GIT-063: an agent pane (automation runs start theirs the same way) gets git's prompts turned
 /// off, so a remote that wants a password fails the command instead of stalling the agent; a shell
 /// keeps prompting. Set before the user's own variables, which can turn them back on.
@@ -1239,7 +1233,7 @@ impl Terminals {
             command.env("POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD", "true");
             // STAT-001: the pane's programs and their hooks know which pane to report for. Set first:
             // the hooks find their pane by KOLUX_HOOK_IDENTITY and only check that KOLUX_PANE_KEY is set,
-            // so the command line's handle and pane key below (CLI-007, ORCH-013) take those two names.
+            // so the handle and pane key below take those two names.
             if let (Some(pane), Some(hooks)) = (pane_key, exit_app.try_state::<crate::hooks::Hooks>()) {
                 for (k, v) in hooks.pane_env(pane, id) {
                     command.env(k, v);
@@ -1250,25 +1244,17 @@ impl Terminals {
             // TERM-120: a new terminal's PATH is the one Windows would give a program started from the
             // desktop now (the machine then the user Path from the registry, expanded), so a folder added
             // in Windows settings reaches the next pane without restarting Kolux and the folders a dev run
-            // put on Kolux's own PATH stay out; an unreadable registry keeps the last good read. The CLI
-            // folder below goes in front of it, and the user's own variables (SET-027) still win after.
+            // put on Kolux's own PATH stay out; an unreadable registry keeps the last good read. The
+            // user's own variables (SET-027) still win after.
             if cfg!(windows) {
                 let fresh = crate::pty::fresh_terminal_path(command.get_env("PATH").map(std::ffi::OsStr::to_os_string));
                 command.env("PATH", fresh);
             }
-            // CLI-007: the CLI that ships with this copy of Kolux comes first, ahead of any older one
-            // registered system-wide, and it is told which app folder to call. An installed copy keeps
-            // its CLI in the bin folder of the install (CLI-006); a development build runs kolux-dev
-            // from its own folder (T-593: the rule registration and the setup guide share).
-            // ponytail: the Linux `kolux` launcher folder lands with that build.
-            if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(crate::cli::cli_register::cli_dir)) {
-                // T-182 (APP-020): a tool installed after the app started is on the stored Path, not
-                // the process's; the pane gets both, the process's entries first.
-                let path = cli_first(&dir, Some(crate::lifecycle::fresh_path(command.get_env("PATH").map(std::ffi::OsStr::to_os_string))));
-                command.env("PATH", path);
-            }
+            // T-182 (APP-020): a tool installed after the app started is on the stored Path, not
+            // the process's; the pane gets both, the process's entries first.
+            command.env("PATH", crate::lifecycle::fresh_path(command.get_env("PATH").map(std::ffi::OsStr::to_os_string)));
             if let Ok(dir) = tauri::Manager::path(&exit_app).app_data_dir() {
-                // CLI-007 / ORCH-054: the pane reaches the Kolux that opened it, so the other-build
+                // T-580: the pane names the Kolux that opened it, so the other-build
                 // override (COMPAT 7) it may have inherited from the shell that started Kolux, stripped
                 // above with the rest of the noise (CLI-010), is pointed at this app's own folder.
                 command.env("KOLUX_USER_DATA_PATH", &dir);
@@ -1376,9 +1362,7 @@ impl Terminals {
                 }
             }),
             Box::new(move |code: Option<u32>| {
-                // Drop the session so the PTY closes and the reader thread can finish. A session
-                // still listed ended by itself: Kolux's own kills take it off the list first.
-                let mut by_itself = false;
+                // Drop the session so the PTY closes and the reader thread can finish.
                 let mut log = None;
                 let mut hist = None;
                 let mut agent = None;
@@ -1387,7 +1371,6 @@ impl Terminals {
                 if let Ok(mut inner) = registry.lock() {
                     agent = inner.marks.get(&id).and_then(|m| m.agent);
                     removed = inner.sessions.remove(&id);
-                    by_itself = removed.is_some();
                     inner.dirs.remove(&id);
                     inner.marks.remove(&id);
                     inner.keys.remove(&id);
@@ -1416,10 +1399,6 @@ impl Terminals {
                 }
                 // Row 784: the PTY closes here, not under the registry the pump needs.
                 drop(removed);
-                // Row 625: a worker's transcript path stays on its dispatch row before its hook sessions go.
-                if let Ok(store) = exit_app.state::<Mutex<crate::state::Store>>().lock() {
-                    crate::cli::keep_transcript_of(&store, id);
-                }
                 turns_end(id);
                 // AUTO-012: an automation run followed in this pane is over with it.
                 crate::automations::follow(&exit_app, |s| {
@@ -1429,12 +1408,6 @@ impl Terminals {
                     }
                     Ok(run)
                 });
-                // ORCH-027: a worker's agent that died mid-task tells its coordinator.
-                if by_itself && is_program {
-                    if let Ok(store) = exit_app.state::<Mutex<crate::state::Store>>().lock() {
-                        let _ = crate::cli::worker_exited(&store, id, code, crate::automations::now_ms());
-                    }
-                }
                 if let Some(d) = &exit_dir {
                     crate::diag::write(d, &format!("terminal {id} exited ({code:?})"));
                 }
@@ -2449,14 +2422,9 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     // Kept-warm shell: only a plain new terminal (the default shell, nothing added) is one a warm shell can stand in for.
     let warm_like = program.is_none() && args.is_empty() && env_own.is_empty() && shell.is_some();
     let warm_shell = shell.clone();
-    // T-172-e: a worker start puts its dispatch id in the first session's environment; the start that is
-    // waiting for it learns which session that is (only a start still waiting is told).
-    // cli FIX-7: the last such entry in the environment names the dispatch (the window appends its own).
-    // cli FIX-8: spawn_stamped reads it before the environment is handed over and stamps the new
-    // session once the spawn succeeded (cli.rs fix8_d).
     // T-690: the run this pane belongs to, read before the environment is handed over.
     let run = crate::automations::run_in(&env_own);
-    let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history, agent_settings.as_ref()))?;
+    let id = terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history, agent_settings.as_ref())?;
     if warm_like {
         let on = store.lock().map(|s| warm_on(&s.settings())).unwrap_or(false);
         match &dir {
@@ -2527,7 +2495,7 @@ pub async fn terminal_write(app: AppHandle, terminals: tauri::State<'_, Terminal
     }
     // USAGE-007: the user's own typing after a limit stop cancels the resume.
     crate::resume::user_typed(&app, id);
-    // ORCH-055: a prompt the command line is typing holds its Enter back once the user writes here.
+    // ORCH-055: a prompt Kolux is typing holds its Enter back once the user writes here.
     crate::sendonce::other_writer(id, &data);
     terminals.write(id, &data)
 }
@@ -3823,16 +3791,6 @@ mod tests {
         assert_eq!(shell.get_env("GIT_TERMINAL_PROMPT").map(|v| v.to_os_string()), before, "a shell still prompts");
     }
 
-    #[test]
-    fn the_bundled_cli_folder_comes_first_on_the_search_path() {
-        let dir = std::path::Path::new("D:\\app");
-        let rest = std::env::join_paths(["C:\\old\\kolux", "C:\\Windows"]).unwrap();
-        let path = cli_first(dir, Some(rest));
-        let parts: Vec<_> = std::env::split_paths(&path).collect();
-        assert_eq!(parts, ["D:\\app", "C:\\old\\kolux", "C:\\Windows"].map(std::path::PathBuf::from));
-        assert_eq!(std::env::split_paths(&cli_first(dir, None)).count(), 1);
-    }
-
     /// TERM-123 (DT-C247): a key typed into an agent's terminal is activity (`input_for` starts counting and
     /// `still_for` restarts), but the terminal's own reply to the program (a focus report, a cursor-position
     /// answer) reaches the program without counting as typing, so a finished agent whose pane the focus left
@@ -3854,43 +3812,6 @@ mod tests {
         assert!(t.input_for(5).unwrap() < Duration::from_secs(1), "a key counts as typing");
         assert!(t.still_for(5).unwrap() < Duration::from_secs(1), "a key restarts the quiet time");
         assert_eq!(t.reply(6, "\x1b[I"), Err("no such terminal".to_string()), "a reply to a gone terminal is refused like a key");
-    }
-
-    /// cli FIX-7 (council FIX-SOON 1 and 2 on 4dce90d5): the CLI's wait for a worker over a real
-    /// `Terminals`. Two sessions sit in the folder and have settled, one of them marked as an agent
-    /// Kolux started; with no stamp neither is taken, and once a spawn's environment names the
-    /// dispatch (the step terminal_spawn runs) the stamped session, whichever it is, is the worker's.
-    #[test]
-    fn fix7_wait_ready_takes_the_stamped_session_of_a_real_terminals() {
-        let t = Terminals::default();
-        let dir = std::env::temp_dir();
-        let long_ago = Instant::now() - Duration::from_secs(5);
-        {
-            let mut inner = t.inner.lock().unwrap();
-            for id in [7, 8] {
-                inner.sessions.insert(id, PtySession::fake(Box::new(std::io::sink())).into());
-                inner.dirs.insert(id, dir.to_string_lossy().into_owned());
-                inner.logs.insert(id, Arc::new(Mutex::new(OutputLog { written: Some(long_ago), ..OutputLog::default() })));
-            }
-            inner.marks.insert(7, Mark { started: long_ago, last_output: Some(long_ago), last_input: None, program: "claude".into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
-        }
-        // No stamp: the marked, settled session is not taken.
-        crate::cli::expect_stamp("dispatch-term-test");
-        let got = crate::cli::wait_ready(&t, "dispatch-term-test", Instant::now(), Duration::from_millis(600));
-        assert_eq!(got, (None, false));
-        // terminal_spawn's step: the last KOLUX_DISPATCH_ID in the spawn environment names the dispatch.
-        let env_own = vec![
-            (crate::cli::DISPATCH_ENV.to_string(), "dispatch-term-user".to_string()),
-            (crate::cli::DISPATCH_ENV.to_string(), "dispatch-term-test".to_string()),
-        ];
-        // cli FIX-8: terminal_spawn runs the spawn through spawn_stamped, so the new session (8) is stamped by it.
-        let stamped_id: Result<u32, String> = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || Ok(8));
-        assert_eq!(stamped_id, Ok(8));
-        let got = crate::cli::wait_ready(&t, "dispatch-term-test", Instant::now(), Duration::from_millis(600));
-        assert_eq!(got, (Some(8), true));
-        for id in [7, 8] {
-            t.inner.lock().unwrap().sessions.remove(&id).unwrap().kill();
-        }
     }
 }
 

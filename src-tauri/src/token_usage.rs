@@ -834,39 +834,6 @@ pub fn rescan(store: &Mutex<Store>, provider: &str) {
     let _ = s.set(&key_saved(provider), &serde_json::to_string(&next).unwrap_or_default());
 }
 
-/// Whether a provider's usage is tracked (USAGE-012's opt-in).
-fn tracked(store: &Store, provider: &str) -> bool {
-    tracking_of(choices(store).get(provider).and_then(Value::as_bool), saved(store, provider).is_some())
-}
-
-/// USAGE-016: rescans every tracked provider, so a lookup sees the latest turns.
-pub fn rescan_tracked(store: &Mutex<Store>) {
-    for p in PROVIDERS {
-        if store.lock().is_ok_and(|s| tracked(&s, p)) {
-            rescan(store, p);
-        }
-    }
-}
-
-/// USAGE-016: what the sessions that worked in a folder used, per tracked provider, from the saved
-/// results; `mine` says which working folders count. A provider not tracked shows only that.
-pub fn usage_in(store: &Mutex<Store>, mine: impl Fn(&str) -> bool) -> Value {
-    let Ok(s) = store.lock() else { return Value::Null };
-    let mut out = serde_json::Map::new();
-    for p in PROVIDERS {
-        if !tracked(&s, p) {
-            out.insert(p.into(), serde_json::json!({ "tracked": false }));
-            continue;
-        }
-        let got = saved(&s, p).unwrap_or_default();
-        let rows: Vec<&Row> = got.rows.iter().filter(|r| mine(&r.cwd)).collect();
-        let sum = |f: fn(&Row) -> u64| rows.iter().map(|r| f(r)).sum::<u64>();
-        let sessions: std::collections::BTreeSet<&str> = rows.iter().map(|r| r.session.as_str()).collect();
-        out.insert(p.into(), serde_json::json!({ "tracked": true, "sessions": sessions, "input": sum(|r| r.input), "output": sum(|r| r.output), "cacheRead": sum(|r| r.cache_read), "cacheWrite": sum(|r| r.cache_write), "reasoning": sum(|r| r.reasoning), "scannedAt": got.scanned_at, "error": got.error }));
-    }
-    Value::Object(out)
-}
-
 /// Owner change 2026-11-07: every folder that belongs to the workspace at `path`: its own and each
 /// git worktree of the same repo, so the spend ribbon counts the sessions that ran in a child
 /// worktree too. A folder that is not a repo (or git failing) answers just the folder.
@@ -1187,22 +1154,6 @@ mod tests {
         set_tracking(&store, "claude", true).unwrap();
         assert_eq!(choices(&store).get("claude").and_then(Value::as_bool), Some(true));
         assert_eq!(choices(&store).get("codex").and_then(Value::as_bool), Some(true));
-    }
-
-    #[test]
-    fn usage_016_a_worktree_looks_up_what_its_sessions_used() {
-        let t = temp("lookup");
-        let store = Mutex::new(Store::open(&t.0).unwrap());
-        let row = |session: &str, cwd: &str, input: u64| Row { session: session.into(), cwd: cwd.into(), input, output: 1, cache_read: 2, cache_write: 3, ..Default::default() };
-        let rows = vec![row("s-1", "C:/w/app", 10), row("s-2", "C:/w/app/sub", 20), row("s-1", "C:/w/app/sub", 40), row("s-3", "C:/w/other", 80)];
-        {
-            let s = store.lock().unwrap();
-            s.set(&key_saved("claude"), &serde_json::to_string(&Saved { format: FORMAT, scanned_at: 5, rows, error: None }).unwrap()).unwrap();
-            s.set(KEY_TRACKING, r#"{"claude":true,"codex":false}"#).unwrap();
-        }
-        let got = usage_in(&store, |cwd| cwd.starts_with("C:/w/app"));
-        assert_eq!(got["claude"], json!({ "tracked": true, "sessions": ["s-1", "s-2"], "input": 70, "output": 3, "cacheRead": 6, "cacheWrite": 9, "reasoning": 0, "scannedAt": 5, "error": null }));
-        assert_eq!(got["codex"], json!({ "tracked": false }), "a provider not tracked is never read");
     }
 
     #[test]

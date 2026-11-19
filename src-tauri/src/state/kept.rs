@@ -153,26 +153,6 @@ mod tests {
     }
 
     #[test]
-    fn row193_unreadable_orchestration_mail_survives_the_next_save() {
-        use crate::orchestration::Mail;
-        let (store, dir) = fresh("mail");
-        let broken = "{\"runs\": [{\"id\": \"run-1\", \"objective\": \"ship\"}], \"messages\": [tru";
-        store.set("orchestration.mail", broken).unwrap();
-        let mut m = Mail::load(&store);
-        assert!(!m.unread && m.runs.is_empty(), "an unreadable blob is kept aside, then the mail starts fresh");
-        m.seq = 7;
-        m.save(&store).unwrap();
-        assert_eq!(asides(&store, "orchestration.mail"), vec![broken.to_string()], "the save did not wipe the original bytes");
-        assert_eq!(Mail::load(&store).seq, 7);
-        // A mail that was loaded from a store that could not be read refuses to be saved over it.
-        let blind = Mail { unread: true, ..Mail::default() };
-        assert!(blind.save(&store).unwrap_err().message.contains("could not be read"));
-        assert_eq!(Mail::load(&store).seq, 7, "the refused save changed nothing");
-        drop(store);
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
     fn row193_absent_cleared_and_readable_blobs_are_left_alone() {
         let (store, dir) = fresh("plain");
         let none: Vec<Value> = load(&store, "demo.list").unwrap();
@@ -206,38 +186,14 @@ mod tests {
     }
 
     #[test]
-    fn row193_saves_never_touch_or_prune_a_kept_copy() {
-        use crate::orchestration::Mail;
-        let (store, dir) = fresh("noprune");
-        let broken = "{\"runs\": [{\"id\": \"run-1\"}], \"messages\": [tru";
-        store.set("orchestration.mail", broken).unwrap();
-        let mut m = Mail::load(&store);
-        for i in 1..=5 {
-            m.seq = i;
-            m.finish(&format!("k{i}"), Some(Value::from(i)));
-            m.save(&store).unwrap();
-            m = Mail::load(&store);
-        }
-        assert_eq!(asides(&store, "orchestration.mail"), vec![broken.to_string()], "five loads and saves later the copy is the same bytes, once");
-        drop(store);
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn row193_when_the_copy_cannot_be_made_the_original_stays_and_the_save_is_refused() {
-        use crate::orchestration::Mail;
+    fn row193_when_the_copy_cannot_be_made_the_original_stays_and_the_load_is_refused() {
         let (store, dir) = fresh("nocopy");
         let broken = "{\"runs\": [{\"id\": \"secret-run\"}], \"messages\": [tru";
-        store.set("orchestration.mail", broken).unwrap();
+        store.set("demo.list", broken).unwrap();
         refuse_copies(&dir);
-        let err = load::<Vec<Value>>(&store, "orchestration.mail").unwrap_err();
-        assert!(err.contains("orchestration.mail") && err.contains("nothing was changed"), "{err}");
-        assert_eq!(store.get("orchestration.mail").unwrap().as_deref(), Some(broken), "the original is byte-identical");
-        let m = Mail::load(&store);
-        assert!(m.unread, "a load that could not keep the blob aside marks the mail unread");
-        let refused = m.save(&store).unwrap_err();
-        assert!(refused.message.contains("orchestration.mail") && refused.message.contains("nothing was saved over it"), "{}", refused.message);
-        assert_eq!(store.get("orchestration.mail").unwrap().as_deref(), Some(broken), "the refused save left the original alone");
+        let err = load::<Vec<Value>>(&store, "demo.list").unwrap_err();
+        assert!(err.contains("demo.list") && err.contains("nothing was changed"), "{err}");
+        assert_eq!(store.get("demo.list").unwrap().as_deref(), Some(broken), "the original is byte-identical");
         drop(store);
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -270,78 +226,22 @@ mod tests {
     }
 
     #[test]
-    fn row193_reset_all_keeps_an_unread_mail_unread_so_the_original_is_never_overwritten() {
-        use crate::orchestration::Mail;
-        let (store, dir) = fresh("resetall");
-        let broken = "{\"runs\": [{\"id\": \"run-9\"}], \"messages\": [tru";
-        store.set("orchestration.mail", broken).unwrap();
-        refuse_copies(&dir);
-        let mut m = Mail::load(&store);
-        assert!(m.unread);
-        m.reset("all").unwrap();
-        assert!(m.unread, "reset --all must not clear the unread mark");
-        let refused = m.save(&store).unwrap_err();
-        assert!(refused.message.contains("orchestration.mail") && refused.message.contains("nothing was saved over it"), "{}", refused.message);
-        assert_eq!(store.get("orchestration.mail").unwrap().as_deref(), Some(broken), "the original is byte-identical");
-        assert!(asides(&store, "orchestration.mail").is_empty());
-        drop(store);
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
     fn row193_when_starting_the_key_fresh_fails_the_copy_is_rolled_back_too() {
-        use crate::orchestration::Mail;
         let (store, dir) = fresh("rollback");
         let broken = "{\"runs\": [{\"id\": \"run-9\"}], \"messages\": [tru";
-        store.set("orchestration.mail", broken).unwrap();
+        store.set("demo.list", broken).unwrap();
         // The copy (first statement) is allowed; only the write to the original key aborts.
         let conn = rusqlite::Connection::open(dir.join("state.db")).unwrap();
         conn.execute_batch(
-            "CREATE TRIGGER keep_orig_upd BEFORE UPDATE ON kv WHEN NEW.key = 'orchestration.mail' BEGIN SELECT RAISE(ABORT, 'locked'); END;
-             CREATE TRIGGER keep_orig_ins BEFORE INSERT ON kv WHEN NEW.key = 'orchestration.mail' BEGIN SELECT RAISE(ABORT, 'locked'); END;",
+            "CREATE TRIGGER keep_orig_upd BEFORE UPDATE ON kv WHEN NEW.key = 'demo.list' BEGIN SELECT RAISE(ABORT, 'locked'); END;
+             CREATE TRIGGER keep_orig_ins BEFORE INSERT ON kv WHEN NEW.key = 'demo.list' BEGIN SELECT RAISE(ABORT, 'locked'); END;",
         )
         .unwrap();
-        let m = Mail::load(&store);
-        assert!(m.unread, "a load whose reset could not land marks the mail unread");
+        assert!(load::<Vec<Value>>(&store, "demo.list").is_err(), "a load whose reset could not land fails");
         let copies: i64 = conn.query_row("SELECT count(*) FROM kv WHERE key LIKE '%.corrupt-%'", [], |r| r.get(0)).unwrap();
         assert_eq!(copies, 0, "the copy rolled back with the failed reset");
-        assert!(asides(&store, "orchestration.mail").is_empty());
-        assert_eq!(store.get("orchestration.mail").unwrap().as_deref(), Some(broken), "the original is byte-identical");
-        assert!(m.save(&store).unwrap_err().message.contains("nothing was saved over it"));
-        assert_eq!(store.get("orchestration.mail").unwrap().as_deref(), Some(broken));
-        drop(store);
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn row193_a_clean_mail_round_trips_unchanged_and_keeps_nothing_aside() {
-        use crate::orchestration::Mail;
-        let (store, dir) = fresh("clean");
-        let mut m = Mail { seq: 9, ..Mail::default() };
-        m.finish("a|b|c", Some(Value::from("done")));
-        m.save(&store).unwrap();
-        let back = Mail::load(&store);
-        assert_eq!(back, m);
-        assert!(!back.unread && asides(&store, "orchestration.mail").is_empty());
-        drop(store);
-        let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn row874_a_mail_from_a_newer_build_keeps_its_unknown_fields_through_load_and_save() {
-        use crate::orchestration::Mail;
-        let (store, dir) = fresh("newer");
-        let blob = r#"{"seq":3,"threads":[{"id":"t1","note":"x"}],"future":{"a":[1,2]}}"#;
-        store.set("orchestration.mail", blob).unwrap();
-        let mut m = Mail::load(&store);
-        assert!(!m.unread && m.seq == 3 && asides(&store, "orchestration.mail").is_empty(), "a readable newer blob is not kept aside");
-        m.seq = 4;
-        m.save(&store).unwrap();
-        let saved: Value = serde_json::from_str(&store.get("orchestration.mail").unwrap().unwrap()).unwrap();
-        let want: Value = serde_json::from_str(blob).unwrap();
-        assert_eq!(saved["threads"], want["threads"], "the unknown field survives the save");
-        assert_eq!(saved["future"], want["future"]);
-        assert_eq!(saved["seq"], 4);
+        assert!(asides(&store, "demo.list").is_empty());
+        assert_eq!(store.get("demo.list").unwrap().as_deref(), Some(broken), "the original is byte-identical");
         drop(store);
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -379,15 +279,14 @@ mod tests {
     }
 
     #[test]
-    fn row874_a_mail_blob_of_the_wrong_type_is_kept_aside_never_read_as_empty() {
-        use crate::orchestration::Mail;
-        for (i, blob) in ["[]", "\"x\"", "7", "[1,2]", "true"].into_iter().enumerate() {
+    fn row874_a_blob_of_the_wrong_type_is_kept_aside_never_read_as_empty() {
+        for (i, blob) in ["{}", "\"x\"", "7", "true"].into_iter().enumerate() {
             let (store, dir) = fresh(&format!("wrongtype{i}"));
-            store.set("orchestration.mail", blob).unwrap();
-            let m = Mail::load(&store);
-            assert!(!m.unread && m == Mail::default(), "{blob}: the load is the fresh default");
-            assert_eq!(asides(&store, "orchestration.mail"), vec![blob.to_string()], "{blob}: a byte-identical copy is kept");
-            assert_eq!(store.get("orchestration.mail").unwrap().as_deref(), Some(serde_json::to_string(&Mail::default()).unwrap().as_str()));
+            store.set("demo.list", blob).unwrap();
+            let got: Vec<Value> = load(&store, "demo.list").unwrap();
+            assert!(got.is_empty(), "{blob}: the load is the fresh default");
+            assert_eq!(asides(&store, "demo.list"), vec![blob.to_string()], "{blob}: a byte-identical copy is kept");
+            assert_eq!(store.get("demo.list").unwrap().as_deref(), Some("[]"));
             drop(store);
             let _ = std::fs::remove_dir_all(dir);
         }

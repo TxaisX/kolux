@@ -298,7 +298,7 @@ pub fn login_command(program: &Path, home: &Path, device: bool) -> CommandBuilde
 /// never removed.
 pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, now: i64, login: impl FnOnce(&Path) -> (String, Ended, Option<String>)) -> Result<Account, Attention> {
     // Row 944: the id comes from the renderer and is joined into paths, so an unsafe one is refused before anything touches the disk.
-    if !crate::cli_accounts::safe_id(id) {
+    if !crate::claude_accounts::safe_id(id) {
         return Err(Attention::new("unknown", "That account id is not valid."));
     }
     // Row 923: a NEW account never reuses a taken id, so a clash cannot overwrite a listed account's home or sealed copy.
@@ -887,22 +887,10 @@ pub fn remove(store: &Store, profile: &Path, id: &str) -> Result<(), String> {
     cleared
 }
 
-/// The command line's rollback (row 921): a sign-in whose temporary copy could not be deleted was
-/// not kept as an account, so its whole home goes; nothing runs on it yet.
-pub(crate) fn discard(store: &Store, profile: &Path, id: &str) -> Result<(), String> {
-    let (gone, cleared) = unlist(store, id)?;
-    crate::claude_accounts::remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("codex-{id}.json")));
-    let home = PathBuf::from(&gone.home);
-    if home.parent() == Some(profile.join(FOLDER).as_path()) && home.file_name().is_some_and(|n| n == id) {
-        remove_dir_patiently(&home).map_err(|e| format!("The account was not kept, but its home could not be deleted: {e}"))?;
-    }
-    cleared
-}
-
 /// Takes the account off the saved list, and clears the active marker when it named this account.
 /// The list is saved first, so a sign-in file that will not delete is reported after the account is gone.
 fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), String> {
-    if !crate::cli_accounts::safe_id(id) {
+    if !crate::claude_accounts::safe_id(id) {
         return Err("That Codex account id is not valid.".into());
     }
     let mut list: Vec<Account> = crate::state::kept::load(store, LIST_KEY)?;

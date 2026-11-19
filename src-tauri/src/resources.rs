@@ -176,18 +176,6 @@ fn snapshot(sessions: &[(u32, Option<u32>, Option<String>)], app_pid: u32) -> (V
     (procs, owner)
 }
 
-/// CLI-041: the Resource Manager's memory figures as they stand now, for `kolux diagnostics
-/// memory`: the same measure as the popover's, with committed beside resident. CPU stays 0 and
-/// the popover's sampler is left alone, so asking from the CLI never shortens its next CPU figure.
-pub fn memory_now(terminals: &crate::terminal::Terminals) -> Resources {
-    let sessions = terminals.list();
-    let app_pid = std::process::id();
-    let (procs, owner) = snapshot(&sessions, app_pid);
-    let (app, each) = total(&procs, &owner, &HashMap::new(), 0.0, 1, app_pid, crate::sysmem::working_set_bytes());
-    let (free, total) = imp::memory();
-    Resources::new(app, rows(sessions, each), free, total)
-}
-
 /// One row per session `Terminals::list` reports, in its order, with its pid and measured usage.
 /// Every session the backend holds is listed, whether a pane shows it or it outlived a reload.
 pub fn rows(sessions: Vec<(u32, Option<u32>, Option<String>)>, mut each: HashMap<u32, Usage>) -> Vec<SessionUsage> {

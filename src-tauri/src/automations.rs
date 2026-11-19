@@ -22,6 +22,8 @@ pub const KEY: &str = "automations";
 pub const RUNS_KEY: &str = "automations.runs";
 /// Told to the window whenever an automation or a run changes, so an open page updates itself.
 pub const EVENT: &str = "automations-changed";
+/// The event that told the window to start a run's agent (the retired command line's workspace event).
+const WORKSPACE_EVENT: &str = "cli-workspace";
 /// AUTO-007: how late a missed run may still start, in minutes; 0 is no grace.
 pub const GRACE_MINUTES: [u64; 7] = [0, 30, 60, 180, 720, 1440, 2880];
 /// AUTO-021: the runs each automation keeps.
@@ -563,10 +565,19 @@ fn problem(store: &Store, a: &Value) -> Option<(&'static str, String)> {
             return Some(("unavailable", format!("its worktree {path} is gone")));
         }
     }
-    let accounts = crate::cli_accounts::list(store);
-    let stale = accounts["accounts"].as_array()?.iter().find(|x| x["agent"] == a["provider"] && x["active"] == true && x["needsSignIn"] == true)?;
-    let agent = if a["provider"] == "codex" { "Codex" } else { "Claude" };
-    Some(("signin", format!("the {agent} account {} needs signing in again", stale["email"].as_str().unwrap_or("in use"))))
+    // The provider's account in use, when it needs signing in again.
+    let (agent, email) = match a["provider"].as_str() {
+        Some("claude") => {
+            let active = crate::claude_accounts::active(store)?;
+            ("Claude", crate::claude_accounts::load(store).into_iter().find(|x| x.id == active && x.stale)?.email)
+        }
+        Some("codex") => {
+            let active = store.get(crate::codex_accounts::ACTIVE_KEY).ok().flatten()?;
+            ("Codex", crate::codex_accounts::load(store).into_iter().find(|x| x.id == active && x.sign_in_error)?.email)
+        }
+        _ => return None,
+    };
+    Some(("signin", format!("the {agent} account {} needs signing in again", email.as_deref().unwrap_or("in use"))))
 }
 
 fn in_progress(r: &Value) -> bool {
@@ -1529,7 +1540,7 @@ fn place_and_start(l: &Launch, auto: &Value, run_id: &str) -> Result<Placed, Sto
     let panes = panes();
     let session = panes.as_deref().and_then(|ps| l.store.lock().ok().and_then(|store| reusable(&store, auto, &wt.path, ps)).filter(|(t, _)| ps.send(*t, prompt).is_ok()));
     if session.is_none() {
-        (l.notify)(crate::cli::EVENT, json!({ "kind": "start", "path": wt.path, "branch": wt.branch, "agent": agent, "prompt": auto["prompt"], "extra": [], "title": auto["name"], "runId": run_id }));
+        (l.notify)(WORKSPACE_EVENT, json!({ "kind": "start", "path": wt.path, "branch": wt.branch, "agent": agent, "prompt": auto["prompt"], "extra": [], "title": auto["name"], "runId": run_id }));
     }
     Ok((wt, project.id, session))
 }
@@ -1714,7 +1725,7 @@ mod tests {
         // Only the switched-on automation of that repo listening for that event runs.
         assert_eq!(started.iter().map(|r| r["automationId"].as_str().unwrap()).collect::<Vec<_>>(), ["auto-1"]);
         assert_eq!((started[0]["trigger"].as_str(), started[0]["status"].as_str(), started[0]["eventDetail"].as_str()), (Some("event"), Some("dispatched"), Some(line)));
-        let start = said.borrow().iter().find(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").cloned().expect("a start");
+        let start = said.borrow().iter().find(|(e, v)| e == WORKSPACE_EVENT && v["kind"] == "start").cloned().expect("a start");
         assert!(start.1["prompt"].as_str().unwrap().ends_with(line), "{}", start.1["prompt"]);
         // AUTO-013: the window learns which run the pane belongs to, so View run finds it.
         assert_eq!(start.1["runId"], started[0]["id"]);
@@ -1794,7 +1805,7 @@ mod tests {
         let started = on_event(&l, "agent-finished", &wt.to_string_lossy(), line, FRI_NOON).unwrap();
         assert_eq!(started.iter().map(|r| r["automationId"].as_str().unwrap()).collect::<Vec<_>>(), ["auto-fin"]);
         assert_eq!((started[0]["trigger"].as_str(), started[0]["status"].as_str(), started[0]["eventDetail"].as_str()), (Some("event"), Some("dispatched"), Some(line)));
-        let start = said.borrow().iter().find(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").cloned().expect("a start");
+        let start = said.borrow().iter().find(|(e, v)| e == WORKSPACE_EVENT && v["kind"] == "start").cloned().expect("a start");
         assert!(start.1["prompt"].as_str().unwrap().ends_with(line), "{}", start.1["prompt"]);
         // The run it started is this automation's own pane once a terminal claims it: no self-trigger.
         let s = store.lock().unwrap();
@@ -1995,7 +2006,7 @@ mod tests {
 
         let first = run(&l, "auto-1", "manual").unwrap();
         assert_eq!((first["number"].as_u64(), first["status"].as_str(), first["trigger"].as_str()), (Some(1), Some("dispatched"), Some("manual")));
-        let start = said.borrow().iter().find(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").cloned().expect("a start for the window");
+        let start = said.borrow().iter().find(|(e, v)| e == WORKSPACE_EVENT && v["kind"] == "start").cloned().expect("a start for the window");
         assert_eq!((start.1["agent"].as_str(), start.1["prompt"].as_str(), start.1["title"].as_str()), (Some("claude"), Some("check"), Some("Nightly")));
         // The paused automation stays paused.
         assert_eq!(list(&store.lock().unwrap()).unwrap()["automations"][0]["enabled"], json!(false));
@@ -2629,7 +2640,7 @@ mod tests {
 
         let first = run_manual(&l, "auto-1").unwrap();
         assert_eq!(first["status"], json!("dispatched"));
-        let starts = || said.borrow().iter().filter(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").count();
+        let starts = || said.borrow().iter().filter(|(e, v)| e == WORKSPACE_EVENT && v["kind"] == "start").count();
         assert_eq!(starts(), 1);
 
         // The first run's pane has started (the window gave it a terminal). A second Run now while
@@ -2842,10 +2853,10 @@ mod tests {
         let notify = |e: &str, v: Value| said.borrow_mut().push((e.to_string(), v));
         let yes = |_: &str| true;
         let l = Launch { git: &git, store: &store, claude_config: dir.join("claude.json"), installed: &yes, notify: &notify };
-        let starts = || said.borrow().iter().filter(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").count();
+        let starts = || said.borrow().iter().filter(|(e, v)| e == WORKSPACE_EVENT && v["kind"] == "start").count();
         let finish = |terminal: u32, pane: u32| {
             let s = store.lock().unwrap();
-            let last_start = || said.borrow().iter().rev().find(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").and_then(|(_, v)| v["runId"].as_str().map(String::from));
+            let last_start = || said.borrow().iter().rev().find(|(e, v)| e == WORKSPACE_EVENT && v["kind"] == "start").and_then(|(_, v)| v["runId"].as_str().map(String::from));
             claim(&s, terminal, Some(pane), &ws.to_string_lossy(), Some("claude"), last_start().as_deref(), 1_001).unwrap();
             on_status(&s, Some(terminal), pane, "working", false, false, None, 10).unwrap();
             assert!(on_status(&s, Some(terminal), pane, "done", false, false, None, 11).unwrap().is_some());

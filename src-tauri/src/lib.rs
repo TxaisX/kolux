@@ -20,8 +20,6 @@ mod pdf_export;
 mod webview_args;
 mod webview_engine;
 mod cap;
-pub mod cli;
-mod cli_accounts;
 pub mod claude_accounts;
 pub mod claude_key;
 pub mod claude_setup;
@@ -68,7 +66,6 @@ mod notebook_run;
 mod notifications;
 mod notices;
 mod onboarding;
-pub mod orchestration;
 mod foreground;
 pub mod procs;
 pub mod protected;
@@ -323,8 +320,6 @@ pub fn run() {
             }
             // T-182 (APP-020, macOS and Linux): the login shell's environment, read in the background.
             login_env::start();
-            // T-594: a user PATH too long for the installer gets <install>\bin added here, once per install.
-            cli::cli_register::path_at_start_now(&dir);
             if !job_ok {
                 diag::write(&dir, "kolux: the app could not be put in its own job object; child processes would survive a crash (APP-053)");
             }
@@ -451,8 +446,6 @@ pub fn run() {
             if let Err(e) = lifecycle::write_running(&dir) {
                 diag::write(&dir, &format!("the startup file could not be written: {e} (APP-001)"));
             }
-            // The command line reaches the app through a loopback port (PROJ-077).
-            cli::serve(app.handle().clone(), &dir)?;
             // Agents report their status through hooks (STAT-001): the listener, then the scripts
             // and each found, switched-on agent's entries (STAT-004), off the launch path.
             // STAT-006 / STAT-030: the last run's statuses, with what hooks held while Kolux was
@@ -770,8 +763,6 @@ pub fn run() {
             agents::agent_install::agents_install_many,
             agents::open_install_page,
             agents::inventory::session_tabs,
-            orchestration::worker_labels,
-            orchestration::setup_gate::worker_setup_settled,
             prompt_answer::prompt_read,
             prompt_answer::prompt_answer,
             prompt_scan::prompt_scan,
@@ -939,7 +930,6 @@ pub fn run() {
             onboarding::onboarding_close,
             onboarding::guide_get,
             onboarding::guide_mark,
-            onboarding::cli_status,
             onboarding::tours_get,
             onboarding::onboarding_reopen,
             onboarding::onboarding_milestone,
@@ -1005,11 +995,6 @@ pub fn run() {
             clipboard::clip_copy_files,
             clipboard::feedback_facts,
             pasted_image::paste_image_save,
-            cli::cli_register::cli_register_state,
-            cli::cli_register::cli_register,
-            cli::cli_register::cli_unregister,
-            cli::file_cli::cli_file_window,
-            cli::file_cli::cli_file_result,
             diag::diag_bundle,
             diag::diag_summary, // APP-010: Help > Copy terminal diagnostics
             lifecycle::app_restart, // APP-010: Help > Restart Kolux

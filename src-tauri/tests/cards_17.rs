@@ -1,17 +1,14 @@
 //! spec/17 P0 boxes SET-032 and SET-030 (Rust halves): the real projects/Store/Git code on real folders under
 //! the scratch root (folder set17), and the real claude_accounts reader run against a fake `claude` program in scratch.
 //! The TS halves are src/projects/__cards__/SET-032.test.ts and src/settings/__cards__/SET-030.test.ts.
-//! Batch 3 adds SET-037 (the look and first screen, as a profile on disk) and SET-028 (a tier's saved model reaching the worker's start line).
+//! Batch 3 adds SET-037 (the look and first screen, as a profile on disk).
 
 mod scratch_root;
 
-use kolux_lib::agents::{start_line_as, Start};
 use kolux_lib::claude_accounts::{auth_status, own_sign_in};
-use kolux_lib::cli::{dispatch, parse, Ctx, Request};
 use kolux_lib::git::Git;
 use kolux_lib::projects::{add_project, create_workspace, place_from, resolve_workspaces_dir, workspace_path, workspaces_dir, Project};
 use kolux_lib::state::Store;
-use kolux_lib::terminal::Terminals;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -180,72 +177,6 @@ fn set037_a_profile_that_had_settings_starts_classic_and_the_new_look_with_a_fir
     assert_eq!((reopened["uiLook"].as_str(), reopened["firstScreen"].as_str(), reopened["defaultAgent"].as_str()), (Some("new"), Some("board"), Some("claude")), "{reopened}");
     save_replay("SET-037-replay.json", "legacy", legacy);
     save_replay("SET-037-replay.json", "reopened", reopened);
-    let _ = std::fs::remove_dir_all(&d);
-}
-
-/// The `--flag value` words of a typed command line as the arguments the app receives.
-fn typed(line: &str) -> (String, Value) {
-    let words: Vec<String> = line.split_whitespace().map(String::from).collect();
-    let p = parse(&words).1.unwrap().unwrap();
-    (p.command, Value::Object(p.args))
-}
-
-#[test]
-fn set028_box1_a_tier_given_a_small_model_starts_the_worker_on_it_and_its_start_line_names_it() {
-    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
-    let d = scratch("s28");
-    let repo = repo_in(&d, "repo");
-    let git = Git::detect().unwrap();
-    let store = Mutex::new(Store::open(&d.join("data")).unwrap());
-    add_project(&git, &store.lock().unwrap(), &repo).unwrap();
-    let save = |light: Value| {
-        let s = store.lock().unwrap();
-        let mut settings = s.settings();
-        settings["workspacesDir"] = json!(d.join("ws").display().to_string());
-        settings["branchPrefix"] = json!("none");
-        settings["modelRouting"] = json!({ "claude": { "light": light } });
-        s.save_settings(&settings).unwrap();
-        settings
-    };
-    let events = Mutex::new(Vec::<Value>::new());
-    let notify = |v: Value| {
-        if let Some(r) = v["setupRequest"].as_str() {
-            kolux_lib::orchestration::setup_gate::settle(r, json!({ "result": "none" }));
-        }
-        events.lock().unwrap().push(v)
-    };
-    let terminals = Terminals::default();
-    let ctx = Ctx { claude_config: d.join(".claude.json"), git: &git, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
-    // A worker started on the light tier; no window opens its terminal, so the wait runs out, the start notice is what the window gets.
-    let start_on_light = || {
-        let (command, mut args) = typed("orchestration worker-start --spec x --tier light");
-        args["timeoutMs"] = json!("1");
-        let req = Request { id: "r".into(), token: String::new(), command, cwd: repo.display().to_string(), args, pane: None, cli: String::new(), arrived: None };
-        let out = dispatch(&ctx, &req).unwrap_err();
-        assert_eq!(out.code, "timeout", "{}", out.message);
-        let ev = events.lock().unwrap();
-        let start = ev.iter().rev().find(|e| e["kind"] == "start").expect("the window is told to start the agent").clone();
-        assert_eq!((start["agent"].as_str(), out.data["tier"].as_str()), (Some("claude"), Some("light")));
-        start["extra"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect::<Vec<_>>()
-    };
-    let claude_installed = kolux_lib::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
-    if !claude_installed {
-        eprintln!("Claude Code is not installed here, so a tier worker cannot start");
-        return;
-    }
-    // The fast (light) tier is given the small model, Haiku (a model with no effort levels).
-    let settings = save(json!({ "model": "haiku", "effort": "" }));
-    let extra = start_on_light();
-    assert_eq!(extra, vec!["--model", "haiku"], "the worker's launch line carries the tier's model");
-    // The tier's pick is what decides it: moved to Sonnet at low, the next worker starts on that.
-    save(json!({ "model": "sonnet", "effort": "low" }));
-    assert_eq!(start_on_light(), vec!["--model", "sonnet", "--effort", "low"]);
-    // The window turns that notice into the pane's start line (agent_start_line -> start_line_as); the pane header reads --model from it.
-    let line = start_line_as(&settings, "claude", &extra, "x", false, Start::Fresh).unwrap();
-    let at = line.args.iter().position(|a| a == "--model").expect("--model in the start line");
-    assert_eq!(line.args[at + 1], "haiku");
-    save_replay("SET-028-replay.json", "extra", json!(extra));
-    save_replay("SET-028-replay.json", "args", json!(line.args));
     let _ = std::fs::remove_dir_all(&d);
 }
 

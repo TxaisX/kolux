@@ -1,15 +1,8 @@
-//! spec/13 P0 boxes BROW-051, BROW-008, BROW-009 (Rust halves). The agent endpoints are the hooks HTTP
-//! endpoint (request gate) and the CLI line port (real listener on a loopback port); no network beyond 127.0.0.1.
+//! spec/13 P0 boxes BROW-051, BROW-008, BROW-009 (Rust halves). The agent endpoint is the hooks HTTP
+//! endpoint (request gate); no network beyond 127.0.0.1.
 
 use base64::Engine;
-use kolux_lib::cli::{call, serve_loop, Request};
 use kolux_lib::hooks::{answer, gate, parse_request, Request as Http};
-use serde_json::json;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
 
 const TOKEN: &str = "tok-for-cards-13";
 
@@ -26,25 +19,6 @@ fn id_header() -> String {
 fn wire(method_path: &str, host: &str, lines: &str) -> Http {
     let raw = format!("{method_path} HTTP/1.1\r\nHost: {host}\r\n{lines}Content-Length: 2\r\n\r\n{{}}");
     parse_request(&mut raw.as_bytes()).expect("parsed")
-}
-
-fn cli_listener() -> (u16, Arc<AtomicUsize>) {
-    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
-    assert!(listener.local_addr().unwrap().ip().is_loopback(), "the CLI line port is loopback only");
-    let port = listener.local_addr().unwrap().port();
-    let ran = Arc::new(AtomicUsize::new(0));
-    let seen = ran.clone();
-    std::thread::spawn(move || {
-        serve_loop(listener, TOKEN, "rt-cards-13", move |_| {
-            seen.fetch_add(1, Ordering::SeqCst);
-            Ok(json!({ "ok": true }))
-        })
-    });
-    (port, ran)
-}
-
-fn req(token: &str, id: &str) -> Request {
-    Request { id: id.into(), token: token.into(), command: "worktree.list".into(), cwd: String::new(), args: json!({}), pane: None, cli: String::new(), arrived: None }
 }
 
 /// What a browser sends for the page's own fetch, form post, img/script tag and preflight, each
@@ -68,26 +42,6 @@ fn brow051_box1_a_web_page_is_refused_even_with_the_secret() {
 }
 
 #[test]
-fn brow051_box1_the_cli_port_drops_a_web_pages_http_request_without_a_byte() {
-    let (port, ran) = cli_listener();
-    // A web page can only speak HTTP: fetch, XHR, form post and a text/plain form post that spells the JSON line as its body.
-    let line = serde_json::to_string(&req(TOKEN, "page-1")).unwrap();
-    for sent in [
-        format!("POST / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nOrigin: http://evil.example\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{line}", line.len()),
-        format!("GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nSec-Fetch-Mode: no-cors\r\n\r\n"),
-        format!("OPTIONS / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nOrigin: http://evil.example\r\nAccess-Control-Request-Method: POST\r\n\r\n"),
-    ] {
-        let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
-        s.set_read_timeout(Some(Duration::from_secs(5))).ok();
-        s.write_all(sent.as_bytes()).unwrap();
-        let mut reply = Vec::new();
-        let _ = s.read_to_end(&mut reply);
-        assert!(reply.is_empty(), "no reply at all to {}: {:?}", sent.lines().next().unwrap(), String::from_utf8_lossy(&reply));
-    }
-    assert_eq!(ran.load(Ordering::SeqCst), 0, "no handler ran for a web page");
-}
-
-#[test]
 fn brow051_box2_the_bare_port_is_refused_and_the_handed_address_works() {
     // Hooks HTTP endpoint: bare host and port, no token, a wrong token: 404 (the empty body is hooks.rs:644-646).
     let bare_get = wire("GET /", "127.0.0.1:4321", "");
@@ -106,15 +60,4 @@ fn brow051_box2_the_bare_port_is_refused_and_the_handed_address_works() {
     let own = parse_request(&mut raw.as_bytes()).unwrap();
     assert_eq!(gate(&own, TOKEN), None);
     assert_eq!(answer(&own, TOKEN).0, 200);
-
-    // CLI line port: the bare port with a guessed or missing token gets `unauthorized` and runs nothing; the token from cli.json works.
-    let (port, ran) = cli_listener();
-    for guess in ["", "guess"] {
-        let v = call(port, &req(guess, "bare")).unwrap();
-        assert_eq!((v["success"].clone(), v["error"]["code"].clone()), (json!(false), json!("unauthorized")), "token {guess:?}");
-    }
-    assert_eq!(ran.load(Ordering::SeqCst), 0);
-    let v = call(port, &req(TOKEN, "own")).unwrap();
-    assert_eq!(v["success"], true);
-    assert_eq!(ran.load(Ordering::SeqCst), 1);
 }
