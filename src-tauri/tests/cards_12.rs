@@ -42,10 +42,9 @@ fn edit045_box1_a_file_reached_through_a_symlink_that_points_outside_the_worktre
     let err = fence::check(&escape, &roots, &[], false).unwrap_err();
     assert!(!err.is_empty());
     let text_roots = vec![project.to_string_lossy().into_owned()];
-    let none = std::collections::HashSet::new();
-    let err = links::fence(&escape.to_string_lossy(), &text_roots, &none, true).unwrap_err();
+    let err = links::fence(&escape.to_string_lossy(), &text_roots).unwrap_err();
     assert!(err.contains("through a link"), "{err}");
-    assert!(links::fence(&project.join("stays.txt").to_string_lossy(), &text_roots, &none, true).is_ok());
+    assert!(links::fence(&project.join("stays.txt").to_string_lossy(), &text_roots).is_ok());
     // the file really is readable by the OS, so the refusal is the fence's doing, not a missing target
     assert_eq!(std::fs::read_to_string(&escape).unwrap(), "outside");
 }
@@ -56,12 +55,11 @@ fn edit045_box2_a_terminal_link_to_a_file_on_another_computers_share_is_refused_
     let roots = vec![base.to_string_lossy().into_owned()];
     // the targets a terminal link yields: a UNC path as printed, and a file:// URL turned into one (links.ts fromFileUrl)
     let targets = [r"\\kolux-no-such-host.invalid\share\doc.md", r"\\kolux-no-such-host.invalid\share\sub\..\doc.md", "//kolux-no-such-host.invalid/share/doc.md", r"\\?\UNC\kolux-no-such-host.invalid\share\doc.md", "file://kolux-no-such-host.invalid/share/doc.md"];
-    let none = std::collections::HashSet::new();
     let started = std::time::Instant::now();
     for t in targets {
         let e = links::refuse_host(t, &roots).err().unwrap_or_else(|| panic!("{t} was not refused"));
         assert!(e.contains("another computer"), "{t}: {e}");
-        let e = links::fence(t, &roots, &none, true).err().unwrap_or_else(|| panic!("{t} was not fenced"));
+        let e = links::fence(t, &roots).err().unwrap_or_else(|| panic!("{t} was not fenced"));
         assert!(e.contains("another computer"), "{t}: {e}");
         if !t.starts_with("file:") {
             assert!(fence::check(Path::new(t), std::slice::from_ref(&base), &[], true).is_err(), "{t}");

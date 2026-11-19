@@ -1,55 +1,11 @@
-// Reading and saving a text file (EDIT-046). A save goes to a temporary file beside the target, is
-// flushed to disk and is then moved over it, so a save that fails or is cut off never leaves a
-// half-written file behind. A read has an upper bound and samples the start of a file before
-// treating it as text. Every command here takes only paths inside the user's projects and
-// worktrees (ACCT-055, fence.rs); EDIT-045's `links::fence` guards `path_kind` (inside a project or
-// granted exactly, never out through a link); the WSL and share parts of EDIT-045 are T-062.
+// Saving a text file (EDIT-046). A save goes to a temporary file beside the target, is flushed to
+// disk and is then moved over it, so a save that fails or is cut off never leaves a half-written file
+// behind. Every command here takes only paths inside the user's projects and worktrees (ACCT-055,
+// fence.rs); EDIT-045's `links::fence` guards `path_kind` (inside a project, never out through a
+// link); the WSL and share parts of EDIT-045 are T-062.
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::Path;
-
-/// EDIT-046 (T-178): the largest file the editor opens as text. The old limit was 5 MB; a 20 MB log
-/// has to open. Bigger files are refused with a plain message (the whole text travels to the window
-/// and into a syntax tree, so the bound stays modest).
-pub const TEXT_MAX: u64 = 32 * 1024 * 1024;
-
-/// EDIT-046: how much of the start of a file is looked at to tell text from binary.
-const SAMPLE: usize = 8192;
-
-/// EDIT-046: true when the start of a file is plainly not text: a well-known binary signature, a
-/// NUL byte, or mostly control characters. A UTF-16 text file has NULs too and is also refused (the
-/// editor only reads UTF-8). "MZ" is not a signature here: it is two letters real text can start with,
-/// and a Windows program always has NUL bytes in its first 64 bytes.
-pub fn looks_binary(sample: &[u8]) -> bool {
-    const MAGIC: [&[u8]; 8] = [b"PK\x03\x04", b"\x1f\x8b", b"%PDF-", b"\x89PNG", b"GIF8", b"\x7fELF", b"\xff\xd8\xff", b"7z\xbc\xaf"];
-    if MAGIC.iter().any(|m| sample.starts_with(m)) || sample.contains(&0) {
-        return true;
-    }
-    let control = sample.iter().filter(|b| **b < 0x20 && !matches!(**b, b'\t' | b'\n' | b'\r' | 0x0c | 0x1b)).count();
-    !sample.is_empty() && control * 10 > sample.len() * 3
-}
-
-pub fn read_text(path: &Path) -> Result<String, String> {
-    read_text_up_to(path, TEXT_MAX)
-}
-
-/// `read_text` with the size bound given, so the bound itself can be tested without a huge file.
-pub fn read_text_up_to(path: &Path, max: u64) -> Result<String, String> {
-    let io = |e: std::io::Error| format!("{}: {e}", path.display());
-    let mut f = fs::File::open(path).map_err(io)?;
-    let len = f.metadata().map_err(io)?.len();
-    if len > max {
-        return Err(format!("{} is too large to open ({} MB; the editor opens up to {} MB)", path.display(), len.div_ceil(1024 * 1024), max / (1024 * 1024)));
-    }
-    let mut bytes = Vec::with_capacity(len as usize);
-    // Sampled first, so a big archive is turned away after 8 KB instead of after being read whole.
-    (&mut f).take(SAMPLE as u64).read_to_end(&mut bytes).map_err(io)?;
-    if looks_binary(&bytes) {
-        return Err(format!("{} is a binary file, so it is not shown as text", path.display()));
-    }
-    f.read_to_end(&mut bytes).map_err(io)?;
-    String::from_utf8(bytes).map_err(|_| format!("{} is not UTF-8 text", path.display()))
-}
 
 /// How old a leftover save copy must be before the next save of its file clears it away: far longer
 /// than any save takes, so a copy belonging to a save in progress is never touched.
@@ -131,7 +87,6 @@ fn clear_stale_copies(dir: &Path, prefix: &str) {
 }
 
 type Store<'a> = tauri::State<'a, std::sync::Mutex<crate::state::Store>>;
-type Grants<'a> = tauri::State<'a, crate::links::Grants>;
 
 /// T-073 (EDIT-003): what a cheap disk-change check compares: the modified time in milliseconds
 /// and the size in bytes. It is advisory only; a same-size rewrite inside one check or a tool that
@@ -314,41 +269,12 @@ mod list_tests {
     }
 }
 
-/// One entry of a folder listing (EDIT-033). A symlink (or junction) is `link`, never followed.
-#[derive(serde::Serialize, Debug, PartialEq)]
-pub struct DirEntry {
-    pub name: String,
-    pub path: String,
-    pub kind: &'static str,
-}
-
-/// A folder's entries: folders first, then by name ignoring case; `.git` is left out.
-pub fn list_dir(dir: &Path) -> Result<Vec<DirEntry>, String> {
-    let mut out: Vec<DirEntry> = fs::read_dir(dir)
-        .map_err(|e| format!("{}: {e}", dir.display()))?
-        .filter_map(Result::ok)
-        .filter(|e| e.file_name() != ".git")
-        .map(|e| {
-            let kind = match e.file_type() {
-                Ok(t) if t.is_symlink() => "link",
-                Ok(t) if t.is_dir() => "dir",
-                _ => "file",
-            };
-            DirEntry { name: e.file_name().to_string_lossy().into_owned(), path: e.path().to_string_lossy().into_owned(), kind }
-        })
-        .collect();
-    // EDIT-011: folders first, then natural order (file2 before file10); names that tie settle by their exact
-    // spelling, never by the order the disk returned them.
-    out.sort_by_cached_key(|e| (e.kind != "dir", natural_key(&e.name), e.name.clone()));
-    Ok(out)
-}
-
 /// What a path really is: "remote" (another machine, never looked up; SAFE-021), "outside" (not
 /// in a project, or out through a link; EDIT-045), else following links "dir", "file" or "missing".
 #[tauri::command]
-pub fn path_kind(store: Store<'_>, grants: Grants<'_>, path: String, folder_only: Option<bool>) -> &'static str {
+pub fn path_kind(store: Store<'_>, path: String, folder_only: Option<bool>) -> &'static str {
     let roots = crate::links::roots(&store);
-    match crate::links::fence(&path, &roots, &grants.snapshot(), true) {
+    match crate::links::fence(&path, &roots) {
         Ok(p) => kind_of(&p),
         Err(_) if crate::links::host_path(&path, &roots) => "remote",
         Err(_) if folder_only == Some(true) => folder_probe(&path, &roots),
@@ -498,30 +424,11 @@ mod tests {
     }
 
     #[test]
-    fn edit011_numbered_names_list_in_natural_order_and_ties_settle_the_same_way_every_time() {
-        let d = temp_dir("natural");
-        for f in ["file10.txt", "file2.txt", "file1.txt", "file02.txt"] {
-            fs::write(d.join(f), "x").unwrap();
-        }
-        fs::create_dir(d.join("sub")).unwrap();
-        let names = |d: &Path| list_dir(d).unwrap().into_iter().map(|e| e.name).collect::<Vec<_>>();
-        let got = names(&d);
-        // A folder above files; 2 before 10; file02 and file2 count the same, so their exact spelling settles it.
-        assert_eq!(got, ["sub", "file1.txt", "file02.txt", "file2.txt", "file10.txt"]);
-        assert_eq!(names(&d), got);
-    }
-
-    #[test]
-    fn the_explorer_lists_folders_first_by_name_and_leaves_out_git() {
-        let d = temp_dir("list");
-        for f in ["b.txt", "A.txt"] {
-            fs::write(d.join(f), "x").unwrap();
-        }
-        for f in ["zeta", "Alpha", ".git"] {
-            fs::create_dir(d.join(f)).unwrap();
-        }
-        let got: Vec<_> = list_dir(&d).unwrap().into_iter().map(|e| (e.name, e.kind)).collect();
-        assert_eq!(got, [("Alpha".to_string(), "dir"), ("zeta".to_string(), "dir"), ("A.txt".to_string(), "file"), ("b.txt".to_string(), "file")]);
+    fn a_path_is_a_folder_a_file_or_missing() {
+        let d = temp_dir("kind");
+        fs::write(d.join("a.txt"), "x").unwrap();
+        fs::create_dir(d.join("zeta")).unwrap();
+        assert_eq!(kind_of(&d.join("a.txt")), "file");
         assert_eq!(kind_of(&d.join("zeta")), "dir");
         assert_eq!(kind_of(&d.join("nope")), "missing");
         let _ = fs::remove_dir_all(&d);
@@ -549,7 +456,7 @@ mod tests {
         let f = d.join("main.rs");
         fs::write(&f, "fn main() {}\n").unwrap();
         write_text(&f, "fn main() { x }\n").unwrap();
-        assert_eq!(read_text(&f).unwrap(), "fn main() { x }\n");
+        assert_eq!(fs::read_to_string(&f).unwrap(), "fn main() { x }\n");
         assert_eq!(fs::read_dir(&d).unwrap().count(), 1);
     }
 
@@ -557,14 +464,9 @@ mod tests {
     fn failures_name_the_file() {
         let d = temp_dir("fail");
         let missing = d.join("nope").join("a.txt");
-        assert!(read_text(&missing).unwrap_err().contains("a.txt"));
-        assert!(write_text(&missing, "x").unwrap_err().starts_with("could not save"));
-        fs::write(d.join("latin"), [b'c', b'a', b'f', 0xe9]).unwrap();
-        assert!(read_text(&d.join("latin")).unwrap_err().contains("not UTF-8"));
+        let err = write_text(&missing, "x").unwrap_err();
+        assert!(err.starts_with("could not save") && err.contains("a.txt"), "{err}");
     }
-
-    // The bound is above the old 5 MB limit (checked when this compiles).
-    const _: () = assert!(TEXT_MAX > 5 * 1024 * 1024);
 
     fn entries(d: &Path) -> Vec<String> {
         let mut names: Vec<String> = fs::read_dir(d).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
@@ -730,81 +632,6 @@ mod tests {
         write_text(&link, "saved").unwrap();
         assert_eq!(entries(&d), vec![".b.txt.kolux-save-1-0".to_string(), "AGENTS.md".to_string(), "CLAUDE.md".to_string()]);
         let _ = fs::remove_dir_all(&d);
-    }
-
-    #[test]
-    fn edit046_a_20_mb_log_opens() {
-        let d = temp_dir("biglog");
-        let f = d.join("big.log");
-        let line = "2026-10-19 12:00:00 INFO request handled in 12 ms\n";
-        let text = line.repeat(20 * 1024 * 1024 / line.len() + 1);
-        assert!(text.len() > 20 * 1024 * 1024);
-        fs::write(&f, &text).unwrap();
-        assert_eq!(read_text(&f).unwrap().len(), text.len());
-    }
-
-    #[test]
-    fn edit046_a_file_over_the_bound_is_refused_by_size_and_one_at_the_bound_opens() {
-        let d = temp_dir("bound");
-        let f = d.join("t.txt");
-        fs::write(&f, "x".repeat(100)).unwrap();
-        assert_eq!(read_text_up_to(&f, 100).unwrap().len(), 100);
-        let err = read_text_up_to(&f, 99).unwrap_err();
-        assert!(err.contains("too large to open") && err.contains("t.txt"), "{err}");
-    }
-
-    #[test]
-    fn edit046_an_archive_or_other_binary_is_never_shown_as_text() {
-        let d = temp_dir("binary");
-        // A zip starts with its signature and is mostly packed bytes.
-        let mut zip = b"PK\x03\x04\x14\x00\x00\x00".to_vec();
-        zip.extend((0u32..4000).map(|i| (i * 7 % 251) as u8));
-        fs::write(d.join("a.zip"), &zip).unwrap();
-        fs::write(d.join("noext"), [b'a', b'b', 0, b'c']).unwrap(); // a NUL in the sample
-        fs::write(d.join("ctl"), vec![0x01u8; 200]).unwrap(); // mostly control characters
-        fs::write(d.join("wide.txt"), "hi".encode_utf16().flat_map(u16::to_le_bytes).collect::<Vec<u8>>()).unwrap(); // UTF-16
-        for n in ["a.zip", "noext", "ctl", "wide.txt"] {
-            let err = read_text(&d.join(n)).unwrap_err();
-            assert!(err.contains("is a binary file"), "{n}: {err}");
-        }
-        // Text with tabs, a form feed, an escape and CRLF is still text, and so is an empty file.
-        fs::write(d.join("ok.txt"), "col\tcol\r\n\x0c\x1b[0m done\n").unwrap();
-        fs::write(d.join("empty"), "").unwrap();
-        assert!(read_text(&d.join("ok.txt")).unwrap().contains("done"));
-        assert_eq!(read_text(&d.join("empty")).unwrap(), "");
-    }
-
-    #[test]
-    fn edit046_mz_at_the_start_is_text_but_a_program_header_is_still_binary() {
-        // FIX-1: "MZ" is no signature on its own; a country-code CSV starting with it opens as text.
-        let d = temp_dir("mz");
-        fs::write(d.join("codes.csv"), "MZ,Mozambique\n").unwrap();
-        fs::write(d.join("MZ-notes.txt"), "MZ is the start of this note\n").unwrap();
-        assert_eq!(read_text(&d.join("codes.csv")).unwrap(), "MZ,Mozambique\n");
-        assert!(read_text(&d.join("MZ-notes.txt")).unwrap().starts_with("MZ is"));
-        assert!(!looks_binary(b"MZ,Mozambique\n"));
-        // A Windows program has NUL bytes in its first 64 bytes, which the NUL check catches.
-        let mut exe = b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00".to_vec();
-        exe.extend([0u8; 48]);
-        assert!(looks_binary(&exe));
-        fs::write(d.join("prog.exe"), &exe).unwrap();
-        let err = read_text(&d.join("prog.exe")).unwrap_err();
-        assert!(err.contains("is a binary file"), "{err}");
-    }
-
-    #[test]
-    fn edit046_only_the_start_is_sampled_so_a_big_binary_is_turned_away_by_its_first_bytes() {
-        let d = temp_dir("sampled");
-        let f = d.join("big.bin");
-        let mut head = vec![0u8; 100];
-        head.extend(vec![b'a'; 1024 * 1024]);
-        fs::write(&f, &head).unwrap();
-        assert!(read_text(&f).unwrap_err().contains("is a binary file"));
-        // A NUL after the sample is not seen: text with a stray NUL late on still opens.
-        let mut late = vec![b'a'; SAMPLE + 10];
-        late.push(0);
-        fs::write(d.join("late"), &late).unwrap();
-        assert_eq!(read_text(&d.join("late")).unwrap().len(), SAMPLE + 11);
     }
 
     /// True when `p` is itself a link (a symlink, or a junction on Windows), not what it points at.

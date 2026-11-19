@@ -41,7 +41,7 @@ pub async fn scm_open_with(store: tauri::State<'_, std::sync::Mutex<crate::state
     let settings = store.lock().map_err(|e| e.to_string())?.settings();
     tauri::async_runtime::spawn_blocking(move || {
         let command = command_allowed(&settings, &command)?;
-        crate::links::fence(&worktree, &roots, &std::collections::HashSet::new(), true)?;
+        crate::links::fence(&worktree, &roots)?;
         let file = file_in(Path::new(&worktree), &path)?;
         crate::files::launch_in(&file, &command, std::env::var_os("PATH"))
     })

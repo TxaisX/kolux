@@ -2,7 +2,7 @@
 //! refused as text, before any filesystem call, so Windows never offers the user's credentials to
 //! that host; a file link aimed at a program, script, installer or shortcut is revealed in its
 //! folder instead of run. EDIT-045: `fence` guards every command that takes a path from the
-//! interface: inside a registered root (or granted exactly), never out through a link; `open_path`
+//! interface: inside a registered root, never out through a link; `open_path`
 //! is the one door for handing a file to the system. SESS-039: `editor_open` opens a worktree
 //! folder (fenced the same way) in an outside editor.
 //! `open_external` hands a clean web or mail link to the system's own handler.
@@ -11,7 +11,7 @@
 //! need nothing of their own. On Linux a reveal opens the folder without selecting the file; the
 //! FileManager1 D-Bus call would select it.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -288,16 +288,6 @@ fn decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// EDIT-045: paths allowed one at a time for this run, each exactly as granted, nothing beneath it.
-#[derive(Default)]
-pub struct Grants(pub Mutex<HashSet<String>>);
-
-impl Grants {
-    pub fn snapshot(&self) -> HashSet<String> {
-        self.0.lock().unwrap_or_else(|e| e.into_inner()).clone()
-    }
-}
-
 /// One spelling for comparing paths: Windows folds slashes and case, POSIX keeps both.
 pub fn fence_key(path: &str) -> String {
     if cfg!(windows) {
@@ -349,11 +339,10 @@ fn plain(p: PathBuf) -> String {
 }
 
 /// EDIT-045: the file fence. `path` must be a full path on this machine inside one of `roots`
-/// (the projects, their workspaces folders and the shared one), or granted exactly; a `..` step is
-/// refused as text. With `follow`, the place the path really leads to (every link resolved) must
-/// still be inside a root, so a link out of a project is refused for reading, writing and listing;
-/// without it the entry itself is acted on (rename, trash, move), so only its folder must be inside.
-pub fn fence(path: &str, roots: &[String], grants: &HashSet<String>, follow: bool) -> Result<PathBuf, String> {
+/// (the projects, their workspaces folders and the shared one); a `..` step is refused as text. The
+/// place the path really leads to (every link resolved) must still be inside a root, so a link out of
+/// a project is refused.
+pub fn fence(path: &str, roots: &[String]) -> Result<PathBuf, String> {
     refuse_host(path, roots)?;
     let p = Path::new(path);
     if !p.is_absolute() {
@@ -362,16 +351,11 @@ pub fn fence(path: &str, roots: &[String], grants: &HashSet<String>, follow: boo
     if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
         return Err(format!("{path} climbs out with ..; Kolux reads and writes only inside your projects"));
     }
-    let key = fence_key(path);
-    if grants.contains(&key) {
-        return Ok(p.to_path_buf());
-    }
-    if !under(&key, roots) {
+    if !under(&fence_key(path), roots) {
         return Err(format!("{path} is outside your projects; Kolux reads and writes only inside them"));
     }
-    let probe = if follow { p } else { p.parent().unwrap_or(p) };
     let real_roots: Vec<String> = roots.iter().map(|r| plain(real(Path::new(r)))).collect();
-    if !under(&fence_key(&plain(real(probe))), &real_roots) {
+    if !under(&fence_key(&plain(real(p))), &real_roots) {
         return Err(format!("{path} leads outside your projects through a link"));
     }
     Ok(p.to_path_buf())
@@ -533,8 +517,8 @@ pub fn spawn_editor(plan: &EditorPlan) -> Result<std::process::Child, String> {
 /// Answers the editor's name.
 // T-304: registered by the coordinator's lib.rs hunk; unused until then.
 #[tauri::command]
-pub async fn editor_open(store: tauri::State<'_, Mutex<crate::state::Store>>, grants: tauri::State<'_, Grants>, editor: String, dir: String) -> Result<String, String> {
-    let folder = fence(&dir, &roots(&store), &grants.snapshot(), true)?;
+pub async fn editor_open(store: tauri::State<'_, Mutex<crate::state::Store>>, editor: String, dir: String) -> Result<String, String> {
+    let folder = fence(&dir, &roots(&store))?;
     if !folder.is_dir() {
         return Err(format!("{dir} is not a folder"));
     }
@@ -781,7 +765,7 @@ mod tests {
     }
 
     #[test]
-    fn edit045_file_access_stays_inside_the_roots_and_a_link_out_is_refused_unless_granted_exactly() {
+    fn edit045_file_access_stays_inside_the_roots_and_a_link_out_is_refused() {
         let base = std::env::temp_dir().join(format!("krs-fence-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let root = base.join("project");
@@ -801,32 +785,23 @@ mod tests {
         link("inner", &root.join("src/a.rs"));
         let roots = vec![root.to_string_lossy().into_owned()];
         let s = |p: &Path| p.to_string_lossy().into_owned();
-        let none = std::collections::HashSet::new();
         // Inside: an existing file, a file not yet written, a link that stays inside.
-        assert!(fence(&s(&root.join("src/a.rs")), &roots, &none, true).is_ok());
-        assert!(fence(&s(&root.join("src/new.rs")), &roots, &none, true).is_ok());
-        assert!(fence(&s(&root.join("inner")), &roots, &none, true).is_ok());
-        assert!(fence(&s(&root), &roots, &none, true).is_ok(), "the root itself");
+        assert!(fence(&s(&root.join("src/a.rs")), &roots).is_ok());
+        assert!(fence(&s(&root.join("src/new.rs")), &roots).is_ok());
+        assert!(fence(&s(&root.join("inner")), &roots).is_ok());
+        assert!(fence(&s(&root), &roots).is_ok(), "the root itself");
         // Outside: refused before the disk is touched, and a climb out of the root too.
-        let err = fence(&s(&outside.join("secret.txt")), &roots, &none, true).unwrap_err();
+        let err = fence(&s(&outside.join("secret.txt")), &roots).unwrap_err();
         assert!(err.contains("outside your projects"), "{err}");
-        assert!(fence(&s(&root.join("..").join("outside").join("secret.txt")), &roots, &none, true).is_err(), "a .. step out");
-        assert!(fence(&s(&base.join("project-two")), &roots, &none, true).is_err(), "a sibling that merely starts with the root's name");
-        assert!(fence("src/a.rs", &roots, &none, true).unwrap_err().contains("not a full path"));
-        // A link that leads out: refused when followed, fine when the entry itself is acted on.
-        let err = fence(&s(&root.join("escape")), &roots, &none, true).unwrap_err();
+        assert!(fence(&s(&outside.join("deep")), &roots).is_err());
+        assert!(fence(&s(&root.join("..").join("outside").join("secret.txt")), &roots).is_err(), "a .. step out");
+        assert!(fence(&s(&base.join("project-two")), &roots).is_err(), "a sibling that merely starts with the root's name");
+        assert!(fence("src/a.rs", &roots).unwrap_err().contains("not a full path"));
+        // A link that leads out is refused.
+        let err = fence(&s(&root.join("escape")), &roots).unwrap_err();
         assert!(err.contains("through a link"), "{err}");
-        assert!(fence(&s(&root.join("escape")), &roots, &none, false).is_ok(), "renaming or trashing the link itself");
-        // A grant covers that exact path and nothing beneath it.
-        let mut granted = std::collections::HashSet::new();
-        granted.insert(fence_key(&s(&outside.join("deep"))));
-        granted.insert(fence_key(&s(&root.join("escape"))));
-        assert!(fence(&s(&outside.join("deep")), &roots, &granted, true).is_ok());
-        assert!(fence(&s(&outside.join("deep/inner.txt")), &roots, &granted, true).is_err(), "nothing beneath a granted path");
-        assert!(fence(&s(&root.join("escape")), &roots, &granted, true).is_ok(), "the link itself granted");
-        // Hosts stay refused as text, grant or not.
-        granted.insert(fence_key("\\\\kolux-no-such-host\\share\\x.txt"));
-        assert!(fence("\\\\kolux-no-such-host\\share\\x.txt", &roots, &granted, true).unwrap_err().contains("another computer"));
+        // Hosts are refused as text.
+        assert!(fence("\\\\kolux-no-such-host\\share\\x.txt", &roots).unwrap_err().contains("another computer"));
         let _ = std::fs::remove_dir_all(&base);
     }
 

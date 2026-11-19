@@ -29,7 +29,6 @@ pub mod env_name;
 pub mod fence;
 pub mod files;
 pub mod final_save;
-pub mod fsops;
 mod fonts;
 pub mod git;
 mod github;
@@ -375,7 +374,6 @@ pub fn run() {
             }
             // T-301 (APP-012): the saved app icon variant and window blur, before the window shows.
             app_look::apply_saved(app.handle());
-            app.manage(links::Grants::default());
             // APP-041: the app's own start-and-stop record, next to what the terminals report.
             diag::write(&dir, &format!("app start {starts}, Kolux {}", app.package_info().version));
             // PKG-5: the start-up timeline reaches the log even when the page never reports it.

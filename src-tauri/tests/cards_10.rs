@@ -169,9 +169,8 @@ fn safe001_box2_a_shell_permission_carries_no_plan() {
 
 // ---- SAFE-021 / SAFE-022 (batch 4): only fake path strings; no opener, no explorer, no network is ever called ----
 use kolux_lib::fence::{check, Fence};
-use kolux_lib::links::{fence as file_fence, fence_key, host_path, launchable, open_external, program_like, refuse_host};
+use kolux_lib::links::{fence as file_fence, host_path, launchable, open_external, program_like, refuse_host};
 use kolux_lib::state::Store;
-use std::collections::HashSet;
 
 const OTHER_MACHINES: [&str; 9] = [
     r"\\kolux-cards.invalid\share\x.txt",
@@ -187,19 +186,14 @@ const OTHER_MACHINES: [&str; 9] = [
 
 #[test]
 fn safe021_box1_double_slash_shares_and_file_urls_naming_a_host_are_refused_as_text_before_any_file_access() {
-    let none = HashSet::new();
     let started = std::time::Instant::now();
     for p in OTHER_MACHINES {
         assert!(host_path(p, &[]), "{p}");
         let why = refuse_host(p, &[]).unwrap_err();
         assert!(why.contains("another computer"), "{p}: {why}");
-        // the file fence gives the same refusal, even for a path that was granted by its exact name
-        let mut granted = HashSet::new();
-        granted.insert(fence_key(p));
-        for grants in [&none, &granted] {
-            let why = file_fence(p, &[], grants, true).unwrap_err();
-            assert!(why.contains("another computer"), "{p}: {why}");
-        }
+        // the file fence gives the same refusal
+        let why = file_fence(p, &[]).unwrap_err();
+        assert!(why.contains("another computer"), "{p}: {why}");
         // the system-opener door for a clicked URL never takes a file or host link
         if p.to_ascii_lowercase().starts_with("file:") {
             assert!(open_external(p.to_string()).unwrap_err().contains("not a web or mail link"), "{p}");
@@ -213,7 +207,7 @@ fn safe021_box1_double_slash_shares_and_file_urls_naming_a_host_are_refused_as_t
     assert!(started.elapsed() < std::time::Duration::from_secs(2), "refusals took {:?}", started.elapsed());
     // the terminal scan hands a double-slash path on as `/host/share/x` (links.ts drops the first slash): on Windows that is no full path
     #[cfg(windows)]
-    assert!(file_fence("/kolux-cards.invalid/share/x.txt", &[], &none, true).unwrap_err().contains("not a full path"));
+    assert!(file_fence("/kolux-cards.invalid/share/x.txt", &[]).unwrap_err().contains("not a full path"));
     // the second fence in the app (ACCT-055, used by the openers) reads the spelling too, before it resolves anything
     for p in [r"\\kolux-cards.invalid\share\x.txt", "//kolux-cards.invalid/share/x.txt", r"\\.\pipe\kolux-cards"] {
         assert!(check(Path::new(p), &[], &[], true).is_err(), "{p}");
@@ -231,7 +225,7 @@ fn safe021_box2_a_long_path_local_drive_form_that_climbs_into_a_unc_path_is_a_ho
     ] {
         assert!(host_path(p, &[]), "{p}");
         assert!(refuse_host(p, &[]).unwrap_err().contains("another computer"), "{p}");
-        assert!(file_fence(p, &[], &HashSet::new(), true).unwrap_err().contains("another computer"), "{p}");
+        assert!(file_fence(p, &[]).unwrap_err().contains("another computer"), "{p}");
     }
     // the refusal comes from the climb: the same long-path form without it is a local drive
     for p in [r"\\?\C:\very\long\path", r"\\?\c:", r"\??\C:\very\long\path"] {
@@ -273,12 +267,9 @@ fn safe021_box4_a_grant_covers_the_exact_path_and_a_folder_grant_gives_no_file_b
     std::fs::write(outside.join("sub").join("b.txt"), "b").unwrap();
     let s = |p: &Path| p.to_string_lossy().into_owned();
     let roots = vec![s(&repo)];
-    // links.rs grants (an exact path granted for this run): the folder itself, nothing under it
-    let mut granted = HashSet::new();
-    granted.insert(fence_key(&s(&outside)));
-    assert!(file_fence(&s(&outside), &roots, &granted, true).is_ok(), "the exact path");
-    for beneath in [outside.join("a.txt"), outside.join("sub").join("b.txt"), outside.join("missing.txt")] {
-        let why = file_fence(&s(&beneath), &roots, &granted, true).unwrap_err();
+    // links.rs fence: nothing outside the projects, the folder or anything under it
+    for beneath in [outside.clone(), outside.join("a.txt"), outside.join("sub").join("b.txt"), outside.join("missing.txt")] {
+        let why = file_fence(&s(&beneath), &roots).unwrap_err();
         assert!(why.contains("outside your projects"), "{beneath:?}: {why}");
     }
     // ACCT-055 fence (what the openers use): a folder is never granted, a file is granted alone
@@ -323,15 +314,10 @@ fn safe021_box5_a_repo_folder_linked_to_the_home_folder_never_exposes_what_is_be
     let s = |p: &Path| p.to_string_lossy().into_owned();
     let roots = vec![s(&repo)];
     let key = link.join(".ssh").join("id_key");
-    let none = HashSet::new();
-    // reading through the link is refused, with or without a grant on the link itself
-    assert!(file_fence(&s(&link), &roots, &none, true).unwrap_err().contains("through a link"));
-    assert!(file_fence(&s(&key), &roots, &none, true).unwrap_err().contains("through a link"));
-    let mut granted = HashSet::new();
-    granted.insert(fence_key(&s(&link)));
-    for beneath in [link.join(".ssh"), key.clone()] {
-        assert!(file_fence(&s(&beneath), &roots, &granted, true).is_err(), "{beneath:?} stays refused after the link is granted");
-    }
+    // reading through the link is refused
+    assert!(file_fence(&s(&link), &roots).unwrap_err().contains("through a link"));
+    assert!(file_fence(&s(&key), &roots).unwrap_err().contains("through a link"));
+    assert!(file_fence(&s(&link.join(".ssh")), &roots).is_err());
     // the opener fence: the link resolves to a folder, so it is never granted, and nothing beneath it is reachable
     let store = Store::open(&d.join("profile")).unwrap();
     let fence = Fence::default();
