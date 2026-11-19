@@ -28,7 +28,7 @@ export const INDEX: Entry[] = [
   { page: "appearance", section: "terminal-font", title: "Terminal font", words: "terminal font size typeface family weight", fold: "terminal" },
   { page: "appearance", section: "terminal-colours", title: "Terminal colours", words: "terminal color colors scheme ansi console import warp ghostty", fold: "terminal" },
   { page: "appearance", section: "panes", title: "Panes", words: "pane border focus dim split tabs", fold: "terminal" },
-  { page: "appearance", section: "window-items", title: "Title bar and sidebar", words: "window sidebar title bar buttons hide show automations", fold: "window" },
+  { page: "appearance", section: "window-items", title: "Title bar", words: "window title bar app name hide show", fold: "window" },
   { page: "appearance", section: "sidebar-look", title: "Left sidebar look", words: "sidebar left tint tinted colour color match terminal background wash strength", fold: "window" },
   { page: "appearance", section: "card-density", title: "Workspace cards", words: "workspace card layout default compact detailed custom details density pinned pull request note", fold: "window" },
   { page: "appearance", section: "status-bar", title: "Status bar", words: "status bar bottom items", fold: "window" },

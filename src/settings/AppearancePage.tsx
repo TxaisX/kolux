@@ -524,7 +524,7 @@ export function UsagePercentPick({ value, onPick }: { value: PercentMode; onPick
   );
 }
 
-/** SET-020: the app name, the Tasks and Automations buttons, and the status bar with its items.
+/** SET-020: the app name and the status bar with its items.
  *  VIEW-096: a status bar hidden from its right-click menu comes back here. */
 function WindowSwitches({ settings, error, save }: ReturnType<typeof useSettings>) {
   if (!settings) return null;
@@ -535,7 +535,7 @@ function WindowSwitches({ settings, error, save }: ReturnType<typeof useSettings
         <CardDensityBody settings={settings} save={(p) => void save(p)} />
       </section>
       <section className="conn-card" data-section="window-items">
-        <h2 className="conn-name">Title bar and sidebar</h2>
+        <h2 className="conn-name">Title bar</h2>
         {CHROME.map((c) => (
           <label key={c.id} className="conn-switch">
             <input type="checkbox" role="switch" checked={chromeShown(settings, c.id)} onChange={(e) => void save({ [c.id]: e.target.checked })} />

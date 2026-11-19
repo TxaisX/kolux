@@ -565,9 +565,7 @@ pub fn run() {
             }
         })
         .on_window_event(|window, event| {
-            // The window is gone: no shell may outlive it.
-            // T-546-c: only the main window holds shells, so the Tower's own window closing changes nothing;
-            // the Tower window goes with the main one, so it never keeps the app running on its own.
+            // The window is gone: no shell may outlive it. Only the main window holds shells.
             // T-182 (APP-006): the page decides whether closing needs a question; a page that never
             // answers (frozen or crashed) is closed for after lifecycle::ASK_LIMIT.
             if let tauri::WindowEvent::CloseRequested { .. } = event {

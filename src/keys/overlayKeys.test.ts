@@ -95,7 +95,7 @@ test("the menu's Force Reload asks over unsaved text and reloads without; no oth
   menuAction("app.forceReload", b([]), reload);
   expect(reload).toHaveBeenCalledTimes(1);
   const s = b([]);
-  menuAction("screen.agents", s, reload); // the screens go through the settings plumbing, not here
+  menuAction("screen.terminals", s, reload); // the screens go through the settings plumbing, not here
   expect(s.setReloadAsk).not.toHaveBeenCalled();
   expect(reload).toHaveBeenCalledTimes(1);
 });

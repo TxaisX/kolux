@@ -435,9 +435,8 @@ export function useWindowKeys(w: WindowBag) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
-  // UX lane C (menu.rs:229): the menu's Force Reload comes to the page and runs the chord's reload, so unsaved
-  // editor text is asked about first instead of being thrown away by a native reload. View > Workspace View > Space
-  // lands here too (chrome/chromeItems MENU_SCREENS lists only the switcher screens).
+  // UX lane C (menu.rs spec): the menu's Force Reload comes to the page and runs the chord's reload instead of a
+  // native reload. The View > Workspace View items go through the settings plumbing (chrome/chromeItems menuScreen).
   useEffect(() => {
     const off = listen<{ id: string }>("menu-action", (e) => menuAction(e.payload.id, bag.current));
     // UX lane C (request from D-ux3, editor/AddProjectRow): a folder added while the project list is not shown opens it.

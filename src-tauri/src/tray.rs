@@ -553,7 +553,7 @@ pub fn on_close_requested(app: &tauri::AppHandle, quitting: bool) -> bool {
 /// went to the tray and the page must keep it alive and ask nothing; `quitting` says tray Quit or
 /// File > Exit asked for this close (the flag is consumed here, so a quit cancelled at the question
 /// leaves nothing behind). Registered by `evidence/tray-FIX-1-lib.rs.patch`. Tauri passes the calling
-/// window: only the main window's call does anything; another window (the Tower) closing gets
+/// window: only the main window's call does anything; any other window closing gets
 /// `{ hid: false, quitting: false }` and leaves the quit flag alone.
 #[tauri::command]
 pub fn tray_close_requested(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<serde_json::Value, String> {
@@ -830,7 +830,7 @@ mod tests {
     fn app_007_fix2_only_the_main_windows_close_request_is_handled() {
         assert!(handles_close_request(MAIN_LABEL));
         assert!(handles_close_request("main"));
-        assert!(!handles_close_request("tower"), "the Tower window's close never hides main or consumes the quit flag");
+        assert!(!handles_close_request("other"), "another window's close never hides main or consumes the quit flag");
         assert!(!handles_close_request("Main"), "labels are exact");
         assert!(!handles_close_request(""));
     }

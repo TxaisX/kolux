@@ -12,7 +12,6 @@ const heavy = [
   ["recovery/ScreenBoundary.tsx", /from "\.\.\/feedback\/FeedbackDialog"/],
   // 2026-11-16: src/ui's Menu (Base UI's menu and its floating layer, about 100 kB).
   ["chrome/RightSidebar.tsx", /from "\.\.\/ui\/Menu"/],
-  ["projects/HideableRow.tsx", /from "\.\.\/ui\/Menu"/],
 ] as const;
 
 test.each(heavy)("%s does not import the code that opens on a click", (file, pattern) => {
