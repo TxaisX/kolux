@@ -2316,6 +2316,52 @@ fn start_failed_line(label: &str, error: &str) -> Option<String> {
     (error != SUPERSEDED).then(|| format!("terminal start failed ({label}): {error}"))
 }
 
+/// What [`agent_env`] gives an agent start: the sign-in variables Kolux adds, and the managed
+/// account the agent runs on (none for the agent's own sign-in).
+pub(crate) struct AgentEnv {
+    pub env: Vec<(String, String)>,
+    pub account: Option<String>,
+}
+
+/// The sign-in environment of an agent start, shared by terminal panes and the chat engine.
+/// ACCT-004: a Claude start in key mode gets the 1-year key; ACCT-005: otherwise it runs on the
+/// active (or the `account` it began on, T-548-b) managed account's own folder; ACCT-007: a Codex
+/// start runs in the Codex account's home (`resumed` when it is pinned to one); ACCT-008: Grok gets
+/// its saved key. ACCT-024: on a managed Claude account, the caller's own variables (`env_own`) may
+/// not sign it in; such a start is refused.
+pub(crate) fn agent_env(store: &crate::state::Store, settings: &serde_json::Value, program: Option<&str>, account: Option<String>, resumed: Option<String>, env_own: &[(String, String)]) -> Result<AgentEnv, String> {
+    let codex = program.and_then(crate::tools::credited_program) == Some("codex");
+    let claude = program.and_then(crate::tools::credited_program) == Some("claude");
+    let used = codex.then(|| account.clone().or_else(|| crate::codex_accounts::active_account(store).map(|a| a.id))).flatten();
+    let codex_home = resumed.or_else(|| crate::codex_accounts::active_home(store));
+    let token = crate::secrets::read_setting(store, crate::claude_key::TOKEN_FIELD).ok().flatten();
+    let key_mode = settings.get(crate::claude_key::MODE_FIELD).and_then(serde_json::Value::as_str) == Some(crate::claude_key::KEY_MODE);
+    let by_key = crate::claude_key::pane_env(program, settings, token);
+    // T-548-b: a restored Claude pane starts on the account it began on (its own folder), or not at all.
+    let asked = account.as_deref().filter(|_| claude && by_key.is_none() && !key_mode);
+    let claude_dir = claude_pane_dir(asked, |id| crate::claude_accounts::dir_of(store, id), || crate::claude_accounts::active_dir(store))?;
+    let managed = if by_key.is_none() { crate::claude_accounts::pane_env(program, key_mode, claude_dir) } else { None };
+    // T-548-b: a Claude pane on a managed account answers which one, the way a Codex pane does.
+    let used = spawn_account(used, managed.is_some(), || asked.map(String::from).or_else(|| crate::claude_accounts::active(store)));
+    let env: Vec<(String, String)> = by_key
+        .or(managed)
+        // ACCT-007: a Codex pane runs in the active Codex account's private home.
+        .or_else(|| crate::codex_accounts::pane_env(program, codex_home))
+        // ACCT-008: a Grok pane gets the saved xAI key; Grok itself prefers its own sign-in.
+        .or_else(|| crate::grok::pane_env(program, crate::secrets::read_setting(store, crate::grok::KEY_FIELD).ok().flatten()))
+        .map(|(k, v)| (k.to_string(), v))
+        .into_iter()
+        .collect();
+    // ACCT-024: on a managed Claude account, the user's own settings may not sign the pane in.
+    if env.iter().any(|(k, _)| k == crate::claude_accounts::CONFIG_ENV) {
+        let found = crate::claude_accounts::sign_in_overrides(env_own, cfg!(windows));
+        if !found.is_empty() {
+            return Err(format!("This Claude pane runs on your managed account, but your Claude settings set {}. Remove those overrides in Settings > Agents and open it again.", found.join(", ")));
+        }
+    }
+    Ok(AgentEnv { env, account: used })
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, cols: u16, rows: u16, cwd: Option<String>, start: Option<String>, program: Option<String>, args: Option<Vec<String>>, env: Option<Vec<(String, String)>>, pane_key: Option<u32>, account: Option<String>) -> Result<Spawned, String> {
     // The window sends a launch line, not a process table: a launch that needs more than this is
@@ -2339,7 +2385,6 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
     let cwd = cwd.map(|w| start_dir(&w, start.as_deref()));
     // ACCT-023: a resumed Codex pane runs on the account it began on, or not at all.
     let codex = program.as_deref().and_then(crate::tools::credited_program) == Some("codex");
-    let claude = program.as_deref().and_then(crate::tools::credited_program) == Some("claude");
     let resumed = match account.as_deref().filter(|_| codex) {
         Some(id) => Some(crate::codex_accounts::wait_home(&store, id)?),
         None => None,
@@ -2356,36 +2401,10 @@ async fn spawn_unlogged(app: AppHandle, terminals: tauri::State<'_, Terminals>, 
         // PATH runs after the lock is let go (council), with the settings read here.
         let plain = program.is_none().then(|| settings.clone());
         let agent_settings = program.is_some().then(|| settings.clone());
-        let used = codex.then(|| account.clone().or_else(|| crate::codex_accounts::active_account(&store).map(|a| a.id))).flatten();
-        let codex_home = resumed.or_else(|| crate::codex_accounts::active_home(&store));
-        let token = crate::secrets::read_setting(&store, crate::claude_key::TOKEN_FIELD).ok().flatten();
-        let key_mode = settings.get(crate::claude_key::MODE_FIELD).and_then(serde_json::Value::as_str) == Some(crate::claude_key::KEY_MODE);
-        let by_key = crate::claude_key::pane_env(program.as_deref(), &settings, token);
-        // T-548-b: a restored Claude pane starts on the account it began on (its own folder), or not at all.
-        let asked = account.as_deref().filter(|_| claude && by_key.is_none() && !key_mode);
-        let claude_dir = claude_pane_dir(asked, |id| crate::claude_accounts::dir_of(&store, id), || crate::claude_accounts::active_dir(&store))?;
-        let managed = if by_key.is_none() { crate::claude_accounts::pane_env(program.as_deref(), key_mode, claude_dir) } else { None };
-        // T-548-b: a Claude pane on a managed account answers which one, the way a Codex pane does.
-        let used = spawn_account(used, managed.is_some(), || asked.map(String::from).or_else(|| crate::claude_accounts::active(&store)));
-        let env: Vec<(String, String)> = by_key
-            .or(managed)
-            // ACCT-007: a Codex pane runs in the active Codex account's private home.
-            .or_else(|| crate::codex_accounts::pane_env(program.as_deref(), codex_home))
-            // ACCT-008: a Grok pane gets the saved xAI key; Grok itself prefers its own sign-in.
-            .or_else(|| crate::grok::pane_env(program.as_deref(), crate::secrets::read_setting(&store, crate::grok::KEY_FIELD).ok().flatten()))
-            .map(|(k, v)| (k.to_string(), v))
-            .into_iter()
-            .collect();
+        let AgentEnv { env, account: used } = agent_env(&store, &settings, program.as_deref(), account, resumed, &env_own)?;
         (env, crate::cap::on(&settings), used, crate::hooks::agent_hooks::switch::on(&settings), plain, crate::shell_history::enabled(&settings), agent_settings)
     };
     let shell = plain.and_then(|s| crate::pty::default_shell(&s));
-    // ACCT-024: on a managed Claude account, the user's own settings may not sign the pane in.
-    if env.iter().any(|(k, _)| k == crate::claude_accounts::CONFIG_ENV) {
-        let found = crate::claude_accounts::sign_in_overrides(&env_own, cfg!(windows));
-        if !found.is_empty() {
-            return Err(format!("This Claude pane runs on your managed account, but your Claude settings set {}. Remove those overrides in Settings > Agents and open it again.", found.join(", ")));
-        }
-    }
     let mut env = env;
     // OpenCode: one session per terminal. Its TUI shows a tab strip for every session by default;
     // the inline CLI setting turns it off for this pane only, leaving the user's cli.json alone.
