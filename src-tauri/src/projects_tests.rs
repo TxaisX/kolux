@@ -1511,7 +1511,6 @@ fn fix2_the_sweep_clears_the_same_record_as_a_removal_by_the_user() {
         for p in [&gone_p, &kept_p] {
             set_name(&s, p, Some("typed name")).unwrap();
             set_parent(&s, p, Some("C:/ws/parent")).unwrap();
-            save_workspace_note(&s, p, "handoff text").unwrap();
             set_origin(&s, p, Some(&serde_json::json!({"issue": 7}))).unwrap();
         }
     }
@@ -1523,24 +1522,21 @@ fn fix2_the_sweep_clears_the_same_record_as_a_removal_by_the_user() {
     assert!(!load_names(&s).contains_key(&name_key(&gone_p)), "typed name");
     let parents: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&s.get(PARENTS_KEY).unwrap().unwrap()).unwrap();
     assert!(!parents.contains_key(&name_key(&gone_p)) && parents.contains_key(&name_key(&kept_p)), "parent: {parents:?}");
-    assert_eq!(workspace_note(&s, &gone_p).text, "", "note");
     assert!(!load_origins(&s).contains_key(&name_key(&gone_p)), "origin");
     // its suggested folder name is still retired in the folder it lived in
     let scope = name_key(&base.join("ws").to_string_lossy());
     assert_eq!(retired_names(&s, &scope), vec![name_form(&creature)]);
     // the one that is still there keeps everything
     assert!(load_names(&s).contains_key(&name_key(&kept_p)));
-    assert_eq!(workspace_note(&s, &kept_p).text, "handoff text");
     assert!(load_origins(&s).contains_key(&name_key(&kept_p)));
     drop(s);
     drop(store);
     let _ = fs::remove_dir_all(&base);
 }
 
-/// Every key a workspace record can live under, for one path, read back as text.
-fn record_of(store: &Store, path: &str) -> Vec<(String, Option<String>)> {
-    let note = format!("{NOTE_PREFIX}{}", name_key(path));
-    [NAMES_KEY, PARENTS_KEY, ORIGINS_KEY, RETIRED_KEY, LEGACY_KEY, note.as_str()]
+/// Every key a workspace record can live under, read back as text.
+fn record_of(store: &Store) -> Vec<(String, Option<String>)> {
+    [NAMES_KEY, PARENTS_KEY, ORIGINS_KEY, RETIRED_KEY, LEGACY_KEY]
         .iter()
         .map(|k| (k.to_string(), store.get(k).unwrap()))
         .collect()
@@ -1549,7 +1545,6 @@ fn record_of(store: &Store, path: &str) -> Vec<(String, Option<String>)> {
 fn full_record(store: &Store, path: &str) {
     set_name(store, path, Some("typed name")).unwrap();
     set_parent(store, path, Some("C:/ws/parent")).unwrap();
-    save_workspace_note(store, path, "handoff text").unwrap();
     set_origin(store, path, Some(&serde_json::json!({"issue": 7}))).unwrap();
 }
 
@@ -1568,15 +1563,14 @@ fn fix3_the_sweep_leaves_the_same_store_as_a_removal_by_the_user_on_a_twin_workt
     let removed = Store::open(&base.join("db-removed")).unwrap();
     full_record(&swept.lock().unwrap(), &path);
     full_record(&removed, &path);
-    // (the note carries its save time, so the twins differ there until the record is cleared)
-    let start = record_of(&swept.lock().unwrap(), &path);
-    assert_eq!(start[..3], record_of(&removed, &path)[..3], "names, parents and origins start equal");
+    let start = record_of(&swept.lock().unwrap());
+    assert_eq!(start[..3], record_of(&removed)[..3], "names, parents and origins start equal");
     assert!(start.iter().filter(|(k, _)| k != RETIRED_KEY && k != LEGACY_KEY).all(|(_, v)| v.is_some()), "{start:?}");
     fs::remove_dir_all(&folder).unwrap();
     let all = git.worktrees(&repo).unwrap();
     assert_eq!(sweep_gone(&swept, &repo, &all, &[], None), vec![path.clone()]);
     forget_workspace(&removed, &path).unwrap();
-    let (a, b) = (record_of(&swept.lock().unwrap(), &path), record_of(&removed, &path));
+    let (a, b) = (record_of(&swept.lock().unwrap()), record_of(&removed));
     assert_eq!(a, b, "the sweep and a removal leave the same keys behind");
     assert!(a.iter().any(|(k, v)| k == RETIRED_KEY && v.is_some()), "and the comparison saw a retired name: {a:?}");
     drop(swept);
@@ -1595,13 +1589,13 @@ fn fix3_a_busy_worktree_with_a_full_record_survives_the_sweep_though_its_folder_
     let path = folder.to_string_lossy().to_string();
     let store = Mutex::new(Store::open(&base.join("db")).unwrap());
     full_record(&store.lock().unwrap(), &path);
-    let before = record_of(&store.lock().unwrap(), &path);
+    let before = record_of(&store.lock().unwrap());
     fs::remove_dir_all(&folder).unwrap();
     let all = git.worktrees(&repo).unwrap();
     // a session still runs in a folder inside it, so the sweep must leave Git's record and ours alone
     let busy = [folder.join("src").to_string_lossy().to_string()];
     assert!(sweep_gone(&store, &repo, &all, &busy, None).is_empty());
-    assert_eq!(record_of(&store.lock().unwrap(), &path), before, "typed name, parent, note, origin and retired names untouched");
+    assert_eq!(record_of(&store.lock().unwrap()), before, "typed name, parent, origin and retired names untouched");
     assert_eq!(git.worktrees(&repo).unwrap().len(), 2, "Git still lists it");
     drop(store);
     let _ = fs::remove_dir_all(&base);
@@ -2008,7 +2002,6 @@ fn proj068_records_follow_a_workspace_moved_outside_kolux_and_a_quiet_refresh_ke
     set_name(&store, &b, Some("Beta work")).unwrap();
     reparent(&git, &store, &project, &b, Some(&a)).unwrap();
     reparent(&git, &store, &project, &c, Some(&b)).unwrap();
-    save_workspace_note(&store, &b, "half done").unwrap();
     record_made(&store, &project, &made_b, serde_json::json!({ "madeBy": "app" })).unwrap(); // what the create commands record (T-780: one write, marker decided by record_made)
     assert!(unseen(&git, &store, &project).unwrap().is_empty());
     let key = |p: &Path| name_key(&p.to_string_lossy());
@@ -2018,7 +2011,7 @@ fn proj068_records_follow_a_workspace_moved_outside_kolux_and_a_quiet_refresh_ke
     // refresh twice with nothing changed: the same rows in the same order
     let first = list_workspaces(&git, &store, &project).unwrap();
     assert_eq!(paths(&first), paths(&list_workspaces(&git, &store, &project).unwrap()));
-    // moved from a terminal with git worktree move: name, parent, note, origin and children follow
+    // moved from a terminal with git worktree move: name, parent, origin and children follow
     let moved = Path::new(&b).with_file_name("beta-moved");
     git.worktree_move(&repo, Path::new(&b), &moved).unwrap();
     let after = list_workspaces(&git, &store, &project).unwrap();
@@ -2027,7 +2020,6 @@ fn proj068_records_follow_a_workspace_moved_outside_kolux_and_a_quiet_refresh_ke
     assert_eq!(m.kind, "managed");
     assert_eq!(parent_of(&after, &moved), Some(name_key(&a)));
     assert_eq!(parent_of(&after, Path::new(&c)), Some(key(&moved)));
-    assert_eq!(workspace_note(&store, &m.path).text, "half done");
     assert!(unseen(&git, &store, &project).unwrap().is_empty(), "a moved workspace is not offered as new");
     // renamed by hand (Explorer, mv): Git is told where it went and the records follow again
     let by_hand = Path::new(&b).with_file_name("beta-by-hand");
@@ -2038,7 +2030,6 @@ fn proj068_records_follow_a_workspace_moved_outside_kolux_and_a_quiet_refresh_ke
     assert_eq!(h.name.as_deref(), Some("Beta work"));
     assert_eq!(parent_of(&after, &by_hand), Some(name_key(&a)));
     assert_eq!(parent_of(&after, Path::new(&c)), Some(key(&by_hand)));
-    assert_eq!(workspace_note(&store, &h.path).text, "half done");
     // adding the project again hands back the same one, records intact
     assert_eq!(add_project(&git, &store, &repo).unwrap().id, project.id);
     assert_eq!(find(&list_workspaces(&git, &store, &project).unwrap(), &by_hand).unwrap().name.as_deref(), Some("Beta work"));
@@ -2237,7 +2228,7 @@ fn t613_a_parent_and_a_child_at_its_tip_deleted_side_by_side_keep_their_unpushed
     // each sees the other's branch holding the commits
     let checks: Vec<RemoveCheck> = [&parent, &child].iter().map(|w| remove_check(&git, &project, &w.path).unwrap()).collect();
     assert!(checks.iter().all(|c| c.commits.is_empty()), "{checks:?}");
-    // no branch choice, side by side, as the Space batch (workspace_remove_many) runs them
+    // no branch choice, side by side, as a batch removal would run them
     let start = std::sync::Barrier::new(2);
     let kept: Vec<Option<Kept>> = std::thread::scope(|s| {
         let runs: Vec<_> = [(&parent, &checks[0]), (&child, &checks[1])]
@@ -2624,7 +2615,6 @@ fn t110b_a_renamed_branch_offers_the_folder_and_the_move_rekeys_what_kolux_remem
         let s = store.lock().unwrap();
         set_parent(&s, &child.path, Some(&made.path)).unwrap();
         set_hidden(&s, &made.path, true).unwrap();
-        save_workspace_note(&s, &made.path, "handoff").unwrap();
         save_seen(&s, &project, &[name_key(&made.path), name_key(&child.path)]).unwrap(); // as the first scan would have
     }
     fs::write(Path::new(&made.path).join("work.txt"), "unsaved").unwrap(); // uncommitted work travels with the folder
@@ -2656,8 +2646,6 @@ fn t110b_a_renamed_branch_offers_the_folder_and_the_move_rekeys_what_kolux_remem
     let seen = seen_of(&s, &project).unwrap();
     assert!(seen.contains(&name_key(&to)) && !seen.contains(&name_key(&made.path)));
     assert!(load_origins(&s).contains_key(&name_key(&to)));
-    assert!(s.get(&format!("{NOTE_PREFIX}{}", name_key(&to))).unwrap().unwrap().contains("handoff"));
-    assert_eq!(s.get(&format!("{NOTE_PREFIX}{}", name_key(&made.path))).unwrap().as_deref(), Some(""));
     assert!(crate::activity::workspace_times(&s).contains_key(&crate::activity::key(&to)));
     // folder renaming off: the branch and the name still change, no folder is offered
     let mut settings = s.settings();
@@ -2714,28 +2702,6 @@ fn proj059_rename_trims_refuses_blank_and_lasts() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-#[test]
-fn edit040_each_workspace_keeps_its_own_note_within_256_kb() {
-    let profile = temp("note-profile");
-    let store = Store::open(&profile).unwrap();
-    assert_eq!(workspace_note(&store, "C:/ws/app/a"), Note::default(), "no note yet reads as empty");
-    let at = save_workspace_note(&store, "C:/ws/app/a", "check the login flow").unwrap();
-    let note = workspace_note(&store, "C:/ws/app/a");
-    assert_eq!((note.text.as_str(), note.updated), ("check the login flow", Some(at)));
-    assert_eq!(workspace_note(&store, "C:/ws/app/b"), Note::default(), "another worktree has its own, empty note");
-    // A note over 256 KB is refused and the saved one is kept whole.
-    assert!(save_workspace_note(&store, "C:/ws/app/a", &"x".repeat(NOTE_MAX + 1)).is_err());
-    assert_eq!(workspace_note(&store, "C:/ws/app/a").text, "check the login flow");
-    assert!(save_workspace_note(&store, "C:/ws/app/a", &"x".repeat(NOTE_MAX)).is_ok());
-    // A damaged stored note reads as empty instead of failing.
-    store.set(&format!("{NOTE_PREFIX}{}", name_key("C:/ws/app/c")), "{not json").unwrap();
-    assert_eq!(workspace_note(&store, "C:/ws/app/c"), Note::default());
-    // Forgetting a removed workspace forgets its note, so a new one in that folder starts empty.
-    forget_workspace(&store, "C:/ws/app/a").unwrap();
-    assert_eq!(workspace_note(&store, "C:/ws/app/a"), Note::default());
-    drop(store);
-    fs::remove_dir_all(profile).unwrap();
-}
 // ---- T-302 / PROJ-018: an icon from the repository
 
 const PNG: &[u8] = b"\x89PNG\r\n\x1a\nfake-small-picture";
@@ -2888,7 +2854,7 @@ fn fix4_only_the_hosting_sites_own_avatar_hosts_are_ever_returned() {
     let repo = temp_repo("fix4-hosts");
     git_in(&repo, &["remote", "add", "origin", "https://github.com/octo/widget.git"]);
     let src = src_of(auto_icon(&repo), "avatar");
-    assert!(crate::github::avatar_ok(&src, "github.com"), "{src}");
+    assert!(["https://github.com/", "https://avatars.githubusercontent.com/"].iter().any(|h| src.starts_with(h)), "{src}");
     for host in ["evil.example", "github.com.evil.example", "127.0.0.1", "localhost"] {
         git_in(&repo, &["remote", "set-url", "origin", &format!("https://{host}/octo/widget.git")]);
         assert_eq!(auto_icon(&repo), None, "{host}");

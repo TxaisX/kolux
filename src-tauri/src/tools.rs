@@ -420,14 +420,14 @@ fn build_window<R: tauri::Runtime>(handle: &tauri::AppHandle<R>, config: &tauri:
             b.on_navigation(move |url| match crate::menu::navigation(url, own, dev_nav.as_ref()) {
                 crate::menu::Nav::Allow => true,
                 crate::menu::Nav::External => {
-                    let _ = crate::artifacts::system_open(url.as_str());
+                    let _ = crate::links::system_open(url.as_str());
                     false
                 }
                 crate::menu::Nav::Block => false,
             })
             .on_new_window(move |url, _features| {
                 if crate::menu::new_window(&url, own, dev_win.as_ref()) == crate::menu::Nav::External {
-                    let _ = crate::artifacts::system_open(url.as_str());
+                    let _ = crate::links::system_open(url.as_str());
                 }
                 tauri::webview::NewWindowResponse::Deny
             })

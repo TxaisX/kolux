@@ -32,21 +32,13 @@ function hostsInCode(): Map<string, string[]> {
 const CONNECTS: Record<string, string> = {
   "api.github.com": "github account",
   "github.com": "github account",
-  "avatars.githubusercontent.com": "avatars.githubusercontent.com",
   "openrouter.ai": "openrouter.ai",
-  "cdnjs.cloudflare.com": "cdnjs",
-  "cdn.jsdelivr.net": "jsdelivr",
-  "unpkg.com": "unpkg",
-  "cdn.tailwindcss.com": "tailwindcss",
-  "code.jquery.com": "jquery",
 };
 
 /** An address in the code that is not a connection the app makes, and why. */
 const NOT_A_CONNECTION: Record<string, string> = {
   "127.0.0.1": "this computer: local agent hook callbacks",
-  "kolux-artifact.localhost": "the app's own scheme for showing a saved artifact",
   "git-scm.com": "words in an error message; the person decides whether to open it",
-  "avatars.": "the start of the GitHub Enterprise picture host, built from the repository's own host",
   host: "a placeholder in a code comment or doc string",
 };
 
@@ -64,9 +56,8 @@ test("t791: each host in CONNECTS is named by a row of the Privacy list, and sti
   expect(Object.keys(NOT_A_CONNECTION).filter((h) => !found.has(h))).toEqual([]);
 });
 
-test("t791: the list says what the installers, artifacts ticker and pane keys do", () => {
+test("t791: the list says what the installer and pane keys do", () => {
   expect(list).toContain("press install on the claude or codex card");
-  expect(list).toContain("every 3 seconds");
   expect(list).toContain("claude_code_oauth_token");
   expect(list).toContain("avatars.githubusercontent.com");
 });

@@ -8,7 +8,7 @@ export const NAMED_COMMANDS = [
   "claude_accounts", "claude_key_cancel", "claude_key_connect", "claude_key_disconnect", "claude_usage", "claude_usage_of",
   "graphics_choose", "graphics_keep_running", "graphics_restart_safe", "prompt_scan", "prompt_scan_pruned", "prompt_scan_restored", "repo_setup_mode_set", "repo_setup_policy_set",
   "repo_setup_remove", "repo_setup_wait_set", "setup_suggestion_dismiss", "setup_suggestion_save",
-  "claude_account_activate", "codex_account_activate", "scm_base_changes", "scm_base_sides", "diff_sides", "session_reveal", "session_open", "session_delete",
+  "claude_account_activate", "codex_account_activate", "session_reveal", "session_open", "session_delete",
 ] as const;
 
 export type CommandName = (typeof NAMED_COMMANDS)[number];

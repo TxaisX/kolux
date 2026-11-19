@@ -33,38 +33,29 @@ struct Open {
     since: Option<u64>,
 }
 
-/// VIEW-013: how far back the Floor timeline reaches; "today" never needs more than a day.
+/// VIEW-013: how far back a pane's lane reaches; "today" never needs more than a day.
 pub const TIMELINE_MS: u64 = 26 * 3_600_000;
-/// The state changes one pane keeps for the timeline.
+/// The state changes one pane keeps in its lane.
 const TIMELINE_MARKS: usize = 500;
 /// The closed terminals one pane remembers; terminal ids are never reused within a run.
 const RETIRED_KEEP: usize = 16;
 
-/// VIEW-013: one change of a pane's state, as the Floor timeline draws it.
-#[derive(Clone, Debug, PartialEq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+/// VIEW-013: one change of a pane's state.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Mark {
     pub at: u64,
     pub state: String,
 }
 
-/// One pane's lane on the Floor: its state changes, oldest first, and when it closed.
-#[derive(Clone, Debug, Default, PartialEq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+/// One pane's lane: its state changes, oldest first, and when it closed. The lane decides which
+/// terminal's late states still count (T-260-c).
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Track {
-    pub pane: u32,
     pub marks: Vec<Mark>,
     pub ended: Option<u64>,
     /// T-260-c FIX-2: the terminal the lane last took a state from; a close with no terminal (the
     /// quit) retires this one.
-    #[serde(skip)]
     pub source: Option<u32>,
-    /// The terminal the pane runs in and whether that terminal is still open (filled by the command).
-    pub terminal: Option<u32>,
-    pub live: bool,
-    /// T-260-b: the pane of the session this one was started under, when the stored tasks and
-    /// dispatches say so and that session has a lane too (filled by the command).
-    pub parent: Option<u32>,
 }
 
 #[derive(Default)]
@@ -138,7 +129,7 @@ impl Activity {
         let t = match self.tracks.entry(pane) {
             std::collections::btree_map::Entry::Occupied(e) => e.into_mut(),
             std::collections::btree_map::Entry::Vacant(_) if gone && terminal.is_none() => return false,
-            std::collections::btree_map::Entry::Vacant(e) => e.insert(Track { pane, ..Track::default() }),
+            std::collections::btree_map::Entry::Vacant(e) => e.insert(Track::default()),
         };
         if t.ended.is_some() {
             if terminal.is_none() {
@@ -160,14 +151,8 @@ impl Activity {
         true
     }
 
-    /// VIEW-013: every pane's lane as of `now`; a pane that closed before the reach is left out.
-    pub fn timeline(&mut self, now: u64) -> Vec<Track> {
-        self.trim(now);
-        self.tracks.values().cloned().collect()
-    }
-
     /// T-260-c: a lane that closed before the reach goes as marks and ends are written, so lanes
-    /// do not pile up while the Floor is never opened.
+    /// do not pile up.
     fn trim(&mut self, now: u64) {
         let cut = now.saturating_sub(TIMELINE_MS);
         self.tracks.retain(|_, t| t.ended.is_none_or(|e| e >= cut));
@@ -244,7 +229,7 @@ fn with<T>(f: impl FnOnce(&mut Activity) -> T) -> T {
 }
 
 fn now_ms() -> u64 {
-    crate::artifacts::now_ms()
+    crate::links::now_ms()
 }
 
 /// Reads last run's counts; called once at start, before any pane reports.
@@ -357,72 +342,6 @@ pub fn activity_get(store: StoreState<'_>) -> Result<BTreeMap<String, u64>, Stri
     Ok(workspace_times(&*store.lock().map_err(|e| e.to_string())?))
 }
 
-/// VIEW-013 (T-260-b): child sessions nest under their parent. A lane is a child when the dispatch
-/// that runs in its terminal belongs to a task with a parent task (same Run) and a dispatch of that
-/// parent task ran in the terminal of another lane. Dispatches stamped by an earlier start of Kolux
-/// are ignored (terminal ids count up again), the newest dispatch of the parent that has a lane
-/// wins, and a lane is never its own ancestor. A worker whose task names no parent task nests under
-/// the pane whose terminal the dispatch records as having started it (`fromTerminal`, T-260-d).
-pub fn nest_lanes(lanes: &mut [Track], tasks: &[serde_json::Value], dispatches: &[serde_json::Value], runtime: u64) {
-    let mine = |d: &&serde_json::Value| d["runtime"].as_u64().is_none_or(|r| r == runtime);
-    let pane_of = |terminal: u64| lanes.iter().find(|l| l.terminal.is_some_and(|t| u64::from(t) == terminal)).map(|l| l.pane);
-    let mut parent: Vec<Option<u32>> = lanes
-        .iter()
-        .map(|l| {
-            let own = dispatches.iter().rev().filter(mine).find(|d| d["terminal"].as_u64().is_some() && d["terminal"].as_u64() == l.terminal.map(u64::from))?;
-            // T-260-d: a task with no parent task nests under the pane whose terminal started it.
-            let named = tasks.iter().find(|t| t["id"] == own["taskId"] && t["runId"] == own["runId"]);
-            if named.is_none_or(|t| t["parent"].as_str().is_none()) {
-                return own["fromTerminal"].as_u64().and_then(pane_of).filter(|p| *p != l.pane);
-            }
-            // A record with no runId (null == null in Value equality) is never "the same Run".
-            let task = named.filter(|t| t["runId"].is_string())?;
-            let up = task["parent"].as_str()?;
-            dispatches
-                .iter()
-                .rev()
-                .filter(mine)
-                .filter(|d| d["taskId"] == up && d["runId"] == task["runId"])
-                .find_map(|d| d["terminal"].as_u64().and_then(pane_of))
-                .filter(|p| *p != l.pane)
-        })
-        .collect();
-    // Drop every link that sits on a loop (two tasks naming each other).
-    let panes: Vec<u32> = lanes.iter().map(|l| l.pane).collect();
-    let up = |p: u32, parent: &[Option<u32>]| panes.iter().position(|x| *x == p).and_then(|i| parent[i]);
-    let looped: Vec<bool> = panes
-        .iter()
-        .map(|start| {
-            let mut at = *start;
-            (0..=panes.len()).any(|_| match up(at, &parent) {
-                Some(p) if p == *start => true,
-                Some(p) => {
-                    at = p;
-                    false
-                }
-                None => false,
-            })
-        })
-        .collect();
-    for (i, l) in lanes.iter_mut().enumerate() {
-        l.parent = if looped[i] { None } else { parent[i].take() };
-    }
-}
-
-/// VIEW-013: the Floor timeline's lanes. A lane whose terminal is no longer open is not live: the
-/// page shows its quiet stretches as unverifiable rather than idle.
-#[tauri::command]
-pub fn activity_timeline(terminals: tauri::State<'_, crate::terminal::Terminals>) -> Vec<Track> {
-    let mut lanes = with(|a| a.timeline(now_ms()));
-    for l in &mut lanes {
-        l.terminal = crate::status::terminal_of(l.pane);
-        l.live = l.ended.is_none() && l.terminal.is_some_and(|t| terminals.started(t).is_some());
-    }
-    // T-260-b: the orchestration tasks and dispatches that nested lanes went with the command line; lanes stay flat.
-    nest_lanes(&mut lanes, &[], &[], u64::from(std::process::id()));
-    lanes
-}
-
 #[tauri::command]
 pub fn activity_touch(store: StoreState<'_>, path: String) -> Result<(), String> {
     touch(&*store.lock().map_err(|e| e.to_string())?, &path)
@@ -474,8 +393,14 @@ mod tests {
         assert_eq!(lane(OTHER).0, None);
     }
 
+    /// Every pane's lane as of `now`; a pane that closed before the reach is left out.
+    fn timeline(a: &mut Activity, now: u64) -> Vec<(u32, Track)> {
+        a.trim(now);
+        a.tracks.iter().map(|(p, t)| (*p, t.clone())).collect()
+    }
+
     #[test]
-    fn view013_each_pane_keeps_its_state_changes_for_the_floor_and_old_ones_go() {
+    fn view013_each_pane_keeps_its_state_changes_and_old_ones_go() {
         let mut a = Activity::load(None, 1);
         let h = 3_600_000;
         a.note(3, Some(3), "working", 10 * h);
@@ -484,22 +409,22 @@ mod tests {
         a.note(3, Some(3), "working", 11 * h + 300_000); // blocked on approval for 5 minutes
         a.note(4, Some(4), "waiting", 12 * h);
         a.end(4, Some(4), 13 * h);
-        let lanes = a.timeline(13 * h);
-        let marks: Vec<(u64, &str)> = lanes[0].marks.iter().map(|m| (m.at, m.state.as_str())).collect();
+        let lanes = timeline(&mut a, 13 * h);
+        let marks: Vec<(u64, &str)> = lanes[0].1.marks.iter().map(|m| (m.at, m.state.as_str())).collect();
         assert_eq!(marks, vec![(10 * h, "working"), (11 * h, "permission"), (11 * h + 300_000, "working")]);
-        assert_eq!((lanes[1].pane, lanes[1].ended), (4, Some(13 * h)));
+        assert_eq!((lanes[1].0, lanes[1].1.ended), (4, Some(13 * h)));
         // A day later (the reach starts at 11:00:00.001): pane 3's older changes go but the last one
         // before the reach stays (it says what the pane was
-        // doing when the reach begins); pane 4 closed before the reach and leaves the Floor.
+        // doing when the reach begins); pane 4 closed before the reach and its lane goes.
         a.note(3, Some(3), "done", 37 * h + 1);
-        let lanes = a.timeline(40 * h);
+        let lanes = timeline(&mut a, 40 * h);
         assert_eq!(lanes.len(), 1);
-        let marks: Vec<(u64, &str)> = lanes[0].marks.iter().map(|m| (m.at, m.state.as_str())).collect();
+        let marks: Vec<(u64, &str)> = lanes[0].1.marks.iter().map(|m| (m.at, m.state.as_str())).collect();
         assert_eq!(marks, vec![(11 * h, "permission"), (11 * h + 300_000, "working"), (37 * h + 1, "done")]);
         // T-260-c: a state reported after the pane closed never reopens its lane.
         a.end(3, Some(3), 40 * h);
         a.note(3, Some(3), "working", 40 * h + 1);
-        assert_eq!(a.timeline(40 * h + 2)[0].ended, Some(40 * h));
+        assert_eq!(timeline(&mut a, 40 * h + 2)[0].1.ended, Some(40 * h));
     }
 
     #[test]
@@ -513,7 +438,7 @@ mod tests {
         a.note(1, Some(1), "done", 2 * h + 60);
         assert_eq!(a.tracks[&1].ended, Some(2 * h));
         assert_eq!(a.tracks[&1].marks.last().map(|m| m.state.as_str()), Some("done"));
-        // Past the reach, another pane's mark drops the closed lane without the Floor ever reading.
+        // Past the reach, another pane's mark drops the closed lane.
         a.note(2, Some(2), "working", 2 * h + TIMELINE_MS + 1);
         assert!(!a.tracks.contains_key(&1));
         // Two more lanes close; a mark a day and more later drops both.
@@ -551,7 +476,7 @@ mod tests {
         // TERM-111 Restart (or Enter after exit) runs a new terminal 4 on the same pane key.
         hook(&mut a, 7, Some(4), "working", 3 * h);
         assert_eq!((a.tracks[&7].ended, last(&a, 7)), (None, Some((3 * h, "working"))));
-        assert_eq!(a.timeline(3 * h + 1)[0].ended, None, "the Floor shows lane 7 open again");
+        assert_eq!(timeline(&mut a, 3 * h + 1)[0].1.ended, None, "lane 7 is open again");
         close(&mut a, 7, Some(4), 4 * h);
         assert_eq!(a.tracks[&7].ended, Some(4 * h));
     }
@@ -588,7 +513,7 @@ mod tests {
         hook(&mut a, 1, Some(1), "working", h);
         close(&mut a, 1, Some(1), 2 * h);
         hook(&mut a, 2, Some(2), "working", 2 * h);
-        // The only write past the reach is pane 2's close; no other mark and no Floor read.
+        // The only write past the reach is pane 2's close; no other mark.
         close(&mut a, 2, Some(2), 2 * h + TIMELINE_MS + 1);
         assert_eq!(a.tracks.keys().copied().collect::<Vec<_>>(), vec![2]);
     }
@@ -749,135 +674,6 @@ mod tests {
         let back = Activity::load(Some(&at_quit), 9_999);
         assert_eq!(back.counts, Counts { since: 42, agents_started: 1, working_ms: 300, prs_created: 1 });
         assert!(Activity::load(Some("not json"), 7).counts.since == 7, "unreadable counts start again");
-    }
-
-    fn lane(pane: u32, terminal: Option<u32>) -> Track {
-        Track { pane, terminal, live: true, ..Track::default() }
-    }
-
-    fn parents(lanes: &[Track]) -> Vec<(u32, Option<u32>)> {
-        lanes.iter().map(|l| (l.pane, l.parent)).collect()
-    }
-
-    #[test]
-    fn t260b_a_child_session_nests_under_the_pane_of_its_parent_task_and_nothing_else_does() {
-        use serde_json::json;
-        let me = u64::from(std::process::id());
-        let tasks = vec![
-            json!({ "id": "task-1", "runId": "run-1" }),
-            json!({ "id": "task-2", "runId": "run-1", "parent": "task-1" }),
-            json!({ "id": "task-3", "runId": "run-1", "parent": "task-2" }),
-            json!({ "id": "task-4", "runId": "run-1" }),
-        ];
-        let dispatches = vec![
-            json!({ "id": "dispatch-1", "runtime": me, "runId": "run-1", "taskId": "task-1", "status": "completed", "terminal": 10 }),
-            json!({ "id": "dispatch-2", "runtime": me, "runId": "run-1", "taskId": "task-2", "status": "running", "terminal": 11 }),
-            json!({ "id": "dispatch-3", "runtime": me, "runId": "run-1", "taskId": "task-3", "status": "running", "terminal": 12 }),
-            json!({ "id": "dispatch-4", "runtime": me, "runId": "run-1", "taskId": "task-4", "status": "running", "terminal": 13 }),
-        ];
-        // The panes are not numbered like the terminals, and the child comes before its parent.
-        let mut lanes = vec![lane(7, Some(12)), lane(5, Some(11)), lane(3, Some(10)), lane(9, Some(13)), lane(8, None)];
-        nest_lanes(&mut lanes, &tasks, &dispatches, me);
-        assert_eq!(parents(&lanes), vec![(7, Some(5)), (5, Some(3)), (3, None), (9, None), (8, None)], "a grandchild nests under the child, a task with no parent stays on top");
-        let json = serde_json::to_value(&lanes[1]).unwrap();
-        assert_eq!(json["parent"], 3, "the Floor reads the parent as a pane number");
-        assert!(serde_json::to_value(&lanes[2]).unwrap()["parent"].is_null());
-    }
-
-    #[test]
-    fn t260b_a_link_nobody_can_vouch_for_leaves_the_lane_on_top() {
-        use serde_json::json;
-        let me = u64::from(std::process::id());
-        let task = |id: &str, parent: Option<&str>, run: &str| json!({ "id": id, "runId": run, "parent": parent });
-        let dispatch = |id: &str, task: &str, run: &str, terminal: u32, runtime: u64| json!({ "id": id, "runtime": runtime, "runId": run, "taskId": task, "status": "running", "terminal": terminal });
-        // A dispatch stamped by an earlier start of Kolux names a terminal that is someone else now.
-        let mut lanes = vec![lane(1, Some(10)), lane(2, Some(11))];
-        let tasks = vec![task("task-1", None, "run-1"), task("task-2", Some("task-1"), "run-1")];
-        nest_lanes(&mut lanes, &tasks, &[dispatch("d-1", "task-1", "run-1", 10, me + 1), dispatch("d-2", "task-2", "run-1", 11, me)], me);
-        assert_eq!(parents(&lanes), vec![(1, None), (2, None)], "the parent's dispatch is from another start");
-        // A parent task of another Run is not the parent.
-        let tasks = vec![task("task-1", None, "run-2"), task("task-2", Some("task-1"), "run-1")];
-        nest_lanes(&mut lanes, &tasks, &[dispatch("d-1", "task-1", "run-2", 10, me), dispatch("d-2", "task-2", "run-1", 11, me)], me);
-        assert_eq!(parents(&lanes), vec![(1, None), (2, None)]);
-        // A parent whose worker has no lane (its terminal never reported) leaves the child on top, and a retry picks the newest dispatch that has a lane.
-        let tasks = vec![task("task-1", None, "run-1"), task("task-2", Some("task-1"), "run-1")];
-        let ds = vec![dispatch("d-1", "task-1", "run-1", 10, me), dispatch("d-2", "task-2", "run-1", 11, me), dispatch("d-3", "task-1", "run-1", 99, me)];
-        nest_lanes(&mut lanes, &tasks, &ds, me);
-        assert_eq!(parents(&lanes), vec![(1, None), (2, Some(1))], "the retry's terminal 99 has no lane, so the earlier dispatch's lane is the parent");
-        // Two tasks that name each other, and a task that names itself, never make a lane its own ancestor.
-        let tasks = vec![task("task-1", Some("task-2"), "run-1"), task("task-2", Some("task-1"), "run-1"), task("task-3", Some("task-3"), "run-1")];
-        let mut lanes = vec![lane(1, Some(10)), lane(2, Some(11)), lane(3, Some(12))];
-        let ds = vec![dispatch("d-1", "task-1", "run-1", 10, me), dispatch("d-2", "task-2", "run-1", 11, me), dispatch("d-3", "task-3", "run-1", 12, me)];
-        nest_lanes(&mut lanes, &tasks, &ds, me);
-        assert!(lanes.iter().all(|l| l.parent.is_none()), "{:?}", parents(&lanes));
-        // Nothing stored at all: every lane stays on top.
-        nest_lanes(&mut lanes, &[], &[], me);
-        assert!(lanes.iter().all(|l| l.parent.is_none()));
-    }
-
-    #[test]
-    fn fix1_a_task_and_a_dispatch_with_no_run_id_never_count_as_the_same_run() {
-        use serde_json::json;
-        let me = u64::from(std::process::id());
-        // Legacy records: a null runId on either side. null == null is not a match.
-        for (parent_run, child_run, d_parent, d_child) in [
-            (json!(null), json!(null), json!(null), json!(null)),
-            (json!(null), json!("run-1"), json!(null), json!("run-1")),
-            (json!("run-1"), json!(null), json!("run-1"), json!(null)),
-        ] {
-            let tasks = vec![json!({ "id": "task-1", "runId": parent_run }), json!({ "id": "task-2", "runId": child_run, "parent": "task-1" })];
-            let ds = vec![
-                json!({ "id": "d-1", "runtime": me, "runId": d_parent, "taskId": "task-1", "terminal": 10 }),
-                json!({ "id": "d-2", "runtime": me, "runId": d_child, "taskId": "task-2", "terminal": 11 }),
-            ];
-            let mut lanes = vec![lane(1, Some(10)), lane(2, Some(11))];
-            nest_lanes(&mut lanes, &tasks, &ds, me);
-            assert_eq!(parents(&lanes), vec![(1, None), (2, None)], "tasks {tasks:?} dispatches {ds:?}");
-        }
-        // A real runId on both sides still nests.
-        let tasks = vec![json!({ "id": "task-1", "runId": "run-1" }), json!({ "id": "task-2", "runId": "run-1", "parent": "task-1" })];
-        let ds = vec![
-            json!({ "id": "d-1", "runtime": me, "runId": "run-1", "taskId": "task-1", "terminal": 10 }),
-            json!({ "id": "d-2", "runtime": me, "runId": "run-1", "taskId": "task-2", "terminal": 11 }),
-        ];
-        let mut lanes = vec![lane(1, Some(10)), lane(2, Some(11))];
-        nest_lanes(&mut lanes, &tasks, &ds, me);
-        assert_eq!(parents(&lanes), vec![(1, None), (2, Some(1))]);
-    }
-
-    #[test]
-    fn t260d_a_worker_with_no_parent_task_nests_under_the_pane_that_started_it() {
-        use serde_json::json;
-        let me = u64::from(std::process::id());
-        let tasks = vec![json!({ "id": "task-1", "runId": "run-1" }), json!({ "id": "task-2", "runId": "run-1", "parent": "task-9" })];
-        // The coordinator (terminal 10, pane 4) has no task of its own; its workers ran in 11 and 12.
-        let ds = vec![
-            json!({ "id": "d-1", "runtime": me, "runId": "run-1", "taskId": "task-1", "terminal": 11, "fromTerminal": 10 }),
-            json!({ "id": "d-2", "runtime": me, "runId": "run-1", "taskId": "task-1", "terminal": 12 }),
-        ];
-        let mut lanes = vec![lane(4, Some(10)), lane(5, Some(11)), lane(6, Some(12))];
-        nest_lanes(&mut lanes, &tasks, &ds, me);
-        assert_eq!(parents(&lanes), vec![(4, None), (5, Some(4)), (6, None)], "a dispatch with a starting terminal nests, one without stays on top");
-        // A starting terminal with no lane, the worker's own terminal, or a dispatch from another start leaves it on top.
-        for (from, runtime) in [(json!(99), me), (json!(11), me), (json!(10), me + 1), (json!(null), me)] {
-            let ds = vec![json!({ "id": "d-1", "runtime": runtime, "runId": "run-1", "taskId": "task-1", "terminal": 11, "fromTerminal": from })];
-            let mut lanes = vec![lane(4, Some(10)), lane(5, Some(11))];
-            nest_lanes(&mut lanes, &tasks, &ds, me);
-            assert_eq!(parents(&lanes), vec![(4, None), (5, None)], "fromTerminal {from} runtime {runtime}");
-        }
-        // A task that names a parent task follows the parent task, never the starting terminal.
-        let ds = vec![json!({ "id": "d-2", "runtime": me, "runId": "run-1", "taskId": "task-2", "terminal": 11, "fromTerminal": 10 })];
-        let mut lanes = vec![lane(4, Some(10)), lane(5, Some(11))];
-        nest_lanes(&mut lanes, &tasks, &ds, me);
-        assert_eq!(parents(&lanes), vec![(4, None), (5, None)], "the parent task has no lane, so the worker stays on top");
-        // Two coordinators that started each other never make a lane its own ancestor.
-        let ds = vec![
-            json!({ "id": "d-1", "runtime": me, "runId": "run-1", "taskId": "task-1", "terminal": 11, "fromTerminal": 10 }),
-            json!({ "id": "d-3", "runtime": me, "runId": "run-1", "taskId": "task-1", "terminal": 10, "fromTerminal": 11 }),
-        ];
-        let mut lanes = vec![lane(4, Some(10)), lane(5, Some(11))];
-        nest_lanes(&mut lanes, &tasks, &ds, me);
-        assert!(lanes.iter().all(|l| l.parent.is_none()), "{:?}", parents(&lanes));
     }
 
     #[test]

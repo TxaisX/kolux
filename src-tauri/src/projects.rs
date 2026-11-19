@@ -233,8 +233,6 @@ pub fn forget_workspace(store: &Store, path: &str) -> Result<(), String> {
     }
     set_name(store, path, None)?;
     set_parent(store, path, None)?;
-    // EDIT-040: a later workspace in the same folder starts with an empty note.
-    store.set(&format!("{NOTE_PREFIX}{}", name_key(path)), "").map_err(|e| e.to_string())?;
     // After-list row 59: every way a workspace goes drops its board status too.
     crate::bulk::clear_status(store, path)?;
     set_origin(store, path, None)
@@ -251,44 +249,6 @@ pub fn retire_workspace_names(store: &Store, path: &str) -> Result<(), String> {
         retire_name(store, &scope, &name)?;
     }
     Ok(())
-}
-
-/// EDIT-040: the handoff note of one workspace, stored under its own key (one write each, so a
-/// save is all or nothing) as its text and when it last changed.
-pub const NOTE_PREFIX: &str = "workspaceNote:";
-pub const NOTE_MAX: usize = 256 * 1024;
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct Note {
-    pub text: String,
-    /// Milliseconds since 1970; None before the first save.
-    pub updated: Option<u64>,
-}
-
-/// The workspace's note; none yet, or a damaged one, reads as empty.
-pub fn workspace_note(store: &Store, path: &str) -> Note {
-    store.get(&format!("{NOTE_PREFIX}{}", name_key(path))).ok().flatten().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
-}
-
-/// Saves the note and returns when; one over 256 KB is refused and the saved one kept.
-pub fn save_workspace_note(store: &Store, path: &str, text: &str) -> Result<u64, String> {
-    if text.len() > NOTE_MAX {
-        return Err(format!("the note is {} KB; a note holds at most 256 KB", text.len().div_ceil(1024)));
-    }
-    let updated = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
-    let note = serde_json::to_string(&Note { text: text.to_string(), updated: Some(updated) }).map_err(|e| e.to_string())?;
-    store.set(&format!("{NOTE_PREFIX}{}", name_key(path)), &note).map_err(|e| e.to_string())?;
-    Ok(updated)
-}
-
-#[tauri::command]
-pub fn workspace_note_get(store: StoreState<'_>, path: String) -> Result<Note, String> {
-    Ok(workspace_note(&*store.lock().map_err(|e| e.to_string())?, &path))
-}
-
-#[tauri::command]
-pub fn workspace_note_save(store: StoreState<'_>, path: String, text: String) -> Result<u64, String> {
-    save_workspace_note(&*store.lock().map_err(|e| e.to_string())?, &path, &text)
 }
 
 pub(crate) fn load_origins(store: &Store) -> serde_json::Map<String, serde_json::Value> {
@@ -2368,10 +2328,6 @@ fn rekey_workspace(store: &Store, project: &Project, from: &str, to: &str) -> Re
     }
     if let Some(seen) = seen_of(store, project).filter(|s| s.contains(&old)) {
         save_seen(store, project, seen.iter().filter(|k| **k != old).chain(std::iter::once(&new)))?;
-    }
-    let note_key = |k: &str| format!("{NOTE_PREFIX}{k}");
-    if let Some(note) = store.get(&note_key(&old)).map_err(|e| e.to_string())?.filter(|n| !n.is_empty()) {
-        store.set_all(&[(&note_key(&new), &note), (&note_key(&old), "")]).map_err(|e| e.to_string())?;
     }
     crate::activity::touch(store, to)
 }

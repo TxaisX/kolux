@@ -675,12 +675,6 @@ pub fn watch_start(app: tauri::AppHandle, perm: Option<String>) {
                 if let Some(d) = &dir {
                     crate::diag::write(d, &format!("interface recovery: no heartbeat, reload {attempt} of 2 (APP-042)"));
                 }
-                // row 199: unsaved editor text first; no ack means the draft write failed or the window is stuck
-                if !crate::editor_drafts::flush_before_reload(&app) {
-                    if let Some(d) = &dir {
-                        crate::diag::write(d, "interface recovery: flush not acked, reloading anyway (row 199)");
-                    }
-                }
                 let _ = win.reload();
             }
             Action::Prompt(reason) => {
@@ -694,11 +688,6 @@ pub fn watch_start(app: tauri::AppHandle, perm: Option<String>) {
                     i.answered(reload, Instant::now());
                 }
                 if reload {
-                    if !crate::editor_drafts::flush_before_reload(&app) {
-                        if let Some(d) = &dir {
-                            crate::diag::write(d, "interface recovery: flush not acked, reloading anyway (row 199)");
-                        }
-                    }
                     let _ = win.reload();
                 } else {
                     app.exit(0);
@@ -781,22 +770,13 @@ pub fn browser_args(current: Option<&str>, safe: bool) -> String {
     crate::webview_args::fedcm_off(&s)
 }
 
-/// The arguments the windows were given at launch: every webview Kolux opens later on the same data
-/// folder must pass the same string, or the engine refuses to create it.
-static LAUNCH_ARGS: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-
-/// In `run`, once per window config before the builder starts: the window's arguments, remembered
-/// for later webviews. Row 939: they carry the proxy saved in this profile, so the window and the
-/// tabs on its data folder agree on `--proxy-server` (the engine refuses two sets on one folder).
+/// In `run`, once per window config before the builder starts: the window's arguments. Every webview
+/// on the same data folder must pass the same string, or the engine refuses to create it (rows
+/// 955 / 959). Row 939: they carry the proxy saved in this profile, so the window and the tabs on
+/// its data folder agree on `--proxy-server` (the engine refuses two sets on one folder).
 /// Read from the profile folder because the store is not open yet when the windows are built.
 pub fn launch_browser_args_for(current: Option<&str>, safe: bool, identifier: &str) -> String {
-    launch_with_proxy(current, safe, profile_dir(identifier).and_then(|d| saved_proxy_in(&d)).as_ref())
-}
-
-fn launch_with_proxy(current: Option<&str>, safe: bool, proxy: Option<&tauri::Url>) -> String {
-    let s = launch_string(current, safe, proxy);
-    let _ = LAUNCH_ARGS.set(s.clone());
-    s
+    launch_string(current, safe, profile_dir(identifier).and_then(|d| saved_proxy_in(&d)).as_ref())
 }
 
 fn launch_string(current: Option<&str>, safe: bool, proxy: Option<&tauri::Url>) -> String {
@@ -815,15 +795,6 @@ fn saved_proxy_in(dir: &Path) -> Option<tauri::Url> {
     let settings = read("settings.json").or_else(|| read("settings.json.bak"))?;
     let plain = crate::secrets::unseal(settings.get("httpProxy")?.as_str()?).ok()?;
     crate::net::proxy_of(Some(&plain)).ok().flatten()
-}
-
-/// What a webview opened later on the default data folder (the PDF window, the tower) passes.
-pub fn browser_args_now() -> String {
-    args_for_later_window(LAUNCH_ARGS.get().map(String::as_str))
-}
-
-fn args_for_later_window(launch: Option<&str>) -> String {
-    launch.map(str::to_string).unwrap_or_else(|| browser_args(None, false))
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2293,7 +2264,6 @@ mod tests {
         assert_eq!(browser_args(Some(&a), false), a, "applying twice adds nothing");
         assert_eq!(browser_args(Some("--x"), false), format!("--x {} --disable-features=FedCm", UNTHROTTLED.join(" ")));
         assert!(a.split_whitespace().any(|x| x == "--disable-features=msWebOOUI,msPdfOOUI,FedCm"), "BROW-026 FedCM off in the one list: {a}");
-        assert_eq!(browser_args_now(), LAUNCH_ARGS.get().cloned().unwrap_or_else(|| browser_args(None, false)));
     }
 
     /// R07-browser.2 (T-634): wry's default list switches SmartScreen off, and every window and tab
@@ -2382,15 +2352,16 @@ mod tests {
         for (label, safe, proxy) in [("neither", false, None), ("proxy", false, Some(&url)), ("safe graphics", true, None), ("both", true, Some(&url))] {
             let main = launch_string(None, safe, proxy);
             assert_ne!(main, WRY_DEFAULT_ARGS, "{label}: an argless second window would be refused");
-            assert_eq!(args_for_later_window(Some(&main)), main, "{label}: a later window passes the window's string as it is");
         }
-        assert_eq!(args_for_later_window(None), browser_args(None, false), "before the launch string exists the plain string stands in");
     }
 
     /// Every call that makes a webview, as the scan below knows them.
     const WEBVIEW_BUILDERS: [&str; 5] = ["WebviewWindowBuilder::new(", "WebviewBuilder::new(", "WebviewWindow::builder(", "Webview::builder(", "WebviewWindowBuilder::from_config("];
     /// What a builder chain must itself contain: the one source's string, a data folder, or the
-    /// opener's engine. A hardcoded string, or a neighbour's call, does not count.
+    /// opener's engine. A hardcoded string, or a neighbour's call, does not count. No window opens
+    /// later on the default data folder since the PDF window went (2026-11-19 slim-down), so
+    /// `browser_args_now` (the main window's launch string, kept for such windows) went with it; the
+    /// next one brings it back.
     const WEBVIEW_ARG_CALLS: [&str; 4] = [".additional_browser_args(&browser_args_now())", ".additional_browser_args(&crate::resources::recovery::browser_args_now())", ".data_directory(", ".window_features("];
 
     /// Where the statement that holds the builder at `from` ends: its own `;` (so `?;` too) outside
@@ -2494,8 +2465,8 @@ mod tests {
                 }
             }
         }
-        // Two since the Tower window builder went in the 2026-11-19 slim-down: the PDF export window and the tools window.
-        assert!(seen >= 2, "the scan found the window builders: {seen}");
+        // One since the Tower and PDF export window builders went in the 2026-11-19 slim-down: the tools window.
+        assert!(seen >= 1, "the scan found the window builders: {seen}");
     }
 
     // Row 955 LOW: the scan pairs each builder with its own browser-argument call, so a second,

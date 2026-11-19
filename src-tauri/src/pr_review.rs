@@ -415,24 +415,6 @@ pub fn checks_for(provider: &Provider, ask: impl FnOnce() -> Result<scm::PrCheck
     }
 }
 
-/// Row 953: Source Control's own lookup (`scm_pr`). `provider`/`host` are set (and otherwise left out of the wire) when the remote is not GitHub, so gh was never asked.
-#[derive(Debug, Default, Serialize)]
-pub struct PrAnswer {
-    pub pr: Option<Pr>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub provider: Option<&'static str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub host: Option<String>,
-}
-
-/// Row 953: `checks_for`'s gate for the plain lookup; gh (`ask`) runs only for GitHub.
-pub fn pr_for(provider: &Provider, ask: impl FnOnce() -> Result<Option<Pr>, String>) -> Result<PrAnswer, String> {
-    match provider.other_label() {
-        None => Ok(PrAnswer { pr: ask()?, ..Default::default() }),
-        Some((name, host)) => Ok(PrAnswer { provider: Some(name), host, ..Default::default() }),
-    }
-}
-
 /// Row 76: the create gate. A pull request is made through gh, which only knows GitHub: any other provider is refused
 /// by name before `make` (and so before gh or the writer) runs.
 pub fn create_for<T>(provider: &Provider, make: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
@@ -1143,28 +1125,6 @@ mod tests {
         assert!(err.contains("no remote"), "{err}");
         assert_eq!(create_for(&Provider::GitHub, || Ok(sample_pr())).unwrap().number, 7);
         assert!(create_for(&Provider::GitHub, || Err::<scm::Pr, String>("gh is signed out".into())).is_err());
-    }
-
-    // ---- row 953: scm_pr (Source Control's own lookup) is gated by the same provider check ----
-
-    #[test]
-    fn row953_pr_for_a_non_github_remote_never_calls_gh() {
-        for (p, name, host) in [(Provider::GitLab("gitlab.com".into()), "gitlab", Some("gitlab.com")), (Provider::Other("code.example.org".into()), "other", Some("code.example.org")), (Provider::NoHost, "none", None)] {
-            let mut asked = 0;
-            let got = pr_for(&p, || {
-                asked += 1;
-                Ok(Some(sample_pr()))
-            })
-            .unwrap();
-            assert_eq!(asked, 0, "{p:?} must not call gh");
-            assert!(got.pr.is_none(), "{got:?}");
-            assert_eq!((got.provider, got.host.as_deref()), (Some(name), host));
-        }
-        let got = pr_for(&Provider::GitHub, || Ok(Some(sample_pr()))).unwrap();
-        assert_eq!((got.pr.map(|p| p.number), got.provider, got.host), (Some(7), None, None));
-        assert!(pr_for(&Provider::GitHub, || Err("gh is signed out".into())).is_err());
-        let wire = serde_json::to_value(pr_for(&Provider::GitHub, || Ok(None)).unwrap()).unwrap();
-        assert!(wire["pr"].is_null() && wire.get("provider").is_none() && wire.get("host").is_none(), "{wire}");
     }
 
     fn sample_pr() -> scm::Pr {

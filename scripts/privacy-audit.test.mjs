@@ -21,17 +21,15 @@ const TCP_CONNECT_ALL = new RegExp(TCP_CONNECT.source, "g");
 // http.request (Node) and urllib.request (Python) cover a script Kolux embeds for a vendor's extension or plugin.
 const CLIENTS = [/\bfetch\(\s*["'`]https?:/, /XMLHttpRequest/, /sendBeacon/, /new WebSocket\(/, /\breqwest::/, /tauri_plugin_updater/, /\bureq::/, /\bhyper::/, /\bhttp\.request\(/, /\burllib\.request\b/, TCP_CONNECT];
 const ALLOWED = {
-  "src-tauri/src/artifacts.rs": [/\breqwest::/], // the script CDNs, when saving an artifact for offline use
   "src-tauri/src/net.rs": [/\breqwest::/], // project and site icons (APP-070); moved here from browser.rs when the web pane was removed (2026-11-12)
   "src-tauri/src/update.rs": [/tauri_plugin_updater/], // GitHub Releases
   "src-tauri/src/lib.rs": [/tauri_plugin_updater/],
   "src-tauri/src/pty_service.rs": [TCP_CONNECT], // pty_service.rs:514 Client::connect: the host is the literal [127,0,0,1], only the port comes from the service's endpoint file
-  "src-tauri/src/labels.rs": [TCP_CONNECT], // labels.rs:180 the label proxy to a workspace dev server: its only target comes from target_of (labels.rs:75), which refuses any host that is not a loopback IP or localhost
 };
 // The one loopback call each file may make, as exact text: it is cut out before the scan, so any
 // other fetch in the same file is still caught (an ALLOWED entry would pass the whole file).
 // A whole-file reqwest pass covers one client only: a second builder in the same file fails the audit.
-const ONE_CLIENT = { "src-tauri/src/artifacts.rs": "reqwest::Client::builder(" };
+const ONE_CLIENT = {};
 // net.rs (council FIX-4, Ruling 1; was browser.rs until the web pane went): its icon clients both come from one builder line, kept as
 // exact text with the public-only lookup and no proxy, and from exactly three calls of the function
 // that holds it; any other way of making a client (a bare constructor, an imported Client, the
@@ -47,8 +45,6 @@ const PINNED = {
   ],
   // pty_service.rs holds exactly one loopback connect (its ALLOWED line); a second one fails the audit.
   "src-tauri/src/pty_service.rs": [[TCP_CONNECT_ALL, 1]],
-  // labels.rs holds exactly one connect, behind the loopback guard in target_of; a second one fails the audit.
-  "src-tauri/src/labels.rs": [[TCP_CONNECT_ALL, 1]],
 };
 const EXACT = {};
 
@@ -106,9 +102,9 @@ test("app070: a spaced TcpStream :: connect is flagged like the plain spelling",
   const split = "fn x() { let _ = TcpStream\n    ::connect(addr); }\n";
   for (const text of [spaced, split]) {
     expect(clientProblems("src-tauri/src/other.rs", text).length, text).toBeGreaterThan(0);
-    // labels.rs holds exactly one connect: a second one, however spaced, moves the pinned count.
-    const labels = shipped(fs.readFileSync(path.join(root, "src-tauri/src/labels.rs"), "utf8"));
-    expect(pinnedProblems("src-tauri/src/labels.rs", labels + text).length, text).toBeGreaterThan(0);
+    // pty_service.rs holds exactly one connect: a second one, however spaced, moves the pinned count.
+    const service = shipped(fs.readFileSync(path.join(root, "src-tauri/src/pty_service.rs"), "utf8"));
+    expect(pinnedProblems("src-tauri/src/pty_service.rs", service + text).length, text).toBeGreaterThan(0);
   }
 });
 

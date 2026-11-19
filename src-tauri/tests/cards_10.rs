@@ -168,9 +168,8 @@ fn safe001_box2_a_shell_permission_carries_no_plan() {
 }
 
 // ---- SAFE-021 / SAFE-022 (batch 4): only fake path strings; no opener, no explorer, no network is ever called ----
-use kolux_lib::artifacts::open_external;
 use kolux_lib::fence::{check, Fence};
-use kolux_lib::links::{fence as file_fence, fence_key, host_path, launchable, program_like, refuse_host};
+use kolux_lib::links::{fence as file_fence, fence_key, host_path, launchable, open_external, program_like, refuse_host};
 use kolux_lib::state::Store;
 use std::collections::HashSet;
 
@@ -274,7 +273,7 @@ fn safe021_box4_a_grant_covers_the_exact_path_and_a_folder_grant_gives_no_file_b
     std::fs::write(outside.join("sub").join("b.txt"), "b").unwrap();
     let s = |p: &Path| p.to_string_lossy().into_owned();
     let roots = vec![s(&repo)];
-    // links.rs grants (what file_grant stores): the folder itself, nothing under it
+    // links.rs grants (an exact path granted for this run): the folder itself, nothing under it
     let mut granted = HashSet::new();
     granted.insert(fence_key(&s(&outside)));
     assert!(file_fence(&s(&outside), &roots, &granted, true).is_ok(), "the exact path");

@@ -4,7 +4,6 @@ mod activity;
 mod agent_sleep;
 pub mod agents;
 mod app_look;
-pub mod artifacts;
 mod badge;
 mod awake;
 mod capture;
@@ -13,9 +12,7 @@ mod chat_tools;
 mod clipboard;
 mod cleanup;
 mod engine_crash;
-mod html_preview;
 mod net;
-mod pdf_export;
 mod webview_args;
 mod webview_engine;
 mod cap;
@@ -28,9 +25,7 @@ pub mod codex_accounts;
 pub mod codex_usage;
 mod creatures;
 pub mod diag;
-mod editor_drafts;
 pub mod env_name;
-mod editor_search;
 pub mod fence;
 pub mod files;
 pub mod final_save;
@@ -55,7 +50,6 @@ mod bulk;
 mod models;
 mod names;
 mod newproject;
-mod notebook_run;
 mod notifications;
 mod notices;
 mod onboarding;
@@ -65,11 +59,9 @@ pub mod mask;
 #[cfg(test)]
 mod s9_fuzz_tests;
 mod ports;
-mod labels;
 mod tidy;
 mod resources;
 pub mod projects;
-mod prompt_answer;
 mod quit_merge;
 mod prompt_scan;
 pub mod scm;
@@ -96,7 +88,6 @@ mod shell_history;
 pub mod state;
 pub mod status;
 mod sub_work;
-mod term_import;
 mod sysmem;
 pub mod terminal;
 #[cfg(test)]
@@ -420,7 +411,6 @@ pub fn run() {
             app.manage(claude_accounts::SignIns::default());
             app.manage(codex_accounts::SignIns::default());
             app.manage(install::Installs::default());
-            app.manage(artifacts::Library::new(dir.join("artifacts")));
             app.manage(update::Updates::default());
             // Without Git the app still opens, and the landing screen says so (APP-023).
             app.manage(startup_marks::joined(git)?.unwrap_or(git::Git { version: String::new() }));
@@ -469,22 +459,11 @@ pub fn run() {
                 std::thread::sleep(std::time::Duration::from_secs(15));
                 resume::tick(&handle, &log_dir);
             });
-            // PROJ-069: quiet repositories get Git's own housekeeping (prune + gc, nothing deleted);
-            // PROJ-088: the workspace label addresses follow their setting (off by default).
+            // PROJ-069: quiet repositories get Git's own housekeeping (prune + gc, nothing deleted).
             let handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let resolver = handle.clone();
-                let resolve: labels::Resolve = std::sync::Arc::new(move |label: &str| labels::resolve_in(&resolver, label));
-                let mut tidy_at = std::time::Instant::now() + tidy::POLL;
-                loop {
-                    std::thread::sleep(std::time::Duration::from_secs(5));
-                    let on = handle.state::<Mutex<Store>>().lock().map(|s| labels::enabled(&s.settings())).unwrap_or(false);
-                    labels::apply(on, &resolve);
-                    if std::time::Instant::now() >= tidy_at {
-                        tidy_at = std::time::Instant::now() + tidy::POLL;
-                        tidy::pass(&handle);
-                    }
-                }
+            std::thread::spawn(move || loop {
+                std::thread::sleep(tidy::POLL);
+                tidy::pass(&handle);
             });
             // ACCT-050: an agent started by hand in a shell pane is recognised within a few seconds.
             let handle = app.handle().clone();
@@ -524,21 +503,6 @@ pub fn run() {
             startup_marks::mark("setup");
             Ok(())
         })
-        })
-        // The Artifacts viewer (SKILL-036) loads stored pages through this scheme, one entry at a time.
-        // T-500: only the app's own web view may read artifacts; a Browser pane page gets nothing.
-        // T-624: asynchronous, so the file read (up to 8 MB of a ranged clip, or a whole page) runs on a
-        // blocking worker and never on the window's thread; the responder answers from there. `serve`
-        // itself takes one of 4 read slots, which bound how many reads run at once, not their size.
-        .register_asynchronous_uri_scheme_protocol(artifacts::SCHEME, |ctx, req, responder| {
-            if ctx.webview_label() != "main" {
-                responder.respond(tauri::http::Response::builder().status(403).body(b"not for this page".to_vec()).unwrap_or_default());
-                return;
-            }
-            let app = ctx.app_handle().clone();
-            tauri::async_runtime::spawn_blocking(move || {
-                responder.respond(artifacts::serve(&app.state::<artifacts::Library>(), &req));
-            });
         })
         // T-033-e (FIX-1): a reload of the main page (F5 / Ctrl+R) destroys no window, and the old
         // page never gets to release its git watches, so they are all let go as the new page starts
@@ -616,9 +580,6 @@ pub fn run() {
             hooks::claude_usage_of,
             sysmem::process_memory,
             fonts::list_fonts,
-            term_import::term_import_ghostty,
-            term_import::term_import_ghostty_theme,
-            term_import::term_import_warp,
             resources::resources,
             sessions::list::sessions_list,
             sessions::list::session_resume_plan,
@@ -654,12 +615,10 @@ pub fn run() {
             terminal::terminal_listed_session,
             terminal::terminal_prune_history,
             terminal::terminal_history_append,
-            status::agent_history,
             status::agent_answer,
             status::status_inband,
             activity::activity_counts,
             activity::activity_get,
-            activity::activity_timeline,
             activity::activity_touch,
             projects::git_version,
             projects::project_list,
@@ -689,8 +648,6 @@ pub fn run() {
             projects::visibility_set,
             projects::visibility_root_add,
             projects::visibility_root_remove,
-            projects::workspace_note_get,
-            projects::workspace_note_save,
             projects::branch_prefix_check,
             projects::workspace_create_fresh,
             projects::workspace_suggest_name,
@@ -722,11 +679,6 @@ pub fn run() {
             projects::workspaces_place_set,
             projects::git_first_commit_preview,
             projects::git_start,
-            setup::workspace_setup,
-            setup::workspace_issue_command,
-            setup::workspace_default_tabs,
-            setup::script_trust_needed,
-            setup::script_trust_grant,
             setup::setup_imports_list,
             setup::setup_import,
             agents::list_command::agent_list,
@@ -735,8 +687,6 @@ pub fn run() {
             agents::agent_prompt_send,
             agents::open_install_page,
             agents::inventory::session_tabs,
-            prompt_answer::prompt_read,
-            prompt_answer::prompt_answer,
             prompt_scan::prompt_scan,
             prompt_scan::prompt_scan_restored,
             prompt_scan::prompt_scan_pruned,
@@ -752,16 +702,13 @@ pub fn run() {
             token_usage::workspace_worktrees,
             token_usage::token_tracking_set,
             trust::trust_folders_cmd,
-            scm::scm_status, scm::scm_count, scm::scm_reveal,
-            scm::scm_ignore_heavy,
+            scm::scm_status, scm::scm_count,
             scm::scm_watch, scm::scm_unwatch,
-            scm::scm_base_changes, scm::scm_base_sides,
-            scm::scm_pushed, scm::scm_head, scm::scm_summary, scm::scm_abort,
+            scm::scm_pushed, scm::scm_head,
             scm::scm_merge_info,
             scm::scm_merge,
             auto_pr::auto_pr_remote, auto_pr::auto_pr_commit, auto_pr::auto_pr_push, auto_pr::auto_pr_scan,
             scm::scm_gh_budget,
-            scm::scm_tasks_search,
             scm::scm_gh_account,
             scm::scm_prs_poll,
             scm::scm_commit_message,
@@ -770,62 +717,24 @@ pub fn run() {
             scm::writers::scm_name_branch,
             projects::workspace_rename_on_first_prompt,
             projects::workspace_move_folder,
-            scm::scm_task_detail,
-            scm::scm_repo_labels,
-            github::github_repo_parent,
-            github::github_repo_lineage,
-            github::github_people,
-            github::github_project,
-            github::github_projects,
-            github::github_project_set,
-            github::github_issue_state,
-            github::github_issue_comment,
-            github::github_issue_create,
-            github::github_issue_types,
-            github::github_issue_type_set,
-            github::pull_requests::pr_page,
-            github::pull_requests::pr_files,
-            github::pull_requests::pr_file_patch,
-            github::pull_requests::pr_checks,
-            github::pull_requests::pr_threads,
-            github::pull_requests::pr_set_state,
-            github::pull_requests::pr_viewed,
-            github::pull_requests::pr_set_viewed,
-            github::pull_requests::pr_editors,
-            github::pull_requests::pr_rerun,
-            github::pull_requests::pr_reviewers,
-            github::pull_requests::pr_assignees,
-            github::pull_requests::pr_react,
-            github::pull_requests::pr_reply,
-            github::pull_requests::pr_merge,
             pr_checkout::scm_push_target,
             scm_open::scm_open_with,
             scm_recipe::scm_recipe_commit,
-            scm_recipe::scm_recipe_fix,
             scm_stack::scm_stack_create,
             scm_stack::scm_stack_record,
             pr_review::scm_stack_prs,
-            scm::scm_task_labels,
-            scm::scm_task_body,
             scm::scm_stage,
-            scm::scm_discard,
             scm::scm_commit, scm::scm_remote,
-            scm::scm_pr, scm::scm_pr_checks, scm::scm_pr_create, scm::scm_open_pr,
+            scm::scm_pr_checks, scm::scm_pr_create,
             pr_review::scm_pr_find, pr_review::scm_check_rerun, pr_review::scm_check_log, pr_review::scm_check_detail, pr_review::scm_pr_text,
             pr_review::scm_review_read, pr_review::scm_review_act, pr_review::scm_review_send, pr_review::scm_pr_conflicts,
-            scm::scm_history, scm::scm_commit_files, scm::scm_github_repo, scm::repo_id::scm_repo_id, scm::repo_id::scm_repo_id_of,
-            bulk::workspace_remove_many, bulk::workspace_forget, bulk::workspace_forget_check,
+            scm::repo_id::scm_repo_id, scm::repo_id::scm_repo_id_of,
+            bulk::workspace_forget, bulk::workspace_forget_check,
             bulk::workspace_statuses, bulk::workspace_statuses_set, bulk::workspace_status_set,
-            bulk::space_scan, bulk::space_saved,
-            ports::ports_list, ports::ports_stop,
+            ports::ports_list,
             keybindings::keybindings_read,
             menu::menu_sync, menu::menu_popup,
             keybindings::keybindings_write,
-            keybindings::keybindings_reload,
-            keybindings::keybindings_show,
-            pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
-            pdf_export::browser_pick_pdf_path,
-            html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
             secrets::secret_status,
             secrets::secrets_dropped,
             secrets::secrets_dropped_dismiss,
@@ -880,47 +789,16 @@ pub fn run() {
             onboarding::onboarding_milestone,
             star::star_info,
             star::star_put,
-            files::file_read,
-            files::file_write,
-            files::file_bytes,
-            files::file_write_picture,
             files::file_stamps,
             files::file_pick,
-            files::md_list,
-            notebook_run::notebook_trusted,
-            notebook_run::notebook_trust,
-            notebook_run::notebook_run_cell,
-            notebook_run::notebook_stop,
-            editor_drafts::editor_draft_set,
-            editor_drafts::editor_draft_clear,
-            editor_drafts::editor_drafts_get,
-            editor_drafts::editor_drafts_drop,
-            editor_drafts::editor_draft_rename,
-            editor_drafts::editor_flush_ack,
-            editor_search::editor_search,
-            editor_search::editor_search_cancel,
             skills::skills_scan,
             files::open_in,
             files::worktree_branches,
             files::file_list,
-            files::md_new,
-            files::md_templates,
-            files::diff_sides,
-            files::git_changes,
-            files::change_entries,
-            files::diff_image,
-            files::dir_list,
-            files::dir_ignored,
             files::path_kind,
-            artifacts::artifacts_list,
-            artifacts::artifacts_scan,
-            artifacts::artifact_add,
-            artifacts::artifact_remove,
-            artifacts::artifact_open,
-            artifacts::open_external,
-            links::open_path, links::file_grant, links::editor_open,
+            links::open_external,
+            links::open_path, links::editor_open,
             clipboard::clip_copy_text,
-            clipboard::clip_copy_files,
             clipboard::feedback_facts,
             pasted_image::paste_image_save,
             diag::diag_bundle,

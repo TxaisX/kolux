@@ -469,21 +469,4 @@ mod tests {
             assert!(err.contains("needs a GitHub remote") && err.contains("gitlab.com is not one"), "{err}");
         }
     }
-
-    // Row 953: Source Control's own pull-request lookup never asks gh on a remote that is not GitHub (neither a branch lookup nor a hand link).
-    // The resolver panics, so a regressed gate fails here instead of running a real gh.
-    #[test]
-    fn row953_scm_pr_answers_a_gitlab_remote_without_gh() {
-        let no_gh = || -> Result<std::path::PathBuf, String> { panic!("gh was resolved for a remote that is not GitHub") };
-        let dir = repo("pr-gitlab");
-        run(&["remote", "add", "origin", "git@gitlab.com:group/app.git"], Some(&dir)).unwrap();
-        for linked in [None, Some("https://github.com/o/r/pull/4".to_string())] {
-            let got = crate::scm::pr_answer(&dir, linked, &no_gh).unwrap();
-            assert!(got.pr.is_none(), "{got:?}");
-            assert_eq!((got.provider, got.host.as_deref()), (Some("gitlab"), Some("gitlab.com")));
-        }
-        let bare = repo("pr-none");
-        let none = crate::scm::pr_answer(&bare, None, &no_gh).unwrap();
-        assert_eq!((none.provider, none.host), (Some("none"), None));
-    }
 }

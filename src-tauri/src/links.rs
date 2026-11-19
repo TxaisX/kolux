@@ -2,9 +2,10 @@
 //! refused as text, before any filesystem call, so Windows never offers the user's credentials to
 //! that host; a file link aimed at a program, script, installer or shortcut is revealed in its
 //! folder instead of run. EDIT-045: `fence` guards every command that takes a path from the
-//! interface: inside a registered root (or granted exactly, through `file_grant`), never out
-//! through a link; `open_path` is the one door for handing a file to the system. SESS-039:
-//! `editor_open` opens a worktree folder (fenced the same way) in an outside editor.
+//! interface: inside a registered root (or granted exactly), never out through a link; `open_path`
+//! is the one door for handing a file to the system. SESS-039: `editor_open` opens a worktree
+//! folder (fenced the same way) in an outside editor.
+//! `open_external` hands a clean web or mail link to the system's own handler.
 //!
 //! ponytail: there are no terminal or note links yet; when they land they call `open_path` and
 //! need nothing of their own. On Linux a reveal opens the folder without selecting the file; the
@@ -89,9 +90,81 @@ fn admit_browser_open_at(limit: &Mutex<OpenLimit>, clock: &dyn Clock) -> Result<
     l.admit(clock).map_err(|wait| format!("Too many links were opened in a row. Try again in {} seconds.", wait.as_secs() + u64::from(wait.subsec_nanos() > 0)))
 }
 
-/// The one gate every open in the default browser passes (artifacts::open_external).
+/// The one gate every open in the default browser passes (open_external).
 pub fn admit_browser_open() -> Result<(), String> {
     admit_browser_open_at(&BROWSER_OPENS, &RunClock)
+}
+
+/// Milliseconds since 1970 by the system clock; 0 when the clock is set before 1970.
+pub fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// The address `open_external` opens: a clean http, https or mailto link, in its parsed form. A control
+/// character (the parser would quietly drop a tab or newline) or a double quote is refused before parsing.
+fn external_url(url: &str) -> Result<String, String> {
+    if url.chars().any(|c| c.is_control() || c == '"') {
+        return Err("That link holds a character Kolux never opens".into());
+    }
+    let not_a_link = || format!("{url} is not a web or mail link");
+    let parsed = tauri::Url::parse(url).map_err(|_| not_a_link())?;
+    match parsed.scheme() {
+        "http" | "https" if parsed.host_str().is_some() => {}
+        "mailto" => {}
+        _ => return Err(not_a_link()),
+    }
+    let mut parsed = parsed;
+    if parsed.scheme() == "mailto" {
+        // The address list only: a ?body=, ?cc= or ?attach= is the page's text, not what the user was shown.
+        parsed.set_query(None);
+        parsed.set_fragment(None);
+    }
+    Ok(parsed.as_str().to_string())
+}
+
+/// Opens a web or mail link in the system's own handler; nothing else is let through, and no more than a
+/// handful in a row (admit_browser_open). The command runs on a worker, never the window's thread.
+#[tauri::command(async)]
+pub fn open_external(url: String) -> Result<(), String> {
+    let url = external_url(&url)?;
+    admit_browser_open()?;
+    system_open(&url)
+}
+
+/// Hands `url` (a link or a full file path) to the system's own handler. Callers check it first:
+/// `open_external` lets only web and mail links through, `open_path` reveals programs.
+pub(crate) fn system_open(url: &str) -> Result<(), String> {
+    if url.contains('\0') {
+        return Err("That path holds a control character; Kolux never opens it".into());
+    }
+    #[cfg(windows)]
+    {
+        let wide = |s: &str| s.encode_utf16().chain([0]).collect::<Vec<u16>>();
+        let (verb, file) = (wide("open"), wide(url));
+        use windows_sys::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE};
+        // FIX-5 (council P2 P12): ShellExecute may hand the link to shell extensions that use COM, so
+        // the calling thread joins COM for the call (the documented way) and leaves it again after.
+        // A negative result (the thread already joined another way) means nothing to undo.
+        // SAFETY: NUL-terminated wide strings that live across the call; every successful
+        // CoInitializeEx is matched by one CoUninitialize on this thread.
+        let r = unsafe {
+            let com = CoInitializeEx(std::ptr::null(), (COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) as u32);
+            let r = windows_sys::Win32::UI::Shell::ShellExecuteW(std::ptr::null_mut(), verb.as_ptr(), file.as_ptr(), std::ptr::null(), std::ptr::null(), 1);
+            if com >= 0 {
+                CoUninitialize();
+            }
+            r
+        };
+        if (r as isize) <= 32 {
+            return Err(format!("Windows could not open {url}"));
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        crate::winproc::command(opener).arg(url).spawn().map(|_| ()).map_err(|e| format!("could not open {url}: {e}"))
+    }
 }
 
 /// Every registered root: the projects, a project's own workspaces folder, and the shared one.
@@ -304,20 +377,6 @@ pub fn fence(path: &str, roots: &[String], grants: &HashSet<String>, follow: boo
     Ok(p.to_path_buf())
 }
 
-/// EDIT-045: allows `path` for this run, that exact path and nothing beneath it.
-#[tauri::command]
-pub fn file_grant(store: tauri::State<'_, Mutex<crate::state::Store>>, grants: tauri::State<'_, Grants>, fence: tauri::State<'_, crate::fence::Fence>, path: String) -> Result<(), String> {
-    refuse_host(&path, &roots(&store))?;
-    if !Path::new(&path).is_absolute() {
-        return Err(format!("{path} is not a full path"));
-    }
-    grants.0.lock().unwrap_or_else(|e| e.into_inner()).insert(fence_key(&path));
-    // The editor reads and saves through ACCT-055's fence, so a file is granted there too; a
-    // folder or a missing file is not (that fence grants only existing files).
-    let _ = fence.grant(Path::new(&path), &store.lock().unwrap_or_else(|e| e.into_inner()));
-    Ok(())
-}
-
 /// SAFE-022: a file name of a type that runs when opened. On Windows an alternate-data-stream
 /// suffix, trailing dots or spaces and an 8.3 short name cannot hide the type (a short name's
 /// three-letter extension may be a cut-down program type, so the shape alone counts); on POSIX
@@ -411,7 +470,7 @@ pub async fn open_path(store: tauri::State<'_, Mutex<crate::state::Store>>, path
     // A slow file association never freezes the window; only an existing file is handed over.
     tauri::async_runtime::spawn_blocking(move || match open_choice(&path)? {
         OpenChoice::Reveal => reveal(Path::new(&path)).map(|_| "revealed"),
-        OpenChoice::Open => crate::artifacts::system_open(&path).map(|_| "opened"),
+        OpenChoice::Open => system_open(&path).map(|_| "opened"),
     })
     .await
     .map_err(|e| e.to_string())?
@@ -492,6 +551,23 @@ pub async fn editor_open(store: tauri::State<'_, Mutex<crate::state::Store>>, gr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn open_external_lets_through_only_clean_web_and_mail_links() {
+        assert_eq!(external_url("https://example.com/a?b=1").unwrap(), "https://example.com/a?b=1");
+        assert_eq!(external_url("HTTP://Example.com").unwrap(), "http://example.com/", "the parsed form is what is opened");
+        assert_eq!(external_url("mailto:me@example.com").unwrap(), "mailto:me@example.com");
+        for bad in ["file:///C:/Windows/notepad.exe", "javascript:alert(1)", "ms-msdt:/id", "https://example.com/\"quoted", "https://exa\tmple.com/", "https://example.com/\nx", "https://example.com/\0", "not a url", "", "https://"] {
+            assert!(external_url(bad).is_err(), "{bad:?} must be refused");
+        }
+    }
+
+    #[test]
+    fn a_mail_link_loses_its_query_when_it_is_opened() {
+        assert_eq!(external_url("mailto:a@example.com?body=hi&attach=C:/secrets.txt").unwrap(), "mailto:a@example.com");
+        assert_eq!(external_url("mailto:a@example.com,b@example.com?cc=c@example.com#frag").unwrap(), "mailto:a@example.com,b@example.com");
+        assert_eq!(external_url("https://example.com/a?b=1#c").unwrap(), "https://example.com/a?b=1#c", "web links keep their query");
+    }
 
     struct FakeClock(std::cell::Cell<Duration>);
     impl FakeClock {

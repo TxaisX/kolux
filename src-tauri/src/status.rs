@@ -1070,13 +1070,6 @@ pub fn quiet_check(threshold: Option<Duration>, silence: impl Fn(u32) -> Option<
     })
 }
 
-
-/// The pane's last twenty states, oldest first (COMPAT 3.5 stored status: History).
-#[tauri::command]
-pub fn agent_history(pane_key: u32) -> Vec<Entry> {
-    with_sessions(|s| s.get(&pane_key).map(|x| x.history.iter().cloned().collect()).unwrap_or_default())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1621,7 +1614,7 @@ mod tests {
         assert_eq!(working_now(|t| t == TERM || t == TERM + 1), 2, "both live panes count");
         terminal_ended(TERM);
         assert_eq!(state_of(TERM), None, "the ended terminal's pane is gone");
-        assert!(panes_of(TERM).is_empty() && agent_history(PANE).is_empty());
+        assert!(panes_of(TERM).is_empty() && with_sessions(|s| s.get(&PANE).is_none()));
         assert_eq!(state_of(TERM + 1), Some("working"), "another terminal's pane stays");
         terminal_ended(TERM + 1);
         assert_eq!(state_of(TERM + 1), None);

@@ -828,7 +828,7 @@ pub fn rescan(store: &Mutex<Store>, provider: &str) {
     let Ok(s) = store.lock() else { return };
     let before = saved(&s, provider);
     let next = match result {
-        Ok(rows) => Saved { format: FORMAT, scanned_at: crate::artifacts::now_ms(), rows, error: None },
+        Ok(rows) => Saved { format: FORMAT, scanned_at: crate::links::now_ms(), rows, error: None },
         Err(e) => Saved { format: FORMAT, error: Some(e), ..before.unwrap_or_default() },
     };
     let _ = s.set(&key_saved(provider), &serde_json::to_string(&next).unwrap_or_default());
