@@ -94,15 +94,15 @@ test("T-611: a command picked in the palette runs the same code its shortcut run
   const map = resolve(null, "win32");
   const target = new EventTarget();
   const heard: Array<string | null> = [];
-  // Two key listeners as the window has them: one for the global scope, one for an editor's.
+  // Two key listeners as the window has them: one for the global scope, one for Settings'.
   target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["global"])?.id ?? null));
-  target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["editor"])?.id ?? null));
+  target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["settings"])?.id ?? null));
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }) };
   runCommand("view.floor", undefined, now); // unbound: no chord could ever have reached it
   expect(heard).toEqual(["view.floor", null]);
   heard.length = 0;
-  runCommand("editor.find", undefined, now);
-  expect(heard).toEqual([null, "editor.find"]);
+  runCommand("settings.search", undefined, now);
+  expect(heard).toEqual([null, "settings.search"]);
   // The index commands carry their digit; a real key press afterwards is only a key press.
   heard.length = 0;
   let index: number | undefined;
@@ -146,17 +146,17 @@ test("review of PR #16: a command whose place is not open says so instead of doi
   target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["global", "tabs"]));
   const notes: string[] = [];
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }), unanswered: (t: string) => void notes.push(t) };
-  runCommand("editor.find", undefined, { ...now, scope: "editor" });
+  runCommand("settings.search", undefined, { ...now, scope: "settings" });
   runCommand("view.floor", undefined, { ...now, scope: "global" }); // the window took it: no note
-  expect(notes).toEqual(["Open a file in an editor tab first."]);
-  // With an editor listening, the same command runs there and nothing is said.
-  target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["editor"]));
-  runCommand("editor.find", undefined, { ...now, scope: "editor" });
+  expect(notes).toEqual(["Open Settings first."]);
+  // With Settings listening, the same command runs there and nothing is said.
+  target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["settings"]));
+  runCommand("settings.search", undefined, { ...now, scope: "settings" });
   expect(notes).toHaveLength(1);
   // The palette passes the command's own scope and its note line; every command is still a row.
   const said: string[] = [];
   const rows = commandRows(map, [], (t) => void said.push(t));
-  expect(rows.some((r) => r.label === actionById.get("editor.find")!.title)).toBe(true);
+  expect(rows.some((r) => r.label === actionById.get("settings.search")!.title)).toBe(true);
 });
 
 test("review of PR #16: Force Reload asks first when an editor holds unsaved changes, and reloads at once when none does", () => {
