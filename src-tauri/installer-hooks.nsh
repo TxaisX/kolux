@@ -1,25 +1,20 @@
 ; T-574, T-578: the installer no longer installs the coding agents. People pick the ones they want when Kolux
 ; opens (first-run wizard and Settings > Agents), and Kolux installs just those, several at once.
-; T-594 (CLI-007): a new terminal finds kolux. The installer puts the install's bin folder (kolux.exe and
-; kolux.cmd, DT-R27) on the user's PATH when it is missing, and the uninstaller takes exactly that entry off
-; again. The rules are cli_register.rs's (CLI-008): the variable keeps its name and is written as
-; REG_EXPAND_SZ (a PATH stored as REG_SZ comes back as REG_EXPAND_SZ, which Windows reads the same way),
-; the change is read back before it is reported, and no other entry is ever touched.
-; T-594, a PATH over the NSIS limit: NSIS strings hold 1024 characters, so the installer cannot read or write
-; a longer PATH (real ones are often longer; Txais's is 1,815). It leaves that PATH exactly as it is and drops
-; a hand-off file, ${KOLUX_PATH_PENDING}, in the install folder instead; Kolux adds the bin folder when it next
-; starts and deletes the file first, so this happens once per install (cli_register.rs path_at_start). On
-; uninstall the app itself runs first (<app>.exe --uninstall-path, cli_register.rs path_at_uninstall), which
-; takes off exactly our entry at any length; the NSIS removal below then finds nothing of ours, and only does
-; the work when the app could not run.
-; ponytail: the long-PATH work is done by the app's own Rust code, not NSIS; upgrade, if the app could ever
-; be missing at uninstall: the same steps through the System plugin into a buffer of the value's own size.
+; The kolux command line is retired. Installs before it carried kolux.exe and kolux.cmd in the install's bin
+; folder and put that folder on the user's PATH (T-594, CLI-007). For one release this installer cleans that up:
+; after the files go in it takes exactly $INSTDIR\bin off the user PATH (KOLUX_PATH_REMOVE: the variable keeps
+; its name and is written as REG_EXPAND_SZ, the change is read back before it is reported, and no other entry is
+; ever touched), deletes bin\kolux.exe and bin\kolux.cmd and the folder once it is empty, and deletes the old
+; PATH hand-off file. The uninstaller takes the PATH entry off too, for an install that missed that step.
+; NSIS strings hold 1024 characters, so a longer PATH (real ones often are) cannot be read here: it is left
+; exactly as it is and the log says how to remove the entry by hand. A folder left on the PATH that no longer
+; holds anything is harmless.
 !include LogicLib.nsh
 !include WinMessages.nsh
 
 ; The longest string NSIS holds, its terminating zero left out.
 !define /math KOLUX_STRLEN_MAX ${NSIS_MAX_STRLEN} - 1
-; T-594: the hand-off file's name (cli_register.rs PATH_PENDING).
+; T-594: the PATH hand-off file an older install may have left in the install folder.
 !define KOLUX_PATH_PENDING "kolux-path-pending.txt"
 
 ; $R9: the name the PATH variable goes by in HKCU\Environment (Path, PATH, ...), or "" when there is none.
@@ -110,13 +105,14 @@
   Pop $R0
 !macroend
 
-; T-594: the PATH is too long for NSIS. It is left exactly as it is, and the hand-off file asks Kolux to add
-; the bin folder on its next start (once; Kolux deletes the file before it changes anything). Uses $R5 only.
+; The PATH is too long for NSIS. It is left exactly as it is, and the hand-off file asks the copy whose bin folder
+; this is to add it on its next start. Only the old install's restore below uses it (KOLUX_RETIRE_OLD, when its
+; retirement stops): an old copy still reads that file. Uses $R5 only.
 !macro KOLUX_PATH_HANDOFF
   ClearErrors
   FileOpen $R5 "$INSTDIR\${KOLUX_PATH_PENDING}" w
   ${If} ${Errors}
-    DetailPrint "Your PATH was left as it is: it is too long for the installer to change. Settings > CLI > Register adds kolux."
+    DetailPrint "Your PATH was left as it is: it is too long for the installer to change."
   ${Else}
     FileWrite $R5 "Kolux adds $INSTDIR\bin to your PATH when it next starts, then deletes this file.$\r$\n"
     FileClose $R5
@@ -124,6 +120,8 @@
   ${EndIf}
 !macroend
 
+; Puts $INSTDIR\bin back on the user PATH when it is missing. Only the old install's restore uses it
+; (KOLUX_RETIRE_OLD sets $INSTDIR to the old folder first); this install's own bin folder is never added.
 !macro KOLUX_PATH_ADD
   !insertmacro KOLUX_SAVE
   ${If} ${FileExists} "$INSTDIR\bin\kolux.exe"
@@ -145,7 +143,7 @@
       ${If} $R6 > 0
         DetailPrint "$INSTDIR\bin is already on your PATH"
       ${Else}
-        ; Trailing separators go first, as cli_register's path_with does.
+        ; Trailing separators go first.
         StrCpy $R1 $R0
         ${Do}
           StrCpy $R5 $R1 1 -1
@@ -168,7 +166,7 @@
           ClearErrors
           WriteRegExpandStr HKCU "Environment" $R9 $R1
           ${If} ${Errors}
-            DetailPrint "Windows refused the change to your PATH. Settings > CLI > Register adds kolux."
+            DetailPrint "Windows refused the change to your PATH."
           ${Else}
             ClearErrors
             ReadRegStr $R8 HKCU "Environment" $R9
@@ -198,8 +196,8 @@
     ClearErrors
     ReadRegStr $R8 HKCU "Environment" $R9
     ${If} ${Errors}
-      ; Over the NSIS limit: the app's own step (KOLUX_PATH_APP_REMOVE) has already done this when it could run.
-      DetailPrint "Your PATH is too long for the uninstaller to read; if $INSTDIR\bin is still on it, remove it in Windows settings."
+      ; Over the NSIS limit: left exactly as it is.
+      DetailPrint "Your PATH is too long to read here; if $INSTDIR\bin is still on it, remove it in Windows settings."
     ${Else}
       !insertmacro KOLUX_PATH_CUT
       ${If} $R6 > 0
@@ -228,31 +226,14 @@
   !insertmacro KOLUX_RESTORE
 !macroend
 
-; T-594: before the files go, the app takes its bin folder off the user PATH itself, at any length (the
-; uninstall was already confirmed: Tauri inserts this at the start of the uninstall section). Exit 0: taken
-; off; 2: nothing of ours there; anything else: not done (the NSIS step after the files go tries for a short
-; PATH). The hand-off file is deleted too, so the install folder can go.
-!macro KOLUX_PATH_APP_REMOVE
-  ; The template's running-app check first (it runs it again after this hook): a user who cancels at its
-  ; prompt aborts the uninstall here, before the PATH entry is touched. It uses $R0-$R3, as the template's
-  ; own call does.
-  !insertmacro CheckIfAppIsRunning "${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
-  Push $R0
-  ${If} ${FileExists} "$INSTDIR\${MAINBINARYNAME}.exe"
-    ClearErrors
-    ExecWait '"$INSTDIR\${MAINBINARYNAME}.exe" --uninstall-path' $R0
-    ${If} ${Errors}
-      DetailPrint "Kolux could not be run to check your PATH"
-    ${ElseIf} $R0 = 0
-      DetailPrint "Took $INSTDIR\bin off your PATH"
-    ${ElseIf} $R0 = 2
-      DetailPrint "$INSTDIR\bin was not on your PATH"
-    ${Else}
-      DetailPrint "Kolux could not take $INSTDIR\bin off your PATH"
-    ${EndIf}
-  ${EndIf}
+; The retired command line's leftovers in this install: its PATH entry, its two files, their folder once empty,
+; and the hand-off file. Run after an install (an update from a copy that still had them) and before an uninstall.
+!macro KOLUX_CLI_LEFTOVERS
+  !insertmacro KOLUX_PATH_REMOVE
+  Delete "$INSTDIR\bin\kolux.exe"
+  Delete "$INSTDIR\bin\kolux.cmd"
+  RMDir "$INSTDIR\bin"
   Delete "$INSTDIR\${KOLUX_PATH_PENDING}"
-  Pop $R0
 !macroend
 
 ; T-786 (P3-15, DT-C220): Windows 11 is the tested target, so an install on a Windows 10 build (below 22000)
@@ -308,9 +289,8 @@
 ; uninstaller runs in place (always /S, see KOLUX_OLD_WAIT; never the delete-my-data box, which stays off), then
 ; its leftovers and its Uninstall entry go. Nothing here touches the profile: the old profile folder
 ; (%APPDATA%\com.txaisxiong.kolux-rs) is never deleted, and the app copies it into the new one when it first
-; starts (profile_move.rs). The old uninstaller takes its own bin folder off the PATH; $KoluxOldHadPath says
-; it was there (or could not be read, a PATH over the NSIS limit), so POSTINSTALL puts the new bin folder back
-; even in an update, which otherwise leaves the PATH as the user has it (T-789).
+; starts (profile_move.rs). The old uninstaller takes its own bin folder off the PATH; $KoluxOldHadPath says it
+; was there (or could not be read, a PATH over the NSIS limit), so a retirement that stops puts it back.
 !define KOLUX_OLD_UNINST "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCTNAME} RS"
 ; The old install's program (its MAINBINARYNAME was kolux-rs).
 !define KOLUX_OLD_EXE "kolux-rs.exe"
@@ -582,42 +562,12 @@ Var KoluxOldLnkSm
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  !insertmacro KOLUX_PATH_APP_REMOVE
-!macroend
-
-; T-789 (P3-07): an update (/UPDATE) leaves the PATH as the user has it. Someone who pressed Remove kolux in
-; Settings would otherwise find the command back after the next update; a first install still adds it.
-!macro KOLUX_PATH_ADD_UNLESS_UPDATE
-  Push $R5
-  Push $R9
-  Push $R8
-  Push $R7
-  Push $R6
-  !insertmacro KOLUX_IS_UPDATE
-  StrCpy $R5 $R9
-  Pop $R6
-  Pop $R7
-  Pop $R8
-  Pop $R9
-  ${If} $R5 = 0
-    !insertmacro KOLUX_PATH_ADD
-  ${Else}
-    DetailPrint "Update: leaving the kolux command on the PATH as it is"
-  ${EndIf}
-  Pop $R5
+  !insertmacro KOLUX_CLI_LEFTOVERS
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
   DetailPrint "Pick your coding agents when Kolux opens"
   !insertmacro KOLUX_OLD_LNK_REMAKE
-  ${If} $KoluxOldHadPath = 1
-    ; T-790: the old install had kolux on the PATH and its uninstaller took it off: put the new one back.
-    !insertmacro KOLUX_PATH_ADD
-  ${Else}
-    !insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE
-  ${EndIf}
-!macroend
-
-!macro NSIS_HOOK_POSTUNINSTALL
-  !insertmacro KOLUX_PATH_REMOVE
+  ; The kolux command line is retired: an update from a copy that had it takes its leftovers away.
+  !insertmacro KOLUX_CLI_LEFTOVERS
 !macroend

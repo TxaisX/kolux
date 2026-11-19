@@ -13,7 +13,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::orchestration::sendonce as so;
+use crate::sendonce as so;
 
 // ORCH-060: the session tab inventory (T-262).
 #[path = "inventory.rs"]
@@ -228,7 +228,7 @@ fn walkable(dirs: Vec<PathBuf>) -> Vec<PathBuf> {
 /// T-580: whether this run is fenced: `agent_hooks::fenced` on the profile folder it uses (`KOLUX_APP_DIR` when
 /// a lane, smoke or evidence run sets it, else the production one). Every test and debug build is.
 pub(crate) fn run_fenced() -> bool {
-    let profile = std::env::var_os(crate::cli::APP_DIR_ENV)
+    let profile = std::env::var_os(crate::terminal::APP_DIR_ENV)
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .or_else(|| crate::resources::recovery::profile_dir(crate::hooks::agent_hooks::PRODUCTION_ID))
@@ -996,8 +996,8 @@ fn now_ms() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
-/// SESS-032: types the opening prompt into terminal `id` exactly once, the way `kolux terminal
-/// send` does (ORCH-055, `orchestration::sendonce`): behind the terminal's other senders, after the
+/// SESS-032: types the opening prompt into terminal `id` exactly once, the way the review panel's
+/// send does (ORCH-055, `sendonce`): behind the terminal's other senders, after the
 /// agent's input box has drawn and settled, as one bracketed paste so line breaks stay inside the
 /// prompt, then Enter as a separate step after a pause that grows with the prompt's size on
 /// Windows; Enter is held back when a permission prompt shows, when the user or another sender

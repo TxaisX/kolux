@@ -1,6 +1,6 @@
 // Diagnostic, no Claude: does a CDP Escape reach a pane's pty? PSReadLine clears the typed line on Esc.
 import { scenario, sleep, rawKey } from "./live-claude-common.mjs";
-import { allPaneBuffers } from "./live-cli-common.mjs";
+import { allPaneBuffers } from "./live-common.mjs";
 
 await scenario("ESC-DIAG", { cards: [], noOpen: true }, async (ctx, h) => {
   const { app } = ctx;

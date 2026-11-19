@@ -8,7 +8,6 @@
 //! becomes an error the user can retry, never a shorter list. A project stored in WSL is read
 //! through its `\\wsl.localhost\` path like any folder; nothing runs inside a distribution (OD-12).
 
-pub mod cli_install;
 pub mod installer;
 pub mod update;
 
@@ -658,7 +657,7 @@ fn run(spots: Vec<Spot>, bundled: &[(&str, &str)], limit: Duration) -> Scan {
 }
 
 pub fn scan(env: &Env, workspace: Option<&Path>) -> Scan {
-    run(spots(env, workspace), &crate::cli::bundled_skills(), ROOT_LIMIT)
+    run(spots(env, workspace), &[], ROOT_LIMIT)
 }
 
 /// SKILL-022: where a delete may act. `deletable` are the home and workspace skills folders that

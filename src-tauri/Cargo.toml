@@ -14,21 +14,7 @@ default-run = "kolux"
 name = "kolux_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[[bin]]
-name = "kolux-dev"
-path = "src/bin/kolux-dev.rs"
-
-# CLI-006: the shipped command line. Only the release script builds it, so a development build
-# never puts a `kolux` on its panes' search path that would stand in for the installed one. T-790: the app
-# program is now `kolux` too, so cargo cannot hold both under one name; this one is built as `kolux-cli`
-# and shipped as bin\kolux.exe (scripts/release.mjs and the update rig copy it under that name).
-[[bin]]
-name = "kolux-cli"
-path = "src/bin/kolux-cli.rs"
-required-features = ["release-cli"]
-
 [features]
-release-cli = []
 # APP-008 / T-248-d: the real tray icon (Open Kolux, Quit, the attention dot); on by default.
 tray = ["tauri/tray-icon"]
 default = ["tray"]

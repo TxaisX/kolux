@@ -6,8 +6,8 @@ import { TipView } from "./Guides";
 import type { TipId } from "./guide";
 
 const noop = () => {};
-const props = (tip: TipId) => ({ tip, cli: null, setup: false, onSetup: noop, onClose: noop });
-const TIPS: TipId[] = ["cli", "palette"];
+const props = (tip: TipId) => ({ tip, onClose: noop });
+const TIPS: TipId[] = ["palette", "moved-usage"];
 
 function autoFocused(n: ReactNode): boolean {
   if (Array.isArray(n)) return n.some(autoFocused);

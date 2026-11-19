@@ -1,5 +1,5 @@
-// ONB-017 / ONB-028: the small terminal inside the Setup Guide's CLI step and the CLI tip. It opens the
-// user's shell, waits for a prompt (cliInstall.ts, about fifty checks at most), then types the setup
+// ONB-017: the small terminal inside a setup step (GitHub's sign-in, a stop's install). It opens the
+// user's shell, waits for a prompt (promptTyper.ts, about fifty checks at most), then types the setup
 // command WITHOUT pressing Enter: the user presses it. When the shell exits, `onExit` runs so the step
 // can look again. The pane closes its shell when this panel goes away, so no installer runs unseen.
 import { useEffect, useMemo, useRef } from "react";
@@ -7,7 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import TerminalPane from "../terminal/TerminalPane";
 import { chunkBytes, type ExitEvent } from "../terminal/codec";
 import { onTerminalOutput, onTerminalExit } from "../terminal/outputBus";
-import { createTyper, type Typer } from "./cliInstall";
+import { createTyper, type Typer } from "./promptTyper";
 
 const decoder = new TextDecoder();
 

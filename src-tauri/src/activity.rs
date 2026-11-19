@@ -412,17 +412,14 @@ pub fn nest_lanes(lanes: &mut [Track], tasks: &[serde_json::Value], dispatches: 
 /// VIEW-013: the Floor timeline's lanes. A lane whose terminal is no longer open is not live: the
 /// page shows its quiet stretches as unverifiable rather than idle.
 #[tauri::command]
-pub fn activity_timeline(terminals: tauri::State<'_, crate::terminal::Terminals>, store: StoreState<'_>) -> Vec<Track> {
+pub fn activity_timeline(terminals: tauri::State<'_, crate::terminal::Terminals>) -> Vec<Track> {
     let mut lanes = with(|a| a.timeline(now_ms()));
     for l in &mut lanes {
         l.terminal = crate::status::terminal_of(l.pane);
         l.live = l.ended.is_none() && l.terminal.is_some_and(|t| terminals.started(t).is_some());
     }
-    // T-260-b: the store is read once, apart from the activity lock; unreadable means flat lanes.
-    let load = |k: &str| -> Vec<serde_json::Value> {
-        store.lock().ok().and_then(|s| s.get(k).ok().flatten()).and_then(|v| serde_json::from_str(&v).ok()).unwrap_or_default()
-    };
-    nest_lanes(&mut lanes, &load(crate::orchestration::TASKS_KEY), &load(crate::orchestration::DISPATCHES_KEY), u64::from(std::process::id()));
+    // T-260-b: the orchestration tasks and dispatches that nested lanes went with the command line; lanes stay flat.
+    nest_lanes(&mut lanes, &[], &[], u64::from(std::process::id()));
     lanes
 }
 

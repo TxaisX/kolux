@@ -364,7 +364,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     invoke<Created>("workspace_from_item", { item })
       .then((made) => {
         setRefresh((n) => n + 1);
-        late.cli.current.select(made.path, made.branch, true);
+        late.select(made.path, made.branch, true);
       })
       .catch((err) => setNotice(String(err)));
   };
@@ -375,7 +375,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       .then((made) => {
         noteUse("workspace-create");
         setRefresh((n) => n + 1);
-        late.cli.current.select(made.path, made.branch, true);
+        late.select(made.path, made.branch, true);
       })
       .catch((err) => setNotice(String(err)));
   };

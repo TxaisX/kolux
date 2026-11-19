@@ -14,8 +14,6 @@ type WorkspaceActions = ReturnType<typeof useWorkspaceActions>;
 export type WindowLate = Pick<WorkspaceActions, "projectOf" | "select"> & {
   /** SESS-021: lineups waiting for their first agent to start, by batch. */
   pendingLineup: { current: Record<number, { pid: string; lineup: Lineup }> };
-  /** PROJ-077: the command line's handlers, read through a ref so its listener never goes stale. */
-  cli: { current: Pick<WorkspaceActions, "select"> };
   setReveal: (next: number | ((n: number) => number)) => void;
   panesRef: ReturnType<typeof useAgentEvents>["panesRef"];
 };

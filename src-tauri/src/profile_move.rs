@@ -27,7 +27,7 @@ use crate::resources::recovery::STATE_FILE;
 /// What the old profile's name is, relative to the new one's.
 pub const FORMER_SUFFIX: &str = "-rs";
 
-/// Left out of the copy: the old run's address and token, and anything that is only a lock.
+/// Left out of the copy: the old run's startup file (`lifecycle::STARTUP_FILE`), and anything that is only a lock.
 /// Review (T-790): the last-good copies (`state.db.bak`, `settings.json.bak`) stay behind too: they hold
 /// paths into the old profile, and recovery would restore them; the new app writes its own.
 const SKIPPED: &[&str] = &["cli.json"];

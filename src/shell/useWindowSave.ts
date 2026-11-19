@@ -106,7 +106,7 @@ export function useWindowSave({ activeDir, activeTab, focused, panes, pinned, re
   // previous session: the tab is asked when it is opened, before its agent has made one), so the write that
   // follows carries it and a restart resumes the tab the way a hook-fed one is. The pane is asked again (its
   // own guess left out of its ask) so the session its agent made since replaces the guess, and the id the
-  // agent prints itself when it exits wins over it (useCliBridge). One round at a time, the panes in turn,
+  // agent prints itself when it exits wins over it (useResumeHint). One round at a time, the panes in turn,
   // each answer added to `taken` so two panes never get one session; an id the agent named itself is never
   // replaced; a pane is left alone for LISTED_ASK_AGAIN_MS after each ask.
   const askingListed = useRef(false);

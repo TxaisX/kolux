@@ -491,7 +491,7 @@ pub fn fenced(profile: &Path) -> bool {
 /// `fenced` with the build kind and the environment given.
 fn fenced_by(profile: &Path, test_or_debug: bool, var: impl Fn(&str) -> Option<std::ffi::OsString>) -> bool {
     let production = |p: &Path| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.eq_ignore_ascii_case(PRODUCTION_ID));
-    let lane = [crate::cli::APP_DIR_ENV, "KOLUX_USER_DATA_PATH"].into_iter().filter_map(var).filter(|v| !v.is_empty()).any(|v| !production(Path::new(&v)));
+    let lane = [crate::terminal::APP_DIR_ENV, "KOLUX_USER_DATA_PATH"].into_iter().filter_map(var).filter(|v| !v.is_empty()).any(|v| !production(Path::new(&v)));
     test_or_debug || !production(profile) || lane
 }
 

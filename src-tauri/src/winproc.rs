@@ -61,13 +61,6 @@ mod tests {
     /// through this module.
     const WINDOW: usize = 30;
 
-    /// Spawns that are meant to share the user's own console: the `kolux` command line is a console
-    /// program the user runs in a terminal, and these two hand that terminal to the program.
-    const ALLOWED: [(&str, &str); 2] = [
-        ("cli/mod.rs", "Command::new(\"claude\")"), // `kolux claude`: the agent runs in the user's own terminal
-        ("cli_accounts.rs", "Command::new(program)"), // `kolux accounts login`: the agent's sign-in in the user's own terminal
-    ];
-
     /// `line` without its `//` comment; a `//` inside a string literal (a URL) is not a comment.
     fn code_of(line: &str) -> &str {
         let (mut in_str, mut prev) = (false, '\0');
@@ -98,10 +91,9 @@ mod tests {
         name == "tests.rs" || name.ends_with("_tests.rs") || name.starts_with("tests_") || rel.contains("/tests/")
     }
 
-    /// Lines (1-based) of production `Command::new` calls in `src` whose start is neither hidden nor
-    /// allowed. Test code (a `#[cfg(test)]` block at the start of a line, or a test file) is out of
+    /// Lines (1-based) of production `Command::new` calls in `src` whose start is not hidden. Test code (a `#[cfg(test)]` block at the start of a line, or a test file) is out of
     /// scope: a test binary runs under the builder's own console.
-    fn unhidden_spawns(rel: &str, src: &str) -> Vec<usize> {
+    fn unhidden_spawns(src: &str) -> Vec<usize> {
         let lines: Vec<&str> = src.lines().collect();
         let mut found = Vec::new();
         let mut in_test = false;
@@ -126,9 +118,6 @@ mod tests {
             if !spawn {
                 continue;
             }
-            if ALLOWED.iter().any(|(f, text)| *f == rel && code.contains(text)) {
-                continue;
-            }
             // Only code counts: a comment that merely names winproc or creation_flags hides nothing.
             let hidden = lines[i..lines.len().min(i + WINDOW)].iter().map(|l| code_of(l)).any(|c| c.contains("creation_flags") || c.contains("winproc::"));
             if !hidden {
@@ -142,24 +131,24 @@ mod tests {
     fn t816_the_scanner_sees_a_bare_spawn_and_accepts_a_hidden_one() {
         let new = ["Command", "::new("].concat();
         let bad = format!("fn a() {{\n    let c = std::process::{new}\"x\");\n}}\n// {new}\"z\") in a comment\n#[cfg(test)]\nmod tests {{\n    fn t() {{ {new}\"y\"); }}\n}}\n");
-        assert_eq!(unhidden_spawns("x.rs", &bad), vec![2], "a test module and a comment are not production spawns");
+        assert_eq!(unhidden_spawns(&bad), vec![2], "a test module and a comment are not production spawns");
         let spaced = "fn a() {\n    let c = Command\n        ::new(\"x\");\n}\n";
-        assert_eq!(unhidden_spawns("x.rs", spaced), vec![2], "a constructor spaced onto the next line is seen");
+        assert_eq!(unhidden_spawns(spaced), vec![2], "a constructor spaced onto the next line is seen");
         let flagged = format!("fn a() {{\n    let mut c = {new}\"x\");\n    c.creation_flags(0x0800_0000);\n}}\n");
-        assert!(unhidden_spawns("x.rs", &flagged).is_empty());
+        assert!(unhidden_spawns(&flagged).is_empty());
         let helper = format!("fn a() {{\n    let mut c = {new}\"x\");\n    crate::winproc::quiet(&mut c);\n}}\n");
-        assert!(unhidden_spawns("x.rs", &helper).is_empty());
+        assert!(unhidden_spawns(&helper).is_empty());
         let after_cfg_use = format!("#[cfg(test)]\nuse std::fs;\nfn a() {{\n    let c = {new}\"x\");\n}}\n");
-        assert_eq!(unhidden_spawns("x.rs", &after_cfg_use), vec![4], "a single cfg(test) item does not hide the code after it");
+        assert_eq!(unhidden_spawns(&after_cfg_use), vec![4], "a single cfg(test) item does not hide the code after it");
         // Review (T-816): four ways the scanner was fooled before.
         let after_cfg_mod = format!("#[cfg(test)]\nmod t;\nfn a() {{\n    let c = {new}\"x\");\n}}\n");
-        assert_eq!(unhidden_spawns("x.rs", &after_cfg_mod), vec![4], "a cfg(test) `mod t;` (body elsewhere) hides nothing after it");
+        assert_eq!(unhidden_spawns(&after_cfg_mod), vec![4], "a cfg(test) `mod t;` (body elsewhere) hides nothing after it");
         let typed = format!("fn a() {{\n    let c: Command = {new}\"x\");\n}}\n");
-        assert_eq!(unhidden_spawns("x.rs", &typed), vec![2], "the type named before the constructor does not hide it");
+        assert_eq!(unhidden_spawns(&typed), vec![2], "the type named before the constructor does not hide it");
         let commented = format!("fn a() {{\n    let c = {new}\"x\");\n    // see winproc:: and creation_flags\n}}\n");
-        assert_eq!(unhidden_spawns("x.rs", &commented), vec![2], "a comment naming the helper does not hide the spawn");
+        assert_eq!(unhidden_spawns(&commented), vec![2], "a comment naming the helper does not hide the spawn");
         let url = format!("fn a() {{\n    let u = \"https://x\"; let c = {new}\"x\");\n}}\n");
-        assert_eq!(unhidden_spawns("x.rs", &url), vec![2], "a URL's // is not a comment");
+        assert_eq!(unhidden_spawns(&url), vec![2], "a URL's // is not a comment");
     }
 
     /// A program with a console shares it with its children (no new console host per child); one
@@ -199,7 +188,7 @@ mod tests {
                 continue;
             }
             let text = std::fs::read_to_string(&file).unwrap();
-            for line in unhidden_spawns(&rel, &text) {
+            for line in unhidden_spawns(&text) {
                 bad.push(format!("{rel}:{line}"));
             }
         }

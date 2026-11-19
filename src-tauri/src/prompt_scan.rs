@@ -39,14 +39,6 @@ impl Prompt {
             "permission"
         }
     }
-    /// The attention kind for worker-show (ORCH-037): a question needs input, the rest approval.
-    pub fn attention(&self) -> &'static str {
-        if self.kind == "question" {
-            "input"
-        } else {
-            "approval"
-        }
-    }
 }
 
 /// Words an option line offers: a choice, not a composer placeholder or a shell prompt.
@@ -204,21 +196,6 @@ pub fn live_prompt(terminal: u32, read: &Read) -> Option<Prompt> {
     with_scanner(|s| s.scan(terminal, read))
 }
 
-/// ORCH-037 for worker-show: what the pane on `terminal` waits on, as its hooks say it, else as its
-/// screen shows it. A hook state belongs to the terminal that reported it, so one left from the
-/// pane's earlier process (its terminal ended) is never read here; `read` gives the terminal's
-/// newest output for the screen scan and is only asked when the hooks hold nothing.
-pub fn worker_attention(terminal: u32, read: impl FnOnce() -> Option<Read>) -> Option<&'static str> {
-    match crate::status::state_of(terminal) {
-        Some("permission") => return Some("approval"),
-        Some("waiting") => return Some("input"),
-        Some(_) => return None,
-        None => {}
-    }
-    let read = read()?;
-    with_scanner(|s| s.scan(terminal, &read)).map(|p| p.attention())
-}
-
 /// The window's view of a scan: the prompt, or none.
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -276,13 +253,13 @@ mod tests {
     fn orch056_claude_permission_trust_and_question_menus_are_read_off_the_screen() {
         // A permission menu, with colour codes and a dialog border, under earlier output.
         let p = find_prompt(&rows(&["Reading src/main.rs", "", "\x1b[1mDo you want to make this edit to main.rs?\x1b[0m", "│ ❯ 1. Yes", "│   2. Yes, and don't ask again this session", "│   3. No, and tell Claude what to do differently", "", "Esc to cancel"])).expect("a permission menu is a prompt");
-        assert_eq!((p.kind, p.text.as_str(), p.state(), p.attention()), ("approval", "Do you want to make this edit to main.rs?", "permission", "approval"));
+        assert_eq!((p.kind, p.text.as_str(), p.state()), ("approval", "Do you want to make this edit to main.rs?", "permission"));
         // The trust screen.
         let t = find_prompt(&rows(&["Do you trust the files in this folder?", "", "  G:\\Temp\\watch-v3\\repo", "", "❯ 1. Yes, proceed", "  2. No, exit", "", "Enter to confirm · Esc to exit"])).expect("a trust screen is a prompt");
         assert_eq!((t.kind, t.state()), ("trust", "permission"));
         // A multiple-choice question is input, not approval.
         let q = find_prompt(&rows(&["Which framework should the new page use?", "❯ 1. Next.js", "  2. Remix", "  3. Skip this question", "  ↑/↓ to navigate"])).expect("a numbered question is a prompt");
-        assert_eq!((q.kind, q.text.as_str(), q.state(), q.attention()), ("question", "Which framework should the new page use?", "waiting", "input"));
+        assert_eq!((q.kind, q.text.as_str(), q.state()), ("question", "Which framework should the new page use?", "waiting"));
     }
 
     #[test]
@@ -329,30 +306,5 @@ mod tests {
         // Another pane keeps its own mark.
         s.restored(8, 100);
         assert_eq!(s.scan(8, &old), None);
-    }
-
-    #[test]
-    fn orch037_worker_attention_reads_hooks_first_then_the_screen_and_never_an_ended_process() {
-        use crate::status::{report, terminal_ended, Agent};
-        let (pane, term) = (7_129_001, 7_129_001);
-        let cursor_menu = || Some(read_of(&["Run this command?", "● Accept    ○ Reject"], 1, ""));
-        // No hooks on this terminal: the screen decides.
-        assert_eq!(worker_attention(term, cursor_menu), Some("approval"));
-        assert_eq!(worker_attention(term, || Some(read_of(&["building..."], 1, ""))), None);
-        assert_eq!(worker_attention(term, || None), None, "no terminal output, nothing to say");
-        // The hooks report a permission prompt: that wins over a clean screen.
-        let ev = serde_json::json!({ "hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": { "command": "ls" } });
-        assert!(report(pane, Some(term), Agent::Claude, &ev).is_some());
-        assert_eq!(worker_attention(term, || Some(read_of(&["building..."], 1, ""))), Some("approval"));
-        // A working hook state says nothing needs a person, and the screen is not asked.
-        let done = serde_json::json!({ "hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_input": {}, "tool_response": {} });
-        assert!(report(pane, Some(term), Agent::Claude, &done).is_some());
-        assert_eq!(worker_attention(term, || panic!("the screen is not read while the hooks report")), None);
-        // The pane's process ended: the state it left is ignored for that terminal, and a new
-        // process on a new terminal starts from nothing.
-        assert!(report(pane, Some(term), Agent::Claude, &ev).is_some());
-        terminal_ended(term);
-        assert_eq!(worker_attention(term, || None), None, "an ended process's hook state is ignored");
-        assert_eq!(worker_attention(term + 1, cursor_menu), Some("approval"), "the new process is read on its own");
     }
 }

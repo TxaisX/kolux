@@ -650,30 +650,15 @@ pub struct Sent {
     pub receipt: String,
 }
 
-/// GIT-031: send text to the workspace's agent through the orchestration send (send-once: a
-/// repeat joins the first), the same path `kolux terminal send` takes. No second terminal writer.
+/// GIT-031: send text to the workspace's agent through the send-once path (`sendonce::send_prompt`),
+/// the one the opening prompt uses too. No second terminal writer.
 #[tauri::command]
 pub async fn scm_review_send(app: tauri::AppHandle, worktree: String, text: String) -> Result<Sent, String> {
     use tauri::Manager;
     tauri::async_runtime::spawn_blocking(move || {
         let terminals = app.state::<crate::terminal::Terminals>();
         let terminal = pick_agent(&terminals.sessions(), &worktree)?;
-        let store = app.state::<std::sync::Mutex<crate::state::Store>>();
-        let git = app.state::<crate::git::Git>();
-        let notify = |_: serde_json::Value| {};
-        let front = || -> Result<(), String> { Ok(()) };
-        let ctx = crate::cli::Ctx { claude_config: crate::claude_accounts::trust_config_file(&store), git: &git, store: &store, terminals: &terminals, notify: &notify, front: &front };
-        let req = crate::cli::Request {
-            id: format!("review-send-{terminal}"),
-            token: String::new(),
-            command: "terminal.send".to_string(),
-            cwd: worktree.clone(),
-            args: serde_json::json!({ "terminal": terminal, "text": text, "enter": true }),
-            pane: None,
-            cli: env!("CARGO_PKG_VERSION").to_string(),
-            arrived: None,
-        };
-        let out = crate::cli::dispatch(&ctx, &req).map_err(|f| f.message);
+        let out = crate::sendonce::send_prompt(&terminals, &terminal, &text);
         let receipt = delivery_verdict(&out)?;
         Ok(Sent { terminal, receipt })
     })
@@ -1045,28 +1030,10 @@ mod tests {
 
     #[test]
     fn git_031_a_send_to_a_missing_terminal_fails_in_words() {
-        let dir = std::env::temp_dir().join(format!("kolux-review-send-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let git = crate::git::Git::detect().unwrap();
-        let store = std::sync::Mutex::new(crate::state::Store::open(&dir.join("data")).unwrap());
         let terminals = crate::terminal::Terminals::default();
-        let notify = |_: serde_json::Value| {};
-        let front = || -> Result<(), String> { Ok(()) };
-        let ctx = crate::cli::Ctx { claude_config: dir.join(".claude.json"), git: &git, store: &store, terminals: &terminals, notify: &notify, front: &front };
-        let req = crate::cli::Request {
-            id: "t".into(),
-            token: String::new(),
-            command: "terminal.send".into(),
-            cwd: dir.to_string_lossy().into_owned(),
-            args: serde_json::json!({"terminal": "term-9", "text": "hello", "enter": true}),
-            pane: None,
-            cli: env!("CARGO_PKG_VERSION").to_string(),
-            arrived: None,
-        };
-        let out = crate::cli::dispatch(&ctx, &req).map_err(|f| f.message);
+        let out = crate::sendonce::send_prompt(&terminals, "term-9", "hello");
         let err = delivery_verdict(&out).unwrap_err();
         assert!(!err.is_empty(), "a missing terminal must say why");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

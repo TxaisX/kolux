@@ -15,8 +15,8 @@
 //
 // Everything lives under G:\Temp\ready-identity-rig (RIG_BASE overrides it). The app's own profile is placed
 // by Windows' known folders, so it lands at %APPDATA%\<scratch identifier>; `clean` removes those two scratch
-// identifiers' folders and nothing else. The installer puts <install>\bin on the user's PATH the way the real
-// one does; the uninstaller (run by `clean`) takes that entry off again.
+// identifiers' folders and nothing else. The kolux command line is retired: the installer no longer puts
+// <install>\bin on the user's PATH and takes an old entry off, as the real one does.
 //
 // A release build reads its feed address at build time (update.rs RELEASE_ENDPOINT, KOLUX_RELEASE_ENDPOINT),
 // so the installers built here point at http://127.0.0.1:<RIG_PORT>/latest.json and carry the scratch public key.
@@ -147,14 +147,11 @@ export function build(id, version) {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`bad version ${version}`);
   mkdirSync(join(BASE, "build"), { recursive: true });
   const target = join(ROOT, "src-tauri", "target", "release");
-  const slash = (p) => p.replaceAll("\\", "/");
-  // The same shape as scripts/release.mjs: the CLI and its shim ride along in bin/, the key is the scratch one.
-  const resources = { [slash(join(ROOT, "src-tauri", "cli", "kolux.cmd"))]: "bin/kolux.cmd", [slash(join(target, "kolux-cli.exe"))]: "bin/kolux.exe" }; // T-790: the CLI is built as kolux-cli, shipped as bin/kolux.exe
+  // The same shape as scripts/release.mjs, with the scratch key.
   const conf = join(BASE, "build", `${id}-${version}.conf.json`);
-  writeFileSync(conf, JSON.stringify({ version, productName: ident.productName, identifier: ident.identifier, ...(ident.mainBinaryName ? { mainBinaryName: ident.mainBinaryName } : {}), bundle: { resources }, plugins: { updater: { pubkey: pubkey(), dangerousInsecureTransportProtocol: true } } }, null, 2));
+  writeFileSync(conf, JSON.stringify({ version, productName: ident.productName, identifier: ident.identifier, ...(ident.mainBinaryName ? { mainBinaryName: ident.mainBinaryName } : {}), plugins: { updater: { pubkey: pubkey(), dangerousInsecureTransportProtocol: true } } }, null, 2));
   const env = cleanEnv({ KOLUX_RELEASE_PUBKEY: pubkey(), KOLUX_RELEASE_ENDPOINT: `http://127.0.0.1:${PORT}/latest.json`, CARGO_BUILD_JOBS: "4" });
   log(`build: ${ident.productName} ${version} (${ident.identifier}), feed http://127.0.0.1:${PORT}/latest.json`);
-  if (!existsSync(join(target, "kolux-cli.exe"))) sh("cargo", ["build", "--release", "--features", "release-cli", "--bin", "kolux-cli"], { cwd: join(ROOT, "src-tauri"), env, shim: true, echo: true });
   sh("pnpm", ["tauri", "build", "--bundles", "nsis", "--config", conf], { cwd: ROOT, env, shim: true, echo: true });
   const from = join(target, "bundle", "nsis", installerName(id, version));
   if (!existsSync(from) || statSync(from).size < 1 << 20) throw new Error(`no installer at ${from}`);
@@ -601,13 +598,12 @@ async function prove790Body() {
     await sleep(2000);
     const shape2 = await snapshot(page);
     const np = await waitFor("the new profile's state.db", () => newProf(), 30000, 500);
-    await waitFor("the new bin folder on the PATH", () => onPath(join(newDir, "bin")), 30000, 1000).catch(() => {});
     page.close();
     await quit(pid);
     verdict("A4 new app opens with the old profile's state", JSON.stringify(shape) === JSON.stringify(shape2), `before ${JSON.stringify(shape)} after ${JSON.stringify(shape2)}; new profile ${np}`);
   }
   verdict("A5 old profile still byte-identical after the new app ran", sameTree(before, hashTree(oldProfile)), `${Object.keys(hashTree(oldProfile)).length} files`);
-  verdict("A6 PATH: old bin off, new bin on", !onPath(join(oldDir, "bin")) && onPath(join(newDir, "bin")), `old bin ${onPath(join(oldDir, "bin")) ? "STILL ON" : "off"}; new bin ${onPath(join(newDir, "bin")) ? "on" : "MISSING"}`);
+  verdict("A6 PATH: old bin off, no new bin added (the command line is retired)", !onPath(join(oldDir, "bin")) && !onPath(join(newDir, "bin")), `old bin ${onPath(join(oldDir, "bin")) ? "STILL ON" : "off"}; new bin ${onPath(join(newDir, "bin")) ? "ADDED" : "not added"}`);
 
   // ---- B: the updater's way (/UPDATE), the old bin folder on the PATH ----
   uninstall({ id: newId, keepData: true });
@@ -626,12 +622,11 @@ async function prove790Body() {
   {
     const pid = launch(newId);
     const page = await attach();
-    await waitFor("the new bin folder on the PATH", () => onPath(join(newDir, "bin")), 30000, 1000).catch(() => {});
     page.close();
     await quit(pid);
   }
   verdict("B1 /UPDATE retires the old entry and folder", !hasUninstallEntry(oldId) && hasUninstallEntry(newId) && !existsSync(join(oldDir, "uninstall.exe")), `old entry ${hasUninstallEntry(oldId) ? "STILL THERE" : "gone"}; old uninstall.exe ${existsSync(join(oldDir, "uninstall.exe")) ? "STILL THERE" : "gone"}`);
-  verdict("B2 /UPDATE keeps kolux on the PATH (new bin in, old bin out)", hadOld && !onPath(join(oldDir, "bin")) && onPath(join(newDir, "bin")), `old bin ${onPath(join(oldDir, "bin")) ? "STILL ON" : "off"}; new bin ${onPath(join(newDir, "bin")) ? "on" : "MISSING"}`);
+  verdict("B2 /UPDATE takes the old bin off and adds no new one (the command line is retired)", !onPath(join(oldDir, "bin")) && !onPath(join(newDir, "bin")), `old bin ${onPath(join(oldDir, "bin")) ? "STILL ON" : "off"}; new bin ${onPath(join(newDir, "bin")) ? "ADDED" : "not added"}`);
   verdict("B3 old profile still untouched", sameTree(before, hashTree(oldProfile)), `${Object.keys(hashTree(oldProfile)).length} files`);
 
   // ---- C: a plain install with nothing old to retire ----

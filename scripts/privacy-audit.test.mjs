@@ -25,7 +25,6 @@ const ALLOWED = {
   "src-tauri/src/net.rs": [/\breqwest::/], // project and site icons (APP-070); moved here from browser.rs when the web pane was removed (2026-11-12)
   "src-tauri/src/update.rs": [/tauri_plugin_updater/], // GitHub Releases
   "src-tauri/src/lib.rs": [/tauri_plugin_updater/],
-  "src-tauri/src/cli/mod.rs": [TCP_CONNECT], // kolux-dev talking to the app on 127.0.0.1
   "src-tauri/src/pty_service.rs": [TCP_CONNECT], // pty_service.rs:514 Client::connect: the host is the literal [127,0,0,1], only the port comes from the service's endpoint file
   "src-tauri/src/labels.rs": [TCP_CONNECT], // labels.rs:180 the label proxy to a workspace dev server: its only target comes from target_of (labels.rs:75), which refuses any host that is not a loopback IP or localhost
 };

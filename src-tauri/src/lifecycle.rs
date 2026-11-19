@@ -169,25 +169,25 @@ pub fn claim_named(_name: &str) -> Claim {
     Claim::First(Instance {})
 }
 
-/// What the startup file says about the running copy.
-#[derive(Debug, PartialEq, Eq)]
-pub struct Running {
-    pub port: u16,
-    pub token: String,
-    pub pid: Option<u32>,
+/// The startup file in the profile folder: the running copy's process id, for a second launch that
+/// cannot hand over through the plugin's channel (`raise_target`). It keeps the name it had while the
+/// command line wrote it (with a port and a token beside the pid), so a file an older copy left is
+/// still read, and it is deleted when the app exits.
+pub const STARTUP_FILE: &str = "cli.json";
+
+/// Writes this process's startup file into the profile folder `dir`.
+pub fn write_running(dir: &Path) -> std::io::Result<()> {
+    std::fs::write(dir.join(STARTUP_FILE), serde_json::json!({ "pid": std::process::id() }).to_string())
 }
 
-/// The running copy from the startup file's text (`cli.json`: port, token, pid). Anything short
-/// of a port and a token is nothing to forward to.
-pub fn running_from(text: &str) -> Option<Running> {
+/// The running copy's process id from the startup file's text; anything else in it is ignored.
+pub fn running_from(text: &str) -> Option<u32> {
     let v: Value = serde_json::from_str(text).ok()?;
-    let port = v["port"].as_u64().and_then(|p| u16::try_from(p).ok())?;
-    let token = v["token"].as_str()?.to_string();
-    Some(Running { port, token, pid: v["pid"].as_u64().and_then(|p| u32::try_from(p).ok()) })
+    v["pid"].as_u64().and_then(|p| u32::try_from(p).ok())
 }
 
-pub fn read_running(dir: &Path) -> Option<Running> {
-    std::fs::read_to_string(dir.join(crate::cli::FILE)).ok().and_then(|t| running_from(&t))
+pub fn read_running(dir: &Path) -> Option<u32> {
+    std::fs::read_to_string(dir.join(STARTUP_FILE)).ok().and_then(|t| running_from(&t))
 }
 
 /// Lets `pid` take the foreground: a process the user just started has that right and may pass
@@ -202,25 +202,56 @@ pub fn allow_foreground(pid: u32) {
     let _ = pid;
 }
 
-/// The visible top-level windows `pid` owns (a minimised window counts as visible).
+/// The window class tauri-runtime-wry gives every Tauri window on Windows (tauri.conf.json names no other).
+#[cfg_attr(not(windows), allow(dead_code))]
+const TAURI_CLASS: &str = "Tauri Window";
+
+/// One top-level window of the running copy, as the fallback raise sees it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(not(windows), allow(dead_code))]
+pub struct TopWindow {
+    pub handle: isize,
+    pub class: String,
+    /// Another window owns it (a dialog, an IME window), so it is never the main window.
+    pub owned: bool,
+    pub visible: bool,
+}
+
+/// APP-001: the running copy's window a second launch brings back: a Tauri top-level window that no other
+/// window owns, a shown one before a hidden one (a window hidden to the tray is not visible and must still
+/// come back), in the order the system listed them. WebView2's windows, tao's message target, the tray
+/// icon's and the single-instance plugin's hidden windows and any owned window are never picked.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn main_window(windows: &[TopWindow]) -> Option<isize> {
+    let mut picked: Vec<&TopWindow> = windows.iter().filter(|w| w.class == TAURI_CLASS && !w.owned).collect();
+    picked.sort_by_key(|w| !w.visible);
+    picked.first().map(|w| w.handle)
+}
+
+/// The top-level windows `pid` owns, shown or hidden, in z order. Only queries that send the window no
+/// message, so a hung window cannot hold up the launch.
 #[cfg(windows)]
-pub fn windows_of(pid: u32) -> Vec<isize> {
+pub fn windows_of(pid: u32) -> Vec<TopWindow> {
     use windows_sys::Win32::Foundation::{HWND, LPARAM};
-    use windows_sys::Win32::UI::WindowsAndMessaging::{EnumWindows, GetWindowThreadProcessId, IsWindowVisible};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{EnumWindows, GetClassNameW, GetWindow, GetWindowThreadProcessId, IsWindowVisible, GW_OWNER};
     unsafe extern "system" fn each(hwnd: HWND, lparam: LPARAM) -> i32 {
         // SAFETY: lparam is the pointer to `state` below, alive for the whole enumeration.
-        let state = unsafe { &mut *(lparam as *mut (u32, Vec<isize>)) };
+        let state = unsafe { &mut *(lparam as *mut (u32, Vec<TopWindow>)) };
         let mut owner = 0u32;
-        // SAFETY: plain window queries on a handle the system just handed over.
+        // SAFETY: plain window queries on a handle the system just handed over; the class name is
+        // written into `name`, whose length is passed, and read back only up to the count returned.
         unsafe {
             GetWindowThreadProcessId(hwnd, &mut owner);
-            if owner == state.0 && IsWindowVisible(hwnd) != 0 {
-                state.1.push(hwnd as isize);
+            if owner == state.0 {
+                let mut name = [0u16; 64];
+                let n = GetClassNameW(hwnd, name.as_mut_ptr(), name.len() as i32);
+                let class = String::from_utf16_lossy(&name[..usize::try_from(n).unwrap_or(0)]);
+                state.1.push(TopWindow { handle: hwnd as isize, class, owned: !GetWindow(hwnd, GW_OWNER).is_null(), visible: IsWindowVisible(hwnd) != 0 });
             }
         }
         1
     }
-    let mut state: (u32, Vec<isize>) = (pid, Vec::new());
+    let mut state: (u32, Vec<TopWindow>) = (pid, Vec::new());
     // SAFETY: the callback only reads `state` through the pointer, which outlives the call.
     unsafe {
         EnumWindows(Some(each), &mut state as *mut _ as LPARAM);
@@ -228,28 +259,31 @@ pub fn windows_of(pid: u32) -> Vec<isize> {
     state.1
 }
 
-/// Restores and focuses the running copy's window by its process id, retrying briefly when the
-/// system refuses to bring it forward. True once it is the foreground window.
+/// Shows, restores and focuses the running copy's main window by its process id, retrying briefly when
+/// the system refuses to bring it forward. A window hidden to the tray is shown first. True once it is
+/// the foreground window.
 #[cfg(windows)]
 pub fn raise_by_pid(pid: u32, tries: usize, mut sleep: impl FnMut(Duration)) -> bool {
     use windows_sys::Win32::Foundation::HWND;
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, SetForegroundWindow, ShowWindowAsync, SW_RESTORE};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, IsWindowVisible, SetForegroundWindow, ShowWindowAsync, SW_RESTORE, SW_SHOW};
     for i in 0..tries {
         if i > 0 {
             sleep(RAISE_WAIT);
         }
-        for h in windows_of(pid) {
-            let hwnd = h as HWND;
-            // SAFETY: plain window calls on handles enumerated a moment ago; a stale one just fails.
-            // The restore is posted, not waited on, so a hung window cannot block this launch.
-            unsafe {
-                if IsIconic(hwnd) != 0 {
-                    ShowWindowAsync(hwnd, SW_RESTORE);
-                }
-                SetForegroundWindow(hwnd);
-                if GetForegroundWindow() == hwnd {
-                    return true;
-                }
+        let Some(h) = main_window(&windows_of(pid)) else { continue };
+        let hwnd = h as HWND;
+        // SAFETY: plain window calls on a handle enumerated a moment ago; a stale one just fails.
+        // The show and the restore are posted, not waited on, so a hung window cannot block this launch.
+        unsafe {
+            if IsWindowVisible(hwnd) == 0 {
+                ShowWindowAsync(hwnd, SW_SHOW);
+            }
+            if IsIconic(hwnd) != 0 {
+                ShowWindowAsync(hwnd, SW_RESTORE);
+            }
+            SetForegroundWindow(hwnd);
+            if GetForegroundWindow() == hwnd {
+                return true;
             }
         }
     }
@@ -279,10 +313,10 @@ pub fn started_before(started: Option<u64>, written: std::time::SystemTime) -> b
 /// cannot use the channel. `None`: no startup file, no id in it, or (Windows) the process with that
 /// id started after the file was written, so it is another program reusing a crashed copy's id.
 pub fn raise_target(dir: &Path) -> Option<u32> {
-    let pid = read_running(dir).and_then(|r| r.pid)?;
+    let pid = read_running(dir)?;
     #[cfg(windows)]
     {
-        let written = std::fs::metadata(dir.join(crate::cli::FILE)).and_then(|m| m.modified()).ok()?;
+        let written = std::fs::metadata(dir.join(STARTUP_FILE)).and_then(|m| m.modified()).ok()?;
         if !started_before(crate::procs::started_at(pid), written) {
             return None;
         }
@@ -318,7 +352,7 @@ struct Channel {
 }
 
 /// The running copy was launched again on its profile: its window comes to the front (shown,
-/// restored, focused), as `app.open` does. The launch's arguments carry nothing it acts on.
+/// restored, focused), as the tray's Open Kolux does. The launch's arguments carry nothing it acts on.
 fn on_second_launch(app: &tauri::AppHandle, _argv: Vec<String>, _cwd: String) {
     let _ = crate::tray::show_main(app);
 }
@@ -884,11 +918,18 @@ mod tests {
 
     #[test]
     fn app001_the_running_copy_is_read_from_the_startup_file() {
-        assert_eq!(running_from(r#"{"port":1425,"token":"t","pid":42}"#), Some(Running { port: 1425, token: "t".into(), pid: Some(42) }));
-        assert_eq!(running_from(r#"{"port":1425,"token":"t"}"#), Some(Running { port: 1425, token: "t".into(), pid: None }), "an older file without a pid still forwards");
-        assert_eq!(running_from(r#"{"port":1425}"#), None, "no token: nothing to forward to");
+        assert_eq!(running_from(r#"{"pid":42}"#), Some(42));
+        assert_eq!(running_from(r#"{"port":1425,"token":"t","pid":42}"#), Some(42), "a file the command line wrote still names the copy");
+        assert_eq!(running_from(r#"{"port":1425,"token":"t"}"#), None, "no pid: nothing to raise");
         assert_eq!(running_from("not json"), None);
-        assert_eq!(running_from(r#"{"port":70000,"token":"t"}"#), None, "a port that fits no socket");
+        assert_eq!(running_from(r#"{"pid":-1}"#), None);
+        assert_eq!(running_from(r#"{"pid":5000000000}"#), None, "an id that fits no process");
+        let dir = std::env::temp_dir().join(format!("kolux-startup-file-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_running(&dir).unwrap();
+        assert_eq!(read_running(&dir), Some(std::process::id()), "the file this copy writes names this copy");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -925,6 +966,27 @@ mod tests {
         assert!(!named_exists(&channel_name_for(&id, &mine)), "looking created nothing that outlives the owner");
     }
 
+    #[test]
+    fn app001_the_fallback_raise_picks_the_tauri_window_even_hidden_and_never_a_helper_window() {
+        let w = |handle: isize, class: &str, owned: bool, visible: bool| TopWindow { handle, class: class.into(), owned, visible };
+        // Hidden to the tray: the only Tauri window is hidden, beside the process's helper windows.
+        let tray = [
+            w(1, "Tao Thread Event Target", false, false),
+            w(2, "Chrome_WidgetWin_0", false, false),
+            w(3, "IME", true, false),
+            w(4, "Tauri Window", false, false),
+            w(5, "com.txaisxiong.kolux-sic", false, false),
+        ];
+        assert_eq!(main_window(&tray), Some(4), "the hidden main window comes back");
+        // A shown one wins over a hidden one, and an owned Tauri window (a dialog) is never picked.
+        let both = [w(6, "Tauri Window", true, true), w(7, "Tauri Window", false, false), w(8, "Tauri Window", false, true)];
+        assert_eq!(main_window(&both), Some(8));
+        assert_eq!(main_window(&both[..2]), Some(7));
+        // Nothing of Tauri's: nothing is raised.
+        assert_eq!(main_window(&tray[..3]), None);
+        assert_eq!(main_window(&[]), None);
+    }
+
     #[cfg(windows)]
     #[test]
     fn app001_a_process_with_no_window_is_not_raised() {
@@ -940,11 +1002,11 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         assert_eq!(raise_target(&dir), None, "no startup file: nothing to raise");
-        std::fs::write(dir.join(crate::cli::FILE), r#"{"port":1425,"token":"t"}"#).unwrap();
+        std::fs::write(dir.join(STARTUP_FILE), r#"{"port":1425,"token":"t"}"#).unwrap();
         assert_eq!(raise_target(&dir), None, "an older file without a pid: nothing to raise");
         // This test's own process started before the file below is written, like a running copy.
         let me = std::process::id();
-        std::fs::write(dir.join(crate::cli::FILE), format!(r#"{{"port":1425,"token":"t","pid":{me}}}"#)).unwrap();
+        std::fs::write(dir.join(STARTUP_FILE), format!(r#"{{"pid":{me}}}"#)).unwrap();
         assert_eq!(raise_target(&dir), Some(me), "the running copy's window is raised by its pid");
         let _ = std::fs::remove_dir_all(&dir);
         #[cfg(windows)]

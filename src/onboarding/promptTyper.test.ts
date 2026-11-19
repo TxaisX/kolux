@@ -1,46 +1,6 @@
-// ONB-017 / ONB-028 (T-244-b): the plan the ticks make, how setup ended, and the typer that puts the
-// installer's command at a prompt without pressing Enter.
+// ONB-017 (T-244-b): the typer that puts a setup command at a prompt without pressing Enter.
 import { describe, expect, test } from "vitest";
-import { caps } from "./guide";
-import { CHECK_MS, createTyper, MAX_CHECKS, nothingToDo, OPEN_WAIT_MS, outcomeOf, planOf, plain, promptVisible, typable, type Registration } from "./cliInstall";
-
-const reg = (state: Registration["state"], note: string | null = null): Registration => ({ state, command: "kolux", place: "C:\\k", note, canChange: state !== "unknown" });
-
-describe("planOf", () => {
-  test("only what is ticked and missing is set up", () => {
-    const list = caps({ installed: false, onPath: false }, []);
-    expect(planOf(["command", "kolux-cli", "orchestration"], list)).toEqual({ register: true, skills: ["kolux-cli", "orchestration"] });
-  });
-  test("orchestration alone names no other skill", () => {
-    const list = caps(null, []);
-    expect(planOf(["orchestration"], list)).toEqual({ register: false, skills: ["orchestration"] });
-  });
-  test("a ready capability that is ticked anyway is left alone", () => {
-    const list = caps({ installed: true, onPath: true }, ["kolux-cli"]);
-    expect(planOf(["command", "kolux-cli"], list)).toEqual({ register: false, skills: [] });
-    expect(nothingToDo(planOf(["command", "kolux-cli"], list))).toBe(true);
-  });
-  test("nothing ticked is nothing to do", () => {
-    expect(nothingToDo(planOf([], caps(null, [])))).toBe(true);
-  });
-});
-
-describe("outcomeOf", () => {
-  test("installed only when registration finished cleanly", () => {
-    expect(outcomeOf(reg("registered"), null)).toEqual({ kind: "installed" });
-  });
-  test("every other registration answer needs attention and says why", () => {
-    expect(outcomeOf(reg("not-registered"), null)).toMatchObject({ kind: "attention" });
-    expect(outcomeOf(reg("unknown", "PATH could not be read"), null)).toEqual({ kind: "attention", why: "PATH could not be read" });
-    expect(outcomeOf(reg("conflict", "a file of unknown origin is at C:\\k"), null)).toEqual({ kind: "attention", why: "a file of unknown origin is at C:\\k" });
-    expect(outcomeOf("registry refused", null)).toEqual({ kind: "attention", why: "registry refused" });
-  });
-  test("without a registration: installed and on PATH is installed; installed but not on PATH needs attention", () => {
-    expect(outcomeOf(null, { installed: true, onPath: true })).toEqual({ kind: "installed" });
-    expect(outcomeOf(null, { installed: true, onPath: false })).toMatchObject({ kind: "attention" });
-    expect(outcomeOf(null, null)).toMatchObject({ kind: "attention" });
-  });
-});
+import { CHECK_MS, createTyper, MAX_CHECKS, OPEN_WAIT_MS, plain, promptVisible, typable } from "./promptTyper";
 
 describe("prompt reading", () => {
   test("colour and title codes are removed", () => {

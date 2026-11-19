@@ -904,7 +904,7 @@ pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     // T-793: the secret every pane's token is made from. It is kept only here: not in a file, not in a pane's environment.
-    let token = crate::cli::secret();
+    let token = crate::local_token::secret();
     let endpoint = data_dir.join(ENDPOINT_FILE);
     // A crash leaves the last run's per-pane files; their tokens mean nothing to this run.
     remove_endpoint_files(data_dir);
