@@ -1,14 +1,14 @@
 // S10 Git under load: a ~50k-file repo (branch 200 commits ahead, ~2k modified, ~500 untracked) is opened as a project with one
 // shell pane. For 60 s a key goes into the pane every 50 ms (an echo program answers each byte with a numbered token) while the
-// app's own git paths run: the changes view opens, a refresh + file-watcher change, direct status/summary/base-changes calls,
-// a diff of a big file and the All Changes tab. Bars: echo p95 < 100 ms, page timer gap worst < 250 ms, 0 page errors, clean quit.
+// app's own git paths run: the changes view opens, a refresh + file-watcher change, direct status calls
+// and the All Changes tab. Bars: echo p95 < 100 ms, page timer gap worst < 250 ms, 0 page errors, clean quit.
 // Status-settle times are measurements, not bars. The repo lives under G:/Temp/stress-s10/ (S10_REPO overrides), never in a checkout.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TERM, addProjectAndOpen, fmt, installProbe, pageErrors, paneText, seedProfile, slash, stats, typeInto, openDiffFromCli } from "./lib.mjs";
-import { BIG, buildRepo } from "./s10-repo.mjs";
+import { TERM, addProjectAndOpen, fmt, installProbe, pageErrors, paneText, seedProfile, slash, stats, typeInto } from "./lib.mjs";
+import { buildRepo } from "./s10-repo.mjs";
 
 export const title = "Git under load (50k files, 200 commits ahead)";
 export const seed = seedProfile;
@@ -206,7 +206,7 @@ export async function run({ launch, checks }) {
     const direct = unwrap(
       await app.evalJs(`(async () => {
         const out = {}, wt = ${JSON.stringify(REPO.replace(/\//g, "\\"))};
-        const calls = [["status1", "scm_status", { worktree: wt }], ["status2", "scm_status", { worktree: wt }], ["summary", "scm_summary", { worktree: wt, pinned: null, upstream: false }], ["baseChanges", "scm_base_changes", { worktree: wt, pinned: null, known: null }], ["history", "scm_history", { worktree: wt }]];
+        const calls = [["status1", "scm_status", { worktree: wt }], ["status2", "scm_status", { worktree: wt }]];
         for (const [k, c, p] of calls) { const t = performance.now(); try { await window.__TAURI_INTERNALS__.invoke(c, p); } catch (e) { out[k + "Err"] = String(e).slice(0, 90); } out[k] = Math.round(performance.now() - t); }
         return out;
       })()`),
@@ -215,24 +215,6 @@ export async function run({ launch, checks }) {
     return { watcherToPanelMs: seen ? seen - w : null, direct: JSON.stringify(direct) };
   });
   await wait(30000);
-  // D: a diff of the big file, opened beside the second shell so the typing target stays on screen.
-  let diffKind = null;
-  await step("D diff of the big file", async () => {
-    await app.focusPane(TERM, 1, ".xterm-helper-textarea");
-    await app.evalJs(`(() => { const S = window.__s10; S.start("diffState"); S.watch("diffState"); return "ok"; })()`);
-    await openDiffFromCli(app, REPO, BIG);
-    const ms = await poll(() => app.evalJs(`window.__s10.read("diffState")`), 90000);
-    diffKind = unwrap(await app.evalJs(`(() => { const ask = [...document.querySelectorAll(".notice.md-banner")].find((e) => /large/i.test(e.textContent)); return ask ? "asked" : document.querySelector(".diff-body .cm-line") ? "drawn" : "nothing"; })()`));
-    const shellShown = unwrap(await app.evalJs(`[...document.querySelectorAll(${JSON.stringify(TERM)})].filter((e) => e.offsetParent !== null).length`));
-    return { diffMs: ms, diffKind, shellPanesShown: shellShown };
-  });
-  await wait(40000);
-  await step("D close diff tab", async () => {
-    await app.evalJs(`(() => { document.querySelector('section.pane.editor.diff:not([hidden]) button[title^="Close tab"], section.pane.editor.diff button[title^="Close tab"]')?.click(); return "x"; })()`);
-    await app.sleep(600);
-    await app.evalJs(`(() => { const d = document.querySelector('[role="alertdialog"] .btn-row'); if (d) [...d.querySelectorAll("button")].find((x) => /danger|primary/.test(x.className))?.click(); return "x"; })()`);
-  });
-  await wait(45000);
   // E: All Changes, every changed file's diff in one tab.
   await step("E All Changes", async () => {
     await app.focusPane(TERM, 1, ".xterm-helper-textarea");

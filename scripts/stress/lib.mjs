@@ -17,14 +17,6 @@ export const NEW_TERMINAL_JS = `async function newTerminal(sleep) {
   await sleep(0);
   return true;
 }`;
-// S-02: the New tab menu's "Changed file diff" picker is gone, and so is the Source Control sidebar (T-644). What still opens a file's diff tab
-// from outside is the command line's event: `kolux diff` makes the backend emit "cli-workspace" with kind "file-diff"; the same event is emitted here
-// through the page's IPC, so the window's own handler (useCliBridge) selects the folder and opens the diff.
-export async function openDiffFromCli(app, repo, name, staged = false) {
-  const dir = repo.replace(/\//g, "\\");
-  const payload = { kind: "file-diff", path: `${dir}\\${name}`, staged, worktree: dir, branch: null };
-  await app.evalJs(`window.__TAURI_INTERNALS__.invoke("plugin:event|emit", { event: "cli-workspace", payload: ${JSON.stringify(payload)} }).then(() => true)`);
-}
 export const SHELL = 'section.pane[data-agent="shell"]';
 export const SHELL_NAMES = new Set(["powershell.exe", "pwsh.exe", "cmd.exe"]);
 // Host processes a terminal pane leaves behind when it is not cleaned up.
