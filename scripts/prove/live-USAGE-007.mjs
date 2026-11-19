@@ -7,7 +7,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { reporter, startPlain, finish, sleep, poll, checker, norm } from "./live-proj-common.mjs";
-import { runCli, allPaneBuffers } from "./live-cli-common.mjs";
+import { allPaneBuffers } from "./live-common.mjs";
 
 const STANDIN = ["echo ARGV: %*", "echo CWD: %CD%", "echo IDENT: %KOLUX_HOOK_IDENTITY%", ":again", "set /p L=", "echo GOT: %L%", "goto again"];
 const PROMPT_WORDS = "The usage limit has reset. Please continue where you left off.";
@@ -40,8 +40,9 @@ function endpointFile(roaming, terminal) {
 
 export async function run007(ctx, mode, { check, log }) {
   const { app } = ctx;
-  const r = await runCli(ctx, "worktree create --name a --agent claude --prompt hi --activate");
-  log(`worktree a with a stand-in Claude pane started by Kolux: exit=${r.exit}`);
+  // The setup made worktree a with `kolux-dev worktree create --name a --agent claude --prompt hi --activate`; the command
+  // line is gone, so this proof needs its setup done through the window before it can run again.
+  throw new Error("the setup used the retired kolux command line; make worktree a and its Claude pane through the window first");
   const pane = await poll(async () => (await allPaneBuffers(app, 'section.pane[data-agent*="claude"]')).find((b) => /IDENT: \S+/.test(b.text ?? "")) ?? null, 40000, 800);
   const ident = pane?.text.match(/IDENT: (\S+)/)?.[1];
   let who = null;

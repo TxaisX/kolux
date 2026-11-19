@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { reporter, startPlain, finish, sleep, poll, checker, STANDIN_BODY, norm } from "./live-proj-common.mjs";
-import { runCli, allPaneBuffers, rowsOf } from "./live-cli-common.mjs";
+import { allPaneBuffers, rowsOf } from "./live-common.mjs";
 
 const THOUGHT = ".chat-thought button.chat-fold-head";
 const state = (app) =>
@@ -12,9 +12,9 @@ const state = (app) =>
 export async function run053(ctx, { check, log }) {
   const { app } = ctx;
   // A Claude pane started by Kolux in worktree a, in view.
-  const r = await runCli(ctx, "worktree create --name a --agent claude --prompt hi --activate");
-  const pa = r.json?.worktree?.path ?? r.json?.path ?? null;
-  log(`worktree a with a stand-in Claude pane: exit=${r.exit}`);
+  // The setup made worktree a with `kolux-dev worktree create --name a --agent claude --prompt hi --activate`; the command
+  // line is gone, so this proof needs its setup done through the window before it can run again.
+  throw new Error("the setup used the retired kolux command line; make worktree a and its Claude pane through the window first");
   const pane = await poll(async () => (await allPaneBuffers(app, 'section.pane[data-agent*="claude"]')).find((b) => b.text?.includes("CWD:")) ?? null, 40000, 800);
   const cwd = pane?.text.split("\n").find((l) => l.startsWith("CWD:"))?.slice(4).trim();
   check("setup: the stand-in Claude pane is up in a's folder", !!cwd && norm(cwd) === norm(pa), `cwd=${cwd ? "found" : "none"}`);
