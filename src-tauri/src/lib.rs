@@ -126,6 +126,10 @@ pub(crate) mod winproc;
 mod usage_alerts;
 // stage 3 (s3-engine)
 mod chat_engine;
+// stage 3 (s3-notes)
+mod chat_writeup;
+mod claude_shared;
+mod openrouter;
 
 use state::Store;
 use std::sync::Mutex;

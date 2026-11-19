@@ -213,8 +213,11 @@ fn user_home() -> Option<PathBuf> {
 #[tauri::command]
 #[allow(dead_code)] // T-187-b: registered by evidence/automations-T-187-b-lib.rs.patch
 pub async fn session_carry_context(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, id: String) -> Result<Context, String> {
-    let settings = store.lock().map_err(|e| e.to_string())?.settings();
-    tauri::async_runtime::spawn_blocking(move || context(&roots_for(&settings, env_text, user_home()), &agent, &id)).await.map_err(|e| e.to_string())?
+    let (settings, profile) = {
+        let store = store.lock().map_err(|e| e.to_string())?;
+        (store.settings(), store.dir())
+    };
+    tauri::async_runtime::spawn_blocking(move || context(&roots_for(&settings, env_text, user_home(), Some(&profile)), &agent, &id)).await.map_err(|e| e.to_string())?
 }
 
 /// SESS-033: says why no agent can start in `dir`, or Ok when the folder is there.

@@ -106,7 +106,8 @@ pub fn delete_with_open(roots: &Roots, agent: &str, id: &str, open: &[(String, S
 }
 
 fn roots_now(store: &Mutex<crate::state::Store>) -> Result<Roots, String> {
-    Ok(super::list::live_roots(&store.lock().map_err(|e| e.to_string())?.settings()))
+    let store = store.lock().map_err(|e| e.to_string())?;
+    Ok(super::list::live_roots(&store.settings(), Some(&store.dir())))
 }
 
 /// The session's own transcript file, found and checked off the window's thread.
