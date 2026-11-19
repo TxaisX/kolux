@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { acquire, buildOnce, changelogHeading, changelogSection, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, run, smokeCli, smokeMigration, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
+import { acquire, buildOnce, changelogHeading, changelogSection, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, run, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
 import { decide, WAIT_MS } from "./ci-gate.mjs";
 import { checkPromises, checkWorkflow } from "./workflow-check.mjs";
 import { parseArgs } from "./ship.mjs";
@@ -91,43 +91,8 @@ describe("one build at a time (APP-059)", () => {
   });
 });
 
-describe("packaged CLI smoke test (APP-061)", () => {
-  const cli = (version, help) => (words) => (words[0] === "--version" ? version : help);
-  const HELP = ["kolux: drive Kolux from a terminal", "  kolux --version", "  kolux worktree create --name <name>"].join(String.fromCharCode(10));
-  it("passes a CLI that reports the release version and prints its help", () => {
-    expect(() => smokeCli(cli("0.2.0", HELP), "0.2.0")).not.toThrow();
-  });
-  it("stops the release when the CLI's version is wrong or its help is broken", () => {
-    expect(() => smokeCli(cli("0.1.9", HELP), "0.2.0")).toThrow(/says 0.1.9, the release is 0.2.0/);
-    expect(() => smokeCli(cli("0.2.0", ""), "0.2.0")).toThrow(/--help/);
-  });
-});
-
-describe("packaged old-profile migration smoke test (APP-061)", () => {
-  const fake = (added, seen = []) => (words, env) => {
-    seen.push({ words, env });
-    return JSON.stringify({ success: true, result: { added } });
-  };
-  const scratch = () => fs.mkdtempSync(path.join(os.tmpdir(), "mig-smoke-"));
-  it("lays out a former-name folder beside a throwaway profile and passes when exactly the listed settings carried", () => {
-    const root = scratch();
-    const seen = [];
-    smokeMigration(fake(["uiLook", "language"], seen), root);
-    expect(seen[0].words).toEqual(["profile", "migrate", "--json"]);
-    expect(seen[0].env.KOLUX_USER_DATA_PATH).toBe(path.join(root, "kolux.smoke"));
-    expect(fs.readFileSync(path.join(root, "Nightshift", "settings.json"), "utf8")).toMatch(/nightshiftLanguage/);
-    fs.rmSync(root, { recursive: true, force: true });
-  });
-  it("stops the release when a setting is missing or one beyond the allow-list carried", () => {
-    const root = scratch();
-    expect(() => smokeMigration(fake(["uiLook"]), root)).toThrow(/carried \["uiLook"\]/);
-    expect(() => smokeMigration(fake(["uiLook", "language", "githubToken"]), root)).toThrow(/more than the allow-list/);
-    fs.rmSync(root, { recursive: true, force: true });
-  });
-});
-
 // T-587 (X-proc.1): the real publish path, not the rehearsal folder every other test uses. git builds
-// from a scratch main; `exec` stands in for gh, pnpm, cargo and the packaged CLI, and logs each call
+// from a scratch main; `exec` stands in for gh and pnpm, and logs each call
 // with the environment it was given. Nothing reaches GitHub and nothing is compiled. T-588: the signing
 // key is a real throwaway one, and the real tauri signer signs with it.
 describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", () => {
@@ -157,8 +122,7 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
     return { root, origin, env, key, checkout: env.KOLUX_RELEASE_CHECKOUT, done: () => fs.rmSync(root, { recursive: true, force: true }) };
   }
   // gh answers with `latest` (null: no release yet); the bundler leaves an installer, signed only when it
-  // is handed the key (as `tauri build` does); tauri signer is the real one; the packaged CLI passes its
-  // smoke test.
+  // is handed the key (as `tauri build` does); tauri signer is the real one.
   function tools(checkout, latest) {
     const calls = [];
     const version = () => JSON.parse(fs.readFileSync(path.join(checkout, "src-tauri", "tauri.conf.json"), "utf8")).version;
@@ -178,11 +142,6 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
         if (opts.env?.TAURI_SIGNING_PRIVATE_KEY) fs.writeFileSync(exe + ".sig", "c2lnbmF0dXJl");
       }
       if (name === "tauri signer") return execFileSync(process.execPath, [TAURI_JS, ...args.slice(1)], { env: opts.env, encoding: "utf8", windowsHide: true });
-      if (name === "kolux-cli.exe") {
-        if (args[0] === "--version") return version();
-        if (args[0] === "--help") return "kolux --version\nkolux worktree create --name <name>";
-        return JSON.stringify({ success: true, result: { added: ["uiLook", "language"] } });
-      }
       return "";
     };
     return { calls, exec, gh: () => calls.filter((c) => c.name === "gh" && c.args[0] !== "run") };
@@ -270,8 +229,8 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
       const t = tools(s.checkout, { tagName: "v0.1.7", body: "" });
       const r = buildOnce({ repo: s.origin }, s.env, t.exec);
       expect(r).toMatchObject({ version: "0.1.8", published: true });
-      const build = t.calls.filter((c) => ["pnpm", "cargo", "kolux-cli.exe"].includes(c.name));
-      expect(build.map((c) => c.name)).toEqual(["pnpm", "cargo", "pnpm", "kolux-cli.exe", "kolux-cli.exe", "kolux-cli.exe"]);
+      const build = t.calls.filter((c) => ["pnpm", "cargo"].includes(c.name));
+      expect(build.map((c) => c.name)).toEqual(["pnpm", "pnpm"]);
       for (const c of build) expect(held(c), `${c.name} ${c.args.join(" ")}`).toEqual([]);
       const signer = t.calls.filter((c) => c.name === "tauri signer");
       expect(signer.map((c) => c.args.slice(1, 5))).toEqual([["signer", "sign", "--app-version", "0.1.8"]]);

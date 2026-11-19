@@ -35,7 +35,7 @@ Section
   FileClose $Out
 SectionEnd
 
-; T-789: never called (it would write the real PATH); it only has to compile, with the real gate macro inside.
+; Never called (it would write the real PATH and delete files); it only has to compile, with the real macro inside.
 Function neverCalled
-  !insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE
+  !insertmacro KOLUX_CLI_LEFTOVERS
 FunctionEnd

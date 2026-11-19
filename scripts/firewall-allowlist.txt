@@ -128,14 +128,12 @@ wait-for-setup
 .kolux/templates
 .kolux/issue-command
 {prompt}
-# Values typed on the kolux command line, and the two launchers the user runs
+# Values the retired kolux command line took, and its two launchers (COMPAT.md still names them)
 worker_done
 merge_ready
 decision_gate
 release_pending
 release_unknown
---httpOnly
---sameSite
 kolux.cmd
 kolux.exe
 # Everyday tokens
