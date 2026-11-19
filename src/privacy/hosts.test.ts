@@ -44,7 +44,7 @@ const NOT_A_CONNECTION: Record<string, string> = {
 
 test("t791: every host the app's code can reach has a row in the Privacy list, or a stated reason", () => {
   const found = hostsInCode();
-  expect(found.size).toBeGreaterThan(10); // the reader finds the source at all
+  expect(found.size).toBeGreaterThanOrEqual(5); // the reader finds the source at all (6 hosts after slim-down wave B)
   const unnamed = [...found].filter(([h]) => !(h in CONNECTS) && !(h in NOT_A_CONNECTION)).map(([h, at]) => `${h} (${at[0]})`);
   expect(unnamed, "add a row to OUTBOUND in src/settings/outbound.ts and a line to CONNECTS here").toEqual([]);
 });
