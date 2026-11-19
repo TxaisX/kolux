@@ -1471,4 +1471,15 @@ mod tests {
             std::fs::metadata(&kept).unwrap().len()
         );
     }
+
+    /// A sync command runs on the main thread. These may wait on every PATH folder, a megabyte read
+    /// or a whole log scan, so they run on a worker instead.
+    #[test]
+    fn commands_that_may_wait_on_the_disk_never_run_on_the_window_thread() {
+        for (src, name) in [(include_str!("agents.rs"), "agent_start_line"), (include_str!("terminal.rs"), "terminal_history"), (include_str!("token_usage.rs"), "token_usage"), (include_str!("activity.rs"), "activity_counts")] {
+            let src = src.replace("\r\n", "\n");
+            let at = src.find(&format!("pub fn {name}(")).unwrap();
+            assert!(src[..at].trim_end().ends_with("#[tauri::command(async)]"), "{name} must be #[tauri::command(async)]");
+        }
+    }
 }

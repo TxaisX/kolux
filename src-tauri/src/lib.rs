@@ -609,10 +609,6 @@ pub fn run() {
                     }
                 }
             }
-            // ACCT-055: files dropped in from outside may be copied into the Explorer, nothing else.
-            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
-                window.state::<fence::Fence>().dropped(paths);
-            }
         })
         .invoke_handler(|invoke: tauri::ipc::Invoke<tauri::Wry>| {
             let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
@@ -988,13 +984,6 @@ pub fn run() {
             artifacts::artifact_open,
             artifacts::open_external,
             links::open_path, links::file_grant, links::editor_open,
-            fsops::fs_create,
-            fsops::fs_rename,
-            fsops::fs_trash,
-            fsops::fs_restore,
-            fsops::fs_copy,
-            fsops::fs_bytes,
-            fsops::fs_move,
             clipboard::clip_copy_text,
             clipboard::clip_copy_files,
             clipboard::feedback_facts,

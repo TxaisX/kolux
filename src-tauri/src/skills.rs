@@ -339,7 +339,7 @@ fn canon(p: &Path) -> Option<PathBuf> {
 /// ponytail: resolving a drive or link that leads to a stopped distribution can stall with no time
 /// limit; run it under the scan's 8-second limit if that ever shows up.
 pub(crate) fn in_wsl(p: &Path) -> bool {
-    wsl_text(p) || canon(p).is_some_and(|c| crate::fsops::is_wsl(&c))
+    wsl_text(p) || canon(p).is_some_and(|c| crate::links::is_wsl(&c))
 }
 
 /// T-666: a WSL share by its text alone, in any UNC spelling; nothing is opened.
@@ -347,7 +347,7 @@ pub(crate) fn wsl_text(p: &Path) -> bool {
     let s = p.to_string_lossy().replace('/', "\\");
     let low = s.to_lowercase();
     let text = [r"\\.\unc\", r"\??\unc\"].iter().find(|pre| low.starts_with(**pre)).map_or(s.clone(), |pre| format!(r"\\{}", &s[pre.len()..]));
-    crate::fsops::is_wsl(Path::new(&text))
+    crate::links::is_wsl(Path::new(&text))
 }
 
 /// Skill folders under `dir`, following links without looping and only `depth` folders down.
@@ -389,7 +389,7 @@ fn walk(dir: &Path, depth: usize, seen: &mut HashSet<PathBuf>, limit: usize, w: 
             continue;
         }
         // A folder on a WSL share that Windows cannot resolve is kept by its own path (DT-C94).
-        let Some(c) = canon(&p).or_else(|| crate::fsops::is_wsl(&p).then(|| p.clone())) else { continue };
+        let Some(c) = canon(&p).or_else(|| crate::links::is_wsl(&p).then(|| p.clone())) else { continue };
         if !seen.insert(c) {
             continue;
         }
@@ -574,7 +574,7 @@ fn read_skill(dir: &Path) -> (String, Option<String>, Option<u64>) {
 pub(crate) fn key(p: &Path) -> String {
     let c = canon(p).unwrap_or_else(|| p.to_path_buf());
     let s = c.to_string_lossy().to_string();
-    if cfg!(windows) && !crate::fsops::is_wsl(&c) {
+    if cfg!(windows) && !crate::links::is_wsl(&c) {
         s.to_lowercase()
     } else {
         s
@@ -704,7 +704,7 @@ pub fn occurrences(root: &Path) -> Result<Vec<PathBuf>, String> {
             }
             let Some(c) = canon(&p) else { continue };
             // A link into a WSL share holds nothing a delete may take (DT-C94).
-            if chain.contains(&c) || crate::fsops::is_wsl(&c) {
+            if chain.contains(&c) || crate::links::is_wsl(&c) {
                 continue;
             }
             let file = p.join(SKILL_FILE);
@@ -1090,7 +1090,7 @@ mod tests {
             assert_eq!(all.iter().filter(|s| s.source == "home").count(), 5, "only this computer's home folders");
             // Listed, never offered for delete: only this computer's home folders are.
             let p = places(&env(&home), Some(ws));
-            assert!(p.deletable.iter().all(|d| !crate::fsops::is_wsl(d)), "{:?}", p.deletable);
+            assert!(p.deletable.iter().all(|d| !crate::links::is_wsl(d)), "{:?}", p.deletable);
             assert_eq!(p.deletable.len(), places(&env(&home), None).deletable.len());
             // Names on the share are case-sensitive: Lint and lint are two folders.
             assert_ne!(key(&ws.join("Lint")), key(&ws.join("lint")));

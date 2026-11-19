@@ -163,6 +163,13 @@ pub fn host_path(text: &str, roots: &[String]) -> bool {
     })
 }
 
+/// A path on a WSL share (`\\wsl$\`, `\\wsl.localhost\`, or the long-path form of either), judged
+/// from the spelling alone.
+pub fn is_wsl(p: &Path) -> bool {
+    let s = p.to_string_lossy().replace('/', "\\").to_lowercase();
+    s.starts_with("\\\\wsl$\\") || s.starts_with("\\\\wsl.localhost\\") || s.starts_with("\\\\?\\unc\\wsl$\\") || s.starts_with("\\\\?\\unc\\wsl.localhost\\")
+}
+
 /// Backslashes throughout, the NT object prefix `\??\` written as `\\?\` (council FS1, FIX-2), and
 /// the `/c:/x` a file URL yields turned into `c:\x`.
 fn windows_form(path: &str) -> String {
@@ -812,5 +819,12 @@ mod tests {
         std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(launchable(&f));
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn wsl_shares_are_known() {
+        assert!(is_wsl(Path::new(r"\\wsl$\Ubuntu\home\a")));
+        assert!(is_wsl(Path::new(r"\\wsl.localhost\Ubuntu\x")));
+        assert!(!is_wsl(Path::new(r"C:\wsl$\x")));
     }
 }
