@@ -127,7 +127,7 @@ Rows whose guide page reads "removed" describe features that were taken out in t
 | T-047 | Expand a pane to fill the grid; every pane has a header with title and usage. | [Terminals](terminals.md) |
 | T-048 | The terminal grid has a clean, uncluttered look. | [Terminals](terminals.md) |
 | T-049-a | Three workspace screens, Agents, Board and Terminals, switch from the keyboard. | removed |
-| T-049-b | The Kolux menu's View menu has a Workspace View choice for Agents, Board, Terminals, Tower and Floor, with the current screen ticked. It is absent in the Classic look. | [Getting started](getting-started.md) |
+| T-049-b | The Kolux menu's View menu has a Workspace View choice; it lists Terminals, the one screen left, ticked. It is absent in the Classic look. | [Getting started](getting-started.md) |
 | T-050 | The Agents screen lists sessions by saved agent with chat, terminal and composer. | removed |
 | T-051 | The left sidebar shows, hides and resizes, listing project folders only. | [Projects and folders](projects-and-worktrees.md) |
 | T-053 | Pick the app colour theme: Classic or one of 16 hues, with sliders. | [Settings](settings.md) |
@@ -426,7 +426,7 @@ Rows whose guide page reads "removed" describe features that were taken out in t
 | T-204 | Removed 2026-10-28 (T-568): the starter kits and their gallery are gone. | [Getting started](getting-started.md) |
 | T-205 | Removed 2026-10-28 (T-568): kits no longer exist, so nothing starts one. | [Getting started](getting-started.md) |
 | T-206 | Removed 2026-10-28 (T-568): kit roles and their result files are gone. | [Getting started](getting-started.md) |
-| T-206-b | Removed 2026-10-28 (T-568): kit rows are gone; a usage limit or sign-in stop shows on the pane and the Board instead. | [Getting started](getting-started.md) |
+| T-206-b | Removed 2026-10-28 (T-568): kit rows are gone; a usage limit or sign-in stop shows on the pane instead. | [Getting started](getting-started.md) |
 | T-207 | A four-screen guided first run floats over the app. | [Getting started](getting-started.md) |
 | T-207-b | The first AI connected during the wizard is recorded as a milestone. | [Getting started](getting-started.md) |
 | T-207-c | The first-connection milestone is also recorded from the wizard's Connect cards. | [Getting started](getting-started.md) |
@@ -559,7 +559,7 @@ Rows whose guide page reads "removed" describe features that were taken out in t
 | T-272 | Pages cannot flood you with tabs: 5 new tabs per 10 seconds, the rest dropped quietly. | removed |
 | Browser FIX-1 | One shared tab allowance for link opens and new windows; site-icon fetches are capped and every redirect is checked, so a public page cannot make Kolux fetch from your own machine or network. | removed |
 | T-319 | A browser tab's toolbar shows the site's own icon in place of the globe (the tab strip does not yet). | removed |
-| T-323 | Bring in terminal colour schemes from Warp and Ghostty; Editor and diffs, Open in and Network proxy cards on the General page (saved, not yet used by the editor, menus or network); the mouse wheel scrolls long menus and pickers. | [Settings](settings.md#open-in) |
+| T-323 | Open in and Network proxy cards on the General page; the mouse wheel scrolls long menus and pickers. (The Warp and Ghostty colour import and the Editor and diffs card were removed on 2026-11-19.) | [Settings](settings.md#open-in) |
 | T-325 | The Agents page shows a Claude Code, OpenClaude or Codex session as a live chat with each message once and in order. | removed |
 | T-326 | Chat folds the agent's work: Thought rows, steps, file edits as diff cards, a subagent row and busy timers. | removed |
 | T-327 | A chat message box that types into the agent's terminal and follows the newest message; it holds a send while the agent is asking, and Request changes on a plan waits until the agent leaves its menu. | removed |
