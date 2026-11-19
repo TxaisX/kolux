@@ -6,8 +6,8 @@ import { GUIDE_CLOSED } from "./guide";
 
 const run = (more: Partial<FirstRun> = {}): FirstRun => ({ closed: true, outcome: "completed", checklistDismissed: false, milestones: {}, ...more });
 const skipped = run({ outcome: "dismissed", checklistDismissed: true });
-const CORE: StepId[] = ["notifications", "agent", "cli", "multitask", "automate", "repos"];
-const facts = (more: Partial<Facts> = {}): Facts => ({ workspaces: [], gitProjects: 0, integrations: "none", cli: false, notifications: false, agent: "", setupScript: false, ...more });
+const CORE: StepId[] = ["notifications", "agent", "multitask", "automate", "repos"];
+const facts = (more: Partial<Facts> = {}): Facts => ({ workspaces: [], gitProjects: 0, integrations: "none", notifications: false, agent: "", setupScript: false, ...more });
 
 describe("the sidebar's onboarding slot (VIEW-114)", () => {
   it("shows nothing while the record is still being read, then the checklist when it is up", () => {
@@ -49,10 +49,10 @@ describe("the sidebar's onboarding slot (VIEW-114)", () => {
   it("entryLine counts git projects: one leaves Multiple repos open, the second ticks it (the words only; the re-read on an add is the onReread test)", () => {
     const one = entryLine(doneFrom(facts({ gitProjects: 1, notifications: true })));
     const two = entryLine(doneFrom(facts({ gitProjects: 2, notifications: true })));
-    expect([one.done, one.total, two.done, two.total]).toEqual([1, 6, 2, 6]);
-    expect(one.count).toBe("1 of 6");
+    expect([one.done, one.total, two.done, two.total]).toEqual([1, 5, 2, 5]);
+    expect(one.count).toBe("1 of 5");
     expect(one.nextId).toBe("agent");
-    const last = entryLine(new Set<StepId>(["notifications", "agent", "cli", "multitask", "automate"]));
+    const last = entryLine(new Set<StepId>(["notifications", "agent", "multitask", "automate"]));
     expect([last.nextId, last.next]).toEqual(["repos", "Start work in multiple repos"]);
   });
 });

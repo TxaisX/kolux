@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { caps, completed, doneFrom, doneId, firstOpen, forward, latest, legacyProfile, LEGACY_DONE, milestonesShown, moveOn, nextTip, railKey, ring, startTicked, stopDone, STEPS, stopOf, visits, withRecord, workflowDone, WORKFLOWS, type Facts, type Place, type Setup, type StepId } from "./guide";
+import { completed, doneFrom, doneId, firstOpen, forward, latest, legacyProfile, LEGACY_DONE, milestonesShown, moveOn, nextTip, railKey, ring, stopDone, STEPS, stopOf, visits, withRecord, workflowDone, WORKFLOWS, type Facts, type Place, type Setup, type StepId } from "./guide";
 
 const set = (...ids: StepId[]) => new Set<StepId>(ids);
 
 describe("Setup Guide (ONB-014)", () => {
-  it("has seven steps, the Setup group before the parallel-work group", () => {
-    expect(STEPS).toHaveLength(7);
+  it("has six steps, the Setup group before the parallel-work group", () => {
+    expect(STEPS).toHaveLength(6);
     const groups = STEPS.map((s) => s.group);
     expect(groups.lastIndexOf("setup")).toBeLessThan(groups.indexOf("parallel"));
     expect(STEPS.every((s) => s.ko.name && s.ko.about && s.en.name && s.en.about)).toBe(true);
@@ -13,7 +13,7 @@ describe("Setup Guide (ONB-014)", () => {
 
   it("opens on the first unfinished step, Setup first, or on the step asked for", () => {
     expect(firstOpen(set())).toBe("notifications");
-    expect(firstOpen(set("notifications", "agent"))).toBe("cli");
+    expect(firstOpen(set("notifications", "agent"))).toBe("integrations");
     const setupDone = set(...STEPS.filter((s) => s.group === "setup").map((s) => s.id));
     expect(firstOpen(setupDone)).toBe("multitask");
     expect(firstOpen(set(), "repos")).toBe("repos");
@@ -21,27 +21,18 @@ describe("Setup Guide (ONB-014)", () => {
   });
 
   it("moves on once the step showing is done", () => {
-    expect(moveOn("cli", set())).toBe("cli");
-    expect(moveOn("cli", set("cli"))).toBe("integrations");
+    expect(moveOn("agent", set())).toBe("agent");
+    expect(moveOn("agent", set("agent"))).toBe("integrations");
     expect(moveOn("repos", set("repos"))).toBe("notifications");
     const all = set(...STEPS.map((s) => s.id));
-    expect(moveOn("cli", all)).toBe("cli");
+    expect(moveOn("agent", all)).toBe("agent");
   });
 
   it("counts core steps in the ring and drops Milestones once they are all done", () => {
-    expect(ring(set())).toEqual({ done: 0, total: 6 });
+    expect(ring(set())).toEqual({ done: 0, total: 5 });
     const core = STEPS.filter((s) => s.core).map((s) => s.id);
     expect(milestonesShown(set(...core.slice(1)))).toBe(true);
     expect(milestonesShown(set(...core))).toBe(false);
-  });
-});
-
-describe("CLI step (ONB-017)", () => {
-  it("starts only the missing capabilities ticked", () => {
-    const c = caps({ installed: true, onPath: true }, ["pdf"]);
-    expect(startTicked(c)).toEqual(["kolux-cli", "orchestration"]);
-    expect(startTicked(caps({ installed: true, onPath: false }, ["kolux-cli", "orchestration"]))).toEqual(["command"]);
-    expect(startTicked(caps(null, []))).toEqual(["command", "kolux-cli", "orchestration"]);
   });
 });
 
@@ -78,24 +69,19 @@ describe("Explore Kolux (ONB-022)", () => {
 });
 
 describe("startup tips (ONB-027)", () => {
-  const none = { seen: [], tried: [], cli: { installed: false, onPath: false }, onboarding: false };
-  it("shows the CLI tip, then the palette tip, then nothing", () => {
-    expect(nextTip(none)).toBe("cli");
-    expect(nextTip({ ...none, seen: ["cli"] })).toBe("palette");
-    expect(nextTip({ ...none, seen: ["cli", "palette"] })).toBeNull();
-  });
-  it("skips the CLI tip when it is on PATH or its status cannot be read, but not when only installed", () => {
-    expect(nextTip({ ...none, cli: { installed: true, onPath: true } })).toBe("palette");
-    expect(nextTip({ ...none, cli: "error" })).toBe("palette");
-    expect(nextTip({ ...none, cli: { installed: true, onPath: false } })).toBe("cli");
+  const none = { seen: [], tried: [], onboarding: false };
+  it("shows the palette tip, then nothing", () => {
+    expect(nextTip(none)).toBe("palette");
+    expect(nextTip({ ...none, seen: ["palette"] })).toBeNull();
+    expect(nextTip({ ...none, seen: ["cli"] }), "a profile that saw the retired command-line tip still gets the palette tip").toBe("palette");
   });
   it("shows nothing in a session that showed the first run, and skips a feature already in use", () => {
     expect(nextTip({ ...none, onboarding: true })).toBeNull();
-    expect(nextTip({ ...none, seen: ["cli"], tried: ["palette"] })).toBeNull();
+    expect(nextTip({ ...none, tried: ["palette"] })).toBeNull();
   });
 });
 
-const none: Facts = { workspaces: null, gitProjects: null, integrations: null, cli: false, notifications: null, agent: null, setupScript: null };
+const none: Facts = { workspaces: null, gitProjects: null, integrations: null, notifications: null, agent: null, setupScript: null };
 const main = (path = "C:/p"): Place => ({ path, head: "abc123", isMain: true, kind: "main" });
 
 describe("Setup Guide steps tick from real state (ONB-015)", () => {
@@ -118,7 +104,7 @@ describe("Setup Guide steps tick from real state (ONB-015)", () => {
     expect(doneFrom({ ...none, integrations: "connected" }).has("integrations")).toBe(true);
   });
 
-  it("the default agent, notifications, CLI and setup-script steps tick from their own state", () => {
+  it("the default agent, notifications and setup-script steps tick from their own state", () => {
     expect(doneFrom({ ...none, agent: "" }).has("agent")).toBe(false);
     expect(doneFrom({ ...none, agent: "claude" }).has("agent")).toBe(true);
     // FIX-4: a plain terminal is not an AI agent, so a saved "terminal" default does not tick the step.
@@ -127,7 +113,6 @@ describe("Setup Guide steps tick from real state (ONB-015)", () => {
     expect(doneFrom({ ...none, agent: "   " }).has("agent")).toBe(false);
     expect(doneFrom({ ...none, notifications: false }).has("notifications")).toBe(false);
     expect(doneFrom({ ...none, notifications: true }).has("notifications")).toBe(true);
-    expect(doneFrom({ ...none, cli: true }).has("cli")).toBe(true);
     expect(doneFrom({ ...none, setupScript: false }).has("automate")).toBe(false);
     expect(doneFrom({ ...none, setupScript: true }).has("automate")).toBe(true);
   });

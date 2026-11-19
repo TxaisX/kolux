@@ -1,4 +1,4 @@
-// ONB-014 Setup Guide, ONB-017 its CLI step, ONB-022 Explore Kolux and ONB-027 startup tips: the
+// ONB-014 Setup Guide, ONB-022 Explore Kolux and ONB-027 startup tips: the
 // model behind the dialogs in Guides.tsx. The window opens them through the events below, so the
 // help menu, a tip or any other caller can ask for a guide without passing state around.
 // ONB-015: every step ticks from real state (doneFrom); ONB-023: an Explore stop is complete only
@@ -10,16 +10,15 @@ import { type Features } from "./features";
 import { movedHint, type MovedId } from "./moved";
 import { isAiAgent } from "./agentKind";
 
-export type StepId = "notifications" | "agent" | "cli" | "integrations" | "multitask" | "automate" | "repos";
+export type StepId = "notifications" | "agent" | "integrations" | "multitask" | "automate" | "repos";
 type Words = { name: string; about: string };
 export type Step = { id: StepId; group: "setup" | "parallel"; core: boolean; en: Words; ko: Words };
 
-/** The seven steps: the Setup group first, then the numbered parallel-work group. Connect
+/** The six steps: the Setup group first, then the numbered parallel-work group. Connect
  *  integrations is optional, so it never keeps Milestones in the help menu. */
 export const STEPS: Step[] = [
   { id: "notifications", group: "setup", core: true, en: { name: "Turn on notifications", about: "Hear when an agent finishes or needs you, even with Kolux in the background." }, ko: { name: "알림 켜기", about: "Kolux가 백그라운드에 있어도 에이전트가 끝나거나 도움이 필요할 때 알려 줍니다." } },
   { id: "agent", group: "setup", core: true, en: { name: "Choose a default agent", about: "Pick the AI that starts when you open a new session." }, ko: { name: "기본 에이전트 선택", about: "새 세션을 열 때 시작할 AI를 고릅니다." } },
-  { id: "cli", group: "setup", core: true, en: { name: "Enable Kolux CLI", about: "Let your agents drive Kolux: open terminals, run orchestration and read the skills that teach them how." }, ko: { name: "Kolux CLI 사용", about: "에이전트가 Kolux를 직접 다루게 합니다: 터미널 열기, 오케스트레이션 실행, 사용법을 알려 주는 스킬 읽기." } },
   { id: "integrations", group: "setup", core: false, en: { name: "Connect integrations", about: "Bring in GitHub reviews and tasks so work arrives where you run it." }, ko: { name: "통합 연결", about: "GitHub 리뷰와 작업을 가져와 일하는 곳에서 바로 받습니다." } },
   { id: "multitask", group: "parallel", core: true, en: { name: "Multi-task", about: "Run more than one agent at once, each in its own pane." }, ko: { name: "멀티태스킹", about: "여러 에이전트를 각자의 창에서 동시에 실행합니다." } },
   { id: "automate", group: "parallel", core: true, en: { name: "Automate workspace setup", about: "Have each new workspace install and prepare itself before an agent starts." }, ko: { name: "작업 공간 설정 자동화", about: "새 작업 공간마다 에이전트가 시작하기 전에 스스로 설치하고 준비하게 합니다." } },
@@ -53,25 +52,6 @@ export function ring(done: ReadonlySet<StepId>): { done: number; total: number }
 
 /** Milestones stays in the help menu only while a core step remains. */
 export const milestonesShown = (done: ReadonlySet<StepId>) => ring(done).done < ring(done).total;
-
-// ---- ONB-017: the CLI step's capabilities ----
-
-export type CliStatus = { installed: boolean; onPath: boolean };
-export type CapId = "command" | "kolux-cli" | "orchestration";
-export type Cap = { id: CapId; label: string; about: string; ready: boolean };
-
-/** What the CLI step sets up and whether each is in place: the command in outside terminals, and
- *  the two Kolux skills found in an agent's own skills folder (bundled copies do not count). */
-export function caps(cli: CliStatus | null, homeSkills: readonly string[]): Cap[] {
-  return [
-    { id: "command", label: "Kolux CLI", about: "The kolux command in terminals outside Kolux, so any agent can call it.", ready: !!cli?.installed && !!cli.onPath },
-    { id: "kolux-cli", label: "Kolux CLI skill", about: "Teaches your agents every kolux command.", ready: homeSkills.includes("kolux-cli") },
-    { id: "orchestration", label: "Orchestration skill", about: "Lets one agent hand work to others and wait for their results.", ready: homeSkills.includes("orchestration") },
-  ];
-}
-
-/** Missing capabilities start ticked, ready ones unticked. */
-export const startTicked = (c: readonly Cap[]): CapId[] => c.filter((x) => !x.ready).map((x) => x.id);
 
 // ---- ONB-022: Explore Kolux ----
 
@@ -140,19 +120,17 @@ export function completed(wf: Workflow, seen: ReadonlySet<string>): boolean {
 
 // ---- ONB-027: startup tips ----
 
-export type TipId = "cli" | "palette" | MovedId;
-/** Newest first: the CLI tip, then the command-palette tip. */
-export const TIP_ORDER: TipId[] = ["cli", "palette"];
+export type TipId = "palette" | MovedId;
+/** Newest first: the command-palette tip (the command-line tip went with the command line). */
+export const TIP_ORDER: TipId[] = ["palette"];
 
-/** The one tip this launch shows, or none. `cli` is "error" when its status could not be read, which
- *  counts as installed. No tip in a session that showed the first-run wizard. */
-export function nextTip(o: { seen: readonly string[]; tried: readonly string[]; cli: CliStatus | "error"; onboarding: boolean; features?: Features }): TipId | null {
+/** The one tip this launch shows, or none. No tip in a session that showed the first-run wizard. */
+export function nextTip(o: { seen: readonly string[]; tried: readonly string[]; onboarding: boolean; features?: Features }): TipId | null {
   if (o.onboarding) return null;
   // ONB-042: a moved control's hint comes first, and only for a profile that used the control before it moved.
   const moved = movedHint(o.features, o.seen);
   if (moved) return moved;
-  const done = (t: TipId) => (t === "cli" ? o.cli === "error" || (o.cli.installed && o.cli.onPath) : o.tried.includes("palette"));
-  return TIP_ORDER.find((t) => !o.seen.includes(t) && !o.tried.includes(t) && !done(t)) ?? null;
+  return TIP_ORDER.find((t) => !o.seen.includes(t) && !o.tried.includes(t)) ?? null;
 }
 
 // ---- opening the guides from anywhere ----
@@ -186,8 +164,6 @@ export type Facts = {
   gitProjects: number | null;
   /** "checking" while the provider checks are still out. */
   integrations: "connected" | "checking" | "none" | null;
-  /** The CLI step's capabilities, all in place. */
-  cli: boolean;
   notifications: boolean | null;
   /** The saved default agent's id; "" when there is none. */
   agent: string | null;
@@ -210,7 +186,6 @@ export function doneFrom(f: Facts): Set<StepId> {
   if (f.workspaces?.some(realWorkspace) || f.splitCredit === true) done.add("multitask");
   if ((f.gitProjects ?? 0) >= 2) done.add("repos");
   if (f.integrations === "connected") done.add("integrations");
-  if (f.cli) done.add("cli");
   if (f.notifications === true) done.add("notifications");
   if (isAiAgent(f.agent)) done.add("agent"); // FIX-4: a blank or plain-terminal default does not count (agentKind.ts)
   if (f.setupScript === true) done.add("automate");
