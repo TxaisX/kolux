@@ -14,9 +14,7 @@ mod chat_tools;
 mod clipboard;
 mod cleanup;
 mod engine_crash;
-mod html_preview;
 mod net;
-mod pdf_export;
 mod webview_args;
 mod webview_engine;
 mod cap;
@@ -31,9 +29,7 @@ pub mod codex_accounts;
 pub mod codex_usage;
 mod creatures;
 pub mod diag;
-mod editor_drafts;
 pub mod env_name;
-mod editor_search;
 pub mod fence;
 pub mod files;
 pub mod final_save;
@@ -63,7 +59,6 @@ mod bulk;
 mod models;
 mod names;
 mod newproject;
-mod notebook_run;
 mod notifications;
 mod notices;
 mod onboarding;
@@ -79,7 +74,6 @@ mod labels;
 mod tidy;
 mod resources;
 pub mod projects;
-mod prompt_answer;
 mod quit_merge;
 mod prompt_scan;
 pub mod scm;
@@ -108,7 +102,6 @@ mod skill_delete;
 pub mod state;
 pub mod status;
 mod sub_work;
-mod term_import;
 mod sysmem;
 pub mod terminal;
 #[cfg(test)]
@@ -642,9 +635,6 @@ pub fn run() {
             hooks::claude_usage_of,
             sysmem::process_memory,
             fonts::list_fonts,
-            term_import::term_import_ghostty,
-            term_import::term_import_ghostty_theme,
-            term_import::term_import_warp,
             resources::resources,
             sessions::list::sessions_list,
             sessions::list::session_resume_plan,
@@ -766,8 +756,6 @@ pub fn run() {
             agents::inventory::session_tabs,
             orchestration::worker_labels,
             orchestration::setup_gate::worker_setup_settled,
-            prompt_answer::prompt_read,
-            prompt_answer::prompt_answer,
             prompt_scan::prompt_scan,
             prompt_scan::prompt_scan_restored,
             prompt_scan::prompt_scan_pruned,
@@ -854,9 +842,6 @@ pub fn run() {
             keybindings::keybindings_write,
             keybindings::keybindings_reload,
             keybindings::keybindings_show,
-            pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
-            pdf_export::browser_pick_pdf_path,
-            html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
             automations::automations_list,
             automations::automations_external_refresh,
             automations::automation_external_act,
@@ -946,18 +931,6 @@ pub fn run() {
             files::file_stamps,
             files::file_pick,
             files::md_list,
-            notebook_run::notebook_trusted,
-            notebook_run::notebook_trust,
-            notebook_run::notebook_run_cell,
-            notebook_run::notebook_stop,
-            editor_drafts::editor_draft_set,
-            editor_drafts::editor_draft_clear,
-            editor_drafts::editor_drafts_get,
-            editor_drafts::editor_drafts_drop,
-            editor_drafts::editor_draft_rename,
-            editor_drafts::editor_flush_ack,
-            editor_search::editor_search,
-            editor_search::editor_search_cancel,
             skills::skills_scan,
             skill_delete::skills_delete_plan,
             skill_delete::skills_delete,

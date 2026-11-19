@@ -675,12 +675,6 @@ pub fn watch_start(app: tauri::AppHandle, perm: Option<String>) {
                 if let Some(d) = &dir {
                     crate::diag::write(d, &format!("interface recovery: no heartbeat, reload {attempt} of 2 (APP-042)"));
                 }
-                // row 199: unsaved editor text first; no ack means the draft write failed or the window is stuck
-                if !crate::editor_drafts::flush_before_reload(&app) {
-                    if let Some(d) = &dir {
-                        crate::diag::write(d, "interface recovery: flush not acked, reloading anyway (row 199)");
-                    }
-                }
                 let _ = win.reload();
             }
             Action::Prompt(reason) => {
@@ -694,11 +688,6 @@ pub fn watch_start(app: tauri::AppHandle, perm: Option<String>) {
                     i.answered(reload, Instant::now());
                 }
                 if reload {
-                    if !crate::editor_drafts::flush_before_reload(&app) {
-                        if let Some(d) = &dir {
-                            crate::diag::write(d, "interface recovery: flush not acked, reloading anyway (row 199)");
-                        }
-                    }
                     let _ = win.reload();
                 } else {
                     app.exit(0);
