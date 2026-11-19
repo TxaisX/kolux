@@ -130,8 +130,9 @@ describe("the real repository (T-540)", () => {
     expect(r.counts.p0Total).toBe(107);
     let boxes = 0;
     for (const c of r.cards.values()) boxes += c.boxes.length;
-    // Was 2737 before the 2026-11-19 slim-down moved 114 P0 cards (and their boxes) to spec/21-retired-hidden.md; 1480 boxes remain.
-    expect(boxes).toBeGreaterThanOrEqual(1480);
+    // Was 2737 before the 2026-11-19 slim-down moved 114 P0 cards (and their boxes) to spec/21-retired-hidden.md; 1480 remained,
+    // and 1478 after the P2 card APP-019 (two boxes) was retired there too.
+    expect(boxes).toBeGreaterThanOrEqual(1478);
   });
   it("counts the P0 cards whose boxes are all ticked today (STAT-040, the one of the six the council found that the 2026-11-19 slim-down kept)", () => {
     for (const id of ["STAT-040"]) {

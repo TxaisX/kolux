@@ -2,8 +2,8 @@
 //! APP-001: one copy runs per profile folder. The first copy holds a named mutex for its whole life;
 //! a second launch of the same profile hands its arguments and folder to the running copy through
 //! the single-instance plugin (which also grants it foreground rights), and ends with
-//! `DUPLICATE_EXIT`, never zero. The running copy brings its window to the front and opens any
-//! markdown files it was handed. A launch on another profile (a proof run's scratch home) is a first
+//! `DUPLICATE_EXIT`, never zero. The running copy brings its window to the front; a second launch
+//! that cannot use the channel raises that window itself before it ends. A launch on another profile (a proof run's scratch home) is a first
 //! copy and runs beside it: the plugin knows only the app identifier, so just one copy per identifier
 //! (the first to start) owns the plugin's channel, and a second launch uses it only when its own
 //! profile's copy is that owner (`channel_name_for`).
@@ -18,8 +18,6 @@
 //! steps as the quit's final save, and a step that failed or timed out cancels the restart.
 //! APP-020: a pane's search path takes in entries the stored user and system Path gained since the
 //! app started, after what the process already had, nothing dropped or repeated.
-//! APP-019: markdown files the system hands to the app (double-click, Open with) are picked out of
-//! the launch arguments, queued until the page asks for them, and forwarded by a second launch.
 
 use serde_json::Value;
 use std::ffi::{OsStr, OsString};
@@ -262,8 +260,11 @@ pub fn raise_by_pid(_pid: u32, _tries: usize, _sleep: impl FnMut(Duration)) -> b
     false
 }
 
-/// The page event that tells it more markdown files are waiting (`open_files_take` drains them).
-pub const OPEN_FILES_EVENT: &str = "open-files";
+/// The running copy's process id a second launch that cannot use the channel raises itself, read
+/// from the profile's startup file (the same steps the old forwarding took). `None`: nothing to raise.
+pub fn raise_target(dir: &Path) -> Option<u32> {
+    read_running(dir).and_then(|r| r.pid)
+}
 
 /// The second launch's log line.
 pub fn second_launch_line(plan: &SecondLaunch) -> &'static str {
@@ -293,19 +294,8 @@ struct Channel {
 }
 
 /// The running copy was launched again on its profile: its window comes to the front (shown,
-/// restored, focused) and the markdown files the launch was handed open, as `app.open` did.
-fn on_second_launch(app: &tauri::AppHandle, argv: Vec<String>, cwd: String) {
-    let files = markdown_paths(argv.get(1..).unwrap_or(&[]), Path::new(&cwd));
-    open_handed(app, &files);
-}
-
-/// Queues the markdown files among `files`, tells the page when there are any, and brings the main
-/// window to the front.
-pub fn open_handed(app: &tauri::AppHandle, files: &[String]) {
-    use tauri::Emitter;
-    if queue_open(files) > 0 {
-        let _ = app.emit(OPEN_FILES_EVENT, ());
-    }
+/// restored, focused), as `app.open` does. The launch's arguments carry nothing it acts on.
+fn on_second_launch(app: &tauri::AppHandle, _argv: Vec<String>, _cwd: String) {
     let _ = crate::tray::show_main(app);
 }
 
@@ -340,7 +330,6 @@ pub fn claim_or_forward(app: &tauri::App) {
     match claim_named(&name) {
         Claim::First(instance) => {
             app.manage(instance);
-            queue_open(&launch_markdown());
             take_channel(app, dir.as_deref());
         }
         Claim::Second => {
@@ -353,131 +342,15 @@ pub fn claim_or_forward(app: &tauri::App) {
                 // The plugin finds the running copy, grants it the foreground, hands over the
                 // arguments and folder, then clears the resource table: `EndAs` ends the process.
                 let _ = app.handle().plugin(tauri_plugin_single_instance::init(on_second_launch));
+            } else if let Some(pid) = dir.as_deref().and_then(raise_target) {
+                // No channel to hand over through (another profile's copy owns it, or the first copy
+                // has not taken it yet): grant the running copy the foreground and raise its window.
+                allow_foreground(pid);
+                raise_by_pid(pid, RAISE_TRIES, std::thread::sleep);
             }
             std::process::exit(DUPLICATE_EXIT);
         }
     }
-}
-
-// ---------------------------------------------------------------- APP-019: markdown from the system
-
-const MARKDOWN_EXT: [&str; 5] = ["md", "markdown", "mdown", "mkd", "mkdn"];
-
-fn percent_decode(s: &str) -> Option<String> {
-    let b = s.as_bytes();
-    let mut out = Vec::with_capacity(b.len());
-    let mut i = 0;
-    while i < b.len() {
-        if b[i] == b'%' {
-            let hex = s.get(i + 1..i + 3)?;
-            out.push(u8::from_str_radix(hex, 16).ok()?);
-            i += 3;
-        } else {
-            out.push(b[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).ok()
-}
-
-fn is_file_address(a: &str) -> bool {
-    a.get(..5).is_some_and(|p| p.eq_ignore_ascii_case("file:"))
-}
-
-/// The local path an encoded file address names (`file:///C:/My%20Notes/a.md`), or `None` when the
-/// address is not a local file or does not decode.
-fn file_address_path(addr: &str) -> Option<String> {
-    let rest = addr.get(5..)?.strip_prefix("//")?;
-    let (host, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
-    if !host.is_empty() && !host.eq_ignore_ascii_case("localhost") {
-        return None;
-    }
-    let decoded = percent_decode(path)?;
-    // /C:/dir -> C:/dir
-    let b = decoded.as_bytes();
-    let path = if b.len() >= 3 && b[0] == b'/' && b[1].is_ascii_alphabetic() && b[2] == b':' { &decoded[1..] } else { &decoded[..] };
-    Some(if cfg!(windows) { path.replace('/', "\\") } else { path.to_string() })
-}
-
-/// The markdown files among `args` (the launch arguments without the program name), as absolute
-/// paths: encoded file addresses are decoded, relative paths are taken from `cwd`, switches and every
-/// other kind of file are ignored, repeats are dropped.
-pub fn markdown_paths(args: &[String], cwd: &Path) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    for a in args {
-        let a = a.trim();
-        if a.is_empty() || a.starts_with('-') {
-            continue;
-        }
-        let path = if is_file_address(a) {
-            match file_address_path(a) {
-                Some(p) => PathBuf::from(p),
-                None => continue,
-            }
-        } else {
-            PathBuf::from(a)
-        };
-        let is_markdown = path.extension().and_then(OsStr::to_str).is_some_and(|e| MARKDOWN_EXT.iter().any(|m| m.eq_ignore_ascii_case(e)));
-        if !is_markdown {
-            continue;
-        }
-        let full = if path.is_absolute() { path } else { cwd.join(path) };
-        let full = full.to_string_lossy().into_owned();
-        if !out.contains(&full) {
-            out.push(full);
-        }
-    }
-    out
-}
-
-/// This process's own launch arguments, markdown files only.
-fn launch_markdown() -> Vec<String> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    markdown_paths(&args, &std::env::current_dir().unwrap_or_default())
-}
-
-/// Files asked for before the page can take them; the page drains the queue once it is ready, and
-/// again whenever the running copy is asked to open more.
-pub struct OpenQueue(Mutex<Vec<String>>);
-
-impl OpenQueue {
-    pub const fn new() -> Self {
-        Self(Mutex::new(Vec::new()))
-    }
-
-    /// Adds files (each once). Anything that is not a markdown path is dropped here too: the list may
-    /// come from another process over the command-line port.
-    pub fn push(&self, files: &[String]) {
-        let Ok(mut q) = self.0.lock() else { return };
-        for f in markdown_paths(files, Path::new("")) {
-            if !q.contains(&f) {
-                q.push(f);
-            }
-        }
-    }
-
-    /// Everything queued so far, oldest first; the queue is empty afterwards.
-    pub fn take(&self) -> Vec<String> {
-        self.0.lock().map(|mut q| std::mem::take(&mut *q)).unwrap_or_default()
-    }
-}
-
-static OPEN_QUEUE: OpenQueue = OpenQueue::new();
-
-/// Queues the markdown files among `files`; how many there were.
-pub fn queue_open(files: &[String]) -> usize {
-    OPEN_QUEUE.push(files);
-    markdown_paths(files, Path::new("")).len()
-}
-
-pub fn take_open() -> Vec<String> {
-    OPEN_QUEUE.take()
-}
-
-/// The page asks for the files the system handed over.
-#[tauri::command]
-pub fn open_files_take() -> Vec<String> {
-    take_open()
 }
 
 // ---------------------------------------------------------------- APP-006: closing and quitting
@@ -1038,6 +911,23 @@ mod tests {
     }
 
     #[test]
+    fn app001_a_second_launch_without_the_channel_raises_the_copy_the_startup_file_names() {
+        let dir = std::env::temp_dir().join(format!("kolux-raise-target-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        assert_eq!(raise_target(&dir), None, "no startup file: nothing to raise");
+        std::fs::write(dir.join(crate::cli::FILE), r#"{"port":1425,"token":"t"}"#).unwrap();
+        assert_eq!(raise_target(&dir), None, "an older file without a pid: nothing to raise");
+        std::fs::write(dir.join(crate::cli::FILE), r#"{"port":1425,"token":"t","pid":4242}"#).unwrap();
+        assert_eq!(raise_target(&dir), Some(4242), "the running copy's window is raised by its pid");
+        let _ = std::fs::remove_dir_all(&dir);
+        let src = include_str!("lifecycle.rs").replace("\r\n", "\n");
+        let code = &src[..src.find("#[cfg(test)]").unwrap()];
+        let exit_only = &code[code.find("} else if let Some(pid) = dir.as_deref().and_then(raise_target)").unwrap()..code.find("std::process::exit(DUPLICATE_EXIT);").unwrap()];
+        assert!(exit_only.find("allow_foreground(pid)").unwrap() < exit_only.find("raise_by_pid(pid, RAISE_TRIES").unwrap(), "the foreground is granted before the window is raised");
+    }
+
+    #[test]
     fn app006_a_silent_page_is_closed_for_and_an_answering_one_stays() {
         assert_eq!(close_verdict(false, false), Verdict::Destroy, "a frozen or crashed page cannot hold the window open");
         assert_eq!(close_verdict(true, false), Verdict::Stay, "the page is asking: the user decides");
@@ -1131,46 +1021,5 @@ mod tests {
         let stored = stored_paths();
         assert_eq!(stored.len(), 2, "the system Path and the user Path");
         assert!(stored[0].to_lowercase().contains("windows"), "{}", stored[0]);
-    }
-
-    #[test]
-    fn app019_markdown_files_are_picked_out_of_the_arguments_and_everything_else_is_ignored() {
-        let cwd = Path::new(if cfg!(windows) { "C:\\work" } else { "/work" });
-        let abs = if cfg!(windows) { "C:\\notes\\a.md" } else { "/notes/a.md" };
-        let got = markdown_paths(&[abs.into(), "--flag".into(), "b.txt".into(), "C.MARKDOWN".into(), "".into(), "tool.exe".into(), "d".into()], cwd);
-        assert_eq!(got, vec![abs.to_string(), cwd.join("C.MARKDOWN").to_string_lossy().into_owned()]);
-    }
-
-    #[test]
-    fn app019_an_encoded_file_address_with_spaces_is_decoded_so_it_still_opens() {
-        let got = markdown_paths(&["file:///C:/My%20Notes/caf%C3%A9.md".into()], Path::new("/x"));
-        let want = if cfg!(windows) { "C:\\My Notes\\café.md" } else { "C:/My Notes/café.md" };
-        assert_eq!(got, vec![want.to_string()]);
-        let unix = markdown_paths(&["file:///home/me/a%20b.md".into(), "FILE://localhost/home/me/c.md".into()], Path::new("/x"));
-        let (a, c) = if cfg!(windows) { ("\\home\\me\\a b.md", "\\home\\me\\c.md") } else { ("/home/me/a b.md", "/home/me/c.md") };
-        assert_eq!(unix, vec![a.to_string(), c.to_string()]);
-    }
-
-    #[test]
-    fn app019_a_bad_encoding_a_remote_host_or_a_non_markdown_address_is_ignored() {
-        let bad = ["file:///C:/a%2.md", "file:///C:/a%ZZ.md", "file://server/share/a.md", "file:///C:/a.txt"];
-        let args: Vec<String> = bad.iter().map(|s| s.to_string()).collect();
-        let got = markdown_paths(&args, Path::new("/x"));
-        assert!(got.is_empty(), "{got:?}");
-    }
-
-    #[test]
-    fn app019_a_file_repeated_is_listed_once() {
-        let p = if cfg!(windows) { "C:\\a.md" } else { "/a.md" };
-        assert_eq!(markdown_paths(&[p.into(), p.into()], Path::new("/x")).len(), 1);
-    }
-
-    #[test]
-    fn app019_files_asked_for_before_the_page_is_ready_wait_in_the_queue_in_order_and_come_out_once() {
-        let queue = OpenQueue::new();
-        let (a, b, skip) = if cfg!(windows) { ("C:\\q\\1.md", "C:\\q\\2.md", "C:\\q\\skip.txt") } else { ("/q/1.md", "/q/2.md", "/q/skip.txt") };
-        queue.push(&[a.into(), skip.into(), b.into(), a.into()]);
-        assert_eq!(queue.take(), vec![a.to_string(), b.to_string()]);
-        assert!(queue.take().is_empty());
     }
 }

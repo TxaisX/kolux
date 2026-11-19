@@ -2494,7 +2494,8 @@ mod tests {
                 }
             }
         }
-        assert!(seen >= 3, "the scan found the window builders: {seen}");
+        // Two since the Tower window builder went in the 2026-11-19 slim-down: the PDF export window and the tools window.
+        assert!(seen >= 2, "the scan found the window builders: {seen}");
     }
 
     // Row 955 LOW: the scan pairs each builder with its own browser-argument call, so a second,

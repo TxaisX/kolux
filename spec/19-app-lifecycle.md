@@ -886,20 +886,6 @@ Acceptance:
 Compat: —
 Source: D-19-018
 
-### APP-019 · Markdown files opened from the system open inside the app
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: double-clicks, or uses Open with on, a markdown file outside the app.
-User sees: the app comes forward and shows the file in its editor, even if it was not running yet.
-Rules: files requested before the window is ready are queued and handed over once it is; other file
-  types are ignored; a file passed as an encoded file address (for example with spaces in its path)
-  is decoded so it still opens.
-Acceptance:
-  - [ ] With the app closed, open a markdown file with it → the app starts with the file open in the
-        editor.
-  - [ ] Open a markdown file whose path contains spaces → it opens normally.
-Compat: —
-Source: D-19-019
-
 ### APP-022 · More memory headroom for the interface on bigger machines
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: runs many sessions on a computer with 8 GB of RAM or more.

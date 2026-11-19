@@ -3372,6 +3372,11 @@ Tier: H · Pushed: — · State at 0.15.0: retired 2026-11-19
 What it did: the user runs the status command.
 Retired 2026-11-19; kept at the classic-final tag.
 
+### APP-019 · Markdown files opened from the system open inside the app
+Tier: H · Pushed: — · State at 0.15.0: retired 2026-11-19
+What it did: the user double-clicks, or uses Open with on, a markdown file outside the app, and it opens in the app's editor.
+Retired 2026-11-19; kept at the classic-final tag.
+
 ### CLI-018 · kolux worktree create, with an optional agent started inside
 Tier: H · Pushed: 2 · State at 0.15.0: retired 2026-11-19
 What it did: the user runs kolux worktree create with a name and, if wanted, a repo, a base branch, an agent with a first prompt, a GitHub issue number, a comment and a choice about setup scripts.

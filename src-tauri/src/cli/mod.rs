@@ -46,6 +46,8 @@ pub fn bundled_skills() -> Vec<(&'static str, &'static str)> {
 
 /// Where the app says how to reach it, inside its data folder.
 pub const FILE: &str = "cli.json";
+/// What `open` answers when it is handed a file (APP-019 retired).
+pub(crate) const NO_FILES: &str = "Kolux no longer opens files; open it in your editor.";
 /// The event the front end gets when the CLI made or removed a workspace.
 pub const EVENT: &str = "cli-workspace";
 const DATA_DIR: &str = "com.txaisxiong.kolux";
@@ -1053,10 +1055,9 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
             Ok(json!({ "path": w.path, "branch": w.branch, "name": w.name, "projectId": project.id, "branchKept": kept.is_some(), "keptBranch": kept.as_ref().map(|k| &k.branch), "stopped": stopped.ended, "stuck": stopped.stuck, "warnings": warnings }))
         }
         "app.open" => {
-            // T-324-b (APP-019): markdown files a second launch was handed wait for the page to take them.
-            let files: Vec<String> = req.args["files"].as_array().map(|a| a.iter().filter_map(|f| f.as_str().map(str::to_string)).collect()).unwrap_or_default();
-            if crate::lifecycle::queue_open(&files) > 0 {
-                (ctx.notify)(json!({ "emit": "open-files", "payload": Value::Null }));
+            // APP-019 retired: Kolux no longer opens files, so a request that hands it any is refused.
+            if req.args["files"].as_array().is_some_and(|a| !a.is_empty()) {
+                return Err(Fail::new("failed", NO_FILES));
             }
             (ctx.front)()?;
             Ok(json!({ "ready": true, "started": false, "pid": std::process::id() }))
@@ -8079,7 +8080,7 @@ mod tests {
     }
 
     #[test]
-    fn app019_a_second_launch_hands_its_markdown_files_to_the_running_copy() {
+    fn app019_open_refuses_files_and_queues_nothing() {
         let dir = std::env::temp_dir().join(format!("kolux-app019-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
@@ -8090,13 +8091,15 @@ mod tests {
         let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
         let req = |args: Value| Request { id: "r".into(), token: String::new(), command: "app.open".into(), cwd: dir.display().to_string(), args, pane: None, cli: VERSION.into(), arrived: None };
         let md = if cfg!(windows) { "C:\\notes\\a b.md" } else { "/notes/a b.md" };
-        // a plain `open` and an open with only other kinds of file queue nothing and tell the page nothing
+        // a plain `open` still answers ready; one handed files is refused in plain words and tells the page nothing
         assert_eq!(dispatch(&ctx, &req(json!({}))).unwrap()["ready"], true);
-        dispatch(&ctx, &req(json!({ "files": ["x.txt"] }))).unwrap();
+        assert_eq!(dispatch(&ctx, &req(json!({ "files": [] }))).unwrap()["ready"], true, "an empty list is a plain open");
+        let err = dispatch(&ctx, &req(json!({ "files": [md, "x.txt"] }))).unwrap_err();
+        assert_eq!((err.code, err.message.as_str()), ("failed", NO_FILES));
         assert!(told.lock().unwrap().is_empty());
-        dispatch(&ctx, &req(json!({ "files": [md, "x.txt"] }))).unwrap();
-        assert_eq!(told.lock().unwrap().as_slice(), &[json!({ "emit": "open-files", "payload": null })]);
-        assert_eq!(crate::lifecycle::take_open(), vec![md.to_string()], "only the markdown file was queued");
+        // the typed form, `kolux open <file>`, is refused before anything is sent
+        let typed = parse(&words("open notes.md")).1.unwrap_err();
+        assert_eq!((typed.code, typed.message.as_str()), ("failed", NO_FILES));
         drop(ctx);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);

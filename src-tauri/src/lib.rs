@@ -17,7 +17,6 @@ mod engine_crash;
 mod html_preview;
 mod net;
 mod pdf_export;
-mod tower_window;
 mod webview_args;
 mod webview_engine;
 mod cap;
@@ -243,12 +242,6 @@ fn dev_inject() -> Result<(), String> {
 /// T-075-b: the background terminal service process (`kolux --terminal-service <identifier> <data folder>`).
 pub fn terminal_service_main(args: &[String]) -> i32 {
     pty::service::main(args)
-}
-
-/// Tauri 2 lets every window call every registered app command. The Tower window is a viewer:
-/// it may open its own window and run nothing else. Every other window keeps the full surface.
-pub fn tower_may_run(label: &str, command: &str) -> bool {
-    label != "tower" || command == "tower_window_open"
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -590,9 +583,6 @@ pub fn run() {
                     window.state::<Terminals>().kill_all();
                     // T-033-e: no git watch outlives the window either (nothing is waited for here).
                     scm::watch::unwatch_all();
-                    if let Some(t) = window.app_handle().get_webview_window("tower") {
-                        let _ = t.close();
-                    }
                 }
             }
             // APP-008 / T-248-d: the window is back on screen, so the tray's attention dot clears.
@@ -625,13 +615,6 @@ pub fn run() {
             }
         })
         .invoke_handler(|invoke: tauri::ipc::Invoke<tauri::Wry>| {
-            // Tauri 2 grants every registered app command to every window. The Tower is a viewer
-            // with its own page: it may open its own window and run nothing else. Refusing here
-            // covers every command at once, including ones added later.
-            if !tower_may_run(invoke.message.webview().label(), invoke.message.command()) {
-                invoke.resolver.reject("The Tower window cannot run app commands.");
-                return true;
-            }
             let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             app_info,
             notices::third_party_notices,
@@ -873,7 +856,6 @@ pub fn run() {
             keybindings::keybindings_show,
             pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
             pdf_export::browser_pick_pdf_path,
-            tower_window::tower_window_open, // rows 955 / 959: the Tower's own window, built in Rust
             html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
             automations::automations_list,
             automations::automations_external_refresh,
@@ -1048,7 +1030,6 @@ pub fn run() {
             update::update_last_attempt,
             update::update_compat,
             lifecycle::close_alive,
-            lifecycle::open_files_take, // APP-019: the page drains the markdown files the system handed over
             tray::tray_close_switch_available, // APP-007: Settings hides the close-to-tray switch where it cannot work
             usage_alerts::usage_alerts_fired,
             usage_alerts::usage_alert_send,
@@ -1142,18 +1123,4 @@ pub fn run() {
                 update::install_on_quit(app);
             }
         });
-}
-
-#[cfg(test)]
-mod tower_guard_tests {
-    use super::tower_may_run;
-
-    #[test]
-    fn the_tower_window_may_only_open_itself() {
-        assert!(tower_may_run("main", "terminal_spawn"));
-        assert!(tower_may_run("tower", "tower_window_open"));
-        assert!(!tower_may_run("tower", "terminal_spawn"));
-        assert!(!tower_may_run("tower", "file_write"));
-        assert!(!tower_may_run("tower", "cleanup_remove"));
-    }
 }
