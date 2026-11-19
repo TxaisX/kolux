@@ -1217,7 +1217,8 @@ fn git015_conflicts_name_their_clash_and_a_hand_fix_reads_as_resolved() {
 fn t718_stage_checks_the_fence_before_git() {
     // The command: it asks the fence before it starts git.
     let src = include_str!("scm.rs");
-    for name in ["scm_stage"] {
+    {
+        let name = "scm_stage";
         let at = src.find(&format!("pub async fn {name}(")).unwrap();
         // Comment lines are left out, so a commented-out check does not count.
         let body: String = src[at..at + src[at..].find("\n}").unwrap()].lines().filter(|l| !l.trim_start().starts_with("//")).collect::<Vec<_>>().join("\n");
@@ -2122,33 +2123,6 @@ fn git028_the_github_budget_reads_rest_search_and_graphql_from_gh() {
     fs::write(tools.join("answer.json"), r#"{"resources":{"core":{"limit":60,"remaining":59,"reset":5}}}"#).unwrap();
     assert_eq!(gh_budget(&gh).unwrap().len(), 1);
     let _ = fs::remove_dir_all(&tools);
-}
-
-/// R59-01: removes the test's junctions (the links only, never what they point at) and then its
-/// folders, also when an assert fails.
-#[cfg(windows)]
-struct LinksThenFolders(Vec<PathBuf>, Vec<PathBuf>);
-
-#[cfg(windows)]
-impl Drop for LinksThenFolders {
-    fn drop(&mut self) {
-        for link in &self.0 {
-            if fs::symlink_metadata(link).is_ok_and(|m| m.is_symlink()) {
-                let _ = fs::remove_dir(link);
-            }
-        }
-        for dir in &self.1 {
-            let _ = fs::remove_dir_all(dir);
-        }
-    }
-}
-
-/// A junction (a Windows folder link, needs no special right) at `link` pointing at `target`.
-#[cfg(windows)]
-fn junction(link: &Path, target: &Path) {
-    let out = quiet("cmd").args(["/c", "mklink", "/J"]).arg(link).arg(target).output().unwrap();
-    assert!(out.status.success(), "mklink /J: {}", String::from_utf8_lossy(&out.stderr));
-    assert!(fs::symlink_metadata(link).unwrap().is_symlink(), "Rust sees the junction as a link");
 }
 
 /// Plain git for test setup (Kolux's `run` refuses write verbs in an untrusted filter repo).
