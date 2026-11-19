@@ -1,16 +1,13 @@
-//! SKILL-017 / SKILL-021: every skill the AIs on this computer can see, for the Skills page.
+//! SKILL-017 / SKILL-021: every skill the AIs on this computer can see, for the chat composer's list.
 //!
 //! A skill is a folder holding `SKILL.md`, the standard skill file agent CLIs read. Kolux looks in
 //! each AI's own skills folder in the home folder (Claude Code, Codex, Grok, Hermes), the shared
 //! cross-agent folder (`~/.agents/skills`), the same folders inside the current workspace, the
-//! skills of Claude plugins enabled for the project, Codex's plugin cache, and its own built-in
-//! guides. Each folder is scanned on a thread of its own with a time limit, so one that hangs
-//! becomes an error the user can retry, never a shorter list. A project stored in WSL is read
-//! through its `\\wsl.localhost\` path like any folder; nothing runs inside a distribution (OD-12).
-
-pub mod cli_install;
-pub mod installer;
-pub mod update;
+//! skills of Claude plugins enabled for the project and Codex's plugin cache (Kolux's own built-in
+//! guides went with its command line, slim-down wave B). Each folder is scanned on a thread of its
+//! own with a time limit, so one that hangs becomes an error the user can retry, never a shorter
+//! list. A project stored in WSL is read through its `\\wsl.localhost\` path like any folder;
+//! nothing runs inside a distribution (OD-12).
 
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -171,22 +168,8 @@ fn home_spots(env: &Env) -> Vec<Spot> {
     ]
 }
 
-/// FIX-6 (4): the home skill folders a start-up delete recovery may act on, one per real folder,
-/// found without reading any file (the plugin list is not needed and would read settings files).
-pub fn home_roots(env: &Env) -> Vec<PathBuf> {
-    let mut seen = HashSet::new();
-    home_spots(env).into_iter().map(|s| s.path).filter(|p| seen.insert(key(p))).collect()
-}
-
 /// The folders inside a workspace that hold skills: `<workspace>/<one of these>/skills`.
 const WORKSPACE_SKILL_DIRS: [&str; 3] = [".claude", ".agents", ".grok"];
-
-/// FIX-6 (4): `p` has the shape of a workspace skills folder (`.../.claude/skills`, `.../.agents/skills`
-/// or `.../.grok/skills`), as a delete record may name one from a workspace that is not open now.
-pub fn workspace_skills_shape(p: &Path) -> bool {
-    let name = |q: &Path| q.file_name().and_then(|n| n.to_str()).map(str::to_lowercase);
-    name(p).as_deref() == Some("skills") && p.parent().and_then(name).is_some_and(|up| WORKSPACE_SKILL_DIRS.contains(&up.as_str()))
-}
 
 /// Every place to look, in the order the folders popover lists them.
 fn spots(env: &Env, workspace: Option<&Path>) -> Vec<Spot> {
@@ -333,23 +316,6 @@ fn canon(p: &Path) -> Option<PathBuf> {
     std::fs::canonicalize(p).ok()
 }
 
-/// DT-C94: a path on a WSL share, by its text in any UNC spelling or by where it really leads (a
-/// drive letter mapped to a share, or a link into one). The text is judged first, so a path that
-/// names a share is never opened here.
-/// ponytail: resolving a drive or link that leads to a stopped distribution can stall with no time
-/// limit; run it under the scan's 8-second limit if that ever shows up.
-pub(crate) fn in_wsl(p: &Path) -> bool {
-    wsl_text(p) || canon(p).is_some_and(|c| crate::links::is_wsl(&c))
-}
-
-/// T-666: a WSL share by its text alone, in any UNC spelling; nothing is opened.
-pub(crate) fn wsl_text(p: &Path) -> bool {
-    let s = p.to_string_lossy().replace('/', "\\");
-    let low = s.to_lowercase();
-    let text = [r"\\.\unc\", r"\??\unc\"].iter().find(|pre| low.starts_with(**pre)).map_or(s.clone(), |pre| format!(r"\\{}", &s[pre.len()..]));
-    crate::links::is_wsl(Path::new(&text))
-}
-
 /// Skill folders under `dir`, following links without looping and only `depth` folders down.
 fn walk(dir: &Path, depth: usize, seen: &mut HashSet<PathBuf>, limit: usize, w: &mut Walk) {
     let entries = match std::fs::read_dir(dir) {
@@ -379,8 +345,9 @@ fn walk(dir: &Path, depth: usize, seen: &mut HashSet<PathBuf>, limit: usize, w: 
             w.stopped = true;
             return;
         }
-        // SKILL-023: a folder or link set aside by an unfinished delete is not a skill.
-        if p.file_name().and_then(|n| n.to_str()).is_some_and(crate::skill_delete::is_set_aside) {
+        // SKILL-023: a folder or link set aside by an unfinished delete (Kolux's retired skill delete
+        // named them `.kolux-deleting-...`) is not a skill.
+        if p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with(".kolux-deleting-")) {
             continue;
         }
         // A broken link is not a skill and not a failure.
@@ -658,84 +625,7 @@ fn run(spots: Vec<Spot>, bundled: &[(&str, &str)], limit: Duration) -> Scan {
 }
 
 pub fn scan(env: &Env, workspace: Option<&Path>) -> Scan {
-    run(spots(env, workspace), &crate::cli::bundled_skills(), ROOT_LIMIT)
-}
-
-/// SKILL-022: where a delete may act. `deletable` are the home and workspace skills folders that
-/// were scanned, except those on a WSL share however reached (DT-C94); `plugin` are the
-/// folders plugins put skills in (never deleted from here).
-pub struct Places {
-    pub deletable: Vec<PathBuf>,
-    pub plugin: Vec<PathBuf>,
-}
-
-pub fn places(env: &Env, workspace: Option<&Path>) -> Places {
-    let all = spots(env, workspace);
-    // One root per real folder: the home folder opened as the workspace, or a skills folder that
-    // is a link to another, would otherwise list every skill in it twice.
-    let mut seen = HashSet::new();
-    let deletable = all
-        .iter()
-        .filter(|s| s.kind == Kind::Skills && s.skip.is_none() && matches!(s.source, "home" | "workspace"))
-        // T-666: a folder on another computer, or on a WSL share by its text, is dropped before
-        // anything below opens it.
-        .filter(|s| !wsl_text(&s.path) && !remote_path(&s.path))
-        // DT-C94: a project stored in WSL is listed but never deleted from: its share may be slow or
-        // stopped (a delete holds the shared lock) and its names are case-sensitive.
-        .filter(|s| !in_wsl(&s.path))
-        .map(|s| s.path.clone())
-        .filter(|p| seen.insert(key(p)))
-        .collect();
-    let plugin = all.iter().filter(|s| s.source == "plugin" && !remote_path(&s.path)).map(|s| s.path.clone()).collect();
-    Places { deletable, plugin }
-}
-
-/// SKILL-022: every skill folder under `root`, links included, without the scan's merging: a link
-/// and the folder it points at are both listed, so a delete can take both. Links are followed only
-/// `DEPTH` folders down and never back into a folder they came from. A folder that cannot be read
-/// is an error, so a delete never works from a short list.
-pub fn occurrences(root: &Path) -> Result<Vec<PathBuf>, String> {
-    fn every(dir: &Path, depth: usize, chain: &mut Vec<PathBuf>, out: &mut Vec<PathBuf>) -> Result<(), String> {
-        let mut kids: Vec<PathBuf> = std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?.map(|e| e.map(|e| e.path()).map_err(|e| format!("{}: {e}", dir.display()))).collect::<Result<_, _>>()?;
-        kids.sort();
-        for p in kids {
-            if remote_link(&p) || p.file_name().and_then(|n| n.to_str()).is_some_and(crate::skill_delete::is_set_aside) || !p.is_dir() {
-                continue;
-            }
-            let Some(c) = canon(&p) else { continue };
-            // A link into a WSL share holds nothing a delete may take (DT-C94).
-            if chain.contains(&c) || crate::links::is_wsl(&c) {
-                continue;
-            }
-            let file = p.join(SKILL_FILE);
-            if remote_link(&file) {
-                continue;
-            }
-            if file.is_file() {
-                out.push(p);
-            } else if depth > 0 {
-                chain.push(c);
-                every(&p, depth - 1, chain, out)?;
-                chain.pop();
-            }
-        }
-        Ok(())
-    }
-    let mut out = vec![];
-    // A share is never opened, so it holds nothing a delete may take.
-    if !local_dir(root) {
-        return Ok(out);
-    }
-    let mut chain: Vec<PathBuf> = canon(root).into_iter().collect();
-    every(root, DEPTH, &mut chain, &mut out)?;
-    Ok(out)
-}
-
-/// SKILL-022: a finished delete makes the next list a fresh scan.
-pub fn forget_scans() {
-    if let Ok(mut g) = CACHE.lock() {
-        *g = None;
-    }
+    run(spots(env, workspace), &[], ROOT_LIMIT)
 }
 
 static CACHE: Mutex<Option<HashMap<String, (Instant, Scan)>>> = Mutex::new(None);
@@ -767,25 +657,6 @@ pub fn scan_cached(workspace: Option<String>, refresh: bool) -> Scan {
 #[tauri::command]
 pub async fn skills_scan(workspace: Option<String>, refresh: bool) -> Result<Scan, String> {
     tauri::async_runtime::spawn_blocking(move || scan_cached(workspace, refresh)).await.map_err(|e| e.to_string())
-}
-
-/// SKILL-020: Reveal file opens only a skill file the list shows, on this computer and still there;
-/// a bundled skill (no file) or any other path is refused.
-fn revealable(scan: &Scan, path: &str) -> Result<PathBuf, String> {
-    let s = scan.skills.iter().find(|s| s.path == path).ok_or("That skill is not in the list any more; refresh first")?;
-    if s.source == "bundled" {
-        return Err("Built into Kolux; there is no file on disk".into());
-    }
-    let p = PathBuf::from(&s.path);
-    if remote_path(&p) || remote_link(&p) || !p.is_file() {
-        return Err("That skill file is no longer on disk; refresh first".into());
-    }
-    Ok(p)
-}
-
-#[tauri::command]
-pub async fn skills_reveal(workspace: Option<String>, path: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || revealable(&scan_cached(workspace, false), &path).and_then(|p| crate::links::reveal(&p))).await.map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
@@ -871,45 +742,6 @@ mod tests {
             }
             Err(e) => panic!("{test}: the share link could not be made: {e}"),
         }
-    }
-
-    #[test]
-    fn skill020_reveal_opens_only_a_listed_skill_file_still_on_disk() {
-        let home = temp("skills-reveal");
-        let root = home.join(".claude").join("skills");
-        skill(&root.join("alpha"), "# alpha\n");
-        skill(&root.join("beta"), "# beta\n");
-        let s = run(spots(&env(&home), None), &[("orchestration", "# o\n")], ROOT_LIMIT);
-        let alpha = s.skills.iter().find(|k| k.name == "alpha").unwrap().path.clone();
-        assert!(same_file(&revealable(&s, &alpha).unwrap(), &root.join("alpha").join(SKILL_FILE)));
-        // A bundled skill has no file; a path the list does not show is refused even if it exists.
-        let bundled = s.skills.iter().find(|k| k.source == "bundled").unwrap().path.clone();
-        assert!(revealable(&s, &bundled).unwrap_err().contains("no file on disk"));
-        let elsewhere = home.join("notes.txt");
-        fs::write(&elsewhere, "x").unwrap();
-        assert!(revealable(&s, &elsewhere.to_string_lossy()).unwrap_err().contains("refresh first"));
-        // Gone since the list loaded.
-        let beta = s.skills.iter().find(|k| k.name == "beta").unwrap().path.clone();
-        fs::remove_dir_all(root.join("beta")).unwrap();
-        assert!(revealable(&s, &beta).unwrap_err().contains("no longer on disk"));
-    }
-
-    fn same_file(a: &Path, b: &Path) -> bool {
-        canon(a).is_some() && canon(a) == canon(b)
-    }
-
-    #[test]
-    fn skill022_a_delete_never_lists_a_skill_reached_through_a_share() {
-        let home = temp("skills-unc-delete");
-        let root = home.join(".claude").join("skills");
-        skill(&root.join("alpha"), "# alpha\n");
-        let began = Instant::now();
-        // A share root is refused by its text: nothing to delete there, and nothing waited on.
-        assert_eq!(occurrences(Path::new(r"\\kolux-unc-test.invalid\share\skills")).unwrap(), Vec::<PathBuf>::new());
-        if share_link_or_say_why(&root.join("share"), "skill022_a_delete_never_lists_a_skill_reached_through_a_share") {
-            assert_eq!(occurrences(&root).unwrap(), vec![root.join("alpha")]);
-        }
-        assert!(began.elapsed() < Duration::from_secs(2), "the delete list waited on a share: {:?}", began.elapsed());
     }
 
     #[test]
@@ -1074,10 +906,10 @@ mod tests {
 
     /// OD-12 / DT-C94 (T-658): a project stored in WSL is its `\\wsl.localhost\` path like any
     /// folder. Its three workspace skill folders are plain paths on the share, scanned like a
-    /// Windows project's but never offered for delete; no distribution home folder is listed and
-    /// nothing is asked of a distribution (this module has no way to run one).
+    /// Windows project's; no distribution home folder is listed and nothing is asked of a
+    /// distribution (this module has no way to run one).
     #[test]
-    fn t658_a_project_stored_in_wsl_is_listed_by_its_share_path_and_never_deletable() {
+    fn t658_a_project_stored_in_wsl_is_listed_by_its_share_path() {
         let home = temp("skills-wsl-plain");
         for project in [r"\\wsl.localhost\krs-t658-none\home\me\repo", r"\\wsl$\krs-t658-none\home\me\repo"] {
             let ws = Path::new(project);
@@ -1088,27 +920,11 @@ mod tests {
             assert!(mine.iter().all(|s| s.kind == Kind::Skills && s.skip.is_none()), "{mine:?}");
             assert!(all.iter().all(|s| !s.label.contains("WSL")), "no distribution folders: {all:?}");
             assert_eq!(all.iter().filter(|s| s.source == "home").count(), 5, "only this computer's home folders");
-            // Listed, never offered for delete: only this computer's home folders are.
-            let p = places(&env(&home), Some(ws));
-            assert!(p.deletable.iter().all(|d| !crate::links::is_wsl(d)), "{:?}", p.deletable);
-            assert_eq!(p.deletable.len(), places(&env(&home), None).deletable.len());
             // Names on the share are case-sensitive: Lint and lint are two folders.
             assert_ne!(key(&ws.join("Lint")), key(&ws.join("lint")));
         }
         #[cfg(windows)]
         assert_eq!(key(Path::new(r"C:\krs\Lint")), key(Path::new(r"C:\krs\lint")), "Windows folders still ignore case");
-    }
-
-    /// DT-C94: every spelling of a WSL share is known by its text alone (the made-up distribution
-    /// is never opened); a local folder and a lookalike drive path are not WSL.
-    #[test]
-    fn t658_every_spelling_of_a_wsl_share_is_known_and_a_local_folder_is_not() {
-        for p in [r"\\.\UNC\wsl.localhost\krs-t658-none\x", r"\??\UNC\wsl$\krs-t658-none\x", r"\\?\UNC\WSL.localhost\krs-t658-none\x", "//wsl$/krs-t658-none/x"] {
-            assert!(in_wsl(Path::new(p)), "{p}");
-        }
-        let local = temp("skills-wsl-local");
-        assert!(!in_wsl(&local));
-        assert!(!in_wsl(Path::new(r"C:\wsl.localhost\krs-t658-none")));
     }
 
     /// The same local folder reached as a share on this computer (`\\localhost\G$\...`): a target

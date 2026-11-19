@@ -100,7 +100,6 @@ mod session_rows;
 mod sessions;
 mod shell_marks;
 mod shell_history;
-mod skill_delete;
 pub mod state;
 pub mod status;
 mod sub_work;
@@ -931,16 +930,6 @@ pub fn run() {
             editor_search::editor_search,
             editor_search::editor_search_cancel,
             skills::skills_scan,
-            skill_delete::skills_delete_plan,
-            skill_delete::skills_delete,
-            skills::update::skills_update_check,
-            skills::update::skills_update_dismiss,
-            skills::update::skills_update_start,
-            skills::update::skills_update_stop,
-            skills::update::skills_update_status,
-            skills::update::skills_update_clear,
-            skills::installer::skills_install_command,
-            skills::skills_reveal,
             files::open_in,
             files::worktree_branches,
             files::file_list,

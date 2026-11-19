@@ -108,16 +108,9 @@ pub fn coverage(home: &std::path::Path, local_app: Option<&std::path::Path>, age
         .collect()
 }
 
-/// SKILL-031: install or update Kolux skills through the community skills installer. The rules live
-/// in skills/cli_install.rs; this only hands over the arguments and the data folder.
-fn skills_install(p: &Parsed) -> Result<Value, Fail> {
-    use crate::skills::cli_install as ci;
-    let fail = |f: ci::Failure| Fail { code: f.code, message: f.message, data: f.data };
-    if let Some(f) = ci::json_refusal(&p.command, &p.args) {
-        return Err(fail(f));
-    }
-    let dir = super::data_dir();
-    ci::run(&ci::req_of(&p.command, &p.args), &ci::live_ctx(&dir), &crate::skills::installer::Real).map_err(fail)
+/// SKILL-031: the skills installer was retired (slim-down wave B); this command line goes later in it.
+fn skills_install(_p: &Parsed) -> Result<Value, Fail> {
+    Err(Fail::new("unavailable", "Kolux no longer installs skills"))
 }
 
 fn skills_coverage() -> Value {
@@ -404,7 +397,7 @@ pub fn text(command: &str, r: &Value) -> Option<String> {
         "agent-context" => format!("{} commands; {} agent-context --json prints the whole document", r["commandCount"], crate::orchestration::CLI),
         "skills.list" => r["skills"].as_array().into_iter().flatten().map(|s| format!("{:<15}{}", s["name"].as_str().unwrap_or_default(), s["description"].as_str().unwrap_or_default())).collect::<Vec<_>>().join("\n"),
         "skills.get" => r["markdown"].as_str().unwrap_or_default().to_string(),
-        "skills.install" | "skills.update" => crate::skills::cli_install::text(r),
+        "skills.install" | "skills.update" => r.to_string(),
         "skills.coverage" => {
             let rows = r["agents"].as_array().into_iter().flatten().map(|a| {
                 let state = if a["covered"] == true { format!("covered      {}", a["foundIn"].as_str().unwrap_or_default()) } else if a["known"] == true { "not covered".into() } else { "not covered  (no known skills folder for it)".into() };
@@ -541,12 +534,6 @@ mod tests {
         assert!(local("skills get hyperframes").unwrap()["name"].as_str() == Some("video"), "an alias reaches the guide");
         assert_eq!(local("skills get video --references").unwrap()["markdown"], "- hyperframes\n- higgsfield");
         assert!(local("skills get video --reference higgsfield").unwrap()["markdown"].as_str().unwrap().contains("mcp.higgsfield.ai/mcp"));
-        // SKILL-031: a dry run prints the command and starts nothing; JSON is refused on a real run.
-        let dry = local("skills install --skill orchestration --agent universal --dry-run").unwrap();
-        assert_eq!(dry["command"], "npx --yes skills add TxaisX/kolux-skills --skill orchestration --agent universal -y -g");
-        assert_eq!(dry["ran"], false);
-        assert!(local("skills install --all --skill orchestration --dry-run").unwrap_err().message.contains("cannot be combined"));
-        assert!(local("skills install --local --all --agent universal --dry-run").unwrap()["command"].as_str().unwrap().ends_with("universal -y"));
         let nope = local("skills get nope").unwrap_err();
         assert_eq!(nope.code, "not_found");
         assert!(nope.message.contains("kolux-cli, koluxsecurity, koluxward, orchestration, video"), "{}", nope.message);

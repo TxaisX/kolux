@@ -137,15 +137,11 @@ describe("the GitHub card on the tasks and PR stops (FIX-1)", () => {
   });
 });
 
-describe("the usage and skill stops hand over to their live cards (T-321-c)", () => {
-  test("usage draws the connected-accounts card; orchestration draws its own skill; others do not", async () => {
-    const { UsageStop, SkillStop } = await import("./LiveStopCards");
+describe("the usage stop hands over to its live card (T-321-c)", () => {
+  test("usage draws the connected-accounts card; orchestration (its skill card retired) and others draw nothing", async () => {
+    const { UsageStop } = await import("./LiveStopCards");
     expect((await draw("usage") as El).type).toBe(UsageStop);
-    for (const stop of ["orchestration"]) {
-      const el = (await draw(stop)) as El;
-      expect(el.type).toBe(SkillStop);
-      expect(el.props?.stop).toBe(stop);
-    }
+    expect(await draw("orchestration")).toBeNull();
     expect(await draw("workspaces")).toBeNull();
   });
 });

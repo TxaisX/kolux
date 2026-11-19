@@ -12,13 +12,12 @@ const seen: { wizard: WizardProps | null } = { wizard: null };
 vi.mock("../../lazy/pages", () => {
   const none = () => null;
   return {
-    Guides: none, SkillUpdateNotice: none, ReviewNotes: none, UpdateCenter: none, FeedbackDialog: none,
+    Guides: none, ReviewNotes: none, UpdateCenter: none, FeedbackDialog: none,
     Wizard: (p: WizardProps) => ((seen.wizard = p), null),
   };
 });
 vi.mock("../../chrome/StatusBar", () => ({ default: () => null }));
 vi.mock("../../editmenu/EditMenuHost", () => ({ default: () => null }));
-vi.mock("../../skills/SkillBarItem", () => ({ BringSkillsUp: () => null }));
 import { START_ASK_KEY } from "../../launch/startForm";
 import { closer } from "../../onboarding/firstRun";
 import { startPanes } from "../../projects/workspaceStart";

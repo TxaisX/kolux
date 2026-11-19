@@ -54,10 +54,8 @@ export default function CliSetup({ list, onChanged }: { list: Cap[]; onChanged: 
         );
         setOutcome(outcomeOf(done, null));
       }
-      if (plan.skills.length) {
-        // The command is built from only the ticked skills; it is typed, never run, by the terminal below.
-        setLine(await invoke<string>("skills_install_command", { names: plan.skills }));
-      } else setLine(null);
+      // The skills installer was retired (slim-down wave B); this step goes with the command line.
+      setLine(null);
     } catch (e) {
       setNote(String(e));
     } finally {

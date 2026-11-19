@@ -30,7 +30,7 @@ describe("invoke contract", () => {
   it("every command src/ invokes by name is registered in lib.rs today", () => {
     const r = check(ROOT);
     expect(r.unknown).toEqual([]);
-    expect(r.checked).toBeGreaterThan(500);
+    expect(r.checked).toBeGreaterThan(300);
   });
 
   it("a name lib.rs does not register fails, with where it is", () => {
@@ -58,7 +58,7 @@ describe("invoke contract", () => {
 
   it("T-811: a name held in src/ipc/commands.ts is checked too, and no call passes a bare variable", () => {
     expect(check(ROOT).dynamic).toBe(0);
-    expect(check(ROOT).mapped).toBeGreaterThan(30);
+    expect(check(ROOT).mapped).toBeGreaterThan(15);
     const map = (names) => ({ "src/ipc/commands.ts": `export const NAMED_COMMANDS = [\n${names}\n] as const;\nexport const invokeNamed = (name, args) => invoke(name, args);\n` });
     expect(listed(map('  "app_info", "update_check",')["src/ipc/commands.ts"]).map((n) => n.name)).toEqual(["app_info", "update_check"]);
     expect(check(repo(map('  "app_info",\n  "app_inof",')))).toMatchObject({ unknown: ["app_inof (src/ipc/commands.ts:3)"], dynamic: 0, mapped: 2 });

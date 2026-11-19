@@ -82,9 +82,8 @@ test("t791: each host in CONNECTS is named by a row of the Privacy list, and sti
   expect(Object.keys(NOT_A_CONNECTION).filter((h) => !found.has(h))).toEqual([]);
 });
 
-test("t791: the list says what the installers, skills, artifacts ticker and pane keys do", () => {
+test("t791: the list says what the installers, artifacts ticker and pane keys do", () => {
   expect(list).toContain("press install on an agent");
-  expect(list).toContain("npx --yes skills");
   expect(list).toContain("every 3 seconds");
   expect(list).toContain("claude_code_oauth_token");
   expect(list).toContain("xai_api_key");
