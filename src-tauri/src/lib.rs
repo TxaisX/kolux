@@ -70,7 +70,6 @@ pub mod protected;
 mod s9_fuzz_tests;
 pub mod protected_custom;
 mod ports;
-mod labels;
 mod tidy;
 mod resources;
 pub mod projects;
@@ -475,22 +474,11 @@ pub fn run() {
                 std::thread::sleep(std::time::Duration::from_secs(15));
                 resume::tick(&handle, &log_dir);
             });
-            // PROJ-069: quiet repositories get Git's own housekeeping (prune + gc, nothing deleted);
-            // PROJ-088: the workspace label addresses follow their setting (off by default).
+            // PROJ-069: quiet repositories get Git's own housekeeping (prune + gc, nothing deleted).
             let handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let resolver = handle.clone();
-                let resolve: labels::Resolve = std::sync::Arc::new(move |label: &str| labels::resolve_in(&resolver, label));
-                let mut tidy_at = std::time::Instant::now() + tidy::POLL;
-                loop {
-                    std::thread::sleep(std::time::Duration::from_secs(5));
-                    let on = handle.state::<Mutex<Store>>().lock().map(|s| labels::enabled(&s.settings())).unwrap_or(false);
-                    labels::apply(on, &resolve);
-                    if std::time::Instant::now() >= tidy_at {
-                        tidy_at = std::time::Instant::now() + tidy::POLL;
-                        tidy::pass(&handle);
-                    }
-                }
+            std::thread::spawn(move || loop {
+                std::thread::sleep(tidy::POLL);
+                tidy::pass(&handle);
             });
             // ACCT-050: an agent started by hand in a shell pane is recognised within a few seconds.
             let handle = app.handle().clone();

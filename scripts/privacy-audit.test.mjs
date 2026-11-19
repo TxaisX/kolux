@@ -28,7 +28,6 @@ const ALLOWED = {
   "src-tauri/src/lib.rs": [/tauri_plugin_updater/],
   "src-tauri/src/cli/mod.rs": [TCP_CONNECT], // kolux-dev talking to the app on 127.0.0.1
   "src-tauri/src/pty_service.rs": [TCP_CONNECT], // pty_service.rs:514 Client::connect: the host is the literal [127,0,0,1], only the port comes from the service's endpoint file
-  "src-tauri/src/labels.rs": [TCP_CONNECT], // labels.rs:180 the label proxy to a workspace dev server: its only target comes from target_of (labels.rs:75), which refuses any host that is not a loopback IP or localhost
 };
 // The one loopback call each file may make, as exact text: it is cut out before the scan, so any
 // other fetch in the same file is still caught (an ALLOWED entry would pass the whole file).
@@ -51,8 +50,6 @@ const PINNED = {
   "src-tauri/src/resources/provider_net.rs": [[/\b(?:Client|ClientBuilder)\s*::\s*(?:builder|new|default)\s*\(|\breqwest\s*::\s*(?:blocking\s*::\s*)?get\s*\(/g, 1]],
   // pty_service.rs holds exactly one loopback connect (its ALLOWED line); a second one fails the audit.
   "src-tauri/src/pty_service.rs": [[TCP_CONNECT_ALL, 1]],
-  // labels.rs holds exactly one connect, behind the loopback guard in target_of; a second one fails the audit.
-  "src-tauri/src/labels.rs": [[TCP_CONNECT_ALL, 1]],
 };
 const EXACT = {
   "src-tauri/src/agent_hooks/vendors.rs": /\bfetch\(`http:\/\/127\.0\.0\.1:\$\{port\}\/amp`/g, // the Amp status plugin posting to Kolux on 127.0.0.1
@@ -112,9 +109,9 @@ test("app070: a spaced TcpStream :: connect is flagged like the plain spelling",
   const split = "fn x() { let _ = TcpStream\n    ::connect(addr); }\n";
   for (const text of [spaced, split]) {
     expect(clientProblems("src-tauri/src/other.rs", text).length, text).toBeGreaterThan(0);
-    // labels.rs holds exactly one connect: a second one, however spaced, moves the pinned count.
-    const labels = shipped(fs.readFileSync(path.join(root, "src-tauri/src/labels.rs"), "utf8"));
-    expect(pinnedProblems("src-tauri/src/labels.rs", labels + text).length, text).toBeGreaterThan(0);
+    // pty_service.rs holds exactly one connect: a second one, however spaced, moves the pinned count.
+    const service = shipped(fs.readFileSync(path.join(root, "src-tauri/src/pty_service.rs"), "utf8"));
+    expect(pinnedProblems("src-tauri/src/pty_service.rs", service + text).length, text).toBeGreaterThan(0);
   }
 });
 
