@@ -100,12 +100,10 @@
 :root[data-finish="glass"] body { background: var(--glass-stage), var(--app-bg); }
 /* APP-012: with the window blur on, the stage lies over the blurred desktop instead of a solid ground. */
 :root[data-finish="glass"][data-window-blur="on"] body { background: var(--glass-stage), color-mix(in srgb, var(--app-bg) 72%, transparent); }
-/* Text is never left on the bare stage: the work area is glass over it too (and the Tower's own window,
-   which has no work area around it), and so is each tile a pane and its tabs sit in. Between the tiles,
+/* Text is never left on the bare stage: the work area is glass over it too, and so is each tile a pane and its tabs sit in. Between the tiles,
    and between the Inbox's two sheets, the stage is drawn again: the same picture on its own floor, pinned
    to the window so it lines up with the one behind everything. */
 :root[data-finish="glass"] .content,
-:root[data-finish="glass"] .tower-window,
 :root[data-finish="glass"] .grid .cell { background: var(--glass-well); }
 :root[data-finish="glass"] .grid { background-image: var(--glass-gap); background-attachment: fixed; }
 :root[data-finish="glass"] .grid .cell { border-radius: 14px; }

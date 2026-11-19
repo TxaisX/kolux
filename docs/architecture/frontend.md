@@ -17,13 +17,13 @@ The window is created hidden (`src-tauri/tauri.conf.json:22`), so the user never
 
 ## Shell and navigation
 
-There is no URL router. The only URL use is the Tower's `#tower-window` hash (`src/main.tsx:29-31`). The current screen is a string union:
+There is no URL router and no URL use. The current screen is a string union with one member left:
 
-`Agents`, `Board`, `Terminals`, `Tower`
+`Terminals`
 
 (`src/chrome/TopBar.tsx:26-33`).
 
-The screen is persisted as `lastScreen` through a 400 ms coalescer, and other windows follow the same setting (`src/shell/useWindowSave.ts:33-58`). Full pages such as Settings, Inbox, Tower, Floor, Space, Artifacts, and Skills are separate state, persisted as `openPage` (`src/shell/windowStore.ts:64`, `src/shell/useWindowSave.ts:28-30`).
+The screen is persisted as `lastScreen` through a 400 ms coalescer, and other windows follow the same setting (`src/shell/useWindowSave.ts:33-58`). Full pages are separate state, persisted as `openPage` (`src/shell/windowStore.ts:64`, `src/shell/useWindowSave.ts:28-30`).
 
 The element tree is:
 
@@ -45,19 +45,10 @@ The element tree is:
 
 | Module | Responsibility | Entry point |
 |---|---|---|
-| `agents` | Agents rail, board chips, Tower figures | `src/agents/useRailAndTower.ts` |
-| `board` | Board lanes and cards | `src/board/chip.ts` |
+| `agents` | Agents rail and pane chips | `src/agents/useRailAndTower.ts` |
 | `terminals` | Grid, tabs, panes, terminal session | `src/shell/window/Grid.tsx` |
-| `tower` | Control-tower screen and its own window | `src/tower/TowerView.tsx` |
-| `floor` | Activity timeline | `src/floor/FloorView.tsx` |
-| `tasks` | GitHub issues and pull requests | `src/tasks/TasksPage.tsx` |
-| `automations` | Scheduled and event-driven runs | `src/automations/AutomationsPage.tsx` |
-| `skills` | Skill library and installs | `src/skills/SkillsPage.tsx` |
-| `artifacts` | Artifact library and sandboxed viewer | `src/artifacts/ArtifactsPage.tsx` |
 | `settings` | Settings pages and per-repo settings | `src/settings/SettingsPage.tsx` |
 | `onboarding` | First-run wizard, guides, tours | `src/onboarding/Wizard.tsx` |
-| `editor` | Editor, previews, diffs, explorer | `src/editor/EditorPane.tsx` |
-| `browser` | Browser tab and native child webview | `src/browser/BrowserPane.tsx` |
 | `chat` | Transcript view of a terminal-backed session | `src/chat/ChatView.tsx` |
 | `scm` | Source control, PRs, checks, review notes | `src/scm/ChecksPanel.tsx` |
 | `sessions` | Past sessions and resume | `src/sessions/AgentsPanel.tsx` |
@@ -94,10 +85,10 @@ Agent state has one path from the hook listener to every surface:
 1. The agent runs its hook script, which posts to the loopback listener.
 2. Rust turns the event into a pane state and emits `agent-status`.
 3. `useAgentStatus` keeps per-pane hook, stamp, turn, and stale maps (`src/status/useAgentStatus.ts:234-320`).
-4. `paneStatus` derives the one state used everywhere (`src/shell/windowStore.ts:137-138`, `src/board/chip.ts:73-109`).
-5. Tabs, the sidebar, the needs strip, the Board, the Tower, the Inbox, notifications, and the taskbar badge all read that same derived value.
+4. `paneStatus` derives the one state used everywhere (`src/shell/windowStore.ts:137-138`, `src/status/chip.ts:92`).
+5. Tabs, the sidebar, the needs strip, notifications, and the taskbar badge all read that same derived value.
 
-This is why the pane header, Board card, and Inbox row cannot disagree about whether an agent is waiting.
+This is why the pane header, the tab, and the sidebar row cannot disagree about whether an agent is waiting.
 
 ## Terminal grid
 
@@ -107,14 +98,9 @@ Each pane is an xterm.js terminal. The setup includes FitAddon, Unicode-16 width
 
 Reattach is the important part. Before starting a new terminal, the pane asks the background service for its old one, with a 3-second limit and a protocol floor (`src/terminal/reattach.ts:19-44`). If the service has been replaced, output from the old generation is dropped (`src/terminal/TerminalPane.tsx:881`). The pane then attaches or starts, and the service returns the scrollback tail it missed.
 
-## Editor and viewers
+## Markdown rendering
 
-- **CodeMirror 6** is the source editor, with language detection, one-dark highlighting, and compartments for settings (`src/editor/EditorPane.tsx:17-22`).
-- **Lexical** is the rich Markdown editor, not the preview (`src/editor/markdown.ts:5-20`). The source/rich switch is `src/editor/viewSwitch.ts`.
-- **Markdown preview** uses `marked` plus DOMPurify, with mermaid and KaTeX loaded only when a diagram appears (`src/editor/PreviewPane.tsx:7-8`, `src/editor/diagramLibs.ts:8-25`). Diagrams render in a locked iframe.
-- **PDF** uses pdf.js with canvas pages near the viewport, text and link layers, and locked options (`src/editor/PdfView.tsx:9-20`, `src/editor/pdfPageLayers.ts`, `src/editor/pdfFiles.ts`).
-- **Images, SVG, CSV, and notebooks** have their own viewers (`src/editor/ImageView.tsx`, `SvgView.tsx`, `CsvTable.tsx`, `NotebookView.tsx`).
-- **Diffs** use CodeMirror's `MergeView` and a unified view, with review-note gutters (`src/editor/DiffPane.tsx:18-26`, `src/editor/AllChangesPane.tsx:20-26`).
+The code editor and its file viewers were removed in the 2026-11 slim-down; the last version with them is the `kolux-classic-final` tag. The chat view keeps one Markdown renderer, `marked` plus DOMPurify (`src/chat/renderMarkdown.ts`).
 
 ## Styling and the first frame
 
@@ -128,7 +114,7 @@ The first frame is handled outside React. `index.html` replays a whitelisted set
 
 `deferred()` wraps `React.lazy`, caches the module, and renders inside `Suspense` (`src/lazy/deferred.tsx:16-26`). It covers about 40 pages and dialogs (`src/lazy/pages.tsx:14-69`) and six pane bodies (`src/lazy/panes.tsx:9-22`). The terminal pane is not lazy; it is on the first screen.
 
-After the first frame, `prefetch()` (`src/lazy/deferred.tsx`, called from `src/main.tsx`) reads the rest in three stages: the chooser pane, help sheet and tab menu at the first idle moment; the Board, Agents, Inbox, Explorer and settings page two seconds later; the plan sheet, the Settings pages' code, the editor and the browser pane eight seconds after the window shows. The later stages wait while the user is typing or pressing, and a hover or focus on the control that opens a surface reads it at once (`warm()`). A surface opened before its code was read is drawn by a state change when the code arrives, not through Suspense, because React holds suspended content back about 300 ms. Settings pages split again per page, and mermaid is a separate dynamic import.
+After the first frame, `prefetch()` (`src/lazy/deferred.tsx`, called from `src/main.tsx`) reads the rest in three stages: the tab menu at the first idle moment; the past-sessions panel, the settings page and the UI menu two seconds later; the plan sheet eight seconds after the window shows. The later stages wait while the user is typing or pressing, and a hover or focus on the control that opens a surface reads it at once (`warm()`). A surface opened before its code was read is drawn by a state change when the code arrives, not through Suspense, because React holds suspended content back about 300 ms. Settings pages split again per page, and mermaid is a separate dynamic import.
 
 The first-load JavaScript budget is 1,442,000 bytes (`CEILING` in `scripts/bundle-budget.mjs`). It counts the entry script, its preloads, the `App-*` chunk, and their static imports. CSS and on-demand chunks are excluded. CI enforces it after `vite build` (`.github/workflows/ci.yml:68-69`).
 

@@ -18,7 +18,7 @@ Linux and macOS paths, extra update channels, local-build switching, the hang wa
 development-copy behaviour are tier H; headless serve, remote reconnection and WSL start-up work
 went with area 18.
 
-Tier counts: P0 13 · P1 26 · P2 13 · H 13 · X 0 · D 3
+Tier counts: P0 13 · P1 26 · P2 12 · H 13 · X 0 · D 3
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 06 Usage & limits · 07 Accounts, sign-in & keys · 10 Plan review & protected actions · 11 Git, source control & review · 12 Editor & files · 13 Browser pane & computer use · 16 Onboarding & guidance · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 20 The `kolux` CLI · 21 H — retired, hidden, removed, dev-only
 
 ## Cards

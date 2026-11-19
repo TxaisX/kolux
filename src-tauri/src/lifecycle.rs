@@ -233,7 +233,7 @@ pub fn windows_of(pid: u32) -> Vec<isize> {
 #[cfg(windows)]
 pub fn raise_by_pid(pid: u32, tries: usize, mut sleep: impl FnMut(Duration)) -> bool {
     use windows_sys::Win32::Foundation::HWND;
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, SetForegroundWindow, ShowWindow, SW_RESTORE};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, SetForegroundWindow, ShowWindowAsync, SW_RESTORE};
     for i in 0..tries {
         if i > 0 {
             sleep(RAISE_WAIT);
@@ -241,9 +241,10 @@ pub fn raise_by_pid(pid: u32, tries: usize, mut sleep: impl FnMut(Duration)) -> 
         for h in windows_of(pid) {
             let hwnd = h as HWND;
             // SAFETY: plain window calls on handles enumerated a moment ago; a stale one just fails.
+            // The restore is posted, not waited on, so a hung window cannot block this launch.
             unsafe {
                 if IsIconic(hwnd) != 0 {
-                    ShowWindow(hwnd, SW_RESTORE);
+                    ShowWindowAsync(hwnd, SW_RESTORE);
                 }
                 SetForegroundWindow(hwnd);
                 if GetForegroundWindow() == hwnd {
@@ -260,10 +261,33 @@ pub fn raise_by_pid(_pid: u32, _tries: usize, _sleep: impl FnMut(Duration)) -> b
     false
 }
 
-/// The running copy's process id a second launch that cannot use the channel raises itself, read
-/// from the profile's startup file (the same steps the old forwarding took). `None`: nothing to raise.
+/// Windows file times count 100 ns ticks from 1601-01-01; the Unix epoch is this many ticks later.
+#[cfg(windows)]
+const UNIX_EPOCH_TICKS: u64 = 116_444_736_000_000_000;
+
+/// Whether a process that started at `started` (Windows creation time, 100 ns ticks) can be the copy
+/// that wrote a startup file last changed at `written`. A copy writes its startup file after it starts,
+/// so a process that started later only reuses the id of a copy that crashed and left the file behind.
+#[cfg(windows)]
+pub fn started_before(started: Option<u64>, written: std::time::SystemTime) -> bool {
+    let Some(started) = started else { return false };
+    let Ok(since) = written.duration_since(std::time::UNIX_EPOCH) else { return false };
+    started <= UNIX_EPOCH_TICKS + (since.as_nanos() / 100) as u64
+}
+
+/// The running copy's process id, read from the profile's startup file, for a second launch that
+/// cannot use the channel. `None`: no startup file, no id in it, or (Windows) the process with that
+/// id started after the file was written, so it is another program reusing a crashed copy's id.
 pub fn raise_target(dir: &Path) -> Option<u32> {
-    read_running(dir).and_then(|r| r.pid)
+    let pid = read_running(dir).and_then(|r| r.pid)?;
+    #[cfg(windows)]
+    {
+        let written = std::fs::metadata(dir.join(crate::cli::FILE)).and_then(|m| m.modified()).ok()?;
+        if !started_before(crate::procs::started_at(pid), written) {
+            return None;
+        }
+    }
+    Some(pid)
 }
 
 /// The second launch's log line.
@@ -918,9 +942,20 @@ mod tests {
         assert_eq!(raise_target(&dir), None, "no startup file: nothing to raise");
         std::fs::write(dir.join(crate::cli::FILE), r#"{"port":1425,"token":"t"}"#).unwrap();
         assert_eq!(raise_target(&dir), None, "an older file without a pid: nothing to raise");
-        std::fs::write(dir.join(crate::cli::FILE), r#"{"port":1425,"token":"t","pid":4242}"#).unwrap();
-        assert_eq!(raise_target(&dir), Some(4242), "the running copy's window is raised by its pid");
+        // This test's own process started before the file below is written, like a running copy.
+        let me = std::process::id();
+        std::fs::write(dir.join(crate::cli::FILE), format!(r#"{{"port":1425,"token":"t","pid":{me}}}"#)).unwrap();
+        assert_eq!(raise_target(&dir), Some(me), "the running copy's window is raised by its pid");
         let _ = std::fs::remove_dir_all(&dir);
+        #[cfg(windows)]
+        {
+            let written = std::time::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+            let at = UNIX_EPOCH_TICKS + 1_700_000_000 * 10_000_000;
+            assert!(!started_before(None, written), "a process that is gone or unreadable is not raised");
+            assert!(!started_before(Some(at + 1), written), "a process that started after the file was written reuses a crashed copy's id");
+            assert!(started_before(Some(at), written), "started the same tick the file was written: it is the copy");
+            assert!(started_before(Some(at - 10_000_000), written), "started before the file was written: it is the copy");
+        }
         let src = include_str!("lifecycle.rs").replace("\r\n", "\n");
         let code = &src[..src.find("#[cfg(test)]").unwrap()];
         let exit_only = &code[code.find("} else if let Some(pid) = dir.as_deref().and_then(raise_target)").unwrap()..code.find("std::process::exit(DUPLICATE_EXIT);").unwrap()];

@@ -9,7 +9,7 @@ default. The one exception is the quiet handling of retired settings in old prof
 normal startup path depends on. The X cards list bundled third-party logos and art that the rebuild
 replaces with the owner's own.
 
-Tier counts: P0 0 · P1 0 · P2 0 · H 567 · X 6 · D 57
+Tier counts: P0 0 · P1 0 · P2 0 · H 568 · X 6 · D 57
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 07 Accounts, sign-in & keys · 08 Orchestration · 11 Git, source control & review · 12 Editor & files · 14 Native chat · 15 Skills, plugins & starter kits · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The kolux CLI
 
 ## Cards
