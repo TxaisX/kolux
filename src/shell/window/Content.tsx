@@ -1,22 +1,16 @@
 // Cycle 3 (the WindowView split): the content column, moved out of shell/WindowView.tsx as it was:
 // the New session sheet (SESS-018), the window notices, the plan sheet (SAFE-002..007), the pages over
-// the grid (VIEW-011, DT-17), the layout strip and the file pickers (EDIT-027, EDIT-036), the screens
-// (artifacts, skills, inbox, agents, tower, floor, space), the empty states, the needs strip and the
+// the grid (VIEW-011, DT-17), the layout strip, the screens
+// (inbox, tower, floor, space), the empty states, the needs strip and the
 // stand-ins (PROJ-020), then the grid itself (Grid.tsx).
-import { invoke } from "@tauri-apps/api/core";
 import ScreenBoundary from "../../recovery/ScreenBoundary";
 import { cardPanes } from "../../agents/rail";
-import { AgentsChat } from "../../lazy/pages";
-import { linksOpenInKolux } from "../../chat/chatLinks";
 import LayoutStrip from "../../chrome/LayoutStrip";
 import { StatusGlyph, Spinner } from "../../chrome/icons";
-import { openExternal } from "../../open/openExternal";
-import FilePicker, { quickOpenList, type Pick } from "../../editor/FilePicker";
 import { inboxItems } from "../../inbox/inbox";
 import type { Seat } from "../../launch/seats";
 import type { StartSheet } from "../../launch/startForm";
 import { folderName, projectLabel } from "../../projects/model";
-import { closeSkills } from "../../skills/nav";
 import { tasksRepo } from "../../tasks/model";
 import { draftKey, keepDraft, stillPending } from "../../terminal/planReview";
 import { VOCAB } from "../../terminal/status";
@@ -29,17 +23,12 @@ import SeatChooser from "./SeatChooser";
 import { ownPanes, useStartAsk } from "../useStartAsk";
 import { useWindow } from "./store";
 import { PlanSheet } from "../../lazy/pages";
-import { RoutingPage } from "../../lazy/pages";
 import { SignInNotice } from "../../lazy/pages";
 import { KeyLostNotice } from "../../lazy/pages";
 import { TasksPage } from "../../lazy/pages";
-import { AutomationsPage } from "../../lazy/pages";
-import { SkillsPage } from "../../lazy/pages";
-import { ArtifactsPage } from "../../lazy/pages";
 import { SpaceView } from "../../lazy/pages";
 import { FloorView } from "../../lazy/pages";
 import { InboxView } from "../../lazy/pages";
-import { TemplatePicker } from "../../lazy/pages";
 import { RecoveryMount } from "../../lazy/pages";
 import { ToolNotices } from "../../lazy/pages";
 import { TowerView } from "../../lazy/pages";
@@ -49,13 +38,7 @@ export const dropAtOpen = (s: StartSheet | null): StartSheet | null => (s?.atOpe
 
 export default function WindowContent() {
   const {
-    sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
-    turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, setPage, runPane, openPane,
-    select, agents, settings, savePageSettings, activeDir, workDir, fromItem, cli, shown, setCount,
-    setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
-    screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
-    focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, running,
-    standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
+    sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook, turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, openPane, settings, activeDir, fromItem, cli, shown, setCount, toast, notice, keymapNotice, setNotice, screen, inbox, inboxSeen, now, panes, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, standIns, board, openDirs, addChooser, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
   // Start form D: asked once when Kolux starts, in the main window, in front of what was restored.
   useStartAsk({ settings, settingsRead, layoutIn, agentsDone: agentPass.done, projectsRead, launching, sheetOpen: !!sheet, firstRun: wizard !== null, firstRunKnown: wizardKnown, agentsFailed: agentPass.error !== null && !agentPass.done, panes: ownPanes(panes), open: () => openStart({ atOpen: true }), close: () => setSheet(dropAtOpen) });
@@ -92,100 +75,19 @@ export default function WindowContent() {
           onClose={() => setReviewing(null)}
         />
       )}
-      {terminals && page === "automations" && (
-        <AutomationsPage
-          onClose={() => setPage(null)}
-          liveRun={(r) => !!runPane(r)}
-          onViewRun={(r) => {
-            const p = runPane(r);
-            if (!p) return;
-            setPage(null);
-            openPane(p.key);
-          }}
-          onResume={(r) => r.worktree && select(r.worktree, null)}
-          projects={projects}
-          agents={agents}
-          settings={settings}
-          onSettings={(built) => savePageSettings(settings, built)}
-        />
-      )}
       {terminals && page === "tasks" && <TasksPage repo={tasksRepo(projects, activeDir)} onStart={fromItem} onResume={(dir) => cli.current.select(dir, null, true)} />}
-      {terminals && page === "routing" && (
-        <RoutingPage
-          agents={agents}
-          settings={settings}
-          onSettings={(built) => savePageSettings(settings, built)}
-        />
-      )}
       {terminals && (
         <>
           {page === null && <LayoutStrip count={shown.length} onLayout={setCount} workspace={activeDir} />}
-          {picking === "file" && workDir && (
-            <FilePicker
-              root={workDir}
-              what="file"
-              load={() => invoke<{ files: string[]; capped: boolean; source: string; rgMissing: boolean }>("file_list", { root: workDir }).then((l) => quickOpenList(workDir, l))}
-              onPick={(f) => openFile(f.path)}
-              onClose={() => setPicking(null)}
-            />
-          )}
-          {picking === "template" && workDir && <TemplatePicker root={workDir} onOpen={openFile} onError={(m) => setToast(m)} onClose={() => setPicking(null)} />}
-          {picking === "markdown" && workDir && (
-            <FilePicker
-              root={workDir}
-              what="markdown file"
-              load={() => invoke<{ files: string[]; capped: boolean }>("md_list", { root: workDir }).then((n) => ({ items: n.files.map((path) => ({ path })), capped: n.capped }))}
-              onPick={(f) => openFile(f.path)}
-              onClose={() => setPicking(null)}
-            />
-          )}
-          {picking === "change" && workDir && (
-            <FilePicker
-              root={workDir}
-              what="changed file"
-              load={() => invoke<{ path: string; staged: boolean; code: string }[]>("git_changes", { root: workDir }).then((cs) => ({ items: cs.map((c): Pick => ({ path: c.path, staged: c.staged, tag: c.staged ? "Staged" : c.code === "?" ? "Untracked" : "Unstaged" })), capped: false }))}
-              onPick={(f) => openDiff(f.path, !!f.staged, false, undefined, undefined, workDir)}
-              onClose={() => setPicking(null)}
-            />
-          )}
         </>
       )}
       {/* UX lane A (shell.md row 6): a screen that fails to draw shows Try again here instead of taking the whole window down; a new screen starts clean. A screen whose code failed to load stays failed until Reload (lazy() keeps the failed load). */}
       <ScreenBoundary key={screen}>
-      {screen === "artifacts" && (
-        <ArtifactsPage
-          onToast={setToast}
-          onClose={() => setScreen("terminals")}
-          workspace={activeDir}
-          project={(() => {
-            const p = projects.find((x) => x.id === projectFor(projectOf(activeDir)));
-            return p ? projectLabel(p) : null;
-          })()}
-        />
-      )}
-      {screen === "skills" && <SkillsPage workspace={activeDir} onClose={() => closeSkills(setScreen)} />}
-      {inbox && <InboxView items={inboxItems(inboxSeen.sources, now)} now={now} onOpen={openPane} onReview={reviewChanges} />}
-      {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: (url: string) => void openExternal(url), inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} endedOf={(k) => running[k] === false} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
-        setAgentSel(key);
-        setFocused(key);
-      }} />}
+      {inbox && <InboxView items={inboxItems(inboxSeen.sources, now)} now={now} onOpen={openPane} />}
       {tower && <TowerView rows={towerRows(towerSeats)} usage={towerUsage} now={now} onOpen={openPane} />}
       {floor && <FloorView onOpen={openPane} />}
       {space && <SpaceView projectId={projectFor(projectOf(activeDir))} projectName={(() => { const p = projects.find((x) => x.id === projectFor(projectOf(activeDir))); return p ? projectLabel(p) : ""; })()} openDirs={openDirs} />}
       </ScreenBoundary>
-      {agentsScreen && selected === null && (
-        <div className="empty">
-          <h2>Agents</h2>
-          <p>{saved.length ? "No session yet." : agentPass.looking ? "Looking for agents…" : "No agents yet. Start one to begin."}</p>
-          {(
-            <div className="btn-row">
-              <button className="btn primary" onClick={addChooser}>
-                Start agents
-              </button>
-            </div>
-          )}
-        </div>
-      )}
       {board && cardPanes(panes).length === 0 && (
         <div className="empty">
           <h2>Board</h2>

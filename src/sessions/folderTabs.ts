@@ -1,14 +1,14 @@
 // VIEW-057 (T-146-g): which tabs the right sidebar offers where. A workspace in a Git repository gets
-// Explorer, Insights (T-646, app-wide), Checks and Agents; a folder workspace (a project without Git) has no
+// Insights (T-646, app-wide), Checks and Agents; a folder workspace (a project without Git) has no
 // git tabs and gets Attached worktrees and PR Checks instead (both get Insights, which is app-wide). The tab remembered for the window is
 // used when it is offered here, else the first one offered; a folder workspace's remembered PR Checks
 // wins over the window's tab. Search waits on the file-content search (T-236).
 import type { Worktree } from "../projects/model";
 
-export type TabId = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
+export type TabId = "insights" | "checks" | "agents" | "attached" | "prchecks";
 
-export const GIT_TABS: TabId[] = ["explorer", "insights", "checks", "agents"];
-export const FOLDER_TABS: TabId[] = ["explorer", "insights", "attached", "prchecks", "agents"];
+export const GIT_TABS: TabId[] = ["insights", "checks", "agents"];
+export const FOLDER_TABS: TabId[] = ["insights", "attached", "prchecks", "agents"];
 /** The settings key holding {folder: "prchecks"} for the folder workspaces whose PR Checks was left open. */
 export const FOLDER_TAB_KEY = "folderWorkspaceTabs";
 
@@ -34,7 +34,7 @@ export function readFolderTabs(saved: unknown): Record<string, "prchecks"> {
 /** The tab to show: a folder workspace's remembered PR Checks, else the window's tab when offered, else the first offered. */
 export function tabFor(saved: unknown, dir: string | null, windowTab: TabId, offered: TabId[]): TabId {
   if (dir !== null && offered.includes("prchecks") && readFolderTabs(saved)[key(dir)] === "prchecks") return "prchecks";
-  return offered.includes(windowTab) ? windowTab : (offered[0] ?? "explorer");
+  return offered.includes(windowTab) ? windowTab : (offered[0] ?? "insights");
 }
 
 /** What to save after a tab is chosen in a folder workspace: PR Checks is remembered for that folder, any other tab forgets it. */

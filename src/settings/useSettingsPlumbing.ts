@@ -1,13 +1,11 @@
 // The window's settings plumbing, moved out of App.tsx as it was (cycle 2, the App.tsx split; the T-543 pattern):
-// the settings ref every write builds on, the review notes kept in settings, the right sidebar's state and
+// the settings ref every write builds on, the right sidebar's state and
 // the menu bar. Called where it sat, so the window's hook order is unchanged.
 import type { WindowState } from "../shell/windowStore";
 import { editChatBox } from "../chat/menuEdit";
 import { RIGHT_KEYS, readLeft, readRight, type RightTab } from "../chrome/RightSidebar";
 import { menuBarState, menuEdit, menuScreen, menuSettingFlip } from "../chrome/chromeItems";
 import { useMenuBar } from "../chrome/useChrome";
-import { LINE_NOTES_KEY, lineNotesOf, type LineNote, withLineNotes } from "../editor/diffNotes";
-import { useRepoless } from "../editor/fileNotes";
 import { DEFAULT_AGENT_KEY } from "../launch/agents";
 import { applySetting, rebaseSettings } from "../projects/settingWrite";
 import { FOLDER_TAB_KEY, offeredTabs, tabFor } from "../sessions/folderTabs";
@@ -19,26 +17,9 @@ import { saveChanged } from "./saveChanged";
 import { stepZoom, type ZoomStep } from "./zoom";
 import { useRef } from "react";
 
-export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owner, refresh, screen, setExplorerFocus, setNotice, setScreen, setSettings, setSettingsAt, setSettingsOpen, setSidebarOpen, setToast, settings }: Pick<WindowState, "activeDir" | "classic" | "dragLeft" | "keymap" | "owner" | "refresh" | "screen" | "setExplorerFocus" | "setNotice" | "setScreen" | "setSettings" | "setSettingsAt" | "setSettingsOpen" | "setSidebarOpen" | "setToast" | "settings">) {
-  // GIT-040 / GIT-041: review notes on diff lines, kept per workspace in settings. A save that fails
-  // puts the notes back as they were and says so.
+export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owner, refresh, screen, setNotice, setScreen, setSettings, setSettingsAt, setSettingsOpen, setSidebarOpen, setToast, settings }: Pick<WindowState, "activeDir" | "classic" | "dragLeft" | "keymap" | "owner" | "refresh" | "screen" | "setNotice" | "setScreen" | "setSettings" | "setSettingsAt" | "setSettingsOpen" | "setSidebarOpen" | "setToast" | "settings">) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
-  // GIT-041 (T-034-b): a folder workspace without Git keeps its notes too, made on a file's selection.
-  const repoless = useRepoless(activeDir);
-  const notesFor = (dir: string | null) => lineNotesOf(settingsRef.current[LINE_NOTES_KEY], dir);
-  const saveNotes = (dir: string, notes: LineNote[]) => {
-    const was = settingsRef.current;
-    const next = { ...was, [LINE_NOTES_KEY]: withLineNotes(was[LINE_NOTES_KEY], dir, notes) };
-    settingsRef.current = next;
-    setSettings(next);
-    saveChanged(was, next).catch((err) => {
-      setSettings((s) => ({ ...s, [LINE_NOTES_KEY]: was[LINE_NOTES_KEY] }));
-      setToast(`The review note was not saved, so the change was undone: ${String(err)}`);
-    });
-  };
-  const putNote = (dir: string, n: LineNote) => saveNotes(dir, [...notesFor(dir).filter((x) => x.id !== n.id), n]);
-  const dropNotes = (dir: string, ids: string[]) => saveNotes(dir, notesFor(dir).filter((x) => !ids.includes(x.id)));
   // Row 794: built on the latest settings, so writes before the next render (Clear filters, then a tick) all land.
   // DT-C274: `value` may be a function of the key's latest value (settings are JSON, so never a function themselves),
   // for a writer that finishes after an await and must build on what is there then; undefined from it writes nothing.
@@ -63,7 +44,6 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
   const savedRight = readRight(settings);
   const right = { ...savedRight, tab: tabFor(settings[FOLDER_TAB_KEY], activeDir, savedRight.tab, offeredRight) };
   const leftWidth = dragLeft ?? readLeft(settings);
-  const explorerOpen = right.open && right.tab === "explorer";
   const saveRight = (patch: Partial<Record<keyof typeof RIGHT_KEYS, unknown>>) => {
     const was = settingsRef.current;
     const next = { ...was };
@@ -75,11 +55,6 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
   const showRight = (tab: RightTab) => {
     setScreen("terminals");
     saveRight({ open: true, tab });
-  };
-  const toggleExplorer = () => {
-    if (explorerOpen && document.activeElement?.closest(".explorer")) return saveRight({ open: false });
-    showRight("explorer");
-    setExplorerFocus((n) => n + 1);
   };
   // APP-009 / T-248-a: the menu mirrors the screen, the look, the chrome switches and the shortcuts;
   // a menu click the page carries out runs the same code as its shortcut.
@@ -110,8 +85,8 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
   // SESS-004: the default agent is a settings key; the plus menu lists it first.
   const setDefault = (id: string) => saveSetting(DEFAULT_AGENT_KEY, id);
   return {
-    settingsRef, repoless, notesFor, saveNotes, putNote, dropNotes, saveSetting, savePageSettings, kindProject, wsKind, offeredRight, savedRight, right,
-    leftWidth, explorerOpen, saveRight, showRight, toggleExplorer, setDefault,
+    settingsRef, saveSetting, savePageSettings, kindProject, wsKind, offeredRight, savedRight, right,
+    leftWidth, saveRight, showRight, setDefault,
   };
 }
 

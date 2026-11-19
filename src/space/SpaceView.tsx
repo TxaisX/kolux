@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import Ask from "../chrome/Ask";
 import type { RemoveCheck } from "../projects/deleting";
 import { folderName } from "../projects/model";
-import { askArchive } from "../setup/TrustPrompt";
 import { ageOf, deletable, formatBytes, formatCount, reclaimableBytes, selectedForDelete, treemap, visibleRows, type SortKey, type SpaceRow } from "../projects/space";
 import { activeOf, afterBatch, chosenVisible, labelOf, latest, plan, question, removeArgs, stateOf, treemapItems, whyNotDeletable, type Batch, type Pick, type Skipped } from "./view";
 
@@ -94,7 +93,6 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
     setPending(null);
     setBusy(true);
     try {
-      for (const p of pending.picks) await askArchive(p.path);
       const batch = await invoke<Batch>("workspace_remove_many", removeArgs(projectId, pending.picks));
       // EDIT-004: a removed folder's unsaved drafts go with it, as a single delete does; a failed one keeps them.
       for (const i of batch.items) if (i.outcome === "removed") void invoke("editor_drafts_drop", { worktree: i.path }).catch(() => undefined);

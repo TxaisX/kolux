@@ -12,7 +12,6 @@ import { useMenuFocus } from "./dialogFocus";
 import { BAR_EVENT, SHOW_EVENT, currentBar } from "../update/bus";
 import { KeepAwakeItem, useKeepAwake } from "../launch/KeepAwakeCard";
 import PortsItem from "../ports/PortsItem";
-import SkillBarItem from "../skills/SkillBarItem";
 import { openSettings } from "../settings/pages";
 import OutOfFlow from "./OutOfFlow";
 
@@ -74,8 +73,6 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
           {update.text}
         </button>
       )}
-      {/* SKILL-027 / VIEW-100: a running skill update with its count, then a check that fades or a failure that stays until clicked. */}
-      <SkillBarItem />
       {shows("hooks") && hooks !== null && (
         <button className="item hooks-item" aria-label={`Show what each agent is doing: ${hooks ? "on" : "off"}, open Settings > Agents`} title={`Show what each agent is doing: ${hooks ? "on" : "off"}. Click to open Settings > Agents`} onClick={() => openSettings("agents", "hooks")}>
           <Cup size={12} />

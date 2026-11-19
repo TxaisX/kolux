@@ -10,22 +10,19 @@ import { useTowerBridge } from "../tower/bridge";
 import { nameSeats, nameUsage, usageByAccount } from "../tower/tower";
 import { capOn, claudeOf, codexOf, contextFill, meterOf, meterText, planOf, readsLeft, usageLine } from "../usage/meter";
 import { useClaudePaneFigures, useCodexPaneFigures } from "../usage/paneFigures";
-import { cardPanes, pickSession, railGroups } from "./rail";
-import { useEffect, useMemo } from "react";
+import { cardPanes, railGroups } from "./rail";
+import { useMemo } from "react";
 import type { WindowState } from "../shell/windowStore";
 import type { Screens } from "../chrome/useScreens";
 import type { PaneActions } from "../terminal/paneActions";
 
-export function useRailAndTower({ accountSwitcher, agentOf, agentSel, agents, agentsScreen, board, context, guess, hook, liveIds, now, openPane, panes, plan, running, setAgentSel, settings, stale, stamp, statusOf, titles, turn }: Pick<WindowState, "accountSwitcher" | "agentOf" | "agentSel" | "agents" | "context" | "guess" | "hook" | "liveIds" | "panes" | "plan" | "running" | "setAgentSel" | "settings" | "stale" | "stamp" | "statusOf" | "titles" | "turn"> & Pick<Screens, "agentsScreen" | "board" | "now"> & Pick<PaneActions, "openPane">) {
+export function useRailAndTower({ accountSwitcher, agentOf, agentSel, agents, board, context, guess, hook, liveIds, now, openPane, panes, plan, running, settings, stale, stamp, statusOf, titles, turn }: Pick<WindowState, "accountSwitcher" | "agentOf" | "agentSel" | "agents" | "context" | "guess" | "hook" | "liveIds" | "panes" | "plan" | "running" | "settings" | "stale" | "stamp" | "statusOf" | "titles" | "turn"> & Pick<Screens, "board" | "now"> & Pick<PaneActions, "openPane">) {
   // VIEW-015 / VIEW-021: the Agents rail groups sessions under the saved (switched-on, installed)
   // agents; the shown session is the remembered pick, else the first agent's newest; + adds a
   // not-started preset under that agent. VIEW-024: cards carry the saved agent's name.
   const saved = agents.filter((a) => a.installed);
   const groups = railGroups(panes, saved);
-  const selected = agentsScreen ? pickSession(groups, agentSel) : agentSel;
-  useEffect(() => {
-    if (agentsScreen && selected !== agentSel) setAgentSel(selected);
-  }, [agentsScreen, selected, agentSel]);
+  const selected = agentSel;
   const savedName = (p: Pane) => saved.find((a) => a.id === p.agentId)?.name;
   // USAGE-004 / VIEW-018: the rail's rings are the tab rings; the footer is the picked session's 5-hour window.
   const ringOf = (p: Pane) => (context[p.key] ? { percent: contextFill(context[p.key], capOn(settings)), title: meterText(meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) ?? {}) } : null);

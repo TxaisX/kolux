@@ -7,7 +7,7 @@ import { find, installDom, mount, settle, until, type FakeDocument, type FakeNod
 
 // A screen and a pane body whose code never arrives: what shows is only ever the fallback.
 vi.mock("../tasks/TasksPage", () => new Promise(() => {}));
-vi.mock("../editor/Explorer", () => new Promise(() => {}));
+vi.mock("../scm/CheckPane", () => new Promise(() => {}));
 
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};
@@ -38,8 +38,8 @@ test("a full-page screen whose code is still loading shows a quiet Loading… st
 });
 
 test("a pane body whose code is still loading draws nothing", async () => {
-  const { Explorer } = await import("./pages");
-  const c = await draw(createElement(Explorer, {} as never));
+  const { CheckPane } = await import("./panes");
+  const c = await draw(createElement(CheckPane, {} as never));
   await settle();
   expect(c.childNodes).toHaveLength(0);
   expect(c.textContent).toBe("");
@@ -60,5 +60,5 @@ test("only the full-page screens Content.tsx draws carry the fallback", () => {
   const fs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
   const src = fs.readFileSync(new URL("./pages.tsx", import.meta.url), "utf8");
   const withFallback = [...src.matchAll(/export const (\w+) = deferred\b[^\n]*, loading(?:, \{[^}]*\})?\);/g)].map((m) => m[1]).sort();
-  expect(withFallback).toEqual(["ArtifactsPage", "AutomationsPage", "FloorView", "InboxView", "RoutingPage", "SkillsPage", "SpaceView", "TasksPage", "TowerView"]);
+  expect(withFallback).toEqual(["FloorView", "InboxView", "SpaceView", "TasksPage", "TowerView"]);
 });

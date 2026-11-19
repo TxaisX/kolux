@@ -12,7 +12,7 @@ import { bellTarget } from "./TopBar";
 
 test("chrome.md:20: closing the Inbox goes back to the screen shown before it, not always Terminals", () => {
   expect(bellTarget("terminals", "terminals")).toBe("inbox");
-  expect(bellTarget("agents", "agents")).toBe("inbox");
+  expect(bellTarget("board", "board")).toBe("inbox");
   expect(bellTarget("inbox", "board")).toBe("board");
   expect(bellTarget("inbox", "terminals")).toBe("terminals");
 });

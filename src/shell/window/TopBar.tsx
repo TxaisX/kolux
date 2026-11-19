@@ -1,6 +1,6 @@
 // Cycle 3 (the WindowView split): the top bar and the four things it does, moved out of
 // shell/WindowView.tsx as they were. VIEW-005 / VIEW-011 keep the screen and the page; SET-020 and
-// VIEW-011 show the app name and the Automations button only when Settings says so.
+// VIEW-011 shows the app name only when Settings says so.
 import { useSyncExternalStore } from "react";
 import TopBar from "../../chrome/TopBar";
 import { chromeShown } from "../../chrome/chromeItems";
@@ -11,7 +11,7 @@ import { useWindow } from "./store";
 
 export default function WindowTopBar() {
   const {
-    settings, screen, setScreen, needing, classic, leftWidth, terminals, page, setPage, setPalette,
+    settings, screen, setScreen, needing, classic, leftWidth, terminals, setPage, setPalette,
     installedIds, codex, sidebarOpen, setSidebarOpen, fullPage, right, saveRight, showRight, step,
     hist, stillThere, settingsOpen, setNotice, rightAside,
   } = useWindow();
@@ -20,17 +20,6 @@ export default function WindowTopBar() {
   return (
     <TopBar
       appName={chromeShown(settings, "titleBarAppName")}
-      automations={
-        chromeShown(settings, "automationsButton")
-          ? {
-              open: terminals && page === "automations",
-              onToggle: () => {
-                setScreen("terminals");
-                setPage((p) => (terminals && p === "automations" ? null : "automations"));
-              },
-            }
-          : undefined
-      }
       screen={screen}
       needsYou={needing}
       classic={classic}
@@ -39,7 +28,7 @@ export default function WindowTopBar() {
       onNotice={setNotice}
       uiZoom={zoomFactor()}
       onScreen={(s) => {
-        if (s === "terminals") setPage(null); // W3 F3 (T-693, VIEW-009): Terminals leaves a full page (Automations, Tasks or Routing)
+        if (s === "terminals") setPage(null); // W3 F3 (T-693, VIEW-009): Terminals leaves a full page (Tasks)
         setScreen(s);
       }}
       installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={leftShown(sidebarOpen, narrow, rightAside.current.shown /* filled by App.tsx before the drawing */)} onToggleSidebar={() => setSidebarOpen((o) => !o)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />

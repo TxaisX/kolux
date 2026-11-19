@@ -1,6 +1,5 @@
 import { afterEach, expect, test } from "vitest";
 import { applyLanguage, LANGUAGES, locale, savedLanguage, systemLanguage } from "./language";
-import { ago, naturalCompare } from "./automations/model";
 import { resetWords } from "./usage/codex";
 import { signedInAt } from "./settings/AccountRow";
 
@@ -28,20 +27,10 @@ test("SET-017: an unknown saved value means System; the seven choices are named 
   expect(LANGUAGES.map((l) => l.name)).toContain("Français");
 });
 
-test("SET-017: picking Japanese turns relative times, weekdays and dates Japanese; English keeps its words", () => {
+test("SET-017: picking Japanese turns weekdays and dates Japanese", () => {
   const now = Date.UTC(2026, 9, 12, 12, 0, 0);
-  expect(ago(now - 3 * 3600_000, now)).toBe("3 h ago");
   applyLanguage("ja");
   expect(locale()).toBe("ja");
-  expect(ago(now - 3 * 3600_000, now)).toBe("3 時間前");
-  expect(ago(now - 5 * 60_000, now)).toBe("5 分前");
   expect(resetWords((now + 3 * 86400_000) / 1000, new Date(now))).toMatch(/[日月火水木金土]/);
   expect(signedInAt(now).startsWith("2026/10/1")).toBe(true);
-});
-
-test("SET-017: sorted lists use the language's own order (Spanish puts ñ after n)", () => {
-  expect(naturalCompare("ñu", "nz")).toBeLessThan(0);
-  applyLanguage("es");
-  expect(naturalCompare("ñu", "nz")).toBeGreaterThan(0);
-  expect(naturalCompare("Run 2", "Run 10")).toBeLessThan(0);
 });

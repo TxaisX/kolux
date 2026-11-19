@@ -12,8 +12,6 @@ import { heldByTerminal } from "./terminalPolicy";
 import { SCREEN_OF } from "../chrome/reach";
 import { paletteRows } from "../projects/WorktreePalette";
 import keysSrc from "./useWindowKeys.ts?raw";
-import panelSrc from "../projects/ProjectsPanel.tsx?raw";
-import type { Page } from "../projects/ProjectsPanel";
 import { singleFolder, WORKTREE_COMMANDS, WORKTREES_OFF, worktreesOffNote, OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
 
 // DT-C273: own folders are the default now; these tests cover one folder per project.
@@ -182,30 +180,10 @@ test("review of PR #16 (a): Force Reload's question is the app's own dialog (chr
   expect(app).toMatch(/<Ask \{\.\.\.reloadAsk\(reloadAsking\)\}/);
 });
 
-test("T-728: a command's keywords find it in the palette, after rows that match on their own words", () => {
+test("T-728: a command's keywords find it in the palette", () => {
   const rows = commandRows(resolve(null, "win32"), []);
-  expect(paletteRows(rows, "cron").map((r) => r.label)).toContain("Open Automations");
   expect(paletteRows(rows, "preferences").map((r) => r.label)).toContain("Open Settings");
-  const ranked = paletteRows([{ section: "Commands", label: "Run cron now", run: () => {} }, ...rows], "cron").map((r) => r.label);
-  expect(ranked.indexOf("Run cron now")).toBeLessThan(ranked.indexOf("Open Automations"));
-  expect(paletteRows(rows, "cron zzzz")).toEqual([]);
-});
-
-test("T-727: the palette finds Model Routing by routing, model or route, and running it opens the routing page", () => {
-  const ran: string[] = [];
-  const rows = commandRows(resolve(null, "win32"), [], undefined, (id) => void ran.push(id));
-  for (const q of ["routing", "model", "route", "Model routing"]) {
-    const hit = paletteRows(rows, q).find((r) => r.label === "Model Routing");
-    expect(hit, `"${q}" shows it`).toBeTruthy();
-    hit!.run();
-  }
-  expect(ran).toEqual(["view.routing", "view.routing", "view.routing", "view.routing"]);
-  // every case of the window's page switch is a page: the id after "view." must be one of ProjectsPanel's pages
-  const PAGES = { automations: 1, routing: 1, tasks: 1 } satisfies Record<Page, 1>;
-  const group = keysSrc.match(/((?:case "view\.\w+":\s*)+)\{[^]*?hit\.id\.slice\(5\)/)?.[1] ?? "";
-  const ids = [...group.matchAll(/"view\.(\w+)"/g)].map((m) => m[1]);
-  expect(ids.sort()).toEqual(Object.keys(PAGES).sort());
-  expect(panelSrc).toContain('onPage("routing")');
+  expect(paletteRows(rows, "preferences zzzz")).toEqual([]);
 });
 
 test("T-798 (P4B-01): worktrees off hides Create, Rename and Delete worktree from the palette and says so on their chords", () => {

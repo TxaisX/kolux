@@ -16,26 +16,22 @@
 // Markdown (T-093-b): Mod+Shift+V opens a read-only preview tab, Mod+Shift+O picks one of the
 // worktree's markdown files, Mod+Shift+M makes a new untitled note at the worktree root.
 import { useEffect, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useRenameOnFirstPrompt } from "./projects/renameOnWork";
 import type { CheckRef } from "./scm/checkCard";
-import { useDesktopDrops } from "./editor/desktopDrops";
-import { sendTargets } from "./editor/notes";
-import { useCloseGuard } from "./editor/CloseDialog";
 import { useSessionNames } from "./sessions/tabTitles";
 import { type Agent } from "./chrome/VendorMark";
 import { type Kept } from "./inbox/exitedPrompt";
 import { type Copies, type Seat, type Shape, type Lineup } from "./launch/seats";
-import { panesIn, sameDir } from "./workspaces";
-import { namesOf, panesInDirs, unsavedInDirs } from "./projects/wsUnsaved";
+import { panesIn } from "./workspaces";
+import { setNoticeSink } from "./chrome/noticeSink";
 import { type SavedLayout } from "./terminal/layout";
 import { KeymapProvider } from "./keys/KeymapContext";
 import { useAgentEvents } from "./status/useAgentStatus";
 import { useWindowStore, useWindowStoreTail } from "./shell/windowStore";
 import { launchActions } from "./launch/launchActions";
 import { paneActions } from "./terminal/paneActions";
-import { reviewActions } from "./editor/reviewActions";
+import { reviewActions } from "./terminal/reviewActions";
 import { useWindowSave } from "./shell/useWindowSave";
 import { useCliBridge } from "./projects/useCliBridge";
 import { useScreens } from "./chrome/useScreens";
@@ -58,7 +54,6 @@ import { useWorkspaceActions } from "./projects/useWorkspaces";
 import { useWizard } from "./onboarding/useWizard";
 import { hooksOn } from "./onboarding/hooksOn";
 import { startWatch } from "./launch/startWatch";
-import { handOver } from "./shell/useStartAsk";
 import { hearStates, setHooksOn } from "./chat/send";
 
 export type ShellTarget = { dir: string | null; branch: string | null };
@@ -85,17 +80,17 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // The window's state and its first hooks, in their order (shell/windowStore.ts).
   const store = useWindowStore(initial, layout, late, read);
   const {
-    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, setExplorerFocus, dragLeft,
-    panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
+    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, dragLeft,
+    panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
     needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
     markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, guess, agentOf, statusOf, setAgents, agentPass, setAgentPass,
-    setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, dirty, installedIds, owner, refresh, setRefresh, recentDirs, activeRef,
-    setHist, stacked, setStacked, setNotice, setToast
+    setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, installedIds, owner, refresh, setRefresh, recentDirs, activeRef,
+    setHist, stacked, setNotice, setToast
   } = store;
   // The rest of the window's state (shell/windowStore.ts). DT-C270: the pull-request rows (VIEW-043) are read by the
   // palette itself (shell/window/Dialogs.tsx), so the window does not draw again when it opens.
   const tail = useWindowStoreTail({ accountSwitcher, ptys, setNotice }, layout, read);
-  const { weights, setWeights, dragRef, sendMenu, nextKey, runPanes, runTabs } = tail;
+  const { weights, setWeights, dragRef, nextKey } = tail;
   const state = { ...store, ...tail };
 
   // App info, agents, shells and settings, read at start (shell/useWindowStart.ts).
@@ -105,7 +100,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   });
   // The settings writes, review notes, the right sidebar and the menu bar (settings/useSettingsPlumbing.ts).
   const plumb = useSettingsPlumbing({
-    activeDir, classic, dragLeft, keymap, owner, refresh, screen, setExplorerFocus, setNotice, setScreen, setSettings, setSettingsAt, setSettingsOpen,
+    activeDir, classic, dragLeft, keymap, owner, refresh, screen, setNotice, setScreen, setSettings, setSettingsAt, setSettingsOpen,
     setSidebarOpen, setToast, settings
   });
   const { settingsRef, saveSetting } = plumb;
@@ -117,22 +112,14 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
 
   // The launch and pane actions (launch/launchActions.ts, terminal/paneActions.ts).
   const launchA = launchActions(state, plumb, w);
-  const { startIn, runSetup, gateSetup } = launchA;
+  const { startIn } = launchA;
   const paneA = paneActions(state, plumb, launchA, w);
-  const { openFile, openDiff, openPreview, splitPane, keyOfHandle, termCreate, termSwitch, termRename, dropPane, closeTab, leavePage, openPane } = paneA;
-  // EDIT-039: a file dragged in from the desktop opens here; a folder on the project list is added there.
-  useDesktopDrops((path) => openFile(path), setToast);
-
-  // APP-019: markdown files the system handed to the app open as previews, at start and on each later ask.
-  const openFiles = useRef(openPreview);
-  openFiles.current = openPreview;
+  const { openFile, splitPane, keyOfHandle, termCreate, termSwitch, termRename, dropPane, leavePage, openPane } = paneA;
+  // The automatic pull request flow says its stops in the notice line through this.
   useEffect(() => {
-    const drain = () => void invoke<string[]>("open_files_take").then((fs) => fs.forEach((f) => (handOver(f), openFiles.current(f)))).catch(() => undefined); // job 47 F1: not the user acting
-    const off = listen("open-files", drain);
-    drain();
-    return () => void off.then((f) => f()).catch(() => undefined);
+    setNoticeSink(setNotice);
+    return () => setNoticeSink(null);
   }, []);
-
   // SESS-021: a lineup is kept per project once one of its agent seats has really started (its
   // pane reports a running program); until then it waits here under its batch.
   const pendingLineup = useRef<Record<number, { pid: string; lineup: Lineup }>>({});
@@ -148,19 +135,18 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useRenameOnFirstPrompt((key) => panes.find((p) => p.key === key)?.cwd ?? undefined, settings);
   // VIEW-093 (T-127-b): an agent tab takes its session's name (the user's own tab name still wins).
   useSessionNames(panes);
-  const workspaceActions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, setStacked, nextKey, settings, screen, setScreen, setPage, owner, recentDirs, activeRef });
-  const { startSetup, select, removed } = workspaceActions;
-  const setupExits = useRef<Record<number, (code: number | null) => void>>({});
+  const workspaceActions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, setPage, owner, recentDirs, activeRef });
+  const { select, removed } = workspaceActions;
   // The page, screen and layout writes, and the quit question (shell/useWindowSave.ts).
   const save = useWindowSave({
-    activeDir, activeTab, classic, dirty, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings,
+    activeDir, activeTab, classic, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings,
     settings, settingsRead, settingsRef, stacked, tabColors
   });
 
   // The command line's requests: files, terminals, workspaces, worker starts (projects/useCliBridge.ts).
   const cliBridge = useCliBridge({
-    activeDir, activeRef, agents, dropPane, focused, gateSetup, keyOfHandle, openDiff, openFile, pinned, ptys, removed, runPanes, runSetup, runTabs, select,
-    setPanes, setRefresh, settingsRef, setupExits, splitPane, startIn, startSetup, termCreate, termRename, termSwitch
+    activeDir, activeRef, agents, dropPane, keyOfHandle, openFile, ptys, removed, select,
+    setPanes, setRefresh, settingsRef, splitPane, startIn, termCreate, termRename, termSwitch
   });
 
   const wizardState = useWizard({ setToast, agents, settings, startIn });
@@ -173,15 +159,9 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // T-035-b: the question or permission a program left open when it exited; only the Inbox reads it (inbox/exitedPrompt).
   const exitedPrompt = useRef<Kept>({});
 
-  const guard = useCloseGuard({ panes, dirty, close: (keys) => void closeTab(keys, true), toast: setToast });
-  // EDIT-031: deleting, forgetting or sleeping a workspace closes every tab in it, so its unsaved
-  // editor text is asked about first, with the same Save / Don't save / Cancel question a closing tab gets.
-  const wsUnsaved = (paths: string[]) => namesOf(unsavedInDirs(panes, dirty, paths, sameDir));
-  const askWsUnsaved = (paths: string[]) => guard.confirm(panesInDirs(panes, paths, sameDir));
-
   // The screen in front, tab labels, the clock and full pages (chrome/useScreens.tsx).
   const screenState = useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles });
-  const { terminals, board, agentsScreen, now } = screenState;
+  const { terminals, board, now } = screenState;
   // The Inbox's sources and the sidebar rows' states (status/useStatusSurfaces.ts).
   const surfaces = useStatusSurfaces({ agentOf, exitedPrompt, hook, liveIds, panes, rowRef, running, settings, stamp, statusOf, titles });
   // The grid's cells, weights, dividers and the needs strip (terminal/paneGrid.ts).
@@ -189,13 +169,11 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const { cells, activeOf } = grid;
   // The Agents rail, the Board's chips and lanes and the Tower (agents/useRailAndTower.ts).
   const rail = useRailAndTower({
-    accountSwitcher, agentOf, agentSel, agents, agentsScreen, board, context, guess, hook, liveIds, now, openPane, panes, plan, running, setAgentSel, settings,
+    accountSwitcher, agentOf, agentSel, agents, board, context, guess, hook, liveIds, now, openPane, panes, plan, running, settings,
     stale, stamp, statusOf, titles, turn
   });
-  // Answers, the plan sheet and review notes (editor/reviewActions.ts).
-  const reviewA = reviewActions(state, plumb, launchA, w);
-  const { inWorktree } = reviewA;
-  const reviewTargets = sendMenu ? sendTargets(panes, inWorktree, stamp, Date.now(), (p) => tabName(p, titles)) : [];
+  // Answers, the plan sheet and review notes (terminal/reviewActions.ts).
+  const reviewA = reviewActions(state, w);
   const reviewPane = reviewing && panes.find((p) => p.key === reviewing.key);
   // What is in view, and the layout report for the command line (terminal/useLayoutReport.ts).
   const layoutReport = useLayoutReport({ activeDir, activeOf, board, cells, cliFailed, ptys, terminals, titles });
@@ -214,7 +192,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
     ...state, ...plumb, ...chrome, ...start, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
-    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
+    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewPane, pendingLineup, exitedPrompt, panesRef,
   };
   Object.assign(w, bag);
   // T-699 (DT-C135): the right sidebar as the left one's setter sees it (shell/window/narrow.ts nextLeft).

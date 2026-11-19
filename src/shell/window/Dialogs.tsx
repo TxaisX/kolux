@@ -28,7 +28,6 @@ import { usePrRows } from "../../scm/usePrRows";
 import { SettingsPage } from "../../lazy/pages";
 import { WorkspaceBoard } from "../../lazy/pages";
 import { FolderRenameAsk } from "../../lazy/pages";
-import { TrustPrompt } from "../../lazy/pages";
 
 /** The tab menu (TERM-044..TERM-049) is not in the start bundle (bundle-budget.mjs); it has no placeholder,
  *  so it is read at the first idle moment after start (DT-C230) and the first right-click draws it at once. */
@@ -36,7 +35,7 @@ const TabMenu = deferred(() => import("./TabMenuView"), undefined, { prefetch: t
 
 export default function WindowDialogs() {
   const {
-    paletteItems, panes, activeDir, setAsking, asking, dropPanes, guard, quitAsk, quitting, setQuitAsk, reloadAsking,
+    paletteItems, panes, activeDir, setAsking, asking, dropPanes, quitAsk, quitting, setQuitAsk, reloadAsking,
     setReloadAsk, switcher, titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt, boardOpen, setBoardOpen, setPanes,
     setActiveDir, setRefresh, saveSetting, settingsRef,
   } = useWindow();
@@ -57,7 +56,6 @@ export default function WindowDialogs() {
           }}
         />
       )}
-      <TrustPrompt />
       {/* STAT-039 (T-110-b): after the first work renamed a branch, asks before the folder follows; a moved folder's panes and the list follow it. */}
       <FolderRenameAsk
         onMoved={(from, to) => {
@@ -71,7 +69,6 @@ export default function WindowDialogs() {
       />
       <LinkAskHost />
       <TabSearch tabs={() => paletteItems().filter(isTabRow)} />
-      {guard.dialog}
       {quitAsk && (
         <Ask
           {...quitQuestion(quitAsk)}

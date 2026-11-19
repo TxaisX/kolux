@@ -6,15 +6,13 @@ import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
 import { NumberDraftField } from "./NumberDraftField";
 import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook, shownFirst, stripOn, type Look } from "./general";
-import { REVIEW_FIELD, reviewOn } from "../editor/notes";
 import { START_ASK_KEY, asksAtStart } from "../launch/startForm";
-import { CONFIRM_DELETE_KEY, confirmDelete } from "../automations/model";
 import { askAgainPatch, skippedOf, skippedSentence } from "./confirmations";
 import { OUTBOUND } from "./outbound";
 import { requestFeedback } from "../feedback/request";
 import { DELAY, delayFromText, prefPatch, readEditorPrefs, type DiffView } from "./editorPrefs";
 import { addApp, addCustom, draftReady, moveApp, OPEN_IN_FIELD, presetsLeft, readOpenIn, removeApp, type OpenInApp } from "./openIn";
-import { alreadyListed, editApp } from "../editor/openInEdit";
+import { alreadyListed, editApp } from "../open/openInEdit";
 import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy";
 import { ResetButton } from "./SafetyRules";
 import CliCard from "./CliCard";
@@ -52,10 +50,6 @@ export function GeneralView({ settings, onSave }: { settings: Record<string, unk
       <label className="conn-switch">
         <input type="checkbox" aria-label="Ask what to open when Kolux starts" checked={asksAtStart(settings)} onChange={(e) => onSave({ [START_ASK_KEY]: e.target.checked })} />
         <span>Ask what to open when Kolux starts: which folders, how many agents and which AI. Off starts with an empty window.</span>
-      </label>
-      <label className="conn-switch">
-        <input type="checkbox" aria-label="Review notes" checked={reviewOn(settings)} onChange={(e) => onSave({ [REVIEW_FIELD]: e.target.checked })} />
-        <span>Review notes: select text in a file and press Ctrl+Shift+A to add a note for an agent.</span>
       </label>
       <label className="conn-switch">
         <input type="checkbox" aria-label="Needs you strip" checked={stripOn(settings)} onChange={(e) => onSave({ [NEEDS_STRIP_FIELD]: e.target.checked })} />
@@ -126,10 +120,6 @@ function Confirmations({ settings, onSave }: { settings: Record<string, unknown>
   return (
     <section className="conn-card" data-section="confirmations">
       <h2 className="conn-name">Confirmations</h2>
-      <label className="conn-switch">
-        <input type="checkbox" role="switch" checked={confirmDelete(settings)} onChange={(e) => onSave({ [CONFIRM_DELETE_KEY]: e.target.checked })} />
-        Ask before deleting an automation
-      </label>
       <p className="conn-detail">{skippedSentence(settings)}</p>
       <button type="button" className="btn" disabled={skipped.length === 0} onClick={() => onSave(askAgainPatch(settings))}>
         Ask again for all

@@ -7,7 +7,6 @@ import { installDom } from "../../tasks/fakeDom";
 import { callers, sameData, sameProps, tally, useStableFns } from "./stable";
 import { sameCard, sameSettings, sameNotice, sameTerminal, type TerminalProps } from "./terminalProps";
 import { sameProjects, type ProjectsProps } from "./projectsProps";
-import { sameExplorer, type ExplorerProps } from "./explorerProps";
 
 // The repo has no jsdom: src/tasks/fakeDom is the page, enough for components that draw nothing.
 let mount: () => Root;
@@ -142,9 +141,9 @@ test("sameProjects: fresh lists with the same rows do not redraw the project lis
   const agents: never[] = [];
   const base = (over: Partial<ProjectsProps> = {}): ProjectsProps => ({
     openDirs: ["C:/w"], sessions: [{ key: 1, agent: "claude", title: "w", cwd: "C:/w", running: true }], states: { "C:/w": { state: "working", changed: 5, pr: null } },
-    unread, onUnread: fn, settings, onSetting: fn, activeDir: "C:/w", onSelect: fn, onRemoved: fn, onRemovedAll: fn, onSleep: fn, unsavedIn: fn as never, agents, launching: false,
+    unread, onUnread: fn, settings, onSetting: fn, activeDir: "C:/w", onSelect: fn, onRemoved: fn, onRemovedAll: fn, onSleep: fn, agents, launching: false,
     onLaunch: fn, defaultId: "claude", onSetDefault: fn, onChoose: fn, page: null, onPage: fn, refresh: 0, onIndex: fn, createRequest: 0, deleteRequest: 0,
-    onStartIn: fn, nest: true, onNest: fn, artifactsOn: false, onArtifacts: fn, ...over,
+    onStartIn: fn, nest: true, onNest: fn, ...over,
   });
   expect(sameProjects(base(), base())).toBe(true);
   expect(sameProjects(base(), base({ settings: { ...settings, savedLayout: { a: 2 } } }))).toBe(true);
@@ -152,17 +151,9 @@ test("sameProjects: fresh lists with the same rows do not redraw the project lis
     { openDirs: ["C:/w", "C:/x"] }, { sessions: [{ key: 1, agent: "claude", title: "w", cwd: "C:/w", running: false }] },
     { states: { "C:/w": { state: "permission", changed: 6, pr: null } } }, { unread: new Set(["C:/w"]) }, { settings: { ...settings, sortBy: "manual" } },
     { activeDir: "C:/x" }, { page: "tasks" }, { refresh: 1 }, { createRequest: 1 }, { deleteRequest: 1 }, { renameRequest: 1 }, { reveal: 1 },
-    { launching: true }, { defaultId: "codex" }, { agents: [] }, { nest: false }, { artifactsOn: true }, { skillsOn: true }, { allOff: true },
-    { unsavedIn: (() => []) as never }, // the selector it calls while drawing: a new identity is new data
+    { launching: true }, { defaultId: "codex" }, { agents: [] }, { nest: false }, { allOff: true },
   ];
   for (const c of changes) expect(sameProjects(base(), base(c)), JSON.stringify(Object.keys(c))).toBe(false);
-});
-
-test("sameExplorer: the file tree redraws for a new folder, a hide or show and a focus request, not for a parent render", () => {
-  const fn = () => {};
-  const base: ExplorerProps = { root: "C:/w", hidden: false, focusAsk: 0, onOpen: fn, onClose: fn, onOpenTerminal: fn, onWake: fn };
-  expect(sameExplorer(base, { ...base })).toBe(true);
-  for (const c of [{ root: "C:/x" }, { hidden: true }, { focusAsk: 1 }, { onClose: () => {} }, { onWake: undefined }]) expect(sameExplorer(base, { ...base, ...c }), JSON.stringify(c)).toBe(false);
 });
 
 test("the harness's A/B switch makes every comparison redraw, and only while it is set", () => {

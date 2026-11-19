@@ -16,7 +16,7 @@ type P = { key: number; cwd: string | null; seats?: unknown };
 const chooser = (key: number, cwd = "C:/p"): P => ({ key, cwd, seats: [{}] });
 const shell = (key: number, cwd = "C:/p"): P => ({ key, cwd });
 const grid = (cells: P[][], focused: number, over: Partial<{ board: boolean; zoomed: number | null }> = {}) => ({
-  terminals: true, board: false, agentsScreen: false, zoomed: null, activeDir: "C:/p", focused,
+  terminals: true, board: false, zoomed: null, activeDir: "C:/p", focused,
   cells: cells.map((panes) => ({ panes })), activeOf: (c: { panes: P[] }) => c.panes[c.panes.length - 1].key, ...over,
 });
 

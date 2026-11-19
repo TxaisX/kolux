@@ -3,7 +3,6 @@
 // Force Reload questions (VIEW-107, APP-006), the layout writes (PROJ-067, T-075) and back and forward stops
 // (VIEW-046). Called where it sat, so the window's hook order is unchanged.
 import { screens, type Screen } from "../chrome/TopBar";
-import { baseName } from "../editor/buffers";
 import { visit } from "../projects/nav";
 import { applySetting } from "../projects/settingWrite";
 import { useWindowSync } from "../sessions/windowSync";
@@ -24,7 +23,7 @@ import type { Plumbing } from "../settings/useSettingsPlumbing";
  *  every focus move, and each ask runs the agent's own program. */
 export const LISTED_ASK_AGAIN_MS = 30_000;
 
-export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings, settings, settingsRead, settingsRef, stacked, tabColors }: Pick<WindowState, "activeDir" | "activeTab" | "classic" | "dirty" | "focused" | "page" | "panes" | "pinned" | "running" | "screen" | "setHist" | "setNotice" | "setPanes" | "setScreen" | "setSettings" | "settings" | "settingsRead" | "stacked" | "tabColors"> & Pick<Plumbing, "saveSetting" | "settingsRef"> & { read: boolean }) {
+export function useWindowSave({ activeDir, activeTab, classic, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings, settings, settingsRead, settingsRef, stacked, tabColors }: Pick<WindowState, "activeDir" | "activeTab" | "classic" | "focused" | "page" | "panes" | "pinned" | "running" | "screen" | "setHist" | "setNotice" | "setPanes" | "setScreen" | "setSettings" | "settings" | "settingsRead" | "stacked" | "tabColors"> & Pick<Plumbing, "saveSetting" | "settingsRef"> & { read: boolean }) {
   // VIEW-011: the open page is written down, so it is shown again after a restart.
   useEffect(() => {
     if ((settings[OPEN_PAGE_FIELD] ?? null) !== page) saveSetting(OPEN_PAGE_FIELD, page);
@@ -54,27 +53,16 @@ export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, p
     ready: settingsRead,
     onScreen: (to) => {
       shownScreen.current = to;
-      setScreen(classic && (to === "agents" || to === "board") ? "terminals" : to);
+      setScreen(classic && to === "board" ? "terminals" : to);
     },
   });
-  // VIEW-107: closing the window writes what is pending first; unsaved editor text stops the quit
-  // and asks, so nothing is lost without the user saying so.
+  // VIEW-107: closing the window writes what is pending first.
   // T-182 (APP-006): agents still running are asked about too (while TERM-045's switch is on).
   const [quitAsk, setQuitAsk] = useState<Losable | null>(null);
   const [reloadAsking, setReloadAsk] = useState<string[] | null>(null); // Review of PR #16 (a): Force Reload's question
-  // VIEW-107: the window's dirty panes are read when the question is built (the getter), so a note
-  // typed into since this render still counts, and Force Reload's question, which reads the same
-  // list, names it as well.
-  const paneFiles = useRef<string[]>([]);
-  paneFiles.current = panes.filter((p) => dirty[p.key]).map((p) => baseName(p.path ?? p.title ?? "Untitled"));
-  const unsaved = useMemo(
-    () => ({
-      get current(): string[] {
-        return [...paneFiles.current];
-      },
-    }),
-    [],
-  );
+  // The editor is gone, so no window text is left unsaved: the close question and Force Reload's question list no
+  // files, and only running agents can stop a quit.
+  const unsaved = useMemo(() => ({ current: [] as string[] }), []);
   const busyAgents = useRef<string[]>([]);
   busyAgents.current = runningAgents(panes, running, asksBeforeClose(settings));
   const quitting = useRef(false);

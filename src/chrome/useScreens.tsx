@@ -21,9 +21,8 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
   const tower = screen === "tower";
   const floor = screen === "floor";
   const space = screen === "space";
-  const agentsScreen = screen === "agents";
   // T-050-b: an orchestrator-started session with no name or title is named after its worker's task
-  // (orchestration worker_labels, by terminal handle), looked up while the Agents screen, the Board or
+  // (orchestration worker_labels, by terminal handle), looked up while the Board or
   // the tab strip is open (ORCH-066 / T-129-d: Board rows and generated titles read the same label).
   const [workerNames, setWorkerNames] = useState<Record<string, string>>({});
   const labelOf = (p: Pane) => workerNames[`term-${ptys.current[p.key]}`];
@@ -40,19 +39,19 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
     return <BeatLabel animate={needsBeat(rule)} full={(frame) => statusTitle({ ...rule, shown: shownName, frame })} text={textOf} />;
   };
   useEffect(() => {
-    if (!agentsScreen && !board && !terminals) return;
+    if (!board && !terminals) return;
     const look = () => void invoke<Record<string, string>>("worker_labels").then(setWorkerNames, () => {});
     look();
     const t = window.setInterval(look, 5000);
     return () => window.clearInterval(t);
-  }, [agentsScreen, board, terminals]);
+  }, [board, terminals]);
   // STAT-050: the Inbox and the Board read the panes the window already tracks; the clock ticks while one is open.
   const [now, setNow] = useState(Date.now());
   const timed = inbox || board || tower;
   // VIEW-009: a full page fills the workspace area; Show Code (view.code) and an Escape nothing else used leave it.
-  // T-146-e: Skills and Space are full pages too; Skills keeps its own Escape (closeSkills returns to the screen it came from).
-  const fullPage = settingsOpen || (terminals && page !== null) || inbox || tower || floor || space || screen === "artifacts" || screen === "skills";
-  useEscapeLeaves(fullPage && !settingsOpen && page !== "automations" && screen !== "skills", leavePage);
+  // T-146-e: Space is a full page too.
+  const fullPage = settingsOpen || (terminals && page !== null) || inbox || tower || floor || space;
+  useEscapeLeaves(fullPage && !settingsOpen, leavePage);
   useEffect(() => showScreen(screen, classic), [screen, classic]); // VIEW-006: each screen's own theme
   useEffect(() => {
     if (!timed) return;
@@ -61,7 +60,7 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
     return () => window.clearInterval(t);
   }, [timed]);
   return {
-    terminals, board, inbox, tower, floor, space, agentsScreen, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow, timed,
+    terminals, board, inbox, tower, floor, space, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow, timed,
     fullPage,
   };
 }

@@ -46,7 +46,7 @@ async function sidebar(screen: string, start: string | null) {
     settings: {}, saveSetting: noop, activeDir: null, select: noop, removed: noop, removedAll: noop, agents: [],
     defaultId: "claude", setDefault: noop, launching: false, launch: noop, addChooser: noop, newTab: noop, allAgents: [],
     agentPass: () => {}, refreshAgents: noop, page, refresh: 0, createRequest: 0, createName: "", deleteRequest: 0,
-    renameRequest: 0, setRenameRequest: noop, startIn: noop, projectAdded: noop, standIns: [], startSetup: noop,
+    renameRequest: 0, setRenameRequest: noop, startIn: noop, projectAdded: noop, standIns: [],
     setProjects: noop, setOwner: noop, setNames: noop, leftWidth: 289, setDragLeft: noop, agentsScreen: false, groups: [],
     selected: null, classic: false, chipFor: noop, ringOf: noop, footer: null, setAgentSel: noop, setFocused: noop,
     addPreset: noop, closePane: noop, workerNames: {}, ptys: { current: {} }, wsUnsaved: () => [], askWsUnsaved: async () => true,

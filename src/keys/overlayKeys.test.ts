@@ -136,10 +136,6 @@ test("the Ctrl+Tab list (itself a menu) still steps while it is open", () => {
   expect(heldByOverlay("tab.previousRecent", false, root([box(true)]) as never)).toBe(true);
 });
 
-test("Automations has a command, so the palette lists it", () => {
-  expect(actionById.get("view.automations")?.title).toBe("Open Automations");
-});
-
 test("UX lane C (request from D): Ctrl+W closes directly unless the pane claims the close for its own warning", () => {
   const g = globalThis as { window?: unknown };
   const before = g.window;

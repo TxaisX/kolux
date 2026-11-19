@@ -6,15 +6,15 @@ import { chordMatches, chordsOf, labelOf, labelParts, matchEvent, parseChord, re
 
 const key = (k: Partial<KeyLike>): KeyLike => ({ key: "", code: "", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...k });
 
-test("the table registers the 128 carried commands (the embedded-browser removal dropped the 8 browser ones; T-727 added view.routing, UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 57 ship unbound (T-746 bound view.space; T-727: view.routing unbound, UX lane C: view.automations added unbound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound; T-717 left terminal.closePane unbound, Mod+W is tab.close's) and only workspace rename has a macOS chord only (T-746 gave New agent tab Mod+Alt+T everywhere) (UX lane C gave three Ctrl+Shift chords)", () => {
-  expect(actions.length).toBe(128);
+test("the table registers the 126 carried commands (slim stage 2 dropped view.automations and view.routing with their pages; the embedded-browser removal dropped the 8 browser ones; T-727 added view.routing, UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 55 ship unbound (T-746 bound view.space; T-727: view.routing unbound, UX lane C: view.automations added unbound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound; T-717 left terminal.closePane unbound, Mod+W is tab.close's) and only workspace rename has a macOS chord only (T-746 gave New agent tab Mod+Alt+T everywhere) (UX lane C gave three Ctrl+Shift chords)", () => {
+  expect(actions.length).toBe(126);
   const ids = new Set(actions.map((a) => a.id));
-  expect(ids.size).toBe(128);
+  expect(ids.size).toBe(126);
   expect(ids.has("sidebar.sourceControl.toggle")).toBe(false); // T-644
   expect(ids.has("tab.newSimulator")).toBe(false);
   expect(ids.has("tab.openQuickCommandsMenu")).toBe(false);
   expect(ids.has("sidebar.ports.toggle")).toBe(false); // T-611: VIEW-079's Ports tab is dropped
-  expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).length).toBe(57);
+  expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).length).toBe(55);
   expect(actions.filter((a) => a.win32.length === 0 && a.darwin).map((a) => a.id).sort()).toEqual(["workspace.rename"]);
   expect(actions.filter((a) => a.id.startsWith("tab.newAgent.")).length).toBe(36);
 });

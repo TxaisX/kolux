@@ -30,7 +30,7 @@ async function open() {
   const { useMenuBar } = await import("../useChrome");
   const { menuBarState } = await import("../chromeItems");
   const Bar = () => {
-    const [screen, setScreen] = useState<"agents" | "board" | "terminals">("agents");
+    const [screen, setScreen] = useState<"board" | "terminals" | "tower">("terminals");
     const [classic, setClassic] = useState(false);
     ctl.setClassic = setClassic;
     useMenuBar(menuBarState({}, screen, () => undefined, classic), () => {});
@@ -46,7 +46,7 @@ const last = () => synced[synced.length - 1];
 
 test("box 3: switching to Board with the mouse sends the menu screen board (Rust ticks screen.board for it)", async () => {
   const c = await open();
-  expect(last()).toMatchObject({ screen: "agents", classic: false });
+  expect(last()).toMatchObject({ screen: "terminals", classic: false });
   await click(c, label(c, "Board"));
   await settle();
   expect(label(c, "Board").attrs["aria-pressed"]).toBe("true");

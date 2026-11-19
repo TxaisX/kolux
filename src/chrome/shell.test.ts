@@ -78,14 +78,6 @@ test("the status bar shows hooks, memory, terminals and agents on the right", ()
   expect(html).toMatch(/Agents running[^>]*>.*1/);
 });
 
-test("VIEW-011: the Automations button shows only when it is turned on, pressed while the page is open", () => {
-  const base: TopBarProps = { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} };
-  expect(renderToString(createElement(TopBar, base))).not.toContain('title="Automations"');
-  const on = renderToString(createElement(TopBar, { ...base, automations: { open: true, onToggle: () => {} } }));
-  expect(on).toContain('title="Automations"');
-  expect(on).toMatch(/aria-pressed="true"[^>]*title="Automations"|title="Automations"[^>]*aria-pressed="true"/);
-});
-
 test("ux fix 2: the bell carries the count of panes that need you and clears at 0", () => {
   const base: TopBarProps = { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} };
   const two = renderToString(createElement(TopBar, { ...base, needsYou: 2 }));

@@ -15,9 +15,8 @@ import { NARROW_PX } from "../shell/window/narrow";
 import { Menu, MenuItem } from "../lazy/uiMenu";
 import { Tab, TabList, TabPanel, Tabs } from "../ui/Tabs";
 
-export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
+export type RightTab = "insights" | "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
-  { id: "explorer", label: "Explorer", hint: "Files in this workspace" },
   { id: "insights", label: "Insights", hint: "Every session's tokens, estimated cost and work" },
   { id: "checks", label: "Checks", hint: "Checks on this workspace's pull request" },
   { id: "attached", label: "Attached", hint: "Attached workspaces" },
@@ -34,8 +33,8 @@ export function readRight(s: Record<string, unknown>): { open: boolean; tab: Rig
   const w = s[RIGHT_KEYS.width];
   return {
     open: s[RIGHT_KEYS.open] !== false,
-    // an older saved "search" or "scm" (Source Control, removed in T-644) tab, or any other unknown one, opens the Explorer
-    tab: RIGHT_TABS.some((t) => t.id === s[RIGHT_KEYS.tab]) ? (s[RIGHT_KEYS.tab] as RightTab) : "explorer",
+    // an older saved "search" or "scm" (Source Control, removed in T-644) tab, or any other unknown one, opens Insights
+    tab: RIGHT_TABS.some((t) => t.id === s[RIGHT_KEYS.tab]) ? (s[RIGHT_KEYS.tab] as RightTab) : "insights",
     width: typeof w === "number" && Number.isFinite(w) && w >= RIGHT_MIN ? Math.round(w) : RIGHT_DEFAULT,
   };
 }

@@ -20,10 +20,10 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-test("clicking each of Agents, Board and Terminals selects exactly that label, and Classic has no switch", async () => {
+test("clicking each of Board, Terminals and Tower selects exactly that label, and Classic has no switch", async () => {
   const { default: TopBar } = await import("../TopBar");
   const Bar = ({ classic }: { classic: boolean }) => {
-    const [screen, setScreen] = useState<"agents" | "board" | "terminals">("terminals");
+    const [screen, setScreen] = useState<"board" | "terminals" | "tower">("terminals");
     return createElement(TopBar, { screen, classic, onScreen: setScreen as never, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} });
   };
   const m = await mount(createElement(Bar, { classic: false }), doc);
@@ -31,9 +31,9 @@ test("clicking each of Agents, Board and Terminals selects exactly that label, a
   const c = m.container as FakeNode;
   await settle();
   const btn = (t: string) => find(c, (n) => n.localName === "button" && n.attrs["aria-pressed"] !== undefined && n.textContent.trim() === t)[0];
-  const on = () => ["Agents", "Board", "Terminals"].filter((t) => btn(t).attrs["aria-pressed"] === "true");
+  const on = () => ["Board", "Terminals", "Tower"].filter((t) => btn(t).attrs["aria-pressed"] === "true");
   expect(on()).toEqual(["Terminals"]);
-  for (const t of ["Agents", "Board", "Terminals"]) {
+  for (const t of ["Board", "Terminals", "Tower"]) {
     await click(c, btn(t));
     await settle();
     expect(on()).toEqual([t]);

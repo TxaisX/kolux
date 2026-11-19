@@ -9,7 +9,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Refresh, Search } from "../chrome/icons";
-import { singleFolder } from "../projects/singleFolder";
 import GhBanner, { classify } from "./GhBanner";
 import { emptyReason } from "./emptyState";
 import { taskSource } from "./taskSource";
@@ -26,7 +25,6 @@ import PullRequestPage from "./PullRequestPage";
 import { itemOfTarget, pasteLine, pastedWork, rowForNumber } from "./pasteWork";
 import { parseGitHubUrl, type Target } from "./prModel";
 import TaskDialog from "./TaskDialog";
-import { startFromItem } from "../agentstart/host";
 import { existingWorkspace, linkKey, linkedRows, workItem, type WorkItem, workLabel } from "./workStart";
 import "./tasks.css";
 
@@ -519,21 +517,6 @@ export default function TasksPage({ repo, onStart, onResume }: { repo: { dir: st
                   onKeyDown={(e) => e.stopPropagation()}
                 >
                   {workLabel(resumeDir(t), t)}
-                </button>
-              )}
-              {!singleFolder() && t.state === "open" && workItem(t, gh?.host ?? "github.com") && (
-                <button
-                  className="btn tasks-work"
-                  data-work-agent={`${t.kind}-${t.number}`}
-                  title="Make a workspace for this and start an agent on it"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const item = workItem(t, gh?.host ?? "github.com");
-                    if (item) void startFromItem({ item, title: t.title, existing: resumeDir(t) });
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
-                  Start with an agent
                 </button>
               )}
             </li>

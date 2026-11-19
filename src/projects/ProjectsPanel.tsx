@@ -16,27 +16,23 @@
 // ponytail: which rows are folded lasts until the window closes; nothing saves it.
 // T-022: rows carry the strongest live agent state and an unread mark (PROJ-063), the list can be
 // grouped by project, status or pull request and sorted Smart or by name (PROJ-045, PROJ-050).
-import { isFolderWorkspace } from "../sessions/folderTabs";
 import { Fragment, useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
 import { type FolderSession } from "./folderSessions";
-import { dialogWhere, setupMode } from "../launch/launchOrder";
 import { asksBeforeDelete, blocker, commitsNote, isTextField, keepsAtFirst, keyDeleteTarget, NOT_LISTED_WORKTREE, notInWorktree, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
-import { askText } from "../editor/closeGuard";
-import { closesWith, goesWith, goingFolders, sameDir, underDir } from "../workspaces";
+import { closesWith, goingFolders, sameDir, underDir } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
 import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "./mergeOnQuit";
-import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
-import { ArrowRight, Bell, Chip, ChevronDown, Close, EyeOff, Funnel, Minus, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
+import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead } from "./model";
+import { ArrowRight, Bell, ChevronDown, Close, EyeOff, Funnel, Minus, FolderPlus, Gear, List, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
 import { AddProject, StatusEditor, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
 import { CleanupDialog, SettingsPage } from "../lazy/pages";
 import { addKept, type KeptBranch, type KeptItem } from "./cleanup";
@@ -71,8 +67,6 @@ import { renameTarget } from "../keys/commands";
 import { behindHint, HINT_DISMISSED_SETTING, isBehindHint, REFRESH_SETTING, refreshesOnCreate } from "./baseHint";
 import { outsideCard } from "./outsideCard";
 import { isToggleClick } from "./selection";
-import AutomationsRow from "./AutomationsRow";
-import SkillsRow from "./SkillsRow";
 import { chromeShown } from "../chrome/chromeItems";
 import { VOCAB } from "../terminal/status";
 import type { AgentPass } from "../launch/agents";
@@ -85,8 +79,6 @@ const SidebarStart = deferred(() => import("../onboarding/SidebarStart"));
 import { asksBeforeClose } from "../terminal/closing";
 import "./sidebar.css";
 import { refusedLine, type SetupImport } from "./setupImport";
-import { issueCommand } from "../setup/IssueCommand";
-import { askArchive, trustedSetup } from "../setup/TrustPrompt";
 import { NO_GROUPS, groupChoices, groupTree, keepNewer, type Group, type Groups, type Node } from "./groups";
 import { dropBand, parentDropTarget } from "./parentDrop";
 import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds, stepRow, stepSiblings } from "./order";
@@ -98,7 +90,7 @@ import { onWorkspaceStatus } from "./statusRefresh";
 import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
-import { FILE_MANAGER, loadTargets, openIn } from "../editor/openIn";
+import { FILE_MANAGER, loadTargets, openIn } from "../open/openIn";
 import { frontProjectRow } from "./frontRow";
 import { projectsInGroup } from "./groupMembers";
 
@@ -106,7 +98,7 @@ import { projectsInGroup } from "./groupMembers";
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
 
 /** The pages that open over the content column from the sidebar footer. */
-export type Page = "automations" | "routing" | "tasks";
+export type Page = "tasks";
 
 type Props = {
   /** EDIT-041: bumped by Open in Code; the selected row is scrolled into sight once it is drawn. */
@@ -139,10 +131,6 @@ type Props = {
   onRemovedAll: (paths: string[], staying?: string[]) => void; // R71-03: required, so no mount can drop the staying list
   /** PROJ-053: these workspaces went to sleep; close their panes. */
   onSleep: (paths: string[]) => void;
-  /** EDIT-031: the file names with unsaved text in these workspaces, for the delete question. */
-  unsavedIn?: (paths: string[]) => string[];
-  /** EDIT-031: asks about those tabs (Save / Don't save / Cancel); true when the removal may go on. */
-  onAskUnsaved?: (paths: string[]) => Promise<boolean>;
   /** The plus menu behind "New session" (T-004): agents found on the PATH, and the launch. */
   agents: AgentInfo[];
   launching: boolean;
@@ -152,14 +140,11 @@ type Props = {
   onChoose: () => void;
   /** SESS-009: the dropdown's blank-terminal row (a plain shell tab). */
   onTerminal?: () => void;
-  /** A row's Review changes: that workspace on Terminals with its All Changes. */
-  onReview?: (dir: string, branch: string | null) => void;
   /** SESS-003 / SESS-002: every installed agent is off; where the agent search stands. */
   allOff?: boolean;
   pass?: AgentPass;
   onRefresh?: () => void;
-  /** DT-17 / AUTO-023: the Automations page is opened from the sidebar's Automations row. */
-  /** Which page (Automations, Model routing) is open over the content column, if any. */
+  /** Which page (Tasks) is open over the content column, if any. */
   page: Page | null;
   onPage: (page: Page) => void;
   /** Bump to reload the list after something outside the sidebar made a workspace. */
@@ -188,16 +173,8 @@ type Props = {
   /** PROJ-047: child workspaces nest under their parent unless this is off. */
   nest: boolean;
   onNest: (on: boolean) => void;
-  /** SKILL-036: the Artifacts row opens the library and shows as current while it is up. */
-  artifactsOn: boolean;
-  onArtifacts: () => void;
-  /** SKILL-018: the Skills button opens the Skills page and shows as current while it is up. */
-  skillsOn?: boolean;
-  onSkills?: () => void;
   /** PROJ-020: the creates Git is still working on, for the stand-in tabs beside the panes. */
   onPending?: (pending: PendingCreate[]) => void;
-  /** PROJ-033: open a Setup terminal in a new workspace; `then` runs once it has ended. */
-  onSetup?: (dir: string, branch: string | null, line: SetupLine, where: SetupWhere, show: boolean, then?: () => Promise<number | null> | void) => void;
 };
 
 // SESS-035: the projects the composer last made workspaces in, newest first (this computer only).
@@ -227,7 +204,7 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll, onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll, onSleep, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, onPending }: Props) {
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
@@ -364,11 +341,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [linked, setLinked] = useState<Linked | null>(null); // SESS-036: the GitHub item the workspace is named from
   const [found, setFound] = useState<Linked[]>([]); // SESS-036: issues and pull requests matching the name
   const [findNote, setFindNote] = useState("");
-  const [setupSkip, setSetupSkip] = useState(false); // PROJ-033: the setup policy; the project's script runs unless skipped
-  const [setupWhere, setSetupWhere] = useState<SetupWhere>("tab");
-  const [setupWait, setSetupWait] = useState(false);
-  const waitTouched = useRef(false); // the user clicked the wait box since the project last changed
-  const whereTouched = useRef(false); // likewise the "setup opens in" choice
   const nameRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewAnswered, setPreviewAnswered] = useState(false); // Git has answered for the name now shown
@@ -592,25 +564,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     setPrDraft(null);
     setLinked((l) => (creating === null ? null : keepOnSwitch(l))); // SESS-038
   }, [creating]);
-  const waitPath = projects.find((x) => x.id === creating)?.path;
-  useEffect(() => {
-    // SET-033: the repository's own choice of whether the agent waits for setup starts the checkbox
-    waitTouched.current = false;
-    whereTouched.current = false;
-    setSetupWhere("tab");
-    setSetupWait(false); // another repository's choice is not this one's while the read is out
-    if (!waitPath) return;
-    let live = true;
-    // a late reply never undoes a click: the box the user touched stays as they set it
-    invoke<{ wait: boolean; mode?: unknown }>("repo_setup_get", { path: waitPath })
-      .then((s) => {
-        if (!live) return;
-        if (!waitTouched.current) setSetupWait(s.wait);
-        if (!whereTouched.current) setSetupWhere(dialogWhere(setupMode(s.mode))); // T-150: the repository's own launch mode
-      })
-      .catch(() => {});
-    return () => void (live = false);
-  }, [waitPath]);
   useEffect(() => {
     // SESS-036: the chosen project's own issues and pull requests matching the name, and a pasted
     // link resolved to its item (its title seeds the name). Lookups that fail for want of gh stay quiet.
@@ -751,9 +704,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const stayingBut = (going: Set<string>) => projects.filter((q) => !going.has(q.id)).flatMap(foldersOf);
   // Job 64 F1: a folder that a staying project on the same repository also lists does not go (`goingFolders`); a tab in it
   // that the removed grid shows is kept (R83-04), so it is not asked about. Alone on a repository, as before.
-  // R83-04: not when its own folder stays (a staying project lists it), whichever grid shows it. F88-04: so only the going
-  // folders are asked about; a folder under a listed one that is not going stays (`staysOwn`), so it never closes.
-  const askedOf = (folders: string[], staying: string[]) => openDirs.filter((d) => goesWith(d, folders, staying));
   // F88-01: the going folders, each once and in order (the scan lists the own folder again); `removedAll` closes their panes
   // and reads the first as the project's own, so a going worktree under a staying project's folder closes too.
   const once = (ds: string[]) => ds.filter((d, i) => ds.findIndex((x) => sameDir(x, d)) === i);
@@ -769,8 +719,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // P2-2: the project's one grid holds the sessions of all its worktrees, so removing it closes them too: asked about all of them.
     const staying = stayingBut(new Set([p.id]));
     const folders = once(goingFolders(p.path, foldersOf(p), staying));
-    const closed = askedOf(folders, staying);
-    if (!(await onAskUnsaved(closed))) return;
     try {
       // `unchecked`: Git could not list a project's worktrees, so the engine left their terminals running (missing = false).
       const gone = await invoke<{ name: string; path: string; ended: number; unchecked?: boolean }>("project_remove", { projectId: p.id });
@@ -799,14 +747,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setBusy("");
     }
   };
-
-  // EDIT-039: folders dropped from the desktop onto the project list are added one after another.
-  useEffect(() => {
-    projectDrop.add = (paths) => void addMany(paths);
-    return () => {
-      projectDrop.add = null;
-    };
-  });
 
   const browse = async () => {
     try {
@@ -931,9 +871,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const members = remove ? projects.filter((p) => going.has(p.id)) : [];
     const staying = stayingBut(going);
     const folders = once(members.flatMap((p) => goingFolders(p.path, foldersOf(p), staying)));
-    if (remove) {
-      if (!(await onAskUnsaved(askedOf(folders, staying)))) return;
-    }
     try {
       const gone = headersGoneWithGroup(groups, g.id, remove); // read before the delete: the answer no longer lists the members
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
@@ -1029,21 +966,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       // take the front (no chooser on screen), so there the agent starts as before and the next name can be typed.
       // A create overtaken after Git had already finished it stays, but never takes the front.
       const front = !keepOpen && !lost && shown.current === from;
-      // PROJ-033: the project's setup script runs in a Setup terminal; a script that cannot run says why.
-      const setup = setupSkip || !onSetup ? null : await trustedSetup(wt.path).catch((err) => (say("warn", String(err)), null));
-      // The chooser's Start is the person's, so it never waits for the setup script; the script still runs, behind it.
-      const how = createStart(!!agent, !!prompt, front, !!(setup && onSetup && waitsForSetup(setupWhere, setupWait, true, true)));
-      if (how === "setup-then-start" && agent && setup && onSetup) {
-        onSetup(wt.path, wt.branch, setup, setupWhere, front, () => onStartIn(agent, wt.path, wt.branch, prompt, front));
-      } else {
-        if (how === "start" && agent) onStartIn(agent, wt.path, wt.branch, prompt, front);
-        else if (how === "select-prefill") onSelect(wt.path, wt.branch, true, { agent: agent?.id ?? null, task: prompt });
-        else if (how === "select") onSelect(wt.path, wt.branch, true);
-        if (setup && onSetup) onSetup(wt.path, wt.branch, setup, setupWhere, false);
-      }
-      // PROJ-036: a workspace made from a linked issue runs the project's issue command in a tab.
-      const run = setupSkip || !onSetup ? null : await issueCommand(project.path, wt.path, issue).catch((err) => (say("warn", String(err)), null));
-      if (run && onSetup) onSetup(wt.path, wt.branch, run.line, "tab", false);
+      // The chooser's Start is the person's, so it never waits for anything.
+      const how = createStart(!!agent, !!prompt, front, false);
+      if (how === "start" && agent) onStartIn(agent, wt.path, wt.branch, prompt, front);
+      else if (how === "select-prefill") onSelect(wt.path, wt.branch, true, { agent: agent?.id ?? null, task: prompt });
+      else if (how === "select") onSelect(wt.path, wt.branch, true);
     } catch (err) {
       if (stopped.current.has(mine.ticket)) {
         const n = stoppedNote(mine.name, String(err));
@@ -1253,24 +1180,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {prList !== null && (
             <Picker key={`pr-${p?.id ?? ""}`} name="Pull request" value={prDraft ? `#${prDraft.number} ${prDraft.title}` : "pick a pull request"} items={(q) => prItems(prList, q)} onPick={(k) => setPrDraft(prList.find((x) => String(x.number) === k) ?? null)} startOpen={!prDraft} />
           )}
-          <label>Setup</label>
-          <select aria-label="setup policy" className="field" value={setupSkip ? "skip" : "run"} onChange={(e) => setSetupSkip(e.target.value === "skip")}>
-            <option value="run">Run the project's setup script (kolux.yaml)</option>
-            <option value="skip">Skip setup</option>
-          </select>
-          {!setupSkip && (
-            <select aria-label="setup opens in" className="field" value={setupWhere} onChange={(e) => ((whereTouched.current = true), setSetupWhere(e.target.value as SetupWhere))}>
-              <option value="tab">Setup in a new tab</option>
-              <option value="right">Setup in a split to the right</option>
-              <option value="down">Setup in a split below</option>
-            </select>
-          )}
-          {!setupSkip && setupWhere === "tab" && (
-            <label className="check">
-              <input type="checkbox" aria-label="wait for setup" checked={setupWait} onChange={(e) => ((waitTouched.current = true), setSetupWait(e.target.checked))} />
-              Wait for setup to finish before the agent starts
-            </label>
-          )}
           {!existing && prList === null && (
             <input aria-label="start from" className="field" placeholder={p?.base ? `start from: ${p.base} (saved)` : "start from: the default branch"} value={baseDraft} onChange={(e) => setBaseDraft(e.target.value)} onKeyDown={submitKeys(p)} />
           )}
@@ -1326,8 +1235,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   };
   // Row 364: forgetting drops Kolux's records only, but the row vanishes, so it is confirmed first.
   const forget = async (f: { projectId: string; path: string; label: string }) => {
-    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel the workspace stays.
-    if (!(await onAskUnsaved([f.path]))) return;
     setForgetAsk(null);
     try {
       await invoke("workspace_forget", { projectId: f.projectId, path: f.path });
@@ -1340,14 +1247,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   };
   const remove = async (c = confirm) => {
     if (!c) return;
-    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel nothing is removed and no draft is dropped.
-    if (!(await onAskUnsaved([c.path]))) return;
     setBusy("removing");
     try {
-      await askArchive(c.path);
       const kept = await invoke<KeptBranch | null>("workspace_remove", { projectId: c.projectId, path: c.path, force: c.force, stamp: c.check.stamp, keepBranch: c.keep });
       if (kept) setKept((old) => addKept(old, [{ ...kept, projectId: c.projectId }]));
-      void invoke("editor_drafts_drop", { worktree: c.path }).catch(() => undefined); // EDIT-004: removing a worktree discards its drafts
       onRemoved(c.path);
       say("ok", kept ? `removed ${c.branch}'s folder; kept the branch ${kept.branch}` : `removed ${c.branch} and its folder`);
       setConfirm(null);
@@ -1387,7 +1290,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const deleting = busy === "removing" && confirm?.path === w.path;
     const sibs = stepSiblingsOf(p, w);
     const at = sibs.indexOf(pathKey(w.path));
-    setMenu({ x, y, projectId: p.id, path: w.path, items: [...(wt ? wtMenu(w) : []), ...rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), git: !isFolderWorkspace(w.path, [w]), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 })] });
+    setMenu({ x, y, projectId: p.id, path: w.path, items: [...(wt ? wtMenu(w) : []), ...rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 })] });
   };
   // A project header or a group row opens its own short list; `projectId` holds the group id for a group.
   const pop = (e: { preventDefault(): void; clientX: number; clientY: number }, id: string, items: MenuItem[], label: string) => {
@@ -1411,8 +1314,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const b = batch;
     const p = b && projects.find((x) => (worktrees[x.id] ?? []).some((y) => y.path === b.root));
     if (!b || !p) return;
-    // EDIT-031: every workspace in the batch is asked about before any of them goes.
-    if (!(await onAskUnsaved(b.order))) return;
     setBusy("removing");
     const gone: string[] = [];
     try {
@@ -1424,11 +1325,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         }
         // After-list row 112: a branch Git kept because another workspace has it checked out joins the kept list too.
         // T-613: no branch choice (null), so the workspace's own record decides and a branch holding commits found nowhere else stays.
-        await askArchive(path);
         const kept = await invoke<KeptBranch | null>("workspace_remove", { projectId: p.id, path, force: false, stamp: check.stamp, keepBranch: null });
         if (kept) setKept((old) => addKept(old, [{ ...kept, projectId: p.id }]));
         gone.push(path);
-        void invoke("editor_drafts_drop", { worktree: path }).catch(() => undefined); // audit F19: as a single delete does (EDIT-004)
       }
       say("ok", `removed ${b.order.length} workspaces, children first`);
       setBatch(null);
@@ -1447,13 +1346,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (g) return id === "grp:delete" ? askGroup(g) : openGroup(g);
     const p = m && projects.find((x) => x.id === m.projectId);
     const w = m && (worktrees[m.projectId] ?? []).find((x) => x.path === m.path);
-    const pm = p && id === "proj:review" ? (worktrees[p.id] ?? []).find((x) => x.isMain) : undefined;
-    if (pm) {
-      setRead(pm, true);
-      stamp(pm.path);
-      wake(pm);
-      return onReview?.(pm.path, pm.branch);
-    }
     if (p && id.startsWith("proj:")) return id === "proj:new" ? setCreating(p.id) : id === "proj:settings" ? openSettings(p) : setDropProject(p.id);
     if (!m || !p || !w) return;
     try {
@@ -1482,12 +1374,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       } else if (id === "open:files") await openIn(w.path, FILE_MANAGER);
       else if (id.startsWith("open:editor:")) await openIn(w.path, { label: "", command: id.slice(12) });
       else if (id === "open:terminal") show(w);
-      else if (id === "review") {
-        setRead(w, true);
-        stamp(w.path);
-        wake(w);
-        onReview?.(w.path, w.branch);
-      }
       else if (id === "dev:copy-path") await navigator.clipboard.writeText(w.path);
       else if (id === "dev:copy-branch") await navigator.clipboard.writeText(w.branch ?? "");
     } catch (err) {
@@ -1782,8 +1668,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const pinnedEntries = everyEntry.filter((x) => x.w.isMain && pinned.has(pathKey(x.w.path)) && !hidden(x.w));
   async function sleep(w: Worktree) {
     const { next, paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
-    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel it stays awake with its tabs.
-    if (!(await onAskUnsaved(paths))) return false;
     setSleepAsk(null);
     onSetting(SLEEP_SETTING, next);
     onSleep(paths);
@@ -1926,9 +1810,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const asking = confirm?.path === w.path;
     // One workspace per project: a worktree has no visible row, but while a question or form of its own is open (Delete, Sleep, Details, Move, Status) its row shows, alone, so it can be answered (styles.css .old-workspaces).
     const wtForm = [confirm?.path, batch?.root, sleepAsk?.path, statusesOf?.path, detailsOf?.path, moving, forgetAsk?.path, renaming].some((o) => !!o && same(o, w.path));
-    // EDIT-031: the delete question names the files whose unsaved text would go with the workspace.
-    const dirtyNames = asking ? unsavedIn([w.path]) : [];
-    const batchNames = batch?.root === w.path ? unsavedIn(batch.order) : [];
     const info = infoOf(w);
     // PROJ-062: what the card shows under its name, and what a hover adds for the rest.
     // Txais (2026-11-12): the sidebar card leaves out how many agents run here ("1 agent"); its status word stays.
@@ -2158,16 +2039,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                     <li key={d}>{labelOf(d)}</li>
                   ))}
                 </ul>
-                {batchNames.length > 0 && (
-                  <>
-                    <span>{askText(batchNames)} Deleting these worktrees closes their tabs.</span>
-                    <ul className="del-changes" aria-label="files with unsaved changes">
-                      {batchNames.map((n) => (
-                        <li key={n}>{n}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
                 {batch.error && (
                   <span className="note error" role="alert">
                     {batch.error}
@@ -2225,16 +2096,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                     ))}
                     {shownChanges(confirm.check).more > 0 && <li>and {shownChanges(confirm.check).more} more</li>}
                   </ul>
-                )}
-                {dirtyNames.length > 0 && (
-                  <>
-                    <span>{askText(dirtyNames)} Deleting the worktree closes its tabs.</span>
-                    <ul className="del-changes" aria-label="files with unsaved changes">
-                      {dirtyNames.map((n) => (
-                        <li key={n}>{n}</li>
-                      ))}
-                    </ul>
-                  </>
                 )}
                 {commitsNote(confirm.check) && (
                   <>
@@ -2331,7 +2192,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               show(main);
             } : undefined}
             {...headerDrag(p.id)}
-            onContextMenu={(e) => pop(e, p.id, projectMenu(true, folder ? { git: !isFolderWorkspace(main.path, [main]) } : undefined), "Project")}
+            onContextMenu={(e) => pop(e, p.id, projectMenu(true), "Project")}
           >
             <HeaderBadge colour={headerColourOf(settings, "p", p.id)} />
             <ProjectIcon value={icons[p.id]} name={projectLabel(p)} auto={autoIcons[p.id]} />
@@ -2411,8 +2272,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <CleanupDialog
               project={p}
               onClose={() => setCleanupFor(null)}
-              unsavedIn={unsavedIn}
-              onAskUnsaved={onAskUnsaved}
               onRemoved={(paths) => {
                 onRemovedAll(paths);
                 void reload();
@@ -2545,14 +2404,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               Tasks
             </button>
           )}
-          <button className={`row${artifactsOn ? " on" : ""}`} aria-current={artifactsOn ? "page" : undefined} onClick={onArtifacts}>
-            <span className="ic">
-              <FileCode />
-            </span>
-            Artifacts
-          </button>
-          {chromeShown(settings, "automationsButton") && <AutomationsRow open={page === "automations"} onOpen={() => onPage("automations")} onHide={() => onSetting("automationsButton", false)} />}
-          {chromeShown(settings, "skillsButton") && <SkillsRow open={skillsOn} onOpen={onSkills} onHide={() => onSetting("skillsButton", false)} />}
         </nav>
 
         <div className="sb-section">
@@ -2603,8 +2454,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             return p && w ? { projectId: p.id, name: worktreeLabel(w) } : undefined;
           }}
           onRemoved={onRemovedAll}
-          unsavedIn={unsavedIn}
-          onAskUnsaved={onAskUnsaved}
           onKept={(items) => setKept((old) => addKept(old, items))}
           onLeft={setPicked}
           onReload={reload}
@@ -2878,10 +2727,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         <div className="sb-foot">
           <button className="ib" title={`Settings${gitVersion ? ` · ${gitVersion}` : ""}`} aria-label="Settings" data-sidebar-settings onPointerEnter={SettingsPage.warm} onFocus={SettingsPage.warm} onClick={() => openSettingsPage("general")}>
             <Gear />
-          </button>
-          {/* SET-028: until Settings > Agents exists (T-036, T-054), model routing opens from here. */}
-          <button className="ib" title="Model routing: the model and effort for each worker tier" aria-label="Model routing" aria-pressed={page === "routing"} onClick={() => onPage("routing")}>
-            <Chip size={14} />
           </button>
           <HelpMenu />
           {NOT_BUILT && (

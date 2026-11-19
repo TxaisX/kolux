@@ -77,12 +77,12 @@ test("T-146-b: when narrow, the extra tabs move into More and the active tab sta
 });
 
 test("T-146-b: a remembered tab not offered here opens the first offered tab", () => {
-  expect(pickTab("insights", ["explorer", "insights", "checks"])).toBe("insights");
-  expect(pickTab("insights", ["explorer", "checks"])).toBe("explorer");
+  expect(pickTab("insights", ["agents", "insights", "checks"])).toBe("insights");
+  expect(pickTab("insights", ["agents", "checks"])).toBe("agents");
   expect(pickTab("checks", [])).toBe(null);
-  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, max: 600, offered: ["explorer", "checks"], onTab: () => {}, onWidth: () => {}, children: "body" }));
+  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, max: 600, offered: ["agents", "checks"], onTab: () => {}, onWidth: () => {}, children: "body" }));
   expect(html).not.toContain("Insights");
-  expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Explorer/);
+  expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>History/);
 });
 
 test("VIEW 056 rest: a panel whose code throws shows a notice with Try again, and the sidebar stays", () => {

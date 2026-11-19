@@ -6,7 +6,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Refresh } from "../chrome/icons";
-import { fixChecks } from "../agentstart/host";
 import { useSettings } from "../settings/useSettings";
 import GhBanner, { classify } from "../tasks/GhBanner";
 import CommentsPanel from "./CommentsPanel";
@@ -186,11 +185,6 @@ ${REVIEW_HINT}`.trim()}
                       <section key={key} className={`check-group ${key}`} data-group={key}>
                         <h4 className="check-group-title">
                           {label} <span className="count">{groups[key].length}</span>
-                          {key === "failing" && (
-                            <button className="btn" data-fix-checks title="Start an agent on the failing checks of this pull request" onClick={() => void fixChecks({ dir, pr, checks: data.checks })}>
-                              Fix with AI
-                            </button>
-                          )}
                         </h4>
                         {rows.map((c, i) => (
                           <details key={`${c.name}-${i}`} className="check-row" data-outcome={c.outcome}>

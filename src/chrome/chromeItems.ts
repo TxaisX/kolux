@@ -91,7 +91,7 @@ export function menuSettingFlip(s: Record<string, unknown>, id: string): [string
 }
 
 /** The screens View > Workspace View lists (menu.rs SCREENS): the switcher's four and Floor (DT-08, T-610). */
-const MENU_SCREENS: readonly Screen[] = ["agents", "board", "terminals", "tower", "floor"];
+const MENU_SCREENS: readonly Screen[] = ["board", "terminals", "tower", "floor"];
 /** A Workspace View pick: the screen it shows, or null for any other item. */
 export function menuScreen(id: string): Screen | null {
   return MENU_SCREENS.find((s) => id === `screen.${s}`) ?? null;

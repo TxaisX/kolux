@@ -30,27 +30,27 @@ export function stampLook(s: Record<string, unknown>): Record<string, unknown> |
 /** The saved first screen (VIEW-001 as amended for the trial, DT-C40: Terminals when never chosen or unknown). */
 export function savedFirst(s: Record<string, unknown>): Screen {
   const v = s[FIRST_FIELD];
-  return v === "agents" || v === "board" || v === "tower" ? v : "terminals";
+  return v === "board" || v === "tower" ? v : "terminals";
 }
 
 /** C17-R1-01: the first screen the General page shows and the start reads, so the radio can only
- *  write a value the start honours. Agents and Board stay Terminals under Classic. */
+ *  write a value the start honours. Board stays Terminals under Classic. */
 export function shownFirst(s: Record<string, unknown>, classic: boolean): Screen {
   const v = savedFirst(s);
-  return classic && (v === "agents" || v === "board") ? "terminals" : v;
+  return classic && v === "board" ? "terminals" : v;
 }
 
 /** VIEW-005: the screen in front at quit. Picking a first screen in General writes it too, so the
  *  next start honours that choice; after that the screen the user left wins. */
 export const LAST_SCREEN_FIELD = "lastScreen";
 
-/** The screen the window opens on: the one left at quit (Agents and Board only under New), else the
+/** The screen the window opens on: the one left at quit (Board only under New), else the
  *  first-screen choice under New (Terminals when none, DT-C40), else Terminals; an unknown saved value counts as none. */
 export function startScreen(s: Record<string, unknown>): Screen {
   const classic = readLook(s) === "classic";
   const last = s[LAST_SCREEN_FIELD];
-  if (last === "terminals" || last === "artifacts" || last === "inbox" || last === "skills" || last === "tower") return last; // VIEW-011 (T-189-b): the Skills page left open at quit is shown again
-  if (last === "agents" || last === "board") return classic ? "terminals" : last;
+  if (last === "terminals" || last === "inbox" || last === "tower") return last;
+  if (last === "board") return classic ? "terminals" : last;
   return shownFirst(s, classic);
 }
 
@@ -100,7 +100,7 @@ export async function saveLayout(l: SavedLayout, write: (l: SavedLayout) => Prom
 export const OPEN_PAGE_FIELD = "openPage";
 export function openPageAt(s: Record<string, unknown>): Page | null {
   const v = s[OPEN_PAGE_FIELD];
-  return v === "automations" || v === "routing" || v === "tasks" ? v : null;
+  return v === "tasks" ? v : null;
 }
 
 /** TERM-029: the needs-you strip above the grid, on unless turned off. */

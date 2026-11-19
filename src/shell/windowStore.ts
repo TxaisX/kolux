@@ -8,7 +8,6 @@ import { paneAgent, paneStatus } from "../board/chip";
 import type { ShellInfo } from "../terminal/newTab";
 import type { Screen } from "../chrome/TopBar";
 import { useChrome } from "../chrome/useChrome";
-import { useFileMoves } from "../editor/useFileMoves";
 import { useKeymap } from "../keys/KeymapContext";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { FIRST_PASS, defaultAgentId, offeredAgents, type AgentPass } from "../launch/agents";
@@ -35,8 +34,6 @@ import { installTapReset } from "./inputExtras";
 import { applyDensity, installTabWheel } from "./paneChrome";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { RunTabs } from "../automations/runTab";
-import type { Note, Picked } from "../editor/notes";
 import { usePromptScan } from "../status/promptScan";
 import { pickWithNotice } from "../switcher/accounts";
 import type { Gap } from "../terminal/dividers";
@@ -75,8 +72,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [page, setPage] = useState<Page | null>(() => openPageAt(initial)); // VIEW-011: the page open at quit
   // GIT-004: a half-written commit message per worktree, kept through closing the panel.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  // EDIT-033: a bump of explorerFocus moves focus into the explorer's tree.
-  const [explorerFocus, setExplorerFocus] = useState(0);
   // VIEW-056: the right sidebar's width while its edge is being dragged; saved when let go.
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const [dragLeft, setDragLeft] = useState<number | null>(null); // VIEW-050: the left sidebar mid-drag
@@ -84,7 +79,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [panes, setPanes] = useState<Pane[]>(() => layout?.panes.map(reviveSaved) ?? []); // T-543-b: no pane until a workspace is opened
   const panesNow = useRef(panes); // C26-R3-01: the panes as they are when a late layout lands
   panesNow.current = panes;
-  useFileMoves(setPanes); // EDIT-032: editor tabs follow a renamed or moved file
   const [focused, setFocused] = useState(layout?.focused ?? 0);
   // TERM-040: which tab each cell shows; the focused pane's tab comes to the front, and a cell
   // whose active tab was closed falls back to its last tab.
@@ -183,8 +177,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // SET-027: everywhere but Settings, only agents that are switched on are offered.
   const teamsHost = useTeamsHost();
   const agents = useMemo(() => withTeams(offeredAgents(allAgents, settings), settings, teamsHost), [allAgents, settings, teamsHost]);
-  const [dirty, setDirty] = useState<Record<number, boolean>>({}); // EDIT-001: editor tabs with unsaved text
-  const [picking, setPicking] = useState<"file" | "markdown" | "change" | "template" | null>(null); // EDIT-036 / EDIT-012 / EDIT-027: which file picker is open
   const defaultId = defaultAgentId(settings);
   const installedIds = agents.filter((a) => a.installed).map((a) => a.id);
   const [renameRequest, setRenameRequest] = useState(0); // T-611: workspace.rename (PROJ-059) asks the sidebar to rename the workspace in front
@@ -251,14 +243,14 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const { setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
-    setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
+    setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, dragWidth,
     setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, workDir,
     worktreeMenu, setWorktreeMenu, setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,
     hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, cliFailed, asking, setAsking, pinned, setPinned,
     switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
-    settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
+    settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents,
     defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, projectsRead, layoutIn, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
     setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,
@@ -272,10 +264,6 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   const [weights, setWeights] = useState<Record<string, number[]>>({}); // TERM-010: dragged column / row weights, per folder and pane count
   const dragRef = useRef<{ gap: Gap; at: number; start: number[]; px: number } | null>(null);
   const [launching, setLaunching] = useState(false);
-  // GIT-042: review notes on Markdown, kept until copied or cleared.
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [picked, setPicked] = useState<Picked | null>(null);
-  const [sendMenu, setSendMenu] = useState(false);
   // TERM-027: a Set Title shortcut bumps the pane's counter, which opens its name field.
   const [askName, setAskName] = useState<Record<number, number>>({});
   // TERM-048: the tab whose name is being edited in the tab strip.
@@ -297,10 +285,9 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   const restoredScan = useRef(new Set(restoredKeys.current));
   usePromptScan(ptys, restoredScan);
   const runPanes = useRef<Record<string, number>>({});
-  const runTabs = useRef<RunTabs>({}); // AUTO-011 (T-085-g): the agent tabs automation runs opened, and whether the user touched them
   return {
-    switchAccount, weights, setWeights, dragRef, launching, setLaunching, notes, setNotes, picked, setPicked, sendMenu, setSendMenu, askName,
-    setAskName, renamingTab, setRenamingTab, nextKey, restoredKeys, runPanes, runTabs,
+    switchAccount, weights, setWeights, dragRef, launching, setLaunching, askName,
+    setAskName, renamingTab, setRenamingTab, nextKey, restoredKeys, runPanes,
   };
 }
 

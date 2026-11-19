@@ -9,7 +9,6 @@ import type { useSettingsPlumbing } from "../settings/useSettingsPlumbing";
 import type { WindowLate } from "../shell/windowLate";
 import { savedArgs } from "../chat/controls";
 import { noteUse } from "../onboarding/features";
-import { gatedSetup, settleSetup } from "../orchestration/workerSetup";
 import { folderName, projectLabel, type Created, type Project, type WorkItem, type Worktree } from "../projects/model";
 import { renameOnFirstPrompt } from "../projects/renameOnWork";
 import { applySetting } from "../projects/settingWrite";
@@ -18,15 +17,13 @@ import { livePane } from "../sessions/livePane";
 import type { Session } from "../sessions/model";
 import { resumedFields, type ResumePlan } from "../sessions/resume";
 import { saveChanged } from "../settings/saveChanged";
-import { openDefaultTabs } from "../setup/DefaultTabs";
-import { trustedSetup } from "../setup/TrustPrompt";
 import { cellsOf, freeCell, freeCells, groupOf, MAX_PANES } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn, sameDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
-import { bulkRefusal, failureNote, settleSetups, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
+import { bulkRefusal, failureNote, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 import { acrossNote, landOnFree, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
@@ -35,7 +32,7 @@ import { invoke } from "@tauri-apps/api/core";
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
   const {
     workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPage, setPanes,
-    setRefresh, setScreen, setSettings, setSheet, setTabColors, setToast, settings, sheet
+    setRefresh, setScreen, setSettings, setSheet, setToast, settings, sheet
   } = s;
   const { settingsRef } = p;
   const lineupsOf = (s: Record<string, unknown>) => (s[LAST_LINEUP_KEY] ?? {}) as Record<string, Lineup>;
@@ -175,14 +172,6 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         places.push({ cwd: wt.path, branch: wt.branch });
       }
       const batch = key;
-      // The chooser's cell, where a team worktree's Setup tab waits until its agent lands.
-      const chooserGroup = inGrid ? groupOf(chooser) : undefined;
-      await settleSetups(madeNew, setupMode(repo?.mode), repo?.wait === true, {
-        line: (dir) => trustedSetup(dir),
-        // DT-C274: a team worktree's Setup tab is shown in the team's grid (a tab of the chooser's cell until its agent lands).
-        open: (dir, branch, line, where) => new Promise<void>((done) => late.startSetup(dir, branch, line, where, false, () => done(), team ? place : undefined, chooserGroup)),
-        say: (m) => setupTrouble.push(m),
-      });
       for (const id of new Set(picked.flatMap((a) => (a ? [a.id] : [])))) await pretrust(id, picked.map((a, i) => (a?.id === id ? places[i].cwd : null)), seatTell);
       // SESS-051: each agent's start line comes from the catalogue, prompt route included; a
       // refused line (Hermes past its limit) stops the whole Start before any pane is made.
@@ -233,7 +222,6 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
           return owner ? { ...p, group: groupOf(owner) } : p;
         });
       });
-      for (const n of madeNew) void openTabs(n.cwd, n.branch, team ? place : undefined); // PROJ-034, beside its agent in the team grid (DT-C274)
       // VIEW-021: a preset started from the Agents rail stays the selected session once it runs.
       setAgentSel((sel) => (sel === key ? made[0].key : sel));
       if (!inGrid) {
@@ -373,33 +361,6 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     if (at !== null) setActiveDir(at);
     setFocused(pane.key);
   };
-  // PROJ-034: kolux.yaml's default tabs open beside the new workspace's first pane (its setup first, when it has one).
-  // DT-C274: `view`, the grid a team worktree is shown in; its tabs join its agent's cell there.
-  const openTabs = (dir: string, branch: string | null, view?: string | null) => {
-    const root = projects.find((p) => p.id === late.projectOf(dir))?.path;
-    return root ? openDefaultTabs(root, dir, branch, { nextKey, setPanes, setTabColors, say: setNotice }, view) : Promise.resolve();
-  };
-  // PROJ-033: a workspace made outside the composer runs its setup script in a background tab.
-  const runSetup = (dir: string, branch: string | null) =>
-    trustedSetup(dir)
-      .then((line) => void (line ? late.cli.current.startSetup(dir, branch, line, "tab", false, () => openTabs(dir, branch)) : openTabs(dir, branch)))
-      .catch((err) => setNotice(String(err)));
-  // ORCH-017 (T-172-d): a worker start's setup: the trust question, one run in a background Setup
-  // tab, and how it ended (its exit code, or null a second after the tab stopped without one)
-  // reported to the worker-start waiting under `request`.
-  const gateSetup = (request: string, dir: string, branch: string | null) =>
-    gatedSetup(dir, (line) =>
-      new Promise<number | null>((done) => {
-        let key = -1;
-        key = late.cli.current.startSetup(dir, branch, line, "tab", false, () => void setTimeout(() => late.setupExits.current[key]?.(null), 1000));
-        late.setupExits.current[key] = (code) => {
-          delete late.setupExits.current[key];
-          done(code);
-        };
-      }),
-    )
-      .then((a) => settleSetup(request, a))
-      .catch((err) => setNotice(String(err)));
   // PROJ-037: a workspace straight from an issue or pull request address, shown once made.
   const fromItem = (item: WorkItem) => {
     setToast(`Making a workspace from ${item.kind === "pull" ? "pull request" : "issue"} #${item.number}…`);
@@ -407,7 +368,6 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       .then((made) => {
         setRefresh((n) => n + 1);
         late.cli.current.select(made.path, made.branch, true);
-        void runSetup(made.path, made.branch);
       })
       .catch((err) => setNotice(String(err)));
   };
@@ -419,7 +379,6 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         noteUse("workspace-create");
         setRefresh((n) => n + 1);
         late.cli.current.select(made.path, made.branch, true);
-        void runSetup(made.path, made.branch);
       })
       .catch((err) => setNotice(String(err)));
   };
@@ -514,7 +473,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
   };
   return {
-    lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, openTabs, runSetup, gateSetup, fromItem, fromName, pretrust,
+    lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, fromItem, fromName, pretrust,
     fixWithAI, projectFor, launch,
   };
 }

@@ -84,8 +84,6 @@ export const actions: Action[] = [
   a("workspace.openBoard", "Show Workspace Statuses", "global", []), // T-610: not a second "Board" (VIEW-001's keeps the name)
   a("workspace.selectByIndex", "Select Workspace 1–9", "global", ["Mod+1"], { index: true }),
   a("view.tasks", "Open Tasks", "global", []),
-  a("view.automations", "Open Automations", "global", [], { keywords: ["schedule", "cron", "recurring"] }), // UX lane C: reachable with the sidebar row hidden
-  a("view.routing", "Model Routing", "global", []), // T-727: was only the icon on the projects panel; "route" finds it as a near miss of "routing"
   a("dashboard.toggle", "Toggle Agent Dashboard", "global", []),
   a("sidebar.left.toggle", "Toggle Sidebar", "global", ["Mod+B"]),
   a("sidebar.right.toggle", "Toggle Right Sidebar", "global", ["Mod+L"]),

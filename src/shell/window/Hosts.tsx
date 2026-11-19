@@ -1,28 +1,21 @@
 // Cycle 3 (the WindowView split): the window-wide hosts, moved out of shell/WindowView.tsx as they
-// were: the guides and the first-run wizard (ONB), the updater (APP-058..060), the skills bar and its
-// notice, Feedback, the Review changes sheet (GIT-042), the status bar (STAT-024, STAT-050) and the
+// were: the guides and the first-run wizard (ONB), the updater (APP-058..060), Feedback, the status bar (STAT-024, STAT-050) and the
 // Edit menu. They sit after the body, as they did.
 import { useEffect } from "react";
 import StatusBar from "../../chrome/StatusBar";
 import { FIELDS as STATUS_FIELDS, readStatusBar, toggleItem } from "../../chrome/statusItems";
 import EditMenuHost from "../../editmenu/EditMenuHost";
-import { plainNote } from "../../editor/fileNotes";
 import { asksAtStart } from "../../launch/startForm";
-import { reviewOn, startChoices } from "../../editor/notes";
 import { hooksOn } from "../../onboarding/hooksOn";
 import type { KindKey } from "../../settings/notifications";
-import { BringSkillsUp } from "../../skills/SkillBarItem";
-import { toggleSkills } from "../../skills/nav";
 import { windowLoaded } from "../../status/manage";
 import { tabName } from "../../terminal/tabName";
 import { sameDir } from "../../workspaces";
 import { ownPanes } from "../useStartAsk";
 import { useWindow } from "./store";
 import { addFolderHands } from "./sidebarScreens";
-import { SkillUpdateNotice } from "../../lazy/pages";
 import { Guides } from "../../lazy/pages";
 import { Wizard } from "../../lazy/pages";
-import { ReviewNotes } from "../../lazy/pages";
 import { UpdateCenter } from "../../lazy/pages";
 import { FeedbackDialog } from "../../lazy/pages";
 
@@ -48,8 +41,7 @@ export function FirstFolderStart() {
 export default function WindowHosts() {
   const {
     wizard, settings, saveSetting, wizardSession, wizardClose, pickFolder, projects, endWizard, firstFolder,
-    screen, setScreen, settingsRead, picked, notes, repoless, activeDir, putNote, setNotes, setPicked,
-    reviewTargets, sendMenu, setSendMenu, sendReview, startReview, agents, defaultId, live, panes, ptys, titles,
+    screen, setScreen, settingsRead, activeDir, live, panes, ptys, titles,
     owner, restoredKeys, setToast, openStart, setSidebarOpen, sheet,
   } = useWindow();
   return (
@@ -83,30 +75,7 @@ export default function WindowHosts() {
         />
       )}
       <UpdateCenter />
-      <BringSkillsUp onShow={() => screen !== "skills" && toggleSkills(screen, setScreen)} />
-      <SkillUpdateNotice settingsLoaded={settingsRead} />
       <FeedbackDialog />
-      {reviewOn(settings) && (
-        <ReviewNotes
-          picked={picked}
-          notes={notes}
-          onAdd={(n) => {
-            const kept = repoless && activeDir !== null ? plainNote(n, crypto.randomUUID()) : null;
-            if (kept && activeDir !== null) putNote(activeDir, kept);
-            else setNotes((ns) => [...ns, n]);
-            setPicked(null);
-          }}
-          onCancel={() => setPicked(null)}
-          onRemove={(i) => setNotes((ns) => ns.filter((_, k) => k !== i))}
-          onClear={() => setNotes([])}
-          targets={reviewTargets}
-          menu={sendMenu}
-          onMenu={setSendMenu}
-          onSend={sendReview}
-          starters={activeDir === null ? [] : startChoices(agents, defaultId)}
-          onStart={startReview}
-        />
-      )}
       {readStatusBar(settings).visible && (
       <StatusBar
         hidden={readStatusBar(settings).hidden}

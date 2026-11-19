@@ -1,10 +1,7 @@
 // The command line's requests to the window, moved out of App.tsx as they were (cycle 2, the App.tsx split):
 // files to open once their worktree is in front (CLI-022, T-250-c), the handlers read through a ref so the
-// one listener never goes stale (PROJ-077, CLI-026/027), and a run's own tab closing when its agent exits
-// (AUTO-011). Called where they sat, so the window's hook order is unchanged.
-import { openRunTab, paneOfTerminal, runTabEnded, touchRunTab, typedInRunTab } from "../automations/runTab";
-import { missingFileToast } from "../editor/missingFile";
-import { setupRequestOf } from "../orchestration/workerSetup";
+// one listener never goes stale (PROJ-077, CLI-026/027). Called where they sat, so the window's hook order is unchanged.
+import { missingFileToast } from "../open/missingFile";
 import { cliFileShown } from "./rows";
 import type { CliFile, CliWorkspace } from "./model";
 import { startTail } from "./startArgs";
@@ -19,7 +16,7 @@ import type { LaunchActions } from "../launch/launchActions";
 import type { WorkspaceActions } from "./useWorkspaces";
 import type { WindowLate } from "../shell/windowLate";
 
-export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, gateSetup, keyOfHandle, openDiff, openFile, pinned, ptys, removed, runPanes, runSetup, runTabs, select, setPanes, setRefresh, setupExits, splitPane, settingsRef, startIn, startSetup, termCreate, termRename, termSwitch }: { settingsRef: { current: Record<string, unknown> } } & Pick<WindowState, "activeDir" | "activeRef" | "agents" | "focused" | "pinned" | "ptys" | "runPanes" | "runTabs" | "setPanes" | "setRefresh"> & Pick<PaneActions, "dropPane" | "keyOfHandle" | "openDiff" | "openFile" | "splitPane" | "termCreate" | "termRename" | "termSwitch"> & Pick<LaunchActions, "gateSetup" | "runSetup" | "startIn"> & Pick<WorkspaceActions, "removed"> & Pick<WindowLate, "select" | "setupExits" | "startSetup">) {
+export function useCliBridge({ activeDir, activeRef, agents, dropPane, keyOfHandle, openFile, ptys, removed, select, setPanes, setRefresh, splitPane, settingsRef, startIn, termCreate, termRename, termSwitch }: { settingsRef: { current: Record<string, unknown> } } & Pick<WindowState, "activeDir" | "activeRef" | "agents" | "ptys" | "setPanes" | "setRefresh"> & Pick<PaneActions, "dropPane" | "keyOfHandle" | "openFile" | "splitPane" | "termCreate" | "termRename" | "termSwitch"> & Pick<LaunchActions, "startIn"> & Pick<WorkspaceActions, "removed"> & Pick<WindowLate, "select">) {
   // CLI-022: `file open` / `file diff` / `file open-changed` name files of some worktree; the window goes
   // there first and opens the tabs once that worktree is the active one.
   const [cliFiles, setCliFiles] = useState<CliFile[]>([]);
@@ -35,7 +32,7 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
           // Row 65: a file that vanished since the command looked is refused with a reason, not reported opened.
           if (f.kind === "file-open" && (await missingFileToast(f.path, (ps) => invoke<unknown[]>("file_stamps", { paths: ps })))) failed = "the file is not there (or is outside this project)";
           else if (f.kind === "file-open") openFile(f.path, undefined, undefined, undefined, f.worktree);
-          else openDiff(f.path, f.staged, false, undefined, undefined, f.worktree);
+          else failed = "diffs are not shown in this version";
         } catch (err) {
           failed = String(err);
         }
@@ -49,34 +46,16 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
     void invoke("cli_file_window", { listening: true }).catch(() => undefined);
     return () => void invoke("cli_file_window", { listening: false }).catch(() => undefined);
   }, []);
-  const cli = useRef({ startIn, select, removed, termCreate, termSwitch, termRename, splitPane, keyOfHandle, startSetup, runSetup, gateSetup, dropPane: (_k: number) => {} });
-  cli.current = { startIn, select, removed, termCreate, termSwitch, termRename, splitPane, keyOfHandle, startSetup, runSetup, gateSetup, dropPane: (k: number) => dropPane(k) };
-  // AUTO-011 (T-085-g): a run's own agent tab shuts by itself, once, when that agent exits, unless the user
-  // clicked (the pane's mouse-down above) or typed in it (a key inside the focused pane) or pinned it.
-  const focusedNow = useRef(focused);
-  focusedNow.current = focused;
-  const pinnedNow = useRef(pinned);
-  pinnedNow.current = pinned;
+  const cli = useRef({ startIn, select, removed, termCreate, termSwitch, termRename, splitPane, keyOfHandle, dropPane: (_k: number) => {} });
+  cli.current = { startIn, select, removed, termCreate, termSwitch, termRename, splitPane, keyOfHandle, dropPane: (k: number) => dropPane(k) };
+  // T-066-d: a program's own resume hint names its session; it wins over a listed guess (T-066-e), a hook's id is never replaced.
   useEffect(() => {
-    const typed = (e: KeyboardEvent) => {
-      const inside = e.target instanceof Element && e.target.closest(".pane.focused") !== null;
-      if (typedInRunTab(runTabs.current, focusedNow.current, inside)) runTabs.current = touchRunTab(runTabs.current, focusedNow.current);
-    };
-    document.addEventListener("keydown", typed, true);
     const off = onTerminalExit<{ id: number; code?: number | null; session?: string }>((e) => {
-      const key = paneOfTerminal(ptys.current, e.payload.id);
-      if (key === null) return;
-      const printed = e.payload.session; // T-066-d: the id an id-only agent printed in its own resume hint; it wins over a listed guess (T-066-e), a hook's id is never replaced
-      if (printed) setPanes((ps) => withHintedSession(ps, key, printed));
-      setupExits.current[key]?.(e.payload.code ?? null);
-      const ended = runTabEnded(runTabs.current, key, pinnedNow.current.has(key));
-      runTabs.current = ended.tabs;
-      if (ended.verdict === "close") cli.current.dropPane(key);
+      const hit = Object.entries(ptys.current).find(([, t]) => t === e.payload.id);
+      const printed = e.payload.session;
+      if (hit && printed) setPanes((ps) => withHintedSession(ps, Number(hit[0]), printed));
     });
-    return () => {
-      document.removeEventListener("keydown", typed, true);
-      off.then((f) => f()).catch(() => undefined);
-    };
+    return () => void off.then((f) => f()).catch(() => undefined);
   }, []);
   useEffect(() => {
     const off = listen<CliWorkspace>("cli-workspace", (e) => {
@@ -101,23 +80,11 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
       if (p.kind === "start") {
         const a = agents.find((x) => x.id === p.agent);
         if (a)
-          void cli.current.startIn(a, p.path, p.branch, ...startTail(p)).then((key) => {
-            // AUTO-013: an automation run remembers its pane, so View run opens that terminal.
-            if (key !== null && p.runId) {
-              runPanes.current[p.runId] = key;
-              runTabs.current = openRunTab(runTabs.current, key, p.runId);
-            }
-          });
+          void cli.current.startIn(a, p.path, p.branch, ...startTail(p));
         return;
       }
       const a = p.agent ? agents.find((x) => x.id === p.agent) : undefined;
-      // PROJ-033: a workspace made from the command line runs its setup script in a background tab
-      // unless it was told to skip it. SESS-026 (T-150): the setup settles (asked, opened or said
-      // why not) before its agent starts.
-      // ORCH-017 (T-172-d): a worker-start's notice carries a request; worker-start waits for its answer.
-      const request = setupRequestOf(p);
-      const setup = p.setup === "skip" ? Promise.resolve() : request ? cli.current.gateSetup(request, p.worktree.path, p.worktree.branch) : cli.current.runSetup(p.worktree.path, p.worktree.branch);
-      if (a) void setup.then(() => cli.current.startIn(a, p.worktree.path, p.worktree.branch, p.prompt, p.activate));
+      if (a) void cli.current.startIn(a, p.worktree.path, p.worktree.branch, p.prompt, p.activate);
       else if (p.activate) cli.current.select(p.worktree.path, p.worktree.branch);
     });
     return () => {

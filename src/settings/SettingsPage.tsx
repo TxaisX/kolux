@@ -29,7 +29,7 @@ import { clearReadFailure, connectFailed, firstAiConnected, readFailed } from ".
 import { useKeymap } from "../keys/KeymapContext";
 import { matchEvent } from "../keys/keymap";
 import { hideRule, MAX_REPOS_DRAWN, MAX_SEARCH, SearchFolds, SearchRun, searchRepos, useSearching } from "./search";
-import { useSettled } from "../editor/settledQuery";
+import { useSettled } from "./settledQuery";
 import { useSearchHits } from "./useSearchHits";
 import { idleLater, pageWarmer, type Loader } from "./pageWarm";
 import { deferred } from "../lazy/deferred";

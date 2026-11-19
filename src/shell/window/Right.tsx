@@ -1,27 +1,19 @@
 // Cycle 3 (the WindowView split): the right sidebar, moved out of shell/WindowView.tsx as it was: the
 // panel frame and its width (VIEW-056), the Insights tab (T-646: tokens, estimated cost and what every
 // session is doing, app-wide; it replaced Source Control, T-644), the past-sessions tab (VIEW-080), the
-// attached-worktrees and checks tabs, the Continue / Fix / Start host (T-187-b, T-189-b) and the Explorer (EDIT-033).
-import { invoke } from "@tauri-apps/api/core";
+// attached-worktrees and checks tabs.
 import RightSidebar, { RIGHT_KEYS, clampWidth } from "../../chrome/RightSidebar";
 import { liveSessions } from "../../insights/model";
 import { AttachedWorktreesTab, FolderChecksTab } from "../../projects/AttachedTabs.tsx";
-import { type Created } from "../../projects/model";
 import { applySettings } from "../../projects/settingWrite";
-import { SCM_AGENT_KEY, SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
+import { SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { FOLDER_TAB_KEY, rememberTab } from "../../sessions/folderTabs";
 import { openSessions } from "../../sessions/openPanes";
 import { saveChanged } from "../../settings/saveChanged";
-import { sameDir } from "../../workspaces";
-import { useDeeds, useWindow } from "./store";
-import { useStableFns } from "./stable";
+import { useWindow } from "./store";
 import { AgentsPanel } from "../../lazy/pages";
-// PKG-2: the file tree behind its render comparison (ExplorerMemo.tsx).
-import Explorer from "./ExplorerMemo";
-import { AddProjectRow } from "../../lazy/pages";
 import { ChecksPanel } from "../../lazy/pages";
 import { InsightsPanel } from "../../lazy/pages";
-import { AgentStartHost } from "../../lazy/pages";
 
 
 export default function WindowRight() {
@@ -29,15 +21,11 @@ export default function WindowRight() {
     right, dragWidth, setDragWidth, sidebarOpen, leftWidth, terminals, fullPage, offeredRight, settings,
     settingsRef, setSettings, setNotice, saveRight, activeDir, workDir, projects,
     projectOf, setScreen,
-    select, defaultId, openIn, panes, agents, classic, resumeOrFocus, resumeIn, wsKind, cli,
-    runSetup, setRefresh, explorerOpen, explorerFocus, showRight, owner, saveSetting, shells,
-    setActiveDir, setToast, openCheck, openPane, agentOf, statusOf, turn, stamp, running, stale,
+    select, panes, resumeOrFocus, resumeIn, wsKind,
+    owner, saveSetting, shells,
+    setActiveDir, openCheck, openPane, agentOf, statusOf, turn, stamp, running, stale,
   } = useWindow();
   const fit = (w: number) => clampWidth(w, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0);
-  // PKG-2: the file tree runs these from handlers and a key listener only; they keep one identity (stable.ts), so a
-  // window render that changes nothing the tree shows does not redraw it.
-  const { openFile, openTerminalIn: openTerminal } = useDeeds();
-  const files = useStableFns({ close: () => saveRight({ open: false }), wake: () => showRight("explorer") });
   return (
     <RightSidebar tab={right.tab} width={fit(dragWidth ?? right.width)} max={fit(1e4)} hidden={!terminals || !right.open || fullPage} offered={offeredRight} onTab={(tab) => {
       const patch: Record<string, unknown> = { [RIGHT_KEYS.tab]: tab };
@@ -54,34 +42,12 @@ export default function WindowRight() {
       {right.open && right.tab === "insights" && <InsightsPanel sessions={liveSessions(panes, agentOf, statusOf, turn, stamp, running, stale)} onJump={openPane} />}
       {/* VIEW-080 (T-168, T-169): the Agents tab lists past sessions of every agent in the saved scope. */}
       {right.open && right.tab === "agents" && (
-        <AgentsPanel settings={settings} onSave={saveSetting} activeDir={activeDir} projects={projects} projectDirs={Object.entries(owner).filter(([, p]) => p === projectOf(activeDir)).map(([d]) => d)} rescanKey={panes.length} visible={terminals && !fullPage} shell={shells[0]?.program ?? null} onResume={(s, plan) => resumeOrFocus(s, plan)} onResumeChat={(s, plan) => void resumeIn(s.agent, plan, s.id).then((ok) => ok && setScreen(classic ? "terminals" : "agents"))} openDirs={[...new Set(panes.map((p) => p.cwd).filter((d): d is string => d !== null))]} onJump={(d) => setActiveDir(d)} openPanes={openSessions(panes)} />
+        <AgentsPanel settings={settings} onSave={saveSetting} activeDir={activeDir} projects={projects} projectDirs={Object.entries(owner).filter(([, p]) => p === projectOf(activeDir)).map(([d]) => d)} rescanKey={panes.length} visible={terminals && !fullPage} shell={shells[0]?.program ?? null} onResume={(s, plan) => resumeOrFocus(s, plan)} onResumeChat={(s, plan) => void resumeIn(s.agent, plan, s.id).then((ok) => ok && setScreen("terminals"))} openDirs={[...new Set(panes.map((p) => p.cwd).filter((d): d is string => d !== null))]} onJump={(d) => setActiveDir(d)} openPanes={openSessions(panes)} />
       )}
       {right.open && right.tab === "attached" && activeDir !== null && <AttachedWorktreesTab folder={activeDir} worktrees={wsKind.worktrees} onOpen={(path) => { setScreen("terminals"); select(path, null); }} />}
       {right.open && right.tab === "prchecks" && activeDir !== null && <FolderChecksTab folder={activeDir} worktrees={wsKind.worktrees} />}
       {/* VIEW-073: the Checks tab follows the workspace of the focused terminal. */}
       {right.open && right.tab === "checks" && <ChecksPanel dir={workDir} linked={workDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[workDir] ?? null)} visible={terminals && !fullPage} onOpenCheck={openCheck} />}
-      {/* T-187-b / T-189-b: the dialog and helpers behind "Continue with…", "Fix with an agent" and "Start with an agent". */}
-      <AgentStartHost
-        agents={agents}
-        defaultId={defaultId}
-        saved={settings[SCM_AGENT_KEY]}
-        workspace={workDir}
-        notify={(text, failed) => (failed ? setNotice(text) : setToast(text))}
-        launch={async (id, dir, prompt, extra) => {
-          const a = agents.find((x) => x.id === id);
-          if (!a) throw new Error(`${id} is not installed here.`);
-          await openIn(a, dir, panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null, prompt, true, extra);
-          return { handed: true };
-        }}
-        makeWorkspace={async (item) => {
-          const made = await invoke<Created>("workspace_from_item", { item });
-          setRefresh((n) => n + 1);
-          cli.current.select(made.path, made.branch, true);
-          void runSetup(made.path, made.branch);
-          return made;
-        }}
-      />
-      {workDir ? <Explorer key={workDir} root={workDir} hidden={!explorerOpen} focusAsk={explorerFocus} onOpen={openFile} onClose={files.close} onOpenTerminal={openTerminal} onWake={files.wake} /> : explorerOpen && <AddProjectRow />}
     </RightSidebar>
   );
 }
