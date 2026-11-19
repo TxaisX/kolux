@@ -21,9 +21,6 @@ mod output_frame;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
-/// CLI-024: the app asks the window for a pane's visible frame; the window answers with
-/// `terminal_screen_reply`.
-pub const SCREEN_EVENT: &str = "terminal-screen-request";
 /// Lines kept per terminal for `kolux terminal read` (CLI-024); older ones are dropped.
 pub const LOG_LINES: usize = 2000;
 /// P2 perf (DT-C235): the most text a terminal's line log keeps, on top of `LOG_LINES`; long lines
@@ -42,7 +39,6 @@ const MAX_SPAWN_ARG: usize = 32 * 1024;
 const MAX_SPAWN_ENV: usize = 256;
 const MAX_SPAWN_ENV_KEY: usize = 4 * 1024;
 const MAX_SPAWN_ENV_VALUE: usize = 64 * 1024;
-const SCREEN_WAIT: std::time::Duration = std::time::Duration::from_millis(1500);
 /// APP-052: the terminal service's wire protocol. Additions only bump it; the window refuses a
 /// service older than the oldest protocol it still speaks (src/terminal/reattach.ts).
 pub const PROTOCOL: u32 = 1;
@@ -967,46 +963,6 @@ impl OutputLog {
         let pending = if more && after.is_some() { String::new() } else { strip_ansi(last_drawing(self.pending_text())) };
         let cursor = lines.last().map_or(if from < oldest { 0 } else { from.min(self.cursor()) }, |l| l.cursor);
         Read { lines, pending, cursor, oldest, dropped: self.dropped && from + 1 < self.oldest, more }
-    }
-}
-
-/// CLI-024's screen round trip: the serve thread opens a slot, emits `SCREEN_EVENT`, and waits for
-/// the window to fill it. ponytail: a Vec, there is never more than one request in flight.
-static SCREENS: Mutex<Vec<(String, Option<Vec<String>>)>> = Mutex::new(Vec::new());
-static SCREEN_READY: Condvar = Condvar::new();
-
-pub fn screen_open(request: &str) {
-    if let Ok(mut s) = SCREENS.lock() {
-        s.push((request.to_string(), None));
-    }
-}
-
-/// The rows the window answered with, or none when it did not answer in time.
-pub fn screen_wait(request: &str) -> Option<Vec<String>> {
-    let mut guard = SCREENS.lock().ok()?;
-    let until = Instant::now() + SCREEN_WAIT;
-    loop {
-        let i = guard.iter().position(|(r, _)| r == request)?;
-        if guard[i].1.is_some() {
-            return guard.remove(i).1;
-        }
-        let left = until.saturating_duration_since(Instant::now());
-        if left.is_zero() {
-            guard.remove(i);
-            return None;
-        }
-        guard = SCREEN_READY.wait_timeout(guard, left).ok()?.0;
-    }
-}
-
-/// The window's answer to `SCREEN_EVENT`: the visible rows of that pane (CLI-024).
-#[tauri::command]
-pub fn terminal_screen_reply(request: String, rows: Vec<String>) {
-    if let Ok(mut s) = SCREENS.lock() {
-        if let Some(slot) = s.iter_mut().find(|(r, _)| *r == request) {
-            slot.1 = Some(rows);
-            SCREEN_READY.notify_all();
-        }
     }
 }
 
@@ -3477,19 +3433,6 @@ mod tests {
         assert_eq!(strip_ansi("\x1b]0;title\x07a\x1b[1;31mb\x1b[0m\tc\x1b(Bd\x07"), "ab\tcd");
         // Cursor moves and erases that make a gap keep it, so columns do not run together.
         assert_eq!(strip_ansi("A\x1b[5CB\x1b[CC\x1b[2XD"), "A     B C  D");
-    }
-
-    #[test]
-    fn screen_reply_wakes_the_waiter_and_a_missing_reply_times_out() {
-        screen_open("r1");
-        let t = std::thread::spawn(|| screen_wait("r1"));
-        std::thread::sleep(std::time::Duration::from_millis(50));
-        terminal_screen_reply("r1".into(), vec!["row".into()]);
-        assert_eq!(t.join().unwrap(), Some(vec!["row".to_string()]));
-        terminal_screen_reply("nobody".into(), vec![]);
-        screen_open("r2");
-        assert_eq!(screen_wait("r2"), None);
-        assert!(SCREENS.lock().unwrap().is_empty());
     }
 
     /// ORCH-058: the shells in a worktree are ended and shown gone before its folder is deleted,

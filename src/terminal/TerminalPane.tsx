@@ -996,14 +996,6 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           if (idRef.current === null && !(moved || restored) && forPane(e, null, number)) draw();
           else mine(e.id, draw);
         }),
-        // CLI-024: the app asks for the frame as it looks now; the rows on screen go back by id.
-        listen<{ id: number; request: string }>("terminal-screen-request", (e) => {
-          if (e.payload.id !== idRef.current) return;
-          const buf = term.buffer.active;
-          const rows: string[] = [];
-          for (let y = 0; y < term.rows; y++) rows.push(buf.getLine(buf.viewportY + y)?.translateToString(true) ?? "");
-          invoke("terminal_screen_reply", { request: e.payload.request, rows }).catch(() => {});
-        }),
         listen<{ terminal: number; agent: string | null }>("pane-agent", (e) =>
           mine(e.payload.terminal, () => setFound(foundAgent(e.payload.agent))),
         ),

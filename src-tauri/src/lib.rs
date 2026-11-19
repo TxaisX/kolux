@@ -657,7 +657,6 @@ pub fn run() {
             chat::chat_support,
             chat::chat_read,
             chat::chat_close,
-            terminal::terminal_screen_reply,
             terminal::terminal_resize,
             terminal::native_term_available,
             terminal::native_term_attach,
