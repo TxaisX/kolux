@@ -110,7 +110,7 @@ fn edit045_box1_a_file_reached_through_a_symlink_that_points_outside_the_worktre
     link_file(&outside.join("secret.txt"), &project.join("escape.txt"));
     link_file(&project.join("src").join("a.txt"), &project.join("stays.txt"));
     let escape = project.join("escape.txt");
-    // the window's read gate (file_read -> fence::check) and the EDIT-045 fence both refuse the link
+    // the window's read gate (fence::check) and the EDIT-045 fence both refuse the link
     let roots = vec![project.clone()];
     assert!(fence::check(&project.join("src").join("a.txt"), &roots, &[], false).is_ok(), "a plain file inside is fine");
     assert!(fence::check(&project.join("stays.txt"), &roots, &[], false).is_ok(), "a link that stays inside is fine");

@@ -2228,7 +2228,7 @@ fn t613_a_parent_and_a_child_at_its_tip_deleted_side_by_side_keep_their_unpushed
     // each sees the other's branch holding the commits
     let checks: Vec<RemoveCheck> = [&parent, &child].iter().map(|w| remove_check(&git, &project, &w.path).unwrap()).collect();
     assert!(checks.iter().all(|c| c.commits.is_empty()), "{checks:?}");
-    // no branch choice, side by side, as the Space batch (workspace_remove_many) runs them
+    // no branch choice, side by side, as a batch removal would run them
     let start = std::sync::Barrier::new(2);
     let kept: Vec<Option<Kept>> = std::thread::scope(|s| {
         let runs: Vec<_> = [(&parent, &checks[0]), (&child, &checks[1])]

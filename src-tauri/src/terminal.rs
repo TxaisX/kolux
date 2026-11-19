@@ -31,7 +31,7 @@ pub const LOG_LINES: usize = 2000;
 pub const LOG_BYTES: usize = 1024 * 1024;
 /// Fix-term 786: the most a log keeps of a line that has not ended yet.
 const PENDING_CAP: usize = 16 * 1024;
-/// The most one paste may carry. Files are written through `file_write`, which has its own limit.
+/// The most one paste may carry.
 const MAX_WRITE: usize = 8 * 1024 * 1024;
 /// A launch line, not a process table: bounds on what one `terminal_spawn` may add.
 const MAX_SPAWN_ARGS: usize = 256;
