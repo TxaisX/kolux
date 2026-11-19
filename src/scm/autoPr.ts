@@ -6,7 +6,7 @@
 // waits for the next finished turn. It loads on demand from autoPrWatch.ts, which the window itself
 // loads on demand after mount.
 import { invoke } from "@tauri-apps/api/core";
-import { currentEnv } from "../agentstart/host";
+import { sayNotice } from "../chrome/noticeSink";
 import { readDraftGate, draftOffered } from "./prDraft";
 import { writerOf } from "./generate";
 import { realPorts, oneClickRun, putRun, type AutoKind, type AutoStep, type Run } from "./oneClick";
@@ -144,7 +144,7 @@ export type IdleDeps = {
 const realIdle: IdleDeps = {
   settings: () => invoke<Record<string, unknown>>("get_settings").catch(() => null),
   ports: realAutoPorts,
-  notice: (text) => currentEnv()?.notify(text, true),
+  notice: (text) => sayNotice(text),
 };
 
 const busy = new Set<string>();

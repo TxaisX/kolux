@@ -13,7 +13,7 @@ import { editChords, recordKey, recording, removeChord } from "../keys/record";
 import { createDoubleTap, recordDoubleTap } from "../keys/doubleTap";
 import { layoutNotes } from "../keys/helpNotes";
 import { Segmented } from "./GeneralPage";
-import { ResetButton } from "./SafetyRules";
+import { ResetButton } from "./ResetButton";
 import { openShortcutsFileIn, shortcutsFileApps } from "./shortcutsFileOpen";
 import { AREAS, FILTERS, MAX_QUERY, filterRows, shortcutRows, type Filter, type Row } from "./shortcutRows";
 

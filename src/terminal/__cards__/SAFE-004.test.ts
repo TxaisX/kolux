@@ -10,7 +10,7 @@ vi.mock("react", async (orig) => {
   const useMemo = <T>(f: () => T) => f();
   return { ...patched, useMemo, default: { ...(patched as { default: object }).default, useMemo } };
 });
-vi.mock("../../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => md }));
+vi.mock("../../chat/renderMarkdown", () => ({ renderMarkdown: (md: string) => md }));
 
 const sheet = (draft: PlanDraft) => {
   const tree = mount(PlanSheet, { title: "repo", plan: "# Plan\n\nDo it.", draft, onDraft: () => {}, onApprove: () => {}, onRequest: () => {}, onClose: () => {} }).render();

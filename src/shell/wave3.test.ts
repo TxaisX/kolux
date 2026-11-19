@@ -1,12 +1,11 @@
 // UX live audit Wave 3 (T-693 / DT-C129): the sidebar's forms, its title, the Terminals switch and the palette's
-// way into Skills. No DOM in this run, so the hook's rule is tested as a pure function and the wiring by source.
+// way into the screens. No DOM in this run, so the hook's rule is tested as a pure function and the wiring by source.
 import { expect, test } from "vitest";
 import { formsToClose } from "./oneForm";
 import { screenRows } from "../chrome/reach";
 import { commandRows } from "../keys/commands";
 import { resolve } from "../keys/keymap";
 import { paletteRows } from "../projects/WorktreePalette";
-import { toggleSkills } from "../skills/nav";
 import { heldByOverlay, OVERLAYS, STAYS_OPEN } from "../keys/useWindowKeys";
 import type { Screen } from "../chrome/TopBar";
 import panel from "../projects/ProjectsPanel.tsx?raw";
@@ -44,19 +43,19 @@ test("F3: the top bar's Terminals switch closes a full page first", () => {
   expect(topBar).toMatch(/onScreen=\{\(s\) => \{\s*if \(s === "terminals"\) setPage\(null\);/);
 });
 
-test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Skills' is its first row, and Enter opens Skills", () => {
+test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Board' is its first row, and Enter opens the Board", () => {
   expect(windowKeys).toMatch(/case "worktree\.palette":\s*setPalette\(true\);/);
-  expect(actions).toContain('...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s)), classic)');
+  expect(actions).toContain('...screenRows((s) => setScreen(s === screen ? "terminals" : s), classic)');
   let screen: Screen = "terminals";
   const setScreen = (s: Screen) => void (screen = s);
   const items = [
     ...commandRows(resolve(null, "win32"), [], undefined, () => {}),
-    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s))),
+    ...screenRows((s) => setScreen(s === screen ? "terminals" : s)),
   ];
-  const rows = paletteRows(items, "Show Skills");
-  expect(rows[0].label).toBe("Show Skills");
+  const rows = paletteRows(items, "Show Board");
+  expect(rows[0].label).toBe("Show Board");
   rows[0].run();
-  expect(screen).toBe("skills");
+  expect(screen).toBe("board");
 });
 
 test("F11: an open sidebar form does not hold the palette chord; a menu left open does", () => {

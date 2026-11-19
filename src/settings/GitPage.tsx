@@ -19,7 +19,7 @@ import AiRecipesSection from "./AiRecipesSection";
 import AutoPrSettings from "./autoPr";
 import { useDraft } from "./useDraft";
 import { useLeaveSave } from "./leave";
-import { useSettled } from "../editor/settledQuery";
+import { useSettled } from "./settledQuery";
 import { REVIEW_BOTS_KEY } from "../scm/review";
 import { botsText, parseBots } from "./reviewBots";
 import { useSearching } from "./search";

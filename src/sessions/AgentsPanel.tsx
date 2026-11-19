@@ -3,7 +3,6 @@
 // refocused (from cache), when the Refresh button is pressed (a full rescan) and a moment after an
 // agent starts; results are drawn only once typing has paused. Resume opens a terminal in the
 // session's folder; Copy command copies the same command for the shell the tab runs.
-import { askCarry } from "../agentstart/host";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./sessions.css";
@@ -351,9 +350,6 @@ function AgentsPanelBody(props: PanelProps) {
                 )}
                 <button type="button" className="btn" title="Copy the command that resumes this session" onClick={() => copy(s)}>
                   Copy command
-                </button>
-                <button type="button" className="btn" title="Start a new session in the agent you pick, carrying this conversation" onClick={() => askCarry({ agent: s.agent, id: s.id, title: s.title })}>
-                  Continue with…
                 </button>
                 <SessionFiles session={s} open={props.openPanes ?? NO_OPEN} onNote={setNote} onDeleted={() => { setList((l) => l && l.filter((x) => x.agent !== s.agent || x.id !== s.id)); load(false); }} />
               </div>

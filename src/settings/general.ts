@@ -30,27 +30,26 @@ export function stampLook(s: Record<string, unknown>): Record<string, unknown> |
 /** The saved first screen (VIEW-001 as amended for the trial, DT-C40: Terminals when never chosen or unknown). */
 export function savedFirst(s: Record<string, unknown>): Screen {
   const v = s[FIRST_FIELD];
-  return v === "agents" ? v : "terminals";
+  return v === "terminals" ? v : "terminals";
 }
 
 /** C17-R1-01: the first screen the General page shows and the start reads, so the radio can only
- *  write a value the start honours. Agents stays Terminals under Classic. */
-export function shownFirst(s: Record<string, unknown>, classic: boolean): Screen {
+ *  write a value the start honours. */
+export function shownFirst(s: Record<string, unknown>, _classic: boolean): Screen {
   const v = savedFirst(s);
-  return classic && v === "agents" ? "terminals" : v;
+  return v;
 }
 
 /** VIEW-005: the screen in front at quit. Picking a first screen in General writes it too, so the
  *  next start honours that choice; after that the screen the user left wins. */
 export const LAST_SCREEN_FIELD = "lastScreen";
 
-/** The screen the window opens on: the one left at quit (Agents only under New), else the
+/** The screen the window opens on: the one left at quit, else the
  *  first-screen choice under New (Terminals when none, DT-C40), else Terminals; an unknown saved value counts as none. */
 export function startScreen(s: Record<string, unknown>): Screen {
   const classic = readLook(s) === "classic";
   const last = s[LAST_SCREEN_FIELD];
-  if (last === "terminals" || last === "artifacts" || last === "skills") return last; // VIEW-011 (T-189-b): the Skills page left open at quit is shown again
-  if (last === "agents") return classic ? "terminals" : last;
+  if (last === "terminals") return last;
   return shownFirst(s, classic);
 }
 
@@ -98,9 +97,8 @@ export async function saveLayout(l: SavedLayout, write: (l: SavedLayout) => Prom
 
 /** VIEW-011: the page that was open at quit, shown again at start (none when unset or unknown). */
 export const OPEN_PAGE_FIELD = "openPage";
-export function openPageAt(s: Record<string, unknown>): Page | null {
-  const v = s[OPEN_PAGE_FIELD];
-  return v === "automations" || v === "routing" ? v : null;
+export function openPageAt(_s: Record<string, unknown>): Page | null {
+  return null; // no page is left to reopen (the Automations, Routing and Tasks pages were removed)
 }
 
 /** TERM-029: the needs-you strip above the grid, on unless turned off. */

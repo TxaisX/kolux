@@ -24,14 +24,6 @@ test("C13-R1-01: Open in Code clears the full page before showing Terminals", ()
   expect(setPage).toHaveBeenCalledWith(null);
 });
 
-test("C13-R1-01: Review changes on a new tab clears the full page", () => {
-  const { a, setPage, setScreen, setPanes } = state();
-  a.reviewChanges(5);
-  expect(setPanes).toHaveBeenCalled();
-  expect(setScreen).toHaveBeenCalledWith("terminals");
-  expect(setPage).toHaveBeenCalledWith(null);
-});
-
 // Two panes of one launch fail to start before the window draws again: both go, neither comes back dead.
 test("two start failures in a row remove both panes", () => {
   let list = [5, 6, 7].map((key) => ({ key, cwd: "C:\\w", branch: null, agent: "claude", program: null, args: [], batch: 1 }));
@@ -179,51 +171,6 @@ test("the palette finds All Changes, the Appearance page and the new shell comma
   expect(top("new shell")).toContain("New terminal tab");
   expect(nothingFound(paletteRows(items, "zzzqq").length, "zzzqq")).toBe(true);
   expect(nothingFound(0, "")).toBe(false);
-});
-
-// The sidebar row's Review changes: the workspace comes to the front with its All Changes, opened once.
-test("Review changes from a workspace row opens that workspace's All Changes, or focuses the open one", () => {
-  const run = (panes: unknown[]) => {
-    let list = panes as { key: number; kind?: string; cwd: string | null; group?: number }[];
-    const calls = { setActiveDir: vi.fn(), setFocused: vi.fn(), setScreen: vi.fn(), setPage: vi.fn() };
-    const s = { panes: list, activeDir: "C:\\\\front", focused: 1, recentDirs: { current: [] }, nextKey: { current: 9 }, setPanes: vi.fn((f: (ps: typeof list) => typeof list) => (list = f(list))), ...calls } as unknown as WindowState;
-    const a = paneActions(s, {} as never, {} as never, { setReveal: vi.fn() } as unknown as WindowLate);
-    a.openChangesIn("C:\\\\w", "main");
-    return { list, ...calls };
-  };
-  const front = { key: 1, cwd: "C:\\\\front", branch: null, agent: "shell", program: null, args: [] };
-  const empty = run([front]);
-  expect(empty.list.map((p) => [p.key, p.kind, p.cwd])).toEqual([[1, undefined, "C:\\\\front"], [9, "changes", "C:\\\\w"]]);
-  expect(empty.setActiveDir).toHaveBeenCalledWith("C:\\\\w");
-  expect(empty.setFocused).toHaveBeenCalledWith(9);
-  expect(empty.setScreen).toHaveBeenCalledWith("terminals");
-  const open = run([front, { key: 4, cwd: "C:\\\\w", branch: "main", agent: "shell", program: null, args: [] }, { key: 5, cwd: "C:\\\\w", branch: "main", agent: "shell", program: null, args: [], kind: "changes", group: 4 }]);
-  expect(open.list).toHaveLength(3);
-  expect(open.setFocused).toHaveBeenCalledWith(5);
-});
-
-// DT-C274: a team grid shows panes of several worktrees; a diff tab of one is never reused for the same path of another.
-test("a diff of a team worktree reuses only a tab of that worktree, never one of a sibling worktree in the same cell", () => {
-  const team = (key: number, cwd: string, extra = {}) => ({ key, cwd, view: "C:\\r", branch: null, agent: "shell", program: null, args: [], ...extra });
-  const panes = [
-    team(1, "C:\\r\\wts\\wt1", { agent: "claude" }),
-    team(2, "C:\\r\\wts\\wt2", { kind: "diff", path: "src/a.ts", staged: false, group: 1 }),
-    team(3, "C:\\r\\wts\\wt2", { kind: "diff", path: "src/b.ts", staged: false, preview: true, group: 1 }),
-  ];
-  const setPanes = vi.fn();
-  const setFocused = vi.fn();
-  const s = { panes, activeDir: "C:\\r", focused: 1, settings: {}, dirty: {}, setPanes, setFocused, nextKey: { current: 9 } } as unknown as WindowState;
-  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
-  a.openDiff("src/a.ts", false);
-  expect(setFocused).toHaveBeenLastCalledWith(9); // a new tab, not wt2's tab 2
-  const made = (setPanes.mock.calls[0][0] as (ps: typeof panes) => typeof panes)(panes).find((p) => p.key === 9);
-  expect(made).toMatchObject({ cwd: "C:\\r\\wts\\wt1", view: "C:\\r", kind: "diff", path: "src/a.ts" });
-  // the preview tab of wt2 is not taken over by a preview of wt1 either
-  a.openDiff("src/c.ts", false, true);
-  expect(setFocused).toHaveBeenLastCalledWith(10);
-  // the same worktree's tab is reused
-  a.openDiff("src/a.ts", false, false, undefined, undefined, "C:\\r\\wts\\wt2");
-  expect(setFocused).toHaveBeenLastCalledWith(2);
 });
 
 // Audit F1: Restart on a cell's first tab keeps it in its cell, with its pin, colour and active-tab mark.

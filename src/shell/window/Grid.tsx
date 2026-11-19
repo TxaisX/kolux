@@ -27,13 +27,13 @@ import { useWindow } from "./store";
 
 export default function Grid() {
   const {
-    agentsScreen, zoomed, classic, terminals, page, onDividerDown, onDividerMove, endDividerDrag,
-    weightsOf, shown, activeDir, addShell, addChooser, cells, selected, activeOf, dropHint, dragging,
+    zoomed, classic, terminals, page, onDividerDown, onDividerMove, endDividerDrag,
+    weightsOf, shown, activeDir, addShell, addChooser, cells, activeOf, dropHint, dragging,
     setDropHint, dropTabOn, dropCellOn, pinned, tabColors, titles, renamingTab, closePane, setFocused,
     setRenamingTab, setTabMenu, liveIds, running, statusOf, unreadPanes, hook, context, settings, plan,
-    accountSwitcher, labelOf, tabLabel, renamePane, dirty,
+    accountSwitcher, labelOf, tabLabel, renamePane,
   } = useWindow();
-  const frame = gridFrame({ agentsScreen, zoomed, classic, terminals, pageOpen: page !== null, selected });
+  const frame = gridFrame({ zoomed, classic, terminals, pageOpen: page !== null });
   return (
     <div
       className={frame.className}
@@ -63,16 +63,14 @@ export default function Grid() {
           never remounts a pane. A pane that changes cell is remounted (React cannot move it between parents);
           DT-C248 hands its key over first (terminal/handover.ts), so the new mount keeps the running terminal. */}
       {cells.map((c) => {
-        // VIEW-015: on the Agents screen the picked session is the one shown, whatever tab its cell had in front.
-        const mine = agentsScreen && c.panes.some((p) => p.key === selected);
-        const active = mine ? (selected as number) : activeOf(c);
+        const active = activeOf(c);
         const order = orderPinnedFirst(c.panes.map((p) => p.key), pinned); // the strip's order: pinned tabs first
         return (
           <div
             key={c.group}
             className="cell"
             data-drop={dropHint?.group === c.group && !dropHint.tab ? dropHint.zone : undefined}
-            hidden={agentsScreen ? !mine : !sameDir(viewOf(c.panes[0]), activeDir) || (zoomed !== null && c.group !== zoomed)}
+            hidden={!sameDir(viewOf(c.panes[0]), activeDir) || (zoomed !== null && c.group !== zoomed)}
             onDragOver={(e) => {
               if (!dragging.current) return;
               e.preventDefault();
@@ -169,7 +167,6 @@ export default function Grid() {
                     ) : (
                       tabLabel(p)
                     )}
-                    {dirty[p.key] && <span className="unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}
                     <button className="tab-x" tabIndex={-1} aria-label={`Close ${tabName(p, titles)}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => closePane(p.key)}>
                       ×
                     </button>

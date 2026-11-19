@@ -4,17 +4,15 @@
 export type GridFrame = { className: string; hidden: boolean };
 
 /** The class and the hidden flag for the screen in front. `selected` is the Agents rail's pick. */
-export function gridFrame({ agentsScreen, zoomed, classic, terminals, pageOpen, selected }: {
-  agentsScreen: boolean;
+export function gridFrame({ zoomed, classic, terminals, pageOpen }: {
   zoomed: number | null;
   classic: boolean;
   terminals: boolean;
   pageOpen: boolean;
-  selected: number | null;
 }): GridFrame {
   return {
-    className: agentsScreen ? "grid agents" : `grid${zoomed === null ? "" : " zoomed"}${classic ? " classic" : ""}`,
+    className: `grid${zoomed === null ? "" : " zoomed"}${classic ? " classic" : ""}`,
     // T-142 / VIEW-011: the grid stays mounted (hidden) behind a page, and behind an empty Agents screen.
-    hidden: (!terminals && !agentsScreen) || (terminals && pageOpen) || (agentsScreen && selected === null),
+    hidden: !terminals || (terminals && pageOpen),
   };
 }

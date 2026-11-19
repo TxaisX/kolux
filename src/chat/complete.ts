@@ -1,7 +1,7 @@
 // Native chat, autocomplete in the message box (CHAT-019; T-334). Pure rules: where in the text a
 // menu is wanted, which entries it lists and in what order, what picking one writes into the box,
 // and the states of the lists that load. The popup itself is in MessageBox.tsx.
-import type { Scan, Skill, Source } from "../skills/skills";
+import type { Scan, Skill, Source } from "./skills";
 
 export type Kind = "command" | "skill" | "file";
 

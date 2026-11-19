@@ -1,7 +1,7 @@
 // TERM-037: Fork Agent Session asks for a name before it starts; an empty name keeps the pane's own title.
 import { trapTab } from "../chrome/dialogFocus";
 import { useState } from "react";
-import "../agentstart/agentstart.css";
+import "./forkDialog.css";
 import { beginFork, endFork, forkTitle, newFork } from "./sessionFork";
 
 type Props = { onCreate: (name: string | undefined) => void | Promise<void>; onCancel: () => void };

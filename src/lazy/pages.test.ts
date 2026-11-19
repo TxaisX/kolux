@@ -7,7 +7,7 @@ import { find, installDom, mount, settle, until, type FakeDocument, type FakeNod
 
 // A screen and a pane body whose code never arrives: what shows is only ever the fallback.
 vi.mock("../settings/RoutingPage", () => new Promise(() => {}));
-vi.mock("../editor/Explorer", () => new Promise(() => {}));
+vi.mock("../scm/CheckPane", () => new Promise(() => {}));
 
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};
@@ -27,19 +27,9 @@ async function draw(el: Parameters<typeof mount>[0]) {
   return m.container;
 }
 
-test("a full-page screen whose code is still loading shows a quiet Loading… status", async () => {
-  const { RoutingPage } = await import("./pages");
-  const c = await draw(createElement(RoutingPage, {} as never));
-  await settle();
-  const s = status(c);
-  expect(s).toHaveLength(1);
-  expect(s[0].textContent).toBe("Loading…");
-  expect(s[0].attrs.class).toBe("empty"); // the muted, centred empty-state style, no new CSS
-});
-
 test("a pane body whose code is still loading draws nothing", async () => {
-  const { Explorer } = await import("./pages");
-  const c = await draw(createElement(Explorer, {} as never));
+  const { CheckPane } = await import("./panes");
+  const c = await draw(createElement(CheckPane, {} as never));
   await settle();
   expect(c.childNodes).toHaveLength(0);
   expect(c.textContent).toBe("");
@@ -60,5 +50,5 @@ test("only the full-page screens Content.tsx draws carry the fallback", () => {
   const fs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
   const src = fs.readFileSync(new URL("./pages.tsx", import.meta.url), "utf8");
   const withFallback = [...src.matchAll(/export const (\w+) = deferred\b[^\n]*, loading(?:, \{[^}]*\})?\);/g)].map((m) => m[1]).sort();
-  expect(withFallback).toEqual(["ArtifactsPage", "AutomationsPage", "RoutingPage", "SkillsPage"]);
+  expect(withFallback).toEqual([]);
 });

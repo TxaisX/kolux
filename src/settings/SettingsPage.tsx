@@ -10,26 +10,23 @@ import { listen } from "@tauri-apps/api/event";
 import VendorMark from "../chrome/VendorMark";
 import { actionLabel, keyCard, ownSignInLine, RESUME_FIELD, resumeOn, type KeyAction, type KeyStatus, type OwnSignIn } from "./claudeKey";
 import ClaudeAccounts, { addClaudeAccount } from "./ClaudeAccounts";
-import AgentCredentials from "./AgentCredentials";
-import ProviderUsage from "./ProviderUsage";
 import CodexAccounts from "./CodexAccounts";
 import CodexCard from "./CodexCard";
 import { ConnectGrid, liveCheck, OtherWays, taglineOf } from "./ConnectGrid";
 import { settleWithin } from "./pending";
 import Ask from "../chrome/Ask";
 import { trapTab } from "../chrome/dialogFocus";
-import GrokCard from "./GrokCard";
 import { AttentionNote, fixDoes, openInstallPage, type Fix } from "./Attention";
 import type { Project } from "../projects/model";
 import RepoPage from "./RepoPage";
 import { PAGE_GROUPS, PAGES, pageOf, rememberPage, lastPage, type Page, type PageId, type SettingsTarget } from "./pages";
-import { Bell, FolderPlus, Gear, Keyboard, List, Merge, Plug, Pulse, Shell, Sliders, Spark, Target } from "../chrome/icons";
+import { Bell, FolderPlus, Gear, Keyboard, List, Merge, Plug, Pulse, Shell, Sliders, Spark } from "../chrome/icons";
 import { markGuide } from "../onboarding/guide";
 import { clearReadFailure, connectFailed, firstAiConnected, readFailed } from "../onboarding/firstRun";
 import { useKeymap } from "../keys/KeymapContext";
 import { matchEvent } from "../keys/keymap";
 import { hideRule, MAX_REPOS_DRAWN, MAX_SEARCH, SearchFolds, SearchRun, searchRepos, useSearching } from "./search";
-import { useSettled } from "../editor/settledQuery";
+import { useSettled } from "./settledQuery";
 import { useSearchHits } from "./useSearchHits";
 import { idleLater, pageWarmer, type Loader } from "./pageWarm";
 import { deferred } from "../lazy/deferred";
@@ -49,8 +46,6 @@ const TerminalPage = deferred(() => import("./TerminalPage"));
 const GitPage = deferred(() => import("./GitPage"));
 const AgentsPage = deferred(() => import("./AgentsPage"));
 const ClaudeSetupPage = deferred(() => import("./ClaudeSetupPage"));
-// SAFE-015: the Protected actions section (T-059-b).
-const SafetyPage = deferred(() => import("./SafetyPage"));
 const TokenAnalytics = deferred(() => import("../usage/TokenAnalytics"));
 const Activity = deferred(() => import("../usage/Activity"));
 /** The code each rail page draws with (Accounts is drawn from this chunk's own code). */
@@ -63,7 +58,6 @@ export const PAGE_CODE: Partial<Record<PageId, Loader[]>> = {
   claude: [ClaudeSetupPage.read],
   terminal: [TerminalPage.read],
   git: [GitPage.read],
-  safety: [SafetyPage.read],
   usage: [TokenAnalytics.read, Activity.read],
 };
 const warm = pageWarmer(PAGE_CODE);
@@ -79,7 +73,6 @@ const PAGE_ICON: Record<PageId, ComponentType<{ size?: number }>> = {
   agents: List,
   terminal: Shell,
   git: Merge,
-  safety: Target,
   notifications: Bell,
   shortcuts: Keyboard,
   usage: Pulse,
@@ -233,7 +226,7 @@ function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project;
         <>
           <p className="settings-sub">Link Kolux to the AI services you already pay for. Kolux charges nothing and ships no models or keys of its own: each agent runs on your plan or key and talks straight to its provider, and Kolux neither relays nor records that traffic. Keys and sign-ins are sealed on this PC for your Windows account only.</p>
           <div data-section="connections">
-            <ConnectGrid cards={{ claude: <ClaudeCard onConnected={firstAiConnected} />, codex: <CodexCard onConnected={firstAiConnected} />, grok: <GrokCard onConnected={firstAiConnected} /> }} />
+            <ConnectGrid cards={{ claude: <ClaudeCard onConnected={firstAiConnected} />, codex: <CodexCard onConnected={firstAiConnected} /> }} />
           </div>
           <div className="conn-advanced" data-section="accounts-advanced">
             <h3 className="conn-advanced-head">Manage accounts (advanced)</h3>
@@ -242,12 +235,6 @@ function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project;
             </div>
             <div data-section="accounts-codex">
               <CodexAccounts />
-            </div>
-            <div data-section="agent-folders">
-              <AgentCredentials />
-            </div>
-            <div data-section="provider-usage">
-              <ProviderUsage />
             </div>
           </div>
         </>
@@ -281,7 +268,6 @@ function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project;
           )}
         </>
       )}
-      {page === "safety" && <SafetyPage />}
       {page === "claude" && <ClaudeSetupPage active={active} />}
       {repo && <RepoPage project={repo} onSaved={onSaved} />}
     </>

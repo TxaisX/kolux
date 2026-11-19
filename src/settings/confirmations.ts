@@ -1,6 +1,5 @@
 // SET-043 (T-247-b): every confirmation that "don't ask again" can switch off, each remembered on its own,
-// and the General card that brings them back. All four ask by default; a field set to false is skipped.
-import { CONFIRM_DELETE_KEY } from "../automations/model";
+// and the General card that brings them back. All three ask by default; a field set to false is skipped.
 import { CONFIRM_DELETE_FIELD } from "../projects/deleting";
 import { CONFIRM_CLOSE_FIELD } from "../terminal/closing";
 import { PIN_ASK_FIELD } from "../terminal/pin";
@@ -10,7 +9,6 @@ export type Skippable = { field: string; label: string };
 export const SKIPPABLE: Skippable[] = [
   { field: CONFIRM_DELETE_FIELD, label: "deleting a workspace" },
   { field: PIN_ASK_FIELD, label: "closing a pinned tab" },
-  { field: CONFIRM_DELETE_KEY, label: "deleting an automation" },
   { field: CONFIRM_CLOSE_FIELD, label: "closing a terminal that is running a program" },
 ];
 

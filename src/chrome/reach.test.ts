@@ -23,15 +23,15 @@ test("T-610: every Screen id is reachable from the switcher or the palette", () 
   expect(SCREEN_IDS.filter((id) => !switcher.has(id) && !fromPalette.has(id))).toEqual([]);
 });
 
-test("T-610: the switcher keeps Agents and Terminals", () => {
-  expect(screens.map((s) => s.id)).toEqual(["agents", "terminals"]);
+test("T-610: the switcher keeps Terminals", () => {
+  expect(screens.map((s) => s.id)).toEqual(["terminals"]);
 });
 
 test("T-610: the View menu mirrors the top bar's switcher", () => {
   for (const s of screens) expect(menuScreen(`screen.${s.id}`), s.id).toBe(s.id);
 });
 
-test("T-708: every Screen id has a palette row of its own, the switcher's two too", () => {
+test("T-708: every Screen id has a palette row of its own, the switcher's one too", () => {
   const fromPalette = palette();
   expect(SCREEN_IDS.filter((id) => !fromPalette.has(id))).toEqual([]);
 });
@@ -48,12 +48,8 @@ test("C12-R5-01: in the Classic look the screen rows keep the one view, so Agent
     r.run();
   }
   for (const s of screens) expect(classic.get(`Show ${s.label}`) ?? "terminals", s.id).toBe("terminals"); // every screen the switcher draws
-  expect(classic.get("Show Agents")).toBe("terminals");
   // no row switches to a screen whose only way back is the switcher Classic does not draw
-  expect([...classic.values()].filter((s) => s !== "terminals" && s !== "artifacts" && s !== "skills")).toEqual([]);
-  // Artifacts and Skills have a way back of their own, so they keep their destination
-  expect(classic.get("Show Artifacts")).toBe("artifacts");
-  expect(classic.get("Show Skills")).toBe("skills");
+  expect([...classic.values()].filter((s) => s !== "terminals")).toEqual([]);
   // the New look is unchanged: Show Agents shows Agents
   const fresh = new Map<string, string>();
   let label = "";
@@ -61,7 +57,6 @@ test("C12-R5-01: in the Classic look the screen rows keep the one view, so Agent
     label = r.label;
     r.run();
   }
-  expect(fresh.get("Show Agents")).toBe("agents");
 });
 
 test("T-708: no hand-built palette row repeats a command; its Commands row, with its keys, is the one", () => {
@@ -85,18 +80,10 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 //   exempt:  why Escape is not this dialog's to take
 //   layer:   a src/ui wrapper whose useLayer catches Escape on the window (Kolux's stack, ahead of Base UI)
 const DIALOGS: [file: string, label: string, how: string][] = [
-  ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
-  ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "tag"],
   ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chrome/Ask.tsx", "title", "hook"],
-  ["editor/CloseDialog.tsx", "Save changes before closing?", "tag"],
-  ["editor/DiffPane.tsx", "pop.note ? \"Edit review note\" : \"Add review note\"", "inner"],
-  ["editor/FilePicker.tsx", "Open a ${what}", "inner"],
-  ["editor/NamePrompt.tsx", "Name this note", "tag"],
-  ["editor/ReviewNotes.tsx", "Add review note", "inner"],
-  ["editor/TemplatePicker.tsx", "Start a note from a template", "inner"],
   ["feedback/FeedbackDialog.tsx", "Send feedback", "tag"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "tag"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
@@ -116,12 +103,9 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["recovery/RecoveryMount.tsx", "Graphics", "exempt: the graphics fallback needs one of its two answers"],
   ["scm/PrStart.tsx", "Create pull request", "tag"],
   ["scm/StackMap.tsx", "Confirm the stack merge", "tag"],
-  ["settings/GrokCard.tsx", "Use an xAI API key", "wrapper"],
   ["settings/SettingsPage.tsx", "Settings", "window"],
   ["shell/LinkAskDialog.tsx", "w.title", "tag"],
   ["shell/TabSearch.tsx", "Search open tabs", "inner"],
-  ["skills/SkillsPage.tsx", "Skill folders", "window"],
-  ["skills/SkillUpdate.tsx", "Update Kolux skills", "tag"],
   ["status/manage.tsx", "End ${name}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/manage.tsx", "End ${what}", "exempt: inside the Resource Manager, whose Escape closes it first (T-692)"],
   ["status/ResourceManager.tsx", "Resource Manager", "hook"],
@@ -254,12 +238,8 @@ function closes(d: Found, how: string, all: Found[]): boolean {
 // own onKeyDown, a focus hook (useDialogFocus / trapDialog) on its ref, or its own Tab code. A new aria-modal
 // dialog fails until it is listed with its trap.
 const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = [
-  ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
-  ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "trapTab"],
   ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["chrome/Ask.tsx", "title", "hook"],
-  ["editor/CloseDialog.tsx", "Save changes before closing?", "trapTab"],
-  ["editor/NamePrompt.tsx", "Name this note", "trapTab"],
   ["feedback/FeedbackDialog.tsx", "Send feedback", "own"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "trapTab"],
   ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
@@ -269,10 +249,8 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
   ["projects/ScanRepos.tsx", "Scan a folder for repositories", "hook"], // T-738,
   ["projects/StartGit.tsx", "Start Git in this folder", "trapTab"],
   ["recovery/CrashReportDialog.tsx", "Report a crash", "hook"],
-  ["settings/GrokCard.tsx", "Use an xAI API key", "trapTab"],
   ["settings/SettingsPage.tsx", "Settings", "trapTab"], // T-732
   ["shell/LinkAskDialog.tsx", "w.title", "trapTab"],
-  ["skills/SkillUpdate.tsx", "Update Kolux skills", "own"],
   ["terminal/ForkDialog.tsx", "Fork Agent Session", "trapTab"],
   ["terminal/TerminalPane.tsx", "notice.title", "trapTab"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "trapTab"],

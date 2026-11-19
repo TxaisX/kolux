@@ -14,7 +14,7 @@ vi.mock("react", async (orig) => {
     useEffect: (f: () => void | (() => void)) => void effects.push(f),
   };
 });
-vi.mock("../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => md }));
+vi.mock("../chat/renderMarkdown", () => ({ renderMarkdown: (md: string) => md }));
 const { default: PlanSheet } = await import("./PlanSheet");
 
 type El = ReactElement<{ children?: ReactNode; onClick?: () => void }>;

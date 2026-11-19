@@ -30,7 +30,7 @@ async function open() {
   const { useMenuBar } = await import("../useChrome");
   const { menuBarState } = await import("../chromeItems");
   const Bar = () => {
-    const [screen, setScreen] = useState<"agents" | "terminals">("agents");
+    const [screen, setScreen] = useState<"terminals">("terminals");
     const [classic, setClassic] = useState(false);
     ctl.setClassic = setClassic;
     useMenuBar(menuBarState({}, screen, () => undefined, classic), () => {});
@@ -46,7 +46,7 @@ const last = () => synced[synced.length - 1];
 
 test("box 3: switching to Terminals with the mouse sends the menu screen terminals (Rust ticks screen.terminals for it)", async () => {
   const c = await open();
-  expect(last()).toMatchObject({ screen: "agents", classic: false });
+  expect(last()).toMatchObject({ screen: "terminals", classic: false });
   await click(c, label(c, "Terminals"));
   await settle();
   expect(label(c, "Terminals").attrs["aria-pressed"]).toBe("true");

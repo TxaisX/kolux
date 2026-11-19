@@ -18,31 +18,31 @@ test("VIEW-057: a folder workspace hides the git tabs and shows Attached worktre
   expect(offeredTabs(true)).toEqual(FOLDER_TABS);
   expect(FOLDER_TABS).not.toContain("scm" as never); // T-644: Source Control left the layout
   expect(FOLDER_TABS).not.toContain("checks");
-  expect(FOLDER_TABS).toEqual(expect.arrayContaining(["attached", "prchecks", "explorer", "agents"]));
+  expect(FOLDER_TABS).toEqual(expect.arrayContaining(["attached", "prchecks", "agents"]));
   expect(offeredTabs(false)).toEqual(GIT_TABS);
-  expect(GIT_TABS).toEqual(["explorer", "checks", "agents"]);
+  expect(GIT_TABS).toEqual(["checks", "agents"]);
   expect(offeredTabs(true)).not.toContain("insights"); // the Insights tab left with the Insights screen
 });
 
 test("VIEW-057: a remembered tab that is not offered here gives the first one offered", () => {
-  expect(tabFor({}, "C:/notes", "checks", FOLDER_TABS)).toBe("explorer");
+  expect(tabFor({}, "C:/notes", "checks", FOLDER_TABS)).toBe("attached");
   expect(tabFor({}, "C:/notes", "agents", FOLDER_TABS)).toBe("agents");
-  expect(tabFor({}, "C:/w/app", "attached", GIT_TABS)).toBe("explorer");
+  expect(tabFor({}, "C:/w/app", "attached", GIT_TABS)).toBe("checks");
   expect(tabFor({}, "C:/w/app", "checks", GIT_TABS)).toBe("checks");
 });
 
 test("VIEW-057: a folder workspace's remembered PR Checks wins over the window's tab, and only there", () => {
   const saved = { "C:/notes": "prchecks" };
-  expect(tabFor(saved, "c:\\notes", "explorer", FOLDER_TABS)).toBe("prchecks");
+  expect(tabFor(saved, "c:\\notes", "checks", FOLDER_TABS)).toBe("prchecks");
   expect(tabFor(saved, "C:/notes", "agents", FOLDER_TABS)).toBe("prchecks");
-  expect(tabFor(saved, "C:/other", "explorer", FOLDER_TABS)).toBe("explorer");
-  expect(tabFor(saved, "C:/notes", "explorer", GIT_TABS)).toBe("explorer");
+  expect(tabFor(saved, "C:/other", "agents", FOLDER_TABS)).toBe("agents");
+  expect(tabFor(saved, "C:/notes", "checks", GIT_TABS)).toBe("checks");
 });
 
 test("VIEW-057: choosing PR Checks is remembered for that folder, choosing another tab forgets it, bad saved values read as none", () => {
   const one = rememberTab({}, "C:/notes", "prchecks");
   expect(one).toEqual({ "c:\\notes": "prchecks" });
-  expect(tabFor(one, "C:/notes", "explorer", FOLDER_TABS)).toBe("prchecks");
+  expect(tabFor(one, "C:/notes", "checks", FOLDER_TABS)).toBe("prchecks");
   expect(rememberTab(one, "C:/Notes/", "agents")).toEqual({});
   expect(rememberTab(one, "C:/two", "prchecks")).toEqual({ "c:\\notes": "prchecks", "c:\\two": "prchecks" });
   expect(readFolderTabs(null)).toEqual({});

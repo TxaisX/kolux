@@ -16,9 +16,8 @@ import type { PaneActions } from "../terminal/paneActions";
 
 export function useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles }: Pick<WindowState, "classic" | "hook" | "liveIds" | "page" | "panes" | "ptys" | "screen" | "settings" | "settingsOpen" | "titles"> & Pick<PaneActions, "leavePage">) {
   const terminals = screen === "terminals";
-  const agentsScreen = screen === "agents";
   // T-050-b: an orchestrator-started session with no name or title is named after its worker's task
-  // (orchestration worker_labels, by terminal handle), looked up while the Agents screen or
+  // (orchestration worker_labels, by terminal handle), looked up while
   // the tab strip is open (ORCH-066 / T-129-d: generated titles read the same label).
   const [workerNames, setWorkerNames] = useState<Record<string, string>>({});
   const labelOf = (p: Pane) => workerNames[`term-${ptys.current[p.key]}`];
@@ -35,21 +34,20 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
     return <BeatLabel animate={needsBeat(rule)} full={(frame) => statusTitle({ ...rule, shown: shownName, frame })} text={textOf} />;
   };
   useEffect(() => {
-    if (!agentsScreen && !terminals) return;
+    if (!terminals) return;
     const look = () => void invoke<Record<string, string>>("worker_labels").then(setWorkerNames, () => {});
     look();
     const t = window.setInterval(look, 5000);
     return () => window.clearInterval(t);
-  }, [agentsScreen, terminals]);
+  }, [terminals]);
   // STAT-050: the clock the status chips read; no screen needs it to tick now.
   const [now, setNow] = useState(Date.now());
   // VIEW-009: a full page fills the workspace area; Show Code (view.code) and an Escape nothing else used leave it.
-  // T-146-e: Skills is a full page too; Skills keeps its own Escape (closeSkills returns to the screen it came from).
-  const fullPage = settingsOpen || (terminals && page !== null) || screen === "artifacts" || screen === "skills";
-  useEscapeLeaves(fullPage && !settingsOpen && page !== "automations" && screen !== "skills", leavePage);
+  const fullPage = settingsOpen || (terminals && page !== null);
+  useEscapeLeaves(fullPage && !settingsOpen, leavePage);
   useEffect(() => showScreen(screen, classic), [screen, classic]); // VIEW-006: each screen's own theme
   return {
-    terminals, agentsScreen, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow,
+    terminals, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow,
     fullPage,
   };
 }

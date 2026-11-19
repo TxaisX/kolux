@@ -8,7 +8,7 @@
 // from the keymap (T-005), so an edit to ~/.kolux/keybindings.json changes the chips.
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowLeft, ArrowRight, Clock, Close, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
+import { ArrowLeft, ArrowRight, Close, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
 import { Kbd, useKeymap } from "../keys/KeymapContext";
 import { usePaletteHint } from "../keys/paletteKey";
 import UsagePill from "../usage/UsagePill";
@@ -20,28 +20,24 @@ import { chromeLayout } from "./titleHeader";
 import { usePackLoaded } from "../shell/usePackLoaded";
 import { useSettings } from "../settings/useSettings";
 import { readStatusBar, usagePills } from "./statusItems";
-import { AgentsPanel, Explorer } from "../lazy/pages";
 
 /** The surface each control opens, read on hover and focus so the click draws it in its own frame. A screen
  *  not listed here (Terminals) has nothing to read. */
-const screenWarm: Partial<Record<Screen, () => void>> = { agents: AgentsPanel.warm };
+const screenWarm: Partial<Record<Screen, () => void>> = {};
 
-/** Artifacts is reached from the sidebar only, so it is not in the top bar's cycle. */
 /** The switcher screens. T-610: every one is reached from the switcher or the palette (chrome/reach.ts, reach.test.ts). */
-export const SCREEN_IDS = ["agents", "terminals", "artifacts", "skills"] as const;
+export const SCREEN_IDS = ["terminals"] as const;
 export type Screen = (typeof SCREEN_IDS)[number];
 export const screens: Array<{ id: Screen; label: string }> = [
-  { id: "agents", label: "Agents" },
   { id: "terminals", label: "Terminals" },
 ];
 
 /** `classic` (SET-037): the Classic look has no screen switcher; the window stays on Terminals.
  * `sidebarWidth` (T-049-c): Classic draws a title header exactly as wide as the left sidebar card, so it follows the card. */
-/** `automations` (VIEW-011): the Automations page button, present only when it is turned on in Settings > Appearance. */
-export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; automations?: { open: boolean; onToggle: () => void }; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; onNotice?: (text: string) => void };
+export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; onNotice?: (text: string) => void };
 
 /** `appName` (SET-020): the app name beside the mark, off by default (DT-A6). */
-export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, onNotice }: TopBarProps) {
+export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, installed = [], onSearch, onBack, onForward, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, onNotice }: TopBarProps) {
   usePackLoaded();
   const [maximized, setMaximized] = useState(false);
   // USAGE-008 / VIEW-008: a pill per provider, only with a weekly figure (or Codex's refused
@@ -120,13 +116,8 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
       )}
 
       <div className="topbar-right">
-        {automations && (
-          <button className="ib" title="Automations" aria-pressed={automations.open} onClick={automations.onToggle}>
-            <Clock />
-          </button>
-        )}
         {/* VIEW-009: while a full page shows, the right sidebar and its control are hidden. */}
-        <button className="ib panel" data-testid="right-sidebar-toggle" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onPointerEnter={Explorer.warm} onFocus={Explorer.warm} onClick={onToggleRight}>
+        <button className="ib panel" data-testid="right-sidebar-toggle" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onClick={onToggleRight}>
           <PanelRight />
         </button>
         <button className="searchbox" title="Go to a workspace, tab, project or setting, or run a command" onClick={onSearch}>

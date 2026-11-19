@@ -6,21 +6,17 @@ import { chipOf } from "../status/chip";
 import { markFor } from "../launch/PlusMenu";
 import { capOn, claudeOf, codexOf, contextFill, meterOf, meterText, planOf, readsLeft, usageLine } from "../usage/meter";
 import { useClaudePaneFigures, useCodexPaneFigures } from "../usage/paneFigures";
-import { pickSession, railGroups } from "./rail";
-import { useEffect } from "react";
+import { railGroups } from "./rail";
 import type { WindowState } from "../shell/windowStore";
 import type { Screens } from "../chrome/useScreens";
 
-export function useRailAndTower({ accountSwitcher, agentOf, agentSel, agents, agentsScreen, context, now, panes, plan, running, setAgentSel, settings, stale, stamp, statusOf, turn }: Pick<WindowState, "accountSwitcher" | "agentOf" | "agentSel" | "agents" | "context" | "panes" | "plan" | "running" | "setAgentSel" | "settings" | "stale" | "stamp" | "statusOf" | "turn"> & Pick<Screens, "agentsScreen" | "now">) {
+export function useRailAndTower({ accountSwitcher, agentOf, agentSel, agents, context, now, panes, plan, running, settings, stale, stamp, statusOf, turn }: Pick<WindowState, "accountSwitcher" | "agentOf" | "agentSel" | "agents" | "context" | "panes" | "plan" | "running" | "settings" | "stale" | "stamp" | "statusOf" | "turn"> & Pick<Screens, "now">) {
   // VIEW-015 / VIEW-021: the Agents rail groups sessions under the saved (switched-on, installed)
   // agents; the shown session is the remembered pick, else the first agent's newest; + adds a
   // not-started preset under that agent. VIEW-024: cards carry the saved agent's name.
   const saved = agents.filter((a) => a.installed);
   const groups = railGroups(panes, saved);
-  const selected = agentsScreen ? pickSession(groups, agentSel) : agentSel;
-  useEffect(() => {
-    if (agentsScreen && selected !== agentSel) setAgentSel(selected);
-  }, [agentsScreen, selected, agentSel]);
+  const selected = agentSel;
   const savedName = (p: Pane) => saved.find((a) => a.id === p.agentId)?.name;
   // USAGE-004 / VIEW-018: the rail's rings are the tab rings; the footer is the picked session's 5-hour window.
   const ringOf = (p: Pane) => (context[p.key] ? { percent: contextFill(context[p.key], capOn(settings)), title: meterText(meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) ?? {}) } : null);

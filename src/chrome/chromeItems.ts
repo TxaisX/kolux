@@ -88,8 +88,8 @@ export function menuSettingFlip(s: Record<string, unknown>, id: string): [string
   return item ? [item.id, !chromeShown(s, item.id)] : null;
 }
 
-/** The screens View > Workspace View lists (menu.rs SCREENS): the switcher's two. */
-const MENU_SCREENS: readonly Screen[] = ["agents", "terminals"];
+/** The screens View > Workspace View lists (menu.rs SCREENS): the switcher's one. */
+const MENU_SCREENS: readonly Screen[] = ["terminals"];
 /** A Workspace View pick: the screen it shows, or null for any other item. */
 export function menuScreen(id: string): Screen | null {
   return MENU_SCREENS.find((s) => id === `screen.${s}`) ?? null;
