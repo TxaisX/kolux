@@ -782,15 +782,6 @@ pub fn pane_config_dir(settings: &Value, active_dir: Option<String>) -> Option<P
     pane_env(Some(program), key_mode, active_dir).map(|(_, d)| PathBuf::from(d)).or_else(|| user_config_dir(settings))
 }
 
-/// `pane_config_file` read from the live store at call time, so an account switch is honoured.
-pub fn trust_config_file(store: &Mutex<Store>) -> PathBuf {
-    let process_file = crate::trust::claude_config_file();
-    match store.lock() {
-        Ok(store) => pane_config_file(&store, process_file),
-        Err(_) => process_file,
-    }
-}
-
 /// Tests only: the bytes of every `<key>.corrupt-<ms>[-n]` copy in the store, read straight from
 /// its table. (It used to probe the last 10 s of millisecond names one query each, so a PC slow
 /// enough to take 10 s over the first call missed the copy on the second.)

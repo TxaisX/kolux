@@ -25,8 +25,7 @@ pub struct Prompt {
     /// "question" (a multiple-choice question).
     pub kind: &'static str,
     pub text: String,
-    /// The menu's option lines as they stand on screen, top to bottom (T-035-c reads the answer
-    /// keys off them).
+    /// The menu's option lines as they stand on screen, top to bottom.
     pub options: Vec<String>,
 }
 
@@ -190,12 +189,6 @@ fn with_scanner<T>(f: impl FnOnce(&mut Scanner) -> T) -> T {
     f(&mut s)
 }
 
-/// The prompt open on `terminal` as `read` shows it, through the shared scan memory (restored
-/// scrollback skipped, result memoised). T-035-c answers from this same reading.
-pub fn live_prompt(terminal: u32, read: &Read) -> Option<Prompt> {
-    with_scanner(|s| s.scan(terminal, read))
-}
-
 /// The window's view of a scan: the prompt, or none.
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -213,7 +206,8 @@ pub struct Scan {
 pub fn prompt_scan(app: tauri::AppHandle, terminals: tauri::State<'_, crate::terminal::Terminals>, pane_key: u32, terminal: u32) -> Scan {
     let read = terminals.read(terminal, None, Some(FRAME_LINES));
     let before = with_scanner(|s| s.last(terminal).cloned());
-    let prompt = read.as_ref().and_then(|r| live_prompt(terminal, r));
+    // Through the shared scan memory: restored scrollback skipped, the result memoised.
+    let prompt = read.as_ref().and_then(|r| with_scanner(|s| s.scan(terminal, r)));
     let hooked = crate::status::state_of(terminal).is_some();
     let changed = match (&before, &prompt) {
         (_, Some(p)) if !hooked => crate::status::status_inband(app, pane_key, Some(terminal), format!(r#"{{"state":"{}"}}"#, p.state())),

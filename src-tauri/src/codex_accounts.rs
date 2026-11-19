@@ -820,22 +820,6 @@ fn sync_settings_from(user: &Path, legacy: Option<&Path>, home: &Path) -> Result
     Err("Codex kept changing this account's settings file, so the copy was skipped this time.".into())
 }
 
-/// Deletes a folder, retrying for about two seconds while Windows still holds a file in it.
-pub fn remove_dir_patiently(dir: &Path) -> std::io::Result<()> {
-    let mut tries = 0;
-    loop {
-        match fs::remove_dir_all(dir) {
-            Ok(()) => return Ok(()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-            Err(e) if tries >= 10 => return Err(e),
-            Err(_) => {
-                tries += 1;
-                std::thread::sleep(Duration::from_millis(200));
-            }
-        }
-    }
-}
-
 /// Deletes a file, retrying for about two seconds while Windows or a running pane still holds it.
 pub fn remove_file_patiently(path: &Path) -> std::io::Result<()> {
     let mut tries = 0;

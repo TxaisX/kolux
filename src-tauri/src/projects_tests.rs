@@ -2387,50 +2387,6 @@ fn proj039_a_reply_becomes_a_short_slug_without_the_prefix() {
     assert_eq!(sentence_case("tx/fix-login"), "Fix login");
 }
 
-#[test]
-fn cli009_a_wsl_path_on_a_mounted_drive_resolves_and_the_callers_distro_wins() {
-    assert_eq!(wsl_path("/mnt/c/Users/x/repo", None), "C:\\Users\\x\\repo");
-    assert_eq!(wsl_path("/mnt/d", Some("Ubuntu")), "D:\\");
-    // Not a drive: /mnt/wsl is Linux's own folder, so it belongs to the caller's distro.
-    assert_eq!(wsl_path("/mnt/wsl/x", Some("Debian")), "\\\\wsl.localhost\\Debian\\mnt\\wsl\\x");
-    // The same Linux path written from two distros reaches each caller's own.
-    assert_eq!(wsl_path("/home/u/app", Some("Ubuntu")), "\\\\wsl.localhost\\Ubuntu\\home\\u\\app");
-    assert_eq!(wsl_path("/home/u/app", Some("Debian")), "\\\\wsl.localhost\\Debian\\home\\u\\app");
-    assert_eq!(wsl_path("/home/u/app", None), "/home/u/app");
-    assert_eq!(wsl_path("C:\\work\\a", Some("Ubuntu")), "C:\\work\\a");
-    assert_eq!(wsl_distro_of("\\\\wsl.localhost\\Ubuntu\\home\\u"), Some("Ubuntu".into()));
-    assert_eq!(wsl_distro_of("//wsl$/Debian/home"), Some("Debian".into()));
-    assert_eq!(wsl_distro_of("C:\\work"), None);
-}
-
-#[test]
-fn cli019_a_workspace_status_is_found_by_id_label_or_the_word_completed() {
-    let store = Store::open(&temp("status-profile")).unwrap();
-    assert_eq!(resolve_status(&store, "in-review").unwrap(), "in-review");
-    assert_eq!(resolve_status(&store, "In progress").unwrap(), "in-progress");
-    assert_eq!(resolve_status(&store, " TODO ").unwrap(), "todo");
-    assert_eq!(resolve_status(&store, "completed").unwrap(), "done");
-    let why = resolve_status(&store, "blocked").unwrap_err();
-    assert!(why.contains("no status blocked") && why.contains("in-review"), "{why}");
-}
-
-#[test]
-fn cli009_folder_names_the_folder_workspace_of_a_project_without_git_only() {
-    let base = temp("folder-parent");
-    let store = Store::open(&base.join("db")).unwrap();
-    let plain = base.join("plain");
-    fs::create_dir_all(&plain).unwrap();
-    let project = crate::folder_projects::add_folder(&store, &plain).unwrap();
-    let (found, ws) = folder_parent(&store, &project.id).unwrap();
-    assert_eq!(found.id, project.id);
-    assert!(same_folder(Path::new(&ws.path), &plain));
-    assert!(folder_parent(&store, "nope").unwrap_err().contains("no project"));
-    let repo = temp_repo("folder-parent-git");
-    let git = Git::detect().unwrap();
-    let git_project = add_project(&git, &store, &repo).unwrap();
-    assert!(folder_parent(&store, &git_project.id).unwrap_err().contains("without Git"));
-}
-
 fn rename_fixture(name: &str, setting: Option<bool>) -> (Git, Mutex<Store>, Project, PathBuf, PathBuf, PathBuf) {
     let git = Git::detect().unwrap();
     let profile = temp(&format!("profile-{name}"));

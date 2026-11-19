@@ -76,7 +76,7 @@ pub fn owns(generation: Option<u64>) -> Result<(), String> {
 pub struct Terminals {
     inner: Arc<Mutex<Inner>>,
     /// CLI-023: where each terminal sits in the window (worktree pane, tab, title, in view), as the
-    /// window last reported it, plus the command-line requests it could not open.
+    /// window last reported it.
     layout: Arc<Mutex<Vec<serde_json::Value>>>,
     /// T-184-b: the link to the background terminal service.
     service: Arc<ServiceLink>,
@@ -92,10 +92,7 @@ struct Inner {
     /// When each program session started and last wrote, so a worker start can tell when its
     /// agent has come up (ORCH-016). Shells are not marked.
     marks: HashMap<u32, Mark>,
-    /// CLI-007 / ORCH-001: each session secret pane key, put in its environment as
-    /// `KOLUX_PANE_KEY` next to its handle, so a command run inside it can prove which pane it is.
-    keys: HashMap<u32, String>,
-    /// CLI-027: sessions whose process has ended, so a close can confirm the program is gone.
+    /// CLI-027: sessions whose process has ended.
     ended: HashSet<u32>,
     /// CLI-024: what each session wrote, by line, for `Terminals::read`. Each behind its own
     /// lock (P2 perf): a chunk is counted under the registry and logged outside it.
@@ -118,9 +115,6 @@ struct Inner {
     tickets: HashMap<u32, u64>,
     /// ORCH-057: each session's output count and raw tail, for a viewer's resync.
     snaps: HashMap<u32, Snap>,
-    /// Row 211: which process each session id holds now; a new number every time an id starts (a reused id too).
-    process_gen: HashMap<u32, u64>,
-    process_count: u64,
     /// Kept-warm shell (`WARM_FIELD`, off by default): a plain shell already started per open folder (by
     /// `warm_key`) with the shell it runs, which the folder's next new terminal takes instead of starting one.
     warm: WarmMap,
@@ -195,7 +189,6 @@ impl Inner {
     fn take_session(&mut self, id: u32) -> Taken {
         self.dirs.remove(&id);
         self.marks.remove(&id);
-        self.keys.remove(&id);
         let hist = self.hist.remove(&id);
         // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
         // waiter, which reads the pane's tail for its resume hint and then drops it; `read` already refuses it).
@@ -290,11 +283,8 @@ impl Inner {
     /// ORCH-059: a session id about to be (re)used starts as a new incarnation: nothing an earlier
     /// session under the same handle left behind (log, screen bits, end flag, marks, snapshot) carries over.
     fn fresh_incarnation(&mut self, id: u32) {
-        self.process_count += 1;
-        self.process_gen.insert(id, self.process_count);
         self.dirs.remove(&id);
         self.marks.remove(&id);
-        self.keys.remove(&id);
         self.ended.remove(&id);
         self.logs.remove(&id);
         self.owned.remove(&id);
@@ -977,7 +967,7 @@ fn unattended(command: &mut portable_pty::CommandBuilder, is_program: bool) {
     }
 }
 
-/// The handle a terminal is known by on the command line (`KOLUX_TERMINAL_HANDLE`).
+/// The handle a terminal is known by (`KOLUX_TERMINAL_HANDLE` in its environment).
 pub fn handle_of(id: u32) -> String {
     format!("term-{id}")
 }
@@ -1238,7 +1228,7 @@ impl Terminals {
         // T-184-b: through the background service when the window is linked to one (a start it
         // refuses runs here instead). The service's events share one reader, so it never waits on a pane.
         let remote = self.linked().and_then(|link| {
-            let meta = serde_json::json!({ "id": id, "pane": pane_key, "key": key.clone(), "program": program.clone(), "cwd": cwd.clone() });
+            let meta = serde_json::json!({ "id": id, "pane": pane_key, "program": program.clone(), "cwd": cwd.clone() });
             link.spawn(&commands, cols.max(2), rows.max(1), meta).map(|r| (link, r)).ok()
         });
         let (on_output, on_exit) = self.handlers(&exit_app, id, pane_key, link_dir, is_program, remote.is_none().then(|| flow.clone()));
@@ -1261,7 +1251,6 @@ impl Terminals {
         if let Some(d) = &log_dir {
             crate::diag::write(d, &format!("terminal {id} started ({label})"));
         }
-        inner.keys.insert(id, key);
         if let Some(k) = pane_key {
             inner.panes.insert(k, id);
         }
@@ -1329,7 +1318,6 @@ impl Terminals {
                     removed = inner.sessions.remove(&id);
                     inner.dirs.remove(&id);
                     inner.marks.remove(&id);
-                    inner.keys.remove(&id);
                     inner.ended.insert(id);
                     log = inner.logs.remove(&id);
                     inner.owned.remove(&id);
@@ -1711,27 +1699,6 @@ impl Terminals {
         Stopped { ended: found.len(), stuck: crate::procs::wait_gone(&pids, std::time::Duration::from_secs(3)) }
     }
 
-    /// The open terminal whose secret is `key` (ORCH-001: a pane the runtime saw), by its handle.
-    pub fn by_key(&self, key: &str) -> Option<String> {
-        if key.is_empty() {
-            return None;
-        }
-        let inner = self.inner.lock().ok()?;
-        inner.keys.iter().find(|(_, k)| crate::hooks::same(k, key)).map(|(id, _)| handle_of(*id))
-    }
-
-    /// ORCH-013: the program a terminal was started with, once it has written and then been quiet
-    /// for `settle` (fully started; part of a banner is not enough). Shells have none: what is
-    /// typed into a shell, or a pane title, proves nothing.
-    // ponytail: quiet after first output stands in for an idle detector (the STAT status cards).
-    pub fn program_of(&self, handle: &str, settle: std::time::Duration) -> Option<String> {
-        let id = id_of(handle)?;
-        let inner = self.inner.lock().ok()?;
-        let m = inner.marks.get(&id).filter(|_| inner.sessions.contains_key(&id))?;
-        m.last_output.filter(|t| t.elapsed() >= settle)?;
-        Some(m.program.clone())
-    }
-
     /// CLI-017: every open session as (handle, the folder it started in, its program; none for a shell).
     pub fn sessions(&self) -> Vec<(String, String, Option<String>)> {
         let Ok(inner) = self.inner.lock() else { return Vec::new() };
@@ -1758,7 +1725,7 @@ impl Terminals {
             .collect()
     }
 
-    /// CLI-023: the window's latest report of its panes and tabs.
+    /// CLI-023: the window's latest report of its panes and tabs (the ORCH-060 inventory reads it).
     pub fn layout(&self) -> Vec<serde_json::Value> {
         self.layout.lock().map(|l| l.clone()).unwrap_or_default()
     }
@@ -1769,25 +1736,7 @@ impl Terminals {
         }
     }
 
-    /// CLI-027: ends a session and waits up to three seconds for its process to be gone; true only
-    /// once that is confirmed. A session that had already ended counts as stopped.
-    pub fn close(&self, handle: &str) -> bool {
-        let Some(id) = id_of(handle) else { return false };
-        if !self.live(handle) {
-            return true;
-        }
-        let _ = self.kill(id);
-        let until = Instant::now() + Duration::from_secs(3);
-        while Instant::now() < until {
-            if self.inner.lock().map(|mut i| i.ended.remove(&id)).unwrap_or(false) {
-                return true;
-            }
-            std::thread::sleep(Duration::from_millis(50));
-        }
-        false
-    }
-
-    /// The folder terminal `handle` was started in (ORCH-014 checks it for base drift).
+    /// The folder terminal `handle` was started in.
     pub fn dir_of(&self, handle: &str) -> Option<String> {
         let id = id_of(handle)?;
         self.inner.lock().ok()?.dirs.get(&id).cloned()
@@ -1806,12 +1755,6 @@ impl Terminals {
         if let Some(program) = program {
             inner.marks.insert(id, Mark { started: long_ago, last_output: Some(long_ago), last_input: None, program: program.into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
         }
-    }
-
-    /// T-793 review fix 1: the pane secret `key` for a fake session, so a test can send a request as that pane.
-    #[cfg(any(test, feature = "test-fakes"))]
-    pub fn fake_key(&self, id: u32, key: &str) {
-        self.inner.lock().unwrap().keys.insert(id, key.to_string());
     }
 
     /// APP-052: the session window pane `pane_key` started in this run, if it still runs.
@@ -1849,11 +1792,6 @@ impl Terminals {
         let all = snap.tail.make_contiguous();
         let keep = if seq == all.len() as u64 { all.len() } else { all.len().saturating_sub(1) };
         Some((seq, trim_history(all, keep).to_vec()))
-    }
-
-    /// Row 211: the process generation of session `id` (changes on every spawn, respawn or adoption of that id), None for an unknown id.
-    pub fn process_generation(&self, id: u32) -> Option<u64> {
-        self.inner.lock().ok()?.process_gen.get(&id).copied()
     }
 
     /// Is `handle` an open terminal?
@@ -1981,9 +1919,6 @@ impl Terminals {
                 let (on_output, on_exit) = self.handlers(app, id, pane, cwd.clone(), is_program, None);
                 link.register(remote.id, on_output, on_exit);
                 taken.push(remote.id);
-                if let Some(key) = meta["key"].as_str() {
-                    inner.keys.insert(id, key.to_string());
-                }
                 if let Some(k) = pane {
                     inner.panes.insert(k, id);
                 }
@@ -2060,7 +1995,6 @@ impl Terminals {
                 crate::pty::link::write_seen(&dir, l.generation(), &seen);
             }
             inner.dirs.clear();
-            inner.keys.clear();
             hists.extend(inner.hist.drain().map(|(_, h)| h));
             inner.snaps.clear();
             for (_, f) in inner.flow.drain() {
@@ -3038,23 +2972,6 @@ mod tests {
         assert_eq!(outcome_of(None), "unverifiable", "an end Kolux could not confirm is not called an exit");
     }
 
-    /// Row 211: every process started under a session id has its own generation, so a pass minted
-    /// for the earlier one can be told from the one running now.
-    #[test]
-    fn orch067_f_a_restarted_session_id_has_a_new_process_generation() {
-        let t = Terminals::default();
-        let dir = std::env::temp_dir().to_string_lossy().into_owned();
-        assert_eq!(t.process_generation(9), None, "an unknown id");
-        t.fake_session(9, &dir, Some("claude"));
-        t.fake_session(10, &dir, None);
-        let (first, other) = (t.process_generation(9).unwrap(), t.process_generation(10).unwrap());
-        assert_ne!(first, other);
-        assert_eq!(t.process_generation(9), Some(first), "stable while the process runs");
-        t.fake_session(9, &dir, Some("claude"));
-        assert_ne!(t.process_generation(9), Some(first), "the reused id is a new process");
-        assert_eq!(t.process_generation(10), Some(other), "another pane is untouched");
-    }
-
     /// Latency: output right after typing is marked as an echo (so it may skip the batch window); a
     /// terminal's own reply, output long after the key, and output after the session ends are not.
     #[test]
@@ -3160,20 +3077,17 @@ mod tests {
         t.fake_session(9, &dir, Some("claude"));
         {
             let mut inner = t.inner.lock().unwrap();
-            inner.keys.insert(9, "secret-9".into());
             inner.owned.insert(9, ALT | MOUSE);
             lock(&inner.logs[&9]).push(b"old output\r\n");
             inner.snaps.entry(9).or_default().push(b"old output\r\n");
         }
         let h = handle_of(9);
-        assert!(t.live(&h) && t.by_key("secret-9").is_some() && t.read(9, None, None).is_some());
+        assert!(t.live(&h) && t.read(9, None, None).is_some());
         t.kill(9).unwrap();
         assert!(!t.list().iter().any(|(id, _, _)| *id == 9), "list");
         assert!(!t.sessions().iter().any(|(x, _, _)| *x == h), "sessions");
         assert!(!t.every().iter().any(|(x, _, _)| *x == h), "every");
-        assert_eq!(t.by_key("secret-9"), None, "by_key");
         assert_eq!(t.dir_of(&h), None, "dir_of");
-        assert_eq!(t.program_of(&h, Duration::ZERO), None, "program_of");
         assert!(!t.live(&h), "live");
         assert!(t.read(9, None, None).is_none(), "read");
         {
@@ -3189,7 +3103,7 @@ mod tests {
         }
         t.fake_session(9, &dir, None);
         let inner = t.inner.lock().unwrap();
-        assert!(!inner.ended.contains(&9) && !inner.owned.contains_key(&9) && !inner.keys.contains_key(&9) && !inner.marks.contains_key(&9) && !inner.snaps.contains_key(&9), "new incarnation");
+        assert!(!inner.ended.contains(&9) && !inner.owned.contains_key(&9) && !inner.marks.contains_key(&9) && !inner.snaps.contains_key(&9), "new incarnation");
         assert_eq!(inner.logs.get(&9).map(|l| lock(l).lines.len()), Some(0), "an empty log");
     }
 
@@ -3530,18 +3444,6 @@ mod tests {
         };
         assert_eq!(t.kill_under_sparing(&x, reuse).ended, 0, "id 1 now runs elsewhere");
         assert_eq!(t.sessions().len(), 1, "the session elsewhere still runs");
-    }
-
-    /// R-07: a pane key is compared in constant time; the right key is still found and a wrong one of
-    /// the same length is still refused. (Timing itself is not something a test can show.)
-    #[test]
-    fn r07_by_key_takes_the_right_key_and_refuses_a_wrong_one_of_the_same_length() {
-        let t = Terminals::default();
-        t.fake_session(4, "C:/made-up", None);
-        t.fake_key(4, "made-up-key-0001");
-        assert_eq!(t.by_key("made-up-key-0001"), Some(handle_of(4)));
-        assert_eq!(t.by_key("made-up-key-0002"), None);
-        assert_eq!(t.by_key(""), None);
     }
 
     /// T-262-c (CLI-023): a plain shell given no folder lists the home folder it started in and

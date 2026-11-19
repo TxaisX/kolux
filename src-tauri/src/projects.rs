@@ -658,52 +658,6 @@ pub fn reparent_in(store: &Store, project: &Project, scanned: Vec<Worktree>, pat
     set_parent(store, &me.path, Some(&to.path))
 }
 
-// ---- CLI-009 / CLI-019: the selector pieces `worktree set` needs (called from the cli.rs patch) ----
-
-/// `folder:<id>` where a parent worktree is expected: the folder project with that id and its
-/// folder workspace. A Git project, an unknown id and a folder project that has since got Git
-/// are refused with the reason.
-pub fn folder_parent(store: &Store, id: &str) -> Result<(Project, Worktree), String> {
-    let project = load_projects(store).into_iter().find(|p| p.id == id).ok_or_else(|| format!("no project has the id {id}"))?;
-    let folder = crate::folder_projects::folder_only(store, &project).ok_or_else(|| format!("{} is not a folder workspace; folder: takes the id of a project without Git", project.name))?;
-    Ok((project, folder))
-}
-
-/// CLI-019: the board status id `--workspace-status` names, by id or label in any case. The
-/// built-in set is todo, in-progress, in-review and completed (the spec's word for "done").
-pub fn resolve_status(store: &Store, wanted: &str) -> Result<String, String> {
-    let list = crate::bulk::statuses(store);
-    let find = |w: &str| list.iter().find(|s| s.id.eq_ignore_ascii_case(w) || s.label.eq_ignore_ascii_case(w)).map(|s| s.id.clone());
-    let w = wanted.trim();
-    find(w).or_else(|| w.eq_ignore_ascii_case("completed").then(|| find("done")).flatten()).ok_or_else(|| format!("there is no status {wanted}; the statuses are {}", list.iter().map(|s| s.id.as_str()).collect::<Vec<_>>().join(", ")))
-}
-
-/// The WSL distribution a Windows-side path belongs to (`\\wsl.localhost\<distro>\...` or
-/// `\\wsl$\<distro>\...`).
-pub fn wsl_distro_of(path: &str) -> Option<String> {
-    let p = path.replace('/', "\\");
-    let rest = p.strip_prefix("\\\\wsl.localhost\\").or_else(|| p.strip_prefix("\\\\wsl$\\"))?;
-    rest.split('\\').next().filter(|d| !d.is_empty()).map(str::to_string)
-}
-
-/// CLI-009: a path written in a WSL shell, as Windows sees it. A Windows drive mounted into Linux
-/// (`/mnt/c/...`) resolves with no distribution at all; any other Linux path belongs to the
-/// caller's own distribution, so when two distributions write the same path the caller's wins.
-/// Without a distribution a Linux path is left as written and matches nothing.
-pub fn wsl_path(path: &str, distro: Option<&str>) -> String {
-    let p = path.trim();
-    if let Some(rest) = p.strip_prefix("/mnt/") {
-        let (drive, tail) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
-        if drive.len() == 1 && drive.chars().all(|c| c.is_ascii_alphabetic()) {
-            return format!("{}:{}", drive.to_ascii_uppercase(), if tail.is_empty() { "\\".to_string() } else { tail.replace('/', "\\") });
-        }
-    }
-    match distro.filter(|d| !d.is_empty()) {
-        Some(d) if p.starts_with('/') && !p.starts_with("//") => format!("\\\\wsl.localhost\\{d}{}", p.replace('/', "\\")),
-        _ => p.to_string(),
-    }
-}
-
 /// PROJ-040: the folder workspace at `path`, when that is one (the folder of a project without Git).
 fn folder_workspace_at(store: &Store, path: &str) -> Option<String> {
     load_projects(store).iter().find_map(|p| crate::folder_projects::folder_only(store, p).filter(|f| same_folder(Path::new(&f.path), Path::new(path))).map(|f| f.path))
