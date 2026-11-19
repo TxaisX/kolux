@@ -293,18 +293,38 @@ pub fn paint_badge(text: &str) -> (Vec<u8>, u32, u32) {
 #[derive(Default)]
 pub struct TrayState {
     dot: Mutex<Dot>,
-    /// The main window was hidden to the tray through Kolux's own hide, and nothing has shown it through
-    /// Kolux since (`show_main`). The window library keeps its own "visible" flag, which only its own show
-    /// sets again: a second launch's fallback raise shows the window from outside (lifecycle.rs), the flag
-    /// stays off, and the next minimise or maximise would hide the window again. `refocused` puts that right.
-    hidden: std::sync::atomic::AtomicBool,
+    /// Whether the main window is hidden to the tray through Kolux's own hide (`HIDDEN_*`), and nothing has
+    /// shown it through Kolux since (`show_main`). The window library keeps its own "visible" flag, which only
+    /// its own show sets again: a second launch's fallback raise shows the window from outside
+    /// (lifecycle.rs), the flag stays off, and the next minimise or maximise would hide the window again.
+    /// `refocused` and `resync_if_shown` put that right.
+    hidden: std::sync::atomic::AtomicU8,
+}
+
+/// Not hidden to the tray (or shown again through Kolux).
+const HIDDEN_NO: u8 = 0;
+/// Hidden to the tray; the background check has not yet seen the window out of sight (the hide may
+/// still be on its way to the window).
+const HIDDEN_ASKED: u8 = 1;
+/// Hidden to the tray, and the background check has seen the window out of sight.
+const HIDDEN_SEEN: u8 = 2;
+
+/// One background check of a window hidden to the tray: the next state, and whether the window must be
+/// shown again through the window library (it is on screen although Kolux did not show it). A window
+/// counts as brought back only after it was seen hidden, so a hide still on its way is never undone.
+fn hidden_step(state: u8, visible: bool) -> (u8, bool) {
+    match (state, visible) {
+        (HIDDEN_ASKED, false) => (HIDDEN_SEEN, false),
+        (HIDDEN_SEEN, true) => (HIDDEN_NO, true),
+        (s, _) => (s, false),
+    }
 }
 
 /// Remembers (or forgets) that the main window is hidden to the tray by Kolux's own hide.
 fn mark_hidden(app: &tauri::AppHandle, hidden: bool) {
     use tauri::Manager;
     if let Some(state) = app.try_state::<TrayState>() {
-        state.hidden.store(hidden, std::sync::atomic::Ordering::SeqCst);
+        state.hidden.store(if hidden { HIDDEN_ASKED } else { HIDDEN_NO }, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
@@ -314,11 +334,30 @@ fn mark_hidden(app: &tauri::AppHandle, hidden: bool) {
 /// when it did that. Called from lib.rs's focus event.
 pub fn refocused(app: &tauri::AppHandle) -> bool {
     use tauri::Manager;
-    let was = app.try_state::<TrayState>().is_some_and(|s| s.hidden.swap(false, std::sync::atomic::Ordering::SeqCst));
+    let was = app.try_state::<TrayState>().is_some_and(|s| s.hidden.swap(HIDDEN_NO, std::sync::atomic::Ordering::SeqCst) != HIDDEN_NO);
     if was {
         let _ = show_main(app);
     }
     was
+}
+
+/// The backstop for `refocused`, run by lib.rs's two-second background loop: the focus event may not
+/// come for a window whose view was told it is out of sight, so a window hidden to the tray that is
+/// on screen again (the library reads the system's own visibility) is shown through the library too.
+pub fn resync_if_shown(app: &tauri::AppHandle) {
+    use std::sync::atomic::Ordering;
+    use tauri::Manager;
+    let Some(state) = app.try_state::<TrayState>() else { return };
+    let now = state.hidden.load(Ordering::SeqCst);
+    if now == HIDDEN_NO {
+        return;
+    }
+    let visible = app.get_webview_window(MAIN_LABEL).is_some_and(|w| w.is_visible().unwrap_or(false));
+    let (next, show) = hidden_step(now, visible);
+    // Only this loop moves ASKED to SEEN; a show or a hide meanwhile wins over the stale reading.
+    if state.hidden.compare_exchange(now, next, Ordering::SeqCst, Ordering::SeqCst).is_ok() && show {
+        let _ = show_main(app);
+    }
 }
 
 /// Puts Kolux's icon in the tray on Windows and macOS. Nothing happens on Linux, or in a build
@@ -675,6 +714,19 @@ mod real {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_window_hidden_to_the_tray_counts_as_brought_back_only_after_it_was_seen_hidden() {
+        use super::{hidden_step, HIDDEN_ASKED, HIDDEN_NO, HIDDEN_SEEN};
+        // The hide may still be on its way: a window still on screen right after it is not "brought back".
+        assert_eq!(hidden_step(HIDDEN_ASKED, true), (HIDDEN_ASKED, false));
+        assert_eq!(hidden_step(HIDDEN_ASKED, false), (HIDDEN_SEEN, false));
+        assert_eq!(hidden_step(HIDDEN_SEEN, false), (HIDDEN_SEEN, false));
+        // Seen hidden, then on screen without Kolux's own show: shown again through the library, once.
+        assert_eq!(hidden_step(HIDDEN_SEEN, true), (HIDDEN_NO, true));
+        assert_eq!(hidden_step(HIDDEN_NO, true), (HIDDEN_NO, false));
+        assert_eq!(hidden_step(HIDDEN_NO, false), (HIDDEN_NO, false));
+    }
+
     use super::*;
 
     #[test]

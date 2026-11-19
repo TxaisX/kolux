@@ -544,63 +544,6 @@ pub fn setup_imports(root: &Path) -> Vec<SetupImport> {
     out
 }
 
-/// VIEW-112: `yaml` with `scripts.setup` and `scripts.archive` added as block scalars, under the
-/// file's top-level `scripts:` block or a new one. A `scripts` entry written another way (inline)
-/// is refused rather than rewritten.
-pub fn import_into(yaml: &str, setup: Option<&str>, archive: Option<&str>) -> Result<String, String> {
-    let crlf = yaml.contains("\r\n");
-    let text = yaml.replace("\r\n", "\n");
-    let lines: Vec<&str> = text.lines().collect();
-    let top = lines.iter().position(|l| l.starts_with("scripts:") || l.starts_with("scripts :"));
-    let child = top
-        .and_then(|i| lines[i + 1..].iter().find(|l| !l.trim().is_empty() && !l.trim_start().starts_with('#')))
-        .map(|l| l.len() - l.trim_start().len())
-        .filter(|&n| n > 0)
-        .unwrap_or(2);
-    let pad = " ".repeat(child);
-    let mut block = String::new();
-    for (key, script) in [("setup", setup), ("archive", archive)] {
-        let Some(script) = script else { continue };
-        block.push_str(&format!("{pad}{key}: |\n"));
-        for l in script.lines() {
-            if l.is_empty() {
-                block.push('\n');
-            } else {
-                block.push_str(&format!("{pad}  {l}\n"));
-            }
-        }
-    }
-    let out = match top {
-        Some(i) if lines[i].trim_end() != "scripts:" => return Err(format!("{}'s scripts entry is not a plain block; add the commands there by hand", crate::include::CONFIG_FILE)),
-        Some(i) => {
-            let mut v: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
-            v.insert(i + 1, block.trim_end_matches('\n').to_string());
-            v.join("\n") + "\n"
-        }
-        None if text.trim().is_empty() => format!("scripts:\n{block}"),
-        None => format!("{}\nscripts:\n{block}", text.trim_end_matches('\n')),
-    };
-    Ok(if crlf { out.replace('\n', "\r\n") } else { out })
-}
-
-/// VIEW-112: what other tools' setup files in the project at `path` offer.
-#[tauri::command(async)]
-pub fn setup_imports_list(path: String) -> Vec<SetupImport> {
-    setup_imports(Path::new(&path))
-}
-
-/// VIEW-112: takes `file`'s offer into the kolux.yaml at `path`, read again here so only what the
-/// file says is written.
-#[tauri::command(async)]
-pub fn setup_import(path: String, file: String) -> Result<(), String> {
-    let root = Path::new(&path);
-    let offer = setup_imports(root).into_iter().find(|o| o.file == file && o.refused.is_none()).ok_or_else(|| format!("{file} has nothing left to import"))?;
-    let target = root.join(crate::include::CONFIG_FILE);
-    let yaml = std::fs::read_to_string(&target).unwrap_or_default();
-    let next = import_into(&yaml, offer.setup.as_deref(), offer.teardown.as_deref())?;
-    std::fs::write(&target, next).map_err(|e| format!("{} could not be written: {e}", crate::include::CONFIG_FILE))
-}
-
 // ---- PROJ-035: the sidebar card that suggests adding a setup script
 //
 // For a project with no setup script in effect, `suggest` says what to offer: the install command of
@@ -1174,8 +1117,6 @@ mod tests {
         assert!(got.iter().all(|o| o.setup.is_none() && o.teardown.is_none()));
         assert!(got[0].refused.as_deref().unwrap().contains("larger than 64 KB"));
         assert!(got[1].refused.as_deref().unwrap().contains("not valid TOML"));
-        assert!(setup_import(dir.to_string_lossy().into_owned(), "conductor.json".into()).is_err(), "a refused file cannot be imported");
-        assert!(!dir.join("kolux.yaml").exists());
         let _ = std::fs::remove_dir_all(&dir);
         for bad in [&b"{\"scripts\": [1]}"[..], b"[1,2]", b"{\"scripts\":", b"\xff\xfe{}"] {
             let dir = tree(&[("conductor.json", bad)]);
@@ -1184,27 +1125,6 @@ mod tests {
             assert!(got[0].refused.is_some() && got[0].setup.is_none(), "{bad:?}");
             let _ = std::fs::remove_dir_all(&dir);
         }
-    }
-
-    #[test]
-    fn view112_an_import_lands_in_kolux_yaml_where_setup_reads_it() {
-        let y = import_into("", Some("#!/bin/sh\npnpm i\n\nmake"), Some("./a.sh")).unwrap();
-        assert_eq!(y, "scripts:\n  setup: |\n    #!/bin/sh\n    pnpm i\n\n    make\n  archive: |\n    ./a.sh\n");
-        assert_eq!(setup_script(&y).as_deref(), Some("#!/bin/sh\npnpm i\n\nmake"));
-        assert_eq!(scripts_entry(&y, "archive").as_deref(), Some("./a.sh"));
-        let y = import_into("worktree:\r\n  sharedDirectories:\r\n    - node_modules\r\nscripts:\r\n    issueCommand: x\r\n", Some("pnpm i"), None).unwrap();
-        assert_eq!(y, "worktree:\r\n  sharedDirectories:\r\n    - node_modules\r\nscripts:\r\n    setup: |\r\n      pnpm i\r\n    issueCommand: x\r\n");
-        assert_eq!(setup_script(&y).as_deref(), Some("pnpm i"));
-        let y = import_into("defaultTabs: []\n", None, Some("rm -rf x")).unwrap();
-        assert_eq!(scripts_entry(&y, "archive").as_deref(), Some("rm -rf x"));
-        assert!(y.starts_with("defaultTabs: []\nscripts:\n"));
-        assert!(import_into("scripts: {}\n", Some("x"), None).unwrap_err().contains("by hand"));
-        // the command writes the file in the project's folder
-        let dir = tree(&[("conductor.json", b"{\"scripts\":{\"setup\":\"pnpm i\"}}")]);
-        setup_import(dir.to_string_lossy().into_owned(), "conductor.json".into()).unwrap();
-        assert_eq!(setup_script(&std::fs::read_to_string(dir.join("kolux.yaml")).unwrap()).as_deref(), Some("pnpm i"));
-        assert!(setup_imports(&dir).is_empty(), "nothing is offered twice");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

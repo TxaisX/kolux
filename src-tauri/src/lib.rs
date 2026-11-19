@@ -468,6 +468,9 @@ pub fn run() {
             std::thread::spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(2));
                 foreground::poll(&handle);
+                // A window hidden to the tray that something outside showed again (a second launch's
+                // fallback raise) is shown through the window library too (tray.rs).
+                tray::resync_if_shown(&handle);
                 // STAT-028: a cancelled turn that never sends its Stop reads interrupted.
                 for status in status::settle_cancels() {
                     let _ = tauri::Emitter::emit(&handle, hooks::EVENT, status);
@@ -680,8 +683,6 @@ pub fn run() {
             projects::workspaces_place_set,
             projects::git_first_commit_preview,
             projects::git_start,
-            setup::setup_imports_list,
-            setup::setup_import,
             agents::list_command::agent_list,
             models::agent_models,
             agents::agent_start_line,
