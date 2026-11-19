@@ -130,6 +130,9 @@ mod chat_engine;
 mod chat_writeup;
 mod claude_shared;
 mod openrouter;
+// stage 3 (s3-publish)
+mod project_new;
+mod chat_finish;
 
 use state::Store;
 use std::sync::Mutex;
@@ -1053,7 +1056,9 @@ pub fn run() {
             chat_engine::chat_start,
             chat_engine::chat_send,
             chat_engine::chat_stop,
-            chat_engine::chat_end
+            chat_engine::chat_end,
+            // stage 3 (s3-publish)
+            project_new::github_badge
             ];
             handler(invoke)
         })
@@ -1074,6 +1079,8 @@ pub fn run() {
                 } else {
                     // T-286-b (APP-040): engine exits once the app is quitting are not crashes.
                     engine_crash::quitting();
+                    // stage 3 (s3-engine): every hidden chat program ends with the app.
+                    chat_engine::close_all(app);
                 }
             }
             #[cfg(target_os = "macos")]

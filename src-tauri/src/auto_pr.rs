@@ -275,7 +275,7 @@ fn upstream_rule(ctx: &Ctx) -> Option<AutoStep> {
 }
 
 /// `none` without an origin remote, `github` when origin is on github.com, else `other`.
-fn remote_kind(dir: &Path) -> &'static str {
+pub(crate) fn remote_kind(dir: &Path) -> &'static str {
     match run(&["remote", "get-url", "origin"], Some(dir)) {
         Ok(url) if !url.is_empty() => {
             if host_of(&url).is_some_and(|h| h.eq_ignore_ascii_case("github.com")) {
@@ -444,7 +444,7 @@ fn has_commit_hook(dir: &Path) -> bool {
     ["pre-commit", "prepare-commit-msg", "commit-msg", "pre-merge-commit"].iter().any(|h| dir.join(&hooks).join(h).is_file())
 }
 
-fn commit_step(dir: &Path) -> Result<AutoStep, String> {
+pub(crate) fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     let ctx = match gate(dir)? {
         Gate::Stop(s) => return Ok(s),
         Gate::Go(c) => c,
@@ -814,7 +814,7 @@ fn link_upstream(dir: &Path, branch: &str, own: &str, oid: &str) -> Result<(), S
     run(&["branch", &format!("--set-upstream-to={own}"), branch], Some(dir)).map(|_| ())
 }
 
-fn push_step(dir: &Path) -> Result<AutoStep, String> {
+pub(crate) fn push_step(dir: &Path) -> Result<AutoStep, String> {
     let ctx = match gate(dir)? {
         Gate::Stop(s) => return Ok(s),
         Gate::Go(c) => c,

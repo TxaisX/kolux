@@ -29,7 +29,7 @@ export type AutoPorts = {
   create: (dir: string, title: string, body: string, base: string, draft: boolean) => Promise<Pr>;
 };
 
-export const DEFAULT_BODY = "Draft opened by Kolux after an agent turn.";
+export const DEFAULT_BODY = "Opened by Kolux after an agent turn.";
 
 export const realAutoPorts: AutoPorts = {
   remote: (worktree) => invoke<AutoRemote>("auto_pr_remote", { worktree }),
@@ -96,7 +96,7 @@ export async function runAutoPr(dir: string, ports: AutoPorts, remote?: AutoRemo
       set({ state: "done", message: p.message || c.message || null, auto: auto("done"), skipped: [...run.skipped, "text", "open"] });
       return run;
     }
-    // Step 3: the draft pull request, on GitHub only.
+    // Step 3: the pull request (opened ready for review, not as a draft), on GitHub only.
     set({ step: "text" });
     const s = await ports.status(dir);
     const open = await ports.find(dir, s).catch((err: unknown) => {
@@ -117,7 +117,7 @@ export async function runAutoPr(dir: string, ports: AutoPorts, remote?: AutoRemo
     const body = written?.[1]?.trim() || DEFAULT_BODY;
     if (written === null) set({ skipped: [...run.skipped, "text"] });
     set({ step: "open" });
-    const pr = await ports.create(dir, title, body, base, true);
+    const pr = await ports.create(dir, title, body, base, false);
     set({ state: "done", pr, message: null, auto: auto("done") });
     return run;
   } catch (err) {
