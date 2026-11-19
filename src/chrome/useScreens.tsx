@@ -1,6 +1,6 @@
 // Which screen is up and what follows from it, moved out of App.tsx as it was (cycle 2, the App.tsx split): the
 // screen flags, worker task labels (T-050-b), the tab-name rule and its beat (STAT-035), the status clock
-// (STAT-050, `now`, no longer ticked here) and full pages (VIEW-009). Called where it sat, so the window's hook order is unchanged.
+// (STAT-050, `now`, no longer ticked here) and Settings as a full page (VIEW-009). Called where it sat, so the window's hook order is unchanged.
 import type { Pane } from "../App";
 import { programWord } from "../launch/PlusMenu";
 import { generatedOn, generatedTitle, tabText, tabTip } from "../shell/tabTitle";
@@ -8,13 +8,11 @@ import { launchedAgent, launchedName } from "../status/credit";
 import { needsBeat, statusTitle, useBeatKeys, useBeatText } from "../status/tabNameRule";
 import { tabName } from "../terminal/tabName";
 import { showScreen } from "../theme";
-import { useEscapeLeaves } from "./fullPage";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import type { WindowState } from "../shell/windowStore";
-import type { PaneActions } from "../terminal/paneActions";
 
-export function useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles }: Pick<WindowState, "classic" | "hook" | "liveIds" | "page" | "panes" | "ptys" | "screen" | "settings" | "settingsOpen" | "titles"> & Pick<PaneActions, "leavePage">) {
+export function useScreens({ classic, hook, liveIds, panes, ptys, screen, settings, settingsOpen, titles }: Pick<WindowState, "classic" | "hook" | "liveIds" | "panes" | "ptys" | "screen" | "settings" | "settingsOpen" | "titles">) {
   const terminals = screen === "terminals";
   // T-050-b: an orchestrator-started session with no name or title is named after its worker's task
   // (orchestration worker_labels, by terminal handle), looked up while
@@ -42,9 +40,8 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
   }, [terminals]);
   // STAT-050: the clock the status chips read; no screen needs it to tick now.
   const [now, setNow] = useState(Date.now());
-  // VIEW-009: a full page fills the workspace area; Show Code (view.code) and an Escape nothing else used leave it.
-  const fullPage = settingsOpen || (terminals && page !== null);
-  useEscapeLeaves(fullPage && !settingsOpen, leavePage);
+  // VIEW-009: Settings is the one full page left; it fills the workspace area.
+  const fullPage = settingsOpen;
   useEffect(() => showScreen(screen, classic), [screen, classic]); // VIEW-006: each screen's own theme
   return {
     terminals, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow,

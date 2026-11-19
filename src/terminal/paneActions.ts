@@ -25,7 +25,6 @@ import { removeShortcutAsk } from "../launch/removeAsk";
 import { emptySeat, offeredLineup, removeTarget, sheetStart, type Seat, withoutFailed } from "../launch/seats";
 import { lastStart, prefill, stripAsk, type StartSheet } from "../launch/startForm";
 import { startWatch } from "../launch/startWatch";
-import type { Page } from "../projects/ProjectsPanel";
 import { projectRows } from "./projectRows";
 import type { PaletteItem } from "../projects/WorktreePalette";
 import { folderName } from "../projects/model";
@@ -60,7 +59,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const {
     accountSwitcher, activeDir, workDir, activeTab, asking, classic, cliFailed, codex, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
     owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
-    setCreateRequest, setDeleteRequest, setFocused, setHist, setKept, setKeptSetup, setNotice, setPage, setPanes, setRunning, setScreen,
+    setCreateRequest, setDeleteRequest, setFocused, setHist, setKept, setKeptSetup, setNotice, setPanes, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
     unreadPanes, setUnreadPanes, markDir
   } = s;
@@ -261,7 +260,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setScreen("terminals");
     if (p.dir === null) setActiveDir(null);
     else if (!sameDir(p.dir, activeDir)) late.select(p.dir, null);
-    setPage(p.page as Page | null);
     return true;
   };
   // PROJ-057 / VIEW-037: the palette's rows besides worktrees and projects (the pull requests, VIEW-043, are added by the
@@ -278,10 +276,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
         dir: p.cwd ?? undefined,
         run: () => {
           setScreen("terminals");
-          if (!sameDir(viewOf(p), activeDir)) {
-            setPage(null);
-            setActiveDir(viewOf(p));
-          }
+          if (!sameDir(viewOf(p), activeDir)) setActiveDir(viewOf(p));
           setFocused(p.key);
         },
       })),
@@ -322,7 +317,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // tab; unless asked to come into view it leaves that pane's shown tab and the focus as they were.
   const keyOfHandle = (h: string) => Number(Object.keys(ptys.current).find((k) => `term-${ptys.current[Number(k)]}` === h) ?? NaN);
   const showDir = (dir: string | null) => {
-    setPage(null);
     if (dir !== null) recentDirs.current = [dir, ...recentDirs.current.filter((d) => !sameDir(d, dir))].slice(0, 20);
     setActiveDir(dir);
     setScreen("terminals");
@@ -500,7 +494,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const closePane = (key: number) => void closeTab([key]);
   const leavePage = () => {
     setSettingsOpen(false);
-    setPage(null);
     setScreen("terminals");
   };
   // EDIT-041: Open in Code goes to the Code view, the pane's workspace (its sidebar row scrolled
@@ -526,7 +519,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const openPane = (key: number) => {
     const p = panes.find((x) => x.key === key);
     if (!p) return;
-    setPage(null); // C13-R1-01: Open in Code leaves a full page (Automations, Tasks, Routing) behind
     setScreen("terminals");
     if (!sameDir(viewOf(p), activeDir)) setActiveDir(viewOf(p)); // DT-C274: the grid the pane is shown in
     setFocused(key);

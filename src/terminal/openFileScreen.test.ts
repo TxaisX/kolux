@@ -26,7 +26,7 @@ function actions() {
   const setToast = vi.fn();
   const setScreen = vi.fn();
   const setPanes = vi.fn();
-  const s = { panes: [], activeDir: "C:\\w", focused: 1, setToast, setScreen, setPanes, setPage: vi.fn(), setFocused: vi.fn() } as unknown as WindowState;
+  const s = { panes: [], activeDir: "C:\\w", focused: 1, setToast, setScreen, setPanes, setFocused: vi.fn() } as unknown as WindowState;
   return { a: paneActions(s, {} as never, {} as never, {} as WindowLate), setToast, setScreen, setPanes };
 }
 

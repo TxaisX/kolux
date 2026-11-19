@@ -27,13 +27,13 @@ import { useWindow } from "./store";
 
 export default function Grid() {
   const {
-    zoomed, classic, terminals, page, onDividerDown, onDividerMove, endDividerDrag,
+    zoomed, classic, terminals, onDividerDown, onDividerMove, endDividerDrag,
     weightsOf, shown, activeDir, addShell, addChooser, cells, activeOf, dropHint, dragging,
     setDropHint, dropTabOn, dropCellOn, pinned, tabColors, titles, renamingTab, closePane, setFocused,
     setRenamingTab, setTabMenu, liveIds, running, statusOf, unreadPanes, hook, context, settings, plan,
     accountSwitcher, labelOf, tabLabel, renamePane,
   } = useWindow();
-  const frame = gridFrame({ zoomed, classic, terminals, pageOpen: page !== null });
+  const frame = gridFrame({ zoomed, classic, terminals });
   return (
     <div
       className={frame.className}

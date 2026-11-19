@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Pane } from "../App";
-import type { Page } from "./ProjectsPanel";
 import type { PendingCreate, Project } from "./model";
 import { EMPTY_HISTORY } from "./nav";
 import { DEFAULT_PANES_FIELD, seedCount } from "../terminal/grid";
@@ -55,13 +54,12 @@ type ActionDeps = {
   setActiveDir: Dispatch<SetStateAction<string | null>>;
   nextKey: MutableRefObject<number>;
   settings: Record<string, unknown>;
-  setPage: Dispatch<SetStateAction<Page | null>>;
   owner: Record<string, string>;
   recentDirs: MutableRefObject<string[]>;
   activeRef: MutableRefObject<string | null>;
 };
 
-export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, setPage, owner, recentDirs, activeRef }: ActionDeps) {
+export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, owner, recentDirs, activeRef }: ActionDeps) {
   // T-614: the panes as last drawn, for a removal that finishes after long awaits (git takes seconds
   // on Windows) and must see the tabs as they are then, not as they were when it was clicked.
   const panesNow = useRef(panes);
@@ -75,7 +73,6 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   // DT-C274: a team worktree (an own-folder team's) is shown in its team's grid, with the pane running in it focused; a
   // chooser made for it there runs in the worktree.
   const select = (dir: string, branch: string | null, fresh = false, prefill?: StartPrefill) => {
-    setPage(null);
     // A stranded team worktree (no pane left in its team's grid) is shown as a plain workspace of its own.
     const view = selectView(settings, panes, dir);
     const at = view === undefined ? dir : view;

@@ -76,7 +76,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // The window's state and its first hooks, in their order (shell/windowStore.ts).
   const store = useWindowStore(initial, layout, late, read);
   const {
-    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, dragLeft,
+    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, dragLeft,
     panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
     needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
     markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
@@ -99,7 +99,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     activeDir, classic, dragLeft, keymap, owner, refresh, screen, setNotice, setScreen, setSettings, setSettingsAt, setSettingsOpen,
     setSidebarOpen, setToast, settings
   });
-  const { settingsRef, saveSetting } = plumb;
+  const { settingsRef } = plumb;
   // The title's waiting count, the shortcuts notice, Classic and Settings links (chrome/useWindowChrome.ts).
   const chrome = useWindowChrome({ classic, info, keymap, needs, panes, setNotice, setScreen, setSettingsAt, setSettingsOpen, statusOf });
 
@@ -131,11 +131,11 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useRenameOnFirstPrompt((key) => panes.find((p) => p.key === key)?.cwd ?? undefined, settings);
   // VIEW-093 (T-127-b): an agent tab takes its session's name (the user's own tab name still wins).
   useSessionNames(panes);
-  const workspaceActions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, setPage, owner, recentDirs, activeRef });
+  const workspaceActions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, owner, recentDirs, activeRef });
   const { select, removed } = workspaceActions;
-  // The page, screen and layout writes, and the quit question (shell/useWindowSave.ts).
+  // The screen and layout writes, and the quit question (shell/useWindowSave.ts).
   const save = useWindowSave({
-    activeDir, activeTab, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings,
+    activeDir, activeTab, focused, panes, pinned, read, running, screen, setHist, setNotice, setPanes, setScreen, setSettings,
     settings, settingsRead, settingsRef, stacked, tabColors
   });
 
@@ -153,7 +153,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useEffect(() => setHooksOn(hooksOn(settings)), [settings]);
 
   // The screen in front, tab labels, the clock and full pages (chrome/useScreens.tsx).
-  const screenState = useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles });
+  const screenState = useScreens({ classic, hook, liveIds, panes, ptys, screen, settings, settingsOpen, titles });
   const { terminals, now } = screenState;
   // The Inbox's sources and the sidebar rows' states (status/useStatusSurfaces.ts).
   const surfaces = useStatusSurfaces({ agentOf, hook, liveIds, panes, rowRef, running, settings, stamp, statusOf, titles });
@@ -177,8 +177,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const sleep = useAgentSleep({ panes, setPanes, hook, stamp, setStamp, turn, running, setRunning: store.setRunning, inView, settings, restoredKeys: tail.restoredKeys, ptys, setToast }); // TERM-123 (T-817): agent sleep, only while its switch is on
   // STAT-044 / C26-R2-01: a clicked notification takes the same jump as the rail, the Inbox and the
   // needs-you key: the pane's workspace, the Terminals screen, its tab, the sidebar row scrolled to it,
-  // and it leaves Settings or a full page first, or the window would come forward onto the page the
-  // user already had open. The jump lives in a ref because the listener's deps are the pane list.
+  // and it leaves Settings first, or the window would come forward onto the page the user already had open. The jump lives in a ref because the listener's deps are the pane list.
   const jumpToPane = useRef((key: number) => { leavePage(); openPane(key); });
   jumpToPane.current = (key) => { leavePage(); openPane(key); };
   useNotificationClick(panesRef, jumpToPane);

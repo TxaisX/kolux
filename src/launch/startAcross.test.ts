@@ -24,7 +24,7 @@ async function run() {
   let landings = 0;
   // the user opens a new Start form as soon as the first folder has landed
   const setToast = vi.fn(() => void (++landings === 1 && (state.sheet = { key: 77 })));
-  const calls = { setFocused: vi.fn(), setActiveDir: vi.fn(), setScreen: vi.fn(), setPage: vi.fn(), setNotice: vi.fn() };
+  const calls = { setFocused: vi.fn(), setActiveDir: vi.fn(), setScreen: vi.fn(), setNotice: vi.fn() };
   const s = {
     activeDir: "C:\alpha", agents: [], defaultId: null, focused: 1, nextKey: { current: 100 }, panes: [], projects, sheet: form, settings: {},
     setAgentSel: vi.fn(), setLaunching: vi.fn(), setPanes: vi.fn(), setRefresh: vi.fn(), setSettings: vi.fn(), setSheet, setTabColors: vi.fn(),
@@ -43,7 +43,6 @@ test("F3: two folders; a new form opened after the first one lands stays open, a
   expect(landings).toBe(2);
   expect(state.sheet).toEqual({ key: 77 });
   expect(calls.setScreen).toHaveBeenCalledTimes(1);
-  expect(calls.setPage).toHaveBeenCalledTimes(1);
   expect(calls.setActiveDir).toHaveBeenCalledTimes(1);
   expect(calls.setFocused).toHaveBeenCalledTimes(1);
   // every folder started: no "x of y" line

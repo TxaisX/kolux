@@ -43,8 +43,8 @@ export function paneCloseClaimed(paneId: number): boolean {
   return !window.dispatchEvent(new CustomEvent(PANE_CLOSE_EVENT, { detail: { paneId }, cancelable: true }));
 }
 
-/** UX lane C (keyboard F2): a global shortcut waits while a menu, popover or dialog is up (the same overlays as
- *  chrome/fullPage.ts), so Mod+T never opens a tab behind a question. The Settings page is a page, not an overlay, so
+/** UX lane C (keyboard F2): a global shortcut waits while a menu, popover or dialog is up, so Mod+T never opens a
+ *  tab behind a question. The Settings page is a page, not an overlay, so
  *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
  *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
 // Panels that stay on screen while the user works (an agent's question card, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an

@@ -31,7 +31,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
   const {
-    workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPage, setPanes,
+    workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPanes,
     setRefresh, setScreen, setSettings, setSheet, setToast, settings, sheet
   } = s;
   const { settingsRef } = p;
@@ -227,10 +227,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       if (!inGrid) {
         const form = o.form ?? key;
         setSheet((s) => (s?.key === form ? null : s));
-        if (!o.quiet) {
-          setScreen("terminals");
-          setPage(null);
-        }
+        if (!o.quiet) setScreen("terminals");
       }
       setToast(made.length === 1 ? "Starting 1 session" : `Starting ${made.length} sessions`);
       if (!o.quiet) {

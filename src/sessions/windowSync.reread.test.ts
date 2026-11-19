@@ -10,7 +10,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: () => (h.reads++, Promise.resol
 const { useWindowSync } = await import("./windowSync");
 
 test("a layout-only save is skipped; a screen save is read", async () => {
-  useWindowSync({ field: "lastScreen", valid: ["terminals", "board"], screen: "terminals", page: null, ready: true, onScreen: () => {} });
+  useWindowSync({ field: "lastScreen", valid: ["terminals", "board"], screen: "terminals", ready: true, onScreen: () => {} });
   await Promise.resolve();
   h.reads = 0;
   h.on!({ payload: { set: { savedLayout: { panes: [] } }, remove: [] } });
