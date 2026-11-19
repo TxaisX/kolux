@@ -370,12 +370,6 @@ pub fn run() {
             activity::start(&store);
             // ACCT-010: a key this computer can no longer open is cleared before the window asks.
             secrets::drop_unreadable(&store, &dir);
-            // Txais (2026-11-16): a start has no folders; the Start form asks what to open (keepWorkspaces: true keeps them).
-            match folder_projects::forget_all_at_start(&store) {
-                Ok(n) if n > 0 => diag::write(&dir, &format!("start: forgot {n} listed folder(s); the Start form asks what to open")),
-                Ok(_) => {}
-                Err(e) => diag::write(&dir, &format!("start: the folder list could not be cleared ({e}); it stays as it was")),
-            }
             // Txais (2026-11-17): what the last quit kept instead of merging joins the start's notice, told once.
             if let Ok(mut held) = app.state::<resources::recovery::StartupNotes>().0.lock() {
                 // A merge the last quit began and never finished is put right first (and says so).

@@ -1,6 +1,6 @@
 # Projects and folders
 
-Use the sidebar to add projects, start agents in a project's folder, and review and commit changes. Kolux does not remember folders between runs; each start asks what to open.
+Use the sidebar to add projects, start agents in a project's folder, and review and commit changes. Kolux keeps your folders between runs but not your tabs; each start asks what to open.
 
 ## The sidebar
 
@@ -78,17 +78,18 @@ The Tasks page lists the GitHub issues and pull requests of the current project.
 
 ## Quitting and reopening
 
-Kolux does not remember your folders or tabs between runs. Terminals do not keep running while Kolux is closed: quitting ends every pane and whatever runs in it. When you reopen, the Folders list is empty, no tabs are open and the Start form asks what to open (see [Getting started](getting-started.md)). Earlier output is not shown again.
+Kolux does not reopen your tabs between runs, but your folders stay listed. Terminals do not keep running while Kolux is closed: quitting ends every pane and whatever runs in it. When you reopen, the Folders list is as you left it, no tabs are open and the Start form asks what to open (see [Getting started](getting-started.md)). Earlier output is not shown again.
 
-Taking the folders out of the list at start never touches their files or their Git worktrees; add a folder again and it is as you left it on disk. A folder you add again is a new project in Kolux, so what was tied to the old one does not follow it: an automation that named the folder is skipped ("its project is no longer in Kolux") until you edit it and pick the folder again, and a lineup or group saved for the folder starts fresh. A setup script you typed for the folder is kept.
+Quitting never touches a folder's files or its Git worktrees. A folder you removed yourself is a different matter: it is a new project if you add it again, so what was tied to the old one does not follow it. An automation that named the folder is skipped ("its project is no longer in Kolux") until you edit it and pick the folder again, and a lineup or group saved for the folder starts fresh. A setup script you typed for the folder is kept.
 
 What still comes back:
 
+- your folders and their setup scripts;
 - whether the left sidebar was showing, and the right panel's tab;
 - the screen you left: Agents, Board, Terminals, the Inbox or Artifacts;
 - your settings, look and saved start shapes.
 
-To get the older behaviour back (folders stay listed and tabs reopen as plain shells), add `"keepWorkspaces": true` to `settings.json`. There is no switch for it in Settings.
+To get your tabs back as well (they reopen as plain shells), add `"keepWorkspaces": true` to `settings.json`. There is no switch for it in Settings.
 
 ### Agent sessions after a restart
 

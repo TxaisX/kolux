@@ -70,7 +70,7 @@ When you have never picked a view, Kolux opens on Terminals. After that it opens
 
 A fresh start has no terminal pane yet. The Terminals view says "Nothing running here yet." and offers two buttons: Start agents, which opens the Start form, and Open a terminal, which opens a plain shell in the project folder.
 
-Each time Kolux starts, its first window opens the Start form once. Kolux does not remember folders or tabs between runs, so the Folders list starts empty and the form asks which folders to open, how many agents and which AI. "Not now" or Escape closes it and leaves the window empty. The switch "Ask what to open when Kolux starts" in Settings, General turns the form off; Kolux then starts with an empty window.
+Each time Kolux starts, its first window opens the Start form once. Kolux does not reopen tabs between runs, but the Folders list keeps your folders, and the form asks which folders to open, how many agents and which AI. "Not now" or Escape closes it and leaves the window empty. The switch "Ask what to open when Kolux starts" in Settings, General turns the form off; Kolux then starts with an empty window.
 
 Claude Code starts on Opus at medium effort. A model and effort saved as your default in Settings replace that; a seat you change in the Start form changes only that start.
 

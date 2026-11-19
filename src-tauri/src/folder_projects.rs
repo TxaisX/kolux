@@ -135,26 +135,6 @@ pub fn remove_project(store: &Store, project_id: &str) -> Result<Project, String
     Ok(project)
 }
 
-/// Txais (2026-11-16): Kolux starts with no folders, so the Folders section is empty and the Start form asks what to open.
-/// Every listed project is taken out the way Remove takes one out (the list, the folder flag, the icon, the retired names),
-/// except that its saved setup stays: a setup script the user typed is keyed by the folder's path and is there again when the
-/// folder is added back. Its files and Git worktrees on disk are never touched. `keepWorkspaces: true` in settings.json
-/// keeps the old behaviour (the list stays). Settings or a list that cannot be read forget nothing: that is an error, not
-/// a "no". Returns how many were forgotten.
-pub fn forget_all_at_start(store: &Store) -> Result<usize, String> {
-    let settings = store.try_settings().map_err(|e| e.to_string())?;
-    if settings.get("keepWorkspaces").and_then(|v| v.as_bool()) == Some(true) {
-        return Ok(0);
-    }
-    let list = projects::load_projects_for_write(store)?;
-    for project in &list {
-        clear_traces(store, project)?;
-    }
-    let ids: Vec<String> = list.iter().map(|p| p.id.clone()).collect();
-    projects::forget_listed_keeping_setup(store, &ids)?;
-    Ok(ids.len())
-}
-
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Removed {
@@ -451,48 +431,32 @@ mod tests {
         Store::open(&base.join("db")).unwrap()
     }
 
-    /// Txais (2026-11-16): a start forgets every folder, plain or Git, with its flag and icon; the files stay, and so does a setup
-    /// script the user typed. The same folder added again afterwards is a new project (a new id).
+    /// A start forgets no folder: the store is closed and opened again the way a restart does it, and the plain and Git folders
+    /// added before are still listed, still flagged as folder projects, with the setup script the user typed. Whatever the old
+    /// `keepWorkspaces` switch says in the settings file changes nothing about the list.
     #[test]
-    fn a_start_forgets_every_listed_folder_and_what_was_kept_about_it() {
-        let base = temp("forget-all");
-        let store = store(&base);
-        let (notes, more) = (base.join("notes"), base.join("more"));
-        fs::create_dir_all(&notes).unwrap();
-        fs::create_dir_all(&more).unwrap();
-        fs::write(notes.join("a.txt"), "x").unwrap();
-        let a = add_folder(&store, &notes).unwrap();
-        let b = add_folder(&store, &more).unwrap();
-        assert_eq!(projects::load_projects(&store).len(), 2);
-        // a setup script the user typed for a folder is keyed by its path and is not the list's to destroy
-        let setups = serde_json::json!({ projects::name_key(&a.path): "npm ci" }).to_string();
-        store.set("localSetups", &setups).unwrap();
-        assert_eq!(forget_all_at_start(&store).unwrap(), 2);
-        assert_eq!(store.get("localSetups").unwrap().as_deref(), Some(setups.as_str()), "the typed setup script stays");
-        assert!(projects::load_projects(&store).is_empty(), "the Folders list is empty");
-        assert!(!is_folder(&store, &a.id) && !is_folder(&store, &b.id), "the folder flags are gone");
-        assert!(notes.join("a.txt").exists(), "files are never touched");
-        assert_eq!(forget_all_at_start(&store).unwrap(), 0, "a second start has nothing to forget");
-        // asking again for the same folder works from the empty list
-        let again = add_folder(&store, &notes).unwrap();
-        assert_eq!(projects::load_projects(&store).len(), 1);
-        assert!(is_folder(&store, &again.id));
-        let _ = fs::remove_dir_all(&base);
-    }
-
-    /// `keepWorkspaces: true` keeps the list; any other value forgets it.
-    #[test]
-    fn keep_workspaces_true_keeps_the_folders() {
-        let base = temp("forget-keep");
-        let store = store(&base);
+    fn a_folder_project_is_still_listed_after_a_restart() {
+        let base = temp("restart-keeps");
         let notes = base.join("notes");
         fs::create_dir_all(&notes).unwrap();
-        add_folder(&store, &notes).unwrap();
-        store.save_settings(&serde_json::json!({ "keepWorkspaces": true })).unwrap();
-        assert_eq!(forget_all_at_start(&store).unwrap(), 0);
-        assert_eq!(projects::load_projects(&store).len(), 1, "kept");
-        store.save_settings(&serde_json::json!({ "keepWorkspaces": false })).unwrap();
-        assert_eq!(forget_all_at_start(&store).unwrap(), 1, "anything but true forgets");
+        fs::write(notes.join("a.txt"), "x").unwrap();
+        let (a_id, a_path, setups) = {
+            let store = store(&base);
+            let a = add_folder(&store, &notes).unwrap();
+            let setups = serde_json::json!({ projects::name_key(&a.path): "npm ci" }).to_string();
+            store.set("localSetups", &setups).unwrap();
+            (a.id, a.path, setups)
+        };
+        for settings in [serde_json::json!({}), serde_json::json!({ "keepWorkspaces": false }), serde_json::json!({ "keepWorkspaces": true })] {
+            let store = store(&base); // the process start: the store opens on the profile it saved before
+            store.save_settings(&settings).unwrap();
+            let listed = projects::load_projects(&store);
+            assert_eq!(listed.len(), 1, "{settings}: the folder is still listed");
+            assert_eq!((listed[0].id.as_str(), listed[0].path.as_str()), (a_id.as_str(), a_path.as_str()), "{settings}");
+            assert!(is_folder(&store, &a_id), "{settings}: still a folder project");
+            assert_eq!(store.get("localSetups").unwrap().as_deref(), Some(setups.as_str()), "{settings}: the typed setup script stays");
+        }
+        assert!(notes.join("a.txt").exists(), "files are never touched");
         let _ = fs::remove_dir_all(&base);
     }
 

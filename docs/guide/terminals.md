@@ -43,7 +43,7 @@ Every pane has a header. Left to right it shows:
 | Program word | The program and its model |
 | Status word | Working, Needs you, Done and so on. See [Board, Agents and Inbox](board-agents-inbox.md) |
 | Approve / Deny | Shown in an agent pane while its agent asks permission to use a tool, and only when the agent's status hooks reported that request and named the tool. Approve answers yes in that agent, Deny answers no. Once you click one, or type a key into the pane that reaches the program, both buttons go away and come back for the agent's next request. If the request has already gone, nothing is sent and the header says "The prompt has gone; nothing was sent". Shell panes never show them |
-| "restored" mark | The pane came back after a restart. A key press or click clears it. Only seen with `"keepWorkspaces": true` in settings.json; by default a start restores no tabs |
+| "restored" mark | The pane came back after a restart. A key press or click clears it. Only seen with `"keepWorkspaces": true` in settings.json; by default a start restores no tabs (folders stay listed either way) |
 | Crew label | For example "2 agents, 1 waiting", when an agent has helpers |
 | Age | "just now", then "5m ago", after a turn finishes |
 

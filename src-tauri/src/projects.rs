@@ -157,17 +157,6 @@ pub(crate) fn save_projects(store: &Store, projects: &[Project]) -> Result<(), S
 /// PROJ-015: takes projects out of Kolux's list; their folders on disk are not touched. The rest
 /// of removing a project (PROJ-008) is `folder_projects::project_remove`.
 pub(crate) fn forget_projects(store: &Store, ids: &[String]) -> Result<(), String> {
-    forget_listed(store, ids, true)
-}
-
-/// Txais (2026-11-16): what a start does with every listed folder. The list entry, icon and folder flag go; the saved setup
-/// (a setup script the user typed, its policy and wait choice) stays: it is keyed by the folder's path, so it is there again
-/// when the folder is added back, and a start must not destroy what the user wrote.
-pub(crate) fn forget_listed_keeping_setup(store: &Store, ids: &[String]) -> Result<(), String> {
-    forget_listed(store, ids, false)
-}
-
-fn forget_listed(store: &Store, ids: &[String], prune_setup: bool) -> Result<(), String> {
     if ids.is_empty() {
         return Ok(());
     }
@@ -187,9 +176,7 @@ fn forget_listed(store: &Store, ids: &[String], prune_setup: bool) -> Result<(),
     // PROJ-005: a folder project's flag goes with it.
     writes.extend(crate::folder_projects::unflag_write(store, ids)?);
     // PROJ-035: and so do its dismissed setup card and its saved local setup.
-    if prune_setup {
-        writes.extend(crate::setup::prune_setup_writes(store, ids, &gone)?);
-    }
+    writes.extend(crate::setup::prune_setup_writes(store, ids, &gone)?);
     let pairs: Vec<(&str, &str)> = writes.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
     store.set_all(&pairs).map_err(|e| e.to_string())
 }
