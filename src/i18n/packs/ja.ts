@@ -20,8 +20,6 @@ const pack = {
   "glossary.cli.hover": "この PC 上にある AI 専用のプログラム（CLI）",
   "glossary.pty.plain": "ターミナル",
   "glossary.pty.hover": "ターミナル（PTY、つまり疑似端末）",
-  "inbox.bell.needs.one": "受信トレイ、{count} 件があなたを待っています",
-  "inbox.bell.needs.many": "受信トレイ、{count} 件があなたを待っています",
   "connect.claude": "「接続」を押すと、ブラウザーで Claude のサインインページが一度開き、1 年間有効なキーが保存されます。",
   "connect.codex": "「接続」を押すと、Kolux 専用の Codex ホームに ChatGPT アカウントが追加されます。お使いの Codex フォルダはそのまま変わりません。",
   "onboarding.connect.wait": "続けるには上で AI をつなぐか、「あとで行う」を選んでください。",

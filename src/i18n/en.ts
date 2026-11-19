@@ -18,8 +18,6 @@ export const EN = {
   "glossary.cli.hover": "The AI's own program on this PC (its CLI)",
   "glossary.pty.plain": "terminal",
   "glossary.pty.hover": "A terminal (a PTY, or pseudo-terminal)",
-  "inbox.bell.needs.one": "Inbox, {count} needs you",
-  "inbox.bell.needs.many": "Inbox, {count} need you",
   "connect.claude": "Connect opens Claude's sign-in page in your browser once and keeps a key that lasts a year.",
   "connect.codex": "Connect adds a ChatGPT account in a Codex home of Kolux's own; your Codex folder stays as it is.",
   "onboarding.connect.wait": "Connect an AI above to continue, or choose “I’ll do this later”.",
