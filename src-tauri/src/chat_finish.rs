@@ -52,12 +52,14 @@ pub(crate) struct Tools<'a> {
     pub git: &'a Git,
     pub data_dir: &'a Path,
     pub gh: Option<&'a Path>,
+    /// Tests only: the remote is a folder on this computer standing in for GitHub.
+    pub remote_is_github: bool,
 }
 
 /// Ends a chat whose work lives in `worktree_dir` on `branch` (see the module note).
 pub fn chat_finish(git: &Git, data_dir: &Path, project_dir: &Path, worktree_dir: &Path, branch: &str, auto_merge: bool, kept_files_dir: &Path) -> Vec<Announcement> {
     let gh = scm::gh_program().ok();
-    chat_finish_with(&Tools { git, data_dir, gh: gh.as_deref() }, project_dir, worktree_dir, branch, auto_merge, kept_files_dir)
+    chat_finish_with(&Tools { git, data_dir, gh: gh.as_deref(), remote_is_github: false }, project_dir, worktree_dir, branch, auto_merge, kept_files_dir)
 }
 
 /// `chat_finish` with the programs handed in, so a test can stand a gh in.
@@ -76,7 +78,10 @@ pub(crate) fn chat_finish_with(tools: &Tools, project_dir: &Path, worktree_dir: 
         let why = if committed.files.is_empty() { committed.message.clone() } else { format!("{} Files: {}.", committed.message, committed.files.join(", ")) };
         return vec![Announcement::Blocked { reason: why }];
     }
-    let kind = auto_pr::remote_kind(wt);
+    let kind = match auto_pr::remote_kind(wt) {
+        "other" if tools.remote_is_github => "github",
+        k => k,
+    };
     let has_remote = kind != "none";
     let target = target_branch(project_dir, has_remote);
     let ahead = target.as_deref().map(|t| ahead_of(wt, branch, t, has_remote)).unwrap_or(1);
@@ -457,4 +462,4 @@ fn first_line(e: &str) -> String {
 
 #[cfg(test)]
 #[path = "chat_finish_tests.rs"]
-mod tests;
+pub(crate) mod tests;

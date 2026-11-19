@@ -206,3 +206,7 @@ fn read_visibility(text: &str, fallback_url: &str) -> Badge {
         _ => Badge::SignInNeeded,
     }
 }
+
+#[cfg(test)]
+#[path = "project_new_tests.rs"]
+mod tests;
