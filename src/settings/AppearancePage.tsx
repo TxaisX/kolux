@@ -506,7 +506,7 @@ function TerminalColours({ look, onChange }: { look: Appearance; onChange: (a: A
   );
 }
 
-/** USAGE-025: how plan usage percentages read. Only the Agents screen's usage footer follows it. */
+/** USAGE-025: how usage percentages read. A pane header's context reading follows it (the Agents screen it also set went on 2026-11-19). */
 export function UsagePercentPick({ value, onPick }: { value: PercentMode; onPick: (v: PercentMode) => void }) {
   return (
     <>
@@ -517,7 +517,7 @@ export function UsagePercentPick({ value, onPick }: { value: PercentMode; onPick
           <option value="remaining">Remaining</option>
         </select>
       </div>
-      <p className="conn-detail">How the Agents screen's usage footer reads plan use; the top bar always shows what is left.</p>
+      <p className="conn-detail">How a pane header's context reading counts; the top bar always shows what is left.</p>
     </>
   );
 }
