@@ -173,7 +173,7 @@ fn stat008_box2_a_codex_command_needs_you_and_kolux_never_answers_the_approval()
     let change = codex_change(&ev(body)).unwrap();
     assert_eq!((change.state, change.tool.as_deref()), ("permission", Some("shell")));
     // the hook's reply is "no opinion": no allow, no deny, so Codex asks the user itself
-    let reply: Value = serde_json::from_str(&reply_body("/codex", body.as_bytes(), &json!({}))).unwrap();
+    let reply: Value = serde_json::from_str(&reply_body()).unwrap();
     assert_eq!(reply, json!({}));
 }
 

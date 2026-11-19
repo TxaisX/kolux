@@ -428,10 +428,10 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
     (200, crate::status::report(pane_key, terminal, agent, &event))
 }
 
-/// What the hook prints back to the agent: `{}`, no opinion, so the agent's own permission flow
-/// carries on and Kolux never blocks by itself (the protected-action asks of SAFE-009 and the other
-/// agents' hook answers were retired in slim-down wave B).
-pub fn reply_body(_path: &str, _body: &[u8], _settings: &Value) -> String {
+/// What the hook prints back to the agent, whatever it sent: `{}`, no opinion, so the agent's own
+/// permission flow carries on and Kolux never blocks by itself (the protected-action asks of SAFE-009
+/// and the other agents' hook answers were retired in slim-down wave B).
+pub fn reply_body() -> String {
     "{}".into()
 }
 
@@ -686,12 +686,10 @@ enum After {
 /// T-583: keeps the status machine's order and the window's order identical across connection threads (see handle).
 static ORDER: Mutex<()> = Mutex::new(());
 
-/// T-583: what each hook connection is given besides its stream. Only `settings` is read before the reply, and it never
-/// waits on the store; `raise` and `after` only hand things on.
+/// T-583: what each hook connection is given besides its stream. `raise` and `after` only hand things on, so nothing
+/// here waits on the store.
 struct Line {
     token: String,
-    /// The settings handed to `reply_body` (SAFE-009's protected-command answer read them; nothing does now).
-    settings: Box<dyn Fn() -> Arc<Value> + Send + Sync>,
     /// The window hears a status before its reply goes, under ORDER, so a pane's events reach it in the order the
     /// status machine stepped them.
     raise: Box<dyn Fn(&crate::status::Status) + Send + Sync>,
@@ -712,17 +710,6 @@ impl Read for Within<'_> {
         let mut stream = self.0;
         stream.read(buf)
     }
-}
-
-/// T-583: the settings handed to `reply_body`. Read fresh whenever the store is free; while slow work holds the store,
-/// the last read stands in.
-fn settings_now(store: Option<&Mutex<crate::state::Store>>, last: &Mutex<Arc<Value>>) -> Arc<Value> {
-    let fresh = store.and_then(|s| s.try_lock().ok().map(|s| s.settings()));
-    let mut last = last.lock().unwrap_or_else(PoisonError::into_inner);
-    if let Some(fresh) = fresh {
-        *last = Arc::new(fresh);
-    }
-    last.clone()
 }
 
 /// T-583: one thread that runs `run` on every job in the order the jobs were handed over. In debug builds a job that
@@ -787,11 +774,11 @@ fn accept(listener: TcpListener, line: Arc<Line>) {
     }
 }
 
-/// One hook connection (T-583): its request is read within READ_WITHIN of `accepted`; the reply comes from the request,
-/// the status machine and the settings snapshot alone; the work that may wait goes to `line.after` first.
+/// One hook connection (T-583): its request is read within READ_WITHIN of `accepted`; the reply comes from the request
+/// and the status machine alone; the work that may wait goes to `line.after` first.
 fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
     let mut reader = BufReader::new(Within(stream, accepted + READ_WITHIN));
-    let mut body = String::from("{}");
+    let mut body = reply_body();
     let code = match parse_request(&mut reader) {
         Some(req) if gate(&req, &line.token).is_some() => 404,
         Some(req) if req.path == "/claude-status" => match usage(&req, &line.token) {
@@ -805,8 +792,7 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
             let req = Arc::new(req);
             // T-583: one thread per connection, so a pane's step in the status machine, its emit and its queued
             // after-work are taken under one lock: the window and saved::note hear the steps in the machine's order.
-            // Only those three quick steps sit under it; the reply body is worked out after, so it holds up its own
-            // connection only.
+            // Only those three quick steps sit under it.
             let code = {
                 let _order = ORDER.lock().unwrap_or_else(PoisonError::into_inner);
                 let (code, status) = answer(&req, &line.token);
@@ -816,10 +802,6 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
                 }
                 code
             };
-            if code == 200 {
-                // The settings as last read, fresh whenever the store is free.
-                body = reply_body(&req.path, &req.body, &(line.settings)());
-            }
             code
         }
         None => 400,
@@ -900,12 +882,9 @@ pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     // A crash leaves the last run's per-pane files; their tokens mean nothing to this run.
     remove_endpoint_files(data_dir);
     std::fs::write(&endpoint, format!("{port} {NO_TOKEN}\n")).map_err(|e| e.to_string())?;
-    // T-583: the settings are read once before any hook, so not even the first answer waits on the store.
-    let last = Mutex::new(app.try_state::<Mutex<crate::state::Store>>().and_then(|s| s.lock().ok().map(|s| Arc::new(s.settings()))).unwrap_or_default());
-    let (read, raise) = (app.clone(), app.clone());
+    let raise = app.clone();
     let line = Line {
         token: token.clone(),
-        settings: Box::new(move || settings_now(read.try_state::<Mutex<crate::state::Store>>().as_deref(), &last)),
         raise: Box::new(move |status| drop(raise.emit(EVENT, status))),
         after: Box::new(queue(move |job| after_reply(&app, job))),
     };
@@ -1788,7 +1767,7 @@ mod tests {
         let count = Arc::clone(&raised);
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let line = Line { token: "tok".into(), settings: Box::new(|| Arc::new(json!({}))), raise: Box::new(move |_| { count.fetch_add(1, Ordering::SeqCst); }), after: Box::new(|_| {}) };
+        let line = Line { token: "tok".into(), raise: Box::new(move |_| { count.fetch_add(1, Ordering::SeqCst); }), after: Box::new(|_| {}) };
         std::thread::spawn(move || accept(listener, Arc::new(line)));
         let send = |token: Option<&str>, id: &str| {
             let event = r#"{"hook_event_name":"UserPromptSubmit","prompt":"go","session_id":"t793"}"#;
@@ -1964,17 +1943,10 @@ Content-Length: {}
     }
 
     /// Every Claude and Codex hook, a shell command that once asked (SAFE-009, retired) and a garbled
-    /// body included, gets the neutral `{}` so the agent carries on.
+    /// body included, gets the neutral `{}` so the agent carries on (the line tests below send them).
     #[test]
     fn a_claude_or_codex_hook_is_answered_with_the_neutral_reply() {
-        let s = json!({});
-        let pre = |tool: &str, cmd: &str| format!(r#"{{"hook_event_name":"PreToolUse","tool_name":"{tool}","tool_input":{{"command":"{cmd}"}}}}"#);
-        assert_eq!(reply_body("/claude", pre("Bash", "git push --force origin main").as_bytes(), &s), "{}");
-        assert_eq!(reply_body("/claude", pre("PowerShell", "git reset --hard").as_bytes(), &s), "{}");
-        assert_eq!(reply_body("/claude", pre("Bash", "git status").as_bytes(), &s), "{}");
-        assert_eq!(reply_body("/claude", br#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"git push -f"}}"#, &s), "{}");
-        assert_eq!(reply_body("/claude", b"not json {", &s), "{}", "a garbled body fails open");
-        assert_eq!(reply_body("/codex", pre("Bash", "git push -f").as_bytes(), &s), "{}");
+        assert_eq!(reply_body(), "{}");
         // The Claude script prints the answer for Claude to read; Codex's still discards it.
         assert!(claude_script().contains("%KP%/claude\" 2>NUL") && !claude_script().contains("-o NUL"));
         assert!(codex_script().contains("-o NUL"));
@@ -2467,10 +2439,10 @@ Content-Length: {}
     // ---- T-583: the hook line never blocks (R02-hooks-status.3, audit item 6) ----
 
     /// The real accept loop, request reading and reply on a loopback port, with the app's parts stood in.
-    fn line_with(settings: impl Fn() -> Arc<Value> + Send + Sync + 'static, after: impl Fn(After) + Send + Sync + 'static) -> u16 {
+    fn line_with(after: impl Fn(After) + Send + Sync + 'static) -> u16 {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let line = Line { token: "tok".into(), settings: Box::new(settings), raise: Box::new(|_| {}), after: Box::new(after) };
+        let line = Line { token: "tok".into(), raise: Box::new(|_| {}), after: Box::new(after) };
         std::thread::spawn(move || accept(listener, Arc::new(line)));
         port
     }
@@ -2498,7 +2470,7 @@ Content-Length: {}
 
     #[test]
     fn t583_a_hook_is_answered_inside_its_limit_while_other_connections_send_nothing() {
-        let port = line_with(|| Arc::new(json!({})), |_| {});
+        let port = line_with(|_| {});
         // One local client connects and says nothing; another starts a request and stalls mid-header.
         let _silent = TcpStream::connect(("127.0.0.1", port)).unwrap();
         let mut stalled = TcpStream::connect(("127.0.0.1", port)).unwrap();
@@ -2511,7 +2483,7 @@ Content-Length: {}
     #[test]
     fn t583_a_client_that_trickles_bytes_is_cut_off_at_the_deadline_not_held_forever() {
         use std::io::Read as _;
-        let port = line_with(|| Arc::new(json!({})), |_| {});
+        let port = line_with(|_| {});
         let mut slow = TcpStream::connect(("127.0.0.1", port)).unwrap();
         slow.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
         // A byte every 300 ms for 12 s: every single read is quick, the request never ends.
@@ -2549,7 +2521,7 @@ Content-Length: {}
             let _ = started.send(());
             let _ = held.recv_timeout(Duration::from_secs(30));
         });
-        let port = line_with(|| Arc::new(json!({})), after);
+        let port = line_with(after);
         assert!(hook(port, 58_302, r#"{"hook_event_name":"UserPromptSubmit","prompt":"run the tests","session_id":"t583"}"#).1 < LIMIT);
         let (_, took) = hook(port, 58_302, r#"{"hook_event_name":"Stop","session_id":"t583"}"#);
         assert!(took < LIMIT, "the finish itself is answered at once ({took:?})");
@@ -2560,38 +2532,9 @@ Content-Length: {}
     }
 
     #[test]
-    fn t583_a_huge_command_whose_reply_is_still_being_worked_out_holds_up_no_other_pane() {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        let (checking, begun) = std::sync::mpsc::channel::<()>();
-        let (release, held) = std::sync::mpsc::channel::<()>();
-        let (checking, held) = (Mutex::new(checking), Mutex::new(held));
-        let first = AtomicBool::new(true);
-        // The first reply's work (its settings read) stands still until released; under the round-1 ORDER lock every
-        // other pane's hook queued behind it.
-        let port = line_with(
-            move || {
-                if first.swap(false, Ordering::SeqCst) {
-                    let _ = checking.lock().unwrap().send(());
-                    let _ = held.lock().unwrap().recv_timeout(Duration::from_secs(30));
-                }
-                Arc::new(json!({}))
-            },
-            |_| {},
-        );
-        let huge = std::thread::spawn(move || hook(port, 58_305, &shell(&format!("git push --force origin main {}", "x".repeat(2 << 20)))));
-        begun.recv_timeout(Duration::from_secs(10)).expect("the huge command reached its reply");
-        let (_, took) = hook(port, 58_306, r#"{"hook_event_name":"UserPromptSubmit","prompt":"go","session_id":"t583b"}"#);
-        assert!(took < LIMIT, "another pane's status answered after {took:?}");
-        let (body, took) = hook(port, 58_307, &shell("git push --force origin main"));
-        assert!(took < LIMIT && body == "{}", "another pane's command: {took:?} {body}");
-        let _ = release.send(());
-        assert_eq!(huge.join().unwrap().0, "{}", "the huge command is still answered");
-    }
-
-    #[test]
     fn t583_with_the_cap_reached_a_new_connection_is_closed_at_once_and_the_line_keeps_accepting() {
         use std::io::Read as _;
-        let port = line_with(|| Arc::new(json!({})), |_| {});
+        let port = line_with(|_| {});
         // MAX_IN_FLIGHT clients that connect and say nothing: each holds its handler for up to READ_WITHIN.
         let silent: Vec<TcpStream> = (0..MAX_IN_FLIGHT).map(|_| TcpStream::connect(("127.0.0.1", port)).unwrap()).collect();
         std::thread::sleep(Duration::from_millis(300));
@@ -2625,23 +2568,6 @@ Content-Length: {}
         assert_eq!(heard.recv_timeout(Duration::from_secs(5)), Ok(3), "and the one after it, in order");
     }
 
-    #[test]
-    fn t583_the_settings_are_read_fresh_while_the_store_is_free_and_the_last_read_stands_in_while_it_is_held() {
-        use crate::state::Store;
-        let dir = std::env::temp_dir().join(format!("kolux-hooks-t583-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let store = Mutex::new(Store::open(&dir).unwrap());
-        store.lock().unwrap().save_settings(&json!({ "language": "fr" })).unwrap();
-        let last = Mutex::new(Arc::new(Value::Null));
-        assert_eq!(settings_now(Some(&store), &last)["language"], "fr", "read while the store is free");
-        // Slow work (a git scan for every project, say) holds the store: the last read stands in, without waiting.
-        let held = store.lock().unwrap();
-        let started = Instant::now();
-        assert_eq!(settings_now(Some(&store), &last)["language"], "fr", "the last read stands in");
-        assert!(started.elapsed() < LIMIT);
-        drop(held);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
 
     #[test]
     fn b20_a_broken_codex_config_line_is_named_by_number_never_quoted() {
