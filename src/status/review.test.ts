@@ -1,4 +1,4 @@
-// T-609 (brief "Path to an A", Phase 0): "Review changes" on a Board Done card and on an Inbox row opens
+// T-609 (brief "Path to an A", Phase 0): "Review changes" on a Done card opens
 // the existing review of that pane's worktree: its All Changes tab (EDIT-029), no new screen.
 import { createElement, type ReactElement } from "react";
 import { renderToString } from "react-dom/server";
@@ -6,8 +6,6 @@ import { expect, test } from "vitest";
 import { ChipRow } from "./ChipRow";
 import { canReview, reviewTab } from "./review";
 import { chipOf, type Chip } from "./chip";
-import { detailActions } from "../inbox/InboxView";
-import { inboxItems, sourceOf, type Item } from "../inbox/inbox";
 
 const now = 1_000_000;
 const chip = (state: "done" | "working" | "permission" | "blocked"): Chip => chipOf({ agent: "claude", state, running: true, stale: false, since: now - 60_000, tool: "Bash", reply: "All tests pass" }, now)!;
@@ -44,23 +42,6 @@ test("T-609: a Done card offers Review changes; a working, waiting or stopped ca
   expect(opened).toEqual(["review"]);
 });
 
-test("T-609: an Inbox row that is done offers Review changes beside Open in Code; a row that needs you or is running does not", () => {
-  const src = (key: number, state: "done" | "permission" | "working") => sourceOf({ key, agent: "claude", branch: "feat", cwd: `G:/repo/w${key}` }, `Claude ${key}`, state, true, { at: now - 60_000, interrupted: false });
-  const items = inboxItems([src(1, "done"), src(2, "permission"), src(3, "working")], now);
-  const of = (key: number) => items.find((i) => i.key === key) as Item;
-  const reviewed: number[] = [];
-  const actions = (key: number) => buttons(detailActions({ item: of(key), onOpen: () => {}, onReview: () => reviewed.push(key) })).map((b) => b.text);
-  expect(actions(1)).toEqual(["Open in Code", "Review changes"]);
-  expect(actions(2)).toEqual(["Answer in Code"]);
-  expect(actions(3)).toEqual(["Open in Code"]);
-  expect(renderToString(detailActions({ item: of(1), onOpen: () => {}, onReview: () => {} }))).toContain(">Review changes<");
-  buttons(detailActions({ item: of(1), onOpen: () => {}, onReview: () => reviewed.push(1) })).find((b) => b.text === "Review changes")!.click();
-  expect(reviewed).toEqual([1]);
-  // A row with no workspace folder has nothing to review.
-  const loose = inboxItems([sourceOf({ key: 9, agent: "claude", branch: null, cwd: null }, "Claude 9", "done", true, { at: now - 60_000, interrupted: false })], now)[0];
-  expect(buttons(detailActions({ item: loose, onOpen: () => {}, onReview: () => {} })).map((b) => b.text)).toEqual(["Open in Code"]);
-});
-
 test("T-609: the one rule: only finished work is offered for review", () => {
   expect(canReview("done")).toBe(true);
   for (const l of ["needs", "working", "stopped", "idle", "waiting"]) expect(canReview(l)).toBe(false);
@@ -84,12 +65,6 @@ test("T-609: Review changes opens that pane's worktree in All Changes, in the pa
   expect(reviewTab([{ key: 6, cwd: "G:/a", branch: null }, { key: 7, cwd: "G:/b", branch: null, kind: "changes", group: 6 }], 6)).toEqual({ open: { cwd: "G:/a", branch: null, group: 6 } });
 });
 
-test("DT-C52 / T-609: an Inbox row Stopped because its program exited offers Review changes once its worktree holds changes", () => {
-  const [row] = inboxItems([sourceOf({ key: 4, agent: "claude", branch: "feat", cwd: "G:/repo/w4" }, "Claude 4", undefined, false, { at: now - 60_000, interrupted: false })], now);
-  expect(row.group).toBe("stopped");
-  const actions = (changed: number | null) => buttons(detailActions({ item: row, onOpen: () => {}, onReview: () => {}, changed })).map((b) => b.text);
-  expect(actions(3)).toEqual(["Open in Code", "Review changes"]);
-  expect(actions(0), "a clean worktree has nothing to review").toEqual(["Open in Code"]);
-  expect(actions(null), "not read yet").toEqual(["Open in Code"]);
-  expect([canReview("stopped", 2), canReview("stopped"), canReview("done"), canReview("needs", 5)]).toEqual([true, false, true, false]);
+test("DT-C52 / T-609: a stopped card offers Review changes once its worktree holds changes, and only then", () => {
+  expect([canReview("stopped", 2), canReview("stopped"), canReview("stopped", 0), canReview("done"), canReview("needs", 5)]).toEqual([true, false, false, true, false]);
 });
