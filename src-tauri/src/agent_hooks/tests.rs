@@ -37,14 +37,7 @@ fn stat_004_hooks_go_only_to_found_agents_and_leave_switched_off_ones() {
     let ids = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
     // The status hooks switch is on (T-152-gate: it reads off until saved on).
     let none = json!({ "agentStatusHooks": true });
-    assert_eq!(plan(&none, &ids(&["claude"]), true)[..2], [("claude", Plan::Install), ("codex", Plan::Leave)], "only Claude Code installed: only it gains hooks");
-    assert_eq!(plan(&none, &ids(&["gemini", "amp"]), true)[2..5], [("gemini", Plan::Install), ("antigravity", Plan::Leave), ("amp", Plan::Install)], "T-120-b: the vendors follow the same rule");
-    assert_eq!(plan(&none, &ids(&["cursor", "kimi"]), true)[5..9], [("cursor", Plan::Install), ("droid", Plan::Leave), ("kimi", Plan::Install), ("copilot", Plan::Leave)], "T-121: and Cursor, Droid and Kimi too");
-    assert_eq!(plan(&none, &ids(&["copilot"]), true)[8], ("copilot", Plan::Install), "T-122: and Copilot CLI");
-    assert_eq!(plan(&none, &ids(&["grok", "devin"]), true)[9..11], [("grok", Plan::Install), ("devin", Plan::Install)], "T-122: and Grok and Devin");
-    assert_eq!(plan(&none, &ids(&["pi"]), true)[11..12], [("pi", Plan::Install)], "T-122: and Pi (STAT-021)");
-    assert_eq!(plan(&none, &ids(&["hermes"]), true)[12..13], [("hermes", Plan::Install)], "T-121: and Hermes (STAT-016)");
-    assert_eq!(plan(&none, &ids(&["command-code"]), true)[13..], [("command-code", Plan::Install)], "STAT-014: and Command Code");
+    assert_eq!(plan(&none, &ids(&["claude", "gemini"]), true), [("claude", Plan::Install), ("codex", Plan::Leave)], "only Claude Code installed: only it gains hooks, and no other agent is managed");
     let off = json!({ "agentStatusHooks": true, "disabledAgents": ["codex"] });
     assert_eq!(plan(&off, &ids(&["claude", "codex"]), true)[..2], [("claude", Plan::Install), ("codex", Plan::Remove)], "a switched-off agent has its hooks taken out");
     assert_eq!(plan(&off, &[], false)[..2], [("claude", Plan::Leave), ("codex", Plan::Remove)], "detection failed: nothing installed, nothing removed for being unfound");
@@ -2105,7 +2098,7 @@ fn fix_5_codex_a_failed_trust_write_keeps_its_own_error_when_the_rollback_fails_
     let _ = fs::remove_dir_all(&dir);
 }
 
-/// T-134-b (CLI-040 rest, COMPAT 3.4): `kolux agent hooks off` runs `clear`, which takes Kolux's
+/// T-134-b (CLI-040 rest, COMPAT 3.4): switching the hooks off runs `clear`, which takes Kolux's
 /// own entries out of every managed agent's file and nothing else. This drives the same remove
 /// path `clear` takes, agent by agent, on scratch files that hold the user's own entries beside
 /// Kolux's: afterwards each file is byte for byte the user's again, a sibling file of the user's
@@ -2155,45 +2148,6 @@ fn t_134_b_off_takes_only_kolux_out_of_every_agents_file_and_nothing_else() {
     fs::write(&codex_plain, codex_plain_user).unwrap();
     assert_eq!(managed_codex_homes(&profile).len(), 2, "both account homes are the profile's managed Codex homes");
 
-    // Gemini CLI: the user's theme and his own BeforeTool hook, plus a sibling file of his.
-    let gemini = vendors::gemini_file(&home);
-    fs::create_dir_all(gemini.parent().unwrap()).unwrap();
-    let gemini_user = "{\n  \"theme\": \"dark\",\n  \"hooks\": {\n    \"BeforeTool\": [{ \"matcher\": \"write_file\", \"hooks\": [{ \"type\": \"command\", \"command\": \"my-check\" }] }]\n  }\n}\n";
-    fs::write(&gemini, gemini_user).unwrap();
-    let gemini_sibling = gemini.with_file_name("GEMINI.md");
-    fs::write(&gemini_sibling, "# mine\n").unwrap();
-    assert_eq!(apply(&home, &profile, &Value::Null, "gemini", Plan::Install), Ok("installed"));
-    show("gemini", "before off", &gemini);
-
-    // Antigravity: a bundle of the user's own beside Kolux's.
-    let antigravity = vendors::antigravity_file(&home);
-    fs::create_dir_all(antigravity.parent().unwrap()).unwrap();
-    let antigravity_user = "{\n  \"my-bundle\": {\n    \"Stop\": [{ \"type\": \"command\", \"command\": \"my-stop.cmd\" }]\n  }\n}\n";
-    fs::write(&antigravity, antigravity_user).unwrap();
-    assert_eq!(apply(&home, &profile, &Value::Null, "antigravity", Plan::Install), Ok("installed"));
-    assert!(read(&antigravity).contains(vendors::NAME) && read(&antigravity).contains("my-stop.cmd"));
-    show("antigravity", "before off", &antigravity);
-
-    // Amp: Kolux's plugin file beside a plugin of the user's.
-    let amp = vendors::amp_file(&home);
-    fs::create_dir_all(amp.parent().unwrap()).unwrap();
-    let amp_sibling = amp.with_file_name("mine.js");
-    fs::write(&amp_sibling, "export default () => {}\n").unwrap();
-    assert_eq!(apply(&home, &profile, &Value::Null, "amp", Plan::Install), Ok("installed"));
-    assert!(amp.exists());
-    show("amp", "before off", &amp);
-    assert!(vendors::rows(&home).iter().all(|r| r["state"] == "installed"), "{:?}", vendors::rows(&home));
-
-    // Command Code: the user's own Stop hook and setting in its settings.json; Kolux's groups go in beside them.
-    let command_code = more::command_code_file(&home);
-    fs::create_dir_all(command_code.parent().unwrap()).unwrap();
-    let command_code_user = "{\n  \"theme\": \"dark\",\n  \"hooks\": {\n    \"Stop\": [{ \"hooks\": [{ \"type\": \"command\", \"command\": \"./done.sh\" }] }]\n  }\n}\n";
-    fs::write(&command_code, command_code_user).unwrap();
-    assert_eq!(apply(&home, &profile, &Value::Null, "command-code", Plan::Install), Ok("installed"));
-    assert_eq!(more::inspect_command_code(&command_code).0, "installed");
-    assert_ne!(read(&command_code), command_code_user, "Kolux's groups went in");
-    show("command-code", "before off", &command_code);
-
     // A Claude settings file that never held Kolux's entries: off must not write it at all.
     let plain = dir.join("plain").join("settings.json");
     fs::create_dir_all(plain.parent().unwrap()).unwrap();
@@ -2206,16 +2160,12 @@ fn t_134_b_off_takes_only_kolux_out_of_every_agents_file_and_nothing_else() {
     for id in MANAGED {
         let out = match id {
             "claude" => with_claude_config(claude.parent().unwrap(), || apply(&home, &profile, &Value::Null, id, Plan::Remove)),
-            "codex" | "gemini" | "antigravity" | "amp" | "command-code" => apply(&home, &profile, &Value::Null, id, Plan::Remove),
-            other => {
-                println!("{other} is managed but has no off-path proof in this test yet (hooks FIX-2 follow-up: add its file above)");
-                continue;
-            }
+            _ => apply(&home, &profile, &Value::Null, id, Plan::Remove),
         };
         assert_eq!(out, Ok("removed"), "{id}");
     }
     assert_eq!(remove_claude(&plain, &target_dir(&home, &plain).join(STATUS_PREV)), Ok(false));
-    for (agent, file) in [("claude", &claude), ("codex", &codex), ("codex (never Kolux's)", &codex_plain), ("gemini", &gemini), ("antigravity", &antigravity)] {
+    for (agent, file) in [("claude", &claude), ("codex", &codex), ("codex (never Kolux's)", &codex_plain)] {
         show(agent, "after off", file);
     }
 
@@ -2224,31 +2174,18 @@ fn t_134_b_off_takes_only_kolux_out_of_every_agents_file_and_nothing_else() {
     assert_eq!(read(&codex), codex_user, "Codex: the user's hooks.json back exactly");
     assert_eq!(read(&codex_plain), codex_plain_user, "Codex: an account home that never held Kolux's hooks is left as it was");
     assert!(!backup_of(&codex_plain).exists(), "and no copy of it was made");
-    assert_eq!(read(&gemini), gemini_user, "Gemini CLI: the user's settings back exactly");
-    assert_eq!(read(&gemini_sibling), "# mine\n", "a sibling file of the user's untouched");
-    assert_eq!(read(&antigravity), antigravity_user, "Antigravity: the user's bundle back exactly");
-    assert!(!amp.exists(), "Amp: Kolux's plugin file is gone");
-    assert_eq!(read(&amp_sibling), "export default () => {}\n", "the user's own plugin untouched");
-    assert_eq!(read(&command_code), command_code_user, "Command Code: the user's settings back exactly");
     assert_eq!(read(&plain), plain_user, "a file without Kolux's entries is left as it was");
     assert!(!backup_of(&plain).exists(), "and no copy of it was made");
     assert!(!claude_prev.exists() && !claude_prev.with_extension("json").exists(), "the status line slot is cleared");
 
-    // What `kolux agent hooks status` reads afterwards.
+    // What the install check reads afterwards.
     assert_eq!(switch::inspect(&claude, &CLAUDE_EVENTS).0, "not installed");
     assert_eq!(switch::inspect(&codex, &CODEX_EVENTS).0, "not installed");
-    let rows = vendors::rows(&home);
-    assert!(rows.iter().all(|r| r["state"] == "not installed"), "{rows:?}");
-    println!("status after off: claude not installed, codex not installed, {}", rows.iter().map(|r| format!("{} {}", r["agent"].as_str().unwrap(), r["state"].as_str().unwrap())).collect::<Vec<_>>().join(", "));
 
     // A second off finds nothing of Kolux's and writes nothing.
     assert_eq!(remove_claude(&claude, &claude_prev), Ok(false));
     assert_eq!(remove_codex(&codex_home), Ok(false));
-    assert_eq!(vendors::remove_hooks(&home, &gemini), Ok(false));
-    assert_eq!(vendors::remove_antigravity(&home, &antigravity), Ok(false));
-    assert_eq!(vendors::remove_amp(&amp), Ok(false));
-    assert_eq!(more::remove_command_code(&home, &command_code), Ok(false));
-    assert_eq!((read(&claude), read(&codex), read(&gemini), read(&antigravity)), (shaped(), codex_user.into(), gemini_user.into(), antigravity_user.into()));
+    assert_eq!((read(&claude), read(&codex)), (shaped(), codex_user.into()));
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -2609,7 +2546,7 @@ fn row_989_an_account_folder_removed_after_the_list_was_made_is_not_recreated() 
     let _ = fs::remove_dir_all(&dir);
 }
 
-// Row 989 round-2 (coordinator): hooks off (`clear`, what `kolux agent hooks off` runs) on the user's own
+// Row 989 round-2 (coordinator): hooks off (`clear`, what switching the hooks off runs) on the user's own
 // CLAUDE_CONFIG_DIR takes out Kolux's entries and nothing else. `clear_in` is `clear` over a scratch home.
 #[test]
 fn row_989_hooks_off_leaves_the_users_own_config_dir_as_it_was() {

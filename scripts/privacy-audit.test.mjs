@@ -54,9 +54,7 @@ const PINNED = {
   // labels.rs holds exactly one connect, behind the loopback guard in target_of; a second one fails the audit.
   "src-tauri/src/labels.rs": [[TCP_CONNECT_ALL, 1]],
 };
-const EXACT = {
-  "src-tauri/src/agent_hooks/vendors.rs": /\bfetch\(`http:\/\/127\.0\.0\.1:\$\{port\}\/amp`/g, // the Amp status plugin posting to Kolux on 127.0.0.1
-};
+const EXACT = {};
 
 const count = (text, what) => (typeof what === "string" ? text.split(what).length - 1 : (text.match(what) ?? []).length);
 // Rust tests sit at the end of each file in its `#[cfg(test)] mod tests`; a client used only there is

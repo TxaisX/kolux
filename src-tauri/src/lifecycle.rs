@@ -815,14 +815,14 @@ mod tests {
         assert!(crate::quit_merge::HARD_CAP <= Duration::from_secs(30), "the cap stays modest: {:?}", crate::quit_merge::HARD_CAP);
     }
 
-    /// APP-050 box 2 (row 979): sleep + log wait + teardown margin fit the quit deadline, and a normal quit (grok hooks, final save, WebView2 wait) finishes first.
+    /// APP-050 box 2 (row 979): sleep + log wait + teardown margin fit the quit deadline, and a normal quit (final save, WebView2 wait) finishes first.
     #[test]
     fn app050b2_the_watchdog_sleep_leaves_room_for_the_log_wait_and_teardown_inside_the_quit_deadline() {
         let sleep = watchdog_sleep(quit_deadline());
         assert!(sleep + WATCHDOG_LOG_WAIT + EXIT_MARGIN <= quit_deadline(), "sleep {sleep:?} + log wait + margin overshoots {:?}", quit_deadline());
         // Row 1014: the update's service stop and the time the installer needs to start are part of a normal quit.
         const INSTALLER_START: Duration = Duration::from_secs(1);
-        let normal_quit = crate::hooks::agent_hooks::more::grok::QUIT_LIMIT + final_save::QUIT_DEADLINE + crate::tools::WEBVIEW_EXIT_WAIT + crate::terminal::UPDATE_STOP_LIMIT + INSTALLER_START;
+        let normal_quit = final_save::QUIT_DEADLINE + crate::tools::WEBVIEW_EXIT_WAIT + crate::terminal::UPDATE_STOP_LIMIT + INSTALLER_START;
         assert!(sleep >= normal_quit, "watchdog sleep {sleep:?} fires before a normal quit ({normal_quit:?}) can finish");
     }
 

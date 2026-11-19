@@ -1,7 +1,6 @@
 //! S9: fuzz-style property tests for the hook event parsers, the secret maskers and the terminal
 //! escape-sequence parsers. Test-only; a seeded xorshift generator, 100k cases per property.
 //! A failure prints `seed=... case=...`; the same seed and case rebuild the same input.
-use crate::hooks::agent_hooks::more::{normalize_with, Memory};
 use crate::hooks::{self, Request};
 use serde_json::{json, Value};
 use std::cell::{Cell, RefCell};
@@ -407,10 +406,6 @@ fn s9_hook_event_json_never_panics() {
             }
             if b.as_ref().map(|c| serde_json::to_string(c).unwrap()) != b2.as_ref().map(|c| serde_json::to_string(c).unwrap()) {
                 return Err("codex_change is not deterministic".into());
-            }
-            let mut mem = Memory::default();
-            for route in ["/cursor/preToolUse", "/droid/PreToolUse", "/kimi/Stop", "/copilot/userPromptSubmitted", "/grok/Stop", "/devin", "/pi/agent_end", "/hermes", "/gemini", "/amp", "/antigravity/PreToolUse"] {
-                let _ = normalize_with(&mut mem, route, &v);
             }
             Ok(())
         },
@@ -1180,7 +1175,6 @@ fn s9_hook_hostile_size_time() {
             if let Ok(v) = serde_json::from_slice::<Value>(body) {
                 let _ = hooks::claude_change(&v);
                 let _ = hooks::codex_change(&v);
-                let _ = normalize_with(&mut Memory::default(), "/droid/PreToolUse", &v);
             }
             let req = request_with("/claude", body.clone(), "e30=".into());
             let _ = hooks::usage(&req, "tok");

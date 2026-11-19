@@ -3,13 +3,7 @@
 //! guides bundled into this build, so they always match its version.
 
 use super::{commands, Fail, Parsed, HELP};
-use crate::hooks::agent_hooks::switch;
 use serde_json::{json, Value};
-
-/// The settings of the Kolux profile this command reaches; none read as empty.
-fn profile_settings() -> Value {
-    std::fs::read(super::data_dir().join("settings.json")).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_else(|| json!({}))
-}
 
 /// CLI-001: every bundled guide and reference by name, so a test can check what they mention.
 #[cfg(test)]
@@ -396,11 +390,6 @@ pub fn run(p: &Parsed) -> Option<Result<Value, Fail>> {
         "skills.get" => skills_get(&p.args),
         "skills.coverage" => Ok(skills_coverage()),
         "skills.install" | "skills.update" => skills_install(p),
-        // STAT-003: read from the files themselves, so Kolux may be closed.
-        "agent.hooks.status" => Ok(switch::report(&profile_settings())),
-        "agent.hooks.on" => switch::set(&super::data_dir(), true).map_err(Fail::from),
-        "agent.hooks.off" => switch::set(&super::data_dir(), false).map_err(Fail::from),
-        "agent.hooks.prepare-codex" => switch::prepare_codex(&profile_settings()).map_err(Fail::from),
         "profile.migrate" => crate::import::migrate_check(&super::data_dir()).map_err(Fail::from),
         _ => return None,
     })

@@ -81,8 +81,6 @@ pub static LIMIT_RESETS_AT: AtomicI64 = AtomicI64::new(0);
 pub enum Agent {
     Claude,
     Codex,
-    /// T-120-b: Gemini CLI, Antigravity or Amp, its event already normalized; hook semantics unverified.
-    Vendor,
 }
 
 /// A sub-agent or teammate under a lead session.
@@ -359,7 +357,6 @@ impl Session {
                 let change = match agent {
                     Agent::Claude => claude_change(&strip_agent(event)),
                     Agent::Codex => codex_change(&strip_agent(event)),
-                    Agent::Vendor => None,
                 }?;
                 match name {
                     "PermissionRequest" => {
@@ -435,7 +432,6 @@ impl Session {
         let mut change = match agent {
             Agent::Claude => claude_change(event),
             Agent::Codex => codex_change(event),
-            Agent::Vendor => crate::hooks::agent_hooks::more::change(event).unwrap_or_else(|| crate::hooks::agent_hooks::vendors::change(event)),
         }?;
         let before = self.resolved();
         if change.boundary {
@@ -584,7 +580,7 @@ impl Session {
             _ if event.get("is_interrupt").and_then(Value::as_bool) == Some(true) => false,
             // VIEW-025 b4: the tool a Deny refused never counts, whenever its Post lands (the 2 s tick may not have run).
             Agent::Claude => name == "Stop" || (matches!(name, "PreToolUse" | "PostToolUse" | "PostToolUseFailure") && str_of(event, "tool_use_id").is_some_and(|id| name == "PreToolUse" || (!self.denied.iter().any(|d| d == id) && (self.past_grace() || !self.killed.iter().any(|k| k == id))))),
-            Agent::Codex | Agent::Vendor => self.fresh_tool(name, event),
+            Agent::Codex => self.fresh_tool(name, event),
         }
     }
 
@@ -772,14 +768,13 @@ impl Session {
 
 /// VIEW-025: the keys that answer an approval at the agent's own prompt. Claude Code's dialog
 /// takes Enter for its first option (Yes) and Esc for No; Codex's approval modal takes y and n.
-/// T-151-c: no other agent's keys are guessed; a vendor agent has none.
+/// T-151-c: no other agent's keys are guessed.
 pub fn answer_keys(agent: Agent, approve: bool) -> Option<&'static str> {
     match (agent, approve) {
         (Agent::Claude, true) => Some("\r"),
         (Agent::Claude, false) => Some("\x1b"),
         (Agent::Codex, true) => Some("y"),
         (Agent::Codex, false) => Some("n"),
-        (Agent::Vendor, _) => None,
     }
 }
 
@@ -1143,8 +1138,6 @@ mod tests {
         assert_eq!(s.history.back().map(|e| e.state), Some("working"));
         assert_eq!((answer_keys(Agent::Claude, true), answer_keys(Agent::Claude, false)), (Some("\r"), Some("\x1b")));
         assert_eq!((answer_keys(Agent::Codex, true), answer_keys(Agent::Codex, false)), (Some("y"), Some("n")));
-        // T-151-c: a vendor agent's keys are never guessed.
-        assert_eq!((answer_keys(Agent::Vendor, true), answer_keys(Agent::Vendor, false)), (None, None));
     }
 
     #[test]

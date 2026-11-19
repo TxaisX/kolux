@@ -1078,11 +1078,6 @@ pub fn run() {
                 // the deadline leaves, so a stalled profile drive caps the wait and never freezes the
                 // quit. Settings need no step: every change is already on disk (APP-048).
                 final_save::begin();
-                // T-122 (STAT-018): Grok's Kolux-written hook file goes, unless another running
-                // Kolux owns it; the removal is cut short after grok::QUIT_LIMIT.
-                if let Ok(dir) = app.path().app_data_dir() {
-                    hooks::agent_hooks::more::grok::at_quit(&dir);
-                }
                 // T-182 (APP-011): the same steps make the save point a restart waits for.
                 let report = final_save::run(final_save::QUIT_DEADLINE, lifecycle::quit_steps(app));
                 if let Ok(dir) = app.path().app_data_dir() {
