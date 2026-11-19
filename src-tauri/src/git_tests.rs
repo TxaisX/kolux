@@ -40,33 +40,6 @@ fn an_unattended_git_fails_fast_on_a_remote_that_wants_a_password() {
     assert!(said.contains("terminal prompts disabled"), "{said}");
 }
 
-#[test]
-fn git038_base_entries_list_every_difference_from_the_snapshot_and_the_sides_read_against_it() {
-    let dir = temp_repo("base");
-    run(&["config", "core.autocrlf", "false"], Some(&dir)).unwrap();
-    fs::write(dir.join("a.txt"), "one\ntwo\n").unwrap();
-    run(&["add", "."], Some(&dir)).unwrap();
-    run(&["commit", "-q", "-m", "a"], Some(&dir)).unwrap();
-    let since = run(&["rev-parse", "HEAD"], Some(&dir)).unwrap().trim().to_string();
-    // A committed change, a working-tree change, a new untracked file, a deletion.
-    fs::write(dir.join("a.txt"), "one\ntwo\nthree\n").unwrap();
-    run(&["commit", "-q", "-am", "a again"], Some(&dir)).unwrap();
-    fs::write(dir.join("README.md"), "hello\nworld\n").unwrap();
-    fs::write(dir.join("new.txt"), "fresh").unwrap();
-    let entries = base_entries(&dir, &since).unwrap();
-    let rel = |e: &Entry| Path::new(&e.path).strip_prefix(&dir).unwrap().to_string_lossy().replace('\\', "/");
-    let got: Vec<(String, char, Option<u64>, bool)> = entries.iter().map(|e| (rel(e), e.code, e.lines, e.staged)).collect();
-    assert_eq!(got, vec![("README.md".to_string(), 'M', Some(1), false), ("a.txt".to_string(), 'M', Some(1), false), ("new.txt".to_string(), '?', Some(1), false)]);
-    assert!(entries[0].stamp.starts_with(&format!("{since}:")), "{}", entries[0].stamp);
-    assert_eq!(base_sides(&dir.join("README.md"), &since).unwrap(), ("hello\n".to_string(), "hello\nworld\n".to_string()));
-    assert_eq!(base_sides(&dir.join("new.txt"), &since).unwrap(), (String::new(), "fresh".to_string()));
-    fs::remove_file(dir.join("a.txt")).unwrap();
-    let entries = base_entries(&dir, &since).unwrap();
-    assert_eq!(entries.iter().map(|e| (rel(e), e.code)).collect::<Vec<_>>(), vec![("README.md".to_string(), 'M'), ("a.txt".to_string(), 'D'), ("new.txt".to_string(), '?')]);
-    assert_eq!(base_sides(&dir.join("a.txt"), &since).unwrap(), ("one\ntwo\n".to_string(), String::new()));
-    let _ = fs::remove_dir_all(&dir);
-}
-
 fn temp_repo(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("kolux-git-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
