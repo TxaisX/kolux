@@ -74,8 +74,8 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const store = useWindowStore(initial, layout, late, read);
   const {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, dragLeft,
-    panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
-    needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
+    panes, setPanes, focused, setFocused, activeTab, setActiveTab, activeDir, setActiveDir, running, reviewing, accountSwitcher,
+    needs, hook, setHook, stamp, setStamp, turn, setTurn, setStale, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
     markDir, rowRef, ptys, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
     setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, installedIds, owner, refresh, recentDirs, activeRef,
     setHist, stacked, setNotice, setToast
@@ -147,17 +147,14 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
 
   // The screen in front, tab labels, the clock and full pages (chrome/useScreens.tsx).
   const screenState = useScreens({ classic, hook, liveIds, panes, screen, settings, settingsOpen, titles });
-  const { terminals, now } = screenState;
+  const { terminals } = screenState;
   // The Inbox's sources and the sidebar rows' states (status/useStatusSurfaces.ts).
   const surfaces = useStatusSurfaces({ agentOf, hook, liveIds, panes, rowRef, running, settings, stamp, statusOf, titles });
   // The grid's cells, weights, dividers and the needs strip (terminal/paneGrid.ts).
   const grid = paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, setFocused, setPanes, setWeights, settings, stacked, statusOf, terminals, weights, zoom });
   const { cells, activeOf } = grid;
-  // The Agents rail and the pane chips (agents/useRailAndTower.ts).
-  const rail = useRailAndTower({
-    accountSwitcher, agentOf, agentSel, agents, context, now, panes, plan, running, settings,
-    stale, stamp, statusOf, turn
-  });
+  // The saved agent names on panes and the other accounts' usage figures (agents/useRailAndTower.ts).
+  const rail = useRailAndTower({ accountSwitcher, agents, panes });
   // Answers, the plan sheet and review notes (terminal/reviewActions.ts).
   const reviewA = reviewActions(state, w);
   const reviewPane = reviewing && panes.find((p) => p.key === reviewing.key);
