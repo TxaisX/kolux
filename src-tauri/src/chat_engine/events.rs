@@ -14,6 +14,9 @@ use serde::Serialize;
 use serde_json::Value;
 
 /// One event of one chat, sent to the page as the `chat-event` Tauri event (with the chat's id).
+// Events live for one line: read, sent to the page, dropped. Boxing the big variants would
+// only cost an allocation per line, so the size gap is accepted.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ChatEvent {
@@ -131,6 +134,9 @@ pub struct McpServerError {
 }
 
 /// One content block of an assistant message.
+// Events live for one line: read, sent to the page, dropped. Boxing the big variants would
+// only cost an allocation per line, so the size gap is accepted.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum Block {
