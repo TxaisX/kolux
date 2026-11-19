@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createSeenReader, integrationSteps, readSeen, restale, SEEN_FRESH_MS, taskSourceOf, taskSummary, UNSEEN, type Row, type Seen } from "./integrations";
+import { createSeenReader, integrationSteps, readSeen, SEEN_FRESH_MS, taskSourceOf, type Row, type Seen } from "./integrations";
 
 const seen = (o: Partial<Seen>): Seen => ({ account: "octo", token: "ok", tracker: "ok", ...o });
+const UNSEEN: Seen = { account: null, token: "pending", tracker: "pending" };
 
 describe("Connect integrations (ONB-018)", () => {
   it("nothing connected: review active, tasks waiting", () => {
@@ -10,11 +11,9 @@ describe("Connect integrations (ONB-018)", () => {
     expect(s.reviewNote).toMatch(/not connected/);
     expect(integrationSteps({ account: null, token: "ok", tracker: "ok" }).review).toBe("active");
   });
-  it("connect GitHub: both steps done and GitHub named in the summary", () => {
+  it("connect GitHub: both steps done and GitHub named as the source", () => {
     const s = integrationSteps(seen({}));
     expect([s.review, s.tasks, s.source]).toEqual(["done", "done", "GitHub"]);
-    expect(taskSummary(s, "octo")).toBe("Tasks come from GitHub (octo)");
-    expect(taskSummary(integrationSteps(UNSEEN), null)).toBeNull();
   });
   it("a cached sign-in is not connected while its check is stale, pending or failed", () => {
     for (const token of ["stale", "pending", "failed"] as const) {
@@ -30,11 +29,6 @@ describe("Connect integrations (ONB-018)", () => {
     expect([failed.review, failed.tasks]).toEqual(["done", "active"]);
     expect(failed.tasksNote).toMatch(/did not answer/);
     expect(integrationSteps(seen({ token: "failed", tracker: "ok" })).tasks).toBe("waiting");
-  });
-  it("Re-check makes every earlier answer stale until the new one lands", () => {
-    expect(restale(seen({}))).toEqual({ account: "octo", token: "stale", tracker: "stale" });
-    expect(integrationSteps(restale(seen({}))).review).toBe("active");
-    expect(restale(UNSEEN)).toEqual(UNSEEN);
   });
 });
 
@@ -128,7 +122,7 @@ describe("Connect integrations against a stand-in gh (ONB-018)", () => {
     expect(taskSourceOf(null)).toBeNull();
     // a cached sign-in alone, or an answer from before a Re-check, is not connected
     expect(taskSourceOf({ account: "octo", token: "pending", tracker: "pending" })).toBe(false);
-    expect(taskSourceOf(restale(seen({})))).toBe(false);
+    expect(taskSourceOf(seen({ token: "stale", tracker: "stale" }))).toBe(false);
   });
 });
 

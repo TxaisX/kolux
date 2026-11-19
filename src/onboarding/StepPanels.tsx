@@ -19,7 +19,6 @@ import { awakeToggle, stopCard, writerBack } from "./stopCards";
 import { UsageStop } from "./LiveStopCards";
 import { AWAKE_KEY, HOOKS_OFF_STOP } from "../launch/KeepAwakeCard";
 import { WRITER_INSTRUCTIONS_KEY, WRITER_KEY } from "../scm/generate";
-import { integrationSteps, readSeenCached, restale, taskSummary, UNSEEN, type Seen } from "./integrations";
 import { frontProjectPath } from "../projects/frontRow";
 import { WindowStore } from "../shell/window/store";
 
@@ -228,52 +227,6 @@ export function AgentPanel() {
           {open && <div role="radiogroup" aria-label="Fallback agents">{p.fallback.map(row)}</div>}
         </>
       )}
-    </>
-  );
-}
-
-/** ONB-018: Connect integrations. Two steps, review first; the task step waits behind it (folded, but
- *  openable) and folds into a one-line summary once GitHub answers. Re-check makes the old answers stale. */
-export function IntegrationsPanel({ onCheck }: { onCheck: () => void }) {
-  const [seen, setSeen] = useState<Seen>(UNSEEN);
-  const [looked, setLooked] = useState(false);
-  const turn = useRef(0);
-  const check = (again: boolean) => {
-    const mine = ++turn.current;
-    if (again) setSeen(restale);
-    // Opening the step is answered from the one-minute memory; Re-check asks gh again.
-    readSeenCached(invoke, { force: again }).then((x) => {
-      if (mine !== turn.current) return; // a newer check began: this answer is stale
-      setSeen(x);
-      setLooked(true);
-      if (again) onCheck();
-    });
-  };
-  useEffect(() => {
-    check(false);
-    return () => void (turn.current += 1);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const s = integrationSteps(seen);
-  return (
-    <>
-      <section aria-label="Connect a code host for review" data-state={s.review}>
-        <p className="guide-group">1. Connect GitHub for review {s.review === "done" && <span className="mark ok">Connected{seen.account ? ` as ${seen.account}` : ""}</span>}</p>
-        {s.review !== "done" && <p className="guide-note">{looked ? s.reviewNote : "Checking the GitHub sign-in..."}</p>}
-        {s.review !== "done" && <ConnectGithub onExit={() => check(true)} />}
-      </section>
-      {s.tasks === "done" ? (
-        <p className="guide-note" data-state="done">{taskSummary(s, seen.account)}</p>
-      ) : (
-        <details data-state={s.tasks} open={s.tasks === "active"}>
-          <summary>2. Choose where tasks come from</summary>
-          <p className="guide-note">{s.tasks === "waiting" ? "Connect GitHub for review first; tasks come from the same sign-in." : s.tasksNote}</p>
-        </details>
-      )}
-      <div className="btn-row">
-        <button className="btn" onClick={() => check(true)}>
-          Re-check
-        </button>
-      </div>
     </>
   );
 }
