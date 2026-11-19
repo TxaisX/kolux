@@ -1848,41 +1848,6 @@ fn hide_userinfo(text: &str) -> String {
     out
 }
 
-/// One changed file on one side of the index (EDIT-027): `code` is git's status letter.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
-pub struct Change {
-    pub path: String,
-    pub staged: bool,
-    pub code: char,
-    /// P2: the old path of a staged rename or copy (code `R` or `C`), as full as `path`; left out otherwise.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<String>,
-}
-
-/// Parses `git status --porcelain=v1 -z`. A file with staged and unstaged changes gives two
-/// entries; an untracked file is an unstaged one with code `?`.
-pub fn parse_status(text: &str, worktree: &Path) -> Vec<Change> {
-    let mut list = Vec::new();
-    let mut parts = text.split('\0');
-    while let Some(entry) = parts.next() {
-        let b = entry.as_bytes();
-        if b.len() < 4 {
-            continue;
-        }
-        let (x, y) = (b[0] as char, b[1] as char);
-        // the old name follows a rename or a copy
-        let from = if x == 'R' || x == 'C' { parts.next().map(|old| worktree.join(native(old)).to_string_lossy().into_owned()) } else { None };
-        let path = worktree.join(native(&entry[3..])).to_string_lossy().into_owned();
-        if !matches!(x, ' ' | '?' | '!') {
-            list.push(Change { path: path.clone(), staged: true, code: x, from });
-        }
-        if !matches!(y, ' ' | '!') {
-            list.push(Change { path, staged: false, code: y, from: None });
-        }
-    }
-    list
-}
-
 /// Git's own path spelling (forward slashes, no `\\?\` prefix) turned back into a native path.
 pub(crate) fn native(path: &str) -> String {
     if cfg!(windows) {
@@ -2171,75 +2136,10 @@ impl Git {
         run(&["branch", "-m", old, new], Some(repo)).map(|_| ())
     }
 
-    /// The worktree's markdown files, tracked and untracked, as full paths (EDIT-012). Git leaves
-    /// out ignored files and never walks into a symlinked folder; the list stops at `cap`, and the
-    /// flag says it did.
-    pub fn markdown_files(&self, worktree: &Path, cap: usize) -> Result<(Vec<String>, bool), String> {
-        let text = run(&["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--deduplicate", "--", "*.md", "*.markdown"], Some(worktree))?;
-        let mut names: Vec<&str> = text.split('\0').filter(|n| !n.is_empty()).collect();
-        names.sort_unstable();
-        let capped = names.len() > cap;
-        Ok((names.into_iter().take(cap).map(|n| worktree.join(native(n)).to_string_lossy().into_owned()).collect(), capped))
-    }
-
     /// Every file git knows in the worktree, tracked and untracked but not ignored, NUL-separated
     /// and relative to it: Quick Open's list when ripgrep is missing (EDIT-036).
     pub fn listed_files(&self, worktree: &Path) -> Result<String, String> {
         output(&["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--deduplicate"], Some(worktree)).map(|o| String::from_utf8_lossy(&o).into_owned())
-    }
-
-    /// The worktree's changed files, staged and unstaged, for the diff picker (EDIT-027).
-    /// Renames only, never a copy, as `scm.rs` `read_status` (F98-01).
-    pub fn changes(&self, worktree: &Path) -> Result<Vec<Change>, String> {
-        let out = output(&["-c", "status.renames=true", "status", "--porcelain=v1", "-z", "--untracked-files=all"], Some(worktree))?;
-        Ok(parse_status(&String::from_utf8_lossy(&out), worktree))
-    }
-
-    /// The two texts of a file's diff (EDIT-027): unstaged compares the index with the working
-    /// file, staged compares HEAD with the index. Git's checkout filters are applied, so line ends
-    /// match the working file. A side the file is not on (new, deleted, untracked) is empty.
-    pub fn diff_sides(&self, file: &Path, staged: bool) -> Result<(String, String), String> {
-        let (old, new) = self.diff_bytes(file, staged)?;
-        let text = |b: Vec<u8>| String::from_utf8(b).map_err(|_| format!("{} is not UTF-8 text", file.display()));
-        Ok((text(old)?, text(new)?))
-    }
-
-    /// The same two sides as bytes, for images in All Changes (EDIT-029).
-    pub fn diff_bytes(&self, file: &Path, staged: bool) -> Result<(Vec<u8>, Vec<u8>), String> {
-        let dir = file.parent().filter(|d| !d.as_os_str().is_empty()).ok_or_else(|| format!("{} is not a file path", file.display()))?;
-        let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        // ponytail: any failure to read a side counts as "not there"; tell the two apart if a real error ever hides behind it
-        let show = |rev: &str| output(&["cat-file", "--filters", &format!("{rev}:./{name}")], Some(dir)).unwrap_or_default();
-        let index = show("");
-        if staged {
-            return Ok((show("HEAD"), index));
-        }
-        let work = match std::fs::read(file) {
-            Ok(b) => b,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
-            Err(e) => return Err(format!("{}: {e}", file.display())),
-        };
-        Ok((index, work))
-    }
-
-    /// Every change of the worktree with its size and identity, for All Changes (EDIT-029).
-    pub fn change_entries(&self, worktree: &Path) -> Result<Vec<Entry>, String> {
-        let changes = self.changes(worktree)?;
-        let (staged, unstaged) = (diff_stats(worktree, true)?, diff_stats(worktree, false)?);
-        Ok(changes
-            .into_iter()
-            .map(|c| {
-                let rel = Path::new(&c.path).strip_prefix(worktree).map(|r| r.to_string_lossy().replace('\\', "/")).unwrap_or_default();
-                let disk = std::fs::metadata(&c.path).ok().map(|m| format!("{}-{:?}", m.len(), m.modified().ok())).unwrap_or_default();
-                if c.code == '?' {
-                    let (lines, binary) = whole_file(&c.path);
-                    return Entry { path: c.path, staged: false, code: c.code, lines, binary, stamp: disk, from: None };
-                }
-                let s = (if c.staged { &staged } else { &unstaged }).get(&rel).cloned().unwrap_or_default();
-                let stamp = if c.staged { s.ids } else { format!("{}|{disk}", s.ids) };
-                Entry { path: c.path, staged: c.staged, code: c.code, lines: s.lines, binary: s.binary, stamp, from: c.from }
-            })
-            .collect())
     }
 }
 
@@ -2271,11 +2171,6 @@ impl Default for Stat {
     fn default() -> Self {
         Stat { lines: None, binary: false, ids: String::new(), code: 'M' }
     }
-}
-
-/// `git diff [--cached] --numstat` and `--raw` by path (relative to the top, with forward slashes).
-fn diff_stats(worktree: &Path, cached: bool) -> Result<std::collections::HashMap<String, Stat>, String> {
-    diff_stats_with(worktree, if cached { &["--cached"] } else { &[] })
 }
 
 /// GIT-038 (T-033-c): every file that differs between the commit `since` (the base's snapshot)

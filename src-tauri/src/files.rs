@@ -1,10 +1,9 @@
-// Reading and saving the text of a file shown in an editor tab (EDIT-001, EDIT-046). A save goes
-// to a temporary file beside the target, is flushed to disk and is then moved over it, so a save
-// that fails or is cut off never leaves a half-written file behind. A read has an upper bound and
-// samples the start of a file before treating it as text. Every command here takes only paths
-// inside the user's projects and worktrees (ACCT-055, fence.rs); EDIT-045's `links::fence` guards
-// the file operations and `path_kind` (inside a project or granted exactly, never out through a
-// link); the WSL and share parts of EDIT-045 are T-062.
+// Reading and saving a text file (EDIT-046). A save goes to a temporary file beside the target, is
+// flushed to disk and is then moved over it, so a save that fails or is cut off never leaves a
+// half-written file behind. A read has an upper bound and samples the start of a file before
+// treating it as text. Every command here takes only paths inside the user's projects and
+// worktrees (ACCT-055, fence.rs); EDIT-045's `links::fence` guards `path_kind` (inside a project or
+// granted exactly, never out through a link); the WSL and share parts of EDIT-045 are T-062.
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -134,189 +133,9 @@ fn clear_stale_copies(dir: &Path, prefix: &str) {
 type Store<'a> = tauri::State<'a, std::sync::Mutex<crate::state::Store>>;
 type Grants<'a> = tauri::State<'a, crate::links::Grants>;
 
-/// SAFE-021 / EDIT-045: a path on another machine, outside the projects, or leading out through a
-/// link is refused before the file is touched.
-// T-442-c: async, because fence.allow can ask git for every project's worktrees (a path outside
-// the project roots, such as a Kolux worktree, on a cold 3 s cache) and that must never hold up typing.
-#[tauri::command(async)]
-pub fn file_read(path: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<String, String> {
-    read_text(&fence.allow(&path, &store, &git, true)?)
-}
-
-/// T-235-b (EDIT-029, EDIT-009): the most a bytes read hands to the window (a picture for the image
-/// viewer or a note). Coordinator default: same ceiling as the text read; Txais may overrule.
-pub const BYTES_MAX: u64 = 32 * 1024 * 1024;
-/// T-234-b (EDIT-009): the most one pasted or inserted picture may weigh when it is saved into a
-/// worktree. Coordinator default; Txais may overrule.
-pub const PICTURE_SAVE_MAX: usize = 16 * 1024 * 1024;
-/// The file endings a picture may be saved under: this command writes pictures, not arbitrary files.
-const PICTURE_EXT: [&str; 6] = ["png", "jpg", "jpeg", "gif", "webp", "bmp"];
-
-/// The whole file as bytes, refused past `max` before it is read.
-pub fn read_bytes_up_to(path: &Path, max: u64) -> Result<Vec<u8>, String> {
-    let io = |e: std::io::Error| format!("{}: {e}", path.display());
-    let f = fs::File::open(path).map_err(io)?;
-    let meta = f.metadata().map_err(io)?;
-    if !meta.is_file() {
-        return Err(format!("{} is not a file", path.display()));
-    }
-    if meta.len() > max {
-        return Err(format!("{} is too large to load ({} MB; up to {} MB)", path.display(), meta.len().div_ceil(1024 * 1024), max / (1024 * 1024)));
-    }
-    let mut bytes = Vec::with_capacity(meta.len() as usize);
-    // take(max + 1): a file that grew after the size check still cannot pass the bound.
-    f.take(max + 1).read_to_end(&mut bytes).map_err(io)?;
-    if bytes.len() as u64 > max {
-        return Err(format!("{} is too large to load (up to {} MB)", path.display(), max / (1024 * 1024)));
-    }
-    Ok(bytes)
-}
-
-/// T-235-b: a file's bytes for the image viewer and for pictures in notes, same fence as `file_read`.
-#[tauri::command(async)]
-pub fn file_bytes(path: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<tauri::ipc::Response, String> {
-    read_bytes_up_to(&fence.allow(&path, &store, &git, true)?, BYTES_MAX).map(tauri::ipc::Response::new)
-}
-
-/// Saves a picture as a NEW file: refused when the ending is not a picture's, when it is empty or
-/// over `max`, or when a file of that name exists (a paste never overwrites). The folder must exist.
-/// A write that fails part-way leaves no file behind.
-pub fn write_new_picture(path: &Path, bytes: &[u8], max: usize) -> Result<(), String> {
-    let ext = path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
-    if !PICTURE_EXT.contains(&ext.as_str()) {
-        return Err(format!("{} is not a picture file name (png, jpg, gif, webp or bmp)", path.display()));
-    }
-    if bytes.is_empty() {
-        return Err("The picture is empty; nothing was saved.".into());
-    }
-    if bytes.len() > max {
-        return Err(format!("The picture is {} MB; at most {} MB can be saved into a note's folder.", bytes.len().div_ceil(1024 * 1024), max / (1024 * 1024)));
-    }
-    let fail = |e: std::io::Error| {
-        if e.kind() == std::io::ErrorKind::AlreadyExists {
-            format!("{} already exists; nothing was overwritten", path.display())
-        } else {
-            format!("could not save {}: {e}", path.display())
-        }
-    };
-    let mut f = fs::OpenOptions::new().write(true).create_new(true).open(path).map_err(fail)?;
-    if let Err(e) = f.write_all(bytes).and_then(|_| f.flush()).and_then(|_| f.sync_all()) {
-        drop(f);
-        let _ = fs::remove_file(path);
-        return Err(fail(e));
-    }
-    Ok(())
-}
-
-/// The text of an `encodeURIComponent` header value back (the window sends the path that way).
-pub fn percent_decode(s: &str) -> Option<String> {
-    let b = s.as_bytes();
-    let mut out = Vec::with_capacity(b.len());
-    let mut i = 0;
-    while i < b.len() {
-        if b[i] == b'%' {
-            let hex = std::str::from_utf8(b.get(i + 1..i + 3)?).ok()?;
-            out.push(u8::from_str_radix(hex, 16).ok()?);
-            i += 3;
-        } else {
-            out.push(b[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).ok()
-}
-
-/// T-234-b: a pasted or inserted picture saved beside its note. The picture is the raw request body
-/// and its full path goes in the `x-file-path` header (percent-encoded); the fence is `file_write`'s.
-#[tauri::command(async)]
-pub fn file_write_picture(request: tauri::ipc::Request<'_>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<(), String> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
-        return Err("The picture did not arrive; nothing was saved.".into());
-    };
-    let path = request.headers().get("x-file-path").and_then(|v| v.to_str().ok()).and_then(percent_decode).ok_or("The picture's file name did not arrive; nothing was saved.")?;
-    let path = fence.allow(&path, &store, &git, true)?;
-    let _one = WRITES.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    write_new_picture(&path, bytes, PICTURE_SAVE_MAX)
-}
-
-/// T-073-a (EDIT-003): the SHA-256 of a file's bytes as lowercase hex. The editor hashes the UTF-8
-/// bytes of the text it loaded the same way (file_read hands the bytes back unchanged).
-pub fn text_hash(bytes: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
-}
-
-/// Why file_write did not save. `Failed` goes to the window as the plain message it always was;
-/// `ChangedOnDisk` goes as `{ kind: "stale", message, path, diskHash }` (diskHash null
-/// when the file is gone), so the editor can offer to reload or overwrite.
-#[derive(Debug, PartialEq)]
-pub enum WriteError {
-    ChangedOnDisk { path: String, disk_hash: Option<String> },
-    Failed(String),
-}
-
-impl From<String> for WriteError {
-    fn from(message: String) -> Self {
-        WriteError::Failed(message)
-    }
-}
-
-impl serde::Serialize for WriteError {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            WriteError::Failed(message) => s.serialize_str(message),
-            WriteError::ChangedOnDisk { path, disk_hash } => serde_json::json!({
-                "kind": "stale", // the kind the editor's isStale (src/editor/buffers.ts) looks for
-                "message": format!("{path} changed on disk since it was opened, so it was not saved"),
-                "path": path,
-                "diskHash": disk_hash,
-            })
-            .serialize(s),
-        }
-    }
-}
-
-/// Saves `text` over `path`. With `loaded_hash` (the `text_hash` of the text the editor loaded)
-/// the save is refused when the file on disk no longer has that hash, so an agent's edit is never
-/// overwritten unseen. Without it the save goes ahead as before.
-/// ponytail: the check and the rename are not one atomic step; a write landing in between is lost.
-pub fn write_checked(path: &Path, text: &str, loaded_hash: Option<&str>) -> Result<(), WriteError> {
-    if let Some(want) = loaded_hash {
-        let disk_hash = match fs::read(path) {
-            Ok(bytes) => Some(text_hash(&bytes)),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-            Err(e) => return Err(WriteError::Failed(format!("could not check {} before saving: {e}", path.display()))),
-        };
-        if disk_hash.as_deref() != Some(want.trim()) {
-            return Err(WriteError::ChangedOnDisk { path: path.display().to_string(), disk_hash });
-        }
-    }
-    Ok(write_text(path, text)?)
-}
-
-/// Saves run one at a time (T-442-c): the disk-hash check and the write happen under one lock,
-/// so two saves that now run on worker threads can never both pass the check and land out of
-/// order; the later one is refused as changed on disk instead.
-// ponytail: one lock for every path; saves are milliseconds, a per-path map if that ever shows.
-static WRITES: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-/// T-073 (EDIT-003): answers with the stamp of the file it just wrote, taken under the same lock,
-/// so the editor remembers its own save and the disk-change check never takes it for an agent's.
-#[tauri::command(async)]
-pub fn file_write(path: String, text: String, loaded_hash: Option<String>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Option<Stamp>, WriteError> {
-    if text.len() as u64 > TEXT_MAX {
-        return Err(WriteError::Failed(format!("The text is larger than the {TEXT_MAX} bytes the editor can write.")));
-    }
-    let path = fence.allow(&path, &store, &git, true)?;
-    let _one = WRITES.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    write_checked(&path, &text, loaded_hash.as_deref())?;
-    Ok(stamp_of(&path))
-}
-
 /// T-073 (EDIT-003): what a cheap disk-change check compares: the modified time in milliseconds
-/// and the size in bytes. It is advisory only (the banner); a same-size rewrite inside one check
-/// or a tool that puts the old modified time back slips past it, and the save's hash check
-/// (`write_checked`) is the guard that still refuses then.
+/// and the size in bytes. It is advisory only; a same-size rewrite inside one check or a tool that
+/// puts the old modified time back slips past it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub struct Stamp {
     pub mtime: u64,
@@ -373,20 +192,6 @@ fn finish_pick(fence: &crate::fence::Fence, store: &std::sync::Mutex<crate::stat
         Ok(()) => {}
     }
     Ok(spelled.to_owned())
-}
-
-/// The worktree's markdown files for the Mod+Shift+O picker (EDIT-012), at most 2000 of them.
-#[derive(serde::Serialize)]
-pub struct Notes {
-    files: Vec<String>,
-    capped: bool,
-}
-
-// TERM-115: async, so listing a big worktree through git never holds typing in another pane.
-#[tauri::command(async)]
-pub fn md_list(root: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Notes, String> {
-    let (files, capped) = git.markdown_files(&fence.allow(&root, &store, &git, false)?, 2000)?;
-    Ok(Notes { files, capped })
 }
 
 /// Quick Open's list of the worktree's files (EDIT-036), as paths relative to the worktree with
@@ -509,205 +314,7 @@ mod list_tests {
     }
 }
 
-/// The two texts of a diff tab (EDIT-027); see Git::diff_sides.
-#[derive(serde::Serialize)]
-pub struct Sides {
-    original: String,
-    modified: String,
-}
-
-#[tauri::command]
-pub async fn diff_sides(path: String, staged: bool, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Sides, String> {
-    let (original, modified) = git.diff_sides(&fence.allow(&path, &store, &git, false)?, staged)?;
-    Ok(Sides { original, modified })
-}
-
-/// The changed files the diff picker lists (EDIT-027).
-#[tauri::command(async)]
-pub fn git_changes(root: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Vec<crate::git::Change>, String> {
-    git.changes(&fence.allow(&root, &store, &git, false)?)
-}
-
-/// Every change of the worktree for All Changes (EDIT-029); see Git::change_entries.
-#[tauri::command]
-pub async fn change_entries(root: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Vec<crate::git::Entry>, String> {
-    git.change_entries(&fence.allow(&root, &store, &git, false)?)
-}
-
-/// One side of a changed image, as bytes (EDIT-029: images load on their own); empty when the
-/// file is not on that side.
-#[tauri::command(async)]
-pub fn diff_image(path: String, staged: bool, new: bool, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<tauri::ipc::Response, String> {
-    let (old, now) = git.diff_bytes(&fence.allow(&path, &store, &git, false)?, staged)?;
-    Ok(tauri::ipc::Response::new(if new { now } else { old }))
-}
-
-/// Mod+Shift+M: a note at the worktree root named untitled.md, then untitled-2.md and onwards. It
-/// never overwrites a file and gives up after 100 taken names. With a `template` (one of
-/// `md_templates`' paths, EDIT-055) the note starts with that template's text, placeholders filled;
-/// without one it is empty. Naming it on the first save is EDIT-054 (T-237).
-#[tauri::command(async)]
-pub fn md_new(root: String, template: Option<String>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<String, String> {
-    let root = fence.allow(&root, &store, &git, false)?;
-    match template {
-        None => new_note(&root),
-        Some(t) => new_note_from(&root, &t, &jiff::Zoned::now()),
-    }
-}
-
-pub fn new_note(root: &Path) -> Result<String, String> {
-    new_note_with(root, |_| String::new())
-}
-
-/// The first free untitled name gets `body(file name)`. The file is made new (never over another),
-/// and a body that cannot be written takes the half-made file away again.
-fn new_note_with(root: &Path, body: impl Fn(&str) -> String) -> Result<String, String> {
-    for n in 1..=100 {
-        let name = if n == 1 { "untitled.md".to_string() } else { format!("untitled-{n}.md") };
-        let path = root.join(&name);
-        match fs::OpenOptions::new().write(true).create_new(true).open(&path) {
-            Ok(mut f) => {
-                let text = body(&name);
-                if let Err(e) = f.write_all(text.as_bytes()).and_then(|_| f.sync_all()) {
-                    drop(f);
-                    let _ = fs::remove_file(&path);
-                    return Err(format!("could not create a note in {}: {e}", root.display()));
-                }
-                return Ok(path.to_string_lossy().into_owned());
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(format!("could not create a note in {}: {e}", root.display())),
-        }
-    }
-    Err(format!("{} already has 100 untitled notes; rename or delete some first", root.display()))
-}
-
-// ---- EDIT-055 (T-318): new notes from the repository's own templates ----
-
-/// A markdown template found in the repository's templates folder: the readable name shown in the
-/// picker and the full path.
-#[derive(serde::Serialize, Debug, PartialEq, Clone)]
-pub struct Template {
-    pub name: String,
-    pub path: String,
-}
-
-/// The templates folder inside the repository's hidden Kolux folder (COMPAT EDIT-055).
-const TEMPLATE_DIR: [&str; 2] = [".kolux", "templates"];
-/// Dependency and tool folders a template search never goes into.
-const DEPENDENCY_DIRS: [&str; 9] = ["node_modules", "bower_components", "vendor", "target", ".git", ".venv", "venv", "__pycache__", "site-packages"];
-const TEMPLATE_CAP: usize = 200;
-const TEMPLATE_DEPTH: usize = 6;
-
-/// A template's picker name from its file name: no extension, dashes and underscores turned into
-/// spaces, and a capital first letter ("meeting-notes.md" is "Meeting notes").
-pub fn template_name(file: &str) -> String {
-    let stem = file.rsplit_once('.').filter(|(s, _)| !s.is_empty()).map_or(file, |(s, _)| s);
-    let words = stem.replace(['-', '_'], " ").split_whitespace().collect::<Vec<_>>().join(" ");
-    let mut chars = words.chars();
-    chars.next().map(|c| c.to_uppercase().chain(chars).collect()).unwrap_or(words)
-}
-
-fn is_markdown(path: &Path) -> bool {
-    path.extension().is_some_and(|e| e.eq_ignore_ascii_case("md") || e.eq_ignore_ascii_case("markdown"))
-}
-
-fn walk_templates(dir: &Path, depth: usize, out: &mut Vec<Template>) {
-    let Ok(entries) = fs::read_dir(dir) else { return };
-    for e in entries.flatten() {
-        if out.len() >= TEMPLATE_CAP {
-            return;
-        }
-        // file_type does not follow links: a symlink or junction, to a file or a folder, is skipped.
-        let Ok(kind) = e.file_type() else { continue };
-        let path = e.path();
-        let name = e.file_name().to_string_lossy().into_owned();
-        if kind.is_symlink() {
-            continue;
-        }
-        if kind.is_dir() {
-            if depth < TEMPLATE_DEPTH && !DEPENDENCY_DIRS.iter().any(|d| d.eq_ignore_ascii_case(&name)) {
-                walk_templates(&path, depth + 1, out);
-            }
-        } else if kind.is_file() && is_markdown(&path) {
-            out.push(Template { name: template_name(&name), path: path.to_string_lossy().into_owned() });
-        }
-    }
-}
-
-/// The templates of the repository at `root`, by readable name in natural order (equal names keep a
-/// fixed order by path). No templates folder, or a link where it should be, gives an empty list.
-pub fn list_templates(root: &Path) -> Vec<Template> {
-    let mut dir = root.to_path_buf();
-    for part in TEMPLATE_DIR {
-        dir.push(part);
-        if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
-            return Vec::new();
-        }
-    }
-    let mut out = Vec::new();
-    walk_templates(&dir, 0, &mut out);
-    out.sort_by_cached_key(|t| (natural_key(&t.name), t.path.to_lowercase()));
-    out
-}
-
-/// The value of a placeholder such as `{{ Date }}`, or None for one Kolux does not know. Names ignore
-/// case, spaces, dashes and underscores; dates are year-month-day, times 24-hour hours and minutes.
-fn placeholder(name: &str, title: &str, file_name: &str, now: &jiff::Zoned) -> Option<String> {
-    let key: String = name.chars().filter(|c| !matches!(c, ' ' | '-' | '_')).flat_map(char::to_lowercase).collect();
-    match key.as_str() {
-        "title" => Some(title.to_string()),
-        "filename" => Some(file_name.to_string()),
-        "date" => Some(now.strftime("%Y-%m-%d").to_string()),
-        "time" => Some(now.strftime("%H:%M").to_string()),
-        "datetime" => Some(now.strftime("%Y-%m-%d %H:%M").to_string()),
-        _ => None,
-    }
-}
-
-/// Fills a template's placeholders (`{{title}}`, `{{date}}`, `{{time}}`, `{{datetime}}`, `{{filename}}`,
-/// spaces allowed inside the braces); any other `{{...}}` stays exactly as typed.
-pub fn fill_template(text: &str, title: &str, file_name: &str, now: &jiff::Zoned) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(i) = rest.find("{{") {
-        out.push_str(&rest[..i]);
-        let after = &rest[i + 2..];
-        match after.find("}}") {
-            Some(j) if !after[..j].contains(['{', '}', '\n']) => {
-                match placeholder(&after[..j], title, file_name, now) {
-                    Some(v) => out.push_str(&v),
-                    None => out.push_str(&rest[i..i + 2 + j + 2]),
-                }
-                rest = &after[j + 2..];
-            }
-            _ => {
-                out.push_str("{{");
-                rest = after;
-            }
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
-/// EDIT-055: the templates of the worktree, for the picker Mod+Shift+M opens. Empty means no picker.
-#[tauri::command(async)]
-pub fn md_templates(root: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Vec<Template>, String> {
-    Ok(list_templates(&fence.allow(&root, &store, &git, false)?))
-}
-
-/// The note made from one of the worktree's templates: only a path that `list_templates` itself
-/// lists is accepted, so a caller cannot make Kolux copy some other file into a note.
-pub fn new_note_from(root: &Path, template: &str, now: &jiff::Zoned) -> Result<String, String> {
-    let wanted = Path::new(template);
-    let found = list_templates(root).into_iter().find(|t| Path::new(&t.path) == wanted).ok_or_else(|| format!("{template} is not one of this repository's templates"))?;
-    let text = read_text(Path::new(&found.path))?;
-    new_note_with(root, |file| fill_template(&text, file.strip_suffix(".md").unwrap_or(file), file, now))
-}
-
-/// One row of the explorer (EDIT-033). A symlink (or junction) is `link` until it is opened, so it
-/// expands only once `path_kind` has confirmed it points at a folder.
+/// One entry of a folder listing (EDIT-033). A symlink (or junction) is `link`, never followed.
 #[derive(serde::Serialize, Debug, PartialEq)]
 pub struct DirEntry {
     pub name: String,
@@ -715,7 +322,7 @@ pub struct DirEntry {
     pub kind: &'static str,
 }
 
-/// A folder's entries for the explorer: folders first, then by name ignoring case; `.git` is left out.
+/// A folder's entries: folders first, then by name ignoring case; `.git` is left out.
 pub fn list_dir(dir: &Path) -> Result<Vec<DirEntry>, String> {
     let mut out: Vec<DirEntry> = fs::read_dir(dir)
         .map_err(|e| format!("{}: {e}", dir.display()))?
@@ -734,44 +341,6 @@ pub fn list_dir(dir: &Path) -> Result<Vec<DirEntry>, String> {
     // spelling, never by the order the disk returned them.
     out.sort_by_cached_key(|e| (e.kind != "dir", natural_key(&e.name), e.name.clone()));
     Ok(out)
-}
-
-#[tauri::command(async)]
-pub fn dir_list(path: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Vec<DirEntry>, String> {
-    list_dir(&fence.allow(&path, &store, &git, false)?)
-}
-
-/// EDIT-035: which of the names in a folder git ignores (empty outside a repository or when git is missing).
-/// A folder is asked as `name/` so a rule that only names folders counts. One `check-ignore` answers the batch.
-pub fn ignored_in(dir: &Path) -> Vec<String> {
-    use std::io::Write;
-    use std::process::Stdio;
-    let Ok(list) = list_dir(dir) else { return Vec::new() };
-    if list.is_empty() {
-        return Vec::new();
-    }
-    let Ok(mut child) = crate::git::command(&["check-ignore", "--stdin", "-z", "-v", "-n"], Some(dir)).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn() else { return Vec::new() };
-    if let Some(mut stdin) = child.stdin.take() {
-        for e in &list {
-            let slash = if e.kind == "dir" { "/" } else { "" };
-            if stdin.write_all(format!("{}{slash}\0", e.name).as_bytes()).is_err() {
-                break;
-            }
-        }
-    }
-    let Ok(out) = child.wait_with_output() else { return Vec::new() };
-    if !matches!(out.status.code(), Some(0 | 1)) {
-        return Vec::new();
-    }
-    let names: Vec<String> = list.iter().map(|e| e.name.clone()).collect();
-    let flags = crate::scm::watch::parse_check_ignore(&String::from_utf8_lossy(&out.stdout), &names);
-    names.into_iter().zip(flags).filter(|(_, ignored)| *ignored).map(|(n, _)| n).collect()
-}
-
-/// EDIT-035: the names in a folder that git ignores, for the explorer's "hide git-ignored files" switch.
-#[tauri::command(async)]
-pub fn dir_ignored(path: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Vec<String>, String> {
-    Ok(ignored_in(&fence.allow(&path, &store, &git, false)?))
 }
 
 /// What a path really is: "remote" (another machine, never looked up; SAFE-021), "outside" (not
@@ -914,25 +483,6 @@ mod tests {
     }
 
     #[test]
-    fn edit035_a_folder_outside_a_repository_has_no_ignored_names_and_a_repository_names_its_ignored_files_and_folders() {
-        let d = temp_dir("ignored");
-        fs::write(d.join("a.txt"), "x").unwrap();
-        assert!(ignored_in(&d).is_empty());
-        let git = |args: &[&str]| crate::git::command_checked(args, Some(&d)).unwrap().output().map(|o| o.status.success()).unwrap_or(false);
-        if !git(&["init", "-q"]) {
-            return; // no git on this machine: nothing more to prove
-        }
-        fs::write(d.join(".gitignore"), "*.log\nbuild/\n").unwrap();
-        fs::write(d.join("run.log"), "x").unwrap();
-        fs::create_dir_all(d.join("build")).unwrap();
-        fs::create_dir_all(d.join("src")).unwrap();
-        let mut got = ignored_in(&d);
-        got.sort();
-        assert_eq!(got, vec!["build".to_string(), "run.log".to_string()]);
-        let _ = fs::remove_dir_all(&d);
-    }
-
-    #[test]
     fn row383_a_folder_under_no_project_is_found_as_a_folder_and_nothing_else_is_looked_up() {
         let d = temp_dir("probe");
         fs::write(d.join("a.txt"), "x").unwrap();
@@ -978,40 +528,6 @@ mod tests {
     }
 
     #[test]
-    fn t073a_a_save_with_the_loaded_hash_is_refused_once_the_file_changed_on_disk() {
-        let d = temp_dir("t073a");
-        let f = d.join("notes.md");
-        fs::write(&f, "first\n").unwrap();
-        let loaded = text_hash(read_text(&f).unwrap().as_bytes());
-        // SHA-256, lowercase hex: the standard test vector, so the editor's crypto.subtle digest matches.
-        assert_eq!(text_hash(b"abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-
-        // Unchanged on disk: the save goes through, and the new text's hash is the next one to send.
-        write_checked(&f, "second\n", Some(&loaded)).unwrap();
-        assert_eq!(fs::read_to_string(&f).unwrap(), "second\n");
-        let loaded = text_hash(b"second\n");
-
-        // An agent edits the file: the save with the old hash is refused and the agent's text stays.
-        fs::write(&f, "agent\n").unwrap();
-        let err = write_checked(&f, "mine\n", Some(&loaded)).unwrap_err();
-        assert_eq!(err, WriteError::ChangedOnDisk { path: f.display().to_string(), disk_hash: Some(text_hash(b"agent\n")) });
-        assert_eq!(fs::read_to_string(&f).unwrap(), "agent\n");
-        let sent = serde_json::to_value(&err).unwrap();
-        assert_eq!((sent["kind"].as_str(), sent["diskHash"].as_str()), (Some("stale"), Some(text_hash(b"agent\n").as_str())));
-
-        // Deleted on disk: refused with no disk hash. No hash given: saves as before.
-        fs::remove_file(&f).unwrap();
-        let gone = serde_json::to_value(write_checked(&f, "mine\n", Some(&loaded)).unwrap_err()).unwrap();
-        assert!(gone["diskHash"].is_null() && !f.exists());
-        write_checked(&f, "mine\n", None).unwrap();
-        assert_eq!(fs::read_to_string(&f).unwrap(), "mine\n");
-
-        // Any other failure reaches the window as the plain message it always was.
-        assert_eq!(serde_json::to_value(WriteError::Failed("could not save x".into())).unwrap(), serde_json::json!("could not save x"));
-        let _ = fs::remove_dir_all(&d);
-    }
-
-    #[test]
     fn t073_the_stamp_follows_a_rewrite_and_is_none_for_a_missing_file() {
         let dir = temp_dir("stamp");
         let f = dir.join("a.txt");
@@ -1028,31 +544,6 @@ mod tests {
     }
 
     #[test]
-    fn t073_council_the_hash_check_refuses_even_when_the_stamp_says_unchanged() {
-        // The banner's stamp is advisory: a same-size rewrite that puts the old modified time
-        // back looks unchanged to it, and the save must still be refused by the hash check.
-        let dir = temp_dir("stamp-equal");
-        let f = dir.join("a.txt");
-        fs::write(&f, "aaaa
-").unwrap();
-        let loaded = text_hash(b"aaaa
-");
-        let before = stamp_of(&f).unwrap();
-        let mtime = fs::metadata(&f).unwrap().modified().unwrap();
-        fs::write(&f, "bbbb
-").unwrap();
-        fs::OpenOptions::new().write(true).open(&f).unwrap().set_modified(mtime).unwrap();
-        assert_eq!(stamp_of(&f).unwrap(), before, "same size and the old modified time: the stamp cannot tell");
-        let refused = write_checked(&f, "mine
-", Some(&loaded));
-        assert_eq!(refused, Err(WriteError::ChangedOnDisk { path: f.display().to_string(), disk_hash: Some(text_hash(b"bbbb
-")) }));
-        assert_eq!(fs::read_to_string(&f).unwrap(), "bbbb
-", "the agent's text stays on disk");
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
     fn a_save_replaces_the_file_and_leaves_no_temporary_behind() {
         let d = temp_dir("save");
         let f = d.join("main.rs");
@@ -1060,20 +551,6 @@ mod tests {
         write_text(&f, "fn main() { x }\n").unwrap();
         assert_eq!(read_text(&f).unwrap(), "fn main() { x }\n");
         assert_eq!(fs::read_dir(&d).unwrap().count(), 1);
-    }
-
-    #[test]
-    fn new_notes_count_up_and_never_overwrite() {
-        let d = temp_dir("notes");
-        fs::write(d.join("untitled-2.md"), "keep").unwrap();
-        let a = new_note(&d).unwrap();
-        let b = new_note(&d).unwrap();
-        assert!(a.ends_with("untitled.md") && b.ends_with("untitled-3.md"), "{a} {b}");
-        assert_eq!(read_text(&d.join("untitled-2.md")).unwrap(), "keep");
-        for n in 4..=100 {
-            fs::write(d.join(format!("untitled-{n}.md")), "").unwrap();
-        }
-        assert!(new_note(&d).unwrap_err().contains("100 untitled notes"));
     }
 
     #[test]
@@ -1151,14 +628,12 @@ mod tests {
                 return;
             }
         }
-        let mut loaded = String::from("old rules\n");
         for (i, (link, to)) in links.iter().enumerate() {
             let text = format!("rules, take {i}\n");
-            write_checked(link, &text, Some(&text_hash(loaded.as_bytes()))).unwrap();
+            write_text(link, &text).unwrap();
             assert!(link_exists(link), "{} is still a link", link.display());
             assert_eq!(&fs::read_link(link).unwrap(), to, "and it still leads where it did");
             assert_eq!(fs::read_to_string(d.join("AGENTS.md")).unwrap(), text, "the real file has the new text");
-            loaded = text;
         }
         // no save copy is left behind, beside a link or beside the real file
         assert_eq!(entries(&d), vec!["AGENTS.md".to_string(), "CLAUDE.md".to_string(), "docs".to_string()]);
@@ -1332,168 +807,10 @@ mod tests {
         assert_eq!(read_text(&d.join("late")).unwrap().len(), SAMPLE + 11);
     }
 
-    fn noon() -> jiff::Zoned {
-        jiff::civil::date(2026, 10, 9).at(7, 5, 0, 0).in_tz("UTC").unwrap()
-    }
-
-    fn put(path: &Path, text: &str) {
-        fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(path, text).unwrap();
-    }
-
-    #[test]
-    fn edit055_a_template_is_named_from_its_file_name() {
-        assert_eq!(template_name("meeting-notes.md"), "Meeting notes");
-        assert_eq!(template_name("bug_report.markdown"), "Bug report");
-        assert_eq!(template_name("daily.MD"), "Daily");
-        assert_eq!(template_name("already Fine.md"), "Already Fine");
-        assert_eq!(template_name("é-note.md"), "É note");
-        assert_eq!(template_name(".md"), ".md");
-    }
-
-    #[test]
-    fn edit055_only_markdown_counts_subfolders_are_searched_and_links_and_dependencies_are_skipped() {
-        let d = temp_dir("tpl");
-        let t = d.join(".kolux").join("templates");
-        put(&t.join("meeting-notes.md"), "m");
-        put(&t.join("notes.txt"), "no");
-        put(&t.join("sub").join("bug-report.markdown"), "b");
-        put(&t.join("node_modules").join("dep").join("readme.md"), "dep");
-        put(&t.join(".git").join("x.md"), "git");
-        put(&t.join("vendor").join("v.md"), "v");
-        put(&t.join("file10.md"), "10");
-        put(&t.join("file2.md"), "2");
-        // A link to a folder holding a template, a link to a template file and a junction to a folder
-        // are all skipped. Each link is checked to exist before the skip is asserted; when none could
-        // be made (a PC refusing links) the test says so and stops instead of passing silently.
-        let outside = d.join("elsewhere");
-        put(&outside.join("linked.md"), "l");
-        let mut made = Vec::new();
-        for (name, junction) in [("dirlink", false), ("junction", true)] {
-            if make_dir_link(&t.join(name), &outside, junction) {
-                made.push(name);
-            }
-        }
-        #[cfg(unix)]
-        let _ = std::os::unix::fs::symlink(outside.join("linked.md"), t.join("filelink.md"));
-        #[cfg(windows)]
-        let _ = std::os::windows::fs::symlink_file(outside.join("linked.md"), t.join("filelink.md"));
-        if link_exists(&t.join("filelink.md")) {
-            made.push("filelink.md");
-        }
-        if made.is_empty() {
-            println!("edit055 link skip NOT exercised: no link or junction could be made here");
-            return;
-        }
-        for name in &made {
-            assert!(link_exists(&t.join(name)), "{name} was made but is not a link");
-        }
-        println!("edit055 link skip exercised with: {made:?}");
-        let names: Vec<String> = list_templates(&d).into_iter().map(|t| t.name).collect();
-        // Take the links away again (remove_dir on a junction or folder link leaves its target alone) before asserting.
-        for name in &made {
-            let at = t.join(name);
-            fs::remove_dir(&at).or_else(|_| fs::remove_file(&at)).unwrap();
-        }
-        assert_eq!(names, ["Bug report", "File2", "File10", "Meeting notes"]);
-    }
-
-    #[test]
-    fn edit055_no_templates_folder_or_a_link_in_its_place_means_no_picker() {
-        let d = temp_dir("tplnone");
-        assert!(list_templates(&d).is_empty());
-        fs::create_dir_all(d.join(".kolux")).unwrap();
-        assert!(list_templates(&d).is_empty());
-        put(&d.join("templates").join("x.md"), "x"); // a templates folder at the wrong place does not count
-        assert!(list_templates(&d).is_empty());
-        let real = d.join("real-templates");
-        put(&real.join("a.md"), "a");
-        let at = d.join(".kolux").join("templates");
-        let mut exercised = 0;
-        for junction in [false, true] {
-            if make_dir_link(&at, &real, junction) {
-                assert!(link_exists(&at), "the link in place of templates must exist");
-                assert!(list_templates(&d).is_empty(), "a templates folder that is a link (junction: {junction}) gives no templates");
-                exercised += 1;
-                fs::remove_dir(&at).or_else(|_| fs::remove_file(&at)).unwrap();
-            }
-        }
-        if exercised == 0 {
-            println!("edit055 link-in-place NOT exercised: no link or junction could be made here");
-        }
-    }
-
     /// True when `p` is itself a link (a symlink, or a junction on Windows), not what it points at.
     fn link_exists(p: &Path) -> bool {
         fs::symlink_metadata(p).is_ok_and(|m| m.file_type().is_symlink())
     }
-
-    /// Makes a folder link at `link` to `target`; `junction` asks for a Windows junction (made with
-    /// `mklink /J`, which needs no privilege) rather than a symlink. True only when the link exists.
-    fn make_dir_link(link: &Path, target: &Path, junction: bool) -> bool {
-        #[cfg(unix)]
-        {
-            let _ = junction;
-            let _ = std::os::unix::fs::symlink(target, link);
-        }
-        #[cfg(windows)]
-        {
-            if junction {
-                let _ = std::process::Command::new("cmd").arg("/c").arg("mklink").arg("/J").arg(link).arg(target).output();
-            } else {
-                let _ = std::os::windows::fs::symlink_dir(target, link);
-            }
-        }
-        link_exists(link)
-    }
-
-    #[test]
-    fn edit055_placeholders_are_filled_with_spaces_allowed_and_unknown_ones_stay_as_typed() {
-        let now = noon();
-        let out = fill_template("# {{title}} ({{ Date }})\nAt {{time}} / {{ date time }} / {{datetime}} in {{file name}} {{filename}}\n{{unknown}} {{ other thing }} {{ {{date}} {{", "untitled", "untitled.md", &now);
-        assert_eq!(
-            out,
-            "# untitled (2026-10-09)\nAt 07:05 / 2026-10-09 07:05 / 2026-10-09 07:05 in untitled.md untitled.md\n{{unknown}} {{ other thing }} {{ 2026-10-09 {{"
-        );
-        // Nothing to fill, braces that never close, and a lone brace are all left alone.
-        assert_eq!(fill_template("plain {x} {{open", "t", "f", &now), "plain {x} {{open");
-        // 24-hour clock: an afternoon time is 15:30, not 3:30.
-        let late = jiff::civil::date(2026, 1, 2).at(15, 30, 0, 0).in_tz("UTC").unwrap();
-        assert_eq!(fill_template("{{time}} {{date}}", "t", "f", &late), "15:30 2026-01-02");
-    }
-
-    #[test]
-    fn edit055_a_note_from_a_template_has_its_text_filled_and_is_a_file_on_disk() {
-        let d = temp_dir("tplnote");
-        let t = d.join(".kolux").join("templates").join("daily.md");
-        put(&t, "# {{title}}\nDate: {{date}}\nFile: {{filename}}\n");
-        let path = new_note_from(&d, &t.to_string_lossy(), &noon()).unwrap();
-        assert!(path.ends_with("untitled.md"));
-        assert_eq!(fs::read_to_string(&path).unwrap(), "# untitled\nDate: 2026-10-09\nFile: untitled.md\n");
-        // The next note counts up and never overwrites the first; its file name is the second's.
-        let second = new_note_from(&d, &t.to_string_lossy(), &noon()).unwrap();
-        assert!(second.ends_with("untitled-2.md"));
-        assert_eq!(fs::read_to_string(&second).unwrap(), "# untitled-2\nDate: 2026-10-09\nFile: untitled-2.md\n");
-        assert_eq!(fs::read_to_string(&path).unwrap(), "# untitled\nDate: 2026-10-09\nFile: untitled.md\n");
-    }
-
-    #[test]
-    fn edit055_only_a_listed_template_can_be_used() {
-        let d = temp_dir("tplguard");
-        put(&d.join(".kolux").join("templates").join("ok.md"), "ok");
-        put(&d.join("secret.md"), "do not copy");
-        let err = new_note_from(&d, &d.join("secret.md").to_string_lossy(), &noon()).unwrap_err();
-        assert!(err.contains("not one of this repository's templates"), "{err}");
-        assert!(!d.join("untitled.md").exists());
-    }
-
-    #[test]
-    fn edit055_a_blank_note_is_still_empty() {
-        let d = temp_dir("tplblank");
-        let p = new_note(&d).unwrap();
-        assert_eq!(fs::read_to_string(p).unwrap(), "");
-    }
-
 }
 
 // ---- EDIT-043 (T-237-a): Open in another app ----
@@ -1665,22 +982,6 @@ pub fn saved_command(settings: &serde_json::Value, cmd: &str) -> bool {
     PRESET_COMMANDS.contains(&cmd) || settings["openInApps"].as_array().is_some_and(|a| a.iter().any(|r| r["command"].as_str().map(str::trim) == Some(cmd)))
 }
 
-/// after-list 499: the file variant of open_in for a file the fence does not cover (the shortcuts file in
-/// the user's home): `file` opens in `command` (a preset or a saved app) and nothing else is run.
-pub fn open_file_in(file: &Path, command: &str, settings: &serde_json::Value, path_var: Option<std::ffi::OsString>) -> Result<(), String> {
-    let command = command.trim();
-    if !saved_command(settings, command) {
-        return Err(format!("{command} is not one of the apps under General settings, so it was not run"));
-    }
-    if !file.exists() {
-        return Err(format!("{} does not exist", file.display()));
-    }
-    if !file.is_file() {
-        return Err(format!("{} is not a file, so it was not opened", file.display()));
-    }
-    launch_in(file, command, path_var)
-}
-
 /// T-317 (EDIT-048): the branches of the repository a worktree belongs to (local ones, then remote ones
 /// by short name), for the pull request composer's searchable Base box. The worktree must pass the
 /// fence like any folder open_in opens; a branch list is read-only.
@@ -1726,7 +1027,7 @@ mod open_in_tests {
         assert!(!is_explorer("code", Path::new(r"C:\bin\code.cmd")));
     }
 
-    // The refusal sits in launch_in, so scm_open_with, open_in and open_file_in all get it; it fires before a spawn.
+    // The refusal sits in launch_in, so scm_open_with and open_in both get it; it fires before a spawn.
     #[cfg(windows)]
     #[test]
     fn fix781_launch_in_refuses_a_script_for_explorer_before_starting_anything() {
@@ -1925,77 +1226,5 @@ mod open_in_tests {
         let custom = serde_json::json!({ "openInApps": [{ "name": "Mine", "command": "myedit" }] });
         assert!(saved_command(&custom, "myedit") && saved_command(&custom, "zed"));
         assert!(!saved_command(&custom, "explorer /e,") && !saved_command(&none, "powershell"));
-    }
-
-    #[test]
-    fn row499_a_single_file_opens_only_in_an_allowed_app_and_only_when_it_is_a_file() {
-        let d = temp_dir("openfile");
-        fs::write(d.join("keys.json"), "{}").unwrap();
-        let file = d.join("keys.json");
-        let none = serde_json::json!({});
-        let refused = open_file_in(&file, "cmd /c calc", &none, None).unwrap_err();
-        assert!(refused.contains("not one of the apps"), "{refused}");
-        let folder = open_file_in(&d, "zed", &none, None).unwrap_err();
-        assert!(folder.contains("not a file"), "{folder}");
-        let gone = open_file_in(&d.join("gone.json"), "zed", &none, None).unwrap_err();
-        assert!(gone.contains("does not exist"), "{gone}");
-        // allowed and a file: the launch itself is tried, and this machine has no such app on an empty PATH
-        let tried = open_file_in(&file, "zed", &none, None).unwrap_err();
-        assert!(tried.contains("zed was not found"), "{tried}");
-        let _ = fs::remove_dir_all(&d);
-    }
-
-    fn temp_dir(name: &str) -> std::path::PathBuf {
-        let d = std::env::temp_dir().join(format!("krs-files-pic-{name}-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&d);
-        fs::create_dir_all(&d).unwrap();
-        d
-    }
-
-    #[test]
-    fn edit029_a_bytes_read_hands_back_the_file_unchanged_and_refuses_one_over_the_bound() {
-        let d = temp_dir("bytes");
-        let png = [0x89u8, b'P', b'N', b'G', 0, 1, 2, 255];
-        fs::write(d.join("a.png"), png).unwrap();
-        assert_eq!(read_bytes_up_to(&d.join("a.png"), 1024).unwrap(), png);
-        let err = read_bytes_up_to(&d.join("a.png"), 4).unwrap_err();
-        assert!(err.contains("too large"), "{err}");
-        assert!(read_bytes_up_to(&d, 1024).is_err()); // a folder is never handed back as bytes
-        assert!(read_bytes_up_to(&d.join("gone.png"), 1024).is_err());
-        let _ = fs::remove_dir_all(&d);
-    }
-
-    #[test]
-    fn edit009_a_picture_is_saved_as_a_new_file_and_never_over_an_existing_one() {
-        let d = temp_dir("picture");
-        let p = d.join("pasted image.png");
-        write_new_picture(&p, &[1, 2, 3], 100).unwrap();
-        assert_eq!(fs::read(&p).unwrap(), [1, 2, 3]);
-        let err = write_new_picture(&p, &[9], 100).unwrap_err();
-        assert!(err.contains("already exists"), "{err}");
-        assert_eq!(fs::read(&p).unwrap(), [1, 2, 3]);
-        let _ = fs::remove_dir_all(&d);
-    }
-
-    #[test]
-    fn edit009_only_picture_names_non_empty_and_within_the_bound_are_saved_and_a_missing_folder_reports() {
-        let d = temp_dir("picture-refused");
-        assert!(write_new_picture(&d.join("run.sh"), &[1], 100).unwrap_err().contains("not a picture"));
-        assert!(write_new_picture(&d.join("noext"), &[1], 100).is_err());
-        assert!(write_new_picture(&d.join("a.PNG"), &[], 100).unwrap_err().contains("empty"));
-        assert!(write_new_picture(&d.join("b.png"), &[0; 101], 100).unwrap_err().contains("at most"));
-        assert!(!d.join("b.png").exists() && !d.join("a.PNG").exists());
-        assert!(write_new_picture(&d.join("no-such-folder").join("c.png"), &[1], 100).unwrap_err().contains("could not save"));
-        write_new_picture(&d.join("d.JPG"), &[1], 100).unwrap();
-        let _ = fs::remove_dir_all(&d);
-    }
-
-    #[test]
-    fn edit009_the_path_header_decodes_spaces_unicode_and_refuses_a_broken_escape() {
-        assert_eq!(percent_decode("C%3A%5Cnotes%5Cmy%20pic%20%C3%A9.png").as_deref(), Some("C:\\notes\\my pic \u{e9}.png"));
-        assert_eq!(percent_decode("plain.png").as_deref(), Some("plain.png"));
-        assert_eq!(percent_decode("bad%2"), None);
-        assert_eq!(percent_decode("bad%zz"), None);
-        assert_eq!(percent_decode("%ff%fe"), None);
     }
 }
