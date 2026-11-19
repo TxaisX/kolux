@@ -34,7 +34,7 @@ test("DT-C269: every click-outside sheet goes into the page first inside the box
       expect(before.endsWith("<OutOfFlow>"), `${file}: a click-outside sheet put in the page outside an OutOfFlow box`).toBe(true);
     }
   }
-  expect(seen).toBeGreaterThanOrEqual(23); // audit F16: the removed Source Control panel held four; the removed Ports item held one
+  expect(seen).toBeGreaterThanOrEqual(10); // eleven sheet hosts are left after the slim-down; the floor keeps an empty scan from passing
 });
 
 test("DT-C269: the pane menu and its click-outside sheet are drawn inside the box, not straight into the pane", async () => {

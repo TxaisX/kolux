@@ -8,10 +8,9 @@ const SOURCES: Record<string, string[]> = {
   appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
   accounts: ["SettingsPage.tsx", "ConnectGrid.tsx"],
   agents: ["AgentsPage.tsx"],
-  terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx", "NativeTerminalCard.tsx"],
+  terminal: ["TerminalPage.tsx", "InputCards.tsx", "NativeTerminalCard.tsx"],
   git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
   notifications: ["NotificationsPage.tsx", "SettingsPage.tsx"],
-  shortcuts: ["ShortcutsPage.tsx"],
   usage: ["SettingsPage.tsx"],
   claude: ["ClaudeSetupPage.tsx"],
 };
@@ -76,9 +75,9 @@ describe("search all settings (SET-007)", () => {
     expect(read("TerminalPage.tsx")).toContain(card.title);
   });
   it("ranks the page whose title matches first, then the rest in page order", () => {
-    const h = searchSettings("shortcuts")!;
-    expect(h.pages[0]).toEqual({ page: "shortcuts", sections: "all" });
-    expect(searchSettings("terminal")!.pages.map((p) => p.page)).toEqual(["terminal", "appearance", "shortcuts"]);
+    const h = searchSettings("notifications")!;
+    expect(h.pages[0]).toEqual({ page: "notifications", sections: "all" });
+    expect(searchSettings("terminal")!.pages.map((p) => p.page)).toEqual(["terminal", "appearance"]);
   });
   it("finds agents by name or id, and languages by their own names", () => {
     expect(searchSettings("devin")!.pages).toEqual([{ page: "agents", sections: ["agents"] }]);
@@ -114,10 +113,9 @@ describe("search all settings (SET-007)", () => {
       appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
       accounts: ["SettingsPage.tsx"],
       agents: ["AgentsPage.tsx"],
-      terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx", "NativeTerminalCard.tsx"],
+      terminal: ["TerminalPage.tsx", "InputCards.tsx", "NativeTerminalCard.tsx"],
       git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
       notifications: ["NotificationsPage.tsx"],
-      shortcuts: ["ShortcutsPage.tsx"],
       claude: ["ClaudeSetupPage.tsx"],
     };
     // T-755: a page left out of this list fails (Usage is drawn by SettingsPage, checked below), and so does a

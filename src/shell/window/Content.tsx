@@ -29,7 +29,7 @@ export default function WindowContent() {
   const {
     sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
     turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, openPane,
-    settings, activeDir, shown, setCount, toast, notice, keymapNotice, setNotice,
+    settings, activeDir, shown, setCount, toast, notice, setNotice,
     panes, waiting, statusOf,
     standIns, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
@@ -48,7 +48,7 @@ export default function WindowContent() {
           })()}
         </div>
       )}
-      <Notices toast={toast} notice={notice} keymapNotice={keymapNotice} onDismiss={() => setNotice(null)} />
+      <Notices toast={toast} notice={notice} onDismiss={() => setNotice(null)} />
       <SignInNotice />
       <KeyLostNotice />
       <RecoveryMount />

@@ -41,7 +41,7 @@ test("the status bar's right-click menu uses the menu keys too; the More tabs me
 test("chrome.md:15: only the open right-sidebar tab is a tab stop, and the body is its tab panel", () => {
   const html = renderToString(createElement(RightSidebar, { tab: "checks", width: 320, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
   expect(html).toMatch(/tabindex="0"[^>]*role="tab"[^>]*aria-selected="true"[^>]*>Checks</);
-  expect(html).toMatch(/tabindex="-1"[^>]*role="tab"[^>]*aria-selected="false"[^>]*>Explorer</);
+  expect(html).toMatch(/tabindex="-1"[^>]*role="tab"[^>]*aria-selected="false"[^>]*>History</);
   expect(html).toContain('role="tabpanel"');
 });
 

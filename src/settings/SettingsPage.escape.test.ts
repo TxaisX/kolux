@@ -4,7 +4,7 @@
 // (CoreBrowserTerminal.cancel), sends a key it handles to the program and stops it there.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, FakeNode, find, installDom, mount, settle, until, withText } from "../test/fakeDom";
+import { byText, type FakeDocument, FakeNode, find, installDom, mount, settle, until } from "../test/fakeDom";
 import type { SettingsTarget } from "./pages";
 import { FOCUSABLE } from "../chrome/dialogFocus";
 
@@ -14,7 +14,6 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "project_list") return Promise.resolve([]);
     if (cmd === "get_settings") return Promise.resolve({});
     if (cmd === "agent_list") return Promise.resolve(h.agents);
-    if (cmd === "grok_status") return Promise.resolve({ connection: "none", keySaved: false, signingIn: null, inBrowser: false, deviceLink: null, deviceCode: null, attention: null });
     return Promise.reject("not stubbed");
   },
 }));
@@ -146,7 +145,7 @@ async function open(onClose: () => void, target: SettingsTarget | null = null) {
   const { default: SettingsPage } = await import("./SettingsPage");
   const m = await mount(createElement(SettingsPage, { onClose, target, n: target ? 1 : 0 }), doc);
   unmount = m.unmount;
-  await until(() => find(m.container, (n) => /settings-link/.test(n.attrs.class ?? "")).length >= 10, "the side list");
+  await until(() => find(m.container, (n) => /settings-link/.test(n.attrs.class ?? "")).length >= 9, "the side list");
   await settle();
   return m;
 }
@@ -176,27 +175,6 @@ test("closing Settings gives the keyboard back to the terminal it was opened fro
   await unmount();
   unmount = async () => {};
   expect(doc.activeElement).toBe(term.node);
-});
-
-test("Escape in the xAI key dialog inside Settings closes only that dialog; the next one closes Settings", async () => {
-  h.agents = [{ id: "grok", installed: true }];
-  terminal();
-  const closed = vi.fn();
-  const m = await open(closed, { page: "accounts" });
-  const way = () => withText(m.container, "button", "Use an xAI API key")[0];
-  await until(() => !!way(), "the Grok card");
-  await click(m.container, way());
-  const form = find(m.container, (n) => n.attrs["aria-label"] === "Use an xAI API key")[0];
-  const shown = () => !("hidden" in form.parentNode!.attrs);
-  await until(shown, "the key dialog");
-  expect(doc.activeElement.attrs["aria-label"]).toBe("xAI API key");
-  await press("Escape");
-  expect(shown()).toBe(false);
-  expect(closed).not.toHaveBeenCalled();
-  // The browser takes the keyboard off a field that is no longer drawn; the next Escape leaves Settings.
-  doc.activeElement = doc.body;
-  await press("Escape");
-  expect(closed).toHaveBeenCalledTimes(1);
 });
 
 /** A dialog that, like the Usage Share card (ShareCard.tsx) and the Send feedback box (FeedbackDialog.tsx),

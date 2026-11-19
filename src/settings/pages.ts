@@ -9,7 +9,6 @@ export const PAGES = {
   terminal: "Terminal & sessions",
   git: "Git",
   notifications: "Notifications",
-  shortcuts: "Shortcuts",
   usage: "Usage",
   claude: "Claude",
 } as const;
@@ -20,7 +19,7 @@ export type SettingsTarget = { page: Page; section?: string };
 /** The rail's groups, copied from Claude's settings layout: a few small groups with captions, one
  *  scrolling page at a time, repositories last. */
 export const PAGE_GROUPS: ReadonlyArray<{ title: string; pages: readonly PageId[] }> = [
-  { title: "Personal", pages: ["general", "appearance", "notifications", "shortcuts"] },
+  { title: "Personal", pages: ["general", "appearance", "notifications"] },
   { title: "AI", pages: ["accounts", "agents", "claude"] },
   { title: "Workspace", pages: ["terminal", "git"] },
   { title: "Usage", pages: ["usage"] },

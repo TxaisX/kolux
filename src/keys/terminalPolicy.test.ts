@@ -10,17 +10,17 @@ describe("Kolux first or Terminal first (SET-014)", () => {
     expect(readPolicy({ terminalShortcuts: "terminal" })).toBe("terminal");
     expect(readPolicy({ terminalShortcuts: "other" })).toBe("kolux");
   });
-  it("with Terminal first holds Mod+P back from a focused terminal but keeps the safe commands", () => {
+  it("with Terminal first holds Mod+B back from a focused terminal but keeps the safe commands", () => {
     const t = { terminalShortcuts: "terminal" };
-    expect(heldByTerminal("worktree.quickOpen", t, inXterm)).toBe(true);
+    expect(heldByTerminal("sidebar.left.toggle", t, inXterm)).toBe(true);
     expect(heldByTerminal("zoom.in", t, inXterm)).toBe(false);
-    expect(heldByTerminal("worktree.quickOpen", t, elsewhere)).toBe(false);
-    expect(heldByTerminal("worktree.quickOpen", {}, inXterm)).toBe(false);
+    expect(heldByTerminal("sidebar.left.toggle", t, elsewhere)).toBe(false);
+    expect(heldByTerminal("sidebar.left.toggle", {}, inXterm)).toBe(false);
   });
   it("says on each row whether the command works in a terminal (SET 008)", () => {
-    expect(inTerminal("worktree.quickOpen", "kolux")).toBe("works");
-    expect(inTerminal("worktree.quickOpen", "terminal")).toBe("held");
+    expect(inTerminal("sidebar.left.toggle", "kolux")).toBe("works");
+    expect(inTerminal("sidebar.left.toggle", "terminal")).toBe("held");
     expect(inTerminal("terminal.splitRight", "terminal")).toBe("works");
-    expect(inTerminal("editor.save", "terminal")).toBeNull();
+    expect(inTerminal("settings.search", "terminal")).toBeNull();
   });
 });

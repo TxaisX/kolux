@@ -19,7 +19,7 @@ beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 /** Every source file of the window, as text (tests left out). */
 const SOURCES = import.meta.glob(["../**/*.ts", "../**/*.tsx", "!../**/*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 /** Files that only list command ids (the table, the palette's rows, the menu's labels, the Shortcuts page's hidden set). */
-const LISTS = new Set(["./actions.ts", "./commands.ts", "../chrome/chromeItems.ts", "../settings/shortcutRows.ts"]);
+const LISTS = new Set(["./actions.ts", "./commands.ts", "../chrome/chromeItems.ts"]);
 const named = (id: string) => Object.entries(SOURCES).some(([file, text]) => !LISTS.has(file) && text.includes(`"${id}"`));
 
 /** What the window's key switch hands windowCommand (evidence/product-ux-App.patch). */
@@ -94,15 +94,15 @@ test("T-611: a command picked in the palette runs the same code its shortcut run
   const map = resolve(null, "win32");
   const target = new EventTarget();
   const heard: Array<string | null> = [];
-  // Two key listeners as the window has them: one for the global scope, one for an editor's.
+  // Two key listeners as the window has them: one for the global scope, one for Settings'.
   target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["global"])?.id ?? null));
-  target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["editor"])?.id ?? null));
+  target.addEventListener("keydown", (e) => heard.push(matchEvent(map, e as unknown as KeyLike, ["settings"])?.id ?? null));
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }) };
   runCommand("view.routing", undefined, now); // unbound: no chord could ever have reached it
   expect(heard).toEqual(["view.routing", null]);
   heard.length = 0;
-  runCommand("editor.find", undefined, now);
-  expect(heard).toEqual([null, "editor.find"]);
+  runCommand("settings.search", undefined, now);
+  expect(heard).toEqual([null, "settings.search"]);
   // The index commands carry their digit; a real key press afterwards is only a key press.
   heard.length = 0;
   let index: number | undefined;
@@ -142,21 +142,21 @@ test("T-611: Rename worktree from the palette on the Board with the sidebar coll
 test("review of PR #16: a command whose place is not open says so instead of doing nothing, and stays listed", () => {
   const map = resolve({}, "win32");
   const target = new EventTarget();
-  // Only the window's own listener is live: no editor, explorer or Settings is open.
+  // Only the window's own listener is live: Settings is not open.
   target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["global", "tabs"]));
   const notes: string[] = [];
   const now = { later: (f: () => void) => f(), target, event: () => new Event("keydown", { bubbles: true, cancelable: true }), unanswered: (t: string) => void notes.push(t) };
-  runCommand("editor.find", undefined, { ...now, scope: "editor" });
-  runCommand("view.routing", undefined, { ...now, scope: "global" }); // the window took it: no note
-  expect(notes).toEqual(["Open a file in an editor tab first."]);
-  // With an editor listening, the same command runs there and nothing is said.
-  target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["editor"]));
-  runCommand("editor.find", undefined, { ...now, scope: "editor" });
+  runCommand("settings.search", undefined, { ...now, scope: "settings" });
+  runCommand("sidebar.checks.toggle", undefined, { ...now, scope: "global" }); // the window took it: no note
+  expect(notes).toEqual(["Open Settings first."]);
+  // With Settings listening, the same command runs there and nothing is said.
+  target.addEventListener("keydown", (e) => void matchEvent(map, e as unknown as KeyLike, ["settings"]));
+  runCommand("settings.search", undefined, { ...now, scope: "settings" });
   expect(notes).toHaveLength(1);
   // The palette passes the command's own scope and its note line; every command is still a row.
   const said: string[] = [];
   const rows = commandRows(map, [], (t) => void said.push(t));
-  expect(rows.some((r) => r.label === actionById.get("editor.find")!.title)).toBe(true);
+  expect(rows.some((r) => r.label === actionById.get("settings.search")!.title)).toBe(true);
 });
 
 test("review of PR #16: Force Reload asks first when an editor holds unsaved changes, and reloads at once when none does", () => {

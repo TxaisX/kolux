@@ -1,5 +1,5 @@
 // T-696 (DT-C132): UX audit Wave 3 part B, lane D's rows, reproduced on the small DOM in src/test/fakeDom.ts
-// before any change. G1 palette filters, G5 the Explorer shortcut, G6 the find bar, S24 the tab menu.
+// before any change. G1 palette filters, G6 the find bar (G5, the Explorer shortcut, went with the editor), S24 the tab menu.
 import { type FunctionComponent, act, createElement, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
@@ -13,9 +13,6 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("./window/store", () => ({ useWindow: () => h.win }));
 vi.mock("./window/tabMenuKeys", () => ({ useTabMenuKeys: () => {} })); // its focus and keys: tabMenuKeys.test.ts
-
-const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
-const src = (f: string) => nodeFs.readFileSync(new URL(f, import.meta.url), "utf8");
 
 let unmount: () => Promise<void> = async () => {};
 afterEach(async () => {
@@ -56,22 +53,6 @@ describe("G1 (not reproduced): the palette's filter selects add a chip, then go 
     expect(byLabel(c, "select", "Filter by kind")[0].options.map((o) => o.value)).not.toContain("Workspaces");
     await click(c, find(c, (n) => n.attrs["aria-label"] === "Remove the filter Kind: Workspaces")[0]);
     expect(chips(c)).toEqual(["Remove the filter Repository: app"]);
-  });
-});
-
-describe("G5 (reproduced only with the content search open): Ctrl+Shift+E is a toggle", () => {
-  it("a press with focus inside the open Explorer hides it; any other press shows and focuses it", () => {
-    const plumbing = src("../settings/useSettingsPlumbing.ts");
-    expect(plumbing).toContain(`if (explorerOpen && document.activeElement?.closest(".explorer")) return saveRight({ open: false });`);
-    // the first press focuses the tree, which sits inside the .explorer panel, so the second press hides it
-    const explorer = src("../editor/Explorer.tsx");
-    expect(explorer.indexOf(`<aside className="explorer"`)).toBeLessThan(explorer.indexOf("ref={box}"));
-    expect(src("../keys/keyScopes.ts")).toContain(`if (inTree) return ["global", "tabs"];`);
-    // with the content search open, the press focuses the search box instead (also inside the panel)
-    expect(explorer).toContain(`if (focusAsk && !hidden) searching ? setSearchAsk((n) => n + 1) : box.current?.focus();`);
-  });
-  it("its name in the palette and the shortcut list says it hides too", () => {
-    expect(src("../keys/actions.ts")).toContain(`a("sidebar.explorer.toggle", "Show or hide Explorer", "global", ["Mod+Shift+E"])`);
   });
 });
 

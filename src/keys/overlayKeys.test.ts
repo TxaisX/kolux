@@ -100,10 +100,10 @@ test("the menu's Force Reload asks over unsaved text and reloads without; no oth
   expect(reload).toHaveBeenCalledTimes(1);
 });
 
-test("an editor chord is not held under a dialog, while the app's own chords are", () => {
-  expect(actionById.get("editor.save")?.scope).toBe("editor");
+test("a Settings chord is not held under a dialog, while the app's own chords are", () => {
+  expect(actionById.get("settings.search")?.scope).toBe("settings");
   const modal = real("crash-report", { role: "dialog" });
-  expect(heldByOverlay("editor.save", false, dom([modal]) as never)).toBe(false);
+  expect(heldByOverlay("settings.search", false, dom([modal]) as never)).toBe(false);
   for (const id of ["tab.newTerminal", "terminal.splitRight", "worktree.palette"]) expect(heldByOverlay(id, false, dom([modal]) as never), id).toBe(true);
 });
 

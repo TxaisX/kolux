@@ -40,7 +40,7 @@ async function open() {
   const { default: SettingsPage } = await import("./SettingsPage");
   const m = await mount(createElement(SettingsPage, { onClose: () => {}, target: null, n: 0 }), doc);
   unmount = m.unmount;
-  await until(() => links(m.container).length >= 10, "the side list");
+  await until(() => links(m.container).length >= 9, "the side list");
   await settle();
   return m;
 }
@@ -55,17 +55,17 @@ test("a repository page used last comes back once the project list is read", asy
 });
 
 test("a fixed page used last comes back", async () => {
-  store.set(KEY, "shortcuts");
+  store.set(KEY, "notifications");
   const m = await open();
-  expect(current(m.container)).toEqual(["Shortcuts"]);
-  expect(store.get(KEY)).toBe("shortcuts");
+  expect(current(m.container)).toEqual(["Notifications"]);
+  expect(store.get(KEY)).toBe("notifications");
 });
 
 test("a repository that no longer exists shows General and the stored value is kept", async () => {
   h.projects = [{ id: "p1", name: "alpha" }];
   store.set(KEY, "repo:gone");
   const m = await open();
-  await until(() => links(m.container).length === 12, "the repositories");
+  await until(() => links(m.container).length === 10, "the repositories");
   await settle();
   expect(current(m.container)).toEqual(["General"]);
   expect(store.get(KEY)).toBe("repo:gone");
@@ -74,7 +74,7 @@ test("a repository that no longer exists shows General and the stored value is k
 test("a page the user picks is remembered", async () => {
   h.projects = [{ id: "p1", name: "alpha" }];
   const m = await open();
-  await until(() => links(m.container).length === 12, "the repositories");
+  await until(() => links(m.container).length === 10, "the repositories");
   await click(m.container, links(m.container).find((n) => n.textContent.trim() === "alpha")!);
   expect(store.get(KEY)).toBe("repo:p1");
   await click(m.container, links(m.container).find((n) => n.textContent.trim() === "Appearance")!);
