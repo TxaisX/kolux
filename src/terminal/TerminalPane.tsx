@@ -19,8 +19,8 @@ import type { EntryTarget } from "../launch/newTabEntryRun";
 import { bellGate } from "./bellNote";
 import LinkActionMenu from "./LinkActionMenu";
 import { copyTextOf, destinationOf, doorOfItem, linkMenuItems, type Door, type LinkItemId } from "./linkMenu";
-import type { Chip } from "../board/chip";
-import { ChipRow } from "../board/ChipRow";
+import type { Chip } from "../status/chip";
+import { ChipRow } from "../status/ChipRow";
 import type { AgentState } from "../projects/rows";
 import { invoke } from "@tauri-apps/api/core";
 import { withMilestones } from "../onboarding/milestoneNote";
@@ -63,7 +63,6 @@ import { hookQueries, isGrok, paletteIsDark } from "./queries";
 import { applySnapshot, resyncGate, type LiveSnapshot, type Snapshot } from "./resync";
 import { folderName } from "../projects/model";
 import { withoutRules } from "../launch/seats";
-import { modelOf } from "../settings/routing";
 import { openSettings } from "../settings/pages";
 import { answerKeys, buttonsShown, canAnswer, nextPrompt } from "./permissionAnswer";
 import { Close, Dots, Expand, Plus, SplitRight, StatusGlyph } from "../chrome/icons";
@@ -2122,3 +2121,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   );
 }
 
+/** The model a start line asks for (`--model x`), for the pane header. */
+function modelOf(args: string[]): string | null {
+  const i = args.indexOf("--model");
+  return i >= 0 && i + 1 < args.length ? args[i + 1] : null;
+}

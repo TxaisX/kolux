@@ -80,7 +80,6 @@ const SCRIPT_FOCUSED: [string, string][] = [
   ["styles.css", ':where([tabindex="-1"]:focus-visible)'],
   ["styles.css", ".xterm :focus-visible, .xterm:focus-visible, .xterm-helper-textarea:focus-visible"],
   ["onboarding/onboarding.css", ".onb:focus"],
-  ["ports/ports.css", ".ports-menu:focus"],
   ["update/update.css", ".upd-pop.upd-fixed:focus-visible"],
 ];
 
@@ -118,7 +117,6 @@ const REVIEWED: [string, string][] = [
   ["styles.css", ".review-send-item:focus-visible"],
   ["styles.css", ".add-choice:focus-visible"],
   ["styles.css", ".add-choice.primary:focus-visible"],
-  ["tasks/tasks.css", ".projects-table td.editable:focus-visible"],
   ["update/update.css", ".upd-pop-actions .btn:focus-visible"],
 ];
 

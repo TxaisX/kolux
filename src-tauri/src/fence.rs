@@ -137,7 +137,7 @@ impl Fence {
     /// The grants an earlier run saved, each checked again (a file since deleted drops out); a
     /// damaged list grants nothing.
     pub fn load(store: &Mutex<Store>) -> Fence {
-        let list: Vec<PathBuf> = store.lock().ok().map(|s| crate::orchestration::kept::or_default_held(&s, KEY_GRANTS)).unwrap_or_default();
+        let list: Vec<PathBuf> = store.lock().ok().map(|s| crate::state::kept::or_default_held(&s, KEY_GRANTS)).unwrap_or_default();
         let mut grants: VecDeque<PathBuf> = list.into_iter().filter(|p| !is_share(p) && on_a_drive(p)).filter_map(|p| p.canonicalize().ok()).filter(|p| grantable(p) && p.to_str().is_some()).collect();
         while grants.len() > GRANT_CAP {
             grants.pop_front();
@@ -433,7 +433,7 @@ mod tests {
         let store = Mutex::new(Store::open(&db).unwrap());
         let broken = r#"["C:/picked.txt", tru"#;
         store.lock().unwrap().set(KEY_GRANTS, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&db);
+        crate::state::kept::refuse_copies(&db);
         let f = Fence::load(&store);
         assert!(f.grants.lock().unwrap().is_empty(), "a damaged list grants nothing");
         let err = f.grant(&t.0.join("outside/picked.txt"), &store.lock().unwrap()).unwrap_err();

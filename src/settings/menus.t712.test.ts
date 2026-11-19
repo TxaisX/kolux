@@ -3,7 +3,7 @@
 // does not remove while the row is busy.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount } from "../test/fakeDom";
 import { OtherWays } from "./ConnectGrid";
 import { AccountRow } from "./AccountRow";
 

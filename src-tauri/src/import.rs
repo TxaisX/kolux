@@ -1,6 +1,6 @@
 //! What an older profile brings into this one.
 //!
-//! APP-004 (T-213): on the first launch, settings saved by the former product (Nightshift) carry
+//! APP-004 (T-213): settings saved by the former product (Nightshift) carry
 //! over, through an allow-list. The former profile folder is found beside this profile in the
 //! system's application-data folder, in any letter case; finding it only points at it. Exactly one
 //! file in it is read: its settings file (`settings.json`, or the same name under the former product's
@@ -12,10 +12,10 @@
 //! key vault, cookies, transcripts, caches) is counted as skipped without being opened (COMPAT 5.2,
 //! 5.3; OD-05). The summary carries counts only, never a skipped name or value.
 //!
-//! It runs once per profile, in the background after the window shows, under a lock file; the
-//! settings write is the store's own (a temp file renamed into place, the last good copy kept).
-//! Development, test and lane profiles never get it (`agent_hooks::fenced`). A settings file here
-//! that cannot be read stops it without marking it done, so a later launch tries again.
+//! It runs once per profile, on request (`migrate_check`, never the installed app's own profile),
+//! under a lock file; the settings write is the store's own (a temp file renamed into place, the
+//! last good copy kept). A settings file here that cannot be read stops it without marking it done,
+//! so a later run tries again.
 //! Not carried yet: project, repo and worktree records, whose former shape no allowed source
 //! describes (T-213-b).
 //!
@@ -402,19 +402,6 @@ impl Drop for Lock {
     fn drop(&mut self) {
         let _ = fs::remove_file(&self.0);
     }
-}
-
-/// APP-004 at start, for the installed app's own profile only (`profile` is its folder, `store` its
-/// store). Run off the window's thread: the store is held only to check, to apply and to record.
-pub fn first_launch(profile: &Path, store: &Mutex<Store>) -> Option<Preview> {
-    if crate::hooks::agent_hooks::fenced(profile) {
-        return None;
-    }
-    let out = carry_over(profile, store);
-    if let Some(p) = &out {
-        crate::diag::write(profile, &format!("settings from the former name carried over: {} (APP-004)", p.summary()));
-    }
-    out
 }
 
 /// The carry-over into `profile` from the former-name folder beside it, once per profile. `None`
@@ -817,16 +804,6 @@ mod tests {
         assert_eq!(settings(&store), json!({}));
         fs::remove_dir(old.join("linked")).unwrap(); // the junction itself, never its target
         assert!(outside.join("settings.json").is_file());
-    }
-
-    #[test]
-    fn t213_app004_development_and_test_profiles_never_get_it() {
-        let (root, profile) = profile("imp-fence");
-        seed_former(&root, "nightshift", json!({"language": "fr"}));
-        let store = open(&profile);
-        assert_eq!(first_launch(&profile, &store), None);
-        assert_eq!(settings(&store), json!({}));
-        assert_eq!(store.lock().unwrap().get(KEY_CARRIED).unwrap(), None, "a later real launch is not marked done");
     }
 
     #[test]

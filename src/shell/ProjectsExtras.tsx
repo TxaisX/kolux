@@ -2,8 +2,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
 import Ask from "../chrome/Ask";
-import { askText } from "../editor/closeGuard";
-import { askArchive } from "../setup/TrustPrompt";
 import type { KeptBranch, KeptItem } from "../projects/cleanup";
 import type { RemoveCheck } from "../projects/deleting";
 import { BATCH_BRANCH_NOTE, BATCH_FOLDER_NOTE } from "../projects/deleting";
@@ -86,8 +84,6 @@ export function PickedBar({
   onLeft,
   onReload,
   say,
-  unsavedIn = () => [],
-  onAskUnsaved = async () => true,
 }: {
   picked: string[];
   find: (path: string) => { projectId: string; name: string } | undefined;
@@ -98,10 +94,6 @@ export function PickedBar({
   onLeft: (left: string[]) => void;
   onReload: () => Promise<unknown> | void;
   say: Say;
-  /** EDIT-031: the file names with unsaved text in these workspaces, for the question. */
-  unsavedIn?: (paths: string[]) => string[];
-  /** EDIT-031: asks about those tabs (Save / Don't save / Cancel); true when the removal may go on. */
-  onAskUnsaved?: (paths: string[]) => Promise<boolean>;
 }) {
   const [asked, setAsked] = useState<Asked | null>(null);
   const [busy, setBusy] = useState(false);
@@ -126,18 +118,14 @@ export function PickedBar({
   };
   const remove = async () => {
     if (!asked) return;
-    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel nothing is removed and no draft drops.
-    if (!(await onAskUnsaved(planRemoval(asked.q, asked.items).map((s) => s.path)))) return;
     setBusy(true);
     const gone: string[] = [];
     const kept: KeptItem[] = [];
     try {
       for (const s of planRemoval(asked.q, asked.items)) {
         // T-613: no branch choice (null), so the workspace's own record decides and a branch holding commits found nowhere else stays.
-        await askArchive(s.path);
         const k = await invoke<KeptBranch | null>("workspace_remove", { projectId: s.projectId, path: s.path, force: s.force, stamp: s.stamp, keepBranch: null });
         if (k) kept.push({ ...k, projectId: s.projectId });
-        void invoke("editor_drafts_drop", { worktree: s.path }).catch(() => undefined);
         gone.push(s.path);
       }
       say("ok", `removed ${gone.length} workspace${gone.length === 1 ? "" : "s"} and their folders`);
@@ -157,8 +145,6 @@ export function PickedBar({
 
   if (asked) {
     const { q } = asked;
-    // EDIT-031: the files whose unsaved text would go with these workspaces.
-    const dirtyNames = unsavedIn(planRemoval(q, asked.items).map((s) => s.path));
     return (
       <Ask
         title={q.title}
@@ -178,16 +164,6 @@ export function PickedBar({
               <>
                 <div className="sb-hint">{BATCH_FOLDER_NOTE}</div>
                 <div className="sb-hint">{BATCH_BRANCH_NOTE}</div>
-              </>
-            )}
-            {dirtyNames.length > 0 && (
-              <>
-                <span>{askText(dirtyNames)} Deleting these workspaces closes their tabs.</span>
-                <ul className="del-changes" aria-label="files with unsaved changes">
-                  {dirtyNames.map((n) => (
-                    <li key={n}>{n}</li>
-                  ))}
-                </ul>
               </>
             )}
           </>

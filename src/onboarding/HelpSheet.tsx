@@ -1,5 +1,5 @@
 // ONB-014, ONB-009, ONB-032 and APP-010: the help menu's sheet — Settings, then the Help group (Getting
-// Started, Explore Kolux, Docs, Changelog, GitHub, Milestones with its ring, Keyboard Shortcuts, the
+// Started, Explore Kolux, Docs, Changelog, GitHub, Milestones with its ring, the
 // wizard again, Send Feedback, Copy terminal diagnostics, Check for Updates, Restart Kolux) and every
 // tour by name. The list itself is helpItems (plain data); this draws it and wires the real actions.
 // It loads the first time the help button is clicked (lazy/pages), so the guide's live steps, its ring

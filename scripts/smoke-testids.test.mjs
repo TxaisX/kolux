@@ -38,11 +38,10 @@ test.each(used)("src/ carries data-testid %s", (id) => {
   expect(declared(id)).toBe(true);
 });
 
-test("flow 3 checks the Explorer delete prompt by test id, not the removed Source Control Discard", () => {
-  for (const id of ["explorer-tree", "ask-dialog", "ask-body", "ask-cancel", "ask-confirm"]) expect(used, id).toContain(id);
-  expect(used).not.toContain("scm-discard-file");
-  expect(smoke).not.toContain('[role="alertdialog"]');
-  expect(smoke).not.toContain(".btn-row");
+test("flows 2 and 3 (editor save, Explorer delete prompt) went with the editor and explorer, 2026-11-19", () => {
+  for (const id of ["editor-pane", "explorer-row", "explorer-tree"]) expect(used, id).not.toContain(id);
+  expect(smoke).not.toContain("function flow2");
+  expect(smoke).not.toContain("function flow3");
 });
 
 test("the check itself catches a missing id", () => {

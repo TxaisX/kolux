@@ -6,7 +6,7 @@
 // keeps a branch holding such commits) instead of forcing the branch away.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle, withText } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle, withText } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], checks: {} as Record<string, unknown>, kept: {} as Record<string, unknown>, hovered: "" }));
 vi.mock("@tauri-apps/api/core", () => ({

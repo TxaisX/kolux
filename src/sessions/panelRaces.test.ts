@@ -3,7 +3,7 @@
 // under a new scope.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, installDom, mount, settle } from "../test/fakeDom";
 import rightSrc from "../shell/window/Right.tsx?raw";
 
 type Call = { cmd: string; args: Record<string, unknown>; ok: (v: unknown) => void; fail: (e: unknown) => void };

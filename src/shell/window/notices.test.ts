@@ -10,8 +10,8 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}), e
 
 import Notices from "./Notices";
 
-const html = (p: { toast: string | null; notice: string | null; keymapNotice?: string | null }) =>
-  renderToString(createElement(Notices, { keymapNotice: null, onDismiss: () => {}, ...p }));
+const html = (p: { toast: string | null; notice: string | null }) =>
+  renderToString(createElement(Notices, { onDismiss: () => {}, ...p }));
 
 test("the toast and the notice both draw, with a labelled Dismiss", () => {
   const out = html({ toast: "Copied", notice: "Could not save" });
@@ -20,11 +20,6 @@ test("the toast and the notice both draw, with a labelled Dismiss", () => {
   expect(out).toContain('class="notice"');
   expect(out).toContain('aria-label="Dismiss"');
   expect(html({ toast: null, notice: null })).toBe("");
-});
-
-test("the shortcuts notice offers the Shortcuts settings button", () => {
-  expect(html({ toast: null, notice: "bad key", keymapNotice: "bad key" })).toContain("Shortcuts settings");
-  expect(html({ toast: null, notice: "other", keymapNotice: "bad key" })).not.toContain("Shortcuts settings");
 });
 
 test("Content mounts the bar once, outside the Terminals block, and draws no toast of its own", () => {

@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 // The sheet's markdown preview sanitises through the browser; plain marked stands in for it here.
-vi.mock("../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => marked.parse(md, { async: false }) }));
+vi.mock("../chat/renderMarkdown", () => ({ renderMarkdown: (md: string) => marked.parse(md, { async: false }) }));
 const { default: PlanSheet } = await import("./PlanSheet");
 
 const sheet = (extra: Record<string, unknown>) =>

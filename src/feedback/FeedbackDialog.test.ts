@@ -5,7 +5,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { MARK } from "./model";
-import { byLabel, byText, click, type FakeDocument, FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
+import { byLabel, byText, click, type FakeDocument, FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
 
 const back = vi.hoisted(() => ({ opened: [] as string[], hold: false, pending: [] as (() => void)[] }));
 vi.mock("@tauri-apps/api/core", () => ({

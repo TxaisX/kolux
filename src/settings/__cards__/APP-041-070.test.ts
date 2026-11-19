@@ -3,7 +3,7 @@
 // whether the real browser opens is LIVE.
 import { createElement, Fragment } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, typeInto, until, withText } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, typeInto, until, withText } from "../../test/fakeDom";
 import { OUTBOUND } from "../outbound";
 import { FEEDBACK_REPO } from "../privacy";
 

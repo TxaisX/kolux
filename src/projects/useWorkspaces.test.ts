@@ -5,7 +5,7 @@
 import { act, createElement, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { beforeEach, expect, test } from "vitest";
 import type { Pane } from "../App";
-import { type FakeDocument, installDom, mount } from "../tasks/fakeDom";
+import { type FakeDocument, installDom, mount } from "../test/fakeDom";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { seatReady } from "../launch/seats";
 import { useWorkspaceActions } from "./useWorkspaces";
@@ -25,13 +25,12 @@ function Harness({ start, active, recent, settings = {} }: { start: Pane[]; acti
   const [panes, setPanes] = useState(start);
   const [focused, setFocused] = useState(start[0].key);
   const [activeDir, setActiveDir] = useState<string | null>(active);
-  const [, setStacked] = useState<Record<string, boolean>>({});
   const nextKey = useRef(100);
   const recentDirs = useRef(recent);
   const activeRef = useRef<string | null>(activeDir);
   activeRef.current = activeDir;
   const owner = { [A]: "p1", [B]: "p1", [C]: "p1" };
-  const actions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, setStacked, nextKey, settings, screen: "terminals", setScreen: () => {}, setPage: () => {}, owner, recentDirs, activeRef });
+  const actions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, setPage: () => {}, owner, recentDirs, activeRef });
   host = { actions, panes, setPanes, active: activeDir, focused };
   return null;
 }

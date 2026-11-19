@@ -1,6 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { CardPorts, ownPorts } from "./cardPorts";
-import type { PortRow } from "../ports/ports";
+import { CardPorts, ownPorts, type PortRow } from "./cardPorts";
 
 const row = (port: number, external = false, pid = 1): PortRow => ({ port, addr: "127.0.0.1", pid, external, started: "", terminal: external ? null : 1 });
 

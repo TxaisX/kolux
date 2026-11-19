@@ -9,8 +9,8 @@ test("SET-043: nothing is skipped on a fresh install, and every confirmation is 
   expect(skippedOf({})).toEqual([]);
   expect(skippedSentence({})).toBe("Every confirmation is asked.");
   expect(askAgainPatch({})).toEqual({});
-  expect(SKIPPABLE).toHaveLength(4);
-  expect(new Set(SKIPPABLE.map((c) => c.field)).size).toBe(4);
+  expect(SKIPPABLE).toHaveLength(3);
+  expect(new Set(SKIPPABLE.map((c) => c.field)).size).toBe(3);
 });
 
 test("SET-043: each skipped confirmation is remembered on its own", () => {
@@ -34,7 +34,7 @@ test("SET-043: closing a pinned tab asks by default, and turning it back on make
 
 test("SET-043: the sentence names every skipped question", () => {
   expect(skippedSentence({ pinnedTabsAsk: false, confirmCloseRunning: false })).toBe("Not asking before closing a pinned tab or closing a terminal that is running a program.");
-  expect(skippedSentence({ pinnedTabsAsk: false, confirmCloseRunning: false, confirmAutomationDelete: false })).toBe(
-    "Not asking before closing a pinned tab, deleting an automation or closing a terminal that is running a program.",
+  expect(skippedSentence({ pinnedTabsAsk: false, confirmCloseRunning: false, confirmWorkspaceDelete: false })).toBe(
+    "Not asking before deleting a workspace, closing a pinned tab or closing a terminal that is running a program.",
   );
 });

@@ -50,13 +50,6 @@ test("the delete shortcut takes the pane menu's route: startDelete, which asks f
   expect(start).toContain("setBatch(");
 });
 
-test("the unsaved-tabs check still runs before a single or batch delete", () => {
-  const remove = panelSrc.slice(panelSrc.indexOf("const remove = async (c = confirm)"), panelSrc.indexOf('setBusy("removing")', panelSrc.indexOf("const remove = async (c = confirm)")));
-  expect(remove).toContain("if (!(await onAskUnsaved([c.path]))) return;");
-  const batch = panelSrc.slice(panelSrc.indexOf("const removeBatch = async"));
-  expect(batch.slice(0, 400)).toContain("onAskUnsaved(b.order)");
-});
-
 test("an old press is not replayed when the sidebar opens again", () => {
   expect(panelSrc).toContain("let servedDelete = 0;");
   expect(delEffect).toContain("deleteRequest === servedDelete) return;");

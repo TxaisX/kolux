@@ -3,9 +3,9 @@
 // pane works in (`workDir`); on a main folder they say so in one line and touch nothing.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../test/fakeDom";
 
-const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], unsaved: [] as string[][], listGate: null as Promise<void> | null, settings: {} as Record<string, unknown>, projects: [{ id: "p1", name: "app", path: "C:/w/app" }] as unknown[] }));
+const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], listGate: null as Promise<void> | null, settings: {} as Record<string, unknown>, projects: [{ id: "p1", name: "app", path: "C:/w/app" }] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
     h.calls.push({ cmd, args });
@@ -43,7 +43,6 @@ beforeEach(() => {
   Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
   h.wt = [main, fix];
   h.calls = [];
-  h.unsaved = [];
   h.listGate = null;
   h.settings = {};
   h.projects = [{ id: "p1", name: "app", path: "C:/w/app" }];
@@ -62,7 +61,7 @@ async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0,
     activeDir, workDir, onSelect: () => {}, onRemoved: () => {}, onRemovedAll: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
-    onAskUnsaved: async (paths: string[]) => (h.unsaved.push(paths), true), renameRequest, ...more,
+    renameRequest, ...more,
   };
   const Host = () => {
     const [n, setN] = useState(firstDelete);
@@ -85,7 +84,7 @@ async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0,
 const checks = () => h.calls.filter((c) => c.cmd === "workspace_remove_check").map((c) => c.args.path);
 const question = (c: FakeNode) => find(c, (n) => n.attrs.role === "alertdialog" && n.textContent.includes("and its folder?"));
 
-test("Delete worktree on a pane in a worktree asks first, names the worktree, and checks unsaved tabs", async () => {
+test("Delete worktree on a pane in a worktree asks first and names the worktree", async () => {
   const c = await panel(fix.path);
   await pressDelete();
   expect(checks()).toEqual([fix.path]);
@@ -94,7 +93,6 @@ test("Delete worktree on a pane in a worktree asks first, names the worktree, an
   expect(question(c)[0].textContent).toContain("fix-login");
   await click(c, byText(c, "button", "Delete")[0]);
   await settle(60);
-  expect(h.unsaved).toEqual([[fix.path]]);
   expect(h.calls.filter((x) => x.cmd === "workspace_remove").map((x) => x.args.path)).toEqual([fix.path]);
 });
 
@@ -242,10 +240,8 @@ test("Rename worktree on the main folder says so and opens no field", async () =
   expect(c.textContent).toContain("The pane you are in is not in a worktree, so there is nothing to rename.");
 });
 
-// Audit F19: the back end does not drop a worktree's unsaved editor drafts when it removes the folder
-// (`workspace_remove` in src-tauri/src/projects.rs never calls editor_drafts), so the children-first batch
-// delete drops them per removed folder, as the single delete does.
-test("Deleting a worktree with a child worktree drops the editor drafts of each one removed", async () => {
+// Audit F19: the batch delete removes the child worktree first, then the one the pane works in.
+test("Deleting a worktree with a child worktree removes the child first, then the worktree", async () => {
   const kid = { ...base, path: "C:/w/ws/fix-login-kid", branch: "fix-login-kid", head: "d4d4d4d", isMain: false, parent: fix.path };
   h.wt = [main, { ...fix, parent: main.path }, kid];
   const c = await panel(fix.path);
@@ -253,7 +249,6 @@ test("Deleting a worktree with a child worktree drops the editor drafts of each 
   await click(c, byText(c, "button", "Delete all")[0]);
   await settle(60);
   expect(h.calls.filter((x) => x.cmd === "workspace_remove").map((x) => x.args.path)).toEqual([kid.path, fix.path]);
-  expect(h.calls.filter((x) => x.cmd === "editor_drafts_drop").map((x) => x.args.worktree)).toEqual([kid.path, fix.path]);
 });
 
 // Review R27-05: the shortcut picks its target by pane focus, so it always asks, even with "ask before deleting"

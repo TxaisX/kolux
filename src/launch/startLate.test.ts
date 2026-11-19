@@ -4,7 +4,7 @@
 import { act, createElement, useState } from "react";
 import type { Root } from "react-dom/client";
 import { beforeAll, expect, test, vi } from "vitest";
-import { click, find, installDom } from "../tasks/fakeDom";
+import { click, find, installDom } from "../test/fakeDom";
 import type { AgentInfo } from "./PlusMenu";
 import { TERMINAL, type Seat } from "./seats";
 import type { FolderRow } from "./startForm";

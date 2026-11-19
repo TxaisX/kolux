@@ -36,6 +36,7 @@ const CONNECTS: Record<string, string> = {
   "raw.githubusercontent.com": "raw.githubusercontent.com",
   "api.moonshot.ai": "api.moonshot.ai",
   "www.minimax.io": "www.minimax.io",
+  "openrouter.ai": "openrouter.ai",
   "cdnjs.cloudflare.com": "cdnjs",
   "cdn.jsdelivr.net": "jsdelivr",
   "unpkg.com": "unpkg",

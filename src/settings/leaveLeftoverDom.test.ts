@@ -22,7 +22,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
 
-import { byLabel, type FakeDocument, type FakeNode, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
+import { byLabel, type FakeDocument, type FakeNode, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
 import RepoPage from "./RepoPage";
 import RepoSetupSection from "./RepoSetup";
 

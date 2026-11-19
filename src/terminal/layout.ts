@@ -13,7 +13,8 @@ import { isTabColor, type TabColors } from "./tabColor";
 export const LAYOUT_FIELD = "savedLayout";
 
 export type PaneKind = "editor" | "preview" | "diff" | "changes" | "check";
-const KINDS: PaneKind[] = ["editor", "preview", "diff", "changes", "check"];
+// No file tab is restored: a saved editor, preview, diff or changes tab of an earlier version is dropped (a check tab is never saved).
+const KINDS: PaneKind[] = ["check"];
 const AGENTS: Agent[] = ["claude", "codex", "copilot", "cursor", "grok", "opencode", "shell"];
 
 export type SavedPane = {
@@ -212,7 +213,7 @@ function readPane(v: unknown): SavedPane | null {
   if (o.kind !== undefined) {
     if (!KINDS.includes(o.kind as PaneKind)) return null;
     p.kind = o.kind as PaneKind;
-    if (o.kind !== "changes" && !str(o.path)) return null;
+    if (!str(o.path)) return null;
   }
   if (o.view !== undefined && strOrNull(o.view)) p.view = o.view;
   if (str(o.agentId)) p.agentId = o.agentId;

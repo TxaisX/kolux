@@ -29,7 +29,7 @@ const OUTSIDE = import.meta.glob(
     "../chrome/useWindowChrome.ts",
     "../launch/launchActions.ts",
     "../terminal/paneActions.ts",
-    "../editor/reviewActions.ts",
+    "../terminal/reviewActions.ts",
     "../terminal/tabName.tsx",
     "../keys/useWindowKeys.ts",
     "../projects/useCliBridge.ts",

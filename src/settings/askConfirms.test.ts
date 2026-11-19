@@ -1,8 +1,8 @@
 // T-729: ResetButton and ConfirmClear ask in the shared Ask dialog (role=alertdialog, aria-label = the question).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount } from "../tasks/fakeDom";
-import { ResetButton } from "./SafetyRules";
+import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount } from "../test/fakeDom";
+import { ResetButton } from "./ResetButton";
 import ConfirmClear from "../shell/ConfirmClear";
 
 let doc: FakeDocument;

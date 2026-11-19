@@ -5,7 +5,7 @@
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import replay from "../../../evidence/cards-SET-030-replay.json";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../test/fakeDom";
 
 const h = vi.hoisted(() => ({
   own: null as unknown,

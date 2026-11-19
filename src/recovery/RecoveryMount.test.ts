@@ -3,7 +3,7 @@
 // The real RecoveryMount on the small DOM; the commands are stand-ins that fail on demand.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ fail: null as string | null, calls: [] as [string, unknown][], lost: [] as (() => void)[], notes: null as { onRepair?: () => void } | null, settingsFailed: false }));
 vi.mock("@tauri-apps/api/core", () => ({

@@ -3,7 +3,7 @@
 import type { ITheme } from "@xterm/xterm";
 import { classic, terminalFor, terminalTheme, type Appearance } from "../theme";
 import { CATALOGUE, findSchemes } from "../terminal/schemes";
-import { ResetButton } from "./SafetyRules";
+import { ResetButton } from "./ResetButton";
 
 export type SchemeOption = { id: string; name: string; colours: ITheme; custom?: boolean };
 

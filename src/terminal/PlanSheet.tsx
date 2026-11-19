@@ -3,7 +3,7 @@
 // two answers are Approve and Request changes. SAFE-006: a plan cut to fit says so; SAFE-007: once
 // the pane stops waiting on this plan, the sheet says the prompt closed and both answers go dead.
 import { useEffect, useMemo, useState } from "react";
-import { renderMarkdown } from "../editor/PreviewPane";
+import { renderMarkdown } from "../chat/renderMarkdown";
 import { canRequest, planSections, sectionQuote, type PlanDraft } from "./planReview";
 
 type Props = {

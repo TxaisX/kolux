@@ -183,7 +183,7 @@ fn hosted(store: &Store) -> (Vec<String>, Vec<String>) {
 }
 
 fn dismissed(store: &Store) -> serde_json::Map<String, serde_json::Value> {
-    crate::orchestration::kept::or_default(store, KEY_DISMISSED)
+    crate::state::kept::or_default(store, KEY_DISMISSED)
 }
 
 #[tauri::command]
@@ -215,7 +215,7 @@ pub fn tools_dismiss(store: tauri::State<'_, Mutex<Store>>, id: String, under: S
 }
 
 fn dismiss(s: &Store, id: String, under: String) -> Result<(), String> {
-    let mut all: serde_json::Map<String, serde_json::Value> = crate::orchestration::kept::load(s, KEY_DISMISSED)?;
+    let mut all: serde_json::Map<String, serde_json::Value> = crate::state::kept::load(s, KEY_DISMISSED)?;
     all.insert(id, serde_json::Value::String(under));
     s.set(KEY_DISMISSED, &serde_json::Value::Object(all).to_string()).map_err(|e| e.to_string())
 }
@@ -962,7 +962,7 @@ mod tests {
         let store = Store::open(&dir).unwrap();
         let broken = "{\"gh\": \"abc";
         store.set(KEY_DISMISSED, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert!(dismiss(&store, "gh".into(), "x".into()).unwrap_err().contains(KEY_DISMISSED));
         assert_eq!(store.get(KEY_DISMISSED).unwrap().as_deref(), Some(broken), "the blob is byte-identical");
         drop(store);

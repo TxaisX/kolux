@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { chipOf, type Signal } from "../board/chip";
+import { chipOf, type Signal } from "../status/chip";
 import { rowStatus } from "./rail";
 
 // VIEW-016: the line under each rail session is the Board chip's line, from the same signal.

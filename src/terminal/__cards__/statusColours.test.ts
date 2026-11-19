@@ -8,11 +8,8 @@ import { classic, buildTheme, readAppearance, THEMES, contrast } from "../../the
 const fsName = "node:fs";
 const read = async (rel: string): Promise<string> => ((await import(/* @vite-ignore */ fsName)) as { readFileSync: (u: URL, e: string) => string }).readFileSync(new URL(rel, import.meta.url), "utf8");
 const styles = await read("../../styles.css");
-const tower = await read("../../tower/tower.css");
 const rows = await read("../../sessions/rows.css");
 const chat = await read("../../chat/chat.css");
-const extras = await read("../../editor/editor-extras.css");
-const insights = await read("../../insights/insights.css");
 
 test("failed and cannot reach have their own red tone, apart from needs you", () => {
   expect(VOCAB.failed.tone).toBe("bad");
@@ -27,11 +24,9 @@ test("working is cyan and needs you yellow on every surface that shows both", ()
   expect(styles).toMatch(/\.tab \.badge\.permission \{ color: var\(--working-icon\); \}/);
   expect(styles).toMatch(/\.pane-head \.st\.working \{ color: var\(--working\); \}/);
   expect(styles).toMatch(/\.pane-head \.st\.bad \{ color: var\(--status-bad\); \}/);
-  expect(styles).toMatch(/\.inbox \.row\.working \.st \{ color: var\(--working\); \}/);
   expect(styles).toMatch(/\.sb-list \.dot\.working \{ background: var\(--working\); \}/);
   // R10-01: a running but idle session keeps its own state colour; "live" alone never paints the dot.
   expect(styles).not.toMatch(/\.sb-list \.dot\.live[^{]*\{[^}]*background/);
-  expect(tower).toMatch(/\.tower \.row\.working \.st \{ color: var\(--working\); \}/);
   expect(rows).toMatch(/\.session-dot\.running \{ background: var\(--working\); \}/);
 });
 
@@ -42,7 +37,7 @@ test("the palette's unread dot is cyan: its rule comes after the yellow dot rule
   expect(unread).toBeGreaterThan(dot);
 });
 
-test("failures the first pass missed are red too, and the Floor's needs you is the pane header's yellow (R10-07)", async () => {
+test("failures the first pass missed are red too, and needs you is the pane header's yellow (R10-07)", async () => {
   expect(styles).toMatch(/\.note\.error \{ color: var\(--status-bad\); \}/);
   expect(styles).toMatch(/\.scm-handoff summary \.state\.error \{ color: var\(--status-bad\); \}/);
   expect(styles).toMatch(/\.upd-card\.error \.upd-icon \{ color: var\(--status-bad\); \}/);
@@ -51,7 +46,7 @@ test("failures the first pass missed are red too, and the Floor's needs you is t
   // Only the error lines (role="alert") are held to red: a later --danger elsewhere, say a delete button, is fine.
   const alerts = (src: string) => src.split("\n").filter((l) => l.includes('role="alert"'));
   const red = (src: string) => alerts(src).length > 0 && alerts(src).every((l) => /var\(--status-bad/.test(l) && !/var\(--danger/.test(l));
-  for (const [f, n] of [["../../feedback/FeedbackDialog.tsx", 2], ["../../usage/ShareCard.tsx", 1], ["../../editor/NamePrompt.tsx", 1]] as const) {
+  for (const [f, n] of [["../../feedback/FeedbackDialog.tsx", 2], ["../../usage/ShareCard.tsx", 1]] as const) {
     const src = await read(f);
     expect(alerts(src).length, f).toBeGreaterThanOrEqual(n);
     expect(red(src), f).toBe(true);
@@ -59,15 +54,11 @@ test("failures the first pass missed are red too, and the Floor's needs you is t
     expect(red(`${src}\n<button style={{ color: "var(--danger)" }}>Delete</button>`), `${f} with a delete button`).toBe(true);
   }
   expect(styles).toMatch(/\.pane-head \.st\.attention \{ color: var\(--working-icon\); \}/);
-  expect(await read("../../floor/FloorView.tsx")).toMatch(/needs: "var\(--working-icon\)"/);
 });
 
 test("errors and deleted lines are red; stopped is grey", () => {
   expect(chat).toMatch(/\.chat-error \{ color: var\(--status-bad\); \}/);
   expect(chat).toMatch(/\.chat-out \.dl\.del \{ color: var\(--status-bad\); \}/);
-  expect(extras).toMatch(/\.cs-status\.bad \{ color: var\(--status-bad\); \}/);
-  expect(extras).toMatch(/kx-hl-del\) \{ color: var\(--status-bad\); \}/);
-  expect(insights).toMatch(/\.ins-pill\.stopped \{ color: var\(--fg-faint\);/);
 });
 
 test("the status colours read on every built-in theme, dark and light (3:1 dot, 4.5:1 word)", () => {

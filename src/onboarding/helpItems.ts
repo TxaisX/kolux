@@ -63,7 +63,6 @@ export function helpItems(c: HelpCtx): HelpItem[] {
   ];
   if (c.milestones.shown) items.push(help("milestones", "Milestones", c.openGuide, { ring: { done: c.milestones.done, total: c.milestones.total } }));
   items.push(
-    help("shortcuts", "Keyboard Shortcuts", () => c.openSettings("shortcuts")),
     help("onboarding", "Onboarding", c.reopenWizard, { hint: HINTS.onboarding }),
     help("feedback", "Send Feedback", c.requestFeedback),
     help("report-crash", "Report Crash", c.reportCrash),

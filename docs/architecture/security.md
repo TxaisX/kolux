@@ -96,7 +96,7 @@ The main window runs from the Tauri asset origin with a strict CSP:
 
 See `src-tauri/tauri.conf.json:28`. Tauri's CSP modification is disabled only for `style-src`, because the app injects theme variables.
 
-Browser tabs are child webviews of the main window. They are not given the main window's capabilities, but Tauri still hands app commands to webviews whose origin it trusts. The guard is therefore origin-based, not capability-based: a tab may load only `http`, `https`, or blank, and never any `*.localhost` host or the dev origin, by address bar, redirect, or script (`src-tauri/src/browser.rs:1165-1188`, `:2542-2559`). The tower capability file states explicitly that every registered app command remains callable from every window (`src-tauri/capabilities/tower.json:4`).
+Browser tabs are child webviews of the main window. They are not given the main window's capabilities, but Tauri still hands app commands to webviews whose origin it trusts. The guard is therefore origin-based, not capability-based: a tab may load only `http`, `https`, or blank, and never any `*.localhost` host or the dev origin, by address bar, redirect, or script (`src-tauri/src/browser.rs:1165-1188`, `:2542-2559`).
 
 The preview server binds loopback, uses one 128-bit random path token per folder, checks the Host header, refuses path escapes, and serves only folders inside an open project or worktree (`src-tauri/src/browser_preview.rs:48`, `:117-118`, `:276-300`). Files over 32 MiB are refused.
 

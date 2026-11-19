@@ -5,7 +5,7 @@
 //   F02-settings-update.4: switching an agent on or off sends only that switch.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({
   settings: {} as Record<string, unknown>,

@@ -4,7 +4,7 @@
 // true the cards still draw their headings and controls, and the reads wait until the page is opened.
 import { createElement, type ReactElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount, settle, withText } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount, settle, withText } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ calls: [] as string[] }));
 vi.mock("@tauri-apps/api/core", () => ({

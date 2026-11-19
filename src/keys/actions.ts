@@ -70,7 +70,6 @@ export const agents: Array<[string, string]> = [
 const a = (id: string, title: string, scope: Scope, win32: string[], extra: Partial<Action> = {}): Action => ({ id, title, scope, win32, ...extra });
 
 export const actions: Action[] = [
-  a("worktree.quickOpen", "Go to File", "global", ["Mod+P"]),
   a("app.settings", "Open Settings", "global", ["Mod+Comma"], { group: "menu", keywords: ["preferences", "options"], terminalSafe: true }),
   a("app.forceReload", "Force Reload", "global", ["Mod+Shift+R"], { group: "menu" }),
   // T-800 (P4B-13, DT-C226): the top-bar box and this dialog are "Go to / Run a command"; Ctrl+Shift+P is the chord people expect.
@@ -81,29 +80,19 @@ export const actions: Action[] = [
   a("workspace.create", "Create worktree", "global", ["Mod+N", "Mod+Shift+N"], { darwin: ["Mod+N"] }),
   a("workspace.rename", "Rename worktree", "global", [], { darwin: ["Mod+Alt+R"], group: "workspace-shell" }),
   a("workspace.delete", "Delete worktree", "global", ["Mod+Shift+Backspace"]),
-  a("workspace.openBoard", "Show Workspace Statuses", "global", []), // T-610: not a second "Board" (VIEW-001's keeps the name)
   a("workspace.selectByIndex", "Select Workspace 1–9", "global", ["Mod+1"], { index: true }),
-  a("view.tasks", "Open Tasks", "global", []),
-  a("view.automations", "Open Automations", "global", [], { keywords: ["schedule", "cron", "recurring"] }), // UX lane C: reachable with the sidebar row hidden
-  a("view.routing", "Model Routing", "global", []), // T-727: was only the icon on the projects panel; "route" finds it as a near miss of "routing"
-  a("dashboard.toggle", "Toggle Agent Dashboard", "global", []),
   a("sidebar.left.toggle", "Toggle Sidebar", "global", ["Mod+B"]),
   a("sidebar.right.toggle", "Toggle Right Sidebar", "global", ["Mod+L"]),
-  a("sidebar.explorer.toggle", "Show or hide Explorer", "global", ["Mod+Shift+E"]),
   a("sidebar.search.toggle", "Show Search", "global", ["Mod+Shift+F"]),
   a("sidebar.checks.toggle", "Show Checks", "global", []),
   a("sidebar.sleepingWorkspaces.toggle", "Toggle Sleeping Workspaces", "global", []),
   a("sidebar.focusWorktreeList", "Focus worktree list", "global", ["Mod+Shift+0"]),
-  a("view.inbox", "Show Inbox", "global", []),
-  a("view.tower", "Show Tower", "global", [], { keywords: ["agent", "dashboard"] }), // T-760: the old Agent Dashboard row's word
   // T-548 (OD-11): one key moves new panes to the provider's next account; unbound until Txais picks a chord.
   a("account.switchClaude", "Switch Claude account", "global", [], { keywords: ["account", "sign in", "login"] }),
   a("account.switchCodex", "Switch Codex account", "global", [], { keywords: ["account", "sign in", "login"] }),
   a("sidebar.sleeping.toggle", "Show or Hide Sleeping Workspaces", "global", [], { keywords: ["sleep", "asleep", "wake", "toggle"] }),
-  a("view.floor", "Show Floor", "global", []),
   // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there. T-800: Ctrl+F6 (Ctrl+Shift+P is the palette now; bare F6 belongs to terminal programs such as htop and mc, DT-C109).
   a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+F6"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
-  a("view.space", "Show Space", "global", ["Mod+Alt+S"], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
   // BROW-012: a browser tab's own zoom. These keys do nothing in a terminal: TERM-078 sizes every
   // terminal from one saved setting instead of letting one pane drift.
@@ -118,8 +107,6 @@ export const actions: Action[] = [
   a("worktree.history.forward", "Worktree History Forward", "global", ["Mod+Alt+ArrowRight"]),
   a("tab.newTerminal", "New terminal tab", "tabs", ["Mod+T"], { keywords: ["shell", "console", "command line"] }),
   a("tab.newAgent", "New agent tab (default agent)", "tabs", ["Mod+Alt+T"]),
-  a("tab.newMarkdown", "New markdown tab", "tabs", ["Mod+Shift+M"]),
-  a("tab.openMarkdown", "Open markdown tab", "tabs", ["Mod+Shift+O"]),
   a("tab.close", "Close active tab", "tabs", ["Mod+W"]),
   a("tab.closeAll", "Close all editor tabs", "tabs", ["Mod+Alt+W"]),
   a("tab.rename", "Rename active tab", "tabs", ["Mod+Shift+G"], { darwin: ["Mod+R"], group: "workspace-shell" }),
@@ -136,21 +123,6 @@ export const actions: Action[] = [
   a("tab.nextTerminal", "Next terminal tab", "tabs", ["Ctrl+PageDown"], { terminalSafe: true }),
   a("tab.previousTerminal", "Previous terminal tab", "tabs", ["Ctrl+PageUp"], { terminalSafe: true }),
   a("tab.selectByIndex", "Select Tab 1–9", "tabs", ["Alt+1"], { darwin: ["Ctrl+1"], index: true, terminalSafe: true }),
-  a("editor.find", "Find in editor", "editor", ["Mod+F"]),
-  a("editor.replace", "Replace in editor", "editor", ["Mod+H"], { darwin: ["Mod+Alt+F"] }),
-  a("editor.save", "Save File", "editor", ["Mod+S"]),
-  a("editor.markdownPreview", "Show Markdown Preview", "editor", ["Mod+Shift+V"]),
-  a("editor.toggleWordWrap", "Toggle Word Wrap", "editor", ["Alt+Z"]),
-  a("editor.copyContext", "Copy Context", "editor", ["Mod+Alt+C"]),
-  a("editor.previousChange", "Go to Previous Change", "editor", ["Shift+F7"]),
-  a("editor.nextChange", "Go to Next Change", "editor", ["F7"]),
-  a("editor.addReviewNote", "Add Review Note", "editor", ["Mod+Shift+A"]),
-  a("sourceControl.sendReviewNotes", "Send Review Notes to Agent", "editor", [], { group: "editor" }),
-  a("fileExplorer.undo", "Undo file operation", "explorer", ["Mod+Z"]),
-  a("fileExplorer.redo", "Redo file operation", "explorer", ["Mod+Shift+Z", "Ctrl+Y"], { darwin: ["Mod+Shift+Z"] }),
-  a("fileExplorer.copyPath", "Copy file path", "explorer", ["Alt+Shift+C"]),
-  a("fileExplorer.copyRelativePath", "Copy relative file path", "explorer", ["Mod+Alt+Shift+C"]),
-  a("fileExplorer.delete", "Delete file", "explorer", ["Delete"], { darwin: ["Delete", "Mod+Backspace"] }),
   a("settings.search", "Search Settings", "settings", ["Mod+F"]),
   a("terminal.copySelection", "Copy terminal selection", "terminal", ["Ctrl+Shift+C", "Ctrl+C"], { terminalSafe: true }),
   a("terminal.selectAll", "Select all terminal text", "terminal", ["Ctrl+Shift+A"], { darwin: ["Mod+A"] }),
@@ -183,8 +155,6 @@ export const actionById: ReadonlyMap<string, Action> = new Map(actions.map((x) =
 export const sameAs: Readonly<Record<string, string>> = {
   // PROJ-053 / VIEW-053: COMPAT's id for showing sleeping workspaces; VIEW-053 built the toggle as sidebar.sleeping.toggle.
   "sidebar.sleepingWorkspaces.toggle": "sidebar.sleeping.toggle",
-  // VIEW-029 / HID-020: the Agent Dashboard drawer was skipped for the Tower, its always-on successor (OD-09, DT-C35).
-  "dashboard.toggle": "view.tower",
 };
 
 /** The built-in chords for one platform. */

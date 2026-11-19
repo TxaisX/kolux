@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ActionOutcome, Pr, Status } from "./model";
 import { restoreFocus } from "../shell/paletteCaps";
 import { escapeClosesForm, hideDraft, keepDraft, shownDraft, startDraft, writeMayTouchDraft, type DraftBook } from "./panelUx";
-import SearchPick from "../editor/SearchPick";
+import SearchPick from "./SearchPick";
 import { needsOneClick, useOneClick } from "./oneClick";
 import OneClickNotice from "./OneClickNotice";
 import { draftOffered, draftPrText, draftRunning, draftSubscribe, draftVersion, readDraftGate, settleDraft, startGatedOneClick } from "./prDraft";

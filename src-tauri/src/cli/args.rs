@@ -387,6 +387,10 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
             flags.insert(flag.into(), v);
         }
         let joined = path.join(" ");
+        if path.len() > 1 && path[0] == "open" {
+            // APP-019 retired: `open <file>` is refused in plain words, not taken for a typo.
+            return Err(Fail::new("failed", NO_FILES));
+        }
         let all = commands();
         // A flag no command takes left its would-be value among the words; the first two still
         // name the command it was typed against.

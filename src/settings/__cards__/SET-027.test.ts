@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { AgentInfo } from "../../launch/PlusMenu";
 import { defaultAgentId, menuAgents, offeredAgents } from "../../launch/agents";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../test/fakeDom";
 
 const h = vi.hoisted(() => ({
   settings: {} as Record<string, unknown>,

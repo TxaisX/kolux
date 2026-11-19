@@ -3,7 +3,7 @@
 // detached), so it did not hand focus back, and the second mount then saved the menu's own row as "where focus was".
 import { createElement, StrictMode, useState } from "react";
 import { expect, test, vi } from "vitest";
-import { FakeNode, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { FakeNode, find, installDom, mount, settle } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => null }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));

@@ -16,7 +16,7 @@ describe("the catalogue (ONB-033)", () => {
     expect(t.steps[1].alt).toContain(".board");
   });
   it("p4a-09: the board tour names the columns as states, in the board's own order, not stages", async () => {
-    const { LANES } = await import("../board/chip");
+    const { LANES } = await import("../status/chip");
     const lane = tour("board").steps.find((s) => s.target === BOARD_LANE)!;
     const body = lane.en.body;
     expect(body).not.toMatch(/stage|first one/i);

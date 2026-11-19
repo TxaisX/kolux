@@ -418,7 +418,7 @@ pub fn checks_failed(seen: &mut std::collections::HashMap<String, String>, polle
 
 /// AUTO-004 (T-085-d): one round's checks readings through the saved state; returns what to fire.
 pub fn checks_round(store: &Store, polled: &[crate::scm::PolledPr], checks: &std::collections::HashMap<String, String>) -> Result<Vec<(String, crate::scm::Pr)>, String> {
-    let mut seen: std::collections::HashMap<String, String> = crate::orchestration::kept::load(store, CHECKS_SEEN_KEY)?;
+    let mut seen: std::collections::HashMap<String, String> = crate::state::kept::load(store, CHECKS_SEEN_KEY)?;
     let before = seen.clone();
     let fired = checks_failed(&mut seen, polled, checks);
     if seen != before {
@@ -893,16 +893,6 @@ pub fn reconnect(store: &Store, held: &dyn Fn(u32, Option<u32>) -> Option<Held>,
         save(store, RUNS_KEY, &runs)?;
     }
     Ok(moved)
-}
-
-/// T-085-h: the app's terminal service asked about a terminal from before the restart, through
-/// what it already tells: a session it still runs is alive and its log is the replay; a pane whose
-/// newest program is over is ended; anything else is unknown.
-fn held_in(ts: &crate::terminal::Terminals, terminal: u32, pane_key: Option<u32>) -> Option<Held> {
-    if ts.started(terminal).is_some() {
-        return Some(Held { alive: true, output: ts.read(terminal, None, Some(RUN_OUTPUT_LINES)).map(|r| screen_text(&r)) });
-    }
-    pane_key.and_then(|p| ts.of_pane(p)).filter(|run| !run.alive).map(|_| Held { alive: false, output: None })
 }
 
 /// After a restart, the dispatched runs whose pane has not come back by the end of the settling
@@ -1614,42 +1604,6 @@ fn launch_for<R>(app: &tauri::AppHandle, f: impl FnOnce(&Launch) -> R) -> R {
     f(&Launch { git: &git, store: &store, claude_config: crate::claude_accounts::trust_config_file(&store), installed: &installed, notify: &notify })
 }
 
-/// Starts the clock: it looks for due automations about once a minute (every 30 seconds, so a run
-/// begins within its minute) for as long as the app runs.
-pub fn start_clock(app: tauri::AppHandle) {
-    use_panes(std::sync::Arc::new(app.clone()));
-    std::thread::spawn(move || {
-        // AUTO-021: a history saved too large is cut down as Kolux loads it.
-        if let Err(e) = launch_for(&app, |l| tidy(&*l.store.lock().map_err(|e| e.to_string())?, now_ms())) {
-            eprintln!("automations history: {e}");
-        }
-        // T-085-h: runs still going at the last quit are found again at the terminal service.
-        if let Some(ts) = tauri::Manager::try_state::<crate::terminal::Terminals>(&app) {
-            match launch_for(&app, |l| reconnect(&*l.store.lock().map_err(|e| e.to_string())?, &|t, p| held_in(&ts, t, p), now_ms())) {
-                Ok(moved) => moved.iter().for_each(|id| drop(tauri::Emitter::emit(&app, EVENT, json!({ "runId": id })))),
-                Err(e) => eprintln!("automations reconnect: {e}"),
-            }
-        }
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(30));
-            if let Err(e) = launch_for(&app, |l| tick(l, now_ms() as i64)) {
-                eprintln!("automations clock: {e}");
-            }
-            // AUTO-012: runs whose pane did not come back after a restart are closed once settled.
-            match launch_for(&app, |l| settle(&*l.store.lock().map_err(|e| e.to_string())?, now_ms())) {
-                Ok(closed) => closed.iter().for_each(|id| drop(tauri::Emitter::emit(&app, EVENT, json!({ "runId": id })))),
-                Err(e) => eprintln!("automations settle: {e}"),
-            }
-            // C25-R2-01: a run whose agent stopped working without its process ending is closed,
-            // so it stops reading Running and stops holding its automation.
-            match launch_for(&app, |l| stalled(&*l.store.lock().map_err(|e| e.to_string())?, &|t| crate::status::state_of(t), now_ms())) {
-                Ok(closed) => closed.iter().for_each(|id| drop(tauri::Emitter::emit(&app, EVENT, json!({ "runId": id })))),
-                Err(e) => eprintln!("automations stalled: {e}"),
-            }
-        }
-    });
-}
-
 #[tauri::command]
 pub fn automation_delete(app: tauri::AppHandle, store: StoreState<'_>, id: String) -> Result<(), String> {
     use tauri::Emitter;
@@ -1915,7 +1869,7 @@ mod tests {
         let mut next = polled("C:/a", Some("OPEN"));
         next.pr.as_mut().unwrap().number = 8;
         assert!(checks_round(&store, &[next], &checked(&[("C:/a", "failing")])).unwrap().is_empty());
-        assert_eq!(crate::orchestration::kept::load::<std::collections::HashMap<String, String>>(&store, CHECKS_SEEN_KEY).unwrap().len(), 1);
+        assert_eq!(crate::state::kept::load::<std::collections::HashMap<String, String>>(&store, CHECKS_SEEN_KEY).unwrap().len(), 1);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -3261,7 +3215,7 @@ mod tests {
         let store = Store::open(&db).unwrap();
         let broken = "{\"c:/a#1\": \"running";
         store.set(CHECKS_SEEN_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&db);
+        crate::state::kept::refuse_copies(&db);
         let open = [polled("C:/a", Some("OPEN"))];
         let err = checks_round(&store, &open, &checked(&[("C:/a", "failing")])).unwrap_err();
         assert!(err.contains(CHECKS_SEEN_KEY), "{err}");

@@ -33,15 +33,15 @@ test("the confirmation dialog traps focus: Escape runs Cancel, and Cancel is the
 test("the status bar's right-click menu uses the menu keys too; the More tabs menu has them from Base UI (src/ui)", () => {
   renderToString(createElement(StatusBar, { terminals: 0 }));
   expect(useMenuFocus).toHaveBeenCalledTimes(1);
-  renderToString(createElement(RightSidebar, { tab: "explorer", width: 300, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
+  renderToString(createElement(RightSidebar, { tab: "checks", width: 300, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
   expect(useMenuFocus).toHaveBeenCalledTimes(1);
   expect(sidebarSrc).toMatch(/<Menu open onClose=\{\(\) => setMenu\(false\)\} label="More tabs" anchor=\{moreButton\}/);
 });
 
 test("chrome.md:15: only the open right-sidebar tab is a tab stop, and the body is its tab panel", () => {
-  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
-  expect(html).toMatch(/tabindex="0"[^>]*role="tab"[^>]*aria-selected="true"[^>]*>Insights</);
-  expect(html).toMatch(/tabindex="-1"[^>]*role="tab"[^>]*aria-selected="false"[^>]*>Explorer</);
+  const html = renderToString(createElement(RightSidebar, { tab: "checks", width: 320, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
+  expect(html).toMatch(/tabindex="0"[^>]*role="tab"[^>]*aria-selected="true"[^>]*>Checks</);
+  expect(html).toMatch(/tabindex="-1"[^>]*role="tab"[^>]*aria-selected="false"[^>]*>History</);
   expect(html).toContain('role="tabpanel"');
 });
 

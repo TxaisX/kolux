@@ -1,15 +1,13 @@
 // T-543: the window's projects and workspaces, moved out of App.tsx as they were. Two hooks, called
 // where the code used to sit: useWorkspaces holds the lists and requests (the window's state slot),
-// useWorkspaceActions opens, sets up and removes workspaces over the window's panes (the slot where
-// the setup terminal's code was). The grid's own state (stacked pairs, weights) stays in the window.
+// useWorkspaceActions opens and removes workspaces over the window's panes. The grid's own state (stacked pairs, weights) stays in the window.
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Pane } from "../App";
-import type { Screen } from "../chrome/TopBar";
 import type { Page } from "./ProjectsPanel";
-import type { PendingCreate, Project, SetupLine, SetupWhere } from "./model";
+import type { PendingCreate, Project } from "./model";
 import { EMPTY_HISTORY } from "./nav";
-import { cellsOf, DEFAULT_PANES_FIELD, groupOf, MAX_PANES, seedCount } from "../terminal/grid";
+import { DEFAULT_PANES_FIELD, seedCount } from "../terminal/grid";
 import { activeAfterRemove, focusIn, goesWith, gridOf, panesIn, sameDir, underDir, withoutDir } from "../workspaces";
 import { forgetStartDirs, startDirOf } from "./worktreeGrid";
 import { readLook } from "../settings/general";
@@ -55,53 +53,19 @@ type ActionDeps = {
   setPanes: Dispatch<SetStateAction<Pane[]>>;
   setFocused: Dispatch<SetStateAction<number>>;
   setActiveDir: Dispatch<SetStateAction<string | null>>;
-  setStacked: Dispatch<SetStateAction<Record<string, boolean>>>;
   nextKey: MutableRefObject<number>;
   settings: Record<string, unknown>;
-  screen: Screen;
-  setScreen: Dispatch<SetStateAction<Screen>>;
   setPage: Dispatch<SetStateAction<Page | null>>;
   owner: Record<string, string>;
   recentDirs: MutableRefObject<string[]>;
   activeRef: MutableRefObject<string | null>;
 };
 
-export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, setStacked, nextKey, settings, screen, setScreen, setPage, owner, recentDirs, activeRef }: ActionDeps) {
+export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, setPage, owner, recentDirs, activeRef }: ActionDeps) {
   // T-614: the panes as last drawn, for a removal that finishes after long awaits (git takes seconds
   // on Windows) and must see the tabs as they are then, not as they were when it was clicked.
   const panesNow = useRef(panes);
   panesNow.current = panes;
-  // PROJ-033 / SESS-037: the setup script runs in a Setup terminal of the new workspace: a tab
-  // beside its first pane, or a cell of its own to the right or below. `then` runs once it ends
-  // (the agent waiting for setup), whatever its exit code, and lands as a tab beside it.
-  const afterSetup = useRef<Record<number, () => void>>({});
-  // DT-C274: `view`, the grid a team worktree is shown in (as openDefaultTabs takes it): the Setup terminal runs in
-  // `dir`, is shown there, and is always a tab: of the cell of the pane running in `dir`, else of cell `group` (the chooser's), else of the grid's first cell.
-  const startSetup = (dir: string, branch: string | null, line: SetupLine, where: SetupWhere, show: boolean, then?: () => Promise<unknown> | void, view?: string | null, group?: number) => {
-    const key = nextKey.current++;
-    setPanes((ps) => {
-      if (view !== undefined) {
-        const shown = cellsOf(panesIn(ps, view));
-        const cell = shown.find((c) => c.panes.some((p) => sameDir(p.cwd, dir))) ?? shown.find((c) => c.group === group) ?? shown[0];
-        return [...ps, { key, cwd: dir, view, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word: line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, ""), group: cell?.group }];
-      }
-      const cells = cellsOf(panesIn(ps, dir));
-      const tab = where === "tab" || cells.length >= MAX_PANES;
-      if (!tab && where === "down" && cells.length === 1) setStacked((st) => ({ ...st, [dir]: true }));
-      return [...ps, { key, cwd: dir, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word: line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, ""), group: tab ? cells[0]?.group : undefined }];
-    });
-    if (then)
-      afterSetup.current[key] = () =>
-        void Promise.resolve(then()).then((k) => {
-          if (typeof k === "number") setPanes((ps) => ps.map((p) => (p.key === k ? { ...p, group: groupOf(ps.find((x) => x.key === key) ?? p) } : p)));
-        });
-    if (show) {
-      setActiveDir(view === undefined ? dir : view);
-      setFocused(key);
-    }
-    return key;
-  };
-
   // PROJ-066: a click on a workspace row shows that workspace on the same click. Its panes were
   // kept while hidden, so they come back as they were; a workspace with no pane yet gets the launch chooser (T-569), not a terminal.
   // TERM-005: `fresh` says the workspace was just made: its grid starts with the default pane
@@ -117,7 +81,6 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
     const at = view === undefined ? dir : view;
     recentDirs.current = [at, ...recentDirs.current.filter((d) => !sameDir(d, at))].slice(0, 20);
     setActiveDir(at);
-    if (screen === "artifacts" || screen === "skills") setScreen("terminals");
     const shown = panesIn(panes, at);
     const mine = sameDir(gridOf(at), dir) ? undefined : shown.find((p) => sameDir(p.cwd, dir) && !p.kind); // a worktree's own grid is its project's: its session in that grid is the one focused
     if (mine) setFocused(mine.key);
@@ -155,7 +118,7 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   };
   const removed = (path: string) => removedAll([path]);
   const projectOf = (cwd: string | null): string | null => (cwd ? (Object.entries(owner).find(([dir]) => sameDir(dir, cwd))?.[1] ?? null) : null);
-  return { afterSetup, startSetup, select, removedAll, removed, projectOf };
+  return { select, removedAll, removed, projectOf };
 }
 
 export type WorkspaceActions = ReturnType<typeof useWorkspaceActions>;

@@ -41,7 +41,7 @@ fn save(store: &Store, v: &Value) -> Result<(), String> {
 /// The choices, made on first use. Projects already there keep showing worktrees made elsewhere, as
 /// they did before this choice existed (PROJ-042); projects added later start with them hidden.
 pub fn ensure(store: &Store, projects: &[Project]) -> Result<Value, String> {
-    let v: Value = crate::orchestration::kept::load(store, KEY)?;
+    let v: Value = crate::state::kept::load(store, KEY)?;
     if v.is_object() {
         return Ok(v);
     }
@@ -52,7 +52,7 @@ pub fn ensure(store: &Store, projects: &[Project]) -> Result<Value, String> {
 /// list that did not read (row 903): that would save an empty projects map and drop every
 /// grandfathered choice for good. The list is read here without keeping it aside or saving it.
 fn ensure_read(store: &Store) -> Result<Value, String> {
-    let v: Value = crate::orchestration::kept::load(store, KEY)?;
+    let v: Value = crate::state::kept::load(store, KEY)?;
     if v.is_object() {
         return Ok(v);
     }
@@ -68,7 +68,7 @@ fn read_projects(store: &Store) -> Result<Vec<Project>, String> {
 fn seed(store: &Store, projects: &[Project]) -> Result<Value, String> {
     // Row 911: a kept-aside list means the one read may be its "[]" reset or projects added since; their
     // ids cannot be told from grandfathered ones, so none is grandfathered and the seed is never saved.
-    if crate::orchestration::kept::has_aside(store, crate::projects::PROJECTS_KEY)? {
+    if crate::state::kept::has_aside(store, crate::projects::PROJECTS_KEY)? {
         return Ok(json!({ "global": {}, "roots": [], "projects": {} }));
     }
     let own: Map<String, Value> = projects.iter().map(|p| (p.id.clone(), json!({ OTHER: true }))).collect();
@@ -246,7 +246,7 @@ mod tests {
         let store = Store::open(&dir).unwrap();
         let broken = "{\"global\": {\"claude\": true";
         store.set(KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert!(ensure(&store, &[]).unwrap_err().contains(KEY));
         assert_eq!(store.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");
         drop(store);
@@ -260,7 +260,7 @@ mod tests {
         let store = Store::open(&dir).unwrap();
         let broken = "{\"global\": {\"claude\": true";
         store.set(KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         let project = Project { id: "p".into(), name: "p".into(), path: dir.display().to_string(), workspaces_dir: None, base: None, display_name: None };
         assert!(apply(&store, &project, &Map::new(), Vec::new()).unwrap().is_empty());
         assert_eq!(store.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");
@@ -321,7 +321,7 @@ mod tests {
         let (store, dir) = broken_list_store("r911");
         assert!(crate::projects::load_projects(&store).is_empty(), "a listing keeps the broken list aside");
         assert_eq!(store.get(crate::projects::PROJECTS_KEY).unwrap().as_deref(), Some("[]"), "and starts it fresh");
-        assert_eq!(crate::orchestration::kept::asides(&store, crate::projects::PROJECTS_KEY), vec![BROKEN_LIST.to_string()]);
+        assert_eq!(crate::state::kept::asides(&store, crate::projects::PROJECTS_KEY), vec![BROKEN_LIST.to_string()]);
         let project = Project { id: "keep-1".into(), name: "keep".into(), path: dir.display().to_string(), workspaces_dir: None, base: None, display_name: None };
         assert!(apply(&store, &project, &Map::new(), Vec::new()).is_ok());
         assert_eq!(sources(&store, Some(&project)).len(), 3, "display still works");

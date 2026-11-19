@@ -2,7 +2,7 @@
 // MIRROR src/App.tsx (the `sessions` prop built from the window's panes); the row decisions are ProjectsPanel's (DT-C274: rows no longer carry a running-agent count) (T-640: terminal rows are gone from the left pane; they stay tabs in the main area).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../../test/fakeDom";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -114,7 +114,7 @@ test("box 3: clicking the folder row opens the grid every worktree's sessions ar
   h.wt = [wt, agentWt(1)];
   const c = await panel(six.slice(0, 2));
   const row = find(c, (n) => cls(n).includes("proj") && cls(n).includes("folder"))[0];
-  const { click } = await import("../../tasks/fakeDom");
+  const { click } = await import("../../test/fakeDom");
   await click(c, row);
   expect(selected).toEqual(["C:/w/app"]);
   expect(find(c, (n) => n.attrs["data-session"] !== undefined)).toEqual([]);

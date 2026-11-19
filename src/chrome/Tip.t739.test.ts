@@ -3,7 +3,7 @@
 // tip hides it.
 import { createElement } from "react";
 import { expect, test } from "vitest";
-import { fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { fire, installDom, mount, settle } from "../test/fakeDom";
 import Tip from "./Tip";
 
 const target = (tip: string | null, visible: boolean) => {

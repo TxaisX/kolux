@@ -188,7 +188,7 @@ pub fn switched(app: &tauri::AppHandle, on: bool) {
 
 /// The saved waits; an unreadable list is not saved over (row 881).
 fn held_waits(store: &crate::state::Store) -> Vec<Waiting> {
-    crate::orchestration::kept::or_default_held(store, KEY)
+    crate::state::kept::or_default_held(store, KEY)
 }
 
 /// Loads the previous run's waits.
@@ -245,7 +245,7 @@ mod tests {
         let store = crate::state::Store::open(&dir).unwrap();
         let broken = "[{\"pane_key\": 3, tru";
         store.set(KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         assert!(held_waits(&store).is_empty(), "the caller still starts with nothing waiting");
         assert!(save_waits(&store, &Resumes::default()).is_err(), "the blind save after the failed read is refused");
         assert_eq!(store.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");

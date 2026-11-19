@@ -17,7 +17,6 @@ mod engine_crash;
 mod html_preview;
 mod net;
 mod pdf_export;
-mod tower_window;
 mod webview_args;
 mod webview_engine;
 mod cap;
@@ -124,6 +123,15 @@ mod web_icon;
 mod webview_power;
 pub(crate) mod winproc;
 mod usage_alerts;
+// stage 3 (s3-engine)
+mod chat_engine;
+// stage 3 (s3-notes)
+mod chat_writeup;
+mod claude_shared;
+mod openrouter;
+// stage 3 (s3-publish)
+mod project_new;
+mod chat_finish;
 
 use state::Store;
 use std::sync::Mutex;
@@ -234,12 +242,6 @@ fn dev_inject() -> Result<(), String> {
 /// T-075-b: the background terminal service process (`kolux --terminal-service <identifier> <data folder>`).
 pub fn terminal_service_main(args: &[String]) -> i32 {
     pty::service::main(args)
-}
-
-/// Tauri 2 lets every window call every registered app command. The Tower window is a viewer:
-/// it may open its own window and run nothing else. Every other window keeps the full surface.
-pub fn tower_may_run(label: &str, command: &str) -> bool {
-    label != "tower" || command == "tower_window_open"
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -362,9 +364,6 @@ pub fn run() {
                 }
             }
             store.stamp_look(); // row 785: the look and mode are written now, not left to a page read that may time out
-            // SKILL-023: an interrupted skill delete is undone or completed under the skill lock (a busy
-            // lock or a lock that cannot be opened is logged; the latter still recovers).
-            skill_delete::startup_recover(&dir);
             let starts = onboarding::count_start(&store)?; // a failed count write is logged inside, never fatal
             if let Err(e) = onboarding::first_start(&store, starts) {
                 eprintln!("kolux: onboarding start failed ({e}); startup goes on");
@@ -373,12 +372,6 @@ pub fn run() {
             activity::start(&store);
             // ACCT-010: a key this computer can no longer open is cleared before the window asks.
             secrets::drop_unreadable(&store, &dir);
-            // Txais (2026-11-16): a start has no folders; the Start form asks what to open (keepWorkspaces: true keeps them).
-            match folder_projects::forget_all_at_start(&store) {
-                Ok(n) if n > 0 => diag::write(&dir, &format!("start: forgot {n} listed folder(s); the Start form asks what to open")),
-                Ok(_) => {}
-                Err(e) => diag::write(&dir, &format!("start: the folder list could not be cleared ({e}); it stays as it was")),
-            }
             // Txais (2026-11-17): what the last quit kept instead of merging joins the start's notice, told once.
             if let Ok(mut held) = app.state::<resources::recovery::StartupNotes>().0.lock() {
                 // A merge the last quit began and never finished is put right first (and says so).
@@ -392,18 +385,6 @@ pub fn run() {
             // this whole session (the new version's first, the riskiest); the next start refreshes it.
             let upgrade_kept = matches!(upgrade_copy, Some(Ok(())));
             resources::recovery::backup_after(dir.clone(), prep.backup_worthwhile() && !upgrade_kept, resources::recovery::BACKUP_DELAY);
-            // APP-004 (T-213): settings saved under the former product name carry over once, through the
-            // importer's allow-list, in the background after the window shows; the page re-reads them.
-            {
-                let (h, profile) = (app.handle().clone(), dir.clone());
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_secs(8));
-                    let Some(store) = h.try_state::<Mutex<Store>>() else { return };
-                    if import::first_launch(&profile, &store).is_some_and(|p| !p.add.is_empty()) {
-                        let _ = tauri::Emitter::emit(&h, "settings-saved", ());
-                    }
-                });
-            }
             // T-183 (APP-042): the interface watch; RecoveryMount's heartbeat feeds it.
             resources::recovery::watch_start(app.handle().clone(), perm_problem);
             // TERM-122: the keep-awake watcher reads the saved choice every tick, and counts a
@@ -455,8 +436,6 @@ pub fn run() {
             app.manage(install::Installs::default());
             app.manage(grok::GrokSignIn::default());
             app.manage(artifacts::Library::new(dir.join("artifacts")));
-            // Pages Claude sessions publish are kept in the library as they happen (SKILL-035).
-            capture::start(app.handle().clone());
             app.manage(update::Updates::default());
             // Without Git the app still opens, and the landing screen says so (APP-023).
             app.manage(startup_marks::joined(git)?.unwrap_or(git::Git { version: String::new() }));
@@ -466,14 +445,8 @@ pub fn run() {
             let fence = fence::Fence::load(&app.state::<Mutex<Store>>());
             app.manage(fence);
             app.manage(token_usage::Flights::default());
-            // ORCH-034: the orchestration store is brought up to today's layout before anything reads it.
-            if let Ok(store) = app.state::<Mutex<Store>>().lock() {
-                orchestration::upgrade::at_start(&store);
-            }
             // The command line reaches the app through a loopback port (PROJ-077).
             cli::serve(app.handle().clone(), &dir)?;
-            // AUTO-001: the automations clock.
-            automations::start_clock(app.handle().clone());
             // Agents report their status through hooks (STAT-001): the listener, then the scripts
             // and each found, switched-on agent's entries (STAT-004), off the launch path.
             // STAT-006 / STAT-030: the last run's statuses, with what hooks held while Kolux was
@@ -610,9 +583,6 @@ pub fn run() {
                     window.state::<Terminals>().kill_all();
                     // T-033-e: no git watch outlives the window either (nothing is waited for here).
                     scm::watch::unwatch_all();
-                    if let Some(t) = window.app_handle().get_webview_window("tower") {
-                        let _ = t.close();
-                    }
                 }
             }
             // APP-008 / T-248-d: the window is back on screen, so the tray's attention dot clears.
@@ -645,13 +615,6 @@ pub fn run() {
             }
         })
         .invoke_handler(|invoke: tauri::ipc::Invoke<tauri::Wry>| {
-            // Tauri 2 grants every registered app command to every window. The Tower is a viewer
-            // with its own page: it may open its own window and run nothing else. Refusing here
-            // covers every command at once, including ones added later.
-            if !tower_may_run(invoke.message.webview().label(), invoke.message.command()) {
-                invoke.resolver.reject("The Tower window cannot run app commands.");
-                return true;
-            }
             let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             app_info,
             notices::third_party_notices,
@@ -893,7 +856,6 @@ pub fn run() {
             keybindings::keybindings_show,
             pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
             pdf_export::browser_pick_pdf_path,
-            tower_window::tower_window_open, // rows 955 / 959: the Tower's own window, built in Rust
             html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
             automations::automations_list,
             automations::automations_external_refresh,
@@ -1068,10 +1030,16 @@ pub fn run() {
             update::update_last_attempt,
             update::update_compat,
             lifecycle::close_alive,
-            lifecycle::open_files_take, // APP-019: the page drains the markdown files the system handed over
             tray::tray_close_switch_available, // APP-007: Settings hides the close-to-tray switch where it cannot work
             usage_alerts::usage_alerts_fired,
-            usage_alerts::usage_alert_send
+            usage_alerts::usage_alert_send,
+            // stage 3 (s3-engine)
+            chat_engine::chat_start,
+            chat_engine::chat_send,
+            chat_engine::chat_stop,
+            chat_engine::chat_end,
+            // stage 3 (s3-publish)
+            project_new::github_badge
             ];
             handler(invoke)
         })
@@ -1092,6 +1060,8 @@ pub fn run() {
                 } else {
                     // T-286-b (APP-040): engine exits once the app is quitting are not crashes.
                     engine_crash::quitting();
+                    // stage 3 (s3-engine): every hidden chat program ends with the app.
+                    chat_engine::close_all(app);
                 }
             }
             #[cfg(target_os = "macos")]
@@ -1153,18 +1123,4 @@ pub fn run() {
                 update::install_on_quit(app);
             }
         });
-}
-
-#[cfg(test)]
-mod tower_guard_tests {
-    use super::tower_may_run;
-
-    #[test]
-    fn the_tower_window_may_only_open_itself() {
-        assert!(tower_may_run("main", "terminal_spawn"));
-        assert!(tower_may_run("tower", "tower_window_open"));
-        assert!(!tower_may_run("tower", "terminal_spawn"));
-        assert!(!tower_may_run("tower", "file_write"));
-        assert!(!tower_may_run("tower", "cleanup_remove"));
-    }
 }

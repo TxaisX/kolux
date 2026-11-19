@@ -8,7 +8,7 @@ import type { Pr, Status } from "./model";
 
 const status = (o: Partial<Status> = {}): Status => ({ branch: "user/work", upstream: "origin/user/work", ahead: 0, behind: 0, rewritten: false, base: "origin/main", head: "h1", staged: [], changed: [], untracked: [], conflicts: [], operation: null, resolved: [], ...o });
 const step = (kind: AutoStep["kind"], message = "", files: string[] = []): AutoStep => ({ kind, message, files });
-const PR: Pr = { number: 7, url: "https://github.com/o/r/pull/7", state: "OPEN", draft: true };
+const PR: Pr = { number: 7, url: "https://github.com/o/r/pull/7", state: "OPEN", draft: false };
 
 const ports = (o: Partial<AutoPorts> = {}): AutoPorts => ({
   remote: vi.fn(async () => "github" as const),
@@ -46,12 +46,12 @@ describe("DT-C89 enabledFor", () => {
 describe("T-653 runAutoPr", () => {
   beforeEach(() => clearOneClick());
 
-  it("commits, pushes and opens a draft pull request with the writer's text", async () => {
+  it("commits, pushes and opens a ready pull request with the writer's text", async () => {
     const p = ports();
     const run = await runAutoPr("C:/w", p);
     expect(run.state).toBe("done");
     expect(run.pr?.number).toBe(7);
-    expect(p.create).toHaveBeenCalledWith("C:/w", "Add the thing", "Why and how", "main", true);
+    expect(p.create).toHaveBeenCalledWith("C:/w", "Add the thing", "Why and how", "main", false);
     expect(oneClickRun("C:/w")?.auto?.kind).toBe("done");
   });
 
@@ -59,7 +59,7 @@ describe("T-653 runAutoPr", () => {
     const p = ports({ write: vi.fn(async () => null) });
     const run = await runAutoPr("C:/w", p);
     expect(run.state).toBe("done");
-    expect(p.create).toHaveBeenCalledWith("C:/w", "user/work", DEFAULT_BODY, "main", true);
+    expect(p.create).toHaveBeenCalledWith("C:/w", "user/work", DEFAULT_BODY, "main", false);
     expect(run.skipped).toContain("text");
   });
 
@@ -67,7 +67,7 @@ describe("T-653 runAutoPr", () => {
     const p = ports({ write: vi.fn(async () => Promise.reject(new Error("writer down"))) });
     const run = await runAutoPr("C:/w", p);
     expect(run.state).toBe("done");
-    expect(p.create).toHaveBeenCalledWith("C:/w", "user/work", DEFAULT_BODY, "main", true);
+    expect(p.create).toHaveBeenCalledWith("C:/w", "user/work", DEFAULT_BODY, "main", false);
   });
 
   it("existing open pull request: pushes only, writes nothing, creates nothing", async () => {
@@ -172,8 +172,8 @@ describe("T-653 review fixes", () => {
 
   it("the real create port never lets the back end push (push: false) and asks for a draft", async () => {
     invoke.mockClear();
-    await realAutoPorts.create("C:/w", "T", "B", "main", true);
-    expect(invoke).toHaveBeenCalledWith("scm_pr_create", { worktree: "C:/w", title: "T", body: "B", base: "main", draft: true, push: false });
+    await realAutoPorts.create("C:/w", "T", "B", "main", false);
+    expect(invoke).toHaveBeenCalledWith("scm_pr_create", { worktree: "C:/w", title: "T", body: "B", base: "main", draft: false, push: false });
   });
 
   it("folders that differ only in case or slash style exclude each other", async () => {

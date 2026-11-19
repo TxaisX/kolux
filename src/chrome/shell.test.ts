@@ -5,7 +5,6 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
 import TopBar from "./TopBar";
-import type { TopBarProps } from "./TopBar";
 import LayoutStrip from "./LayoutStrip";
 import StatusBar from "./StatusBar";
 import { KeymapContext, type KeymapState } from "../keys/KeymapContext";
@@ -16,7 +15,7 @@ test("the top bar carries the screen switcher, search hint, usage pill and windo
   const html = renderToString(createElement(TopBar, { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} }));
   expect(html).toContain('class="topbar"');
   expect(html).toContain("data-tauri-drag-region");
-  for (const label of ["Agents", "Board", "Terminals"]) expect(html).toContain(`>${label}</button>`);
+  for (const label of ["Terminals"]) expect(html).toContain(`>${label}</button>`);
   expect(html).toMatch(/aria-pressed="true"[^>]*>Terminals<\/button>/);
   expect(html).toContain('class="searchbox"');
   expect(html).toContain("Ctrl");
@@ -78,22 +77,3 @@ test("the status bar shows hooks, memory, terminals and agents on the right", ()
   expect(html).toMatch(/Agents running[^>]*>.*1/);
 });
 
-test("VIEW-011: the Automations button shows only when it is turned on, pressed while the page is open", () => {
-  const base: TopBarProps = { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} };
-  expect(renderToString(createElement(TopBar, base))).not.toContain('title="Automations"');
-  const on = renderToString(createElement(TopBar, { ...base, automations: { open: true, onToggle: () => {} } }));
-  expect(on).toContain('title="Automations"');
-  expect(on).toMatch(/aria-pressed="true"[^>]*title="Automations"|title="Automations"[^>]*aria-pressed="true"/);
-});
-
-test("ux fix 2: the bell carries the count of panes that need you and clears at 0", () => {
-  const base: TopBarProps = { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} };
-  const two = renderToString(createElement(TopBar, { ...base, needsYou: 2 }));
-  expect(two).toContain('aria-label="Inbox, 2 need you"');
-  expect(two).toMatch(/class="bell-count"[^>]*>2</);
-  expect(renderToString(createElement(TopBar, { ...base, needsYou: 1 }))).toContain('aria-label="Inbox, 1 needs you"');
-  for (const html of [renderToString(createElement(TopBar, { ...base, needsYou: 0 })), renderToString(createElement(TopBar, base))]) {
-    expect(html).toContain('aria-label="Inbox"');
-    expect(html).not.toContain("bell-count");
-  }
-});

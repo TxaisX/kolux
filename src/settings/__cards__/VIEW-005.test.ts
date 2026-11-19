@@ -3,10 +3,11 @@
 import { expect, test } from "vitest";
 import { openPageAt, startScreen } from "../general";
 
-test("box 1 (restore half): openPage tasks is read back as the Tasks page, whichever screen was saved", () => {
-  expect(openPageAt({ openPage: "tasks", lastScreen: "terminals" })).toBe("tasks");
-  expect(openPageAt({ openPage: "tasks", uiLook: "classic" })).toBe("tasks");
-  expect(startScreen({ openPage: "tasks", lastScreen: "terminals" })).toBe("terminals");
+test("box 1 (restore half): a saved Routing or Tasks page (both gone) opens nothing, and the window still opens on Terminals", () => {
+  expect(openPageAt({ openPage: "routing", lastScreen: "terminals" })).toBeNull();
+  expect(openPageAt({ openPage: "routing", uiLook: "classic" })).toBeNull();
+  expect(startScreen({ openPage: "routing", lastScreen: "terminals" })).toBe("terminals");
+  expect(openPageAt({ openPage: "tasks", lastScreen: "terminals" })).toBeNull();
 });
 
 test("box 2 (restore half): settings that read as defaults ({}), or an unknown saved page or screen, open on the terminal workspace with no page", () => {

@@ -1,9 +1,12 @@
 //! T-182: the app's life on the desktop.
 //! APP-001: one copy runs per profile folder. The first copy holds a named mutex for its whole life;
-//! a second launch of the same profile finds the running copy through its startup file, grants it
-//! foreground rights, asks it over the command-line port to come to the front, raises its window
-//! itself as a second road, and ends with `DUPLICATE_EXIT`, never zero. A launch on another profile
-//! (a proof run's scratch home) is a first copy and runs beside it.
+//! a second launch of the same profile hands its arguments and folder to the running copy through
+//! the single-instance plugin (which also grants it foreground rights), and ends with
+//! `DUPLICATE_EXIT`, never zero. The running copy brings its window to the front; a second launch
+//! that cannot use the channel raises that window itself before it ends. A launch on another profile (a proof run's scratch home) is a first
+//! copy and runs beside it: the plugin knows only the app identifier, so just one copy per identifier
+//! (the first to start) owns the plugin's channel, and a second launch uses it only when its own
+//! profile's copy is that owner (`channel_name_for`).
 //! APP-002: the terminals run in this process (no separate service to wait on); the window's own
 //! fallback show at 5 s stays in lib.rs (SET-004), so nothing at startup can keep it hidden.
 //! APP-006: the page decides whether a close needs confirming (unsaved editor text, running
@@ -15,10 +18,8 @@
 //! steps as the quit's final save, and a step that failed or timed out cancels the restart.
 //! APP-020: a pane's search path takes in entries the stored user and system Path gained since the
 //! app started, after what the process already had, nothing dropped or repeated.
-//! APP-019: markdown files the system hands to the app (double-click, Open with) are picked out of
-//! the launch arguments, queued until the page asks for them, and forwarded by a second launch.
 
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -33,13 +34,6 @@ use crate::state::Store;
 
 /// The exit code of a launch that found Kolux already running (never zero: the launcher can tell).
 pub const DUPLICATE_EXIT: i32 = 3;
-
-/// How long a second launch waits for the running copy's startup file (the copy may itself be
-/// starting), between tries; about six seconds in all.
-pub const FORWARD_WAITS_MS: [u64; 6] = [0, 250, 500, 1000, 2000, 2000];
-
-/// How long the running copy may take to answer the come-to-front request.
-pub const FORWARD_ANSWER: Duration = Duration::from_secs(5);
 
 /// How many times, 150 ms apart, the window is asked to come forward when the system refuses.
 pub const RAISE_TRIES: usize = 5;
@@ -99,6 +93,56 @@ pub fn mutex_name_for(identifier: &str, profile: &Path) -> String {
     format!("Local\\{identifier}.instance-{}", profile_suffix(profile))
 }
 
+/// The lock held by the one copy per identifier that owns the single-instance plugin's channel. The
+/// plugin keys on the identifier alone, so only this copy registers it as a first copy; any other
+/// profile's copy of the same build runs without it and is never forwarded to by mistake.
+pub fn channel_name(identifier: &str) -> String {
+    format!("Local\\{identifier}.channel")
+}
+
+/// The lock the channel's owner also holds for its own profile: a second launch forwards through the
+/// plugin only when this name exists for its profile, so it never reaches another profile's copy.
+pub fn channel_name_for(identifier: &str, profile: &Path) -> String {
+    format!("Local\\{identifier}.channel-{}", profile_suffix(profile))
+}
+
+/// Whether some process holds the named lock `name` right now (nothing is created to find out).
+#[cfg(windows)]
+pub fn named_exists(name: &str) -> bool {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{OpenMutexW, SYNCHRONIZATION_SYNCHRONIZE};
+    let wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+    // SAFETY: the name is NUL-terminated and outlives the call; a handle that came back is closed once.
+    unsafe {
+        let handle = OpenMutexW(SYNCHRONIZATION_SYNCHRONIZE, 0, wide.as_ptr());
+        if handle.is_null() {
+            return false;
+        }
+        CloseHandle(handle);
+        true
+    }
+}
+
+#[cfg(not(windows))]
+pub fn named_exists(_name: &str) -> bool {
+    false
+}
+
+/// What a second launch does: forward through the plugin when its own profile's copy owns the
+/// channel, or end at once (that copy runs beside another profile's and has no channel).
+#[derive(Debug, PartialEq, Eq)]
+pub enum SecondLaunch {
+    Forward,
+    ExitOnly,
+}
+
+pub fn second_launch(identifier: &str, profile: Option<&Path>, exists: impl Fn(&str) -> bool) -> SecondLaunch {
+    match profile {
+        Some(p) if exists(&channel_name_for(identifier, p)) => SecondLaunch::Forward,
+        _ => SecondLaunch::ExitOnly,
+    }
+}
+
 /// Claims `name`. A claim the system refuses outright (no handle at all) counts as first: a fault
 /// in the mutex must never keep the only copy from starting.
 #[cfg(windows)]
@@ -146,20 +190,6 @@ pub fn read_running(dir: &Path) -> Option<Running> {
     std::fs::read_to_string(dir.join(crate::cli::FILE)).ok().and_then(|t| running_from(&t))
 }
 
-/// Waits for the running copy's startup file, trying once per entry of `waits` (sleeping that
-/// long first), and gives up when the waits are spent.
-pub fn wait_running(dir: &Path, waits: &[u64], mut sleep: impl FnMut(Duration)) -> Option<Running> {
-    for ms in waits {
-        if *ms > 0 {
-            sleep(Duration::from_millis(*ms));
-        }
-        if let Some(r) = read_running(dir) {
-            return Some(r);
-        }
-    }
-    None
-}
-
 /// Lets `pid` take the foreground: a process the user just started has that right and may pass
 /// it on, so the running copy's window really comes forward instead of flashing in the taskbar.
 pub fn allow_foreground(pid: u32) {
@@ -203,7 +233,7 @@ pub fn windows_of(pid: u32) -> Vec<isize> {
 #[cfg(windows)]
 pub fn raise_by_pid(pid: u32, tries: usize, mut sleep: impl FnMut(Duration)) -> bool {
     use windows_sys::Win32::Foundation::HWND;
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, SetForegroundWindow, ShowWindow, SW_RESTORE};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsIconic, SetForegroundWindow, ShowWindowAsync, SW_RESTORE};
     for i in 0..tries {
         if i > 0 {
             sleep(RAISE_WAIT);
@@ -211,9 +241,10 @@ pub fn raise_by_pid(pid: u32, tries: usize, mut sleep: impl FnMut(Duration)) -> 
         for h in windows_of(pid) {
             let hwnd = h as HWND;
             // SAFETY: plain window calls on handles enumerated a moment ago; a stale one just fails.
+            // The restore is posted, not waited on, so a hung window cannot block this launch.
             unsafe {
                 if IsIconic(hwnd) != 0 {
-                    ShowWindow(hwnd, SW_RESTORE);
+                    ShowWindowAsync(hwnd, SW_RESTORE);
                 }
                 SetForegroundWindow(hwnd);
                 if GetForegroundWindow() == hwnd {
@@ -230,191 +261,120 @@ pub fn raise_by_pid(_pid: u32, _tries: usize, _sleep: impl FnMut(Duration)) -> b
     false
 }
 
-/// What a second launch did for the running copy.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Forwarded {
-    /// The running copy's startup file was found.
-    pub found: bool,
-    /// The running copy answered the come-to-front request.
-    pub answered: bool,
-    /// This launch itself got the window to the foreground.
-    pub raised: bool,
+/// Windows file times count 100 ns ticks from 1601-01-01; the Unix epoch is this many ticks later.
+#[cfg(windows)]
+const UNIX_EPOCH_TICKS: u64 = 116_444_736_000_000_000;
+
+/// Whether a process that started at `started` (Windows creation time, 100 ns ticks) can be the copy
+/// that wrote a startup file last changed at `written`. A copy writes its startup file after it starts,
+/// so a process that started later only reuses the id of a copy that crashed and left the file behind.
+#[cfg(windows)]
+pub fn started_before(started: Option<u64>, written: std::time::SystemTime) -> bool {
+    let Some(started) = started else { return false };
+    let Ok(since) = written.duration_since(std::time::UNIX_EPOCH) else { return false };
+    started <= UNIX_EPOCH_TICKS + (since.as_nanos() / 100) as u64
 }
 
-impl Forwarded {
-    pub fn line(&self) -> String {
-        match (self.found, self.answered, self.raised) {
-            (false, _, _) => "second launch: the running copy's startup file never appeared; exiting (APP-001)".into(),
-            (true, a, r) => format!("second launch: forwarded to the running copy (answered: {a}, raised: {r}); exiting (APP-001)"),
+/// The running copy's process id, read from the profile's startup file, for a second launch that
+/// cannot use the channel. `None`: no startup file, no id in it, or (Windows) the process with that
+/// id started after the file was written, so it is another program reusing a crashed copy's id.
+pub fn raise_target(dir: &Path) -> Option<u32> {
+    let pid = read_running(dir).and_then(|r| r.pid)?;
+    #[cfg(windows)]
+    {
+        let written = std::fs::metadata(dir.join(crate::cli::FILE)).and_then(|m| m.modified()).ok()?;
+        if !started_before(crate::procs::started_at(pid), written) {
+            return None;
         }
     }
+    Some(pid)
 }
 
-/// The whole second-launch road: wait for the running copy's startup file, grant it the
-/// foreground, ask it to come to the front, and raise its window as well.
-pub fn forward_to(dir: &Path) -> Forwarded {
-    let Some(running) = wait_running(dir, &FORWARD_WAITS_MS, std::thread::sleep) else { return Forwarded::default() };
-    if let Some(pid) = running.pid {
-        allow_foreground(pid);
+/// The second launch's log line.
+pub fn second_launch_line(plan: &SecondLaunch) -> &'static str {
+    match plan {
+        SecondLaunch::Forward => "second launch: handed to the running copy through the single-instance plugin; exiting (APP-001)",
+        SecondLaunch::ExitOnly => "second launch: the running copy of this profile has no single-instance channel (another profile's copy owns it); exiting (APP-001)",
     }
-    let req = crate::cli::Request {
-        id: format!("open-{}", std::process::id()),
-        token: running.token.clone(),
-        command: "app.open".into(),
-        cwd: std::env::current_dir().map(|d| d.to_string_lossy().into_owned()).unwrap_or_default(),
-        args: json!({ "files": launch_markdown() }),
-        pane: None,
-        cli: env!("CARGO_PKG_VERSION").into(),
-        arrived: None,
-    };
-    let answered = crate::cli::call_within(running.port, &req, FORWARD_ANSWER).is_ok();
-    let raised = running.pid.is_some_and(|pid| raise_by_pid(pid, RAISE_TRIES, std::thread::sleep));
-    Forwarded { found: true, answered, raised }
+}
+
+/// Ends the process with its code when dropped. A second launch puts one in the app's resource table
+/// before the plugin forwards: the plugin clears that table (`cleanup_before_exit`) right before it
+/// ends the process with code zero, so the launch still ends with `DUPLICATE_EXIT`.
+struct EndAs(i32);
+
+impl tauri::Resource for EndAs {}
+
+impl Drop for EndAs {
+    fn drop(&mut self) {
+        std::process::exit(self.0);
+    }
+}
+
+/// The locks of the copy that owns the plugin's channel, held for the life of the process.
+struct Channel {
+    _owner: Instance,
+    _profile: Instance,
+}
+
+/// The running copy was launched again on its profile: its window comes to the front (shown,
+/// restored, focused), as `app.open` does. The launch's arguments carry nothing it acts on.
+fn on_second_launch(app: &tauri::AppHandle, _argv: Vec<String>, _cwd: String) {
+    let _ = crate::tray::show_main(app);
+}
+
+/// The first copy of a profile takes the plugin's channel when no other copy of this build (another
+/// profile) has it, and registers the plugin. Without the channel it runs as before; a second launch
+/// of its profile then only ends (`second_launch`).
+fn take_channel(app: &tauri::App, profile: Option<&Path>) {
+    let id = app.config().identifier.clone();
+    let Some(profile) = profile else { return };
+    let Claim::First(owner) = claim_named(&channel_name(&id)) else { return };
+    let Claim::First(mine) = claim_named(&channel_name_for(&id, profile)) else { return };
+    match app.handle().plugin(tauri_plugin_single_instance::init(on_second_launch)) {
+        Ok(()) => {
+            app.manage(Channel { _owner: owner, _profile: mine });
+        }
+        Err(e) => crate::diag::write(profile, &format!("single-instance plugin did not start: {e} (APP-001)")),
+    }
 }
 
 /// Called first thing in setup, before any window exists: the first copy keeps its claim in the
-/// app's managed state; a second launch forwards and ends with `DUPLICATE_EXIT`.
-pub fn claim_or_forward<R: tauri::Runtime>(app: &tauri::App<R>) {
+/// app's managed state and takes the second-launch channel when it is free; a second launch hands
+/// its arguments over through the plugin when its own profile's copy holds the channel, and ends
+/// with `DUPLICATE_EXIT` either way.
+pub fn claim_or_forward(app: &tauri::App) {
     crate::procs::wait_for_restarted_from(); // T-592: a restarted copy lets the old one finish exiting
     let dir = app.path().app_data_dir().ok();
+    let id = app.config().identifier.clone();
     let name = match &dir {
-        Some(d) => mutex_name_for(&app.config().identifier, d),
-        None => mutex_name(&app.config().identifier),
+        Some(d) => mutex_name_for(&id, d),
+        None => mutex_name(&id),
     };
     match claim_named(&name) {
         Claim::First(instance) => {
             app.manage(instance);
-            queue_open(&launch_markdown());
+            take_channel(app, dir.as_deref());
         }
         Claim::Second => {
-            if let Some(dir) = dir {
-                let did = forward_to(&dir);
-                crate::diag::write(&dir, &did.line());
+            let plan = second_launch(&id, dir.as_deref(), named_exists);
+            if let Some(dir) = &dir {
+                crate::diag::write(dir, second_launch_line(&plan));
+            }
+            if plan == SecondLaunch::Forward {
+                app.resources_table().add(EndAs(DUPLICATE_EXIT));
+                // The plugin finds the running copy, grants it the foreground, hands over the
+                // arguments and folder, then clears the resource table: `EndAs` ends the process.
+                let _ = app.handle().plugin(tauri_plugin_single_instance::init(on_second_launch));
+            } else if let Some(pid) = dir.as_deref().and_then(raise_target) {
+                // No channel to hand over through (another profile's copy owns it, or the first copy
+                // has not taken it yet): grant the running copy the foreground and raise its window.
+                allow_foreground(pid);
+                raise_by_pid(pid, RAISE_TRIES, std::thread::sleep);
             }
             std::process::exit(DUPLICATE_EXIT);
         }
     }
-}
-
-// ---------------------------------------------------------------- APP-019: markdown from the system
-
-const MARKDOWN_EXT: [&str; 5] = ["md", "markdown", "mdown", "mkd", "mkdn"];
-
-fn percent_decode(s: &str) -> Option<String> {
-    let b = s.as_bytes();
-    let mut out = Vec::with_capacity(b.len());
-    let mut i = 0;
-    while i < b.len() {
-        if b[i] == b'%' {
-            let hex = s.get(i + 1..i + 3)?;
-            out.push(u8::from_str_radix(hex, 16).ok()?);
-            i += 3;
-        } else {
-            out.push(b[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).ok()
-}
-
-fn is_file_address(a: &str) -> bool {
-    a.get(..5).is_some_and(|p| p.eq_ignore_ascii_case("file:"))
-}
-
-/// The local path an encoded file address names (`file:///C:/My%20Notes/a.md`), or `None` when the
-/// address is not a local file or does not decode.
-fn file_address_path(addr: &str) -> Option<String> {
-    let rest = addr.get(5..)?.strip_prefix("//")?;
-    let (host, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
-    if !host.is_empty() && !host.eq_ignore_ascii_case("localhost") {
-        return None;
-    }
-    let decoded = percent_decode(path)?;
-    // /C:/dir -> C:/dir
-    let b = decoded.as_bytes();
-    let path = if b.len() >= 3 && b[0] == b'/' && b[1].is_ascii_alphabetic() && b[2] == b':' { &decoded[1..] } else { &decoded[..] };
-    Some(if cfg!(windows) { path.replace('/', "\\") } else { path.to_string() })
-}
-
-/// The markdown files among `args` (the launch arguments without the program name), as absolute
-/// paths: encoded file addresses are decoded, relative paths are taken from `cwd`, switches and every
-/// other kind of file are ignored, repeats are dropped.
-pub fn markdown_paths(args: &[String], cwd: &Path) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    for a in args {
-        let a = a.trim();
-        if a.is_empty() || a.starts_with('-') {
-            continue;
-        }
-        let path = if is_file_address(a) {
-            match file_address_path(a) {
-                Some(p) => PathBuf::from(p),
-                None => continue,
-            }
-        } else {
-            PathBuf::from(a)
-        };
-        let is_markdown = path.extension().and_then(OsStr::to_str).is_some_and(|e| MARKDOWN_EXT.iter().any(|m| m.eq_ignore_ascii_case(e)));
-        if !is_markdown {
-            continue;
-        }
-        let full = if path.is_absolute() { path } else { cwd.join(path) };
-        let full = full.to_string_lossy().into_owned();
-        if !out.contains(&full) {
-            out.push(full);
-        }
-    }
-    out
-}
-
-/// This process's own launch arguments, markdown files only.
-fn launch_markdown() -> Vec<String> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    markdown_paths(&args, &std::env::current_dir().unwrap_or_default())
-}
-
-/// Files asked for before the page can take them; the page drains the queue once it is ready, and
-/// again whenever the running copy is asked to open more.
-pub struct OpenQueue(Mutex<Vec<String>>);
-
-impl OpenQueue {
-    pub const fn new() -> Self {
-        Self(Mutex::new(Vec::new()))
-    }
-
-    /// Adds files (each once). Anything that is not a markdown path is dropped here too: the list may
-    /// come from another process over the command-line port.
-    pub fn push(&self, files: &[String]) {
-        let Ok(mut q) = self.0.lock() else { return };
-        for f in markdown_paths(files, Path::new("")) {
-            if !q.contains(&f) {
-                q.push(f);
-            }
-        }
-    }
-
-    /// Everything queued so far, oldest first; the queue is empty afterwards.
-    pub fn take(&self) -> Vec<String> {
-        self.0.lock().map(|mut q| std::mem::take(&mut *q)).unwrap_or_default()
-    }
-}
-
-static OPEN_QUEUE: OpenQueue = OpenQueue::new();
-
-/// Queues the markdown files among `files`; how many there were.
-pub fn queue_open(files: &[String]) -> usize {
-    OPEN_QUEUE.push(files);
-    markdown_paths(files, Path::new("")).len()
-}
-
-pub fn take_open() -> Vec<String> {
-    OPEN_QUEUE.take()
-}
-
-/// The page asks for the files the system handed over.
-#[tauri::command]
-pub fn open_files_take() -> Vec<String> {
-    take_open()
 }
 
 // ---------------------------------------------------------------- APP-006: closing and quitting
@@ -887,13 +847,6 @@ mod tests {
         assert!(!session_end(false, true, false));
     }
 
-    fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-lifecycle-{}-{name}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&d);
-        std::fs::create_dir_all(&d).unwrap();
-        d
-    }
-
     #[test]
     fn app001_the_duplicate_exit_code_is_never_zero_and_the_name_carries_the_identifier() {
         assert_ne!(DUPLICATE_EXIT, 0);
@@ -939,28 +892,37 @@ mod tests {
     }
 
     #[test]
-    fn app001_the_forward_waits_for_a_starting_copy_then_gives_up() {
-        let dir = temp("forward");
-        let mut slept = Vec::new();
-        assert_eq!(wait_running(&dir, &[0, 10, 20], |d| slept.push(d.as_millis())), None);
-        assert_eq!(slept, vec![10, 20], "every wait is spent before giving up");
-        let file = dir.join(crate::cli::FILE);
-        let mut tries = 0;
-        let got = wait_running(&dir, &[0, 10, 20, 40], |_| {
-            tries += 1;
-            if tries == 2 {
-                std::fs::write(&file, r#"{"port":1425,"token":"tok","pid":7}"#).unwrap();
-            }
-        });
-        assert_eq!(got.map(|r| r.pid), Some(Some(7)), "the file written mid-wait is found on the next try");
-        assert_eq!(tries, 2, "found: no further waits");
-        let _ = std::fs::remove_dir_all(&dir);
+    fn app001_a_second_launch_forwards_only_to_its_own_profiles_channel() {
+        let id = "com.txaisxiong.kolux";
+        let real = Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux");
+        let scratch = Path::new(r"G:\Temp\live-installed\home\AppData\Roaming\com.txaisxiong.kolux");
+        let real_holds = |name: &str| name == channel_name_for(id, real);
+        assert_eq!(second_launch(id, Some(real), real_holds), SecondLaunch::Forward, "its own profile's copy owns the channel");
+        assert_eq!(second_launch(id, Some(scratch), real_holds), SecondLaunch::ExitOnly, "a proof copy is never forwarded to the real app");
+        assert_eq!(second_launch(id, None, |_| true), SecondLaunch::ExitOnly, "no profile folder: nothing to match, nothing forwarded");
+        assert_ne!(channel_name_for(id, real), channel_name_for(id, scratch));
+        assert_ne!(channel_name("com.txaisxiong.kolux.smoke"), channel_name(id), "a smoke or dev build has a channel of its own");
+        assert_ne!(channel_name_for("com.txaisxiong.kolux.smoke", real), channel_name_for(id, real));
+        assert!(second_launch_line(&SecondLaunch::Forward).contains("handed to the running copy"));
+        assert!(second_launch_line(&SecondLaunch::ExitOnly).contains("no single-instance channel"));
     }
 
+    #[cfg(windows)]
     #[test]
-    fn app001_forwarded_lines_say_what_happened() {
-        assert!(Forwarded::default().line().contains("never appeared"));
-        assert!(Forwarded { found: true, answered: true, raised: false }.line().contains("answered: true, raised: false"));
+    fn app001_the_channel_lock_is_seen_only_for_the_profile_that_holds_it() {
+        let id = format!("kolux-test-{}.channel", std::process::id());
+        let mine = std::env::temp_dir().join("kolux-channel-mine");
+        let other = std::env::temp_dir().join("kolux-channel-other");
+        assert_eq!(second_launch(&id, Some(&mine), named_exists), SecondLaunch::ExitOnly, "nobody holds it yet");
+        let held = match claim_named(&channel_name_for(&id, &mine)) {
+            Claim::First(i) => i,
+            Claim::Second => panic!("the first claim must win"),
+        };
+        assert_eq!(second_launch(&id, Some(&mine), named_exists), SecondLaunch::Forward);
+        assert_eq!(second_launch(&id, Some(&other), named_exists), SecondLaunch::ExitOnly, "another profile never forwards to it");
+        assert!(matches!(claim_named(&channel_name_for(&id, &mine)), Claim::Second), "looking did not take or free the lock");
+        drop(held);
+        assert!(!named_exists(&channel_name_for(&id, &mine)), "looking created nothing that outlives the owner");
     }
 
     #[cfg(windows)]
@@ -970,6 +932,34 @@ mod tests {
         let mut waits = 0;
         assert!(!raise_by_pid(u32::MAX - 7, 3, |_| waits += 1));
         assert_eq!(waits, 2);
+    }
+
+    #[test]
+    fn app001_a_second_launch_without_the_channel_raises_the_copy_the_startup_file_names() {
+        let dir = std::env::temp_dir().join(format!("kolux-raise-target-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        assert_eq!(raise_target(&dir), None, "no startup file: nothing to raise");
+        std::fs::write(dir.join(crate::cli::FILE), r#"{"port":1425,"token":"t"}"#).unwrap();
+        assert_eq!(raise_target(&dir), None, "an older file without a pid: nothing to raise");
+        // This test's own process started before the file below is written, like a running copy.
+        let me = std::process::id();
+        std::fs::write(dir.join(crate::cli::FILE), format!(r#"{{"port":1425,"token":"t","pid":{me}}}"#)).unwrap();
+        assert_eq!(raise_target(&dir), Some(me), "the running copy's window is raised by its pid");
+        let _ = std::fs::remove_dir_all(&dir);
+        #[cfg(windows)]
+        {
+            let written = std::time::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+            let at = UNIX_EPOCH_TICKS + 1_700_000_000 * 10_000_000;
+            assert!(!started_before(None, written), "a process that is gone or unreadable is not raised");
+            assert!(!started_before(Some(at + 1), written), "a process that started after the file was written reuses a crashed copy's id");
+            assert!(started_before(Some(at), written), "started the same tick the file was written: it is the copy");
+            assert!(started_before(Some(at - 10_000_000), written), "started before the file was written: it is the copy");
+        }
+        let src = include_str!("lifecycle.rs").replace("\r\n", "\n");
+        let code = &src[..src.find("#[cfg(test)]").unwrap()];
+        let exit_only = &code[code.find("} else if let Some(pid) = dir.as_deref().and_then(raise_target)").unwrap()..code.find("std::process::exit(DUPLICATE_EXIT);").unwrap()];
+        assert!(exit_only.find("allow_foreground(pid)").unwrap() < exit_only.find("raise_by_pid(pid, RAISE_TRIES").unwrap(), "the foreground is granted before the window is raised");
     }
 
     #[test]
@@ -1066,46 +1056,5 @@ mod tests {
         let stored = stored_paths();
         assert_eq!(stored.len(), 2, "the system Path and the user Path");
         assert!(stored[0].to_lowercase().contains("windows"), "{}", stored[0]);
-    }
-
-    #[test]
-    fn app019_markdown_files_are_picked_out_of_the_arguments_and_everything_else_is_ignored() {
-        let cwd = Path::new(if cfg!(windows) { "C:\\work" } else { "/work" });
-        let abs = if cfg!(windows) { "C:\\notes\\a.md" } else { "/notes/a.md" };
-        let got = markdown_paths(&[abs.into(), "--flag".into(), "b.txt".into(), "C.MARKDOWN".into(), "".into(), "tool.exe".into(), "d".into()], cwd);
-        assert_eq!(got, vec![abs.to_string(), cwd.join("C.MARKDOWN").to_string_lossy().into_owned()]);
-    }
-
-    #[test]
-    fn app019_an_encoded_file_address_with_spaces_is_decoded_so_it_still_opens() {
-        let got = markdown_paths(&["file:///C:/My%20Notes/caf%C3%A9.md".into()], Path::new("/x"));
-        let want = if cfg!(windows) { "C:\\My Notes\\café.md" } else { "C:/My Notes/café.md" };
-        assert_eq!(got, vec![want.to_string()]);
-        let unix = markdown_paths(&["file:///home/me/a%20b.md".into(), "FILE://localhost/home/me/c.md".into()], Path::new("/x"));
-        let (a, c) = if cfg!(windows) { ("\\home\\me\\a b.md", "\\home\\me\\c.md") } else { ("/home/me/a b.md", "/home/me/c.md") };
-        assert_eq!(unix, vec![a.to_string(), c.to_string()]);
-    }
-
-    #[test]
-    fn app019_a_bad_encoding_a_remote_host_or_a_non_markdown_address_is_ignored() {
-        let bad = ["file:///C:/a%2.md", "file:///C:/a%ZZ.md", "file://server/share/a.md", "file:///C:/a.txt"];
-        let args: Vec<String> = bad.iter().map(|s| s.to_string()).collect();
-        let got = markdown_paths(&args, Path::new("/x"));
-        assert!(got.is_empty(), "{got:?}");
-    }
-
-    #[test]
-    fn app019_a_file_repeated_is_listed_once() {
-        let p = if cfg!(windows) { "C:\\a.md" } else { "/a.md" };
-        assert_eq!(markdown_paths(&[p.into(), p.into()], Path::new("/x")).len(), 1);
-    }
-
-    #[test]
-    fn app019_files_asked_for_before_the_page_is_ready_wait_in_the_queue_in_order_and_come_out_once() {
-        let queue = OpenQueue::new();
-        let (a, b, skip) = if cfg!(windows) { ("C:\\q\\1.md", "C:\\q\\2.md", "C:\\q\\skip.txt") } else { ("/q/1.md", "/q/2.md", "/q/skip.txt") };
-        queue.push(&[a.into(), skip.into(), b.into(), a.into()]);
-        assert_eq!(queue.take(), vec![a.to_string(), b.to_string()]);
-        assert!(queue.take().is_empty());
     }
 }

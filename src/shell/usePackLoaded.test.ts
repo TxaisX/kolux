@@ -1,9 +1,9 @@
-// Runs on the repo's own small DOM (src/tasks/fakeDom.ts): jsdom is not a dependency (bug 20261112-1410).
+// Runs on the repo's own small DOM (src/test/fakeDom.ts): jsdom is not a dependency (bug 20261112-1410).
 import { act, createElement } from "react";
 import { expect, test } from "vitest";
 import { loadPack, registerPack, t } from "../i18n/lookup";
 import { applyLanguage } from "../language";
-import { type FakeNode, installDom, mount } from "../tasks/fakeDom";
+import { type FakeNode, installDom, mount } from "../test/fakeDom";
 import { usePackLoaded } from "./usePackLoaded";
 
 test("a screen drawn before its pack arrived redraws in the pack's language", async () => {

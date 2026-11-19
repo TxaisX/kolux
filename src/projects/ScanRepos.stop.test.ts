@@ -2,7 +2,7 @@
 // and the scan keeps its Stop button.
 import { createElement } from "react";
 import { expect, test, vi } from "vitest";
-import { find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { find, fire, installDom, mount, settle } from "../test/fakeDom";
 
 // The first stop (the button) fails; the one the dialog sends as it closes succeeds.
 let stops = 0;

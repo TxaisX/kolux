@@ -4,15 +4,13 @@ import { hideRule, INDEX, MAX_SEARCH, searchRepos, searchSettings } from "./sear
 
 // Where each page draws its sections (SettingsPage wraps the pages that have no sections of their own).
 const SOURCES: Record<string, string[]> = {
-  general: ["GeneralPage.tsx", "CliCard.tsx", "ExperimentalCard.tsx"],
+  general: ["GeneralPage.tsx", "ExperimentalCard.tsx"],
   appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
-  accounts: ["SettingsPage.tsx", "ConnectGrid.tsx", "AgentCredentials.tsx"],
+  accounts: ["SettingsPage.tsx", "ConnectGrid.tsx"],
   agents: ["AgentsPage.tsx"],
-  terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx", "NativeTerminalCard.tsx"],
+  terminal: ["TerminalPage.tsx", "InputCards.tsx", "NativeTerminalCard.tsx"],
   git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
-  safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
   notifications: ["NotificationsPage.tsx", "SettingsPage.tsx"],
-  shortcuts: ["ShortcutsPage.tsx"],
   usage: ["SettingsPage.tsx"],
   claude: ["ClaudeSetupPage.tsx"],
 };
@@ -77,9 +75,9 @@ describe("search all settings (SET-007)", () => {
     expect(read("TerminalPage.tsx")).toContain(card.title);
   });
   it("ranks the page whose title matches first, then the rest in page order", () => {
-    const h = searchSettings("shortcuts")!;
-    expect(h.pages[0]).toEqual({ page: "shortcuts", sections: "all" });
-    expect(searchSettings("terminal")!.pages.map((p) => p.page)).toEqual(["terminal", "appearance", "shortcuts"]);
+    const h = searchSettings("notifications")!;
+    expect(h.pages[0]).toEqual({ page: "notifications", sections: "all" });
+    expect(searchSettings("terminal")!.pages.map((p) => p.page)).toEqual(["terminal", "appearance"]);
   });
   it("finds agents by name or id, and languages by their own names", () => {
     expect(searchSettings("devin")!.pages).toEqual([{ page: "agents", sections: ["agents"] }]);
@@ -99,34 +97,25 @@ describe("search all settings (SET-007)", () => {
     const sections = (q: string) => searchSettings(q)!.pages.find((p) => p.page === "accounts")?.sections;
     expect(sections("codex")).toEqual(["connections", "connect-codex", "accounts-advanced", "accounts-codex"]);
     expect(sections("anthropic")).toEqual(["connections", "connect-claude", "accounts-advanced", "accounts-claude"]);
-    expect(sections("grok")).toEqual(["connections", "connect-grok"]);
-    expect(sections("minimax")).toEqual(["accounts-advanced", "agent-folders", "minimax"]);
-    expect(sections("gemini")).toEqual(["accounts-advanced", "agent-folders", "gemini"]);
-    expect(hideRule(searchSettings("grok")!)).toContain('[data-section]:not([data-section="connections"]):not([data-section="connect-grok"]) { display: none !important; }');
+    expect(hideRule(searchSettings("chatgpt")!)).toContain('[data-section]:not([data-section="connections"]):not([data-section="connect-codex"]):not([data-section="accounts-advanced"]):not([data-section="accounts-codex"]) { display: none !important; }');
   });
   it("ACCT-030: a word of the wrapper keeps everything inside it; clearing the search or naming the page shows it all", () => {
-    expect(searchSettings("connections")!.pages.find((p) => p.page === "accounts")?.sections).toEqual(["connections", "connect-claude", "connect-codex", "connect-grok"]);
-    expect(searchSettings("advanced")!.pages.find((p) => p.page === "accounts")?.sections).toEqual(["accounts-advanced", "accounts-claude", "accounts-codex", "agent-folders", "provider-usage", "minimax", "gemini"]);
+    expect(searchSettings("connections")!.pages.find((p) => p.page === "accounts")?.sections).toEqual(["connections", "connect-claude", "connect-codex"]);
+    expect(searchSettings("advanced")!.pages.find((p) => p.page === "accounts")?.sections).toEqual(["accounts-advanced", "accounts-claude", "accounts-codex"]);
     expect(searchSettings("")).toBeNull();
     expect(searchSettings("accounts keys")!.pages[0]).toEqual({ page: "accounts", sections: "all" });
     expect(hideRule(searchSettings("accounts keys")!)).toBe("");
   });
-  it("finds the Protected actions section on the Safety page by its everyday words (SAFE-015)", () => {
-    for (const q of ["protected", "force push", "stripe", "terraform", "rule"]) expect(searchSettings(q)!.pages.find((p) => p.page === "safety")?.sections, q).toContain("protected");
-    expect(searchSettings("safety")!.pages[0]).toEqual({ page: "safety", sections: "all" });
-  });
   it("every section a page draws is indexed, so a search can find it and never hides it (UX-audit)", () => {
     // The Claude page also draws cards from a list (data-section={id}); its fixed ones are checked here. Repo pages are not searched pages.
     const drawn: Record<string, string[]> = {
-      general: ["GeneralPage.tsx", "CliCard.tsx", "ExperimentalCard.tsx"],
+      general: ["GeneralPage.tsx", "ExperimentalCard.tsx"],
       appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
-      accounts: ["SettingsPage.tsx", "AgentCredentials.tsx"],
+      accounts: ["SettingsPage.tsx"],
       agents: ["AgentsPage.tsx"],
-      terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx", "NativeTerminalCard.tsx"],
+      terminal: ["TerminalPage.tsx", "InputCards.tsx", "NativeTerminalCard.tsx"],
       git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
-      safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
       notifications: ["NotificationsPage.tsx"],
-      shortcuts: ["ShortcutsPage.tsx"],
       claude: ["ClaudeSetupPage.tsx"],
     };
     // T-755: a page left out of this list fails (Usage is drawn by SettingsPage, checked below), and so does a

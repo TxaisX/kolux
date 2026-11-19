@@ -4,15 +4,9 @@
 // for its render from `w` (shell/windowBag.ts) when it runs, as its closure took them in App.tsx.
 import type { Pane } from "../App";
 import type { WindowBag } from "../shell/windowBag";
-import type { Page } from "../projects/ProjectsPanel";
-import { needsYou } from "../board/chip";
+import { needsYou } from "../status/chip";
 import { screens, type Screen } from "../chrome/TopBar";
-import { SCREEN_OF } from "../chrome/reach";
 import { closedPanes, folderKind, paneFor, placement } from "../chrome/reopenTab";
-import { isMarkdown } from "../editor/mdFiles";
-import { copiers, diffNav, editors } from "../keys/handles";
-import { NOTHING_TO_SEND, sendRoute } from "../editor/noteCommands";
-import { reviewOn, selections } from "../editor/notes";
 import { navTarget, stepAllowed } from "../projects/nav";
 import { SHOW_SLEEPING_SETTING, showSleepingFrom } from "../projects/rows";
 import { stepZoom, type ZoomStep } from "../settings/zoom";
@@ -91,15 +85,13 @@ export const WORKSPACE_ROWS = ".sidebar .proj.folder[data-path]";
 export const CHROME_FIRST = "header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']";
 export const focusChrome = (doc: Pick<ParentNode, "querySelector"> = document): void => doc.querySelector<HTMLElement>(CHROME_FIRST)?.focus();
 
-/** The native menu items that come to the page: Force Reload asks over unsaved editor text; View > Workspace View > Space
- *  (the classic layout has one view, as every other screen item). */
+/** The native menu items that come to the page: Force Reload asks over unsaved editor text. */
 export function menuAction(
   id: string,
-  b: { unsaved: { current: readonly string[] }; setReloadAsk: (files: string[]) => void; setScreen: (s: Screen) => void; classic: boolean },
+  b: { unsaved: { current: readonly string[] }; setReloadAsk: (files: string[]) => void },
   reload: () => void = () => location.reload(),
 ): void {
   if (id === "app.forceReload") forceReload(b.unsaved.current, b.setReloadAsk, reload);
-  else if (id === "screen.space") b.setScreen(b.classic ? "terminals" : "space");
 }
 
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
@@ -130,11 +122,11 @@ export function useWindowKeys(w: WindowBag) {
     const onKey = (e: KeyboardEvent) => {
       const {
         accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
-        focused, keymap, leavePage, newTab, nextKey, notes, notesFor, openPane, openPreview, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
-        right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
-        setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
+        focused, keymap, leavePage, newTab, nextKey, openPane, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
+        right, saveRight, saveSetting, screen, setActiveDir, setAskName, setCreateName, setCreateRequest, setDeleteRequest,
+        setFocused, setNotice, setPalette, setPanes, setReloadAsk, setRenameRequest, setRenamingTab, setScreen,
         setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
-        switcherRef, terminals, toggleExplorer, unsaved, workDir
+        switcherRef, terminals, unsaved
       } = bag.current;
       // SET-009: while Settings > Shortcuts records a chord, the press is the recorder's alone.
       if (recording.on) return;
@@ -147,9 +139,7 @@ export function useWindowKeys(w: WindowBag) {
       // SET-009: a modifier tapped twice runs the command bound to "Double+<modifier>" (keys/tapHit.ts).
       const found =
         tapHit(windowTaps, keymap, e) ||
-        matchEvent(keymap, e, scopesFor({ screen, kind, inTree })) ||
-        // GIT-042: a preview tab takes the one editor shortcut that applies to it.
-        (kind === "preview" && [matchEvent(keymap, e, ["editor"])].find((h) => h?.id === "editor.addReviewNote"));
+        matchEvent(keymap, e, scopesFor({ screen, kind, inTree }));
       // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
       const hit = kPalette(found, keymap, e, document.activeElement);
       if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
@@ -188,15 +178,6 @@ export function useWindowKeys(w: WindowBag) {
           if (!settingsOpen) setSettingsAt((a) => ({ target: null, n: a.n }));
           setSettingsOpen(true);
           settingsShown(); // 49-ux2: Explore and the Setup Guide step aside
-          break;
-        case "editor.save": {
-          const save = editors.get(focused);
-          if (!save) return;
-          void save();
-          break;
-        }
-        case "sidebar.explorer.toggle":
-          toggleExplorer();
           break;
         case "sidebar.left.toggle":
           setSidebarOpen((o) => !o);
@@ -261,20 +242,8 @@ export function useWindowKeys(w: WindowBag) {
           if (classic) setToast("The classic layout has one view; turn it off in Settings > Appearance to switch views.");
           else setScreen((s) => nextScreen(s));
           break;
-        case "view.tasks":
-        case "view.automations":
-        case "view.routing": {
-          // UX lane C (palette F2): Automations gets a command (and so a palette row), as Tasks has.
-          const page = hit.id.slice(5) as Page; // the id after "view." names the page (T-727 adds routing)
-          setScreen("terminals");
-          setPage((p) => (terminals && p === page ? null : page));
-          break;
-        }
         case "sidebar.sleeping.toggle":
           saveSetting(SHOW_SLEEPING_SETTING, !showSleepingFrom(settings[SHOW_SLEEPING_SETTING]));
-          break;
-        case "workspace.openBoard":
-          setBoardOpen((o) => !o);
           break;
         case "account.switchClaude":
         case "account.switchCodex": {
@@ -342,52 +311,6 @@ export function useWindowKeys(w: WindowBag) {
           setSwitcher(next);
           break;
         }
-        case "editor.copyContext":
-          if (!copiers.get(focused)?.()) return;
-          break;
-        case "sourceControl.sendReviewNotes": {
-          // GIT-041 (T-034-b): the Markdown notes go through the Send menu; a workspace's line notes
-          // are pasted into its agent at once.
-          if (!reviewOn(settings)) return;
-          // Line notes are kept under the folder their pane runs in, so a worktree's are read and sent from the focused pane's folder.
-          const how = sendRoute(true, notes.length, workDir === null ? 0 : notesFor(workDir).length);
-          if (how === "menu") setSendMenu(true);
-          else if (how === "lines" && workDir !== null) void sendNotes(workDir).then((why) => setToast(why ?? "The review notes were sent to the agent."));
-          else setToast(NOTHING_TO_SEND);
-          break;
-        }
-        case "editor.addReviewNote": {
-          // EDIT-020: holding the keys adds one note.
-          if (e.repeat) break;
-          // With nothing selected, or the review tools off, the shortcut does nothing.
-          const got = reviewOn(settings) ? selections.get(focused)?.() : null;
-          if (!got) return;
-          setPicked(got);
-          break;
-        }
-        case "editor.nextChange":
-        case "editor.previousChange": {
-          const step = diffNav.get(focused);
-          if (!step) return;
-          step(hit.id === "editor.nextChange" ? 1 : -1);
-          break;
-        }
-        case "editor.markdownPreview": {
-          const p = panes.find((x) => x.key === focused);
-          if (!p?.path || !isMarkdown(p.path)) return;
-          openPreview(p.path);
-          break;
-        }
-        case "worktree.quickOpen":
-          if (!activeDir) setToast("Open a workspace to find a file in it.");
-          else setPicking("file");
-          break;
-        case "tab.openMarkdown":
-          void newTab("markdown-open");
-          break;
-        case "tab.newMarkdown":
-          void newTab("markdown-new");
-          break;
         case "sessions.add":
           addChooser();
           break;
@@ -487,12 +410,6 @@ export function useWindowKeys(w: WindowBag) {
           equalizePanes();
           break;
         default: {
-          // T-610: a command that shows a screen (chrome/reach.ts) toggles it with Terminals.
-          const to = SCREEN_OF[hit.id];
-          if (to) {
-            setScreen((s) => (s === to ? "terminals" : to));
-            break;
-          }
           // T-611: the commands this switch had no case for (keys/commands.ts).
           if (windowCommand(hit.id, {
             toggleRight: (tab) => (terminals && right.open && right.tab === tab ? saveRight({ open: false }) : showRight(tab)),

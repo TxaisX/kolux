@@ -42,7 +42,7 @@ function setup(panes: P[]) {
     setTabColors: vi.fn(), setToast: vi.fn(), ...calls,
   };
   const settingsRef = { current: {} as Record<string, unknown> };
-  const late = { projectOf: () => "p1", pendingLineup: { current: {} }, panesRef: { current: panes }, startSetup: vi.fn() };
+  const late = { projectOf: () => "p1", pendingLineup: { current: {} }, panesRef: { current: panes } };
   const a = launchActions(s as never, { settingsRef } as never, late as never);
   return { a, settingsRef, late, ...calls };
 }

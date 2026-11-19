@@ -11,7 +11,7 @@ in a file the user owns, `~/.kolux/keybindings.json`; the Shortcuts page records
 key chords, reports clashes scope by scope, and plenty of commands come without any chord. Settings save
 while the user types, reach every open window, and never hand secrets to the interface.
 
-Tier counts: P0 16 · P1 20 · P2 11 · H 4 · X 1 · D 10
+Tier counts: P0 11 · P1 19 · P2 10 · H 4 · X 1 · D 9
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 06 Usage & limits · 07 Accounts, sign-in & keys · 08 Orchestration · 09 Automations · 10 Plan review & protected actions · 11 Git, source control & review · 12 Editor & files · 13 Browser pane & computer use · 14 Native chat · 15 Skills, plugins & starter kits · 16 Onboarding & guidance · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The `kolux` CLI · 21 H — retired, hidden, removed, dev-only
 
 ## Cards
@@ -217,109 +217,6 @@ Compat: the command that steps through workspace screens keeps its old keybindin
   with a capital letter, so it is held back pending the allowlist) and Mod+Alt+V.
 Source: D-17-037
 
-### SET-028 · Model and effort per tier for orchestration workers
-Tier: P0 · Pushed: 11 · State at 0.15.0: live-unverified
-User does: on the Agents page, picks a provider, then a model and an effort level for each worker tier.
-User sees: when a coordinator gives a task a tier, the worker runs on the same provider, using the
-  model picked for that tier.
-Rules: a tier left empty means the provider's default; effort choices depend on the model, so a new
-  model keeps the effort if it is still offered and resets it otherwise; only providers that can route
-  by tier are listed. (Kolux, T-757: the provider tabs are one tab stop, Left, Right, Home and End move
-  along them and open the tab reached, and the open tab labels the panel below.)
-Acceptance:
-  - [x] Give the fast tier a small model and run an orchestrated task on that tier → the worker's header
-        names the small model. (cards; evidence/cards-SET-028.txt)
-  - [x] Pick a model that has no effort levels → the effort picker disappears. (cards; evidence/cards-SET-028.txt)
-Compat: —
-Source: D-17-028
-
-### SET-008 · Shortcuts page lists every command with its keys
-Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens Shortcuts, picks a filter, or types in its search box.
-User sees: commands grouped by area with their current key chords; filters for all, modified,
-  unassigned and conflicting; badges reading Modified, Unassigned, Disabled and Conflicts.
-Rules: search looks at command titles, group names, extra keywords, command ids, and the chords for
-  every platform; the search text is capped in size so an enormous paste cannot freeze the list; each
-  row says whether the command still works while a terminal has focus or is held back by the terminal
-  policy (SET-014); commands behind a feature flag that is off are left out.
-Acceptance:
-  - [x] Pick the Unassigned filter → only commands without a chord are listed. (cards; evidence/cards-SET-008.txt)
-  - [x] Search Mod+K (or the way it is drawn on screen) → the clear-terminal command shows. (cards; evidence/cards-SET-008.txt)
-Compat: —
-Source: D-17-008
-
-### SET-009 · Record, add, disable or reset a shortcut
-Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
-User does: clicks a command's chord and presses new keys, or uses add another, remove, disable or
-  reset on its row.
-User sees: a recorder that waits for a key combination and keeps it; the row updates and the app menu
-  shows the new accelerator.
-Rules: Esc ends recording and changes nothing; one command may hold several chords, each replaced or
-  removed on its own; removing the chord that is being recorded ends recording, while removing a
-  different chord of the same command keeps recording on the one the user picked; disable leaves the
-  command with no chord and remembers that; reset brings back the shipped default; tapping one modifier
-  twice (Shift then Shift, say) can be recorded, and it counts only when the second press of that same
-  key comes within about 300 ms with no other key between, no other modifier held, and no key repeat;
-  a chord needs a modifier other than Shift, so Shift-only chords are refused, except Shift+Space for
-  the terminal command that changes the system input source; every change is saved to the keybindings
-  file at once, sent to every window, and used to rebuild the app menu.
-Acceptance:
-  - [x] Record Mod+Shift+K on a command → the row shows it with a Modified badge, and the file holds
-        the entry. (cards; evidence/cards-SET-009.txt)
-  - [x] Press Esc while recording → the previous chord stays. (cards; evidence/cards-SET-009.txt)
-  - [x] Press reset → the default chord returns and the Modified badge goes away. (cards; evidence/cards-SET-009.txt)
-Compat: —
-Source: D-17-009
-
-### SET-010 · Clashing shortcuts are flagged, scope by scope
-Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
-User does: records a chord another command already uses, or edits the file by hand so that two
-  commands collide.
-User sees: both rows get a Conflicts badge and appear under the conflicting filter; on macOS a warning
-  shows when the system itself grabs the chord (Mission Control desktop switching).
-Rules: collisions are judged inside a scope (global, tabs, terminal, browser, editor, file explorer,
-  composer, settings), so one chord used in two scopes that never overlap is fine; colliding with a
-  native menu accelerator counts; when a hand edit creates a collision, the colliding override is
-  ignored and a diagnostic appears; a command with no chord never collides; the new-tab commands of
-  agents switched off on the Agents page never count; a colliding row carries a short hint on how to
-  fix it, worded the same whatever the number of commands involved, and shown in full rather than cut
-  short; the macOS desktop-switching warning appears only when the current keyboard layout really
-  produces a digit on that key, and stays quiet otherwise.
-Acceptance:
-  - [x] Bind Mod+P to a second global command → both rows show Conflicts. (cards; evidence/cards-SET-010.txt)
-  - [x] On macOS with Ctrl+digit desktop switching on, bind Ctrl+2 → the system-capture warning shows. (cards; evidence/cards-SET-010.txt)
-Compat: —
-Source: D-17-010
-
-### SET-011 · Shortcuts live in a file the user owns: `~/.kolux/keybindings.json`
-Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
-User does: edits `~/.kolux/keybindings.json` by hand, or lets the Shortcuts page change it.
-User sees: changes in the file take effect after an edit made from the page or a manual reload; the
-  file is kept through upgrades.
-Rules: the file's shape is given under Compat; entries in the section for the running platform beat
-  the shared map; a chord may be one string, a list of strings, or null or false for unbound on
-  purpose; overrides that older builds wrote at the top level are accepted and moved into the map; a
-  file that cannot be read or is invalid raises an error, the defaults are used, and the file is never
-  written over; a missing file is created empty; every write lands in a temporary file first, so a
-  crash never leaves half a file behind; shortcut overrides kept in the old settings are moved over once,
-  and only when no file exists yet; saving from the page writes into the running platform's section and
-  leaves the other platforms' sections as they are; on upgrade, users whose tab-switching keys changed
-  between versions get their old chords written into the file so habits keep working; that happens
-  once, is tried again at the next start if the write failed, is decided per platform (an override
-  saved for another platform does not block it), leaves other overrides alone, and changes nothing the
-  second time it runs.
-Acceptance:
-  - [x] Put terminal.clear with the value null in the keybindings map and reload → the clear-terminal
-        command shows Unassigned. (cards; evidence/cards-SET-011.txt)
-  - [x] Break the file's syntax and reload → an error diagnostic, the default chords work, and the
-        broken file itself stays untouched. (cards; evidence/cards-SET-011.txt)
-  - [x] Add a win32 section overriding a shared entry → on Windows the section's value applies. (cards; evidence/cards-SET-011.txt)
-Compat: `~/.kolux/keybindings.json` keeps its shape: an optional schema reference, a version number
-  of 1, a keybindings map from command id to a chord string, a list of chord strings, or null or false,
-  and an optional platforms object holding darwin, linux and win32 maps of the same kind. Import keeps
-  every override and the meaning of null and false.
-Source: D-17-011
-
 ### SET-013 · Default chords out of the box, and the commands left without one
 Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
 User does: uses the app on a fresh install.
@@ -354,7 +251,7 @@ Compat: default chords, macOS first and then Windows and Linux where they differ
   Alt+Shift+D; terminal.clear Mod+K; step through workspace screens Mod+Alt+V; focus the next terminal
   that needs you Mod+Shift+J | Ctrl+J; tab.rename Mod+R | Mod+Shift+G; move focus to the
   top bar Mod+F6; macOS only: workspace.rename Mod+Alt+R, new agent tab Mod+Alt+T (the ports
-  panel toggle went with VIEW-079). Shipped without a chord: open board,
+  panel toggle went with VIEW 079). Shipped without a chord: open board,
   dashboard.toggle, view.tasks, view.inbox, view.floor, sidebar.checks.toggle, sleeping workspaces
   panel toggle, quick commands menu, send review notes, equalise pane
   sizes, set terminal title, clear pane title, switch input source, sessions.add, sessions.remove, and
@@ -564,21 +461,6 @@ Acceptance:
 Compat: the keybinding command id settings.search stays, defaulting to Mod+F inside Settings.
 Source: D-17-007
 
-### SET-012 · Open, reveal or reload the keybindings file from Settings
-Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens the file menu on the Shortcuts page.
-User sees: options to edit the file inside Kolux, open it in an installed editor or the default app,
-  show it in the file manager, or Reload from disk.
-Rules: the editor options are the apps set up in the Open in list (SET-039); a missing file is created
-  before it is opened; reload reads the file again and sends the result to every window; no automatic
-  watching of the file was found, so hand edits wait for a reload.
-Acceptance:
-  - [ ] Change the file outside Kolux and pick Reload from disk → the new chord shows in the list and
-        in the menu.
-  - [ ] Pick reveal → the file manager opens at ~/.kolux with the file selected.
-Compat: —
-Source: D-17-012
-
 ### SET-014 · Decide whether Kolux or the terminal gets shortcuts first
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: on Shortcuts, picks Kolux first or Terminal first.
@@ -605,7 +487,7 @@ Rules: tab-by-number is Ctrl+digit on macOS and Alt+digit on Windows and Linux; 
   are handled before page focus, so they work from any panel; on new installs Mod+Shift+[ and
   Mod+Shift+] step through all tabs, and Mod+Alt+[ and Mod+Alt+] through tabs of the same kind, while
   installs upgraded from before this arrangement keep the reversed pairing they were used to (written
-  into the keybindings file, see SET-011).
+  into the keybindings file, see SET 011).
 Acceptance:
   - [ ] On Windows press Alt+3 → the third tab is active.
   - [ ] Visit tabs 1, 3 and 2, then press Ctrl+Tab → tab 3 is active.
@@ -615,7 +497,7 @@ Source: D-17-015
 ### SET-019 · Zoom the whole interface
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: presses Mod+Alt+= or Mod+Alt+-, presses Mod+Alt+0 to reset, uses the View menu, or uses
-  the zoom control in Interface. Mod+= and Mod+- without Alt belong to a browser tab, not a terminal (BROW-012).
+  the zoom control in Interface. Mod+= and Mod+- without Alt belong to a browser tab, not a terminal (BROW 012).
 User sees: text and controls grow or shrink together; the level is remembered after a restart.
 Rules: each step is half a zoom level, roughly 9.5 %, where a whole level is a factor of 1.2; zoom is
   held between −3 levels (roughly 58 %) and +5 levels (roughly 249 %), and reset returns to 100 % from
@@ -629,7 +511,7 @@ Acceptance:
         the new size stays for the session. (unit: the zoom control's line rendered, and the zoom step's message;
         the toast from the keys and the View menu is not rendered in a test; evidence/T-723.txt)
 Compat: the keybinding command ids for Interface Zoom In, Interface Zoom Out and Reset Interface Zoom
-  stay; zoom.in, zoom.out and zoom.reset remain for browser tabs (BROW-012).
+  stay; zoom.in, zoom.out and zoom.reset remain for browser tabs (BROW 012).
 Source: D-17-019
 
 ### SET-022 · Terminal text, cursor and drawing
@@ -826,23 +708,6 @@ Acceptance:
   - [ ] Turn minimise to tray on and close the window → the app stays in the tray.
 Compat: —
 Source: D-17-041
-
-### SET-024 · Bring in terminal schemes from Warp and Ghostty
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: imports a Warp theme file, or imports from an existing Ghostty configuration.
-User sees: the scheme joins the custom list; before anything is applied, a preview shows what will
-  change.
-Rules: bringing in from Warp previews when clicked, reading Warp's own themes folder or a theme file the user
-  picks; the user ticks which schemes to bring in (with a select-all), and nothing is applied when none
-  is ticked; invalid files show an error and bring in nothing; the number of custom schemes is capped,
-  importing beyond the cap is refused with a message, but replacing an existing scheme is allowed even
-  at the cap; cancelling the file picker leaves that dialog closed; when the Ghostty configuration
-  already matches the current settings the preview says so and there is nothing to apply.
-Acceptance:
-  - [ ] Import a valid Warp theme → a new custom scheme can be selected.
-  - [ ] Import a broken file → an error shows and the list is unchanged.
-Compat: Warp theme files (YAML) and the Ghostty configuration remain sources the user can bring schemes in from.
-Source: D-17-024
 
 ### SET-038 · Editor and diff preferences
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
@@ -1047,18 +912,6 @@ Compat: —
 Decision: default cut: quick-commands menu removed by the owner. Revive via DECISIONS.md.
 Source: D-17-054
 
-### SET-055 · Orchestration settings page
-Tier: D · Pushed: — · State at 0.15.0: dropped
-User does: tuned orchestration knobs such as how deep workers may nest.
-User sees: a page of coordinator and worker options.
-Rules: orchestration stays; its knobs become CLI flags and fixed defaults (nesting depth 1).
-Acceptance:
-  - [ ] Default build → Settings has no Orchestration page.
-  - [ ] A worker cannot start workers beyond one level of nesting unless a CLI flag says otherwise.
-Compat: —
-Decision: default cut: settings page only; knobs become CLI flags and fixed defaults. Revive via DECISIONS.md.
-Source: D-17-055
-
 ### SET-056 · Settings sections for features that keep a page of their own
 Tier: D · Pushed: — · State at 0.15.0: dropped
 User does: opened Browser, Floating workspace, Automations, Skills or the onboarding checklist inside
@@ -1117,7 +970,6 @@ Source: D-17-058
 - SET-052 · Plugins section — plugin marketplace and runtime cut.
 - SET-053 · Your agents, the custom agent builder — cut; the department-agents plan wants a successor.
 - SET-054 · Quick Commands section and menu — quick-commands menu cut.
-- SET-055 · Orchestration settings page — page only; knobs become CLI flags and fixed defaults.
 - SET-056 · Sections for Browser, Floating workspace, Automations, Skills, setup guide — features keep
   fixed defaults or their own page.
 - SET-057 · Advanced, Privacy and Views & sessions pages — folded into General or Terminal & sessions.

@@ -35,7 +35,7 @@ const KEY: &str = "projectGroups";
 pub const DEFAULT_NAME: &str = "New group";
 
 pub fn load(store: &Store) -> Groups {
-    crate::orchestration::kept::or_default(store, KEY)
+    crate::state::kept::or_default(store, KEY)
 }
 
 fn named(name: &str) -> String {
@@ -125,7 +125,7 @@ impl Groups {
 /// Loads, changes and saves the groups in one go, counting the change.
 pub fn change<T>(store: &Store, f: impl FnOnce(&mut Groups) -> Result<T, String>) -> Result<(Groups, T), String> {
     // Card 13: a store or copy that fails is an error, never an empty set saved over the blob.
-    let mut groups: Groups = crate::orchestration::kept::load(store, KEY)?;
+    let mut groups: Groups = crate::state::kept::load(store, KEY)?;
     let out = f(&mut groups)?;
     groups.rev += 1;
     store.set(KEY, &serde_json::to_string(&groups).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
@@ -228,7 +228,7 @@ mod tests {
         let broken = "{\"groups\": [{\"id\": \"g-1\", \"name\": \"Work\"";
         s.set(KEY, broken).unwrap();
         change(&s, |g| g.create("Fresh", None)).unwrap();
-        assert_eq!(crate::orchestration::kept::asides(&s, KEY), vec![broken.to_string()], "the original bytes are kept aside");
+        assert_eq!(crate::state::kept::asides(&s, KEY), vec![broken.to_string()], "the original bytes are kept aside");
         assert_eq!(load(&s).groups.len(), 1);
         drop(s);
         let _ = std::fs::remove_dir_all(&dir);
@@ -243,7 +243,7 @@ mod tests {
         let saved: serde_json::Value = serde_json::from_str(&s.get(KEY).unwrap().unwrap()).unwrap();
         assert_eq!(saved["future"], serde_json::json!({ "a": [1, 2] }), "the unknown top-level field survives the save");
         assert_eq!(saved["rev"], 4);
-        assert!(crate::orchestration::kept::asides(&s, KEY).is_empty(), "a readable newer blob is not kept aside");
+        assert!(crate::state::kept::asides(&s, KEY).is_empty(), "a readable newer blob is not kept aside");
         drop(s);
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -254,7 +254,7 @@ mod tests {
             let (s, dir) = store(&format!("wrongtype{i}"));
             s.set(KEY, blob).unwrap();
             change(&s, |g| g.create("Fresh", None)).unwrap();
-            assert_eq!(crate::orchestration::kept::asides(&s, KEY), vec![blob.to_string()], "{blob}: a byte-identical copy is kept");
+            assert_eq!(crate::state::kept::asides(&s, KEY), vec![blob.to_string()], "{blob}: a byte-identical copy is kept");
             assert_eq!(load(&s).groups.len(), 1, "{blob}: the change started from a fresh set");
             drop(s);
             let _ = std::fs::remove_dir_all(&dir);
@@ -266,7 +266,7 @@ mod tests {
         let (s, dir) = store("nocopy");
         let broken = "{\"groups\": [{\"id\": \"g-1\", \"name\": \"Work\"";
         s.set(KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir);
+        crate::state::kept::refuse_copies(&dir);
         let err = change(&s, |g| g.create("Fresh", None)).unwrap_err();
         assert!(err.contains(KEY) && !err.contains("Work"), "{err}");
         assert_eq!(s.get(KEY).unwrap().as_deref(), Some(broken), "the blob is byte-identical");

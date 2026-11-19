@@ -37,9 +37,9 @@ test("the look is written down once, so a fresh profile stays New; T-418: a miss
   expect(stampLook({ uiLook: "new", appearanceMode: "light" })).toBeNull();
 });
 
-test("the first screen counts only under New", () => {
-  expect(startScreen({ uiLook: "new", firstScreen: "board" })).toBe("board");
-  expect(startScreen({ uiLook: "classic", firstScreen: "board" })).toBe("terminals");
+test("the first screen is Terminals under New and Classic (the other screens are gone)", () => {
+  expect(startScreen({ uiLook: "new", firstScreen: "agents" })).toBe("terminals"); // the Agents screen is gone
+  expect(startScreen({ uiLook: "classic", firstScreen: "agents" })).toBe("terminals");
   expect(savedFirst({ firstScreen: "elsewhere" })).toBe("terminals");
   // VIEW-001 as amended for the trial (DT-C40): a New profile that never chose a screen opens on Terminals; Classic stays on Terminals.
   expect(startScreen({ uiLook: "new" })).toBe("terminals");
@@ -47,22 +47,23 @@ test("the first screen counts only under New", () => {
   expect(startScreen({ uiLook: "classic" })).toBe("terminals");
 });
 
-test("C17-R1-01: Tower is a first screen the page can pick and the start honours", () => {
-  expect(savedFirst({ firstScreen: "tower" })).toBe("tower");
-  expect(startScreen({ uiLook: "new", firstScreen: "tower" })).toBe("tower");
-  expect(startScreen({ uiLook: "new", lastScreen: "tower" })).toBe("tower");
-  expect(startScreen({ uiLook: "classic", firstScreen: "tower", lastScreen: "tower" })).toBe("tower");
-  expect(shownFirst({ firstScreen: "tower" }, false)).toBe("tower");
-  expect(shownFirst({ firstScreen: "tower" }, true)).toBe("tower");
-  expect(shownFirst({ firstScreen: "board" }, true)).toBe("terminals"); // unchanged Classic clamp
+test("C17-R1-01: the first screen the page shows is one the start honours; a screen the app no longer has falls back to Terminals", () => {
+  for (const gone of ["board", "tower", "floor", "space", "inbox"]) {
+    expect(savedFirst({ firstScreen: gone }), gone).toBe("terminals");
+    expect(startScreen({ uiLook: "new", firstScreen: gone, lastScreen: gone }), gone).toBe("terminals");
+    expect(startScreen({ uiLook: "classic", firstScreen: gone, lastScreen: gone }), gone).toBe("terminals");
+  }
+  expect(shownFirst({ firstScreen: "agents" }, false)).toBe("terminals"); // the Agents screen is gone
+  expect(shownFirst({ firstScreen: "agents" }, true)).toBe("terminals"); // unchanged Classic clamp
 });
 
 test("VIEW-005: the screen left at quit comes back, an unknown one falls back", () => {
-  expect(startScreen({ uiLook: "new", firstScreen: "agents", lastScreen: "board" })).toBe("board");
-  expect(startScreen({ uiLook: "new", lastScreen: "artifacts" })).toBe("artifacts");
-  expect(startScreen({ uiLook: "classic", lastScreen: "inbox" })).toBe("inbox");
-  expect(startScreen({ uiLook: "classic", lastScreen: "board" })).toBe("terminals");
-  expect(startScreen({ uiLook: "new", firstScreen: "agents", lastScreen: "settings" })).toBe("agents");
+  expect(startScreen({ uiLook: "new", firstScreen: "terminals", lastScreen: "terminals" })).toBe("terminals");
+  for (const gone of ["agents", "artifacts", "inbox", "board", "tower"]) {
+    expect(startScreen({ uiLook: "new", lastScreen: gone }), gone).toBe("terminals"); // a removed screen falls back
+    expect(startScreen({ uiLook: "classic", lastScreen: gone }), gone).toBe("terminals");
+  }
+  expect(startScreen({ uiLook: "new", firstScreen: "agents", lastScreen: "settings" })).toBe("terminals");
   expect(startScreen({ uiLook: "new", lastScreen: 7 })).toBe("terminals"); // DT-C40
 });
 
@@ -84,15 +85,14 @@ test("VIEW-005: quick switches are one write, a close flushes the last one", () 
 });
 
 test("VIEW-011: the page open at quit comes back", () => {
-  expect(openPageAt({ openPage: "tasks" })).toBe("tasks");
-  expect(openPageAt({ openPage: "automations" })).toBe("automations");
-  expect(openPageAt({ openPage: "routing" })).toBe("routing");
+  expect(openPageAt({ openPage: "tasks" }), "the Tasks page is gone").toBe(null);
+  expect(openPageAt({ openPage: "automations" }), "the Automations page is gone").toBe(null);
+  expect(openPageAt({ openPage: "routing" }), "the Routing page is gone").toBe(null);
   expect(openPageAt({ openPage: "skills" })).toBe(null);
   expect(openPageAt({})).toBe(null);
 });
 
-test("VIEW-011: Skills open at quit is shown again at start, in either look, and an unknown value is not", () => {
-  expect(startScreen({ uiLook: "new", lastScreen: "skills" })).toBe("skills");
-  expect(startScreen({ uiLook: "classic", lastScreen: "skills" })).toBe("skills");
-  expect(startScreen({ uiLook: "new", lastScreen: "skill" })).toBe("terminals");
+test("VIEW-011: a Skills screen open at quit falls back now that the screen is gone", () => {
+  expect(startScreen({ uiLook: "new", lastScreen: "skills" })).toBe("terminals");
+  expect(startScreen({ uiLook: "classic", lastScreen: "skills" })).toBe("terminals");
 });

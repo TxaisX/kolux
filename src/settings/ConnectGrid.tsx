@@ -1,4 +1,4 @@
-// ACCT-001 / ACCT-003: the AI connections page shows Claude, Codex and Grok in a grid, each with a
+// ACCT-001 / ACCT-003: the AI connections page shows Claude and Codex in a grid, each with a
 // one-line tagline. Until detection answers, a card is a loading placeholder and never claims an
 // agent is missing. A missing agent gets Install (WinGet, with progress and Cancel) or, where Kolux
 // cannot install it, "Open install page"; once it is in, the card moves on to its own sign-in with
@@ -13,11 +13,10 @@ import { AttentionNote, CHECK_AGAIN, openInstallPage, type Attention } from "./A
 import type { AgentInfo } from "../launch/PlusMenu";
 import { watchEscape } from "../switcher/accounts";
 
-export type ConnectId = "claude" | "codex" | "grok";
+export type ConnectId = "claude" | "codex";
 export const CONNECT: { id: ConnectId; name: string; tagline: string }[] = [
   { id: "claude", name: "Claude", tagline: "Anthropic's coding agent, on your Claude Pro or Max plan." },
   { id: "codex", name: "Codex", tagline: "OpenAI's coding agent, on your ChatGPT plan." },
-  { id: "grok", name: "Grok", tagline: "xAI's coding agent, on your Grok sign-in or an xAI key." },
 ];
 export const taglineOf = (id: ConnectId): string => CONNECT.find((c) => c.id === id)!.tagline;
 export type Way = { label: string; onPick: () => void; disabled?: boolean };
@@ -99,7 +98,7 @@ export function InstallCardView({ id, stage, install, canInstall, onInstall, onC
     return (
       <section className="conn-card conn-loading" aria-label={info.name} aria-busy="true" data-state="loading">
         <header className="conn-head">
-          {id !== "grok" && <VendorMark agent={id} size={18} />}
+          <VendorMark agent={id} size={18} />
           <span className="conn-name">{info.name}</span>
         </header>
         <p className="conn-detail">{info.tagline}</p>
@@ -112,7 +111,7 @@ export function InstallCardView({ id, stage, install, canInstall, onInstall, onC
   return (
     <section className="conn-card" aria-label={info.name} data-state={busy ? "installing" : "not-installed"}>
       <header className="conn-head">
-        {id !== "grok" && <VendorMark agent={id} size={18} />}
+        <VendorMark agent={id} size={18} />
         <span className="conn-name">{info.name}</span>
         <span className={`conn-chip ${busy ? "connecting" : "disconnected"}`}>{busy ? "Installing" : "Not installed"}</span>
       </header>

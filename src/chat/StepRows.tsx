@@ -3,7 +3,7 @@
 // the working, worked-for and responding lines. `fold` in steps.ts decides which rows exist.
 import { useContext, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { renderMarkdown } from "../editor/PreviewPane";
+import { renderMarkdown } from "./renderMarkdown";
 import { Dots, FileCode, Globe, Plug, Search, Shell, Spark, Spinner } from "../chrome/icons";
 import type { ChatItem } from "./model";
 import { shortTokens } from "../usage/meter";

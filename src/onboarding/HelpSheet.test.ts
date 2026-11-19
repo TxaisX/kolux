@@ -3,7 +3,7 @@
 // closes the sheet (or stays open where it says so), and that Escape and the backdrop close it.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, type FakeNode, find, fire, installDom, mount, until } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, type FakeNode, find, fire, installDom, mount, until } from "../test/fakeDom";
 
 const spy = vi.hoisted(() => ({ calls: [] as string[], invoked: [] as [string, unknown][] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -54,7 +54,7 @@ test("T-695 help sheet (S33): a menu labelled Help lists Settings, the Help grou
   const { TOURS } = await import("./tour");
   const labels = find(root, (n) => n.attrs.role === "menuitem").map((n) => n.textContent);
   expect(labels[0]).toBe("Settings");
-  for (const l of ["Docs", "Changelog", "GitHub", "Milestones", "Keyboard Shortcuts", "Send Feedback", "Check for Updates", "Restart Kolux"]) item(l);
+  for (const l of ["Docs", "Changelog", "GitHub", "Milestones", "Send Feedback", "Check for Updates", "Restart Kolux"]) item(l);
   for (const t of TOURS.filter((t) => t.id !== "grid")) item(t.name);
   expect(byText(root, "div", "Help")).toHaveLength(1);
   expect(byText(root, "div", "Tours")).toHaveLength(1);
@@ -66,7 +66,6 @@ test("T-695 help sheet (S33): each item does its job and closes the sheet", asyn
   const tour = TOURS.find((t) => t.id !== "grid")!;
   const cases: [string, () => void][] = [
     ["Settings", () => expect(spy.calls).toEqual(["settings:general"])],
-    ["Keyboard Shortcuts", () => expect(spy.calls).toEqual(["settings:shortcuts"])],
     ["Docs", () => expect(spy.invoked).toContainEqual(["open_external", { url: DOCS_URL }])],
     ["Send Feedback", () => expect(spy.calls).toEqual(["feedback"])],
     ["Check for Updates", () => expect(spy.calls).toEqual(["updates"])],

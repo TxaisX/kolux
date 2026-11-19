@@ -1,6 +1,5 @@
 // VIEW-056 / VIEW-057 (T-146-a): one right sidebar on the Terminals screen. It holds the Explorer
-// and Insights as tabs (T-646: tokens, estimated cost and what every session is doing, across all
-// workspaces; it replaced Source Control, T-644), opens with Ctrl+L, and comes back after a restart open or closed, on
+// and more as tabs (T-644 took Source Control out), opens with Ctrl+L, and comes back after a restart open or closed, on
 // the same tab and at the same width; its left edge drags to resize. VIEW-073 adds Checks; Agents,
 // Search, the More overflow and folder-workspace tabs come with T-146-b. VIEW-050 (T-051): the left
 // sidebar's width lives here too, and both sidebars resize by the same Grip.
@@ -15,10 +14,8 @@ import { NARROW_PX } from "../shell/window/narrow";
 import { Menu, MenuItem } from "../lazy/uiMenu";
 import { Tab, TabList, TabPanel, Tabs } from "../ui/Tabs";
 
-export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
+export type RightTab = "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
-  { id: "explorer", label: "Explorer", hint: "Files in this workspace" },
-  { id: "insights", label: "Insights", hint: "Every session's tokens, estimated cost and work" },
   { id: "checks", label: "Checks", hint: "Checks on this workspace's pull request" },
   { id: "attached", label: "Attached", hint: "Attached workspaces" },
   { id: "prchecks", label: "PR Checks", hint: "PR checks of attached workspaces" },
@@ -34,8 +31,8 @@ export function readRight(s: Record<string, unknown>): { open: boolean; tab: Rig
   const w = s[RIGHT_KEYS.width];
   return {
     open: s[RIGHT_KEYS.open] !== false,
-    // an older saved "search" or "scm" (Source Control, removed in T-644) tab, or any other unknown one, opens the Explorer
-    tab: RIGHT_TABS.some((t) => t.id === s[RIGHT_KEYS.tab]) ? (s[RIGHT_KEYS.tab] as RightTab) : "explorer",
+    // an older saved "search" or "scm" (Source Control, removed in T-644) tab, or any other unknown one, opens Checks
+    tab: RIGHT_TABS.some((t) => t.id === s[RIGHT_KEYS.tab]) ? (s[RIGHT_KEYS.tab] as RightTab) : "checks",
     width: typeof w === "number" && Number.isFinite(w) && w >= RIGHT_MIN ? Math.round(w) : RIGHT_DEFAULT,
   };
 }

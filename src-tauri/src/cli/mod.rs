@@ -46,6 +46,8 @@ pub fn bundled_skills() -> Vec<(&'static str, &'static str)> {
 
 /// Where the app says how to reach it, inside its data folder.
 pub const FILE: &str = "cli.json";
+/// What `open` answers when it is handed a file (APP-019 retired).
+pub(crate) const NO_FILES: &str = "Kolux no longer opens files; open it in your editor.";
 /// The event the front end gets when the CLI made or removed a workspace.
 pub const EVENT: &str = "cli-workspace";
 const DATA_DIR: &str = "com.txaisxiong.kolux";
@@ -1053,10 +1055,9 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
             Ok(json!({ "path": w.path, "branch": w.branch, "name": w.name, "projectId": project.id, "branchKept": kept.is_some(), "keptBranch": kept.as_ref().map(|k| &k.branch), "stopped": stopped.ended, "stuck": stopped.stuck, "warnings": warnings }))
         }
         "app.open" => {
-            // T-324-b (APP-019): markdown files a second launch was handed wait for the page to take them.
-            let files: Vec<String> = req.args["files"].as_array().map(|a| a.iter().filter_map(|f| f.as_str().map(str::to_string)).collect()).unwrap_or_default();
-            if crate::lifecycle::queue_open(&files) > 0 {
-                (ctx.notify)(json!({ "emit": "open-files", "payload": Value::Null }));
+            // APP-019 retired: Kolux no longer opens files, so a request that hands it any is refused.
+            if req.args["files"].as_array().is_some_and(|a| !a.is_empty()) {
+                return Err(Fail::new("failed", NO_FILES));
             }
             (ctx.front)()?;
             Ok(json!({ "ready": true, "started": false, "pid": std::process::id() }))
@@ -2640,11 +2641,11 @@ const SETTLE: Duration = Duration::from_millis(1000);
 const IDLE: Duration = Duration::from_secs(3);
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Row 193: a list that no longer reads is kept aside (orchestration::kept) before it starts empty,
+/// Row 193: a list that no longer reads is kept aside (state::kept) before it starts empty,
 /// so the next save_list cannot wipe it. A store or copy that fails is an error, never an empty list
 /// (a save would then overwrite the blob that was never kept).
 fn load_list(store: &Store, key: &str) -> Result<Vec<Value>, Fail> {
-    crate::orchestration::kept::load(store, key).map_err(Fail::from)
+    crate::state::kept::load(store, key).map_err(Fail::from)
 }
 
 fn save_list(store: &Store, key: &str, list: &[Value]) -> Result<(), Fail> {
@@ -4520,7 +4521,7 @@ mod tests {
             save_list(&s, DISPATCHES_KEY, &[json!({ "id": "d-1" })]).unwrap();
             s.set("orchestration.mail", broken).unwrap();
         }
-        crate::orchestration::kept::refuse_copies(&dir.join("data"));
+        crate::state::kept::refuse_copies(&dir.join("data"));
         for scope in SCOPES {
             let mut args = serde_json::Map::new();
             args.insert(scope.to_string(), json!(true));
@@ -4555,7 +4556,7 @@ mod tests {
             let s = store.lock().unwrap();
             (s.get(TASKS_KEY).unwrap(), s.get(DISPATCHES_KEY).unwrap())
         };
-        crate::orchestration::kept::refuse_copies(&dir.join("data"));
+        crate::state::kept::refuse_copies(&dir.join("data"));
         for (command, args) in [
             ("orchestration.task-create", json!({ "spec": "new work" })),
             ("orchestration.task-update", json!({ "id": "task-1", "status": "blocked" })),
@@ -4597,7 +4598,7 @@ mod tests {
         let req = Request { id: "r".into(), token: String::new(), command: "terminal.send".into(), cwd: dir.display().to_string(), args: json!({ "terminal": "term-5313", "text": "hello", "retryRequest": "r1" }), pane: None, cli: String::new(), arrived: None };
         let broken = "[{\"key\": \"term-5313|r0\", \"at\": 1, \"receipt\": {";
         store.lock().unwrap().set(so::KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir.join("data"));
+        crate::state::kept::refuse_copies(&dir.join("data"));
         let err = dispatch(&ctx, &req).unwrap_err();
         assert_eq!(err.code, "failed");
         assert_eq!(typed::count(5313), 0, "nothing was typed before the refusal");
@@ -4695,7 +4696,7 @@ mod tests {
         // A list that cannot be read or kept aside: the passes are unknown, so the read is refused (no output).
         let broken = "[{\"id\": \"d-1\", \"pass\": \"pass-SECRET-123\"}, tru";
         store.lock().unwrap().set(DISPATCHES_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir.join("data"));
+        crate::state::kept::refuse_copies(&dir.join("data"));
         let err = dispatch(&ctx, &req).unwrap_err();
         assert!(err.message.contains("can't check for secrets to hide; read refused") && err.message.contains(DISPATCHES_KEY), "{}", err.message);
         assert!(!err.message.contains("pass-SECRET-123") && !err.data.to_string().contains("pass-SECRET-123"), "the error never carries a pass");
@@ -4716,7 +4717,7 @@ mod tests {
         let req = Request { id: "r".into(), token: String::new(), command: "worktree.ps".into(), cwd: dir.display().to_string(), args: json!({}), pane: None, cli: String::new(), arrived: None };
         let broken = "[{\"id\": \"dispatch-3\"}, ";
         store.lock().unwrap().set(DISPATCHES_KEY, broken).unwrap();
-        crate::orchestration::kept::refuse_copies(&dir.join("data"));
+        crate::state::kept::refuse_copies(&dir.join("data"));
         let out = dispatch(&ctx, &req).unwrap();
         assert_eq!(out["scope"]["workersUnread"], true);
         assert_eq!(store.lock().unwrap().get(DISPATCHES_KEY).unwrap().as_deref(), Some(broken), "ps changed nothing");
@@ -4740,7 +4741,7 @@ mod tests {
             s.set(TASKS_KEY, broken_tasks).unwrap();
             s.set(DISPATCHES_KEY, broken_dispatches).unwrap();
         }
-        crate::orchestration::kept::refuse_copies(&dir.join("data"));
+        crate::state::kept::refuse_copies(&dir.join("data"));
         let s = store.lock().unwrap();
         let (t, d) = (load_list(&s, TASKS_KEY).unwrap_err(), load_list(&s, DISPATCHES_KEY).unwrap_err());
         assert!(t.message.contains(TASKS_KEY) && d.message.contains(DISPATCHES_KEY), "{} / {}", t.message, d.message);
@@ -8079,7 +8080,7 @@ mod tests {
     }
 
     #[test]
-    fn app019_a_second_launch_hands_its_markdown_files_to_the_running_copy() {
+    fn app019_open_refuses_files_and_queues_nothing() {
         let dir = std::env::temp_dir().join(format!("kolux-app019-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let git_ = Git::detect().unwrap();
@@ -8090,13 +8091,15 @@ mod tests {
         let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
         let req = |args: Value| Request { id: "r".into(), token: String::new(), command: "app.open".into(), cwd: dir.display().to_string(), args, pane: None, cli: VERSION.into(), arrived: None };
         let md = if cfg!(windows) { "C:\\notes\\a b.md" } else { "/notes/a b.md" };
-        // a plain `open` and an open with only other kinds of file queue nothing and tell the page nothing
+        // a plain `open` still answers ready; one handed files is refused in plain words and tells the page nothing
         assert_eq!(dispatch(&ctx, &req(json!({}))).unwrap()["ready"], true);
-        dispatch(&ctx, &req(json!({ "files": ["x.txt"] }))).unwrap();
+        assert_eq!(dispatch(&ctx, &req(json!({ "files": [] }))).unwrap()["ready"], true, "an empty list is a plain open");
+        let err = dispatch(&ctx, &req(json!({ "files": [md, "x.txt"] }))).unwrap_err();
+        assert_eq!((err.code, err.message.as_str()), ("failed", NO_FILES));
         assert!(told.lock().unwrap().is_empty());
-        dispatch(&ctx, &req(json!({ "files": [md, "x.txt"] }))).unwrap();
-        assert_eq!(told.lock().unwrap().as_slice(), &[json!({ "emit": "open-files", "payload": null })]);
-        assert_eq!(crate::lifecycle::take_open(), vec![md.to_string()], "only the markdown file was queued");
+        // the typed form, `kolux open <file>`, is refused before anything is sent
+        let typed = parse(&words("open notes.md")).1.unwrap_err();
+        assert_eq!((typed.code, typed.message.as_str()), ("failed", NO_FILES));
         drop(ctx);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
