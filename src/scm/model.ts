@@ -139,7 +139,7 @@ export const nextStep = (s: Status | null, message: string): Step => {
   return { label: "Create pull request", action: "pr", reason: null };
 };
 
-/** GIT-035: one commit of the history as `scm_history` gives it. */
+/** GIT-035: one commit of a branch's history. */
 export type Commit = { hash: string; short: string; parents: string[]; author: string; time: number; subject: string; message: string; labels: { name: string; kind: string }[]; outgoing: boolean; incoming: boolean };
 
 /** GIT-035: a lane waiting for the commit `hash`; `color` stays with the lane while it lasts. */
@@ -218,9 +218,6 @@ export const prMismatch = (pr: Pr | null, branch: string | null): string | null 
 export const prStateWord = (pr: Pr): string => (pr.state === "OPEN" ? (pr.draft ? "Draft" : "Open") : pr.state === "MERGED" ? "Merged" : pr.state === "CLOSED" ? "Closed" : pr.state);
 /** GIT-023: what the panel knows of the branch's pull request while it looks it up. */
 export type PrLook = { loading: boolean; pr: Pr | null; error: string | null; provider?: string | null; host?: string | null };
-
-/** Row 953: scm_pr's answer; provider and host come only when the remote is not GitHub, so gh was never asked. */
-export type PrAnswer = { pr: Pr | null; provider?: string; host?: string | null };
 
 /** Row 76 / 953: the one sentence for a remote that is not GitHub (pull requests go through gh, which only knows GitHub); null for GitHub or an answer not in yet. */
 export const needsGitHub = (doing: string, provider: string | null | undefined, host: string | null | undefined): string | null =>
