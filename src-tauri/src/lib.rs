@@ -809,8 +809,6 @@ pub fn run() {
             keybindings::keybindings_read,
             menu::menu_sync, menu::menu_popup,
             keybindings::keybindings_write,
-            keybindings::keybindings_reload,
-            keybindings::keybindings_show,
             automations::automations_list,
             automations::automations_external_refresh,
             automations::automation_external_act,

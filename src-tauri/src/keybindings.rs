@@ -152,59 +152,6 @@ pub fn keybindings_write(app: tauri::AppHandle, id: String, value: serde_json::V
     Ok(out)
 }
 
-/// SET-012 Reload from Disk: every window reads the file again (there is no file watcher).
-#[tauri::command]
-pub fn keybindings_reload(app: tauri::AppHandle) {
-    use tauri::Emitter;
-    let _ = app.emit("keybindings-changed", ());
-}
-
-/// SET-012: the file in the system's default app (`reveal` false) or selected in the file
-/// manager. A missing file is created first, so there is always something to open.
-#[tauri::command]
-pub fn keybindings_show(app: tauri::AppHandle, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, reveal: bool, command: Option<String>) -> Result<(), String> {
-    let home = home(&app)?;
-    let path = path_under(&home);
-    if !path.exists() {
-        let made = read(&home);
-        if !path.exists() {
-            return Err(made.error.unwrap_or_else(|| "The shortcuts file could not be created".into()));
-        }
-    }
-    // after-list 499: with a command the file opens in that Open in app instead of the system's default
-    if let Some(c) = command.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
-        let settings = store.lock().map_err(|e| e.to_string())?.settings();
-        return crate::files::open_file_in(&path, c, &settings, std::env::var_os("PATH"));
-    }
-    show_command(&path, reveal).spawn().map(|_| ()).map_err(|e| format!("Could not open {}: {e}", path.display()))
-}
-
-/// The command that opens `path`, or shows it selected in its folder.
-fn show_command(path: &Path, reveal: bool) -> std::process::Command {
-    #[cfg(windows)]
-    {
-        let mut c = crate::winproc::command("explorer.exe");
-        // explorer takes "/select,<path>" as one argument.
-        c.arg(if reveal { format!("/select,{}", path.display()) } else { path.display().to_string() });
-        c
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let mut c = crate::winproc::command("open");
-        if reveal {
-            c.arg("-R");
-        }
-        c.arg(path);
-        c
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        let mut c = crate::winproc::command("xdg-open");
-        c.arg(if reveal { path.parent().unwrap_or(path) } else { path });
-        c
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -326,21 +273,6 @@ mod tests {
         let v = write(&home, "linux", "terminal.clear", serde_json::json!("Mod+K"), false).unwrap().value.unwrap();
         assert_eq!(v["platforms"]["linux"]["terminal.clear"], "Mod+K");
         fs::remove_dir_all(&home).unwrap();
-    }
-
-    #[test]
-    fn showing_the_file_opens_it_or_selects_it_in_its_folder() {
-        let path = Path::new("C:/Users/x/.kolux/keybindings.json");
-        let args = |c: &std::process::Command| c.get_args().map(|a| a.to_string_lossy().into_owned()).collect::<Vec<_>>();
-        let open = show_command(path, false);
-        let reveal = show_command(path, true);
-        if cfg!(windows) {
-            assert_eq!(open.get_program(), "explorer.exe");
-            assert_eq!(args(&open), [path.display().to_string()]);
-            assert_eq!(args(&reveal), [format!("/select,{}", path.display())]);
-        } else if cfg!(target_os = "macos") {
-            assert_eq!(args(&reveal)[0], "-R");
-        }
     }
 
     #[test]
