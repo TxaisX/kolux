@@ -65,8 +65,8 @@ test("PROJ-062: the Card details chooser has a real heading and a tick-box per d
   expect(head && textOf(head.props.children), "the label is a heading element").toBe("Card details");
   expect(draw().find((h) => h.props.role === "group")?.props["aria-labelledby"]).toBe(head?.props.id);
   const boxes = byTag(draw(), "input");
-  expect(boxes.map((b) => b.props["aria-label"])).toEqual(["card shows status", "card shows agent summary", "card shows pull request", "card shows changed files", "card shows note", "card shows ports", "card shows task", "card shows automation"]);
-  expect(boxes.map((b) => b.props.checked), "Detailed shows all but Ports, Task and the Automation tag, which are the user's own ticks (T-266-b, AUTO-024)").toEqual([true, true, true, true, true, false, false, false]);
+  expect(boxes.map((b) => b.props["aria-label"])).toEqual(["card shows status", "card shows agent summary", "card shows pull request", "card shows changed files", "card shows note", "card shows ports", "card shows task"]);
+  expect(boxes.map((b) => b.props.checked), "Detailed shows all but Ports and Task, which are the user's own ticks (T-266-b)").toEqual([true, true, true, true, true, false, false]);
   expect(boxes[0].props.disabled, "status cannot be switched off").toBe(true);
 
   change(byLabel(draw(), "card shows status"), { checked: false });
@@ -82,9 +82,9 @@ test("PROJ-062: the Card details chooser has a real heading and a tick-box per d
   expect(readCardDetails(st.s.now).density).toBe("custom");
   change(byLabel(draw(), "card shows agent summary"), { checked: false });
   expect(readCardDetails(st.s.now).density).toBe("compact");
-  change(byLabel(draw(), "card shows automation"), { checked: true });
-  expect(readCardDetails(st.s.now), "the Automation property is a custom set").toEqual({ shown: ["status", "automation"], density: "custom" });
-  expect(byLabel(draw(), "card shows automation").props.checked).toBe(true);
+  change(byLabel(draw(), "card shows ports"), { checked: true });
+  expect(readCardDetails(st.s.now), "the Ports property is a custom set").toEqual({ shown: ["status", "ports"], density: "custom" });
+  expect(byLabel(draw(), "card shows ports").props.checked).toBe(true);
   expect(st.calls.every(([k]) => k === CARD_DETAILS_FIELD), "every tick is one setting").toBe(true);
 });
 

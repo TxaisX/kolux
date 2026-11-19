@@ -24,9 +24,8 @@ const UNVERIFIED_MS: u64 = 30 * 60 * 1000;
 const INBAND_STATES: [&str; 5] = ["working", "done", "permission", "waiting", "idle"];
 
 /// The unverified window; a debug build takes `KOLUX_UNVERIFIED_MS` so a live proof need not wait
-/// half an hour. `pub(crate)`: the automations clock borrows the same window for a run whose pane
-/// still reads working but has gone silent (C25-R2-01).
-pub(crate) fn unverified_ms() -> u64 {
+/// half an hour.
+fn unverified_ms() -> u64 {
     #[cfg(debug_assertions)]
     if let Some(ms) = std::env::var("KOLUX_UNVERIFIED_MS").ok().and_then(|v| v.parse().ok()) {
         return ms;
@@ -1006,10 +1005,6 @@ pub fn status_inband(app: tauri::AppHandle, pane_key: u32, terminal: Option<u32>
         return false;
     };
     let (status, _) = inband_change(pane_key, terminal, state);
-    // Row 16 (AUTO-012 / AUTO-004, T-085-e): an agent that reports only in band completes an
-    // automation run in its pane and starts the agent-finished automations, as a hook does.
-    crate::automations::follow(&app, |s| crate::automations::on_status(s, status.terminal, status.pane_key, status.change.state, status.change.boundary, status.child.is_some(), status.change.session.as_deref(), crate::automations::now_ms()));
-    crate::automations::on_finish(&app, status.pane_key, status.terminal, status.change.state, status.change.boundary, status.child.is_some(), status.interrupted);
     tauri::Emitter::emit(&app, crate::hooks::EVENT, status).is_ok()
 }
 
@@ -1755,23 +1750,6 @@ mod tests {
         assert_eq!(inband_change(PANE, None, "idle").1, Some(956_403), "none given: the session's own terminal");
         assert_eq!(inband_change(PANE, Some(956_404), "working").1, Some(956_404), "given: it wins");
         assert_eq!(terminal_of(PANE), Some(956_403), "and the session keeps the one its hooks named");
-        with_sessions(|s| s.remove(&PANE));
-    }
-
-    /// Row 16 (T-085-e): an in-band working then done is an agent finish the automations hear;
-    /// a done with no working before it, or a second done, is not.
-    #[test]
-    fn row_16_an_in_band_finish_reaches_the_agent_finished_automations() {
-        const PANE: u32 = 956_501;
-        let mut seen = std::collections::HashMap::new();
-        let mut fires = |state: &'static str| {
-            let (st, _) = inband_change(PANE, Some(956_502), state);
-            crate::automations::agent_finished(&mut seen, st.pane_key, st.change.state, st.change.boundary, st.child.is_some(), st.interrupted)
-        };
-        assert!(!fires("done"), "no turn yet");
-        assert!(!fires("working"));
-        assert!(fires("done"), "working then done fires once");
-        assert!(!fires("done"), "and not again");
         with_sessions(|s| s.remove(&PANE));
     }
 

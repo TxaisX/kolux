@@ -287,8 +287,9 @@ pub fn owned(all: &Value, owner: &str) -> Vec<Value> {
         .collect()
 }
 
-pub fn automations_mine(store: &crate::state::Store, owner_id: &str, owner_name: &str) -> Result<Value, Fail> {
-    let all = crate::automations::list(store)?;
+pub fn automations_mine(_store: &crate::state::Store, owner_id: &str, owner_name: &str) -> Result<Value, Fail> {
+    // The automations were retired (slim-down wave B): no repo owns any.
+    let all = json!({ "automations": [] });
     Ok(json!({ "repo": owner_name, "repoId": owner_id, "automations": owned(&all, owner_id) }))
 }
 

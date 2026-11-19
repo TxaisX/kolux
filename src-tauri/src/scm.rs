@@ -1664,17 +1664,10 @@ pub fn polled_checks(gh: &Path, polled: &[PolledPr]) -> std::collections::HashMa
 }
 
 #[tauri::command]
-pub async fn scm_prs_poll(app: tauri::AppHandle, items: Vec<PollItem>) -> Result<PrPoll, String> {
+pub async fn scm_prs_poll(items: Vec<PollItem>) -> Result<PrPoll, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let gh = gh_program()?;
-        let out = prs_poll(&gh, &items, std::time::Duration::from_millis(400));
-        // AUTO-004: each round is what pull-request-opened automations listen to.
-        crate::automations::on_poll(&app, &out.prs);
-        // AUTO-004 (T-085-d): checks are looked up only while a checks-failed automation is on.
-        if crate::automations::listens(&app, "checks-failed") {
-            crate::automations::on_checks(&app, &out.prs, &polled_checks(&gh, &out.prs));
-        }
-        Ok(out)
+        Ok(prs_poll(&gh, &items, std::time::Duration::from_millis(400)))
     })
     .await
     .map_err(|e| e.to_string())?

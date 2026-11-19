@@ -693,7 +693,7 @@ fn limits_of(store: &crate::state::Store, dir: Option<&str>) -> Vec<Limit> {
     store.get(&limits_key(dir)).ok().flatten().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
 }
 
-/// T-583: what a hook's answer leaves for after its reply: the work that may wait on the store or start an automation.
+/// T-583: what a hook's answer leaves for after its reply: the work that may wait on the store.
 enum After {
     /// A status the hooks reported, with the request that carried it (shared with the reply, never copied).
     /// Boxed: a Status is several times the size of a Usage (clippy::large_enum_variant).
@@ -861,10 +861,6 @@ fn after_reply(app: &AppHandle, job: After) {
         After::Status(req, status) => {
             crate::resume::on_stop(app, status.pane_key, status.stop.as_ref());
             agent_hooks::saved::note(app, &req.path, &req.body, &status, req.headers.get(IDENTITY_HEADER).and_then(|h| identity_version(h)));
-            // AUTO-012: an automation run in this pane completes on its agent's real finish.
-            crate::automations::follow(app, |s| crate::automations::on_status(s, status.terminal, status.pane_key, status.change.state, status.change.boundary, status.child.is_some(), status.change.session.as_deref(), crate::automations::now_ms()));
-            // AUTO-004 (T-085-e): an ordinary finish in a pane no automation opened starts the automations listening for it.
-            crate::automations::on_finish(app, status.pane_key, status.terminal, status.change.state, status.change.boundary, status.child.is_some(), status.interrupted);
             rename_on_prompt(app, &status);
         }
     }
@@ -913,7 +909,7 @@ fn rename_on_prompt(app: &AppHandle, status: &crate::status::Status) {
 }
 
 /// Opens the listener on a loopback port and writes the endpoint file; each hook connection is answered on a thread of
-/// its own, and what may wait (the store, automations) runs after the reply (T-583).
+/// its own, and what may wait (the store) runs after the reply (T-583).
 pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
@@ -2596,8 +2592,8 @@ Content-Length: {}
     fn t583_a_command_is_answered_while_the_work_after_an_earlier_reply_is_still_running() {
         let (started, begun) = std::sync::mpsc::channel::<()>();
         let (release, held) = std::sync::mpsc::channel::<()>();
-        // The work after each reply, as `serve` runs it: one queue in arrival order. The first job stands for an
-        // agent-finished automation whose precheck is still running (up to 10 minutes in the app).
+        // The work after each reply, as `serve` runs it: one queue in arrival order. The first job stands for slow
+        // work still running (a rename that waits on Git, say).
         let after = queue(move |_job: After| {
             let _ = started.send(());
             let _ = held.recv_timeout(Duration::from_secs(30));

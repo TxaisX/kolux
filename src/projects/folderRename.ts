@@ -13,13 +13,13 @@ export const renamesFolders = (s: Record<string, unknown>): boolean => s[RENAME_
 
 export type FolderOffer = { dir: string; folder: string; name: string };
 
-/** Row 950: folders an orchestration worker or an automation run started in; no one is there to answer "Rename the folder too?". */
+/** Row 950: folders an orchestration worker started in; no one is there to answer "Rename the folder too?". */
 const unattended = new Set<string>();
 
-/** Remembers a "start" notice that carries a dispatch (orchestration worker) or a run id (automation); forgets a removed folder. */
-export function noteUnattendedStart(p: { kind?: string; path?: string; dispatch?: string; runId?: string }): void {
+/** Remembers a "start" notice that carries a dispatch (orchestration worker); forgets a removed folder. */
+export function noteUnattendedStart(p: { kind?: string; path?: string; dispatch?: string }): void {
   if (!p.path) return;
-  if (p.kind === "start" && (p.dispatch || p.runId)) unattended.add(p.path);
+  if (p.kind === "start" && p.dispatch) unattended.add(p.path);
   else if (p.kind === "removed") unattended.delete(p.path);
 }
 

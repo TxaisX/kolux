@@ -25,8 +25,6 @@ pub use self::args::{parse, Parsed};
 use self::args::Command;
 use self::help::HELP;
 
-#[path = "../automations_cli.rs"]
-mod automations_cli;
 #[path = "../local_cli.rs"]
 mod local_cli;
 #[path = "../cli_register.rs"]
@@ -1083,7 +1081,6 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
         }
         c if c.starts_with("orchestration.") => mail(ctx, req),
         c if c.starts_with("account.") => cli_accounts::dispatch(ctx, req),
-        c if c.starts_with("automations.") => automations_cli::dispatch(ctx, req),
         c if c.starts_with("terminal.") => terminal_cmd(ctx, req),
         c if c.starts_with("file.") => file_cli::dispatch(ctx, req),
         other => Err(Fail::args(format!("unknown command {other}"))),
@@ -1726,7 +1723,7 @@ fn query(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
 
 // ---------------------------------------------------------------- mail (ORCH-001..005)
 
-fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
@@ -3091,13 +3088,29 @@ fn start_failed_run(receipt: &mut Value, run: Option<&str>) {
     start_failed_run_for(receipt, run, cfg!(windows));
 }
 
+/// A value as one shell word: as it is when plain, else quoted (double quotes on Windows, single
+/// quotes elsewhere); None for a value no quoting makes safe. Moved from the retired automations_cli.rs.
+fn shell_word(v: &str, windows: bool) -> Option<String> {
+    if !v.is_empty() && v.chars().all(|c| c.is_alphanumeric() || "-_.:/+".contains(c)) {
+        return Some(v.to_string());
+    }
+    if v.is_empty() || v.chars().any(char::is_control) {
+        return None;
+    }
+    if windows {
+        (!v.chars().any(|c| "\";&|$<>^%`!".contains(c))).then(|| format!("\"{v}\""))
+    } else {
+        Some(format!("'{}'", v.replace('\'', "'\\''")))
+    }
+}
+
 /// Row 343: the offered lines quote a value the way the shell they will be pasted into reads it
-/// (automations_cli::shell_word: double quotes on Windows, single quotes elsewhere).
+/// (shell_word: double quotes on Windows, single quotes elsewhere).
 fn start_failed_run_for(receipt: &mut Value, run: Option<&str>, windows: bool) {
     let lead = format!("{} orchestration worker-", crate::orchestration::CLI);
     let retry = format!("{lead}start ");
     // `safe` below keeps every value shell_word refuses out of the offered lines.
-    let word = |v: &str| automations_cli::shell_word(v, windows).unwrap_or_default();
+    let word = |v: &str| shell_word(v, windows).unwrap_or_default();
     let tiered = receipt["tier"].as_str().is_some_and(|t| !t.trim().is_empty());
     let mut who = String::new();
     let flags: &[&str] = if tiered { &["agent", "tier"] } else { &["agent", "model", "effort"] };
@@ -5714,11 +5727,9 @@ mod tests {
         // ORCH-016: a worker start makes the task, the worktree and the start event, then waits
         // for the worker's terminal; with no window to open one, the wait runs out.
         let claude_installed = crate::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
-        // SET-028: the light tier was given Sonnet at low effort in settings, so the worker runs on it.
-        store.lock().unwrap().save_settings(&json!({ "modelRouting": { "claude": { "light": { "model": "sonnet", "effort": "low" } } } })).unwrap();
         // T-780: the user accepted the main checkout in Claude already; only then is a worktree of it pre-trusted.
         crate::trust::trust_claude(&ctx.claude_config, std::slice::from_ref(&repo)).unwrap();
-        let start = json!({ "spec": "add a test", "agent": "claude", "tier": "light", "worktree": "new-top-level", "setup": "inherit", "timeoutMs": "1" });
+        let start = json!({ "spec": "add a test", "agent": "claude", "model": "sonnet", "effort": "low", "worktree": "new-top-level", "setup": "inherit", "timeoutMs": "1" });
         let out = dispatch(&ctx, &req("orchestration.worker-start", &repo, start.clone())).unwrap_err();
         if claude_installed {
             assert_eq!(out.code, "timeout", "{}", out.message);
@@ -6548,14 +6559,10 @@ mod tests {
         let context = local_cli::agent_context();
         let usages: Vec<&str> = context["commands"].as_array().expect("commands").iter().filter_map(|c| c["usage"].as_str()).filter(|u| !u.is_empty()).collect();
         assert!(!usages.is_empty() && usages.iter().all(|u| u.starts_with(&format!("{cli} "))), "{usages:?}");
-        assert_eq!(automations_cli::text("automations.list", &json!({ "automations": [] })).unwrap(), format!("no automations yet; make one with {cli} automations create"));
         let local = include_str!("../local_cli.rs");
         let usage_fn = &local[local.find("fn usage(").expect("usage")..];
         let usage_fn = &usage_fn[..usage_fn.find("\n}").expect("end of usage")];
         assert!(usage_fn.contains("named(") && usage_fn.contains("orchestration::CLI"), "{usage_fn}");
-        let automations = include_str!("../automations_cli.rs");
-        let shipped = &automations[..automations.find("#[cfg(test)]").expect("tests")];
-        assert!(!shipped.contains("kolux-dev"), "automations_cli.rs writes kolux-dev into text a user reads");
     }
 
     /// T-550: the notes and hints a user reads outside help name the program this build answers

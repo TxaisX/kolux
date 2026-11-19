@@ -5,7 +5,6 @@ mod agent_sleep;
 pub mod agents;
 mod app_look;
 pub mod artifacts;
-pub mod automations;
 mod badge;
 mod awake;
 mod capture;
@@ -94,7 +93,6 @@ mod pr_checkout;
 mod auto_pr;
 pub mod pty;
 mod setup;
-pub mod schedule;
 mod resume;
 pub mod secrets;
 mod settings_sync;
@@ -504,9 +502,6 @@ pub fn run() {
                 foreground::poll(&handle);
                 // STAT-028: a cancelled turn that never sends its Stop reads interrupted.
                 for status in status::settle_cancels() {
-                    // C25-R2-01: a settled cancel never passes through the hook line, so the run
-                    // following that pane is told here, as `hooks.rs:814` tells it a hook status.
-                    automations::settled(&handle, &status);
                     let _ = tauri::Emitter::emit(&handle, hooks::EVENT, status);
                 }
                 // STAT-032: a working reading with no signal for 30 minutes is marked unverified.
@@ -847,18 +842,6 @@ pub fn run() {
             pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
             pdf_export::browser_pick_pdf_path,
             html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
-            automations::automations_list,
-            automations::automations_external_refresh,
-            automations::automation_external_act,
-            automations::automation_external_history,
-            automations::automation_set_enabled,
-            automations::automation_delete,
-            automations::automation_run_now,
-            automations::automation_run_cancel,
-            automations::automation_preview,
-            automations::automation_save,
-            automations::carry::session_carry_context,
-            automations::carry::agent_dir_ready,
             secrets::secret_status,
             secrets::secrets_dropped,
             secrets::secrets_dropped_dismiss,

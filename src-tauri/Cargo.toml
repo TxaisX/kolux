@@ -50,7 +50,7 @@ base64 = "0.23"
 tauri-plugin-dialog = "2"
 # USAGE-009: usage alerts are system notifications, sent from the Rust side.
 tauri-plugin-notification = "2"
-# AUTO-001: timetables are worked out in the IANA zone saved with an automation (already in the tree via tauri).
+# Dates and times in the local zone (diagnostics, chat write-ups, token usage, files; already in the tree via tauri).
 jiff = "0.2"
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
 # APP-001: a second launch of the same profile hands its arguments to the running copy and exits.

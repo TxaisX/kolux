@@ -164,7 +164,6 @@ pub(super) fn commands() -> Vec<Command> {
     all.extend(TERM.iter().copied());
     all.extend(MAIL.iter().copied());
     all.extend(TERMINAL.iter().copied());
-    all.extend(automations_cli::COMMANDS.iter().copied());
     all.extend(local_cli::COMMANDS.iter().copied());
     all.extend(file_cli::COMMANDS.iter().copied());
     // T-312 (ORCH-062..064): the runtime commands for files, git, past sessions and automations.
@@ -585,8 +584,6 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                 }
             }
             max_depth(text("max-depth"))?;
-        } else if command.starts_with("automations.") {
-            args = automations_cli::check(command, &flags)?;
         } else if crate::orchestration::runtime::is_runtime(command) {
             // T-312: blank values, a path for read and rename and a target for rename, before any lookup.
             args = crate::orchestration::runtime::check(command, &flags)?;

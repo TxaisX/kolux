@@ -25,7 +25,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { closesWith, goingFolders, sameDir, underDir } from "../workspaces";
-import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
@@ -248,8 +248,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   pend.current.reset();
   const setFilter = (key: string, value: unknown) => (pend.current.put(key, value), onSetting(key, value));
   const [listed, setWorktrees] = useState<Record<string, Worktree[]>>({}); // the ones not hidden by hand
-  // AUTO-024: the switch that leaves out worktrees made by automation runs; moving to one turns it off.
-  const hideAuto = settings[HIDE_AUTOMATION_SETTING] === true;
   // DT-C274: an own-folder team's worktrees are left out too; the team is reached by the row of the folder its grid is in.
   // One left with nothing in its team's grid and nothing running in it is shown again, so it can still be reached.
   const team = settings[TEAM_WORKTREES_SETTING];
@@ -257,14 +255,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   teamRef.current = team;
   const onSettingRef = useRef(onSetting);
   onSettingRef.current = onSetting;
-  // One workspace per project: no worktree draws a row, so none is filtered out here; each keeps its (hidden) row, which is where the menu and the questions of its pane-header chip answer, team-made and automation-made ones included.
+  // One workspace per project: no worktree draws a row, so none is filtered out here; each keeps its (hidden) row, which is where the menu and the questions of its pane-header chip answer, team-made ones included.
   const worktrees = listed;
-  const wasActive = useRef(activeDir);
-  useEffect(() => {
-    if (jumpUnhides(wasActive.current, activeDir, listed, hideAuto, same)) onSetting(HIDE_AUTOMATION_SETTING, false);
-    wasActive.current = activeDir;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDir, listed]);
   const [hiddenWts, setHiddenWts] = useState<Record<string, Worktree[]>>({}); // PROJ-042: hidden by the user
   const [fresh, setFresh] = useState<Record<string, Worktree[]>>({}); // PROJ-041: made outside Kolux, not yet reviewed
   const [pushedBy, setPushedBy] = useState<Record<string, Pushed>>({}); // GIT-065: by worktree path
@@ -696,7 +688,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // EDIT-031 (B1): the removal closes every pane under the project's folder, so its unsaved editor
   // tabs are asked about first, the same question a closing tab gets; on Cancel nothing is removed.
   // The folders asked about are the open panes' own, not the sidebar's rows: a worktree hidden by hand
-  // or made by an automation is not listed, but its panes close all the same.
+  // is not listed, but its panes close all the same.
   // PROJ 008 / F21: a project's folder and every worktree of it the page knows; `stayingBut` gives them for every project that
   // is not going, so a nested project that stays keeps its panes, is not counted and is not asked about (`goesWith`).
   const foldersOf = (p: Project) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
@@ -2533,9 +2525,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 <option value="activity">Recent: latest activity first</option>
                 <option value="manual">Manual: drag rows into your own order</option>
               </select>
-              <label className="check">
-                <input type="checkbox" checked={hideAuto} onChange={(e) => onSetting(HIDE_AUTOMATION_SETTING, e.target.checked)} /> Hide workspaces made by automations
-              </label>
               <label className="check">
                 <input type="checkbox" aria-label="pinned rows also in their group" checked={copies} onChange={(e) => onSetting(PIN_COPIES_SETTING, e.target.checked)} />
                 Pinned rows also show in their usual place

@@ -105,6 +105,46 @@ pub fn hint_session(agent: &str, text: &str) -> Option<String> {
     found
 }
 
+/// The pane lines read at exit for the resume hint; the character cap trims what is left over.
+pub const SCREEN_LINES: usize = 600;
+/// The most of a pane's text kept for the resume hint: past it only the most recent text.
+const SCREEN_CHARS: usize = 16_000;
+
+/// A pane's output as the plain text `hint_session` reads (moved here from the retired automations,
+/// AUTO-014): escape codes gone (the log strips them; this catches anything it let through),
+/// carriage-return redraws such as progress bars already down to their last version, blank
+/// stretches squeezed to one line, and past the size limit only the most recent text, from a whole line.
+pub fn screen_text(read: &crate::terminal::Read) -> String {
+    let mut lines: Vec<String> = read.lines.iter().map(|l| crate::terminal::strip_ansi(&l.text).trim_end().to_string()).collect();
+    if !read.pending.trim().is_empty() {
+        lines.push(crate::terminal::strip_ansi(&read.pending).trim_end().to_string());
+    }
+    let mut kept: Vec<String> = Vec::with_capacity(lines.len());
+    for l in lines {
+        if l.is_empty() && kept.last().is_none_or(String::is_empty) {
+            continue;
+        }
+        kept.push(l);
+    }
+    while kept.last().is_some_and(String::is_empty) {
+        kept.pop();
+    }
+    cap_tail(kept.join("\n"))
+}
+
+/// The size limit: past it only the most recent text is kept, from a whole line.
+fn cap_tail(text: String) -> String {
+    let n = text.chars().count();
+    if n <= SCREEN_CHARS {
+        return text;
+    }
+    let tail: String = text.chars().skip(n - SCREEN_CHARS).collect();
+    match tail.find('\n') {
+        Some(i) => tail[i + 1..].to_string(),
+        None => tail,
+    }
+}
+
 const ID_KEYS: &[&str] = &["id", "session_id", "sessionId", "uuid", "thread_id", "threadId", "conversation_id"];
 const FOLDER_KEYS: &[&str] = &["cwd", "working_dir", "workingDir", "working_directory", "directory", "project_path", "projectPath"];
 const TIME_KEYS: &[&str] = &["updated_at", "updatedAt", "modified_at", "modifiedAt", "last_active", "lastActive", "created_at", "createdAt"];
@@ -234,5 +274,23 @@ mod tests {
         assert_eq!(pick_listed("goose", bare, "C:/w/a", &[]).as_deref(), Some("s-0000002"));
         assert_eq!(pick_listed("goose", "not json", "C:/w/a", &[]), None);
         assert_eq!(pick_listed("goose", r#"[{"id":"--dangerous"},{"id":"a b"}]"#, "C:/w/a", &[]), None, "an id that cannot follow a flag is dropped");
+    }
+
+    #[test]
+    fn auto014_a_panes_text_is_read_clean_once_and_only_the_latest_past_the_limit() {
+        // A Codex-style progress bar redrawn with carriage returns, colours, a title change and blank lines.
+        let mut log = crate::terminal::OutputLog::default();
+        log.push(b"\x1b[1mWorking\x1b[0m\r\n\x1b[32m[##   ] 10%\r\x1b[32m[#### ] 80%\r[#####] 100%\x1b[0m\r\n\r\n\r\n\x1b]0;codex\x07Done: 3 files changed\r\n\r\n");
+        let text = screen_text(&log.read(None, Some(SCREEN_LINES)));
+        assert_eq!(text, "Working\n[#####] 100%\n\nDone: 3 files changed");
+        assert!(!text.contains('\x1b') && !text.contains('\r'), "{text:?}");
+        // Past the size limit the most recent text stays, starting at a whole line.
+        let mut big = crate::terminal::OutputLog::default();
+        for i in 0..2000 {
+            big.push(format!("line {i:04} {}\n", "x".repeat(40)).as_bytes());
+        }
+        let text = screen_text(&big.read(None, Some(SCREEN_LINES)));
+        assert!(text.chars().count() <= SCREEN_CHARS);
+        assert!(text.starts_with("line ") && text.ends_with(&format!("line 1999 {}", "x".repeat(40))), "{}", &text[..40]);
     }
 }

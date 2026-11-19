@@ -166,7 +166,7 @@ export function previewSentence(typed: string, preview: Preview | null, project:
 /** What the command line tells the window after `worktree create` or `worktree rm` (PROJ-077). */
 export type CliWorkspace =
   | { kind: "created"; projectId: string; worktree: Created; agent: string | null; prompt: string; activate: boolean; setup?: "run" | "skip" | "inherit" }
-  | { kind: "start"; path: string; branch: string | null; agent: string; prompt: string; extra: string[]; title: string | null; runId?: string; dispatch?: string }
+  | { kind: "start"; path: string; branch: string | null; agent: string; prompt: string; extra: string[]; title: string | null; dispatch?: string }
   | { kind: "removed"; path: string }
   // CLI-015 / CLI-019: a repo setting or a worktree's name, link, comment or parent changed; only a redraw.
   | { kind: "repo"; projectId: string }

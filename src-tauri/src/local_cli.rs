@@ -202,13 +202,6 @@ const SUMMARIES: &[(&str, &str)] = &[
     ("orchestration worker-release", "Save a settled worker's output, then close its terminal; the worktree stays."),
     ("orchestration worker-show", "Show one worker and whether it waits on a person (yes, no or unknown)."),
     ("orchestration worker-read", "Read what a worker wrote: its transcript, else its terminal output, else its release archive."),
-    ("automations list", "List the automations."),
-    ("automations show", "Show one automation."),
-    ("automations runs", "List an automation's runs, newest first."),
-    ("automations create", "Save an automation that starts an agent on a timetable."),
-    ("automations edit", "Change an automation."),
-    ("automations remove", "Delete an automation."),
-    ("automations run", "Start an automation now."),
     ("agent-context", "Describe every command, its flags and its usage."),
     ("skills list", "List the skill guides bundled with this CLI."),
     ("skills get", "Print a bundled skill guide, in short, in full, or one reference."),
@@ -460,7 +453,6 @@ mod tests {
         assert!(rm["flags"].as_array().unwrap().contains(&json!("json")), "global flags are listed");
         let teams = find("claude-teams");
         assert_eq!((teams["arguments"].as_str(), teams["flags"].as_array().unwrap().len()), (Some("raw"), 0));
-        assert_eq!(find("automations show")["bareArguments"], json!(["id"]));
         assert_eq!(find("skills get")["aliases"], json!(["skills show"]));
         for c in list {
             assert!(!c["summary"].as_str().unwrap().is_empty(), "{} has no summary", c["words"]);

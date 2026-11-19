@@ -36,12 +36,10 @@ test("T-110-b: folder renaming is on unless switched off", () => {
   expect(renamesFolders({ renameFolders: false })).toBe(false);
 });
 
-test("row 950: a rename in an orchestration worker's or an automation run's folder asks nothing; a user's session still asks", () => {
+test("row 950: a rename in an orchestration worker's folder asks nothing; a user's session still asks", () => {
   const ev = (dir: string) => ({ dir, answer: answer(), error: null });
   noteUnattendedStart({ kind: "start", path: "G:/ws/p/worker-a", dispatch: "d-1" });
-  noteUnattendedStart({ kind: "start", path: "G:/ws/p/run-b", runId: "r-1" });
   expect(offerFrom(ev("G:/ws/p/worker-a"))).toBeNull();
-  expect(offerFrom(ev("G:/ws/p/run-b"))).toBeNull();
   noteUnattendedStart({ kind: "start", path: "G:/ws/p/mine" });
   noteUnattendedStart({ kind: "created", path: "G:/ws/p/made", dispatch: "d-2" });
   expect(offerFrom(ev("G:/ws/p/mine"))).toEqual({ dir: "G:/ws/p/mine", folder: "fix-login", name: "Fix login" });
