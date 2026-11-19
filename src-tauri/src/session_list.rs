@@ -432,10 +432,16 @@ fn own_folder(settings: &Value, agent: &str) -> Option<PathBuf> {
 }
 
 /// The folders to read, the user's choice first (VIEW-091, ACCT-022), then what the chat reader
-/// would look in. `process_env` is injected so tests do not depend on the real environment.
-pub fn roots_for(settings: &Value, process_env: impl Fn(&str) -> Option<String>, user: Option<PathBuf>) -> Roots {
+/// would look in, then (when `profile` is the app's profile folder) each managed account's folder
+/// (`<profile>\claude-accounts\<id>`) and the OpenRouter route's (`<profile>\providers\openrouter`),
+/// so chats run there show in the past-sessions list too. `process_env` is injected so tests do not
+/// depend on the real environment.
+pub fn roots_for(settings: &Value, process_env: impl Fn(&str) -> Option<String>, user: Option<PathBuf>, profile: Option<&Path>) -> Roots {
     let mut claude: Vec<PathBuf> = own_folder(settings, "claude").into_iter().collect();
     claude.extend(crate::chat::homes("claude", &[], &process_env, user.clone()));
+    if let Some(profile) = profile {
+        claude.extend(profile_claude_folders(profile));
+    }
     let mut codex: Vec<PathBuf> = own_folder(settings, "codex").into_iter().collect();
     let chosen = crate::agent_creds::sessions_home(settings, process_env(crate::codex_accounts::HOME_ENV).as_deref(), user.as_deref());
     codex.extend(chosen);
@@ -452,8 +458,23 @@ pub fn roots_for(settings: &Value, process_env: impl Fn(&str) -> Option<String>,
     Roots { claude, codex }
 }
 
-pub(super) fn live_roots(settings: &Value) -> Roots {
-    roots_for(settings, env_text, user_home())
+/// The Claude config folders Kolux itself keeps in the profile, in a steady order: each managed
+/// account's (a link is not an account; nothing is read from it) and then the OpenRouter route's.
+/// Only folders that exist are listed.
+fn profile_claude_folders(profile: &Path) -> Vec<PathBuf> {
+    let mut folders: Vec<PathBuf> = fs::read_dir(profile.join(crate::claude_accounts::FOLDER))
+        .map(|rd| rd.flatten().filter(|e| e.file_type().is_ok_and(|t| t.is_dir())).map(|e| e.path()).collect())
+        .unwrap_or_default();
+    folders.sort();
+    let route = crate::openrouter::config_dir(profile);
+    if route.is_dir() {
+        folders.push(route);
+    }
+    folders
+}
+
+pub(super) fn live_roots(settings: &Value, profile: Option<&Path>) -> Roots {
+    roots_for(settings, env_text, user_home(), profile)
 }
 
 // ---- resuming ----
@@ -642,7 +663,7 @@ static DISK_LOADED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBoo
 /// [`super::scan::SCAN_BUDGET`]; new summaries are saved for the next run.
 pub fn scan_now(settings: &Value, profile: &Path, dirs: &[String], all: bool, depth: Option<usize>, force: bool) -> Listing {
     let (_ticket, joined) = RUNNING.enter();
-    let mut roots = live_roots(settings);
+    let mut roots = live_roots(settings, Some(profile));
     let mut notes = Report::default();
     roots.claude = super::scan::without_stopped_wsl(roots.claude, &mut notes, super::scan::running_distros);
     roots.codex = super::scan::without_stopped_wsl(roots.codex, &mut notes, super::scan::running_distros);
@@ -671,10 +692,13 @@ pub fn scan_now(settings: &Value, profile: &Path, dirs: &[String], all: bool, de
 /// path; unknown means POSIX).
 #[tauri::command]
 pub async fn session_resume_plan(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, id: String, workspace: Option<String>, shell: Option<String>) -> Result<ResumePlan, String> {
-    let settings = store.lock().map_err(|e| e.to_string())?.settings();
+    let (settings, profile) = {
+        let store = store.lock().map_err(|e| e.to_string())?;
+        (store.settings(), store.dir())
+    };
     tauri::async_runtime::spawn_blocking(move || {
         let kind = shell.as_deref().map_or(if cfg!(windows) { Shell::Pwsh } else { Shell::Posix }, shell_of);
-        plan(&settings, &live_roots(&settings), &agent, &id, workspace.as_deref(), kind)
+        plan(&settings, &live_roots(&settings, Some(&profile)), &agent, &id, workspace.as_deref(), kind)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -846,12 +870,45 @@ mod tests {
             "CLAUDE_CONFIG_DIR" => Some(r"C:\cfg".to_string()),
             _ => None,
         };
-        let roots = roots_for(&settings, env, Some(PathBuf::from(r"C:\Users\me")));
+        let roots = roots_for(&settings, env, Some(PathBuf::from(r"C:\Users\me")), None);
         assert_eq!(roots.claude, [PathBuf::from(r"D:\mine\claude"), PathBuf::from(r"C:\cfg"), PathBuf::from(r"C:\Users\me").join(".claude")]);
         assert_eq!(roots.codex.first().unwrap(), &PathBuf::from(r"E:\codex-chosen"), "ACCT-022's chosen folder leads");
         assert!(roots.codex.contains(&PathBuf::from(r"C:\Users\me").join(".codex")));
-        let plain = roots_for(&json!({}), |_| None, Some(PathBuf::from(r"C:\Users\me")));
+        let plain = roots_for(&json!({}), |_| None, Some(PathBuf::from(r"C:\Users\me")), None);
         assert_eq!(plain.codex, [PathBuf::from(r"C:\Users\me").join(".codex")], "an empty field means the standard folder, once");
+    }
+
+    #[test]
+    fn the_profiles_account_folders_and_the_openrouter_folder_are_scanned_too() {
+        let dir = crate::test_dir::temp("roots-profile");
+        let profile = dir.join("profile");
+        let accounts = profile.join(crate::claude_accounts::FOLDER);
+        fs::create_dir_all(accounts.join("b-second")).unwrap();
+        fs::create_dir_all(accounts.join("a-first")).unwrap();
+        fs::write(accounts.join("stray-file.txt"), "not a folder").unwrap();
+        let route = crate::openrouter::config_dir(&profile);
+        fs::create_dir_all(&route).unwrap();
+        let home = dir.join("home");
+        let roots = roots_for(&json!({}), |_| None, Some(home.clone()), Some(&profile));
+        assert_eq!(roots.claude, [home.join(".claude"), accounts.join("a-first"), accounts.join("b-second"), route.clone()], "standard folder first, then accounts in name order, then the route");
+        assert_eq!(roots.codex, [home.join(".codex")], "only Claude gains folders");
+        let without = roots_for(&json!({}), |_| None, Some(home.clone()), None);
+        assert_eq!(without.claude, [home.join(".claude")], "no profile, no extra folders");
+    }
+
+    #[test]
+    fn a_profile_without_those_folders_adds_nothing_and_a_duplicate_is_listed_once() {
+        let dir = crate::test_dir::temp("roots-profile-empty");
+        let profile = dir.join("profile");
+        fs::create_dir_all(&profile).unwrap();
+        let home = dir.join("home");
+        let bare = roots_for(&json!({}), |_| None, Some(home.clone()), Some(&profile));
+        assert_eq!(bare.claude, [home.join(".claude")], "nothing there, nothing added");
+        let route = crate::openrouter::config_dir(&profile);
+        fs::create_dir_all(&route).unwrap();
+        let env_route = route.to_string_lossy().into_owned();
+        let same = roots_for(&json!({}), |k| (k == "CLAUDE_CONFIG_DIR").then(|| env_route.clone()), Some(home.clone()), Some(&profile));
+        assert_eq!(same.claude, [route, home.join(".claude")], "a folder that is also the environment's is listed once");
     }
 
     #[test]

@@ -280,23 +280,29 @@ pub fn name_of(roots: &Roots, agent: &str, id: &str) -> Result<Option<String>, S
     Ok(name.map(|n| clip(n, crate::sessions::list::TITLE_MAX)))
 }
 
-fn live_roots(settings: &Value) -> Roots {
+fn live_roots(settings: &Value, profile: &Path) -> Roots {
     let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
-    roots_for(settings, env, std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from))
+    roots_for(settings, env, std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from), Some(profile))
 }
 
 /// VIEW-084: the opened row's prompt, latest turn, child runs and folder state.
 #[tauri::command]
 pub async fn session_row_detail(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, id: String, dir: Option<String>) -> Result<Detail, String> {
-    let settings = store.lock().map_err(|e| e.to_string())?.settings();
-    tauri::async_runtime::spawn_blocking(move || detail_of(&live_roots(&settings), &agent, &id, dir.as_deref(), now_ms())).await.map_err(|e| e.to_string())?
+    let (settings, profile) = {
+        let store = store.lock().map_err(|e| e.to_string())?;
+        (store.settings(), store.dir())
+    };
+    tauri::async_runtime::spawn_blocking(move || detail_of(&live_roots(&settings, &profile), &agent, &id, dir.as_deref(), now_ms())).await.map_err(|e| e.to_string())?
 }
 
 /// VIEW-093: the name of a pane's session, read in the background; none while it has no name yet.
 #[tauri::command]
 pub async fn session_name(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, id: String) -> Result<Option<String>, String> {
-    let settings = store.lock().map_err(|e| e.to_string())?.settings();
-    tauri::async_runtime::spawn_blocking(move || name_of(&live_roots(&settings), &agent, &id)).await.map_err(|e| e.to_string())?
+    let (settings, profile) = {
+        let store = store.lock().map_err(|e| e.to_string())?;
+        (store.settings(), store.dir())
+    };
+    tauri::async_runtime::spawn_blocking(move || name_of(&live_roots(&settings, &profile), &agent, &id)).await.map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
