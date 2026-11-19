@@ -2,7 +2,7 @@
 // used to do nothing and empty both fields; now the button is off, the note names the row and the fields stay.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byLabel, byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto } from "../tasks/fakeDom";
+import { byLabel, byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.resolve(null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

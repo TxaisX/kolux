@@ -5,7 +5,7 @@
 import { act, createElement, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { beforeEach, expect, test } from "vitest";
 import type { Pane } from "../App";
-import { type FakeDocument, installDom, mount } from "../tasks/fakeDom";
+import { type FakeDocument, installDom, mount } from "../test/fakeDom";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { seatReady } from "../launch/seats";
 import { useWorkspaceActions } from "./useWorkspaces";

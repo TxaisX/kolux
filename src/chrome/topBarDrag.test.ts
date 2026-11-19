@@ -6,7 +6,7 @@
 // here without this file changing.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, FakeNode, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, click, find, installDom, mount, settle } from "../test/fakeDom";
 import { publishClaude } from "../usage/plan";
 
 vi.mock("@tauri-apps/api/core", () => ({

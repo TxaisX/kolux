@@ -2,7 +2,7 @@
 // Escape that closes it with focus handed back to the trigger.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, FakeNode as Node, click, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, FakeNode as Node, click, find, installDom, mount, settle, until } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ stop: null as null | { resolve: (v: string) => void; reject: (e: string) => void }, rows: [] as unknown[], stops: 0 }));
 vi.mock("@tauri-apps/api/core", () => ({

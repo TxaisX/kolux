@@ -2,7 +2,7 @@
 // dialog, (c) Escape closes it with focus on a button (not just on the folder field).
 import { createElement } from "react";
 import { afterEach, expect, test, vi } from "vitest";
-import { FakeNode, find, installDom, mount } from "../tasks/fakeDom";
+import { FakeNode, find, installDom, mount } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.reject("not stubbed") }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

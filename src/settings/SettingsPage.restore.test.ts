@@ -1,7 +1,7 @@
 // SET-006 box 1: Settings opens on the page used last, including a repository page that waits for project_list.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ projects: [] as { id: string; name: string }[] }));
 vi.mock("@tauri-apps/api/core", () => ({

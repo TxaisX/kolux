@@ -24,7 +24,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ isMaximized: () => Promise.resolve(false), onResized: () => Promise.resolve(() => {}) }) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve(null) }));
 
-import { byLabel, byText, click, installDom, mount, settle, type FakeNode } from "../../tasks/fakeDom";
+import { byLabel, byText, click, installDom, mount, settle, type FakeNode } from "../../test/fakeDom";
 import type { WindowBag } from "../windowBag";
 import { WindowStoreProvider } from "./store";
 

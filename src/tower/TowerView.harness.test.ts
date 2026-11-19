@@ -3,7 +3,7 @@
 // and settles (also under StrictMode's dev double mount), and the own window says Loading… until its first reading.
 import { act, createElement, StrictMode } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, FakeNode, find, fire, installDom, mount } from "../tasks/fakeDom";
+import { click, type FakeDocument, FakeNode, find, fire, installDom, mount } from "../test/fakeDom";
 import TowerView from "./TowerView";
 import { towerRows, type Seat } from "./tower";
 

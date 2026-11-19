@@ -4,7 +4,7 @@
 // stand-in for its invoke commands, and every write payload is asserted exactly as the page sends it.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "../../test/fakeDom";
 import { SEEDED_FIELD } from "../../keys/tabKeysSeed";
 
 const hoisted = vi.hoisted(() => ({ handler: (_c: string, _a?: unknown): Promise<unknown> => Promise.resolve(null) }));

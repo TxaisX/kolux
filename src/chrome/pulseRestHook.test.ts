@@ -4,7 +4,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Root } from "react-dom/client";
-import { type FakeNode, installDom } from "../tasks/fakeDom";
+import { type FakeNode, installDom } from "../test/fakeDom";
 import { PULSE_REST_MS, WAKE_EVENTS, usePulseRest } from "./pulseRest";
 
 type Fn = (e?: unknown) => void;

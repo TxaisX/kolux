@@ -3,7 +3,7 @@
 // pane works in (`workDir`); on a main folder they say so in one line and touch nothing.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount, settle } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[], calls: [] as { cmd: string; args: Record<string, unknown> }[], unsaved: [] as string[][], listGate: null as Promise<void> | null, settings: {} as Record<string, unknown>, projects: [{ id: "p1", name: "app", path: "C:/w/app" }] as unknown[] }));
 vi.mock("@tauri-apps/api/core", () => ({

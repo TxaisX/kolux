@@ -4,7 +4,7 @@
 // on the small DOM under fake timers; `reloaded` applies the watch's rule (Interface::tick, Live phase) to the beats sent.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, FakeNode, find, installDom, mount } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, FakeNode, find, installDom, mount } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ beats: [] as number[] }));
 vi.mock("@tauri-apps/api/core", () => ({

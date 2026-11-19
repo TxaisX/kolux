@@ -2,7 +2,7 @@
 // unsaved description for the next time it opens, and labels its close and remove buttons.
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { byLabel, byText, click, type FakeDocument, installDom, mount, settle, typeInto, until } from "./fakeDom";
+import { byLabel, byText, click, type FakeDocument, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
 import type { Task, TaskDetail } from "./model";
 
 const h = vi.hoisted(() => ({ calls: [] as string[], answers: {} as Record<string, unknown> }));

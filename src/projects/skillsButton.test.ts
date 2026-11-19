@@ -2,7 +2,7 @@
 // absent on a fresh install (the setting is off) and appears as soon as the saved setting is on.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string) => {

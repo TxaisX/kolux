@@ -4,7 +4,7 @@
 import { act, createElement } from "react";
 import type { Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
-import { installDom } from "../tasks/fakeDom";
+import { installDom } from "../test/fakeDom";
 import { askAtOpen, START_WAIT_MS } from "../launch/startForm";
 
 import { handOver, isFirstWindow, ownPanes, resetStartAsk, useStartAsk } from "./useStartAsk";

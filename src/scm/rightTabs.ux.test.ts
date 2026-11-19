@@ -2,7 +2,7 @@
 // through their real handlers, and the content search's small targets are held to 24px.
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeNode, byLabel, byText, click, find, installDom, mount, until, type FakeDocument } from "../tasks/fakeDom";
+import { FakeNode, byLabel, byText, click, find, installDom, mount, until, type FakeDocument } from "../test/fakeDom";
 
 const calls: string[] = [];
 let gate: Promise<void> | null = null; // while set, scm_pr_checks waits for it (to see the refresh in progress)

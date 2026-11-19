@@ -3,7 +3,7 @@ import { renderToString } from "react-dom/server";
 import { createElement } from "react";
 import StatusBar from "./StatusBar";
 import { readStatusBar, STATUS_ITEMS, toggleItem } from "./statusItems";
-import { FakeNode, find, fire, installDom, mount, until } from "../tasks/fakeDom";
+import { FakeNode, find, fire, installDom, mount, until } from "../test/fakeDom";
 
 test("VIEW-096: everything shows until something is hidden", () => {
   expect(readStatusBar({})).toEqual({ visible: true, hidden: [] });

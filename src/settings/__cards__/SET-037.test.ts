@@ -6,7 +6,7 @@
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import replay from "../../../evidence/cards-SET-037-replay.json";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.resolve(null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

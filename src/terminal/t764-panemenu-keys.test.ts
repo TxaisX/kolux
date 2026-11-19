@@ -2,7 +2,7 @@
 // (b) ArrowDown/ArrowUp/Home/End move between rows, (c) Tab closes the menu with focus back in the pane, (a) Escape does too.
 import { createElement, useState } from "react";
 import { expect, test, vi } from "vitest";
-import { FakeNode, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { FakeNode, find, installDom, mount, settle } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => null }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));

@@ -4,7 +4,7 @@
 // moved to another key still works inside the view: the press is exempt, not the action.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, installDom, mount } from "../tasks/fakeDom";
+import { type FakeDocument, installDom, mount } from "../test/fakeDom";
 import { resolve } from "./keymap";
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

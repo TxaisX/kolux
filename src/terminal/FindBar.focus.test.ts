@@ -3,7 +3,7 @@
 // then acts on this pane, not on the one that was in front. The real FindBar on the small DOM.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FakeNode, byLabel, fire, installDom, mount } from "../tasks/fakeDom";
+import { FakeNode, byLabel, fire, installDom, mount } from "../test/fakeDom";
 
 let unmount: () => Promise<void> = async () => {};
 beforeEach(() => {

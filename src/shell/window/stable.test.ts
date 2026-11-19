@@ -3,7 +3,7 @@
 import { createElement, memo, StrictMode, act, useLayoutEffect } from "react";
 import type { Root } from "react-dom/client";
 import { beforeAll, expect, test } from "vitest";
-import { installDom } from "../../tasks/fakeDom";
+import { installDom } from "../../test/fakeDom";
 import { callers, sameData, sameProps, tally, useStableFns } from "./stable";
 import { sameCard, sameSettings, sameNotice, sameTerminal, type TerminalProps } from "./terminalProps";
 import { sameProjects, type ProjectsProps } from "./projectsProps";

@@ -2,7 +2,7 @@
 // the last lanes on screen, marks them stale (dimmed) and says why; fails when FloorView.tsx drops any of the three.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeNode, find, installDom, mount } from "../tasks/fakeDom";
+import { type FakeNode, find, installDom, mount } from "../test/fakeDom";
 import { staleNote, type Track } from "./timeline";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.resolve(null) }));

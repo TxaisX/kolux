@@ -3,7 +3,7 @@
 import { act, createElement, useState } from "react";
 import type { Root } from "react-dom/client";
 import { beforeAll, expect, test, vi } from "vitest";
-import { installDom } from "../tasks/fakeDom";
+import { installDom } from "../test/fakeDom";
 import type { AgentInfo } from "./PlusMenu";
 import { allReady, type Seat } from "./seats";
 

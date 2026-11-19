@@ -3,7 +3,7 @@
 // MIRROR: the stand-in workspaces_place_set only echoes the saved folder back; the Rust half mirrors its two settings writes (projects.rs:2359).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../../test/fakeDom";
 
 const h = vi.hoisted(() => ({
   pick: null as string | null,

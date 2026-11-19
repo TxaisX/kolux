@@ -2,7 +2,7 @@
 // the control that opened it when it closes, through the shared dialog hook (chrome/dialogFocus.ts).
 import { createElement } from "react";
 import { afterEach, expect, test, vi } from "vitest";
-import { FakeNode, find, installDom, mount } from "../tasks/fakeDom";
+import { FakeNode, find, installDom, mount } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.reject("not stubbed") }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

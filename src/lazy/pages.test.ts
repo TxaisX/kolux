@@ -3,7 +3,7 @@
 // still draw nothing while they load, so a pane's tab and divider do not flash a placeholder.
 import { createElement, type ComponentType } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { find, installDom, mount, settle, until, type FakeDocument, type FakeNode } from "../tasks/fakeDom";
+import { find, installDom, mount, settle, until, type FakeDocument, type FakeNode } from "../test/fakeDom";
 
 // A screen and a pane body whose code never arrives: what shows is only ever the fallback.
 vi.mock("../tasks/TasksPage", () => new Promise(() => {}));

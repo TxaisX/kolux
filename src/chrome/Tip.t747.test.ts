@@ -2,7 +2,7 @@
 // aria-describedby is removed when that focus leaves.
 import { createElement } from "react";
 import { expect, test } from "vitest";
-import { fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { fire, installDom, mount, settle } from "../test/fakeDom";
 import Tip from "./Tip";
 
 const target = (tip: string) => {

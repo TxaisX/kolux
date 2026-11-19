@@ -3,7 +3,7 @@
 // switcher on the small DOM in src/tasks/fakeDom.ts with the commands mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
 import type { Project, Worktree } from "./model";
 import { chordRow, pastedItems } from "./WorktreePalette";
 

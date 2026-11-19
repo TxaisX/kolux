@@ -3,7 +3,7 @@
 // and by the in-module tests; the status-bar click that opens the popover is LIVE.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, until, withText } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, until, withText } from "../../test/fakeDom";
 import { formatMemory } from "../memory";
 
 const MB = 1024 * 1024;

@@ -7,7 +7,7 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ isMaximized: () => Promise.resolve(false), onResized: () => Promise.resolve(() => {}) }),
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
-import { find, installDom, mount, settle } from "../../tasks/fakeDom";
+import { find, installDom, mount, settle } from "../../test/fakeDom";
 import type { WindowBag } from "../windowBag";
 import { WindowStoreProvider } from "./store";
 

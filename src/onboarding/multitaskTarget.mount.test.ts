@@ -3,7 +3,7 @@
 // to the header.
 import { createElement } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
-import { byText, click, installDom, mount, settle, until, type FakeDocument } from "../tasks/fakeDom";
+import { byText, click, installDom, mount, settle, until, type FakeDocument } from "../test/fakeDom";
 
 const projects = [
   { id: "a", name: "alpha", path: "C:/w/alpha" },

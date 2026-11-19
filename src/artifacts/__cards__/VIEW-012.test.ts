@@ -2,7 +2,7 @@
 // MIRROR: the stand-in artifacts_list returns newest first as Library::list does (cards_05.rs view012_box1_* proves that order in Rust).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "../../test/fakeDom";
 
 const h = vi.hoisted(() => ({ lib: [] as { id: string; title: string; added: number }[], picks: [] as string[] }));
 vi.mock("@tauri-apps/api/core", () => ({

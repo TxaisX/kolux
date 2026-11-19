@@ -2,7 +2,7 @@
 // (update_status / update_check / update_download / update_restart) stood in by a scripted feed.
 import { act, createElement } from "react";
 import { vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount } from "../../test/fakeDom";
 
 export type Info = { version: string; currentVersion: string; notes: string[] };
 export const T0 = Date.UTC(2026, 9, 26, 12, 0, 0);

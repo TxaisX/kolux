@@ -3,7 +3,7 @@
 // delete still running at the switch drops its answer too, so the second project never shows the first one's rows.
 import { act, createElement, useState } from "react";
 import { afterEach, expect, test, vi } from "vitest";
-import { byLabel, click, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { byLabel, click, find, installDom, mount, settle, until } from "../test/fakeDom";
 import type { SpaceRow } from "../projects/space";
 
 const back = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[], gate: null as Promise<void> | null, gateOn: "", checkFails: false }));

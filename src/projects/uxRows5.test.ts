@@ -3,7 +3,7 @@
 // and the workspace delete button says Delete. The real ProjectsPanel on the small DOM, backend mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle, typeInto } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle, typeInto } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: unknown }[], groups: [] as { id: string; name: string; parent: string | null }[], rev: 1, made: 0, check: null as unknown, hold: "", release: () => {} }));
 vi.mock("@tauri-apps/api/core", () => ({

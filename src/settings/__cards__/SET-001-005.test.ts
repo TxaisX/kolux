@@ -5,7 +5,7 @@
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CATALOGUE } from "../../terminal/schemes";
-import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "../../tasks/fakeDom";
+import { click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "../../test/fakeDom";
 
 const h = vi.hoisted(() => ({ settings: {} as Record<string, unknown>, patches: [] as { set: Record<string, unknown>; remove: string[] }[] }));
 vi.mock("@tauri-apps/api/core", () => ({

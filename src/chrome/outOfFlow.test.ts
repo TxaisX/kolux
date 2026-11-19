@@ -3,7 +3,7 @@
 // again and redraw what it holds, terminals included, once when it came and once when it went.
 import { createElement } from "react";
 import { expect, test, vi } from "vitest";
-import { FakeNode, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { FakeNode, find, installDom, mount, settle } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => null }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));

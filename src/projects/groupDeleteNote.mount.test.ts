@@ -3,7 +3,7 @@
 // group, sub-groups included, the same list deleteGroup asks about and closes (projectsInGroup).
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byLabel, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, click, find, installDom, mount, settle } from "../test/fakeDom";
 import { projectsInGroup } from "./groupMembers";
 
 const h = vi.hoisted(() => ({ sessions: [] as { cwd: string; running: boolean }[], closed: [] as string[][] }));

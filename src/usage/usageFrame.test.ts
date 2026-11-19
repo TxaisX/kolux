@@ -3,7 +3,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-import { installDom, mount, settle, type FakeDocument } from "../tasks/fakeDom";
+import { installDom, mount, settle, type FakeDocument } from "../test/fakeDom";
 
 const io = vi.hoisted(() => ({ answer: false }));
 const COUNTS = { since: 1, agentsStarted: 3, workingMs: 600_000, prsCreated: 1 };

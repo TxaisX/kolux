@@ -22,7 +22,7 @@ vi.mock("../../skills/SkillBarItem", () => ({ BringSkillsUp: () => null }));
 import { START_ASK_KEY } from "../../launch/startForm";
 import { closer } from "../../onboarding/firstRun";
 import { startPanes } from "../../projects/workspaceStart";
-import { installDom, mount, settle } from "../../tasks/fakeDom";
+import { installDom, mount, settle } from "../../test/fakeDom";
 import type { WindowBag } from "../windowBag";
 import { WindowStoreProvider } from "./store";
 

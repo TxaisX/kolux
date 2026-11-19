@@ -2,7 +2,7 @@
 // (agentsScreen / board / terminals at :2096-2103), so both boxes stay LIVE in the ledger.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.resolve(null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

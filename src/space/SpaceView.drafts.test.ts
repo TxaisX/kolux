@@ -2,7 +2,7 @@
 // drops the unsaved editor drafts of each folder the back end says it removed, and only those.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byLabel, click, type FakeDocument, type FakeNode, find, installDom, mount, until } from "../tasks/fakeDom";
+import { byLabel, click, type FakeDocument, type FakeNode, find, installDom, mount, until } from "../test/fakeDom";
 import type { SpaceRow } from "../projects/space";
 
 const back = vi.hoisted(() => ({ calls: [] as { cmd: string; args: Record<string, unknown> }[] }));

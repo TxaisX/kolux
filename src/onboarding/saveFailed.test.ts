@@ -3,7 +3,7 @@
 // reason shown.
 import { createElement, type ReactElement } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
-import { FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "../tasks/fakeDom";
+import { FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "../test/fakeDom";
 
 const host = { stored: {} as Record<string, unknown>, reads: 0, readsOk: Infinity, hold: null as Promise<void> | null };
 vi.mock("@tauri-apps/api/core", () => ({

@@ -13,7 +13,7 @@ import { Close } from "../chrome/icons";
 import { restoreFocus } from "../shell/paletteCaps";
 import { bodyView, focusLost, peekDraft, stashDraft } from "./dialogState";
 import { type IssueAction, runAction } from "./issueActions";
-import Markdown from "./MarkdownView";
+import Markdown from "../scm/MarkdownView";
 import MentionField from "./MentionField";
 import { type Edit, withAssignees, withLabels } from "./edits";
 import { duplicateQuery, eventLine, issueNumber, type Task, type TaskDetail, type TaskLabel, type TaskPage, taskKind } from "./model";

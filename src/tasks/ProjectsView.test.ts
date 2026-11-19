@@ -4,7 +4,7 @@
 // The real table on the small DOM in fakeDom.ts, with the commands mocked and recorded.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, fire, FakeNode as Node, find, installDom, mount, settle, typeInto, until, withText } from "./fakeDom";
+import { click, type FakeDocument, type FakeNode, fire, FakeNode as Node, find, installDom, mount, settle, typeInto, until, withText } from "../test/fakeDom";
 import type { Project } from "./projects";
 
 const h = vi.hoisted(() => ({

@@ -3,7 +3,7 @@
 // A file of its own: prefetch() reads every deferred() in the module graph, and pages.test.ts has many.
 import { Component, createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { installDom, mount, settle } from "../tasks/fakeDom";
+import { installDom, mount, settle } from "../test/fakeDom";
 
 const g = globalThis as { requestIdleCallback?: (f: () => void) => void };
 afterEach(() => {

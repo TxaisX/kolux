@@ -2,7 +2,7 @@
 // and a removal hands it to the next row, else the previous, else the search box. Cancel leaves the row where it was.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FakeNode as Node, click, fire, find, installDom, mount, settle, until, type FakeDocument, type FakeNode } from "../tasks/fakeDom";
+import { FakeNode as Node, click, fire, find, installDom, mount, settle, until, type FakeDocument, type FakeNode } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ lib: [] as { id: string; title: string; added: number }[], removed: [] as string[] }));
 vi.mock("@tauri-apps/api/core", () => ({

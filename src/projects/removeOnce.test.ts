@@ -3,7 +3,7 @@
 // real ProjectsPanel, multi-select bar and cleanup dialog on the small DOM, with the backend mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount, settle } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[], scan: null as unknown }));
 vi.mock("@tauri-apps/api/core", () => ({

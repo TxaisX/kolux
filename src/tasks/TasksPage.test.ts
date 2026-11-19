@@ -4,7 +4,7 @@
 // commands are a mocked invoke that records every call (the real page, the small DOM in fakeDom.ts).
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { byLabel, byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "./fakeDom";
+import { byLabel, byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until } from "../test/fakeDom";
 import type { Task } from "./model";
 import type { PrPageData } from "./prModel";
 

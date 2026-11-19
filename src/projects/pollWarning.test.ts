@@ -2,7 +2,7 @@
 // an error the panel is showing; before, it replaced it, so the error vanished within seconds.
 import { createElement } from "react";
 import { expect, test, vi } from "vitest";
-import { find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { find, installDom, mount, settle, until } from "../test/fakeDom";
 import { WORKSPACE_STATUS } from "./statusRefresh";
 
 const h = vi.hoisted(() => ({ wt: [] as unknown[], scanFails: false }));

@@ -3,7 +3,7 @@
 // component, mounted into the small stand-in DOM in fakeDom.ts and clicked like a user would.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { byLabel, byText, click, fire, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "./fakeDom";
+import { byLabel, byText, click, fire, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "../test/fakeDom";
 import { escapeStep, partialNote } from "./prPageState";
 import type { PrPageData } from "./prModel";
 

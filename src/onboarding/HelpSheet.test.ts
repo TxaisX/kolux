@@ -3,7 +3,7 @@
 // closes the sheet (or stays open where it says so), and that Escape and the backdrop close it.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { byText, click, type FakeDocument, type FakeNode, find, fire, installDom, mount, until } from "../tasks/fakeDom";
+import { byText, click, type FakeDocument, type FakeNode, find, fire, installDom, mount, until } from "../test/fakeDom";
 
 const spy = vi.hoisted(() => ({ calls: [] as string[], invoked: [] as [string, unknown][] }));
 vi.mock("@tauri-apps/api/core", () => ({

@@ -2,7 +2,7 @@
 // Escape closes it and gives focus back to the field. Mounted in the fake DOM; the engine's suggestions are off.
 import { createElement } from "react";
 import { expect, test, vi } from "vitest";
-import { FakeNode, find, fire, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { FakeNode, find, fire, installDom, mount, settle, until } from "../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => false }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));

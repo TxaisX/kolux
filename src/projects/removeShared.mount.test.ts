@@ -4,7 +4,7 @@
 // DOM, backend mocked as in removeNested.mount.test.ts.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({ unsaved: [] as string[][], closed: [] as unknown[][], extra: {} as Record<string, unknown>, parent: false, groupOne: false }));
 vi.mock("@tauri-apps/api/core", () => ({

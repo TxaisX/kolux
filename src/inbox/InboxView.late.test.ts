@@ -3,7 +3,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Root } from "react-dom/client";
-import { click, find, installDom, type FakeDocument, type FakeNode } from "../tasks/fakeDom";
+import { click, find, installDom, type FakeDocument, type FakeNode } from "../test/fakeDom";
 import InboxView from "./InboxView";
 import type { Item } from "./inbox";
 

@@ -4,7 +4,7 @@
 // Box 1 (cycle order) and box 2 (the chord in Classic) are decided in App.tsx (nextScreen, and `if (!classic)` at :727), see the ledger.
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../test/fakeDom";
 
 const synced: Record<string, unknown>[] = [];
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (cmd: string, args: { state?: Record<string, unknown> } = {}) => (cmd === "menu_sync" && args.state && synced.push(args.state), Promise.resolve(null)) }));

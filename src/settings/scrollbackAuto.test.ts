@@ -2,7 +2,7 @@
 // profile sets (what every pane really keeps), not the 1000-row start value.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../test/fakeDom";
 
 const stub = vi.hoisted(() => ({ settings: {} as Record<string, unknown> }));
 vi.mock("@tauri-apps/api/core", () => ({

@@ -2,7 +2,7 @@
 // MIRROR src/App.tsx:2533 onSearch={() => setPalette(true)} and onScreen={setScreen}; the Inbox renders when screen === "inbox" (App.tsx:2098).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../test/fakeDom";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.resolve(null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));

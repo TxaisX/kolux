@@ -2,7 +2,7 @@
 // and says the list may be old, until a read works again.
 import { act, createElement } from "react";
 import { expect, test, vi } from "vitest";
-import { find, installDom, mount, until } from "../tasks/fakeDom";
+import { find, installDom, mount, until } from "../test/fakeDom";
 
 const h = vi.hoisted(() => ({
   fail: false as boolean | string,
