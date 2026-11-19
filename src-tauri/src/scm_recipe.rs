@@ -16,7 +16,7 @@
 //! Microsoft's public "Parsing C command-line arguments" page. No other source.
 
 use crate::scm::{self, writers};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -255,45 +255,6 @@ pub async fn scm_recipe_commit(worktree: String, recipe: Recipe, instructions: O
     .map_err(|e| e.to_string())?
 }
 
-/// What Fix with AI does next: an agent recipe hands the front end an agent id, its extra arguments and
-/// the prompt to start the agent with (the app's own launch path); a template runs and its answer is shown.
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum FixPlan {
-    Agent { agent: String, extra: Vec<String>, prompt: String },
-    Ran { text: String },
-}
-
-/// The plan for Fix with AI from `recipe` given `vars` (pure; the command runs a template).
-pub fn fix_plan(recipe: &Recipe, vars: &BTreeMap<String, String>, prompt: &str) -> Result<Result<FixPlan, Composed>, String> {
-    check(recipe)?;
-    match recipe.agent.as_deref().map(str::trim).filter(|a| !a.is_empty()) {
-        Some(id) => Ok(Ok(FixPlan::Agent { agent: id.to_string(), extra: agent_extra("fix", recipe, vars)?, prompt: prompt.to_string() })),
-        None => Ok(Err(compose("fix", recipe, vars, prompt)?)),
-    }
-}
-
-/// GIT-019: Fix with AI through the recipe. `output` is what failed; `prompt` is the usual fix request.
-#[tauri::command]
-pub async fn scm_recipe_fix(worktree: String, recipe: Recipe, output: String, prompt: String) -> Result<FixPlan, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let dir = Path::new(&worktree);
-        let mut vars = worktree_vars(dir, false);
-        vars.insert("diff".to_string(), scm::trim_diff(&crate::git::run(&["diff", "HEAD", "--no-color", "--no-ext-diff"], Some(dir)).unwrap_or_default(), scm::MESSAGE_BUDGET));
-        vars.insert("output".to_string(), output);
-        match fix_plan(&recipe, &vars, &prompt)? {
-            Ok(plan) => Ok(plan),
-            Err(c) => {
-                let program = resolve(&c)?;
-                let text = scm::write_message(&program, &c.args.iter().map(String::as_str).collect::<Vec<_>>(), dir, c.input.as_deref(), &worktree, LIMIT)?;
-                Ok(FixPlan::Ran { text })
-            }
-        }
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -412,19 +373,6 @@ mod tests {
         assert_eq!(compose("commit", &agent("amp", ""), &v, "P").unwrap().args, ["-x"]);
         // An extra argument can use only the variables of the action.
         assert!(compose("commit", &agent("claude", "--note {output}"), &v, "P").is_err());
-    }
-
-    #[test]
-    fn git019_fix_with_an_agent_recipe_returns_the_agent_extras_and_prompt_for_the_apps_own_launch() {
-        let v = vars(&[("output", "error: boom"), ("branch", "feat")]);
-        let plan = fix_plan(&agent("claude", "--note {output}"), &v, "FIX IT").unwrap().unwrap();
-        assert_eq!(plan, FixPlan::Agent { agent: "claude".into(), extra: vec!["--note".into(), "error: boom".into()], prompt: "FIX IT".into() });
-        // An agent the writer list does not know can still be launched interactively.
-        assert!(matches!(fix_plan(&agent("gemini", ""), &v, "P").unwrap(), Ok(FixPlan::Agent { .. })));
-        // A template is composed for a headless run.
-        let c = fix_plan(&template("fixer --log {output}"), &v, "P").unwrap().unwrap_err();
-        assert_eq!((c.program.as_str(), c.args.clone()), ("fixer", vec!["--log".to_string(), "error: boom".to_string()]));
-        assert!(fix_plan(&Recipe::default(), &v, "P").is_err());
     }
 
     #[test]

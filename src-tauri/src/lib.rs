@@ -787,7 +787,6 @@ pub fn run() {
             pr_checkout::scm_push_target,
             scm_open::scm_open_with,
             scm_recipe::scm_recipe_commit,
-            scm_recipe::scm_recipe_fix,
             scm_stack::scm_stack_create,
             scm_stack::scm_stack_record,
             pr_review::scm_stack_prs,
