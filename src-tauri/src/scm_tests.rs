@@ -1302,47 +1302,6 @@ fn git026_a_printed_link_survives_a_window_save_from_an_older_copy_of_the_settin
 }
 
 #[test]
-fn t085d_the_poll_reads_each_open_pull_requests_checks_word_with_one_list_and_one_graphql_call() {
-    let tools = std::env::temp_dir().join(format!("kolux-scm-t085d-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&tools);
-    fs::create_dir_all(&tools).unwrap();
-    let repo = tools.join("repo");
-    fs::create_dir_all(&repo).unwrap();
-    for args in [&["init", "-q", "-b", "main"][..], &["remote", "add", "origin", "https://github.com/o/r.git"]] {
-        assert!(quiet("git").args(args).current_dir(&repo).status().unwrap().success());
-    }
-    fs::write(tools.join("list.json"), r#"[{"number":7,"id":"PR_7"},{"number":9,"id":"PR_9"}]"#).unwrap();
-    fs::write(tools.join("checks.json"), r#"{"data":{"nodes":[{"id":"PR_7","commits":{"nodes":[{"commit":{"statusCheckRollup":{"state":"FAILURE"}}}]}}]}}"#).unwrap();
-    let gh = if cfg!(windows) {
-        let f = tools.join("gh.cmd");
-        fs::write(&f, "@echo off\r\necho %*>>\"%~dp0calls.txt\"\r\nif \"%2\"==\"graphql\" (type \"%~dp0checks.json\") else (type \"%~dp0list.json\")\r\n").unwrap();
-        f
-    } else {
-        let f = tools.join("gh");
-        fs::write(&f, "#!/bin/sh\necho \"$*\" >> \"$(dirname \"$0\")/calls.txt\"\nif [ \"$2\" = graphql ]; then cat \"$(dirname \"$0\")/checks.json\"; else cat \"$(dirname \"$0\")/list.json\"; fi\n").unwrap();
-        quiet("chmod").args(["+x", f.to_str().unwrap()]).status().unwrap();
-        f
-    };
-    let path = repo.to_string_lossy().to_string();
-    let pr = |n: u64, state: &str| Some(Pr { number: n, url: format!("https://github.com/o/r/pull/{n}"), state: state.into(), title: None, head: None, draft: false });
-    let row = |path: &str, pr: Option<Pr>, error: Option<&str>| PolledPr { path: path.into(), linked: false, pr, error: error.map(String::from) };
-    let polled = [row(&path, pr(7, "OPEN"), None), row("C:/closed", pr(8, "CLOSED"), None), row("C:/broken", pr(9, "OPEN"), Some("rate limited")), row("C:/none", None, None)];
-    let got = polled_checks(&gh, &polled);
-    // Only the open pull request with a readable project is asked about; the rest are left out.
-    assert_eq!(got.get(&path).map(String::as_str), Some("failing"));
-    assert_eq!(got.len(), 1, "{got:?}");
-    let calls = fs::read_to_string(tools.join("calls.txt")).unwrap();
-    assert_eq!(calls.lines().count(), 2, "{calls}");
-    assert!(calls.contains("pr list --state open") && calls.contains("api graphql --hostname github.com") && calls.contains("PR_7") && !calls.contains("PR_9"), "{calls}");
-    // Nothing open to ask about asks nothing.
-    let before = calls.lines().count();
-    assert!(polled_checks(&gh, &polled[1..]).is_empty());
-    assert_eq!(fs::read_to_string(tools.join("calls.txt")).unwrap().lines().count(), before);
-    assert_eq!(open_ids("not json"), std::collections::HashMap::new());
-    let _ = fs::remove_dir_all(&tools);
-}
-
-#[test]
 fn git018_a_custom_writer_command_takes_the_prompt_in_place_or_on_standard_input() {
     // Quoted arguments stay together and backslashes stay as typed.
     assert_eq!(split_command(r#"node "C:\My Tools\w.js" --say {prompt}"#), vec!["node", r"C:\My Tools\w.js", "--say", "{prompt}"]);

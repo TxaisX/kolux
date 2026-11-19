@@ -340,28 +340,8 @@ pub async fn scm_head(dir: String) -> Option<Head> {
     tauri::async_runtime::spawn_blocking(move || head_of(Path::new(&dir))).await.ok().flatten()
 }
 
-/// CLI-021: every file `worktree` differs from `base` in, committed and uncommitted work together
-/// (untracked files as `U`). Committed work counts from where the branch parted from the base, or
-/// from the base itself when they share no history; with no base, only the uncommitted work.
-pub fn changes(worktree: &Path, base: Option<&str>) -> Result<Vec<Change>, String> {
-    let since = match base {
-        Some(b) => run(&["merge-base", b, "HEAD"], Some(worktree)).unwrap_or_else(|_| b.to_string()),
-        None => "HEAD".to_string(),
-    };
-    let mut out = Vec::new();
-    let diff = run(&["diff", "--name-status", "--no-renames", "-z", &since, "--"], Some(worktree))?;
-    let mut parts = diff.split('\0').filter(|s| !s.is_empty());
-    while let (Some(st), Some(path)) = (parts.next(), parts.next()) {
-        out.push(Change { path: path.to_string(), status: st.chars().take(1).collect(), from: None });
-    }
-    for path in run(&["ls-files", "--others", "--exclude-standard", "-z"], Some(worktree))?.split('\0').filter(|s| !s.is_empty()) {
-        out.push(Change { path: path.to_string(), status: "U".into(), from: None });
-    }
-    out.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(out)
-}
-
-/// CLI-021: would two committed tips merge cleanly? Never "clean" unless Git said so.
+/// GIT-032: would two committed tips merge cleanly (the pull request conflict check, pr_review.rs)?
+/// Never "clean" unless Git said so.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Clash {
     Clean,
@@ -1473,43 +1453,6 @@ pub fn prs_poll(gh: &Path, items: &[PollItem], gap: std::time::Duration) -> PrPo
     out
 }
 
-/// T-085-d (AUTO-004): the number-to-node-id table of `gh pr list --json number,id`.
-fn open_ids(text: &str) -> std::collections::HashMap<u64, String> {
-    serde_json::from_str::<Vec<serde_json::Value>>(text).unwrap_or_default().iter().filter_map(|v| Some((v["number"].as_u64()?, v["id"].as_str()?.to_string()))).collect()
-}
-
-/// T-085-d (AUTO-004): the checks word (GIT-043's `checks_of`) of every open pull request found by a
-/// poll round, by workspace path, for the "checks failed" automation trigger. One `gh pr list` per
-/// GitHub project and one GraphQL call per host; a failed read leaves that project's folders out,
-/// which the trigger reads as "no news".
-pub fn polled_checks(gh: &Path, polled: &[PolledPr]) -> std::collections::HashMap<String, String> {
-    let config = ssh_config();
-    // Per project: its host, the first folder (gh runs there) and each open pull request wanted.
-    type Wanted = Vec<(String, u64)>;
-    let mut groups: Vec<(String, String, Wanted)> = Vec::new();
-    for p in polled.iter().filter(|p| p.error.is_none()) {
-        let Some(pr) = p.pr.as_ref().filter(|pr| pr.state.eq_ignore_ascii_case("open")) else { continue };
-        let Some(g) = run(&["remote", "get-url", "origin"], Some(Path::new(&p.path))).ok().and_then(|u| github_repo(&u, &config)) else { continue };
-        match groups.iter_mut().find(|(k, _, _)| *k == g.key) {
-            Some((_, _, list)) => list.push((p.path.clone(), pr.number)),
-            None => groups.push((g.key.clone(), g.host.clone(), vec![(p.path.clone(), pr.number)])),
-        }
-    }
-    let mut out = std::collections::HashMap::new();
-    for (_, host, list) in groups {
-        let Ok(text) = gh_run(gh, Path::new(&list[0].0), &["pr", "list", "--state", "open", "--limit", "100", "--json", "number,id"], None) else { continue };
-        let ids = open_ids(&text);
-        let wanted: Vec<String> = list.iter().filter_map(|(_, n)| ids.get(n).cloned()).collect();
-        let words = checks_of(gh, &host, &wanted);
-        for (path, n) in list {
-            if let Some(w) = ids.get(&n).and_then(|id| words.get(id)) {
-                out.insert(path, w.clone());
-            }
-        }
-    }
-    out
-}
-
 #[tauri::command]
 pub async fn scm_prs_poll(items: Vec<PollItem>) -> Result<PrPoll, String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -1679,37 +1622,6 @@ pub fn gh_budget(gh: &Path) -> Result<Vec<Budget>, String> {
 #[tauri::command]
 pub async fn scm_gh_budget() -> Result<Vec<Budget>, String> {
     tauri::async_runtime::spawn_blocking(|| gh_budget(&gh_program()?)).await.map_err(|e| e.to_string())?
-}
-
-/// GIT-043: the checks pill's word for a commit's rollup state.
-pub fn checks_word(state: Option<&str>) -> &'static str {
-    match state {
-        Some("SUCCESS") => "passing",
-        Some("FAILURE") | Some("ERROR") => "failing",
-        Some("PENDING") | Some("EXPECTED") => "running",
-        _ => "unresolved",
-    }
-}
-
-/// GIT-043: the checks rollup of each pull request, by node id, in one GraphQL call. A failed read
-/// leaves every pill unresolved rather than failing the list.
-fn checks_of(gh: &Path, host: &str, ids: &[String]) -> std::collections::HashMap<String, String> {
-    let mut out = std::collections::HashMap::new();
-    let ok = |i: &String| !i.is_empty() && i.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '=');
-    let ids: Vec<&String> = ids.iter().filter(|i| ok(i)).collect();
-    if ids.is_empty() {
-        return out;
-    }
-    let list = ids.iter().map(|i| format!("\"{i}\"")).collect::<Vec<_>>().join(",");
-    let query = format!("query{{nodes(ids:[{list}]){{... on PullRequest{{id commits(last:1){{nodes{{commit{{statusCheckRollup{{state}}}}}}}}}}}}}}");
-    let Ok(text) = gh_run(gh, &std::env::temp_dir(), &["api", "graphql", "--hostname", host, "-f", &format!("query={query}")], None) else { return out };
-    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else { return out };
-    for n in v["data"]["nodes"].as_array().into_iter().flatten() {
-        if let Some(id) = n["id"].as_str() {
-            out.insert(id.to_string(), checks_word(n["commits"]["nodes"][0]["commit"]["statusCheckRollup"]["state"].as_str()).to_string());
-        }
-    }
-    out
 }
 
 /// GIT-043: the account gh is signed in with on `host`, from gh's own config (no network).
