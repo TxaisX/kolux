@@ -692,7 +692,7 @@ pub fn main(words: Vec<String>) -> i32 {
         // before it is asked, and once it answered its window is raised from here as well, as a
         // second launch does (lifecycle::forward_to); only Windows can say whether that worked.
         let grant = || {
-            if let Some(pid) = crate::lifecycle::read_running(&data_dir()).and_then(|r| r.pid) {
+            if let Some(pid) = crate::lifecycle::read_running(&data_dir()) {
                 crate::lifecycle::allow_foreground(pid);
             }
         };

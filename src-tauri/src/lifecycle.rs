@@ -169,25 +169,25 @@ pub fn claim_named(_name: &str) -> Claim {
     Claim::First(Instance {})
 }
 
-/// What the startup file says about the running copy.
-#[derive(Debug, PartialEq, Eq)]
-pub struct Running {
-    pub port: u16,
-    pub token: String,
-    pub pid: Option<u32>,
+/// The startup file in the profile folder: the running copy's process id, for a second launch that
+/// cannot hand over through the plugin's channel (`raise_target`). It keeps the name it had while the
+/// command line wrote it (with a port and a token beside the pid), so a file an older copy left is
+/// still read, and it is deleted when the app exits.
+pub const STARTUP_FILE: &str = "cli.json";
+
+/// Writes this process's startup file into the profile folder `dir`.
+pub fn write_running(dir: &Path) -> std::io::Result<()> {
+    std::fs::write(dir.join(STARTUP_FILE), serde_json::json!({ "pid": std::process::id() }).to_string())
 }
 
-/// The running copy from the startup file's text (`cli.json`: port, token, pid). Anything short
-/// of a port and a token is nothing to forward to.
-pub fn running_from(text: &str) -> Option<Running> {
+/// The running copy's process id from the startup file's text; anything else in it is ignored.
+pub fn running_from(text: &str) -> Option<u32> {
     let v: Value = serde_json::from_str(text).ok()?;
-    let port = v["port"].as_u64().and_then(|p| u16::try_from(p).ok())?;
-    let token = v["token"].as_str()?.to_string();
-    Some(Running { port, token, pid: v["pid"].as_u64().and_then(|p| u32::try_from(p).ok()) })
+    v["pid"].as_u64().and_then(|p| u32::try_from(p).ok())
 }
 
-pub fn read_running(dir: &Path) -> Option<Running> {
-    std::fs::read_to_string(dir.join(crate::cli::FILE)).ok().and_then(|t| running_from(&t))
+pub fn read_running(dir: &Path) -> Option<u32> {
+    std::fs::read_to_string(dir.join(STARTUP_FILE)).ok().and_then(|t| running_from(&t))
 }
 
 /// Lets `pid` take the foreground: a process the user just started has that right and may pass
@@ -279,10 +279,10 @@ pub fn started_before(started: Option<u64>, written: std::time::SystemTime) -> b
 /// cannot use the channel. `None`: no startup file, no id in it, or (Windows) the process with that
 /// id started after the file was written, so it is another program reusing a crashed copy's id.
 pub fn raise_target(dir: &Path) -> Option<u32> {
-    let pid = read_running(dir).and_then(|r| r.pid)?;
+    let pid = read_running(dir)?;
     #[cfg(windows)]
     {
-        let written = std::fs::metadata(dir.join(crate::cli::FILE)).and_then(|m| m.modified()).ok()?;
+        let written = std::fs::metadata(dir.join(STARTUP_FILE)).and_then(|m| m.modified()).ok()?;
         if !started_before(crate::procs::started_at(pid), written) {
             return None;
         }
@@ -884,11 +884,18 @@ mod tests {
 
     #[test]
     fn app001_the_running_copy_is_read_from_the_startup_file() {
-        assert_eq!(running_from(r#"{"port":1425,"token":"t","pid":42}"#), Some(Running { port: 1425, token: "t".into(), pid: Some(42) }));
-        assert_eq!(running_from(r#"{"port":1425,"token":"t"}"#), Some(Running { port: 1425, token: "t".into(), pid: None }), "an older file without a pid still forwards");
-        assert_eq!(running_from(r#"{"port":1425}"#), None, "no token: nothing to forward to");
+        assert_eq!(running_from(r#"{"pid":42}"#), Some(42));
+        assert_eq!(running_from(r#"{"port":1425,"token":"t","pid":42}"#), Some(42), "a file the command line wrote still names the copy");
+        assert_eq!(running_from(r#"{"port":1425,"token":"t"}"#), None, "no pid: nothing to raise");
         assert_eq!(running_from("not json"), None);
-        assert_eq!(running_from(r#"{"port":70000,"token":"t"}"#), None, "a port that fits no socket");
+        assert_eq!(running_from(r#"{"pid":-1}"#), None);
+        assert_eq!(running_from(r#"{"pid":5000000000}"#), None, "an id that fits no process");
+        let dir = std::env::temp_dir().join(format!("kolux-startup-file-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_running(&dir).unwrap();
+        assert_eq!(read_running(&dir), Some(std::process::id()), "the file this copy writes names this copy");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -940,11 +947,11 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         assert_eq!(raise_target(&dir), None, "no startup file: nothing to raise");
-        std::fs::write(dir.join(crate::cli::FILE), r#"{"port":1425,"token":"t"}"#).unwrap();
+        std::fs::write(dir.join(STARTUP_FILE), r#"{"port":1425,"token":"t"}"#).unwrap();
         assert_eq!(raise_target(&dir), None, "an older file without a pid: nothing to raise");
         // This test's own process started before the file below is written, like a running copy.
         let me = std::process::id();
-        std::fs::write(dir.join(crate::cli::FILE), format!(r#"{{"port":1425,"token":"t","pid":{me}}}"#)).unwrap();
+        std::fs::write(dir.join(STARTUP_FILE), format!(r#"{{"pid":{me}}}"#)).unwrap();
         assert_eq!(raise_target(&dir), Some(me), "the running copy's window is raised by its pid");
         let _ = std::fs::remove_dir_all(&dir);
         #[cfg(windows)]

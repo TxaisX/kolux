@@ -447,6 +447,10 @@ pub fn run() {
             let fence = fence::Fence::load(&app.state::<Mutex<Store>>());
             app.manage(fence);
             app.manage(token_usage::Flights::default());
+            // APP-001: the startup file names this copy for a second launch that cannot use the channel.
+            if let Err(e) = lifecycle::write_running(&dir) {
+                diag::write(&dir, &format!("the startup file could not be written: {e} (APP-001)"));
+            }
             // The command line reaches the app through a loopback port (PROJ-077).
             cli::serve(app.handle().clone(), &dir)?;
             // Agents report their status through hooks (STAT-001): the listener, then the scripts
@@ -1118,7 +1122,7 @@ pub fn run() {
                         diag::write(&dir, &format!("app exit: {webviews_left} WebView2 process(es) still running after 3 s (T-552)"));
                     }
                     diag::write(&dir, "app exit");
-                    let _ = std::fs::remove_file(dir.join(cli::FILE));
+                    let _ = std::fs::remove_file(dir.join(lifecycle::STARTUP_FILE));
                     hooks::remove_endpoint_files(&dir);
                 }
                 // APP-025: an update that finished downloading installs as the app quits.
