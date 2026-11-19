@@ -1,124 +1,16 @@
-//! T-218: the workspace pieces around deleting and sorting many (PROJ-071 delete many at once,
-//! PROJ-076 forget a workspace locally, PROJ-083 / VIEW-014 what each workspace costs on disk,
-//! PROJ-084 the status workflow, and the later delete of a branch kept at removal). The planning,
-//! sizing and status rules are pure or take a store, so tests prove them; the commands at the end
-//! are thin.
+//! T-218: the workspace pieces around sorting many (PROJ-076 forget a workspace locally, PROJ-083
+//! what a folder costs on disk, PROJ-084 the status workflow). The sizing and status rules are pure
+//! or take a store, so tests prove them; the commands are thin.
 
-use crate::git::Git;
-use crate::projects::{find_project, name_key, remove_one, Kept, Project};
+use crate::projects::{find_project, name_key, Project};
 use crate::state::Store;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use tauri::State;
 
 type StoreState<'a> = State<'a, Mutex<Store>>;
-
-// ---- PROJ-071: delete many at once ---------------------------------------------------------------
-
-/// One row of the selection, with the stamp of what the confirmation showed for it.
-#[derive(Clone, Debug, Deserialize)]
-pub struct Pick {
-    pub path: String,
-    pub stamp: String,
-}
-
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Done {
-    pub path: String,
-    /// "removed", "changed" (it was not what the confirmation showed), "failed" or "left-out".
-    pub outcome: String,
-    pub message: Option<String>,
-    pub kept: Option<Kept>,
-}
-
-/// The rows that go ahead, in order and each once, and the ones taken out of the batch with why.
-pub fn plan_batch(picks: &[Pick], mains: &[String]) -> (Vec<Pick>, Vec<Done>) {
-    let mut seen = HashSet::new();
-    let (mut run, mut out) = (Vec::new(), Vec::new());
-    for p in picks {
-        if !seen.insert(name_key(&p.path)) {
-            continue;
-        }
-        if mains.iter().any(|m| name_key(m) == name_key(&p.path)) {
-            out.push(Done { path: p.path.clone(), outcome: "left-out".into(), message: Some("The main checkout cannot be deleted".into()), kept: None });
-        } else {
-            run.push(p.clone());
-        }
-    }
-    (run, out)
-}
-
-/// Runs \`one\` for every pick, \`workers\` at a time, and returns the results in the order given.
-/// A refusal that says the workspace changed is reported as such, not as a plain failure.
-pub fn run_batch<F>(run: &[Pick], workers: usize, one: F) -> Vec<Done>
-where
-    F: Fn(&Pick) -> Result<Option<Kept>, String> + Sync,
-{
-    let next = Mutex::new(0usize);
-    let results: Mutex<Vec<Option<Done>>> = Mutex::new(vec![None; run.len()]);
-    std::thread::scope(|s| {
-        for _ in 0..workers.clamp(1, run.len().max(1)) {
-            s.spawn(|| loop {
-                let i = {
-                    let mut n = next.lock().unwrap_or_else(|e| e.into_inner());
-                    let i = *n;
-                    *n += 1;
-                    i
-                };
-                let Some(pick) = run.get(i) else { break };
-                let done = match one(pick) {
-                    Ok(kept) => Done { path: pick.path.clone(), outcome: "removed".into(), message: None, kept },
-                    Err(why) => {
-                        let outcome = if why.contains("changed after you were asked") { "changed" } else { "failed" };
-                        Done { path: pick.path.clone(), outcome: outcome.into(), message: Some(why), kept: None }
-                    }
-                };
-                results.lock().unwrap_or_else(|e| e.into_inner())[i] = Some(done);
-            });
-        }
-    });
-    results.into_inner().unwrap_or_else(|e| e.into_inner()).into_iter().flatten().collect()
-}
-
-/// The one summary for the whole batch: how many went, which did not and why, and the branches kept.
-pub fn summary(done: &[Done]) -> String {
-    let count = |o: &str| done.iter().filter(|d| d.outcome == o).count();
-    let plural = |n: usize, w: &str| format!("{n} {w}{}", if n == 1 { "" } else { "s" });
-    let mut parts = vec![format!("Deleted {} of {}", count("removed"), plural(done.len(), "workspace"))];
-    for (o, label) in [("changed", "changed since you were asked"), ("failed", "could not be deleted"), ("left-out", "left out of the batch")] {
-        if count(o) > 0 {
-            parts.push(format!("{} {label}", count(o)));
-        }
-    }
-    let kept: Vec<&str> = done.iter().filter_map(|d| d.kept.as_ref().map(|k| k.branch.as_str())).collect();
-    if !kept.is_empty() {
-        parts.push(format!("{} kept: {}", plural(kept.len(), "branch"), kept.join(", ")));
-    }
-    parts.join(" · ")
-}
-
-#[derive(Serialize)]
-pub struct Batch {
-    pub items: Vec<Done>,
-    pub summary: String,
-}
-
-/// PROJ-071: one confirmation, deletions side by side, each re-checked just before it runs.
-#[tauri::command(async)]
-pub fn workspace_remove_many(git: State<'_, Git>, store: StoreState<'_>, terminals: State<'_, crate::terminal::Terminals>, project_id: String, picks: Vec<Pick>, force: bool, keep_branch: Option<bool>) -> Result<Batch, String> {
-    let project = {
-        let store = store.lock().map_err(|e| e.to_string())?;
-        find_project(&store, &project_id)?
-    };
-    let mains: Vec<String> = git.worktrees(Path::new(&project.path))?.into_iter().filter(|w| w.is_main).map(|w| w.path).collect();
-    let (run, mut items) = plan_batch(&picks, &mains);
-    items.extend(run_batch(&run, 4, |p| remove_one(&git, &store, &terminals, &project, &p.path, force, &p.stamp, keep_branch)));
-    let summary = summary(&items);
-    Ok(Batch { items, summary })
-}
 
 // ---- PROJ-076: forget a workspace locally -----------------------------------------------------------
 
@@ -271,7 +163,7 @@ pub fn workspace_status_set(store: StoreState<'_>, path: String, status: String)
     set_status(&store, &path, &status)
 }
 
-// ---- PROJ-083 / VIEW-014: what each workspace costs on disk -----------------------------------------
+// ---- PROJ-083: what a folder costs on disk ------------------------------------------------------------
 
 /// What walking a folder found. \`incomplete\` when the walk hit its entry budget, so the numbers
 /// are a floor and are marked as such rather than shown as exact.
@@ -310,69 +202,9 @@ pub fn dir_size(root: &Path, budget: u64) -> Size {
     size
 }
 
-/// One row of the Space table.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpaceRow {
-    pub path: String,
-    pub branch: Option<String>,
-    pub is_main: bool,
-    pub size: Size,
-    /// Seconds since 1970 of the folder's last change; 0 when unknown.
-    pub modified: u64,
-    /// Only a linked worktree's space comes back by deleting it; the main checkout's never counts.
-    pub reclaimable: bool,
-}
-
-/// Rows for the worktrees that exist: a registration whose folder is gone is left out.
-pub fn space_rows(worktrees: &[crate::git::Worktree], budget: u64) -> Vec<SpaceRow> {
-    worktrees
-        .iter()
-        .filter(|w| Path::new(&w.path).exists())
-        .map(|w| SpaceRow {
-            path: w.path.clone(),
-            branch: w.branch.clone(),
-            is_main: w.is_main,
-            size: dir_size(Path::new(&w.path), budget),
-            modified: std::fs::metadata(&w.path).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs()),
-            reclaimable: !w.is_main,
-        })
-        .collect()
-}
-
-/// Scan budget: entries walked per worktree before the size is marked incomplete.
-pub const SCAN_BUDGET: u64 = 2_000_000;
-
+/// The store key the Space table kept its last scan under; a removed project's is cleared.
 pub(crate) fn space_key(project_id: &str) -> String {
     format!("spaceScan:{project_id}")
-}
-
-pub fn save_space(store: &Store, project_id: &str, rows: &[SpaceRow]) -> Result<(), String> {
-    store.set(&space_key(project_id), &serde_json::to_string(rows).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
-}
-
-/// The last scan, shown right away on reopening; rows whose folder has since gone are left out.
-pub fn saved_space(store: &Store, project_id: &str) -> Vec<SpaceRow> {
-    let rows: Vec<SpaceRow> = store.get(&space_key(project_id)).ok().flatten().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
-    rows.into_iter().filter(|r| Path::new(&r.path).exists()).collect()
-}
-
-#[tauri::command(async)]
-pub fn space_saved(store: StoreState<'_>, project_id: String) -> Result<Vec<SpaceRow>, String> {
-    let store = store.lock().map_err(|e| e.to_string())?;
-    Ok(saved_space(&store, &project_id))
-}
-
-#[tauri::command(async)]
-pub fn space_scan(git: State<'_, Git>, store: StoreState<'_>, project_id: String) -> Result<Vec<SpaceRow>, String> {
-    let project = {
-        let store = store.lock().map_err(|e| e.to_string())?;
-        find_project(&store, &project_id)?
-    };
-    let rows = space_rows(&git.worktrees(Path::new(&project.path))?, SCAN_BUDGET);
-    let saved = store.lock().map_err(|e| e.to_string())?;
-    save_space(&saved, &project_id, &rows)?;
-    Ok(rows)
 }
 
 #[cfg(test)]
@@ -386,45 +218,6 @@ mod tests {
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
-    }
-
-    fn pick(p: &str) -> Pick {
-        Pick { path: p.into(), stamp: "s".into() }
-    }
-
-    #[test]
-    fn a_batch_counts_duplicates_once_and_leaves_the_main_checkout_out() {
-        let (run, out) = plan_batch(&[pick("C:/ws/a"), pick("c:\\ws\\A"), pick("C:/repo"), pick("C:/ws/b")], &["C:/repo".to_string()]);
-        assert_eq!(run.iter().map(|p| p.path.as_str()).collect::<Vec<_>>(), ["C:/ws/a", "C:/ws/b"]);
-        assert_eq!(out.len(), 1);
-        assert_eq!(out[0].outcome, "left-out");
-    }
-
-    #[test]
-    fn a_hundred_deletions_run_side_by_side_with_one_summary_that_reports_changed_rows_and_kept_branches() {
-        let picks: Vec<Pick> = (0..100).map(|i| pick(&format!("C:/ws/{i}"))).collect();
-        let live = std::sync::atomic::AtomicUsize::new(0);
-        let most = std::sync::atomic::AtomicUsize::new(0);
-        let done = run_batch(&picks, 4, |p| {
-            use std::sync::atomic::Ordering::SeqCst;
-            let now = live.fetch_add(1, SeqCst) + 1;
-            most.fetch_max(now, SeqCst);
-            std::thread::sleep(std::time::Duration::from_millis(2));
-            live.fetch_sub(1, SeqCst);
-            match p.path.as_str() {
-                "C:/ws/7" => Err("This workspace changed after you were asked. Look again before deleting it.".into()),
-                "C:/ws/9" => Err("locked".into()),
-                "C:/ws/3" => Ok(Some(Kept { branch: "feat/x".into(), commit: "abc".into() })),
-                _ => Ok(None),
-            }
-        });
-        assert_eq!(done.len(), 100);
-        assert_eq!(done[0].path, "C:/ws/0", "results keep the order given");
-        assert!(most.load(std::sync::atomic::Ordering::SeqCst) > 1, "deletions overlapped");
-        assert_eq!(done[7].outcome, "changed");
-        assert_eq!(done[9].outcome, "failed");
-        assert_eq!(summary(&done), "Deleted 98 of 100 workspaces · 1 changed since you were asked · 1 could not be deleted · 1 branch kept: feat/x");
-        assert_eq!(summary(&[]), "Deleted 0 of 0 workspaces");
     }
 
     #[test]
@@ -495,45 +288,6 @@ mod tests {
         assert!(cut.incomplete && cut.files < 3, "{cut:?}");
         assert_eq!(dir_size(&dir.join("missing"), 10), Size::default());
         let _ = fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn space_counts_reclaimable_only_for_linked_worktrees_leaves_gone_folders_out_and_shows_the_saved_scan() {
-        let root = temp("space");
-        let main = root.join("main");
-        let linked = root.join("linked");
-        fs::create_dir_all(&main).unwrap();
-        fs::create_dir_all(&linked).unwrap();
-        fs::write(main.join("m"), "12345").unwrap();
-        fs::write(linked.join("l"), "123").unwrap();
-        let wt = |p: &Path, main: bool| crate::git::Worktree {
-            path: p.to_string_lossy().to_string(),
-            branch: Some("b".into()),
-            head: String::new(),
-            is_main: main,
-            name: None,
-            parent: None,
-            locked: None,
-            hidden: false,
-            kind: String::new(),
-            source: None,
-            made_by: None,
-            number: None,
-            comment: None,
-        };
-        let gone = root.join("gone");
-        let rows = space_rows(&[wt(&main, true), wt(&linked, false), wt(&gone, false)], 100);
-        assert_eq!(rows.len(), 2, "the leftover registration is left out");
-        assert!(!rows[0].reclaimable && rows[1].reclaimable);
-        assert_eq!((rows[0].size.bytes, rows[1].size.bytes), (5, 3));
-        let store = Store::open(&root.join("db")).unwrap();
-        assert!(saved_space(&store, "p").is_empty());
-        save_space(&store, "p", &rows).unwrap();
-        assert_eq!(saved_space(&store, "p"), rows);
-        fs::remove_dir_all(&linked).unwrap();
-        assert_eq!(saved_space(&store, "p").len(), 1, "a folder deleted since is not shown");
-        drop(store);
-        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
