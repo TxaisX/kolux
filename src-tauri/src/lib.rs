@@ -642,7 +642,6 @@ pub fn run() {
             terminal::terminal_listed_session,
             terminal::terminal_prune_history,
             terminal::terminal_history_append,
-            status::agent_history,
             status::agent_answer,
             status::status_inband,
             activity::activity_counts,
