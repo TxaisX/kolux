@@ -352,7 +352,7 @@ struct Channel {
 }
 
 /// The running copy was launched again on its profile: its window comes to the front (shown,
-/// restored, focused), as `app.open` does. The launch's arguments carry nothing it acts on.
+/// restored, focused), as the tray's Open Kolux does. The launch's arguments carry nothing it acts on.
 fn on_second_launch(app: &tauri::AppHandle, _argv: Vec<String>, _cwd: String) {
     let _ = crate::tray::show_main(app);
 }

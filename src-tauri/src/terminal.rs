@@ -21,7 +21,7 @@ mod output_frame;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
-/// Lines kept per terminal for `kolux terminal read` (CLI-024); older ones are dropped.
+/// Lines kept per terminal for its reads (CLI-024: the sends' screen tail, an exit's resume hint); older ones are dropped.
 pub const LOG_LINES: usize = 2000;
 /// P2 perf (DT-C235): the most text a terminal's line log keeps, on top of `LOG_LINES`; long lines
 /// (up to `PENDING_CAP` each) would otherwise let one pane hold ~32 MB.
@@ -97,7 +97,7 @@ struct Inner {
     keys: HashMap<u32, String>,
     /// CLI-027: sessions whose process has ended, so a close can confirm the program is gone.
     ended: HashSet<u32>,
-    /// CLI-024: what each session wrote, by line, for `kolux terminal read`. Each behind its own
+    /// CLI-024: what each session wrote, by line, for `Terminals::read`. Each behind its own
     /// lock (P2 perf): a chunk is counted under the registry and logged outside it.
     logs: HashMap<u32, Arc<Mutex<OutputLog>>>,
     /// TERM-132: which sessions a program holds (alternate screen, mouse): `ALT | MOUSE` bits.
