@@ -1,9 +1,12 @@
 //! T-182: the app's life on the desktop.
 //! APP-001: one copy runs per profile folder. The first copy holds a named mutex for its whole life;
-//! a second launch of the same profile finds the running copy through its startup file, grants it
-//! foreground rights, asks it over the command-line port to come to the front, raises its window
-//! itself as a second road, and ends with `DUPLICATE_EXIT`, never zero. A launch on another profile
-//! (a proof run's scratch home) is a first copy and runs beside it.
+//! a second launch of the same profile hands its arguments and folder to the running copy through
+//! the single-instance plugin (which also grants it foreground rights), and ends with
+//! `DUPLICATE_EXIT`, never zero. The running copy brings its window to the front and opens any
+//! markdown files it was handed. A launch on another profile (a proof run's scratch home) is a first
+//! copy and runs beside it: the plugin knows only the app identifier, so just one copy per identifier
+//! (the first to start) owns the plugin's channel, and a second launch uses it only when its own
+//! profile's copy is that owner (`channel_name_for`).
 //! APP-002: the terminals run in this process (no separate service to wait on); the window's own
 //! fallback show at 5 s stays in lib.rs (SET-004), so nothing at startup can keep it hidden.
 //! APP-006: the page decides whether a close needs confirming (unsaved editor text, running
@@ -18,7 +21,7 @@
 //! APP-019: markdown files the system hands to the app (double-click, Open with) are picked out of
 //! the launch arguments, queued until the page asks for them, and forwarded by a second launch.
 
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -33,13 +36,6 @@ use crate::state::Store;
 
 /// The exit code of a launch that found Kolux already running (never zero: the launcher can tell).
 pub const DUPLICATE_EXIT: i32 = 3;
-
-/// How long a second launch waits for the running copy's startup file (the copy may itself be
-/// starting), between tries; about six seconds in all.
-pub const FORWARD_WAITS_MS: [u64; 6] = [0, 250, 500, 1000, 2000, 2000];
-
-/// How long the running copy may take to answer the come-to-front request.
-pub const FORWARD_ANSWER: Duration = Duration::from_secs(5);
 
 /// How many times, 150 ms apart, the window is asked to come forward when the system refuses.
 pub const RAISE_TRIES: usize = 5;
@@ -99,6 +95,56 @@ pub fn mutex_name_for(identifier: &str, profile: &Path) -> String {
     format!("Local\\{identifier}.instance-{}", profile_suffix(profile))
 }
 
+/// The lock held by the one copy per identifier that owns the single-instance plugin's channel. The
+/// plugin keys on the identifier alone, so only this copy registers it as a first copy; any other
+/// profile's copy of the same build runs without it and is never forwarded to by mistake.
+pub fn channel_name(identifier: &str) -> String {
+    format!("Local\\{identifier}.channel")
+}
+
+/// The lock the channel's owner also holds for its own profile: a second launch forwards through the
+/// plugin only when this name exists for its profile, so it never reaches another profile's copy.
+pub fn channel_name_for(identifier: &str, profile: &Path) -> String {
+    format!("Local\\{identifier}.channel-{}", profile_suffix(profile))
+}
+
+/// Whether some process holds the named lock `name` right now (nothing is created to find out).
+#[cfg(windows)]
+pub fn named_exists(name: &str) -> bool {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{OpenMutexW, SYNCHRONIZATION_SYNCHRONIZE};
+    let wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+    // SAFETY: the name is NUL-terminated and outlives the call; a handle that came back is closed once.
+    unsafe {
+        let handle = OpenMutexW(SYNCHRONIZATION_SYNCHRONIZE, 0, wide.as_ptr());
+        if handle.is_null() {
+            return false;
+        }
+        CloseHandle(handle);
+        true
+    }
+}
+
+#[cfg(not(windows))]
+pub fn named_exists(_name: &str) -> bool {
+    false
+}
+
+/// What a second launch does: forward through the plugin when its own profile's copy owns the
+/// channel, or end at once (that copy runs beside another profile's and has no channel).
+#[derive(Debug, PartialEq, Eq)]
+pub enum SecondLaunch {
+    Forward,
+    ExitOnly,
+}
+
+pub fn second_launch(identifier: &str, profile: Option<&Path>, exists: impl Fn(&str) -> bool) -> SecondLaunch {
+    match profile {
+        Some(p) if exists(&channel_name_for(identifier, p)) => SecondLaunch::Forward,
+        _ => SecondLaunch::ExitOnly,
+    }
+}
+
 /// Claims `name`. A claim the system refuses outright (no handle at all) counts as first: a fault
 /// in the mutex must never keep the only copy from starting.
 #[cfg(windows)]
@@ -144,20 +190,6 @@ pub fn running_from(text: &str) -> Option<Running> {
 
 pub fn read_running(dir: &Path) -> Option<Running> {
     std::fs::read_to_string(dir.join(crate::cli::FILE)).ok().and_then(|t| running_from(&t))
-}
-
-/// Waits for the running copy's startup file, trying once per entry of `waits` (sleeping that
-/// long first), and gives up when the waits are spent.
-pub fn wait_running(dir: &Path, waits: &[u64], mut sleep: impl FnMut(Duration)) -> Option<Running> {
-    for ms in waits {
-        if *ms > 0 {
-            sleep(Duration::from_millis(*ms));
-        }
-        if let Some(r) = read_running(dir) {
-            return Some(r);
-        }
-    }
-    None
 }
 
 /// Lets `pid` take the foreground: a process the user just started has that right and may pass
@@ -230,66 +262,97 @@ pub fn raise_by_pid(_pid: u32, _tries: usize, _sleep: impl FnMut(Duration)) -> b
     false
 }
 
-/// What a second launch did for the running copy.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Forwarded {
-    /// The running copy's startup file was found.
-    pub found: bool,
-    /// The running copy answered the come-to-front request.
-    pub answered: bool,
-    /// This launch itself got the window to the foreground.
-    pub raised: bool,
+/// The page event that tells it more markdown files are waiting (`open_files_take` drains them).
+pub const OPEN_FILES_EVENT: &str = "open-files";
+
+/// The second launch's log line.
+pub fn second_launch_line(plan: &SecondLaunch) -> &'static str {
+    match plan {
+        SecondLaunch::Forward => "second launch: handed to the running copy through the single-instance plugin; exiting (APP-001)",
+        SecondLaunch::ExitOnly => "second launch: the running copy of this profile has no single-instance channel (another profile's copy owns it); exiting (APP-001)",
+    }
 }
 
-impl Forwarded {
-    pub fn line(&self) -> String {
-        match (self.found, self.answered, self.raised) {
-            (false, _, _) => "second launch: the running copy's startup file never appeared; exiting (APP-001)".into(),
-            (true, a, r) => format!("second launch: forwarded to the running copy (answered: {a}, raised: {r}); exiting (APP-001)"),
+/// Ends the process with its code when dropped. A second launch puts one in the app's resource table
+/// before the plugin forwards: the plugin clears that table (`cleanup_before_exit`) right before it
+/// ends the process with code zero, so the launch still ends with `DUPLICATE_EXIT`.
+struct EndAs(i32);
+
+impl tauri::Resource for EndAs {}
+
+impl Drop for EndAs {
+    fn drop(&mut self) {
+        std::process::exit(self.0);
+    }
+}
+
+/// The locks of the copy that owns the plugin's channel, held for the life of the process.
+struct Channel {
+    _owner: Instance,
+    _profile: Instance,
+}
+
+/// The running copy was launched again on its profile: its window comes to the front (shown,
+/// restored, focused) and the markdown files the launch was handed open, as `app.open` did.
+fn on_second_launch(app: &tauri::AppHandle, argv: Vec<String>, cwd: String) {
+    let files = markdown_paths(argv.get(1..).unwrap_or(&[]), Path::new(&cwd));
+    open_handed(app, &files);
+}
+
+/// Queues the markdown files among `files`, tells the page when there are any, and brings the main
+/// window to the front.
+pub fn open_handed(app: &tauri::AppHandle, files: &[String]) {
+    use tauri::Emitter;
+    if queue_open(files) > 0 {
+        let _ = app.emit(OPEN_FILES_EVENT, ());
+    }
+    let _ = crate::tray::show_main(app);
+}
+
+/// The first copy of a profile takes the plugin's channel when no other copy of this build (another
+/// profile) has it, and registers the plugin. Without the channel it runs as before; a second launch
+/// of its profile then only ends (`second_launch`).
+fn take_channel(app: &tauri::App, profile: Option<&Path>) {
+    let id = app.config().identifier.clone();
+    let Some(profile) = profile else { return };
+    let Claim::First(owner) = claim_named(&channel_name(&id)) else { return };
+    let Claim::First(mine) = claim_named(&channel_name_for(&id, profile)) else { return };
+    match app.handle().plugin(tauri_plugin_single_instance::init(on_second_launch)) {
+        Ok(()) => {
+            app.manage(Channel { _owner: owner, _profile: mine });
         }
+        Err(e) => crate::diag::write(profile, &format!("single-instance plugin did not start: {e} (APP-001)")),
     }
-}
-
-/// The whole second-launch road: wait for the running copy's startup file, grant it the
-/// foreground, ask it to come to the front, and raise its window as well.
-pub fn forward_to(dir: &Path) -> Forwarded {
-    let Some(running) = wait_running(dir, &FORWARD_WAITS_MS, std::thread::sleep) else { return Forwarded::default() };
-    if let Some(pid) = running.pid {
-        allow_foreground(pid);
-    }
-    let req = crate::cli::Request {
-        id: format!("open-{}", std::process::id()),
-        token: running.token.clone(),
-        command: "app.open".into(),
-        cwd: std::env::current_dir().map(|d| d.to_string_lossy().into_owned()).unwrap_or_default(),
-        args: json!({ "files": launch_markdown() }),
-        pane: None,
-        cli: env!("CARGO_PKG_VERSION").into(),
-        arrived: None,
-    };
-    let answered = crate::cli::call_within(running.port, &req, FORWARD_ANSWER).is_ok();
-    let raised = running.pid.is_some_and(|pid| raise_by_pid(pid, RAISE_TRIES, std::thread::sleep));
-    Forwarded { found: true, answered, raised }
 }
 
 /// Called first thing in setup, before any window exists: the first copy keeps its claim in the
-/// app's managed state; a second launch forwards and ends with `DUPLICATE_EXIT`.
-pub fn claim_or_forward<R: tauri::Runtime>(app: &tauri::App<R>) {
+/// app's managed state and takes the second-launch channel when it is free; a second launch hands
+/// its arguments over through the plugin when its own profile's copy holds the channel, and ends
+/// with `DUPLICATE_EXIT` either way.
+pub fn claim_or_forward(app: &tauri::App) {
     crate::procs::wait_for_restarted_from(); // T-592: a restarted copy lets the old one finish exiting
     let dir = app.path().app_data_dir().ok();
+    let id = app.config().identifier.clone();
     let name = match &dir {
-        Some(d) => mutex_name_for(&app.config().identifier, d),
-        None => mutex_name(&app.config().identifier),
+        Some(d) => mutex_name_for(&id, d),
+        None => mutex_name(&id),
     };
     match claim_named(&name) {
         Claim::First(instance) => {
             app.manage(instance);
             queue_open(&launch_markdown());
+            take_channel(app, dir.as_deref());
         }
         Claim::Second => {
-            if let Some(dir) = dir {
-                let did = forward_to(&dir);
-                crate::diag::write(&dir, &did.line());
+            let plan = second_launch(&id, dir.as_deref(), named_exists);
+            if let Some(dir) = &dir {
+                crate::diag::write(dir, second_launch_line(&plan));
+            }
+            if plan == SecondLaunch::Forward {
+                app.resources_table().add(EndAs(DUPLICATE_EXIT));
+                // The plugin finds the running copy, grants it the foreground, hands over the
+                // arguments and folder, then clears the resource table: `EndAs` ends the process.
+                let _ = app.handle().plugin(tauri_plugin_single_instance::init(on_second_launch));
             }
             std::process::exit(DUPLICATE_EXIT);
         }
@@ -887,13 +950,6 @@ mod tests {
         assert!(!session_end(false, true, false));
     }
 
-    fn temp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("kolux-lifecycle-{}-{name}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&d);
-        std::fs::create_dir_all(&d).unwrap();
-        d
-    }
-
     #[test]
     fn app001_the_duplicate_exit_code_is_never_zero_and_the_name_carries_the_identifier() {
         assert_ne!(DUPLICATE_EXIT, 0);
@@ -939,28 +995,37 @@ mod tests {
     }
 
     #[test]
-    fn app001_the_forward_waits_for_a_starting_copy_then_gives_up() {
-        let dir = temp("forward");
-        let mut slept = Vec::new();
-        assert_eq!(wait_running(&dir, &[0, 10, 20], |d| slept.push(d.as_millis())), None);
-        assert_eq!(slept, vec![10, 20], "every wait is spent before giving up");
-        let file = dir.join(crate::cli::FILE);
-        let mut tries = 0;
-        let got = wait_running(&dir, &[0, 10, 20, 40], |_| {
-            tries += 1;
-            if tries == 2 {
-                std::fs::write(&file, r#"{"port":1425,"token":"tok","pid":7}"#).unwrap();
-            }
-        });
-        assert_eq!(got.map(|r| r.pid), Some(Some(7)), "the file written mid-wait is found on the next try");
-        assert_eq!(tries, 2, "found: no further waits");
-        let _ = std::fs::remove_dir_all(&dir);
+    fn app001_a_second_launch_forwards_only_to_its_own_profiles_channel() {
+        let id = "com.txaisxiong.kolux";
+        let real = Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux");
+        let scratch = Path::new(r"G:\Temp\live-installed\home\AppData\Roaming\com.txaisxiong.kolux");
+        let real_holds = |name: &str| name == channel_name_for(id, real);
+        assert_eq!(second_launch(id, Some(real), real_holds), SecondLaunch::Forward, "its own profile's copy owns the channel");
+        assert_eq!(second_launch(id, Some(scratch), real_holds), SecondLaunch::ExitOnly, "a proof copy is never forwarded to the real app");
+        assert_eq!(second_launch(id, None, |_| true), SecondLaunch::ExitOnly, "no profile folder: nothing to match, nothing forwarded");
+        assert_ne!(channel_name_for(id, real), channel_name_for(id, scratch));
+        assert_ne!(channel_name("com.txaisxiong.kolux.smoke"), channel_name(id), "a smoke or dev build has a channel of its own");
+        assert_ne!(channel_name_for("com.txaisxiong.kolux.smoke", real), channel_name_for(id, real));
+        assert!(second_launch_line(&SecondLaunch::Forward).contains("handed to the running copy"));
+        assert!(second_launch_line(&SecondLaunch::ExitOnly).contains("no single-instance channel"));
     }
 
+    #[cfg(windows)]
     #[test]
-    fn app001_forwarded_lines_say_what_happened() {
-        assert!(Forwarded::default().line().contains("never appeared"));
-        assert!(Forwarded { found: true, answered: true, raised: false }.line().contains("answered: true, raised: false"));
+    fn app001_the_channel_lock_is_seen_only_for_the_profile_that_holds_it() {
+        let id = format!("kolux-test-{}.channel", std::process::id());
+        let mine = std::env::temp_dir().join("kolux-channel-mine");
+        let other = std::env::temp_dir().join("kolux-channel-other");
+        assert_eq!(second_launch(&id, Some(&mine), named_exists), SecondLaunch::ExitOnly, "nobody holds it yet");
+        let held = match claim_named(&channel_name_for(&id, &mine)) {
+            Claim::First(i) => i,
+            Claim::Second => panic!("the first claim must win"),
+        };
+        assert_eq!(second_launch(&id, Some(&mine), named_exists), SecondLaunch::Forward);
+        assert_eq!(second_launch(&id, Some(&other), named_exists), SecondLaunch::ExitOnly, "another profile never forwards to it");
+        assert!(matches!(claim_named(&channel_name_for(&id, &mine)), Claim::Second), "looking did not take or free the lock");
+        drop(held);
+        assert!(!named_exists(&channel_name_for(&id, &mine)), "looking created nothing that outlives the owner");
     }
 
     #[cfg(windows)]
