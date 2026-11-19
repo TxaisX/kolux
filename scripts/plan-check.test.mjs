@@ -126,14 +126,15 @@ describe("STATE.md head (T-540 --write-state)", () => {
 
 describe("the real repository (T-540)", () => {
   const r = headCounts(undefined, new Map());
-  it("still finds all 221 P0 cards (228 less the 7 web-pane cards retired 2026-11-12) and every box in the spec", () => {
-    expect(r.counts.p0Total).toBe(221);
+  it("still finds all 107 P0 cards (228 less the 7 web-pane cards retired 2026-11-12, less the 114 more retired in the 2026-11-19 slim-down) and every box in the spec", () => {
+    expect(r.counts.p0Total).toBe(107);
     let boxes = 0;
     for (const c of r.cards.values()) boxes += c.boxes.length;
-    expect(boxes).toBeGreaterThanOrEqual(2737);
+    // Was 2737 before the 2026-11-19 slim-down moved 114 P0 cards (and their boxes) to spec/21-retired-hidden.md; 1480 boxes remain.
+    expect(boxes).toBeGreaterThanOrEqual(1480);
   });
-  it("counts the P0 cards whose boxes are all ticked today (the six the council found, at least)", () => {
-    for (const id of ["USAGE-002", "USAGE-003", "USAGE-005", "USAGE-006", "VIEW-008", "STAT-040"]) {
+  it("counts the P0 cards whose boxes are all ticked today (STAT-040, the one of the six the council found that the 2026-11-19 slim-down kept)", () => {
+    for (const id of ["STAT-040"]) {
       expect(r.passing).toContain(id);
     }
   });

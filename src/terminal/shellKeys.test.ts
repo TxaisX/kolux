@@ -87,7 +87,8 @@ describe("T-151-b a key that reaches the program answers the prompt; a Kolux cho
 
 describe("council D2 MERGE 47 FB1 and FS1", () => {
   it("a chord held by the terminal (Terminal first) reaches the program", () => {
-    const p = key("KeyP", "p", { ctrlKey: true });
+    // Ctrl+B (Toggle Sidebar) stands in for the chord that was Ctrl+P (Go to File), which left with the file picker 2026-11-19.
+    const p = key("KeyB", "b", { ctrlKey: true });
     const k = key("KeyK", "k", { ctrlKey: true });
     expect(routeKey(win, p, false).kind).toBe("kolux");
     expect(routeKey(win, k, false)).toEqual({ kind: "kolux", id: "terminal.clear" });

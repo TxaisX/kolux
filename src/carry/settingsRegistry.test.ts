@@ -40,7 +40,7 @@ describe("settings registry", () => {
   test("the scan sees the settings fields it is meant to (a loose pattern would pass with an empty set)", () => {
     const names = [...fieldsInSource().keys()];
     expect(names.length).toBeGreaterThan(60);
-    for (const name of ["language", "uiLook", "keepAwake", "xaiApiKey", "httpProxy"]) expect(names).toContain(name);
+    for (const name of ["language", "uiLook", "keepAwake", "defaultModel", "httpProxy"]) expect(names).toContain(name);
   });
 
   test("a secret-bearing field is never on the carried side", () => {

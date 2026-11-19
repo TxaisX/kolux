@@ -421,7 +421,9 @@ test("DT-C266: the sheet that takes the click outside a menu is on a layer of it
       expect(m[1], `${file}: a backdrop with something inside it`).toBe("/");
     }
   }
-  expect(seen).toBeGreaterThanOrEqual(23); // audit F16: the removed Source Control panel held four; the removed Ports item held one
+  // 23 before the 2026-11-19 slim-down. It took out 13 menus with their screens (editor 7: DiffPane 2, Explorer 2, FilePicker,
+  // PreviewPane, TemplatePicker; Skills page 4; Automations page 1; Ports item 1), leaving the 11 in the files that remain.
+  expect(seen).toBeGreaterThanOrEqual(11);
 });
 
 test("DT-C249: a pressed control's brushed metal keeps its label readable, at the bright end and the dark end", () => {

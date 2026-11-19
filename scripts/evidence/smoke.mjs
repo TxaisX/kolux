@@ -1,4 +1,4 @@
-// Smoke run (T-542, T-542-b): five end-to-end flows through the dev app's own WebView2 debugging port, built
+// Smoke run (T-542, T-542-b): end-to-end flows through the dev app's own WebView2 debugging port, built
 // on scripts/evidence/cdp.mjs (run as a child process: it is a command-line tool, not a library). Prints one
 // PASS or FAIL line per flow, writes evidence/smoke-<short sha>.txt, and exits 1 when a required flow failed,
 // so a merge or a structural move of App.tsx and lib.rs is checked by behaviour, not by screenshots.
@@ -18,9 +18,8 @@
 //         panes; it opens the Start form with one seat per cell to add, nothing starts until Start, and Start
 //         fills the cells. FAILs when a pane appears before Start, the seat count is not the cells to add, or
 //         a shell that was running loses its marker.
-// Flow 2  Mod+S in an editor tab writes the file: the bytes on disk carry what was typed.
-// Flow 3  Delete in the Explorer asks first, and Cancel keeps the file byte-identical on disk. (It used to test the
-//         Source Control Discard, which T-644/DT-C85 removed with the panel.)
+// Flows 2 and 3 (editor save, Explorer delete prompt) were retired 2026-11-19 with the editor and the file explorer;
+// the numbers stay so the other flows keep their names.
 // Flow 4  a Claude pane's status dot turns Working: agentOptions.claude.command points at a stand-in program
 //         that posts the same hook events Kolux's installed hook posts (SessionStart, UserPromptSubmit) from the
 //         pane's own hook variables. CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE and HOME (with APPDATA and
@@ -63,16 +62,14 @@
 //
 // Selectors: every element this script clicks or waits on is found by a data-testid, never by its visible text or
 // class, so renaming a label or restyling a control cannot break a flow. The ids, by where they live:
-//   chrome/    layout-strip  layout-count-<n>  right-sidebar  right-sidebar-toggle  right-tab-<tab id>
+//   chrome/    layout-strip  layout-count-<n>
 //   projects/  sidebar-add-project  add-project-by-path  add-project-folder-input
 //   launch/    chooser-pane  all-agents  seat-<n>-agents  seat-agent-<agent id>  chooser-start  new-session-menu  new-session-item-<agent id>
 //   terminal/  terminal-pane  pane-status-dot  pane-split-right  pane-new-session
-//   editor/    editor-pane  explorer-row  explorer-tree
-//   other      onboarding-dialog (onboarding/Wizard)  ask-dialog  ask-body  ask-cancel  ask-confirm (chrome/Ask, flow 3)
+//   other      onboarding-dialog (onboarding/Wizard)  ask-dialog  ask-confirm (chrome/Ask, the skip-setup question)
 // Renaming a label must not touch these ids; scripts/smoke-testids.test.mjs fails when one is missing from src/.
-// What still matches on something else: the ARIA roles tab and menuitem, the text of a tab, menu item
-// or Explorer row to pick one among several, the libraries' own .xterm-helper-textarea and .cm-content (no id can
-// be put on markup xterm.js and CodeMirror own); and the .name inside an Explorer row.
+// What still matches on something else: the ARIA roles tab and menuitem, the text of a tab or menu item to pick
+// one among several, and the library's own .xterm-helper-textarea (no id can be put on markup xterm.js owns).
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
@@ -112,7 +109,7 @@ const TEMP_MARKER = ".kolux-smoke-temp";
 // never deletes a folder a live run is using.
 const markerText = (pid) => `made by scripts/evidence/smoke.mjs setup(); pid ${pid}; removed with this folder\n`;
 // Flow 5 quits and relaunches the app a dozen times, so it runs last; 6 and 7 want the grid flows 1-4 leave behind.
-const ONLY = opt("only", ATTACH ? "1,2,3,4,6,7" : "1,2,3,4,6,7,5")
+const ONLY = opt("only", ATTACH ? "1,4,6,7" : "1,4,6,7,5")
   .split(",")
   .map((s) => Number(s.trim()))
   .filter((n) => n >= 1 && n <= 7);
@@ -146,7 +143,7 @@ const app = createApp({ root, port: PORT, cdp: CDP, identifier: IDENTIFIER, temp
 const { run, ps, sleep, waitFor, cdp, evalJs, invoke, count, exists, shown, click, clickWhere, focusField, focusPane, treeOf, closeAndCount, byName, killAll, treeGone, alive } = app;
 const { profile, claudeConfig, userHome } = app.paths;
 const koluxSettings = join(profile, "settings.json");
-// A plain text file: the Explorer opens it in the CodeMirror editor, whose save writes the text as typed.
+// A plain text file: the repo needs one committed file so the scratch git commit has something to hold.
 const smokeFile = join(repo, "notes.txt");
 const ORIGINAL = "original line\n";
 // Flow 5's non-default setting: the needs strip is on by default (settings/general.ts stripOn).
@@ -158,7 +155,6 @@ const git = (a) => run("git", a, { cwd: repo });
 const tid = (id) => `[data-testid="${id}"]`;
 // Library-made inner elements keep their own selectors: the libraries own that markup and take no test id.
 const XTERM_INPUT = ".xterm-helper-textarea";
-const EDITOR_INPUT = ".cm-content";
 const TERM = tid("terminal-pane");
 // Shell panes only: data-agent is the agent name, so a Claude pane matches TERM but not SHELL.
 const SHELL = `${tid("terminal-pane")}[data-agent="shell"]`;
@@ -166,13 +162,6 @@ const CHOOSER = tid("chooser-pane");
 // The Start form: the same chooser drawn as a sheet in front of the grid, told apart by its own name.
 const START_FORM = `${tid("chooser-pane")}[aria-label="Start"]`;
 const CLAUDE =`${tid("terminal-pane")}[data-agent*="claude"]`;
-// The right sidebar's tab by name; the panel button opens the sidebar when it is closed.
-const RIGHT_TABS = `${tid("right-sidebar")} [role="tab"]`;
-const rightTab = async (name) => {
-  if (!(await exists(RIGHT_TABS))) await click(tid("right-sidebar-toggle"));
-  await waitFor("the right sidebar", () => exists(RIGHT_TABS), 5000);
-  await clickWhere(RIGHT_TABS, `/^\\s*${name}\\s*$/`);
-};
 const LAYOUT_ON = `${tid("layout-strip")} button[aria-pressed="true"]`;
 const layoutCount = () => evalJs(`document.querySelector(${JSON.stringify(LAYOUT_ON)})?.textContent.trim() ?? null`);
 const pickLayout = (n) => click(tid(`layout-count-${n}`));
@@ -368,55 +357,6 @@ async function flow1() {
     }
   }
   return `grid ${cells} -> ${GROW_TO} through the Start form (it asked for ${add} seats and started nothing before Start); the ${keys.length} shells that were running each echoed the marker set before the change (same PTY processes)`;
-}
-
-// ---------- flow 2 ----------
-const TYPED = "typed by smoke ";
-async function flow2() {
-  // The file was committed before the project was added, so the Explorer lists it (the tree is read once per open).
-  await rightTab("Explorer");
-  await waitFor("notes.txt in the Explorer", () => exists(tid("explorer-row")), 10000);
-  await clickWhere(tid("explorer-row"), "/^\\s*notes\\.txt\\s*$/");
-  const editor = tid("editor-pane");
-  await waitFor("the editor tab", () => shown(`${editor} ${EDITOR_INPUT}`), 10000);
-  await focusPane(editor, 0, EDITOR_INPUT);
-  const text = `${TYPED}${Date.now()}`;
-  await cdp("insert", text);
-  await waitFor("the editor to hold the text", () => evalJs(`[...document.querySelectorAll(${JSON.stringify(editor + " " + EDITOR_INPUT)})].some(e => e.textContent.includes(${JSON.stringify(text)}))`), 5000);
-  const before = read(smokeFile);
-  if (before !== ORIGINAL) throw new Error("notes.txt changed on disk before Mod+S");
-  await cdp("key", "s", "2"); // Ctrl+S (Mod+S on Windows)
-  await waitFor("the bytes on disk", () => (read(smokeFile) ?? "").includes(text), 10000, 200);
-  const now = read(smokeFile);
-  if (!now.includes("original line")) throw new Error("the save lost the original line");
-  return `Mod+S wrote notes.txt: disk now holds "${text}" plus the original line (${Buffer.byteLength(now)} bytes)`;
-}
-
-// ---------- flow 3 ----------
-async function flow3() {
-  // This replaces the old flow 3, which tested Discard in Source Control: that panel was removed (T-644/DT-C85).
-  // Deleting a file from the Explorer is what asks first now.
-  const bytes = () => (existsSync(smokeFile) ? readFileSync(smokeFile) : null);
-  const before = bytes();
-  if (!before) throw new Error("notes.txt is missing before the delete check");
-  await rightTab("Explorer");
-  await waitFor("notes.txt in the Explorer", () => exists(tid("explorer-row")), 10000);
-  await clickWhere(tid("explorer-row"), "/^\\s*notes\\.txt\\s*$/");
-  await focusField(tid("explorer-tree"));
-  await cdp("key", "Delete");
-  const ask = await waitFor("the delete prompt", () => evalJs(`(() => { const d = document.querySelector(${JSON.stringify(tid("ask-dialog"))}); if (!d) return null; return { title: d.getAttribute("aria-label"), body: d.querySelector(${JSON.stringify(tid("ask-body"))})?.textContent ?? "", cancel: !!d.querySelector(${JSON.stringify(tid("ask-cancel"))}), confirm: !!d.querySelector(${JSON.stringify(tid("ask-confirm"))}) }; })()`), 5000);
-  if (!ask.cancel || !ask.confirm) throw new Error(`the prompt has no choice to cancel: ${JSON.stringify(ask)}`);
-  if (!/notes\.txt/.test(ask.body)) throw new Error(`the prompt does not name notes.txt: ${JSON.stringify(ask)}`);
-  const open = bytes();
-  if (!open || !open.equals(before)) throw new Error("notes.txt changed or went away while the prompt was open");
-  await click(tid("ask-cancel"));
-  await waitFor("the prompt to close", async () => !(await exists(tid("ask-dialog"))), 5000);
-  await sleep(1000);
-  const after = bytes();
-  if (!after) throw new Error("Cancel deleted notes.txt");
-  if (!after.equals(before)) throw new Error("Cancel changed notes.txt on disk");
-  if (!(await evalJs(`[...document.querySelectorAll(${JSON.stringify(tid("explorer-row"))})].some(e => /^\\s*notes\\.txt\\s*$/.test((e.querySelector(".name") ?? e).textContent || ""))`))) throw new Error("notes.txt left the Explorer after Cancel");
-  return `Delete in the Explorer asked first ("${ask.title}": ${ask.body}); after Cancel notes.txt is still on disk, byte-identical (${after.length} bytes). This replaces the old flow 3, which tested the Source Control Discard that T-644/DT-C85 removed.`;
 }
 
 // ---------- flow 4 ----------
@@ -794,7 +734,7 @@ if (flag("self-test")) {
 }
 
 // ---------- run ----------
-const flows = { 1: flow1, 2: flow2, 3: flow3, 4: flow4, 5: flow5, 6: flow6, 7: flow7 };
+const flows = { 1: flow1, 4: flow4, 5: flow5, 6: flow6, 7: flow7 };
 const results = [];
 let setupError = null;
 try {
