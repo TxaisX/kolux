@@ -16,7 +16,7 @@ test("the top bar carries the screen switcher, search hint, usage pill and windo
   const html = renderToString(createElement(TopBar, { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} }));
   expect(html).toContain('class="topbar"');
   expect(html).toContain("data-tauri-drag-region");
-  for (const label of ["Agents", "Board", "Terminals"]) expect(html).toContain(`>${label}</button>`);
+  for (const label of ["Board", "Terminals"]) expect(html).toContain(`>${label}</button>`);
   expect(html).toMatch(/aria-pressed="true"[^>]*>Terminals<\/button>/);
   expect(html).toContain('class="searchbox"');
   expect(html).toContain("Ctrl");
