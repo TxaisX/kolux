@@ -6,7 +6,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { Scan } from "../skills/skills";
+import type { Scan } from "./skills";
 import { decide } from "../terminal/screenshotPaste";
 import { addHistory, draftOf, historyOf, keepDraft, keyAction, linesFor, stepHistory } from "./composer";
 import { applyPick, isDismissed, menuFor, needs, pathsOf, runsOnEnter, stepIndex, triggerAt, wordOf, type Dismissed, type Entry, type Load } from "./complete";

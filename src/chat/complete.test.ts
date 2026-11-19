@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Scan, Skill } from "../skills/skills";
+import type { Scan, Skill } from "./skills";
 import { applyPick, commandsFor, fileEntries, isDismissed, kindsFor, mergeNames, menuFor, rank, runsOnEnter, skillEntries, stepIndex, tierOf, triggerAt, wordOf, type Sources } from "./complete";
 
 const skill = (name: string, source: Skill["source"], agents: Skill["agents"] = ["claude"], description: string | null = null): Skill => ({ name, description, updated: null, path: `/s/${name}`, source, agents, plugin: null });

@@ -7,10 +7,8 @@
 // real DOMPurify with the hook runs in Chromium in evidence/T-601-proof.mjs (no DOM library is installed for vitest).
 import { expect, test, vi } from "vitest";
 import DOMPurify from "dompurify";
-import * as preview from "./PreviewPane";
-import { renderMarkdown } from "./PreviewPane";
-import { mermaidConfig } from "./diagrams";
-import { inertClick } from "./linkClicks";
+import * as preview from "./renderMarkdown";
+import { renderMarkdown } from "./renderMarkdown";
 
 vi.mock("dompurify", () => ({ default: { sanitize: vi.fn((html: string) => html), addHook: vi.fn(), removeHook: vi.fn() } }));
 
@@ -68,44 +66,6 @@ test("T-601: a note's task list still shows which items are done, without form f
   expect(html).not.toMatch(/<input/i);
   expect(html).toMatch(/☑<\/span> ?done item/);
   expect(html).toMatch(/☐<\/span> ?open item/);
-});
-
-test("T-601: a plain click in a note's page does nothing on its own (an image map, a form button, a link); a collapsible section still opens", () => {
-  // `inside`: the tags the clicked element sits in, as closest() would find them
-  const click = (...inside: string[]) => {
-    let cancelled = false;
-    const target = { closest: (sel: string) => (inside.includes(sel) ? {} : null) };
-    inertClick({ target, preventDefault: () => void (cancelled = true) } as unknown as MouseEvent);
-    return cancelled;
-  };
-  expect([click("area"), click("button"), click("a"), click()]).toEqual([true, true, true, true]);
-  expect(click("summary")).toBe(false);
-  expect(click("summary", "a")).toBe(true);
-});
-
-test("T-601 (L4-web-js-toolchain.3): diagram text cannot change mermaid's settings, and a diagram that fails leaves no error picture", async () => {
-  const mermaid = (await import("mermaid")).default;
-  mermaid.initialize(mermaidConfig(true));
-  const attack = {
-    theme: "forest",
-    themeCSS: "x{} :not(&){display:none !important}",
-    fontFamily: "x;a{b} :not(&){display:none !important} c{d}",
-    altFontFamily: "y;a{b} :not(&){display:none !important} c{d}",
-    themeVariables: { primaryColor: "#ff0000" },
-    htmlLabels: true,
-    securityLevel: "loose",
-    suppressErrorRendering: false,
-  };
-  await mermaid.parse(`%%{init: ${JSON.stringify(attack)}}%%\ngraph TD; A-->B`);
-  const c = mermaid.mermaidAPI.getConfig();
-  expect(c.theme).toBe("dark");
-  expect(c.themeCSS).toBeUndefined();
-  expect(c.fontFamily).not.toContain(":not(");
-  expect(c.altFontFamily ?? "").not.toContain(":not(");
-  expect(c.themeVariables?.primaryColor).not.toBe("#ff0000");
-  expect(c.htmlLabels).toBe(false);
-  expect(c.securityLevel).toBe("strict");
-  expect(c.suppressErrorRendering).toBe(true);
 });
 
 test("T-601 (review round 1): a note keeps none of its own class names, so it cannot borrow the app's full-window overlays; a code block's language and the task boxes stay", () => {

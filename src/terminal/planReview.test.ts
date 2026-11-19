@@ -64,7 +64,7 @@ test("SAFE-007: the sheet's plan is live only while the pane still waits on that
 });
 
 test("SAFE-006, SAFE-007: the cut notice shows only for a cut plan; a closed prompt says so and disables both answers", async () => {
-  vi.doMock("../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => marked.parse(md, { async: false }) }));
+  vi.doMock("../chat/renderMarkdown", () => ({ renderMarkdown: (md: string) => marked.parse(md, { async: false }) }));
   const { createElement } = await import("react");
   const { renderToString } = await import("react-dom/server");
   const { default: PlanSheet } = await import("./PlanSheet");
@@ -82,7 +82,7 @@ test("SAFE-006, SAFE-007: the cut notice shows only for a cut plan; a closed pro
 
 test("SAFE-002, SAFE-004: the sheet shows one block per section with its comments; Request changes waits for something to send", async () => {
   // No DOM here for the sanitiser, so the sheet gets marked's own output.
-  vi.doMock("../editor/PreviewPane", () => ({ renderMarkdown: (md: string) => marked.parse(md, { async: false }) }));
+  vi.doMock("../chat/renderMarkdown", () => ({ renderMarkdown: (md: string) => marked.parse(md, { async: false }) }));
   const { createElement } = await import("react");
   const { renderToString } = await import("react-dom/server");
   const { default: PlanSheet } = await import("./PlanSheet");
