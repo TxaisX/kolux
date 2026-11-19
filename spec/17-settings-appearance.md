@@ -215,6 +215,9 @@ Acceptance:
   - [x] Set Board as the first screen, restart with New → Board shows first. (cards; evidence/cards-SET-037.txt)
 Compat: the command that steps through workspace screens keeps its old keybinding command id (written
   with a capital letter, so it is held back pending the allowlist) and Mod+Alt+V.
+Amended 2026-11-19 (slim-down): Terminals is the one workspace screen left, so the first-screen choice
+  and the View menu's group hold Terminals alone, and the command that stepped through the screens went
+  with its chord; a keybindings file that still names it gets the unknown-command warning.
 Source: D-17-037
 
 ### SET-013 · Default chords out of the box, and the commands left without one
