@@ -1,5 +1,5 @@
 // The 36 px top bar (DESIGN.md section 4): app mark, overflow, sidebar toggle, back/forward on
-// the left; the centred Agents / Terminals switcher; panel toggle, search hint,
+// the left; the centred screen switcher (Terminals alone since 2026-11-19); panel toggle, search hint,
 // usage pill and the window's own minimize / maximize / close on the right. The bar is the
 // window's drag region (the window has no OS title bar): T-620, a press anywhere on it that is not a
 // control moves the window ("deep"); the switcher's frame and the pop-up menus drawn inside the bar opt
