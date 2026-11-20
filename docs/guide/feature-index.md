@@ -563,4 +563,4 @@ Rows whose guide page reads "removed" describe features that were taken out in t
 | T-325 | The Agents page shows a Claude Code, OpenClaude or Codex session as a live chat with each message once and in order. | removed |
 | T-326 | Chat folds the agent's work: Thought rows, steps, file edits as diff cards, a subagent row and busy timers. | removed |
 | T-327 | A chat message box that types into the agent's terminal and follows the newest message; it holds a send while the agent is asking, and Request changes on a plan waits until the agent leaves its menu. | removed |
-<!-- verified against: PLAN.md at 01b39757 -->
+<!-- verified against: PLAN.md at bf88bbb3 -->

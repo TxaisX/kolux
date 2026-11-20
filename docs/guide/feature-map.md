@@ -149,4 +149,4 @@ rows came in, not 14.
 
 One control is still `pending` on its owner lane, not on this lane: the chooser's agent-must-start-a-terminal path
 (Goal 0 item 5, `c2-agents`).
-<!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/projects/menu.ts, src/launch/PlusMenu.tsx at 01b39757 -->
+<!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/projects/menu.ts, src/launch/PlusMenu.tsx at bf88bbb3 -->
