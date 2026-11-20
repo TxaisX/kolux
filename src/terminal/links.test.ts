@@ -192,3 +192,33 @@ describe("TERM-093 a file link never hides a control character", () => {
     expect(fromFileUrl("file:///C:/%ZZ")).toBeNull();
   });
 });
+
+describe("wave 2: a file URL never decodes into a name Windows rewrites", () => {
+  it("drops an empty, . or .. step, a step ending in a dot or space, and a stream colon", () => {
+    for (const url of [
+      "file:///C:/repo/LICENSE%2E",
+      "file:///C:/repo/run.cmd%20",
+      "file:///C:/repo/run.cmd/.",
+      "file:///C:/repo/x/%2E%2E/run.cmd",
+      "file:///C:/repo/./a.txt",
+      "file:///C:/repo//a.txt",
+      "file:///C:/repo/notes.txt:run.vbs",
+      "file:///C:/repo/notes.txt%3Arun.vbs",
+      "file://server/share/a.txt%3Ax",
+      "file:///home/me/a%2F..%2Fb",
+    ]) {
+      expect(fromFileUrl(url), url).toBeNull();
+      expect(findLinks(url), url).toEqual([]);
+    }
+    // in running text a final dot is the sentence's and is left off the link before decoding
+    expect(fromFileUrl("file:///C:/repo/LICENSE.")).toBeNull();
+  });
+
+  it("an ordinary file URL still decodes", () => {
+    expect(fromFileUrl("file:///C:/repo/a%20b.txt")).toBe("C:/repo/a b.txt");
+    expect(fromFileUrl("file:///home/me/.bashrc")).toBe("/home/me/.bashrc");
+    expect(fromFileUrl("file://localhost/C:/a/b.txt")).toBe("C:/a/b.txt");
+    expect(fromFileUrl("file://server/share/x.txt")).toBe("\\\\server\\share\\x.txt");
+    expect(fromFileUrl("C:\\plain\\path.txt")).toBe("C:\\plain\\path.txt");
+  });
+});

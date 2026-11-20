@@ -69,7 +69,9 @@ export function findLinks(text: string): Found[] {
 const CONTROL = /[\x00-\x1f\x7f]/;
 
 /** file:///C:/a/b.txt → C:/a/b.txt; file:///home/x → /home/x; file://server/share/x → \\server\share\x.
- *  Null for a malformed % escape. */
+ *  Null for a malformed % escape, and for a decoded name Windows would rewrite or read as a stream: an empty, "."
+ *  or ".." step, a step ending in a dot or a space ("LICENSE%2E" is LICENSE), or a ":" after the drive letter
+ *  ("notes.txt%3Arun.vbs" is a stream inside notes.txt). */
 export function fromFileUrl(s: string): string | null {
   const m = s.match(/^file:\/\/([^/]*)(\/.*)?$/i);
   if (!m) return s;
@@ -80,8 +82,11 @@ export function fromFileUrl(s: string): string | null {
   } catch {
     return null;
   }
-  if (host && host !== "localhost") return `\\\\${host}${path.replace(/\//g, "\\")}`;
-  if (/^\/[A-Za-z]:/.test(path)) path = path.slice(1);
+  const local = !host || host === "localhost";
+  if (local && /^\/[A-Za-z]:/.test(path)) path = path.slice(1);
+  const rest = local ? path.replace(/^[A-Za-z]:/, "") : path;
+  if (rest.includes(":") || rest.split(/[\\/]/).slice(1).some((t) => t === "" || t === "." || t === ".." || /[. ]$/.test(t))) return null;
+  if (!local) return `\\\\${host}${path.replace(/\//g, "\\")}`;
   return path;
 }
 
