@@ -30,7 +30,6 @@ export type Action = {
 /** Every agent's id and name (TERM-041's new-tab commands; the settings search finds agents by them). */
 export const agents: Array<[string, string]> = [
   ["claude", "Claude"],
-  ["claude-agent-teams", "Claude Agent Teams"],
   ["openclaude", "OpenClaude"],
   ["codex", "Codex"],
   ["devin", "Devin"],
@@ -92,7 +91,6 @@ export const actions: Action[] = [
   a("sidebar.sleeping.toggle", "Show or Hide Sleeping Workspaces", "global", [], { keywords: ["sleep", "asleep", "wake", "toggle"] }),
   // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there. T-800: Ctrl+F6 (Ctrl+Shift+P is the palette now; bare F6 belongs to terminal programs such as htop and mc, DT-C109).
   a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+F6"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
-  a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
   // BROW-012: a browser tab's own zoom. These keys do nothing in a terminal: TERM-078 sizes every
   // terminal from one saved setting instead of letting one pane drift.
   a("zoom.in", "Zoom In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),

@@ -201,10 +201,6 @@ input { font: inherit; }
 .hdr-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .hdr-swatch.on { border-color: var(--fg); }
 .hdr-swatch:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.rail .sess-line { padding-left: 49px; }
-/* T-730: the Remove under a not-started preset looks like the line under a session. */
-.rail .pending + button { display: block; width: fit-content; margin: -6px 8px 6px 49px; padding: 0; font-size: 11px; line-height: 14px; color: var(--fg-muted); }
-.rail .pending + button:hover, .rail .pending + button:focus-visible { color: var(--fg); }
 .sess-line { margin-top: -6px; padding: 0 8px 6px 44px; font-size: 11px; line-height: 14px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .branch .dot { margin-right: 2px; }
 .branch .chev { color: #797979; display: inline-flex; }
@@ -1147,18 +1143,18 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 /* T-703 (DT-C139): a widened side panel gives its width back before the workspace drops under 340 px (the T-699
    floor), during a drag and when the window shrinks; the saved widths are kept, so the room comes back with the window.
    The left sidebar (8 px gutter) leaves room for the right one's 240 px minimum while that shows; the right one leaves
-   room for the left sidebar as drawn. The Agents screen's rail (.rail-wrap) keeps its own width (.rail); the right
-   sidebar only shows on Terminals, never beside it. The app's own clamp (clampWidth, chrome/RightSidebar.tsx) draws the
+   room for the left sidebar as drawn. The right
+   sidebar only shows on Terminals. The app's own clamp (clampWidth, chrome/RightSidebar.tsx) draws the
    right sidebar; these only catch a width drawn before the window shrank. T-719 (DT-C155): while the step-aside above
    hides the left sidebar, neither clamp counts it; the last rule's query is the step-aside's exact opposite, so a
    fractional width between 899 and 900 px (zoom) falls on one side or the other. */
-.body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
-.body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
+.body > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
+.body:has(> .rside:not([hidden])) > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
 .body > .rside { max-width: max(240px, 100vw - 340px); }
-@media not all and (max-width: 899px) { .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }
+@media not all and (max-width: 899px) { .body:has(> .sidebar-wrap) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }
 /* Classic's title header cell (chrome/titleHeader.ts, saved width + 8) follows the card as drawn: 228 = 220 + the gutter. */
-.app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }
-.app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }
+.app:has(> .body > .sidebar-wrap) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }
+.app:has(> .body > .sidebar-wrap):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }
 /* USAGE-012: usage analytics. Green squares = days with use, deeper green = more tokens. */
 .ta { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
 /* The notices' live region is always drawn (so a notice is announced); empty, it takes no room in the column. */
@@ -1414,11 +1410,6 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
    draw the cap in the button's own text colour with a faint tint behind it. */
 .btn.primary .kbd { background: color-mix(in srgb, currentColor 10%, transparent); border-color: color-mix(in srgb, currentColor 45%, transparent); color: inherit; }
 .chooser-count.warn { color: var(--warn); }
-/* VIEW-015: the Agents rail, a 268px card in the New look, a flat 240px rail under Classic. */
-.rail { width: 268px; padding: 4px; overflow-y: auto; }
-.rail.classic { width: 240px; border-radius: 0; border-width: 0 1px 0 0; }
-.rail-wrap.classic { padding: 0; }
-.rail .proj .ib { opacity: 1; }
 .grid.agents .tabs { display: none; }
 /* VIEW-017: the row's status word, one of the fixed set; what needs you is amber, working green, done teal. */
 .sess .status { flex: none; font-size: 11px; color: var(--fg-muted); }
@@ -1430,11 +1421,6 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .sess .ring { flex: none; color: var(--gauge); }
 .sess .ring.warn { color: var(--working-icon); }
 .sess .ring.danger { color: var(--meter-danger); }
-.rail-group { flex: none; }
-.rail-shells { margin-top: auto; padding: 8px; font-size: 11px; text-align: left; background: none; border: 0; color: var(--fg-muted); cursor: pointer; }
-.rail-shells:hover { color: var(--fg); text-decoration: underline; }
-.rail-shells + .rail-foot { margin-top: 0; }
-.rail-foot { margin-top: auto; padding: 10px 8px 4px; font-size: 11px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pane-head .right .meter-plan { margin-right: 8px; font-size: 11px; color: var(--fg-muted); }
 /* TERM-010: the grid's gap is the divider (width and light / dark colours from Appearance, DT-A7);
    while one is dragged the whole window keeps the resize cursor and nothing gets selected. */

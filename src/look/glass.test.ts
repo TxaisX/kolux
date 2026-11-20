@@ -389,7 +389,6 @@ test("DT-C266: what a side card throws on the stage is a dark strip in the gutte
   // the gutter is the wrapper's own padding: 8px under the card, and 8px beside it on the window's side
   expect(baseCss).toMatch(/\n\.sidebar-wrap \{[^}]*padding: 8px 0 8px 8px;/);
   expect(baseCss).toMatch(/\n\.rside \{[^}]*padding: 8px 8px 8px 0;/);
-  expect(baseCss).toMatch(/\n\.rail-wrap\.classic \{ padding: 0; \}/);
   expect(decl(ruleFor(".sidebar-wrap:not(.right):not(.classic)"), "background")).toBe("var(--glass-cast) 8px 100% / calc(100% - 8px) 8px no-repeat");
   // the right panel only while the Explorer shows: its other tabs' sheets are short, and a shade at the panel's foot would lie under nothing
   expect(decl(ruleFor(".rside:has(> .rside-body > .explorer:not([hidden]))"), "background")).toBe("var(--glass-cast) 0 100% / calc(100% - 8px) 8px no-repeat");

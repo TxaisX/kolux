@@ -24,7 +24,6 @@
 
 /* VIEW-019 (T-050-b): on the Agents screen the chat takes the terminal's place once its transcript
    is found; before that its line and box sit above the terminal. The terminal stays mounted. */
-.chat.cover ~ .grid.agents { display: none; }
 .chat:not(.cover) { flex: 0 0 auto; max-height: 45%; }
 .chat-head { display: flex; justify-content: flex-end; align-items: flex-start; gap: 12px; padding: 6px 12px 0; }
 /* VIEW-020 (T-080): Send result to, a small menu of other chat sessions */

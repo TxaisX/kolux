@@ -1,34 +1,12 @@
-// T-809 (P4a-11, P4a-12): the Agents rail says where the plain shells are, an ended pane reads "Ended" not
-// "Starting…", and the Start agents picker starts on the default agent with the installed ones above the rest.
+// T-809 (P4a-11, P4a-12): an ended pane reads "Ended" not "Starting…", and the Start agents picker starts on the default agent with the installed ones above the rest.
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { expect, test } from "vitest";
 import { startingLine } from "../chat/model";
-import AgentsRail from "./AgentsRail";
 import ChooserPane from "../launch/ChooserPane";
 import { firstSeatStart } from "../launch/defaultSeat";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { emptySeat, TERMINAL, type Seat } from "../launch/seats";
-import { railGroups, rowStatus, shellNote } from "./rail";
-
-const shell = (key: number) => ({ key, program: null, cwd: "C:/w/app" });
-const ai = (key: number) => ({ key, agentId: "claude", program: "claude", cwd: "C:/w/app" });
-
-test("P4a-12: the rail names the shells it does not list, singular and plural, and says nothing without any", () => {
-  expect(shellNote([ai(1)])).toBe("");
-  expect(shellNote([ai(1), shell(2)])).toBe("1 shell is on the Terminals screen");
-  expect(shellNote([shell(1), shell(2), shell(3), ai(4)])).toBe("3 shells are on the Terminals screen");
-  // Editor tabs and not-started presets are not shells.
-  expect(shellNote([{ key: 1, program: null, cwd: null, kind: "editor" }, { key: 2, program: null, cwd: null, seats: [{ agent: null }] }])).toBe("");
-});
-
-test("P4a-12: the rail shows that line as a button to the Terminals screen, and no button without shells", () => {
-  const base = { groups: railGroups([ai(1)], [{ id: "claude", name: "Claude Code" }]) as never, selected: 1, classic: false, statusOf: ((p: never) => rowStatus(p, null)) as never, ringOf: () => null, footer: "", onSelect: () => {}, onAdd: () => {}, onSettings: () => {} };
-  const withShells = renderToStaticMarkup(createElement(AgentsRail as never, { ...base, shells: shellNote([ai(1), shell(2), shell(3)]), onTerminals: () => {} }));
-  expect(withShells).toContain("data-rail-shells");
-  expect(withShells).toContain("2 shells are on the Terminals screen");
-  expect(renderToStaticMarkup(createElement(AgentsRail as never, { ...base, shells: "" }))).not.toContain("data-rail-shells");
-});
 
 test("P4a-12: the line over a pane the screen is waiting on says Ended once the process is gone", () => {
   expect(startingLine(false)).toBe("Starting…");

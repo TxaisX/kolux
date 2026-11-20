@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import { accountKey, capOn, claudeOf, codexOf, contextFill, meterOf, meterText, percentMode, planOf, readsLeft, shortTokens, shownPercent, tone, usageLine } from "./meter";
+import { accountKey, capOn, claudeOf, codexOf, contextFill, meterOf, meterText, percentMode, planOf, readsLeft, shortTokens, shownPercent, tone } from "./meter";
 import Ring from "./Ring";
 import type { ClaudeLimit } from "./claude";
 import type { CodexUsage } from "./codex";
@@ -53,34 +53,6 @@ test("the ring fills with the percentage and turns with it (USAGE-003)", () => {
   expect(html).toContain("<title>Context 84k / 200k (42%)</title>");
   expect(html).not.toContain("42%<");
   expect(renderToString(createElement(Ring, { percent: 95 }))).toContain('class="ring danger"');
-});
-
-test("USAGE-004 / VIEW-018: the Agents footer gives the provider's 5-hour figure and reset time, used or left, never NaN, blank without a window", () => {
-  const now = new Date(2026, 9, 12, 12, 0, 0);
-  const at = new Date(2026, 9, 12, 15, 0, 0).getTime();
-  const claude: ClaudeLimit[] = [
-    { kind: "five_hour", usedPercent: 37.6, resetsAt: at },
-    { kind: "seven_day", usedPercent: 80, resetsAt: null },
-  ];
-  const line = usageLine("claude", claude, null, false, now);
-  expect(line.startsWith("Claude 38% used · resets today ")).toBe(true);
-  expect(usageLine("claude", claude, null, true, now).startsWith("Claude 62% left · resets today ")).toBe(true);
-  // A broken provider value reads 0, never NaN; a reset time nobody knows says so.
-  expect(usageLine("claude", [{ kind: "five_hour", usedPercent: NaN, resetsAt: null }], null, false, now)).toBe("Claude 0% used · reset time unknown");
-  // A provider with no 5-hour window keeps the line empty; so does a plain shell.
-  expect(usageLine("claude", [{ kind: "seven_day", usedPercent: 80, resetsAt: null }], null, false, now)).toBe("");
-  expect(usageLine("shell", claude, null, false, now)).toBe("");
-  const codex: CodexUsage = { state: "ok", fiveHour: { usedPercent: 40, resetsAt: Math.round(at / 1000), windowMins: 300 }, weekly: null, resetCredits: null, plan: null, message: null };
-  expect(usageLine("codex", [], codex, false, now).startsWith("Codex 40% used · resets today ")).toBe(true);
-  expect(usageLine("codex", [], codex, true, now).startsWith("Codex 60% left · ")).toBe(true);
-  expect(usageLine("codex", [], { ...codex, state: "signed-out", fiveHour: null }, false, now)).toBe("");
-  // USAGE-025: the display choice is a settings key; missing or unrecognised means used.
-  expect(readsLeft({})).toBe(false);
-  expect(readsLeft({ usageReads: "remaining" })).toBe(false);
-  expect(readsLeft({ usageReads: "left" })).toBe(true);
-  // MERGE 13: the T-263 Appearance pick reads left too.
-  expect(readsLeft({ usagePercentages: "remaining" })).toBe(true);
-  expect(readsLeft({ usagePercentages: "used" })).toBe(false);
 });
 
 test("T-263 USAGE-025: usage percentages read as used or left; missing or unknown means used, a broken value reads 0", () => {
@@ -136,5 +108,13 @@ test("T-548-b: claudeOf gives a Claude pane its own account's windows; the activ
   expect(claudeOf("codex", "b", "a", claude, by)).toBe(claude); // only Claude panes are held back
   expect(planOf("claude", claudeOf("claude", "b", "a", claude, by), null)).toEqual({ fiveHour: 80, weekly: 9 });
   expect(planOf("claude", claudeOf("claude", "c", "a", claude, by), null)).toBeNull();
-  expect(usageLine("claude", claudeOf("claude", "b", "a", claude, by), null, false, new Date(0))).toContain("Claude 80% used");
+});
+
+test("USAGE-025: the display choice is a settings key; missing or unrecognised means used", () => {
+  expect(readsLeft({})).toBe(false);
+  expect(readsLeft({ usageReads: "remaining" })).toBe(false);
+  expect(readsLeft({ usageReads: "left" })).toBe(true);
+  // MERGE 13: the T-263 Appearance pick reads left too.
+  expect(readsLeft({ usagePercentages: "remaining" })).toBe(true);
+  expect(readsLeft({ usagePercentages: "used" })).toBe(false);
 });

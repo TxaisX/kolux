@@ -16,13 +16,13 @@ const css = nodeFs.readFileSync(new URL("../../styles.css", import.meta.url), "u
 
 const FLOOR = 340;
 const RULES = [
-  ".body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }",
-  ".body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }",
+  ".body > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }",
+  ".body:has(> .rside:not([hidden])) > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }",
   ".body > .rside { max-width: max(240px, 100vw - 340px); }",
   // T-719 (DT-C155): only where the step-aside does not apply (its exact opposite, so no fractional gap under zoom).
-  "@media not all and (max-width: 899px) { .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }",
-  ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }",
-  ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }",
+  "@media not all and (max-width: 899px) { .body:has(> .sidebar-wrap) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }",
+  ".app:has(> .body > .sidebar-wrap) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }",
+  ".app:has(> .body > .sidebar-wrap):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }",
 ];
 
 /** The body as the stylesheet lays it out, rule for rule (RULES above and the T-699 step-aside).
@@ -43,8 +43,6 @@ test("T-703: the stylesheet carries the clamp rules, after the T-699 step-aside"
   // T-719: the guard is the step-aside's own query negated, not min-width: 900px (which leaves 899-900 px unmatched).
   expect(css).toContain(`@media not all and (max-width: ${NARROW_PX - 1}px) { .body:has(> .sidebar-wrap`);
   expect(css).not.toContain("@media (min-width: 900px)");
-  // The Agents screen's rail is also a .sidebar-wrap beside .body; it keeps its own width (.rail), so no clamp names a bare one.
-  expect(css.match(/^\.body[^{]*\.sidebar-wrap(?!:not\(\.rail-wrap\))[^{]*\{[^}]*--sidebar-w/gm)).toBeNull();
   // The constants: 348 = the floor + the left gutter; 588 = that + the right sidebar's minimum.
   expect([LEFT_MIN, RIGHT_MIN, LEFT_MAX]).toEqual([220, 240, 480]);
   expect(348).toBe(FLOOR + 8);

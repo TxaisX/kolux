@@ -110,7 +110,7 @@ export function useWindowKeys(w: WindowBag) {
     const onKey = (e: KeyboardEvent) => {
       const {
         accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, closePane, defaultId, equalizePanes, expandPane,
-        focused, keymap, leavePage, newTab, nextKey, openPane, orderOf, panes, recentTabs, removeSession, renamePane,
+        focused, keymap, newTab, nextKey, openPane, orderOf, panes, recentTabs, removeSession, renamePane,
         right, saveRight, saveSetting, screen, setActiveDir, setAskName, setCreateName, setCreateRequest, setDeleteRequest,
         setFocused, setNotice, setPalette, setPanes, setReloadAsk, setRenameRequest, setRenamingTab, setScreen,
         setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
@@ -121,13 +121,12 @@ export function useWindowKeys(w: WindowBag) {
       // VIEW-109 (T-253): while an input method is composing every key is its own, shortcut chords included.
       if (e.isComposing || e.keyCode === 229) return;
       const kind = screen === "terminals" ? panes.find((p) => p.key === focused)?.kind : undefined;
-      const inTree = !!document.activeElement?.closest(".explorer"); // the explorer's own keys (EDIT-034) come with T-094-b
       // EDIT-001: in an editor the editor shortcuts come first and terminal ones do not apply;
       // the ones Kolux has no action for yet are left to CodeMirror.
       // SET-009: a modifier tapped twice runs the command bound to "Double+<modifier>" (keys/tapHit.ts).
       const found =
         tapHit(windowTaps, keymap, e) ||
-        matchEvent(keymap, e, scopesFor({ screen, kind, inTree }));
+        matchEvent(keymap, e, scopesFor({ screen, kind }));
       // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
       const hit = kPalette(found, keymap, e, document.activeElement);
       if (!hit || heldByTerminal(hit.id, settings) || richKeyTaken(keymap, e, document.activeElement)) return; // F22: Ctrl+B in a rich view is bold
@@ -241,9 +240,6 @@ export function useWindowKeys(w: WindowBag) {
           switchAccount(group.provider, to);
           break;
         }
-        case "view.code":
-          leavePage();
-          break;
         case "zoom.in":
         case "zoom.out":
         case "zoom.reset":

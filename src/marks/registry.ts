@@ -22,7 +22,6 @@ export type VendorMarkEntry = {
 export const VENDOR_MARKS: readonly VendorMarkEntry[] = [
   { id: "claude", name: "Claude", maker: "Anthropic", light: "anthropic-claude-spark.svg", dark: "anthropic-claude-spark.svg" },
   // Claude Agent Teams runs Claude, so it wears the Claude spark (T-335-b).
-  { id: "claude-agent-teams", name: "Claude Agent Teams", maker: "Anthropic", light: "anthropic-claude-spark.svg", dark: "anthropic-claude-spark.svg" },
   // Cursor's kit names its cube "DARK" when it is the pale one for dark surfaces and "LIGHT" for the dark one for light surfaces.
   { id: "cursor", name: "Cursor", maker: "Anysphere", light: "cursor-cube-for-light.svg", dark: "cursor-cube-for-dark.svg" },
   { id: "codex", name: "Codex", maker: "OpenAI", light: "openai-blossom-black.svg", dark: "openai-blossom-white.svg", scale: 1.9 },

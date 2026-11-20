@@ -80,7 +80,6 @@ export function commitBox(s: Status | null): { boxDisabled: boolean; controlsHid
 
 // ---- VIEW-064: generation defaults saved per repository or for all ----------------------------
 
-export const GEN_DEFAULTS_KEY = "scmGenDefaults";
 export type GenChoice = { agent: string; model: string | null; effort: string | null };
 export type GenDefaults = { all: GenChoice | null; repos: Record<string, GenChoice> };
 const isChoice = (v: unknown): v is GenChoice => typeof v === "object" && v !== null && typeof (v as GenChoice).agent === "string";

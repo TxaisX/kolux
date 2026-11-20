@@ -2,7 +2,6 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import AgentsRail from "../agents/AgentsRail";
 import ChooserPane, { holdsTyping, selfInstallHint, sheetKey } from "./ChooserPane";
 import PlusMenu, { type AgentInfo } from "./PlusMenu";
 import { DISMISS_FAILED, dismissFailedNotice, ToolNoticesView } from "./ToolNotices";
@@ -115,14 +114,4 @@ test("F6: each notice's buttons name their notice for a screen reader", () => {
 test("F1: the plus menu's extra buttons are menu items", () => {
   const html = renderToString(createElement(PlusMenu, { agents: [claude, agent("codex", { installed: true, path: "/c" })], defaultId: "claude", onPick() {}, onSetDefault() {}, onClose() {} }));
   expect(html).toContain('role="menuitem" class="menu-default"');
-});
-
-test("F4/F6: the Agents rail marks the picked session, and its empty text covers 'nothing installed'", () => {
-  const props = { classic: false, statusOf: (() => ({ word: "Idle", explain: "", line: "", tone: "" })) as never, ringOf: () => null, footer: "", onSelect() {}, onAdd() {}, onSettings() {} } as const;
-  const none = renderToString(createElement(AgentsRail, { ...props, groups: [], selected: null }));
-  expect(none).toContain("Install one or switch one on in Settings");
-  const groups = [{ id: "claude", name: "Claude", sessions: [{ key: 1, agentId: "claude", program: "claude", cwd: null }, { key: 2, agentId: "claude", program: "claude", cwd: null }] }];
-  const html = renderToString(createElement(AgentsRail, { ...props, groups, selected: 2 }));
-  expect(html.match(/aria-current="true"/g)).toHaveLength(1);
-  expect(html.split("<div").find((d) => d.includes('data-session="2"'))).toContain('aria-current="true"');
 });

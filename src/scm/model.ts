@@ -310,10 +310,6 @@ export const abortLabel = (op: string | null | undefined): string | null => (op 
 export const CONFLICT_CAP = 100;
 export const capped = <T>(rows: T[], cap: number): { shown: T[]; more: number } => ({ shown: rows.slice(0, cap), more: Math.max(0, rows.length - cap) });
 
-/** GIT-066: the settings key of the order the Source Control groups are listed in. */
-export const SCM_GROUP_ORDER_KEY = "scmGroupOrder";
-/** GIT-001: the panel shows a flat list ("list", the default) or a folder tree ("tree"). */
-export const SCM_VIEW_KEY = "scmView";
 /** GIT-038 (T-033-c): All Changes' default layout, each off unless set: two columns, wrapped
  * lines, whitespace-only changes shown, the file tree open. A tab's own toggles start from these. */
 export const AC_SPLIT_KEY = "allChangesSideBySide";
@@ -533,9 +529,6 @@ export const sinceText = (updated: number, now: number): string => {
 /** VIEW-069: the opening prompt for an agent asked to resolve the merge conflicts. */
 export const conflictPrompt = (files: Change[]): string =>
   `This workspace has merge conflicts in:\n${files.map((f) => `- ${f.path}`).join("\n")}\n\nResolve each conflict, keeping what both sides meant, stage the resolved files, and finish the merge or rebase that is in progress. Where the two sides disagree, say which one you kept and why.`;
-
-/** VIEW-069: the settings key of the agent saved for agent actions. */
-export const SCM_AGENT_KEY = "scmAgent";
 
 /** VIEW-069: the agent saved for Source Control's agent actions, while it is still installed. */
 export const savedFixAgent = <A extends { id: string; installed: boolean }>(agents: A[], saved: unknown): A | null =>

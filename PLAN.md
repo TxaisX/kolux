@@ -763,7 +763,7 @@ Direction from Txais on 2026-11-12, taken by the wave (lanes c2-agents, c3-termi
 **Why (Txais, 2026-11-12):** cut Kolux's own resource use so the PC can run many more agents at once. Native terminals are far lighter than Kolux's web-drawn panes. The 2026-11-09 slimdown study (`docs/research/kolux-slimdown-2026-11-09.md`) measured the Kolux web view at about 509 MB reserved across 6 processes, more than the window, the terminal service and the shells combined. Agents get the web through Chrome or the user's own browser instead, which is also better for debugging and daily use.
 
 The direction in seven parts:
-1. Native terminal: panes use the real Windows terminal engine instead of drawing their own (c3-terminal).
+1. Native terminal: panes use the real Windows terminal engine instead of drawing their own (c3-terminal). [Removed 2026-11-20: the Windows Terminal native engine is gone, xterm.js is the only engine (DT-C280).]
 2. Remove the web pane: the embedded browser goes; an "open in browser" action launches the system browser (o1-tools removes the screens, c3-terminal the Rust side).
 3. Rune as the base for a Kolux users shape to their own way of working; a spike first, wiring waits for Txais's go/no-go on its numbers (o3-rune).
 4. Sidebar lists each workspace folder and that folder's sessions, never worktrees (c2-agents).
@@ -772,7 +772,7 @@ The direction in seven parts:
 7. Fast to the touch, measured on a release build: keystroke to screen under 16 ms, click or shortcut to visible response under 50 ms, new terminal to a ready prompt under 300 ms (every lane records before/after).
 
 ### c3-terminal
-- [ ] T-818 · Native terminal path: compare the options (open a real Windows Terminal window, host the Windows Terminal control inside Kolux, keep Kolux's own pty and switch only the drawing), record the recommendation, then build it behind a setting that stays off until proven · terminal · open · gate: setting off = no change (vitest and cargo test green); setting on = a harness screenshot of a working pane and the three latency numbers recorded
+- [ ] T-818 · Native terminal path: compare the options (open a real Windows Terminal window, host the Windows Terminal control inside Kolux, keep Kolux's own pty and switch only the drawing), record the recommendation, then build it behind a setting that stays off until proven · terminal · open · gate: setting off = no change (vitest and cargo test green); setting on = a harness screenshot of a working pane and the three latency numbers recorded · [Removed 2026-11-20: the Windows Terminal native engine is gone, xterm.js is the only engine (DT-C280).]
 - [ ] T-819 · Remove the Rust side of the embedded browser (webview creation, browser IPC commands) after T-821 lands · terminal + app shell · open · gate: cargo test and clippy green; no browser command left in the invoke contract
 - [ ] T-820 · New session spawns the user's shell as the pane's process and types the agent's start command into it · terminal · open · gate: harness smoke starts Claude Code, Grok and a plain terminal from New session and each takes input
 
