@@ -3,12 +3,12 @@
 // installer, its signature and the update manifest (latest.json) with notes listing the shipped
 // commits. `pnpm ship --main` starts it in the background; it can also be run by hand.
 //
-//   pnpm release [--dry-run] [--no-publish] [--version <x.y.z>] [--repo <url>]
+//   pnpm release [--dry-run] [--no-publish] [--repo <url>] [--version x.y.z]
 //
+//   --version      release this version instead of the next patch (a new minor or major); it must be
+//                  x.y.z, above the newest release and not already a tag
 //   --dry-run      print the version, the notes and the steps; build and publish nothing
 //   --no-publish   build, smoke-test and sign, then stop (the files stay in <checkout>-out)
-//   --version      release exactly this version (a new minor or major, e.g. 0.2.0) instead of the
-//                  next patch; it must be x.y.z and above the newest release
 //   --build-only   build and smoke-test, then stop before signing (release.yml's build step, T-588)
 //   --finish       sign the build --build-only recorded in <checkout>-out, then publish it (release.yml's next step)
 //
@@ -52,21 +52,26 @@ const parse = (v) => {
 };
 const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
 
-/** One patch above whichever is higher: the project's version or the newest release. `wanted`
- *  (`--version`) names the release exactly instead, for a new minor or major version: it must be
- *  x.y.z and above the newest release, so it can never repeat or go behind a published one. */
-export function nextVersion(projectVersion, latestTag, wanted = null) {
-  const l = parse(latestTag);
-  if (wanted !== null && wanted !== undefined) {
-    const w = parse(wanted);
-    if (!w) throw new Error(`--version "${wanted}" is not x.y.z`);
-    if (l && cmp(w, l) <= 0) throw new Error(`--version ${w.join(".")} is not above the newest release ${latestTag}`);
-    return w.join(".");
-  }
+/** One patch above whichever is higher: the project's version or the newest release. */
+export function nextVersion(projectVersion, latestTag) {
   const p = parse(projectVersion);
   if (!p) throw new Error(`the project version "${projectVersion}" is not x.y.z`);
+  const l = parse(latestTag);
   const base = l && cmp(l, p) > 0 ? l : p;
   return `${base[0]}.${base[1]}.${base[2] + 1}`;
+}
+
+/** The version to release: the one asked for with --version, or else nextVersion. An asked-for version
+ *  must be x.y.z, above the newest release, and not a tag already; otherwise the release stops. */
+export function releaseVersion(projectVersion, latestTag, wanted, tagExists = () => false) {
+  if (wanted == null) return nextVersion(projectVersion, latestTag);
+  const w = /^\d+\.\d+\.\d+$/.test(String(wanted).trim()) ? parse(wanted) : null;
+  if (!w) throw new Error(`--version "${wanted}" is not x.y.z (for example 0.2.0); nothing was built`);
+  const v = w.join(".");
+  const l = parse(latestTag);
+  if (l && cmp(w, l) <= 0) throw new Error(`--version ${v} is not above the newest release ${latestTag}; nothing was built`);
+  if (tagExists(`v${v}`)) throw new Error(`--version ${v}: the tag v${v} already exists; nothing was built`);
+  return v;
 }
 
 /** P3-19 (T-789): the hand-written section of CHANGELOG.md for this version, or null. The heading is
@@ -308,7 +313,11 @@ export function buildOnce(o, env = process.env, exec = sh) {
 
   // 2. Version and notes.
   const projectVersion = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")).version;
-  const version = nextVersion(projectVersion, latest?.tag, o.version);
+  const tagExists = (tag) =>
+    env.KOLUX_RELEASE_PUBLISH_DIR
+      ? fs.existsSync(path.join(path.resolve(env.KOLUX_RELEASE_PUBLISH_DIR), tag))
+      : git(dir, "ls-remote", "--tags", "origin", `refs/tags/${tag}`) !== "";
+  const version = releaseVersion(projectVersion, latest?.tag, o.version ?? null, tagExists);
   const prev = markerOf(latest?.body);
   const known = prev && spawnSync("git", ["-C", dir, "merge-base", "--is-ancestor", prev, sha], { windowsHide: true }).status === 0;
   const range = known ? [`${prev}..${sha}`] : [sha, "-n", String(NOTES_MAX)];
@@ -429,8 +438,12 @@ export function run(o, env = process.env, exec = sh) {
   fs.mkdirSync(path.dirname(dir), { recursive: true });
   if (acquire(dir) === "queued") return void say("a release build is running; one more build from the newest main is queued after it");
   try {
-    do buildOnce(o, env, exec);
-    while (takeQueued(dir) && (say("a ship landed during the build; building again from the newest main"), true));
+    // An asked-for --version is for the first build only; a queued rebuild takes the next patch above it.
+    let opts = o;
+    do {
+      buildOnce(opts, env, exec);
+      opts = { ...o, version: null };
+    } while (takeQueued(dir) && (say("a ship landed during the build; building again from the newest main"), true));
   } finally {
     unlock(dir);
   }
@@ -440,6 +453,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   const a = process.argv.slice(2);
   const o = { dryRun: a.includes("--dry-run"), noPublish: a.includes("--no-publish"), buildOnly: a.includes("--build-only"), finish: a.includes("--finish"), repo: a.includes("--repo") ? a[a.indexOf("--repo") + 1] : null, version: a.includes("--version") ? (a[a.indexOf("--version") + 1] ?? "") : null };
   try {
+    // A malformed --version stops here, before any fetch (an already-released main would otherwise exit quietly).
+    if (o.version !== null) releaseVersion("0.0.0", null, o.version);
     run(o);
   } catch (e) {
     // The failure goes to the log; the ship that started this job has already succeeded.
