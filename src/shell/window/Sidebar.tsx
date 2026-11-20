@@ -11,14 +11,13 @@ import { useDeeds, useWindow } from "./store";
 import { useStableFns } from "./stable";
 import { gridOf } from "../../workspaces";
 import { setStartDir } from "../../projects/worktreeGrid";
-import type { Page } from "../../projects/ProjectsPanel";
 import type { Project } from "../../projects/model";
 
 export default function WindowSidebar() {
   const {
     screen, sidebarOpen, reveal, openDirs, sources, rowStates, unreadDirs,
     settings, saveSetting, activeDir, workDir, select, agents, defaultId,
-    launching, addChooser, newTab, allAgents, agentPass, page, setPage, refresh,
+    launching, addChooser, newTab, allAgents, agentPass, refresh,
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest,
     setScreen, setProjects, setOwner, setNames, leftWidth, setDragLeft,
     openPane, worktreeMenu,
@@ -41,12 +40,6 @@ export default function WindowSidebar() {
     },
     nest: (on: boolean) => saveSetting(NESTING_KEY, on),
     terminal: () => void newTab(null),
-    page: (next: Page) => {
-      // C02-R5-01: the page draws only on Terminals, so the row brings that screen up; the
-      // toggle is guarded by the screen so a stale page cannot close the one being opened.
-      setScreen("terminals");
-      setPage((p) => (screen === "terminals" && p === next ? null : next));
-    },
     renameTaken: () => setRenameRequest(0),
     // A session row opens its folder's grid and focuses that pane (paneActions.openPane).
     focusPane: (key: number) => openPane(key),
@@ -87,8 +80,6 @@ export default function WindowSidebar() {
           allOff={allSwitchedOff(allAgents, settings)}
           pass={agentPass}
           onRefresh={deeds.refreshAgents}
-          page={screen === "terminals" ? page : null}
-          onPage={act.page}
           refresh={refresh}
           createRequest={createRequest}
           worktreeRequest={worktreeMenu}

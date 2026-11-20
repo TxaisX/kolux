@@ -61,8 +61,6 @@ vi.mock("@tauri-apps/api/core", () => ({
       scm_gh_account: null,
       settings_patch: null,
       project_list: [],
-      cli_status: { installed: false, onPath: false },
-      skills_scan: { skills: [] },
     };
     return cmd in answers ? Promise.resolve(answers[cmd]) : Promise.reject(new Error(`unexpected ${cmd}`));
   },
@@ -106,7 +104,8 @@ async function mount() {
   return { out: () => out, settle };
 }
 
-const reads = () => calls.filter((c) => c === "cli_status").length;
+// Each read of the steps lists the projects once (readFacts).
+const reads = () => calls.filter((c) => c === "project_list").length;
 
 test("a Setup Guide close or an added project makes SidebarStart read its steps again; the entry stays up meanwhile (VIEW-114, FIX-3)", async () => {
   const { GUIDE_CLOSED } = await import("./guide");

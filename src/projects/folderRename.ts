@@ -3,7 +3,6 @@
 // `workspace_move_folder` (git worktree move: nothing is deleted or overwritten, and a folder a
 // terminal or agent still holds comes back as Git's complete error, with nothing changed).
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 import { onRename, type RenameEvent } from "./renameOnWork";
 
@@ -13,20 +12,10 @@ export const renamesFolders = (s: Record<string, unknown>): boolean => s[RENAME_
 
 export type FolderOffer = { dir: string; folder: string; name: string };
 
-/** Row 950: folders an orchestration worker or an automation run started in; no one is there to answer "Rename the folder too?". */
-const unattended = new Set<string>();
-
-/** Remembers a "start" notice that carries a dispatch (orchestration worker) or a run id (automation); forgets a removed folder. */
-export function noteUnattendedStart(p: { kind?: string; path?: string; dispatch?: string; runId?: string }): void {
-  if (!p.path) return;
-  if (p.kind === "start" && (p.dispatch || p.runId)) unattended.add(p.path);
-  else if (p.kind === "removed") unattended.delete(p.path);
-}
-
 /** The folder question a rename's answer asks for, or nothing (a refused rename, a failure, folder renaming off). */
 export function offerFrom(e: RenameEvent): FolderOffer | null {
   const a = e.answer;
-  if (!a || !a.renamed || !a.folder || unattended.has(e.dir)) return null;
+  if (!a || !a.renamed || !a.folder) return null;
   return { dir: e.dir, folder: a.folder, name: a.name ?? a.folder };
 }
 
@@ -50,9 +39,5 @@ export function useFolderOffers(): { offer: FolderOffer | null; dismiss: (dir: s
       }),
     [],
   );
-  useEffect(() => {
-    const off = listen<Parameters<typeof noteUnattendedStart>[0]>("cli-workspace", (e) => noteUnattendedStart(e.payload));
-    return () => void off.then((f) => f()).catch(() => {});
-  }, []);
   return { offer: list[0] ?? null, dismiss: (dir) => setList((l) => l.filter((o) => o.dir !== dir)) };
 }

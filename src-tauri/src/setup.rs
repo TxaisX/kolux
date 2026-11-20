@@ -33,11 +33,6 @@ pub fn scripts_entry(yaml: &str, key: &str) -> Option<String> {
     yaml_entry(yaml, Some("scripts"), key)
 }
 
-/// PROJ-036: a top-level kolux.yaml value such as `issueCommand`, read the same way.
-pub fn top_entry(yaml: &str, key: &str) -> Option<String> {
-    yaml_entry(yaml, None, key)
-}
-
 /// `key` at the top level (`parent` None) or one level under `parent:`; plain, quoted or block.
 fn yaml_entry(yaml: &str, parent: Option<&str>, key: &str) -> Option<String> {
     let prefix = format!("{key}:");
@@ -274,61 +269,6 @@ fn conda_now() -> bool {
     conda_partial(std::env::var("CONDA_PREFIX").ok().as_deref(), &std::env::var("PATH").unwrap_or_default())
 }
 
-/// STAT-055: `line` with `vars` set and `unset` cleared ahead of its script, so a Setup terminal
-/// started from it sees them: `export` lines for a POSIX shell, `set NAME=value&&` for cmd (a value
-/// cmd would misread is left out there). The script itself (`line.script`) is unchanged.
-pub fn with_env(mut line: SetupLine, vars: &[(&str, String)], unset: &[&str]) -> SetupLine {
-    let cmd = line.program.eq_ignore_ascii_case("cmd.exe");
-    let Some(last) = line.args.last_mut() else { return line };
-    let pre: String = if cmd {
-        let plain = |v: &str| !v.chars().any(|c| "&|<>^%\"\r\n".contains(c));
-        vars.iter().filter(|(_, v)| plain(v)).map(|(k, v)| format!("set {k}={v}&& ")).chain(unset.iter().map(|k| format!("set {k}=&& "))).collect()
-    } else {
-        let quote = |v: &str| format!("'{}'", v.replace('\'', "'\\''"));
-        let mut s: String = vars.iter().map(|(k, v)| format!("export {k}={}\n", quote(v))).collect();
-        if !unset.is_empty() {
-            s.push_str(&format!("unset {}\n", unset.join(" ")));
-        }
-        s
-    };
-    *last = format!("{pre}{last}");
-    line
-}
-
-/// STAT-055: the Setup terminal's line for the worktree at `path`: its setup script from
-/// `local` (Kolux's own setting for the repository) or the worktree's kolux.yaml as `policy`
-/// says, with the setup variables set.
-/// SAFE-025: a shared kolux.yaml script runs only once its repository trusts it.
-#[tauri::command(async)]
-pub fn workspace_setup(store: StoreState<'_>, path: String, local: Option<String>, policy: Option<String>) -> Result<Option<SetupLine>, String> {
-    let (local, policy) = setup_inputs(&store, &path, local, policy);
-    setup_for(&path, local, policy, &|root, kind, script| require_trust(&store, root, kind, script))
-}
-
-/// STAT-055: workspace_setup's line, with `trust` asked before a shared script is used.
-fn setup_for(path: &str, local: Option<String>, policy: Option<String>, trust: Gate<'_>) -> Result<Option<SetupLine>, String> {
-    setup_for_on(path, local, policy, trust, cfg!(windows), configured_shell().as_deref(), find_posix)
-}
-
-/// setup_for on the platform given: `windows`, the `configured` shell and the POSIX shell finder.
-fn setup_for_on(path: &str, local: Option<String>, policy: Option<String>, trust: Gate<'_>, windows: bool, configured: Option<&Path>, find: impl Fn(&str) -> Option<PathBuf>) -> Result<Option<SetupLine>, String> {
-    let wt = Path::new(path);
-    let shared = std::fs::read_to_string(wt.join(crate::include::CONFIG_FILE)).ok().and_then(|t| setup_script(&t));
-    let Some(Picked { script, shared, refused }) = pick_parts(local.as_deref(), shared, policy.as_deref()) else { return Ok(None) };
-    // SET-033: two scripts that cannot share an interpreter run nothing, and nothing is asked about trust
-    if let Some(why) = refused {
-        return Err(why);
-    }
-    // FIX-2: the same for a script this PC cannot run (a join cmd would misread, a #! shell it lacks):
-    // the line is built, and refused, before the question
-    let line = setup_line(&script, windows, configured, find)?;
-    if let Some(theirs) = shared {
-        trust(&main_folder(wt), "setup", &theirs)?;
-    }
-    let unset: &[&str] = if conda_now() { &CONDA_VARS } else { &[] };
-    Ok(Some(with_env(line, &script_vars(&main_folder(wt), wt), unset)))
-}
-
 /// STAT-055: runs kolux.yaml's archive script (read from the worktree being removed; OD-14: no
 /// per-repository archive setting) in that worktree with the script variables, before it goes,
 /// and waits up to `limit`, then ends it and every process it started. Ok(false) when there is
@@ -412,24 +352,22 @@ fn tail_of(r: &mut impl std::io::Read) -> String {
 }
 
 /// STAT-055 (T-715): removal's archive step for the worktree at `wt` of the project at `root`.
-/// SAFE-025: the script runs only when the repository trusts that exact text (the page asks first,
-/// script_trust_needed with kind "archive"); one it does not trust (Don't run, or nobody asked) is
-/// skipped and the removal goes on, as is one whose trust cannot be read. Ok(true) when it ran and
-/// exited 0.
+/// SAFE-025: the script runs only when the repository's trust record approves that exact text (or
+/// its whole kolux.yaml); one it does not trust is skipped and the removal goes on, as is one whose
+/// trust cannot be read. Ok(true) when it ran and exited 0.
 pub fn archive_on_remove(store: &std::sync::Mutex<crate::state::Store>, root: &Path, wt: &Path) -> Result<bool, String> {
     run_archive(root, wt, std::time::Duration::from_secs(120), &|script| Ok(store.lock().is_ok_and(|s| matches!(trust_ask(&s, root, "archive", script), Ok(None)))))
 }
 
 type StoreState<'a> = tauri::State<'a, std::sync::Mutex<crate::state::Store>>;
-/// SAFE-025: asked with the repository's main folder, the script's kind and its text before a shared
-/// script is used; an error is why it may not run.
-type Gate<'a> = &'a dyn Fn(&Path, &str, &str) -> Result<(), String>;
 
 /// SAFE-025 / STAT-056: the store key holding one project's script trust. Keyed by the project's
 /// id, which a project added again gets new, so removing or re-adding a repository forgets it.
 pub const TRUST_PREFIX: &str = "scriptTrust:";
-/// SAFE-025: the shared scripts that need trust. The VM recipe is not carried (COMPAT 14); "tabs"
-/// is the default tabs' commands of PROJ-034 (T-149), approved as one text.
+/// SAFE-025: the kinds of shared script a trust record can hold. The VM recipe is not carried
+/// (COMPAT 14); "tabs" is the default tabs' commands of PROJ-034 (T-149), approved as one text.
+/// Only "archive" is still checked: the setup runner, the issue command and the default tabs went
+/// in the 2026-11-19 slim-down.
 pub const TRUST_KINDS: [&str; 4] = ["setup", "archive", "issue", "tabs"];
 
 /// SAFE-025: one project's trust: the whole kolux.yaml, or each script's approved fingerprint.
@@ -491,7 +429,9 @@ pub fn trust_ask(store: &crate::state::Store, root: &Path, kind: &str, script: &
 }
 
 /// SAFE-025: approves this `kind` of script with exactly this text for the project at `root`, and
-/// with `always`, its whole kolux.yaml. An unreadable record is replaced.
+/// with `always`, its whole kolux.yaml. An unreadable record is replaced. Tests only: the prompt
+/// that granted trust went in the 2026-11-19 slim-down, and records it wrote are still honoured.
+#[cfg(test)]
 pub fn trust_grant(store: &crate::state::Store, root: &Path, kind: &str, script: &str, always: bool) -> Result<(), String> {
     kind_ok(kind)?;
     let project = trust_project(store, root)?;
@@ -516,148 +456,6 @@ pub fn trust_clear(store: &crate::state::Store, root: &Path) -> Result<(), Strin
     store.set(&format!("{TRUST_PREFIX}{}", p.id), "{}").map_err(|e| format!("Kolux could not stop trusting {} ({e})", p.name))
 }
 
-/// SAFE-025: Ok when the shared script may run; else why not, for the UI to show.
-fn require_trust(store: &std::sync::Mutex<crate::state::Store>, root: &Path, kind: &str, script: &str) -> Result<(), String> {
-    let store = store.lock().map_err(|_| "Kolux could not check this repository's trust, so its kolux.yaml scripts do not run".to_string())?;
-    match trust_ask(&store, root, kind, script)? {
-        None => Ok(()),
-        Some(ask) => Err(format!(
-            "The {} in kolux.yaml did not run: {}",
-            match kind {
-                "setup" => "setup script",
-                "archive" => "archive script",
-                "tabs" => "default tab commands",
-                _ => "issue command",
-            },
-            if ask.changed { "it changed since you trusted it" } else { "this repository's scripts are not trusted yet" }
-        )),
-    }
-}
-
-/// SAFE-025: the shared kolux.yaml script of `kind` that would run for the worktree at `wt` of the
-/// repository at `root`; None when the one that would run is the user's own, or there is none.
-fn shared_script(kind: &str, root: &Path, wt: &Path, local: Option<&str>, policy: Option<&str>) -> Option<String> {
-    shared_script_on(kind, root, wt, local, policy, cfg!(windows), configured_shell().as_deref(), find_posix)
-}
-
-/// shared_script on the platform given (see setup_for_on).
-#[allow(clippy::too_many_arguments)]
-fn shared_script_on(kind: &str, root: &Path, wt: &Path, local: Option<&str>, policy: Option<&str>, windows: bool, configured: Option<&Path>, find: impl Fn(&str) -> Option<PathBuf>) -> Option<String> {
-    let yaml = || std::fs::read_to_string(wt.join(crate::include::CONFIG_FILE)).ok();
-    match kind {
-        // FIX-2: the question is asked only over a script that would run here; a refused join, a join
-        // cmd would misread or a #! shell this PC lacks runs nothing, so nothing is asked (setup_for_on agrees)
-        "setup" => pick_parts(local, yaml().and_then(|t| setup_script(&t)), policy).filter(|p| p.refused.is_none() && setup_line(&p.script, windows, configured, find).is_ok()).and_then(|p| p.shared),
-        // T-715: likewise an archive script this PC cannot start is skipped by run_archive, so not asked about
-        "archive" => yaml().and_then(|y| scripts_entry(&y, "archive")).filter(|s| setup_line(s, windows, configured, find).is_ok()),
-        "issue" => issue_command(root, wt).filter(|(_, s)| *s).map(|(c, _)| c),
-        // PROJ-034: the default tabs' commands, asked as one text (see `shared_tabs`)
-        "tabs" => shared_tabs(root, wt).ok().and_then(|tabs| tabs_trust_text(&tabs)),
-        _ => None,
-    }
-}
-
-/// SAFE-025 / STAT-056: what the trust prompt must ask before the `kind` script runs for the
-/// worktree at `path` (`root` is the repository's main folder for the issue command; `local` and
-/// `policy` as workspace_setup takes them); None when nothing shared would run or it is trusted.
-#[tauri::command(async)]
-pub fn script_trust_needed(store: StoreState<'_>, path: String, kind: String, root: Option<String>, local: Option<String>, policy: Option<String>) -> Result<Option<TrustAsk>, String> {
-    kind_ok(&kind)?;
-    let wt = Path::new(&path);
-    let root = root.map(PathBuf::from).unwrap_or_else(|| main_folder(wt));
-    let (local, policy) = setup_inputs(&store, &path, local, policy);
-    // git runs (the issue override check) before the store is locked
-    let Some(script) = shared_script(&kind, &root, wt, local.as_deref(), policy.as_deref()) else { return Ok(None) };
-    let store = store.lock().map_err(|_| "Kolux could not check this repository's trust, so its kolux.yaml scripts do not run".to_string())?;
-    trust_ask(&store, &root, &kind, &script)
-}
-
-/// SAFE-025: the user chose Run hooks on the prompt for `script` (the text it showed).
-#[tauri::command(async)]
-pub fn script_trust_grant(store: StoreState<'_>, path: String, kind: String, script: String, always: bool, root: Option<String>) -> Result<(), String> {
-    let root = root.map(PathBuf::from).unwrap_or_else(|| main_folder(Path::new(&path)));
-    let store = store.lock().map_err(|_| "Kolux could not save the trust".to_string())?;
-    trust_grant(&store, &root, &kind, &script, always)
-}
-
-/// PROJ-036 / COMPAT 5.6: the per-user issue command, a file in the main folder's .kolux folder
-/// that git does not track; its whole text is the command. It wins over kolux.yaml's. A tracked
-/// one, or one in a worktree (which only holds what the branch committed), is anyone's text and
-/// never counts as the user's own.
-pub const ISSUE_OVERRIDE: &str = ".kolux/issue-command";
-/// PROJ-036: kolux.yaml's shared issue command key (COMPAT 5.6).
-pub const ISSUE_KEY: &str = "issueCommand";
-
-/// PROJ-036: the issue command for a workspace at `worktree` of the repository at `root`, and
-/// whether it is the shared one: the local override in the main folder, while git does not track
-/// it, wins; else `issueCommand` from the worktree's kolux.yaml, else the main folder's.
-pub fn issue_command(root: &Path, worktree: &Path) -> Option<(String, bool)> {
-    let read = |p: PathBuf| std::fs::read_to_string(p).ok().map(|t| t.trim_start_matches('\u{feff}').trim().replace("\r\n", "\n")).filter(|t| !t.is_empty());
-    if let Some(local) = read(root.join(ISSUE_OVERRIDE)).filter(|_| untracked(root, ISSUE_OVERRIDE)) {
-        return Some((local, false));
-    }
-    [worktree, root].iter().find_map(|d| std::fs::read_to_string(d.join(crate::include::CONFIG_FILE)).ok().and_then(|y| top_entry(&y, ISSUE_KEY))).map(|c| (c, true))
-}
-
-/// Whether git, asked in `repo`, tracks nothing at `rel` in any capitals (NTFS opens a committed
-/// `.KOLUX/Issue-Command` through the lower-case path, so the pathspec ignores case), and no part of
-/// `rel` is a link (git does not look through a symlinked folder, so a link could read tracked text
-/// through an untracked path); false when git cannot tell (not a repository, no git), so an unproven
-/// file never counts as the user's own.
-fn untracked(repo: &Path, rel: &str) -> bool {
-    let mut at = repo.to_path_buf();
-    for part in rel.split('/') {
-        at.push(part);
-        if std::fs::symlink_metadata(&at).map_or(true, |m| m.file_type().is_symlink()) {
-            return false;
-        }
-    }
-    let spec = format!(":(icase){rel}");
-    matches!(crate::git::run(&["ls-files", "--", &spec], Some(repo)), Ok(out) if out.is_empty())
-}
-
-/// PROJ-036: the issue filled into the command: `{{issue}}` becomes its number and `{{issueUrl}}`
-/// its address (only an address of plain URL characters; anything else becomes empty, so nothing
-/// from GitHub can reach the shell as code); a command with neither gets the number as its last
-/// word. The issue's title is never put in: anyone can write it.
-pub fn fill_issue(command: &str, number: u64, url: &str) -> String {
-    let safe = url.starts_with("https://") && url.chars().all(|c| c.is_ascii_alphanumeric() || "-._~:/".contains(c));
-    let url = if safe { url } else { "" };
-    if command.contains("{{issue}}") || command.contains("{{issueUrl}}") {
-        command.replace("{{issueUrl}}", url).replace("{{issue}}", &number.to_string())
-    } else {
-        format!("{} {number}", command.trim_end())
-    }
-}
-
-/// PROJ-036: what runs the issue command, and where it came from (a shared one needs the
-/// repository's trust first, SAFE-025).
-#[derive(serde::Serialize, Debug, PartialEq, Clone)]
-pub struct IssueRun {
-    pub line: SetupLine,
-    pub shared: bool,
-    pub command: String,
-}
-
-/// PROJ-036: the issue command for issue `number` in the new workspace at `path` of the
-/// repository at `root`; None when the project has none; an error when it cannot run as written.
-#[tauri::command(async)]
-pub fn workspace_issue_command(store: StoreState<'_>, root: String, path: String, number: u64, url: String) -> Result<Option<IssueRun>, String> {
-    issue_run(&root, &path, number, &url, &|root, kind, script| require_trust(&store, root, kind, script))
-}
-
-/// PROJ-036: workspace_issue_command's run, with `trust` asked (after git, so the store is not
-/// held while it runs) before a shared command is used (SAFE-025).
-fn issue_run(root: &str, path: &str, number: u64, url: &str, trust: Gate<'_>) -> Result<Option<IssueRun>, String> {
-    let Some((command, shared)) = issue_command(Path::new(root), Path::new(path)) else { return Ok(None) };
-    if shared {
-        trust(Path::new(root), "issue", &command)?;
-    }
-    let configured = crate::pty::auto_shells(crate::agents::find_program, std::env::var_os("ComSpec").map(PathBuf::from)).into_iter().next().map(|(p, _)| p);
-    let line = setup_line(&fill_issue(&command, number, url), cfg!(windows), configured.as_deref(), find_posix).map_err(|e| e.replacen("The setup script", "The issue command", 1))?;
-    Ok(Some(IssueRun { line, shared, command }))
-}
-
 /// VIEW-112: a config file is read only up to this size; a larger one is refused before parsing.
 const IMPORT_MAX: u64 = 64 * 1024;
 
@@ -668,7 +466,7 @@ const IMPORT_MAX: u64 = 64 * 1024;
 const IMPORT_FILES: [&str; 2] = ["conductor.json", ".codex/environments/environment.toml"];
 
 /// VIEW-112: what one other tool's file offers, or why it was refused.
-#[derive(serde::Serialize, Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SetupImport {
     pub file: String,
     pub setup: Option<String>,
@@ -746,70 +544,13 @@ pub fn setup_imports(root: &Path) -> Vec<SetupImport> {
     out
 }
 
-/// VIEW-112: `yaml` with `scripts.setup` and `scripts.archive` added as block scalars, under the
-/// file's top-level `scripts:` block or a new one. A `scripts` entry written another way (inline)
-/// is refused rather than rewritten.
-pub fn import_into(yaml: &str, setup: Option<&str>, archive: Option<&str>) -> Result<String, String> {
-    let crlf = yaml.contains("\r\n");
-    let text = yaml.replace("\r\n", "\n");
-    let lines: Vec<&str> = text.lines().collect();
-    let top = lines.iter().position(|l| l.starts_with("scripts:") || l.starts_with("scripts :"));
-    let child = top
-        .and_then(|i| lines[i + 1..].iter().find(|l| !l.trim().is_empty() && !l.trim_start().starts_with('#')))
-        .map(|l| l.len() - l.trim_start().len())
-        .filter(|&n| n > 0)
-        .unwrap_or(2);
-    let pad = " ".repeat(child);
-    let mut block = String::new();
-    for (key, script) in [("setup", setup), ("archive", archive)] {
-        let Some(script) = script else { continue };
-        block.push_str(&format!("{pad}{key}: |\n"));
-        for l in script.lines() {
-            if l.is_empty() {
-                block.push('\n');
-            } else {
-                block.push_str(&format!("{pad}  {l}\n"));
-            }
-        }
-    }
-    let out = match top {
-        Some(i) if lines[i].trim_end() != "scripts:" => return Err(format!("{}'s scripts entry is not a plain block; add the commands there by hand", crate::include::CONFIG_FILE)),
-        Some(i) => {
-            let mut v: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
-            v.insert(i + 1, block.trim_end_matches('\n').to_string());
-            v.join("\n") + "\n"
-        }
-        None if text.trim().is_empty() => format!("scripts:\n{block}"),
-        None => format!("{}\nscripts:\n{block}", text.trim_end_matches('\n')),
-    };
-    Ok(if crlf { out.replace('\n', "\r\n") } else { out })
-}
-
-/// VIEW-112: what other tools' setup files in the project at `path` offer.
-#[tauri::command(async)]
-pub fn setup_imports_list(path: String) -> Vec<SetupImport> {
-    setup_imports(Path::new(&path))
-}
-
-/// VIEW-112: takes `file`'s offer into the kolux.yaml at `path`, read again here so only what the
-/// file says is written.
-#[tauri::command(async)]
-pub fn setup_import(path: String, file: String) -> Result<(), String> {
-    let root = Path::new(&path);
-    let offer = setup_imports(root).into_iter().find(|o| o.file == file && o.refused.is_none()).ok_or_else(|| format!("{file} has nothing left to import"))?;
-    let target = root.join(crate::include::CONFIG_FILE);
-    let yaml = std::fs::read_to_string(&target).unwrap_or_default();
-    let next = import_into(&yaml, offer.setup.as_deref(), offer.teardown.as_deref())?;
-    std::fs::write(&target, next).map_err(|e| format!("{} could not be written: {e}", crate::include::CONFIG_FILE))
-}
-
 // ---- PROJ-035: the sidebar card that suggests adding a setup script
 //
 // For a project with no setup script in effect, `suggest` says what to offer: the install command of
 // the package manager it declares, the setup another worktree tool's file holds (with the fields that
 // cannot come along), or an error when kolux.yaml cannot be read. Saving puts the script in Kolux's
-// own settings for the repository (the local setup `workspace_setup` already prefers), so the
-// suggestion ends by itself; dismissing is remembered per project.
+// own settings for the repository (its local setup), so the suggestion ends by itself; dismissing
+// is remembered per project.
 
 const LOCAL_KEY: &str = "localSetups";
 const DISMISSED_KEY: &str = "setupCardDismissed";
@@ -841,18 +582,6 @@ fn effective_policy(store: &crate::state::Store, asked: Option<String>) -> Optio
 /// choice (SET-033), else the stored global setting.
 fn policy_for(store: &crate::state::Store, asked: Option<String>, root: &Path) -> Option<String> {
     effective_policy(store, asked.or_else(|| repo_policy(store, root)))
-}
-
-/// What the runner and the trust check both start from: the repository's local setup and the policy
-/// in force. A setup saved from the sidebar card is the repository's local setup (PROJ-035).
-fn setup_inputs(store: &StoreState<'_>, path: &str, local: Option<String>, policy: Option<String>) -> (Option<String>, Option<String>) {
-    match store.lock() {
-        Ok(s) => {
-            let root = main_folder(Path::new(path));
-            (local.or_else(|| local_setup(&s, &root)), policy_for(&s, policy, &root))
-        }
-        Err(_) => (local, policy),
-    }
 }
 
 /// A policy that takes only kolux.yaml's script: a local setup is never run under it.
@@ -1005,7 +734,8 @@ pub fn repo_setup(store: &crate::state::Store, root: &Path, shared: (Option<Stri
     repo_setup_on(store, root, shared, cfg!(windows), configured_shell().as_deref(), find_posix)
 }
 
-/// repo_setup on the platform given (see setup_for_on), so `run_error` can be checked anywhere.
+/// repo_setup on the platform given (`windows`, the `configured` shell and the POSIX shell finder),
+/// so `run_error` can be checked anywhere.
 fn repo_setup_on(store: &crate::state::Store, root: &Path, shared: (Option<String>, Option<String>), windows: bool, configured: Option<&Path>, find: impl Fn(&str) -> Option<PathBuf>) -> RepoSetup {
     let local = local_setup(store, root);
     let policy = repo_policy(store, root);
@@ -1295,246 +1025,9 @@ pub fn setup_suggestion_dismiss(store: StoreState<'_>, project_id: String) -> Re
     dismiss_card(&*store.lock().map_err(|e| e.to_string())?, &project_id)
 }
 
-// ---- PROJ-034: the default tabs of kolux.yaml (T-149)
-
-/// PROJ-034: kolux.yaml is read for its shared tabs only up to this size; a bigger file is refused unread.
-const SHARED_MAX: u64 = 64 * 1024;
-/// PROJ-034: at most this many default tabs; later ones are dropped.
-const TABS_MAX: usize = 12;
-/// PROJ-034: a tab title or command longer than this is dropped (the tab keeps its other fields).
-const TAB_TITLE_MAX: usize = 60;
-const TAB_COMMAND_MAX: usize = 2000;
-/// PROJ-034: a file using more aliases than this is refused; aliases are never expanded here.
-const ALIASES_MAX: usize = 16;
-
-/// PROJ-034 / COMPAT 5.6: one entry of `defaultTabs`; an entry with none of the three is dropped.
-#[derive(serde::Serialize, Debug, PartialEq, Clone, Default)]
-pub struct SharedTab {
-    pub title: Option<String>,
-    pub color: Option<String>,
-    pub command: Option<String>,
-}
-
-fn is_alias(t: &str) -> bool {
-    t.len() > 1 && t.starts_with('*') && t[1..].chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-}
-
-/// A YAML scalar: trimmed, quotes removed, an anchor skipped and an alias left unexpanded (None).
-fn tab_scalar(raw: &str) -> Option<String> {
-    let t = raw.trim();
-    let t = if t.starts_with('&') { t.split_once(char::is_whitespace).map(|x| x.1.trim()).unwrap_or("") } else { t };
-    if is_alias(t) {
-        return None;
-    }
-    let quoted = |r: &str, q: char, escapes: bool| {
-        let (mut out, mut it) = (String::new(), r.chars().peekable());
-        while let Some(c) = it.next() {
-            if escapes && c == '\\' {
-                match it.next() {
-                    Some('n') => out.push('\n'),
-                    Some('t') => out.push('\t'),
-                    Some(o) => out.push(o),
-                    None => {}
-                }
-            } else if c == q {
-                if !escapes && it.peek() == Some(&q) {
-                    it.next();
-                    out.push(q);
-                } else {
-                    break;
-                }
-            } else {
-                out.push(c);
-            }
-        }
-        out
-    };
-    let v = if let Some(r) = t.strip_prefix('"') {
-        quoted(r, '"', true)
-    } else if let Some(r) = t.strip_prefix('\'') {
-        quoted(r, '\'', false)
-    } else {
-        t.split(" #").next().unwrap_or("").to_string()
-    };
-    Some(v.trim().to_string()).filter(|v| !v.is_empty())
-}
-
-/// `key: value` where the key is a plain word; None for any other text.
-fn tab_pair(s: &str) -> Option<(&str, &str)> {
-    let (k, v) = s.split_once(':')?;
-    (!k.is_empty() && k.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')).then_some((k, v))
-}
-
-/// The comma-separated parts of a one-line `{ a: b, c: "d, e" }`, commas inside quotes kept.
-fn flow_parts(inner: &str) -> Vec<String> {
-    let (mut parts, mut cur, mut quote) = (Vec::new(), String::new(), None::<char>);
-    for c in inner.chars() {
-        match (quote, c) {
-            (None, ',') => parts.push(std::mem::take(&mut cur)),
-            (None, '"' | '\'') => {
-                quote = Some(c);
-                cur.push(c);
-            }
-            (Some(q), _) if c == q => {
-                quote = None;
-                cur.push(c);
-            }
-            _ => cur.push(c),
-        }
-    }
-    parts.push(cur);
-    parts
-}
-
-fn valid_color(c: &str) -> bool {
-    c.strip_prefix('#').is_some_and(|h| (h.len() == 3 || h.len() == 6) && h.chars().all(|c| c.is_ascii_hexdigit()))
-}
-
-fn put_tab_field(tab: &mut SharedTab, key: &str, value: Option<String>) {
-    let value = value.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
-    match key {
-        "title" => tab.title = value.filter(|v| v.chars().count() <= TAB_TITLE_MAX),
-        "color" => tab.color = value.filter(|v| valid_color(v)),
-        "command" => tab.command = value.filter(|v| v.chars().count() <= TAB_COMMAND_MAX),
-        _ => {}
-    }
-}
-
-/// PROJ-034: kolux.yaml's `defaultTabs` (COMPAT 5.6), read by a small line scanner like the other
-/// keys. Err is why the file was refused outright (too big, or aliases out of control); then none of
-/// it applies. Values are trimmed, a colour is `#rgb` or `#rrggbb` or ignored, an entry with no title,
-/// colour or command is dropped, an over-long field is dropped, and only the first TABS_MAX stay.
-pub fn default_tabs(yaml: &str) -> Result<Vec<SharedTab>, String> {
-    if yaml.len() as u64 > SHARED_MAX {
-        return Err(format!("{} is larger than {} KB, so its shared settings are ignored", crate::include::CONFIG_FILE, SHARED_MAX / 1024));
-    }
-    let aliases = yaml.split(|c: char| c.is_whitespace() || ",[]{}".contains(c)).filter(|t| is_alias(t)).count();
-    if aliases > ALIASES_MAX {
-        return Err(format!("{} uses too many aliases, so its shared settings are ignored", crate::include::CONFIG_FILE));
-    }
-    let lines: Vec<&str> = yaml.trim_start_matches('\u{feff}').lines().map(|l| l.trim_end_matches('\r')).collect();
-    let indent = |l: &str| l.len() - l.trim_start().len();
-    let Some(at) = lines.iter().position(|l| indent(l) == 0 && l.starts_with("defaultTabs:")) else { return Ok(Vec::new()) };
-    let mut tabs: Vec<SharedTab> = Vec::new();
-    let mut cur: Option<SharedTab> = None;
-    let mut dash = 0;
-    let mut j = at + 1;
-    let finish = |cur: &mut Option<SharedTab>, tabs: &mut Vec<SharedTab>| {
-        if let Some(t) = cur.take().filter(|t| t.title.is_some() || t.color.is_some() || t.command.is_some()) {
-            if tabs.len() < TABS_MAX {
-                tabs.push(t);
-            }
-        }
-    };
-    while j < lines.len() {
-        let (line, t) = (lines[j], lines[j].trim());
-        j += 1;
-        if t.is_empty() || t.starts_with('#') {
-            continue;
-        }
-        let ind = indent(line);
-        if ind == 0 && !t.starts_with('-') {
-            break;
-        }
-        let pair = if let Some(rest) = t.strip_prefix('-') {
-            finish(&mut cur, &mut tabs);
-            cur = Some(SharedTab::default());
-            dash = ind;
-            let rest = rest.trim();
-            if let Some(inner) = rest.strip_prefix('{').and_then(|r| r.trim_end().strip_suffix('}')) {
-                let tab = cur.as_mut().unwrap();
-                for part in flow_parts(inner) {
-                    if let Some((k, v)) = tab_pair(part.trim()) {
-                        put_tab_field(tab, k, tab_scalar(v));
-                    }
-                }
-                continue;
-            }
-            tab_pair(rest)
-        } else {
-            tab_pair(t)
-        };
-        let (Some((key, value)), Some(tab)) = (pair, cur.as_mut()) else { continue };
-        let own = if t.starts_with('-') { dash } else { ind.max(dash) };
-        let v = value.trim();
-        let scalar = if v.starts_with('|') || v.starts_with('>') {
-            let body: Vec<&str> = lines[j..].iter().take_while(|l| l.trim().is_empty() || indent(l) > own).copied().collect();
-            j += body.len();
-            let cut = body.iter().filter(|l| !l.trim().is_empty()).map(|l| indent(l)).min().unwrap_or(0);
-            let kept: Vec<&str> = body.iter().map(|l| l.get(cut..).unwrap_or("")).collect();
-            Some(if v.starts_with('>') { kept.iter().map(|l| l.trim()).filter(|l| !l.is_empty()).collect::<Vec<_>>().join(" ") } else { kept.join("\n").trim_end().to_string() })
-        } else {
-            tab_scalar(v)
-        };
-        put_tab_field(tab, key, scalar);
-    }
-    finish(&mut cur, &mut tabs);
-    Ok(tabs)
-}
-
-/// PROJ-034: the one text the "tabs" trust approves: every default tab command, a line each; None
-/// when no tab has a command (nothing would run, so nothing is asked).
-pub fn tabs_trust_text(tabs: &[SharedTab]) -> Option<String> {
-    let cmds: Vec<&str> = tabs.iter().filter_map(|t| t.command.as_deref()).collect();
-    (!cmds.is_empty()).then(|| cmds.join("\n"))
-}
-
-/// PROJ-034: the default tabs for a workspace at `wt` of the repository at `root`: the worktree's own
-/// kolux.yaml, else the main folder's. A missing file has none; Err is why a file was refused.
-fn shared_tabs(root: &Path, wt: &Path) -> Result<Vec<SharedTab>, String> {
-    for d in [wt, root] {
-        match read_capped(&d.join(crate::include::CONFIG_FILE), SHARED_MAX) {
-            Ok(text) => return default_tabs(&text),
-            Err(e) if e.kind() == std::io::ErrorKind::InvalidData => return Err(format!("{} is larger than {} KB, so its shared settings are ignored", crate::include::CONFIG_FILE, SHARED_MAX / 1024)),
-            Err(_) => {}
-        }
-    }
-    Ok(Vec::new())
-}
-
-/// PROJ-034: what a new workspace opens as tabs, and whether the repository's trust must be asked first.
-#[derive(serde::Serialize, Debug, PartialEq, Clone)]
-pub struct DefaultTabs {
-    /// The tabs to open; while `ask` is set their commands are left out.
-    pub tabs: Vec<SharedTab>,
-    pub ask: Option<TrustAsk>,
-    /// Why the file's shared settings were ignored, when it was refused.
-    pub refused: Option<String>,
-}
-
-/// PROJ-034: the default tabs for the new workspace at `path` of the repository at `root`; with
-/// commands only once the "tabs" trust is given (SAFE-025), else `ask` carries the prompt.
-#[tauri::command(async)]
-pub fn workspace_default_tabs(store: StoreState<'_>, root: String, path: String) -> Result<DefaultTabs, String> {
-    default_tabs_run(&root, &path, &|root, text| {
-        let store = store.lock().map_err(|_| "Kolux could not check this repository's trust, so its kolux.yaml tab commands do not run".to_string())?;
-        trust_ask(&store, root, "tabs", text)
-    })
-}
-
-/// default_tabs' trust question: the repository's main folder and the commands' text.
-type TabsAsk<'a> = &'a dyn Fn(&Path, &str) -> Result<Option<TrustAsk>, String>;
-
-fn default_tabs_run(root: &str, path: &str, ask: TabsAsk<'_>) -> Result<DefaultTabs, String> {
-    let tabs = match shared_tabs(Path::new(root), Path::new(path)) {
-        Ok(tabs) => tabs,
-        Err(why) => return Ok(DefaultTabs { tabs: Vec::new(), ask: None, refused: Some(why) }),
-    };
-    let Some(text) = tabs_trust_text(&tabs) else { return Ok(DefaultTabs { tabs, ask: None, refused: None }) };
-    Ok(match ask(Path::new(root), &text)? {
-        None => DefaultTabs { tabs, ask: None, refused: None },
-        Some(a) => DefaultTabs { tabs: tabs.into_iter().map(|t| SharedTab { command: None, ..t }).collect(), ask: Some(a), refused: None },
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A trust gate that lets everything run, for tests about something else.
-    fn open(_: &Path, _: &str, _: &str) -> Result<(), String> {
-        Ok(())
-    }
 
     #[test]
     fn proj033_the_setup_script_is_read_from_kolux_yaml() {
@@ -1624,8 +1117,6 @@ mod tests {
         assert!(got.iter().all(|o| o.setup.is_none() && o.teardown.is_none()));
         assert!(got[0].refused.as_deref().unwrap().contains("larger than 64 KB"));
         assert!(got[1].refused.as_deref().unwrap().contains("not valid TOML"));
-        assert!(setup_import(dir.to_string_lossy().into_owned(), "conductor.json".into()).is_err(), "a refused file cannot be imported");
-        assert!(!dir.join("kolux.yaml").exists());
         let _ = std::fs::remove_dir_all(&dir);
         for bad in [&b"{\"scripts\": [1]}"[..], b"[1,2]", b"{\"scripts\":", b"\xff\xfe{}"] {
             let dir = tree(&[("conductor.json", bad)]);
@@ -1633,71 +1124,6 @@ mod tests {
             assert_eq!(got.len(), 1, "{bad:?}");
             assert!(got[0].refused.is_some() && got[0].setup.is_none(), "{bad:?}");
             let _ = std::fs::remove_dir_all(&dir);
-        }
-    }
-
-    #[test]
-    fn view112_an_import_lands_in_kolux_yaml_where_setup_reads_it() {
-        let y = import_into("", Some("#!/bin/sh\npnpm i\n\nmake"), Some("./a.sh")).unwrap();
-        assert_eq!(y, "scripts:\n  setup: |\n    #!/bin/sh\n    pnpm i\n\n    make\n  archive: |\n    ./a.sh\n");
-        assert_eq!(setup_script(&y).as_deref(), Some("#!/bin/sh\npnpm i\n\nmake"));
-        assert_eq!(scripts_entry(&y, "archive").as_deref(), Some("./a.sh"));
-        let y = import_into("worktree:\r\n  sharedDirectories:\r\n    - node_modules\r\nscripts:\r\n    issueCommand: x\r\n", Some("pnpm i"), None).unwrap();
-        assert_eq!(y, "worktree:\r\n  sharedDirectories:\r\n    - node_modules\r\nscripts:\r\n    setup: |\r\n      pnpm i\r\n    issueCommand: x\r\n");
-        assert_eq!(setup_script(&y).as_deref(), Some("pnpm i"));
-        let y = import_into("defaultTabs: []\n", None, Some("rm -rf x")).unwrap();
-        assert_eq!(scripts_entry(&y, "archive").as_deref(), Some("rm -rf x"));
-        assert!(y.starts_with("defaultTabs: []\nscripts:\n"));
-        assert!(import_into("scripts: {}\n", Some("x"), None).unwrap_err().contains("by hand"));
-        // the command writes the file in the project's folder
-        let dir = tree(&[("conductor.json", b"{\"scripts\":{\"setup\":\"pnpm i\"}}")]);
-        setup_import(dir.to_string_lossy().into_owned(), "conductor.json".into()).unwrap();
-        assert_eq!(setup_script(&std::fs::read_to_string(dir.join("kolux.yaml")).unwrap()).as_deref(), Some("pnpm i"));
-        assert!(setup_imports(&dir).is_empty(), "nothing is offered twice");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn proj036_the_issue_command_is_kolux_yamls_top_level_entry() {
-        assert_eq!(top_entry("scripts:\n  setup: x\nissueCommand: 'claude \"fix #{{issue}}\"'\nnext: claude # a comment\n", ISSUE_KEY).as_deref(), Some("claude \"fix #{{issue}}\""));
-        assert_eq!(top_entry("issueCommand: |\r\n  #!/bin/sh\r\n  gh issue view {{issue}}\r\nnext: 1\r\n", ISSUE_KEY).as_deref(), Some("#!/bin/sh\ngh issue view {{issue}}"));
-        assert_eq!(top_entry("scripts:\n  issueCommand: nested\n", ISSUE_KEY), None, "only the top level counts");
-        assert_eq!(scripts_entry("issueCommand: top\nscripts:\n  setup: s\n", "issueCommand"), None);
-        assert_eq!(setup_script("issueCommand: x\nscripts:\n  setup: s\n").as_deref(), Some("s"), "setup still reads under scripts");
-        assert_eq!(top_entry("issueCommand: ''\n", ISSUE_KEY), None);
-        assert_eq!(top_entry("issueCommand: gh issue develop # a comment\n", ISSUE_KEY).as_deref(), Some("gh issue develop"));
-    }
-
-    #[test]
-    fn proj036_the_issue_is_filled_in_and_its_title_never_reaches_the_shell() {
-        let url = "https://github.com/o/r/issues/12";
-        assert_eq!(fill_issue("work {{issue}} at {{issueUrl}}", 12, url), "work 12 at https://github.com/o/r/issues/12");
-        assert_eq!(fill_issue("gh issue develop\n", 12, url), "gh issue develop 12", "no placeholder: the number goes last");
-        assert_eq!(fill_issue("open {{issueUrl}}", 12, "https://x/$(rm -rf ~)"), "open ", "an address with shell characters is dropped");
-        assert_eq!(fill_issue("open {{issueUrl}}", 12, "file:///c/x"), "open ");
-    }
-
-    #[test]
-    fn proj036_a_create_from_issue_12_runs_the_command_and_the_local_one_wins() {
-        let root = tree(&[("kolux.yaml", b"issueCommand: echo shared {{issue}}\n")]);
-        crate::git::run(&["init", "-q"], Some(&root)).unwrap();
-        let wt = tree(&[("kolux.yaml", b"issueCommand: echo worktree {{issue}}\n")]);
-        let run = |r: &PathBuf, w: &PathBuf| issue_run(&r.to_string_lossy(), &w.to_string_lossy(), 12, "https://github.com/o/r/issues/12", &open).unwrap();
-        let got = run(&root, &wt).expect("a shared issue command");
-        assert!(got.shared);
-        assert_eq!(got.line.script, "echo worktree 12", "the worktree's own kolux.yaml is read first");
-        assert!(got.line.args.last().unwrap().contains("echo worktree 12"));
-        let bare = tree(&[("README.md", b"x")]);
-        assert_eq!(run(&root, &bare).unwrap().line.script, "echo shared 12", "else the main folder's");
-        std::fs::create_dir_all(root.join(".kolux")).unwrap();
-        std::fs::write(root.join(ISSUE_OVERRIDE), "\u{feff}echo local {{issue}}\r\n").unwrap();
-        let got = run(&root, &wt).unwrap();
-        assert!(!got.shared, "the local override wins over both shared ones");
-        assert_eq!(got.line.script, "echo local 12");
-        assert_eq!(got.command, "echo local {{issue}}");
-        assert_eq!(run(&bare, &bare), None, "no issue command, nothing runs");
-        for d in [root, wt, bare] {
-            let _ = std::fs::remove_dir_all(d);
         }
     }
 
@@ -1710,13 +1136,6 @@ mod tests {
         assert_eq!(pick_setup(Some("make"), None, Some("shared")), None, "shared-first never falls back to local");
         assert_eq!(pick_setup(Some("  "), shared(), None), Some(("pnpm i".into(), true)), "a blank local script is none");
         assert_eq!(pick_setup(None, None, None), None);
-        // the setup command reads kolux.yaml inside the worktree being created
-        let wt = tree(&[("kolux.yaml", b"scripts:\n  setup: echo shared\n")]);
-        let p = wt.to_string_lossy().into_owned();
-        assert_eq!(setup_for(&p, None, None, &open).unwrap().unwrap().script, "echo shared");
-        assert_eq!(setup_for(&p, Some("echo local".into()), None, &open).unwrap().unwrap().script, "echo local");
-        assert_eq!(setup_for(&p, Some("echo local".into()), Some("shared".into()), &open).unwrap().unwrap().script, "echo shared");
-        let _ = std::fs::remove_dir_all(wt);
     }
 
     #[test]
@@ -1738,11 +1157,6 @@ mod tests {
         assert_eq!(main_folder(&root), root, "a main folder is its own root");
         let vars = script_vars(Path::new("C:/repos/app"), Path::new("C:/ws/brave-otter"));
         assert_eq!(vars.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>(), ["KOLUX_ROOT_PATH=C:/repos/app", "KOLUX_WORKTREE_PATH=C:/ws/brave-otter", "KOLUX_WORKSPACE_NAME=brave-otter"]);
-        let sh = with_env(SetupLine { program: "C:/Git/bin/bash.exe".into(), args: vec!["-e".into(), "-c".into(), "#!/bin/bash -e\nmake".into()], script: "#!/bin/bash -e\nmake".into() }, &[("KOLUX_ROOT_PATH", "C:/it's".into())], &CONDA_VARS);
-        assert_eq!(sh.args, ["-e", "-c", "export KOLUX_ROOT_PATH='C:/it'\\''s'\nunset CONDA_PREFIX CONDA_DEFAULT_ENV CONDA_SHLVL CONDA_PROMPT_MODIFIER\n#!/bin/bash -e\nmake"]);
-        assert_eq!(sh.script, "#!/bin/bash -e\nmake", "the script itself is unchanged");
-        let cmd = with_env(SetupLine { program: "cmd.exe".into(), args: vec!["/d".into(), "/s".into(), "/c".into(), "pnpm i".into()], script: "pnpm i".into() }, &[("KOLUX_ROOT_PATH", "C:/Program Files (x86)/a".into()), ("KOLUX_WORKSPACE_NAME", "a&b".into())], &["CONDA_PREFIX"]);
-        assert_eq!(cmd.args[3], "set KOLUX_ROOT_PATH=C:/Program Files (x86)/a&& set CONDA_PREFIX=&& pnpm i", "a value cmd would misread is left out");
         assert!(conda_partial(Some("C:\\conda\\envs\\x"), "C:\\Windows;C:\\conda\\condabin"), "named but not on the path");
         assert!(!conda_partial(Some("C:\\conda\\envs\\x"), "C:\\conda\\envs\\x\\Scripts;C:\\Windows"), "fully active");
         assert!(!conda_partial(None, "C:\\Windows"));
@@ -1762,9 +1176,6 @@ mod tests {
         assert!(run_archive(&wt, &wt, std::time::Duration::from_millis(300), &|_| Ok(true)).unwrap_err().contains("stopped after"));
         // T-715: one this PC cannot start runs nothing, so it is neither asked about nor a reason to keep the workspace
         std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: |\n    #!/usr/bin/t715-no-such-shell\n    echo x>never.txt\n").unwrap();
-        let none = |_: &str| None::<PathBuf>;
-        assert_eq!(shared_script_on("archive", &wt, &wt, None, None, true, None, none), None, "no trust question for it");
-        assert!(shared_script_on("archive", &wt, &wt, None, None, false, None, none).is_some(), "where it can start, it is asked about");
         if cfg!(windows) {
             assert!(!run_archive(&wt, &wt, std::time::Duration::from_secs(60), &|_| panic!("asked about a script that cannot start")).unwrap());
             assert!(!wt.join("never.txt").exists());
@@ -1798,72 +1209,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(wt);
     }
 
-    #[test]
-    fn proj036_a_committed_issue_override_never_counts_as_the_users_own() {
-        let git = |args: &[&str], dir: &Path| crate::git::run(args, Some(dir)).unwrap();
-        let main = tree(&[("kolux.yaml", b"issueCommand: echo shared {{issue}}\n"), (".kolux/issue-command", b"echo committed {{issue}}\n")]);
-        git(&["init", "-q"], &main);
-        git(&["add", "-A"], &main);
-        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x"], &main);
-        let wt = main.with_file_name(format!("{}-wt", main.file_name().unwrap().to_string_lossy()));
-        git(&["worktree", "add", "-q", "-b", "issue-12", &wt.to_string_lossy()], &main);
-        assert!(wt.join(ISSUE_OVERRIDE).exists(), "the branch carries the committed override");
-        assert_eq!(issue_command(&main, &wt), Some(("echo shared {{issue}}".into(), true)), "a committed override is ignored in the main folder and the worktree");
-        std::fs::remove_file(wt.join("kolux.yaml")).unwrap();
-        std::fs::remove_file(main.join("kolux.yaml")).unwrap();
-        assert_eq!(issue_command(&main, &wt), None, "with no shared command, a committed override still never runs");
-        git(&["rm", "-q", "--cached", ISSUE_OVERRIDE], &main);
-        assert_eq!(issue_command(&main, &wt), Some(("echo committed {{issue}}".into(), false)), "once git stops tracking it in the main folder, it is the user's own");
-        assert_eq!(issue_command(&wt, &wt), None, "the worktree's copy is never read as the user's own");
-        let _ = git(&["worktree", "remove", "--force", &wt.to_string_lossy()], &main);
-        let bare = tree(&[(".kolux/issue-command", b"echo x\n")]);
-        assert_eq!(issue_command(&bare, &bare), None, "outside a repository git cannot prove it untracked");
-        // council FIX-1: a committed override in other capitals, which a case-blind disk opens
-        // through the lower-case path, is still tracked text
-        let caps = tree(&[(".KOLUX/Issue-Command", b"echo caps {{issue}}\n")]);
-        git(&["init", "-q"], &caps);
-        git(&["add", "-A"], &caps);
-        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x"], &caps);
-        let case_blind = caps.join(ISSUE_OVERRIDE).exists();
-        if case_blind {
-            assert_eq!(issue_command(&caps, &caps), None, "a committed .KOLUX/Issue-Command is never the user's own");
-        }
-        git(&["rm", "-q", "--cached", ".KOLUX/Issue-Command"], &caps);
-        if case_blind {
-            assert_eq!(issue_command(&caps, &caps), Some(("echo caps {{issue}}".into(), false)), "untracked in any capitals, it is the user's own");
-        }
-        assert!(case_blind || !cfg!(windows), "NTFS opens the file through the lower-case path");
-        for d in [main, wt, bare, caps] {
-            let _ = std::fs::remove_dir_all(d);
-        }
-    }
-
-    #[test]
-    fn proj036_an_override_reached_through_a_link_never_counts_as_the_users_own() {
-        let git = |args: &[&str], dir: &Path| crate::git::run(args, Some(dir)).unwrap();
-        let main = tree(&[("docs/issue-command", b"echo linked {{issue}}\n"), ("real/issue-command", b"echo real\n")]);
-        git(&["init", "-q"], &main);
-        git(&["add", "docs"], &main);
-        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x"], &main);
-        #[cfg(windows)]
-        let (dir_link, file_link) = (std::os::windows::fs::symlink_dir(main.join("docs"), main.join(".kolux")), |a: &Path, b: &Path| std::os::windows::fs::symlink_file(a, b));
-        #[cfg(not(windows))]
-        let (dir_link, file_link) = (std::os::unix::fs::symlink(main.join("docs"), main.join(".kolux")), |a: &Path, b: &Path| std::os::unix::fs::symlink(a, b));
-        if dir_link.is_err() {
-            eprintln!("symlinks need Developer Mode here; the link case was not exercised");
-        } else {
-            assert!(main.join(ISSUE_OVERRIDE).exists(), "the link reads the tracked text");
-            assert_eq!(issue_command(&main, &main), None, "a linked .kolux folder is refused");
-            std::fs::remove_dir(main.join(".kolux")).or_else(|_| std::fs::remove_file(main.join(".kolux"))).unwrap();
-            std::fs::create_dir(main.join(".kolux")).unwrap();
-            file_link(&main.join("real/issue-command"), &main.join(ISSUE_OVERRIDE)).unwrap();
-            assert_eq!(issue_command(&main, &main), None, "a linked issue-command file is refused");
-            std::fs::remove_file(main.join(ISSUE_OVERRIDE)).unwrap();
-            std::fs::write(main.join(ISSUE_OVERRIDE), "echo own\n").unwrap();
-            assert_eq!(issue_command(&main, &main), Some(("echo own".into(), false)), "a plain untracked file still counts");
-        }
-        let _ = std::fs::remove_dir_all(main);
-    }
     fn trust_store() -> (crate::state::Store, PathBuf, PathBuf) {
         let dir = tree(&[]);
         let root = tree(&[("kolux.yaml", b"scripts:\n  setup: echo shared\n  archive: echo bye\nissueCommand: work {{issue}}\n")]);
@@ -1960,101 +1305,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(root);
     }
 
-    fn tab(title: Option<&str>, color: Option<&str>, command: Option<&str>) -> SharedTab {
-        SharedTab { title: title.map(Into::into), color: color.map(Into::into), command: command.map(Into::into) }
-    }
-
-    #[test]
-    fn proj034_default_tabs_read_block_and_one_line_entries_trimmed() {
-        let y = "scripts:\n  setup: pnpm i\ndefaultTabs:\n  - title:   Dev  \n    color: \"#0af\"\n    command: pnpm dev # watch\n  - { title: Logs, command: \"tail -f a, b\", color: '#A1B2C3' }\n  - command: |\n      echo one\n      echo two\n  - title: Plain\nissueCommand: work\n";
-        assert_eq!(
-            default_tabs(y).unwrap(),
-            vec![tab(Some("Dev"), Some("#0af"), Some("pnpm dev")), tab(Some("Logs"), Some("#A1B2C3"), Some("tail -f a, b")), tab(None, None, Some("echo one\necho two")), tab(Some("Plain"), None, None)]
-        );
-        assert_eq!(top_entry(y, "issueCommand").as_deref(), Some("work"), "the key after the list still reads");
-        assert_eq!(default_tabs("defaultTabs:\n- title: A\n  command: ls\n").unwrap(), vec![tab(Some("A"), None, Some("ls"))], "a list at the key's own indent");
-        assert_eq!(default_tabs("defaultTabs: []\n").unwrap(), vec![]);
-        assert_eq!(default_tabs("scripts:\n  setup: x\n").unwrap(), vec![], "no key, no tabs");
-    }
-
-    #[test]
-    fn proj034_an_empty_file_means_no_shared_settings() {
-        for y in ["", "\n\n", "   \r\n# only a comment\n", "\u{feff}"] {
-            assert_eq!(default_tabs(y).unwrap(), vec![]);
-            assert_eq!(setup_script(y), None);
-            assert_eq!(scripts_entry(y, "archive"), None);
-            assert_eq!(top_entry(y, "issueCommand"), None);
-        }
-        let root = tree(&[("kolux.yaml", b"")]);
-        let p = root.to_string_lossy().into_owned();
-        let out = default_tabs_run(&p, &p, &|_, _| panic!("nothing to ask")).unwrap();
-        assert_eq!(out, DefaultTabs { tabs: vec![], ask: None, refused: None });
-        assert_eq!(shared_script("tabs", &root, &root, None, None), None);
-        let _ = std::fs::remove_dir_all(root);
-    }
-
-    #[test]
-    fn proj034_limits_drop_fields_lists_and_refuse_big_or_alias_heavy_files() {
-        let mut y = String::from("defaultTabs:\n  - color: red\n  - title: \"x\"\n    color: \"#12\"\n  - title: ok\n    color: \"#GGG\"\n");
-        assert_eq!(default_tabs(&y).unwrap(), vec![tab(Some("x"), None, None), tab(Some("ok"), None, None)], "an entry with nothing left is dropped, a bad colour ignored");
-        y = format!("defaultTabs:\n  - title: {}\n    command: ls\n  - command: \"{}\"\n", "t".repeat(61), "c".repeat(2001));
-        assert_eq!(default_tabs(&y).unwrap(), vec![tab(None, None, Some("ls"))], "an over-long field is dropped");
-        y = String::from("defaultTabs:\n");
-        for i in 0..20 {
-            y.push_str(&format!("  - title: t{i}\n"));
-        }
-        let tabs = default_tabs(&y).unwrap();
-        assert_eq!((tabs.len(), tabs[11].title.as_deref()), (12, Some("t11")), "beyond 12 tabs are dropped");
-        let big = format!("defaultTabs:\n  - title: a\n# {}\n", "x".repeat(64 * 1024));
-        assert!(default_tabs(&big).unwrap_err().contains("larger than 64 KB"));
-        let bomb = format!("base: &b ls\ndefaultTabs:\n{}", "  - command: *b\n".repeat(17));
-        assert!(default_tabs(&bomb).unwrap_err().contains("too many aliases"));
-        let few = "base: &b ls\ndefaultTabs:\n  - command: *b\n  - title: T\n    command: &c ls -l\n";
-        assert_eq!(default_tabs(few).unwrap(), vec![tab(Some("T"), None, Some("ls -l"))], "an alias is never expanded; an anchor's value is kept");
-    }
-
-    #[test]
-    fn proj034_tab_commands_ask_once_and_a_changed_command_asks_again() {
-        let (store, dir, root) = trust_store();
-        let yaml = |cmd: &str| format!("defaultTabs:\n  - title: Dev\n    command: {cmd}\n  - title: Notes\n");
-        std::fs::write(root.join("kolux.yaml"), yaml("pnpm dev")).unwrap();
-        let p = root.to_string_lossy().into_owned();
-        let ask = |r: &Path, t: &str| trust_ask(&store, r, "tabs", t);
-        let first = default_tabs_run(&p, &p, &ask).unwrap();
-        let q = first.ask.clone().expect("the first time it asks");
-        assert_eq!((q.kind.as_str(), q.script.as_str(), q.changed), ("tabs", "pnpm dev", false));
-        assert_eq!(first.tabs, vec![tab(Some("Dev"), None, None), tab(Some("Notes"), None, None)], "no command runs before the answer");
-        assert_eq!(shared_script("tabs", &root, &root, None, None).as_deref(), Some("pnpm dev"), "the prompt shows exactly the commands");
-        trust_grant(&store, &root, "tabs", &q.script, false).unwrap();
-        let second = default_tabs_run(&p, &p, &ask).unwrap();
-        assert_eq!((second.ask, second.tabs[0].command.as_deref()), (None, Some("pnpm dev")), "trusted: the command comes with the tab");
-        std::fs::write(root.join("kolux.yaml"), yaml("pnpm dev --host")).unwrap();
-        let third = default_tabs_run(&p, &p, &ask).unwrap();
-        assert_eq!(third.ask.map(|a| a.changed), Some(true), "a changed command asks again");
-        assert_eq!(third.tabs[0].command, None);
-        std::fs::write(root.join("kolux.yaml"), "defaultTabs:\n  - title: Only\n").unwrap();
-        assert_eq!(default_tabs_run(&p, &p, &|_, _| panic!("no command, no question")).unwrap().tabs, vec![tab(Some("Only"), None, None)]);
-        let stranger = tree(&[("kolux.yaml", b"defaultTabs:\n  - command: ls\n")]);
-        let sp = stranger.to_string_lossy().into_owned();
-        assert!(default_tabs_run(&sp, &sp, &ask).unwrap_err().contains("not one of your projects"), "trust that cannot be checked runs nothing");
-        std::fs::write(stranger.join("kolux.yaml"), format!("# {}", "x".repeat(70 * 1024))).unwrap();
-        assert!(default_tabs_run(&sp, &sp, &ask).unwrap().refused.unwrap().contains("larger than 64 KB"), "a too-big file is refused before it is parsed");
-        for d in [dir, root, stranger] {
-            let _ = std::fs::remove_dir_all(d);
-        }
-    }
-
-    #[test]
-    fn proj034_the_tabs_kind_is_a_known_script_and_covered_by_always_trust() {
-        let (store, dir, root) = trust_store();
-        assert!(trust_ask(&store, &root, "tabs", "ls").unwrap().is_some());
-        trust_grant(&store, &root, "issue", "work {{issue}}", true).unwrap();
-        assert_eq!(trust_ask(&store, &root, "tabs", "anything").unwrap(), None);
-        assert!(trust_ask(&store, &root, "vm", "x").is_err());
-        let _ = std::fs::remove_dir_all(dir);
-        let _ = std::fs::remove_dir_all(root);
-    }
-
     #[test]
     fn safe025_when_trust_cannot_be_checked_nothing_runs() {
         let (store, dir, root) = trust_store();
@@ -2070,49 +1320,6 @@ mod tests {
         for d in [dir, root, stranger] {
             let _ = std::fs::remove_dir_all(d);
         }
-    }
-
-    #[test]
-    fn safe025_the_runners_refuse_an_untrusted_shared_script_and_never_ask_for_the_users_own() {
-        let (store, dir, root) = trust_store();
-        let store = std::sync::Mutex::new(store);
-        let asked = std::cell::RefCell::new(Vec::new());
-        let gate = |r: &Path, kind: &str, script: &str| {
-            asked.borrow_mut().push((kind.to_string(), script.to_string()));
-            require_trust(&store, r, kind, script)
-        };
-        let p = root.to_string_lossy().into_owned();
-        let err = setup_for(&p, None, None, &gate).unwrap_err();
-        assert_eq!(err, "The setup script in kolux.yaml did not run: this repository's scripts are not trusted yet");
-        assert_eq!(setup_for(&p, Some("echo mine".into()), None, &gate).unwrap().unwrap().script, "echo mine", "a local script never asks");
-        assert_eq!(asked.borrow().len(), 1);
-        trust_grant(&store.lock().unwrap(), &root, "setup", "echo shared", false).unwrap();
-        assert_eq!(setup_for(&p, None, None, &gate).unwrap().unwrap().script, "echo shared", "once trusted it runs");
-        std::fs::write(root.join("kolux.yaml"), "scripts:\n  setup: echo changed\nissueCommand: work {{issue}}\n").unwrap();
-        assert!(setup_for(&p, None, None, &gate).unwrap_err().ends_with("it changed since you trusted it"));
-        crate::git::run(&["init", "-q"], Some(&root)).unwrap();
-        assert!(issue_run(&p, &p, 12, "https://github.com/o/r/issues/12", &gate).unwrap_err().starts_with("The issue command in kolux.yaml did not run"));
-        assert_eq!(asked.borrow().last().unwrap(), &("issue".to_string(), "work {{issue}}".to_string()));
-        std::fs::create_dir_all(root.join(".kolux")).unwrap();
-        std::fs::write(root.join(ISSUE_OVERRIDE), "mine {{issue}}\n").unwrap();
-        let n = asked.borrow().len();
-        assert!(!issue_run(&p, &p, 12, "https://github.com/o/r/issues/12", &gate).unwrap().unwrap().shared, "the user's own override never asks");
-        assert_eq!(asked.borrow().len(), n);
-        let _ = std::fs::remove_dir_all(dir);
-        let _ = std::fs::remove_dir_all(root);
-    }
-
-    #[test]
-    fn stat056_the_prompt_lists_exactly_the_shared_script_that_would_run() {
-        let root = tree(&[("kolux.yaml", b"scripts:\n  setup: echo shared\n  archive: echo bye\nissueCommand: work {{issue}}\n")]);
-        crate::git::run(&["init", "-q"], Some(&root)).unwrap();
-        assert_eq!(shared_script("setup", &root, &root, None, None).as_deref(), Some("echo shared"));
-        assert_eq!(shared_script("setup", &root, &root, Some("echo mine"), None), None, "the user's own setup wins and needs no trust");
-        assert_eq!(shared_script("setup", &root, &root, Some("echo mine"), Some("shared")).as_deref(), Some("echo shared"));
-        assert_eq!(shared_script("archive", &root, &root, None, None).as_deref(), Some("echo bye"));
-        assert_eq!(shared_script("issue", &root, &root, None, None).as_deref(), Some("work {{issue}}"));
-        assert_eq!(shared_script("vm", &root, &root, None, None), None);
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -2383,31 +1590,6 @@ mod tests {
         // the choices that were there before behave as they did
         assert_eq!(pick_setup(Some("echo mine"), shared(), None), Some(("echo mine".into(), false)));
         assert_eq!(pick_setup(Some("echo mine"), shared(), Some("both")), Some(("echo mine && echo shared".into(), true)));
-
-        // the runner asks about the shared text, never the joined script, and refuses when it is not trusted
-        let (store, dir, root) = trust_store();
-        let store = std::sync::Mutex::new(store);
-        let asked = std::cell::RefCell::new(Vec::new());
-        let gate = |r: &Path, kind: &str, script: &str| {
-            asked.borrow_mut().push((kind.to_string(), script.to_string()));
-            require_trust(&store, r, kind, script)
-        };
-        let p = root.to_string_lossy().into_owned();
-        let err = setup_for(&p, Some("echo mine".into()), Some("both".into()), &gate).unwrap_err();
-        assert_eq!(err, "The setup script in kolux.yaml did not run: this repository's scripts are not trusted yet");
-        assert_eq!(asked.borrow().as_slice(), [("setup".to_string(), "echo shared".to_string())]);
-        // the prompt lists the shared script that would run under both
-        assert_eq!(shared_script("setup", &root, &root, Some("echo mine"), Some("both")).as_deref(), Some("echo shared"));
-        trust_grant(&store.lock().unwrap(), &root, "setup", "echo shared", false).unwrap();
-        assert_eq!(setup_for(&p, Some("echo mine".into()), Some("both".into()), &gate).unwrap().unwrap().script, "echo mine && echo shared", "once trusted both run");
-        std::fs::write(root.join("kolux.yaml"), "scripts:\n  setup: echo changed\n").unwrap();
-        assert!(setup_for(&p, Some("echo mine".into()), Some("both".into()), &gate).unwrap_err().ends_with("it changed since you trusted it"), "an edited shared script asks again even next to the own one");
-        // the own script alone never asks, whatever kolux.yaml holds
-        let n = asked.borrow().len();
-        assert_eq!(setup_for(&p, Some("echo mine".into()), Some("local".into()), &gate).unwrap().unwrap().script, "echo mine");
-        assert_eq!(asked.borrow().len(), n);
-        let _ = std::fs::remove_dir_all(dir);
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -2430,22 +1612,6 @@ mod tests {
         assert!(join_both("#!/bin/sh\nmake", "#!/bin/sh\npnpm i").is_ok());
         assert!(join_both("make\nmake test", "#!/bin/sh\npnpm i").is_ok());
         assert!(join_both("make", "pnpm i").is_ok());
-
-        // the runner stops at the refusal before it asks about trust
-        let (store, dir, root) = trust_store();
-        std::fs::write(root.join("kolux.yaml"), "scripts:\n  setup: |\n    #!/bin/bash\n    pnpm i\n").unwrap();
-        let store = std::sync::Mutex::new(store);
-        let asked = std::cell::RefCell::new(0);
-        let gate = |r: &Path, kind: &str, script: &str| {
-            *asked.borrow_mut() += 1;
-            require_trust(&store, r, kind, script)
-        };
-        let err = setup_for(&root.to_string_lossy(), Some("#!/bin/sh\nmake".into()), Some("both".into()), &gate).unwrap_err();
-        assert!(err.contains("/bin/sh") && err.contains("/bin/bash"), "the runner says why: {err}");
-        assert_eq!(*asked.borrow(), 0, "an untrusted script is not even asked about when nothing would run");
-        assert_eq!(shared_script("setup", &root, &root, Some("#!/bin/sh\nmake"), Some("both")), None, "so the trust prompt does not appear for it either");
-        let _ = std::fs::remove_dir_all(dir);
-        let _ = std::fs::remove_dir_all(root);
     }
 
     /// A real POSIX sh for tests that run a joined script, or None (the test then says it skipped;
@@ -2537,43 +1703,6 @@ mod tests {
             assert!(status.success() && dir.join("shared-ran").is_file(), "kolux.yaml's setup ran after {own:?}: {script:?}");
         }
         let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn fix2_a_join_cmd_cannot_run_is_refused_before_the_trust_question() {
-        let none = |_: &str| None::<PathBuf>;
-        let (store, dir, root) = trust_store();
-        std::fs::write(root.join("kolux.yaml"), "scripts:\n  setup: pnpm i\n").unwrap();
-        let store = std::sync::Mutex::new(store);
-        let asked = std::cell::RefCell::new(0);
-        let gate = |r: &Path, kind: &str, script: &str| {
-            *asked.borrow_mut() += 1;
-            require_trust(&store, r, kind, script)
-        };
-        let p = root.to_string_lossy().into_owned();
-        // Windows with no POSIX shell: a two-line own setup joins by lines, which cmd cannot run
-        let err = setup_for_on(&p, Some("make\nmake test".into()), Some("both".into()), &gate, true, None, none).unwrap_err();
-        assert!(err.contains("cmd") && err.contains("more than one line"), "the runner says why: {err}");
-        assert_eq!(*asked.borrow(), 0, "nothing runs, so nothing is asked about trust");
-        assert_eq!(shared_script_on("setup", &root, &root, Some("make\nmake test"), Some("both"), true, None, none), None, "and the trust prompt does not appear either");
-        // a # in the own one-liner takes the line join, so cmd refuses that too, before any question
-        let err = setup_for_on(&p, Some("pnpm i # deps".into()), Some("both".into()), &gate, true, None, none).unwrap_err();
-        assert!(err.contains("more than one line"), "{err}");
-        assert_eq!(*asked.borrow(), 0);
-        // a #! shell this PC does not have: refused before the question as well
-        std::fs::write(root.join("kolux.yaml"), "scripts:\n  setup: |\n    #!/bin/bash\n    pnpm i\n").unwrap();
-        let err = setup_for_on(&p, None, Some("shared".into()), &gate, true, None, none).unwrap_err();
-        assert!(err.contains("bash") && err.contains("not found"), "{err}");
-        assert_eq!(*asked.borrow(), 0);
-        assert_eq!(shared_script_on("setup", &root, &root, None, Some("shared"), true, None, none), None);
-        // where the joined script can run, the question is asked, over kolux.yaml's text alone
-        std::fs::write(root.join("kolux.yaml"), "scripts:\n  setup: pnpm i\n").unwrap();
-        let err = setup_for_on(&p, Some("make\nmake test".into()), Some("both".into()), &gate, false, None, none).unwrap_err();
-        assert!(err.ends_with("this repository's scripts are not trusted yet"), "{err}");
-        assert_eq!(*asked.borrow(), 1);
-        assert_eq!(shared_script_on("setup", &root, &root, Some("make\nmake test"), Some("both"), false, None, none).as_deref(), Some("pnpm i"));
-        let _ = std::fs::remove_dir_all(dir);
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

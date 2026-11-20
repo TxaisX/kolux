@@ -1,34 +1,32 @@
-// C13-R1-01: Open in Code and Review changes must leave a full page behind.
+// C13-R1-01: Open in Code and Review changes bring up the Terminals screen.
 import { expect, test, vi } from "vitest";
 import type { WindowState } from "../shell/windowStore";
 import type { WindowLate } from "../shell/windowLate";
 import { paneActions } from "./paneActions";
 
 function state() {
-  const setPage = vi.fn();
   const setScreen = vi.fn();
   const setActiveDir = vi.fn();
   const setFocused = vi.fn();
   const setPanes = vi.fn();
   const pane = { key: 5, cwd: "C:\\w", branch: null, agent: "shell", program: null, args: [] };
-  const s = { panes: [pane], activeDir: "C:\\w", setPage, setScreen, setActiveDir, setFocused, setPanes, nextKey: { current: 9 } } as unknown as WindowState;
+  const s = { panes: [pane], activeDir: "C:\\w", setScreen, setActiveDir, setFocused, setPanes, nextKey: { current: 9 } } as unknown as WindowState;
   const late = { setReveal: vi.fn() } as unknown as WindowLate;
   const a = paneActions(s, {} as never, {} as never, late);
-  return { a, setPage, setScreen, setPanes };
+  return { a, setScreen, setPanes };
 }
 
-test("C13-R1-01: Open in Code clears the full page before showing Terminals", () => {
-  const { a, setPage, setScreen } = state();
+test("C13-R1-01: Open in Code shows Terminals", () => {
+  const { a, setScreen } = state();
   a.openPane(5);
   expect(setScreen).toHaveBeenCalledWith("terminals");
-  expect(setPage).toHaveBeenCalledWith(null);
 });
 
 // Two panes of one launch fail to start before the window draws again: both go, neither comes back dead.
 test("two start failures in a row remove both panes", () => {
   let list = [5, 6, 7].map((key) => ({ key, cwd: "C:\\w", branch: null, agent: "claude", program: null, args: [], batch: 1 }));
   const setPanes = vi.fn((v: unknown) => (list = typeof v === "function" ? (v as (ps: typeof list) => typeof list)(list) : (v as typeof list)));
-  const s = { panes: list, activeDir: "C:\\w", setPanes, setFocused: vi.fn(), setToast: vi.fn(), restoredKeys: { current: new Set() }, cliFailed: { current: {} } } as unknown as WindowState;
+  const s = { panes: list, activeDir: "C:\\w", setPanes, setFocused: vi.fn(), setToast: vi.fn(), restoredKeys: { current: new Set() } } as unknown as WindowState;
   // both callbacks come from the same render, as two failures that land before React draws again
   const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   a.failedPane(5, "not found");
@@ -36,8 +34,8 @@ test("two start failures in a row remove both panes", () => {
   expect(list.map((p) => p.key)).toEqual([7]);
 });
 
-// CLI-026: a split from the command line of a lone pane in a workspace not in front stacks that workspace, not the one in front.
-test("a command-line split down stacks the split pane's own workspace", () => {
+// CLI-026: a split down of a lone pane in a workspace not in front stacks that workspace, not the one in front.
+test("a split down stacks the split pane's own workspace", () => {
   let stacked: Record<string, boolean> = { "C:\\front": false };
   const setStacked = vi.fn((f: (st: typeof stacked) => typeof stacked) => (stacked = f(stacked)));
   const panes = [
@@ -45,9 +43,9 @@ test("a command-line split down stacks the split pane's own workspace", () => {
     { key: 2, cwd: "C:\\front", branch: null, agent: "shell", program: null, args: [] },
     { key: 5, cwd: "C:\\other", branch: null, agent: "shell", program: null, args: [] },
   ];
-  const s = { panes, activeDir: "C:\\front", setPanes: vi.fn(), setFocused: vi.fn(), setStacked, setToast: vi.fn(), cliFailed: { current: {} }, nextKey: { current: 9 } } as unknown as WindowState;
+  const s = { panes, activeDir: "C:\\front", setPanes: vi.fn(), setFocused: vi.fn(), setStacked, setToast: vi.fn(), nextKey: { current: 9 } } as unknown as WindowState;
   const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
-  a.splitPane(5, "down", { ask: "q", command: null });
+  a.splitPane(5, "down");
   expect(stacked).toEqual({ "C:\\front": false, "C:\\other": true });
 });
 
@@ -161,7 +159,7 @@ test("the palette finds the Appearance page and the new shell command by everyda
   const { paletteRows, nothingFound } = await import("../projects/WorktreePalette");
   const s = {
     panes: [], activeDir: "C:\\\\w", keymap: resolve(null, "win32"), accountSwitcher: { groups: [] }, installedIds: [], screen: "terminals", classic: false,
-    titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setPage: vi.fn(), setScreen: vi.fn(), setToast: vi.fn(), setFocused: vi.fn(), setPanes: vi.fn(), nextKey: { current: 9 },
+    titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setScreen: vi.fn(), setToast: vi.fn(), setFocused: vi.fn(), setPanes: vi.fn(), nextKey: { current: 9 },
   } as unknown as WindowState;
   const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   const items = a.paletteItems();
@@ -222,7 +220,7 @@ test("job 68: the palette Start row says Start agents on the New look and opens 
   const setSheet = vi.fn();
   const s = {
     panes: [], activeDir: "C:\w", keymap: resolve(null, "win32"), accountSwitcher: { groups: [] }, installedIds: [], screen: "terminals", classic: false,
-    projects: [], settings: {}, agents: [], titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setPage: vi.fn(), setScreen: vi.fn(), setToast: vi.fn(),
+    projects: [], settings: {}, agents: [], titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setScreen: vi.fn(), setToast: vi.fn(),
     setFocused: vi.fn(), setPanes, setSheet, nextKey: { current: 9 },
   } as unknown as WindowState;
   const la = { lineupsOf: () => ({}), projectFor: () => null, inGitFor: () => false, launch: vi.fn(), pretrust: vi.fn() };
@@ -240,7 +238,7 @@ test("job 68: the palette Start row says New session on the Classic look and add
   const setSheet = vi.fn();
   const s = {
     panes: [], activeDir: "C:\w", keymap: resolve(null, "win32"), accountSwitcher: { groups: [] }, installedIds: [], screen: "terminals", classic: true,
-    projects: [], settings: {}, agents: [], titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setPage: vi.fn(), setScreen: vi.fn(), setToast: vi.fn(),
+    projects: [], settings: {}, agents: [], titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setScreen: vi.fn(), setToast: vi.fn(),
     setFocused: vi.fn(), setPanes, setSheet, nextKey: { current: 9 },
   } as unknown as WindowState;
   const rows = paneActions(s, {} as never, {} as never, {} as WindowLate).paletteItems();

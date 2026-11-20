@@ -1,6 +1,6 @@
 # Settings
 
-Change how Kolux looks, which agents it offers, when it notifies you, and which keys do what. Open Settings with Ctrl+, , or from the Settings buttons on the Agents screen and the project rows. It opens over the window with a grouped list of pages on the left, like Claude's settings, and remembers the last page you used. Press Esc or the x to close it.
+Change how Kolux looks, which agents it offers and when it notifies you. Open Settings with Ctrl+, , with the gear at the bottom of the sidebar, or from the project rows. It opens over the window with a grouped list of pages on the left, like Claude's settings, and remembers the last page you used. Press Esc or the x to close it.
 
 Changes save as you make them. They live in `settings.json` in Kolux's data folder, `%APPDATA%\com.txaisxiong.kolux`. The right-hand column of each table shows the name a setting has in that file, which helps if someone asks you to check it.
 
@@ -8,15 +8,13 @@ Changes save as you make them. They live in `settings.json` in Kolux's data fold
 
 | Page | What it controls |
 |---|---|
-| General | Which look Kolux uses, which screen it opens on, confirmations, diagnostics, privacy |
-| Appearance | Colours, interface zoom, fonts, terminal text, the sidebar buttons, status bar |
-| Accounts & keys | Signing in to Claude, Codex and Grok |
+| General | Which look Kolux uses, confirmations, the Open in apps, a network proxy, experiments, diagnostics, privacy |
+| Appearance | Colours, interface zoom, fonts, terminal text, the title bar, status bar |
+| Accounts & keys | Signing in to Claude and Codex |
 | Agents | Which agents are on, how they start, whether they ask permission |
 | Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default terminal, close warnings, pinned tabs, removing a running session |
 | Git | Branch names, compare base, commit messages |
-| Safety | A short note on protected commands (see [Safety](safety.md)) |
 | Notifications | What alerts you, and how |
-| Shortcuts | Every command and its keys |
 | Usage | Activity counts and token use |
 | Claude | What Claude Code is set up to do here, read from its own files |
 
@@ -26,42 +24,24 @@ Below those, a Repositories group lists one small page for each project you have
 
 The box at the top of the page list says "Search settings". Press Ctrl+F to jump to it. Type a word and the page list shrinks to the pages with a match. The right side then shows each matching page with only its matching sections, and Appearance sections that hold a match open by themselves. Everyday words work: "dark" finds Mode, and "bigger" finds Zoom. A language also matches its own name, such as Français. A search over 100 characters is refused with "That search is too long: 100 characters at most." When nothing matches, the page says "No setting matches." Esc in the box clears the search. Opening Settings again, from a link or a shortcut, also clears an old search.
 
-The search knows the Editor and diffs, Open in and Network proxy cards by everyday words too ("autosave", "minimap", "vscode", "firewall", "corporate"). The Terminal colours section turns up for "warp" and "ghostty".
+The search knows the Open in and Network proxy cards by everyday words too ("vscode", "firewall", "corporate"). The Terminal colours section turns up for "warp" and "ghostty".
 
 ## General
 
 | Setting | Choices | Saved as |
 |---|---|---|
 | Look | Classic or New. A fresh profile starts on New; an older profile that never chose stays on Classic | `uiLook` |
-| Opens first | Agents, Board, Terminals or Tower. Default is Terminals. Agents and Board need the New look; Terminals and Tower work in both | `firstScreen` |
+| Opens first | Terminals, the one screen left | `firstScreen` |
 | Ask what to open when Kolux starts | On by default. Each time Kolux starts, its first window asks once which folders to open, how many agents and which AI. Off starts with an empty window | `askWhatToOpen` |
-| Review notes | On by default. Select text in a file and press Ctrl+Shift+A to leave a note for an agent | `markdownReviewNotes` |
 | Needs you strip | On by default. Shows the strip of agents waiting for you above the panes | `needsStrip` |
 
 ### Confirmations
 
-This card has one switch, "Ask before deleting an automation". Some questions offer a "don't ask again" choice. The card lists the ones you have skipped, for example "Not asking before closing a terminal that is running a program.", or says "Every confirmation is asked." when none are skipped. "Ask again for all" turns every skipped question back on. It is greyed out when none are skipped.
-
-### Editor and diffs
-
-Preferences for the built-in editor and the diff views.
-
-| Setting | Choices | Saved as |
-|---|---|---|
-| Save files by themselves after typing stops | Off. When on, a "Wait before saving (ms)" box appears: 200 to 10,000, default 1,000 | `editorAutoSave`, `editorAutoSaveDelay` |
-| Minimap beside the editor | Off | `editorMinimap` |
-| Word wrap in the editor | On | `editorWordWrap` |
-| Spellcheck in rich markdown | On | `markdownSpellcheck` |
-| Diffs open | Inline (default) or Side by side | `diffView` |
-| Word wrap in diffs | Off. Separate from the editor's word wrap | `diffWordWrap` |
-| Show changes made only of whitespace | Off, so a line that only moved spaces or tabs is hidden | `diffShowWhitespace` |
-| File tree beside the combined diff | Off | `diffFileTree` |
-
-The editor and the diff views read these choices when they open. A diff or All Changes tab that you have already set up keeps its own layout (**Make default** in All Changes saves the layout for new tabs). The editor's font is a different setting: see Editor font under [Interface](#interface).
+Some questions offer a "don't ask again" choice. The card lists the ones you have skipped, for example "Not asking before closing a terminal that is running a program.", or says "Every confirmation is asked." when none are skipped. "Ask again for all" turns every skipped question back on. It is greyed out when none are skipped.
 
 ### Open in
 
-The apps that every "Open in" menu is meant to list (for a workspace, a file, and the shortcuts file). The card shows your list in order, each with its command, and Up, Down and Remove buttons. Until you change it the list is File Explorer and Visual Studio Code.
+The apps that every "Open in" menu lists (for a project or a workspace). The card shows your list in order, each with its command, and Up, Down and Remove buttons. Until you change it the list is File Explorer and Visual Studio Code.
 
 - **Add an app** picks from the presets: File Explorer, Visual Studio Code, Cursor, Windsurf, Zed, Sublime Text, IntelliJ IDEA and Windows Terminal. Presets already in the list are not offered again.
 - **Add custom app** takes a name (60 characters at most) and a command (300 at most), for example `gvim --remote`. The button stays off until both boxes are filled in.
@@ -102,10 +82,7 @@ This card lists every outside connection Kolux can make:
 - GitHub Releases, to check for updates.
 - Your Git remotes and the GitHub account you set up.
 - The AI providers you connected.
-- Sites you open in a browser tab.
-- Script libraries from public hosts (cdnjs, jsdelivr, unpkg, tailwindcss, jquery), only when you save a web page for offline use.
 - Microsoft, through the WebView2 browser engine Windows provides. It runs startup checks that Kolux cannot switch off.
-- Microsoft Defender SmartScreen, which checks pages you open in Kolux's windows (chiefly browser tabs) against Microsoft's list of phishing and malware sites, and for files you download sends their address and details such as name, size and fingerprint, as Edge does.
 
 Kolux sends no usage data, and no server exists to receive it. "Send feedback" opens a new-issue page on GitHub in your browser; the app submits nothing itself.
 
@@ -118,18 +95,17 @@ The page has three sections, all open at first: Interface, Terminal, and Window 
 | Setting | Choices | Saved as |
 |---|---|---|
 | Mode | System, Light or Dark. New profiles start on Dark | `appearanceMode` |
-| Mode per screen | Agents, Board and Terminals can each use "Same as app", System, Light or Dark | `screenThemes` |
+| Terminals screen | "Same as app", System, Light or Dark | `screenThemes` |
 | Language | System, English, 简体中文, 한국어, 日本語, Español, Français. Only dates and sorting follow it; Kolux's own words stay in English | `language` |
 | Zoom: Interface size | Buttons for smaller (−), larger (+) and Reset, with the current percentage between them. It runs from 58 % to 249 %; the default is 100 % | `uiZoom` |
 | Colour theme | Classic, or one of 16 colours: ember, copper, sand, moss, fern, jade, teal, lagoon, sky, cobalt, indigo, iris, violet, orchid, rose, graphite | `appTheme` |
 | Tint | -180 to 180 degrees, default 0. Not available on Classic | |
 | Saturation | 0 to 160 percent, default 100. Not available on Classic | |
 | Depth | -3 to 6, default 0. Not available on Classic | |
-| Finish: Panels | Glass and metal (the default) or Flat. Glass and metal makes the bars and panels see-through over soft light in the metal's colour and gives edges a line of light; terminals and editors keep a solid ground, and dim text is brightened where it needs it to stay readable. Flat is the plain look with no light behind it | `appFinish` |
+| Finish: Panels | Glass and metal (the default) or Flat. Glass and metal makes the bars and panels see-through over soft light in the metal's colour and gives edges a line of light; terminals keep a solid ground, and dim text is brightened where it needs it to stay readable. Flat is the plain look with no light behind it | `appFinish` |
 | Metal colour | With Glass and metal: Steel, Silver, Graphite, Gold, Copper, Rose gold, Emerald, Sapphire or Amethyst, or any colour from the picker. Default Sapphire | `appFinishTint` |
 | Strength | With Glass and metal: 0 to 100 percent, default 60. More strength means more see-through panels and stronger light | `appFinishStrength` |
 | App font | Any installed font; default is the built-in font. Suggestions follow as you type; Up and Down move through them and Enter picks one | `appFont` |
-| Editor font | Same as the terminal font, or any installed font | `editorFont` |
 
 ### Terminal
 
@@ -162,22 +138,20 @@ The Zoom control under Interface changes the size of the whole window, and so do
 
 | Setting | Default | Saved as |
 |---|---|---|
-| Show app name in the title bar | Off | |
-| Show Tasks button | On | |
-| Show Automations row in the sidebar | On | |
-| Show Skills button in the sidebar | Off | `skillsButton` |
+| Show app name in the title bar | Off | `titleBarAppName` |
 | Show status bar | On | `statusBarVisible` |
-| Status bar items: Agent status, Resource Manager, Terminals running, Agents running, Keep awake, Ports (see [Ports in the status bar](terminals.md#ports-in-the-status-bar)), Claude and Codex usage in the top pill (tick the ones you want) | All shown | `statusBarHidden` |
-| Usage percentages: Used or Remaining (changes only the Agents screen footer) | Used | `usagePercentages` |
+| Status bar items: Agent status, Resource Manager, Terminals running, Agents running, Keep awake, Claude and Codex usage in the top pill (tick the ones you want) | All shown | `statusBarHidden` |
+| Usage percentages: Used or Remaining (how a pane header's context reading counts) | Used | `usagePercentages` |
+
+The View menu's Show Status Bar and Show Titlebar App Name ticks are the same two switches.
 
 ## Accounts & keys
 
-Kolux charges nothing and ships no models or keys. You bring your own sign-in. The page shows one card for each of Claude, Codex and Grok.
+Kolux charges nothing and ships no models or keys. You bring your own sign-in. The page shows one card for each of Claude and Codex.
 
 - A card for a program you have not installed says "Not installed" and offers Install (through WinGet, Windows' package installer) or "Open install page".
 - **Claude:** Connect, Renew, Cancel or Disconnect. Disconnect asks first. "Use my Claude account instead" signs you in through the browser. The switch "Carry on by itself once a usage limit resets" is off by default (`claudeResumeAfterLimit`).
 - **Codex:** "Add account", or "Sign in with a code" if the browser route does not suit you.
-- **Grok:** "Sign in with a code", or "Use an xAI API key (advanced, pay-per-use)". The key is stored sealed and never shown again.
 - **Manage accounts (advanced):** lists your Claude and Codex accounts, so you can name them, for example Personal and Work.
 
 Saved keys and sign-ins are sealed by the system keyring (Windows' secret store). See [Safety](safety.md).
@@ -195,31 +169,7 @@ Saved keys and sign-ins are sealed by the system keyring (Windows' secret store)
 
 **Agent Permissions matters.** Under Yolo, Claude Code starts in its automatic mode, where its own safety check approves routine actions and still stops risky ones. Codex starts with no approval prompts but inside its sandbox (the walled-off area it works in): it can change files only in the workspace's own folder. By default the sandbox also keeps its commands off the internet and away from Git's own records, so Codex can edit files but cannot commit, install packages or push. Such a command fails and Codex is told why; it does not ask you. Choose Manual if you want each agent to ask before it acts.
 
-**Agent status hooks** are small scripts Kolux puts in an agent's settings so the agent can tell Kolux what it is doing. The switch beside the line above starts on. The switch here, "Show what each agent is doing", shows the saved answer, so it reads off until it is saved on: here, or by moving on from that line with its switch on; nothing is installed while it is off, and switching it off takes Kolux's entries out again. While it is off, no hook report arrives, so the Board and Agents pages fall back to the title each program gives its terminal and to what its screen shows (a permission or question menu reads Needs you; see [Status words](board-agents-inbox.md#status-words)). The hooks badge in the status bar shows whether this switch is On or Off; click it to come here. The switch also shows the path of Claude Code's settings file and any problem found.
-
-### Hooks for Gemini CLI, Antigravity and Amp
-
-Besides Claude Code and Codex, Kolux can install status hooks for Gemini CLI, Antigravity and Amp. A status hook is a small script the agent program runs at each event (a turn starting, a tool running, a turn ending); it tells Kolux whether the agent is working, waiting or done, and that drives the status dot. All five agents follow the same rules:
-
-- **One master switch.** The switch beside the consent line starts on; "Show what each agent is doing" here shows your answer and reads off until it is saved on: here, or by moving on from that line with its switch on. That answer turns it on or off for real. While it is off, Kolux removes its entries from every agent and installs none.
-- **One switch per agent.** Each agent in the "Installed agents" list has its own on/off switch. An agent switched off there has Kolux's entries taken out, even while the master switch is on.
-- **Only agents Kolux finds.** Hooks go to an agent that is installed on this computer (or that you pointed the Agents page at). An agent Kolux cannot find is left exactly as it is.
-- **The command line does the same.** `kolux agent hooks on`, `off` and `status` cover all five agents and work with Kolux closed. See [Command line](command-line.md).
-
-| Agent | What Kolux changes (inside your user folder) | Kolux's entry |
-|---|---|---|
-| Gemini CLI | `.gemini\settings.json` | A Kolux hook added under four events: `BeforeAgent`, `AfterAgent`, `BeforeTool` and `AfterTool`. Your own hooks stay |
-| Antigravity | `.gemini\config\hooks.json` | A bundle (a named set of hooks) called `kolux`, with entries for `PreInvocation`, `PreToolUse`, `PostToolUse`, `PostInvocation` and `Stop` |
-| Amp | `.config\amp\plugins\kolux.js` | A plugin file (a small add-on Amp loads), written whole by Kolux. Its first line says it was written by Kolux |
-
-Details that matter when you look at these files:
-
-- **Gemini CLI** runs its hook command through PowerShell on Windows, and Kolux writes the command for that. This is proven on Windows PowerShell 5.1. It is not yet tried on PowerShell 7 or against a real Gemini CLI run; that check is still to come.
-- **Antigravity** does not put the event name in what it sends, so Kolux passes the name on the command line. The command is written for the Windows command prompt; which shell Antigravity really uses has not yet been checked against a live run. If you set `"enabled": false` on the `kolux` bundle yourself, Kolux keeps your choice, and `kolux agent hooks status` reports Antigravity as "disabled".
-- **Amp** gets a plugin instead of a settings entry. If a file named `kolux.js` is already there and Kolux did not write it, Kolux leaves it alone and reports an error. Edits you make to Kolux's own plugin file are overwritten at the next install. Builds before the rename to Kolux wrote the bundle and the plugin as `kolux-rs`; the next install replaces those old entries with the new ones.
-- **Antigravity's reply text** (the card showing its last answer) is not built yet.
-
-`kolux agent hooks status` lists each of the three with a state: installed, partial, not installed, error, or (Antigravity only) disabled. What the hooks show on the dot is under [Status words](board-agents-inbox.md#status-words); what they send, and how Kolux protects your settings files, is under [Agent status hooks](safety.md#agent-status-hooks) in Safety.
+**Agent status hooks** are small scripts Kolux puts in Claude Code's and Codex's settings so the agent can tell Kolux what it is doing. Kolux installs them for these two agents only; every other agent's state is read from its terminal. The switch beside the line above starts on. The switch here, "Show what each agent is doing", shows the saved answer, so it reads off until it is saved on: here, or by moving on from that line with its switch on; nothing is installed while it is off, and switching it off takes Kolux's entries out again. While it is off, no hook report arrives, so Kolux falls back to the title each program gives its terminal and to what its screen shows (a permission or question menu reads Needs you; see [Status words](terminals.md#status-words)). The hooks badge in the status bar shows whether this switch is On or Off; click it to come here. The switch also shows the path of Claude Code's settings file and any problem found.
 
 ## Terminal & sessions
 
@@ -300,25 +250,11 @@ This page keeps its old name. Kolux now works in one folder per project, so a pr
 | Usage alerts at 80% and 95% | On | `usageAlerts` |
 | Quiet alert minutes: warn when a working terminal goes silent this long. 0 turns it off; the most is 600 | 10 | `quietMinutes` |
 
-Two buttons help you check: "Send a test notification" and "System notification settings" (Windows' own page). See [Board, Agents and Inbox](board-agents-inbox.md) for what each alert looks like.
+Two buttons help you check: "Send a test notification" and "System notification settings" (Windows' own page). See [Notifications](terminals.md#notifications) for what each alert looks like.
 
 ## Shortcuts
 
-Every command in Kolux has a row here. Your changes are kept in `keybindings.json` in a `.kolux` folder in your user folder. The "Shortcuts file" card at the top shows that path and any error in the file. Three buttons work on the file:
-
-| Button | What it does |
-|---|---|
-| Open file | Opens the file in the program Windows uses for it. A missing file is written first, with its starting contents |
-| Show in folder | Opens the folder with the file selected |
-| Reload from disk | Reads the file again after you edit it by hand |
-
-The "Shortcuts in terminals" card decides who gets a key while you type in a terminal. Pick "Kolux first" or "Terminal first". It is saved as `terminalShortcuts`. See [Terminals](terminals.md) for what each does. With "Terminal first", a row for a command that is held back shows a "Goes to the terminal" badge.
-
-- Filters: All, Modified, Unassigned, Conflicting. The search box matches names and keys.
-- Commands are grouped: General, Tabs, Terminal, Browser, Editor, File explorer, Settings.
-- Click a key to record a new one. Esc keeps the old one.
-- Buttons: Add (a second key for the same command), Disable, Reset. The x removes one key.
-- Badges: Modified, Unassigned, Disabled and Conflicts (two commands on one key in the same area).
+Settings has no Shortcuts page any more. Your keys are kept in `keybindings.json` in a `.kolux` folder in your user folder: edit that file to change a key, and Kolux reads it again. The `terminalShortcuts` setting decides who gets a key while you type in a terminal. See [Keyboard shortcuts](terminals.md#keyboard-shortcuts).
 
 ## Usage
 
@@ -333,4 +269,4 @@ Each project has two settings: "New workspaces start from" (blank means the defa
 
 The mouse wheel scrolls long menus, pickers and sheets, including the lists inside dialogs. Over such a surface the wheel moves the nearest part, working outward from the pointer, that can still scroll that way. When nothing in the menu can move, the wheel does nothing, so the page behind it does not jump. Ctrl+wheel (zoom) and sideways scrolling are left alone, and a list that sits inline on a page still scrolls its page.
 
-<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src/settings/editorPrefs.ts, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx, src/settings/ExperimentalCard.tsx, src/sleep/agentSleep.ts, src/sleep/useAgentSleep.ts, src/look/FinishSettings.tsx, src/projects/singleFolder.ts, src/launch/startForm.ts, src/status/promptScan.ts, src-tauri/src/prompt_scan.rs, src/status/tabNameRule.ts at 2a8711de -->
+<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx, src/settings/ExperimentalCard.tsx, src/sleep/agentSleep.ts, src/sleep/useAgentSleep.ts, src/look/FinishSettings.tsx, src/projects/singleFolder.ts, src/launch/startForm.ts, src/status/promptScan.ts, src-tauri/src/prompt_scan.rs, src/status/tabNameRule.ts at 01b39757 -->

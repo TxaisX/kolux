@@ -17,7 +17,7 @@ it out of the right sidebar and the wave of 2026-11-15 removed its code. Changed
 staged, unstaged and discarded in the All Changes tab. A card below that names the panel describes
 the old screen; what Kolux built of it is in PLAN.md.
 
-Tier counts: P0 11 · P1 29 · P2 15 · H 0 · X 0 · D 15
+Tier counts: P0 11 · P1 29 · P2 14 · H 0 · X 0 · D 15
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 07 Accounts, sign-in & keys · 12 Editor & files · 13 Browser pane & computer use · 15 Skills, plugins & starter kits · 16 Onboarding & guidance · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The `kolux` CLI
 
 ## Cards
@@ -836,21 +836,6 @@ Acceptance:
         removing it.
 Compat: —
 Source: D-11-013
-
-### GIT-044 · Opening Tasks and its default view
-Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
-User does: opens Tasks from the title-bar button, the View menu or a bound key, and hides the button
-  if it is not wanted.
-User sees: Tasks opens on its default preset.
-Rules: the button shows by default and a checkbox under View, Appearance hides it; the open-Tasks
-  command ships with no key and the user can bind one; the default preset is all open items, and it
-  is a setting.
-Acceptance:
-  - [ ] Untick Show Tasks Button → the button is gone; bind a key to view.tasks → that key opens
-        Tasks.
-  - [ ] Change the default preset → Tasks next opens on that preset.
-Compat: keybinding id view.tasks, unbound by default.
-Source: D-11-044
 
 ### GIT-053 · Mentions, reviewers and avatars
 Tier: P2 · Pushed: — · State at 0.15.0: live-unverified

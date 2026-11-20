@@ -4,7 +4,6 @@ import { SearchFolds } from "./search";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import type { AgentInfo } from "../launch/PlusMenu";
-import AgentPicker from "../launch/AgentPicker";
 import { defaultChoices, DEFAULT_EFFORT_KEY, DEFAULT_MODEL_KEY, seatDefault } from "../launch/defaultSeat";
 import { DEFAULT_AGENT_KEY, defaultAgentId, disabledAgents, switchAgent } from "../launch/agents";
 import { Segmented } from "./GeneralPage";
@@ -13,9 +12,7 @@ import { SettingsError } from "./SettingsError";
 import { settingsDiff } from "./saveChanged";
 import { GeneratedTitlesCard } from "../status/GeneratedTitlesCard";
 import { useDraft } from "./useDraft";
-import TeamsModeCard from "../launch/TeamsModeCard";
 import KeepAwakeCard from "../launch/KeepAwakeCard";
-import { useTeamsHost } from "../launch/teams";
 import { CAP_FIELD, capOn } from "../usage/meter";
 import { CACHE_LENGTH, CACHE_ON, cacheMinutes } from "../projects/cache";
 import { HOOKS_FIELD, hooksOn } from "../onboarding/hooksOn";
@@ -81,7 +78,7 @@ export function HooksSwitch({ on, onSwitch, file, problems = [] }: { on: boolean
         <span>
           Show what each agent is doing
           {problems.map((p) => <small className="warn" role="alert" data-problem key={p}>{p}</small>)}
-          <small>Agents tell Kolux when they work, wait for you or finish. Setup turns it on unless you turn its switch off there. If you skip setup, it stays off. On adds small scripts (hooks) to each agent's settings; off takes them out. Your own hooks stay. While it is off, Kolux guesses from each terminal's title and screen, so status colours, the Board and "Needs you" can be late or wrong. Protected actions cannot ask first, and the chat box cannot see an agent's questions.</small>
+          <small>Agents tell Kolux when they work, wait for you or finish. Setup turns it on unless you turn its switch off there. If you skip setup, it stays off. On adds small scripts (hooks) to Claude Code's and Codex's settings; off takes them out. Your own hooks stay. Other agents have no hooks: Kolux reads their terminal's title and screen. Hooks an older Kolux added to another agent's settings stay until you remove them; they do nothing now. While it is off, Kolux guesses from each terminal's title and screen, so status colours and "Needs you" can be late or wrong. The chat box cannot see an agent's questions.</small>
           {file && <small data-file>Claude Code settings: {file}</small>}
         </span>
       </label>
@@ -95,7 +92,6 @@ export default function AgentsPage() {
   const [written, setWritten] = useState(0);
   const save = (patch: Record<string, unknown>) => write(patch).then((ok) => (setWritten((n) => n + 1), ok));
   const [agents, setAgents] = useState<AgentInfo[] | null>(null);
-  const teamsHost = useTeamsHost();
   const [looking, setLooking] = useState(false);
   const [failed, setFailed] = useState<string | null>(null); // SESS-002: an errored search is not an empty one
   const [lines, setLines] = useState<Record<string, string>>({});
@@ -224,10 +220,8 @@ export default function AgentsPage() {
           );
         })}
       </section>
-      {agents !== null && agents.length > 0 && <AgentPicker agents={agents} onChanged={(list) => (setAgents(list), void emit("agents-changed", list))} />}
       <HooksSwitch on={hooksOn(settings)} file={hooksFile} problems={problems} onSwitch={(on) => void save({ [HOOKS_FIELD]: on }).then((ok) => syncIfSaved(ok, () => invoke("agent_hooks_sync", { clear: !on }))).then(synced, syncFailed)} />
       <AgentsPageView cap={capOn(settings ?? {})} onCap={(on) => void save({ [CAP_FIELD]: on })} />
-      <TeamsModeCard settings={settings} save={save} host={teamsHost} />
       <KeepAwakeCard settings={settings} save={save} />
       <GeneratedTitlesCard settings={settings} save={save} />
       <CachePick minutes={cacheMinutes(settings)} onPick={(m) => void save(m === null ? { [CACHE_ON]: false } : { [CACHE_ON]: true, [CACHE_LENGTH]: m })} />

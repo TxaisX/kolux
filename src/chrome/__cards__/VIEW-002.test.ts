@@ -1,7 +1,7 @@
 // VIEW-002 acceptance (boxes 3-4): the real TopBar switch and the real useMenuBar send the native menu its state; the menu ticks
 // and the dropped Workspace View are asserted on the Rust side by menu::tests::t054_... and menu::tests::t049b_...
 // MIRROR src/App.tsx:538 useMenuBar(menuBarState(settings, screen, chords, classic), ...) and App.tsx:2533 onScreen={setScreen}.
-// Box 1 (cycle order) and box 2 (the chord in Classic) are decided in App.tsx (nextScreen, and `if (!classic)` at :727), see the ledger.
+// Box 1 (cycle order) and box 2 (the chord in Classic) have nothing to test since the cycle command went (one screen left).
 import { createElement, useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../../test/fakeDom";

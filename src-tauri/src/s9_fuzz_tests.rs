@@ -1,7 +1,6 @@
 //! S9: fuzz-style property tests for the hook event parsers, the secret maskers and the terminal
 //! escape-sequence parsers. Test-only; a seeded xorshift generator, 100k cases per property.
 //! A failure prints `seed=... case=...`; the same seed and case rebuild the same input.
-use crate::hooks::agent_hooks::more::{normalize_with, Memory};
 use crate::hooks::{self, Request};
 use serde_json::{json, Value};
 use std::cell::{Cell, RefCell};
@@ -407,10 +406,6 @@ fn s9_hook_event_json_never_panics() {
             }
             if b.as_ref().map(|c| serde_json::to_string(c).unwrap()) != b2.as_ref().map(|c| serde_json::to_string(c).unwrap()) {
                 return Err("codex_change is not deterministic".into());
-            }
-            let mut mem = Memory::default();
-            for route in ["/cursor/preToolUse", "/droid/PreToolUse", "/kimi/Stop", "/copilot/userPromptSubmitted", "/grok/Stop", "/devin", "/pi/agent_end", "/hermes", "/gemini", "/amp", "/antigravity/PreToolUse"] {
-                let _ = normalize_with(&mut mem, route, &v);
             }
             Ok(())
         },
@@ -957,14 +952,14 @@ fn s9_mask_protected_secret_after_each_separator() {
                 continue;
             }
             let text = format!("run{sep}{form} tail");
-            let out = crate::protected::mask(&text);
+            let out = crate::mask::mask(&text);
             if leaked(&out, &core) {
                 lost.push(format!("{sep:?}"));
             }
         }
         if !lost.is_empty() {
             let line = format!("kind {} survives after {}", kind_name(kind), lost.join(" "));
-            println!("s9 MATRIX protected::mask {line}");
+            println!("s9 MATRIX mask::mask {line}");
             bad.push(line);
         }
     }
@@ -974,17 +969,17 @@ fn s9_mask_protected_secret_after_each_separator() {
 
 #[test]
 fn s9_mask_protected_secrets_hidden_and_idempotent() {
-    finish(&secrets_campaign("mask_protected_secrets", 0x5EED_0010, crate::protected::mask, ALL_KINDS, false));
+    finish(&secrets_campaign("mask_protected_secrets", 0x5EED_0010, crate::mask::mask, ALL_KINDS, false));
 }
 
 #[test]
 fn s9_mask_protected_secrets_after_punctuation() {
-    finish(&secrets_campaign("mask_protected_punct", 0x5EED_0011, crate::protected::mask, ALL_KINDS, true));
+    finish(&secrets_campaign("mask_protected_punct", 0x5EED_0011, crate::mask::mask, ALL_KINDS, true));
 }
 
 #[test]
 fn s9_mask_protected_random_text_idempotent() {
-    finish(&plain_campaign("mask_protected_plain", 0x5EED_0012, crate::protected::mask));
+    finish(&plain_campaign("mask_protected_plain", 0x5EED_0012, crate::mask::mask));
 }
 
 #[test]
@@ -1133,7 +1128,7 @@ fn s9_mask_protected_label_run_scaling() {
     for kb in [1usize, 2, 4, 8, 16, 32] {
         let text = "token: ".repeat(kb * 1024 / 7);
         let t0 = Instant::now();
-        let _ = crate::protected::mask(&text);
+        let _ = crate::mask::mask(&text);
         let ms = t0.elapsed().as_secs_f64() * 1000.0;
         worst = worst.max(ms);
         println!("s9 TIME mask_label_scaling bytes={} ms={ms:.1}", text.len());
@@ -1149,7 +1144,7 @@ fn s9_mask_protected_label_run_scaling() {
 #[test]
 #[cfg_attr(debug_assertions, ignore = "S9 timing: judged by the opt-level 3 run; unoptimised mask is 2-4x over 1 s/MiB")]
 fn s9_mask_protected_hostile_size_time() {
-    assert_time(&time_test("time_protected_mask", crate::protected::mask));
+    assert_time(&time_test("time_protected_mask", crate::mask::mask));
 }
 
 #[test]
@@ -1180,7 +1175,6 @@ fn s9_hook_hostile_size_time() {
             if let Ok(v) = serde_json::from_slice::<Value>(body) {
                 let _ = hooks::claude_change(&v);
                 let _ = hooks::codex_change(&v);
-                let _ = normalize_with(&mut Memory::default(), "/droid/PreToolUse", &v);
             }
             let req = request_with("/claude", body.clone(), "e30=".into());
             let _ = hooks::usage(&req, "tok");

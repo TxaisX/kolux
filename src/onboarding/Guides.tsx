@@ -1,21 +1,19 @@
 // ONB-014 Setup Guide, ONB-022 Explore Kolux and ONB-027 / ONB-028 startup tips. Mounted once in
 // the window; the help menu and the tips open the guides through openGuide / openExplore.
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Rect } from "./tour";
-import { FOCUSABLE, tabStep, trapTab } from "../chrome/dialogFocus";
+import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { Close, EyeOff } from "../chrome/icons";
 import { useKeymap } from "../keys/KeymapContext";
 import { defaultsOnly, labelOf } from "../keys/keymap";
 import "./onboarding.css";
 import { useSettings } from "../settings/useSettings";
-import { probeSetup } from "../settings/setupProbe";
 import Tours from "./Tours";
-import CliSetup, { useCliCaps } from "./CliSetup";
 import Demo from "./Demo";
 import StarPrompt from "./StarPrompt";
-import { AgentPanel, AutomatePanel, composer, IntegrationsPanel, MultitaskPanel, NotificationsPanel, StopSetup } from "./StepPanels";
-import { integrationSteps, readSeenCached, taskSourceOf } from "./integrations";
+import { AgentPanel, composer, MultitaskPanel, NotificationsPanel, StopSetup } from "./StepPanels";
+import { readSeenCached, taskSourceOf } from "./integrations";
 import { guideOpenChanged } from "./actions";
 import { MOVED, splitCredit } from "./moved";
 import { askHooks, HOOKS_LINE, hooksDefault, recordHooks } from "./hooksOn";
@@ -23,46 +21,31 @@ import { closeOnSettings, stepAside, useDialogFocus } from "./dialogFocus";
 import { submitKeys } from "./submitKeys";
 import { defaultAgentId } from "../launch/agents";
 import {
-  caps, demoFrames, doneFrom, paletteKeys, doneId, firstOpen, forward, latest, markGuide, moveOn, nextTip, OPEN_EXPLORE, OPEN_GUIDE, guideClosed, railKey, ring, STEPS, stopDone, stopOf, TWO_REPOS, withRecord, words, workflowDone, WORKFLOWS,
-  checklistHidden, HIDE_PATCH, legacyProfile, type At, type CliStatus, type Facts, type GuideRecord, type Place, type Setup, type StepId, type TipId,
+  demoFrames, doneFrom, paletteKeys, doneId, firstOpen, forward, markGuide, moveOn, nextTip, OPEN_EXPLORE, OPEN_GUIDE, guideClosed, railKey, ring, STEPS, stopDone, stopOf, TWO_REPOS, withRecord, words, workflowDone, WORKFLOWS,
+  checklistHidden, HIDE_PATCH, legacyProfile, type At, type Facts, type GuideRecord, type Place, type StepId, type TipId,
 } from "./guide";
 
-type Scan = { skills: { name: string; source: string }[] };
-
-type Read = Omit<Facts, "cli">;
-const UNREAD: Read = { workspaces: null, gitProjects: null, integrations: null, notifications: null, agent: null, setupScript: null };
+const UNREAD: Facts = { workspaces: null, gitProjects: null, notifications: null, agent: null };
 
 /** ONB-015: reads what each step stands for. A project counts as git when its workspace list
  *  reads; the lasting count of git projects is kept on the profile once it reaches two. Resolves
- *  once every read has answered (VIEW-114: the sidebar entry waits for that, so it never flashes),
- *  with the setup-script answer (null when it was never asked). */
-async function readFacts(check: ReturnType<typeof latest<boolean>>, put: (f: Partial<Read>) => void, alive: () => boolean): Promise<boolean | null> {
+ *  once every read has answered (VIEW-114: the sidebar entry waits for that, so it never flashes). */
+async function readFacts(put: (f: Partial<Facts>) => void, alive: () => boolean): Promise<void> {
   const [settings, g] = await Promise.all([invoke<Record<string, unknown>>("get_settings").catch(() => null), invoke<GuideRecord>("guide_get").catch(() => null)]);
-  if (!alive()) return null;
+  if (!alive()) return;
   put({ notifications: settings ? settings.notifyOnFinish !== false : null, agent: settings ? defaultAgentId(settings) : null, legacy: legacyProfile(settings, g?.tried ?? null), splitCredit: splitCredit(g?.tried, g?.features) });
-  put({ integrations: "checking" });
-  // ONB-018: connected means signed in and the token accepted, not only a cached sign-in.
-  const gh = readSeenCached(invoke).then(
-    (x) => void (alive() && put({ integrations: integrationSteps(x).review === "done" ? "connected" : "none" })),
-    () => void (alive() && put({ integrations: null })),
-  );
   const projects = await invoke<{ path: string; id: string }[]>("project_list").catch(() => null);
-  if (!alive() || !projects) return gh.then(() => null);
+  if (!alive() || !projects) return;
   const lists = await Promise.all(projects.map((p) => invoke<Place[]>("workspace_list", { projectId: p.id }).catch(() => null)));
-  if (!alive()) return null;
+  if (!alive()) return;
   const git = projects.filter((_, i) => lists[i] !== null);
   const twoBefore = !!g?.tried.includes(TWO_REPOS);
   if (git.length >= 2 && !twoBefore) markGuide("tried", TWO_REPOS).catch(() => {});
   put({ workspaces: lists.filter((l): l is Place[] => l !== null), gitProjects: Math.max(git.length, twoBefore ? 2 : 0) });
-  const ticket = check.begin();
-  const found = await Promise.all(git.map((p) => probeSetup(p.path, false))); // the page's own read: no trust question, no refusal to misread
-  check.settle(ticket, found.some(Boolean));
-  await gh;
-  return found.some(Boolean);
 }
 
-type Snapshot = { read: Read; cli: CliStatus | null; home: readonly string[] };
-const doneOf = (s: Snapshot) => doneFrom({ ...s.read, cli: caps(s.cli, s.home).every((c) => c.ready) });
+type Snapshot = { read: Facts };
+const doneOf = (s: Snapshot) => doneFrom(s.read);
 
 /** What the guide can tell is done on this computer (ONB-015), read each time the guide opens and
  *  on Re-check. `refresh` reads it again; so does a change of `again` (VIEW-114: the sidebar entry
@@ -71,38 +54,22 @@ const doneOf = (s: Snapshot) => doneFrom({ ...s.read, cli: caps(s.cli, s.home).e
  *  (FIX-4: the sidebar entry stamps its focus floor with it). `settled` is the done set of the last
  *  read that fully answered, null until the first one has: it never shows a half-read state. */
 export function useGuideState(on: boolean, again: unknown = null, onRead?: () => void) {
-  const [cli, setCli] = useState<CliStatus | null>(null);
-  const [home, setHome] = useState<string[]>([]);
-  const [read, setRead] = useState<Read>(UNREAD);
+  const [read, setRead] = useState<Facts>(UNREAD);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [n, setN] = useState(0);
-  const check = useRef(latest<boolean>((v) => setRead((r) => ({ ...r, setupScript: v })))).current;
   const told = useRef(onRead);
   told.current = onRead;
   useEffect(() => {
     if (!on) return;
     told.current?.();
     let live = true;
-    let acc: Read = UNREAD;
-    const c = invoke<CliStatus>("cli_status").then(
-      (x) => (live && setCli(x), x),
-      () => (live && setCli(null), null),
-    );
-    const h = invoke<Scan>("skills_scan", { workspace: null, refresh: n > 0 }).then(
-      (s) => {
-        const names = s.skills.filter((k) => k.source === "home").map((k) => k.name);
-        if (live) setHome(names);
-        return names;
-      },
-      () => [] as string[],
-    );
-    const f = readFacts(check, (x) => ((acc = { ...acc, ...x }), live && setRead((r) => ({ ...r, ...x }))), () => live);
-    void Promise.all([c, h, f]).then(([cl, hm, script]) => live && setSnap({ read: { ...acc, setupScript: script }, cli: cl, home: hm }));
+    let acc: Facts = UNREAD;
+    const f = readFacts((x) => ((acc = { ...acc, ...x }), live && setRead((r) => ({ ...r, ...x }))), () => live);
+    void f.then(() => live && setSnap({ read: acc }));
     return () => void (live = false);
-  }, [on, n, check, again]);
-  const list = caps(cli, home);
-  const done = doneFrom({ ...read, cli: list.every((c) => c.ready) });
-  return { cli, caps: list, done, settled: snap ? doneOf(snap) : null, refresh: () => setN((x) => x + 1) };
+  }, [on, n, again]);
+  const done = doneFrom(read);
+  return { done, settled: snap ? doneOf(snap) : null, refresh: () => setN((x) => x + 1) };
 }
 
 /** The progress ring: core steps done out of all of them. */
@@ -127,26 +94,6 @@ function useClosing(open: boolean): boolean {
     return () => window.clearTimeout(t);
   }, [open]);
   return shown;
-}
-
-/** C16-R2-01: the CLI step's inline terminal swallows Tab and Escape. xterm's helper textarea is in the tab
- *  order and its own keydown listener runs in the capture phase, where it cancels both keys and writes them to
- *  the shell (HT for Tab, ESC[Z for Shift+Tab, ESC for Escape), so the guide's bubble onKeyDown never sees them:
- *  the modal had no forward keyboard exit and its advertised "(Esc)" was dead. This answers those two keys on
- *  the capture phase, before the event reaches the textarea, and stops it there so nothing is typed into the
- *  shell: Escape closes the guide, Tab moves the focus itself (wrapping at both ends). Keys pressed anywhere
- *  else in the guide are left to the bubble trap. Returns whether it took the key. */
-export function terminalKeys(e: ReactKeyboardEvent<HTMLElement>, onClose: () => void): boolean {
-  if (e.defaultPrevented || (e.key !== "Tab" && e.key !== "Escape")) return false;
-  if (!(e.target as Element | null)?.closest?.(".xterm")) return false;
-  e.preventDefault();
-  e.stopPropagation();
-  if (e.key === "Escape") {
-    onClose();
-    return true;
-  }
-  tabStep(Array.from(e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)), document.activeElement, e.shiftKey)?.focus();
-  return true;
 }
 
 function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean; onClose: () => void }) {
@@ -174,7 +121,7 @@ function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean;
   );
   return (
     <div className={`ask-backdrop${open ? "" : " closing"}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="guide" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Getting Started with Kolux" onKeyDownCapture={(e) => terminalKeys(e, onClose)} onKeyDown={(e) => (trapTab(e), e.key === "Escape" && onClose())}>
+      <div className="guide" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Getting Started with Kolux" onKeyDown={(e) => (trapTab(e), e.key === "Escape" && onClose())}>
         <aside className="guide-side">
           <header className="guide-head">
             <Ring done={r.done} total={r.total} />
@@ -213,12 +160,9 @@ function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean;
             </button>
           </header>
           <p>{words(step).about}</p>
-          {step.id === "cli" && <CliSetup list={g.caps} onChanged={g.refresh} />}
           {step.id === "multitask" && <MultitaskPanel close={onClose} />}
           {step.id === "notifications" && <NotificationsPanel />}
           {step.id === "agent" && <AgentPanel />}
-          {step.id === "integrations" && <IntegrationsPanel onCheck={g.refresh} />}
-          {step.id === "automate" && <AutomatePanel onCheck={g.refresh} />}
           {g.done.has(step.id) && <p className="guide-done">Done</p>}
         </section>
       </div>
@@ -230,7 +174,6 @@ function Explore({ onClose }: { onClose: () => void }) {
   const [at, setAt] = useState<At>({ w: 0, s: -1 });
   const [seen, setSeen] = useState<Set<string>>(new Set());
   const [kept, setKept] = useState<Set<string>>(new Set());
-  const [setup, setSetup] = useState<Setup>({ taskSource: false, skills: [] });
   const [gh, setGh] = useState<boolean | null>(null);
   const rail = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -238,11 +181,9 @@ function Explore({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     // Merged, not replaced: a stop visited before the record arrived stays seen (FIX-1).
     invoke<GuideRecord>("guide_get").then((g) => (setSeen((s) => withRecord(s, new Set(), g).seen), setKept((k) => withRecord(new Set(), k, g).kept)), () => {});
-    // ONB-023: the setup a stop carries, read when the tour opens.
-    // FIX-1: GitHub counts as connected by the Connect integrations rule (sign-in accepted, task search answered),
-    // not by a cached sign-in alone; null until the read lands, so the stop says it is checking.
-    readSeenCached(invoke).then((x) => (setGh(taskSourceOf(x)), setSetup((s) => ({ ...s, taskSource: taskSourceOf(x) === true }))));
-    invoke<Scan>("skills_scan", { workspace: null, refresh: false }).then((r) => setSetup((s) => ({ ...s, skills: r.skills.filter((k) => k.source === "home").map((k) => k.name) })), () => {});
+    // ONB-024: the PR view stop's GitHub card. FIX-1: GitHub counts as connected once its sign-in is accepted and a
+    // search answered, not by a cached sign-in alone; null until the read lands, so the stop says it is checking.
+    readSeenCached(invoke).then((x) => setGh(taskSourceOf(x)));
   }, []);
   const stop = stopOf(at);
   useEffect(() => {
@@ -250,7 +191,7 @@ function Explore({ onClose }: { onClose: () => void }) {
     markGuide("visited", stop.id).catch(() => {});
   }, [stop.id]);
   // ONB-023: a stop that is complete is kept complete on the profile, whatever detection says later.
-  const isDone = (id: string) => stopDone(id, seen, setup, kept);
+  const isDone = (id: string) => stopDone(id, seen, kept);
   const newlyDone = WORKFLOWS.flatMap((w) => [w.id, ...w.stops.map((s) => s.id)]).filter((id) => !kept.has(doneId(id)) && isDone(id));
   const doneKey = newlyDone.join();
   useEffect(() => {
@@ -295,7 +236,7 @@ function Explore({ onClose }: { onClose: () => void }) {
               }}
             >
               <span className="name">{w.title}</span>
-              {workflowDone(w, seen, setup, kept) && <span className="mark ok">Completed</span>}
+              {workflowDone(w, seen, kept) && <span className="mark ok">Completed</span>}
             </button>
           ))}
         </div>
@@ -383,34 +324,24 @@ function PaletteDemo() {
   );
 }
 
-/** ONB-028: the tip's own setup: the same panel as the Setup Guide's CLI step, read fresh when it opens. */
-function TipSetup() {
-  const c = useCliCaps(true);
-  return <CliSetup list={c.caps} onChanged={c.refresh} />;
-}
-
-/** ONB-027: at most one tip per launch, once settings, onboarding and the CLI status are known and
- *  no other dialog is open. A tip counts as seen the moment it appears. */
+/** ONB-027: at most one tip per launch, once settings and onboarding are known and no other dialog is
+ *  open. A tip counts as seen the moment it appears. */
 function StartupTip() {
   const [tip, setTip] = useState<TipId | null>(null);
-  const [cli, setCli] = useState<CliStatus | null>(null);
-  const [setup, setSetup] = useState(false);
   useEffect(() => {
     let live = true;
     let timer = 0;
     Promise.all([
       invoke<unknown>("onboarding_get"),
       invoke<GuideRecord>("guide_get"),
-      invoke<CliStatus>("cli_status").catch(() => "error" as const),
       invoke("get_settings"),
-    ]).then(([onb, g, c]) => {
-      const t = nextTip({ seen: g.tipsSeen, tried: g.tried, cli: c, onboarding: onb !== null, features: g.features });
+    ]).then(([onb, g]) => {
+      const t = nextTip({ seen: g.tipsSeen, tried: g.tried, onboarding: onb !== null, features: g.features });
       if (!t) return;
       const show = () => {
         if (!live) return;
         if (document.querySelector("[role=dialog]")) return void (timer = window.setTimeout(show, 1000));
         markGuide("tipsSeen", t).catch(() => {});
-        if (c !== "error") setCli(c);
         setTip(t);
       };
       show();
@@ -420,14 +351,14 @@ function StartupTip() {
       window.clearTimeout(timer);
     };
   }, []);
-  const close = () => (setTip(null), setSetup(false));
+  const close = () => setTip(null);
   // T-612: Escape closes the tip from wherever the keyboard is (the card never takes it).
   useEffect(() => {
     if (!tip) return;
     return tipEscape(window as unknown as Parameters<typeof tipEscape>[0], () => document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"]') !== null, close);
   }, [tip]);
   if (!tip) return null;
-  return <TipDocked tip={tip} cli={cli} setup={setup} onSetup={() => setSetup(true)} onClose={close} />;
+  return <TipDocked tip={tip} onClose={close} />;
 }
 
 type TipKey = { key: string; isComposing: boolean };
@@ -482,12 +413,12 @@ function useTipDock(): CSSProperties {
 }
 
 /** The tip's markup, apart from the launch timing above. */
-export function TipView({ tip, cli, setup, onSetup, onClose: close, dock = { right: 16, bottom: 40 } }: { tip: TipId; cli: CliStatus | null; setup: boolean; onSetup: () => void; onClose: () => void; dock?: CSSProperties }) {
+export function TipView({ tip, onClose: close, dock = { right: 16, bottom: 40 } }: { tip: TipId; onClose: () => void; dock?: CSSProperties }) {
   return (
     <div className="tip-dock" style={dock} data-docked={dock.left !== undefined ? "" : undefined}>
       <div className="tip-card" role="dialog" aria-modal="false" aria-label="Tip">
         <span className="tip-badge">Tip</span>
-        {tip !== "cli" && tip !== "palette" ? (
+        {tip !== "palette" ? (
           <>
             <h3>{MOVED.find((m) => m.id === tip)?.title}</h3>
             <p>{MOVED.find((m) => m.id === tip)?.text}</p>
@@ -496,27 +427,6 @@ export function TipView({ tip, cli, setup, onSetup, onClose: close, dock = { rig
               <button className="btn primary" onClick={close}>
                 Got it
               </button>
-            </div>
-          </>
-        ) : tip === "cli" ? (
-          <>
-            <h3>Let your agents drive Kolux</h3>
-            <ul>
-              <li>Open terminals and type into them from any agent</li>
-              <li>Start other agents, hand them work and wait for their results</li>
-              <li>Teach every agent Kolux's commands through its skills</li>
-            </ul>
-            {cli?.installed && !cli.onPath && <p className="tip-warn">Needs attention: the kolux command is installed, but terminals outside Kolux cannot find it.</p>}
-            {setup && <TipSetup />}
-            <div className="btn-row">
-              <button className="btn" onClick={close}>
-                {setup ? "Close" : "Not now"}
-              </button>
-              {!setup && (
-                <button className="btn primary" onClick={onSetup}>
-                  Install CLI &amp; Skills
-                </button>
-              )}
             </div>
           </>
         ) : (

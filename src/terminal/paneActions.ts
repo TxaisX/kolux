@@ -25,7 +25,6 @@ import { removeShortcutAsk } from "../launch/removeAsk";
 import { emptySeat, offeredLineup, removeTarget, sheetStart, type Seat, withoutFailed } from "../launch/seats";
 import { lastStart, prefill, stripAsk, type StartSheet } from "../launch/startForm";
 import { startWatch } from "../launch/startWatch";
-import type { Page } from "../projects/ProjectsPanel";
 import { projectRows } from "./projectRows";
 import type { PaletteItem } from "../projects/WorktreePalette";
 import { folderName } from "../projects/model";
@@ -35,7 +34,6 @@ import { PAGES, openSettings, type PageId } from "../settings/pages";
 import { paletteRows } from "../switcher/accounts";
 import { focusIn, panesIn, sameDir, underDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
-import { teamViewOf } from "../projects/rows";
 import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
 import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
@@ -58,9 +56,9 @@ const SETTINGS_WORDS: Partial<Record<PageId, string>> = { appearance: "theme dar
 
 export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, late: WindowLate) {
   const {
-    accountSwitcher, activeDir, workDir, activeTab, asking, classic, cliFailed, codex, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
-    owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
-    setCreateRequest, setDeleteRequest, setFocused, setHist, setKept, setKeptSetup, setNotice, setPage, setPanes, setRunning, setScreen,
+    accountSwitcher, activeDir, workDir, asking, classic, codex, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
+    owner, panes, pinned, ptys, recentTabs, restoredKeys, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
+    setCreateRequest, setDeleteRequest, setFocused, setHist, setKept, setKeptSetup, setNotice, setPanes, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
     unreadPanes, setUnreadPanes, markDir
   } = s;
@@ -221,28 +219,24 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const groups = cellsOf(panesIn(panes, viewOf(p))).map((c) => c.group);
     if (canExpand(groups.length, classic)) setZoom((z) => toggleZoom(z, viewOf(p) ?? "", groupOf(p), groups.length));
   };
-  const splitPane = (key: number, dir: "right" | "down", cli?: { ask: string; command: string | null }, over?: Partial<Pane>) => {
+  const splitPane = (key: number, dir: "right" | "down", over?: Partial<Pane>) => {
     const src = panes.find((p) => p.key === key);
-    if (!src) {
-      if (cli) cliFailed.current[cli.ask] = "that terminal is not in the window";
-      return;
-    }
+    if (!src) return;
     const shown = cellsOf(panesIn(panes, viewOf(src))); // DT-C274: the grid the pane is shown in
     if (shown.length >= MAX_PANES) {
-      if (cli) cliFailed.current[cli.ask] = `its workspace already holds ${MAX_PANES} panes; open a tab with terminal create instead`;
-      else setToast(`A workspace holds up to ${MAX_PANES} panes.`);
+      setToast(`A workspace holds up to ${MAX_PANES} panes.`);
       return;
     }
     // DT-C274: the new shell runs in the pane's own folder and is shown in the same grid.
-    const pane: Pane = { key: nextKey.current++, cwd: src.cwd, ...(src.view !== undefined ? { view: src.view } : {}), branch: src.branch, agent: "shell", program: null, args: [], typed: cli?.command ?? undefined, ask: cli?.ask, ...over };
+    const pane: Pane = { key: nextKey.current++, cwd: src.cwd, ...(src.view !== undefined ? { view: src.view } : {}), branch: src.branch, agent: "shell", program: null, args: [], ...over };
     // one pane split down becomes a stacked pair; a split right puts the pair side by side again
     const stack = dir === "down" && shown.length === 1;
-    // the split pane's own workspace: a split from the command line may name a pane in a workspace not in front
+    // the split pane's own workspace, which need not be the one in front
     const dirKey = sameDir(viewOf(src), activeDir) ? (activeDir ?? "") : (viewOf(src) ?? "");
     setStacked((st) => ({ ...st, [dirKey]: stack }));
     const at = splitIndex(shown.map((c) => c.group), groupOf(src), dir, columnsFor(shown.length + 1, stack));
     setPanes(insertBefore(panes, shown[at]?.panes[0], pane));
-    if (!cli) setFocused(pane.key);
+    setFocused(pane.key);
   };
 
   const setChooser = (key: number, patch: Partial<StartSheet>) => {
@@ -261,7 +255,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setScreen("terminals");
     if (p.dir === null) setActiveDir(null);
     else if (!sameDir(p.dir, activeDir)) late.select(p.dir, null);
-    setPage(p.page as Page | null);
     return true;
   };
   // PROJ-057 / VIEW-037: the palette's rows besides worktrees and projects (the pull requests, VIEW-043, are added by the
@@ -278,10 +271,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
         dir: p.cwd ?? undefined,
         run: () => {
           setScreen("terminals");
-          if (!sameDir(viewOf(p), activeDir)) {
-            setPage(null);
-            setActiveDir(viewOf(p));
-          }
+          if (!sameDir(viewOf(p), activeDir)) setActiveDir(viewOf(p));
           setFocused(p.key);
         },
       })),
@@ -316,46 +306,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       },
     }]),
   ];
-  // PROJ-077: a workspace made or removed from the command line shows up like one made here;
-  // the handlers are read through a ref so the one listener never goes stale.
-  // CLI-026, CLI-027: the terminal commands. A new terminal joins the worktree's last pane as a
-  // tab; unless asked to come into view it leaves that pane's shown tab and the focus as they were.
+  // TERM-096: the open pane whose terminal has the printed handle (`term-<n>`), NaN when none does.
   const keyOfHandle = (h: string) => Number(Object.keys(ptys.current).find((k) => `term-${ptys.current[Number(k)]}` === h) ?? NaN);
-  const showDir = (dir: string | null) => {
-    setPage(null);
-    if (dir !== null) recentDirs.current = [dir, ...recentDirs.current.filter((d) => !sameDir(d, dir))].slice(0, 20);
-    setActiveDir(dir);
-    setScreen("terminals");
-  };
-  // DT-C274: a terminal made in a team worktree is shown in its team's grid, as a tab of the cell its live agent is in.
-  const termCreate = (c: { path: string; branch: string | null; command: string | null; title: string | null; focus: boolean; ask: string }) => {
-    const view = teamViewOf(settings, c.path);
-    const at = view === undefined ? c.path : view;
-    const here = cellsOf(panesIn(panes, at));
-    const mine = view === undefined ? undefined : here.find((cell) => cell.panes.some((p) => !p.kind && sameDir(p.cwd, c.path) && running[p.key] !== false));
-    const last = mine ?? here[here.length - 1];
-    const key = nextKey.current++;
-    if (last && !c.focus) {
-      const on = last.panes.some((p) => p.key === activeTab[last.group]) ? activeTab[last.group] : last.panes[last.panes.length - 1].key;
-      setActiveTab((m) => ({ ...m, [last.group]: on }));
-    }
-    setPanes((ps) => [...ps, { key, cwd: c.path, ...(view === undefined ? {} : { view }), branch: c.branch, agent: "shell", program: null, args: [], typed: c.command ?? undefined, title: c.title ?? undefined, ask: c.ask, group: last?.group }]);
-    if (c.focus) {
-      showDir(at);
-      setFocused(key);
-    }
-  };
-  const termSwitch = (handle: string) => {
-    const p = panes.find((x) => x.key === keyOfHandle(handle));
-    if (!p) return;
-    showDir(viewOf(p)); // DT-C274: the grid the pane is shown in
-    setFocused(p.key);
-  };
   const renamePane = (key: number, title: string | undefined) => setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, title } : p)));
-  const termRename = (handle: string, title: string | null) => {
-    const key = keyOfHandle(handle);
-    setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, title: title ?? undefined } : p)));
-  };
   // TERM-014: closing a pane ends its program (the pane's own cleanup kills it); the next tab of
   // its cell takes over, else the neighbouring cells take the space; closing the last pane leaves
   // the workspace's empty placeholder.
@@ -371,8 +324,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       return;
     }
     startWatch.seen(key); // SESS-005: its own toast says why; no five-second warning on top
-    const ask = panes.find((p) => p.key === key)?.ask;
-    if (ask) cliFailed.current[ask] = error;
     const { panes: rest, batchEmpty } = withoutFailed(panes, key);
     // from the latest list: several panes of one launch can fail before the window draws again, and each
     // removal must stand (a list from this render would bring the pane that failed first back, dead)
@@ -500,7 +451,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const closePane = (key: number) => void closeTab([key]);
   const leavePage = () => {
     setSettingsOpen(false);
-    setPage(null);
     setScreen("terminals");
   };
   // EDIT-041: Open in Code goes to the Code view, the pane's workspace (its sidebar row scrolled
@@ -526,7 +476,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const openPane = (key: number) => {
     const p = panes.find((x) => x.key === key);
     if (!p) return;
-    setPage(null); // C13-R1-01: Open in Code leaves a full page (Automations, Tasks, Routing) behind
     setScreen("terminals");
     if (!sameDir(viewOf(p), activeDir)) setActiveDir(viewOf(p)); // DT-C274: the grid the pane is shown in
     setFocused(key);
@@ -540,7 +489,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   };
   return {
     addShell, addChooser, openStart, removeSession, openTerminalIn, newTab, openFile, openCheck, setCount, expandPane, splitPane, setChooser,
-    setSeats, stillThere, step, paletteItems, keyOfHandle, showDir, termCreate, termSwitch, renamePane, termRename, failedPane, restartPane, noticeFor,
+    setSeats, stillThere, step, paletteItems, renamePane, failedPane, restartPane, noticeFor,
     orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, copyId, findHandle, openPane,
     addPreset,
   };

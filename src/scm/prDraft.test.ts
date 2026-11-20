@@ -215,7 +215,6 @@ describe("readDraftGate fails closed", () => {
   const settingsFails = (cmd: string) => {
     if (cmd === "get_settings") throw new Error("settings unreadable");
     if (cmd === "agent_list") return [{ id: "claude", installed: true }];
-    if (cmd === "scm_github_repo") return null;
     return ["Add login", "Fixes the login."];
   };
   beforeEach(() => {

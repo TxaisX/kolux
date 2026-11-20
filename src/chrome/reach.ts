@@ -10,8 +10,8 @@ import type { PaletteItem } from "../projects/WorktreePalette";
 const SWITCHER_SCREENS: readonly Screen[] = ["terminals"];
 
 /**
- * C12-R5-01: the screen a row shows. The Classic look has one view: it draws no switcher (titleHeader.ts),
- * its View menu has no Workspace View and view.cycleWorkspaceView only says so. A row for one of the
+ * C12-R5-01: the screen a row shows. The Classic look has one view: it draws no switcher (titleHeader.ts)
+ * and its View menu has no Workspace View. A row for one of the
  * switcher's screens therefore keeps Terminals instead of switching to a screen whose only way back is
  * that missing switcher (Board has no Close, Back is disabled off Terminals and Escape does not leave it).
  */

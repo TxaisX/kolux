@@ -21,8 +21,8 @@ function page({ ipc = "fetch" } = {}) {
 }
 const url = (cmd) => `http://ipc.localhost/${encodeURIComponent(cmd)}`;
 const BLOCKED = ["keybindings_write", "keybindings_reload", "keybindings_show", "open_external", "open_install_page", "open_notification_settings", "open_in", "open_path",
-  "editor_open", "scm_open_pr", "scm_open_with", "scm_reveal", "skills_reveal", "session_reveal", "browser_download_reveal", "app_restart", "update_restart",
-  "update_download", "graphics_restart_safe", "graphics_choose", "cli_register", "cli_unregister", "agents_install", "agents_install_many", "agent_install"];
+  "editor_open", "scm_open_pr", "scm_open_with", "scm_reveal", "session_reveal", "browser_download_reveal", "app_restart", "update_restart",
+  "update_download", "graphics_restart_safe", "graphics_choose", "agent_install"];
 
 test("arming returns true and starts an empty call log", () => {
   const p = page();

@@ -12,11 +12,10 @@ import { sameDir } from "../workspaces";
 import type { Badge } from "./tabs";
 
 /** What a tab is called: the seat's title, the agent, or "Terminal N". */
-/** TERM-058: a terminal tab follows the running program's title (`live`) unless the user named it; a worker's task label (ORCH-066) comes first. */
-export function tabName(p: Pane, _titles: Record<number, string>, label?: string, live: Record<number, Identity> = {}): string {
+/** TERM-058: a terminal tab follows the running program's title (`live`) unless the user named it. */
+export function tabName(p: Pane, _titles: Record<number, string>, live: Record<number, Identity> = {}): string {
   if (p.kind === "check") return p.check?.name || "Check"; // T-235-b: the check's name, never a path
-  // ORCH-066 / T-129-d: a worker's task label names the tab first; then the user's own name; then the program's title (TERM-058).
-  if (label) return label;
+  // The user's own name first; then the program's title (TERM-058).
   const chooser = chooserTabName(p); // T-577: "New session" until something starts in it
   if (chooser) return chooser;
   return followedTitle(p.title?.trim() ? p.title : (sessionNameFor(p.key) ?? apartName(p)), live[p.key] ?? IDLE, p.agent !== "shell" ? programWord(p.agent) : launchedName(p) ?? `Terminal ${p.key}`);

@@ -173,13 +173,12 @@ describe("onboarding.md:19: the shortcut label follows the platform", () => {
 });
 
 describe("onboarding.md:10: a tour replay that cannot start says why", () => {
-  const forced: Want = { id: "tasks", forced: true, tries: 9, page: "p" };
-  it("speaks for a forced replay that gave up or whose feature is off, and not for the rest", () => {
-    expect(tourNotice("Tasks", forced, "miss", true, false)).toMatch(/needs its screen showing/);
-    expect(tourNotice("Tasks", forced, "miss", false, false)).toBeNull();
-    expect(tourNotice("Tasks", forced, "drop", false, true)).toMatch(/switched off in Settings/);
-    expect(tourNotice("Tasks", forced, "drop", false, false)).toBeNull(); // the user moved on themselves
-    expect(tourNotice("Tasks", { ...forced, forced: false }, "miss", true, false)).toBeNull(); // an automatic tour stays quiet
+  const forced: Want = { id: "parallel", forced: true, tries: 9, page: "p" };
+  it("speaks for a forced replay that gave up, and not for the rest", () => {
+    expect(tourNotice("Agents in parallel", forced, "miss", true)).toMatch(/needs its screen showing/);
+    expect(tourNotice("Agents in parallel", forced, "miss", false)).toBeNull();
+    expect(tourNotice("Agents in parallel", forced, "drop", false)).toBeNull(); // the user moved on themselves
+    expect(tourNotice("Agents in parallel", { ...forced, forced: false }, "miss", true)).toBeNull(); // an automatic tour stays quiet
   });
 });
 

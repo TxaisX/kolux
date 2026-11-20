@@ -97,8 +97,8 @@ export const moveScript = (pid, offscreen) => {
 export const IPC_BLOCK = new RegExp(
   "^(?:" +
     ["open_external", "open_install_page", "open_notification_settings", "open_in", "open_path", "editor_open", "scm_open_pr", "scm_open_with",
-     "scm_reveal", "skills_reveal", "session_reveal", "browser_download_reveal", "app_restart", "update_restart", "update_download",
-     "graphics_restart_safe", "graphics_choose", "keybindings_(?:show|write|reload)", "cli_(?:un)?register", "agents_install(?:_many)?", "agent_install"].join("|") +
+     "scm_reveal", "session_reveal", "browser_download_reveal", "app_restart", "update_restart", "update_download",
+     "graphics_restart_safe", "graphics_choose", "keybindings_(?:show|write|reload)", "agent_install"].join("|") +
     ")$",
 );
 /** The guard's page side: wraps window.fetch (once per page; arming again reuses the original), logs backend calls in

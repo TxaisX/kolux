@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { durableOnly, lastWriter, openPageAt, readLook, saveLayout, savedFirst, shownFirst, stampLook, startScreen } from "./general";
+import { durableOnly, lastWriter, readLook, saveLayout, savedFirst, shownFirst, stampLook, startScreen } from "./general";
 import type { SavedLayout } from "../terminal/layout";
 
 test("VIEW-107: a failed layout save is retried once, then only the durable part is saved", async () => {
@@ -82,14 +82,6 @@ test("VIEW-005: quick switches are one write, a close flushes the last one", () 
   w.flush();
   expect(writes).toEqual(["agents", "inbox"]);
   vi.useRealTimers();
-});
-
-test("VIEW-011: the page open at quit comes back", () => {
-  expect(openPageAt({ openPage: "tasks" }), "the Tasks page is gone").toBe(null);
-  expect(openPageAt({ openPage: "automations" }), "the Automations page is gone").toBe(null);
-  expect(openPageAt({ openPage: "routing" }), "the Routing page is gone").toBe(null);
-  expect(openPageAt({ openPage: "skills" })).toBe(null);
-  expect(openPageAt({})).toBe(null);
 });
 
 test("VIEW-011: a Skills screen open at quit falls back now that the screen is gone", () => {

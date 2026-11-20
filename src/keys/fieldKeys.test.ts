@@ -102,7 +102,7 @@ test("Ctrl+W with the focus on a button or a checkbox closes the pane as before"
 });
 
 test("the keys held while typing are the ones that close, end or delete something", () => {
-  expect([...CLOSING_KEYS].sort()).toEqual(["sessions.remove", "tab.close", "tab.closeAll", "terminal.closePane", "workspace.delete"]);
+  expect([...CLOSING_KEYS].sort()).toEqual(["sessions.remove", "tab.close", "terminal.closePane", "workspace.delete"]);
 });
 
 test("R54-01: Close tab picked from the palette, opened from a text box, closes the pane; a typed Ctrl+W there still does not", async () => {

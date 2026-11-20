@@ -4,11 +4,11 @@ Kolux keeps everything on the user's machine. There is no account, no sync servi
 
 ## The profile folder
 
-The root is `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resources/recovery.rs:849-851`, `src-tauri/tauri.conf.json:5`). A development or test run can point somewhere else with `KOLUX_APP_DIR` or `KOLUX_USER_DATA_PATH` (`src-tauri/src/cli/mod.rs:48-53`).
+The root is `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resources/recovery.rs:849-851`, `src-tauri/tauri.conf.json:5`). A development or test run can point somewhere else with `KOLUX_APP_DIR` or `KOLUX_USER_DATA_PATH` (`src-tauri/src/terminal.rs` `APP_DIR_ENV`).
 
 | Path | Format | Purpose |
 |---|---|---|
-| `settings.json` | Pretty JSON | User preferences. Seven fields hold sealed secrets. |
+| `settings.json` | Pretty JSON | User preferences. Three fields hold sealed secrets. |
 | `settings.json.bak` | JSON | The previous good settings copy. |
 | `state.db` | SQLite, WAL | One `kv(key, value)` table for everything structured. |
 | `state.db.bak` | SQLite | The backup used when the database is corrupt. |
@@ -16,14 +16,11 @@ The root is `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resources/recovery.
 | `logs/kolux.log` | Text | Rotated app log. Pane output is not recorded. |
 | `logs/diagnostics-review.txt` | Text | The review copy written by the Diagnostics card. |
 | `terminals.json` | JSON | Terminal service port, token, pid, generation, protocol. |
-| `cli.json` | JSON | CLI loopback port, token, pid. |
+| `cli.json` | JSON | The startup file: the running copy's pid, for a second launch. |
 | `agent-hooks-endpoint.txt` | One line, `port -` | The hook port. It carries no token. |
 | `agent-hooks-endpoint-<terminal>.txt` | One line, `port token` | What one pane's hook scripts read; the token is that pane's own (HMAC of the run secret over its pane key). Swept at start and exit. |
 | `terminals-seen.json` | JSON | How much output the window drew, for reattach. |
 | `agent-hooks-spool.txt` | Text | Events held while Kolux was closed. |
-| `artifacts/` | JSON plus folders | The artifact library and its stored files. |
-| `browser-profiles/` | WebView2 data | Browser tabs, logins, and history. |
-| `browser-history.json` | JSON | Address bar history. |
 | `claude-accounts/`, `codex-accounts/` | Agent homes | Managed per-account sign-ins. |
 | `crashes.json` | JSON | Crash records for the recovery screen. |
 | `memory-last.json` | JSON | The last memory figure. |
@@ -39,7 +36,7 @@ Hook scripts are outside the profile, in `~/.kolux/agent-hooks` (`src-tauri/src/
 CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 ```
 
-The store holds projects, worktrees, file grants, editor drafts, orchestration tasks and mail, account lists, rate-limit windows, update state, and secret bookkeeping (`src-tauri/src/state.rs:36-41`). Settings are separate: they stay in `settings.json`, not the database.
+The store holds projects, worktrees, file grants, account lists, rate-limit windows, update state, and secret bookkeeping (`src-tauri/src/state.rs:36-41`). Settings are separate: they stay in `settings.json`, not the database.
 
 Writes are transactional. Multi-key changes use one transaction, and a key that depends on an old value is copied aside and compared before the swap (`src-tauri/src/state.rs:109-138`). A failed read sets a latch that refuses every save until a read succeeds, so a transient read error cannot overwrite good data with an empty state (`src-tauri/src/state.rs:19-27`). The SQLite busy timeout is 5 seconds.
 
@@ -55,15 +52,13 @@ The window saves partial patches, not the whole file. Rust applies each patch un
 
 Every key and managed sign-in is sealed with Windows DPAPI at current-user scope before it touches a file (`src-tauri/src/secrets.rs:1-4`, `:482-518`). The sealed form is `kolux-sealed:v1:<base64>`. On non-Windows builds the fallback is only an XOR scramble, and the log says so.
 
-Seven settings fields are secret (`src-tauri/src/secrets.rs:28`):
+Three settings fields are secret (`src-tauri/src/secrets.rs:28`):
 
 - `claudeOauthToken`
-- `xaiApiKey`
 - `httpProxy`
-- `browserSearchSessionUrl`
-- `minimaxCookie`
-- `minimaxApiKey`
-- `moonshotApiKey`
+- `openrouterApiKey`
+
+A field taken off that list (the xAI, Kimi and MiniMax keys, the browser search-session link) is on the importer's retired list, so a sealed value an older version left in a profile never reaches the window.
 
 The frontend never receives those values. Rust removes them from the settings payload and ignores them on the way back; the page can learn only whether a secret is set (`src-tauri/src/secrets.rs:150-170`, `:537-541`). If the secret store is unavailable, a write is refused rather than storing the value in the clear (`src-tauri/src/secrets.rs:206-224`).
 
@@ -73,10 +68,10 @@ The app deliberately never reads Claude's `.credentials.json`, its backups, proj
 
 ## Endpoint files
 
-The local doors publish their addresses in small files so a pane or a CLI process can find them after a restart:
+The local doors publish their addresses in small files so a pane can find them after a restart:
 
 - `terminals.json` is written by the terminal service with `{port, token, pid, generation, protocol}` and is read by the window (`src-tauri/src/pty_service.rs:38`, `:510-520`).
-- `cli.json` is written by the desktop app with `{port, token, pid}` and is read by `kolux` (`src-tauri/src/cli/mod.rs:48`, `:3624`).
+- `cli.json` is written by the desktop app with `{pid}` only, so a second launch that cannot reach the running copy can still find it (`src-tauri/src/lifecycle.rs`, `STARTUP_FILE`). It carries no port and no token.
 - `agent-hooks-endpoint.txt` is one line, `port token`, read by every hook script (`src-tauri/src/hooks.rs:44`, `:864-865`).
 
 These files are the reason a pane or a shell can outlive a restart. They are also the reason the local doors are only a same-user boundary: any process running as the same user can read them. See [Security](security.md).
@@ -87,11 +82,9 @@ Kolux can manage more than one Claude or Codex sign-in. Each account gets its ow
 
 Hook installs do write into the agent's own settings, because that is how an agent reports status. Each install keeps a `.bak-kolux` copy beside the file and removes only the entries it wrote. The hook scripts themselves live in `~/.kolux/agent-hooks`.
 
-## Artifacts and browser data
+## Data left by removed features
 
-Artifacts are stored in `artifacts/` with a `library.json` index and one folder per entry (`src-tauri/src/artifacts.rs:307`). The artifact viewer serves them over the custom `kolux-artifact` scheme, not from the profile by direct file path.
-
-Browser tabs use WebView2 child webviews with their own profile folders under `browser-profiles/<id>/` (`src-tauri/src/browser_profiles.rs:169-177`). Passwords and cookies stay in the WebView2 profile, not in `settings.json`.
+The artifact library (`artifacts/`, `library.json`) and the browser's `browser-profiles/` and `browser-history.json` were removed in the 2026-11 slim-down. A profile from an older version may still hold them; the app no longer reads or writes them.
 
 ## Logs and diagnostics
 
@@ -115,7 +108,7 @@ The goal is that a bad file never becomes an empty file.
 ## What is not stored
 
 - No telemetry, analytics, or crash upload.
-- No terminal output in the app log. Automation runs keep the last ~16,000 characters of a run on purpose, so the run's result survives.
+- No terminal output in the app log.
 - No Claude credentials file contents. The app reads the account through Claude's own CLI and keeps only its own sealed copy.
 - No `.env` files. The settings reader refuses them.
 - No server-side account or sync record.

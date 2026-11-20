@@ -21,7 +21,6 @@ Requirements for running the parallel live test suite (`node scripts/stress/run-
 - **pnpm**: `12.x` (`corepack enable` or `pnpm/action-setup` v6+).
 - **Git for Windows**: `git` on `PATH` (used by `run-all.mjs`, `live-common.mjs`, and Kolux's workspace/git flows).
 - **PowerShell**: `powershell.exe` (Windows PowerShell 5.1, built-in) for `app-launch.mjs` Win32 process tree / window placement / `WIN_PS` helpers.
-- **Optional media tools**: `ffmpeg` on `PATH` only if running `live-artifacts.mjs` (which generates a scratch `.mp4` test fixture).
 
 ## 3. Port, Identifier, and Disk Isolation
 

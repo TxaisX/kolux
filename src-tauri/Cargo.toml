@@ -14,21 +14,7 @@ default-run = "kolux"
 name = "kolux_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[[bin]]
-name = "kolux-dev"
-path = "src/bin/kolux-dev.rs"
-
-# CLI-006: the shipped command line. Only the release script builds it, so a development build
-# never puts a `kolux` on its panes' search path that would stand in for the installed one. T-790: the app
-# program is now `kolux` too, so cargo cannot hold both under one name; this one is built as `kolux-cli`
-# and shipped as bin\kolux.exe (scripts/release.mjs and the update rig copy it under that name).
-[[bin]]
-name = "kolux-cli"
-path = "src/bin/kolux-cli.rs"
-required-features = ["release-cli"]
-
 [features]
-release-cli = []
 # APP-008 / T-248-d: the real tray icon (Open Kolux, Quit, the attention dot); on by default.
 tray = ["tauri/tray-icon"]
 default = ["tray"]
@@ -50,13 +36,12 @@ base64 = "0.23"
 tauri-plugin-dialog = "2"
 # USAGE-009: usage alerts are system notifications, sent from the Rust side.
 tauri-plugin-notification = "2"
-# AUTO-001: timetables are worked out in the IANA zone saved with an automation (already in the tree via tauri).
+# Dates and times in the local zone (diagnostics, chat write-ups, token usage, files; already in the tree via tauri).
 jiff = "0.2"
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
 # APP-001: a second launch of the same profile hands its arguments to the running copy and exits.
 tauri-plugin-single-instance = "2.5.5"
-trash = "5"
-# Already in the build through the updater; fetches CDN scripts for offline artifacts (SKILL-035).
+# Already in the build through the updater; fetches project and site icons (APP-070).
 reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }
 unicode_names2 = "4.0.0"
 # SKILL-013: the README lists SHA-256 hashes (sha2 is already in the tree).
@@ -64,15 +49,12 @@ sha2 = "0.11"
 # T-156-b (SAFE-016): the user's own regular-expression rules, built with a size limit (already in the tree).
 regex = "1"
 
-[target.'cfg(unix)'.dependencies]
-# T-624: O_NOFOLLOW when the artifact scan opens a source file (already in the tree through std's own dependencies).
-libc = "0.2"
-
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Wdk_System_Threading", "Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Registry", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_Diagnostics_ToolHelp", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
-# T-158 / T-251 / T-272-d: WebView2's own events and calls (certificate errors, page capture, PDF
-# printing, real key presses). Exact pins of the versions wry already builds, with only features
-# wry already turns on, so Cargo.lock gains no crate (coordinator decision 2026-10-20).
+# WebView2's own events and calls: the engine's process failures (APP-040), the text-field menu's
+# spelling suggestions (APP-014) and the view's power state (DT-C236). Exact pins of the versions
+# wry already builds, with only features wry already turns on, so Cargo.lock gains no crate
+# (coordinator decision 2026-10-20).
 webview2-com = "=0.39.1"
 windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
 

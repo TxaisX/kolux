@@ -9,7 +9,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 test("the note names each cleared key and says where to reconnect it", () => {
   expect(lostText(["claudeOauthToken"])).toBe("Your Claude 1-year key could not be opened on this computer, so it was cleared. Reconnect it in Settings › Accounts & keys.");
-  expect(lostText(["claudeOauthToken", "xaiApiKey"])).toBe("Your Claude 1-year key and xAI key could not be opened on this computer, so they were cleared. Reconnect them in Settings › Accounts & keys.");
+  expect(lostText(["claudeOauthToken", "httpProxy"])).toBe("Your Claude 1-year key and proxy address could not be opened on this computer, so they were cleared. Reconnect them in Settings › Accounts & keys.");
   expect(lostText(["somethingNew"])).toContain("A stored key could not be opened");
   expect(lostText([])).toBeNull();
 });
@@ -27,7 +27,7 @@ test("nothing shows when no key was cleared", () => {
 test("every secret field the app stores has a label in the note", async () => {
   const { SECRET_KEYS } = await import("./settingsSync");
   for (const k of SECRET_KEYS) expect(lostText([k]), k).toContain("Your ");
-  expect(lostText(["moonshotApiKey", "minimaxApiKey"])).toContain("Moonshot key and MiniMax key");
+  expect(lostText(["httpProxy", "openrouterApiKey"])).toContain("proxy address and OpenRouter key");
 });
 
 // AFTER row 892: a refused dismiss keeps the note and says why; only a successful one lets it go.

@@ -13,7 +13,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::orchestration::sendonce as so;
+use crate::sendonce as so;
 
 // ORCH-060: the session tab inventory (T-262).
 #[path = "inventory.rs"]
@@ -21,9 +21,6 @@ pub mod inventory;
 // ux card 11: the window's `agent_list` command runs off the UI thread; Rust callers keep the plain `agent_list` below.
 #[path = "agent_list_command.rs"]
 pub mod list_command;
-// T-573: the install table, the `agents_install` command and the installer's `--install-agents` run.
-#[path = "agent_install.rs"]
-pub mod agent_install;
 // c2-agents top bug 1: an agent pane runs the user's shell, which starts the agent (via_shell).
 #[path = "agent_shell.rs"]
 pub mod agent_shell;
@@ -45,13 +42,6 @@ pub struct AgentInfo {
     pub path: Option<String>,
     /// SESS-017: Kolux knows the agent's own documentation page (`install_page`).
     pub docs: bool,
-    /// T-573: Kolux knows an official install route for this agent on this OS (`install` is the command).
-    pub installable: bool,
-    /// T-573: the human-readable install command, the Install button's tooltip; `None` when not installable.
-    pub install: Option<String>,
-    /// T-787 (P3-14): set when installing this agent first needs a runtime that is not on the PC and that Windows installs
-    /// machine-wide (Node.js), so the Install button can say a Windows admin prompt is coming. `None` otherwise.
-    pub install_note: Option<String>,
 }
 
 /// id, name, program names (the first is the main one, the rest also count), fixed arguments.
@@ -71,6 +61,18 @@ pub const OPENCODE_TABS_OFF: &str = r#"{"tabs":{"mode":"off"}}"#;
 /// program. `program` is the spawn program, credited the same way the pane mark is.
 pub fn opencode_env(program: Option<&str>) -> Option<(&'static str, &'static str)> {
     (program.and_then(crate::tools::credited_program) == Some("opencode")).then_some((OPENCODE_CONFIG_ENV, OPENCODE_TABS_OFF))
+}
+
+/// The Grok CLI's home variable (Grok's public authentication guide). Its home holds Grok's skills
+/// folder and its own sign-in, which a Grok pane uses as it is.
+pub const GROK_HOME_ENV: &str = "GROK_HOME";
+
+/// The Grok CLI's home: `GROK_HOME`, else `.grok` in the user's home.
+pub fn grok_home(env: Option<&str>, user: Option<&Path>) -> Option<PathBuf> {
+    match env.filter(|e| !e.trim().is_empty()) {
+        Some(e) => Some(PathBuf::from(e)),
+        None => user.map(|u| u.join(".grok")),
+    }
 }
 
 /// The 35 visible agents: the 34 of SESS-001 in its order, then OpenCode, which Txais brought back on
@@ -126,7 +128,6 @@ pub const CATALOGUE: [Entry; 35] = [
 /// The catalogue with each agent's installed state, in menu order.
 pub fn catalogue() -> Vec<AgentInfo> {
     let dirs = search_dirs();
-    let have_npm = find_in(&dirs, "npm").is_some();
     CATALOGUE
         .iter()
         .map(|(id, name, programs, args)| {
@@ -139,9 +140,6 @@ pub fn catalogue() -> Vec<AgentInfo> {
                 installed: found.is_some(),
                 path: found.map(|(_, f)| f.display().to_string()),
                 docs: install_page(id).is_some(),
-                installable: agent_install::install_text(id).is_some(),
-                install: agent_install::install_text(id),
-                install_note: agent_install::install_note(id, have_npm),
             }
         })
         .collect()
@@ -230,7 +228,7 @@ fn walkable(dirs: Vec<PathBuf>) -> Vec<PathBuf> {
 /// T-580: whether this run is fenced: `agent_hooks::fenced` on the profile folder it uses (`KOLUX_APP_DIR` when
 /// a lane, smoke or evidence run sets it, else the production one). Every test and debug build is.
 pub(crate) fn run_fenced() -> bool {
-    let profile = std::env::var_os(crate::cli::APP_DIR_ENV)
+    let profile = std::env::var_os(crate::terminal::APP_DIR_ENV)
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .or_else(|| crate::resources::recovery::profile_dir(crate::hooks::agent_hooks::PRODUCTION_ID))
@@ -654,6 +652,17 @@ pub fn parse_env(typed: &str) -> Vec<(String, String)> {
     typed.lines().filter_map(|l| l.trim().split_once('=')).filter(|(k, _)| !k.trim().is_empty()).map(|(k, v)| (k.trim().to_string(), v.trim().to_string())).collect()
 }
 
+/// The models a Settings > Agents default may name for Claude Code, each with the effort levels it
+/// takes (none: no effort is passed). ponytail: built in, as Claude Code publishes no model listing
+/// (SESS-029); this was Claude's row of the retired model-routing catalogue.
+const CLAUDE_MODELS: &[(&str, &[&str])] = &[
+    ("fable", CLAUDE_EFFORTS),
+    ("opus", CLAUDE_EFFORTS),
+    ("sonnet", CLAUDE_EFFORTS),
+    ("haiku", &[]),
+];
+const CLAUDE_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
+
 /// C11-R1-01: the default model and effort from Settings > Agents (`defaultModel`, `defaultEffort`,
 /// shipped as opus at medium), as the flags the agent takes. An untouched profile keeps the old line;
 /// an empty string means "no default: pick a model for each seat" and adds nothing; a model this
@@ -671,11 +680,11 @@ fn default_model_args(settings: &serde_json::Value, id: &str) -> Vec<String> {
         Some("") => None,
         Some(e) => Some(e),
     };
-    let Some(p) = crate::routing::providers().into_iter().find(|p| p.id == id) else { return Vec::new() };
-    let Some(m) = p.models.iter().find(|m| m.id == model) else { return Vec::new() };
+    let models: &[(&str, &[&str])] = if id == "claude" { CLAUDE_MODELS } else { &[] };
+    let Some((_, efforts)) = models.iter().find(|(m, _)| *m == model) else { return Vec::new() };
     let mut out = vec!["--model".to_string(), model];
     if let Some(e) = effort {
-        if m.efforts.contains(&e) {
+        if efforts.contains(&e) {
             out.extend(["--effort".to_string(), e.to_string()]);
         }
     }
@@ -998,8 +1007,8 @@ fn now_ms() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
-/// SESS-032: types the opening prompt into terminal `id` exactly once, the way `kolux terminal
-/// send` does (ORCH-055, `orchestration::sendonce`): behind the terminal's other senders, after the
+/// SESS-032: types the opening prompt into terminal `id` exactly once, the way the review panel's
+/// send does (ORCH-055, `sendonce`): behind the terminal's other senders, after the
 /// agent's input box has drawn and settled, as one bracketed paste so line breaks stay inside the
 /// prompt, then Enter as a separate step after a pause that grows with the prompt's size on
 /// Windows; Enter is held back when a permission prompt shows, when the user or another sender
@@ -1099,6 +1108,15 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_grok_home_follows_grok_home_then_the_user_folder() {
+        let user = Path::new("C:/Users/me");
+        assert_eq!(grok_home(Some("D:/g"), Some(user)), Some(PathBuf::from("D:/g")));
+        assert_eq!(grok_home(Some("  "), Some(user)), Some(user.join(".grok")));
+        assert_eq!(grok_home(None, Some(user)), Some(user.join(".grok")));
+        assert_eq!(grok_home(None, None), None);
+    }
 
     #[test]
     fn program_finder_answers_as_find_program_does() {

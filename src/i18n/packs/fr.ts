@@ -20,8 +20,6 @@ const pack = {
   "glossary.cli.hover": "Le programme propre à l'IA sur ce PC (sa CLI)",
   "glossary.pty.plain": "terminal",
   "glossary.pty.hover": "Un terminal (un PTY, ou pseudo-terminal)",
-  "inbox.bell.needs.one": "Boîte de réception, {count} a besoin de vous",
-  "inbox.bell.needs.many": "Boîte de réception, {count} ont besoin de vous",
   "connect.claude": "Se connecter ouvre une fois la page de connexion de Claude dans votre navigateur et conserve une clé valable un an.",
   "connect.codex": "Se connecter ajoute un compte ChatGPT dans un dossier Codex propre à Kolux ; votre dossier Codex reste inchangé.",
   "onboarding.connect.wait": "Connectez une IA ci-dessus pour continuer, ou choisissez « Je le ferai plus tard ».",

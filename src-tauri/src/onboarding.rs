@@ -218,7 +218,7 @@ pub fn onboarding_close(store: State<'_, Mutex<Store>>, outcome: String) -> Resu
 /// seen tips are data an importer brings across, so they keep their own plain list.
 const GUIDE: &str = "guide";
 /// The startup tips this build knows, newest first (ONB-027: newer tips come first).
-pub const TIPS: &[&str] = &["moved-usage", "cli", "palette"];
+pub const TIPS: &[&str] = &["moved-usage", "palette"];
 /// No list grows past this; an id past it is ignored.
 const MAX_IDS: usize = 64;
 
@@ -252,10 +252,8 @@ pub struct Use {
 
 /// ONB-042: the fixed list of features whose use the profile keeps.
 pub const FEATURES: &[&str] = &[
-    "board", "palette", "browser", "browser-page", "tasks", "automations", "split", "workspace-create", "workspace-switch", "skill-setup",
-    "editor", "diff", "notes", "pr", "ship", "commit", "push", "usage",
-    "inbox", "artifacts", "settings", "shortcuts", "search", "file-find", "markdown", "layout", "zoom",
-    "rename", "orchestration", "cli", "notifications", "default-agent", "setup-script", "second-repo", "explore", "setup-guide", "parallel",
+    "palette", "split", "workspace-create", "workspace-switch", "diff", "notes", "pr", "ship", "commit", "push", "usage",
+    "settings", "search", "layout", "zoom", "rename", "notifications", "default-agent", "second-repo", "explore", "setup-guide", "parallel",
 ];
 
 fn features_de<'de, D: serde::Deserializer<'de>>(d: D) -> Result<std::collections::BTreeMap<String, Use>, D::Error> {
@@ -275,9 +273,9 @@ fn used(mut g: Guide, id: &str, now: u64) -> Result<Guide, String> {
     Ok(g)
 }
 
-/// ONB-033: every contextual tour id, built or planned; a seen entry for any other id (one an older
-/// version saved) is dropped on load.
-pub const TOURS: &[&str] = &["tasks", "automations", "parallel", "browser", "board", "create", "grid"];
+/// ONB-033: every contextual tour id; a seen entry for any other id (one an older version saved, such as the
+/// retired board, Tasks and Automations tours) is dropped on load.
+pub const TOURS: &[&str] = &["parallel", "grid"];
 
 /// Keeps the known ids of `v` once each, in order.
 fn known(v: Vec<String>, ids: &[&str]) -> Vec<String> {
@@ -417,148 +415,6 @@ fn guide_mark_in(store: &Store, list: &str, id: &str) -> Result<Guide, String> {
     Ok(g)
 }
 
-/// ONB-027 / ONB-028: whether this build's `kolux` launcher sits in its CLI folder (the install's
-/// bin folder, or beside the app in a development build), and whether a terminal outside Kolux
-/// finds it (that folder is on PATH). Another program called kolux on PATH does not count.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CliStatus {
-    pub installed: bool,
-    pub on_path: bool,
-}
-
-fn same_dir(a: &std::path::Path, b: &std::path::Path) -> bool {
-    let norm = |p: &std::path::Path| {
-        let p = std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
-        let s = p.to_string_lossy().trim_end_matches(['\\', '/']).to_string();
-        if cfg!(windows) {
-            s.to_lowercase()
-        } else {
-            s
-        }
-    };
-    norm(a) == norm(b)
-}
-
-/// How long the whole PATH may take to answer before the folders still looking are passed over
-/// (council: a PATH entry on a drive that is offline froze the window while it was looked up).
-const PATH_ENTRY_WAIT: std::time::Duration = std::time::Duration::from_secs(1);
-
-/// A PATH folder that did not answer in time is not asked again for this long.
-const DEAD_FOR: std::time::Duration = std::time::Duration::from_secs(300);
-
-/// What is known about one PATH folder's lookup: still running, or late the last time.
-#[derive(Default)]
-struct Probe {
-    busy: bool,
-    dead_at: Option<std::time::Instant>,
-}
-
-/// Shared by every check, so reopening the guide never starts a second lookup of a folder whose
-/// first one has not come back, and a folder that was late is skipped for a while.
-fn probes() -> &'static Mutex<std::collections::HashMap<String, Probe>> {
-    static P: std::sync::OnceLock<Mutex<std::collections::HashMap<String, Probe>>> = std::sync::OnceLock::new();
-    P.get_or_init(Default::default)
-}
-
-/// Takes the folder's one lookup slot; false while a lookup runs or the folder is marked dead.
-fn claim(key: &str) -> bool {
-    let mut m = probes().lock().unwrap_or_else(|e| e.into_inner());
-    let p = m.entry(key.to_string()).or_default();
-    if p.busy || p.dead_at.is_some_and(|t| t.elapsed() < DEAD_FOR) {
-        return false;
-    }
-    p.busy = true;
-    true
-}
-
-fn settle(key: &str, dead: bool) {
-    let mut m = probes().lock().unwrap_or_else(|e| e.into_inner());
-    let p = m.entry(key.to_string()).or_default();
-    if dead {
-        p.dead_at = Some(std::time::Instant::now());
-    } else {
-        p.busy = false;
-    }
-}
-
-/// A folder's spelling compared as text: separators one way, no trailing one, case folded on Windows.
-fn text_key(p: &std::path::Path) -> String {
-    let s = p.to_string_lossy().replace('/', "\\");
-    let s = s.trim_end_matches('\\');
-    if cfg!(windows) {
-        s.to_lowercase()
-    } else {
-        s.to_string()
-    }
-}
-
-/// A PATH folder on another computer is never looked up (doing so signs in to it with the user's
-/// credentials); a folder spelled like the CLI's own counts without a lookup; the rest are asked
-/// through `same` at once, each on its own thread, under one deadline `wait` for the whole list.
-/// `app` is the app's folder; T-593: the CLI's folder is found from it by the rule registration uses.
-fn cli_status_in(app: &std::path::Path, path: &std::ffi::OsStr, wait: std::time::Duration, same: fn(&std::path::Path, &std::path::Path) -> bool) -> CliStatus {
-    let dir = &crate::cli::cli_register::cli_dir(app);
-    let names: &[&str] = if cfg!(windows) { &["kolux.exe", "kolux.cmd"] } else { &["kolux"] };
-    let installed = names.iter().any(|n| dir.join(n).is_file());
-    if !installed {
-        return CliStatus { installed, on_path: false };
-    }
-    let own = text_key(dir);
-    let local: Vec<std::path::PathBuf> = std::env::split_paths(path).filter(|p| !p.as_os_str().is_empty() && !crate::links::host_path(&p.to_string_lossy(), &[])).collect();
-    if local.iter().any(|p| text_key(p) == own) {
-        return CliStatus { installed, on_path: true };
-    }
-    let deadline = std::time::Instant::now() + wait;
-    let (tx, rx) = std::sync::mpsc::channel();
-    let mut asked: Vec<String> = vec![];
-    for p in local {
-        let key = text_key(&p);
-        if asked.contains(&key) || !claim(&key) {
-            continue;
-        }
-        asked.push(key.clone());
-        let (tx, d) = (tx.clone(), dir.to_path_buf());
-        std::thread::spawn(move || {
-            let r = same(&p, &d);
-            settle(&key, false);
-            let _ = tx.send((key, r));
-        });
-    }
-    drop(tx);
-    let mut on_path = false;
-    while !asked.is_empty() {
-        match rx.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now())) {
-            Ok((key, r)) => {
-                asked.retain(|k| *k != key);
-                if r {
-                    on_path = true;
-                    break;
-                }
-            }
-            Err(_) => break,
-        }
-    }
-    if !on_path {
-        for key in asked {
-            settle(&key, true);
-        }
-    }
-    CliStatus { installed, on_path }
-}
-
-/// Async and off the async workers, so the check never holds the window's thread or a worker.
-#[tauri::command]
-pub async fn cli_status() -> Result<CliStatus, String> {
-    tauri::async_runtime::spawn_blocking(|| {
-        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-        let dir = exe.parent().ok_or("the app has no folder")?;
-        Ok(cli_status_in(dir, &std::env::var_os("PATH").unwrap_or_default(), PATH_ENTRY_WAIT, same_dir))
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
 #[tauri::command]
 pub fn onboarding_reopen(store: State<'_, Mutex<Store>>) -> Result<(), String> {
     let store = store.lock().map_err(|e| e.to_string())?;
@@ -590,15 +446,15 @@ mod tests {
     #[test]
     fn guide_lists_keep_each_id_once_and_drop_unknown_tips() {
         let (s, dir) = store("guide");
-        s.set(GUIDE, r#"{"tipsSeen":["old-tip","cli","cli"],"visited":["agents"]}"#).unwrap();
+        s.set(GUIDE, r#"{"tipsSeen":["old-tip","cli","palette","palette"],"visited":["agents"]}"#).unwrap();
         let g = guide_load(&s);
-        assert_eq!(g.tips_seen, ["cli"], "an unknown tip from older data is dropped on load, a repeat counts once");
+        assert_eq!(g.tips_seen, ["palette"], "an unknown tip from older data (the retired command-line tip too) is dropped on load, a repeat counts once");
         assert_eq!(g.visited, ["agents"]);
         let g = marked(g, "tipsSeen", "palette").unwrap();
-        let g = marked(g, "tipsSeen", "palette").unwrap();
-        assert_eq!(g.tips_seen, ["cli", "palette"]);
-        assert_eq!(marked(g.clone(), "tipsSeen", "moved-usage").unwrap().tips_seen, ["cli", "palette", "moved-usage"], "ONB-042: the moved-control hint is a tip that counts once");
+        assert_eq!(g.tips_seen, ["palette"]);
+        assert_eq!(marked(g.clone(), "tipsSeen", "moved-usage").unwrap().tips_seen, ["palette", "moved-usage"], "ONB-042: the moved-control hint is a tip that counts once");
         assert!(marked(g.clone(), "tipsSeen", "nope").is_err());
+        assert!(marked(g.clone(), "tipsSeen", "cli").is_err(), "the command-line tip is retired");
         assert!(marked(g.clone(), "other", "x").is_err());
         assert!(marked(g.clone(), "tried", "../x").is_err());
         assert_eq!(marked(g, "tried", "usage").unwrap().tried, ["usage"]);
@@ -614,130 +470,13 @@ mod tests {
         assert!(!fresh && g.tours_auto == Some(false), "the decision is not taken again later");
         assert_eq!(tours_decided(Guide::default(), true).0.tours_auto, Some(true), "a new profile qualifies");
         let (s, dir) = store("tours");
-        s.set(GUIDE, r#"{"toursSeen":["retired-tour","tasks","tasks"]}"#).unwrap();
-        assert_eq!(guide_load(&s).tours_seen, ["tasks"]);
+        s.set(GUIDE, r#"{"toursSeen":["tasks","grid","grid"]}"#).unwrap();
+        assert_eq!(guide_load(&s).tours_seen, ["grid"]);
         let g = marked(guide_load(&s), "toursSeen", "parallel").unwrap();
-        assert_eq!(g.tours_seen, ["tasks", "parallel"]);
+        assert_eq!(g.tours_seen, ["grid", "parallel"]);
         assert!(marked(g, "toursSeen", "nope").is_err());
         drop(s);
         let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn the_cli_counts_on_path_only_when_its_own_folder_is_there() {
-        let dir = std::env::temp_dir().join(format!("kolux-onb-cli-{}", std::process::id()));
-        let other = dir.join("other");
-        std::fs::create_dir_all(&other).unwrap();
-        let launcher = if cfg!(windows) { "kolux.exe" } else { "kolux" };
-        let path = |ps: &[&std::path::Path]| std::env::join_paths(ps).unwrap();
-        let check = |d: &std::path::Path, p: &std::ffi::OsStr| cli_status_in(d, p, PATH_ENTRY_WAIT, same_dir);
-        assert_eq!(check(&dir, &path(&[&dir])), CliStatus { installed: false, on_path: false });
-        std::fs::write(other.join(launcher), "").unwrap();
-        assert_eq!(check(&dir, &path(&[&other])), CliStatus { installed: false, on_path: false }, "another kolux on PATH is not this build's");
-        std::fs::write(dir.join(launcher), "").unwrap();
-        assert_eq!(check(&dir, &path(&[&other])), CliStatus { installed: true, on_path: false }, "installed but missing from PATH");
-        let spelled = std::path::PathBuf::from(format!("{}{}", dir.display(), std::path::MAIN_SEPARATOR));
-        assert_eq!(check(&dir, &path(&[&other, &spelled])), CliStatus { installed: true, on_path: true });
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-
-    /// T-593 (CLI-007, R01-cli.1): an installed copy keeps kolux.exe and kolux.cmd in the bin folder
-    /// beside the app (scripts/release.mjs, DT-R27); the guide's CLI step looks there, so it can complete.
-    #[test]
-    fn cli007_an_installed_copy_finds_its_cli_in_the_bin_folder() {
-        let dir = std::env::temp_dir().join(format!("kolux-onb-bin-{}", std::process::id()));
-        let bin = dir.join("bin");
-        std::fs::create_dir_all(&bin).unwrap();
-        std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
-        for f in [if cfg!(windows) { "kolux.exe" } else { "kolux" }, "kolux.cmd"] {
-            std::fs::write(bin.join(f), "").unwrap();
-        }
-        let path = std::env::join_paths([&bin]).unwrap();
-        assert_eq!(cli_status_in(&dir, &path, PATH_ENTRY_WAIT, same_dir), CliStatus { installed: true, on_path: true });
-        let path = std::env::join_paths([&dir]).unwrap();
-        assert_eq!(cli_status_in(&dir, &path, PATH_ENTRY_WAIT, same_dir), CliStatus { installed: true, on_path: false }, "the app's own folder is not the CLI's");
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-
-    /// Council: a PATH folder on a drive that does not answer is passed over after the wait, so
-    /// the check still finishes and still finds the CLI's own folder after it.
-    #[test]
-    fn a_path_folder_that_does_not_answer_is_passed_over() {
-        let dir = std::env::temp_dir().join(format!("kolux-onb-dead-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
-        // Stands in for a lookup on an offline drive: the "dead" folder never answers in time.
-        fn slow(p: &std::path::Path, d: &std::path::Path) -> bool {
-            if p.ends_with("dead") {
-                std::thread::sleep(std::time::Duration::from_secs(5));
-            }
-            same_dir(p, d)
-        }
-        let dead = std::path::PathBuf::from("Z:/offline/dead");
-        let wait = std::time::Duration::from_millis(200);
-        let start = std::time::Instant::now();
-        let path = std::env::join_paths([dead.as_path(), dir.as_path()]).unwrap();
-        assert_eq!(cli_status_in(&dir, &path, wait, slow), CliStatus { installed: true, on_path: true });
-        let path = std::env::join_paths([dead.as_path()]).unwrap();
-        assert_eq!(cli_status_in(&dir, &path, wait, slow), CliStatus { installed: true, on_path: false });
-        assert!(start.elapsed() < std::time::Duration::from_secs(3), "the dead folder held the check for {:?}", start.elapsed());
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-
-    /// Lookups `spy` was asked for a folder on another computer, and for one of the w2 dead folders.
-    static HOST_ASKED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-    static DEAD_ASKED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-
-    fn spy(p: &std::path::Path, d: &std::path::Path) -> bool {
-        // judged by the test host's name, not by host_path, so a form host_path misses still counts
-        if p.to_string_lossy().contains("x.invalid") {
-            HOST_ASKED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        }
-        if p.to_string_lossy().contains("w2-dead") {
-            DEAD_ASKED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            std::thread::sleep(std::time::Duration::from_secs(20));
-        }
-        same_dir(p, d)
-    }
-
-    /// Council FB 2: a PATH folder on a share is never looked up (that signs in to the share).
-    #[test]
-    fn a_path_folder_on_another_computer_is_never_looked_up() {
-        let dir = std::env::temp_dir().join(format!("kolux-onb-unc-{}", std::process::id()));
-        let other = dir.join("other");
-        std::fs::create_dir_all(&other).unwrap();
-        std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
-        let shares = [r"\\x.invalid\bin", r"\\?\UNC\x.invalid\bin", "//x.invalid/bin", r"\??\UNC\x.invalid\bin", r"\??\unc\x.invalid\s"].map(std::path::PathBuf::from);
-        let mut entries: Vec<&std::path::Path> = shares.iter().map(|p| p.as_path()).collect();
-        entries.push(&other);
-        let path = std::env::join_paths(entries).unwrap();
-        assert_eq!(cli_status_in(&dir, &path, PATH_ENTRY_WAIT, spy), CliStatus { installed: true, on_path: false });
-        assert_eq!(HOST_ASKED.load(std::sync::atomic::Ordering::SeqCst), 0, "a share on PATH was looked up");
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-
-    /// Council FS 1: dead folders share one deadline, and one still looking is not asked again.
-    #[test]
-    fn dead_path_folders_share_one_deadline_and_are_not_asked_twice() {
-        let dir = std::env::temp_dir().join(format!("kolux-onb-dead3-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
-        let dead = ["Z:/offline/w2-dead-1", "Z:/offline/w2-dead-2", "Z:/offline/w2-dead-3"].map(std::path::PathBuf::from);
-        let path = std::env::join_paths(dead.iter()).unwrap();
-        // Load flake fix: the wait is 4 s (the dead lookups sleep 20 s), so a loaded PC's scheduling
-        // delay of under 4 s still passes the 8 s bound, while one deadline per folder takes 12 s.
-        let wait = std::time::Duration::from_secs(4);
-        let start = std::time::Instant::now();
-        assert_eq!(cli_status_in(&dir, &path, wait, spy), CliStatus { installed: true, on_path: false });
-        assert!(start.elapsed() < wait * 2, "three dead folders took {:?}", start.elapsed());
-        let asked = DEAD_ASKED.load(std::sync::atomic::Ordering::SeqCst);
-        assert_eq!(asked, 3);
-        // Opening the guide again: the dead folders are skipped, no new lookup thread starts.
-        let again = std::time::Instant::now();
-        assert_eq!(cli_status_in(&dir, &path, wait, spy), CliStatus { installed: true, on_path: false });
-        assert!(again.elapsed() < wait, "the second check waited {:?}", again.elapsed());
-        assert_eq!(DEAD_ASKED.load(std::sync::atomic::Ordering::SeqCst), asked);
-        std::fs::remove_dir_all(dir).unwrap();
     }
 
     fn store(tag: &str) -> (Store, std::path::PathBuf) {
@@ -868,14 +607,15 @@ mod tests {
         let g = used(g, "split", 20).unwrap();
         assert_eq!(g.features["split"], Use { first: 10, count: 2 }, "the first time stays, the count goes up");
         assert!(used(g.clone(), "lunch", 30).unwrap_err().contains("lunch"));
-        assert_eq!(marked(g, "used", "board").unwrap().features["board"].count, 1, "guide_mark's used list records a use");
-        assert!(FEATURES.len() >= 35 && FEATURES.len() <= 45, "roughly forty features");
+        assert_eq!(marked(g, "used", "palette").unwrap().features["palette"].count, 1, "guide_mark's used list records a use");
+        assert!(used(Guide::default(), "board", 1).is_err(), "a retired screen's feature is no longer kept");
+        assert!(FEATURES.len() >= 18 && FEATURES.len() <= 26, "roughly twenty features");
     }
 
     #[test]
     fn unknown_or_damaged_feature_entries_are_dropped_on_load() {
         let (s, dir) = store("features");
-        s.set(GUIDE, r#"{"tried":["usage"],"features":{"split":{"first":5,"count":3},"teleport":{"first":1,"count":1},"board":{"first":"x"},"palette":7,"tasks":{"first":2,"count":0}}}"#).unwrap();
+        s.set(GUIDE, r#"{"tried":["usage"],"features":{"split":{"first":5,"count":3},"teleport":{"first":1,"count":1},"diff":{"first":"x"},"palette":7,"commit":{"first":2,"count":0}}}"#).unwrap();
         let g = guide_load(&s);
         assert_eq!(g.tried, ["usage"], "the rest of the record survives a damaged entry");
         assert_eq!(g.features.keys().collect::<Vec<_>>(), ["split"], "unknown, damaged and zero-count entries go");

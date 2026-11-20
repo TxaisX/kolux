@@ -4,8 +4,8 @@
 //! keyring in this build, so values are only scrambled and the log says so once.
 //!
 //! Two places hold secrets:
-//! - the settings file, in the fields named by [`SECRET_SETTINGS`] (the Claude 1-year key and
-//!   the xAI key); the front end never receives them (ACCT-011, T-154) and never writes them;
+//! - the settings file, in the fields named by [`SECRET_SETTINGS`] (the Claude 1-year key among
+//!   them); the front end never receives them (ACCT-011, T-154) and never writes them;
 //!   they change only through [`secret_set`] / [`secret_clear`];
 //! - the `vault` folder in the profile, one sealed file per managed sign-in (managed Claude
 //!   credentials, Codex account details; written by T-043 through [`write_file`]).
@@ -22,10 +22,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-/// Settings fields that hold secrets (SAFE-026): the Claude 1-year key (ACCT-004), the xAI key
-/// (ACCT-008), the Moonshot key for the Kimi balance (T-547), and the HTTP proxy address and browser search-session link, which have no screen
-/// yet (OD-18; their settings come with T-240 and T-323 under these names).
-pub const SECRET_SETTINGS: &[&str] = &["claudeOauthToken", "xaiApiKey", "httpProxy", "browserSearchSessionUrl", "minimaxCookie", "minimaxApiKey", "moonshotApiKey"];
+/// Settings fields that hold secrets (SAFE-026): the Claude 1-year key (ACCT-004), the HTTP proxy address, which has
+/// no screen yet (OD-18; its setting comes with T-240 under this name), and the OpenRouter key (`openrouter::KEY_FIELD`).
+/// A name taken off this list goes on `import::RETIRED`, so a sealed value left in a profile never reaches the window.
+pub const SECRET_SETTINGS: &[&str] = &["claudeOauthToken", "httpProxy", "openrouterApiKey"];
 /// SAFE-026: what a save says while the system's secret store is not answering.
 const STORE_DOWN: &str = "the system secret store is not answering";
 /// Marks a sealed value; the part after it is base64 of the sealed bytes.
@@ -178,7 +178,7 @@ pub fn read_setting(store: &Store, key: &str) -> Result<Option<String>, String> 
 }
 
 /// Rows 653/654: the fields that hold one API key, which goes into an Authorization header.
-pub const API_KEY_FIELDS: &[&str] = &["moonshotApiKey", "minimaxApiKey"];
+pub const API_KEY_FIELDS: &[&str] = &["openrouterApiKey"];
 /// Rows 654: the longest an API key may be (bytes).
 pub const API_KEY_MAX: usize = 512;
 
@@ -268,9 +268,11 @@ pub fn drop_unreadable(store: &Store, dir: &Path) -> Vec<String> {
     gone
 }
 
-/// ACCT-010: the secret fields waiting for a reconnect, for the note in the main window.
+/// ACCT-010: the secret fields waiting for a reconnect, for the note in the main window. A name no longer on
+/// SECRET_SETTINGS (a retired feature's key) has nothing to reconnect, so it is not shown.
 pub fn dropped(store: &Store) -> Vec<String> {
-    crate::state::kept::or_default(store, DROPPED_KEY)
+    let all: Vec<String> = crate::state::kept::or_default(store, DROPPED_KEY);
+    all.into_iter().filter(|k| SECRET_SETTINGS.contains(&k.as_str())).collect()
 }
 
 pub fn dismiss_dropped(store: &Store) -> Result<(), String> {
@@ -601,16 +603,39 @@ mod tests {
     fn row653_an_api_key_field_refuses_line_breaks_spaces_and_a_huge_paste() {
         let dir = temp_dir("row653");
         let store = Store::open(&dir).unwrap();
-        for bad in ["sk-moon\r\nX-Evil: 1", "two parts", "tab\tkey", "caf\u{e9}-key"] {
-            assert!(write_setting(&store, "moonshotApiKey", bad).is_err(), "{bad:?}");
-            assert!(write_setting(&store, "minimaxApiKey", bad).is_err(), "{bad:?}");
+        for bad in ["sk-or\r\nX-Evil: 1", "two parts", "tab\tkey", "caf\u{e9}-key"] {
+            assert!(write_setting(&store, "openrouterApiKey", bad).is_err(), "{bad:?}");
         }
-        assert!(write_setting(&store, "moonshotApiKey", &"k".repeat(API_KEY_MAX + 1)).is_err(), "over the cap");
-        assert!(store.settings().get("moonshotApiKey").is_none(), "a refused key stores nothing");
-        // Other secret fields (a cookie can be long and has spaces) are not held to the key rule.
-        write_setting(&store, "minimaxCookie", &format!("a=1; b={}", "x".repeat(2000))).unwrap();
-        write_setting(&store, "moonshotApiKey", &"k".repeat(API_KEY_MAX)).unwrap();
-        assert_eq!(read_setting(&store, "moonshotApiKey").unwrap().map(|k| k.len()), Some(API_KEY_MAX));
+        assert!(write_setting(&store, "openrouterApiKey", &"k".repeat(API_KEY_MAX + 1)).is_err(), "over the cap");
+        assert!(store.settings().get("openrouterApiKey").is_none(), "a refused key stores nothing");
+        // Other secret fields are not held to the key rule.
+        write_setting(&store, "httpProxy", &format!("a=1; b={}", "x".repeat(2000))).unwrap();
+        write_setting(&store, "openrouterApiKey", &"k".repeat(API_KEY_MAX)).unwrap();
+        assert_eq!(read_setting(&store, "openrouterApiKey").unwrap().map(|k| k.len()), Some(API_KEY_MAX));
+    }
+
+    // The OpenRouter route's key (openrouter.rs) is one of the secret fields, so it is stored sealed and never shown.
+    #[test]
+    fn the_openrouter_key_is_stored_sealed_and_kept_from_the_window() {
+        let dir = temp_dir("openrouter");
+        let store = Store::open(&dir).unwrap();
+        write_setting(&store, crate::openrouter::KEY_FIELD, "sk-or-v1-FAKE-NOT-A-REAL-KEY").unwrap();
+        assert!(!fs::read_to_string(dir.join("settings.json")).unwrap().contains("FAKE-NOT-A-REAL"));
+        assert_eq!(crate::openrouter::saved_key(&store).unwrap().as_deref(), Some("sk-or-v1-FAKE-NOT-A-REAL-KEY"));
+        assert!(without_secrets(store.settings()).get(crate::openrouter::KEY_FIELD).is_none());
+        drop(store);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    // ACCT-010: a reconnect note naming a key of a retired feature shows only the keys that can still be reconnected.
+    #[test]
+    fn a_retired_key_in_the_reconnect_note_is_not_shown() {
+        let dir = temp_dir("note-retired");
+        let store = Store::open(&dir).unwrap();
+        store.set(DROPPED_KEY, "[\"moonshotApiKey\",\"claudeOauthToken\",\"xaiApiKey\"]").unwrap();
+        assert_eq!(dropped(&store), ["claudeOauthToken"]);
+        drop(store);
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
@@ -643,7 +668,7 @@ mod tests {
     fn a_key_that_cannot_be_opened_is_dropped_alone_and_named_until_dismissed_or_set_again() {
         let dir = temp_dir("drop");
         let store = Store::open(&dir).unwrap();
-        write_setting(&store, "xaiApiKey", "xai-GOOD").unwrap();
+        write_setting(&store, "httpProxy", "proxy-GOOD").unwrap();
         let mut s = store.settings();
         s["claudeOauthToken"] = Value::String(format!("{PREFIX}AAAA"));
         s["claudeConnectionMode"] = "key".into();
@@ -653,7 +678,7 @@ mod tests {
         let after = store.settings();
         assert!(after.get("claudeOauthToken").is_none());
         assert_eq!((after["theme"].as_str(), after["claudeConnectionMode"].as_str()), (Some("classic"), Some("key")));
-        assert_eq!(read_setting(&store, "xaiApiKey").unwrap().as_deref(), Some("xai-GOOD"));
+        assert_eq!(read_setting(&store, "httpProxy").unwrap().as_deref(), Some("proxy-GOOD"));
         assert_eq!(dropped(&store), ["claudeOauthToken"]);
         assert!(drop_unreadable(&store, &dir).is_empty(), "nothing left to drop");
         assert_eq!(dropped(&store), ["claudeOauthToken"], "the note stays until it is dealt with");
@@ -663,9 +688,9 @@ mod tests {
         write_setting(&store, "claudeOauthToken", "sk-ant-oat01-NEW").unwrap();
         assert!(dropped(&store).is_empty());
         let mut s = store.settings();
-        s["xaiApiKey"] = Value::String(format!("{PREFIX}BBBB"));
+        s["httpProxy"] = Value::String(format!("{PREFIX}BBBB"));
         store.save_settings(&s).unwrap();
-        assert_eq!(drop_unreadable(&store, &dir), ["xaiApiKey"]);
+        assert_eq!(drop_unreadable(&store, &dir), ["httpProxy"]);
         dismiss_dropped(&store).unwrap();
         assert!(dropped(&store).is_empty());
         drop(store);
@@ -684,9 +709,9 @@ mod tests {
         crate::state::kept::refuse_copies(&dir);
         assert!(drop_unreadable(&store, &dir).is_empty(), "nothing is cleared while the note cannot be read");
         assert_eq!(store.settings()["claudeOauthToken"].as_str(), Some(format!("{PREFIX}AAAA").as_str()), "the key stays as it was");
-        let err = write_setting(&store, "xaiApiKey", "xai-NEW").unwrap_err();
+        let err = write_setting(&store, "httpProxy", "proxy-NEW").unwrap_err();
         assert!(err.contains(DROPPED_KEY) && err.contains("nothing was saved"), "{err}");
-        assert!(store.settings().get("xaiApiKey").is_none());
+        assert!(store.settings().get("httpProxy").is_none());
         assert_eq!(store.get(DROPPED_KEY).unwrap().as_deref(), Some(broken), "the note blob is byte-identical");
         drop(store);
         fs::remove_dir_all(&dir).unwrap();
@@ -696,11 +721,11 @@ mod tests {
     fn card16c_a_failed_note_read_for_display_does_not_block_the_next_key_save_from_clearing_the_note() {
         let dir = temp_dir("note-display");
         let store = Store::open(&dir).unwrap();
-        store.set(DROPPED_KEY, "[\"xaiApiKey\"]").unwrap();
+        store.set(DROPPED_KEY, "[\"httpProxy\"]").unwrap();
         let side = crate::state::kept::Unreadable::new(&dir);
         assert!(dropped(&store).is_empty(), "the display falls back to nothing");
         side.restore();
-        write_setting(&store, "xaiApiKey", "xai-NEW").unwrap();
+        write_setting(&store, "httpProxy", "proxy-NEW").unwrap();
         assert_eq!(store.get(DROPPED_KEY).unwrap().as_deref(), Some("[]"), "the key stored again is no longer one to reconnect");
         drop(side);
         drop(store);
@@ -726,22 +751,22 @@ mod tests {
     fn a_forgotten_key_is_gone_from_the_backup_and_the_other_settings_stay_in_it() {
         let dir = temp_dir("forget-bak");
         let store = Store::open(&dir).unwrap();
-        write_setting(&store, "xaiApiKey", "xai-FORGET").unwrap();
+        write_setting(&store, "httpProxy", "proxy-FORGET").unwrap();
         let mut s = store.settings();
         s["theme"] = "classic".into();
         store.save_settings(&s).unwrap();
         write_setting(&store, "claudeOauthToken", "sk-ant-oat01-KEEP").unwrap();
         let bak = dir.join("settings.json.bak");
-        let sealed = store.settings()["xaiApiKey"].as_str().unwrap().to_string();
+        let sealed = store.settings()["httpProxy"].as_str().unwrap().to_string();
         assert!(fs::read_to_string(&bak).unwrap().contains(&sealed), "the backup holds the key before the forget");
-        clear_setting(&store, "xaiApiKey").unwrap();
+        clear_setting(&store, "httpProxy").unwrap();
         let after: Value = serde_json::from_slice(&fs::read(&bak).unwrap()).unwrap();
-        assert!(after.get("xaiApiKey").is_none(), "{after}");
+        assert!(after.get("httpProxy").is_none(), "{after}");
         assert_eq!(after["theme"], "classic", "the rest of the last good copy stays");
         assert!(!fs::read_to_string(dir.join("settings.json")).unwrap().contains(&sealed));
         assert!(!dir.join("settings.json.bak.tmp").exists());
         // A second forget of the same key (nothing left to take out) still works.
-        clear_setting(&store, "xaiApiKey").unwrap();
+        clear_setting(&store, "httpProxy").unwrap();
         assert!(!fs::read_to_string(&bak).unwrap().contains(&sealed));
         drop(store);
         fs::remove_dir_all(&dir).unwrap();
@@ -764,14 +789,14 @@ mod tests {
         assert!(drop_unreadable(&store, &dir).is_empty());
         assert_eq!(store.settings(), before);
         // A deliberate clear is honoured at once and does not come back with the store.
-        clear_setting(&store, "xaiApiKey").unwrap();
+        clear_setting(&store, "httpProxy").unwrap();
         set_store_down(false);
-        assert_eq!(read_setting(&store, "xaiApiKey").unwrap(), None);
+        assert_eq!(read_setting(&store, "httpProxy").unwrap(), None);
         assert_eq!(read_setting(&store, "claudeOauthToken").unwrap().as_deref(), Some("claudeOauthToken-FIRST"));
         // On disk no secret is ever in the clear, and the window gets none of them.
         let disk = fs::read_to_string(dir.join("settings.json")).unwrap();
         assert!(!disk.contains("-FIRST") && !disk.contains("SECOND"), "{disk}");
-        assert_eq!(SECRET_SETTINGS.len(), 7);
+        assert_eq!(SECRET_SETTINGS.len(), 3);
         let shown = without_secrets(store.settings());
         assert!(SECRET_SETTINGS.iter().all(|k| shown.get(*k).is_none()), "{shown}");
         drop(store);
@@ -809,7 +834,7 @@ mod tests {
         let stored = serde_json::json!({ "theme": "classic", "claudeOauthToken": "kolux-sealed:v1:abc" });
         let shown = without_secrets(stored.clone());
         assert_eq!(shown, serde_json::json!({ "theme": "classic" }));
-        let back = keep_stored_secrets(&stored, serde_json::json!({ "theme": "dark", "claudeOauthToken": "typed" , "xaiApiKey": "x"}));
+        let back = keep_stored_secrets(&stored, serde_json::json!({ "theme": "dark", "claudeOauthToken": "typed" , "httpProxy": "x"}));
         assert_eq!(back, serde_json::json!({ "theme": "dark", "claudeOauthToken": "kolux-sealed:v1:abc" }));
     }
 
@@ -818,7 +843,7 @@ mod tests {
         let dir = temp_dir("pass");
         let store = Store::open(&dir).unwrap();
         store
-            .save_settings(&serde_json::json!({ "claudeOauthToken": "sk-ant-oat01-CLEAR", "xaiApiKey": "", "theme": "x" }))
+            .save_settings(&serde_json::json!({ "claudeOauthToken": "sk-ant-oat01-CLEAR", "httpProxy": "", "theme": "x" }))
             .unwrap();
         fs::create_dir_all(dir.join(VAULT).join("claude")).unwrap();
         fs::write(dir.join(VAULT).join("claude").join("a.json"), "{\"token\":\"CLEARFILE\"}").unwrap();
@@ -831,7 +856,7 @@ mod tests {
         {
             let s = store.lock().unwrap();
             assert_eq!(read_setting(&s, "claudeOauthToken").unwrap().as_deref(), Some("sk-ant-oat01-CLEAR"));
-            assert_eq!(read_setting(&s, "xaiApiKey").unwrap(), None);
+            assert_eq!(read_setting(&s, "httpProxy").unwrap(), None);
             assert_eq!(s.settings()["theme"], "x");
         }
         assert_eq!(read_file(&dir.join(VAULT).join("claude").join("a.json"), &dir).unwrap().as_deref(), Some("{\"token\":\"CLEARFILE\"}"));
@@ -897,8 +922,8 @@ mod secrets_dropped_async_tests {
     fn secrets_dropped_is_an_async_command_that_matches_the_sync_one() {
         is_async(secrets_dropped);
         let store = Mutex::new(Store::open(&crate::test_dir::temp("secrets-dropped-async")).unwrap());
-        store.lock().unwrap().set(DROPPED_KEY, "[\"moonshotApiKey\"]").unwrap();
-        assert_eq!(secrets_dropped_on(&store), Ok(vec!["moonshotApiKey".to_string()]));
+        store.lock().unwrap().set(DROPPED_KEY, "[\"httpProxy\"]").unwrap();
+        assert_eq!(secrets_dropped_on(&store), Ok(vec!["httpProxy".to_string()]));
         assert_eq!(secrets_dropped_on(&store), Ok(dropped(&store.lock().unwrap())));
     }
 }

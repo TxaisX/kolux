@@ -31,7 +31,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
   const {
-    workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPage, setPanes,
+    workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPanes,
     setRefresh, setScreen, setSettings, setSheet, setToast, settings, sheet
   } = s;
   const { settingsRef } = p;
@@ -227,10 +227,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       if (!inGrid) {
         const form = o.form ?? key;
         setSheet((s) => (s?.key === form ? null : s));
-        if (!o.quiet) {
-          setScreen("terminals");
-          setPage(null);
-        }
+        if (!o.quiet) setScreen("terminals");
       }
       setToast(made.length === 1 ? "Starting 1 session" : `Starting ${made.length} sessions`);
       if (!o.quiet) {
@@ -288,9 +285,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
 
   // PROJ-038: the agent is the new workspace's first tab, started with its prompt; nothing else
   // opens there. Shown only when the sidebar says the user has not moved on.
-  const startIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string, dispatch?: string, run?: string): Promise<number | null> => {
+  const startIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string): Promise<number | null> => {
     try {
-      return await openIn(agent, dir, branch, prompt, show, extra, title, dispatch, run);
+      return await openIn(agent, dir, branch, prompt, show, extra, title);
     } catch (err) {
       setNotice(String(err));
       return null;
@@ -298,10 +295,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   };
   // The start itself; it throws when the start line or the folder's trust cannot be set up, so a
   // caller that reports its own failure (VIEW-069) can say what did not start.
-  // T-172-e: `dispatch` (a worker start) goes into the session's environment, so Kolux can tell the
-  // worker's own session from a tab the user opens in the same folder.
-  // T-690: `run` (an automation run) goes in the same way, so its pane is credited to that run.
-  const openIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string, dispatch?: string, run?: string) => {
+  const openIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string) => {
     await pretrust(agent.id, [dir]);
     // GIT-020 / PROJ-039 (T-107-d): the first task names a Kolux-suggested branch; the back end
     // leaves a hand-named workspace, a pushed branch or one with a pull request alone.
@@ -310,7 +304,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     const key = nextKey.current++;
     const view = teamViewOf(settingsRef.current, dir); // DT-C274: a team worktree's panes are shown in its team's grid
     const at = view === undefined ? dir : view;
-    const pane: Pane = { key, cwd: dir, ...(view === undefined ? {} : { view }), branch, agent: paneMark(agent, line), agentId: agent.id, ...startFields(line, agent.program, dispatch, run), title };
+    const pane: Pane = { key, cwd: dir, ...(view === undefined ? {} : { view }), branch, agent: paneMark(agent, line), agentId: agent.id, ...startFields(line, agent.program), title };
     // TERM-007: an empty pane in that workspace takes the session; else it gets a cell of its own.
     setPanes((ps) => {
       const free = freeCell(cellsOf(panesIn(ps, at)));
@@ -367,7 +361,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     invoke<Created>("workspace_from_item", { item })
       .then((made) => {
         setRefresh((n) => n + 1);
-        late.cli.current.select(made.path, made.branch, true);
+        late.select(made.path, made.branch, true);
       })
       .catch((err) => setNotice(String(err)));
   };
@@ -378,7 +372,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       .then((made) => {
         noteUse("workspace-create");
         setRefresh((n) => n + 1);
-        late.cli.current.select(made.path, made.branch, true);
+        late.select(made.path, made.branch, true);
       })
       .catch((err) => setNotice(String(err)));
   };

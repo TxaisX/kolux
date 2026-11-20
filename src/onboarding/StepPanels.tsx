@@ -1,7 +1,7 @@
 // ONB-016 / ONB-018: the action panel of a selected Setup Guide step. Multi-task opens the
 // new-workspace composer with a short tour, notifications offers sound choices (and on macOS a
 // permission card), the default-agent step shows an agent picker with a fold-out list of fallback
-// agents, and the setup-script step offers to automate workspace setup. The rules are in actions.ts.
+// agents. The rules are in actions.ts.
 import { useContext, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "../settings/useSettings";
@@ -10,17 +10,15 @@ import ConnectGithub from "./ConnectGithub";
 import { playTone, readNotifications, SOUND_FIELD, testPlan, VOLUME_FIELD, type Sound } from "../settings/notifications";
 import { DEFAULT_AGENT_KEY } from "../launch/agents";
 import type { AgentInfo } from "../launch/PlusMenu";
-import AgentPicker from "../launch/AgentPicker";
 import {
   agentPanel, CARD_WORDS, composeTarget, composerRequests, foldLabel, permissionCard, platformOf, soundPanel,
   type Hands, type Proj,
 } from "./actions";
 import { markGuide, type GuideRecord, type Place } from "./guide";
-import { awakeToggle, stopCard, STOP_SKILLS, writerBack } from "./stopCards";
-import { SkillStop, UsageStop } from "./LiveStopCards";
+import { awakeToggle, stopCard, writerBack } from "./stopCards";
+import { UsageStop } from "./LiveStopCards";
 import { AWAKE_KEY, HOOKS_OFF_STOP } from "../launch/KeepAwakeCard";
 import { WRITER_INSTRUCTIONS_KEY, WRITER_KEY } from "../scm/generate";
-import { integrationSteps, readSeenCached, restale, taskSummary, UNSEEN, type Seen } from "./integrations";
 import { frontProjectPath } from "../projects/frontRow";
 import { WindowStore } from "../shell/window/store";
 
@@ -202,12 +200,10 @@ export function AgentPanel() {
   const { settings, save, error } = useSettings();
   const [agents, setAgents] = useState<AgentInfo[] | null>(null);
   const [open, setOpen] = useState(false);
-  const offered = useRef(false); // T-579: the install checklist stays on screen once it was offered, so its results can be read
   const look = () => void invoke<AgentInfo[]>("agent_list").then(setAgents, () => setAgents([]));
   useEffect(look, []);
   if (!settings || !agents) return null;
   const p = agentPanel(agents, settings);
-  if (p.picker.length === 0 && p.fallback.length === 0) offered.current = true;
   const row = (a: AgentInfo) => (
     <label key={a.id} className="conn-switch">
       <input type="radio" name="default-agent" checked={p.current === a.id} onChange={() => void save({ [DEFAULT_AGENT_KEY]: a.id })} />
@@ -217,7 +213,7 @@ export function AgentPanel() {
   return (
     <>
       <SaveFailed error={error} />
-      {offered.current && (agents.length > 0 ? <AgentPicker agents={agents} onChanged={setAgents} level={3} /> : <NoAgent onCheck={look} />)}
+      {p.picker.length === 0 && p.fallback.length === 0 && <NoAgent onCheck={look} />}
       {p.picker.length > 0 && (
         <div role="radiogroup" aria-label="Default agent">
           {p.picker.map(row)}
@@ -235,88 +231,8 @@ export function AgentPanel() {
   );
 }
 
-const SNIPPET = "scripts:\n  setup: pnpm install\n";
-
-export function AutomatePanel({ onCheck }: { onCheck: () => void }) {
-  const [copied, setCopied] = useState<boolean | null>(null);
-  const box = useRef<HTMLPreElement>(null);
-  const copy = () =>
-    navigator.clipboard.writeText(SNIPPET).then(
-      () => setCopied(true),
-      () => {
-        setCopied(false);
-        const sel = window.getSelection();
-        if (box.current && sel) sel.selectAllChildren(box.current);
-      },
-    );
-  return (
-    <>
-      <p className="guide-note">
-        Put a setup script in a file called <code>kolux.yaml</code> at the top of your repository. Every new workspace runs it before an agent starts.
-      </p>
-      <pre ref={box} className="guide-code">{SNIPPET}</pre>
-      <div className="btn-row">
-        <button className="btn" onClick={() => void copy()}>
-          Copy the example
-        </button>
-        <button className="btn" onClick={onCheck}>
-          Re-check
-        </button>
-        {copied === true && <span className="hint">Copied</span>}
-        {copied === false && <span className="hint">Copy failed; the example is selected, press Ctrl+C</span>}
-      </div>
-    </>
-  );
-}
-
-/** ONB-018: Connect integrations. Two steps, review first; the task step waits behind it (folded, but
- *  openable) and folds into a one-line summary once GitHub answers. Re-check makes the old answers stale. */
-export function IntegrationsPanel({ onCheck }: { onCheck: () => void }) {
-  const [seen, setSeen] = useState<Seen>(UNSEEN);
-  const [looked, setLooked] = useState(false);
-  const turn = useRef(0);
-  const check = (again: boolean) => {
-    const mine = ++turn.current;
-    if (again) setSeen(restale);
-    // Opening the step is answered from the one-minute memory; Re-check asks gh again.
-    readSeenCached(invoke, { force: again }).then((x) => {
-      if (mine !== turn.current) return; // a newer check began: this answer is stale
-      setSeen(x);
-      setLooked(true);
-      if (again) onCheck();
-    });
-  };
-  useEffect(() => {
-    check(false);
-    return () => void (turn.current += 1);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const s = integrationSteps(seen);
-  return (
-    <>
-      <section aria-label="Connect a code host for review" data-state={s.review}>
-        <p className="guide-group">1. Connect GitHub for review {s.review === "done" && <span className="mark ok">Connected{seen.account ? ` as ${seen.account}` : ""}</span>}</p>
-        {s.review !== "done" && <p className="guide-note">{looked ? s.reviewNote : "Checking the GitHub sign-in..."}</p>}
-        {s.review !== "done" && <ConnectGithub onExit={() => check(true)} />}
-      </section>
-      {s.tasks === "done" ? (
-        <p className="guide-note" data-state="done">{taskSummary(s, seen.account)}</p>
-      ) : (
-        <details data-state={s.tasks} open={s.tasks === "active"}>
-          <summary>2. Choose where tasks come from</summary>
-          <p className="guide-note">{s.tasks === "waiting" ? "Connect GitHub for review first; tasks come from the same sign-in." : s.tasksNote}</p>
-        </details>
-      )}
-      <div className="btn-row">
-        <button className="btn" onClick={() => check(true)}>
-          Re-check
-        </button>
-      </div>
-    </>
-  );
-}
-
-/** ONB-024: the setup an Explore Kolux stop carries, right on the stop. Usage and the skill stops
- *  (orchestration) read live facts, so they are their own components (LiveStopCards.tsx). */
+/** ONB-024: the setup an Explore Kolux stop carries, right on the stop. Usage reads live facts, so it is its
+ *  own component (LiveStopCards.tsx). */
 export function StopSetup({ stop, taskSource }: { stop: string; taskSource: boolean | null }) {
   const { settings, save, error } = useSettings();
   // The writer mode the switch had before it was turned off, so turning it on again puts that back.
@@ -324,7 +240,6 @@ export function StopSetup({ stop, taskSource }: { stop: string; taskSource: bool
   // The settings cards draw nothing until the saved settings have arrived (stopCard), so a switch or box
   // is never built from a guessed default and written back over what is saved.
   if (stop === "usage") return <UsageStop />;
-  if (STOP_SKILLS[stop]) return <SkillStop stop={stop} />;
   const card = stopCard(stop, { taskSource, settings });
   if (!card) return null;
   if (card.kind !== "provider" && card.kind !== "awake" && card.kind !== "writer") return null;

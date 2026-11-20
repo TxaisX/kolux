@@ -9,7 +9,7 @@ default. The one exception is the quiet handling of retired settings in old prof
 normal startup path depends on. The X cards list bundled third-party logos and art that the rebuild
 replaces with the owner's own.
 
-Tier counts: P0 0 · P1 0 · P2 0 · H 568 · X 6 · D 57
+Tier counts: P0 0 · P1 0 · P2 0 · H 570 · X 6 · D 57
 Related areas: 01 Projects, repos & worktrees · 02 Sessions & launching · 03 Terminals & panes · 04 Agent status, hooks & notifications · 05 Views & navigation · 07 Accounts, sign-in & keys · 08 Orchestration · 11 Git, source control & review · 12 Editor & files · 14 Native chat · 15 Skills, plugins & starter kits · 17 Settings, appearance & input · 18 Remote & hosts (dropped) · 19 App lifecycle & operations · 20 The kolux CLI
 
 ## Cards
@@ -2477,6 +2477,11 @@ Tier: H · Pushed: — · State at 0.15.0: retired 2026-11-19
 What it did: the user runs kolux file open-changed with a mode.
 Retired 2026-11-19; kept at the classic-final tag.
 
+### GIT-044 · Opening Tasks and its default view
+Tier: H · Pushed: — · State at 0.15.0: retired 2026-11-19
+What it did: the user opens Tasks from the title-bar button, the View menu or a bound key, and hides the button if it is not wanted.
+Retired 2026-11-19 (slim-down, second wave: the button's switch and menu tick went after the Tasks screen); kept at the classic-final tag.
+
 ### EDIT-041 · Open in Code and Answer in Code jump to the agent's pane
 Tier: H · Pushed: 3 · State at 0.15.0: retired 2026-11-19
 What it did: the user picks an item in the Inbox (or a lane on the Floor, or a needs-you entry in the sidebar) and clicks Open in Code, or presses Enter.
@@ -3361,6 +3366,11 @@ Retired 2026-11-19; kept at the classic-final tag.
 Tier: D
 What it did: the user tuned orchestration knobs such as how deep workers may nest.
 Retired 2026-11-19; kept at the classic-final tag.
+
+### SET-038 · Editor and diff preferences
+Tier: H · Pushed: — · State at 0.15.0: retired 2026-11-19
+What it did: the user sets editor auto-save, minimap, word wrap, spellcheck and diff defaults in General.
+Retired 2026-11-19 (slim-down, second wave): nothing read them once the editor and its diff views were gone; kept at the classic-final tag.
 
 ### APP-004 · Settings and data from the app's former name carry over on first launch
 Tier: H · Pushed: 10 · State at 0.15.0: retired 2026-11-19

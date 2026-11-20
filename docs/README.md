@@ -9,13 +9,11 @@ If you are new, read [Getting started](guide/getting-started.md). If you want to
 | Page | What it covers |
 |---|---|
 | [Getting started](guide/getting-started.md) | First launch, setup, the top bar, your first agent |
-| [Terminals](guide/terminals.md) | Panes, splits, tabs, layouts, paste, shortcuts |
-| [Board, Agents and Inbox](guide/board-agents-inbox.md) | Session states, approvals, the Tower and the Floor |
-| [Projects and folders](guide/projects-and-worktrees.md) | Projects, folders, review and commit |
-| [Files and browser](guide/files-and-browser.md) | The editor, diffs, previews, the browser pane |
-| [Settings](guide/settings.md) | Appearance, terminal, notifications, shortcuts, agents |
+| [Terminals](guide/terminals.md) | Panes, splits, tabs, layouts, paste, status words, notifications, shortcuts |
+| [Projects and folders](guide/projects-and-worktrees.md) | Projects, folders, a folder of its own for each agent |
+| [Files and web pages](guide/files-and-browser.md) | Opening a project in your own editor, and where web links go |
+| [Settings](guide/settings.md) | Appearance, terminal, notifications, agents |
 | [Safety](guide/safety.md) | What Kolux guards, what it warns about, and what it leaves to you |
-| [Command line](guide/command-line.md) | The `kolux` command and every command group |
 | [Troubleshooting](guide/troubleshooting.md) | Common problems and the diagnostics report |
 | [Feature index](guide/feature-index.md) | Every feature, by name |
 
@@ -24,7 +22,7 @@ If you are new, read [Getting started](guide/getting-started.md). If you want to
 | Page | What it covers |
 |---|---|
 | [Status](STATUS.md) | What is verified, what is missing, and what alpha means here |
-| [Glossary](GLOSSARY.md) | The words the app uses: project, workspace, seat, pane, Model routing, and the rest |
+| [Glossary](GLOSSARY.md) | The words the app uses: project, workspace, seat, pane, and the rest |
 | [Safety](guide/safety.md) | The security model in plain words |
 | [Privacy](guide/settings.md#privacy) | Every outbound connection the app makes |
 | [Security policy](../SECURITY.md) | Private vulnerability reporting |

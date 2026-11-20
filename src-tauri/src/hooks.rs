@@ -422,39 +422,17 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
     let (agent, event) = match req.path.as_str() {
         "/claude" => (crate::status::Agent::Claude, event),
         "/codex" => (crate::status::Agent::Codex, event),
-        // T-120-b: Gemini CLI, Antigravity and Amp, each turned into the shape the rules read.
-        // T-121: Cursor Agent, Droid and Kimi Code too.
-        p if agent_hooks::vendors::is_route(p) || agent_hooks::more::is_route(p) => match agent_hooks::more::normalize_any(p, &event) {
-            Some(e) => (crate::status::Agent::Vendor, e),
-            None => return (200, None),
-        },
+        // Any other route (an older Kolux's hook for another agent, still in that agent's settings) gets the empty 404.
         _ => return (404, None),
     };
     (200, crate::status::report(pane_key, terminal, agent, &event))
 }
 
-/// SAFE-009: what the hook prints back to Claude. A Bash or PowerShell command that trips a
-/// protected rule gets the PreToolUse ask block naming the rule; everything else (another tool or
-/// event, Codex, a body that cannot be read) gets `{}`, no opinion, so Claude's own permission
-/// flow carries on and Kolux never blocks by itself.
-pub fn reply_body(path: &str, body: &[u8], settings: &Value) -> String {
-    // T-120-b: Antigravity's PreToolUse hook must answer; "allow" hands the call to its own policy.
-    if path == "/antigravity/PreToolUse" {
-        return json!({ "decision": "allow" }).to_string();
-    }
-    // STAT-012: only an older hooks.json still posts Cursor's shell/MCP permission events (never installed now, DT-C49);
-    // "ask" defers to the user (cursor.com/docs/agent/hooks), never "allow". preToolUse stays `{}`: the doc says ask
-    // "is accepted by the schema but not enforced for preToolUse".
-    if path == "/cursor" && serde_json::from_slice::<Value>(body).ok().is_some_and(|e| matches!(e.get("hook_event_name").and_then(Value::as_str), Some("beforeShellExecution" | "beforeMCPExecution"))) {
-        return json!({ "permission": "ask" }).to_string();
-    }
-    // STAT-012: Cursor's beforeSubmitPrompt output is {"continue": bool} (cursor.com/docs/agent/hooks); the prompt always proceeds.
-    if path == "/cursor" && serde_json::from_slice::<Value>(body).ok().is_some_and(|e| e.get("hook_event_name").and_then(Value::as_str) == Some("beforeSubmitPrompt")) {
-        return json!({ "continue": true }).to_string();
-    }
-    // T-156-b: the rules in force for the command's folder (built-ins, the user's own, per project)
-    // and the recent-attempts list, both in protected_custom.rs.
-    crate::protected_custom::listen(path, body, settings).unwrap_or_else(|| "{}".into())
+/// What the hook prints back to the agent, whatever it sent: `{}`, no opinion, so the agent's own
+/// permission flow carries on and Kolux never blocks by itself (the protected-action asks of SAFE-009
+/// and the other agents' hook answers were retired in slim-down wave B).
+pub fn reply_body() -> String {
+    "{}".into()
 }
 
 /// One rate-limit window as Claude Code's status line reports it (STAT-040), reset in ms.
@@ -696,7 +674,7 @@ fn limits_of(store: &crate::state::Store, dir: Option<&str>) -> Vec<Limit> {
     store.get(&limits_key(dir)).ok().flatten().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
 }
 
-/// T-583: what a hook's answer leaves for after its reply: the work that may wait on the store or start an automation.
+/// T-583: what a hook's answer leaves for after its reply: the work that may wait on the store.
 enum After {
     /// A status the hooks reported, with the request that carried it (shared with the reply, never copied).
     /// Boxed: a Status is several times the size of a Usage (clippy::large_enum_variant).
@@ -708,12 +686,10 @@ enum After {
 /// T-583: keeps the status machine's order and the window's order identical across connection threads (see handle).
 static ORDER: Mutex<()> = Mutex::new(());
 
-/// T-583: what each hook connection is given besides its stream. Only `settings` is read before the reply, and it never
-/// waits on the store; `raise` and `after` only hand things on.
+/// T-583: what each hook connection is given besides its stream. `raise` and `after` only hand things on, so nothing
+/// here waits on the store.
 struct Line {
     token: String,
-    /// The settings the protected-command answer reads (SAFE-009).
-    settings: Box<dyn Fn() -> Arc<Value> + Send + Sync>,
     /// The window hears a status before its reply goes, under ORDER, so a pane's events reach it in the order the
     /// status machine stepped them.
     raise: Box<dyn Fn(&crate::status::Status) + Send + Sync>,
@@ -734,19 +710,6 @@ impl Read for Within<'_> {
         let mut stream = self.0;
         stream.read(buf)
     }
-}
-
-/// T-583: the settings the protected-command answer reads (SAFE-009). Read fresh whenever the store is free, as before,
-/// so a rule switched off applies to the next command; while slow work holds the store, the last read stands in.
-// ponytail: a rule changed while the store is busy applies from the first hook after it frees; a snapshot that every
-// settings save refreshes (state.rs) would close that.
-fn settings_now(store: Option<&Mutex<crate::state::Store>>, last: &Mutex<Arc<Value>>) -> Arc<Value> {
-    let fresh = store.and_then(|s| s.try_lock().ok().map(|s| s.settings()));
-    let mut last = last.lock().unwrap_or_else(PoisonError::into_inner);
-    if let Some(fresh) = fresh {
-        *last = Arc::new(fresh);
-    }
-    last.clone()
 }
 
 /// T-583: one thread that runs `run` on every job in the order the jobs were handed over. In debug builds a job that
@@ -780,7 +743,7 @@ impl Drop for InFlight {
 
 /// T-583: every connection gets a thread of its own, so a slow or silent client holds up nothing but itself; a silent
 /// one is cut off within READ_WITHIN. Above MAX_IN_FLIGHT, or when no thread can be made, the connection is closed
-/// and the loop goes on: it never panics, so status and the protected-command check outlive any flood.
+/// and the loop goes on: it never panics, so status outlives any flood.
 fn accept(listener: TcpListener, line: Arc<Line>) {
     let busy = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     // Logged once per flood: set at the first refusal, cleared when a connection is taken again.
@@ -811,11 +774,11 @@ fn accept(listener: TcpListener, line: Arc<Line>) {
     }
 }
 
-/// One hook connection (T-583): its request is read within READ_WITHIN of `accepted`; the reply comes from the request,
-/// the status machine and the settings snapshot alone; the work that may wait goes to `line.after` first.
+/// One hook connection (T-583): its request is read within READ_WITHIN of `accepted`; the reply comes from the request
+/// and the status machine alone; the work that may wait goes to `line.after` first.
 fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
     let mut reader = BufReader::new(Within(stream, accepted + READ_WITHIN));
-    let mut body = String::from("{}");
+    let mut body = reply_body();
     let code = match parse_request(&mut reader) {
         Some(req) if gate(&req, &line.token).is_some() => 404,
         Some(req) if req.path == "/claude-status" => match usage(&req, &line.token) {
@@ -829,8 +792,7 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
             let req = Arc::new(req);
             // T-583: one thread per connection, so a pane's step in the status machine, its emit and its queued
             // after-work are taken under one lock: the window and saved::note hear the steps in the machine's order.
-            // Only those three quick steps sit under it; the reply body (a protected command's check and mask,
-            // which can take long on a huge command) is worked out after, so it holds up its own connection only.
+            // Only those three quick steps sit under it.
             let code = {
                 let _order = ORDER.lock().unwrap_or_else(PoisonError::into_inner);
                 let (code, status) = answer(&req, &line.token);
@@ -840,10 +802,6 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
                 }
                 code
             };
-            if code == 200 {
-                // SAFE-009: the settings as last read, fresh whenever the store is free.
-                body = reply_body(&req.path, &req.body, &(line.settings)());
-            }
             code
         }
         None => 400,
@@ -866,10 +824,6 @@ fn after_reply(app: &AppHandle, job: After) {
         After::Status(req, status) => {
             crate::resume::on_stop(app, status.pane_key, status.stop.as_ref());
             agent_hooks::saved::note(app, &req.path, &req.body, &status, req.headers.get(IDENTITY_HEADER).and_then(|h| identity_version(h)));
-            // AUTO-012: an automation run in this pane completes on its agent's real finish.
-            crate::automations::follow(app, |s| crate::automations::on_status(s, status.terminal, status.pane_key, status.change.state, status.change.boundary, status.child.is_some(), status.change.session.as_deref(), crate::automations::now_ms()));
-            // AUTO-004 (T-085-e): an ordinary finish in a pane no automation opened starts the automations listening for it.
-            crate::automations::on_finish(app, status.pane_key, status.terminal, status.change.state, status.change.boundary, status.child.is_some(), status.interrupted);
             rename_on_prompt(app, &status);
         }
     }
@@ -918,22 +872,19 @@ fn rename_on_prompt(app: &AppHandle, status: &crate::status::Status) {
 }
 
 /// Opens the listener on a loopback port and writes the endpoint file; each hook connection is answered on a thread of
-/// its own, and what may wait (the store, automations) runs after the reply (T-583).
+/// its own, and what may wait (the store) runs after the reply (T-583).
 pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     // T-793: the secret every pane's token is made from. It is kept only here: not in a file, not in a pane's environment.
-    let token = crate::cli::secret();
+    let token = crate::local_token::secret();
     let endpoint = data_dir.join(ENDPOINT_FILE);
     // A crash leaves the last run's per-pane files; their tokens mean nothing to this run.
     remove_endpoint_files(data_dir);
     std::fs::write(&endpoint, format!("{port} {NO_TOKEN}\n")).map_err(|e| e.to_string())?;
-    // T-583: the settings are read once before any hook, so not even the first answer waits on the store.
-    let last = Mutex::new(app.try_state::<Mutex<crate::state::Store>>().and_then(|s| s.lock().ok().map(|s| Arc::new(s.settings()))).unwrap_or_default());
-    let (read, raise) = (app.clone(), app.clone());
+    let raise = app.clone();
     let line = Line {
         token: token.clone(),
-        settings: Box::new(move || settings_now(read.try_state::<Mutex<crate::state::Store>>().as_deref(), &last)),
         raise: Box::new(move |status| drop(raise.emit(EVENT, status))),
         after: Box::new(queue(move |job| after_reply(&app, job))),
     };
@@ -1022,8 +973,8 @@ impl Hooks {
 }
 
 /// The Claude hook script (COMPAT 3.2): guards first, reads the endpoint file, posts stdin with the
-/// system curl inside 1.5 s, always exits 0. It prints Kolux's answer, which is `{}` or the
-/// PreToolUse ask of a protected command (SAFE-009); nothing when Kolux cannot be reached.
+/// system curl inside 1.5 s, always exits 0. It prints Kolux's answer, which is `{}`; nothing when
+/// Kolux cannot be reached.
 pub fn claude_script() -> String {
     script("Claude Code (STAT-001, STAT-007, SAFE-009)", "claude", true)
 }
@@ -1248,7 +1199,7 @@ pub fn install_codex_hooks(file: &mut Value, command: &str) -> bool {
 
 /// One Kolux group under each of `events`; a stale one is replaced where it stands, a new one
 /// goes last. `matched` events get the match-everything matcher (COMPAT 3.4).
-/// `timeout` is in the agent's own unit (seconds for Claude Code and Codex, ms for Gemini CLI).
+/// `timeout` is in the agent's own unit (seconds for Claude Code and Codex).
 fn install_groups(root: &mut Value, events: &[&str], matched: &[&str], command: &str, timeout: u64) -> bool {
     let before = root.clone();
     if !root.is_object() {
@@ -1526,7 +1477,7 @@ pub(crate) fn install_codex_mirroring(home: &Path, command: &str, user: Option<&
     // P3 (wave job 7): a top level that is not an object, a `hooks` value that is not an object or an
     // event that is not a list is refused, as for every other agent, so `install_groups` never
     // swaps the user's broken entries for empty ones.
-    agent_hooks::vendors::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
+    agent_hooks::refuse_shape(&file, &hooks, &CODEX_EVENTS)?;
     let config_text = read(&config)?.unwrap_or_default();
     let mut doc: toml_edit::DocumentMut = config_text.parse().map_err(|e| format!("{} is not valid TOML ({}); left alone", config.display(), crate::trust::toml_fault(&e, &config_text)))?;
     let config_before = doc.to_string();
@@ -1816,7 +1767,7 @@ mod tests {
         let count = Arc::clone(&raised);
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let line = Line { token: "tok".into(), settings: Box::new(|| Arc::new(json!({}))), raise: Box::new(move |_| { count.fetch_add(1, Ordering::SeqCst); }), after: Box::new(|_| {}) };
+        let line = Line { token: "tok".into(), raise: Box::new(move |_| { count.fetch_add(1, Ordering::SeqCst); }), after: Box::new(|_| {}) };
         std::thread::spawn(move || accept(listener, Arc::new(line)));
         let send = |token: Option<&str>, id: &str| {
             let event = r#"{"hook_event_name":"UserPromptSubmit","prompt":"go","session_id":"t793"}"#;
@@ -1991,60 +1942,14 @@ Content-Length: {}
         assert!(codex_script().contains("%KP%/codex\" >NUL") && !codex_script().contains("/claude"));
     }
 
-    /// SAFE-009: a protected shell command makes the hook answer Claude's PreToolUse with an ask;
-    /// everything else, a garbled body included, gets the neutral `{}` so Claude carries on.
+    /// Every Claude and Codex hook, a shell command that once asked (SAFE-009, retired) and a garbled
+    /// body included, gets the neutral `{}` so the agent carries on (the line tests below send them).
     #[test]
-    fn safe009_a_protected_command_asks_and_everything_else_is_neutral() {
-        let s = json!({});
-        let pre = |tool: &str, cmd: &str| format!(r#"{{"hook_event_name":"PreToolUse","tool_name":"{tool}","tool_input":{{"command":"{cmd}"}}}}"#);
-        let ask = reply_body("/claude", pre("Bash", "git push --force origin main").as_bytes(), &s);
-        let v: Value = serde_json::from_str(&ask).unwrap();
-        let out = &v["hookSpecificOutput"];
-        assert_eq!((out["hookEventName"].as_str(), out["permissionDecision"].as_str()), (Some("PreToolUse"), Some("ask")));
-        assert!(out["permissionDecisionReason"].as_str().unwrap().contains("Force-push to main"));
-        assert_ne!(reply_body("/claude", pre("PowerShell", "git reset --hard").as_bytes(), &s), "{}", "PowerShell is read too");
-        assert_eq!(reply_body("/claude", pre("Bash", "git status").as_bytes(), &s), "{}");
-        assert_eq!(reply_body("/claude", pre("Write", "git push -f").as_bytes(), &s), "{}", "only shells are inspected");
-        assert_eq!(reply_body("/claude", br#"{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"git push -f"}}"#, &s), "{}");
-        assert_eq!(reply_body("/claude", b"not json {", &s), "{}", "a garbled body fails open");
-        assert_eq!(reply_body("/codex", pre("Bash", "git push -f").as_bytes(), &s), "{}", "Codex is not guarded");
-        let body = br#"{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/home/me/app","tool_input":{"command":"rm -rf .git"}}"#;
-        assert!(reply_body("/claude", body, &json!({})).contains("Deleting folders outside the workspace"), "SAFE-013 through the hook, judged against cwd");
-        let off = json!({ "protectedOff": ["force-push"] });
-        assert_eq!(reply_body("/claude", pre("Bash", "git push -f").as_bytes(), &off), "{}", "a switched-off rule asks no more");
+    fn a_claude_or_codex_hook_is_answered_with_the_neutral_reply() {
+        assert_eq!(reply_body(), "{}");
         // The Claude script prints the answer for Claude to read; Codex's still discards it.
         assert!(claude_script().contains("%KP%/claude\" 2>NUL") && !claude_script().contains("-o NUL"));
         assert!(codex_script().contains("-o NUL"));
-    }
-
-    /// STAT-012 (kolux-87 ruling): a /cursor shell or MCP permission post can only come from an older hooks.json
-    /// that was never reinstalled; it gets "ask", which defers to the user, and never "allow".
-    #[test]
-    fn stat_012_legacy_cursor_shell_and_mcp_permission_hooks_get_ask() {
-        let s = json!({});
-        let ev = |name: &str| format!(r#"{{"hook_event_name":"{name}","conversation_id":"c1","command":"git push -f"}}"#);
-        for name in ["beforeShellExecution", "beforeMCPExecution"] {
-            assert_eq!(reply_body("/cursor", ev(name).as_bytes(), &s), r#"{"permission":"ask"}"#, "{name}");
-        }
-        assert_eq!(reply_body("/cursor", ev("preToolUse").as_bytes(), &s), "{}", "ask is not enforced for preToolUse");
-        assert_eq!(reply_body("/claude", ev("beforeShellExecution").as_bytes(), &s), "{}", "only the Cursor route");
-    }
-
-    /// STAT-012: Cursor's prompt hook is answered in its documented shape and every other state event with
-    /// the neutral `{}`; Kolux never says "allow" to a permission hook (SAFE-009 guards only Claude Code).
-    #[test]
-    fn stat_012_cursor_prompt_hook_gets_continue_and_the_rest_stay_neutral() {
-        let s = json!({});
-        let ev = |name: &str| format!(r#"{{"hook_event_name":"{name}","conversation_id":"c1","command":"git push -f"}}"#);
-        assert_eq!(reply_body("/cursor", ev("beforeSubmitPrompt").as_bytes(), &s), r#"{"continue":true}"#);
-        // Every event Kolux installs, so a new one is covered without editing this list.
-        for name in super::agent_hooks::more::CURSOR_EVENTS.into_iter().filter(|e| *e != "beforeSubmitPrompt").chain(["preToolUse"]) {
-            assert_eq!(reply_body("/cursor", ev(name).as_bytes(), &s), "{}", "{name}");
-        }
-        for name in ["beforeShellExecution", "beforeMCPExecution"] {
-            assert_eq!(reply_body("/cursor", ev(name).as_bytes(), &s), r#"{"permission":"ask"}"#, "{name}");
-        }
-        assert_eq!(reply_body("/cursor", b"not json {", &s), "{}");
     }
 
     #[test]
@@ -2534,10 +2439,10 @@ Content-Length: {}
     // ---- T-583: the hook line never blocks (R02-hooks-status.3, audit item 6) ----
 
     /// The real accept loop, request reading and reply on a loopback port, with the app's parts stood in.
-    fn line_with(settings: impl Fn() -> Arc<Value> + Send + Sync + 'static, after: impl Fn(After) + Send + Sync + 'static) -> u16 {
+    fn line_with(after: impl Fn(After) + Send + Sync + 'static) -> u16 {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let line = Line { token: "tok".into(), settings: Box::new(settings), raise: Box::new(|_| {}), after: Box::new(after) };
+        let line = Line { token: "tok".into(), raise: Box::new(|_| {}), after: Box::new(after) };
         std::thread::spawn(move || accept(listener, Arc::new(line)));
         port
     }
@@ -2565,21 +2470,20 @@ Content-Length: {}
 
     #[test]
     fn t583_a_hook_is_answered_inside_its_limit_while_other_connections_send_nothing() {
-        let port = line_with(|| Arc::new(json!({})), |_| {});
+        let port = line_with(|_| {});
         // One local client connects and says nothing; another starts a request and stalls mid-header.
         let _silent = TcpStream::connect(("127.0.0.1", port)).unwrap();
         let mut stalled = TcpStream::connect(("127.0.0.1", port)).unwrap();
         stalled.write_all(b"POST /claude HTTP/1.1\r\nX-Kolux-").unwrap();
         std::thread::sleep(Duration::from_millis(200));
         let (body, took) = hook(port, 58_301, &shell("git push --force origin main"));
-        assert!(took < LIMIT, "answered after {took:?}");
-        assert!(body.contains(r#""permissionDecision":"ask""#), "the protected command still asks: {body}");
+        assert!(took < LIMIT && body == "{}", "answered after {took:?}: {body}");
     }
 
     #[test]
     fn t583_a_client_that_trickles_bytes_is_cut_off_at_the_deadline_not_held_forever() {
         use std::io::Read as _;
-        let port = line_with(|| Arc::new(json!({})), |_| {});
+        let port = line_with(|_| {});
         let mut slow = TcpStream::connect(("127.0.0.1", port)).unwrap();
         slow.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
         // A byte every 300 ms for 12 s: every single read is quick, the request never ends.
@@ -2608,59 +2512,29 @@ Content-Length: {}
     }
 
     #[test]
-    fn t583_a_protected_command_is_answered_while_an_agent_finished_automation_is_still_in_its_precheck() {
+    fn t583_a_command_is_answered_while_the_work_after_an_earlier_reply_is_still_running() {
         let (started, begun) = std::sync::mpsc::channel::<()>();
         let (release, held) = std::sync::mpsc::channel::<()>();
-        // The work after each reply, as `serve` runs it: one queue in arrival order. The first job stands for an
-        // agent-finished automation whose precheck is still running (up to 10 minutes in the app).
+        // The work after each reply, as `serve` runs it: one queue in arrival order. The first job stands for slow
+        // work still running (a rename that waits on Git, say).
         let after = queue(move |_job: After| {
             let _ = started.send(());
             let _ = held.recv_timeout(Duration::from_secs(30));
         });
-        let port = line_with(|| Arc::new(json!({})), after);
+        let port = line_with(after);
         assert!(hook(port, 58_302, r#"{"hook_event_name":"UserPromptSubmit","prompt":"run the tests","session_id":"t583"}"#).1 < LIMIT);
         let (_, took) = hook(port, 58_302, r#"{"hook_event_name":"Stop","session_id":"t583"}"#);
         assert!(took < LIMIT, "the finish itself is answered at once ({took:?})");
         begun.recv_timeout(Duration::from_secs(5)).expect("the work after the first reply began and is still running");
         let (body, took) = hook(port, 58_303, &shell("git push --force origin main"));
-        assert!(took < LIMIT, "answered after {took:?}");
-        assert!(body.contains(r#""permissionDecision":"ask""#), "{body}");
+        assert!(took < LIMIT && body == "{}", "answered after {took:?}: {body}");
         let _ = release.send(());
-    }
-
-    #[test]
-    fn t583_a_huge_protected_command_still_being_checked_holds_up_no_other_pane() {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        let (checking, begun) = std::sync::mpsc::channel::<()>();
-        let (release, held) = std::sync::mpsc::channel::<()>();
-        let (checking, held) = (Mutex::new(checking), Mutex::new(held));
-        let first = AtomicBool::new(true);
-        // The first reply's work (its rules read, then a mask of up to 8 passes over a 2 MiB command) stands still
-        // until released; under the round-1 ORDER lock every other pane's hook queued behind it.
-        let port = line_with(
-            move || {
-                if first.swap(false, Ordering::SeqCst) {
-                    let _ = checking.lock().unwrap().send(());
-                    let _ = held.lock().unwrap().recv_timeout(Duration::from_secs(30));
-                }
-                Arc::new(json!({}))
-            },
-            |_| {},
-        );
-        let huge = std::thread::spawn(move || hook(port, 58_305, &shell(&format!("git push --force origin main {}", "x".repeat(2 << 20)))));
-        begun.recv_timeout(Duration::from_secs(10)).expect("the huge command reached its reply");
-        let (_, took) = hook(port, 58_306, r#"{"hook_event_name":"UserPromptSubmit","prompt":"go","session_id":"t583b"}"#);
-        assert!(took < LIMIT, "another pane's status answered after {took:?}");
-        let (body, took) = hook(port, 58_307, &shell("git push --force origin main"));
-        assert!(took < LIMIT && body.contains(r#""permissionDecision":"ask""#), "another pane's protected command: {took:?} {body}");
-        let _ = release.send(());
-        assert!(huge.join().unwrap().0.contains(r#""permissionDecision":"ask""#), "the huge command still asks");
     }
 
     #[test]
     fn t583_with_the_cap_reached_a_new_connection_is_closed_at_once_and_the_line_keeps_accepting() {
         use std::io::Read as _;
-        let port = line_with(|| Arc::new(json!({})), |_| {});
+        let port = line_with(|_| {});
         // MAX_IN_FLIGHT clients that connect and say nothing: each holds its handler for up to READ_WITHIN.
         let silent: Vec<TcpStream> = (0..MAX_IN_FLIGHT).map(|_| TcpStream::connect(("127.0.0.1", port)).unwrap()).collect();
         std::thread::sleep(Duration::from_millis(300));
@@ -2675,8 +2549,6 @@ Content-Length: {}
         // The silent clients go; their handlers end and free their places. The line still answers.
         drop(silent);
         std::thread::sleep(Duration::from_millis(300));
-        // A plain command: a protected one would also wait on protected_custom's attempts lock, which another test's
-        // huge command holds while it is masked (a follow-up in STATE.md), and this test is about the accept loop.
         let (body, took) = hook(port, 58_308, &shell("git status"));
         assert!(took < LIMIT && body == "{}", "the listener keeps accepting: {took:?} {body}");
     }
@@ -2696,37 +2568,6 @@ Content-Length: {}
         assert_eq!(heard.recv_timeout(Duration::from_secs(5)), Ok(3), "and the one after it, in order");
     }
 
-    #[test]
-    fn t583_a_protected_command_is_answered_from_the_last_settings_read_while_slow_work_holds_the_store() {
-        use crate::state::Store;
-        let dir = std::env::temp_dir().join(format!("kolux-hooks-t583-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let store = Arc::new(Mutex::new(Store::open(&dir).unwrap()));
-        store.lock().unwrap().save_settings(&json!({ "protectedRules": [{ "id": "t583", "name": "Pod deletes", "kind": "starts-with", "pattern": "kubectl delete" }] })).unwrap();
-        let last = Arc::new(Mutex::new(Arc::new(Value::Null)));
-        let (s, l) = (store.clone(), last.clone());
-        let port = line_with(move || settings_now(Some(&s), &l), |_| {});
-        let (body, _) = hook(port, 58_304, &shell("kubectl delete pod web"));
-        assert!(body.contains("Pod deletes"), "the user's own rule, read while the store is free: {body}");
-        // Slow work (a git scan for every project, say) takes the store and keeps it.
-        let (taken, ready) = std::sync::mpsc::channel::<()>();
-        let (release, held) = std::sync::mpsc::channel::<()>();
-        let holder = {
-            let store = store.clone();
-            std::thread::spawn(move || {
-                let _guard = store.lock().unwrap();
-                let _ = taken.send(());
-                let _ = held.recv_timeout(Duration::from_secs(30));
-            })
-        };
-        ready.recv().unwrap();
-        let (body, took) = hook(port, 58_304, &shell("kubectl delete pod api"));
-        assert!(took < LIMIT, "answered after {took:?}");
-        assert!(body.contains("Pod deletes") && body.contains(r#""permissionDecision":"ask""#), "the last read stands in: {body}");
-        let _ = release.send(());
-        holder.join().unwrap();
-        let _ = std::fs::remove_dir_all(&dir);
-    }
 
     #[test]
     fn b20_a_broken_codex_config_line_is_named_by_number_never_quoted() {

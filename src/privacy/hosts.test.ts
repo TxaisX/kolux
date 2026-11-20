@@ -32,45 +32,19 @@ function hostsInCode(): Map<string, string[]> {
 const CONNECTS: Record<string, string> = {
   "api.github.com": "github account",
   "github.com": "github account",
-  "avatars.githubusercontent.com": "avatars.githubusercontent.com",
-  "raw.githubusercontent.com": "raw.githubusercontent.com",
-  "api.moonshot.ai": "api.moonshot.ai",
-  "www.minimax.io": "www.minimax.io",
   "openrouter.ai": "openrouter.ai",
-  "cdnjs.cloudflare.com": "cdnjs",
-  "cdn.jsdelivr.net": "jsdelivr",
-  "unpkg.com": "unpkg",
-  "cdn.tailwindcss.com": "tailwindcss",
-  "code.jquery.com": "jquery",
-  "claude.ai": "claude.ai",
-  "chatgpt.com": "chatgpt.com",
-  "cursor.com": "cursor.com",
-  "x.ai": "x.ai",
-  "antigravity.google": "antigravity.google",
-  "aider.chat": "aider.chat",
-  "app.factory.ai": "app.factory.ai",
-  "app.primeintellect.ai": "app.primeintellect.ai",
-  "cli.kiro.dev": "cli.kiro.dev",
-  "code.kimi.com": "code.kimi.com",
-  "hermes-agent.nousresearch.com": "hermes-agent.nousresearch.com",
-  "mimo.xiaomi.com": "mimo.xiaomi.com",
-  "omp.sh": "omp.sh",
-  "openclaw.ai": "openclaw.ai",
-  "static.devin.ai": "static.devin.ai",
 };
 
 /** An address in the code that is not a connection the app makes, and why. */
 const NOT_A_CONNECTION: Record<string, string> = {
   "127.0.0.1": "this computer: local agent hook callbacks",
-  "kolux-artifact.localhost": "the app's own scheme for showing a saved artifact",
   "git-scm.com": "words in an error message; the person decides whether to open it",
-  "avatars.": "the start of the GitHub Enterprise picture host, built from the repository's own host",
   host: "a placeholder in a code comment or doc string",
 };
 
 test("t791: every host the app's code can reach has a row in the Privacy list, or a stated reason", () => {
   const found = hostsInCode();
-  expect(found.size).toBeGreaterThan(20); // the reader finds the source at all
+  expect(found.size).toBeGreaterThanOrEqual(5); // the reader finds the source at all (6 hosts after slim-down wave B)
   const unnamed = [...found].filter(([h]) => !(h in CONNECTS) && !(h in NOT_A_CONNECTION)).map(([h, at]) => `${h} (${at[0]})`);
   expect(unnamed, "add a row to OUTBOUND in src/settings/outbound.ts and a line to CONNECTS here").toEqual([]);
 });
@@ -82,18 +56,8 @@ test("t791: each host in CONNECTS is named by a row of the Privacy list, and sti
   expect(Object.keys(NOT_A_CONNECTION).filter((h) => !found.has(h))).toEqual([]);
 });
 
-test("t791: the list says what the installers, skills, artifacts ticker and pane keys do", () => {
-  expect(list).toContain("press install on an agent");
-  expect(list).toContain("npx --yes skills");
-  expect(list).toContain("every 3 seconds");
+test("t791: the list says what the installer and pane keys do", () => {
+  expect(list).toContain("press install on the claude or codex card");
   expect(list).toContain("claude_code_oauth_token");
-  expect(list).toContain("xai_api_key");
   expect(list).toContain("avatars.githubusercontent.com");
-});
-
-test("t791: the installer hosts in the list are exactly the Url rows of the installer table", () => {
-  const table = readFileSync(new URL("agent_install_official.rs", SRC), "utf8");
-  const urls = [...table.matchAll(/Url\("https:\/\/([^/"]+)/g)].map((m) => m[1]);
-  expect(urls.length).toBeGreaterThan(10);
-  expect(urls.filter((h) => !list.includes(h))).toEqual([]);
 });

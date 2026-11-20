@@ -13,10 +13,6 @@ pub mod app_http;
 pub mod update_guard;
 /// T-199 (APP-028, APP-029, APP-031): install records, the restart watchdog, download problems.
 pub mod update_care;
-/// T-547 (OD-01): the Kimi balance and MiniMax usage checks, with keys kept sealed.
-pub mod provider_usage;
-/// T-547: the one network client behind those checks (own address check, no redirects, 10 s, 64 KB).
-pub mod provider_net;
 
 use serde::Serialize;
 use std::collections::HashMap;
@@ -174,18 +170,6 @@ fn snapshot(sessions: &[(u32, Option<u32>, Option<String>)], app_pid: u32) -> (V
         imp::fill(p);
     }
     (procs, owner)
-}
-
-/// CLI-041: the Resource Manager's memory figures as they stand now, for `kolux diagnostics
-/// memory`: the same measure as the popover's, with committed beside resident. CPU stays 0 and
-/// the popover's sampler is left alone, so asking from the CLI never shortens its next CPU figure.
-pub fn memory_now(terminals: &crate::terminal::Terminals) -> Resources {
-    let sessions = terminals.list();
-    let app_pid = std::process::id();
-    let (procs, owner) = snapshot(&sessions, app_pid);
-    let (app, each) = total(&procs, &owner, &HashMap::new(), 0.0, 1, app_pid, crate::sysmem::working_set_bytes());
-    let (free, total) = imp::memory();
-    Resources::new(app, rows(sessions, each), free, total)
 }
 
 /// One row per session `Terminals::list` reports, in its order, with its pid and measured usage.

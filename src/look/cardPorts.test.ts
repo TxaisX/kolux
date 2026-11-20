@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { CardPorts, ownPorts, type PortRow } from "./cardPorts";
 
-const row = (port: number, external = false, pid = 1): PortRow => ({ port, addr: "127.0.0.1", pid, external, started: "", terminal: external ? null : 1 });
+const row = (port: number, external = false, pid = 1): PortRow => ({ port, addr: "127.0.0.1", pid, external, terminal: external ? null : 1 });
 
 test("PROJ-062 (T-266-b): a workspace's ports are its own rows, once each, smallest first", () => {
   expect(ownPorts([row(5173), row(3000), row(5173, false, 2), row(135, true), row(80, true)])).toEqual([3000, 5173]);

@@ -113,7 +113,7 @@ impl Link {
         events.set_wait(None)?;
         let generation = answer["generation"].as_u64().unwrap_or(ep.generation);
         let rows = answer["terminals"].as_array().cloned().unwrap_or_default();
-        let link = Arc::new(Link { ep, generation, table: Mutex::new(Table::default()), alive: AtomicBool::new(true), window: crate::cli::secret() });
+        let link = Arc::new(Link { ep, generation, table: Mutex::new(Table::default()), alive: AtomicBool::new(true), window: crate::local_token::secret() });
         let reader = link.clone();
         std::thread::Builder::new()
             .name("terminal-service-events".into())
@@ -557,7 +557,7 @@ pub(crate) mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
-        let ep = Endpoint { port: listener.local_addr().unwrap().port(), token: crate::cli::secret(), pid: std::process::id(), generation: generation(), protocol: PROTOCOL };
+        let ep = Endpoint { port: listener.local_addr().unwrap().port(), token: crate::local_token::secret(), pid: std::process::id(), generation: generation(), protocol: PROTOCOL };
         write_endpoint(&dir, &ep).unwrap();
         let service = Service::default();
         let stop = Arc::new(AtomicBool::new(false));

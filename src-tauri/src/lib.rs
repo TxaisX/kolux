@@ -4,8 +4,6 @@ mod activity;
 mod agent_sleep;
 pub mod agents;
 mod app_look;
-pub mod artifacts;
-pub mod automations;
 mod badge;
 mod awake;
 mod capture;
@@ -14,14 +12,10 @@ mod chat_tools;
 mod clipboard;
 mod cleanup;
 mod engine_crash;
-mod html_preview;
 mod net;
-mod pdf_export;
 mod webview_args;
 mod webview_engine;
 mod cap;
-pub mod cli;
-mod cli_accounts;
 pub mod claude_accounts;
 pub mod claude_key;
 pub mod claude_setup;
@@ -31,13 +25,10 @@ pub mod codex_accounts;
 pub mod codex_usage;
 mod creatures;
 pub mod diag;
-mod editor_drafts;
 pub mod env_name;
-mod editor_search;
 pub mod fence;
 pub mod files;
 pub mod final_save;
-pub mod fsops;
 mod fonts;
 pub mod git;
 mod github;
@@ -46,40 +37,30 @@ pub mod hooks;
 mod include;
 mod import;
 mod profile_move;
-// T-043-e: the macOS keychain rule table; the Mac wiring that calls it is T-043-f.
-#[cfg_attr(not(test), allow(dead_code))]
-mod keychain;
-mod agent_creds;
-pub mod grok;
-mod grok_status;
 pub mod install;
 mod keybindings;
 mod edit_menu;
 pub mod links;
 mod login_env;
+mod local_token;
 mod lifecycle;
 mod menu;
 mod bulk;
 mod models;
 mod names;
 mod newproject;
-mod notebook_run;
 mod notifications;
 mod notices;
 mod onboarding;
-pub mod orchestration;
 mod foreground;
 pub mod procs;
-pub mod protected;
+pub mod mask;
 #[cfg(test)]
 mod s9_fuzz_tests;
-pub mod protected_custom;
 mod ports;
-mod labels;
 mod tidy;
 mod resources;
 pub mod projects;
-mod prompt_answer;
 mod quit_merge;
 mod prompt_scan;
 pub mod scm;
@@ -95,20 +76,17 @@ mod pr_checkout;
 mod auto_pr;
 pub mod pty;
 mod setup;
-pub mod routing;
-pub mod schedule;
 mod resume;
 pub mod secrets;
+pub mod sendonce;
 mod settings_sync;
 mod session_rows;
 mod sessions;
 mod shell_marks;
 mod shell_history;
-mod skill_delete;
 pub mod state;
 pub mod status;
 mod sub_work;
-mod term_import;
 mod sysmem;
 pub mod terminal;
 #[cfg(test)]
@@ -321,8 +299,6 @@ pub fn run() {
             }
             // T-182 (APP-020, macOS and Linux): the login shell's environment, read in the background.
             login_env::start();
-            // T-594: a user PATH too long for the installer gets <install>\bin added here, once per install.
-            cli::cli_register::path_at_start_now(&dir);
             if !job_ok {
                 diag::write(&dir, "kolux: the app could not be put in its own job object; child processes would survive a crash (APP-053)");
             }
@@ -398,7 +374,6 @@ pub fn run() {
             }
             // T-301 (APP-012): the saved app icon variant and window blur, before the window shows.
             app_look::apply_saved(app.handle());
-            app.manage(links::Grants::default());
             // APP-041: the app's own start-and-stop record, next to what the terminals report.
             diag::write(&dir, &format!("app start {starts}, Kolux {}", app.package_info().version));
             // PKG-5: the start-up timeline reaches the log even when the page never reports it.
@@ -434,8 +409,6 @@ pub fn run() {
             app.manage(claude_accounts::SignIns::default());
             app.manage(codex_accounts::SignIns::default());
             app.manage(install::Installs::default());
-            app.manage(grok::GrokSignIn::default());
-            app.manage(artifacts::Library::new(dir.join("artifacts")));
             app.manage(update::Updates::default());
             // Without Git the app still opens, and the landing screen says so (APP-023).
             app.manage(startup_marks::joined(git)?.unwrap_or(git::Git { version: String::new() }));
@@ -445,8 +418,10 @@ pub fn run() {
             let fence = fence::Fence::load(&app.state::<Mutex<Store>>());
             app.manage(fence);
             app.manage(token_usage::Flights::default());
-            // The command line reaches the app through a loopback port (PROJ-077).
-            cli::serve(app.handle().clone(), &dir)?;
+            // APP-001: the startup file names this copy for a second launch that cannot use the channel.
+            if let Err(e) = lifecycle::write_running(&dir) {
+                diag::write(&dir, &format!("the startup file could not be written: {e} (APP-001)"));
+            }
             // Agents report their status through hooks (STAT-001): the listener, then the scripts
             // and each found, switched-on agent's entries (STAT-004), off the launch path.
             // STAT-006 / STAT-030: the last run's statuses, with what hooks held while Kolux was
@@ -482,33 +457,22 @@ pub fn run() {
                 std::thread::sleep(std::time::Duration::from_secs(15));
                 resume::tick(&handle, &log_dir);
             });
-            // PROJ-069: quiet repositories get Git's own housekeeping (prune + gc, nothing deleted);
-            // PROJ-088: the workspace label addresses follow their setting (off by default).
+            // PROJ-069: quiet repositories get Git's own housekeeping (prune + gc, nothing deleted).
             let handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let resolver = handle.clone();
-                let resolve: labels::Resolve = std::sync::Arc::new(move |label: &str| labels::resolve_in(&resolver, label));
-                let mut tidy_at = std::time::Instant::now() + tidy::POLL;
-                loop {
-                    std::thread::sleep(std::time::Duration::from_secs(5));
-                    let on = handle.state::<Mutex<Store>>().lock().map(|s| labels::enabled(&s.settings())).unwrap_or(false);
-                    labels::apply(on, &resolve);
-                    if std::time::Instant::now() >= tidy_at {
-                        tidy_at = std::time::Instant::now() + tidy::POLL;
-                        tidy::pass(&handle);
-                    }
-                }
+            std::thread::spawn(move || loop {
+                std::thread::sleep(tidy::POLL);
+                tidy::pass(&handle);
             });
             // ACCT-050: an agent started by hand in a shell pane is recognised within a few seconds.
             let handle = app.handle().clone();
             std::thread::spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(2));
                 foreground::poll(&handle);
+                // A window hidden to the tray that something outside showed again (a second launch's
+                // fallback raise) is shown through the window library too (tray.rs).
+                tray::resync_if_shown(&handle);
                 // STAT-028: a cancelled turn that never sends its Stop reads interrupted.
                 for status in status::settle_cancels() {
-                    // C25-R2-01: a settled cancel never passes through the hook line, so the run
-                    // following that pane is told here, as `hooks.rs:814` tells it a hook status.
-                    automations::settled(&handle, &status);
                     let _ = tauri::Emitter::emit(&handle, hooks::EVENT, status);
                 }
                 // STAT-032: a working reading with no signal for 30 minutes is marked unverified.
@@ -541,21 +505,6 @@ pub fn run() {
             Ok(())
         })
         })
-        // The Artifacts viewer (SKILL-036) loads stored pages through this scheme, one entry at a time.
-        // T-500: only the app's own web view may read artifacts; a Browser pane page gets nothing.
-        // T-624: asynchronous, so the file read (up to 8 MB of a ranged clip, or a whole page) runs on a
-        // blocking worker and never on the window's thread; the responder answers from there. `serve`
-        // itself takes one of 4 read slots, which bound how many reads run at once, not their size.
-        .register_asynchronous_uri_scheme_protocol(artifacts::SCHEME, |ctx, req, responder| {
-            if ctx.webview_label() != "main" {
-                responder.respond(tauri::http::Response::builder().status(403).body(b"not for this page".to_vec()).unwrap_or_default());
-                return;
-            }
-            let app = ctx.app_handle().clone();
-            tauri::async_runtime::spawn_blocking(move || {
-                responder.respond(artifacts::serve(&app.state::<artifacts::Library>(), &req));
-            });
-        })
         // T-033-e (FIX-1): a reload of the main page (F5 / Ctrl+R) destroys no window, and the old
         // page never gets to release its git watches, so they are all let go as the new page starts
         // loading (the new page subscribes afresh); at the first load there is nothing to let go.
@@ -565,9 +514,7 @@ pub fn run() {
             }
         })
         .on_window_event(|window, event| {
-            // The window is gone: no shell may outlive it.
-            // T-546-c: only the main window holds shells, so the Tower's own window closing changes nothing;
-            // the Tower window goes with the main one, so it never keeps the app running on its own.
+            // The window is gone: no shell may outlive it. Only the main window holds shells.
             // T-182 (APP-006): the page decides whether closing needs a question; a page that never
             // answers (frozen or crashed) is closed for after lifecycle::ASK_LIMIT.
             if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -591,6 +538,9 @@ pub fn run() {
                 // A focus while minimised (a tab's view created under a minimised window takes it) is
                 // not a show: the view stays out of sight until the restore's resize.
                 if window.label() == "main" && !window.is_minimized().unwrap_or(false) {
+                    // A window hidden to the tray and raised from outside (a second launch's fallback) is
+                    // shown again through the window library first, so a later minimise does not hide it.
+                    tray::refocused(window.app_handle());
                     tray::window_shown(window.app_handle());
                     webview_power::main_shown(window.app_handle());
                 }
@@ -608,10 +558,6 @@ pub fn run() {
                         webview_power::main_shown(window.app_handle());
                     }
                 }
-            }
-            // ACCT-055: files dropped in from outside may be copied into the Explorer, nothing else.
-            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
-                window.state::<fence::Fence>().dropped(paths);
             }
         })
         .invoke_handler(|invoke: tauri::ipc::Invoke<tauri::Wry>| {
@@ -634,17 +580,10 @@ pub fn run() {
             hooks::agent_hooks::saved::agent_status_saved,
             tray::tray_close_requested, // APP-007 (tray FIX-1): the page asks before the main window closes
             tray::tray_ping, // STAT-047: the tray dot lights before any toast switch is consulted
-            protected::protected_rules,
-            protected_custom::protected_rule_check,
-            protected_custom::protected_attempts,
-            protected_custom::protected_attempts_clear,
             hooks::claude_usage,
             hooks::claude_usage_of,
             sysmem::process_memory,
             fonts::list_fonts,
-            term_import::term_import_ghostty,
-            term_import::term_import_ghostty_theme,
-            term_import::term_import_warp,
             resources::resources,
             sessions::list::sessions_list,
             sessions::list::session_resume_plan,
@@ -658,7 +597,6 @@ pub fn run() {
             chat::chat_support,
             chat::chat_read,
             chat::chat_close,
-            terminal::terminal_screen_reply,
             terminal::terminal_resize,
             terminal::native_term_available,
             terminal::native_term_attach,
@@ -681,12 +619,10 @@ pub fn run() {
             terminal::terminal_listed_session,
             terminal::terminal_prune_history,
             terminal::terminal_history_append,
-            status::agent_history,
             status::agent_answer,
             status::status_inband,
             activity::activity_counts,
             activity::activity_get,
-            activity::activity_timeline,
             activity::activity_touch,
             projects::git_version,
             projects::project_list,
@@ -716,8 +652,6 @@ pub fn run() {
             projects::visibility_set,
             projects::visibility_root_add,
             projects::visibility_root_remove,
-            projects::workspace_note_get,
-            projects::workspace_note_save,
             projects::branch_prefix_check,
             projects::workspace_create_fresh,
             projects::workspace_suggest_name,
@@ -749,25 +683,12 @@ pub fn run() {
             projects::workspaces_place_set,
             projects::git_first_commit_preview,
             projects::git_start,
-            setup::workspace_setup,
-            setup::workspace_issue_command,
-            setup::workspace_default_tabs,
-            setup::script_trust_needed,
-            setup::script_trust_grant,
-            setup::setup_imports_list,
-            setup::setup_import,
             agents::list_command::agent_list,
             models::agent_models,
             agents::agent_start_line,
             agents::agent_prompt_send,
-            agents::agent_install::agents_install,
-            agents::agent_install::agents_install_many,
             agents::open_install_page,
             agents::inventory::session_tabs,
-            orchestration::worker_labels,
-            orchestration::setup_gate::worker_setup_settled,
-            prompt_answer::prompt_read,
-            prompt_answer::prompt_answer,
             prompt_scan::prompt_scan,
             prompt_scan::prompt_scan_restored,
             prompt_scan::prompt_scan_pruned,
@@ -775,7 +696,6 @@ pub fn run() {
             tools::tools_check,
             tools::tools_dismiss,
             tools::editors_list,
-            tools::teams_host,
             awake::keep_awake_state,
             app_look::app_look_apply,
             token_usage::token_usage,
@@ -783,16 +703,13 @@ pub fn run() {
             token_usage::workspace_worktrees,
             token_usage::token_tracking_set,
             trust::trust_folders_cmd,
-            scm::scm_status, scm::scm_count, scm::scm_reveal,
-            scm::scm_ignore_heavy,
+            scm::scm_status, scm::scm_count,
             scm::scm_watch, scm::scm_unwatch,
-            scm::scm_base_changes, scm::scm_base_sides,
-            scm::scm_pushed, scm::scm_head, scm::scm_summary, scm::scm_abort,
+            scm::scm_pushed, scm::scm_head,
             scm::scm_merge_info,
             scm::scm_merge,
             auto_pr::auto_pr_remote, auto_pr::auto_pr_commit, auto_pr::auto_pr_push, auto_pr::auto_pr_scan,
             scm::scm_gh_budget,
-            scm::scm_tasks_search,
             scm::scm_gh_account,
             scm::scm_prs_poll,
             scm::scm_commit_message,
@@ -801,75 +718,24 @@ pub fn run() {
             scm::writers::scm_name_branch,
             projects::workspace_rename_on_first_prompt,
             projects::workspace_move_folder,
-            scm::scm_task_detail,
-            scm::scm_repo_labels,
-            github::github_repo_parent,
-            github::github_repo_lineage,
-            github::github_people,
-            github::github_project,
-            github::github_projects,
-            github::github_project_set,
-            github::github_issue_state,
-            github::github_issue_comment,
-            github::github_issue_create,
-            github::github_issue_types,
-            github::github_issue_type_set,
-            github::pull_requests::pr_page,
-            github::pull_requests::pr_files,
-            github::pull_requests::pr_file_patch,
-            github::pull_requests::pr_checks,
-            github::pull_requests::pr_threads,
-            github::pull_requests::pr_set_state,
-            github::pull_requests::pr_viewed,
-            github::pull_requests::pr_set_viewed,
-            github::pull_requests::pr_editors,
-            github::pull_requests::pr_rerun,
-            github::pull_requests::pr_reviewers,
-            github::pull_requests::pr_assignees,
-            github::pull_requests::pr_react,
-            github::pull_requests::pr_reply,
-            github::pull_requests::pr_merge,
             pr_checkout::scm_push_target,
             scm_open::scm_open_with,
             scm_recipe::scm_recipe_commit,
-            scm_recipe::scm_recipe_fix,
             scm_stack::scm_stack_create,
             scm_stack::scm_stack_record,
             pr_review::scm_stack_prs,
-            scm::scm_task_labels,
-            scm::scm_task_body,
             scm::scm_stage,
-            scm::scm_discard,
             scm::scm_commit, scm::scm_remote,
-            scm::scm_pr, scm::scm_pr_checks, scm::scm_pr_create, scm::scm_open_pr,
+            scm::scm_pr_checks, scm::scm_pr_create,
             pr_review::scm_pr_find, pr_review::scm_check_rerun, pr_review::scm_check_log, pr_review::scm_check_detail, pr_review::scm_pr_text,
             pr_review::scm_review_read, pr_review::scm_review_act, pr_review::scm_review_send, pr_review::scm_pr_conflicts,
-            scm::scm_history, scm::scm_commit_files, scm::scm_github_repo, scm::repo_id::scm_repo_id, scm::repo_id::scm_repo_id_of,
-            bulk::workspace_remove_many, bulk::workspace_forget, bulk::workspace_forget_check,
+            scm::repo_id::scm_repo_id, scm::repo_id::scm_repo_id_of,
+            bulk::workspace_forget, bulk::workspace_forget_check,
             bulk::workspace_statuses, bulk::workspace_statuses_set, bulk::workspace_status_set,
-            bulk::space_scan, bulk::space_saved,
-            ports::ports_list, ports::ports_stop,
+            ports::ports_list,
             keybindings::keybindings_read,
             menu::menu_sync, menu::menu_popup,
             keybindings::keybindings_write,
-            keybindings::keybindings_reload,
-            keybindings::keybindings_show,
-            pdf_export::browser_export_pdf, // T-316-b (EDIT-018)
-            pdf_export::browser_pick_pdf_path,
-            html_preview::browser_preview, // BROW-039: a document previewed in the user's browser
-            automations::automations_list,
-            automations::automations_external_refresh,
-            automations::automation_external_act,
-            automations::automation_external_history,
-            automations::automation_set_enabled,
-            automations::automation_delete,
-            automations::automation_run_now,
-            automations::automation_run_cancel,
-            automations::automation_preview,
-            automations::automation_save,
-            automations::carry::session_carry_context,
-            automations::carry::agent_dir_ready,
-            routing::routing_catalog,
             secrets::secret_status,
             secrets::secrets_dropped,
             secrets::secrets_dropped_dismiss,
@@ -896,20 +762,6 @@ pub fn run() {
             install::agent_can_install,
             install::agent_install,
             install::agent_install_cancel,
-            grok::grok_status,
-            grok::grok_sign_in,
-            grok::grok_cancel,
-            grok::grok_key_set,
-            agent_creds::agent_creds_view,
-            agent_creds::codex_sessions_home_set,
-            agent_creds::minimax_credential_set,
-            agent_creds::minimax_credential_forget,
-            agent_creds::minimax_options_set,
-            agent_creds::gemini_cli_credentials_set,
-            resources::provider_usage::provider_keys,
-            resources::provider_usage::provider_key_set,
-            resources::provider_usage::provider_key_forget,
-            resources::provider_usage::provider_usage_check,
             codex_accounts::codex_accounts,
             codex_accounts::codex_account_sign_in,
             codex_accounts::codex_account_cancel,
@@ -933,77 +785,23 @@ pub fn run() {
             onboarding::onboarding_close,
             onboarding::guide_get,
             onboarding::guide_mark,
-            onboarding::cli_status,
             onboarding::tours_get,
             onboarding::onboarding_reopen,
             onboarding::onboarding_milestone,
             star::star_info,
             star::star_put,
-            files::file_read,
-            files::file_write,
-            files::file_bytes,
-            files::file_write_picture,
             files::file_stamps,
             files::file_pick,
-            files::md_list,
-            notebook_run::notebook_trusted,
-            notebook_run::notebook_trust,
-            notebook_run::notebook_run_cell,
-            notebook_run::notebook_stop,
-            editor_drafts::editor_draft_set,
-            editor_drafts::editor_draft_clear,
-            editor_drafts::editor_drafts_get,
-            editor_drafts::editor_drafts_drop,
-            editor_drafts::editor_draft_rename,
-            editor_drafts::editor_flush_ack,
-            editor_search::editor_search,
-            editor_search::editor_search_cancel,
             skills::skills_scan,
-            skill_delete::skills_delete_plan,
-            skill_delete::skills_delete,
-            skills::update::skills_update_check,
-            skills::update::skills_update_dismiss,
-            skills::update::skills_update_start,
-            skills::update::skills_update_stop,
-            skills::update::skills_update_status,
-            skills::update::skills_update_clear,
-            skills::installer::skills_install_command,
-            skills::skills_reveal,
             files::open_in,
             files::worktree_branches,
             files::file_list,
-            files::md_new,
-            files::md_templates,
-            files::diff_sides,
-            files::git_changes,
-            files::change_entries,
-            files::diff_image,
-            files::dir_list,
-            files::dir_ignored,
             files::path_kind,
-            artifacts::artifacts_list,
-            artifacts::artifacts_scan,
-            artifacts::artifact_add,
-            artifacts::artifact_remove,
-            artifacts::artifact_open,
-            artifacts::open_external,
-            links::open_path, links::file_grant, links::editor_open,
-            fsops::fs_create,
-            fsops::fs_rename,
-            fsops::fs_trash,
-            fsops::fs_restore,
-            fsops::fs_copy,
-            fsops::fs_bytes,
-            fsops::fs_move,
+            links::open_external,
+            links::open_path, links::editor_open,
             clipboard::clip_copy_text,
-            clipboard::clip_copy_files,
             clipboard::feedback_facts,
             pasted_image::paste_image_save,
-            cli::cli_register::cli_register_state,
-            cli::cli_register::cli_register,
-            cli::cli_register::cli_unregister,
-            cli::file_cli::cli_file_window,
-            cli::file_cli::cli_file_result,
             diag::diag_bundle,
             diag::diag_summary, // APP-010: Help > Copy terminal diagnostics
             lifecycle::app_restart, // APP-010: Help > Restart Kolux
@@ -1078,11 +876,6 @@ pub fn run() {
                 // the deadline leaves, so a stalled profile drive caps the wait and never freezes the
                 // quit. Settings need no step: every change is already on disk (APP-048).
                 final_save::begin();
-                // T-122 (STAT-018): Grok's Kolux-written hook file goes, unless another running
-                // Kolux owns it; the removal is cut short after grok::QUIT_LIMIT.
-                if let Ok(dir) = app.path().app_data_dir() {
-                    hooks::agent_hooks::more::grok::at_quit(&dir);
-                }
                 // T-182 (APP-011): the same steps make the save point a restart waits for.
                 let report = final_save::run(final_save::QUIT_DEADLINE, lifecycle::quit_steps(app));
                 if let Ok(dir) = app.path().app_data_dir() {
@@ -1116,7 +909,7 @@ pub fn run() {
                         diag::write(&dir, &format!("app exit: {webviews_left} WebView2 process(es) still running after 3 s (T-552)"));
                     }
                     diag::write(&dir, "app exit");
-                    let _ = std::fs::remove_file(dir.join(cli::FILE));
+                    let _ = std::fs::remove_file(dir.join(lifecycle::STARTUP_FILE));
                     hooks::remove_endpoint_files(&dir);
                 }
                 // APP-025: an update that finished downloading installs as the app quits.

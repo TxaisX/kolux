@@ -16,7 +16,7 @@ export function commandRows(map: Keymap, installed: readonly string[], note?: (t
     if (worktreesOff && WORKTREE_COMMANDS.has(a.id)) return []; // T-798: no row for a command that cannot act while worktrees are off
     if (sameAs[a.id] || (a.id.startsWith("tab.newAgent.") && !installed.includes(a.id.slice("tab.newAgent.".length)))) return []; // T-760: an old id is not a second row
     const keys = labelOf(map, a.id);
-    const keywords = a.keywords?.join(" "); // T-728: "cron" finds Open Automations
+    const keywords = a.keywords?.join(" "); // T-728: "preferences" finds Open Settings
     if (!a.index) return [{ section: "Commands", label: a.title, hint: keys.join("+") || undefined, keywords, run: () => run(a.id) }];
     return Array.from({ length: 9 }, (_, i) => ({
       section: "Commands",

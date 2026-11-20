@@ -19,7 +19,7 @@ export type TourStep = {
   /** The real control is what to click, so there is no Next. */
   noNext?: boolean;
 };
-export type TourId = "tasks" | "automations" | "parallel" | "grid" | "board";
+export type TourId = "parallel" | "grid";
 export type Tour = {
   id: TourId;
   name: string;
@@ -28,8 +28,6 @@ export type Tour = {
   ring?: boolean;
   /** ONB-033: the progress always counts this many steps, even while one of them has no target on screen. */
   count?: number;
-  /** ONB-032: runs even with its owning feature switched off (the tour is deliberately detached from it). */
-  detached?: boolean;
 };
 
 /** Every step target in the order it is tried. */
@@ -43,32 +41,11 @@ export const GRID_STATUS = ".sb-list .dot.live";
 export const GRID_RESULTS = "[data-results]";
 export const FOCUSED_SPLIT = ".pane.focused .pane-head button[title^='Split right']";
 
-/** ONB-033: the board. */
-export const BOARD_LANE = ".board .lane";
-export const BOARD_CARD = ".board .pane";
+/** The sidebar's own toggle, clicked when the sidebar is hidden. */
 export const SIDEBAR_SHOW = "button[title='Show sidebar']";
 
 /** ONB-033, the surfaces Kolux has today (the grid tour starts from the first run's end, T-208-b). */
 export const TOURS: Tour[] = [
-  {
-    id: "tasks",
-    name: "Tasks",
-    trigger: "[data-tasks] .tasks-list li",
-    steps: [
-      { target: "[data-tasks] .tasks-list li", side: "bottom", en: { title: "Start from a row", body: "Click an issue or pull request to read it and start an agent on it." }, ko: { title: "행에서 시작", body: "이슈나 풀 리퀘스트를 클릭해 읽고 에이전트에게 맡기세요." } },
-      { target: "[data-tasks] select[aria-label=Preset]", side: "bottom", en: { title: "Pick the source", body: "Choose which list of issues and pull requests to show." }, ko: { title: "출처 고르기", body: "보여 줄 이슈와 풀 리퀘스트 목록을 고릅니다." } },
-      { target: "[data-tasks] .autos-search", side: "bottom", en: { title: "Filter", body: "Narrow the list with a GitHub search, such as is:pr label:bug." }, ko: { title: "필터", body: "is:pr label:bug 같은 GitHub 검색으로 목록을 좁힙니다." } },
-    ],
-  },
-  {
-    id: "automations",
-    name: "Automations",
-    trigger: ".autos:not(.tasks) .autos-bar .btn.primary",
-    steps: [
-      { target: ".autos:not(.tasks) .autos-bar .btn.primary", side: "bottom", en: { title: "Create an automation", body: "Give an agent a job that runs on a schedule, by itself." }, ko: { title: "자동화 만들기", body: "에이전트에게 일정에 따라 스스로 실행되는 일을 맡깁니다." } },
-      { target: ".autos:not(.tasks) .autos-bar button[title^='Every automation']", side: "bottom", en: { title: "See the results", body: "Every run of every automation, with what it did, in one place." }, ko: { title: "결과 보기", body: "모든 자동화의 실행과 결과를 한곳에서 봅니다." } },
-    ],
-  },
   {
     id: "parallel",
     name: "Agents in parallel",
@@ -88,15 +65,6 @@ export const TOURS: Tour[] = [
       { target: GRID_PANE, side: "bottom", en: { title: "This is a session", body: "An AI agent works here in its own terminal. Type to it any time." }, ko: { title: "세션입니다", body: "AI 에이전트가 자기 터미널에서 일합니다. 언제든 입력할 수 있습니다." } },
       { target: GRID_STATUS, side: "right", en: { title: "Its status", body: "The dot spins while it works, turns yellow when it needs you and green when it is done." }, ko: { title: "상태", body: "일하는 동안 점이 돌고, 도움이 필요하면 노란색, 끝나면 초록색이 됩니다." } },
       { target: GRID_RESULTS, side: "right", en: { title: "Your results", body: "What a kit makes is gathered here, ready to open." }, ko: { title: "결과", body: "키트가 만든 것이 여기에 모여 바로 열 수 있습니다." } },
-    ],
-  },
-  {
-    id: "board",
-    name: "Board",
-    trigger: BOARD_LANE,
-    steps: [
-      { target: BOARD_LANE, side: "bottom", en: { title: "Watch work move", body: "Each column is a state: Needs you, Working, Done, Stopped or Idle. A card moves as its agent's state changes." }, ko: { title: "작업 지켜보기", body: "각 열은 에이전트의 상태입니다. 상태가 바뀌면 카드가 열 사이를 옮겨 갑니다." } },
-      { target: BOARD_CARD, alt: [".board"], side: "right", en: { title: "Move cards through the lanes", body: "A card follows its agent from lane to lane until it is done." }, ko: { title: "카드를 단계별로 옮기기", body: "카드는 에이전트를 따라 끝날 때까지 열 사이를 이동합니다." } },
     ],
   },
 ];
@@ -226,16 +194,15 @@ export const GRID_TRIES = 4 * FIRST_TARGET_TRIES;
 /** A tour waiting for its first target. `page` is where the user was when it was asked for; `after` is a
  *  tour it holds off for until that one has finished. */
 export type Want = { id: TourId; forced: boolean; tries: number; limit?: number; page: string; after?: TourId };
-export type Look = { running: TourId | null; page: string; firstShown: boolean; blocked: boolean; off: boolean; detached: boolean };
+export type Look = { running: TourId | null; page: string; firstShown: boolean; blocked: boolean };
 
 /** What a waiting tour does on this look:
  *  - drop: a forced request when the user has moved to another page or another tour (not the one it waits for) has
- *    started; a tour whose owning feature is switched off, unless it is detached from it;
+ *    started;
  *  - wait: a tour is showing (an automatic one just waits; a forced one waits only for the tour it holds off for);
  *  - start: the first target is on screen (an automatic one also needs no confirmation dialog);
  *  - miss: nothing to do yet; the caller counts this against the cap. */
 export function lookAt(w: Want, l: Look): "start" | "wait" | "drop" | "miss" {
-  if (l.off && !l.detached) return "drop";
   if (w.forced && l.page !== w.page) return "drop";
   if (l.running !== null) return !w.forced || w.after === l.running ? "wait" : "drop";
   if (l.firstShown && (w.forced || !l.blocked)) return "start";
@@ -244,13 +211,6 @@ export function lookAt(w: Want, l: Look): "start" | "wait" | "drop" | "miss" {
 
 /** Whether a waiting tour has used up its looks. */
 export const gaveUp = (w: Want) => w.tries >= (w.limit ?? (w.forced ? 4 * FIRST_TARGET_TRIES : FIRST_TARGET_TRIES));
-
-/** ONB-032: the settings key that switches off the feature a tour belongs to; `false` there holds the tour back. */
-export const OWNER_SWITCH: Partial<Record<TourId, string>> = { board: "boardView", tasks: "tasksPage", automations: "automationsPage" };
-export const ownerOff = (settings: Record<string, unknown> | null, id: TourId): boolean => {
-  const key = OWNER_SWITCH[id];
-  return !!key && settings !== null && settings[key] === false;
-};
 
 // ---- ONB-033: progress, the hand-over and naming ----
 

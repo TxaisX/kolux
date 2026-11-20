@@ -1,5 +1,5 @@
 // T-323-b (SET-040, APP-032): the saved network proxy and the HTTP/1 switch applied to every HTTP
-// client Kolux builds in Rust (the update download, the artifact script fetch). Everything is read
+// client Kolux builds in Rust (the update download, the provider balance check). Everything is read
 // here, in the back end: the sealed address goes from the secrets store into the client and nowhere
 // else, and no command returns it. A setting that cannot be used is an error, never a direct request.
 use super::app_proxy::{self, Route};
@@ -34,7 +34,7 @@ pub fn updater_fields(route: &Route) -> (Option<Url>, bool) {
 }
 
 /// The plan for a request to `url`, from the open store of `app` (the lock is released before it returns).
-/// The HTTP client side lives with the client (artifacts.rs `proxied`), so this file names no network client.
+/// The HTTP client side lives with the client (provider_net.rs), so this file names no network client.
 pub fn plan_for(app: &tauri::AppHandle, url: &Url) -> Result<Plan, String> {
     use tauri::Manager;
     let store = app.state::<std::sync::Mutex<Store>>();

@@ -30,10 +30,7 @@ export const DENSITY_NOTE: Record<Density, string> = {
 };
 
 /** What the sidebar knows about one workspace, for the cards to draw. */
-export type CardFacts = { agents: number; state: StatusKey; pr: PrState; changed: number; note: string | null; /** PROJ-062 (T-266-b): the ports the workspace listens on, sorted; missing or empty means none. */ ports?: readonly number[]; /** PROJ-062 (T-266-b): the issue or pull request number the workspace is linked to (its task); missing or null means none. */ task?: number | null; /** AUTO-024 (T-291-d): an automation run made this worktree. Missing means no. */ automation?: boolean };
-
-/** AUTO-024: whether a worktree was made by an automation run (the back end stamps `madeBy`). */
-export const madeByAutomation = (w: { madeBy?: string | null }): boolean => w.madeBy === "automation";
+export type CardFacts = { agents: number; state: StatusKey; pr: PrState; changed: number; note: string | null; /** PROJ-062 (T-266-b): the ports the workspace listens on, sorted; missing or empty means none. */ ports?: readonly number[]; /** PROJ-062 (T-266-b): the issue or pull request number the workspace is linked to (its task); missing or null means none. */ task?: number | null };
 
 export type CardDetail = {
   id: string;
@@ -80,8 +77,6 @@ export const CARD_DETAILS: readonly CardDetail[] = [
   // PROJ-062 (T-266-b): what Compact adds on hover. In no preset: the user ticks them to put them on the card.
   { id: "ports", label: "Ports", line: (f) => portsWords(f.ports ?? []) },
   { id: "task", label: "Task", line: (f) => (f.task ? `Task #${f.task}` : null) },
-  // AUTO-024 (T-291-d): in no preset; the user ticks it. The tag is a worktree made by an automation run.
-  { id: "automation", label: "Automation", line: (f) => (f.automation ? "Automation" : null) },
 ];
 
 export const PRESETS: Record<Density, readonly string[]> = {

@@ -1,6 +1,5 @@
 // SET-037: the Classic or New look and the workspace screen that opens first. Both live in General.
 import type { Screen } from "../chrome/TopBar";
-import type { Page } from "../projects/ProjectsPanel";
 import { FIELD } from "../theme";
 import type { SavedLayout } from "../terminal/layout";
 
@@ -93,12 +92,6 @@ export async function saveLayout(l: SavedLayout, write: (l: SavedLayout) => Prom
     await write(durableOnly(l));
     return "durable";
   }
-}
-
-/** VIEW-011: the page that was open at quit, shown again at start (none when unset or unknown). */
-export const OPEN_PAGE_FIELD = "openPage";
-export function openPageAt(_s: Record<string, unknown>): Page | null {
-  return null; // no page is left to reopen (the Automations, Routing and Tasks pages were removed)
 }
 
 /** TERM-029: the needs-you strip above the grid, on unless turned off. */

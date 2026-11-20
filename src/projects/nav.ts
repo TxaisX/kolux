@@ -13,13 +13,13 @@ export function navTarget(count: number, at: number, how: NavHow): number | null
   return (at + how.step + count) % count;
 }
 
-/** A place the window has shown: a workspace folder and the sidebar page over it. */
-export type Place = { dir: string | null; page: string | null };
+/** A place the window has shown: a workspace folder. */
+export type Place = { dir: string | null };
 export type History = { list: Place[]; at: number };
 export const EMPTY_HISTORY: History = { list: [], at: -1 };
 const HISTORY_CAP = 50;
 
-const samePlace = (a: Place, b: Place) => (a.dir ?? "").replace(/[\\/]+$/, "").toLowerCase() === (b.dir ?? "").replace(/[\\/]+$/, "").toLowerCase() && a.page === b.page;
+const samePlace = (a: Place, b: Place) => (a.dir ?? "").replace(/[\\/]+$/, "").toLowerCase() === (b.dir ?? "").replace(/[\\/]+$/, "").toLowerCase();
 
 /** A visit: a place already in the history is kept once, at its newest visit; anything ahead of
  * the current point is dropped, as a browser does. */

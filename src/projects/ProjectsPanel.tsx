@@ -25,7 +25,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { closesWith, goingFolders, sameDir, underDir } from "../workspaces";
-import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, sessionsUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, prunedTeamFolders, TEAM_WORKTREES_SETTING, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
@@ -33,7 +33,7 @@ import { createStart } from "./workspaceStart";
 import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "./mergeOnQuit";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead } from "./model";
 import { ArrowRight, Bell, ChevronDown, Close, EyeOff, Funnel, Minus, FolderPlus, Gear, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
-import { AddProject, StatusEditor, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
+import { AddProject, StatusEditor, ScanRepos, StartGit, KeptBranches, IconPicker } from "../lazy/menus";
 import { CleanupDialog, SettingsPage } from "../lazy/pages";
 import { addKept, type KeptBranch, type KeptItem } from "./cleanup";
 import CardLine from "../look/CardLine";
@@ -77,7 +77,6 @@ import { deferred } from "../lazy/deferred";
 const SidebarStart = deferred(() => import("../onboarding/SidebarStart"));
 import { asksBeforeClose } from "../terminal/closing";
 import "./sidebar.css";
-import { refusedLine, type SetupImport } from "./setupImport";
 import { NO_GROUPS, groupChoices, groupTree, keepNewer, type Group, type Groups, type Node } from "./groups";
 import { dropBand, parentDropTarget } from "./parentDrop";
 import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds, stepRow, stepSiblings } from "./order";
@@ -95,9 +94,6 @@ import { projectsInGroup } from "./groupMembers";
 
 /** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
 export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
-
-/** The pages that open over the content column from the sidebar footer. */
-export type Page = never;
 
 type Props = {
   /** EDIT-041: bumped by Open in Code; the selected row is scrolled into sight once it is drawn. */
@@ -143,9 +139,6 @@ type Props = {
   allOff?: boolean;
   pass?: AgentPass;
   onRefresh?: () => void;
-  /** Which page (Tasks) is open over the content column, if any. */
-  page: Page | null;
-  onPage: (page: Page) => void;
   /** Bump to reload the list after something outside the sidebar made a workspace. */
   refresh: number;
   /** Hands the window the project list and which project owns each workspace folder. */
@@ -248,8 +241,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   pend.current.reset();
   const setFilter = (key: string, value: unknown) => (pend.current.put(key, value), onSetting(key, value));
   const [listed, setWorktrees] = useState<Record<string, Worktree[]>>({}); // the ones not hidden by hand
-  // AUTO-024: the switch that leaves out worktrees made by automation runs; moving to one turns it off.
-  const hideAuto = settings[HIDE_AUTOMATION_SETTING] === true;
   // DT-C274: an own-folder team's worktrees are left out too; the team is reached by the row of the folder its grid is in.
   // One left with nothing in its team's grid and nothing running in it is shown again, so it can still be reached.
   const team = settings[TEAM_WORKTREES_SETTING];
@@ -257,14 +248,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   teamRef.current = team;
   const onSettingRef = useRef(onSetting);
   onSettingRef.current = onSetting;
-  // One workspace per project: no worktree draws a row, so none is filtered out here; each keeps its (hidden) row, which is where the menu and the questions of its pane-header chip answer, team-made and automation-made ones included.
+  // One workspace per project: no worktree draws a row, so none is filtered out here; each keeps its (hidden) row, which is where the menu and the questions of its pane-header chip answer, team-made ones included.
   const worktrees = listed;
-  const wasActive = useRef(activeDir);
-  useEffect(() => {
-    if (jumpUnhides(wasActive.current, activeDir, listed, hideAuto, same)) onSetting(HIDE_AUTOMATION_SETTING, false);
-    wasActive.current = activeDir;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDir, listed]);
   const [hiddenWts, setHiddenWts] = useState<Record<string, Worktree[]>>({}); // PROJ-042: hidden by the user
   const [fresh, setFresh] = useState<Record<string, Worktree[]>>({}); // PROJ-041: made outside Kolux, not yet reviewed
   const [pushedBy, setPushedBy] = useState<Record<string, Pushed>>({}); // GIT-065: by worktree path
@@ -348,7 +333,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [forgetAsk, setForgetAsk] = useState<{ projectId: string; path: string; label: string; refused?: string } | null>(null); // row 364: the question before a folder workspace is taken out of Kolux; `refused` is why it cannot be (364b)
   const [busy, setBusy] = useState("");
   const [startGit, setStartGit] = useState<{ folder: string; files: FirstFile[] } | null>(null);
-  const [importing, setImporting] = useState<{ project: string; path: string; list: SetupImport[] } | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "warn" | "error"; text: string; undo?: () => void } | null>(null);
   const [gitVersion, setGitVersion] = useState("");
   const indexed = useRef(""); // the last project list and owner map handed to the window
@@ -616,7 +600,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
 
   // PROJ-007: the new project's main checkout becomes the workspace in front, its worktrees listed.
   // PROJ-003: a project just cloned goes straight to its checkout, with no setup question first.
-  const added = async (p: Project, offerSetup = true) => {
+  const added = async (p: Project) => {
     say("ok", `${p.name} is a project (${p.path})`);
     setPathDraft("");
     setShowAdd(false);
@@ -625,24 +609,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (open) {
       onSelect(open.path, open.branch);
       onAdded(open.path, open.branch);
-    }
-    if (!offerSetup) return;
-    // VIEW-112: another tool's setup file in the new project is offered for import.
-    const list = await invoke<SetupImport[]>("setup_imports_list", { path: p.path }).catch(() => [] as SetupImport[]);
-    if (list.some((i) => !i.refused)) setImporting({ project: p.name, path: p.path, list });
-    else if (refusedLine(list)) say("warn", `No setup commands imported. ${refusedLine(list)}`);
-  };
-  const importSetup = async (file: string) => {
-    if (!importing) return;
-    setBusy("importing");
-    try {
-      await invoke("setup_import", { path: importing.path, file });
-      say("ok", `The setup commands from ${file} are in kolux.yaml; commit it so new workspaces run them.`);
-      setImporting(null);
-    } catch (err) {
-      fail(err);
-    } finally {
-      setBusy("");
     }
   };
   // quiet: several folders at once, so nothing is asked or shown here; the caller reads the outcome (see addReport).
@@ -684,7 +650,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (!startGit) return;
     setBusy("adding");
     try {
-      await added(await invoke<Project>("project_add_folder", { path: startGit.folder }), false);
+      await added(await invoke<Project>("project_add_folder", { path: startGit.folder }));
       setStartGit(null);
     } catch (err) {
       fail(err);
@@ -696,7 +662,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // EDIT-031 (B1): the removal closes every pane under the project's folder, so its unsaved editor
   // tabs are asked about first, the same question a closing tab gets; on Cancel nothing is removed.
   // The folders asked about are the open panes' own, not the sidebar's rows: a worktree hidden by hand
-  // or made by an automation is not listed, but its panes close all the same.
+  // is not listed, but its panes close all the same.
   // PROJ 008 / F21: a project's folder and every worktree of it the page knows; `stayingBut` gives them for every project that
   // is not going, so a nested project that stays keeps its panes, is not counted and is not asked about (`goesWith`).
   const foldersOf = (p: Project) => [p.path, ...(scanned.current[p.id] ?? []).map((w) => w.path), ...(unseenKnown.current[p.id] ?? []).map((w) => w.path)];
@@ -2534,9 +2500,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 <option value="manual">Manual: drag rows into your own order</option>
               </select>
               <label className="check">
-                <input type="checkbox" checked={hideAuto} onChange={(e) => onSetting(HIDE_AUTOMATION_SETTING, e.target.checked)} /> Hide workspaces made by automations
-              </label>
-              <label className="check">
                 <input type="checkbox" aria-label="pinned rows also in their group" checked={copies} onChange={(e) => onSetting(PIN_COPIES_SETTING, e.target.checked)} />
                 Pinned rows also show in their usual place
               </label>
@@ -2713,7 +2676,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             }}
           />
         )}
-        {adding && <AddProject onBrowse={browse} onByPath={() => { setAdding(false); if (!showAdd) loadVis(null); setShowAdd(true); }} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p, false); }} />}
+        {adding && <AddProject onBrowse={browse} onByPath={() => { setAdding(false); if (!showAdd) loadVis(null); setShowAdd(true); }} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p); }} />}
         <SidebarStart />
         <div className="sb-foot">
           <button className="ib" title={`Settings${gitVersion ? ` · ${gitVersion}` : ""}`} aria-label="Settings" data-sidebar-settings onPointerEnter={SettingsPage.warm} onFocus={SettingsPage.warm} onClick={() => openSettingsPage("general")}>
@@ -2732,7 +2695,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           )}
         </div>
       </aside>
-      {importing && <ImportSetup {...importing} busy={busy !== ""} onImport={importSetup} onClose={() => setImporting(null)} />}
       {startGit && <StartGit {...startGit} busy={busy !== ""} onStart={startGitAndAdd} onFolder={openAsFolder} onScan={() => (setScanRoot(startGit.folder), setStartGit(null))} onCancel={() => setStartGit(null)} />}
       {scanRoot !== null && (
         <ScanRepos

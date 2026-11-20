@@ -36,7 +36,7 @@ mouse and the keyboard; every row has a right-click menu.
 | Folder row | `ProjectsPanel.tsx:2318-2322` (`div.proj.folder`, `data-testid="sidebar-folder"`) | select the workspace; its sessions show in the grid | selects it: the row carries `sel` and its grid is on screen | `live-pass` | `live-controls` (round 5): a real mouse press at the row's centre, then `button.branch.sel` is the row and its title reads `Show <path>`, with the workspace's pane on screen (`pressed at [151,279]; selected row "Show G:\Temp\…\CTRL"`) |
 | Session row | none: `ProjectsPanel.tsx` no longer has the `sessionRows` code | none in any "Group and sort" setting: the sidebar lists project folders only | no session rows in any grouping. In the other groupings the list holds one card per project folder (`ProjectsPanel.tsx:2748-2767`, main checkouts only) | `code` | grouped by project: `scripts/evidence/smoke.mjs` flow 7 (2026-11-15) fails when a `sidebar-session` row shows: six sessions in one workspace → one folder row, no session rows, no `.pane-row`, clicking the folder shows all six panes, and a restart kept all six. Every grouping: `src/projects/__cards__/VIEW-051.test.ts` finds no session row in the drawn list |
 | Folder row menu | `src/projects/menu.ts:54-59` | Review changes (git folders), Project settings, Remove project… | the three items, Review disabled when the folder is not a repo. New workspace is not listed: the panel calls `projectMenu(true, …)` (`ProjectsPanel.tsx:2333`) | `code` | `menu.ts:54-59`; `live-GIT-038`/`live-EDIT-029` open All Changes through "Review changes" |
-| Row menu (a folder's card) | `menu.ts:68-98` (`rowMenu`) | on a folder's card (a pinned folder, or the list in another grouping): Move to status, Details…, Review changes, Open in (Explorer/editors/Terminal), Developer (Alt), Remove project…, and New workspace while worktrees are on | those items for a folder's card. The worktree-only items (Delete, Sleep/Wake, Set parent…, Move up/down, Hide from the sidebar) are still in the code for a worktree's old row, which shows only while a question or form of its own is open | `code` | `menu.ts:68-98`, `ProjectsPanel.tsx:1389` |
+| Row menu (a folder's card) | `menu.ts:68-98` (`rowMenu`) | on a folder's card (a pinned folder, or the list in another grouping): Move to status, Details…, Open in (Explorer/editors/Terminal), Developer (Alt), Remove project…, and New workspace while worktrees are on | those items for a folder's card. The worktree-only items (Delete, Sleep/Wake, Set parent…, Move up/down, Hide from the sidebar) are still in the code for a worktree's old row, which shows only while a question or form of its own is open | `code` | `menu.ts:68-98`, `ProjectsPanel.tsx:1389` |
 | Status submenu | `menu.ts:74` | list the workspace's statuses plus Edit statuses… | lists them; edit opens the editor (`ProjectsPanel.tsx:1475`) | `code` | `menu.ts:74`, `ProjectsPanel.tsx:1475` |
 | Open in submenu | `menu.ts:79-90` | Explorer / each found editor / Terminal | runs the chosen door; Terminal shows the row (`ProjectsPanel.tsx:1483`) | `code` | `menu.ts:79-90` |
 | **Worktrees in the sidebar** | `ProjectsPanel.tsx:1924-1927` (`row`), `:1780-1781` | Goal 0 item 4: worktree rows never appear in the sidebar | a worktree has no row: the default list draws its old row only while a question or form of its own is open (Delete, Sleep, Details, Move, Status), and Pinned and the other groupings hold main checkouts only. The menu code still lists the worktree-only items for that old row | `code` | `ProjectsPanel.tsx:1924-1927`, `:1780-1781`, `menu.ts:68-98` |
@@ -107,9 +107,9 @@ part of it (156-375 ms) can exceed the whole 300 ms budget before the shell has 
 
 ## 5. What has no row yet (round 5+)
 
-Top bar and its screens (Settings, Board, Agents, Tasks, Inbox, Tower, Floor), the App/File/Edit/View menus, the command
-palette, the terminal's own find / clear / copy keys, each Settings page, All Changes, Explorer, the Board and Inbox
-actions, and every shortcut in `src/keys/`. Each gets the same five columns. `tests/coverage.md` says which of them any
+The top bar and Settings, the App/File/Edit/View menus, the command palette, the terminal's own find / clear / copy
+keys, each Settings page, and every shortcut in `src/keys/`. (The Board, Agents, Tasks, Inbox, Tower and Floor screens,
+All Changes and the Explorer were removed on 2026-11-19, so they no longer wait for rows.) Each gets the same five columns. `tests/coverage.md` says which of them any
 test names today.
 
 ## 6. Counts
@@ -149,4 +149,4 @@ rows came in, not 14.
 
 One control is still `pending` on its owner lane, not on this lane: the chooser's agent-must-start-a-terminal path
 (Goal 0 item 5, `c2-agents`).
-<!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/projects/menu.ts, src/launch/PlusMenu.tsx at 2a8711de -->
+<!-- verified against: src/App.tsx, src/projects/ProjectsPanel.tsx, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/projects/menu.ts, src/launch/PlusMenu.tsx at 01b39757 -->

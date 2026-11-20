@@ -92,7 +92,7 @@ useMenuFocus(moreMenu, menu !== null, () => setMenu(null));
 
 Picking a row closes the menu by itself, so the `setMenu(null)` before the action goes away.
 
-### ContextMenu (migrated: `projects/HideableRow.tsx`, the sidebar's Automations and Skills rows)
+### ContextMenu (migrated: `projects/HideableRow.tsx`, the sidebar's Automations and Skills rows; removed with those rows on 2026-11-19)
 
 ```tsx
 // before
@@ -390,9 +390,7 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/projects/CacheTimer.tsx`: Tooltip :10, Tooltip :15
 - [ ] `src/projects/CleanupDialog.tsx`: Dialog :133, Select :150, Select :158, Select :164, Select :169, Select :174, Tooltip :197, Checkbox :198, Checkbox :206, Dialog :222, Checkbox :247, Tooltip :274
 - [ ] `src/projects/FolderRenameAsk.tsx`: Dialog :15, Tooltip :16, Dialog :25, Tooltip :26
-- [ ] `src/projects/HideableRow.tsx`: ContextMenu :17
 - [ ] `src/projects/IconPicker.tsx`: Tooltip :28
-- [ ] `src/projects/ImportSetup.tsx`: Dialog :17
 - [ ] `src/projects/KeptBranches.tsx`: Checkbox :62
 - [ ] `src/projects/MessageNote.tsx`: Tooltip :17
 - [ ] `src/projects/Picker.tsx`: Tooltip :26, Tooltip :66

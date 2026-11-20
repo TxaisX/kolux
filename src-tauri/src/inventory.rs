@@ -1,14 +1,10 @@
 //! ORCH-060: the session tab inventory. One authoritative list of the session tabs that are open,
-//! each with the agent Kolux started in it and where the window shows it, published by the
-//! runtime through one call (`session_tabs`) so the command line, the agents' runtime calls and
-//! the app read the same list instead of each composing its own.
+//! each with the agent Kolux started in it and where the window shows it, published through one
+//! call (`session_tabs`).
 //!
 //! The list is the live session set (a tab exists while its session does) joined with the
 //! window's latest placement report: a window row for a session that has closed adds nothing,
 //! and a session the window has not placed yet is listed with no placement.
-// ponytail: the command line's terminal list, its worktree list and its peer list still compose
-// their own rows from the same two sources; switching them onto `tabs` is the cli lane's hunk in
-// the T-262 handoff (they live in cli.rs, which this lane does not edit).
 
 use serde::Serialize;
 use serde_json::Value;
@@ -76,36 +72,7 @@ pub fn tabs(terminals: &Terminals) -> Vec<Tab> {
     compose(terminals.every(), &terminals.layout())
 }
 
-/// The program's own name from a program line, quoted or not: no folder, no executable extension
-/// and none of the arguments (which may carry a key or a token).
-pub fn program_name(line: &str) -> Option<String> {
-    let line = line.trim();
-    let first = match line.strip_prefix('"') {
-        Some(rest) => rest.split('"').next().unwrap_or_default(),
-        None => line.split_whitespace().next().unwrap_or_default(),
-    };
-    let base = first.rsplit(['/', '\\']).next().unwrap_or_default();
-    let stem = match base.rsplit_once('.') {
-        Some((stem, ext)) if ["exe", "cmd", "bat", "com", "ps1"].contains(&ext.to_ascii_lowercase().as_str()) => stem,
-        _ => base,
-    };
-    (!stem.is_empty()).then(|| stem.to_string())
-}
-
-/// T-279-c (MERGE 41 review): the inventory as served to agents over the runtime socket: each
-/// tab's program line is cut to the program's name, so a key or token on a command line never
-/// leaves the app; the agent credit is worked out before the cut, so it is unchanged.
-pub fn for_socket(tabs: Vec<Tab>) -> Vec<Tab> {
-    tabs.into_iter().map(|t| Tab { program: t.program.as_deref().and_then(program_name), ..t }).collect()
-}
-
-/// The inventory for the runtime socket right now (see `for_socket`).
-// Row 256: the CLI's terminal list and its worktree terminal rows are served from this, never `tabs`.
-pub fn tabs_for_socket(terminals: &Terminals) -> Vec<Tab> {
-    for_socket(tabs(terminals))
-}
-
-/// ORCH-060: the session tab inventory, for the app and for anything that asks the runtime.
+/// ORCH-060: the session tab inventory, for the app.
 #[tauri::command]
 pub fn session_tabs(terminals: tauri::State<'_, Terminals>) -> Vec<Tab> {
     tabs(&terminals)
@@ -118,7 +85,7 @@ mod tests {
 
     /// A placement row exactly as the window sends it (App.tsx `reportLayout`).
     fn row(handle: &str, cell: u64, tab: u64, title: &str, shown: bool) -> Value {
-        json!({ "handle": handle, "dir": "C:/w/a", "cell": cell, "tab": tab, "title": title, "custom": null, "shown": shown, "ask": null })
+        json!({ "handle": handle, "dir": "C:/w/a", "cell": cell, "tab": tab, "title": title, "custom": null, "shown": shown })
     }
 
     fn session(handle: &str, program: Option<&str>) -> (String, Option<String>, Option<String>) {
@@ -150,8 +117,6 @@ mod tests {
         let tabs = compose(vec![session("term-1", None), session("term-4", None)], &layout);
         assert_eq!(tabs.iter().map(|t| t.handle.as_str()).collect::<Vec<_>>(), ["term-1", "term-4"]);
         assert_eq!(tabs[1].placement, None, "a session the window has not placed yet has no placement");
-        // A request the window could not open (no handle) is never a tab.
-        assert!(compose(vec![], &[json!({ "ask": "a1", "error": "no folder" })]).is_empty());
         // Through the runtime's own state: no session open, whatever the window last said.
         let t = Terminals::default();
         t.set_layout(layout);
@@ -191,30 +156,5 @@ mod tests {
         assert_eq!(tabs[0].agent, Some("claude"), "the shell pane's agent comes from the foreground poll");
         assert_eq!(tabs[1].agent, Some("codex"), "a program Kolux started is credited first");
         assert_eq!(tabs[2].agent, None, "a shell with nothing in front stays a shell");
-        assert_eq!(for_socket(tabs)[0].agent, Some("claude"), "the socket list keeps the credit");
-    }
-
-    /// T-279-c: over the runtime socket a tab's program line is only the program's name; the
-    /// app's own list keeps the whole line.
-    #[test]
-    fn t279c_the_socket_inventory_carries_the_program_name_and_no_arguments() {
-        let sessions = vec![
-            session("term-1", Some(r#""C:\Program Files\nodejs\codex.cmd" --api-key sk-secret-1"#)),
-            session("term-2", Some("claude --permission-mode auto --token tok-secret-2")),
-            session("term-3", Some("C:/tools/aider.EXE --openai-api-key k-3")),
-            session("term-4", Some("  ")),
-            session("term-5", None),
-        ];
-        let full = compose(sessions, &[]);
-        assert!(full[0].program.as_deref().is_some_and(|p| p.contains("sk-secret-1")), "the app's list keeps the line");
-        let out = for_socket(full.clone());
-        let programs: Vec<Option<&str>> = out.iter().map(|t| t.program.as_deref()).collect();
-        assert_eq!(programs, [Some("codex"), Some("claude"), Some("aider"), None, None]);
-        assert_eq!(out.iter().map(|t| t.agent).collect::<Vec<_>>(), full.iter().map(|t| t.agent).collect::<Vec<_>>(), "the agent credit is unchanged");
-        let wire = serde_json::to_string(&out).unwrap();
-        assert!(!wire.contains("secret") && !wire.contains("k-3"), "{wire}");
-        assert_eq!(program_name("pwsh.exe -NoLogo"), Some("pwsh".to_string()));
-        assert_eq!(program_name("./run.sh --x"), Some("run.sh".to_string()));
-        assert!(super::tabs_for_socket(&Terminals::default()).is_empty());
     }
 }

@@ -45,8 +45,8 @@ export const tone = (percent: number): "" | "warn" | "danger" => (percent > 90 ?
 export const PERCENT_FIELD = "usagePercentages";
 export type PercentMode = "used" | "remaining";
 export const percentMode = (v: unknown): PercentMode => (v === "remaining" ? "remaining" : "used");
-/** A used percentage as the choice reads it: rounded, held to 0..100, a broken value 0. Only the
- *  Agents screen's usage footer (T-040-b) follows it; the top pill always reads left. */
+/** A used percentage as the choice reads it: rounded, held to 0..100, a broken value 0. A pane header's
+ *  context reading follows it; the top pill always reads left. */
 export function shownPercent(used: number, mode: PercentMode): number {
   if (!Number.isFinite(used)) return 0;
   const u = Math.min(100, Math.max(0, Math.round(used)));

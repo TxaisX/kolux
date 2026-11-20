@@ -2,7 +2,7 @@
 
 ![Kolux runtime architecture](architecture.svg)
 
-Kolux is a Tauri 2 desktop app for running many AI coding agents at once. The window is React and TypeScript. The core is Rust. A separate background process owns the terminals, and a small set of loopback listeners connects the window, the agent hooks, and the `kolux` command line.
+Kolux is a Tauri 2 desktop app for running many AI coding agents at once. The window is React and TypeScript. The core is Rust. A separate background process owns the terminals, and loopback listeners connect the window and the agent hooks.
 
 This page follows the diagram from the outside in: processes, transports, local doors, storage, trust boundaries, and the update path. The deep dives are [Data](data.md), [Security](security.md), and [Frontend](frontend.md).
 
@@ -10,7 +10,7 @@ This page follows the diagram from the outside in: processes, transports, local 
 
 - **One desktop app, one profile.** A single `kolux.exe` owns the window, the store, and the local listeners. A named mutex keeps one copy per profile.
 - **The terminal service is separate.** Panes run in a detached child process, so a window reload or an ordinary quit does not end the agents. The service exits after 600 seconds with no terminals and no attached window.
-- **The control plane is local only.** The hook listener, the CLI loopback, the preview server, and the terminal service all bind `127.0.0.1` on random ports. Each requires a bearer token, and each refuses browser-shaped requests.
+- **The control plane is local only.** The hook listener and the terminal service both bind `127.0.0.1` on random ports. Each requires a bearer token, and each refuses browser-shaped requests.
 - **Worktrees are ordinary Git.** A workspace is a Git worktree on its own branch. Nothing about the repository format is proprietary.
 - **The app is not a sandbox.** Agent CLIs are third-party programs running with the user's permissions. Kolux protects its own files, its own commands, and its own update path. It does not contain the agent.
 
@@ -18,11 +18,10 @@ This page follows the diagram from the outside in: processes, transports, local 
 
 | Process | Role | Lifetime | Talks to |
 |---|---|---|---|
-| `kolux.exe` | Tauri/Wry host: window, React UI, Rust commands, store, hook listener, CLI listener, preview server, updater | Starts with the app, exits on quit | The terminal service over TCP, the profile folder, GitHub Releases, Git |
+| `kolux.exe` | Tauri/Wry host: window, React UI, Rust commands, store, hook listener, updater | Starts with the app, exits on quit | The terminal service over TCP, the profile folder, GitHub Releases, Git |
 | `kolux.exe --terminal-service <identifier> <data folder>` | Detached terminal service: PTY sessions, pane processes, job objects | Survives window close and ordinary quit; exits after 600 s with no terminals and no attached window | The window over TCP; the OS PTY layer |
-| `msedgewebview2.exe` | WebView2 browser and renderer processes for the main window and browser child webviews | Managed by Wry and Windows | The local app origin, browser pages |
+| `msedgewebview2.exe` | WebView2 browser and renderer processes for the main window | Managed by Wry and Windows | The local app origin |
 | Agent CLI / shell | The user's shell or agent inside a pane | Child of the terminal service; dies with its pane job | Its own config, the workspace, the hook listener |
-| `kolux.exe` / `kolux-dev.exe` | CLI client, one JSON request over loopback | One command, then exit | The desktop app's CLI listener |
 
 A second launch of the desktop app does not open a second window. It takes the single-instance mutex, forwards `app.open` to the running copy, and exits with code 3 (`src-tauri/src/lifecycle.rs:79-124`, `:277-297`).
 
@@ -33,9 +32,8 @@ A second launch of the desktop app does not open a second window. It takes the s
 The React window calls Rust through Tauri commands and listens to Rust events. There are roughly 400 registered commands (`src-tauri/src/lib.rs:522-946`). The important event families are:
 
 - `agent-status` for hook-driven state (`src-tauri/src/hooks.rs:23`);
-- `terminal-output`, `terminal-exit`, and `terminal-screen-request` (`src-tauri/src/terminal.rs:17-21`);
-- `settings-saved` (`src-tauri/src/lib.rs:168`);
-- `cli-workspace` for commands that change what the window shows (`src-tauri/src/cli/mod.rs:50`);
+- `terminal-output` and `terminal-exit` (`src-tauri/src/terminal.rs:22-23`);
+- `settings-saved` (`src-tauri/src/lib.rs:184`);
 - `update-progress` (`src-tauri/src/update.rs:311-317`).
 
 The window never receives the sealed secret fields. Rust strips them before the settings payload reaches the page and ignores them on the way back (`src-tauri/src/secrets.rs:150-170`).
@@ -48,7 +46,7 @@ The window keeps one attached connection for output and exit events, and one con
 
 ### Core to local doors
 
-The hook listener, the CLI loopback, and the preview server are separate loopback doors with different authentication. They are described in [Local doors](#local-doors).
+The hook listener is a separate loopback door with its own authentication. It is described in [Local doors](#local-doors).
 
 ### Terminal service to panes
 
@@ -62,8 +60,9 @@ Everything lives under `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resource
 - `settings.json` plus `.bak`, written to a temporary file and renamed (`src-tauri/src/state.rs:225-260`);
 - `vault/`, one DPAPI-sealed file per managed sign-in (`src-tauri/src/secrets.rs:300-309`);
 - `logs/kolux.log`, rotated and scrubbed for sharing (`src-tauri/src/diag.rs:4-23`);
-- `terminals.json`, `cli.json`, and `agent-hooks-endpoint.txt` plus one `agent-hooks-endpoint-<terminal>.txt` per pane, the endpoint files for the local doors;
-- `artifacts/`, `browser-profiles/`, and the managed Claude and Codex homes.
+- `terminals.json` and `agent-hooks-endpoint.txt` plus one `agent-hooks-endpoint-<terminal>.txt` per pane, the endpoint files for the local doors;
+- `cli.json`, the startup file that names the running copy (its pid) for a second launch;
+- the managed Claude and Codex homes.
 
 Hook scripts are not in the profile. They live in `~/.kolux/agent-hooks` (`src-tauri/src/hooks.rs:30-36`), and each install writes a `.bak-kolux` copy beside the agent's own settings.
 
@@ -71,7 +70,7 @@ Hook scripts are not in the profile. They live in `~/.kolux/agent-hooks` (`src-t
 
 ### App to outside
 
-The app itself talks to GitHub Releases for updates and to the GitHub API for issues, pull requests, and checks. It uses git for the user's remotes and can call the Kimi and MiniMax usage endpoints when those providers are configured. Agent CLIs talk to their providers directly, using their own sign-in. There is no Kolux relay and no telemetry endpoint. The full outbound list is in Settings, General, Privacy and in the [safety guide](../guide/safety.md).
+The app itself talks to GitHub Releases for updates and to the GitHub API for issues, pull requests, and checks. It uses git for the user's remotes. Agent CLIs talk to their providers directly, using their own sign-in. There is no Kolux relay and no telemetry endpoint. The full outbound list is in Settings, General, Privacy and in the [safety guide](../guide/safety.md).
 
 ## Startup and shutdown
 
@@ -81,15 +80,15 @@ Startup is ordered so a broken profile cannot stop the window from appearing:
 2. Register the dialog, updater, and notification plugins (`src-tauri/src/lib.rs:228-230`).
 3. Take the single-instance claim; forward a second launch and exit (`src-tauri/src/lib.rs:232-234`).
 4. Build the window through a retry that waits out a quitting predecessor still holding the WebView2 folder (`src-tauri/src/tools.rs:452-474`).
-5. Create the app job object, resolve the data folder, set up diagnostics, repair the long-PATH hand-off, and sweep browser helpers (`src-tauri/src/lib.rs:238-245`).
+5. Create the app job object, resolve the data folder, and set up diagnostics.
 6. Scan crash records, repair folder permissions, repair or restore `state.db` (`src-tauri/src/lib.rs:255-281`).
 7. Open the store, unseal secrets, and start the recovery watch (`src-tauri/src/lib.rs:284-311`).
 8. Create the `Terminals` state and start the service link (`src-tauri/src/lib.rs:340-342`).
-9. Start the tray, artifact library, update state, Git detection, file fence, and orchestration upgrade (`src-tauri/src/lib.rs:344-370`).
-10. Start the CLI listener, the hook listener, and the hook config sync (`src-tauri/src/lib.rs:373-389`).
-11. Start the background loops: resume ticker, label and tidy pass, foreground status, activity save, quiet check (`src-tauri/src/lib.rs:405-460`).
+9. Start the tray, update state, Git detection, and the file fence.
+10. Write the startup file, then start the hook listener and the hook config sync.
+11. Start the background loops: resume ticker, tidy pass, foreground status, activity save, quiet check.
 
-Shutdown is equally deliberate. The exit path runs a final save, stops browser helpers, removes Grok hook entries it owns, lets go of the service's sessions so they keep running, ends any in-window sessions, waits up to 3 seconds for WebView2 to release the profile folder, removes the endpoint files, and installs a downloaded update if the exit was an update quit (`src-tauri/src/lib.rs:970-1006`). An update restart is different: it stops the terminal service so the installer can replace the program the service runs from (`src-tauri/src/terminal.rs:1609-1616`).
+Shutdown is equally deliberate. The exit path runs a final save, lets go of the service's sessions so they keep running, ends any in-window sessions, waits up to 3 seconds for WebView2 to release the profile folder, removes the endpoint files, and installs a downloaded update if the exit was an update quit (`src-tauri/src/lib.rs:970-1006`). An update restart is different: it stops the terminal service so the installer can replace the program the service runs from (`src-tauri/src/terminal.rs:1609-1616`).
 
 ## Terminal and session lifecycle
 
@@ -105,27 +104,22 @@ Shutdown is equally deliberate. The exit path runs a final save, stops browser h
 
 | Door | Bind | Authentication | Purpose | Refuses |
 |---|---|---|---|---|
-| Agent hook listener | `127.0.0.1:0` | `x-kolux-token`; pane identity in `x-kolux-pane`; optional `x-kolux-config` | Agent events and protected-command decisions | `Origin`, `Referer`, or `Sec-Fetch-*` headers; wrong Host; missing or wrong token; more than 64 requests in flight; bodies over 4 MiB |
-| CLI loopback | `127.0.0.1:0` | `token` field in the JSON request, from `cli.json` | One JSON request per connection from `kolux` | HTTP request lines; wrong token; a newer CLI that the app does not understand |
-| Preview server | `127.0.0.1:0` | 128-bit random path token per folder | Serve a local dev-server preview | Wrong Host; bad token; path escape; folder not in an open project; files over 32 MiB |
+| Agent hook listener | `127.0.0.1:0` | `x-kolux-token`; pane identity in `x-kolux-pane`; optional `x-kolux-config` | Agent events (the reply is always `{}`, so the agent decides for itself) | `Origin`, `Referer`, or `Sec-Fetch-*` headers; wrong Host; missing or wrong token; more than 64 requests in flight; bodies over 4 MiB |
 | Terminal service | `127.0.0.1:0` | `hello` operation with the token from `terminals.json` | PTY spawn, attach, write, resize, kill | Missing or wrong token; protocol older than the window supports |
-| Artifact scheme | `kolux-artifact:` / `http://kolux-artifact.localhost` | Main webview only | Serve artifact files to the viewer | Any webview other than `main` |
-| Label proxy | `127.0.0.1:4580` | None; label is in the Host header | Optional workspace label proxy, off by default | Non-loopback targets; `https` |
 
-The important limit: these are **bearer tokens in user-readable files**. Any process running as the same Windows user can read `terminals.json` or `cli.json` and drive the terminal service or the CLI. That is a same-user trust model, not a defense against local malware. [Security](security.md) treats this explicitly.
+The important limit: these are **bearer tokens in user-readable files**. Any process running as the same Windows user can read `terminals.json` or a hook endpoint file and drive the terminal service or report a pane's status. That is a same-user trust model, not a defense against local malware. [Security](security.md) treats this explicitly.
 
 ## Data at rest
 
 | Path | Format | Why it matters |
 |---|---|---|
 | `settings.json` | Pretty JSON, atomic rename, `.bak` | User preferences; seven fields are sealed |
-| `state.db` | SQLite WAL, one `kv` table | Projects, worktrees, grants, drafts, orchestration, account lists |
+| `state.db` | SQLite WAL, one `kv` table | Projects, worktrees, file grants, account lists |
 | `vault/` | DPAPI-sealed blobs | Managed Claude and Codex sign-ins |
 | `logs/kolux.log` | Text, rotated | Diagnostics; scrubbed before sharing |
-| `terminals.json` / `cli.json` | JSON endpoint records | Loopback port and token |
+| `terminals.json` | JSON endpoint record | Loopback port and token |
+| `cli.json` | JSON, `{pid}` | Names the running copy for a second launch |
 | `agent-hooks-endpoint.txt` / `agent-hooks-endpoint-<terminal>.txt` | One line, `port -` / `port token` | The hook port; each pane reads its own file for its own token |
-| `artifacts/` | `library.json` plus one folder per entry | Artifact library |
-| `browser-profiles/` | WebView2 user data | Browser tabs and logins |
 
 The store is deliberately small: one SQLite table, with transactions for multi-key changes and a read-failure latch that refuses writes until a read succeeds (`src-tauri/src/state.rs:19-27`, `:109-138`). A corrupt database is set aside and the backup is restored; if that fails, the app opens a frozen scratch store rather than overwriting anything (`src-tauri/src/resources/recovery.rs:160-190`).
 
@@ -133,20 +127,20 @@ The store is deliberately small: one SQLite table, with transactions for multi-k
 
 Four boundaries matter:
 
-- **The window is trusted app code.** It runs from the Tauri asset origin with a strict CSP (`src-tauri/tauri.conf.json:28`). Browser tabs are child webviews showing untrusted pages; they are deliberately kept away from trusted origins (`src-tauri/src/browser.rs:1-10`).
+- **The window is trusted app code.** It runs from the Tauri asset origin with a strict CSP (`src-tauri/tauri.conf.json`).
 - **The file fence is the app's file authority.** Reads and writes must resolve inside a project or worktree, or through an exact grant for a single picked file. Links, shares, other machines, and volume-GUID paths are refused before any disk call (`src-tauri/src/fence.rs:34-118`).
-- **Protected commands are a warning, not a sandbox.** Seven built-in rules plus user rules make Claude Code ask before force-pushing main, dropping tables, deploying, and similar actions. Only Claude's Bash and PowerShell tools are covered (`src-tauri/src/protected.rs:44-52`).
+- **The hooks only report.** An agent's hook tells Kolux what the agent is doing; Kolux answers `{}` and never approves or refuses a command for it. The protected-command rules were retired in the 2026-11 slim-down.
 - **Update trust is a single minisign key.** The app carries the public key compiled at build time and refuses an update whose manifest is not signed by it. A compromised signing key can push to every installed copy.
 
-[Security](security.md) has the full model, including DPAPI, the preview server, DOMPurify, and the known limits.
+[Security](security.md) has the full model, including DPAPI, DOMPurify, and the known limits.
 
 ## The window
 
-The React app has no router. The current screen is a string union persisted in settings, and the window can also open full pages such as Settings, Inbox, Tower, Floor, Artifacts, and Skills (`src/chrome/TopBar.tsx:26-33`, `src/shell/useWindowSave.ts:33-45`).
+The React app has no router. The current screen is a string union persisted in settings, and Settings opens as the one full page (`src/chrome/TopBar.tsx`, `src/shell/useWindowSave.ts`).
 
-State is one large `WindowBag` hook plus two React contexts. Settings are loaded once, updated through partial patches, and broadcast to every window as `settings-saved`. Layout is saved with a 400 ms coalescer and flushed before close (`src/shell/useWindowSave.ts:138-147`). Agent status flows through one derived `paneStatus` function into tabs, the sidebar, the Board, the Tower, the Inbox, notifications, and the taskbar badge (`src/board/chip.ts:73-109`, `src/status/useAgentStatus.ts:234-320`).
+State is one large `WindowBag` hook plus two React contexts. Settings are loaded once, updated through partial patches, and broadcast to every window as `settings-saved`. Layout is saved with a 400 ms coalescer and flushed before close (`src/shell/useWindowSave.ts:138-147`). Agent status flows through one derived `paneStatus` function into tabs, the sidebar, notifications, and the taskbar badge (`src/status/chip.ts`, `src/status/useAgentStatus.ts`).
 
-The terminal pane uses xterm.js with a WebGL renderer when available and a pool of at most six GPU contexts (`src/terminal/renderer.ts:30-83`). The editor uses CodeMirror 6 for source, Lexical for rich Markdown, and pdf.js for PDFs. Markdown is sanitized with DOMPurify (`src/editor/PreviewPane.tsx:33-78`).
+The terminal pane uses xterm.js with a WebGL renderer when available and a pool of at most six GPU contexts (`src/terminal/renderer.ts:30-83`). The code editor was removed in the 2026-11 slim-down. Markdown in the chat view is sanitized with DOMPurify (`src/chat/renderMarkdown.ts`).
 
 [Frontend](frontend.md) has the module map and the state-flow detail.
 
@@ -171,8 +165,8 @@ The app is built with Vite and Tauri, tested with Vitest and Cargo, and released
 
 - Windows 11 x64 is the tested target. Windows 10 is supported in the app but not verified end to end.
 - The P0 acceptance suite is at 206 of 228 cards. Most open cards are live-proof checks, not missing code.
-- The hook listener and CLI loopback are bearer-token doors. A same-user process that reads the token files can use them.
-- The app is not a sandbox for agents. The protected-command rules are a warning for Claude only.
+- The hook listener and the terminal service are bearer-token doors. A same-user process that reads the token files can use them.
+- The app is not a sandbox for agents.
 - The update trust chain has one signing key and no published rotation or revocation path.
 - There is no telemetry, but WebView2 performs its own startup checks to Microsoft, which the app cannot disable.
 - macOS and Linux are not available.

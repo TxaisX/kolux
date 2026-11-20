@@ -6,20 +6,15 @@
 //!
 //! - T-286-b (APP-040): the engine's process-failed event from the app's own view becomes a crash
 //!   record when it is a real crash (engine_crash.rs decides).
-//! - T-316-b (EDIT-018): a note's PDF is printed through the engine's PrintToPdf, started on the
-//!   main thread and waited for on the caller's own thread.
 use std::path::PathBuf;
-use std::time::Duration;
-use tauri::Webview;
 
 #[cfg(windows)]
 mod imp {
     use crate::engine_crash as crash;
     use std::path::PathBuf;
-    use std::sync::mpsc::Sender;
     use webview2_com::Microsoft::Web::WebView2::Win32::*;
-    use webview2_com::{PrintToPdfCompletedHandler, ProcessFailedEventHandler};
-    use windows::core::{Interface, HSTRING, PWSTR};
+    use webview2_com::ProcessFailedEventHandler;
+    use windows::core::{Interface, PWSTR};
     use windows::Win32::System::Com::CoTaskMemFree;
 
     /// A string the engine hands over in memory the caller frees; empty when it hands none.
@@ -67,23 +62,6 @@ mod imp {
         // SAFETY: the handler lives as long as the engine holds it; the token is written once.
         let _ = unsafe { core.add_ProcessFailed(&handler, &mut token) };
     }
-
-    pub fn print_pdf(controller: &ICoreWebView2Controller, path: &str, tx: Sender<Result<bool, String>>) {
-        let fail = tx.clone();
-        let start = move || -> windows::core::Result<()> {
-            // SAFETY: CoreWebView2 hands back the page's engine object.
-            let core = unsafe { controller.CoreWebView2() }?.cast::<ICoreWebView2_7>()?;
-            let done = PrintToPdfCompletedHandler::create(Box::new(move |r, ok| {
-                let _ = tx.send(r.map(|_| ok).map_err(|e| e.message()));
-                Ok(())
-            }));
-            // SAFETY: the path outlives the call; no settings means the engine's defaults.
-            unsafe { core.PrintToPdf(&HSTRING::from(path), None::<&ICoreWebView2PrintSettings>, &done) }
-        };
-        if let Err(e) = start() {
-            let _ = fail.send(Err(e.message()));
-        }
-    }
 }
 
 /// T-286-b (APP-040): the app's own view reports its engine's process failures (an interface
@@ -93,27 +71,4 @@ pub fn watch_app_failures(w: &tauri::WebviewWindow, dir: PathBuf) {
     let _ = w.with_webview(move |pw| imp::watch_failures(&pw.controller(), dir));
     #[cfg(not(windows))]
     let _ = (w, dir);
-}
-
-/// Starts `job` on the view's engine (main thread) and waits for its answer here; never called
-/// from the main thread.
-#[cfg(windows)]
-fn on_engine<T: Send + 'static>(v: &Webview, wait: Duration, job: impl FnOnce(&webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Controller, std::sync::mpsc::Sender<Result<T, String>>) + Send + 'static) -> Result<T, String> {
-    let (tx, rx) = std::sync::mpsc::channel();
-    v.with_webview(move |pw| job(&pw.controller(), tx)).map_err(|e| e.to_string())?;
-    rx.recv_timeout(wait).map_err(|_| format!("the page's engine did not answer within {} s", wait.as_secs()))?
-}
-
-/// The engine prints a page to a PDF file at `path`, waited for.
-pub fn print_pdf(v: &Webview, path: &str, wait: Duration) -> Result<bool, String> {
-    #[cfg(windows)]
-    {
-        let path = path.to_string();
-        on_engine(v, wait, move |c, tx| imp::print_pdf(c, &path, tx))
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = (v, path, wait);
-        Err("printing needs WebView2 (Windows)".into())
-    }
 }

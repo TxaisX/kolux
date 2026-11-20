@@ -828,43 +828,10 @@ pub fn rescan(store: &Mutex<Store>, provider: &str) {
     let Ok(s) = store.lock() else { return };
     let before = saved(&s, provider);
     let next = match result {
-        Ok(rows) => Saved { format: FORMAT, scanned_at: crate::artifacts::now_ms(), rows, error: None },
+        Ok(rows) => Saved { format: FORMAT, scanned_at: crate::links::now_ms(), rows, error: None },
         Err(e) => Saved { format: FORMAT, error: Some(e), ..before.unwrap_or_default() },
     };
     let _ = s.set(&key_saved(provider), &serde_json::to_string(&next).unwrap_or_default());
-}
-
-/// Whether a provider's usage is tracked (USAGE-012's opt-in).
-fn tracked(store: &Store, provider: &str) -> bool {
-    tracking_of(choices(store).get(provider).and_then(Value::as_bool), saved(store, provider).is_some())
-}
-
-/// USAGE-016: rescans every tracked provider, so a lookup sees the latest turns.
-pub fn rescan_tracked(store: &Mutex<Store>) {
-    for p in PROVIDERS {
-        if store.lock().is_ok_and(|s| tracked(&s, p)) {
-            rescan(store, p);
-        }
-    }
-}
-
-/// USAGE-016: what the sessions that worked in a folder used, per tracked provider, from the saved
-/// results; `mine` says which working folders count. A provider not tracked shows only that.
-pub fn usage_in(store: &Mutex<Store>, mine: impl Fn(&str) -> bool) -> Value {
-    let Ok(s) = store.lock() else { return Value::Null };
-    let mut out = serde_json::Map::new();
-    for p in PROVIDERS {
-        if !tracked(&s, p) {
-            out.insert(p.into(), serde_json::json!({ "tracked": false }));
-            continue;
-        }
-        let got = saved(&s, p).unwrap_or_default();
-        let rows: Vec<&Row> = got.rows.iter().filter(|r| mine(&r.cwd)).collect();
-        let sum = |f: fn(&Row) -> u64| rows.iter().map(|r| f(r)).sum::<u64>();
-        let sessions: std::collections::BTreeSet<&str> = rows.iter().map(|r| r.session.as_str()).collect();
-        out.insert(p.into(), serde_json::json!({ "tracked": true, "sessions": sessions, "input": sum(|r| r.input), "output": sum(|r| r.output), "cacheRead": sum(|r| r.cache_read), "cacheWrite": sum(|r| r.cache_write), "reasoning": sum(|r| r.reasoning), "scannedAt": got.scanned_at, "error": got.error }));
-    }
-    Value::Object(out)
 }
 
 /// Owner change 2026-11-07: every folder that belongs to the workspace at `path`: its own and each
@@ -1190,22 +1157,6 @@ mod tests {
     }
 
     #[test]
-    fn usage_016_a_worktree_looks_up_what_its_sessions_used() {
-        let t = temp("lookup");
-        let store = Mutex::new(Store::open(&t.0).unwrap());
-        let row = |session: &str, cwd: &str, input: u64| Row { session: session.into(), cwd: cwd.into(), input, output: 1, cache_read: 2, cache_write: 3, ..Default::default() };
-        let rows = vec![row("s-1", "C:/w/app", 10), row("s-2", "C:/w/app/sub", 20), row("s-1", "C:/w/app/sub", 40), row("s-3", "C:/w/other", 80)];
-        {
-            let s = store.lock().unwrap();
-            s.set(&key_saved("claude"), &serde_json::to_string(&Saved { format: FORMAT, scanned_at: 5, rows, error: None }).unwrap()).unwrap();
-            s.set(KEY_TRACKING, r#"{"claude":true,"codex":false}"#).unwrap();
-        }
-        let got = usage_in(&store, |cwd| cwd.starts_with("C:/w/app"));
-        assert_eq!(got["claude"], json!({ "tracked": true, "sessions": ["s-1", "s-2"], "input": 70, "output": 3, "cacheRead": 6, "cacheWrite": 9, "reasoning": 0, "scannedAt": 5, "error": null }));
-        assert_eq!(got["codex"], json!({ "tracked": false }), "a provider not tracked is never read");
-    }
-
-    #[test]
     fn usage_016_unchanged_files_are_not_read_again() {
         let t = temp("unchanged");
         let root = t.0.join("projects");
@@ -1470,5 +1421,16 @@ mod tests {
             rows.len(),
             std::fs::metadata(&kept).unwrap().len()
         );
+    }
+
+    /// A sync command runs on the main thread. These may wait on every PATH folder, a megabyte read
+    /// or a whole log scan, so they run on a worker instead.
+    #[test]
+    fn commands_that_may_wait_on_the_disk_never_run_on_the_window_thread() {
+        for (src, name) in [(include_str!("agents.rs"), "agent_start_line"), (include_str!("terminal.rs"), "terminal_history"), (include_str!("token_usage.rs"), "token_usage"), (include_str!("activity.rs"), "activity_counts")] {
+            let src = src.replace("\r\n", "\n");
+            let at = src.find(&format!("pub fn {name}(")).unwrap();
+            assert!(src[..at].trim_end().ends_with("#[tauri::command(async)]"), "{name} must be #[tauri::command(async)]");
+        }
     }
 }

@@ -13,8 +13,8 @@
 //! left to Claude Code itself, which refreshes its own sign-in in every pane it runs; Kolux sends
 //! nothing to Anthropic's token service and never flags an account as needing re-auth for a
 //! renewal. Kolux's own renewal (opt-out off) is T-043-d.
-//! ponytail: the macOS keychain rules (ACCT-005) are a rule table in keychain.rs (T-043-e), not yet
-//! called from here; wiring them in needs a Mac (T-043-f). This build keeps the credentials file.
+//! ponytail: the macOS keychain rules (ACCT-005) are not built; wiring them in needs a Mac (T-043-f).
+//! This build keeps the credentials file.
 
 use crate::claude_key::{run_hidden, Attention, Ended};
 use crate::{secrets, state::Store};
@@ -206,6 +206,11 @@ pub fn login_command(program: &Path, dir: &Path) -> CommandBuilder {
     cmd
 }
 
+/// Row 944: an account id from the renderer is joined into paths, so only letters and digits pass (no "..", separators or empty).
+pub(crate) fn safe_id(id: &str) -> bool {
+    !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
 /// One sign-in, new (`existing` = None) or again. Runs `login` (the hidden `claude auth login`
 /// in `dir`), then `status` for who signed in. On success the account is listed and its
 /// credentials sealed into the vault; on failure nothing partial is kept and an existing
@@ -213,7 +218,7 @@ pub fn login_command(program: &Path, dir: &Path) -> CommandBuilder {
 #[allow(clippy::too_many_arguments)]
 pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, now: i64, login: impl FnOnce(&Path) -> (String, Ended), status: impl FnOnce(&Path) -> Option<String>) -> Result<Account, Attention> {
     // Row 944: the id comes from the renderer and is joined into paths, so an unsafe one is refused before anything touches the disk.
-    if !crate::cli_accounts::safe_id(id) {
+    if !safe_id(id) {
         return Err(Attention::new("unknown", "That account id is not valid."));
     }
     // Row 932: `existing` at an id that is not listed (a stale screen) is a new account too, so it claims a free id; an unreadable list fails here, before the login.
@@ -607,24 +612,10 @@ pub(crate) fn remove_in(store: &Store, profile: &Path, id: &str) -> Result<(), S
     cleared
 }
 
-/// The command line's rollback (row 921): a sign-in whose temporary copy could not be deleted was
-/// not kept as an account, so its whole folder goes; nothing runs on it yet. `home` names the home
-/// folder whose hooks install lock it takes, so a test never touches the real one.
-pub(crate) fn discard(store: &Store, profile: &Path, id: &str, home: &Path) -> Result<(), String> {
-    let (gone, cleared) = unlist(store, id)?;
-    remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("claude-{id}.json")));
-    let dir = PathBuf::from(&gone.config_dir);
-    if dir.parent() == Some(profile.join(FOLDER).as_path()) && dir.file_name().is_some_and(|n| n == id) {
-        // Row 989: under the hooks install lock, so a sign-in's hook install cannot recreate the folder as it goes.
-        crate::hooks::agent_hooks::with_install_lock(home, || crate::codex_accounts::remove_dir_patiently(&dir)).map_err(|e| format!("The account was not kept, but its folder could not be deleted: {e}"))?;
-    }
-    cleared
-}
-
 /// Takes the account off the saved list, and clears the active marker when it named this account.
 /// The list is saved first, so a sign-in file that will not delete is reported after the account is gone.
 fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), String> {
-    if !crate::cli_accounts::safe_id(id) {
+    if !safe_id(id) {
         return Err("That Claude account id is not valid.".into());
     }
     let mut list: Vec<Account> = crate::state::kept::load(store, LIST_KEY)?;
@@ -789,15 +780,6 @@ pub fn pane_config_dir(settings: &Value, active_dir: Option<String>) -> Option<P
     let key_mode = settings.get(crate::claude_key::MODE_FIELD).and_then(Value::as_str) == Some(crate::claude_key::KEY_MODE);
     let program = crate::agents::command_override(settings, "claude").unwrap_or("claude");
     pane_env(Some(program), key_mode, active_dir).map(|(_, d)| PathBuf::from(d)).or_else(|| user_config_dir(settings))
-}
-
-/// `pane_config_file` read from the live store at call time, so an account switch is honoured.
-pub fn trust_config_file(store: &Mutex<Store>) -> PathBuf {
-    let process_file = crate::trust::claude_config_file();
-    match store.lock() {
-        Ok(store) => pane_config_file(&store, process_file),
-        Err(_) => process_file,
-    }
 }
 
 /// Tests only: the bytes of every `<key>.corrupt-<ms>[-n]` copy in the store, read straight from
@@ -1638,20 +1620,6 @@ mod tests {
         assert!(!t.process_file.exists());
         claude_command(&t, "   ");
         assert_eq!(pane_config_file(&t.store.lock().unwrap(), t.process_file.clone()), t.account_file, "a blank command is the default claude");
-    }
-
-    // Review L1: the CLI server's per-request context (what worker-start trusts through) follows the
-    // active account; reverting its claude_config to the app's own file fails this.
-    #[test]
-    fn row984_the_cli_request_context_trusts_the_active_accounts_file() {
-        let t = trust_fixture("row984-cli", true);
-        main_trusted_in(&t.account_file, &t);
-        let git = crate::git::Git::detect().unwrap();
-        let terminals = crate::terminal::Terminals::default();
-        let ctx = crate::cli::request_ctx(&t.store, &git, &terminals, &|_| {}, &|| Ok(()));
-        assert_eq!(ctx.claude_config, t.account_file);
-        crate::trust::trust_folders(&ctx.claude_config, "claude", std::slice::from_ref(&t.worktree)).unwrap();
-        assert!(trusted_in(&t.account_file, &t));
     }
 
     // Row 989 ruling: a CLAUDE_CONFIG_DIR the user set in the pane env decides trust too, below the managed account.

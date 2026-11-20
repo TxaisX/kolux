@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { setGridRoots } from "../workspaces";
-import { addTeamFolders, groupRows, hiddenTeamFolders, jumpUnhides, mergedTeamFolders, movedTeamFolders, paneState, prunedTeamFolders, sessionsUnder, smartOrder, sortFromSetting, strongest, TEAM_WORKTREES_SETTING, teamFoldersOf, teamViewOf, withoutAutomationMade, withoutTeamMade, type RowInfo } from "./rows";
+import { addTeamFolders, groupRows, hiddenTeamFolders, mergedTeamFolders, movedTeamFolders, paneState, prunedTeamFolders, sessionsUnder, smartOrder, sortFromSetting, strongest, TEAM_WORKTREES_SETTING, teamFoldersOf, teamViewOf, withoutTeamMade, type RowInfo } from "./rows";
 
 const at = (state: RowInfo["state"], changed: number, pr: RowInfo["pr"] = null): RowInfo => ({ state, changed, pr });
 
@@ -46,21 +46,6 @@ test("the sort setting: Smart by default, and an old Recent choice is moved over
   expect(sortFromSetting("recent")).toBe("smart");
   expect(sortFromSetting("name")).toBe("name");
   expect(sortFromSetting("bogus")).toBe("smart");
-});
-
-test("AUTO-024: the switch hides worktrees made by automations, and jumping to one turns it off", () => {
-  const run = { path: "C:/r/wts/otter", madeBy: "automation" };
-  const hand = { path: "C:/r/wts/lead", madeBy: "app" };
-  const lists = { p1: [run, hand, { path: "C:/r", madeBy: null }] };
-  expect(withoutAutomationMade(lists, true).p1.map((w) => w.path)).toEqual(["C:/r/wts/lead", "C:/r"]);
-  expect(withoutAutomationMade(lists, false)).toBe(lists);
-  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-  // Moving to a hidden run worktree turns the switch off; staying on it, or the switch off, does nothing.
-  expect(jumpUnhides("C:/r/wts/lead", "c:/R/wts/otter", lists, true, same)).toBe(true);
-  expect(jumpUnhides("C:/r/wts/otter", "C:/r/wts/otter", lists, true, same)).toBe(false);
-  expect(jumpUnhides("C:/r/wts/lead", "C:/r/wts/otter", lists, false, same)).toBe(false);
-  expect(jumpUnhides("C:/r/wts/otter", "C:/r/wts/lead", lists, true, same)).toBe(false);
-  expect(jumpUnhides(null, null, lists, true, same)).toBe(false);
 });
 
 test("DT-C274: the worktrees a team launch made are left out of the sidebar; the main checkout and hand-made ones stay", () => {
@@ -181,14 +166,10 @@ test.each([
   expect(sessionsUnder([A], [{ cwd: A }, { cwd: B }], [B, A, W]), "the projects' own sessions as before").toBe(1);
 });
 
-// DT-C274: a command-line file of a team worktree opens once its team's grid is shown (select() shows that grid).
-test("cliFileShown: a team worktree's file is ready in its team's grid or in the worktree itself", async () => {
-  const { cliFileShown, selectView } = await import("./rows");
+// DT-C274: select() shows a team worktree in its team's grid.
+test("selectView: a team worktree is shown in its team's grid while that grid has panes", async () => {
+  const { selectView } = await import("./rows");
   const settings = { teamWorktrees: [{ path: "C:\\r\\wts\\wt1", view: "C:\\r" }] };
-  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\r")).toBe(true);
-  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\r\\wts\\wt1")).toBe(true);
-  expect(cliFileShown(settings, "C:\\r\\wts\\wt1", "C:\\other")).toBe(false);
-  expect(cliFileShown({}, "C:\\r\\wts\\wt1", "C:\\r")).toBe(false);
   // selectView: the team's grid while it has panes; none once it is empty (a stranded worktree)
   expect(selectView(settings, [{ key: 1, cwd: "C:\\r\\wts\\wt1", view: "C:\\r" }], "C:\\r\\wts\\wt1")).toBe("C:\\r");
   expect(selectView(settings, [], "C:\\r\\wts\\wt1")).toBeUndefined();

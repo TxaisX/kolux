@@ -24,9 +24,8 @@ const UNVERIFIED_MS: u64 = 30 * 60 * 1000;
 const INBAND_STATES: [&str; 5] = ["working", "done", "permission", "waiting", "idle"];
 
 /// The unverified window; a debug build takes `KOLUX_UNVERIFIED_MS` so a live proof need not wait
-/// half an hour. `pub(crate)`: the automations clock borrows the same window for a run whose pane
-/// still reads working but has gone silent (C25-R2-01).
-pub(crate) fn unverified_ms() -> u64 {
+/// half an hour.
+fn unverified_ms() -> u64 {
     #[cfg(debug_assertions)]
     if let Some(ms) = std::env::var("KOLUX_UNVERIFIED_MS").ok().and_then(|v| v.parse().ok()) {
         return ms;
@@ -81,8 +80,6 @@ pub static LIMIT_RESETS_AT: AtomicI64 = AtomicI64::new(0);
 pub enum Agent {
     Claude,
     Codex,
-    /// T-120-b: Gemini CLI, Antigravity or Amp, its event already normalized; hook semantics unverified.
-    Vendor,
 }
 
 /// A sub-agent or teammate under a lead session.
@@ -359,7 +356,6 @@ impl Session {
                 let change = match agent {
                     Agent::Claude => claude_change(&strip_agent(event)),
                     Agent::Codex => codex_change(&strip_agent(event)),
-                    Agent::Vendor => None,
                 }?;
                 match name {
                     "PermissionRequest" => {
@@ -435,7 +431,6 @@ impl Session {
         let mut change = match agent {
             Agent::Claude => claude_change(event),
             Agent::Codex => codex_change(event),
-            Agent::Vendor => crate::hooks::agent_hooks::more::change(event).unwrap_or_else(|| crate::hooks::agent_hooks::vendors::change(event)),
         }?;
         let before = self.resolved();
         if change.boundary {
@@ -465,10 +460,7 @@ impl Session {
                 self.own = Some("working");
             }
             "Stop" => {
-                // T-120-b: Amp says itself when a turn was cancelled.
-                // STAT-013: Droid's stops never count a Ctrl+C as an interruption.
-                let ctrl_c = self.drop_cancel() && event.get("kolux_no_cancel").and_then(Value::as_bool) != Some(true);
-                self.interrupted = ctrl_c || event.get("kolux_interrupted").and_then(Value::as_bool) == Some(true);
+                self.interrupted = self.drop_cancel();
                 self.pending = None;
                 self.reply = str_of(event, "last_assistant_message").map(clean_reply);
                 // STAT-024: Claude Code's own lists of background tasks and session crons decide.
@@ -584,7 +576,7 @@ impl Session {
             _ if event.get("is_interrupt").and_then(Value::as_bool) == Some(true) => false,
             // VIEW-025 b4: the tool a Deny refused never counts, whenever its Post lands (the 2 s tick may not have run).
             Agent::Claude => name == "Stop" || (matches!(name, "PreToolUse" | "PostToolUse" | "PostToolUseFailure") && str_of(event, "tool_use_id").is_some_and(|id| name == "PreToolUse" || (!self.denied.iter().any(|d| d == id) && (self.past_grace() || !self.killed.iter().any(|k| k == id))))),
-            Agent::Codex | Agent::Vendor => self.fresh_tool(name, event),
+            Agent::Codex => self.fresh_tool(name, event),
         }
     }
 
@@ -772,14 +764,13 @@ impl Session {
 
 /// VIEW-025: the keys that answer an approval at the agent's own prompt. Claude Code's dialog
 /// takes Enter for its first option (Yes) and Esc for No; Codex's approval modal takes y and n.
-/// T-151-c: no other agent's keys are guessed; a vendor agent has none.
+/// T-151-c: no other agent's keys are guessed.
 pub fn answer_keys(agent: Agent, approve: bool) -> Option<&'static str> {
     match (agent, approve) {
         (Agent::Claude, true) => Some("\r"),
         (Agent::Claude, false) => Some("\x1b"),
         (Agent::Codex, true) => Some("y"),
         (Agent::Codex, false) => Some("n"),
-        (Agent::Vendor, _) => None,
     }
 }
 
@@ -1006,10 +997,6 @@ pub fn status_inband(app: tauri::AppHandle, pane_key: u32, terminal: Option<u32>
         return false;
     };
     let (status, _) = inband_change(pane_key, terminal, state);
-    // Row 16 (AUTO-012 / AUTO-004, T-085-e): an agent that reports only in band completes an
-    // automation run in its pane and starts the agent-finished automations, as a hook does.
-    crate::automations::follow(&app, |s| crate::automations::on_status(s, status.terminal, status.pane_key, status.change.state, status.change.boundary, status.child.is_some(), status.change.session.as_deref(), crate::automations::now_ms()));
-    crate::automations::on_finish(&app, status.pane_key, status.terminal, status.change.state, status.change.boundary, status.child.is_some(), status.interrupted);
     tauri::Emitter::emit(&app, crate::hooks::EVENT, status).is_ok()
 }
 
@@ -1083,13 +1070,6 @@ pub fn quiet_check(threshold: Option<Duration>, silence: impl Fn(u32) -> Option<
     })
 }
 
-
-/// The pane's last twenty states, oldest first (COMPAT 3.5 stored status: History).
-#[tauri::command]
-pub fn agent_history(pane_key: u32) -> Vec<Entry> {
-    with_sessions(|s| s.get(&pane_key).map(|x| x.history.iter().cloned().collect()).unwrap_or_default())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1143,8 +1123,6 @@ mod tests {
         assert_eq!(s.history.back().map(|e| e.state), Some("working"));
         assert_eq!((answer_keys(Agent::Claude, true), answer_keys(Agent::Claude, false)), (Some("\r"), Some("\x1b")));
         assert_eq!((answer_keys(Agent::Codex, true), answer_keys(Agent::Codex, false)), (Some("y"), Some("n")));
-        // T-151-c: a vendor agent's keys are never guessed.
-        assert_eq!((answer_keys(Agent::Vendor, true), answer_keys(Agent::Vendor, false)), (None, None));
     }
 
     #[test]
@@ -1636,7 +1614,7 @@ mod tests {
         assert_eq!(working_now(|t| t == TERM || t == TERM + 1), 2, "both live panes count");
         terminal_ended(TERM);
         assert_eq!(state_of(TERM), None, "the ended terminal's pane is gone");
-        assert!(panes_of(TERM).is_empty() && agent_history(PANE).is_empty());
+        assert!(panes_of(TERM).is_empty() && with_sessions(|s| s.get(&PANE).is_none()));
         assert_eq!(state_of(TERM + 1), Some("working"), "another terminal's pane stays");
         terminal_ended(TERM + 1);
         assert_eq!(state_of(TERM + 1), None);
@@ -1755,23 +1733,6 @@ mod tests {
         assert_eq!(inband_change(PANE, None, "idle").1, Some(956_403), "none given: the session's own terminal");
         assert_eq!(inband_change(PANE, Some(956_404), "working").1, Some(956_404), "given: it wins");
         assert_eq!(terminal_of(PANE), Some(956_403), "and the session keeps the one its hooks named");
-        with_sessions(|s| s.remove(&PANE));
-    }
-
-    /// Row 16 (T-085-e): an in-band working then done is an agent finish the automations hear;
-    /// a done with no working before it, or a second done, is not.
-    #[test]
-    fn row_16_an_in_band_finish_reaches_the_agent_finished_automations() {
-        const PANE: u32 = 956_501;
-        let mut seen = std::collections::HashMap::new();
-        let mut fires = |state: &'static str| {
-            let (st, _) = inband_change(PANE, Some(956_502), state);
-            crate::automations::agent_finished(&mut seen, st.pane_key, st.change.state, st.change.boundary, st.child.is_some(), st.interrupted)
-        };
-        assert!(!fires("done"), "no turn yet");
-        assert!(!fires("working"));
-        assert!(fires("done"), "working then done fires once");
-        assert!(!fires("done"), "and not again");
         with_sessions(|s| s.remove(&PANE));
     }
 

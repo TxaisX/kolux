@@ -1,12 +1,12 @@
 // What the window writes down and asks before it closes, moved out of App.tsx as it was (cycle 2, the App.tsx
-// split): the open page and the screen (VIEW-011, VIEW-005), another window's screen (VIEW-007), the quit and
+// split): the screen (VIEW-005), another window's screen (VIEW-007), the quit and
 // Force Reload questions (VIEW-107, APP-006), the layout writes (PROJ-067, T-075) and back and forward stops
 // (VIEW-046). Called where it sat, so the window's hook order is unchanged.
 import { screens, type Screen } from "../chrome/TopBar";
 import { visit } from "../projects/nav";
 import { applySetting } from "../projects/settingWrite";
 import { useWindowSync } from "../sessions/windowSync";
-import { LAST_SCREEN_FIELD, OPEN_PAGE_FIELD, lastWriter, saveLayout } from "../settings/general";
+import { LAST_SCREEN_FIELD, lastWriter, saveLayout } from "../settings/general";
 import { saveChanged } from "../settings/saveChanged";
 import { asksBeforeClose } from "../terminal/closing";
 import { LAYOUT_FIELD, layoutOf, panesWantingListedSession, withListedSession, type SavedLayout } from "../terminal/layout";
@@ -23,11 +23,7 @@ import type { Plumbing } from "../settings/useSettingsPlumbing";
  *  every focus move, and each ask runs the agent's own program. */
 export const LISTED_ASK_AGAIN_MS = 30_000;
 
-export function useWindowSave({ activeDir, activeTab, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings, settings, settingsRead, settingsRef, stacked, tabColors }: Pick<WindowState, "activeDir" | "activeTab" | "focused" | "page" | "panes" | "pinned" | "running" | "screen" | "setHist" | "setNotice" | "setPanes" | "setScreen" | "setSettings" | "settings" | "settingsRead" | "stacked" | "tabColors"> & Pick<Plumbing, "saveSetting" | "settingsRef"> & { read: boolean }) {
-  // VIEW-011: the open page is written down, so it is shown again after a restart.
-  useEffect(() => {
-    if ((settings[OPEN_PAGE_FIELD] ?? null) !== page) saveSetting(OPEN_PAGE_FIELD, page);
-  }, [page]);
+export function useWindowSave({ activeDir, activeTab, focused, panes, pinned, read, running, screen, setHist, setNotice, setPanes, setScreen, setSettings, settings, settingsRead, settingsRef, stacked, tabColors }: Pick<WindowState, "activeDir" | "activeTab" | "focused" | "panes" | "pinned" | "running" | "screen" | "setHist" | "setNotice" | "setPanes" | "setScreen" | "setSettings" | "settings" | "settingsRead" | "stacked" | "tabColors"> & Pick<Plumbing, "settingsRef"> & { read: boolean }) {
   // VIEW-005: the screen in front is written down too, a burst of switches as one write and a
   // pending one before the window closes. The start screen itself is not written back.
   const screenWriter = useRef(
@@ -43,13 +39,12 @@ export function useWindowSave({ activeDir, activeTab, focused, page, panes, pinn
     shownScreen.current = screen;
     screenWriter.set(screen);
   }, [screen]);
-  // VIEW-007: another window changing its screen moves this one too, unless a page (Tasks, Automations, ...)
-  // is open here; the followed screen counts as already saved, so it is not written back.
+  // VIEW-007: another window changing its screen moves this one too; the followed screen counts as already saved,
+  // so it is not written back.
   useWindowSync({
     field: LAST_SCREEN_FIELD,
     valid: screens.map((x) => x.id),
     screen,
-    page,
     ready: settingsRead,
     onScreen: (to) => {
       shownScreen.current = to;
@@ -111,7 +106,7 @@ export function useWindowSave({ activeDir, activeTab, focused, page, panes, pinn
   // previous session: the tab is asked when it is opened, before its agent has made one), so the write that
   // follows carries it and a restart resumes the tab the way a hook-fed one is. The pane is asked again (its
   // own guess left out of its ask) so the session its agent made since replaces the guess, and the id the
-  // agent prints itself when it exits wins over it (useCliBridge). One round at a time, the panes in turn,
+  // agent prints itself when it exits wins over it (useResumeHint). One round at a time, the panes in turn,
   // each answer added to `taken` so two panes never get one session; an id the agent named itself is never
   // replaced; a pane is left alone for LISTED_ASK_AGAIN_MS after each ask.
   const askingListed = useRef(false);
@@ -151,9 +146,9 @@ export function useWindowSave({ activeDir, activeTab, focused, page, panes, pinn
     // a tab opened during the wait is written down as soon as the saved tabs are back.
   }, [panes, activeTab, focused, activeDir, stacked, pinned, tabColors, read]);
 
-  // VIEW-046: every workspace and page shown is a stop for back and forward; a step back lands on
+  // VIEW-046: every workspace shown is a stop for back and forward; a step back lands on
   // the place already current, which visit leaves alone.
-  useEffect(() => setHist((h) => visit(h, { dir: activeDir, page })), [activeDir, page]);
+  useEffect(() => setHist((h) => visit(h, { dir: activeDir })), [activeDir]);
   return {
     screenWriter, shownScreen, quitAsk, setQuitAsk, reloadAsking, setReloadAsk, unsaved, busyAgents, quitting, layoutSaver,
   };

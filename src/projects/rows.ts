@@ -5,7 +5,7 @@
 // pane's program is up; permission, blocked, waiting and interrupted arrive with the status hooks
 // (STAT-001, T-025), and the pull-request state with GIT-025 (T-229). The rules here take them already.
 import { shortcodes } from "./model";
-import { closesWith, goesWith, gridOf, panesIn, sameDir } from "../workspaces";
+import { closesWith, goesWith, panesIn, sameDir } from "../workspaces";
 
 export type AgentState = "permission" | "blocked" | "waiting" | "interrupted" | "working" | "queued" | "done" | "idle";
 export type PrState = "open" | "draft" | "merged" | "closed" | "suppressed" | null;
@@ -22,17 +22,6 @@ export const SORT_SETTING = "workspaceSort";
 /** PROJ-046: the pinned workspaces' paths, and whether a pinned row also shows in its own group. */
 export const PIN_SETTING = "pinnedWorkspaces";
 export const PIN_COPIES_SETTING = "pinnedCopies";
-
-/** AUTO-024: the sidebar switch that hides worktrees made by automation runs. */
-export const HIDE_AUTOMATION_SETTING = "hideAutomationWorktrees";
-
-type Made = { path: string; madeBy?: string | null };
-
-/** AUTO-024: each project's list without the worktrees automation runs made, while the switch is on. */
-export function withoutAutomationMade<W extends Made>(lists: Record<string, W[]>, hide: boolean): Record<string, W[]> {
-  if (!hide) return lists;
-  return Object.fromEntries(Object.entries(lists).map(([id, ws]) => [id, ws.filter((w) => w.madeBy !== "automation")]));
-}
 
 /** DT-C274: the worktrees an own-folder team launch made (launch/launchActions.ts startSeats). The team is shown as
  *  one grid in the folder its chooser was in, so these are left out of the sidebar's workspace rows. */
@@ -85,16 +74,6 @@ export function selectView(settings: Record<string, unknown>, panes: { key: numb
   return view !== undefined && panesIn(panes, view).length > 0 ? view : undefined;
 }
 
-/** DT-C274: whether a command-line file request for worktree `dir` can open in the shown grid `active`: the worktree
- *  itself, or its team's grid when `dir` is a recorded team worktree (select() shows that grid instead; a stranded one,
- *  with no pane left in that grid, is shown as itself). One workspace per project: a linked worktree of a project is
- *  shown in the project's grid (`gridOf`), so its file is ready once that grid is in front. */
-export function cliFileShown(settings: Record<string, unknown>, dir: string, active: string | null): boolean {
-  if (sameDir(dir, active) || sameDir(gridOf(dir), active)) return true;
-  const view = teamViewOf(settings, dir);
-  return view !== undefined && sameDir(view, active);
-}
-
 /** DT-C274 (STAT-039): a moved folder takes its records along, as the worktree and as the grid; null when none named it. */
 export function movedTeamFolders(v: unknown, from: string, to: string): TeamRecord[] | null {
   const had = teamFoldersOf(v);
@@ -123,12 +102,6 @@ export function hiddenTeamFolders(v: unknown, open: string[]): string[] {
 export function withoutTeamMade<W extends { path: string; isMain?: boolean }>(lists: Record<string, W[]>, team: string[], same: (a: string, b: string) => boolean): Record<string, W[]> {
   if (team.length === 0) return lists;
   return Object.fromEntries(Object.entries(lists).map(([id, ws]) => [id, ws.filter((w) => w.isMain || !team.some((d) => same(d, w.path)))]));
-}
-
-/** AUTO-024: moving to a worktree the switch hides (View run, the palette) turns the switch off so it can be seen. */
-export function jumpUnhides(prev: string | null, next: string | null, lists: Record<string, Made[]>, hide: boolean, same: (a: string, b: string) => boolean): boolean {
-  if (!hide || next === null || (prev !== null && same(prev, next))) return false;
-  return Object.values(lists).some((ws) => ws.some((w) => w.madeBy === "automation" && same(w.path, next)));
 }
 
 /** Strongest first: a permission request outranks everything. */

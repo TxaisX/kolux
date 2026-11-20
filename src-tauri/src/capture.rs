@@ -1,11 +1,7 @@
-//! What the chat, token and library readers share about Claude Code's own files: the name of the
-//! event the Artifacts library sends when it changed behind the window's back, the time format of
-//! a transcript line, and the folder Claude Code keeps its config and transcripts in.
+//! What the chat and token readers share about Claude Code's own files: the time format of a
+//! transcript line, and the folder Claude Code keeps its config and transcripts in.
 
 use std::path::PathBuf;
-
-/// Sent to the window when the library changed behind its back.
-pub const EVENT: &str = "artifacts-changed";
 
 /// Milliseconds since 1970 from a UTC time such as 2026-09-24T09:56:01.421Z.
 /// ponytail: offsets other than Z are read as UTC; Claude Code writes Z.

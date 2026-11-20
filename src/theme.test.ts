@@ -1,6 +1,6 @@
 import design from "../design/DESIGN.md?raw";
 import { expect, test } from "vitest";
-import { applyAppearance, applyTheme, buildTheme, classic, coreTokens, isDark, previewOf, readAppearance, terminalFor, terminalTheme, themeVars, THEMES, writeAppearance, appearanceVars, termFont, screenMode } from "./theme";
+import { applyAppearance, applyTheme, buildTheme, classic, coreTokens, isDark, previewOf, readAppearance, terminalFor, terminalTheme, themeVars, THEMES, writeAppearance, termFont, screenMode } from "./theme";
 
 /** The `| \`--token\` | \`#hex\` |` rows of DESIGN.md section 2, as a name-to-hex map. */
 function designPalette(): Record<string, string> {
@@ -142,12 +142,6 @@ test("terminal font defaults to size 13 (T-144-e: day one looks like today's 13 
   expect(writeAppearance({}, a)).toMatchObject({ terminalFont: "Fira Code", terminalFontSize: 32, terminalFontWeight: "300" });
 });
 
-test("the editor font follows the terminal font unless it has its own", () => {
-  const vars = (s: Record<string, unknown>) => appearanceVars(readAppearance(s), true);
-  expect(vars({ terminalFont: "Fira Code" })["--editor-font"]).toBe('"Fira Code", "Cascadia Mono", Consolas, monospace');
-  expect(vars({ terminalFont: "Fira Code", editorFont: "Hack" })["--editor-font"]).toBe('"Hack", "Fira Code", "Cascadia Mono", Consolas, monospace');
-});
-
 test("one saved terminal size is the size of every pane; there is no per-pane zoom", () => {
   const had = "window" in globalThis;
   const was = (globalThis as { window?: unknown }).window;
@@ -167,15 +161,14 @@ test("one saved terminal size is the size of every pane; there is no per-pane zo
 });
 
 // VIEW-006 (T-146-c)
-test("a screen paints in its own mode; screens without one follow the app; Classic ignores Board and Agents", () => {
-  const a = readAppearance({ appearanceMode: "light", screenThemes: { board: "dark", agents: "nope", inbox: "dark" } });
-  expect(a.screens, "only the three screens and known modes are kept").toEqual({ board: "dark" });
-  expect(screenMode(a, "board", false)).toBe("dark");
+test("the Terminals screen paints in its own mode, else the app's; the removed screens' choices are dropped", () => {
+  const a = readAppearance({ appearanceMode: "light", screenThemes: { board: "dark", agents: "dark", inbox: "dark" } });
+  expect(a.screens, "only the Terminals screen and known modes are kept").toEqual({});
   expect(screenMode(a, "terminals", false)).toBe("light");
-  expect(screenMode(a, "agents", false)).toBe("light");
-  expect(screenMode(a, "board", true), "classic look").toBe("light");
-  const t = readAppearance({ appearanceMode: "dark", screenThemes: { terminals: "light" } });
-  expect(screenMode(t, "inbox", false), "no saved value counts as Terminals").toBe("light");
-  expect(screenMode(t, "board", true), "classic uses the Terminals choice").toBe("light");
-  expect(writeAppearance({}, a)).toMatchObject({ screenThemes: { board: "dark" } });
+  const t = readAppearance({ appearanceMode: "dark", screenThemes: { terminals: "light", board: "dark" } });
+  expect(t.screens).toEqual({ terminals: "light" });
+  expect(screenMode(t, "terminals", false)).toBe("light");
+  expect(screenMode(t, "inbox", false), "every screen counts as Terminals").toBe("light");
+  expect(screenMode(t, "terminals", true), "classic uses the Terminals choice").toBe("light");
+  expect(writeAppearance({}, t)).toMatchObject({ screenThemes: { terminals: "light" } });
 });

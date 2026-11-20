@@ -25,10 +25,13 @@ describe("third-party notices", () => {
     for (const name of ["tauri", "serde", "tokio", "react", "@xterm/xterm"]) expect(text, name).toContain(`\n  ${name} `);
   });
 
-  it("the release overlay adds the CLI to the notices, it does not replace them (objects merge)", () => {
+  it("the release overlay leaves the bundle's resources alone, so the notices always ship", () => {
+    // The overlay used to add the command line under bin/; the command line was retired in slim-down wave B.
     const rel = fs.readFileSync(path.join(ROOT, "scripts", "release.mjs"), "utf8");
-    expect(rel).toMatch(/bundle: \{ resources \}/);
-    expect(rel).toMatch(/const resources = \{ \[/); // an object map, so the merge patch keeps the base entry
+    expect(rel).toMatch(/JSON\.stringify\(\{ plugins: \{ updater: \{ pubkey \} \} \}\)/);
+    expect(rel).not.toMatch(/bundle: \{ resources/);
+    const conf = JSON.parse(fs.readFileSync(path.join(ROOT, "src-tauri", "tauri.conf.json"), "utf8"));
+    expect(Object.values(conf.bundle.resources)).toContain("THIRD-PARTY-NOTICES.txt");
   });
 
   it("reads a package's LICENSE file (any case, CRLF) and says nothing for a package without one", () => {

@@ -113,8 +113,8 @@ pub fn issue(gh: &Path, repo: &Path, number: u64) -> Result<Issue, String> {
 /// PROJ-037: whether any remote in `remotes` (`git config --get-regexp` lines: key, then the
 /// address as the user wrote it) is the GitHub repository `host/owner/name`. `ssh_config` is the
 /// user's SSH config text, read once by the caller: an SSH alias remote (`git@work-gh:acme/app.git`)
-/// is the host the alias stands for, the same reading the page's `scm_github_repo` gives, so the
-/// merge gate and the page agree (stand-in review FIX-SOON 1).
+/// is the host the alias stands for, the same reading `scm::github_repo` gives, so every gate that
+/// uses it agrees with that reading (stand-in review FIX-SOON 1).
 pub fn has_repo_with(remotes: &str, host: &str, owner: &str, name: &str, ssh_config: &str) -> bool {
     let want = format!("{host}/{owner}/{name}").to_lowercase();
     remotes.lines().filter_map(|l| l.split_once(' ')).any(|(_, url)| crate::scm::github_repo(url, ssh_config).is_some_and(|g| g.key == want))

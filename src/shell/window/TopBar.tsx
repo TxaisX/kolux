@@ -11,7 +11,7 @@ import { useWindow } from "./store";
 
 export default function WindowTopBar() {
   const {
-    settings, screen, setScreen, classic, leftWidth, terminals, setPage, setPalette,
+    settings, screen, setScreen, classic, leftWidth, terminals, setPalette,
     installedIds, codex, sidebarOpen, setSidebarOpen, fullPage, right, saveRight, showRight, step,
     hist, stillThere, settingsOpen, setNotice, rightAside,
   } = useWindow();
@@ -26,10 +26,7 @@ export default function WindowTopBar() {
       appMenu
       onNotice={setNotice}
       uiZoom={zoomFactor()}
-      onScreen={(s) => {
-        if (s === "terminals") setPage(null); // W3 F3 (T-693, VIEW-009): Terminals leaves a full page (Tasks)
-        setScreen(s);
-      }}
+      onScreen={setScreen}
       installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={leftShown(sidebarOpen, narrow, rightAside.current.shown /* filled by App.tsx before the drawing */)} onToggleSidebar={() => setSidebarOpen((o) => !o)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
   );
 }

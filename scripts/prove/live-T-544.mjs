@@ -1,4 +1,5 @@
-// LIVE proof, T-544 (PLAN.md) items 2-5 plus APP-052 b1/b2 (spec/19) against the INSTALLED build, never tauri dev.
+// LIVE proof, T-544 (PLAN.md) items 3-5 plus APP-052 b1/b2 (spec/19) against the INSTALLED build, never tauri dev.
+// Item 2 (the install's command line first on a pane's PATH) went with the command line.
 // The app is started through WMI (Win32_Process.Create), so it is a child of WmiPrvSE and outside the job object that
 // holds this script (an agent harness's job ends the terminal service on quit, which voids APP-052 when spawned plainly).
 // Its environment is rebuilt the way Explorer would give it (registry Machine + User Environment, expanded, plus the
@@ -20,7 +21,6 @@ const LA = process.env.LOCALAPPDATA;
 const AD = process.env.APPDATA;
 const INSTALL = join(LA, "Kolux");
 const EXE = join(INSTALL, "kolux.exe");
-const CLI = join(INSTALL, "bin", "kolux.exe");
 const DATA = [join(AD, ID), join(LA, ID)];
 const RUN = `${LIVE_BASE}/run-T-544`;
 const REPO = `${LIVE_BASE}/work/T-544`;
@@ -229,21 +229,6 @@ const typeInto = async (i, line) => {
   await app.focusPane(TERM, i, ".xterm-helper-textarea");
   await app.cdp("insert", line, "enter");
 };
-// Output lines between two echoed markers (an echoed command line carries the prompt, so only output equals a marker).
-const between = (l, a, b) => {
-  const i = l.lastIndexOf(a);
-  const j = l.indexOf(b, i + 1);
-  return i >= 0 && j > i ? l.slice(i + 1, j).filter(Boolean) : null;
-};
-const run = async (i, cmd, name) => {
-  const [a, b] = [`T544-${name}-B${tag}`, `T544-${name}-E${tag}`];
-  for (const c of [`echo ${a}`, cmd, `echo ${b}`]) {
-    await typeInto(i, c);
-    await sleep(700);
-  }
-  return waitFor(`output of ${cmd}`, async () => between(await paneLines(i), a, b), 30000, 500);
-};
-
 let envVars = null;
 async function launch(label) {
   const pid = wmiStart(`"${EXE}"`, INSTALL, envVars);
@@ -318,8 +303,8 @@ try {
     log(`QUESTION: the installed app is already running (kolux.exe pids ${JSON.stringify(running.map((p) => p.pid))}, terminal services ${JSON.stringify(runningSvc.map((s) => s.pid))}); not launching`);
     process.exit(3);
   }
-  if (!existsSync(EXE) || !existsSync(CLI)) {
-    log(`STUCK: the install is incomplete: ${EXE} ${existsSync(EXE)}, ${CLI} ${existsSync(CLI)}`);
+  if (!existsSync(EXE)) {
+    log(`STUCK: the install is incomplete: ${EXE} ${existsSync(EXE)}`);
     process.exit(4);
   }
   const absent = DATA.map((p) => [p, existsSync(p)]);
@@ -414,18 +399,6 @@ try {
     look.renderer === "dom" && look.rows > 0 && look.heights.length === 1 && look.heights[0] > 0 && look.ascending && look.dirHeader && (!look.themeFg || look.color === rgb(look.themeFg)) && (!firstFont || (look.font ?? "").toLowerCase().includes(firstFont)) && look.csp.length === 0,
     `renderer ${look.renderer}, ${look.rows} rows, heights ${JSON.stringify(look.heights)}, ascending ${look.ascending}, dir output ${look.dirHeader}, colour ${look.color} vs theme ${rgb(look.themeFg)}, font ${look.font}, CSP violations ${look.csp.length}`);
   log(`screenshot: ${await shot("T-544-item4-dom-dir")}`);
-
-  // Item 2: the RS command line comes first in a pane of the installed app (pane 1: DOM rows, cleared so all fits on screen).
-  await typeInto(1, "cls");
-  await sleep(1500);
-  const w = await run(1, "where.exe kolux", "W");
-  const first = w.find((l) => /^[a-z]:\\[^>]*\\kolux\.(exe|cmd|bat|ps1)$/i.test(l)) ?? ""; // a path line, not the echoed prompt
-  // kolux-12's ruling: .cmd before .exe in where.exe is fine (PATHEXT resolves the .exe); the first entry's folder counts.
-  check("item2", "where.exe kolux lists an entry in the install's bin folder first", norm(first).startsWith(norm(join(INSTALL, "bin")) + "/"), mask(JSON.stringify(w)));
-  const src = await run(1, "(Get-Command kolux).Source", "S");
-  check("item2", "(Get-Command kolux).Source is the install's bin\\kolux.exe", src.some((l) => norm(l) === norm(CLI)), mask(JSON.stringify(src)));
-  const v = await run(1, "kolux --version", "V");
-  check("item2", "kolux --version prints 0.1.0", v.some((l) => /\b0\.1\.0\b/.test(l)), mask(JSON.stringify(v)));
 
   // APP-052 b1: a marker survives three quit + relaunch rounds.
   await typeInto(1, `echo ${M1}`);

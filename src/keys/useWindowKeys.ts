@@ -5,7 +5,6 @@
 import type { Pane } from "../App";
 import type { WindowBag } from "../shell/windowBag";
 import { needsYou } from "../status/chip";
-import { screens, type Screen } from "../chrome/TopBar";
 import { closedPanes, folderKind, paneFor, placement } from "../chrome/reopenTab";
 import { navTarget, stepAllowed } from "../projects/nav";
 import { SHOW_SLEEPING_SETTING, showSleepingFrom } from "../projects/rows";
@@ -13,7 +12,6 @@ import { stepZoom, type ZoomStep } from "../settings/zoom";
 import { openTabSearch } from "../shell/findTab";
 import { cycleTarget } from "../switcher/accounts";
 import { cellsOf, groupOf } from "../terminal/grid";
-import { editorCloseSet } from "../terminal/pin";
 import { nextNeedsYou } from "../terminal/status";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, type CycleMode } from "../terminal/tabCycle";
 import { panesIn, sameDir, viewOf } from "../workspaces";
@@ -22,7 +20,7 @@ import { forceReload, windowCommand } from "./commands";
 import { worktreesOffNote } from "../projects/singleFolder";
 import { isTextField } from "../projects/deleting";
 import { scopesFor } from "./keyScopes";
-import { matchEvent, type KeyLike, type Keymap } from "./keymap";
+import { matchEvent } from "./keymap";
 import { kPalette, richKeyTaken } from "./paletteKey";
 import { recording } from "./record";
 import { runningCommand } from "./runCommand";
@@ -43,8 +41,8 @@ export function paneCloseClaimed(paneId: number): boolean {
   return !window.dispatchEvent(new CustomEvent(PANE_CLOSE_EVENT, { detail: { paneId }, cancelable: true }));
 }
 
-/** UX lane C (keyboard F2): a global shortcut waits while a menu, popover or dialog is up (the same overlays as
- *  chrome/fullPage.ts), so Mod+T never opens a tab behind a question. The Settings page is a page, not an overlay, so
+/** UX lane C (keyboard F2): a global shortcut waits while a menu, popover or dialog is up, so Mod+T never opens a
+ *  tab behind a question. The Settings page is a page, not an overlay, so
  *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
  *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
 // Panels that stay on screen while the user works (an agent's question card, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
@@ -54,7 +52,7 @@ export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], [aria-modal="tru
 // only that pane: the rest of the window, and Ctrl+W on that pane, keep working.
 export const PANE_LOCAL = ".pane-ask";
 export const STAYS_OPEN = '.chat-question, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .found-list';
-// Only the app's own chords wait. An editor or explorer chord is the focused pane's or the overlay's own and falls through as before.
+// Only the app's own chords wait. A settings chord is the overlay's own and falls through as before.
 const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
 // Of the terminal chords, only the ones this window runs itself wait. The rest (copy, paste, select all, find, clear)
 // go to whatever has focus, so Ctrl+V still pastes a link into the worktree palette on the Terminals screen.
@@ -66,17 +64,12 @@ export const WINDOW_TERMINAL = new Set([
 /** Audit F28: the commands that close, end or delete something. While a plain text field has the focus they do not
  *  run, so Ctrl+W typed in a settings box or the palette never closes the pane behind it. R54-01: a command picked
  *  in the palette is no key typed into the field, so it always runs. */
-export const CLOSING_KEYS = new Set(["tab.close", "terminal.closePane", "tab.closeAll", "workspace.delete", "sessions.remove"]);
+export const CLOSING_KEYS = new Set(["tab.close", "terminal.closePane", "workspace.delete", "sessions.remove"]);
 /** The terminal's hidden text area, the code editor and the rich Markdown view are text fields too, but keep their own key rules.
  *  R54-05: so does a terminal's own Find box, part of its pane: Ctrl+W there closes that pane. */
 const OWN_KEY_RULES = ".xterm, .cm-editor, .md-rich, .term-find";
 export const typingHolds = (id: string, active: Element | null): boolean =>
   !runningCommand() && CLOSING_KEYS.has(id) && isTextField(active) && !active?.closest(OWN_KEY_RULES);
-
-/** The explorer's own Mod+Shift+F listener fires unless a menu or modal dialog holds the chord. It does not test
- *  defaultPrevented: a focused terminal cancels every Kolux chord (the shell never sees it) and the search still opens. */
-export const explorerSearchKey = (map: Keymap, e: KeyLike, doc: Root = document): boolean =>
-  matchEvent(map, e, ["global"])?.id === "sidebar.search.toggle" && !heldByOverlay("sidebar.search.toggle", false, doc);
 
 // Audit F12: since one grid per project (2026-11-13) the sidebar shows only project folder rows; the old
 // main and worktree rows stay in the page but hidden, so keyboard moves walk the folder rows alone.
@@ -106,11 +99,6 @@ export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = doc
   });
 }
 
-/** The next screen in the Agents / Board / Terminals cycle. */
-export function nextScreen(s: Screen): Screen {
-  return screens[(screens.findIndex((x) => x.id === s) + 1) % screens.length].id;
-}
-
 export function useWindowKeys(w: WindowBag) {
   // The listener belongs to the window, not to a render: it is added once and reads the latest
   // bag on each key. Re-subscribing a capture listener every render was the hot path.
@@ -121,8 +109,8 @@ export function useWindowKeys(w: WindowBag) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const {
-        accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
-        focused, keymap, leavePage, newTab, nextKey, openPane, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
+        accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, closePane, defaultId, equalizePanes, expandPane,
+        focused, keymap, leavePage, newTab, nextKey, openPane, orderOf, panes, recentTabs, removeSession, renamePane,
         right, saveRight, saveSetting, screen, setActiveDir, setAskName, setCreateName, setCreateRequest, setDeleteRequest,
         setFocused, setNotice, setPalette, setPanes, setReloadAsk, setRenameRequest, setRenamingTab, setScreen,
         setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
@@ -238,10 +226,6 @@ export function useWindowKeys(w: WindowBag) {
             return;
           }
           break;
-        case "view.cycleWorkspaceView":
-          if (classic) setToast("The classic layout has one view; turn it off in Settings > Appearance to switch views.");
-          else setScreen((s) => nextScreen(s));
-          break;
         case "sidebar.sleeping.toggle":
           saveSetting(SHOW_SLEEPING_SETTING, !showSleepingFrom(settings[SHOW_SLEEPING_SETTING]));
           break;
@@ -348,15 +332,6 @@ export function useWindowKeys(w: WindowBag) {
           });
           break;
         }
-        case "tab.closeAll": {
-          // C01-R4-01: COMPAT's `tab.closeAll` is "Close all editor tabs", so the chord takes the
-          // focused strip's editor tabs through one close question and leaves every terminal
-          // tab alone. The tab menu's own "Close all" still takes the whole strip.
-          if (!inFront) return;
-          const editors = editorCloseSet(orderOf(focused), panes, pinned);
-          if (editors.length > 0) void closeTab(editors);
-          break;
-        }
         case "terminals.focusNextNeedsYou": {
           // TERM-030: cycle through the panes waiting on the user in grid order, across workspaces;
           // with none waiting, focus stays where it is. DT-C52: a permission or a question only (the one status).
@@ -435,9 +410,8 @@ export function useWindowKeys(w: WindowBag) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
-  // UX lane C (menu.rs:229): the menu's Force Reload comes to the page and runs the chord's reload, so unsaved
-  // editor text is asked about first instead of being thrown away by a native reload. View > Workspace View > Space
-  // lands here too (chrome/chromeItems MENU_SCREENS lists only the switcher screens).
+  // UX lane C (menu.rs spec): the menu's Force Reload comes to the page and runs the chord's reload instead of a
+  // native reload. The View > Workspace View items go through the settings plumbing (chrome/chromeItems menuScreen).
   useEffect(() => {
     const off = listen<{ id: string }>("menu-action", (e) => menuAction(e.payload.id, bag.current));
     // UX lane C (request from D-ux3, editor/AddProjectRow): a folder added while the project list is not shown opens it.

@@ -7,8 +7,8 @@
 // `sidebar.ports.toggle`, whose Ports tab went with remote hosts (VIEW-079, dropped).
 
 export type Platform = "win32" | "linux" | "darwin";
-export type Scope = "global" | "tabs" | "editor" | "explorer" | "settings" | "terminal";
-export type Group = "menu" | "workspace-shell" | "editor";
+export type Scope = "global" | "tabs" | "settings" | "terminal";
+export type Group = "menu" | "workspace-shell";
 
 export type Action = {
   id: string;
@@ -83,7 +83,6 @@ export const actions: Action[] = [
   a("workspace.selectByIndex", "Select Workspace 1–9", "global", ["Mod+1"], { index: true }),
   a("sidebar.left.toggle", "Toggle Sidebar", "global", ["Mod+B"]),
   a("sidebar.right.toggle", "Toggle Right Sidebar", "global", ["Mod+L"]),
-  a("sidebar.search.toggle", "Show Search", "global", ["Mod+Shift+F"]),
   a("sidebar.checks.toggle", "Show Checks", "global", []),
   a("sidebar.sleepingWorkspaces.toggle", "Toggle Sleeping Workspaces", "global", []),
   a("sidebar.focusWorktreeList", "Focus worktree list", "global", ["Mod+Shift+0"]),
@@ -108,7 +107,6 @@ export const actions: Action[] = [
   a("tab.newTerminal", "New terminal tab", "tabs", ["Mod+T"], { keywords: ["shell", "console", "command line"] }),
   a("tab.newAgent", "New agent tab (default agent)", "tabs", ["Mod+Alt+T"]),
   a("tab.close", "Close active tab", "tabs", ["Mod+W"]),
-  a("tab.closeAll", "Close all editor tabs", "tabs", ["Mod+Alt+W"]),
   a("tab.rename", "Rename active tab", "tabs", ["Mod+Shift+G"], { darwin: ["Mod+R"], group: "workspace-shell" }),
   // T-164-b: reopens the last closed terminal tab (src/terminal/closedTabs.ts). T-543-b had shipped it unbound.
   a("tab.reopenClosed", "Reopen closed tab", "tabs", ["Mod+Shift+T"]),
@@ -141,7 +139,6 @@ export const actions: Action[] = [
   a("terminal.splitRight", "Split terminal right", "terminal", ["Mod+Shift+D"], { darwin: ["Mod+D"], terminalSafe: true }),
   a("terminal.splitDown", "Split terminal down", "terminal", ["Alt+Shift+D"], { darwin: ["Mod+Shift+D"], terminalSafe: true }),
   a("terminal.switchInputSource", "Switch input source / language (native)", "terminal", []),
-  a("view.cycleWorkspaceView", "Cycle Workspace View (Agents / Board / Terminals / Tower)", "global", ["Mod+Alt+V"]),
   a("sessions.add", "Add a Session", "global", []),
   a("sessions.remove", "Remove a Session", "global", []),
   a("terminals.focusNextNeedsYou", "Next That Needs You", "global", ["Mod+J"], { darwin: ["Mod+Shift+J"] }),

@@ -29,13 +29,13 @@ import { launchActions } from "./launch/launchActions";
 import { paneActions } from "./terminal/paneActions";
 import { reviewActions } from "./terminal/reviewActions";
 import { useWindowSave } from "./shell/useWindowSave";
-import { useCliBridge } from "./projects/useCliBridge";
+import { useResumeHint } from "./terminal/useResumeHint";
 import { useScreens } from "./chrome/useScreens";
 import { useStatusSurfaces } from "./status/useStatusSurfaces";
 import { paneGrid } from "./terminal/paneGrid";
 import { useRailAndTower } from "./agents/useRailAndTower";
 import { useLayoutReport } from "./terminal/useLayoutReport";
-import { nextScreen, useWindowKeys } from "./keys/useWindowKeys";
+import { useWindowKeys } from "./keys/useWindowKeys";
 import type { WindowBag } from "./shell/windowBag";
 import { windowView } from "./shell/WindowView";
 import { tabName } from "./terminal/tabName";
@@ -55,7 +55,7 @@ import { hearStates, setHooksOn } from "./chat/send";
 export type ShellTarget = { dir: string | null; branch: string | null };
 
 /** A pane with `seats` is a chooser (SESS-007): nothing runs in it until Start. */
-export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; /** DT-C274: the folder whose grid shows the pane when not its own `cwd` (workspaces.ts `viewOf`). */ view?: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; /** TERM-123 (T-817): the pane's agent is asleep to save memory; Wake resumes the recorded session (sleep/agentSleep.ts); not saved with the layout. */ asleep?: { since: number; idleMin: number; session: string }; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
+export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; /** DT-C274: the folder whose grid shows the pane when not its own `cwd` (workspaces.ts `viewOf`). */ view?: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; /** TERM-123 (T-817): the pane's agent is asleep to save memory; Wake resumes the recorded session (sleep/agentSleep.ts); not saved with the layout. */ asleep?: { since: number; idleMin: number; session: string }; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
 
 /** Columns for a pane count: 1, side by side for 2, two rows for 3-4, then three across. */
 /** `initial`: the settings read before the first frame (main.tsx), so the first screen is right at once. */
@@ -67,20 +67,17 @@ export default function App({ initial = {}, layout = null, read = true, late = n
   );
 }
 
-/** The next screen in the Agents / Board / Terminals cycle (keys/useWindowKeys.ts). */
-export { nextScreen };
-
 function Window({ initial, layout, read, late }: { initial: Record<string, unknown>; layout: SavedLayout | null; read: boolean; late: SavedLayout | null }) {
   // Cycle 2: everything this render makes, filled at the end; the actions, the key handler and the drawing read it (shell/windowBag.ts).
   const w = {} as WindowBag;
   // The window's state and its first hooks, in their order (shell/windowStore.ts).
   const store = useWindowStore(initial, layout, late, read);
   const {
-    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, dragLeft,
-    panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
-    needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
-    markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
-    setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, installedIds, owner, refresh, setRefresh, recentDirs, activeRef,
+    keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, dragLeft,
+    panes, setPanes, focused, setFocused, activeTab, setActiveTab, activeDir, setActiveDir, running, reviewing, accountSwitcher,
+    needs, hook, setHook, stamp, setStamp, turn, setTurn, setStale, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
+    markDir, rowRef, ptys, pinned, tabColors, titles, liveIds, muteRef, agentOf, statusOf, setAgents, agentPass, setAgentPass,
+    setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, installedIds, owner, refresh, recentDirs, activeRef,
     setHist, stacked, setNotice, setToast
   } = store;
   // The rest of the window's state (shell/windowStore.ts). DT-C270: the pull-request rows (VIEW-043) are read by the
@@ -99,7 +96,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     activeDir, classic, dragLeft, keymap, owner, refresh, screen, setNotice, setScreen, setSettings, setSettingsAt, setSettingsOpen,
     setSidebarOpen, setToast, settings
   });
-  const { settingsRef, saveSetting } = plumb;
+  const { settingsRef } = plumb;
   // The title's waiting count, the shortcuts notice, Classic and Settings links (chrome/useWindowChrome.ts).
   const chrome = useWindowChrome({ classic, info, keymap, needs, panes, setNotice, setScreen, setSettingsAt, setSettingsOpen, statusOf });
 
@@ -110,7 +107,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const launchA = launchActions(state, plumb, w);
   const { startIn } = launchA;
   const paneA = paneActions(state, plumb, launchA, w);
-  const { openFile, splitPane, keyOfHandle, termCreate, termSwitch, termRename, dropPane, leavePage, openPane } = paneA;
+  const { leavePage, openPane } = paneA;
   // The automatic pull request flow says its stops in the notice line through this.
   useEffect(() => {
     setNoticeSink(setNotice);
@@ -131,19 +128,15 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useRenameOnFirstPrompt((key) => panes.find((p) => p.key === key)?.cwd ?? undefined, settings);
   // VIEW-093 (T-127-b): an agent tab takes its session's name (the user's own tab name still wins).
   useSessionNames(panes);
-  const workspaceActions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, setPage, owner, recentDirs, activeRef });
-  const { select, removed } = workspaceActions;
-  // The page, screen and layout writes, and the quit question (shell/useWindowSave.ts).
+  const workspaceActions = useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir, nextKey, settings, owner, recentDirs, activeRef });
+  // The screen and layout writes, and the quit question (shell/useWindowSave.ts).
   const save = useWindowSave({
-    activeDir, activeTab, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings,
+    activeDir, activeTab, focused, panes, pinned, read, running, screen, setHist, setNotice, setPanes, setScreen, setSettings,
     settings, settingsRead, settingsRef, stacked, tabColors
   });
 
-  // The command line's requests: files, terminals, workspaces, worker starts (projects/useCliBridge.ts).
-  const cliBridge = useCliBridge({
-    activeDir, activeRef, agents, dropPane, keyOfHandle, openFile, ptys, removed, select,
-    setPanes, setRefresh, settingsRef, splitPane, startIn, termCreate, termRename, termSwitch
-  });
+  // A program's printed resume hint names its pane's session (terminal/useResumeHint.ts).
+  useResumeHint({ ptys, setPanes });
 
   const wizardState = useWizard({ setToast, agents, settings, startIn });
 
@@ -153,23 +146,20 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useEffect(() => setHooksOn(hooksOn(settings)), [settings]);
 
   // The screen in front, tab labels, the clock and full pages (chrome/useScreens.tsx).
-  const screenState = useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles });
-  const { terminals, now } = screenState;
+  const screenState = useScreens({ classic, hook, liveIds, panes, screen, settings, settingsOpen, titles });
+  const { terminals } = screenState;
   // The Inbox's sources and the sidebar rows' states (status/useStatusSurfaces.ts).
   const surfaces = useStatusSurfaces({ agentOf, hook, liveIds, panes, rowRef, running, settings, stamp, statusOf, titles });
   // The grid's cells, weights, dividers and the needs strip (terminal/paneGrid.ts).
   const grid = paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, setFocused, setPanes, setWeights, settings, stacked, statusOf, terminals, weights, zoom });
   const { cells, activeOf } = grid;
-  // The Agents rail and the pane chips (agents/useRailAndTower.ts).
-  const rail = useRailAndTower({
-    accountSwitcher, agentOf, agentSel, agents, context, now, panes, plan, running, settings,
-    stale, stamp, statusOf, turn
-  });
+  // The saved agent names on panes and the other accounts' usage figures (agents/useRailAndTower.ts).
+  const rail = useRailAndTower({ accountSwitcher, agents, panes });
   // Answers, the plan sheet and review notes (terminal/reviewActions.ts).
   const reviewA = reviewActions(state, w);
   const reviewPane = reviewing && panes.find((p) => p.key === reviewing.key);
-  // What is in view, and the layout report for the command line (terminal/useLayoutReport.ts).
-  const layoutReport = useLayoutReport({ activeDir, activeOf, cells, cliFailed, ptys, terminals, titles });
+  // What is in view, and the layout report the session tab inventory reads (terminal/useLayoutReport.ts).
+  const layoutReport = useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, titles });
   const { inView } = layoutReport;
   const { noticed, panesRef } = useAgentEvents({ panes, setPanes, titles, settings, inView, setToast, tabName, setCrew, setTurn, setStale, hookRef, setHook, stamp, setStamp, setContext, unreadPanes, setUnreadPanes, winFocused, markDir, muted: muteRef });
   useRestoredStatus({ panes, hookRef, setHook, setStale, setCrew, setTurn });
@@ -177,14 +167,13 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const sleep = useAgentSleep({ panes, setPanes, hook, stamp, setStamp, turn, running, setRunning: store.setRunning, inView, settings, restoredKeys: tail.restoredKeys, ptys, setToast }); // TERM-123 (T-817): agent sleep, only while its switch is on
   // STAT-044 / C26-R2-01: a clicked notification takes the same jump as the rail, the Inbox and the
   // needs-you key: the pane's workspace, the Terminals screen, its tab, the sidebar row scrolled to it,
-  // and it leaves Settings or a full page first, or the window would come forward onto the page the
-  // user already had open. The jump lives in a ref because the listener's deps are the pane list.
+  // and it leaves Settings first, or the window would come forward onto the page the user already had open. The jump lives in a ref because the listener's deps are the pane list.
   const jumpToPane = useRef((key: number) => { leavePage(); openPane(key); });
   jumpToPane.current = (key) => { leavePage(); openPane(key); };
   useNotificationClick(panesRef, jumpToPane);
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
-    ...state, ...plumb, ...chrome, ...start, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
+    ...state, ...plumb, ...chrome, ...start, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...wizardState,
     ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewPane, pendingLineup, panesRef,
   };
   Object.assign(w, bag);

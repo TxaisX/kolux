@@ -86,13 +86,12 @@ test("tabs without a program of their own (editor, seats) are not remembered", (
 });
 
 test("what a reopened tab runs is kept, what only belonged to the old session is not", () => {
-  const rec = closedRecord(pane(5, "G:\\a", { agentId: "claude", program: "claude", args: ["--x"], env: [["A", "b"]], title: "T", word: "claude", session: "s1", resumed: true, typed: "go", ask: "q", group: 4 }));
+  const rec = closedRecord(pane(5, "G:\\a", { agentId: "claude", program: "claude", args: ["--x"], env: [["A", "b"]], title: "T", word: "claude", session: "s1", resumed: true, typed: "go", group: 4 }));
   expect(rec).toMatchObject({ cwd: "G:\\a", agentId: "claude", program: "claude", args: ["--x"], env: [["A", "b"]], title: "T", word: "claude" });
   const back = paneFor(rec!, 12, 7);
   expect(back).toMatchObject({ key: 12, group: 7, agentId: "claude" });
   expect(back.session).toBeUndefined();
   expect(back.typed).toBeUndefined();
-  expect(back.ask).toBeUndefined();
 });
 
 test("the tab returns to the focused cell when it is in the same folder, else to a cell of its own", () => {

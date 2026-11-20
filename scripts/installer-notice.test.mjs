@@ -21,11 +21,14 @@ describe("installer Windows 10 notice", () => {
     expect(text).toContain('"${BUILD}" < 22000');
   });
 
-  it("T-789: the post-install hook adds the kolux command to the PATH only when this is not an update", () => {
-    // T-790: an install that retired the old identity (whose uninstaller took its bin off the PATH) puts the
-    // new one back; every other install goes through the T-789 rule.
-    expect(text).toMatch(/!macro NSIS_HOOK_POSTINSTALL[\s\S]*?\$\{If\} \$KoluxOldHadPath = 1\s+(?:;[^\n]*\n\s*)*!insertmacro KOLUX_PATH_ADD\s+\$\{Else\}\s+!insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE\s+\$\{EndIf\}\s+!macroend/);
-    expect(text).toMatch(/!macro KOLUX_PATH_ADD_UNLESS_UPDATE[\s\S]*?\$\{If\} \$R5 = 0\s+!insertmacro KOLUX_PATH_ADD\s+\$\{Else\}/);
+  it("the retired command line: install and uninstall take its PATH entry and files away and never add the bin folder", () => {
+    expect(text).toMatch(/!macro NSIS_HOOK_POSTINSTALL[\s\S]*?!insertmacro KOLUX_CLI_LEFTOVERS\s+!macroend/);
+    expect(text).toMatch(/!macro NSIS_HOOK_PREUNINSTALL\s+!insertmacro KOLUX_CLI_LEFTOVERS\s+!macroend/);
+    expect(text).toMatch(/!macro KOLUX_CLI_LEFTOVERS\s+!insertmacro KOLUX_PATH_REMOVE\s+Delete "\$INSTDIR\\bin\\kolux\.exe"\s+Delete "\$INSTDIR\\bin\\kolux\.cmd"\s+RMDir "\$INSTDIR\\bin"/);
+    const post = text.slice(text.indexOf("!macro NSIS_HOOK_POSTINSTALL"));
+    expect(post.slice(0, post.indexOf("!macroend"))).not.toContain("KOLUX_PATH_ADD");
+    // The app no longer answers --uninstall-path: run, it would open the window.
+    expect(text).not.toContain('${MAINBINARYNAME}.exe" --uninstall-path');
   });
 
   it.runIf(process.platform === "win32" && fs.existsSync(makensis))("decides from the build number and /UPDATE as the harness expects", () => {

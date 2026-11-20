@@ -39,8 +39,6 @@ export const sameProjects = sameProps<ProjectsProps>({
   allOff: "same",
   pass: "same",
   onRefresh: "same",
-  page: "same",
-  onPage: "same",
   refresh: "same",
   onIndex: "same",
   createRequest: "same",

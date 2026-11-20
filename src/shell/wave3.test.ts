@@ -39,8 +39,8 @@ test("F4: with one view the sidebar shows a Folders heading, not a lone tab", ()
   expect(panel).toMatch(/NOT_BUILT \? \(\s*<div className="sb-tabs" role="tablist">/);
 });
 
-test("F3: the top bar's Terminals switch closes a full page first", () => {
-  expect(topBar).toMatch(/onScreen=\{\(s\) => \{\s*if \(s === "terminals"\) setPage\(null\);/);
+test("F3: the top bar's switch shows the screen picked (no full page is left to close)", () => {
+  expect(topBar).toMatch(/onScreen=\{setScreen\}/);
 });
 
 test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Terminals' is its first row, and Enter keeps the Terminals screen (the Board is gone)", () => {

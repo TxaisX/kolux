@@ -6,7 +6,7 @@ mod scratch_root;
 
 use kolux_lib::git::Git;
 use kolux_lib::projects::{add_project, create_workspace, place_from, remove_check, remove_worktree, removal_refused};
-use kolux_lib::scm::{commit, discard_paths, remote, stage, status, summary, Change, Status};
+use kolux_lib::scm::{commit, remote, stage, status, Change, Status};
 use kolux_lib::state::Store;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -182,60 +182,6 @@ fn git002_box2_two_thousand_files_are_all_staged_with_no_error() {
 }
 
 #[test]
-fn git003_box1_discarding_an_untracked_file_removes_it_for_good() {
-    let d = scratch("g3b1");
-    let w = repo(&d, "w");
-    write(&w, "notes.txt", "scribble\n");
-    assert!(w.join("notes.txt").exists());
-    discard_paths(&w, &["notes.txt".to_string()]).unwrap();
-    assert!(!w.join("notes.txt").exists());
-    assert!(status(&w).unwrap().untracked.is_empty());
-    assert!(g(&w, &["log", "--all", "--format=%H", "--", "notes.txt"]).is_empty(), "no commit holds it: nothing to recover");
-    // A deleted tracked file comes back, a modified one loses its edits.
-    std::fs::remove_file(w.join("seed.txt")).unwrap();
-    discard_paths(&w, &["seed.txt".to_string()]).unwrap();
-    assert_eq!(std::fs::read_to_string(w.join("seed.txt")).unwrap(), "seed\n");
-    write(&w, "seed.txt", "edited\n");
-    discard_paths(&w, &["seed.txt".to_string()]).unwrap();
-    assert_eq!(std::fs::read_to_string(w.join("seed.txt")).unwrap(), "seed\n");
-}
-
-fn link(target: &Path, at: &Path) -> std::io::Result<()> {
-    #[cfg(windows)]
-    return if target.is_dir() { std::os::windows::fs::symlink_dir(target, at) } else { std::os::windows::fs::symlink_file(target, at) };
-    #[cfg(unix)]
-    return std::os::unix::fs::symlink(target, at);
-}
-
-#[test]
-fn git003_box3_discarding_a_changed_symbolic_link_leaves_the_file_beyond_the_repository_alone() {
-    let d = scratch("g3b3");
-    let w = repo(&d, "w");
-    g(&w, &["config", "core.symlinks", "true"]);
-    let (outside, other, outdir) = (d.join("outside.txt"), d.join("other.txt"), d.join("outdir"));
-    std::fs::write(&outside, "precious\n").unwrap();
-    std::fs::write(&other, "other\n").unwrap();
-    std::fs::create_dir_all(&outdir).unwrap();
-    std::fs::write(outdir.join("keep.txt"), "keep\n").unwrap();
-    link(&outside, &w.join("ln")).expect("SYMLINK-UNAVAILABLE: creating a symbolic link needs developer mode or elevation");
-    g(&w, &["add", "ln"]);
-    g(&w, &["commit", "-q", "-m", "link"]);
-    // Change the link: it now points at another file beyond the repository.
-    std::fs::remove_file(w.join("ln")).unwrap();
-    link(&other, &w.join("ln")).unwrap();
-    assert_eq!(status(&w).unwrap().changed.len(), 1, "the link shows as changed");
-    // An untracked link aimed at a folder beyond the repository.
-    link(&outdir, &w.join("dirlink")).unwrap();
-    discard_paths(&w, &["ln".to_string(), "dirlink".to_string()]).unwrap();
-    assert_eq!(std::fs::read_to_string(&outside).unwrap(), "precious\n");
-    assert_eq!(std::fs::read_to_string(&other).unwrap(), "other\n");
-    assert_eq!(std::fs::read_to_string(outdir.join("keep.txt")).unwrap(), "keep\n");
-    assert!(std::fs::symlink_metadata(w.join("dirlink")).is_err(), "the untracked link itself is gone");
-    let st = status(&w).unwrap();
-    assert!(st.changed.is_empty() && st.untracked.is_empty(), "the tracked link is back as committed");
-}
-
-#[test]
 fn git004_box1_staged_file_and_a_message_make_exactly_one_new_commit_and_a_clean_panel() {
     let d = scratch("g4b1");
     let w = repo(&d, "w");
@@ -333,32 +279,6 @@ fn git007_box1_two_local_commits_are_two_to_push_and_pushing_brings_the_counts_t
 }
 
 // ---- batch 2 (scratch root git11b) ----
-
-fn git016_state(w: &Path) -> Value {
-    json!({ "status": snapshot(&status(w).unwrap()), "summary": serde_json::to_value(summary(w, Some("main"), false).unwrap()).unwrap() })
-}
-
-#[test]
-fn git016_boxes_60_changed_files_and_a_clean_branch_feed_the_review_prompt_real_statuses() {
-    let _lock = STATES.lock().unwrap_or_else(|e| e.into_inner());
-    let d = scratch_in("git11b", "git016");
-    let (w, _bare) = with_origin(&d);
-    g(&w, &["checkout", "-q", "-b", "feature"]);
-    let clean = git016_state(&w);
-    assert_eq!(clean["summary"]["files"], 0);
-    assert!(paths(&status(&w).unwrap().changed).is_empty());
-    for i in 1..=60 {
-        write(&w, &format!("src/f{i}.ts"), "x
-");
-    }
-    let uncommitted = git016_state(&w);
-    assert_eq!(status(&w).unwrap().untracked.len(), 60);
-    g(&w, &["add", "."]);
-    g(&w, &["commit", "-q", "-m", "sixty"]);
-    let committed = git016_state(&w);
-    assert_eq!(committed["summary"]["files"], 60);
-    save_states("git016", json!({ "clean": clean, "uncommitted60": uncommitted, "committed60": committed }));
-}
 
 /// A project over a repo with a local bare origin, its profile store beside it (all under git11b).
 fn project_over(git: &Git, d: &Path) -> (Store, kolux_lib::projects::Project, PathBuf) {

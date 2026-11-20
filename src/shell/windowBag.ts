@@ -11,7 +11,6 @@ import type { LaunchActions } from "../launch/launchActions";
 import type { PaneActions } from "../terminal/paneActions";
 import type { ReviewActions } from "../terminal/reviewActions";
 import type { WorkspaceActions } from "../projects/useWorkspaces";
-import type { CliBridge } from "../projects/useCliBridge";
 import type { StatusSurfaces } from "../status/useStatusSurfaces";
 import type { PaneGrid } from "../terminal/paneGrid";
 import type { RailAndTower } from "../agents/useRailAndTower";
@@ -23,7 +22,7 @@ import type { useAgentSleep } from "../sleep/useAgentSleep";
 import type { Pane } from "../App";
 
 export type WindowBag = WindowState & WindowLate & WindowSave & Plumbing & WindowChrome & Screens & LaunchActions & PaneActions & ReviewActions &
-  WorkspaceActions & CliBridge & StatusSurfaces & PaneGrid & RailAndTower & LayoutReport & ReturnType<typeof useWizard> &
+  WorkspaceActions & StatusSurfaces & PaneGrid & RailAndTower & LayoutReport & ReturnType<typeof useWizard> &
   ReturnType<typeof useWindowStart> & Pick<ReturnType<typeof useAgentEvents>, "noticed"> & ReturnType<typeof useAgentSleep> & {
     /** SAFE-002: the pane whose plan the sheet shows. */
     reviewPane: Pane | null | undefined;

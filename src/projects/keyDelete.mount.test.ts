@@ -59,7 +59,7 @@ async function panel(workDir: string | null, renameRequest = 0, firstDelete = 0,
   const props = {
     openDirs: ["C:/w/app"], sessions: [], states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
     activeDir, workDir, onSelect: () => {}, onRemoved: () => {}, onRemovedAll: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
-    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
+    defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
     renameRequest, ...more,
   };

@@ -10,11 +10,8 @@ import { onlyWindowState } from "./settingsSync";
 // One name for every field in SECRET_KEYS (settingsSync.ts), so the note never says only "a stored key".
 const LABELS: Record<string, string> = {
   claudeOauthToken: "Claude 1-year key",
-  xaiApiKey: "xAI key",
   httpProxy: "proxy address",
-  minimaxCookie: "MiniMax cookie",
-  minimaxApiKey: "MiniMax key",
-  moonshotApiKey: "Moonshot key",
+  openrouterApiKey: "OpenRouter key",
 };
 
 /** The note's sentence for the cleared settings fields; null when there are none. */

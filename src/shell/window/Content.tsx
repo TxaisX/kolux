@@ -28,7 +28,7 @@ export const dropAtOpen = (s: StartSheet | null): StartSheet | null => (s?.atOpe
 export default function WindowContent() {
   const {
     sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
-    turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, openPane,
+    turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, openPane,
     settings, activeDir, shown, setCount, toast, notice, setNotice,
     panes, waiting, statusOf,
     standIns, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
@@ -52,7 +52,7 @@ export default function WindowContent() {
       <SignInNotice />
       <KeyLostNotice />
       <RecoveryMount />
-      {terminals && page === null && <ToolNotices projects={projects.map((p) => p.id).join(",")} />}
+      {terminals && <ToolNotices projects={projects.map((p) => p.id).join(",")} />}
       {terminals && reviewPane && reviewing && (
         <PlanSheet
           title={nameOf(names, reviewPane.cwd) ?? (reviewPane.cwd ? folderName(reviewPane.cwd) : tabName(reviewPane, titles))}
@@ -68,12 +68,8 @@ export default function WindowContent() {
           onClose={() => setReviewing(null)}
         />
       )}
-      {terminals && (
-        <>
-          {page === null && <LayoutStrip count={shown.length} onLayout={setCount} workspace={activeDir} />}
-        </>
-      )}
-      {terminals && page === null && waiting.length > 0 && (
+      {terminals && <LayoutStrip count={shown.length} onLayout={setCount} workspace={activeDir} />}
+      {terminals && waiting.length > 0 && (
         <div className="needs-strip" role="group" aria-label="Sessions that need you">
           {waiting.map((p) => (
             <button key={p.key} className="needs-chip" onClick={() => openPane(p.key)} title={VOCAB[statusOf(p)!].explain}>
@@ -84,7 +80,7 @@ export default function WindowContent() {
           ))}
         </div>
       )}
-      {terminals && page === null && standIns.length > 0 && (
+      {terminals && standIns.length > 0 && (
         // PROJ-020: a stand-in tab for each workspace Git is still making; it gives way to
         // the workspace's own tabs once it opens, and never pulls focus.
         <div className="tabs standins" role="tablist" aria-label="Workspaces being created">

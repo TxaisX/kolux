@@ -129,23 +129,19 @@ describe("the keep-awake card on the Agent statuses stop (FIX-1)", () => {
   });
 });
 
-describe("the GitHub card on the tasks and PR stops (FIX-1)", () => {
+describe("the GitHub card on the PR stop (FIX-1)", () => {
   test("draws without the settings, and says it is checking while the sign-in is still being read", async () => {
-    const card = (await draw("tasks", null)) as El;
+    const card = (await draw("pr", null)) as El;
     expect(card.props?.["data-connected"]).toBeNull();
     expect(JSON.stringify(card.props?.children)).toMatch(/Checking/);
   });
 });
 
-describe("the usage and skill stops hand over to their live cards (T-321-c)", () => {
-  test("usage draws the connected-accounts card; orchestration draws its own skill; others do not", async () => {
-    const { UsageStop, SkillStop } = await import("./LiveStopCards");
+describe("the usage stop hands over to its live card (T-321-c)", () => {
+  test("usage draws the connected-accounts card; others do not", async () => {
+    const { UsageStop } = await import("./LiveStopCards");
     expect((await draw("usage") as El).type).toBe(UsageStop);
-    for (const stop of ["orchestration"]) {
-      const el = (await draw(stop)) as El;
-      expect(el.type).toBe(SkillStop);
-      expect(el.props?.stop).toBe(stop);
-    }
+    expect(await draw("orchestration")).toBeNull();
     expect(await draw("workspaces")).toBeNull();
   });
 });

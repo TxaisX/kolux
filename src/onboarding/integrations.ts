@@ -1,13 +1,12 @@
-// ONB-018: the Connect integrations step. A review step (GitHub signed in and its token accepted)
-// and a task-source step that waits behind it. The rebuild keeps GitHub only (ONB-019 dropped the
-// other providers). Pure rules, so they are tested without a browser; IntegrationsPanel (in
-// StepPanels.tsx) draws them.
-/** One check's standing. "stale" is an answer from before the latest Re-check began: it is not trusted. */
+// ONB-018: the GitHub sign-in rules. A review step (GitHub signed in and its token accepted) and a
+// task-source step that waits behind it; Explore Kolux's tasks and pull-request stops read them
+// through taskSourceOf. The rebuild keeps GitHub only (ONB-019 dropped the other providers). Pure
+// rules, so they are tested without a browser.
+/** One check's standing. "stale" is an answer from before the latest check began: it is not trusted. */
 export type Check = "pending" | "ok" | "failed" | "stale";
 /** What was seen of GitHub: the account gh is signed in as (from gh's own config, no network), whether
  *  its token was accepted (a call to the API) and whether the tracker (the search budget) answered. */
 export type Seen = { account: string | null; token: Check; tracker: Check };
-export const UNSEEN: Seen = { account: null, token: "pending", tracker: "pending" };
 
 export type IntState = "active" | "waiting" | "done";
 export type Steps = { review: IntState; tasks: IntState; source: string | null; reviewNote: string | null; tasksNote: string | null };
@@ -39,17 +38,6 @@ export function integrationSteps(s: Seen): Steps {
     tasksNote: s.tracker === "failed" ? "GitHub's task search did not answer. Check again in a moment." : "Checking GitHub's task search...",
   };
 }
-
-/** The summary the folded task step shows. */
-export const taskSummary = (s: Steps, account: string | null): string | null =>
-  s.source ? `Tasks come from ${s.source}${account ? ` (${account})` : ""}` : null;
-
-/** Re-check begins: every answer so far is stale until the new one lands. */
-export const restale = (s: Seen): Seen => ({
-  account: s.account,
-  token: s.token === "pending" ? "pending" : "stale",
-  tracker: s.tracker === "pending" ? "pending" : "stale",
-});
 
 type Call = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
 export type Row = { name: string };
@@ -86,16 +74,15 @@ const good = (s: Seen) => s.account !== null && s.token === "ok" && s.tracker ==
 /** FIX-1: `readSeen` with a memory. A good read is answered from memory for a minute, so opening the guide, focusing
  *  the window or adding a project does not start gh (and a network round trip) every time. When a later read fails
  *  on the network the last good answer for the same account stands, so the sidebar ring does not dip while offline.
- *  A token GitHub turns down, a different account or a sign-out is never covered up. `force` (the Re-check button)
- *  always asks again and reports what it finds, but a good answer it gets is remembered.
+ *  A token GitHub turns down, a different account or a sign-out is never covered up. `force` always asks
+ *  again and reports what it finds, but a good answer it gets is remembered.
  *  FIX-2: only a good answer is held, and reads asked while one is running share it (a `force` read never joins an
  *  older one). The one gap left: a sign-out, a revoked token or an account switch (`gh auth switch`) inside the
- *  minute still reads as connected until the minute ends or Re-check is pressed.
+ *  minute still reads as connected until the minute ends or a `force` read is made.
  *  FIX-3: a read that was running when a newer one began is answered with the newer one's answer, in memory and for
  *  the caller alike, so a screen that shows what it gets (the guide, which asks without `force`) never lands on an
- *  older answer after the Integrations panel's Re-check showed a newer one. Every caller gets this from here, so none
- *  needs its own latest-wins counter. (StepPanels keeps its own `turn` counter for a different reason: it also ignores
- *  an answer that arrives after the panel was closed.)
+ *  older answer after a newer read showed a newer one. Every caller gets this from here, so none needs its own
+ *  latest-wins counter.
  *  Cost of re-reading a not-good answer: each such read runs gh once (an account lookup and one API call). It is bounded
  *  by who asks, not by a timer: window focus is floored at 30 s (sidebar.ts FOCUS_FLOOR_MS), guide close and project add
  *  are user actions, and reads asked while one is running share it. A short hold for not-good answers was left out on

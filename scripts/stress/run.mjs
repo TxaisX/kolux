@@ -23,7 +23,7 @@ const opt = (name, fallback) => {
 const want = (args.find((a) => /^(S(1[0-5]|[1-9])|all)$/i.test(a)) ?? "").toUpperCase();
 const opts = { root, port: Number(opt("port", "1440")), cdp: Number(opt("cdp", "9260")), temp: opt("temp", "G:/Temp/stress").replace(/\\/g, "/"), release: args.includes("--release"), skipBuild: args.includes("--skip-build") };
 
-const modules = { S1: "./s1-pane-churn.mjs", S2: "./s2-output-flood.mjs", S3: "./s3-many-projects.mjs", S4: "./s4-corrupt-state.mjs", S5: "./s5-hard-kill.mjs", S6: "./s6-unicode-ansi.mjs", S7: "./s7-editor-big-files.mjs", S8: "./s8-soak.mjs", S10: "./s10-git-load.mjs", S11: "./s11-footprint.mjs", S12: "./s12-everyday.mjs", S13: "./s13-agent-sleep.mjs", S14: "./s14-tab-move.mjs", S15: "./s15-host-memory.mjs" };
+const modules = { S1: "./s1-pane-churn.mjs", S2: "./s2-output-flood.mjs", S3: "./s3-many-projects.mjs", S4: "./s4-corrupt-state.mjs", S5: "./s5-hard-kill.mjs", S6: "./s6-unicode-ansi.mjs", S8: "./s8-soak.mjs", S10: "./s10-git-load.mjs", S11: "./s11-footprint.mjs", S12: "./s12-everyday.mjs", S13: "./s13-agent-sleep.mjs", S14: "./s14-tab-move.mjs", S15: "./s15-host-memory.mjs" };
 const list = want === "ALL" ? Object.keys(modules) : modules[want] ? [want] : null;
 if (!list) {
   console.error("usage: node scripts/stress/run.mjs <S1..S8|S10..S15|all> [--port 1440] [--cdp 9260] [--temp G:/Temp/stress] [--release [--skip-build]]");

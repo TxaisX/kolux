@@ -11,11 +11,9 @@ import { useChrome } from "../chrome/useChrome";
 import { useKeymap } from "../keys/KeymapContext";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { FIRST_PASS, defaultAgentId, offeredAgents, type AgentPass } from "../launch/agents";
-import { useTeamsHost, withTeams } from "../launch/teams";
-import type { Page } from "../projects/ProjectsPanel";
 import type { AgentState, RowInfo } from "../projects/rows";
 import { useWorkspaces } from "../projects/useWorkspaces";
-import { openPageAt, startScreen } from "../settings/general";
+import { startScreen } from "../settings/general";
 import type { SettingsTarget } from "../settings/pages";
 import { useAppSettings } from "../settings/useAppSettings";
 import { saveChanged } from "../settings/saveChanged";
@@ -65,10 +63,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const leftNow = useRef(sidebarOpen);
   leftNow.current = sidebarOpen;
   const setSidebarOpen = useCallback((v: boolean | ((shown: boolean) => boolean)) => setLeftState((leftNow.current = nextLeft(leftNow.current, v, isNarrow(), rightAside.current))), []);
-  // DT-17: Automations is a page of its own over the content column, opened from the sidebar;
-  // the grid stays mounted (hidden) behind it.
-  // SET-028: Model routing opens the same way until Settings > Agents exists.
-  const [page, setPage] = useState<Page | null>(() => openPageAt(initial)); // VIEW-011: the page open at quit
   // GIT-004: a half-written commit message per worktree, kept through closing the panel.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   // VIEW-056: the right sidebar's width while its edge is being dragged; saved when let go.
@@ -128,7 +122,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   }, [panes, setNeeds]);
   const rowRef = useRef<Record<string, RowInfo>>({}); // PROJ-063: each folder's last row state, to keep its `changed` time
   const ptys = useRef<Record<number, number>>({}); // TERM-045: each pane's session id
-  const cliFailed = useRef<Record<string, string>>({}); // CLI-026: command-line requests the window could not open
   const [asking, setAsking] = useState<{ keys: number[]; title: string; body: string; confirm?: string } | null>(null);
   // TERM-046: pinned tab keys live in window state, like the strip order (terminal/pin.ts).
   const [pinned, setPinned] = useState<Set<number>>(() => marksOf(layout?.panes ?? []).pinned); // after-list #100: saved with the layout
@@ -174,8 +167,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // Start form (2026-11-15): the sheet also holds the ticked folders and whether it is the ask at app open.
   const [sheet, setSheet] = useState<StartSheet | null>(null);
   // SET-027: everywhere but Settings, only agents that are switched on are offered.
-  const teamsHost = useTeamsHost();
-  const agents = useMemo(() => withTeams(offeredAgents(allAgents, settings), settings, teamsHost), [allAgents, settings, teamsHost]);
+  const agents = useMemo(() => offeredAgents(allAgents, settings), [allAgents, settings]);
   const defaultId = defaultAgentId(settings);
   const installedIds = agents.filter((a) => a.installed).map((a) => a.id);
   const [renameRequest, setRenameRequest] = useState(0); // T-611: workspace.rename (PROJ-059) asks the sidebar to rename the workspace in front
@@ -242,14 +234,14 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const { setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, settingsAt, setSettingsAt, expanded,
-    setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, dragWidth,
+    setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, drafts, setDrafts, dragWidth,
     setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, workDir,
     worktreeMenu, setWorktreeMenu, setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,
-    hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, cliFailed, asking, setAsking, pinned, setPinned,
+    hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, asking, setAsking, pinned, setPinned,
     switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
-    settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents,
+    settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, agents,
     defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, projectsRead, layoutIn, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
     setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,

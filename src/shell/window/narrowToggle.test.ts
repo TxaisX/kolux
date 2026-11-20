@@ -41,8 +41,8 @@ test("T-705: a resize across 900 px flips the left toggle's aria-pressed with th
   const noop = () => {};
   // The right sidebar shows, so under 900 px the left one steps aside (styles.css, T-699).
   const bag = {
-    settings: {}, screen: "terminals", setScreen: noop, needing: 0, classic: false, leftWidth: 289, terminals: true, page: null,
-    setPage: noop, setPalette: noop, installedIds: [], codex: { accounts: [] }, sidebarOpen: true, setSidebarOpen: noop,
+    settings: {}, screen: "terminals", setScreen: noop, needing: 0, classic: false, leftWidth: 289, terminals: true,
+    setPalette: noop, installedIds: [], codex: { accounts: [] }, sidebarOpen: true, setSidebarOpen: noop,
     focused: null, fullPage: false, right: { open: true, tab: "files" }, saveRight: noop, showRight: noop, step: noop,
     hist: { at: 0, list: [] }, stillThere: () => true, settingsOpen: false, setNotice: noop, rightAside: { current: { shown: true } },
   } as unknown as WindowBag;

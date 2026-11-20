@@ -2,15 +2,16 @@
 //! refused as text, before any filesystem call, so Windows never offers the user's credentials to
 //! that host; a file link aimed at a program, script, installer or shortcut is revealed in its
 //! folder instead of run. EDIT-045: `fence` guards every command that takes a path from the
-//! interface: inside a registered root (or granted exactly, through `file_grant`), never out
-//! through a link; `open_path` is the one door for handing a file to the system. SESS-039:
-//! `editor_open` opens a worktree folder (fenced the same way) in an outside editor.
+//! interface: inside a registered root, never out through a link; `open_path`
+//! is the one door for handing a file to the system. SESS-039: `editor_open` opens a worktree
+//! folder (fenced the same way) in an outside editor.
+//! `open_external` hands a clean web or mail link to the system's own handler.
 //!
 //! ponytail: there are no terminal or note links yet; when they land they call `open_path` and
 //! need nothing of their own. On Linux a reveal opens the folder without selecting the file; the
 //! FileManager1 D-Bus call would select it.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -89,9 +90,81 @@ fn admit_browser_open_at(limit: &Mutex<OpenLimit>, clock: &dyn Clock) -> Result<
     l.admit(clock).map_err(|wait| format!("Too many links were opened in a row. Try again in {} seconds.", wait.as_secs() + u64::from(wait.subsec_nanos() > 0)))
 }
 
-/// The one gate every open in the default browser passes (artifacts::open_external).
+/// The one gate every open in the default browser passes (open_external).
 pub fn admit_browser_open() -> Result<(), String> {
     admit_browser_open_at(&BROWSER_OPENS, &RunClock)
+}
+
+/// Milliseconds since 1970 by the system clock; 0 when the clock is set before 1970.
+pub fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// The address `open_external` opens: a clean http, https or mailto link, in its parsed form. A control
+/// character (the parser would quietly drop a tab or newline) or a double quote is refused before parsing.
+fn external_url(url: &str) -> Result<String, String> {
+    if url.chars().any(|c| c.is_control() || c == '"') {
+        return Err("That link holds a character Kolux never opens".into());
+    }
+    let not_a_link = || format!("{url} is not a web or mail link");
+    let parsed = tauri::Url::parse(url).map_err(|_| not_a_link())?;
+    match parsed.scheme() {
+        "http" | "https" if parsed.host_str().is_some() => {}
+        "mailto" => {}
+        _ => return Err(not_a_link()),
+    }
+    let mut parsed = parsed;
+    if parsed.scheme() == "mailto" {
+        // The address list only: a ?body=, ?cc= or ?attach= is the page's text, not what the user was shown.
+        parsed.set_query(None);
+        parsed.set_fragment(None);
+    }
+    Ok(parsed.as_str().to_string())
+}
+
+/// Opens a web or mail link in the system's own handler; nothing else is let through, and no more than a
+/// handful in a row (admit_browser_open). The command runs on a worker, never the window's thread.
+#[tauri::command(async)]
+pub fn open_external(url: String) -> Result<(), String> {
+    let url = external_url(&url)?;
+    admit_browser_open()?;
+    system_open(&url)
+}
+
+/// Hands `url` (a link or a full file path) to the system's own handler. Callers check it first:
+/// `open_external` lets only web and mail links through, `open_path` reveals programs.
+pub(crate) fn system_open(url: &str) -> Result<(), String> {
+    if url.contains('\0') {
+        return Err("That path holds a control character; Kolux never opens it".into());
+    }
+    #[cfg(windows)]
+    {
+        let wide = |s: &str| s.encode_utf16().chain([0]).collect::<Vec<u16>>();
+        let (verb, file) = (wide("open"), wide(url));
+        use windows_sys::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE};
+        // FIX-5 (council P2 P12): ShellExecute may hand the link to shell extensions that use COM, so
+        // the calling thread joins COM for the call (the documented way) and leaves it again after.
+        // A negative result (the thread already joined another way) means nothing to undo.
+        // SAFETY: NUL-terminated wide strings that live across the call; every successful
+        // CoInitializeEx is matched by one CoUninitialize on this thread.
+        let r = unsafe {
+            let com = CoInitializeEx(std::ptr::null(), (COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) as u32);
+            let r = windows_sys::Win32::UI::Shell::ShellExecuteW(std::ptr::null_mut(), verb.as_ptr(), file.as_ptr(), std::ptr::null(), std::ptr::null(), 1);
+            if com >= 0 {
+                CoUninitialize();
+            }
+            r
+        };
+        if (r as isize) <= 32 {
+            return Err(format!("Windows could not open {url}"));
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        crate::winproc::command(opener).arg(url).spawn().map(|_| ()).map_err(|e| format!("could not open {url}: {e}"))
+    }
 }
 
 /// Every registered root: the projects, a project's own workspaces folder, and the shared one.
@@ -163,6 +236,13 @@ pub fn host_path(text: &str, roots: &[String]) -> bool {
     })
 }
 
+/// A path on a WSL share (`\\wsl$\`, `\\wsl.localhost\`, or the long-path form of either), judged
+/// from the spelling alone.
+pub fn is_wsl(p: &Path) -> bool {
+    let s = p.to_string_lossy().replace('/', "\\").to_lowercase();
+    s.starts_with("\\\\wsl$\\") || s.starts_with("\\\\wsl.localhost\\") || s.starts_with("\\\\?\\unc\\wsl$\\") || s.starts_with("\\\\?\\unc\\wsl.localhost\\")
+}
+
 /// Backslashes throughout, the NT object prefix `\??\` written as `\\?\` (council FS1, FIX-2), and
 /// the `/c:/x` a file URL yields turned into `c:\x`.
 fn windows_form(path: &str) -> String {
@@ -206,16 +286,6 @@ fn decode(s: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
-}
-
-/// EDIT-045: paths allowed one at a time for this run, each exactly as granted, nothing beneath it.
-#[derive(Default)]
-pub struct Grants(pub Mutex<HashSet<String>>);
-
-impl Grants {
-    pub fn snapshot(&self) -> HashSet<String> {
-        self.0.lock().unwrap_or_else(|e| e.into_inner()).clone()
-    }
 }
 
 /// One spelling for comparing paths: Windows folds slashes and case, POSIX keeps both.
@@ -269,11 +339,10 @@ fn plain(p: PathBuf) -> String {
 }
 
 /// EDIT-045: the file fence. `path` must be a full path on this machine inside one of `roots`
-/// (the projects, their workspaces folders and the shared one), or granted exactly; a `..` step is
-/// refused as text. With `follow`, the place the path really leads to (every link resolved) must
-/// still be inside a root, so a link out of a project is refused for reading, writing and listing;
-/// without it the entry itself is acted on (rename, trash, move), so only its folder must be inside.
-pub fn fence(path: &str, roots: &[String], grants: &HashSet<String>, follow: bool) -> Result<PathBuf, String> {
+/// (the projects, their workspaces folders and the shared one); a `..` step is refused as text. The
+/// place the path really leads to (every link resolved) must still be inside a root, so a link out of
+/// a project is refused.
+pub fn fence(path: &str, roots: &[String]) -> Result<PathBuf, String> {
     refuse_host(path, roots)?;
     let p = Path::new(path);
     if !p.is_absolute() {
@@ -282,33 +351,14 @@ pub fn fence(path: &str, roots: &[String], grants: &HashSet<String>, follow: boo
     if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
         return Err(format!("{path} climbs out with ..; Kolux reads and writes only inside your projects"));
     }
-    let key = fence_key(path);
-    if grants.contains(&key) {
-        return Ok(p.to_path_buf());
-    }
-    if !under(&key, roots) {
+    if !under(&fence_key(path), roots) {
         return Err(format!("{path} is outside your projects; Kolux reads and writes only inside them"));
     }
-    let probe = if follow { p } else { p.parent().unwrap_or(p) };
     let real_roots: Vec<String> = roots.iter().map(|r| plain(real(Path::new(r)))).collect();
-    if !under(&fence_key(&plain(real(probe))), &real_roots) {
+    if !under(&fence_key(&plain(real(p))), &real_roots) {
         return Err(format!("{path} leads outside your projects through a link"));
     }
     Ok(p.to_path_buf())
-}
-
-/// EDIT-045: allows `path` for this run, that exact path and nothing beneath it.
-#[tauri::command]
-pub fn file_grant(store: tauri::State<'_, Mutex<crate::state::Store>>, grants: tauri::State<'_, Grants>, fence: tauri::State<'_, crate::fence::Fence>, path: String) -> Result<(), String> {
-    refuse_host(&path, &roots(&store))?;
-    if !Path::new(&path).is_absolute() {
-        return Err(format!("{path} is not a full path"));
-    }
-    grants.0.lock().unwrap_or_else(|e| e.into_inner()).insert(fence_key(&path));
-    // The editor reads and saves through ACCT-055's fence, so a file is granted there too; a
-    // folder or a missing file is not (that fence grants only existing files).
-    let _ = fence.grant(Path::new(&path), &store.lock().unwrap_or_else(|e| e.into_inner()));
-    Ok(())
 }
 
 /// SAFE-022: a file name of a type that runs when opened. On Windows an alternate-data-stream
@@ -404,7 +454,7 @@ pub async fn open_path(store: tauri::State<'_, Mutex<crate::state::Store>>, path
     // A slow file association never freezes the window; only an existing file is handed over.
     tauri::async_runtime::spawn_blocking(move || match open_choice(&path)? {
         OpenChoice::Reveal => reveal(Path::new(&path)).map(|_| "revealed"),
-        OpenChoice::Open => crate::artifacts::system_open(&path).map(|_| "opened"),
+        OpenChoice::Open => system_open(&path).map(|_| "opened"),
     })
     .await
     .map_err(|e| e.to_string())?
@@ -467,8 +517,8 @@ pub fn spawn_editor(plan: &EditorPlan) -> Result<std::process::Child, String> {
 /// Answers the editor's name.
 // T-304: registered by the coordinator's lib.rs hunk; unused until then.
 #[tauri::command]
-pub async fn editor_open(store: tauri::State<'_, Mutex<crate::state::Store>>, grants: tauri::State<'_, Grants>, editor: String, dir: String) -> Result<String, String> {
-    let folder = fence(&dir, &roots(&store), &grants.snapshot(), true)?;
+pub async fn editor_open(store: tauri::State<'_, Mutex<crate::state::Store>>, editor: String, dir: String) -> Result<String, String> {
+    let folder = fence(&dir, &roots(&store))?;
     if !folder.is_dir() {
         return Err(format!("{dir} is not a folder"));
     }
@@ -485,6 +535,23 @@ pub async fn editor_open(store: tauri::State<'_, Mutex<crate::state::Store>>, gr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn open_external_lets_through_only_clean_web_and_mail_links() {
+        assert_eq!(external_url("https://example.com/a?b=1").unwrap(), "https://example.com/a?b=1");
+        assert_eq!(external_url("HTTP://Example.com").unwrap(), "http://example.com/", "the parsed form is what is opened");
+        assert_eq!(external_url("mailto:me@example.com").unwrap(), "mailto:me@example.com");
+        for bad in ["file:///C:/Windows/notepad.exe", "javascript:alert(1)", "ms-msdt:/id", "https://example.com/\"quoted", "https://exa\tmple.com/", "https://example.com/\nx", "https://example.com/\0", "not a url", "", "https://"] {
+            assert!(external_url(bad).is_err(), "{bad:?} must be refused");
+        }
+    }
+
+    #[test]
+    fn a_mail_link_loses_its_query_when_it_is_opened() {
+        assert_eq!(external_url("mailto:a@example.com?body=hi&attach=C:/secrets.txt").unwrap(), "mailto:a@example.com");
+        assert_eq!(external_url("mailto:a@example.com,b@example.com?cc=c@example.com#frag").unwrap(), "mailto:a@example.com,b@example.com");
+        assert_eq!(external_url("https://example.com/a?b=1#c").unwrap(), "https://example.com/a?b=1#c", "web links keep their query");
+    }
 
     struct FakeClock(std::cell::Cell<Duration>);
     impl FakeClock {
@@ -698,7 +765,7 @@ mod tests {
     }
 
     #[test]
-    fn edit045_file_access_stays_inside_the_roots_and_a_link_out_is_refused_unless_granted_exactly() {
+    fn edit045_file_access_stays_inside_the_roots_and_a_link_out_is_refused() {
         let base = std::env::temp_dir().join(format!("krs-fence-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let root = base.join("project");
@@ -718,32 +785,23 @@ mod tests {
         link("inner", &root.join("src/a.rs"));
         let roots = vec![root.to_string_lossy().into_owned()];
         let s = |p: &Path| p.to_string_lossy().into_owned();
-        let none = std::collections::HashSet::new();
         // Inside: an existing file, a file not yet written, a link that stays inside.
-        assert!(fence(&s(&root.join("src/a.rs")), &roots, &none, true).is_ok());
-        assert!(fence(&s(&root.join("src/new.rs")), &roots, &none, true).is_ok());
-        assert!(fence(&s(&root.join("inner")), &roots, &none, true).is_ok());
-        assert!(fence(&s(&root), &roots, &none, true).is_ok(), "the root itself");
+        assert!(fence(&s(&root.join("src/a.rs")), &roots).is_ok());
+        assert!(fence(&s(&root.join("src/new.rs")), &roots).is_ok());
+        assert!(fence(&s(&root.join("inner")), &roots).is_ok());
+        assert!(fence(&s(&root), &roots).is_ok(), "the root itself");
         // Outside: refused before the disk is touched, and a climb out of the root too.
-        let err = fence(&s(&outside.join("secret.txt")), &roots, &none, true).unwrap_err();
+        let err = fence(&s(&outside.join("secret.txt")), &roots).unwrap_err();
         assert!(err.contains("outside your projects"), "{err}");
-        assert!(fence(&s(&root.join("..").join("outside").join("secret.txt")), &roots, &none, true).is_err(), "a .. step out");
-        assert!(fence(&s(&base.join("project-two")), &roots, &none, true).is_err(), "a sibling that merely starts with the root's name");
-        assert!(fence("src/a.rs", &roots, &none, true).unwrap_err().contains("not a full path"));
-        // A link that leads out: refused when followed, fine when the entry itself is acted on.
-        let err = fence(&s(&root.join("escape")), &roots, &none, true).unwrap_err();
+        assert!(fence(&s(&outside.join("deep")), &roots).is_err());
+        assert!(fence(&s(&root.join("..").join("outside").join("secret.txt")), &roots).is_err(), "a .. step out");
+        assert!(fence(&s(&base.join("project-two")), &roots).is_err(), "a sibling that merely starts with the root's name");
+        assert!(fence("src/a.rs", &roots).unwrap_err().contains("not a full path"));
+        // A link that leads out is refused.
+        let err = fence(&s(&root.join("escape")), &roots).unwrap_err();
         assert!(err.contains("through a link"), "{err}");
-        assert!(fence(&s(&root.join("escape")), &roots, &none, false).is_ok(), "renaming or trashing the link itself");
-        // A grant covers that exact path and nothing beneath it.
-        let mut granted = std::collections::HashSet::new();
-        granted.insert(fence_key(&s(&outside.join("deep"))));
-        granted.insert(fence_key(&s(&root.join("escape"))));
-        assert!(fence(&s(&outside.join("deep")), &roots, &granted, true).is_ok());
-        assert!(fence(&s(&outside.join("deep/inner.txt")), &roots, &granted, true).is_err(), "nothing beneath a granted path");
-        assert!(fence(&s(&root.join("escape")), &roots, &granted, true).is_ok(), "the link itself granted");
-        // Hosts stay refused as text, grant or not.
-        granted.insert(fence_key("\\\\kolux-no-such-host\\share\\x.txt"));
-        assert!(fence("\\\\kolux-no-such-host\\share\\x.txt", &roots, &granted, true).unwrap_err().contains("another computer"));
+        // Hosts are refused as text.
+        assert!(fence("\\\\kolux-no-such-host\\share\\x.txt", &roots).unwrap_err().contains("another computer"));
         let _ = std::fs::remove_dir_all(&base);
     }
 
@@ -812,5 +870,12 @@ mod tests {
         std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(launchable(&f));
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn wsl_shares_are_known() {
+        assert!(is_wsl(Path::new(r"\\wsl$\Ubuntu\home\a")));
+        assert!(is_wsl(Path::new(r"\\wsl.localhost\Ubuntu\x")));
+        assert!(!is_wsl(Path::new(r"C:\wsl$\x")));
     }
 }

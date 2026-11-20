@@ -22,8 +22,6 @@ pub struct Fence {
     grants: Mutex<VecDeque<PathBuf>>,
     /// When it was read, `git::worktree_changes()` then, and the worktree folders.
     trees: Mutex<Option<(Instant, u64, Vec<PathBuf>)>>,
-    /// The paths of the latest drop from outside Kolux: the Explorer may copy these in.
-    drop: Mutex<Vec<PathBuf>>,
 }
 
 /// A file that may be granted: on this computer, not a folder and not a drive root.
@@ -169,32 +167,6 @@ impl Fence {
         store.set(KEY_GRANTS, &list).map_err(|e| GrantError::SaveFailed(e.to_string()))
     }
 
-    /// Notes the paths of a drop from outside Kolux, in place of the last drop's.
-    pub fn dropped(&self, paths: &[PathBuf]) {
-        let real = paths.iter().filter(|p| !is_share(p) && on_a_drive(p)).filter_map(|p| p.canonicalize().ok()).filter(|p| !is_share(p) && !is_drive_root(p)).collect();
-        if let Ok(mut d) = self.drop.lock() {
-            *d = real;
-        }
-    }
-
-    /// Whether `path` is one of the latest drop's paths.
-    pub fn was_dropped(&self, path: &Path) -> bool {
-        !is_share(path) && on_a_drive(path) && path.canonicalize().is_ok_and(|r| self.drop.lock().is_ok_and(|d| d.contains(&r)))
-    }
-
-    /// EDIT-034 copy: a source inside the fence, or one the user just dropped in from outside.
-    pub fn allow_source(&self, path: &str, store: &Mutex<Store>, git: &Git) -> Result<PathBuf, String> {
-        if self.was_dropped(Path::new(path)) {
-            return Ok(PathBuf::from(path));
-        }
-        self.allow(path, store, git, false)
-    }
-
-    /// Every one of `paths` inside the fence (projects, worktrees), or the first refusal.
-    pub fn allow_all<'a>(&self, paths: impl IntoIterator<Item = &'a String>, store: &Mutex<Store>, git: &Git) -> Result<(), String> {
-        paths.into_iter().try_for_each(|p| self.allow(p, store, git, false).map(drop))
-    }
-
     /// `check` against the projects in the store, then, on a miss, their worktrees too.
     pub fn allow(&self, path: &str, store: &Mutex<Store>, git: &Git, exact: bool) -> Result<PathBuf, String> {
         let projects = crate::projects::load_projects(&*store.lock().map_err(|e| e.to_string())?);
@@ -307,10 +279,8 @@ mod tests {
         let plain = t.0.join("project/src/a.txt");
         assert!(on_a_drive(&plain) && on_a_drive(&plain.canonicalize().unwrap()));
         assert!(check(&plain, &roots, &[], true).is_ok());
-        // the other doors that take a page's path: a drop and a grant never accept one either
+        // the other door that takes a page's path: a grant never accepts one either
         let f = Fence::default();
-        f.dropped(&[PathBuf::from(r"\??\C:\Windows\win.ini")]);
-        assert!(!f.was_dropped(Path::new(r"\??\C:\Windows\win.ini")));
         let store = Store::open(&t.0.join("data")).unwrap();
         assert!(f.grant(Path::new(r"\??\UNC\kolux-none.invalid\share\p.txt"), &store).is_err());
     }
@@ -396,20 +366,6 @@ mod tests {
         assert_eq!(kept, vec![picked.canonicalize().unwrap()], "the picked file, in the form a request is checked in");
         store.lock().unwrap().set(KEY_GRANTS, "not json").unwrap();
         assert!(Fence::load(&store).grants.lock().unwrap().is_empty(), "a damaged list grants nothing");
-    }
-
-    #[test]
-    fn acct_055_only_the_files_of_the_latest_drop_may_be_copied_in_from_outside() {
-        let t = temp("drop");
-        let f = Fence::default();
-        let (picked, other) = (t.0.join("outside/picked.txt"), t.0.join("outside/other.txt"));
-        assert!(!f.was_dropped(&picked));
-        f.dropped(std::slice::from_ref(&picked));
-        assert!(f.was_dropped(&picked) && !f.was_dropped(&other), "a file next to a dropped one is not");
-        f.dropped(std::slice::from_ref(&other));
-        assert!(!f.was_dropped(&picked) && f.was_dropped(&other), "a new drop replaces the last one");
-        f.dropped(&[PathBuf::from(r"\\server\share\x.txt")]);
-        assert!(!f.was_dropped(Path::new(r"\\server\share\x.txt")), "never from a share");
     }
 
     #[cfg(windows)]
