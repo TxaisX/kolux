@@ -21,6 +21,16 @@ describe("release version (APP-059)", () => {
     expect(nextVersion("0.3.0", "v0.2.9")).toBe("0.3.1"); // a version-bump commit wins
     expect(() => nextVersion("one", null)).toThrow(/x\.y\.z/);
   });
+  it("--version names the release exactly, only above the newest one", () => {
+    expect(nextVersion("0.1.0", "v0.1.18", "0.2.0")).toBe("0.2.0");
+    expect(nextVersion("0.1.0", null, "v1.0.0")).toBe("1.0.0");
+    expect(nextVersion("0.3.0", "v0.1.18", "0.2.0")).toBe("0.2.0"); // the project's own version does not matter then
+    expect(() => nextVersion("0.1.0", "v0.2.0", "0.2.0")).toThrow(/not above the newest release v0\.2\.0/);
+    expect(() => nextVersion("0.1.0", "v0.1.18", "0.1.5")).toThrow(/not above/);
+    expect(() => nextVersion("0.1.0", "v0.1.18", "0.2")).toThrow(/is not x\.y\.z/);
+    expect(() => nextVersion("0.1.0", "v0.1.18", "")).toThrow(/is not x\.y\.z/);
+    expect(nextVersion("0.1.0", "v0.1.18", null)).toBe("0.1.19"); // no --version: the next patch, as before
+  });
   it("picks the newest rehearsal folder by number, not by text", () => {
     expect(newestTag(["v0.1.9", "v0.1.10", "latest.json", "v0.1.2"])).toBe("v0.1.10");
     expect(newestTag(["latest.json"])).toBeNull();
