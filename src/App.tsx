@@ -159,7 +159,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const reviewA = reviewActions(state, w);
   const reviewPane = reviewing && panes.find((p) => p.key === reviewing.key);
   // What is in view, and the layout report the session tab inventory reads (terminal/useLayoutReport.ts).
-  const layoutReport = useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, titles });
+  const layoutReport = useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, titles, zoomed: grid.zoomed });
   const { inView } = layoutReport;
   const { noticed, panesRef } = useAgentEvents({ panes, setPanes, titles, settings, inView, setToast, tabName, setCrew, setTurn, setStale, hookRef, setHook, stamp, setStamp, setContext, unreadPanes, setUnreadPanes, winFocused, markDir, muted: muteRef });
   useRestoredStatus({ panes, hookRef, setHook, setStale, setCrew, setTurn });

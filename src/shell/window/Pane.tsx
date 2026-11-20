@@ -142,13 +142,13 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     noticeSecondary: () => noticeFor(p)?.onSecondary?.(),
   });
   if (p.kind === "check" && p.check && p.cwd) {
-    return <CheckPane key={p.key} id={p.key} check={p.check} cwd={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenFile={openFile} onToast={setToast} />;
+    return <CheckPane key={p.key} id={p.key} check={p.check} cwd={p.cwd} hidden={hidden} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenFile={openFile} onToast={setToast} />;
   }
   if (p.seats) {
     return <SeatChooser pane={p as Pane & { seats: NonNullable<Pane["seats"]> }} hidden={hidden} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   }
   // A restored tab that kept its kind but lost its data is a placeholder, never a live terminal (UX lane A, shell.md row 12).
-  if (p.kind) return <LostPane kind={p.kind} hidden={!terminals || p.key !== active} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
+  if (p.kind) return <LostPane kind={p.kind} hidden={hidden} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
   if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={hidden} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
   const notice = noticeFor(p);

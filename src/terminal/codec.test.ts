@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane } from "./codec";
+import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, holdsBeforeBind } from "./codec";
 
 test("base64 output chunks decode to the exact PTY bytes, including a split multi-byte character", () => {
   // "é" is C3 A9 in UTF-8; the Rust side may cut a chunk between the two bytes.
@@ -50,4 +50,12 @@ test("chunkLength counts base64 bytes exactly for padding 0, 1 and 2 and the emp
   for (const text of ["", "a", "ab", "abc", "abcd", "hello world"]) {
     expect(chunkLength({ data: btoa(text) } as never)).toBe(text.length);
   }
+});
+
+test("FT-5: before the id is known, the early queue holds this pane's chunks and untagged ones only", () => {
+  expect(holdsBeforeBind({ pane: 3 }, 3)).toBe(true);
+  expect(holdsBeforeBind({ pane: null }, 3)).toBe(true);
+  expect(holdsBeforeBind({}, 3)).toBe(true);
+  expect(holdsBeforeBind({ pane: 4 }, 3)).toBe(false);
+  expect(holdsBeforeBind({ pane: 4 }, undefined)).toBe(false);
 });

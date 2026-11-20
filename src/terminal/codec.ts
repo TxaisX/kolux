@@ -63,6 +63,10 @@ export type OutputEvent = { id: number; data?: string; bytes?: Uint8Array; pane?
 export function forPane(e: { id: number; pane?: number | null }, id: number | null, key: number | undefined): boolean {
   return id === null ? key !== undefined && e.pane === key : e.id === id;
 }
+/** FT-5 (review 0.2.0): before a pane's id is known, its early queue holds only chunks tagged with this pane or untagged ones. */
+export function holdsBeforeBind(e: { pane?: number | null }, key: number | undefined): boolean {
+  return e.pane == null || e.pane === key;
+}
 export type ExitEvent = { id: number; code: number | null; outcome?: "exited" | "unverifiable" };
 
 // What the pane header says once the program is gone. ORCH-057: an end Kolux could not confirm says so.

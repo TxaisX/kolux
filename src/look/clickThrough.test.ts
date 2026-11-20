@@ -1,12 +1,12 @@
 // FIX-1 (council review of 87f3fd67, items 4-7): click-through tests for the controls T-266, T-268 and
-// T-270 drew. There is no DOM environment, so clickTree.ts walks each component's elements and fires
+// T-270 drew. There is no DOM environment, so test/clickTree.ts walks each component's elements and fires
 // the same handlers a click or edit reaches, against a small settings store that behaves like the app's
 // (one key per sidebar save, a whole patch per Settings save).
 import { createElement } from "react";
 import { expect, test } from "vitest";
 import { PIN_COPIES_SETTING } from "../projects/rows";
 import { readAppearance } from "../theme";
-import { byLabel, byTag, change, click, hosts, textOf } from "./clickTree";
+import { byLabel, byTag, change, click, hosts, textOf } from "../test/clickTree";
 import { CardDetailsChooser } from "./CardDetailsChooser";
 import { CARD_DENSITY_FIELD, CARD_DETAILS_FIELD, readCardDetails } from "./cards";
 import { HeaderColourPicker, HeaderSwatches } from "./HeaderBadge";

@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { chipOf, forget, hooksMuted, needsAttention, needsYou, paneAgent, paneStatus, promptReturned, ringsBell, type Lane } from "./chip";
 import { IDLE, reduceIdentity, type Identity } from "../terminal/shellMarks";
 import type { Agent } from "../chrome/VendorMark";
-import { windowSource as app } from "../shell/windowSource";
+import { windowSource as app } from "../test/windowSource";
 import type { AgentState } from "../projects/rows";
 import { tabBadge, waitingInGrid } from "../terminal/tabs";
 import { headerOf, needsYouCount, nextNeedsYou } from "../terminal/status";

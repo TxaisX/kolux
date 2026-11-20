@@ -4,7 +4,7 @@ import { CREDIT_NAMES, creditedAgent, creditedProgram, markFor, paneMark, progra
 import { markFor as markForViaMenu } from "./PlusMenu";
 import rustSource from "../../src-tauri/src/agents.rs?raw";
 import toolsSource from "../../src-tauri/src/tools.rs?raw";
-import { windowSource as appSource } from "../shell/windowSource";
+import { windowSource as appSource } from "../test/windowSource";
 
 const rust = rustSource.replace(/\r/g, "");
 const tools = toolsSource.replace(/\r/g, "");

@@ -10,7 +10,7 @@ import ts from "typescript6";
 import { renderToString } from "react-dom/server";
 import { createElement } from "react";
 import { BANNED, GLOSSARY, jargon, CONNECT } from "./glossary";
-import { windowFiles } from "./shell/windowSource";
+import { windowFiles } from "./test/windowSource";
 import { AddProjectView } from "./projects/AddProject";
 import StartGit from "./projects/StartGit";
 
@@ -43,7 +43,7 @@ const BASE_SCREENS = import.meta.glob(
   ],
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
-/** Cycle 3: the window's own files come from shell/windowSource.ts, which reads the shell/window folder whole
+/** Cycle 3: the window's own files come from test/windowSource.ts, which reads the shell/window folder whole
  *  (so a new surface module is scanned by existing) and the window's outside files from one checked list. */
 const SOURCES = { ...windowFiles, ...BASE_SCREENS };
 const SCREENS = Object.keys(SOURCES);
@@ -99,7 +99,7 @@ test("ONB-036: no banned word in the text shown on a newcomer screen", () => {
 test("ONB-036: the scan reads the base screens and every window module, so the list cannot shrink silently", () => {
   // A renamed base screen leaves the glob: 23 is the named list's guard.
   expect(Object.keys(BASE_SCREENS)).toHaveLength(23);
-  // The window's list is shell/windowSource.ts's, read whole (its own test proves the folder joins there).
+  // The window's list is test/windowSource.ts's, read whole (its own test proves the folder joins there).
   for (const [file, text] of Object.entries(windowFiles)) expect(SOURCES[file], file).toBe(text);
 });
 

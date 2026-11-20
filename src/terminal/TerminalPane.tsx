@@ -37,7 +37,8 @@ import { handedOver, takeOver } from "./handover";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
 import { AUTO, autoSender, trackInputSource } from "./inputSource";
-import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
+import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, holdsBeforeBind, type ExitEvent } from "./codec";
+import { sizeGate } from "./sizeGate";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
 import { notePrinted } from "./printedAddresses";
@@ -717,8 +718,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // once); it is held and replayed, else the console's opening cursor query goes unanswered and
     // the program never starts.
     let early: { id: number; run: () => void }[] | null = [];
-    // FT-4 (review 0.2.0): the last size sent for this pane's terminal; a resize to the same size is not sent again.
-    let sentSize = "";
+    // FT-4 (review 0.2.0): the last size sent for this pane's terminal; a resize to the same size is not sent again (sizeGate.ts).
+    const sizes = sizeGate();
     const mine = (id: number, run: () => void) => {
       if (idRef.current === null) early?.push({ id, run });
       else if (id === idRef.current) run();
@@ -969,7 +970,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // until the id is bound, after the replay, so nothing is drawn before, and then again inside, it.
           if (idRef.current === null && !(moved || restored) && forPane(e, null, number)) draw();
           // FT-5 (review 0.2.0): before the id is known only this pane's chunks (or untagged ones) are held.
-          else if (idRef.current !== null || e.pane == null || e.pane === number) mine(e.id, draw);
+          else if (idRef.current !== null || holdsBeforeBind(e, number)) mine(e.id, draw);
         }),
         listen<{ terminal: number; agent: string | null }>("pane-agent", (e) =>
           mine(e.payload.terminal, () => setFound(foundAgent(e.payload.agent))),
@@ -1029,7 +1030,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             return;
           }
           idRef.current = id;
-          sentSize = ""; // FT-4: a newly bound terminal hears its size again
+          sizes.reset(); // FT-4: a newly bound terminal hears its size again
           takeOver(number); // DT-C248: the hand-over ends here, with the terminal bound to this view
           // DT-C248 review: a terminal taken back is sized to its old view; the observer fired during the
           // replay while the id was unknown, so the size goes now, once.
@@ -1192,10 +1193,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       if (dragging()) return;
       const id = idRef.current;
       if (id === null || ended) return;
-      const size = `${id}:${term.cols}x${term.rows}`;
-      if (size === sentSize) return; // FT-4: same terminal, same size: no IPC call, no ConPTY repaint
-      sentSize = size;
-      invoke("terminal_resize", { id, cols: term.cols, rows: term.rows }).catch(() => {});
+      const { cols, rows } = term;
+      if (!sizes.send(id, cols, rows)) return; // FT-4: same terminal, same size: no IPC call, no ConPTY repaint
+      invoke("terminal_resize", { id, cols, rows }).catch(() => sizes.failed(id, cols, rows)); // a failed send is not remembered, the next resize retries
     };
     const observer = new ResizeObserver(resize);
     observer.observe(el);

@@ -26,13 +26,13 @@ test("FT-3: the first-paint GPU wake is skipped while the pane is hidden, and a 
 
 test("FT-4: a resize to the size already sent is not sent again, and a newly bound id hears its size", () => {
   const resize = between("const resize = () => {", "const observer = new ResizeObserver");
-  expect(resize).toMatch(/if \(size === sentSize\) return;/);
-  expect(resize.indexOf("sentSize = size;")).toBeLessThan(resize.indexOf('invoke("terminal_resize"'));
+  expect(resize).toMatch(/if \(!sizes\.send\(id, cols, rows\)\) return;/);
+  expect(resize).toMatch(/\.catch\(\(\) => sizes\.failed\(id, cols, rows\)\)/);
   const bind = between("idRef.current = id;", "if (needsSize(back)) resize();");
-  expect(bind).toContain('sentSize = "";');
+  expect(bind).toContain("sizes.reset();");
 });
 
 test("FT-5: before the id is known, only chunks tagged with this pane (or untagged) are held for the bind", () => {
   const route = between("forPane(e, null, number)) draw();", '"pane-agent"');
-  expect(route).toMatch(/else if \(idRef\.current !== null \|\| e\.pane == null \|\| e\.pane === number\) mine\(e\.id, draw\);/);
+  expect(route).toMatch(/else if \(idRef\.current !== null \|\| holdsBeforeBind\(e, number\)\) mine\(e\.id, draw\);/);
 });

@@ -5,7 +5,7 @@
 // App itself cannot be drawn here, so its save guard is read from its source (as skills/noticeMount.test.ts does).
 import { afterEach, expect, test, vi } from "vitest";
 import { LAYOUT_FIELD, layoutOf, type SavedLayout } from "./terminal/layout";
-import { windowFiles, windowSource } from "./shell/windowSource";
+import { windowFiles, windowSource } from "./test/windowSource";
 
 const SOURCES = import.meta.glob(["./main.tsx", "./settings/useSettings.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 

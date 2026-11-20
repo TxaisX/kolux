@@ -1,4 +1,4 @@
-// Cycle 2 (the App.tsx split): the window's source text for the tests that read it (paneStatus, paneMark,
+// Cycle 2 (the App.tsx split; moved to src/test/ in review 0.2.0, it is a test helper): the window's source text for the tests that read it (paneStatus, paneMark,
 // commands, savedLaunch, noticeMount, explorerBar, main.slowStart): App.tsx and the files its code was
 // moved into, as one text. A test helper, imported by tests only.
 //
@@ -6,25 +6,25 @@
 // out of WindowView.tsx into a new surface cannot drop it from these tests. The window's files outside
 // that folder are listed once; windowSource.test.ts fails when one disappears or is renamed, and
 // plainWords.test.ts reads this same list instead of keeping a second one.
-const DRAWING = import.meta.glob(["./window/*.{ts,tsx}", "!./window/*.test.ts", "!./window/*.test.tsx", "!./window/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const DRAWING = import.meta.glob(["../shell/window/*.{ts,tsx}", "!../shell/window/*.test.ts", "!../shell/window/*.test.tsx", "!../shell/window/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 /** The window's modules outside shell/window: App.tsx, the shell files beside this one, and the hooks the split made. */
 const OUTSIDE = import.meta.glob(
   [
     "../App.tsx",
-    "./windowStore.ts",
-    "./useWindowStart.ts",
-    "./useStartAsk.ts",
-    "./windowLate.ts",
-    "./useWindowSave.ts",
-    "./WindowView.tsx",
-    "./windowBag.ts",
-    "./AboutPanel.tsx",
-    "./LinkAskDialog.tsx",
-    "./TabSearch.tsx",
-    "./closeAsk.ts",
-    "./tidy.ts",
-    "./paletteCaps.ts",
-    "./findTab.ts",
+    "../shell/windowStore.ts",
+    "../shell/useWindowStart.ts",
+    "../shell/useStartAsk.ts",
+    "../shell/windowLate.ts",
+    "../shell/useWindowSave.ts",
+    "../shell/WindowView.tsx",
+    "../shell/windowBag.ts",
+    "../shell/AboutPanel.tsx",
+    "../shell/LinkAskDialog.tsx",
+    "../shell/TabSearch.tsx",
+    "../shell/closeAsk.ts",
+    "../shell/tidy.ts",
+    "../shell/paletteCaps.ts",
+    "../shell/findTab.ts",
     "../settings/useSettingsPlumbing.ts",
     "../chrome/useWindowChrome.ts",
     "../launch/launchActions.ts",
@@ -42,8 +42,8 @@ const OUTSIDE = import.meta.glob(
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
 
-/** `./App.tsx` for a `../` key, `./shell/...` for a key beside this file. */
-const rel = (k: string) => (k.startsWith("../") ? `./${k.slice(3)}` : `./shell/${k.replace(/^\.\//, "")}`);
+/** `./App.tsx`, `./shell/window/Content.tsx`: every key here starts with `../` (this file sits in src/test), so a path from src. */
+const rel = (k: string) => `./${k.slice(3)}`;
 
 /** Every window file's text by its path from src (`./shell/window/Content.tsx`). */
 export const windowFiles: Record<string, string> = Object.fromEntries(

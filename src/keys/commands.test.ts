@@ -3,7 +3,7 @@
 // runs; the commands that had no handler (the audit's five, plus Force Reload and Hard Reload, whose
 // chords nothing in the window answered) now each do something, or are gone.
 import { beforeEach, expect, test } from "vitest";
-import { windowSource as app } from "../shell/windowSource";
+import { windowSource as app } from "../test/windowSource";
 import { actions, actionById, sameAs } from "./actions";
 import { matchEvent, resolve, type KeyLike } from "./keymap";
 import { commandRows, forceReload, reloadAsk, renameTarget, windowCommand } from "./commands";

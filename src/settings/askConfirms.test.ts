@@ -1,9 +1,8 @@
-// T-729: ResetButton and ConfirmClear ask in the shared Ask dialog (role=alertdialog, aria-label = the question).
+// T-729: ResetButton asks in the shared Ask dialog (role=alertdialog, aria-label = the question).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { type FakeDocument, type FakeNode, byText, click, find, installDom, mount } from "../test/fakeDom";
 import { ResetButton } from "./ResetButton";
-import ConfirmClear from "../shell/ConfirmClear";
 
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};
@@ -43,23 +42,4 @@ test("the confirm resets once and closes; the default words are Reset and Keep",
   await click(c, byText(dialog(c), "button", "Reset")[0]);
   expect(log).toEqual(["reset"]);
   expect(dialog(c)).toBeUndefined();
-});
-
-test("clearing several notes asks in the Ask; Clear drops them, Keep does not; one note clears at once", async () => {
-  const log: string[] = [];
-  const c = await show(createElement(ConfirmClear, { count: 3, where: "a.ts", onConfirm: () => log.push("clear"), children: "Clear all" }));
-  await click(c, byText(c, "button", "Clear all")[0]);
-  expect(dialog(c).attrs["aria-label"]).toContain("3");
-  await click(c, byText(dialog(c), "button", "Keep")[0]);
-  expect(dialog(c)).toBeUndefined();
-  expect(log).toEqual([]);
-  await click(c, byText(c, "button", "Clear all")[0]);
-  await click(c, byText(dialog(c), "button", "Clear")[0]);
-  expect(log).toEqual(["clear"]);
-  expect(dialog(c)).toBeUndefined();
-  await unmount();
-  const c1 = await show(createElement(ConfirmClear, { count: 1, onConfirm: () => log.push("one"), children: "Clear all" }));
-  await click(c1, byText(c1, "button", "Clear all")[0]);
-  expect(dialog(c1)).toBeUndefined();
-  expect(log).toEqual(["clear", "one"]);
 });

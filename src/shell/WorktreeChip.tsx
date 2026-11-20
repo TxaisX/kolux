@@ -14,10 +14,11 @@ type Props = {
 
 export default function WorktreeChip({ tag, live, onMenu }: Props) {
   const text = tag.typed ? tag.label : (live?.text ?? tag.label);
+  const bare = text.trim() === ""; // LV-3: no label to show: the coloured dot alone, no empty text span
   return (
     <button
       type="button"
-      className="chip wt-chip"
+      className={bare ? "chip wt-chip bare" : "chip wt-chip"}
       style={{ "--wt": tag.color } as CSSProperties}
       title={`${live && !tag.typed && live.tip !== text ? `${text}\n${live.tip}\n` : `${tag.tip}\n`}Click for this worktree's actions`}
       aria-label={`Worktree ${text}`}
@@ -29,7 +30,7 @@ export default function WorktreeChip({ tag, live, onMenu }: Props) {
       }}
     >
       <span className="wt-dot" aria-hidden="true" />
-      <span className="wt-text">{text}</span>
+      {!bare && <span className="wt-text">{text}</span>}
     </button>
   );
 }

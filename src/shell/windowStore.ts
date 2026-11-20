@@ -76,7 +76,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // TERM-040: which tab each cell shows; the focused pane's tab comes to the front, and a cell
   // whose active tab was closed falls back to its last tab.
   const [activeTab, setActiveTab] = useState<Record<number, number>>(layout?.activeTab ?? {});
-  // VIEW-015: the session picked on the Agents screen, kept across screen switches.
   useEffect(() => {
     const p = panes.find((x) => x.key === focused);
     if (p) setActiveTab((m) => (m[groupOf(p)] === focused ? m : { ...m, [groupOf(p)]: focused }));

@@ -1,6 +1,6 @@
 // Which pane is in view (TERM-118) and the layout report the session tab inventory reads (CLI-023, ORCH-060), moved out of App.tsx
 // as they were (cycle 2, the App.tsx split). Called where they sat, so the window's hook order is unchanged.
-import { sameDir, viewOf } from "../workspaces";
+import { sameDir, viewOf, type PaneLike } from "../workspaces";
 import { tabName } from "./tabName";
 import { paneInView } from "../shell/window/inView";
 import { invoke } from "@tauri-apps/api/core";
@@ -9,15 +9,23 @@ import type { WindowState } from "../shell/windowStore";
 import type { PaneGrid } from "./paneGrid";
 import type { Screens } from "../chrome/useScreens";
 
-export function useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, titles }: Pick<WindowState, "activeDir" | "ptys" | "titles"> & Pick<PaneGrid, "activeOf" | "cells"> & Pick<Screens, "terminals">) {
+/** FT-1: the one in-view test, pure: the same answer the pane's `hidden` reads, zoom included (a pane in a zoomed-away cell is not in view). */
+export function layoutInView<C extends { group: number; panes: PaneLike[] }>(
+  cells: C[],
+  activeOf: (cell: C) => number | null,
+  key: number,
+  w: { terminals: boolean; activeDir: string | null; zoomed: number | null },
+): boolean {
+  const cell = cells.find((c) => c.panes.some((p) => p.key === key));
+  if (!cell) return false;
+  return paneInView(cell, key, activeOf(cell), w);
+}
+
+export function useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, titles, zoomed }: Pick<WindowState, "activeDir" | "ptys" | "titles"> & Pick<PaneGrid, "activeOf" | "cells" | "zoomed"> & Pick<Screens, "terminals">) {
   // TERM-118: a pane is in view when its workspace is in front and it is the tab on top; a finish or bell anywhere else marks tab, pane and workspace row unread
   // and says so in the window. A desktop notification and the settings that gate it are T-026.
-  const inView = (key: number) => {
-    const cell = cells.find((c) => c.panes.some((p) => p.key === key));
-    if (!cell) return false;
-    // FT-1: the same test the pane's `hidden` reads (shell/window/inView.ts). Zoom is not handed to this hook, so it is left out here.
-    return paneInView(cell, key, activeOf(cell), { terminals, activeDir, zoomed: null });
-  };
+  // FT-1: the same test the pane's `hidden` reads (shell/window/inView.ts), zoom included.
+  const inView = (key: number) => layoutInView(cells, activeOf, key, { terminals, activeDir, zoomed });
   // CLI-023: the back end learns where each terminal sits (its worktree pane, its tab, its name,
   // whether it is in view) from this report, sent whenever that changes; session_tabs reads it.
   const layoutSent = useRef("");
