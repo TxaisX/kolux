@@ -12,7 +12,9 @@ const pane = await read("./TerminalPane.tsx");
 
 test("LV-3: the status word has a floor, yet still shrinks so a long word gives way and Close never leaves", () => {
   expect(pane).toMatch(/<span className=\{`status state \$\{tone\}`\}/);
-  expect(styles).toContain(".pane:not(.editor) .pane-head .status.state { min-width: min(6ch, 30%); }");
+  expect(styles).toContain(".pane:not(.editor) .pane-head .status.state { min-width: min(8ch, 30%); }");
+  expect(styles).toContain(".pane:not(.editor) .pane-head .right { min-width: 24px; }");
+  expect(styles).toContain(".pane:not(.editor) .pane-head .status.state { flex-shrink: 1; }");
   expect(styles).toContain(".pane:not(.editor) .pane-head .status { flex-shrink: 10; }");
   expect(styles).not.toMatch(/\.status\.state \{[^}]*flex-shrink: 0/); // a status word that cannot shrink pushes the buttons out
 });

@@ -1474,9 +1474,14 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .pane:not(.editor) .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { flex-shrink: 1000; }
 .pane:not(.editor) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }
 .pane:not(.editor) .pane-head .status { flex-shrink: 10; }
-/* LV-3: the status word ("Ready", "Working") keeps a floor of its own: it still shrinks (flex-shrink 10, above) so a long
-   word gives way and the Close button never leaves, but never below about six characters or 30% of the header. */
-.pane:not(.editor) .pane-head .status.state { min-width: min(6ch, 30%); }
+/* LV-3: the status word ("Ready", "Working") keeps a floor of about eight characters or 30% of the header. From 205px
+   the buttons keep at least 24px (one Close button) and the status shrinks at an even rate, so a long "ended ..." word
+   gives way instead of pushing Close out. Below 205px every button is hidden anyway. Measured in Chromium, 205-400px. */
+.pane:not(.editor) .pane-head .status.state { min-width: min(8ch, 30%); }
+@container (min-width: 205px) {
+  .pane:not(.editor) .pane-head .right { min-width: 24px; }
+  .pane:not(.editor) .pane-head .status.state { flex-shrink: 1; }
+}
 /* SAFE-002..004: the plan review sheet, from the right edge over the window. */
 .plan-sheet { position: fixed; z-index: calc(var(--z-tray) - 1); top: calc(env(safe-area-inset-top, 0px) + 40px); right: 0; bottom: 24px; width: min(520px, 100vw); display: flex; flex-direction: column; background: var(--pane-bg); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35); font-size: 13px; }
 .plan-sheet-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
