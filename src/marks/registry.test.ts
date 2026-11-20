@@ -67,7 +67,7 @@ describe("T-335 vendor mark files", () => {
       const m = vendorMark(id)!;
       expect(m.light, id).not.toBe(m.dark);
     }
-    for (const id of ["claude", "claude-agent-teams", "vscode"]) expect(vendorMark(id)!.light).toBe(vendorMark(id)!.dark);
+    for (const id of ["claude", "vscode"]) expect(vendorMark(id)!.light).toBe(vendorMark(id)!.dark);
   });
 
   test("every agent id in the registry is an agent the credit rule knows", () => {
@@ -118,12 +118,6 @@ describe("T-335 AgentMark", () => {
     const out = html("cursor");
     expect(srcs(out)).toEqual([vendorUrl("cursor-cube-for-light.svg"), vendorUrl("cursor-cube-for-dark.svg")]);
     expect(out.match(/alt="Cursor"/g)).toHaveLength(2);
-  });
-
-  test("Claude Agent Teams wears the Claude spark and its own name", () => {
-    const out = html("claude-agent-teams");
-    expect(srcs(out)).toEqual([vendorUrl("anthropic-claude-spark.svg")]);
-    expect(out).toContain('alt="Claude Agent Teams"');
   });
 });
 
@@ -180,8 +174,8 @@ describe("T-335-b every product has a kit mark or a plain-text name", () => {
     }
   });
 
-  test("the card's calls: Cursor, Claude Agent Teams are kit marks; Rovo Dev, Droid, Kilocode, Aider, Pi, OMP, OpenClaude and Mistral Vibe are name only", () => {
-    for (const id of ["claude", "claude-agent-teams", "codex", "copilot", "cursor"]) expect(markKind(id), id).toBe("kit");
+  test("the card's calls: Cursor is a kit mark; Rovo Dev, Droid, Kilocode, Aider, Pi, OMP, OpenClaude and Mistral Vibe are name only", () => {
+    for (const id of ["claude", "codex", "copilot", "cursor"]) expect(markKind(id), id).toBe("kit");
     for (const id of ["rovo", "droid", "kilo", "aider", "pi", "omp", "openclaude", "mistral-vibe"]) expect(markKind(id), id).toBe("name");
   });
 

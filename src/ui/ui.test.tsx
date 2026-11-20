@@ -2,15 +2,18 @@
 // behaviour is proved in the running app, see docs/base-ui-migration.md) plus the Escape bridge to Kolux's stack.
 import dialogSrc from "./Dialog.tsx?raw";
 import menuSrc from "./Menu.tsx?raw";
-import popoverSrc from "./Popover.tsx?raw";
 import selectSrc from "./Select.tsx?raw";
 import layerSrc from "./layer.ts?raw";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { pushModal } from "../chrome/modalStack";
-import { Checkbox, ContextMenu, Dialog, Menu, MenuItem, Select, Switch, Tab, TabList, TabPanel, Tabs, pointAnchor } from "./index";
+import { Dialog } from "./Dialog";
+import { pointAnchor } from "./layer";
+import { ContextMenu, Menu, MenuItem } from "./Menu";
+import { Select } from "./Select";
+import { Tab, TabList, TabPanel, Tabs } from "./Tabs";
 
-const SOURCES: Record<string, string> = { "Dialog.tsx": dialogSrc, "Menu.tsx": menuSrc, "Popover.tsx": popoverSrc, "Select.tsx": selectSrc, "layer.ts": layerSrc };
+const SOURCES: Record<string, string> = { "Dialog.tsx": dialogSrc, "Menu.tsx": menuSrc, "Select.tsx": selectSrc, "layer.ts": layerSrc };
 const src = (f: string) => SOURCES[f];
 
 describe("src/ui wrappers (server render)", () => {
@@ -61,14 +64,6 @@ describe("src/ui wrappers (server render)", () => {
     expect(html).toMatch(/>Beta</);
   });
 
-  it("switch and checkbox stay native inputs inside the .check label", () => {
-    const sw = renderToString(<Switch checked onChange={() => {}}>Wrap lines</Switch>);
-    expect(sw).toMatch(/<label class="check"><input type="checkbox" role="switch" aria-checked="true" checked=""/);
-    const cb = renderToString(<Checkbox checked={false} onChange={() => {}} aria-label="pick" />);
-    expect(cb).toMatch(/<input type="checkbox"[^>]*aria-label="pick"/);
-    expect(cb).not.toMatch(/role=/);
-  });
-
   it("a right-click point becomes a zero-size anchor rectangle", () => {
     const r = pointAnchor(40, 70).getBoundingClientRect();
     expect([r.left, r.top, r.right, r.bottom, r.width, r.height]).toEqual([40, 70, 40, 70, 0, 0]);
@@ -79,7 +74,7 @@ describe("Escape bridge (layer.ts)", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("every popup wrapper joins the Kolux layer, and Escape is caught on the window before Base UI or the terminal", () => {
-    for (const f of ["Dialog.tsx", "Menu.tsx", "Popover.tsx", "Select.tsx"]) expect(src(f), f).toMatch(/useLayer\(/);
+    for (const f of ["Dialog.tsx", "Menu.tsx", "Select.tsx"]) expect(src(f), f).toMatch(/useLayer\(/);
     const layer = src("layer.ts");
     expect(layer).toMatch(/pushModal\(modal\)/);
     expect(layer).toMatch(/watchEscape\(window, \(\) => close\.current\(\), \(\) => isTopModal\(modal\)\)/);

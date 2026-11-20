@@ -1,7 +1,7 @@
 // The usage meters (USAGE-005): how a session's context reading and its agent's plan figures
 // become the Board card's meter, the tab ring and the pane header's percentage.
 import type { ClaudeLimit } from "./claude";
-import { resetWords, type CodexUsage } from "./codex";
+import type { CodexUsage } from "./codex";
 
 export type ContextReading = { tokens: number; window: number };
 export type PlanFigures = { fiveHour: number | null; weekly: number | null };
@@ -112,18 +112,3 @@ export function meterText(m: Meter): string {
 /** USAGE-025: the settings key for how usage reads; `left` or anything else (= used). The Appearance control is T-263. */
 export const READS_FIELD = "usageReads";
 export const readsLeft = (settings: Record<string, unknown>): boolean => settings[READS_FIELD] === "left" || percentMode(settings[PERCENT_FIELD]) === "remaining"; // MERGE 13: the T-263 Appearance pick (PERCENT_FIELD) counts too
-
-/** USAGE-004 / VIEW-018: the Agents footer, "Claude 38% used · resets today 15:00"; the provider's
- *  5-hour window as used or left (a broken value reads 0, never NaN); empty for a provider with no
- *  5-hour window, a failed read, or a plain shell. */
-export function usageLine(agent: string, claude: ClaudeLimit[], codex: CodexUsage | null, left: boolean, now: Date = new Date()): string {
-  let five: { name: string; used: number; at: number | null } | null = null;
-  if (agent === "claude") {
-    const w = claude.find((l) => l.kind === "five_hour");
-    if (w) five = { name: "Claude", used: w.usedPercent, at: w.resetsAt === null ? null : w.resetsAt / 1000 };
-  }
-  if (agent === "codex" && codex?.state === "ok" && codex.fiveHour) five = { name: "Codex", used: codex.fiveHour.usedPercent, at: codex.fiveHour.resetsAt };
-  if (!five) return "";
-  const used = pct(five.used) ?? 0;
-  return `${five.name} ${left ? 100 - used : used}% ${left ? "left" : "used"} · ${resetWords(five.at, now)}`;
-}

@@ -9,14 +9,12 @@ import { heldByTerminal } from "./terminalPolicy";
 const press = (o: Partial<KeyLike> = {}): KeyLike => ({ key: "Tab", code: "Tab", ctrlKey: true, altKey: false, shiftKey: false, metaKey: false, ...o });
 const platforms: Platform[] = ["win32", "linux", "darwin"];
 const surfaces: Array<[string, KeySurface]> = [
-  ["terminal", { screen: "terminals", inTree: false }],
-  ["agent", { screen: "terminals", inTree: false }],
-  ["editor", { screen: "terminals", kind: "editor", inTree: false }],
-  ["diff", { screen: "terminals", kind: "diff", inTree: false }],
-  ["preview", { screen: "terminals", kind: "preview", inTree: false }],
-  ["changes", { screen: "terminals", kind: "changes", inTree: false }],
-  ["explorer tree", { screen: "terminals", inTree: true }],
-  ["explorer tree beside an editor", { screen: "terminals", kind: "editor", inTree: true }],
+  ["terminal", { screen: "terminals" }],
+  ["agent", { screen: "terminals" }],
+  ["editor", { screen: "terminals", kind: "editor" }],
+  ["diff", { screen: "terminals", kind: "diff" }],
+  ["preview", { screen: "terminals", kind: "preview" }],
+  ["changes", { screen: "terminals", kind: "changes" }],
 ];
 
 describe("APP-013 tab keys from every focus", () => {
@@ -53,13 +51,13 @@ describe("APP-013 tab keys from every focus", () => {
     expect(heldByTerminal("tab.nextRecent", { terminalShortcuts: "terminal" }, t)).toBe(false);
   });
 
-  test("the surfaces keep the scopes they had before the tree was added", () => {
-    expect(scopesFor({ screen: "terminals", inTree: false })).toEqual(["global", "terminal", "tabs"]);
+  test("the surfaces keep their scopes", () => {
+    expect(scopesFor({ screen: "terminals" })).toEqual(["global", "terminal", "tabs"]);
     // The editor scope went with the editor: a file or diff tab takes only the window's and the tab strip's keys.
-    expect(scopesFor({ screen: "terminals", kind: "editor", inTree: false })).toEqual(["global", "tabs"]);
-    expect(scopesFor({ screen: "terminals", kind: "diff", inTree: false })).toEqual(["global", "tabs"]);
-    expect(scopesFor({ screen: "terminals", kind: "preview", inTree: false })).toEqual(["global", "tabs"]);
-    expect(scopesFor({ screen: "settings", inTree: false })).toEqual(["global"]);
+    expect(scopesFor({ screen: "terminals", kind: "editor" })).toEqual(["global", "tabs"]);
+    expect(scopesFor({ screen: "terminals", kind: "diff" })).toEqual(["global", "tabs"]);
+    expect(scopesFor({ screen: "terminals", kind: "preview" })).toEqual(["global", "tabs"]);
+    expect(scopesFor({ screen: "settings" })).toEqual(["global"]);
   });
 });
 
@@ -77,7 +75,7 @@ test("T-717: no menu or tooltip reads the pane close's chord (Mod+W is tab.close
 describe("T-717 every default chord is unique per live scope set", () => {
   const live: Scope[][] = [
     ...surfaces.map(([, s]) => scopesFor(s)),
-    scopesFor({ screen: "settings", inTree: false }),
+    scopesFor({ screen: "settings" }),
     ["global", "terminal", "tabs"],
     ["global", "tabs"],
     ["settings"],

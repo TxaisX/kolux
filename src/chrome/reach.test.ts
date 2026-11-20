@@ -118,9 +118,6 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["terminal/TerminalPane.tsx", "This terminal didn't reopen", "inner"],
   ["update/UpdateCenterView.tsx", "Updates", "tag"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
-  // src/ui wrappers: a dialog drawn with <Dialog> / <AlertDialog> has no role literal at its call site; its Escape is
-  // the wrapper's useLayer (Kolux's window-capture watchEscape), proved once for every caller in src/ui/ui.test.tsx.
-  ["ui/Popover.tsx", "label", "layer"],
 ];
 
 const SRC = import.meta.glob(["/src/**/*.tsx", "!/src/**/*.test.tsx", "!/src/**/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;

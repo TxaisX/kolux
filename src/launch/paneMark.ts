@@ -130,7 +130,6 @@ export function programMark(program: string | null | undefined): Agent {
  * it is the plain-shell glyph.
  */
 export function markFor(id: string, program?: string | null): Agent {
-  if (id === "claude-agent-teams") return "claude";
   if (id === "claude" || id === "codex" || id === "copilot" || id === "cursor") return id;
   return programMark(program);
 }
