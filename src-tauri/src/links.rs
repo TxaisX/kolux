@@ -29,26 +29,6 @@ const DOCUMENTS: &[&str] = &[
     "png", "jpg", "jpeg", "gif", "bmp", "webp", "ico", "pdf",
 ];
 
-/// File types that run when opened: programs, scripts, installers, shortcuts, macro documents and
-/// the odd Office and web-query types that start a program. Lowercase, without the dot. Wave 2: this
-/// list no longer decides what a click opens (`DOCUMENTS` does); it backs `program_like` only.
-const PROGRAMS: &[&str] = &[
-    "exe", "com", "scr", "pif", "bat", "cmd", "btm", "nt", "ps1", "psm1", "psd1", "ps1xml", "psc1", "pssc", "cdxml",
-    "ps2", "ps2xml", "msh", "msh1", "msh2", "mshxml", "msh1xml", "msh2xml", "vbs", "vbe", "vb", "js", "jse", "wsf",
-    "wsh", "wsc", "ws", "sct", "hta", "msi", "msp", "mst", "msix", "msixbundle", "appx", "appxbundle", "appinstaller",
-    "application", "manifest", "xbap", "gadget", "cpl", "msc", "inf", "reg", "lnk", "url", "scf", "website",
-    "library-ms", "search-ms", "searchconnector-ms", "settingcontent-ms", "theme", "themepack", "diagcab", "diagcfg",
-    "diagpkg", "chm", "hlp", "jar", "jnlp", "py", "pyw", "pyc", "pyz", "pyzw", "rb", "pl", "pm", "php", "phar", "sh",
-    "bash", "zsh", "ksh", "csh", "fish", "command", "tool", "app", "pkg", "mpkg", "dmg", "action", "workflow", "scpt",
-    "scptd", "applescript", "terminal", "webloc", "desktop", "run", "bin", "elf", "appimage", "deb", "rpm", "snap",
-    "appref-ms", "iso", "img", "vhd", "vhdx", "flatpak", "flatpakref", "apk", "ipa", "ocx", "dll", "sys", "drv", "vxd", "grp", "ins", "isp", "its", "mad",
-    "maf", "mag", "mam", "maq", "mar", "mas", "mat", "mau", "mav", "maw", "mcf", "mda", "mdb", "mde", "mdt", "mdw",
-    "mdz", "ade", "adp", "accdb", "accde", "accdr", "accdt", "docm", "dotm", "xlsm", "xltm", "xlam", "xla", "xll",
-    "pptm", "potm", "ppam", "ppsm", "sldm", "one", "onepkg", "onetoc2", "iqy", "oqy", "rqy", "dqy", "slk", "sylk",
-    "crt", "cer", "der", "p7b", "p7c", "pfx", "p12", "xnk", "shb", "shs", "prf", "prg", "pcd", "vsmacros", "vsw",
-    "rdp", "appref-ms", "wsb", "msu", "iso", "img", "vhd", "vhdx", "ppkg",
-];
-
 /// What time it is, so the open limit can be tested with a clock that is moved by hand.
 pub trait Clock {
     fn now(&self) -> Duration;
@@ -386,30 +366,6 @@ pub fn document(path: &Path) -> bool {
     }
 }
 
-pub fn program_like(path: &str, windows: bool) -> bool {
-    let seps: &[char] = if windows { &['\\', '/'] } else { &['/'] };
-    let mut name = path.rsplit(seps).next().unwrap_or(path).to_ascii_lowercase();
-    if windows {
-        if let Some(i) = name.find(':') {
-            name.truncate(i);
-        }
-        name = name.trim_end_matches(['.', ' ']).to_string();
-    }
-    let (stem, ext) = match name.rfind('.') {
-        Some(i) if i > 0 => (&name[..i], &name[i + 1..]),
-        _ => (name.as_str(), ""),
-    };
-    PROGRAMS.contains(&ext)
-        || (windows && stem.len() <= 8 && ext.len() <= 3 && stem.as_bytes().windows(2).any(|w| w[0] == b'~' && w[1].is_ascii_digit()))
-}
-
-
-/// `program_like` for this platform, plus the execute bit on POSIX. Wave 2: a name that is not a
-/// program is still only opened when it is a `document`; this answers the narrower question.
-pub fn launchable(path: &Path) -> bool {
-    program_like(&path.to_string_lossy(), cfg!(windows)) || execute_bit(path)
-}
-
 /// Windows: a ':' anywhere after the drive letter names a stream inside a file (`notes.txt:run.vbs`
 /// opens as a .vbs), so such a path is never opened. The long-path and object prefixes are read
 /// past first. On POSIX a colon is an ordinary character.
@@ -427,7 +383,8 @@ fn stream_colon(path: &str) -> bool {
 /// Wave 2 (review A): every link on the way to `path` (the file itself or a folder above it) is read
 /// from its own text, and one that leads to another machine is refused before anything follows it,
 /// so resolving the path never reaches a share. The walk goes from the top down and starts again
-/// from each link's target; at most 8 links.
+/// from each link's target; at most 8 links (8 passes that each follow one, then a 9th that must
+/// find none).
 fn refuse_linked_host(path: &Path, roots: &[String]) -> Result<(), String> {
     let mut path = path.to_path_buf();
     for _ in 0..=8 {
@@ -453,10 +410,11 @@ fn refuse_linked_host(path: &Path, roots: &[String]) -> Result<(), String> {
     Err(format!("{} passes through too many links; Kolux never opens it", path.display()))
 }
 
-/// Opens `file` (the real path of an existing document) in its own app. On Windows the shell is
-/// handed the parsed item rather than the name (SHParseDisplayName, then ShellExecuteEx with
-/// SEE_MASK_IDLIST), so it cannot swap in a program beside it (`LICENSE.cmd` for `LICENSE`).
-fn open_file(file: &Path) -> Result<(), String> {
+/// Opens `file` (the real path of an existing document, or a folder, which opens in the file
+/// manager) in its own app. On Windows the shell is handed the parsed item rather than the name
+/// (SHParseDisplayName, then ShellExecuteEx with SEE_MASK_IDLIST), so it cannot swap in a program
+/// beside it (`LICENSE.cmd` for `LICENSE`).
+pub(crate) fn open_file(file: &Path) -> Result<(), String> {
     #[cfg(windows)]
     {
         use std::os::windows::ffi::OsStrExt;
@@ -600,6 +558,11 @@ pub fn open_target(path: &str, roots: &[String]) -> Result<(OpenChoice, PathBuf)
     }
     if stream_colon(path) {
         return Err(format!("{path} names a stream inside a file; Kolux never opens it"));
+    }
+    // Wave 2 (review A2): Windows folds `a\..\b` as text while the link walk below follows `a`
+    // first, so a `..` step could slip a link past it; refused as text, as `fence` does.
+    if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        return Err(format!("{path} climbs out with ..; Kolux never opens it"));
     }
     refuse_linked_host(p, roots)?;
     let at = PathBuf::from(plain(p.canonicalize().map_err(|_| format!("{path} is not a file"))?));
@@ -1096,6 +1059,36 @@ mod tests {
         }
         let (choice, _) = open_target(&d.join("far").join("real.txt").to_string_lossy(), &[]).unwrap();
         assert_eq!(choice, OpenChoice::Open, "the file itself, reached directly, still opens");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A2, P2): Windows folds `a\..\b` as text, but the link walk followed the
+    /// junction `a` first and then looked for `b` beside the junction's target, so the link `b` (to
+    /// another machine) was never read and resolving the path reached it. A `..` step is refused
+    /// before the walk, as `fence` does. The object-namespace spelling of a local folder stands in
+    /// for a share; no real host is contacted.
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a2_a_dot_dot_step_past_a_junction_cannot_reach_a_remote_link() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-dotdot-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("elsewhere").join("deep")).unwrap();
+        std::fs::create_dir_all(d.join("far")).unwrap();
+        std::fs::write(d.join("far").join("x.txt"), "hi").unwrap();
+        let made = std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/J"])
+            .arg(d.join("a"))
+            .arg(d.join("elsewhere").join("deep"))
+            .output()
+            .unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        let far = PathBuf::from(format!(r"\\?\GLOBALROOT\GLOBAL??\{}", d.join("far").display()));
+        std::os::windows::fs::symlink_dir(far, d.join("b")).unwrap();
+        let sneaky = format!(r"{}\a\..\b\x.txt", d.display());
+        let got = open_target(&sneaky, &[]);
+        assert!(got.as_ref().is_err_and(|e| e.contains("..")), "{sneaky} must be refused, got {got:?}");
+        let plain_dir = format!(r"{}\elsewhere\..\far\x.txt", d.display());
+        assert!(open_target(&plain_dir, &[]).is_err(), "{plain_dir}: a .. step is refused as text, link or not");
         let _ = std::fs::remove_dir_all(&d);
     }
 

@@ -170,6 +170,11 @@ describe("TERM-093 clickable file paths", () => {
     expect(resolvePath("C:\\x\\y.txt", "G:\\Dev")).toBe("C:\\x\\y.txt");
     expect(resolvePath("\\\\srv\\share\\f", "G:\\Dev")).toBe("\\\\srv\\share\\f");
     expect(resolvePath("src/a.ts", null)).toBeNull();
+    // review A2: Windows folds ".." in a drive path as text, so the path handed over is already folded
+    expect(resolvePath("C:\\repo\\a\\..\\b\\x.txt", "G:\\Dev")).toBe("C:\\repo\\b\\x.txt");
+    expect(resolvePath("C:/repo/./a/../../../x.txt", null)).toBe("C:\\x.txt");
+    expect(resolvePath("/home/u/a/../b", "/x")).toBe("/home/u/a/../b"); // POSIX ".." follows links; left as is
+    expect(resolvePath("\\\\srv\\share\\..\\f", "G:\\Dev")).toBe("\\\\srv\\share\\..\\f"); // a share is refused whole
     expect(fromFileUrl("file://server/share/x.txt")).toBe("\\\\server\\share\\x.txt");
     expect(hintFor(findLinks("src/a.ts:3")[0], false, "editor")).toBe("Ctrl+click to open src/a.ts at line 3 in the editor");
     expect(clickTarget(findLinks("src/a.ts")[0], { ctrlKey: true, metaKey: false, shiftKey: true }, false, true)).toBe("file");

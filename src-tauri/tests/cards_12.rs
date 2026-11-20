@@ -70,19 +70,23 @@ fn edit045_box2_a_terminal_link_to_a_file_on_another_computers_share_is_refused_
 }
 
 #[test]
-fn edit053_box1_and_3_programs_scripts_and_shortcuts_are_launchable_and_documents_are_not() {
+fn edit053_box1_and_3_programs_scripts_and_shortcuts_are_revealed_and_documents_are_opened() {
     let d = scratch_c("launch");
     for name in ["run.bat", "RUN.CMD", "script.ps1", "tool.exe", "Tool.EXE", "link.lnk", "setup.msi", "tool.exe.", "tool.exe . ."] {
         let f = d.join(name);
         if std::fs::write(&f, "echo hi").is_ok() {
-            assert!(links::launchable(&f), "{name} must be revealed, not run");
+            assert_eq!(links::open_choice(&f.to_string_lossy()), Ok(links::OpenChoice::Reveal), "{name} must be revealed, not run");
         }
-        assert!(links::launchable(&d.join(name)), "{name} (by name)");
+        assert!(!links::document(&d.join(name)), "{name} (by name)");
     }
-    for name in ["notes.txt", "readme.md", "report.docx", "photo.png", "a.exe.txt"] {
+    // wave 2: only a known document type is opened; an Office file (report.docx) is revealed too
+    let report = d.join("report.docx");
+    std::fs::write(&report, "text").unwrap();
+    assert_eq!(links::open_choice(&report.to_string_lossy()), Ok(links::OpenChoice::Reveal), "report.docx");
+    for name in ["notes.txt", "readme.md", "photo.png", "a.exe.txt"] {
         let f = d.join(name);
         std::fs::write(&f, "text").unwrap();
-        assert!(!links::launchable(&f), "{name} opens in its default app");
+        assert_eq!(links::open_choice(&f.to_string_lossy()), Ok(links::OpenChoice::Open), "{name} opens in its default app");
     }
 }
 
@@ -116,7 +120,7 @@ fn edit053_box1_trailing_dots_and_spaces_still_count_as_programs() {
     let d = scratch_c("choice-trailing");
     for name in ["run.bat ", "run.bat . .", "script.ps1.", "tool.exe ", "link.lnk .", "RUN.BAT."] {
         // A trailing space cannot be told apart on disk, so the spelling itself is judged.
-        assert!(links::launchable(&d.join(name)), "{name:?} must be revealed, not run");
+        assert!(!links::document(&d.join(name)), "{name:?} must be revealed, not run");
     }
 }
 

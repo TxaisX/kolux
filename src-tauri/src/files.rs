@@ -658,7 +658,9 @@ pub fn open_in(path: String, command: Option<String>, fence: tauri::State<'_, cr
     }
     let dir = open_target(&path, |p| fence.allow(p, &store, &git, false))?;
     match command.as_deref() {
-        None => crate::links::system_open(&dir.to_string_lossy()),
+        // Wave 2 (review A2): the parsed folder item, not its name, so the shell cannot pick a
+        // program that shares the folder's name; the folder's own default action still applies.
+        None => crate::links::open_file(&dir),
         Some(c) => launch_in(&dir, c, std::env::var_os("PATH")),
     }
 }

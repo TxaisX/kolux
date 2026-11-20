@@ -92,20 +92,29 @@ export function fromFileUrl(s: string): string | null {
 
 const isAbsolute = (p: string) => /^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(p);
 
-/** A relative path resolved against the pane's folder; "." and ".." segments folded; an absolute path kept. */
+/** `segs` laid onto `parts` in place: "." and empty steps dropped, ".." steps back but never past the first part. */
+function fold(parts: string[], segs: string[]): string[] {
+  for (const seg of segs) {
+    if (seg === "." || seg === "") continue;
+    if (seg === "..") {
+      if (parts.length > 1) parts.pop();
+    } else parts.push(seg);
+  }
+  return parts;
+}
+
+/** A relative path resolved against the pane's folder; "." and ".." segments folded; an absolute path kept, except
+ *  that a drive path's "." and ".." steps are folded too (review A2: Windows folds them as text, so the path handed
+ *  to the back end is the one Windows will open). A share and a POSIX path keep theirs (POSIX ".." follows links). */
 export function resolvePath(target: string, cwd: string | null): string | null {
   let p = target.replace(/^~\//, "");
   if (!isAbsolute(p)) {
     if (!cwd) return null;
     const sep = /\\/.test(cwd) || /^[A-Za-z]:/.test(cwd) ? "\\" : "/";
-    const parts = cwd.replace(/[\\/]+$/, "").split(/[\\/]/);
-    for (const seg of p.split(/[\\/]/)) {
-      if (seg === "." || seg === "") continue;
-      if (seg === "..") {
-        if (parts.length > 1) parts.pop();
-      } else parts.push(seg);
-    }
-    p = parts.join(sep);
+    p = fold(cwd.replace(/[\\/]+$/, "").split(/[\\/]/), p.split(/[\\/]/)).join(sep);
+  } else if (/^[A-Za-z]:[\\/]/.test(p) && /[\\/]\.\.?(?:[\\/]|$)/.test(p)) {
+    const parts = fold([p.slice(0, 2)], p.slice(3).split(/[\\/]/));
+    p = parts.length === 1 ? `${parts[0]}\\` : parts.join("\\");
   }
   return p;
 }
