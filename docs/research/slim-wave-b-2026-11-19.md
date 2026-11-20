@@ -93,4 +93,6 @@ The build lanes also updated the tests that named removed commands, settings, st
 
 ## GitHub checks after the merge
 
-To be filled in once GitHub's checks on the merged code finish.
+- Pull request 260: every required check passed on its last commit before the merge: the four test shards; types, licences, plan and workflows; and the Rust job on Windows (lint clean; 2,232 tests passed, 0 failed, 5 ignored across 18 test programs; the dependency check's four parts and the spec firewall green). The installer job is on demand and was skipped. It was squash-merged into main as bf88bbb3 only after that.
+- Main on bf88bbb3: GitHub's checks on the merge commit were still running when this was written; the result follows here once they finish.
+- Follow-up pull request: the squash left the guide pages' markers on a branch commit main does not have, so the local guide check failed on main (as it had since wave A for three pages). The markers now point at bf88bbb3. The same pull request adds `pnpm release --version x.y.z`, so the next update can ship as 0.2.0 (without it the release script only adds one to the last number).

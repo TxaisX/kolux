@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { acquire, buildOnce, changelogHeading, changelogSection, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, run, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
+import { acquire, buildOnce, changelogHeading, changelogSection, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, releaseVersion, run, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
 import { decide, WAIT_MS } from "./ci-gate.mjs";
 import { checkPromises, checkWorkflow } from "./workflow-check.mjs";
 import { parseArgs } from "./ship.mjs";
@@ -20,6 +20,20 @@ describe("release version (APP-059)", () => {
     expect(nextVersion("0.1.0", "v0.1.7")).toBe("0.1.8");
     expect(nextVersion("0.3.0", "v0.2.9")).toBe("0.3.1"); // a version-bump commit wins
     expect(() => nextVersion("one", null)).toThrow(/x\.y\.z/);
+  });
+  it("takes an asked-for version (--version) only when it is x.y.z, above the newest release and not a tag", () => {
+    expect(releaseVersion("0.1.0", "v0.1.18", null)).toBe("0.1.19");
+    expect(releaseVersion("0.1.0", "v0.1.18", "0.2.0")).toBe("0.2.0");
+    expect(releaseVersion("0.1.0", null, "1.0.0")).toBe("1.0.0");
+    expect(() => releaseVersion("0.1.0", "v0.1.18", "v0.2.0")).toThrow(/not x\.y\.z/);
+    expect(() => releaseVersion("0.1.0", "v0.1.18", "0.2")).toThrow(/not x\.y\.z/);
+    expect(() => releaseVersion("0.1.0", "v0.1.18", "")).toThrow(/not x\.y\.z/);
+    expect(() => releaseVersion("0.1.0", "v0.1.18", "--dry-run")).toThrow(/not x\.y\.z/);
+    expect(() => releaseVersion("0.1.0", "v0.1.18", "0.1.18")).toThrow(/not above the newest release v0\.1\.18/);
+    expect(() => releaseVersion("0.1.0", "v0.1.18", "0.1.9")).toThrow(/not above/);
+    const tags = new Set(["v0.2.0"]);
+    expect(() => releaseVersion("0.1.0", "v0.1.18", "0.2.0", (t) => tags.has(t))).toThrow(/tag v0\.2\.0 already exists/);
+    expect(releaseVersion("0.1.0", "v0.1.18", "0.2.1", (t) => tags.has(t))).toBe("0.2.1");
   });
   it("picks the newest rehearsal folder by number, not by text", () => {
     expect(newestTag(["v0.1.9", "v0.1.10", "latest.json", "v0.1.2"])).toBe("v0.1.10");
@@ -161,6 +175,22 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
       expect(create.slice(5, 7)).toEqual(["--repo", FEED_REPO]);
       expect(create.slice(-2).map((f) => path.basename(f))).toEqual([installerName("0.1.8"), installerName("0.1.8") + ".sig"]);
       expect(path.basename(upload.at(-1))).toBe("latest.json"); // APP-031: the manifest goes up last
+    } finally {
+      s.done();
+    }
+  });
+
+  it("releases the version asked for with --version, and refuses one that is already a tag before building", () => {
+    const s = scratch();
+    try {
+      const t = tools(s.checkout, { tagName: "v0.1.18", body: "- Older\n\n<!-- kolux-source: 1234567 -->\n" });
+      const r = buildOnce({ repo: s.origin, version: "0.2.0" }, s.env, t.exec);
+      expect(r).toMatchObject({ version: "0.2.0", published: true });
+      expect(t.gh().find((c) => c.args[1] === "create").args[2]).toBe("v0.2.0");
+      git(s.origin, "tag", "v0.2.1");
+      const t2 = tools(s.checkout, { tagName: "v0.1.18", body: "- Older\n\n<!-- kolux-source: 1234567 -->\n" });
+      expect(() => buildOnce({ repo: s.origin, version: "0.2.1" }, s.env, t2.exec)).toThrow(/tag v0\.2\.1 already exists/);
+      expect(t2.calls.some((c) => c.name === "pnpm")).toBe(false);
     } finally {
       s.done();
     }
