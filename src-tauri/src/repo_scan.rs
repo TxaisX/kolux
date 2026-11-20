@@ -308,15 +308,23 @@ struct ScanEvent {
     limit: Option<&'static str>,
 }
 
-/// PROJ-012: starts a scan in the background; `repo-scan` events carry each repository found,
-/// the running count of folders looked at, and a last one with `done`.
-#[tauri::command]
-pub fn repo_scan_start(app: tauri::AppHandle, root: String, scan_id: u64) -> Result<(), String> {
-    use tauri::Emitter;
+/// The folder a scan starts from: a full path to an existing folder on this machine. A path on
+/// another machine is refused before anything looks at it (RS-4).
+fn scan_root(root: &str, roots: &[String]) -> Result<PathBuf, String> {
+    crate::links::refuse_host(root.trim(), roots)?;
     let root = PathBuf::from(root.trim());
     if !root.is_absolute() || !root.is_dir() {
         return Err(format!("{} is not an existing folder", root.display()));
     }
+    Ok(root)
+}
+
+/// PROJ-012: starts a scan in the background; `repo-scan` events carry each repository found,
+/// the running count of folders looked at, and a last one with `done`.
+#[tauri::command]
+pub fn repo_scan_start(app: tauri::AppHandle, root: String, scan_id: u64) -> Result<(), String> {
+    use tauri::{Emitter, Manager};
+    let root = scan_root(&root, &crate::links::roots(&app.state::<Mutex<Store>>()))?;
     stops().lock().unwrap_or_else(|e| e.into_inner()).remove(&scan_id);
     std::thread::spawn(move || {
         let count = std::cell::Cell::new(0usize);
@@ -382,6 +390,18 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// RS-4: a scan root on another machine is refused before it is looked at. The object-namespace
+    /// spelling of a local folder stands in for a share: it really exists, so only the guard refuses it.
+    #[cfg(windows)]
+    #[test]
+    fn rs4_a_scan_root_on_another_machine_is_refused() {
+        let dir = temp("rs4");
+        assert_eq!(scan_root(&dir.to_string_lossy(), &[]).unwrap(), dir);
+        let spelled = format!(r"\\?\GLOBALROOT\GLOBAL??\{}", dir.display());
+        assert!(scan_root(&spelled, &[]).unwrap_err().contains("another computer"));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     fn repo(at: &Path) {

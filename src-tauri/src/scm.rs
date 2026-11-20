@@ -336,8 +336,17 @@ pub fn head_of(dir: &Path) -> Option<Head> {
 
 /// TERM-022: read off the UI thread; every pane asks when it shows and when it takes focus.
 #[tauri::command]
-pub async fn scm_head(dir: String) -> Option<Head> {
-    tauri::async_runtime::spawn_blocking(move || head_of(Path::new(&dir))).await.ok().flatten()
+pub async fn scm_head(app: tauri::AppHandle, dir: String) -> Option<Head> {
+    use tauri::Manager;
+    let roots = crate::links::roots(&app.state::<std::sync::Mutex<crate::state::Store>>());
+    tauri::async_runtime::spawn_blocking(move || head_at(&dir, &roots)).await.ok().flatten()
+}
+
+/// `head_of` for a folder the page names; a folder on another machine has no chip and git is never
+/// started there (RS-4).
+fn head_at(dir: &str, roots: &[String]) -> Option<Head> {
+    crate::links::refuse_host(dir, roots).ok()?;
+    head_of(Path::new(dir))
 }
 
 /// GIT-032: would two committed tips merge cleanly (the pull request conflict check, pr_review.rs)?

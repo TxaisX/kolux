@@ -399,32 +399,41 @@ fn execute_bit(_path: &Path) -> bool {
     false
 }
 
-/// The file manager's own "show this file" call.
-fn reveal_command(path: &Path) -> std::process::Command {
+/// The file manager's own "show this file" call, on the file's real path (RS-5). A path holding a
+/// double quote is refused: on Windows it would end the quoted `/select,` argument early.
+fn reveal_command(path: &Path) -> Result<std::process::Command, String> {
+    let quoted = |p: &Path| p.to_string_lossy().contains('"');
+    if quoted(path) {
+        return Err(format!("{} holds a double quote; Kolux never hands it to the file manager", path.display()));
+    }
+    let real = PathBuf::from(plain(path.canonicalize().map_err(|e| format!("could not reveal {}: {e}", path.display()))?));
+    if quoted(&real) {
+        return Err(format!("{} holds a double quote; Kolux never hands it to the file manager", real.display()));
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         let mut c = crate::winproc::command("explorer.exe");
-        c.raw_arg(format!("/select,\"{}\"", path.display()));
-        c
+        c.raw_arg(format!("/select,\"{}\"", real.display()));
+        Ok(c)
     }
     #[cfg(target_os = "macos")]
     {
         let mut c = crate::winproc::command("open");
-        c.arg("-R").arg(path);
-        c
+        c.arg("-R").arg(&real);
+        Ok(c)
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         let mut c = crate::winproc::command("xdg-open");
-        c.arg(path.parent().unwrap_or(path));
-        c
+        c.arg(real.parent().unwrap_or(&real));
+        Ok(c)
     }
 }
 
 /// Opens the file manager with `path` selected.
 pub fn reveal(path: &Path) -> Result<(), String> {
-    reveal_command(path).spawn().map(|_| ()).map_err(|e| format!("could not reveal {}: {e}", path.display()))
+    reveal_command(path)?.spawn().map(|_| ()).map_err(|e| format!("could not reveal {}: {e}", path.display()))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -433,16 +442,42 @@ pub enum OpenChoice {
     Open,
 }
 
-/// The pure part of `open_path`: only a full path to an existing file is handed over.
+/// A final `.` or `..` step or a trailing separator. Windows drops or resolves them, so the name the
+/// eye reads is not the file that opens (`run.cmd\.` is `run.cmd`); on Windows a final step of only
+/// dots and spaces counts too, since Windows trims both.
+fn odd_ending(path: &str) -> bool {
+    let seps: &[char] = if cfg!(windows) { &['\\', '/'] } else { &['/'] };
+    let last = path.rsplit(seps).next().unwrap_or(path);
+    if cfg!(windows) {
+        last.trim_end_matches(['.', ' ']).is_empty()
+    } else {
+        last.is_empty() || last == "." || last == ".."
+    }
+}
+
+/// `open_target` with no registered roots (every share refused), answering the choice alone.
 pub fn open_choice(path: &str) -> Result<OpenChoice, String> {
+    open_target(path, &[]).map(|(choice, _)| choice)
+}
+
+/// The pure part of `open_path`: only a full path to an existing file is handed over, judged and
+/// handed over by its real path (RS-1), so a spelling Windows rewrites (a final `\.`, an 8.3 short
+/// name, a link) cannot make a program pass as a document. Answers the choice and that real path.
+pub fn open_target(path: &str, roots: &[String]) -> Result<(OpenChoice, PathBuf), String> {
+    refuse_host(path, roots)?;
     let p = Path::new(path);
     if !p.is_absolute() {
         return Err(format!("{path} is not a full path"));
     }
-    if !p.is_file() {
+    if odd_ending(path) {
+        return Err(format!("{path} does not end in a file name; Kolux never opens it"));
+    }
+    let real = PathBuf::from(plain(p.canonicalize().map_err(|_| format!("{path} is not a file"))?));
+    refuse_host(&real.to_string_lossy(), roots)?;
+    if !real.is_file() {
         return Err(format!("{path} is not a file"));
     }
-    Ok(if launchable(p) { OpenChoice::Reveal } else { OpenChoice::Open })
+    Ok((if launchable(p) || launchable(&real) { OpenChoice::Reveal } else { OpenChoice::Open }, real))
 }
 
 /// SAFE-022: hands a file to the system. A program-like file is revealed in its folder, anything
@@ -450,11 +485,12 @@ pub fn open_choice(path: &str) -> Result<OpenChoice, String> {
 /// Answers "revealed" or "opened".
 #[tauri::command]
 pub async fn open_path(store: tauri::State<'_, Mutex<crate::state::Store>>, path: String) -> Result<&'static str, String> {
-    refuse_host(&path, &roots(&store))?;
+    let roots = roots(&store);
+    refuse_host(&path, &roots)?;
     // A slow file association never freezes the window; only an existing file is handed over.
-    tauri::async_runtime::spawn_blocking(move || match open_choice(&path)? {
-        OpenChoice::Reveal => reveal(Path::new(&path)).map(|_| "revealed"),
-        OpenChoice::Open => system_open(&path).map(|_| "opened"),
+    tauri::async_runtime::spawn_blocking(move || match open_target(&path, &roots)? {
+        (OpenChoice::Reveal, real) => reveal(&real).map(|_| "revealed"),
+        (OpenChoice::Open, real) => system_open(&real.to_string_lossy()).map(|_| "opened"),
     })
     .await
     .map_err(|e| e.to_string())?
@@ -869,6 +905,49 @@ mod tests {
         assert!(!launchable(&f));
         std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(launchable(&f));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// RS-1: Windows drops a final `\.`, so `probe.cmd\.` is the script itself; it must never be opened.
+    #[cfg(windows)]
+    #[test]
+    fn rs1_a_script_spelled_with_a_final_dot_is_never_opened() {
+        let d = std::env::temp_dir().join(format!("krs-rs1-{}", std::process::id()));
+        std::fs::create_dir_all(&d).unwrap();
+        let f = d.join("probe.cmd");
+        std::fs::write(&f, "@echo off\r\n").unwrap();
+        let f = f.to_string_lossy().to_string();
+        for p in [format!(r"{f}\."), format!("{f}/."), format!(r"{f}\"), format!(r"{f}\ ."), format!(r"{f}\.\"), format!(r"{f}\..")] {
+            assert!(!matches!(open_target(&p, &[]), Ok((OpenChoice::Open, _))), "{p} must be revealed or refused, never opened");
+        }
+        let (choice, real) = open_target(&f, &[]).unwrap();
+        assert_eq!(choice, OpenChoice::Reveal);
+        assert!(!real.to_string_lossy().starts_with(r"\\?\"), "the plain real path is handed over");
+        let note = d.join("note.txt");
+        std::fs::write(&note, "hi").unwrap();
+        let (choice, real) = open_target(&note.to_string_lossy(), &[]).unwrap();
+        assert_eq!((choice, real), (OpenChoice::Open, PathBuf::from(plain(note.canonicalize().unwrap()))));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// RS-5: the file manager is handed the real path, and never a path holding a double quote.
+    #[test]
+    fn rs5_reveal_uses_the_real_path_and_refuses_a_quote() {
+        assert!(reveal_command(Path::new("/tmp/a\"b.txt")).unwrap_err().contains("double quote"));
+        assert!(reveal_command(Path::new(r#"C:\x\a" /e,"C:\y.txt"#)).unwrap_err().contains("double quote"));
+        let d = std::env::temp_dir().join(format!("krs-rs5-{}", std::process::id()));
+        std::fs::create_dir_all(d.join("sub")).unwrap();
+        let f = d.join("seen.txt");
+        std::fs::write(&f, "hi").unwrap();
+        let c = reveal_command(&d.join("sub").join("..").join("seen.txt")).unwrap();
+        let args: Vec<String> = c.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
+        let real = plain(f.canonicalize().unwrap());
+        #[cfg(windows)]
+        assert_eq!(args, vec![format!("/select,\"{real}\"")]);
+        #[cfg(target_os = "macos")]
+        assert_eq!(args, vec!["-R".to_string(), real]);
+        #[cfg(all(unix, not(target_os = "macos")))]
+        assert_eq!(args, vec![Path::new(&real).parent().unwrap().to_string_lossy().into_owned()]);
         let _ = std::fs::remove_dir_all(&d);
     }
 

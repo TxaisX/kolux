@@ -898,6 +898,9 @@ fn the_sidebar_badge_counts_unpushed_commits_and_never_calls_an_unreadable_count
     assert_eq!(head.head.as_deref().map(str::len), Some(40));
     run(&["switch", "-q", "feature"], Some(&dir)).unwrap();
     assert_eq!(head_of(&dir).unwrap().branch.as_deref(), Some("feature"));
+    assert_eq!(head_at(&dir.to_string_lossy(), &[]).unwrap().branch.as_deref(), Some("feature"), "the page's door reads the same chip");
+    // RS-4: a folder on another machine has no chip; git is never started there.
+    assert_eq!(head_at(r"\\no-such-host-kolux.invalid\share\x", &[]), None);
     let plain = std::env::temp_dir().join(format!("kolux-scm-plain-{}", std::process::id()));
     fs::create_dir_all(&plain).unwrap();
     assert_eq!(head_of(&plain), None, "a plain folder has no chip");
