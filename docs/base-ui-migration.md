@@ -221,7 +221,7 @@ It counts matching source lines, so one dialog with two matching lines counts tw
 `title=` prop, including `title` props of Kolux components such as `<Ask title=...>`. Treat it as an upper bound, not
 a to-do list: a plain hover hint can stay a `title`.
 
-Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTerminalCard.*`. Leave those for last.
+Folders other agents own right now: `src/terminal/**`. Leave those for last.
 
 <!-- SITES:START -->
 | Folder | Dialog | Menu | ContextMenu | Popover | Tabs | Switch | Checkbox | Select | Tooltip | All |
@@ -446,7 +446,6 @@ Folders other agents own right now: `src/terminal/**` and `src/settings/NativeTe
 - [ ] `src/settings/GitPage.tsx`: Select :71, Switch :98, Switch :109, Switch :121, Select :134, Switch :140, Switch :180
 - [ ] `src/settings/GrokCard.tsx`: Dialog :161, Dialog :241
 - [ ] `src/settings/InputCards.tsx`: Switch :19
-- [ ] `src/settings/NativeTerminalCard.tsx`: Switch :35
 - [ ] `src/settings/NotificationsPage.tsx`: Switch :73, Switch :85, Switch :90, Switch :98, Select :110, Switch :169
 - [ ] `src/settings/RepoPage.tsx`: Select :41
 - [ ] `src/settings/RepoSetup.tsx`: Select :93, Checkbox :136, Select :141

@@ -17,7 +17,7 @@ import { currentTerminal, TERMINAL_EVENT } from "../theme";
 import { FontField } from "./AppearancePage";
 import { Segmented } from "./GeneralPage";
 import { InputCard, PowerShellCard } from "./InputCards";
-import NativeTerminalCard from "./NativeTerminalCard";
+import WarmShellCard from "./WarmShellCard";
 import { detectPlatform } from "../keys/keymap";
 import { readLook } from "./general";
 import { useSearching } from "./search";
@@ -208,7 +208,7 @@ export default function TerminalPage() {
         </section>
       )}
       {settings && <InputCard settings={settings} platform={platform} onSave={save} />}
-      {settings && <NativeTerminalCard settings={settings} platform={platform} onSave={save} />}
+      {settings && <WarmShellCard settings={settings} platform={platform} onSave={save} />}
       {settings && shells && (
         <section className="conn-card" data-section="shell">
           <h2 className="conn-name">Default terminal</h2>

@@ -21,8 +21,6 @@ export const INPUT_FIELDS = {
   optionAsAlt: "terminalOptionAsAlt",
   yenBackslash: "terminalYenBackslash",
   powershell: "powershellVersion",
-  /** NATIVE-TERMINAL.md: panes drawn by the Windows Terminal engine (experimental, off by default). */
-  native: "terminalNative",
   /** Kept-warm shell: a shell kept started per open folder, so the next new terminal opens at once (off by default). */
   warmShell: "terminalWarmShell",
 } as const;
@@ -62,8 +60,6 @@ export type InputPrefs = {
   optionAsAlt: Auto;
   yenBackslash: boolean;
   powershell: "auto" | "7" | "5";
-  /** Panes drawn by the Windows Terminal engine instead of xterm (NATIVE-TERMINAL.md). Off unless set to true. */
-  native: boolean;
   /** A shell kept ready per open folder for the next new terminal (src-tauri terminal.rs WARM_FIELD). Off unless set to true. */
   warmShell: boolean;
 };
@@ -85,7 +81,6 @@ export function readInput(s: Record<string, unknown>, platform: Platform): Input
     optionAsAlt: autoOf(s[INPUT_FIELDS.optionAsAlt]) ?? "auto",
     yenBackslash: s[INPUT_FIELDS.yenBackslash] === true,
     powershell: s[INPUT_FIELDS.powershell] === "7" || s[INPUT_FIELDS.powershell] === "5" ? s[INPUT_FIELDS.powershell] : "auto",
-    native: s[INPUT_FIELDS.native] === true,
     warmShell: s[INPUT_FIELDS.warmShell] === true,
   } as InputPrefs;
 }

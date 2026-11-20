@@ -11,6 +11,7 @@
 - Grok uses its own sign-in. Kolux no longer stores an xAI key for it.
 - The Kimi and MiniMax "Check now" button and the Agent Teams card are gone.
 - Setup scripts no longer run, and adding a project no longer offers to import another tool's setup file.
+- **One terminal engine.** The experimental "Draw panes with the Windows Terminal engine" switch is gone from Settings > Terminal. Every pane draws with Kolux's own terminal, on the graphics card when your PC allows. "Faster new terminals" stays where it was.
 - Fixed: the OpenRouter key in Settings > Agents can be saved (it was refused before).
 - Fixed: opening Kolux a second time brings back a window you hid to the tray, and it then minimises and maximises normally.
 - Fixed: a recovery reload no longer waits 1.5 seconds for nothing.

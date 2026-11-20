@@ -54,7 +54,6 @@ import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
 import { currentText, optionsOf, paneOptionsOf, scrollbackRows, TEXT_EVENT } from "./text";
 import { blinkRest } from "./blinkRest";
-import { bindNative, nativeLook } from "./nativeView";
 import { wireLinks } from "./paneLinks";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
@@ -416,39 +415,6 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     };
   }, [cwd, hidden, focused]);
   const idRef = useRef<number | null>(null);
-  // NATIVE-TERMINAL.md: with the experimental `terminalNative` setting on, the Windows Terminal engine draws
-  // this pane in a native window kept over the pane body (nativeView.ts). Read once per mount.
-  const hiddenNow = useRef(hidden);
-  hiddenNow.current = hidden;
-  // While the engine draws the pane, xterm stops drawing under it: its screen is taken out of the page (it
-  // still takes the output, so search, chat and restore keep working) and it counts as hidden for its GPU
-  // slot, which it gives back after the usual wait (parkWhenHidden). The engine draws with the pane's own
-  // colours, font and cursor, and follows a theme or text change; the session runs at the engine's grid, and
-  // xterm keeps that grid, so a menu over the pane (the engine steps aside) shows the same lines.
-  const nativeOn = useRef(false);
-  const refit = useRef<(() => void) | null>(null);
-  useEffect(() => {
-    if (!currentInput().native || !host.current) return;
-    return bindNative(host.current, () => idRef.current, () => hiddenNow.current, invoke, 250, {
-      onShown: (on) => {
-        nativeOn.current = on;
-        const screen = termRef.current?.element;
-        if (screen) screen.style.display = on ? "none" : "";
-        parking.current?.hidden(hiddenNow.current || on);
-        if (!on) refit.current?.();
-      },
-      look: () => {
-        const font = termFont();
-        const text = currentText();
-        return nativeLook(currentTerminal(), font.fontFamily, font.fontSize, text.cursor, text.blink);
-      },
-      lookEvents: [TERMINAL_EVENT, TEXT_EVENT],
-      onGrid: (cols, rows) => {
-        const term = termRef.current;
-        if (term && (term.cols !== cols || term.rows !== rows)) term.resize(cols, rows);
-      },
-    });
-  }, []);
   // APP-052: the run of the terminal service this pane's terminal belongs to; its typing carries it.
   const serviceRef = useRef<ServiceInfo | null>(null);
   const isHidden = useRef(hidden);
@@ -457,7 +423,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // frame is drawn (a layout effect, so the first visible frame is whole: TERM-103).
   const parking = useRef<ReturnType<typeof parkWhenHidden> | null>(null);
   useLayoutEffect(() => {
-    parking.current?.hidden(hidden || nativeOn.current);
+    parking.current?.hidden(hidden);
   }, [hidden]);
   // T-765: a tab that comes back catches up at once, without waiting for the next output chunk.
   useEffect(() => {
@@ -1210,8 +1176,6 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const resize = () => {
       // A hidden pane has no size; fitting it would shrink the program's terminal to nothing.
       if (el.clientWidth === 0 || el.clientHeight === 0) return;
-      // NATIVE-TERMINAL.md: the engine fits the session to its own grid while it draws the pane.
-      if (nativeOn.current) return;
       fit.fit();
       // TERM-010 (and the size rule of the full-screen card): while a divider is dragged the pane
       // redraws at each size but the program hears only the final one, when the drag ends.
@@ -1219,7 +1183,6 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       const id = idRef.current;
       if (id !== null && !ended) invoke("terminal_resize", { id, cols: term.cols, rows: term.rows }).catch(() => {});
     };
-    refit.current = resize;
     const observer = new ResizeObserver(resize);
     observer.observe(el);
     window.addEventListener(DIVIDER_DONE, resize);
