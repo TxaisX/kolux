@@ -35,7 +35,7 @@ test("two AI seats: both notes are asked at once and each prompt carries its own
   const setPanes = vi.fn();
   const s = {
     activeDir: "C:\\w", agents: [agent], defaultId: null, focused: 50, nextKey: { current: 100 }, panes: [chooser], projects: [], sheet: null, settings: {},
-    setAgentSel: vi.fn(), setLaunching: vi.fn(), setRefresh: vi.fn(), setScreen: vi.fn(), setSettings: vi.fn(), setSheet: vi.fn(),
+    setLaunching: vi.fn(), setRefresh: vi.fn(), setScreen: vi.fn(), setSettings: vi.fn(), setSheet: vi.fn(),
     setTabColors: vi.fn(), setToast: vi.fn(), setPanes, setFocused: vi.fn(), setNotice: vi.fn(), setActiveDir: vi.fn(),
   };
   const late = { projectOf: () => null, pendingLineup: { current: {} }, panesRef: { current: [chooser] } };

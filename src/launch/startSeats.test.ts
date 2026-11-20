@@ -17,7 +17,7 @@ function setup(panes: P[], live: P[] = panes) {
   const calls = { setPanes: vi.fn(), setFocused: vi.fn(), setNotice: vi.fn(), setActiveDir: vi.fn() };
   const s = {
     activeDir: "C:\\w", agents: [], defaultId: null, focused: 1, nextKey: { current: 100 }, panes, projects: [], sheet: null, settings: {},
-    setAgentSel: vi.fn(), setLaunching: vi.fn(), setRefresh: vi.fn(), setScreen: vi.fn(), setSettings: vi.fn(), setSheet: vi.fn(),
+    setLaunching: vi.fn(), setRefresh: vi.fn(), setScreen: vi.fn(), setSettings: vi.fn(), setSheet: vi.fn(),
     setTabColors: vi.fn(), setToast: vi.fn(), ...calls,
   };
   const late = { projectOf: () => null, pendingLineup: { current: {} }, panesRef: { current: live } };

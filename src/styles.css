@@ -1480,10 +1480,15 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .pane-head .wt-chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .pane-head .wt-chip .wt-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--wt); }
 .pane-head .wt-chip .wt-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* LV-3: once a narrow cell hides the label (340 px and under), the chip is its coloured dot alone, not an empty capsule. */
+@container (max-width: 340px) { .pane:not(.editor) .pane-head .chip.wt-chip { min-width: 0; padding: 0 2px; gap: 0; border-color: transparent; background: none; } }
 .pane:not(.editor) .pane-head .word { flex-shrink: 10000; }
 .pane:not(.editor) .pane-head :is(.crew, .age, .status.restored, .status.link-hint) { flex-shrink: 1000; }
 .pane:not(.editor) .pane-head .right { flex-shrink: 100; justify-content: flex-end; }
 .pane:not(.editor) .pane-head .status { flex-shrink: 10; }
+/* LV-3: the status word ("Ready") never ellipsizes while the right-hand buttons can still give way (they are cut
+   from the left, "+" first); only in a header too narrow for any button (204 px and under) does it shrink. */
+@container (min-width: 205px) { .pane:not(.editor) .pane-head .status.state { flex-shrink: 0; } }
 /* SAFE-002..004: the plan review sheet, from the right edge over the window. */
 .plan-sheet { position: fixed; z-index: calc(var(--z-tray) - 1); top: calc(env(safe-area-inset-top, 0px) + 40px); right: 0; bottom: 24px; width: min(520px, 100vw); display: flex; flex-direction: column; background: var(--pane-bg); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35); font-size: 13px; }
 .plan-sheet-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }

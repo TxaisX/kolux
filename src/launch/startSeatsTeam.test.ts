@@ -38,7 +38,7 @@ function setup(panes: P[]) {
   const calls = { setPanes: vi.fn(), setFocused: vi.fn(), setNotice: vi.fn(), setActiveDir: vi.fn(), setSettings: vi.fn() };
   const s = {
     activeDir: "C:\\r", agents: [agent], defaultId: null, focused: 50, nextKey: { current: 100 }, panes, projects: [{ id: "p1", path: "C:\\r", name: "r" }], sheet: null, settings: {},
-    setAgentSel: vi.fn(), setLaunching: vi.fn(), setRefresh: vi.fn(), setScreen: vi.fn(), setSheet: vi.fn(),
+    setLaunching: vi.fn(), setRefresh: vi.fn(), setScreen: vi.fn(), setSheet: vi.fn(),
     setTabColors: vi.fn(), setToast: vi.fn(), ...calls,
   };
   const settingsRef = { current: {} as Record<string, unknown> };

@@ -77,7 +77,6 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   // whose active tab was closed falls back to its last tab.
   const [activeTab, setActiveTab] = useState<Record<number, number>>(layout?.activeTab ?? {});
   // VIEW-015: the session picked on the Agents screen, kept across screen switches.
-  const [agentSel, setAgentSel] = useState<number | null>(null);
   useEffect(() => {
     const p = panes.find((x) => x.key === focused);
     if (p) setActiveTab((m) => (m[groupOf(p)] === focused ? m : { ...m, [groupOf(p)]: focused }));
@@ -235,7 +234,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, settingsAt, setSettingsAt, expanded,
     setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, drafts, setDrafts, dragWidth,
-    setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, workDir,
+    setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, activeDir, workDir,
     worktreeMenu, setWorktreeMenu, setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,
     hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, asking, setAsking, pinned, setPinned,

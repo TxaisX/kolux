@@ -57,7 +57,7 @@ const SETTINGS_WORDS: Partial<Record<PageId, string>> = { appearance: "theme dar
 export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, late: WindowLate) {
   const {
     accountSwitcher, activeDir, workDir, asking, classic, codex, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
-    owner, panes, pinned, ptys, recentTabs, restoredKeys, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
+    owner, panes, pinned, ptys, recentTabs, restoredKeys, running, screen, setActiveDir, setActiveTab, setAsking, setCreateName,
     setCreateRequest, setDeleteRequest, setFocused, setHist, setKept, setKeptSetup, setNotice, setPanes, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
     unreadPanes, setUnreadPanes, markDir
@@ -484,7 +484,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const addPreset = (id: string) => {
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: startDirOf(activeDir), branch: null, agent: "shell", agentId: id, program: null, args: [], seats: [seatStart(id, seatDefault(settings))] }]);
-    setAgentSel(key);
     setFocused(key);
   };
   return {

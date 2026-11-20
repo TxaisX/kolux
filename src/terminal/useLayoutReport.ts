@@ -2,6 +2,7 @@
 // as they were (cycle 2, the App.tsx split). Called where they sat, so the window's hook order is unchanged.
 import { sameDir, viewOf } from "../workspaces";
 import { tabName } from "./tabName";
+import { paneInView } from "../shell/window/inView";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef } from "react";
 import type { WindowState } from "../shell/windowStore";
@@ -14,7 +15,8 @@ export function useLayoutReport({ activeDir, activeOf, cells, ptys, terminals, t
   const inView = (key: number) => {
     const cell = cells.find((c) => c.panes.some((p) => p.key === key));
     if (!cell) return false;
-    return (terminals && sameDir(viewOf(cell.panes[0]), activeDir) && activeOf(cell) === key);
+    // FT-1: the same test the pane's `hidden` reads (shell/window/inView.ts). Zoom is not handed to this hook, so it is left out here.
+    return paneInView(cell, key, activeOf(cell), { terminals, activeDir, zoomed: null });
   };
   // CLI-023: the back end learns where each terminal sits (its worktree pane, its tab, its name,
   // whether it is in view) from this report, sent whenever that changes; session_tabs reads it.

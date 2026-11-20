@@ -31,7 +31,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
   const {
-    workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setAgentSel, setFocused, setLaunching, setNotice, setPanes,
+    workDir, agents, defaultId, focused, nextKey, panes, projects, setActiveDir, setFocused, setLaunching, setNotice, setPanes,
     setRefresh, setScreen, setSettings, setSheet, setToast, settings, sheet
   } = s;
   const { settingsRef } = p;
@@ -222,8 +222,6 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
           return owner ? { ...p, group: groupOf(owner) } : p;
         });
       });
-      // VIEW-021: a preset started from the Agents rail stays the selected session once it runs.
-      setAgentSel((sel) => (sel === key ? made[0].key : sel));
       if (!inGrid) {
         const form = o.form ?? key;
         setSheet((s) => (s?.key === form ? null : s));

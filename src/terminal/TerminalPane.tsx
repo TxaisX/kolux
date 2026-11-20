@@ -516,6 +516,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     applyKoluxUnicode(term); // T-308 / TERM-104: Unicode 16 widths and emoji sequences (xterm alone knows Unicode 6)
     term.open(el);
     termRef.current = term;
+    // FT-2 (review 0.2.0): a pane mounted already focused takes the keyboard now, not when its start answers
+    // (the focus effect ran before the terminal existed).
+    if (isFocused.current && !isHidden.current) term.focus();
     // DT-C231: a blinking cursor holds steady after a few seconds with no input (each blink redraws the
     // pane); typing, a click or focus makes it blink again. The setting itself stays the user's.
     const blink = blinkRest((on) => {
@@ -562,6 +565,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const choice = attachRenderer<WebglAddon>(term, () => new WebglAddon(), gpu && preferGpu(currentInput().gpu, probeGpu()), undefined, true);
     setRenderer(choice.mode);
     const gpuSoon = afterPaint(() => {
+      // FT-3 (review 0.2.0): a hidden pane takes no GPU slot at mount; parkWhenHidden gives it one when shown.
+      if (isHidden.current && parking.current) return;
       if (choice.mode === "webgl" || choice.wake() !== "webgl") return;
       term.refresh(0, Math.max(0, term.rows - 1)); // a renderer swap needs a full repaint
       setRenderer("webgl");
@@ -600,7 +605,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           return off;
         },
       });
-      parking.current.hidden(isHidden.current);
+      // FT-3: only a hidden mount is reported; a shown one wakes after its first paint (gpuSoon), not here.
+      if (isHidden.current) parking.current.hidden(true);
     }
 
     let alive = true;
@@ -711,6 +717,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // once); it is held and replayed, else the console's opening cursor query goes unanswered and
     // the program never starts.
     let early: { id: number; run: () => void }[] | null = [];
+    // FT-4 (review 0.2.0): the last size sent for this pane's terminal; a resize to the same size is not sent again.
+    let sentSize = "";
     const mine = (id: number, run: () => void) => {
       if (idRef.current === null) early?.push({ id, run });
       else if (id === idRef.current) run();
@@ -960,7 +968,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // DT-C248 review: a pane with a replay due (moved, or back from the saved layout) holds its chunks
           // until the id is bound, after the replay, so nothing is drawn before, and then again inside, it.
           if (idRef.current === null && !(moved || restored) && forPane(e, null, number)) draw();
-          else mine(e.id, draw);
+          // FT-5 (review 0.2.0): before the id is known only this pane's chunks (or untagged ones) are held.
+          else if (idRef.current !== null || e.pane == null || e.pane === number) mine(e.id, draw);
         }),
         listen<{ terminal: number; agent: string | null }>("pane-agent", (e) =>
           mine(e.payload.terminal, () => setFound(foundAgent(e.payload.agent))),
@@ -1020,6 +1029,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             return;
           }
           idRef.current = id;
+          sentSize = ""; // FT-4: a newly bound terminal hears its size again
           takeOver(number); // DT-C248: the hand-over ends here, with the terminal bound to this view
           // DT-C248 review: a terminal taken back is sized to its old view; the observer fired during the
           // replay while the id was unknown, so the size goes now, once.
@@ -1181,7 +1191,11 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       // redraws at each size but the program hears only the final one, when the drag ends.
       if (dragging()) return;
       const id = idRef.current;
-      if (id !== null && !ended) invoke("terminal_resize", { id, cols: term.cols, rows: term.rows }).catch(() => {});
+      if (id === null || ended) return;
+      const size = `${id}:${term.cols}x${term.rows}`;
+      if (size === sentSize) return; // FT-4: same terminal, same size: no IPC call, no ConPTY repaint
+      sentSize = size;
+      invoke("terminal_resize", { id, cols: term.cols, rows: term.rows }).catch(() => {});
     };
     const observer = new ResizeObserver(resize);
     observer.observe(el);
@@ -1703,7 +1717,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           {name ?? shellName ?? (shown === "shell" && !program && started ? shellWord(started) : programWord(shown))}
           {model && ` · ${model}`}
         </span>
-        <span className={`status ${tone}`} data-tip={explain}>
+        {/* LV-3 (review 0.2.0): `state` marks the status word itself (not a flash or a hint), which keeps its width. */}
+        <span className={`status state ${tone}`} data-tip={explain}>
           {word}
         </span>
         {header.state === "permission" && buttonsShown(shown, hook, answered, prompt.current.count, pendingTool) && (
