@@ -25,6 +25,9 @@ export type RendererChoice = {
   readonly mode: RendererMode;
   /** True while the pane draws plain only because the pool was full: it may still take a slot. */
   readonly waiting: boolean;
+  /** FT-3: true while the pane draws plain until its `wake()` (started plain and never woken, or parked) and
+   *  the GPU path is still open to it. */
+  readonly asleep: boolean;
   /** Fires when a GPU pane has fallen back to the plain path after a context loss. */
   onFallback: (listener: (reason: string) => void) => void;
   /** Throw the glyph caches away (after a paste burst or a system resume); nothing on the plain path.
@@ -195,6 +198,9 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
     get waiting() {
       return waiting && !refused && !gone && !addon;
     },
+    get asleep() {
+      return parked && !refused && !gone && !addon;
+    },
     onFallback,
     clearGlyphs() {
       if (!addon) return;
@@ -312,7 +318,7 @@ const parkersOf = new WeakMap<GpuPool, Set<Parker>>();
  *  screen in synchronized output the take waits for it to end, so the new context's first frame is
  *  not blank. */
 export function parkWhenHidden(
-  choice: Pick<RendererChoice, "park" | "wake" | "mode" | "waiting">,
+  choice: Pick<RendererChoice, "park" | "wake" | "mode" | "waiting"> & { readonly asleep?: boolean },
   hooks: ParkHooks,
   { after = PARK_AFTER_MS, wait = realWait, pool = gpuPool, now = Date.now }: { after?: number; wait?: Wait; pool?: GpuPool; now?: () => number } = {},
 ) {
@@ -396,7 +402,8 @@ export function parkWhenHidden(
       }
       me.hiddenSince = null;
       stopWaiting();
-      if (parked || choice.waiting) take();
+      // FT-3: a pane that started plain while hidden was never woken; shown, it takes a slot like a parked one.
+      if (parked || choice.waiting || choice.asleep) take();
     },
     stop() {
       stopWaiting();

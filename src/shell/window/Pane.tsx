@@ -26,6 +26,7 @@ import SeatChooser from "./SeatChooser";
 import TerminalPane from "./TerminalMemo";
 import { useWindow } from "./store";
 import { useStableFns } from "./stable";
+import { paneInView } from "./inView";
 import type { Identity } from "../../terminal/shellMarks";
 import type { Launch } from "../../terminal/sessionFork";
 import type { ShellEntry } from "../../terminal/shellChoice";
@@ -47,8 +48,10 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     setPanes, noticed, report,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
-    splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu,
+    splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu, cells,
   } = useWindow();
+  // FT-1 (review 0.2.0): hidden unless really on screen: terminals shown, its folder in front, top tab, not zoomed away.
+  const hidden = !paneInView(cells.find((c) => c.group === groupOf(p)), p.key, active, { terminals, activeDir, zoomed });
   // PKG-2: what the terminal runs from its handlers and effects, made here each render over this render's pane and
   // window, and handed over as callers with a fixed identity, so a new closure alone never redraws the pane. The
   // terminal calls none of these while it draws (it reads them through refs or on a click).
@@ -142,17 +145,17 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     return <CheckPane key={p.key} id={p.key} check={p.check} cwd={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenFile={openFile} onToast={setToast} />;
   }
   if (p.seats) {
-    return <SeatChooser pane={p as Pane & { seats: NonNullable<Pane["seats"]> }} hidden={p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
+    return <SeatChooser pane={p as Pane & { seats: NonNullable<Pane["seats"]> }} hidden={hidden} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   }
   // A restored tab that kept its kind but lost its data is a placeholder, never a live terminal (UX lane A, shell.md row 12).
   if (p.kind) return <LostPane kind={p.kind} hidden={!terminals || p.key !== active} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
-  if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={p.key !== active} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
+  if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={hidden} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
   const notice = noticeFor(p);
   return (
     <TerminalPane
       key={p.key}
-      hidden={p.key !== active}
+      hidden={hidden}
       restored={restoredKeys.current.has(p.key)}
       identityBefore={liveRef.current[p.key]}
       resumed={p.resumed}

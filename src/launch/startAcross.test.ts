@@ -27,7 +27,7 @@ async function run() {
   const calls = { setFocused: vi.fn(), setActiveDir: vi.fn(), setScreen: vi.fn(), setNotice: vi.fn() };
   const s = {
     activeDir: "C:\alpha", agents: [], defaultId: null, focused: 1, nextKey: { current: 100 }, panes: [], projects, sheet: form, settings: {},
-    setAgentSel: vi.fn(), setLaunching: vi.fn(), setPanes: vi.fn(), setRefresh: vi.fn(), setSettings: vi.fn(), setSheet, setTabColors: vi.fn(),
+    setLaunching: vi.fn(), setPanes: vi.fn(), setRefresh: vi.fn(), setSettings: vi.fn(), setSheet, setTabColors: vi.fn(),
     setToast, ...calls,
   };
   const late = { projectOf: (cwd: string | null) => projects.find((p) => p.path === cwd)?.id ?? null, pendingLineup: { current: {} }, panesRef: { current: [] } };

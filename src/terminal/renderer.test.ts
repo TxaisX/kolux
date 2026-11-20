@@ -625,6 +625,30 @@ test("bug 1155: a pane that starts plain loads nothing until woken, then takes t
   expect(pool.live).toBe(1);
 });
 
+test("FT-3: a pane that started plain while hidden (never woken) takes a GPU slot when it is shown", () => {
+  const loaded: unknown[] = [];
+  const pool = { live: 0, max: 4 };
+  const choice = attachRenderer({ loadAddon: (a) => loaded.push(a) }, fakeWebgl, true, pool, true);
+  const redraws: RendererMode[] = [];
+  const park = parkWhenHidden(choice, { resume() {}, redraw: (m) => void redraws.push(m), parked() {} }, { wait: () => () => {}, pool });
+  park.hidden(true); // mounted hidden: the pane's first-paint wake is skipped, so nothing is loaded
+  expect([choice.mode, pool.live]).toEqual(["dom", 0]);
+  park.hidden(false);
+  expect([choice.mode, pool.live, loaded.length, redraws]).toEqual(["webgl", 1, 1, ["webgl"]]);
+  park.stop();
+});
+
+test("FT-3: a plain-start pane with the GPU switched off is not redrawn on show", () => {
+  const pool = { live: 0, max: 4 };
+  const choice = attachRenderer({ loadAddon: () => {} }, fakeWebgl, false, pool, true);
+  const redraws: RendererMode[] = [];
+  const park = parkWhenHidden(choice, { resume() {}, redraw: (m) => void redraws.push(m), parked() {} }, { wait: () => () => {}, pool });
+  park.hidden(true);
+  park.hidden(false);
+  expect([choice.mode, redraws]).toEqual(["dom", []]);
+  park.stop();
+});
+
 test("bug 1155: starting plain with the GPU switched off stays plain when woken", () => {
   const choice = attachRenderer({ loadAddon: () => {} }, fakeWebgl, false, { live: 0, max: 4 }, true);
   expect(choice.wake()).toBe("dom");
