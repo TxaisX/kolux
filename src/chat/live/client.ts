@@ -18,11 +18,12 @@ export type StopHow = "interrupt" | "ended";
 export const chatIdOf = (paneKey: number): string => `pane-${paneKey}`;
 
 /**
- * Opens the chat and starts its hidden `claude` process in `cwd`, which must be an existing folder. The
- * sign-in and the user's own setup come from the Rust side; a chat started here is never `--bare`.
+ * Opens the chat and starts its hidden process in `cwd`, which must be an existing folder. `agent` is
+ * `claude`, or `openclaude` for the other models (2026-11-20); the sign-in and the user's own setup
+ * come from the Rust side, and a chat started here is never `--bare`.
  */
-export async function startChat(chatId: string, cwd: string, model: string | null = null): Promise<void> {
-  await invoke("chat_start", { chatId, cwd, model, resumeSessionId: null, extraEnv: [] });
+export async function startChat(chatId: string, cwd: string, model: string | null = null, agent: string = "claude"): Promise<void> {
+  await invoke("chat_start", { chatId, cwd, model, resumeSessionId: null, extraEnv: [], agent });
 }
 
 /**
