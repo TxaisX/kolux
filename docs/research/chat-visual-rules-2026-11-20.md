@@ -44,6 +44,24 @@ Why: this is what keeps a busy turn readable. Everything else in this list is sm
    thumbnail, its name and how long ago it changed.
 10. **Nothing is invented.** Cost, duration and usage come from the result the engine already reports.
 
+## Measured details
+
+These were captured byte for byte from the real terminal UI
+(`claude-tui-visuals-2026-11-20.md`), so they are not guesses:
+
+1. **A collapsed group is one sentence, past tense.** "Searched for 1 pattern, read 2 files, ran 1
+   shell command · 1 failed". The counts are bold, the sentence is grey, and a failure count is the
+   one place colour appears. Not a list, not a summary card.
+2. **A diff states its size before its content.** "Added 2 lines, removed 1 line", then each line is
+   `[number][space][marker][content]`. The red or green tint covers four characters (number, space,
+   marker), not the whole line. The reader can size the change without reading it.
+3. **The interrupt hint never moves.** The working line is `✶ Verb… (20s · ↓ 160 tokens)` and the
+   footer always ends `· esc to interrupt`. The sub-state lives in the parentheses; the verb does not
+   change position or length between states.
+4. **Tool rows are `● Name(target)` with `⎿ ` beneath**, and the indent ladder has three stops: the
+   left margin, plus one step, plus two. No deeper nesting, ever.
+5. **The group opens to the tool rows it hides**, in call order, with the failure already marked.
+
 ## What we copy from the terminal, not the desktop app
 
 The desktop app is the visual reference. The terminal is the behavioural one, because a Kolux pane runs
