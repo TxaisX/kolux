@@ -74,6 +74,12 @@ fn tidy(base: &Path, store: &Mutex<Store>) -> Outcome {
     run(&Git::detect().unwrap(), store, &Terminals::default(), Clock::until(Instant::now() + Duration::from_secs(120)), &data(base))
 }
 
+/// The same pass with the opt-in that removes each merged workspace, which is the older behaviour.
+fn tidy_removing(base: &Path, store: &Mutex<Store>) -> Outcome {
+    store.lock().unwrap().save_settings(&serde_json::json!({ REMOVE_ON_QUIT_SETTING: true })).unwrap();
+    tidy(base, store)
+}
+
 fn clock() -> Clock {
     Clock::until(Instant::now() + Duration::from_secs(120))
 }
@@ -85,17 +91,17 @@ fn reasons(out: &Outcome) -> Vec<String> {
 // ------------------------------------------------------------------ the merge itself
 
 #[test]
-fn a_clean_branch_is_fast_forwarded_into_main_and_its_workspace_goes() {
+fn a_clean_branch_is_fast_forwarded_into_main_and_its_workspace_stays_open() {
     let (base, repo, store) = repo("ff");
     let ws = workspace(&base, &repo, &store, "ff", true);
     commit(&ws, "b.txt", "b\n");
     let tip = head(&ws, "HEAD");
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
-    assert_eq!((out.merged.len(), out.removed.len()), (1, 1));
+    assert_eq!((out.merged.len(), out.removed.len()), (1, 0));
     assert_eq!(head(&repo, "main"), tip, "a fast-forward: main is at the branch's tip, no merge commit");
-    assert!(!ws.exists(), "the workspace folder is gone");
-    assert!(!branch_exists(&repo, "ff"), "its branch went with it: every commit is in main");
+    assert!(ws.is_dir(), "Txais (2026-11-20): the workspace folder stays open");
+    assert!(branch_exists(&repo, "ff"), "and so does its branch, so the workspace can be opened again from it");
     assert_eq!(git_in(&repo, &["status", "--porcelain"]), "");
     assert!(!marker_file(&base).exists(), "the marker is cleared once main is whole again");
     let _ = fs::remove_dir_all(&base);
@@ -114,7 +120,7 @@ fn uncommitted_work_is_committed_merged_and_removed_with_ignored_files_left_out(
     assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap().trim(), "a changed");
     assert!(repo.join("new.txt").is_file(), "the untracked file was saved and merged");
     assert_eq!(git_in(&repo, &["ls-tree", "--name-only", "main", "noise.log"]), "", "an ignored file is never committed");
-    assert!(!ws.exists() && !branch_exists(&repo, "wip"));
+    assert!(ws.is_dir() && branch_exists(&repo, "wip"), "the workspace stays open, its work saved and merged");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -129,7 +135,7 @@ fn a_branch_behind_main_gets_a_merge_commit_when_nothing_clashes() {
     assert!(out.left.is_empty(), "{:?}", out.left);
     assert_eq!(git_in(&repo, &["log", "-1", "--format=%s", "main"]), "Kolux: merge side on quit");
     assert!(git_in(&repo, &["merge-base", "--is-ancestor", &tip, "main"]).is_empty());
-    assert!(!ws.exists());
+    assert!(ws.is_dir());
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -164,7 +170,7 @@ fn a_dirty_main_checkout_gets_nothing_merged_and_the_workspace_stays() {
     assert_eq!(out.left.len(), 1, "{:?}", out.left);
     assert!(out.left[0].why.contains("not committed"), "{:?}", out.left);
     assert!(ws.is_dir() && branch_exists(&repo, "work"));
-    assert!(!empty.exists(), "a workspace with nothing new goes even so: nothing of it is lost");
+    assert!(empty.is_dir(), "a workspace with nothing new stays too");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -261,6 +267,8 @@ fn more_than_five_kept_are_counted_not_listed() {
 fn only_a_real_quit_with_the_setting_on_merges() {
     let on = serde_json::json!({});
     assert_eq!(skip_reason(&on, false, false, false), None, "on by default");
+    assert!(!removes_on_quit(&on), "a quit keeps the folder by default");
+    assert!(removes_on_quit(&serde_json::json!({ REMOVE_ON_QUIT_SETTING: true })), "the old delete is opt-in");
     assert!(skip_reason(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false }), false, false, false).is_some());
     assert!(skip_reason(&serde_json::json!({ MERGE_ON_QUIT_SETTING: true }), false, false, false).is_none());
     assert!(skip_reason(&on, true, false, false).is_some(), "a restart");
@@ -278,7 +286,7 @@ fn a_workspace_folder_names_its_main_checkout() {
 }
 
 #[test]
-fn a_workspace_made_in_dot_worktrees_is_merged_and_removed_and_main_never_lists_it() {
+fn a_workspace_made_in_dot_worktrees_is_merged_and_stays_open_and_main_never_lists_it() {
     if std::env::var(projects::WORKSPACES_DIR_ENV).is_ok() {
         return; // the variable would choose a folder
     }
@@ -300,12 +308,12 @@ fn a_workspace_made_in_dot_worktrees_is_merged_and_removed_and_main_never_lists_
     assert_eq!(git_in(&repo, &["status", "--porcelain"]), "", "main never lists the .worktrees folder");
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
-    assert_eq!((out.merged.len(), out.removed.len()), (1, 1));
-    assert!(!ws.exists(), "the workspace folder is gone");
+    assert_eq!((out.merged.len(), out.removed.len()), (1, 0));
+    assert!(ws.is_dir(), "Txais (2026-11-20): the workspace folder stays open");
     assert!(repo.join("b.txt").is_file() && repo.join("scratch.txt").is_file(), "its commit and its unsaved file reached main");
-    assert!(!branch_exists(&repo, &made.branch.clone().unwrap_or_default()), "its branch went with it");
+    assert!(branch_exists(&repo, &made.branch.clone().unwrap_or_default()), "its branch stays too");
     assert_eq!(git_in(&repo, &["status", "--porcelain"]), "");
-    assert!(projects::load_origins(&store.lock().unwrap()).is_empty(), "its record is forgotten");
+    assert!(!projects::load_origins(&store.lock().unwrap()).is_empty(), "its record is kept: the workspace is still listed");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -327,7 +335,7 @@ fn a_rewritten_record_keeps_the_base_and_the_branch_kolux_made() {
 // ------------------------------------------------------------------ owner decision (2026-11-17): branch and pull request sessions merge too
 
 #[test]
-fn a_pull_request_workspace_is_merged_and_removed_like_any_other() {
+fn a_pull_request_workspace_is_merged_and_keeps_its_folder_like_any_other() {
     let (base, repo, store) = repo("pr");
     let ws = workspace(&base, &repo, &store, "pr-7", false);
     set_origin(&store.lock().unwrap(), &ws.to_string_lossy(), Some(&serde_json::json!({ "madeBy": "app", "pr": "https://github.com/o/r/pull/7", "prEver": true }))).unwrap();
@@ -337,14 +345,14 @@ fn a_pull_request_workspace_is_merged_and_removed_like_any_other() {
     commit(&fork, "c.txt", "c\n");
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
-    assert_eq!((out.merged.len(), out.removed.len()), (2, 2));
+    assert_eq!((out.merged.len(), out.removed.len()), (2, 0));
     assert!(repo.join("b.txt").is_file() && repo.join("c.txt").is_file());
-    assert!(!ws.exists() && !fork.exists());
+    assert!(ws.is_dir() && fork.is_dir());
     let _ = fs::remove_dir_all(&base);
 }
 
 #[test]
-fn a_workspace_opened_on_an_existing_branch_is_merged_and_removed_and_that_branch_stays() {
+fn a_workspace_opened_on_an_existing_branch_is_merged_and_stays_open_and_that_branch_stays() {
     let (base, repo, store) = repo("existing");
     let at = base.join("opened");
     git_in(&repo, &["worktree", "add", "-q", &at.to_string_lossy(), "-b", "feat-login"]);
@@ -353,10 +361,10 @@ fn a_workspace_opened_on_an_existing_branch_is_merged_and_removed_and_that_branc
     let tip = head(&at, "HEAD");
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
-    assert_eq!((out.merged.len(), out.removed.len()), (1, 1));
+    assert_eq!((out.merged.len(), out.removed.len()), (1, 0));
     assert_eq!(head(&repo, "main"), tip);
-    assert!(!at.exists(), "the folder goes");
-    assert!(branch_exists(&repo, "feat-login"), "a branch the user chose keeps its name when the workspace goes (PROJ-030)");
+    assert!(at.is_dir(), "the folder stays open");
+    assert!(branch_exists(&repo, "feat-login"), "a branch the user chose keeps its name");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -376,10 +384,10 @@ fn a_pushed_branch_is_merged_locally_without_pushing_and_the_remote_branch_stays
     let tip = head(&ws, "HEAD");
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
-    assert_eq!((out.merged.len(), out.removed.len()), (1, 1));
+    assert_eq!((out.merged.len(), out.removed.len()), (1, 0));
     assert_eq!(head(&repo, "main"), tip, "merged into the local main");
-    assert!(!ws.exists());
-    assert!(!branch_exists(&repo, "pushed"), "the local branch goes once it is merged");
+    assert!(ws.is_dir());
+    assert!(branch_exists(&repo, "pushed"), "the local branch stays open with its workspace");
     assert_eq!(head(&remote, "refs/heads/pushed"), remote_pushed, "the remote branch is neither pushed to nor deleted");
     assert_eq!(head(&remote, "refs/heads/main"), remote_main, "nothing was pushed to the remote main");
     let _ = fs::remove_dir_all(&base);
@@ -401,7 +409,7 @@ fn a_workspace_started_from_another_base_is_merged_too() {
     assert!(out.left.is_empty(), "{:?}", out.left);
     assert_eq!(head(&repo, "main"), tip, "main took the branch, develop's commit with it");
     assert_eq!(head(&repo, "develop"), develop, "develop itself is untouched");
-    assert!(!at.exists() && !branch_exists(&repo, "based"));
+    assert!(at.is_dir() && branch_exists(&repo, "based"));
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -417,14 +425,14 @@ fn a_workspace_moved_onto_another_branch_has_it_merged_but_keeps_that_branch() {
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
     assert_eq!(head(&repo, "main"), tip);
-    assert!(!ws.exists(), "the folder is removed: it was clean and merged");
+    assert!(ws.is_dir(), "the folder stays open: it was clean and merged");
     assert!(branch_exists(&repo, "somebody-elses-work"), "the branch Kolux did not make is not deleted");
     let _ = fs::remove_dir_all(&base);
 }
 
 /// The branch Kolux made is found when it was renamed: by the record, and by the reflog when the record is stale or missing.
 #[test]
-fn a_branch_kolux_renamed_still_goes_with_its_workspace() {
+fn a_branch_kolux_renamed_is_still_found_and_kept_with_its_workspace() {
     let (base, repo, store) = repo("renamed");
     let recorded = workspace(&base, &repo, &store, "amber", true);
     git_in(&recorded, &["branch", "-m", "amber", "fix-login"]);
@@ -439,10 +447,26 @@ fn a_branch_kolux_renamed_still_goes_with_its_workspace() {
     commit(&none, "d.txt", "d\n");
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
-    assert_eq!(out.removed.len(), 3, "{out:?}");
+    assert_eq!((out.merged.len(), out.removed.len()), (3, 0), "{out:?}");
     for b in ["fix-login", "fix-poll", "fix-sort"] {
-        assert!(!branch_exists(&repo, b), "{b} was Kolux's own branch and went with its workspace");
+        assert!(branch_exists(&repo, b), "{b} stays with its workspace");
     }
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// The opt-in brings back the older behaviour: a workspace that merged cleanly goes as Kolux closes.
+#[test]
+fn the_opt_in_setting_still_removes_a_merged_workspace() {
+    let (base, repo, store) = repo("optin");
+    let ws = workspace(&base, &repo, &store, "gone", true);
+    commit(&ws, "b.txt", "b\n");
+    let tip = head(&ws, "HEAD");
+    let out = tidy_removing(&base, &store);
+    assert!(out.left.is_empty(), "{:?}", out.left);
+    assert_eq!((out.merged.len(), out.removed.len()), (1, 1));
+    assert_eq!(head(&repo, "main"), tip);
+    assert!(!ws.exists(), "the folder goes when it is asked for");
+    assert!(!branch_exists(&repo, "gone"), "its branch went with it: every commit is in main");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -581,7 +605,7 @@ fn a_repository_that_signs_commits_does_not_stop_the_quit() {
     let out = tidy(&base, &store);
     assert!(out.left.is_empty(), "{:?}", out.left);
     assert!(repo.join("b.txt").is_file() && repo.join("new.txt").is_file());
-    assert!(!ws.exists());
+    assert!(ws.is_dir(), "the workspace stays open");
     assert!(started.elapsed() < Duration::from_secs(60));
     let _ = fs::remove_dir_all(&base);
 }
@@ -1132,6 +1156,8 @@ fn the_quits_wait_goes_past_its_budget_only_while_a_merge_runs_and_never_past_th
 #[test]
 fn what_the_quit_knows_is_saved_before_each_workspace_so_a_cut_quit_still_leaves_the_notice() {
     let (base, repo, store) = repo("m1");
+    // The opt-in keeps the older delete, so both columns of the progress are exercised.
+    store.lock().unwrap().save_settings(&serde_json::json!({ REMOVE_ON_QUIT_SETTING: true })).unwrap();
     let a = workspace(&base, &repo, &store, "aa", true);
     commit(&a, "b.txt", "b\n");
     let b = workspace(&base, &repo, &store, "bb", true);
@@ -1305,7 +1331,7 @@ fn ignored_local_settings_secrets_and_data_keep_the_workspace_and_build_output_d
     }
     fs::write(builds.join("noise.log"), "ignored\n").unwrap();
     let main_before = head(&repo, "main");
-    let out = tidy(&base, &store);
+    let out = tidy_removing(&base, &store);
     for (ws, file) in [(&env, ".env"), (&data_dir, "app.sqlite"), (&claude, "CLAUDE.local.md"), (&nested, "settings.local.json")] {
         let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{file}: not kept: {out:?}"));
         assert!(left.why.contains("ignored file") && left.why.contains(file) && left.why.contains("would delete"), "{file}: {}", left.why);
@@ -1359,7 +1385,7 @@ fn an_ignored_folder_holding_a_separate_git_project_keeps_the_workspace_and_its_
     fs::write(plain.join("vendor").join("lib").join("x.go"), "package x\n").unwrap();
     fs::create_dir_all(plain.join("node_modules").join("x")).unwrap();
     fs::write(plain.join("node_modules").join("x").join("index.js"), "1\n").unwrap();
-    let out = tidy(&base, &store);
+    let out = tidy_removing(&base, &store);
     for (ws, at) in [(&vendor, "vendor/lib"), (&deep, "data/a/b/proj"), (&dep, "node_modules/dep"), (&scoped, "node_modules/@org/pkg"), (&gitfile, "vendor/sub")] {
         let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{at}: not kept: {out:?}"));
         assert!(left.why.contains("separate Git project") && left.why.contains(&format!("({at})")) && left.why.contains("would delete"), "{at}: {}", left.why);
@@ -1403,7 +1429,7 @@ fn files_the_include_file_copied_from_main_keep_the_workspace_only_when_they_cha
     // A local file main does not have is the workspace's own, whatever its name is.
     let own = made("own");
     fs::write(own.join("other.local.json"), "{}\n").unwrap();
-    let out = tidy(&base, &store);
+    let out = tidy_removing(&base, &store);
     assert_eq!(out.removed.iter().filter(|p| Path::new(p.as_str()) == same.as_path()).count(), 1, "unchanged copies: merged and removed: {out:?}");
     assert!(!same.exists() && out.merged.iter().any(|p| Path::new(p.as_str()) == same.as_path()));
     for (ws, file) in [(&env, ".env"), (&nested, "app.local.json"), (&longer, ".env"), (&own, "other.local.json")] {
@@ -1427,7 +1453,7 @@ fn a_copy_of_a_file_main_has_since_changed_keeps_the_workspace() {
     assert!(crate::include::bring_along(&repo, &ws).is_empty());
     commit(&ws, "s.txt", "s\n");
     fs::write(repo.join(".env"), "TOKEN=changed in main\n").unwrap();
-    let out = tidy(&base, &store);
+    let out = tidy_removing(&base, &store);
     assert!(out.left.len() == 1 && out.left[0].why.contains(".env"), "{out:?}");
     assert!(ws.is_dir());
     let _ = fs::remove_dir_all(&base);
@@ -1451,7 +1477,7 @@ fn ignored_keys_certificates_and_credentials_keep_the_workspace() {
     // Ordinary ignored output next to them does not.
     let plain = ignoring_text(&base, &repo, &store, "plain", ignore);
     fs::write(plain.join("noise.log"), "x\n").unwrap();
-    let out = tidy(&base, &store);
+    let out = tidy_removing(&base, &store);
     for (ws, file) in &kept {
         let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{file}: not kept: {out:?}"));
         assert!(left.why.contains("ignored file") && left.why.contains(last_part(file)) && left.why.contains("would delete"), "{file}: {}", left.why);
@@ -1481,7 +1507,7 @@ fn bin_obj_vendor_pods_and_the_other_build_folders_are_deleted_without_a_questio
     nested_repo(&pods.join("Pods").join("Dep"));
     let vendor = ignoring_text(&base, &repo, &store, "vendored", &ignore);
     nested_repo(&vendor.join("vendor").join("lib"));
-    let out = tidy(&base, &store);
+    let out = tidy_removing(&base, &store);
     assert!(!builds.exists(), "ignored output in the new build folders goes with the merged workspace: {out:?}");
     for (ws, at) in [(&pods, "Pods/Dep"), (&vendor, "vendor/lib")] {
         let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{at}: not kept: {out:?}"));
@@ -1504,7 +1530,7 @@ fn a_git_project_up_to_three_levels_inside_a_build_folder_keeps_the_workspace_bu
         fs::create_dir_all(&d).unwrap();
         fs::write(d.join("index.js"), "1\n").unwrap();
     }
-    let out = tidy(&base, &store);
+    let out = tidy_removing(&base, &store);
     for (ws, at) in [(&build, "build/sub/clone"), (&vendor, "vendor/acme/lib")] {
         let left = out.left.iter().find(|l| Path::new(&l.path) == ws.as_path()).unwrap_or_else(|| panic!("{at}: not kept: {out:?}"));
         assert!(left.why.contains("separate Git project") && left.why.contains(at), "{at}: {}", left.why);

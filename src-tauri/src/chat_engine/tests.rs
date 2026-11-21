@@ -115,13 +115,29 @@ fn empty_init_alarm_fires_only_when_everything_is_missing_but_expected() {
 fn the_command_line_never_asks_for_bare() {
     for model in [None, Some("opus")] {
         for resume in [None, Some("abc-123")] {
-            let a = claude_args(model, resume);
+            let a = chat_args("claude", model, resume);
             assert!(!a.iter().any(|x| x == "--bare"), "{a:?}");
             assert_eq!(a[..8], ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-mode", "auto"]);
             assert_eq!(a.windows(2).any(|w| w == ["--model", "opus"]), model.is_some());
             assert_eq!(a.windows(2).any(|w| w == ["--resume", "abc-123"]), resume.is_some());
         }
     }
+}
+
+/// 2026-11-20: OpenClaude reads the same stream-json lines, but its permission modes are not Claude
+/// Code's — measured: `auto` falls back to `default` and every tool call is refused, while
+/// `bypassPermissions` acts with no prompt (DT-C283: a chat never asks). Its picked model is routed
+/// through OpenRouter, the gateway its list in the window comes from; no model, no provider.
+#[test]
+fn openclaude_gets_the_mode_it_knows_and_its_gateway() {
+    let a = chat_args("openclaude", Some("deepseek/deepseek-v4.1-flash-1017"), None);
+    assert!(a.windows(2).any(|w| w == ["--permission-mode", "bypassPermissions"]), "{a:?}");
+    assert!(!a.windows(2).any(|w| w == ["--permission-mode", "auto"]), "{a:?}");
+    assert!(a.windows(2).any(|w| w == ["--provider", OPENCLAUDE_PROVIDER]), "{a:?}");
+    assert!(a.windows(2).any(|w| w == ["--model", "deepseek/deepseek-v4.1-flash-1017"]), "{a:?}");
+    let own = chat_args("openclaude", None, None);
+    assert!(!own.iter().any(|x| x == "--provider"), "Program default keeps OpenClaude's own setup: {own:?}");
+    assert!(own.windows(2).any(|w| w == ["--permission-mode", "bypassPermissions"]), "{own:?}");
 }
 
 #[test]
@@ -179,7 +195,7 @@ impl Harness {
     fn spec(&self, extra: &[(&str, &str)]) -> Spec {
         let mut env = vec![("CLAUDE_CONFIG_DIR".to_string(), self.dir.join("claude-config").to_string_lossy().into_owned())];
         env.extend(extra.iter().map(|(k, v)| (k.to_string(), v.to_string())));
-        Spec { cwd: self.dir.clone(), model: None, env }
+        Spec { agent: "claude".to_string(), cwd: self.dir.clone(), model: None, env }
     }
 
     fn start(&self, id: &str, extra: &[(&str, &str)]) {

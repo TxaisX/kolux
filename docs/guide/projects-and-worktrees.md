@@ -54,7 +54,24 @@ Kolux has no changes view of its own any more: the All Changes tab, the diff tab
 
 Kolux does not reopen your tabs between runs, but your folders stay listed. Terminals do not keep running while Kolux is closed: quitting ends every pane and whatever runs in it. When you reopen, the Folders list is as you left it, no tabs are open and the Start form asks what to open (see [Getting started](getting-started.md)). Earlier output is not shown again.
 
-Quitting never touches a folder's files or its Git worktrees. A folder you removed yourself is a different matter: it is a new project if you add it again, so what was tied to the old one does not follow it, and a lineup or group saved for the folder starts fresh.
+Quitting never touches a folder's files or its Git worktrees. Closing Kolux still saves each workspace's uncommitted work as a commit and merges its branch into main, but the workspace folder stays exactly where it was. A folder you removed yourself is a different matter: it is a new project if you add it again, so what was tied to the old one does not follow it, and a lineup or group saved for the folder starts fresh.
+
+### A workspace that sits unused
+
+A workspace stays open until you close it. The one thing that removes one on its own is idleness: a workspace you have not opened in 14 days is saved, merged into main and removed while Kolux is running. Its branch always stays, so the workspace can be opened again from it. A workspace you opened within the last 14 days is never touched. One Kolux has no record of opening (a workspace made before this existed) starts its clock on the first check, so nothing is removed on the day the rule arrives.
+
+Two settings change this, both in `settings.json`:
+
+- `"workspaceKeepDays": <days>` sets how long a workspace may sit unopened; `0` turns the sweep off.
+- `"workspacesRemoveOnQuit": true` brings back the older behaviour, removing every workspace that merges cleanly as Kolux closes.
+
+The sweep writes what it did to the app's log, `logs/kolux.log` in the profile folder. A workspace it leaves says why: a lock, an unfinished merge, a folder holding your own local files, or a terminal still running in it.
+
+### Handoff notes
+
+Every agent Kolux starts gets a handoff note before it begins, and every workspace Kolux creates makes one for itself at the moment the worktree is made: a Markdown file at `.kolux/handoffs/<name>.md` inside the project, named after the workspace the agent works in (or after the folder and its seat number when several agents share one folder). The agent is told to keep it current — the files it added, updated and removed, and what is left to do. The folder ignores itself, so notes never ride into your commits.
+
+The notes are what make clearing early cheap. Each time a session's context crosses its clear point (see [Settings](settings.md)) it is cleared with the agent's own new-conversation command — `/clear` in Claude Code, `/new` in Codex, OpenCode and Grok — and the next turn starts sharp with the state on paper rather than in a conversation the model was already losing track of. A long day relays as many times as it fills.
 
 What still comes back:
 
@@ -62,13 +79,13 @@ What still comes back:
 - whether the left sidebar was showing, and the right panel's tab;
 - your settings, look and saved start shapes.
 
-To get your tabs back as well (they reopen as plain shells), add `"keepWorkspaces": true` to `settings.json`. There is no switch for it in Settings.
+Your tabs come back by default, and an agent tab carries on in its last conversation. To start with no tabs instead (the Start form asks what to open), add `"keepWorkspaces": false` to `settings.json`. There is no switch for it in Settings.
 
 ### Agent sessions after a restart
 
-A restart does not bring an agent's conversation back by itself (see above). The resume form below is what Kolux uses when it does start an agent again for you: when a sleeping agent tab wakes (Agent sleep, in [Settings](settings.md)).
+A restart brings an agent's conversation back by itself: every agent tab that comes back resumes the session Kolux last saw for it, using that agent's own "resume" form added to its standing start line. The same form is used when a sleeping agent tab wakes (Agent sleep, in [Settings](settings.md)).
 
-A woken agent tab starts the agent again with that agent's own "resume" form added to its start line, so it opens in its earlier conversation. This happens only on a wake, never on a new tab, and never twice. Kolux needs the agent's session ID for this; it learns it from the agent's status hooks (see [Status words](terminals.md#status-words)). If Kolux holds no session ID, the agent starts at its prompt, and its pane wears the mark "restored without resume" instead of "restored". A session ID with odd characters in it is treated as no ID.
+This happens on a restart and on a wake, never on a new tab, and never twice. Kolux needs the agent's session ID for this; it learns it from the agent's status hooks (see [Status words](terminals.md#status-words)). If Kolux holds no session ID, the agent starts at its prompt, and its pane wears the mark "restored without resume" instead of "restored". A session ID with odd characters in it is treated as no ID.
 
 | Agents | What comes back |
 |---|---|

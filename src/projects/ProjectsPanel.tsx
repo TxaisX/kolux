@@ -132,8 +132,9 @@ type Props = {
   launching: boolean;
   onLaunch: (agent: AgentInfo, projectId: string | null) => void;
   /** Slice 1 of chat panes: "New chat" in the sidebar's New session menu, so a chat never needs a terminal first.
-   *  `model` (the Everyday New session menu) starts the chat page on that Claude model. */
-  onChat?: (projectId: string | null, inFolder?: boolean, model?: string | null) => void;
+   *  `model` (the Everyday New session menu) starts the chat page on that model; `agent` (2026-11-20) names
+   *  the AI that answers there — `claude`, or `openclaude` for the other models. */
+  onChat?: (projectId: string | null, inFolder?: boolean, model?: string | null, agent?: string) => void;
   /** The Everyday New session menu's other AIs: one session in that folder on the picked model. */
   onSession?: (projectId: string | null, agentId: string, model?: string | null) => void;
   /** Focus one pane by its key (the Everyday chats list). */
@@ -217,6 +218,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const everydayMenuRef = useRef<HTMLDivElement>(null);
   const [everydayChatFor, setEverydayChatFor] = useState<string | null>(null);
   const [everydayChatModel, setEverydayChatModel] = useState<string | null>(null);
+  const [everydayChatAgent, setEverydayChatAgent] = useState<string>("claude");
   const [everydaySessionFor, setEverydaySessionFor] = useState<{ projectId: string; agent: string; model: string | null } | null>(null);
   const [everydayAIFor, setEverydayAIFor] = useState<string | null>(null);
   // A menu closes when the user clicks anywhere else or presses Escape, as every other menu in the window does.
@@ -1683,10 +1685,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setEverydayBusy(false);
     }
   };
-  const startEverydayChat = async (model: string | null = null) => {
+  const startEverydayChat = async (agent: string, model: string | null = null) => {
     setEverydayMenu(false);
     const p = everydayProject ?? (await openEveryday());
     if (!p) return;
+    setEverydayChatAgent(agent);
     setEverydayChatModel(model === DEFAULT_MODEL ? null : model);
     setEverydayChatFor(p.id);
   };
@@ -1698,8 +1701,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const model = everydayChatModel;
     setEverydayChatFor(null);
     setEverydayChatModel(null);
-    onChat?.(everydayChatFor, true, model);
-  }, [everydayChatFor, everydayChatModel, projects, onChat]);
+    onChat?.(everydayChatFor, true, model, everydayChatAgent);
+  }, [everydayChatFor, everydayChatModel, everydayChatAgent, projects, onChat]);
   // The menu's other AIs: their own session in the same plain folder, on the picked model.
   const startEverydayOn = async (agent: string, model: string | null) => {
     setEverydayMenu(false);
@@ -2533,8 +2536,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                   ))
                 )}
               </div>
-              {/* New session (2026-11-20): each pick is its own session. Claude's models open the chat page;
-                  every other AI opens its own screen in the same folder, on the model picked here. */}
+              {/* New session (2026-11-20): each pick is its own session. The chat page's AIs (Claude,
+                  OpenClaude) open the chat page; every other AI opens its own screen in the same folder, on
+                  the model picked here. */}
               <div className="sb-everyday-actions" data-open={everydayMenu ? "" : undefined} ref={everydayMenuRef}>
                 <button
                   type="button"
@@ -2586,7 +2590,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                             data-agent={a.agent}
                             data-model={m.id}
                             disabled={everydayBusy || launching}
-                            onClick={() => void (a.chat ? startEverydayChat(m.id) : startEverydayOn(a.agent, m.id))}
+                            onClick={() => void (a.chat ? startEverydayChat(a.agent, m.id) : startEverydayOn(a.agent, m.id))}
                           >
                             {m.label}
                           </button>

@@ -61,6 +61,9 @@ pub mod mask;
 mod s9_fuzz_tests;
 mod ports;
 mod tidy;
+mod retire;
+mod handoff;
+mod handoff_meter;
 mod resources;
 pub mod projects;
 mod quit_merge;
@@ -407,6 +410,7 @@ pub fn run() {
             notifications::first_run_welcome(app.handle()); // VIEW-111: a Mac's one welcome notification
             app.manage(resources::Sampler::default());
             app.manage(resume::Registry::default());
+            app.manage(handoff::Registry::default());
             app.manage(claude_key::KeySetup::default());
             app.manage(claude_accounts::SignIns::default());
             app.manage(codex_accounts::SignIns::default());
@@ -465,6 +469,12 @@ pub fn run() {
                 std::thread::sleep(tidy::POLL);
                 tidy::pass(&handle);
             });
+            // Txais (2026-11-20): the sweep. A workspace nobody has opened for `workspaceKeepDays`
+            // days goes; a quit keeps every other one, so this is the only automatic removal left.
+            retire::start(app.handle().clone());
+            // Txais (2026-11-20): the handoff meter. Claude's status line pushes its context size;
+            // Codex, OpenCode and Grok leave theirs in their own session stores, read here.
+            handoff_meter::start(app.handle().clone());
             // ACCT-050: an agent started by hand in a shell pane is recognised within a few seconds.
             let handle = app.handle().clone();
             std::thread::spawn(move || loop {
@@ -642,6 +652,7 @@ pub fn run() {
             projects::workspace_open_branch,
             projects::workspace_scan,
             projects::workspace_seen,
+            projects::workspace_opened,
             projects::workspace_hide,
             projects::workspace_rename, projects::workspace_details_get, projects::workspace_details_save,
             projects::workspace_sleep,

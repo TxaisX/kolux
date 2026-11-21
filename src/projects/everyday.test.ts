@@ -43,14 +43,14 @@ const models: Record<string, { id: string; label: string }[]> = {
 };
 const modelsOf = (id: string) => models[id] ?? [];
 
-test("the New session menu offers every installed AI, Claude first", () => {
-  const list = [ai("codex", "Codex"), ai("claude", "Claude Code"), ai("gemini", "Gemini CLI", false), ai("aider", "Aider"), ai("grok", "Grok")];
+test("the New session menu offers every installed AI, the chat page's AIs first", () => {
+  const list = [ai("codex", "Codex"), ai("claude", "Claude Code"), ai("openclaude", "OpenClaude"), ai("gemini", "Gemini CLI", false), ai("aider", "Aider"), ai("grok", "Grok")];
   const got = everydayAgents(list, modelsOf);
-  expect(got.map((x) => x.agent)).toEqual(["claude", "codex", "aider", "grok"]);
-  // Only Claude's sessions draw the chat page; Codex opens its own screen.
-  expect(got.map((x) => x.chat)).toEqual([true, false, false, false]);
+  expect(got.map((x) => x.agent)).toEqual(["claude", "openclaude", "codex", "aider", "grok"]);
+  // Claude and OpenClaude draw the chat page; Codex opens its own screen.
+  expect(got.map((x) => x.chat)).toEqual([true, true, false, false, false]);
   expect(got[0].models.map((m) => m.id)).toEqual(["opus", "sonnet", "default"]);
-  expect(got[1].name).toBe("Codex");
+  expect(got[2].name).toBe("Codex");
 });
 
 test("an AI with no model list still starts, on its own default; one not installed is left out", () => {

@@ -160,6 +160,22 @@ fn sess025_handoff_note_is_made_once_and_never_overwritten() {
     assert!(prepare_handoff(&repo, "///").is_err());
 }
 
+/// Txais (2026-11-20): every worktree Kolux makes gets a handoff note of its own, named after its folder,
+/// so a context clear always has one to work off.
+#[test]
+fn txais_2026_11_20_a_new_worktree_gets_its_own_handoff_note() {
+    let repo = temp("note-at-create");
+    let dest = repo.join(".worktrees").join("coral-anemone");
+    fs::create_dir_all(&dest).unwrap();
+    note_handoff(&repo, &dest);
+    let note = repo.join(".kolux").join("handoffs").join("coral-anemone.md");
+    assert!(fs::read_to_string(&note).unwrap().starts_with("# Handoff: coral-anemone"));
+    // An existing note is never overwritten: a re-made folder keeps what the last agent wrote.
+    fs::write(&note, "kept").unwrap();
+    note_handoff(&repo, &dest);
+    assert_eq!(fs::read_to_string(&note).unwrap(), "kept");
+}
+
 /// P10: the notes are Kolux's scratch: they never show as untracked, while the rest of `.kolux/`
 /// and the user's own ignore files are left as they were.
 #[test]

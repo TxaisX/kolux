@@ -78,6 +78,9 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
     const at = view === undefined ? dir : view;
     recentDirs.current = [at, ...recentDirs.current.filter((d) => !sameDir(d, at))].slice(0, 20);
     setActiveDir(at);
+    // Txais (2026-11-20): the retire sweep counts a workspace's idle days from the last time it was
+    // opened here. It never blocks the click: a failed write only means the sweep leaves it alone.
+    void invoke("workspace_opened", { path: at }).catch(() => {});
     const shown = panesIn(panes, at);
     const mine = sameDir(gridOf(at), dir) ? undefined : shown.find((p) => sameDir(p.cwd, dir) && !p.kind); // a worktree's own grid is its project's: its session in that grid is the one focused
     if (mine) setFocused(mine.key);

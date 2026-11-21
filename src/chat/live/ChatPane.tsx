@@ -1,5 +1,6 @@
 // Chat panes, slice 1 (docs/research/chat-pane-plan-2026-11-20.md): one pane can be a chat instead of a
-// terminal. The pane runs one hidden `claude` process through the chat engine, hears every `chat-event`,
+// terminal. The pane runs one hidden agent process (`claude`, or `openclaude` for the other models,
+// 2026-11-20) through the chat engine, hears every `chat-event`,
 // folds it into the rows the chat view already knows (`combine` and `fold`) and draws them with `ViewRow`.
 // The box is the same Composer the transcript chat uses, so drafts, attachments, history and the model
 // picker behave as they do there. There is no terminal behind this pane and no transcript file: the
@@ -11,7 +12,8 @@
 // artifacts folder (5).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import VendorMark from "../../chrome/VendorMark";
+import AgentMark from "../../marks/AgentMark";
+import { productName } from "../../marks/registry";
 import { Close } from "../../chrome/icons";
 import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
@@ -38,10 +40,10 @@ import "../chat.css";
 const CANNOT_STOP_NOTE = "Could not stop the agent from here.";
 
 /** The pane's own words while its process is being started or has just failed. */
-const STARTING_NOTE = "Starting Claude…";
-const CRASHED_NOTE = "Claude's process ended. Your next message starts it again.";
+const startingNote = (name: string) => `Starting ${name}…`;
+const crashedNote = (name: string) => `${name}'s process ended. Your next message starts it again.`;
 
-export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, open: opener }: {
+export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, agent = "claude", open: opener }: {
   pane: { key: number; cwd: string | null; title?: string };
   /** True while the grid hides this pane: it reads nothing new either way, the event stream pushes. */
   hidden?: boolean;
@@ -52,13 +54,17 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   named?: boolean;
   /** Names the session after its first message, as a chat app does, once per pane. */
   onName?: (name: string) => void;
-  /** The Claude model this chat starts on (the Everyday New session menu); null keeps the program's own default. */
+  /** The model this chat starts on (the Everyday New session menu); null keeps the program's own default. */
   model?: string | null;
+  /** The AI that answers here (2026-11-20): `claude`, or `openclaude` for the other models. */
+  agent?: string;
   /** The window's way of opening a link or a printed file, as a terminal pane gets it. */
   open?: ChatOpen;
 }) {
   const keymap = useKeymap();
   const chatId = chatIdOf(pane.key);
+  /** The AI's name for the pane's own words: "Claude Code", "OpenClaude", or the id as itself. */
+  const name = productName(agent) ?? agent;
   const [items, setItems] = useState<ChatItem[]>([]);
   // CHAT-020: what this pane sent and the agent has not echoed yet (at most 8).
   const [sent, setSent] = useState<Pending[]>([]);
@@ -121,14 +127,14 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           if (ev.kind === "result") setLookAt((n) => n + 1);
           if (ev.kind === "exit") {
             setOpen(false);
-            if (ev.reason === "crashed") setNote(CRASHED_NOTE);
+            if (ev.reason === "crashed") setNote(crashedNote(productName(agent) ?? agent));
           }
         });
         if (!live) return off();
         unheard = off;
         if (!started.current) {
           started.current = true;
-          await startChat(chatId, cwd, model);
+          await startChat(chatId, cwd, model, agent);
           if (live) setSpawned(true);
         }
       } catch (e) {
@@ -148,7 +154,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         void endChat(chatId).catch(() => {});
       }, 0);
     };
-  }, [chatId, pane.cwd, model, again]);
+  }, [chatId, pane.cwd, model, agent, again]);
 
   // The box's own note clears itself, except the stopping line, which goes when the turn ends.
   useEffect(() => {
@@ -243,7 +249,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const toggle = (id: string) => setThoughts((t) => toggled(t, id));
   // CHAT-024: the model the agent reported last, named beside the box (the picker sends Claude's own
   // `/model` line, so a chat keeps it across turns as the terminal chat does).
-  const shownModel = useMemo(() => readModel("claude", items) ?? model, [items, model]);
+  const shownModel = useMemo(() => readModel(agent, items) ?? model, [agent, items, model]);
 
   // CHAT-025: a link in a reply opens as it does in a terminal pane. Files are only openable when the
   // agent printed them recently (chatLinks.ts); with no in-app viewer every web link asks first.
@@ -337,13 +343,13 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     );
   };
 
-  const title = pane.title || "Claude";
+  const title = pane.title || name;
   return (
     <LinkContext.Provider value={host}>
       <section className={`pane chat-pane${focused ? " focused" : ""}`} hidden={hidden} aria-label={`${title} chat`} onMouseDown={onFocus} data-kind="chat" data-key={pane.key}>
         <header className="pane-head">
-          <span className="agent-mark" title="Claude">
-            <VendorMark agent="claude" size={13} />
+          <span className="agent-mark" title={name}>
+            <AgentMark id={agent} size={13} label={name} />
           </span>
           <span className="title" title={pane.cwd ?? undefined}>
             {title}
@@ -369,12 +375,12 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           ) : rows.length === 0 ? (
             <div className="chat-welcome">
               <span className="chat-welcome-mark" aria-hidden="true">
-                <VendorMark agent="claude" size={30} />
+                <AgentMark id={agent} size={30} label={name} />
               </span>
-              <h2 className="chat-welcome-title">{spawned ? "What should we work on?" : STARTING_NOTE}</h2>
+              <h2 className="chat-welcome-title">{spawned ? "What should we work on?" : startingNote(name)}</h2>
               {spawned && (
                 <>
-                  <p className="chat-welcome-line">Ask in plain words. Claude works in this folder and shows you what it changes.</p>
+                  <p className="chat-welcome-line">Ask in plain words. {name} works in this folder and shows you what it changes.</p>
                   <div className="chat-starters" role="group" aria-label="Things to try">
                     <button type="button" onClick={() => send("Explain what this project does, in plain words.")}>
                       Explain this project
@@ -429,7 +435,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             onSend={send}
             working={open}
             onStop={stop}
-            agent="claude"
+            agent={agent}
             cwd={pane.cwd}
             shownModel={shownModel}
           />

@@ -2,7 +2,7 @@
 // the active workspace and tab come back while they still exist.
 import { expect, test } from "vitest";
 import { sessionOrder } from "../sessions/restoreOrder";
-import { freshShells, joinMarks, joinSaved, keyAfter, layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
+import { joinMarks, joinSaved, keyAfter, layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, resumeOnStart, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
 
 const shell = (key: number, cwd: string | null, extra: Record<string, unknown> = {}) => ({ key, cwd, branch: null, agent: "shell" as const, program: null, args: [], ...extra });
 
@@ -278,8 +278,8 @@ test("c26r301: a slow start keeps the saved pins and tab colours, and the layout
   expect(joinMarks({ pinned: new Set([2]), colors: { 2: "blue" } }, late)).toEqual({ pinned: new Set([1, 2]), colors: { 2: "blue" } });
 });
 
-test("dtc27: a fresh start brings agent tabs back as plain shells in their folder; shells, choosers and other tabs as saved", () => {
-  const l = freshShells({
+test("a start resumes: agent tabs keep their agent, id and session so their resume line is asked; a Setup tab comes back as a plain shell", () => {
+  const l = resumeOnStart({
     panes: [
       { key: 1, cwd: "C:/a", branch: "main", agent: "claude", agentId: "claude", program: "claude", args: [], session: "s1", account: "x", title: "Fix it", pinned: true },
       { key: 2, cwd: "C:/b", branch: null, agent: "shell", agentId: "gemini", program: "gemini", args: [] },
@@ -290,8 +290,9 @@ test("dtc27: a fresh start brings agent tabs back as plain shells in their folde
     ],
     activeTab: { 0: 1 }, focused: 1, activeDir: "C:/a", stacked: {},
   });
-  expect(l.panes[0]).toEqual({ key: 1, cwd: "C:/a", branch: "main", agent: "shell", program: null, args: [], title: "Fix it", pinned: true });
-  expect(l.panes[1]).toEqual({ key: 2, cwd: "C:/b", branch: null, agent: "shell", program: null, args: [] });
+  // Txais (2026-11-20): the agent, its id and its session stay, so restoreAsks asks the Rust side for its resume line.
+  expect(l.panes[0]).toEqual({ key: 1, cwd: "C:/a", branch: "main", agent: "claude", agentId: "claude", program: "claude", args: [], session: "s1", account: "x", title: "Fix it", pinned: true });
+  expect(l.panes[1]).toEqual({ key: 2, cwd: "C:/b", branch: null, agent: "shell", agentId: "gemini", program: "gemini", args: [] });
   expect(l.panes.slice(2)).toEqual([
     { key: 3, cwd: "C:/c", branch: null, agent: "shell", program: "pwsh", args: ["-NoLogo"] },
     { key: 4, cwd: "C:/d", branch: null, agent: "shell", program: null, args: [], chooser: true, agentId: "codex" },
@@ -299,8 +300,8 @@ test("dtc27: a fresh start brings agent tabs back as plain shells in their folde
     { key: 6, cwd: "C:/e", branch: null, agent: "shell", program: null, args: [], title: "Setup" },
   ]);
   const saved = layoutOf([{ key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true }], {}, 6, "C:/e", {});
-  expect(freshShells(restoreLayout(saved)!).panes[0].program).toBeNull();
-  expect(l.panes.some(restoreAsks)).toBe(false);
+  expect(resumeOnStart(restoreLayout(saved)!).panes[0].program).toBeNull();
+  expect(l.panes.some(restoreAsks)).toBe(true); // the agent tabs ask for their resume line
 });
 
 test("DT-C274: a team pane's view folder is saved and restored, and a missing view folder drops the pane", () => {
@@ -309,7 +310,7 @@ test("DT-C274: a team pane's view folder is saved and restored, and a missing vi
   expect(l.panes.map((p) => p.view)).toEqual([undefined, "C:/r", "C:/r"]);
   const back = restoreLayout(JSON.parse(JSON.stringify(l)))!;
   expect(back).toEqual(l);
-  expect(freshShells(back).panes.map((p) => p.view)).toEqual([undefined, "C:/r", "C:/r"]);
+  expect(resumeOnStart(back).panes.map((p) => p.view)).toEqual([undefined, "C:/r", "C:/r"]);
   expect(reviveSaved(back.panes[1]).view).toBe("C:/r");
   // the worktrees still there but the folder their grid is in gone: the team panes are not brought back
   expect(stillThere(back, (d) => d !== "C:/r").panes.map((p) => p.key)).toEqual([]);

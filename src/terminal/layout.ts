@@ -181,13 +181,14 @@ export function restoreAsks(p: Pick<SavedPane, "agent" | "agentId" | "program" |
   return !p.kind && !!p.agentId && !(p.agent === "shell" && p.program === null);
 }
 
-/** DT-C27 (Txais, 2026-11-08: start fresh, "no ai slop"): every terminal tab that ran an agent comes
- *  back as a new plain shell in its folder, so no agent is started or resumed on its own, and a Setup
- *  tab does not run its setup script again. Plain shells,
- *  empty choosers and editor and other tabs come back as saved. */
-export function freshShells(l: SavedLayout): SavedLayout {
+/** Txais (2026-11-20, reversing DT-C27): a start resumes. Every agent tab comes back with its agent,
+ *  its own start line and its last session id, so `restoreAsks` asks the Rust side for that agent's
+ *  resume line and the conversation carries on where it was. A Setup tab does not run its setup
+ *  script again: it comes back as a plain shell. Plain shells, empty choosers and editor and other
+ *  tabs come back as saved. */
+export function resumeOnStart(l: SavedLayout): SavedLayout {
   const panes = l.panes.map((p) => {
-    if (p.kind || p.chooser || (p.agent === "shell" && !p.agentId && !p.setupScript)) return p;
+    if (!p.setupScript) return p;
     const s: SavedPane = { ...p, agent: "shell", program: null, args: [] };
     delete s.setupScript;
     delete s.agentId;

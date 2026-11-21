@@ -144,6 +144,17 @@ const BUILT_IN: Record<string, ModelChoice[]> = {
     { id: "grok-code-fast-1", label: "Grok Code Fast 1" },
     { id: "grok-4", label: "Grok 4" },
   ],
+  // 2026-11-20: OpenClaude runs the other models through one gateway, so its list is OpenRouter's ids
+  // (each one answered a real prompt with this exact id that day: deepseek/deepseek-v4.1-flash-1017,
+  // openai/gpt-5, google/gemini-3-flash-preview, anthropic/claude-opus-4.5, x-ai/grok-4.6).
+  openclaude: [
+    { id: "deepseek/deepseek-v4.1-flash-1017", label: "DeepSeek V4.1 Flash" },
+    { id: "openai/gpt-5", label: "GPT-5" },
+    { id: "openai/gpt-5-mini", label: "GPT-5 mini" },
+    { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash" },
+    { id: "anthropic/claude-opus-4.5", label: "Claude Opus 4.5" },
+    { id: "x-ai/grok-4.6", label: "Grok 4.6" },
+  ],
 };
 
 /** SESS-029: Grok's effort levels, up to extra-high; left untouched it stays at Grok's own high. */
@@ -180,9 +191,15 @@ export function modelsFor(agentId: string): ModelChoice[] {
   return list ? [...list, { id: DEFAULT_MODEL, label: "Program default" }] : [];
 }
 
+/** The gateway OpenClaude's list comes from; the Rust chat engine names the same one
+ *  (`chat_engine::OPENCLAUDE_PROVIDER`). A picked OpenClaude model is an OpenRouter id, so its start
+ *  line has to say where to route it, in the chat page and in a terminal alike. */
+export const OPENCLAUDE_PROVIDER = "openrouter";
+
 /** The arguments a model pick adds to the start line; none for the program's own default. */
-export function modelArgs(model: string | null): string[] {
-  return model === null || model === DEFAULT_MODEL ? [] : ["--model", model];
+export function modelArgs(model: string | null, agentId?: string | null): string[] {
+  if (model === null || model === DEFAULT_MODEL) return [];
+  return agentId === "openclaude" ? ["--provider", OPENCLAUDE_PROVIDER, "--model", model] : ["--model", model];
 }
 
 /** The seat's model as a choice, when its agent lists it. */
@@ -197,7 +214,7 @@ export const FAST_SETTINGS = '{"fastMode":true}';
 // agent's flag goes on ModelChoice when its models gain efforts (T-100-b).
 export function seatArgs(s: Seat): string[] {
   const m = choiceOf(s);
-  const out = modelArgs(s.model);
+  const out = modelArgs(s.model, s.agent);
   if (s.effort && m?.efforts?.includes(s.effort)) out.push(m.effortFlag ?? "--effort", s.effort);
   if (s.fast && m?.fast) out.push("--settings", FAST_SETTINGS);
   return out;
@@ -278,15 +295,16 @@ export function resizeLineup(shape: Shape, seats: Seat[], count: number): { shap
 /** SESS-025: the first line of the rules block, which is how a shown prompt finds and cuts it. */
 export const RULES_MARK = "--- Kolux: you are working alongside other agents ---";
 
-/** SESS-025: the rules every agent of a 2+ seat launch gets after its task. `note` is the path of
- * its own handoff note, made before the agent starts. */
-export function rulesBlock(note: string, ownFolder = false): string {
+/** SESS-025: the rules every agent of a launch gets after its task. `note` is the path of its own
+ *  handoff note, made before the agent starts. Txais (2026-11-20): a solo agent gets one too, so the
+ *  wording no longer promises other agents when there are none (`solo`). */
+export function rulesBlock(note: string, ownFolder = false, solo = false): string {
   return [
     RULES_MARK,
     // DT-C250: an agent given a folder of its own is told to stay in it; one sharing the project folder is told not to make a copy.
     ...(ownFolder
-      ? ["Other agents are working on this task alongside you at the same time, each in a folder of its own.", "Stay inside your own worktree, the folder you started in. The one file outside it you may write is your handoff note."]
-      : ["Other agents are working on this task alongside you in the same project folder.", "Stay inside that folder; do not make a worktree or a second copy of the project. The one file outside it you may write is your handoff note."]),
+      ? [solo ? "You are working on this task on your own, in a folder of your own." : "Other agents are working on this task alongside you at the same time, each in a folder of its own.", "Stay inside your own worktree, the folder you started in. The one file outside it you may write is your handoff note."]
+      : [solo ? "You are working on this task on your own, in the project folder." : "Other agents are working on this task alongside you in the same project folder.", "Stay inside that folder; do not make a worktree or a second copy of the project. The one file outside it you may write is your handoff note."]),
     "Make your changes on a branch, commit them, push the branch, and open a pull request. Do not commit to main.",
     `Your handoff note is ${note}. It exists already. Keep it current after each change: the files you added, updated and removed, and what is left to do. Never edit another agent's note.`,
     "Before you say you are done, check how you use every library against its up-to-date documentation.",

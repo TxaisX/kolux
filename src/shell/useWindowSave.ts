@@ -132,8 +132,9 @@ export function useWindowSave({ activeDir, activeTab, focused, panes, pinned, re
   };
   useEffect(() => {
     if (!read) return;
-    // Txais (2026-11-16): a start keeps no tabs unless `keepWorkspaces` is on, so none are written down. (A slow start of a
-    // keepWorkspaces user writes its first layout at the next tab change: the ref holds the late settings by then.)
+    // Txais (2026-11-20): a start keeps its tabs, so the layout is written down unless `keepWorkspaces` is explicitly
+    // off. (A slow start of a keepWorkspaces user writes its first layout at the next tab change: the ref holds the late
+    // settings by then.)
     if (!keepsWorkspaces(settingsRef.current)) return;
     const l = layoutOf(panes, activeTab, focused, activeDir, stacked, { pinned, colors: tabColors });
     if (JSON.stringify(settings[LAYOUT_FIELD] ?? null) === JSON.stringify(l)) return;
