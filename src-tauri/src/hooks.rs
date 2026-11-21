@@ -819,7 +819,8 @@ fn after_reply(app: &AppHandle, job: After) {
     // Txais (2026-11-20): a reading that reaches the handoff point clears that pane, whatever account it
     // runs on. The clear is about how sharp the model still is, not about which sign-in paid for it.
     if let After::Usage(u) = &job {
-        crate::handoff::check(app, u.pane_key, u.context_tokens);
+        // The status line is Claude Code's alone: with no marks on the pane, the agent is still known.
+        crate::handoff::check(app, u.pane_key, u.context_tokens, Some("claude"));
     }
     match job {
         // USAGE-021: a report from another config folder than the active account's is dropped.

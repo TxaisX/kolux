@@ -8,8 +8,10 @@
 //! SESS-025) carries the work forward, which is what makes clearing early cheap: the next turn starts
 //! sharp with the state on paper.
 //!
-//! The clear is one `/clear` typed into the pane each time the context crosses the point, so a session
-//! relays over and over: it fills, hands off, clears, and fills again on a fresh conversation.
+//! The clear is one command typed into the pane each time the context crosses the point, so a session
+//! relays over and over: it fills, hands off, clears, and fills again on a fresh conversation. The
+//! command is the agent's own (`clear_for`), and an agent whose command Kolux cannot prove is never
+//! sent one.
 
 use serde_json::Value;
 
@@ -20,9 +22,23 @@ pub const FIELD: &str = "handoffAtTokens";
 /// (`cap.rs`, USAGE-006) and inside the zone where the model is still sharp.
 pub const AT: u64 = 170_000;
 
-/// `/clear` as a terminal takes it: the input line is emptied (Ctrl+U), the command typed as text, then
+/// The command that starts a new conversation in `agent`, or `None` when Kolux has no proof the agent
+/// takes one. Only what each CLI documents: Claude's `/clear`, and `/new` for Codex, OpenCode and Grok
+/// (both of the last two list `/clear` as an alias). Every other agent is left alone rather than sent a
+/// command it may read as a chat message.
+pub fn clear_for(agent: &str) -> Option<&'static str> {
+    match agent {
+        "claude" | "openclaude" => Some("/clear"),
+        "codex" | "opencode" | "grok" => Some("/new"),
+        _ => None,
+    }
+}
+
+/// A clear as a terminal takes it: the input line is emptied (Ctrl+U), the command typed as text, then
 /// Enter. The same bytes `chat/composer.ts` sends for a slash command.
-const CLEAR: &str = "\u{15}/clear\r";
+fn keys(command: &str) -> String {
+    format!("\u{15}{command}\r")
+}
 
 /// The point a session clears at. A saved `0` is a real answer and turns the clear off.
 pub fn at(settings: &Value) -> u64 {
@@ -60,14 +76,20 @@ impl Above {
 
 pub type Registry = std::sync::Mutex<Above>;
 
-/// Called with every usage report. Types `/clear` into the pane each time its context crosses the point.
-/// A terminal that refuses is logged and never retried: the pane keeps its session rather than the app
-/// fighting a terminal that is gone.
-pub fn check(app: &tauri::AppHandle, pane_key: u32, tokens: Option<u64>) {
+/// Called with every usage report. Types the agent's own new-conversation command into the pane each
+/// time its context crosses the point. `agent` may be given by the caller (the status line is Claude's,
+/// the meter knows each pane's); otherwise it is the pane's own. An agent with no command Kolux can
+/// prove is left alone. A terminal that refuses is logged and never retried: the pane keeps its session
+/// rather than the app fighting a terminal that is gone.
+pub fn check(app: &tauri::AppHandle, pane_key: u32, tokens: Option<u64>, agent: Option<&str>) {
     use tauri::Manager;
     let Some(store) = app.try_state::<std::sync::Mutex<crate::state::Store>>() else { return };
     let at = store.lock().ok().map(|s| at(&s.settings())).unwrap_or(AT);
     let Some(tokens) = tokens else { return };
+    // A pane with no agent yet has nothing to clear: it is not a crossing, so it stays armed. A shell
+    // pane where the user starts an agent by hand comes back through here once it has one.
+    let terminals = app.state::<crate::terminal::Terminals>();
+    let Some(agent) = agent.or_else(|| terminals.of_pane(pane_key).and_then(|r| r.agent)) else { return };
     let Some(reg) = app.try_state::<Registry>() else { return };
     if !reg.lock().map(|mut r| r.crossing(pane_key, tokens, at)).unwrap_or(false) {
         return;
@@ -77,10 +99,17 @@ pub fn check(app: &tauri::AppHandle, pane_key: u32, tokens: Option<u64>) {
             crate::secrets::log(&dir, line);
         }
     };
+    let Some(command) = clear_for(agent) else {
+        // No crossing was cleared, so the pane is rearmed: if its agent changes, it can still clear.
+        if let Ok(mut r) = reg.lock() {
+            r.0.remove(&pane_key);
+        }
+        log(&format!("handoff: pane {pane_key} reached {tokens} tokens (line {at}) but runs {agent}, which has no clear Kolux knows; left alone"));
+        return;
+    };
     let Some(id) = crate::status::terminal_of(pane_key) else { return };
-    let terminals = app.state::<crate::terminal::Terminals>();
-    match terminals.write(id, CLEAR) {
-        Ok(()) => log(&format!("handoff: pane {pane_key} reached {tokens} tokens (line {at}) and was cleared")),
+    match terminals.write(id, &keys(command)) {
+        Ok(()) => log(&format!("handoff: pane {pane_key} ({agent}) reached {tokens} tokens (line {at}) and was cleared with {command}")),
         Err(e) => log(&format!("handoff: pane {pane_key} refused the clear ({e}); not retried")),
     }
 }
@@ -123,6 +152,19 @@ mod tests {
         assert!(!c.crossing(4, 20_000, AT), "the clear drops the reading: the pane rearms");
         assert!(c.crossing(4, 170_000, AT), "the next time it fills it clears again");
         assert!(c.crossing(9, 170_000, AT), "another pane is another crossing");
+    }
+
+    #[test]
+    fn each_agent_gets_the_clear_its_own_cli_documents_and_no_other() {
+        assert_eq!(clear_for("claude"), Some("/clear"));
+        assert_eq!(clear_for("openclaude"), Some("/clear"), "the same CLI under its other name");
+        assert_eq!(clear_for("codex"), Some("/new"));
+        assert_eq!(clear_for("opencode"), Some("/new"));
+        assert_eq!(clear_for("grok"), Some("/new"));
+        for other in ["gemini", "copilot", "aider", "hermes", "cursor", "droid", ""] {
+            assert_eq!(clear_for(other), None, "{other} takes no clear Kolux can prove");
+        }
+        assert_eq!(keys("/new"), "\u{15}/new\r", "the input line emptied, the command typed, Enter");
     }
 
     #[test]

@@ -61,6 +61,7 @@ mod ports;
 mod tidy;
 mod retire;
 mod handoff;
+mod handoff_meter;
 mod resources;
 pub mod projects;
 mod quit_merge;
@@ -469,6 +470,9 @@ pub fn run() {
             // Txais (2026-11-20): the sweep. A workspace nobody has opened for `workspaceKeepDays`
             // days goes; a quit keeps every other one, so this is the only automatic removal left.
             retire::start(app.handle().clone());
+            // Txais (2026-11-20): the handoff meter. Claude's status line pushes its context size;
+            // Codex, OpenCode and Grok leave theirs in their own session stores, read here.
+            handoff_meter::start(app.handle().clone());
             // ACCT-050: an agent started by hand in a shell pane is recognised within a few seconds.
             let handle = app.handle().clone();
             std::thread::spawn(move || loop {

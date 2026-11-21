@@ -13,8 +13,9 @@ export const CAP = 200_000;
 export const CAP_FIELD = "contextCap200k";
 export const capOn = (settings: Record<string, unknown>): boolean => settings[CAP_FIELD] !== false;
 
-/** Owner change 2026-11-07: where a session hands off and clears itself (the context-relay Stop hook,
- *  CONTEXT_RELAY_THRESHOLD, default 170k). The ring fills toward this point, not the window's edge. */
+/** Where a session hands off and clears itself: the same point the backend clears on
+ *  (`handoffAtTokens` in `settings.json`, 170k by default; see `handoff.rs`). The ring fills toward
+ *  this point, not the window's edge. */
 export const HANDOFF_AT = 170_000;
 
 /** The token count a session's ring is measured against: the handoff point, or the effective
