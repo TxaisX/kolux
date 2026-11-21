@@ -15,14 +15,13 @@ export type What = "model" | "effort" | "fast";
 
 /** The agents that have these controls. */
 export const hasControls = (agent: string | undefined) => agent === "claude" || agent === "openclaude" || agent === "codex";
-const base = (agent: string) => (agent === "openclaude" ? "claude" : agent);
 
 /** The models to pick from, the agent's own default named last. */
-export const choicesFor = (agent: string): ModelChoice[] => modelsFor(base(agent)).map((m) => (m.id === DEFAULT_MODEL ? { ...m, label: "Agent default" } : m));
+export const choicesFor = (agent: string): ModelChoice[] => modelsFor(agent).map((m) => (m.id === DEFAULT_MODEL ? { ...m, label: "Agent default" } : m));
 
 /** The effort levels of `model`, minimal to max; Codex's models all list the same four. */
 export function effortsFor(agent: string, model: string | undefined): string[] {
-  if (base(agent) === "codex") return CODEX_EFFORTS;
+  if (agent === "codex") return CODEX_EFFORTS;
   const m = choicesFor(agent).find((c) => c.id === model);
   return (m?.efforts ?? []).slice().sort((a, b) => EFFORT_ORDER.indexOf(a) - EFFORT_ORDER.indexOf(b));
 }
@@ -30,10 +29,12 @@ export function effortsFor(agent: string, model: string | undefined): string[] {
 export const fastOffered = (agent: string, model: string | undefined) => !!choicesFor(agent).find((c) => c.id === model)?.fast;
 
 /** How a change is made: Claude takes `/model` in the box; Codex's changes go through its own picker in the terminal;
- * the rest can only be set when a session starts. */
+ * the rest can only be set when a session starts. OpenClaude's model (2026-11-20) is a start flag too — its
+ * list is a gateway's ids, so it is picked when the session starts rather than typed as `/model`. */
 export type Route = "chat" | "terminal" | "launch";
 export function routeOf(agent: string, what: What): Route {
-  if (base(agent) === "claude") return what === "model" ? "chat" : "launch";
+  if (agent === "openclaude") return "launch";
+  if (agent === "claude") return what === "model" ? "chat" : "launch";
   return what === "fast" ? "launch" : "terminal";
 }
 export const LAUNCH_NOTE = "Set when a session starts. Saved for the next launch.";
@@ -119,7 +120,7 @@ export function clean(saved: Saved): Saved {
     if (list.length === 0) continue;
     const next: Choice = {};
     if (c.model && c.model !== DEFAULT_MODEL && list.some((m) => m.id === c.model)) next.model = c.model;
-    if (c.effort && effortsFor(agent, next.model ?? c.model).includes(c.effort) && (next.model || base(agent) === "codex")) next.effort = c.effort;
+    if (c.effort && effortsFor(agent, next.model ?? c.model).includes(c.effort) && (next.model || agent === "codex")) next.effort = c.effort;
     if (c.fast && next.model && fastOffered(agent, next.model)) next.fast = true;
     if (Object.keys(next).length > 0) out[agent] = next;
   }
@@ -158,7 +159,7 @@ export function saveChoice(agent: string, patch: Partial<Choice>, storage: Pick<
 export function savedArgs(agent: string, saved: Saved = loadSaved()): string[] {
   const c = saved[agent];
   if (!c) return [];
-  return seatArgs({ agent: base(agent), model: c.model ?? null, effort: c.effort, fast: c.fast });
+  return seatArgs({ agent, model: c.model ?? null, effort: c.effort, fast: c.fast });
 }
 
 /** Row 389: the seat fields the launch pane starts from when `agent` is picked: its saved model, effort

@@ -447,7 +447,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     try {
       // The agent's own start line (its options, permission mode and unpicked model default). An Everyday
       // pick overrides the saved choice for this session only.
-      const extra = model && model !== DEFAULT_MODEL ? modelArgs(model) : savedArgs(agent.id);
+      const extra = model && model !== DEFAULT_MODEL ? modelArgs(model, agent.id) : savedArgs(agent.id);
       let key: number | null;
       if (singleFolder()) {
         const dir = startDirOf(proj.path) ?? proj.path; // the worktree picked in a pane-header menu, else the project folder
@@ -463,7 +463,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       if (key === null) return;
       // Slice 1 of chat panes: the pane opens as a chat instead of a terminal. Marking it as it lands keeps
       // one launch path for both, and the two state writes share a render, so no terminal is ever spawned.
-      if (chat) setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
+      if (chat) setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -475,24 +475,25 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // Slice 1 of chat panes (docs/research/chat-pane-plan-2026-11-20.md): "New chat" in the pane's plus menu
   // opens one Claude pane that draws the chat engine instead of a terminal. It lands in the folder a Claude
   // launch would use (the project folder, or a fresh worktree when that is the setting) and changes nothing
-  // else: every other launch is still a terminal, no default moves and no setting flips. The engine is
-  // Claude-only, so no other agent is offered here.
+  // else: every other launch is still a terminal, no default moves and no setting flips.
+  // `agentId` (2026-11-20): `claude`, or `openclaude` for the other models. Both draw the chat page; any
+  // other AI still opens its own screen.
   // `inFolder` (the Everyday row, 2026-11-20): a plain folder is not a Git project, so a chat there always
   // opens in the folder itself. Asking for a worktree on it fails with "no default branch was found".
-  // `model` (the Everyday New session menu, 2026-11-20): the chat page starts on that Claude model; null
-  // keeps the saved choice.
-  const newChat = async (projectId: string | null = null, inFolder = false, model: string | null = null) => {
-    const claude = agents.find((a) => a.id === "claude" && a.installed);
-    if (!claude) return setNotice("Claude Code is not installed, so a chat cannot start.");
-    if (!inFolder) return launch(claude, projectId, true, model);
+  // `model` (the Everyday New session menu, 2026-11-20): the chat page starts on that model; null keeps the
+  // saved choice.
+  const newChat = async (projectId: string | null = null, inFolder = false, model: string | null = null, agentId = "claude") => {
+    const agent = agents.find((a) => a.id === agentId && a.installed);
+    if (!agent) return setNotice(`${agentId} is not installed here, so a chat cannot start.`);
+    if (!inFolder) return launch(agent, projectId, true, model);
     const proj = projects.find((p) => p.id === projectFor(projectId));
     if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
     setLaunching(true);
     try {
-      const extra = model && model !== DEFAULT_MODEL ? modelArgs(model) : savedArgs(claude.id);
-      const key = await startIn(claude, proj.path, null, "", true, extra);
+      const extra = model && model !== DEFAULT_MODEL ? modelArgs(model, agent.id) : savedArgs(agent.id);
+      const key = await startIn(agent, proj.path, null, "", true, extra);
       if (key === null) return;
-      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -511,7 +512,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
     setLaunching(true);
     try {
-      const extra = modelArgs(model);
+      const extra = modelArgs(model, agent.id);
       const key = await startIn(agent, proj.path, null, "", true, extra);
       if (key === null) return;
       setRefresh((n) => n + 1);

@@ -15,15 +15,16 @@ export const isEveryday = (path: string | null | undefined, everydayPath: string
 export const everydaySessions = (sessions: readonly FolderSession[], everydayPath: string | null | undefined): FolderSession[] =>
   everydayPath ? sessions.filter((s) => samePlace(s.cwd, everydayPath) || samePlace(s.view, everydayPath)) : [];
 
-/** The one AI whose Everyday sessions draw the chat page; every other AI opens its own screen. */
-export const EVERYDAY_CHAT_AGENT = "claude";
+/** The AIs whose Everyday sessions draw the chat page; every other AI opens its own screen. OpenClaude
+ *  (2026-11-20) answers the same way in the same bubble view, so it draws the chat page too. */
+export const EVERYDAY_CHAT_AGENTS = ["claude", "openclaude"];
 
 export type EverydayModel = { id: string; label: string };
 /** One AI in the New session menu, with the models it can start on. */
 export type EverydayAgent = { agent: string; name: string; chat: boolean; models: EverydayModel[] };
 
 /**
- * The AIs an Everyday session can start: every installed one, Claude first and the rest in the order
+ * The AIs an Everyday session can start: every installed one, the chat AIs first and the rest in the order
  * the app lists them. An AI with no model list is still offered: its session starts on the program's
  * own default (ACCT-032: an empty list means no model step, so `models` is empty and the menu says so).
  */
@@ -31,8 +32,8 @@ export function everydayAgents(installed: readonly { id: string; name: string; i
   const out: EverydayAgent[] = [];
   for (const a of installed) {
     if (!a.installed) continue;
-    out.push({ agent: a.id, name: a.name, chat: a.id === EVERYDAY_CHAT_AGENT, models: [...modelsOf(a.id)] });
+    out.push({ agent: a.id, name: a.name, chat: EVERYDAY_CHAT_AGENTS.includes(a.id), models: [...modelsOf(a.id)] });
   }
-  // Claude first (the chat page), the rest keep the app's own order: the list is stable, never resorted by name.
+  // The chat page's AIs first, apps' own order kept inside each group: the list is stable, never resorted by name.
   return [...out.filter((x) => x.chat), ...out.filter((x) => !x.chat)];
 }

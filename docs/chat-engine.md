@@ -19,10 +19,19 @@ Sources (read 2026-11-19):
 
 ```
 claude -p --input-format stream-json --output-format stream-json --verbose --permission-mode auto [--model <m>] [--resume <session id>]
+openclaude -p --input-format stream-json --output-format stream-json --verbose --permission-mode bypassPermissions [--provider openrouter] [--model <m>] [--resume <session id>]
 ```
 
-- `claude` is found on PATH (PATHEXT included, so a `claude.cmd` shim works; a shim runs through
-  the system `cmd.exe /d /c`). Started with the no-console-window helper, stdin/stdout/stderr piped.
+- Two agents run a chat (2026-11-20), both with Claude Code's stream-json CLI: `claude`, and
+  `openclaude` for the other models. `chat_start` refuses any other id.
+- OpenClaude's permission mode is `bypassPermissions`, not `auto`: measured 2026-11-20, `auto` is
+  not a mode it knows and it falls back to `default`, where every tool call is refused, while
+  `bypassPermissions` acts with no prompt — the same rule as `auto` (DT-C283).
+- A picked OpenClaude model comes from the window's OpenRouter list, so it is started with
+  `--provider openrouter`; "Program default" adds neither and keeps OpenClaude's own setup.
+- The program is found on PATH by its agent id (PATHEXT included, so a `claude.cmd` shim works; a
+  shim runs through the system `cmd.exe /d /c`). Started with the no-console-window helper,
+  stdin/stdout/stderr piped.
 - Never `--bare`: the user's hooks, skills, commands, subagents, plugins, MCP servers, auto memory
   and CLAUDE.md all load. `CLAUDE_CODE_SIMPLE` (the variable `--bare` sets) is removed from the
   child's environment. A unit test checks the argument list; a process test checks both.
@@ -36,7 +45,7 @@ claude -p --input-format stream-json --output-format stream-json --verbose --per
 
 | Command | Arguments (as the page passes them) | Returns |
 |---|---|---|
-| `chat_start` | `chatId: string, cwd: string, model: string \| null, resumeSessionId: string \| null, extraEnv: [string, string][]` | nothing; error text on failure |
+| `chat_start` | `chatId: string, cwd: string, model: string \| null, resumeSessionId: string \| null, extraEnv: [string, string][], agent: string \| null` (`"claude"` when left out) | nothing; error text on failure |
 | `chat_send` | `chatId: string, text: string, images: { media_type: string, base64: string }[]` (`mediaType` also accepted) | nothing |
 | `chat_stop` | `chatId: string` | `"interrupt"`, `"ended"`, or `null` when no turn was running |
 | `chat_end` | `chatId: string` | nothing (closing an unknown chat does nothing) |
