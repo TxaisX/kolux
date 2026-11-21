@@ -32,6 +32,14 @@ export const pollMs = (pageHidden: boolean): number | null => (pageHidden ? null
 /** A note that clears itself: true for all but the one that the turn ending clears (Stopping…). */
 export const selfClearing = (note: string | null, keep: string): note is string => note !== null && note !== keep;
 
+/** The name a chat session takes from its first message (Everyday sessions, 2026-11-20): the first
+ *  non-empty line, spaces folded, cut at `max` with an ellipsis. Null when there is nothing to name. */
+export function sessionTitle(text: string, max = 40): string | null {
+  const line = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, " ").trim()).find(Boolean) ?? "";
+  if (!line) return null;
+  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
+}
+
 /** True when a pointer landed outside `box` (so a menu should close). */
 export const outside = (box: { contains: (n: Node) => boolean } | null, target: EventTarget | null): boolean => !!box && !!target && !box.contains(target as Node);
 

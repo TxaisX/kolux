@@ -8,6 +8,7 @@ import type { WindowState } from "../shell/windowStore";
 import type { useSettingsPlumbing } from "../settings/useSettingsPlumbing";
 import type { WindowLate } from "../shell/windowLate";
 import { savedArgs } from "../chat/controls";
+import { DEFAULT_MODEL, modelArgs } from "./seats";
 import { noteUse } from "../onboarding/features";
 import { folderName, projectLabel, type Created, type Project, type WorkItem, type Worktree } from "../projects/model";
 import { renameOnFirstPrompt } from "../projects/renameOnWork";
@@ -435,7 +436,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // SESS-004 (owner change 2026-11-05): the agent starts in the project folder. Kolux does not
   // make a worktree or any other copy of the project.
   // DT-C250: with "Own folder for each agent" on, it starts in a fresh worktree of its own instead (SESS-023).
-  const launch = async (agent: AgentInfo, projectId: string | null, chat = false) => {
+  const launch = async (agent: AgentInfo, projectId: string | null, chat = false, model: string | null = null) => {
     const pid = projectFor(projectId);
     const proj = projects.find((p) => p.id === pid);
     if (!proj) {
@@ -444,23 +445,25 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
     setLaunching(true);
     try {
-      // The agent's own start line (its options, permission mode and unpicked model default).
+      // The agent's own start line (its options, permission mode and unpicked model default). An Everyday
+      // pick overrides the saved choice for this session only.
+      const extra = model && model !== DEFAULT_MODEL ? modelArgs(model) : savedArgs(agent.id);
       let key: number | null;
       if (singleFolder()) {
         const dir = startDirOf(proj.path) ?? proj.path; // the worktree picked in a pane-header menu, else the project folder
         const branch = panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null;
-        key = await startIn(agent, dir, branch, "", true, savedArgs(agent.id));
+        key = await startIn(agent, dir, branch, "", true, extra);
       } else {
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
         // Txais (2026-11-12): the agent's worktree is recorded with the project folder as its grid, like a team's, so its pane
         // shows in the folder's grid as a session and the worktree gets no row or grid of its own.
         rememberTeamFolders([{ path: wt.path, view: proj.path }]);
-        key = await startIn(agent, wt.path, wt.branch, "", true, savedArgs(agent.id));
+        key = await startIn(agent, wt.path, wt.branch, "", true, extra);
       }
       if (key === null) return;
       // Slice 1 of chat panes: the pane opens as a chat instead of a terminal. Marking it as it lands keeps
       // one launch path for both, and the two state writes share a render, so no terminal is ever spawned.
-      if (chat) setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const } : p)));
+      if (chat) setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -474,14 +477,54 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // launch would use (the project folder, or a fresh worktree when that is the setting) and changes nothing
   // else: every other launch is still a terminal, no default moves and no setting flips. The engine is
   // Claude-only, so no other agent is offered here.
-  const newChat = async (projectId: string | null = null) => {
+  // `inFolder` (the Everyday row, 2026-11-20): a plain folder is not a Git project, so a chat there always
+  // opens in the folder itself. Asking for a worktree on it fails with "no default branch was found".
+  // `model` (the Everyday New session menu, 2026-11-20): the chat page starts on that Claude model; null
+  // keeps the saved choice.
+  const newChat = async (projectId: string | null = null, inFolder = false, model: string | null = null) => {
     const claude = agents.find((a) => a.id === "claude" && a.installed);
     if (!claude) return setNotice("Claude Code is not installed, so a chat cannot start.");
-    await launch(claude, projectId, true);
+    if (!inFolder) return launch(claude, projectId, true, model);
+    const proj = projects.find((p) => p.id === projectFor(projectId));
+    if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
+    setLaunching(true);
+    try {
+      const extra = model && model !== DEFAULT_MODEL ? modelArgs(model) : savedArgs(claude.id);
+      const key = await startIn(claude, proj.path, null, "", true, extra);
+      if (key === null) return;
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
+      setRefresh((n) => n + 1);
+      setNotice(null);
+    } catch (err) {
+      setNotice(String(err));
+    } finally {
+      setLaunching(false);
+    }
+  };
+  // The Everyday row's other AIs (2026-11-20): one more session in that plain folder, on the model the
+  // menu lists. No worktree, no chat page: every AI but Claude keeps its own screen. A "Program default"
+  // pick adds no flag at all, so it starts on that AI's own default rather than a saved choice.
+  const newSession = async (projectId: string | null, agentId: string, model: string | null = null) => {
+    const agent = agents.find((a) => a.id === agentId && a.installed);
+    if (!agent) return setNotice(`${agentId} is not installed here, so it cannot start.`);
+    const proj = projects.find((p) => p.id === projectFor(projectId));
+    if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
+    setLaunching(true);
+    try {
+      const extra = modelArgs(model);
+      const key = await startIn(agent, proj.path, null, "", true, extra);
+      if (key === null) return;
+      setRefresh((n) => n + 1);
+      setNotice(null);
+    } catch (err) {
+      setNotice(String(err));
+    } finally {
+      setLaunching(false);
+    }
   };
   return {
     lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, fromItem, fromName, pretrust,
-    fixWithAI, projectFor, launch, newChat,
+    fixWithAI, projectFor, launch, newChat, newSession,
   };
 }
 
