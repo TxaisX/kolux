@@ -140,6 +140,20 @@
 .chat-file-change { flex: none; font-size: 11px; color: var(--fg-muted); }
 .chat-files .chat-hand { flex: none; }
 .chat-files .chat-hand-note { max-width: none; margin-top: 4px; }
+
+/* T-965: the artifacts folder, under the last finished turn. Quiet like the files box: a picture is a
+   thumbnail, a page or a video is a card, and every row opens on a click. */
+.chat-artifacts { margin: 4px 12px 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; background: var(--surface); }
+.chat-artifacts-title { font-size: 11px; color: var(--fg-muted); margin-bottom: 4px; }
+.chat-artifacts ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-artifacts li { min-width: 0; }
+.chat-artifact { display: flex; align-items: center; gap: 8px; max-width: 280px; padding: 3px 6px 3px 3px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.chat-artifact:hover, .chat-artifact:focus-visible { background: var(--chip-bg); }
+.chat-artifact-thumb { flex: none; width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+.chat-artifact-kind { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 4px; font-size: 10px; color: var(--fg-muted); }
+.chat-artifact-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-artifact-meta { flex: none; font-size: 11px; color: var(--fg-muted); }
+.chat-artifacts-skip { margin: 4px 0 0; font-size: 11px; color: var(--fg-muted); }
 .chat-question-step { font-size: 11px; color: var(--fg-muted); margin-left: auto; }
 .chat-question-text { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-question-options { display: flex; flex-direction: column; gap: 4px; }
