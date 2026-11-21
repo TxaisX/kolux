@@ -33,6 +33,7 @@ import type { ShellEntry } from "../../terminal/shellChoice";
 import type { EntryTarget } from "../../launch/newTabEntryRun";
 import type { AgentState } from "../../projects/rows";
 import type { AgentInfo } from "../../launch/PlusMenu";
+import { ChatPane } from "../../lazy/pages";
 import { CheckPane } from "../../lazy/panes";
 import { openExternal } from "../../open/openExternal";
 
@@ -48,7 +49,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     setPanes, noticed, report,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
-    splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu, cells,
+    splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu, cells, newChat,
   } = useWindow();
   // FT-1 (review 0.2.0): hidden unless really on screen: terminals shown, its folder in front, top tab, not zoomed away.
   const hidden = !paneInView(cells.find((c) => c.group === groupOf(p)), p.key, active, { terminals, activeDir, zoomed });
@@ -133,6 +134,8 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     reviewPlan: () => setReviewing({ key: p.key, plan: turn[p.key]?.plan ?? "", cut: !!turn[p.key]?.planCut }),
     setDefault: (id: string) => setDefault(id),
     launch: (a: AgentInfo) => launch(a, null),
+    // Slice 1 of chat panes: the plus menu's "New chat" opens one Claude pane that draws the chat engine.
+    newChat: () => void newChat(),
     choose: () => addChooser(),
     openFile: (path: string, line?: number) => openFile(path, line),
     toggleCard: () => setExpanded((x) => toggleCard(x, p.key)),
@@ -151,6 +154,22 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
   if (p.kind) return <LostPane kind={p.kind} hidden={hidden} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
   if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={hidden} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
+  // Slice 1 of chat panes (docs/research/chat-pane-plan-2026-11-20.md): a pane marked `chat` draws the chat
+  // engine's own conversation, and no terminal is ever spawned for it. Every other pane is a terminal, exactly
+  // as before: this branch is the only place a pane's body is chosen by `chat`.
+  if (p.chat) {
+    return (
+      <ChatPane
+        key={p.key}
+        pane={{ key: p.key, cwd: p.cwd, title: p.title || nameOf(names, p.cwd) }}
+        hidden={hidden}
+        focused={p.key === focused}
+        onFocus={act.focus}
+        onClose={act.close}
+        open={{ onOpenFile: openFile, onOpenLink: (url: string) => void openExternal(url), inKolux: settings.linksOpenInKolux === true }}
+      />
+    );
+  }
   const notice = noticeFor(p);
   return (
     <TerminalPane
@@ -220,6 +239,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       launching={launching}
       onLaunch={act.launch}
       onChoose={act.choose}
+      onChat={act.newChat}
     />
   );
 }

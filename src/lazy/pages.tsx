@@ -27,6 +27,10 @@ export const AgentsPanel = deferred(() => import("../sessions/AgentsPanel"), und
 type ChatProps = ComponentProps<(typeof import("../chat/ChatView"))["AgentsChat"]>;
 export const AgentsChat = deferred<ChatProps>(() => import("../chat/ChatView").then((m) => ({ default: m.AgentsChat as unknown as ComponentType<ChatProps> })));
 
+/** Slice 1 of chat panes: the pane marked `chat` draws the engine's own conversation, through the same
+ *  fold and ViewRow as AgentsChat. It loads on the pane's first draw, never with the first frame. */
+export const ChatPane = deferred(() => import("../chat/live/ChatPane"));
+
 // The first-run guide and its wizard, and the help menu's sheet.
 export const Guides = deferred(() => import("../onboarding/Guides"));
 export const Wizard = deferred(() => import("../onboarding/Wizard"));

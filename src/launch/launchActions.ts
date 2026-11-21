@@ -435,7 +435,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // SESS-004 (owner change 2026-11-05): the agent starts in the project folder. Kolux does not
   // make a worktree or any other copy of the project.
   // DT-C250: with "Own folder for each agent" on, it starts in a fresh worktree of its own instead (SESS-023).
-  const launch = async (agent: AgentInfo, projectId: string | null) => {
+  const launch = async (agent: AgentInfo, projectId: string | null, chat = false) => {
     const pid = projectFor(projectId);
     const proj = projects.find((p) => p.id === pid);
     if (!proj) {
@@ -445,17 +445,22 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     setLaunching(true);
     try {
       // The agent's own start line (its options, permission mode and unpicked model default).
+      let key: number | null;
       if (singleFolder()) {
         const dir = startDirOf(proj.path) ?? proj.path; // the worktree picked in a pane-header menu, else the project folder
         const branch = panes.find((p) => sameDir(p.cwd, dir))?.branch ?? null;
-        if ((await startIn(agent, dir, branch, "", true, savedArgs(agent.id))) === null) return;
+        key = await startIn(agent, dir, branch, "", true, savedArgs(agent.id));
       } else {
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
         // Txais (2026-11-12): the agent's worktree is recorded with the project folder as its grid, like a team's, so its pane
         // shows in the folder's grid as a session and the worktree gets no row or grid of its own.
         rememberTeamFolders([{ path: wt.path, view: proj.path }]);
-        if ((await startIn(agent, wt.path, wt.branch, "", true, savedArgs(agent.id))) === null) return;
+        key = await startIn(agent, wt.path, wt.branch, "", true, savedArgs(agent.id));
       }
+      if (key === null) return;
+      // Slice 1 of chat panes: the pane opens as a chat instead of a terminal. Marking it as it lands keeps
+      // one launch path for both, and the two state writes share a render, so no terminal is ever spawned.
+      if (chat) setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const } : p)));
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -464,9 +469,19 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       setLaunching(false);
     }
   };
+  // Slice 1 of chat panes (docs/research/chat-pane-plan-2026-11-20.md): "New chat" in the pane's plus menu
+  // opens one Claude pane that draws the chat engine instead of a terminal. It lands in the folder a Claude
+  // launch would use (the project folder, or a fresh worktree when that is the setting) and changes nothing
+  // else: every other launch is still a terminal, no default moves and no setting flips. The engine is
+  // Claude-only, so no other agent is offered here.
+  const newChat = async (projectId: string | null = null) => {
+    const claude = agents.find((a) => a.id === "claude" && a.installed);
+    if (!claude) return setNotice("Claude Code is not installed, so a chat cannot start.");
+    await launch(claude, projectId, true);
+  };
   return {
     lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, fromItem, fromName, pretrust,
-    fixWithAI, projectFor, launch,
+    fixWithAI, projectFor, launch, newChat,
   };
 }
 

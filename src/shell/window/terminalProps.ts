@@ -91,6 +91,7 @@ export const sameTerminal = sameProps<TerminalProps>({
   defaultId: "same",
   onSetDefault: "same",
   onChoose: "same",
+  onChat: "same",
   onSplit: "same",
   dragCell: sameDrag,
   onEqualize: "same",
