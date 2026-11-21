@@ -421,7 +421,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
         aria-activedescendant={menuOpen && entries.length > 0 ? `${listId}-${cur}` : undefined}
         rows={linesFor(text)}
         value={text}
-        placeholder={live ? "Message the agent. Enter sends, Shift+Enter starts a new line." : "This session has no live terminal. Switch back to the terminal to reconnect."}
+        placeholder={live ? "Message Claude…" : "The chat is not running right now."}
+        title={live ? "Enter sends, Shift+Enter starts a new line." : undefined}
         onChange={(e) => change(e.target.value, e.target.selectionStart)}
         onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
         onPaste={onPaste}

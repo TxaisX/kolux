@@ -75,6 +75,7 @@ export default function WindowSidebar() {
           onSetDefault={deeds.setDefault}
           launching={launching}
           onLaunch={deeds.launch}
+          onChat={deeds.newChat}
           onChoose={deeds.addChooser}
           onTerminal={act.terminal}
           allOff={allSwitchedOff(allAgents, settings)}

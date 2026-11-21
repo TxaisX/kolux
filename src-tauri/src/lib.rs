@@ -1,4 +1,5 @@
 mod folder_projects;
+mod everyday;
 mod repo_scan;
 mod activity;
 mod agent_sleep;
@@ -625,6 +626,7 @@ pub fn run() {
             projects::project_list,
             projects::project_add,
             folder_projects::project_add_folder, folder_projects::project_remove,
+            everyday::everyday_path, everyday::everyday_open,
             repo_scan::repo_scan_start, repo_scan::repo_scan_stop, repo_scan::repo_scan_labels, repo_scan::repo_import,
             projects::workspace_list,
             projects::workspace_preview,

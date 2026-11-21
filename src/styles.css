@@ -275,6 +275,27 @@ input { font: inherit; }
 .sb-next .hint { margin-left: auto; color: var(--fg-faint); }
 .sb-new { display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; margin: 4px 8px 8px; border: 1px solid var(--button-border); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--fg); }
 .sb-new:hover { background: var(--row-selected); }
+
+/* Everyday (2026-11-20): one plain folder above the projects, with its chats behind a chevron. */
+.sb-everyday { margin: 0 4px 2px; }
+.sb-everyday-head { display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--fg-row); font: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; }
+.sb-everyday-head:hover, .sb-everyday-head:focus-visible { background: var(--chip-bg); }
+.sb-everyday-head .agent-mark { display: inline-flex; flex: none; color: var(--fg-muted); }
+.sb-everyday-head .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-everyday-head .chev { display: inline-flex; flex: none; color: var(--fg-faint); transition: transform 120ms; }
+.sb-everyday[data-open] .sb-everyday-head .chev { transform: rotate(180deg); }
+.sb-everyday .dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--dot-idle); }
+.sb-everyday .dot.working { background: var(--working); }
+.sb-everyday .dot.done { background: var(--done-icon); }
+.sb-everyday .dot.failed, .sb-everyday .dot.unreachable { background: var(--status-bad); }
+.sb-everyday .dot.permission, .sb-everyday .dot.blocked, .sb-everyday .dot.waiting, .sb-everyday .dot.interrupted { background: var(--working-icon); }
+.sb-everyday-list { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 6px 22px; }
+.sb-everyday-empty { padding: 2px 8px 6px; font-size: 12px; line-height: 1.45; color: var(--fg-faint); }
+.sb-everyday-row, .sb-everyday-new { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 27px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg-row); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.sb-everyday-row:hover, .sb-everyday-row:focus-visible, .sb-everyday-new:hover, .sb-everyday-new:focus-visible { background: var(--chip-bg); color: var(--fg); }
+.sb-everyday-row .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-everyday-new { color: var(--fg-muted); }
+.sb-everyday-new:disabled { color: var(--fg-disabled); cursor: default; background: transparent; }
 /* plus menu: a fixed popover over everything, with a click-away backdrop (SESS-004) */
 /* DT-C266: this sheet takes the click outside a menu and draws nothing, yet putting it in the window made
    WebKit redraw the whole window under it, once when a menu or a picker opened and once when it closed.

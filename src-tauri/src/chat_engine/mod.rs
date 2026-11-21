@@ -468,6 +468,13 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Sen
 #[tauri::command]
 pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, model: Option<String>, resume_session_id: Option<String>, extra_env: Vec<(String, String)>) -> Result<(), String> {
     use tauri::Manager;
+    let cwd = PathBuf::from(cwd);
+    let mut extra_env = extra_env;
+    // The Everyday folder is a plain folder under the home: keep any repository above it invisible
+    // to git, so a chat there never commits or branches the folder it sits in (plan v6, 2026-11-19).
+    if crate::everyday::is_everyday(&cwd) {
+        extra_env.extend(crate::claude_shared::everyday_env(&cwd));
+    }
     let sign_in = {
         let store = app.state::<Mutex<crate::state::Store>>();
         let store = store.lock().map_err(|e| e.to_string())?;
@@ -477,7 +484,7 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
     // The caller's own variables first; the sign-in wins (ACCT-024 already refused a clash).
     let env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
     let (engines, sink) = (engines(&app), app_sink(&app));
-    blocking(move || engines.start(&chat_id, Spec { cwd: PathBuf::from(cwd), model, env }, resume_session_id, sink)).await
+    blocking(move || engines.start(&chat_id, Spec { cwd, model, env }, resume_session_id, sink)).await
 }
 
 /// Sends `text` (and images) to chat `chat_id` as the next user message.

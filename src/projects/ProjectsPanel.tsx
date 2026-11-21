@@ -32,7 +32,7 @@ import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
 import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "./mergeOnQuit";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead } from "./model";
-import { ArrowRight, Bell, ChevronDown, Close, EyeOff, Funnel, Minus, FolderPlus, Gear, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
+import { ArrowRight, Bell, ChevronDown, Close, EyeOff, Funnel, Minus, FolderPlus, Gear, Plus, Rail, Rocket, Target, Box, Pin, Moon, Spark } from "../chrome/icons";
 import { AddProject, StatusEditor, ScanRepos, StartGit, KeptBranches, IconPicker } from "../lazy/menus";
 import { CleanupDialog, SettingsPage } from "../lazy/pages";
 import { addKept, type KeptBranch, type KeptItem } from "./cleanup";
@@ -88,7 +88,7 @@ import { onWorkspaceStatus } from "./statusRefresh";
 import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
-import { FILE_MANAGER, loadTargets, openIn } from "../open/openIn";
+import { everydaySessions, isEveryday, samePlace } from "./everyday";import { FILE_MANAGER, loadTargets, openIn } from "../open/openIn";
 import { frontProjectRow } from "./frontRow";
 import { projectsInGroup } from "./groupMembers";
 
@@ -130,6 +130,10 @@ type Props = {
   agents: AgentInfo[];
   launching: boolean;
   onLaunch: (agent: AgentInfo, projectId: string | null) => void;
+  /** Slice 1 of chat panes: "New chat" in the sidebar's New session menu, so a chat never needs a terminal first. */
+  onChat?: (projectId: string | null) => void;
+  /** Focus one pane by its key (the Everyday chats list). */
+  onFocusPane?: (key: number) => void;
   defaultId: string;
   onSetDefault: (id: string) => void;
   onChoose: () => void;
@@ -196,7 +200,20 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll, onSleep, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, onPending }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll, onSleep, agents, launching, onLaunch, onChat, onFocusPane, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, onPending }: Props) {
+  // The Everyday folder (2026-11-20): one plain folder above the projects for daily asks. The path comes
+  // from Rust, so the sidebar never guesses where the user's home is; the folder is made only on the
+  // first New chat, never at start-up.
+  const [everydayPath, setEverydayPath] = useState<string | null>(null);
+  const [everydayOpen, setEverydayOpen] = useState(true);
+  const [everydayBusy, setEverydayBusy] = useState(false);
+  const [everydayChoose, setEverydayChoose] = useState(false);
+  const [everydayChatFor, setEverydayChatFor] = useState<string | null>(null);
+  useEffect(() => {
+    void invoke<string | null>("everyday_path")
+      .then((p) => setEverydayPath(p ?? null))
+      .catch(() => {});
+  }, []);
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
@@ -1616,7 +1633,52 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // leave their usual place unless the copies setting is on.
   const pins: string[] = Array.isArray(settings[PIN_SETTING]) ? (settings[PIN_SETTING] as unknown[]).filter((x): x is string => typeof x === "string") : [];
   const copies = settings[PIN_COPIES_SETTING] === true;
-  const everyEntry: Entry[] = projects.flatMap((p) => (worktrees[p.id] ?? []).map((w) => ({ p, w })));
+  const everyEntry: Entry[] = projects.filter((p) => !isEveryday(p.path, everydayPath)).flatMap((p) => (worktrees[p.id] ?? []).map((w) => ({ p, w })));
+  // The Everyday row: its project, the chats opened there, and its strongest state. The chats list is the
+  // window's own panes filtered by folder, so it follows a chat's status without a second store.
+  const everydayProject = everydayPath ? (projects.find((p) => isEveryday(p.path, everydayPath)) ?? null) : null;
+  const everydayRows = everydaySessions(sessions, everydayPath);
+  const everydayRow = everydayPath ? Object.entries(states).find(([dir]) => samePlace(dir, everydayPath))?.[1] : undefined;
+  const openEveryday = async (): Promise<Project | null> => {
+    setEverydayBusy(true);
+    try {
+      const p = await invoke<Project>("everyday_open");
+      setEverydayPath(p.path);
+      await reload();
+      return p;
+    } catch (err) {
+      say("warn", String(err));
+      return null;
+    } finally {
+      setEverydayBusy(false);
+    }
+  };
+  const startEverydayChat = async () => {
+    const p = everydayProject ?? (await openEveryday());
+    if (p) setEverydayChatFor(p.id);
+  };
+  // The chat starts only once the window's project list holds the new Everyday project: the launch
+  // reads that list, not this panel's copy, so asking for a chat before it arrives would say "add a
+  // project first". `projects` here is set by the same reload that sets the window's list.
+  useEffect(() => {
+    if (!everydayChatFor || !projects.some((p) => p.id === everydayChatFor)) return;
+    setEverydayChatFor(null);
+    onChat?.(everydayChatFor);
+  }, [everydayChatFor, projects, onChat]);
+  const startEverydayWithAI = async () => {
+    const p = everydayProject ?? (await openEveryday());
+    if (!p) return;
+    onSelect(p.path, null);
+    setEverydayChoose(true);
+  };
+  // "Any AI…" opens the Start form once the Everyday folder is really the one in front, so the form is
+  // prefilled with it instead of a project the user had selected a moment ago.
+  useEffect(() => {
+    if (!everydayChoose || !everydayPath || !activeDir) return;
+    if (!samePlace(activeDir, everydayPath)) return;
+    setEverydayChoose(false);
+    onChoose();
+  }, [everydayChoose, everydayPath, activeDir, onChoose]);
   const pinned = pinnedSet(pins, everyEntry.map((x) => x.w));
   const isPinned = (w: Worktree) => pins.some((x) => pathKey(x) === pathKey(w.path));
   const elsewhere = (w: Worktree) => copies || !pinned.has(pathKey(w.path));
@@ -2426,6 +2488,40 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             e.currentTarget.scrollTop += edgeScroll(e.clientY, r.top, r.bottom);
           }}
         >
+          {/* Everyday (2026-11-20): one plain folder above the projects, for daily asks. The chevron opens
+              its chats; New everyday chat is a Claude chat, and Any AI… opens the Start form on this folder. */}
+          <div className="sb-everyday" data-testid="everyday" data-open={everydayOpen ? "" : undefined}>
+            <button type="button" className="sb-everyday-head" aria-expanded={everydayOpen} aria-controls="everyday-asks" title="Everyday: daily asks in one plain folder" onClick={() => setEverydayOpen((o) => !o)}>
+              <span className="agent-mark" aria-hidden="true">
+                <Spark size={13} />
+              </span>
+              <span className="name">Everyday</span>
+              {everydayRow && <span className={`dot ${everydayRow.state}`} role="img" aria-label={everydayRow.state} />}
+              <span className="chev" aria-hidden="true">
+                <ChevronDown size={12} />
+              </span>
+            </button>
+            {everydayOpen && (
+              <div className="sb-everyday-list" id="everyday-asks">
+                {everydayRows.length === 0 ? (
+                  <div className="sb-everyday-empty">Quick questions and daily asks. Nothing here is committed.</div>
+                ) : (
+                  everydayRows.map((s) => (
+                    <button key={s.key} type="button" className="sb-everyday-row" onClick={() => onFocusPane?.(s.key)} title={s.title}>
+                      <span className={`dot ${s.state ?? (s.running ? "working" : "idle")}`} aria-hidden="true" />
+                      <span className="name">{s.title || s.agent}</span>
+                    </button>
+                  ))
+                )}
+                <button type="button" className="sb-everyday-new" data-testid="everyday-new-chat" onClick={() => void startEverydayChat()} disabled={everydayBusy || launching}>
+                  <Plus size={12} /> New everyday chat
+                </button>
+                <button type="button" className="sb-everyday-new" data-testid="everyday-any-ai" onClick={() => void startEverydayWithAI()} disabled={everydayBusy || launching}>
+                  Any AI…
+                </button>
+              </div>
+            )}
+          </div>
           {showAdd && (
             <div className="sb-form" onKeyDown={(e) => closeAddOnEscape(e.key, e.nativeEvent.isComposing, (e.target as HTMLElement).getAttribute("aria-label") === "workspaces folder" && rootDraft !== place.dir) && setShowAdd(false)}>
               <label>Add a project by path</label>
@@ -2674,6 +2770,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               setPlusOpen(false);
               onLaunch(a, projects.length === 1 ? projects[0].id : null);
             }}
+            onChat={
+              onChat &&
+              (() => {
+                setPlusOpen(false);
+                onChat(projects.length === 1 ? projects[0].id : null);
+              })
+            }
           />
         )}
         {adding && <AddProject onBrowse={browse} onByPath={() => { setAdding(false); if (!showAdd) loadVis(null); setShowAdd(true); }} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p); }} />}

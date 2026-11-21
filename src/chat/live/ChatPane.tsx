@@ -157,6 +157,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     setSent([]);
     setPages(0);
     setOpen(false);
+    setAway(false);
   }, [chatId]);
 
   // T-965: the artifacts folder, read when the pane shows, when a turn ends and every three seconds
@@ -342,8 +343,9 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           </span>
         </header>
         {/* `cover` is what the transcript chat uses when it takes the whole frame: .chat is only capped
-            at 45% when it shares a screen with a terminal. */}
-        <div className="chat cover" aria-label="Chat">
+            at 45% when it shares a screen with a terminal. `chat-surface` is the app-like page: the pane
+            is the page, so there is no inner card, no bar and one centred reading column. */}
+        <div className="chat cover chat-surface" aria-label="Chat">
           {error ? (
             <div className="chat-state chat-error" role="alert">
               {error}{" "}
@@ -351,9 +353,30 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
                 Try again
               </button>
             </div>
-          ) : (
-            rows.length === 0 && <div className="chat-state">{spawned ? "No messages yet. What you type below and what Claude answers shows up here." : STARTING_NOTE}</div>
-          )}
+          ) : rows.length === 0 ? (
+            <div className="chat-welcome">
+              <span className="chat-welcome-mark" aria-hidden="true">
+                <VendorMark agent="claude" size={30} />
+              </span>
+              <h2 className="chat-welcome-title">{spawned ? "What should we work on?" : STARTING_NOTE}</h2>
+              {spawned && (
+                <>
+                  <p className="chat-welcome-line">Ask in plain words. Claude works in this folder and shows you what it changes.</p>
+                  <div className="chat-starters" role="group" aria-label="Things to try">
+                    <button type="button" onClick={() => send("Explain what this project does, in plain words.")}>
+                      Explain this project
+                    </button>
+                    <button type="button" onClick={() => send("Look through this project and find the most likely bug. Tell me what you find before changing anything.")}>
+                      Find a bug
+                    </button>
+                    <button type="button" onClick={() => send("Suggest one improvement to this project and explain why it matters.")}>
+                      Suggest an improvement
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
           {thoughtIds.length > 0 && (
             <div className="chat-toolbar">
               <button type="button" onClick={() => setThoughts(new Set(thoughtIds))}>
@@ -364,20 +387,22 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
               </button>
             </div>
           )}
-          <div className="chat-list" ref={list} onScroll={onScroll}>
-            {earlier && (
-              <button type="button" className="chat-load-earlier" onClick={() => setPages((p) => p + 1)}>
-                {earlier}
-              </button>
-            )}
-            {views.slice(0, stripAt).map((v) => (
-              <ViewRow key={`${v.row}-${v.id}`} view={v} onImage={setFull} thoughts={thoughts} onToggle={toggle} />
-            ))}
-            <ArtifactsStrip rows={arts.rows} skipped={arts.skipped} thumbs={thumbs} now={looked} onOpen={openOnDisk} onPreview={preview} />
-            {views.slice(stripAt).map((v) => (
-              <ViewRow key={`${v.row}-${v.id}`} view={v} onImage={setFull} thoughts={thoughts} onToggle={toggle} />
-            ))}
-          </div>
+          {rows.length > 0 && (
+            <div className="chat-list" ref={list} onScroll={onScroll}>
+              {earlier && (
+                <button type="button" className="chat-load-earlier" onClick={() => setPages((p) => p + 1)}>
+                  {earlier}
+                </button>
+              )}
+              {views.slice(0, stripAt).map((v) => (
+                <ViewRow key={`${v.row}-${v.id}`} view={v} onImage={setFull} thoughts={thoughts} onToggle={toggle} />
+              ))}
+              <ArtifactsStrip rows={arts.rows} skipped={arts.skipped} thumbs={thumbs} now={looked} onOpen={openOnDisk} onPreview={preview} />
+              {views.slice(stripAt).map((v) => (
+                <ViewRow key={`${v.row}-${v.id}`} view={v} onImage={setFull} thoughts={thoughts} onToggle={toggle} />
+              ))}
+            </div>
+          )}
           {away && (
             <button type="button" className="chat-jump" onClick={toBottom}>
               Jump to latest

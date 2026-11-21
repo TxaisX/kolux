@@ -130,6 +130,9 @@ pub fn session_dirs(project: &Project, worktrees: &[String]) -> Vec<PathBuf> {
 /// stay on disk.
 pub fn remove_project(store: &Store, project_id: &str) -> Result<Project, String> {
     let project = projects::find_project(store, project_id)?;
+    if crate::everyday::is_everyday(Path::new(&project.path)) {
+        return Err("The Everyday folder stays in Kolux. Its files are yours to keep.".into());
+    }
     clear_traces(store, &project)?;
     projects::forget_projects(store, std::slice::from_ref(&project.id))?;
     Ok(project)
