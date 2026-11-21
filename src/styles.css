@@ -1528,6 +1528,8 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 .checks-sum { padding-top: 4px; }
 .checks-panel { overflow-y: auto; }
 .checks-list { margin: 0 8px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+/* The Checks empty state's buttons sit in from the panel edge, lined up with the hint text above them. */
+.pr-start > .btn, .pr-start-review > .btn { margin: 4px 9px 8px; }
 .check-row > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 3px 2px; border-radius: 4px; min-width: 0; }
 .check-row > summary:hover { background: var(--chip-bg); }
 .check-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
