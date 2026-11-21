@@ -225,6 +225,9 @@ type Props = {
   defaultId?: string;
   onSetDefault?: (id: string) => void;
   onChoose?: () => void;
+  /** Slice 1 of chat panes: the plus menu's "New chat" row, a Claude pane that opens as a chat instead of
+   *  a terminal. Absent, the row is not offered (no other pane kind gains anything). */
+  onChat?: () => void;
   /** TERM-006: the header split button opens a shell beside this pane, in the same folder. */
   onSplit?: (dir: "right" | "down") => void;
   /** TERM-015: the header's drag handle, given only when the workspace holds more than one pane. */
@@ -276,7 +279,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, worktree = null, onWorktree, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, worktree = null, onWorktree, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onChat, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -1923,6 +1926,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             setPlusAt(null);
             openSettings("agents");
           }}
+          onChat={
+            onChat &&
+            (() => {
+              setPlusAt(null);
+              onChat();
+            })
+          }
           onPick={(a) => {
             setPlusAt(null);
             onLaunch?.(a);

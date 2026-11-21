@@ -52,6 +52,9 @@ type Props = {
   agents: AgentInfo[];
   /** The default agent's id: listed first and marked, with the "new agent tab" shortcut beside it. */
   defaultId?: string;
+  /** Slice 1 of chat panes: one Claude pane that opens as a chat with no terminal behind it. Given only
+   *  by the pane's own plus menu; without it the row is not drawn at all. */
+  onChat?: () => void;
   onPick: (agent: AgentInfo) => void;
   onSetDefault?: (id: string) => void;
   /** Opens a chooser pane instead (SESS-007). */
@@ -89,7 +92,7 @@ function ShellGlyph({ program }: { program: string }) {
   return icon === "shell" ? <VendorMark agent="shell" size={13} /> : <ShellMark icon={icon} />;
 }
 
-export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault, onChoose, onClose, onTerminal, onManage, busy = false, style, allOff = false, pass, onRefresh, dir, editors, entry, shells = [], onShell, local = true, windows, target }: Props) {
+export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault, onChoose, onChat, onClose, onTerminal, onManage, busy = false, style, allOff = false, pass, onRefresh, dir, editors, entry, shells = [], onShell, local = true, windows, target }: Props) {
   const [shellsOpen, setShellsOpen] = useState(false);
   // Job 50: the look, read as the chooser reads it (the window's store; absent outside the window, so the New look).
   const classic = useContext(WindowStore)?.classic ?? false;
@@ -201,6 +204,17 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
         {found === null && folded.length > 0 && (
           <button role="menuitem" className="menu-item muted menu-more" aria-expanded={more} onClick={() => setMore((m) => !m)}>
             <span className="name">{more ? "Show fewer agents" : `Show more agents (${folded.length})`}</span>
+          </button>
+        )}
+        {/* Slice 1 of chat panes: the same Claude as the row above, shown as a chat instead of a terminal.
+            It is offered only when Claude is installed, so it can never be a row that cannot start. */}
+        {onChat && agents.some((a) => a.id === "claude" && a.installed) && (
+          <button role="menuitem" className="menu-item" data-testid="new-chat" onClick={onChat} title="A Claude chat in this folder, with no terminal behind it">
+            <span className="agent-mark">
+              <VendorMark agent="claude" size={13} />
+            </span>
+            <span className="name">New chat</span>
+            <span className="muted">no terminal</span>
           </button>
         )}
         {terminalRow && (

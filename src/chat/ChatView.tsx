@@ -357,7 +357,9 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   );
 }
 
-function ViewRow({ view, onImage, thoughts, onToggle, hand }: { view: View; onImage: (src: string) => void; thoughts: Set<string>; onToggle: (id: string) => void; hand?: Hand }) {
+/** One row of the conversation as the chat draws it. Exported for the live chat pane (src/chat/live),
+ *  which folds the engine's events into the same rows: one renderer, whichever way the words arrived. */
+export function ViewRow({ view, onImage, thoughts, onToggle, hand }: { view: View; onImage: (src: string) => void; thoughts: Set<string>; onToggle: (id: string) => void; hand?: Hand }) {
   // CHAT-028: the files a finished turn wrote; a pick puts the path in the other agent's draft (never sent).
   if (view.row === "files") return <FilesRow id={view.id} files={view.files} targets={hand?.targets ?? []} onSend={(to, path) => hand?.onHand(to, path, view.id)} note={hand?.noteFor === view.id ? (hand.note ?? null) : null} />;
   if (view.row !== "message") return view.row === "preview" || view.row === "pending" ? <ChatRow row={view} onImage={onImage} /> : <StepRow view={view} />;
