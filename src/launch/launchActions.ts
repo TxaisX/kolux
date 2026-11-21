@@ -474,10 +474,26 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // launch would use (the project folder, or a fresh worktree when that is the setting) and changes nothing
   // else: every other launch is still a terminal, no default moves and no setting flips. The engine is
   // Claude-only, so no other agent is offered here.
-  const newChat = async (projectId: string | null = null) => {
+  // `inFolder` (the Everyday row, 2026-11-20): a plain folder is not a Git project, so a chat there always
+  // opens in the folder itself. Asking for a worktree on it fails with "no default branch was found".
+  const newChat = async (projectId: string | null = null, inFolder = false) => {
     const claude = agents.find((a) => a.id === "claude" && a.installed);
     if (!claude) return setNotice("Claude Code is not installed, so a chat cannot start.");
-    await launch(claude, projectId, true);
+    if (!inFolder) return launch(claude, projectId, true);
+    const proj = projects.find((p) => p.id === projectFor(projectId));
+    if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
+    setLaunching(true);
+    try {
+      const key = await startIn(claude, proj.path, null, "", true, savedArgs(claude.id));
+      if (key === null) return;
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const } : p)));
+      setRefresh((n) => n + 1);
+      setNotice(null);
+    } catch (err) {
+      setNotice(String(err));
+    } finally {
+      setLaunching(false);
+    }
   };
   return {
     lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, fromItem, fromName, pretrust,

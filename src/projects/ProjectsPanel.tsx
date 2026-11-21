@@ -131,7 +131,7 @@ type Props = {
   launching: boolean;
   onLaunch: (agent: AgentInfo, projectId: string | null) => void;
   /** Slice 1 of chat panes: "New chat" in the sidebar's New session menu, so a chat never needs a terminal first. */
-  onChat?: (projectId: string | null) => void;
+  onChat?: (projectId: string | null, inFolder?: boolean) => void;
   /** Focus one pane by its key (the Everyday chats list). */
   onFocusPane?: (key: number) => void;
   defaultId: string;
@@ -209,6 +209,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [everydayBusy, setEverydayBusy] = useState(false);
   const [everydayChoose, setEverydayChoose] = useState(false);
   const [everydayChatFor, setEverydayChatFor] = useState<string | null>(null);
+  const [everydayAIFor, setEverydayAIFor] = useState<string | null>(null);
   useEffect(() => {
     void invoke<string | null>("everyday_path")
       .then((p) => setEverydayPath(p ?? null))
@@ -1663,14 +1664,20 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   useEffect(() => {
     if (!everydayChatFor || !projects.some((p) => p.id === everydayChatFor)) return;
     setEverydayChatFor(null);
-    onChat?.(everydayChatFor);
+    onChat?.(everydayChatFor, true);
   }, [everydayChatFor, projects, onChat]);
   const startEverydayWithAI = async () => {
     const p = everydayProject ?? (await openEveryday());
+    if (p) setEverydayAIFor(p.id);
+  };
+  // "Any AI…" waits for the same list, then puts the Everyday folder in front and opens the Start form.
+  useEffect(() => {
+    const p = everydayAIFor ? projects.find((x) => x.id === everydayAIFor) : undefined;
     if (!p) return;
+    setEverydayAIFor(null);
     onSelect(p.path, null);
     setEverydayChoose(true);
-  };
+  }, [everydayAIFor, projects, onSelect]);
   // "Any AI…" opens the Start form once the Everyday folder is really the one in front, so the form is
   // prefilled with it instead of a project the user had selected a moment ago.
   useEffect(() => {
@@ -1755,7 +1762,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   }
   // PROJ-016: a project or group header dragged among its siblings; the order is saved as a setting.
   const dragged = useRef<{ kind: "header" | "row"; id: string } | null>(null);
-  const headerTree = groupBy === "project" ? groupTree(groups, projectOrder.filter((p) => filters.projects.length === 0 || filters.projects.includes(p.id)), sortBy === "activity" ? undefined : idsFrom(settings[HEADER_ORDER_SETTING])) : [];
+  const headerTree = groupBy === "project" ? groupTree(groups, projectOrder.filter((p) => !isEveryday(p.path, everydayPath) && (filters.projects.length === 0 || filters.projects.includes(p.id))), sortBy === "activity" ? undefined : idsFrom(settings[HEADER_ORDER_SETTING])) : [];
   const headerDrag = (id: string) => ({
     draggable: true,
     onDragStart: (e: DragEvent) => {
@@ -2450,7 +2457,43 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </span>
         </div>
 
-        {/* W3 F4 (T-693): one view only, so a heading, not a lone tab that does nothing; tabs come back with Status. */}
+        {/* Everyday (2026-11-20): one plain folder above the projects, for daily asks. The chevron opens
+            its chats; New everyday chat is a Claude chat, and Any AI… opens the Start form on this folder. */}
+        <div className="sb-everyday" data-testid="everyday" data-open={everydayOpen ? "" : undefined}>
+          <button type="button" className="sb-everyday-head" aria-expanded={everydayOpen} aria-controls="everyday-asks" title="Everyday: daily asks in one plain folder" onClick={() => setEverydayOpen((o) => !o)}>
+            <span className="agent-mark" aria-hidden="true">
+              <Spark size={13} />
+            </span>
+            <span className="name">Everyday</span>
+            {everydayRow && <span className={`dot ${everydayRow.state}`} role="img" aria-label={everydayRow.state} />}
+            <span className="chev" aria-hidden="true">
+              <ChevronDown size={12} />
+            </span>
+          </button>
+          {everydayOpen && (
+            <div className="sb-everyday-list" id="everyday-asks">
+              {everydayRows.length === 0 ? (
+                <div className="sb-everyday-empty">Daily asks. Nothing here is committed.</div>
+              ) : (
+                everydayRows.map((s) => (
+                  <button key={s.key} type="button" className="sb-everyday-row" onClick={() => onFocusPane?.(s.key)} title={s.title}>
+                    <span className={`dot ${s.state ?? (s.running ? "working" : "idle")}`} aria-hidden="true" />
+                    <span className="name">{s.title || s.agent}</span>
+                  </button>
+                ))
+              )}
+              <button type="button" className="sb-everyday-new" data-testid="everyday-new-chat" onClick={() => void startEverydayChat()} disabled={everydayBusy || launching}>
+                <Plus size={12} /> New everyday chat
+              </button>
+              <button type="button" className="sb-everyday-new" data-testid="everyday-any-ai" onClick={() => void startEverydayWithAI()} disabled={everydayBusy || launching}>
+                Any AI…
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* W3 F4 (T-693): one view only, so a heading, not a lone tab that does nothing; tabs come back with Status.
+            The Everyday row above is its own section: it is not one of the user's projects. */}
         {NOT_BUILT ? (
           <div className="sb-tabs" role="tablist">
             <button role="tab" aria-selected="true">
@@ -2488,40 +2531,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             e.currentTarget.scrollTop += edgeScroll(e.clientY, r.top, r.bottom);
           }}
         >
-          {/* Everyday (2026-11-20): one plain folder above the projects, for daily asks. The chevron opens
-              its chats; New everyday chat is a Claude chat, and Any AI… opens the Start form on this folder. */}
-          <div className="sb-everyday" data-testid="everyday" data-open={everydayOpen ? "" : undefined}>
-            <button type="button" className="sb-everyday-head" aria-expanded={everydayOpen} aria-controls="everyday-asks" title="Everyday: daily asks in one plain folder" onClick={() => setEverydayOpen((o) => !o)}>
-              <span className="agent-mark" aria-hidden="true">
-                <Spark size={13} />
-              </span>
-              <span className="name">Everyday</span>
-              {everydayRow && <span className={`dot ${everydayRow.state}`} role="img" aria-label={everydayRow.state} />}
-              <span className="chev" aria-hidden="true">
-                <ChevronDown size={12} />
-              </span>
-            </button>
-            {everydayOpen && (
-              <div className="sb-everyday-list" id="everyday-asks">
-                {everydayRows.length === 0 ? (
-                  <div className="sb-everyday-empty">Quick questions and daily asks. Nothing here is committed.</div>
-                ) : (
-                  everydayRows.map((s) => (
-                    <button key={s.key} type="button" className="sb-everyday-row" onClick={() => onFocusPane?.(s.key)} title={s.title}>
-                      <span className={`dot ${s.state ?? (s.running ? "working" : "idle")}`} aria-hidden="true" />
-                      <span className="name">{s.title || s.agent}</span>
-                    </button>
-                  ))
-                )}
-                <button type="button" className="sb-everyday-new" data-testid="everyday-new-chat" onClick={() => void startEverydayChat()} disabled={everydayBusy || launching}>
-                  <Plus size={12} /> New everyday chat
-                </button>
-                <button type="button" className="sb-everyday-new" data-testid="everyday-any-ai" onClick={() => void startEverydayWithAI()} disabled={everydayBusy || launching}>
-                  Any AI…
-                </button>
-              </div>
-            )}
-          </div>
           {showAdd && (
             <div className="sb-form" onKeyDown={(e) => closeAddOnEscape(e.key, e.nativeEvent.isComposing, (e.target as HTMLElement).getAttribute("aria-label") === "workspaces folder" && rootDraft !== place.dir) && setShowAdd(false)}>
               <label>Add a project by path</label>
@@ -2630,7 +2639,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             </div>
           )}
           {creating === "" && nameField(null)}
-          {projects.length === 0 && !showAdd && <div className="sb-hint">No projects yet. Use the folder button above to add a project folder; one without Git can start it here.</div>}
+          {projects.filter((p) => !isEveryday(p.path, everydayPath)).length === 0 && !showAdd && <div className="sb-hint">No projects yet. Use the folder button above to add a project folder; one without Git can start it here.</div>}
 
           {pinnedEntries.length > 0 && (
             <div data-group="Pinned" className="pinned">
@@ -2649,7 +2658,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
 
           {/* PROJ-045: one list across projects, flat or under Status / Pull request headers that fold. */}
           {groupBy !== "project" && creating && nameField(projects.find((p) => p.id === creating) ?? null)}
-          {groupBy !== "project" && projects.map(standIn)}
+          {groupBy !== "project" && projects.filter((p) => !isEveryday(p.path, everydayPath)).map(standIn)}
           {groupBy !== "project" &&
             groupRows(
               order(everyEntry.filter((x) => x.w.isMain && inList(x.w))),
