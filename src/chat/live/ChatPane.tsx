@@ -26,7 +26,7 @@ import { printedPaths } from "../chatLinks";
 import { nearBottom } from "../composer";
 import { loadLabel, visibleRows } from "../page";
 import { STOPPING_NOTE } from "../stop";
-import { NOTE_MS, selfClearing, useDismiss } from "../ux";
+import { NOTE_MS, selfClearing, sessionTitle, useDismiss } from "../ux";
 import { readModel } from "../controls";
 import { ViewRow, type ChatOpen } from "../ChatView";
 import { ArtifactsStrip } from "./Strip";
@@ -41,13 +41,19 @@ const CANNOT_STOP_NOTE = "Could not stop the agent from here.";
 const STARTING_NOTE = "Starting Claude…";
 const CRASHED_NOTE = "Claude's process ended. Your next message starts it again.";
 
-export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, open: opener }: {
+export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, open: opener }: {
   pane: { key: number; cwd: string | null; title?: string };
   /** True while the grid hides this pane: it reads nothing new either way, the event stream pushes. */
   hidden?: boolean;
   focused?: boolean;
   onFocus: () => void;
   onClose: () => void;
+  /** The pane already has a name the user gave it, so the first message must not replace it. */
+  named?: boolean;
+  /** Names the session after its first message, as a chat app does, once per pane. */
+  onName?: (name: string) => void;
+  /** The Claude model this chat starts on (the Everyday New session menu); null keeps the program's own default. */
+  model?: string | null;
   /** The window's way of opening a link or a printed file, as a terminal pane gets it. */
   open?: ChatOpen;
 }) {
@@ -71,6 +77,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // A chat is started once per pane. React's strict mode mounts an effect twice in development; the
   // second mount must not start a second process, or the conversation the first one began is thrown away.
   const started = useRef(false);
+  // The session takes its name from the first message, once, unless the user already named the tab.
+  const namedOnce = useRef(false);
   const ending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -120,7 +128,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         unheard = off;
         if (!started.current) {
           started.current = true;
-          await startChat(chatId, cwd);
+          await startChat(chatId, cwd, model);
           if (live) setSpawned(true);
         }
       } catch (e) {
@@ -140,7 +148,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         void endChat(chatId).catch(() => {});
       }, 0);
     };
-  }, [chatId, pane.cwd, again]);
+  }, [chatId, pane.cwd, model, again]);
 
   // The box's own note clears itself, except the stopping line, which goes when the turn ends.
   useEffect(() => {
@@ -235,7 +243,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const toggle = (id: string) => setThoughts((t) => toggled(t, id));
   // CHAT-024: the model the agent reported last, named beside the box (the picker sends Claude's own
   // `/model` line, so a chat keeps it across turns as the terminal chat does).
-  const shownModel = useMemo(() => readModel("claude", items), [items]);
+  const shownModel = useMemo(() => readModel("claude", items) ?? model, [items, model]);
 
   // CHAT-025: a link in a reply opens as it does in a terminal pane. Files are only openable when the
   // agent printed them recently (chatLinks.ts); with no in-app viewer every web link asks first.
@@ -301,6 +309,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   /** The box clears its text at once: a send that fails later marks its waiting row failed and says why
    *  under the box, so nothing typed is silently swallowed and nothing is held back on a guess. */
   const send = (text: string): boolean => {
+    if (!namedOnce.current) {
+      namedOnce.current = true;
+      const name = named ? null : sessionTitle(text);
+      if (name) onName?.(name);
+    }
     const id = `sent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setSent((xs) => capPending([...xs, { id, text, at: Date.now() }]));
     setNote(null);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { POLL_MS, copyLabel, copyText, outside, pollMs, restoreWhenDismissed, selfClearing } from "./ux";
+import { POLL_MS, copyLabel, copyText, outside, pollMs, restoreWhenDismissed, selfClearing, sessionTitle } from "./ux";
 
 describe("copy", () => {
   it("reports copied when the clipboard takes the text", async () => {
@@ -33,6 +33,18 @@ describe("polling and notes", () => {
     expect(outside(box, inner)).toBe(false);
     expect(outside(box, {} as Node)).toBe(true);
     expect(outside(null, inner)).toBe(false);
+  });
+});
+
+describe("naming a session after its first message", () => {
+  it("takes the first line, folded, and cuts a long one", () => {
+    expect(sessionTitle("Fix the login bug")).toBe("Fix the login bug");
+    expect(sessionTitle("\n\n  what   does\nthis do ")).toBe("what does");
+    expect(sessionTitle("   ")).toBeNull();
+    const long = "a".repeat(60);
+    expect(sessionTitle(long)).toHaveLength(40);
+    expect(sessionTitle(long)?.endsWith("…")).toBe(true);
+    expect(sessionTitle(long, 3)).toBe("a".repeat(2) + "…");
   });
 });
 

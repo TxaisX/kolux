@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **Chat panes look like a chat app, not a terminal.** A chat pane is one clean page: a centred 720 px reading column, 15.5 px prose, the user's turns in a soft bubble and Claude's replies on the page itself, quiet one-line work rows, and a floating composer card with a filled Send. A new chat opens on a plain welcome with three ways to start, and "New chat" sits in the sidebar's New session menu as well as a pane's menu. Terminal panes are unchanged, and every theme still colours the chat.
-- **Everyday.** One plain folder sits in its own section above your project list for quick questions and daily asks. Its chevron opens and closes the chats you started there; New everyday chat starts a Claude chat, and Any AI… opens the Start form so any installed AI and model can answer. The folder lives at `<your home>\Kolux\Everyday`, is never a Git repository, and stays in Kolux.
+- **Everyday.** One plain folder sits in its own section above your project list for quick questions and daily asks. Its chevron opens and closes the sessions you started there; New session lists every installed AI and its models, so one daily ask can run on Claude's chat page or any other AI's own screen, each in a session of its own, and Any AI… opens the full Start form. The folder lives at `<your home>\Kolux\Everyday`, is never a Git repository, and stays in Kolux.
 
 ## 0.2.0
 
