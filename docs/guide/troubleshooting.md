@@ -56,7 +56,7 @@ The browser engine keeps its own data in `%LOCALAPPDATA%\com.txaisxiong.kolux\EB
 Kolux keeps your folders between runs but, by default, not your tabs: each start asks what to open (see [Getting started](getting-started.md)).
 
 - **Programs do not survive.** Closing a pane, quitting or a crash ends every program Kolux started, so none is left running in the background. A running build or server is stopped.
-- **Tabs and layout** come back only with `"keepWorkspaces": true` in `settings.json`, and they reopen as plain shells. A tab whose folder is gone is dropped on its own; the rest stay. The program in each is new; it does not carry on from where it was.
+- **Tabs and layout** come back by default, and each agent tab resumes its last conversation. A tab whose folder is gone is dropped on its own; the rest stay. With `"keepWorkspaces": false` in `settings.json` a start brings no tabs back at all.
 - **Agent sessions** resume when a sleeping agent tab wakes (Agent sleep, in Settings, General, Experimental): the agent restarts on the same start line with its own resume form, using the session it last reported. Claude Code and Codex report theirs through their status hooks, so this needs "Show what each agent is doing" on in Settings, Agents. A pane marked "restored without resume" had no session to go back to and starts fresh. See [Agent sessions after a restart](projects-and-worktrees.md#agent-sessions-after-a-restart).
 - A tab you close on purpose stays closed, and its saved output is forgotten.
 - A slow start never drops your tabs: if the saved settings were slow to read, Kolux waits.

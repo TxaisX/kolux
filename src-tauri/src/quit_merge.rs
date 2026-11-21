@@ -115,6 +115,16 @@ pub fn wanted(settings: &serde_json::Value) -> bool {
     settings[MERGE_ON_QUIT_SETTING].as_bool() != Some(false)
 }
 
+/// Txais (2026-11-20): "keep the worktrees open unless we purposefully close them". A quit merges
+/// each workspace into main and leaves its folder standing; the idle sweep (`retire.rs`) is the
+/// only thing that removes one on its own. This opt-in restores the older behaviour of deleting
+/// every workspace that merged cleanly as Kolux closes.
+pub const REMOVE_ON_QUIT_SETTING: &str = "workspacesRemoveOnQuit";
+
+pub fn removes_on_quit(settings: &serde_json::Value) -> bool {
+    settings[REMOVE_ON_QUIT_SETTING].as_bool() == Some(true)
+}
+
 /// One workspace the quit kept, and why.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Left {
@@ -229,6 +239,21 @@ pub(crate) fn no_hooks(data_dir: &Path) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+/// How long a sweep's own save may take. The quit answers to its clock; the sweep runs in the
+/// background and only needs a bound so a hung git cannot wedge it forever.
+const SWEEP_WINDOW: Duration = Duration::from_secs(120);
+
+/// Makes a workspace safe to retire, the same way a quit makes it safe: refuses when the folder holds
+/// the user's own local files (M7), then commits everything uncommitted, untracked included.
+/// `retire.rs` calls this before it removes an idle workspace, so a sweep can never lose work.
+pub(crate) fn prepare_retire(git: &Git, store: &Mutex<Store>, terminals: &Terminals, data_dir: &Path, here: &Path, main: Option<&Path>) -> Result<(), String> {
+    let clock = Clock::until(Instant::now() + SWEEP_WINDOW);
+    let hooks = no_hooks(data_dir)?;
+    local_files(here, main, &clock)?;
+    let cx = Cx { git, store, terminals, clock, data_dir, hooks, remove: false };
+    save_changes(&cx, here)
+}
+
 /// How many commits `to` has that `from` lacks (both local branches).
 fn ahead(repo: &Path, from: &str, to: &str, clock: &Clock) -> Result<u64, String> {
     read(&["rev-list", "--count", &format!("refs/heads/{from}..refs/heads/{to}")], repo, clock)
@@ -274,6 +299,8 @@ struct Cx<'a> {
     data_dir: &'a Path,
     /// The empty folder git looks for hooks in.
     hooks: PathBuf,
+    /// Whether a merged workspace's folder goes at quit (`workspacesRemoveOnQuit`), false by default.
+    remove: bool,
 }
 
 /// Tidies every workspace Kolux made, as the module says, stopping cleanly at `clock`. `data_dir` is
@@ -288,8 +315,8 @@ pub fn run(git: &Git, store: &Mutex<Store>, terminals: &Terminals, clock: Clock,
 /// that one listed as still being worked on), so a quit that is cut short leaves the notice for the
 /// next start.
 pub fn run_with(git: &Git, store: &Mutex<Store>, terminals: &Terminals, clock: Clock, data_dir: &Path, progress: &mut dyn FnMut(&Outcome)) -> Outcome {
-    let (listed, origins) = match store.lock() {
-        Ok(s) => (projects::load_projects(&s), projects::load_origins(&s)),
+    let (listed, origins, remove) = match store.lock() {
+        Ok(s) => (projects::load_projects(&s), projects::load_origins(&s), removes_on_quit(&s.settings())),
         Err(_) => return Outcome::default(),
     };
     let mut out = Outcome::default();
@@ -297,7 +324,7 @@ pub fn run_with(git: &Git, store: &Mutex<Store>, terminals: &Terminals, clock: C
         Ok(h) => h,
         Err(_) => return out,
     };
-    let cx = Cx { git, store, terminals, clock, data_dir, hooks };
+    let cx = Cx { git, store, terminals, clock, data_dir, hooks, remove };
     let all = projects_to_tidy(listed, &origins);
     let project_paths: Vec<PathBuf> = all.iter().map(|p| PathBuf::from(&p.path)).collect();
     for project in &all {
@@ -357,7 +384,11 @@ fn tidy_project(cx: &Cx, project: &Project, project_paths: &[PathBuf], origins: 
                 if merged {
                     out.merged.push(w.path.clone());
                 }
-                out.removed.push(w.path.clone());
+                // The folder stays unless the opt-in asks for the old delete; `left` is only for what
+                // needs the user's eye, so a clean keep is not listed there.
+                if cx.remove {
+                    out.removed.push(w.path.clone());
+                }
             }
             Err(why) => out.keep(project, w, why),
         }
@@ -398,7 +429,9 @@ pub(crate) fn main_ready(main: Option<&Worktree>, target: Option<&str>, clock: &
     Ok(dir)
 }
 
-/// One workspace: checked, saved, merged when it has something new, then removed. Ok(true) when it was merged.
+/// One workspace: checked, saved, and merged into main when it has something new. Its folder then
+/// stays unless the user opted into removing it at quit (`REMOVE_ON_QUIT_SETTING`). Ok(true) when it
+/// was merged.
 fn tidy_one(cx: &Cx, project: &Project, w: &Worktree, origin: &serde_json::Value, target: Option<&str>, main: Option<&Path>, ready: &dyn Fn() -> Result<PathBuf, String>) -> Result<bool, String> {
     let clock = &cx.clock;
     if w.locked.is_some() {
@@ -422,8 +455,11 @@ fn tidy_one(cx: &Cx, project: &Project, w: &Worktree, origin: &serde_json::Value
     } else {
         None
     };
-    // M7: removal deletes ignored files too; ones that look like the user's own local files stop it.
-    local_files(here, main, clock)?;
+    // M7: only a removal deletes ignored files too, so the check that stops it is skipped while the
+    // folder is kept.
+    if cx.remove {
+        local_files(here, main, clock)?;
+    }
     if dirty {
         save_changes(cx, here)?;
     }
@@ -436,6 +472,9 @@ fn tidy_one(cx: &Cx, project: &Project, w: &Worktree, origin: &serde_json::Value
     };
     if ahead(repo, target, branch, clock)? > 0 {
         return Err(format!("its commits are not in {target} yet"));
+    }
+    if !cx.remove {
+        return Ok(merged);
     }
     if !clock.may_start() {
         return Err(OUT_OF_TIME.into());

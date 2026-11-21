@@ -278,15 +278,16 @@ export function resizeLineup(shape: Shape, seats: Seat[], count: number): { shap
 /** SESS-025: the first line of the rules block, which is how a shown prompt finds and cuts it. */
 export const RULES_MARK = "--- Kolux: you are working alongside other agents ---";
 
-/** SESS-025: the rules every agent of a 2+ seat launch gets after its task. `note` is the path of
- * its own handoff note, made before the agent starts. */
-export function rulesBlock(note: string, ownFolder = false): string {
+/** SESS-025: the rules every agent of a launch gets after its task. `note` is the path of its own
+ *  handoff note, made before the agent starts. Txais (2026-11-20): a solo agent gets one too, so the
+ *  wording no longer promises other agents when there are none (`solo`). */
+export function rulesBlock(note: string, ownFolder = false, solo = false): string {
   return [
     RULES_MARK,
     // DT-C250: an agent given a folder of its own is told to stay in it; one sharing the project folder is told not to make a copy.
     ...(ownFolder
-      ? ["Other agents are working on this task alongside you at the same time, each in a folder of its own.", "Stay inside your own worktree, the folder you started in. The one file outside it you may write is your handoff note."]
-      : ["Other agents are working on this task alongside you in the same project folder.", "Stay inside that folder; do not make a worktree or a second copy of the project. The one file outside it you may write is your handoff note."]),
+      ? [solo ? "You are working on this task on your own, in a folder of your own." : "Other agents are working on this task alongside you at the same time, each in a folder of its own.", "Stay inside your own worktree, the folder you started in. The one file outside it you may write is your handoff note."]
+      : [solo ? "You are working on this task on your own, in the project folder." : "Other agents are working on this task alongside you in the same project folder.", "Stay inside that folder; do not make a worktree or a second copy of the project. The one file outside it you may write is your handoff note."]),
     "Make your changes on a branch, commit them, push the branch, and open a pull request. Do not commit to main.",
     `Your handoff note is ${note}. It exists already. Keep it current after each change: the files you added, updated and removed, and what is left to do. Never edit another agent's note.`,
     "Before you say you are done, check how you use every library against its up-to-date documentation.",

@@ -233,6 +233,12 @@ pub fn forget_workspace(store: &Store, path: &str) -> Result<(), String> {
     }
     set_name(store, path, None)?;
     set_parent(store, path, None)?;
+    // The next worktree at this path starts with no history, so a stale "last opened" cannot make it
+    // expire the moment it is made.
+    let mut opened = load_map(store, OPENED_KEY);
+    if opened.remove(&name_key(path)).is_some() {
+        store.set(OPENED_KEY, &serde_json::Value::Object(opened).to_string()).map_err(|e| e.to_string())?;
+    }
     // After-list row 59: every way a workspace goes drops its board status too.
     crate::bulk::clear_status(store, path)?;
     set_origin(store, path, None)
@@ -561,6 +567,40 @@ fn save_seen<'a>(store: &Store, project: &Project, keys: impl IntoIterator<Item 
     let mut all = load_map(store, SEEN_KEY);
     all.insert(project.id.clone(), keys.into_iter().cloned().collect::<Vec<_>>().into());
     store.set(SEEN_KEY, &serde_json::Value::Object(all).to_string()).map_err(|e| e.to_string())
+}
+
+/// Txais (2026-11-20): "keep the worktrees open unless we purposefully close them". The last time
+/// each workspace was opened, in seconds since the Unix epoch, keyed like every other map
+/// (`name_key`). Only the retire sweep (`retire.rs`) reads it; the sidebar writes it on a click.
+const OPENED_KEY: &str = "workspaceOpened";
+
+/// How many workspaces the opened map remembers. Oldest go first, so a machine that makes thousands
+/// never grows the map past this; everything it forgets simply never expires (`opened_at` is None).
+const OPENED_KEEP: usize = 4_000;
+
+pub(crate) fn now_secs() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+/// Notes that the workspace at `path` was just opened.
+pub fn note_opened(store: &Store, path: &str) -> Result<(), String> {
+    let mut all = load_map(store, OPENED_KEY);
+    all.insert(name_key(path), serde_json::Value::from(now_secs()));
+    if all.len() > OPENED_KEEP {
+        let mut oldest: Vec<(String, u64)> = all.iter().map(|(k, v)| (k.clone(), v.as_u64().unwrap_or(0))).collect();
+        oldest.sort_by_key(|(_, at)| *at);
+        for (key, _) in oldest.into_iter().take(all.len() - OPENED_KEEP) {
+            all.remove(&key);
+        }
+    }
+    store.set(OPENED_KEY, &serde_json::Value::Object(all).to_string()).map_err(|e| e.to_string())
+}
+
+/// When the workspace at `path` was last opened. `None` means Kolux never recorded it (one made
+/// before this was kept, or by hand): the sweep starts its clock rather than guessing, so a workspace
+/// is never deleted for a history Kolux does not have.
+pub fn opened_at(store: &Store, path: &str) -> Option<u64> {
+    load_map(store, OPENED_KEY).get(&name_key(path)).and_then(|v| v.as_u64())
 }
 
 /// A worktree Kolux itself just made is never offered as new (PROJ-041). T-780 (round 3): this
@@ -1418,6 +1458,9 @@ pub fn create_workspace_until(git: &Git, place: &Place, project: &Project, typed
     if overtaken() {
         return Err(undo_create(git, repo, &dest, Some(&new_branch)));
     }
+    // Txais (2026-11-20): every worktree gets a handoff note of its own, so a context clear always has
+    // one to work off. Best effort: a note that cannot be written never fails the workspace.
+    note_handoff(repo, &dest);
     let worktree = git
         .worktrees(repo)?
         .into_iter()
@@ -1704,6 +1747,8 @@ pub fn open_branch_workspace_until(git: &Git, place: &Place, project: &Project, 
     if overtaken() {
         return Err(undo_create(git, repo, &dest, None));
     }
+    // Txais (2026-11-20): every worktree gets a handoff note of its own (see `note_handoff`).
+    note_handoff(repo, &dest);
     let worktree = git.worktrees(repo)?.into_iter().find(|w| same_folder(Path::new(&w.path), &dest)).ok_or_else(|| "the worktree was created but Git does not list it".to_string())?;
     // T-780: decided here, before any record exists and with no store lock held.
     let own = head_is_on_origin(&dest);
@@ -2004,6 +2049,16 @@ pub async fn workspace_seen(git: State<'_, Git>, store: StoreState<'_>, project_
     let (project, all) = scan(&git, &store, &project_id)?;
     let keys: Vec<String> = all.iter().map(|w| name_key(&w.path)).collect();
     save_seen(&*store.lock().map_err(|e| e.to_string())?, &project, &keys)
+}
+
+/// Txais (2026-11-20): the sidebar calls this when a workspace is clicked into, and the retire sweep
+/// counts the idle days from there. It never fails the click: a store that cannot be written is not
+/// a reason to stop opening a workspace.
+#[tauri::command]
+pub fn workspace_opened(store: StoreState<'_>, path: String) {
+    if let Ok(store) = store.lock() {
+        let _ = note_opened(&store, &path);
+    }
 }
 
 /// T-442 (TERM-115): a project's worktrees as Git lists them, with the store let go while git runs,
@@ -2936,6 +2991,15 @@ pub fn prepare_handoff(repo: &Path, name: &str) -> Result<PathBuf, String> {
         Err(e) => return Err(format!("cannot write {}: {e}", path.display())),
     }
     Ok(path)
+}
+
+/// Txais (2026-11-20): the handoff note of a worktree Kolux just made, named after its folder. Best
+/// effort by design: a note is for the agent to work from, never a reason to refuse a workspace Git has
+/// already created. A note that already exists is kept, so a re-made folder keeps what was written.
+pub(crate) fn note_handoff(repo: &Path, dest: &Path) {
+    if let Some(name) = dest.file_name().and_then(|n| n.to_str()) {
+        let _ = prepare_handoff(repo, name);
+    }
 }
 
 /// SESS-025: makes (or keeps) the handoff note `name` under `root` (the project's main checkout,

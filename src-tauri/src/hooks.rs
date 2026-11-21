@@ -816,6 +816,11 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
 
 /// T-583: the work a hook's answer left, run after its reply, in the order the hooks were answered.
 fn after_reply(app: &AppHandle, job: After) {
+    // Txais (2026-11-20): a reading that reaches the handoff point clears that pane, whatever account it
+    // runs on. The clear is about how sharp the model still is, not about which sign-in paid for it.
+    if let After::Usage(u) = &job {
+        crate::handoff::check(app, u.pane_key, u.context_tokens);
+    }
     match job {
         // USAGE-021: a report from another config folder than the active account's is dropped.
         After::Usage(u) if same_folder(active_config_dir(app).as_deref(), u.config_dir.as_deref()) => record_usage(app, &u),

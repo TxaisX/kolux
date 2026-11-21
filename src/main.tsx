@@ -13,7 +13,7 @@ import { loadPack } from "./i18n/lookup";
 import { applyZoom, ZOOM_FIELD } from "./settings/zoom";
 import { applyText, followText } from "./terminal/text";
 import { installMenuWheel } from "./settings/menuWheel";
-import { freshShells, LAYOUT_FIELD, restoreAsks, restoreLayout, stillThere, type SavedLayout } from "./terminal/layout";
+import { LAYOUT_FIELD, restoreAsks, restoreLayout, resumeOnStart, stillThere, type SavedLayout } from "./terminal/layout";
 import { forgetLastClose, keepsWorkspaces, withoutLastClose } from "./terminal/keepWorkspaces";
 import { sessionOrder } from "./sessions/restoreOrder";
 import "./styles.css";
@@ -125,23 +125,23 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
   await Promise.race([loadPack(), new Promise((r) => setTimeout(r, 300))]);
   // SET-019: and so is the saved interface zoom.
   applyZoom(saved?.[ZOOM_FIELD]);
-  // Txais (2026-11-16): nothing from the last close comes back (no tabs, no folders): the Start form asks what to open.
-  // `keepWorkspaces: true` in the settings brings PROJ-067 back: the saved tabs return, less those whose folder is gone.
+  // Txais (2026-11-20): the last close comes back, tabs included. `keepWorkspaces: false` in the settings starts empty
+  // instead, as 2026-11-16 did: the Start form asks what to open. The saved tabs return, less those whose folder is gone.
   const keep = keepsWorkspaces(stamped || saved);
   if (!keep) forgetLastClose(saved);
   let layout = keep ? restoreLayout((stamped || saved || {})[LAYOUT_FIELD]) : null;
   if (layout) {
     const dirs = [...new Set([...layout.panes.flatMap((p) => [p.cwd, p.view ?? null]), layout.activeDir].filter((d): d is string => d !== null))]; // DT-C274: a team tab's grid folder is checked too
     // PKG-4: one wave, not two. The folder checks and the history removal start together and both are awaited
-    // before this returns, so DT-C27 still holds (nothing old is replayed before a pane opens). The history of
+    // before this returns, so nothing old is replayed before a pane opens. The history of
     // every saved tab is forgotten, including a tab whose folder turns out to be gone: that tab is dropped and its
     // file would be pruned next anyway (terminal_forget_history only removes the pane's history file, and
     // terminal_prune_history removes the files of every key not kept).
     const forgotten = Promise.all(layout.panes.map((p) => invoke("terminal_forget_history", { paneKey: p.key }).catch(() => {})));
     const kinds = await Promise.all(dirs.map((d) => invoke<string>("path_kind", { path: d }).catch(() => "missing")));
-    // DT-C27 (Txais, 2026-11-08): a start is fresh. Agent tabs come back as plain shells (freshShells),
-    // and every tab's saved output is removed before any pane opens, so nothing old is replayed.
-    layout = freshShells(stillThere(layout, (d) => kinds[dirs.indexOf(d)] !== "missing"));
+    // Txais (2026-11-20): a start resumes. Agent tabs keep their agent and session (resumeOnStart); only a
+    // Setup tab is defused. Every tab's saved output is removed before any pane opens, so nothing old is replayed.
+    layout = resumeOnStart(stillThere(layout, (d) => kinds[dirs.indexOf(d)] !== "missing"));
     await forgotten;
     // TERM-106: the saved output of tabs no longer in the layout is cleaned up in the background.
     void invoke("terminal_prune_history", { keep: layout.panes.map((p) => p.key) }).catch(() => {});
@@ -149,7 +149,6 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
     // arguments and environment) plus its own resume command, built on the Rust side from the tab's
     // last session id (every catalogue agent, not only Claude Code and Codex); `resumed` drives the
     // TERM-107 mark. An agent no longer known keeps the bare line. restoreAsks skips plain shells.
-    // Since DT-C27 (2026-11-08) freshShells leaves no agent tab, so this asks nothing; kept for the opt-back.
     for (const p of sessionOrder(layout.panes)) { // after-list #723: asked in session order; the panes keep their saved order
       if (!restoreAsks(p)) continue;
       const line = await invoke<{ args: string[]; program: string | null; env: [string, string][]; resumed: boolean }>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.session ?? null }).catch(() => null);

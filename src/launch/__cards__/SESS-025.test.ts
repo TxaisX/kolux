@@ -5,7 +5,7 @@ import { openingPrompt, pickShape, ROLE_BRIEFS, rulesBlock, withoutRules } from 
 test("SESS-025 box 2: Solo with a task -> the opening prompt is the role brief and the task, with no rules block", () => {
   const solo = pickShape("solo", [{ agent: "claude", model: "opus" }]);
   expect(solo).toHaveLength(1);
-  // A single-seat launch asks for no handoff note, so App.tsx passes no rules (note === null).
+  // No note was asked (a launch with no project folder), so no rules block is handed over.
   const prompt = openingPrompt(solo[0], "Fix the login page", null);
   expect(prompt).toBe(`${ROLE_BRIEFS.builder}\n\nFix the login page`);
   const rules = rulesBlock("C:/proj/.kolux/handoffs/x.md");

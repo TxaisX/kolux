@@ -176,17 +176,18 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // SESS-051: each agent's start line comes from the catalogue, prompt route included; a
       // refused line (Hermes past its limit) stops the whole Start before any pane is made.
       const side = picked.filter(Boolean).length >= 2;
-      if (side && !place) throw new Error("Add a project first: agents side by side keep their handoff notes in it.");
       const task = chooser.task ?? "";
+      // Txais (2026-11-20): every agent gets a handoff note, not only a team. A solo agent keeps one too, so
+      // the context handoff at 170k (handoff.rs) always has a note to carry the work forward.
       // A seat in its own folder is named after that folder; seats sharing one are told apart by number. The notes
       // are made together (the names differ), in seat order; the first one refused stops the Start as before.
       const notes = await Promise.all(
         picked.map((a, i) => {
           const cwd = places[i].cwd ?? "";
-          return a && side ? invoke<string>("handoff_note_prepare", { root: place, name: makes ? folderName(cwd) : `${folderName(cwd)}-seat-${i + 1}` }) : null;
+          return a ? invoke<string>("handoff_note_prepare", { root: place, name: makes ? folderName(cwd) : `${folderName(cwd)}-seat-${i + 1}` }) : null;
         }),
       );
-      const prompts = picked.map((a, i) => (a ? openingPrompt(seats[i], task, notes[i] && rulesBlock(notes[i] as string, makes)) : ""));
+      const prompts = picked.map((a, i) => (a ? openingPrompt(seats[i], task, notes[i] && rulesBlock(notes[i] as string, makes, !side)) : ""));
       const lines = await Promise.all(picked.map((a, i) => (a ? invoke<StartLine>("agent_start_line", { id: a.id, extra: seatArgs(seats[i]), prompt: prompts[i], picked: true }) : null)));
       const made: Pane[] = seats.map((s, i) => {
         const a = picked[i];
