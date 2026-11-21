@@ -26,7 +26,7 @@ powershell -File G:\Dev\claude-config\scripts\new-worktree.ps1 -Finish
 ```
 
 - Worktrees live in `<repo>\.worktrees\<name>` and are ignored by git (`/.worktrees/` in `.git/info/exclude`).
-- `-Finish` merges the lane branch into main with `--no-ff`, removes the folder and keeps the branch. It never pushes.
+- `-Finish` merges the lane branch into main with `--no-ff`, removes the folder and keeps the branch. It never pushes. Run it from outside the lane: Windows cannot delete a folder a shell is sitting in, so a `-Finish` run inside the lane merges and then leaves the folder behind.
 - Memory files (`AGENTS.md`, `CLAUDE.md`, `docs/`, project memory under `G:\Dev\claude-config\projects\`) are written in the main checkout, not in a worktree.
 - `node scripts/worktree-status.mjs` lists every worktree still holding commits main does not have, in any checkout.
 
