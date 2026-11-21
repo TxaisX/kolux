@@ -30,6 +30,10 @@ export type ChatEvent = {
   blocks?: Block[];
   /** `assistant` and `user`: the subagent (Task) call this belongs to; null in the main conversation. */
   parentToolUseId?: string | null;
+  /** `init`: the conversation id the agent opened; a kept Everyday chat saves it to resume later. */
+  sessionId?: string;
+  /** `started`: the conversation the process picked up with `--resume`, when it resumed one. */
+  resumed?: string;
   /** `assistant`: the message's own id; its blocks share it. */
   messageId?: string | null;
   /** `assistant` and `apiRetry`: what the agent itself said went wrong. */

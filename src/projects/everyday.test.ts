@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import { everydayAgents, everydaySessions, isEveryday, samePlace } from "./everyday";
+import { everydayAgents, everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
+import type { EverydayChat } from "./everydayChats";
 import type { FolderSession } from "./folderSessions";
 
 test("the same place ignores case, separators and a trailing slash", () => {
@@ -25,6 +26,23 @@ test("the everyday list is the panes opened there, in the window's own order", (
   ];
   expect(everydaySessions(list, "c:/users/x/kolux/everyday/").map((s) => s.key)).toEqual([1, 2, 4]);
   expect(everydaySessions(list, null)).toEqual([]);
+});
+
+const kept = (id: string, over: Partial<EverydayChat> = {}): EverydayChat => ({ id, agent: "claude", cwd: "C:\\E", at: 1, ...over });
+
+test("a kept chat and its live tab are one row: the tab is found by the record it draws", () => {
+  const list = [kept("a", { at: 20 }), kept("b", { at: 10 }), kept("c", { at: 5 })];
+  const panes = [session(7, { record: "b", chat: true }), session(8, { record: "gone" })];
+  const got = everydayItems(list, panes);
+  expect(got.map((x) => x.chat.id)).toEqual(["a", "b", "c"]);
+  expect(got.map((x) => x.pane?.key ?? null)).toEqual([null, 7, null]);
+});
+
+test("panes no kept chat owns still draw; panes whose record was deleted are the tab's own row", () => {
+  const list = [kept("a")];
+  const panes = [session(1, { record: "a" }), session(2, { chat: true }), session(3, { record: "gone" })];
+  expect(everydayUnkept(panes, list).map((s) => s.key)).toEqual([2, 3]);
+  expect(everydayUnkept(panes, [])).toBe(panes);
 });
 
 const ai = (id: string, name: string, installed = true) => ({ id, name, installed });

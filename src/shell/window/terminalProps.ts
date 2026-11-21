@@ -41,8 +41,6 @@ export const sameTerminal = sameProps<TerminalProps>({
   hidden: "same",
   gpu: "same",
   name: "same",
-  plan: "same",
-  usage: "data", // readoutOf makes a new object each render
   cwd: "same",
   branch: "same",
   worktree: "data", // made fresh each render from the project list

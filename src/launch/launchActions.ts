@@ -22,6 +22,7 @@ import { cellsOf, freeCell, freeCells, groupOf, MAX_PANES } from "../terminal/gr
 import type { StartLine } from "../terminal/tabName";
 import { panesIn, sameDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
+import { EVERYDAY_CHATS_FIELD, everydayChatsOf, newEverydayChat, putEverydayChat, touchEverydayChat, type EverydayChat } from "../projects/everydayChats";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
@@ -36,6 +37,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     setRefresh, setScreen, setSettings, setSheet, setToast, settings, sheet
   } = s;
   const { settingsRef } = p;
+  // The kept Everyday chats (projects/everydayChats.ts) live in settings. p.saveSetting builds on the latest
+  // value, so an id reported by a chat while another write is in flight is never lost; an unchanged list
+  // writes nothing (undefined from the value function stops the write).
+  const keepChat = (change: (list: EverydayChat[]) => EverydayChat[]) =>
+    p.saveSetting(EVERYDAY_CHATS_FIELD, (prev: unknown) => {
+      const list = everydayChatsOf(prev);
+      const after = change(list);
+      return after === list ? undefined : after;
+    });
   const lineupsOf = (s: Record<string, unknown>) => (s[LAST_LINEUP_KEY] ?? {}) as Record<string, Lineup>;
   // DT-C274: the worktrees an own-folder team launch made and the grid they are shown in, kept so the sidebar leaves
   // them out and anything opened in one lands in that grid (projects/rows.ts). Row 794-c: laid over the disk copy
@@ -494,7 +504,40 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const extra = model && model !== DEFAULT_MODEL ? modelArgs(model, agent.id) : savedArgs(agent.id);
       const key = await startIn(agent, proj.path, null, "", true, extra);
       if (key === null) return;
-      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
+      // The chat's kept record (2026-11-21): the row outlives the tab, and the agent's own conversation id
+      // lands on it as soon as the chat reports one, so clicking the row later resumes this conversation.
+      const rec = newEverydayChat(agent.id, proj.path, model && model !== DEFAULT_MODEL ? model : null);
+      keepChat((list) => putEverydayChat(list, rec));
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
+      setRefresh((n) => n + 1);
+      setNotice(null);
+    } catch (err) {
+      setNotice(String(err));
+    } finally {
+      setLaunching(false);
+    }
+  };
+  // A kept Everyday chat whose tab was closed (2026-11-21): a pane already showing it comes to the front;
+  // otherwise the same conversation opens with `--resume`, on the AI and model it started with, and the
+  // row moves to the top because it was used just now.
+  const openChat = async (rec: EverydayChat) => {
+    const open = panes.find((x) => x.everyday === rec.id);
+    if (open) {
+      const at = viewOf(open);
+      if (at !== null) setActiveDir(at);
+      setFocused(open.key);
+      return;
+    }
+    const agent = agents.find((a) => a.id === rec.agent && a.installed);
+    if (!agent) return setNotice(`${rec.agent} is not installed here, so this chat cannot open.`);
+    setLaunching(true);
+    try {
+      const onModel = rec.model && rec.model !== DEFAULT_MODEL ? rec.model : null;
+      const extra = onModel ? modelArgs(onModel, agent.id) : savedArgs(agent.id);
+      const key = await startIn(agent, rec.cwd, null, "", true, extra, rec.name);
+      if (key === null) return;
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}) } : p)));
+      keepChat((list) => touchEverydayChat(list, rec.id));
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -526,7 +569,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   };
   return {
     lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, fromItem, fromName, pretrust,
-    fixWithAI, projectFor, launch, newChat, newSession,
+    fixWithAI, projectFor, launch, newChat, newSession, openChat,
   };
 }
 

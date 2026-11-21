@@ -43,7 +43,7 @@ const CANNOT_STOP_NOTE = "Could not stop the agent from here.";
 const startingNote = (name: string) => `Starting ${name}…`;
 const crashedNote = (name: string) => `${name}'s process ended. Your next message starts it again.`;
 
-export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, agent = "claude", open: opener }: {
+export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, agent = "claude", resume = null, onSession, open: opener }: {
   pane: { key: number; cwd: string | null; title?: string };
   /** True while the grid hides this pane: it reads nothing new either way, the event stream pushes. */
   hidden?: boolean;
@@ -58,6 +58,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   model?: string | null;
   /** The AI that answers here (2026-11-20): `claude`, or `openclaude` for the other models. */
   agent?: string;
+  /** The conversation to pick up (2026-11-21): a kept Everyday chat's own id, so reopening resumes it. */
+  resume?: string | null;
+  /** The agent's conversation id, once it names one: the window writes it on the chat's kept record. */
+  onSession?: (id: string) => void;
   /** The window's way of opening a link or a printed file, as a terminal pane gets it. */
   open?: ChatOpen;
 }) {
@@ -80,6 +84,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // CHAT-026: Thought rows start folded; the toolbar opens or folds them all.
   const [thoughts, setThoughts] = useState<Set<string>>(() => new Set());
   const seq = useRef(0);
+  // The newest way to report a session id: the listener below outlives one render's props, so it reads the
+  // ref instead of closing over a callback that may have been replaced.
+  const reportSession = useRef(onSession);
+  reportSession.current = onSession;
   // A chat is started once per pane. React's strict mode mounts an effect twice in development; the
   // second mount must not start a second process, or the conversation the first one began is thrown away.
   const started = useRef(false);
@@ -123,6 +131,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           setItems((prev) => reduce(prev, ev, now, seq.current));
           // The working line and the Stop button follow the turn, which only the turn's own end closes.
           if (ev.kind === "result" || ev.kind === "stopped") setOpen(false);
+          // A kept Everyday chat learns the agent's own conversation id here: the init line names it, and a
+          // resumed process (after a crash or a sleep) names the one it picked up (`Started.resumed`).
+          if (ev.kind === "init" && ev.sessionId) reportSession.current?.(ev.sessionId);
+          if (ev.kind === "started" && ev.resumed) reportSession.current?.(ev.resumed);
           // A finished turn is when most artifacts appear, so the folder is read again right then.
           if (ev.kind === "result") setLookAt((n) => n + 1);
           if (ev.kind === "exit") {
@@ -134,7 +146,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         unheard = off;
         if (!started.current) {
           started.current = true;
-          await startChat(chatId, cwd, model, agent);
+          await startChat(chatId, cwd, model, agent, resume);
           if (live) setSpawned(true);
         }
       } catch (e) {
