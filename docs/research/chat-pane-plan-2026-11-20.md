@@ -56,7 +56,7 @@ agent is showing a menu. It is the shape a chat pane must *not* copy, except its
 |---|---|---|---|
 | Resume after restart | Pane saves `session`; the terminal resumes with the agent's own args | Engine keeps the id in memory only; nothing saves it, and its messages live in React state | **Breaks.** Slice 2 saves the id in `SavedPane.session` and replays history from the transcript |
 | Status hooks | Hook posts per pane + terminal; drives dot, sidebar row, needs-you, unread | A headless process gets no `KOLUX_HOOK_*` env, so no events | **Breaks,** but the engine's own events can feed the same states. Slice 3. Hook env for a chat is a later option (UNKNOWN, see below) |
-| Permission prompts | Hook says "permission"; `PermissionCard` types `1`/`2` into the TUI | No TUI. `-p` cannot ask; it allows or denies and reports `permissionDenied` | **Breaks.** Biggest product gap. Slice 4, plus one spike. Fallback: run on auto and show denials as rows |
+| Permission prompts | Hook says "permission"; `PermissionCard` types `1`/`2` into the TUI | No TUI. `-p` cannot ask; it denies and tells the model (spike, 2026-11-20) | **Decided (DT-C283).** No Allow/Deny card in a chat. A refusal is a row that names it. Approvals stay in terminal panes, which are unchanged |
 | Question cards (`AskUserQuestion`) | Card types option numbers into the TUI | No TUI. The question arrives as a tool call | **Breaks.** Read-only card, answer by a follow-up message |
 | Plan review (Approve / Request changes) | `agent_answer` types keys | No TUI. `ExitPlanMode` arrives as a plan step | **Breaks.** Approve becomes a message; keep the plan sheet as a viewer |
 | Scrollback, Ctrl-F, copy | xterm's own | None | **Changes.** Chat has `Load earlier` paging instead; terminal panes keep search |
@@ -75,7 +75,7 @@ Each slice ships and is testable alone. Sizes are working hours.
 | 1 | One pane is a chat | A Claude pane shows messages, tool rows and a reply as it comes; typing sends; Stop works | `src/chat/live/events.ts`, `src/chat/live/client.ts`, `src/chat/live/ChatPane.tsx` (new), `src/chat/ChatView.tsx` (export `ViewRow`), `src/shell/window/Pane.tsx`, `src/App.tsx` (`chat?: true`), `src/lazy/pages.tsx`, `src/launch/PlusMenu.tsx` | new `src/chat/live/events.test.ts`, `src/chat/live/client.test.ts`; `scripts/invoke-contract.test.mjs`, `scripts/bundle-budget.test.mjs` | 8 |
 | 2 | It survives a restart | Reopen the app: the conversation is there and the session carries on | `src/chat/live/client.ts`, `src/terminal/layout.ts`, `src/terminal/layoutSave.ts`, `src/terminal/paneActions.ts` (close), `src/launch/launchActions.ts`, `src-tauri/src/chat.rs` (new `chat_transcript` by session id, reusing `session_files::locate` + `Parser`), `src-tauri/src/lib.rs` | `src/terminal/layout.test.ts`, `src/sessions/restoreOrder.test.ts`, new `src/chat/live/history.test.ts`, `cargo test chat` | 8 |
 | 3 | It looks alive without hooks | Working line with elapsed time, a finished turn with duration and cost, the pane dot and sidebar row move | `src/chat/live/status.ts` (new), `src/chat/live/ChatPane.tsx`, `src/shell/window/Pane.tsx`, `src/terminal/headerUsage.ts`, `src/projects/rows.ts` | new `src/chat/live/status.test.ts`, `src/projects/rows.test.ts`, `src/terminal/headerUsage.test.ts` | 6 |
-| 4 | Allow, Deny and the plan | A card for a refusal or an ask, with Allow and Deny; a plan card that opens the plan sheet | `src/chat/live/answers.ts` (new), `src/chat/PermissionCard.tsx`, `src/chat/QuestionCard.tsx`, `src/chat/live/client.ts`, `src/chat/live/ChatPane.tsx`; Rust only if the spike lands | new `src/chat/live/answers.test.ts`, `src/chat/ask.test.ts` (kept green) | 8 |
+| 4 | Refusals, questions and the plan read as rows | A refused tool says so in the conversation; a question shows the options and is answered by the next message; a plan opens in the plan sheet as a viewer | `src/chat/live/answers.ts` (new), `src/chat/QuestionCard.tsx`, `src/chat/live/ChatPane.tsx`, `src/chat/live/client.ts` | new `src/chat/live/answers.test.ts`, `src/chat/ask.test.ts` (kept green) | 4 |
 | 5 | Artifacts under the reply | Images the agent wrote into `artifacts/` show as previews under the turn; pages and video get a card with Open | see the artifacts slice below | new `src/chat/live/artifacts.test.ts`, Rust scan tests, `scripts/csp.test.mjs`, `scripts/privacy-audit.test.mjs` | 10 |
 
 **Slice 1, in one sentence:** mount a lazy `ChatPane` for a pane marked `chat`, start it with
@@ -83,9 +83,11 @@ Each slice ships and is testable alone. Sizes are working hours.
 every other pane a terminal. Entry point: a "New chat" row in the plus menu that makes one pane for
 Claude; no default changes, no setting flipped.
 
-**Slice 4 starts with a spike, not code.** Does headless `claude -p` send a `can_use_tool` control
-request that a `control_response` on stdin can answer? Docs print neither body. If yes, the card is
-real. If no, the card only shows denials and the honest text is "this agent runs without asking".
+**Slice 4 no longer needs a spike.** The spike ran on 2026-11-20 and the answer is in
+`claude-stream-json-protocol-2026-11-20.md`: the ask channel exists and is specified, but this build
+never sends it to a bare stream-json host — it denies and tells the model. Txais decided chat panes
+never ask (DT-C283). So slice 4 renders refusals, questions and plans as rows, and builds no approval
+card.
 
 ### Tests already here
 
