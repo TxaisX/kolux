@@ -4,6 +4,7 @@ mod activity;
 mod agent_sleep;
 pub mod agents;
 mod app_look;
+mod artifacts;
 mod badge;
 mod awake;
 mod capture;
@@ -832,6 +833,9 @@ pub fn run() {
             chat_engine::chat_send,
             chat_engine::chat_stop,
             chat_engine::chat_end,
+            // Chat panes: the artifacts folder under a reply (DT-C281).
+            artifacts::artifacts_scan,
+            artifacts::artifact_read,
             // stage 3 (s3-publish)
             project_new::github_badge
             ];

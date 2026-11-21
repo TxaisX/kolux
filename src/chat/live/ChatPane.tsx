@@ -29,6 +29,8 @@ import { STOPPING_NOTE } from "../stop";
 import { NOTE_MS, selfClearing, useDismiss } from "../ux";
 import { readModel } from "../controls";
 import { ViewRow, type ChatOpen } from "../ChatView";
+import { ArtifactsStrip } from "./Strip";
+import { changed, mimeOf, newest, POLL_MS, PREVIEW_CAP, readArtifact, scanArtifacts, stampOf, stripIndex, THUMB_CAP, toBlobUrl, type ArtifactRow, type ArtifactScan } from "./artifacts";
 import "../chat.css";
 
 /** A Stop that did nothing. The transcript chat's own line tells the user to press Escape in a terminal,
@@ -73,6 +75,16 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const list = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const [away, setAway] = useState(false);
+  // T-965: the artifacts folder under this chat. The scan is the source of truth; the stamps say a file
+  // changed, so only that file is read again; the blob URLs are kept here so they can be revoked when the
+  // file changes or the pane goes away.
+  const [arts, setArts] = useState<ArtifactScan>({ rows: [], skipped: [] });
+  const [thumbs, setThumbs] = useState<Map<string, string>>(() => new Map());
+  const [looked, setLooked] = useState(Date.now());
+  const [lookAt, setLookAt] = useState(0);
+  const stamps = useRef(new Map<string, string>());
+  const blobs = useRef(new Map<string, string>());
+  const big = useRef<string | null>(null);
 
   useEffect(() => {
     // The pane is being drawn again in the same tick (strict mode): keep the process the first mount
@@ -97,6 +109,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           setItems((prev) => reduce(prev, ev, now, seq.current));
           // The working line and the Stop button follow the turn, which only the turn's own end closes.
           if (ev.kind === "result" || ev.kind === "stopped") setOpen(false);
+          // A finished turn is when most artifacts appear, so the folder is read again right then.
+          if (ev.kind === "result") setLookAt((n) => n + 1);
           if (ev.kind === "exit") {
             setOpen(false);
             if (ev.reason === "crashed") setNote(CRASHED_NOTE);
@@ -145,10 +159,76 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     setOpen(false);
   }, [chatId]);
 
+  // T-965: the artifacts folder, read when the pane shows, when a turn ends and every three seconds
+  // while it is on screen. A hidden pane reads nothing; the plan reuses this rule from reading.ts.
+  useEffect(() => {
+    const cwd = pane.cwd;
+    if (hidden || !cwd) return;
+    let live = true;
+    // A scan every three seconds must not re-render the strip when no picture changed.
+    const sync = () =>
+      setThumbs((prev) => (prev.size === blobs.current.size && [...prev].every(([path, url]) => blobs.current.get(path) === url) ? prev : new Map(blobs.current)));
+    const look = async () => {
+      let scan: ArtifactScan;
+      try {
+        scan = await scanArtifacts(cwd);
+      } catch {
+        return; // no folder is no artifacts; the chat itself says nothing about it
+      }
+      if (!live) return;
+      const shown = newest(scan.rows);
+      setArts({ rows: shown, skipped: scan.skipped });
+      setLooked(Date.now());
+      // A file that left the strip takes its bytes with it: revoke, forget, never show a stale picture.
+      for (const [path, url] of blobs.current) {
+        if (shown.some((r) => r.path === path)) continue;
+        URL.revokeObjectURL(url);
+        blobs.current.delete(path);
+        stamps.current.delete(path);
+      }
+      sync();
+      // Only the pictures whose stamp moved are read again. A page or a video is only ever a card.
+      for (const row of changed(stamps.current, shown)) {
+        stamps.current.set(row.path, stampOf(row));
+        if (row.kind !== "image") continue;
+        try {
+          const b64 = await readArtifact(cwd, row.path, THUMB_CAP);
+          if (!live) return;
+          const url = toBlobUrl(b64, mimeOf(row));
+          const old = blobs.current.get(row.path);
+          if (old) URL.revokeObjectURL(old);
+          blobs.current.set(row.path, url);
+          sync();
+        } catch {
+          // A picture that cannot be read keeps its kind word instead of a broken image.
+        }
+      }
+    };
+    void look();
+    const t = setInterval(() => void look(), POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
+  }, [hidden, pane.cwd, lookAt]);
+
+  // The pane's blob URLs live as long as the window unless they are revoked; a closed pane gives them back.
+  useEffect(
+    () => () => {
+      for (const url of blobs.current.values()) URL.revokeObjectURL(url);
+      blobs.current.clear();
+      if (big.current) URL.revokeObjectURL(big.current);
+      big.current = null;
+    },
+    [],
+  );
+
   const pending = useMemo(() => capPending(sent), [sent]);
   const rows = useMemo(() => combine(items, [], null, pending), [items, pending]);
   const shown = useMemo(() => visibleRows(rows, pages), [rows, pages]);
   const views = useMemo(() => fold(shown, open, pane.cwd), [shown, open, pane.cwd]);
+  // T-965: under the last finished turn, above one that is still running.
+  const stripAt = stripIndex(views);
   const earlier = loadLabel(rows.length, pages, 0);
   const thoughtIds = idsOf(items);
   const toggle = (id: string) => setThoughts((t) => toggled(t, id));
@@ -196,7 +276,26 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     const el = list.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [views]);
-  useDismiss(full !== null, () => setFull(null), ".chat-full");
+  /** The large picture is a blob too; closing it gives the bytes back. */
+  const closeFull = () => {
+    if (big.current) URL.revokeObjectURL(big.current);
+    big.current = null;
+    setFull(null);
+  };
+  useDismiss(full !== null, closeFull, ".chat-full");
+
+  /** A picture large, inside the pane: read at the full preview limit, never at the thumbnail's. */
+  const preview = (row: ArtifactRow) => {
+    const cwd = pane.cwd;
+    if (!cwd) return;
+    void readArtifact(cwd, row.path, PREVIEW_CAP).then((b64) => {
+      if (big.current) URL.revokeObjectURL(big.current);
+      big.current = toBlobUrl(b64, mimeOf(row));
+      setFull(big.current);
+    }, (e) => setNote(String(e)));
+  };
+  /** A page or a video: the real file, in the program the user has for it. */
+  const openOnDisk = (row: ArtifactRow) => void invoke("open_path", { path: row.path }).catch((e) => setNote(String(e)));
 
   /** The box clears its text at once: a send that fails later marks its waiting row failed and says why
    *  under the box, so nothing typed is silently swallowed and nothing is held back on a guess. */
@@ -271,7 +370,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
                 {earlier}
               </button>
             )}
-            {views.map((v) => (
+            {views.slice(0, stripAt).map((v) => (
+              <ViewRow key={`${v.row}-${v.id}`} view={v} onImage={setFull} thoughts={thoughts} onToggle={toggle} />
+            ))}
+            <ArtifactsStrip rows={arts.rows} skipped={arts.skipped} thumbs={thumbs} now={looked} onOpen={openOnDisk} onPreview={preview} />
+            {views.slice(stripAt).map((v) => (
               <ViewRow key={`${v.row}-${v.id}`} view={v} onImage={setFull} thoughts={thoughts} onToggle={toggle} />
             ))}
           </div>
@@ -293,7 +396,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             shownModel={shownModel}
           />
           {full && (
-            <button type="button" className="chat-full" aria-label="Close image" onClick={() => setFull(null)}>
+            <button type="button" className="chat-full" aria-label="Close image" onClick={closeFull}>
               <img src={full} alt="Attached" />
             </button>
           )}
