@@ -97,3 +97,27 @@ the same process:
 A person watching a 20-call turn should be able to answer, without opening anything: what files were
 touched, what failed, and whether it is still working. If they have to open the group to answer any of
 those, the rows are wrong.
+
+## The surface (added 2026-11-20, at Txais's ask)
+
+"Instead of a terminal look, it should have more of a surface level look like Claude has it for the
+general population." The rows above are about a busy turn; this is about the page they sit on.
+
+- **The pane is the page.** A chat pane has no inner card, no second bar and no terminal chrome. The
+  pane's own header is one 38 px line (mark, name, "Chat", Close) with no rule under it.
+- **One column, 720 px.** The transcript and the composer share a measure that stays centred on a wide
+  window and falls back to 18 px side padding in a narrow pane. Prose is 15.5/1.62; labels are 12–13 px.
+- **Only the user has a bubble.** Their turn is one soft 18 px rounded block on the right. Claude's
+  reply is the page itself: no bubble, no avatar row, no shadow.
+- **Tool rows are sentences, not console lines.** The subject is set in the UI face at 13 px; only the
+  output block and a command the user typed are monospace.
+- **The composer is a floating card.** 16 px radius, one border, a shadow, a borderless field inside,
+  a round attach button and a filled send pill. The model controls sit on the card's second line.
+- **A new chat teaches.** The empty state is a centred mark, "What should we work on?", one plain line
+  ("Ask in plain words. Claude works in this folder and shows you what it changes.") and three
+  starters. Nothing is pre-sent; a starter is a normal message.
+- **It does not need a terminal first.** "New chat" is a row in the sidebar's New session menu and in
+  a pane's plus menu; it is offered only when Claude is installed.
+- **Theme tokens only.** No raw colour in the surface: all 16 appearances and a custom accent keep
+  working. The rules are held by `src/chat/surface.test.ts`.
+

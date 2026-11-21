@@ -166,6 +166,10 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         focused={p.key === focused}
         onFocus={act.focus}
         onClose={act.close}
+        named={!!p.title}
+        onName={act.rename}
+        model={p.chatModel ?? null}
+        agent={p.chatAgent ?? "claude"}
         open={{ onOpenFile: openFile, onOpenLink: (url: string) => void openExternal(url), inKolux: settings.linksOpenInKolux === true }}
       />
     );

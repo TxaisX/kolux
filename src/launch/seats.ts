@@ -144,6 +144,17 @@ const BUILT_IN: Record<string, ModelChoice[]> = {
     { id: "grok-code-fast-1", label: "Grok Code Fast 1" },
     { id: "grok-4", label: "Grok 4" },
   ],
+  // 2026-11-20: OpenClaude runs the other models through one gateway, so its list is OpenRouter's ids
+  // (each one answered a real prompt with this exact id that day: deepseek/deepseek-v4.1-flash-1017,
+  // openai/gpt-5, google/gemini-3-flash-preview, anthropic/claude-opus-4.5, x-ai/grok-4.6).
+  openclaude: [
+    { id: "deepseek/deepseek-v4.1-flash-1017", label: "DeepSeek V4.1 Flash" },
+    { id: "openai/gpt-5", label: "GPT-5" },
+    { id: "openai/gpt-5-mini", label: "GPT-5 mini" },
+    { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash" },
+    { id: "anthropic/claude-opus-4.5", label: "Claude Opus 4.5" },
+    { id: "x-ai/grok-4.6", label: "Grok 4.6" },
+  ],
 };
 
 /** SESS-029: Grok's effort levels, up to extra-high; left untouched it stays at Grok's own high. */
@@ -180,9 +191,15 @@ export function modelsFor(agentId: string): ModelChoice[] {
   return list ? [...list, { id: DEFAULT_MODEL, label: "Program default" }] : [];
 }
 
+/** The gateway OpenClaude's list comes from; the Rust chat engine names the same one
+ *  (`chat_engine::OPENCLAUDE_PROVIDER`). A picked OpenClaude model is an OpenRouter id, so its start
+ *  line has to say where to route it, in the chat page and in a terminal alike. */
+export const OPENCLAUDE_PROVIDER = "openrouter";
+
 /** The arguments a model pick adds to the start line; none for the program's own default. */
-export function modelArgs(model: string | null): string[] {
-  return model === null || model === DEFAULT_MODEL ? [] : ["--model", model];
+export function modelArgs(model: string | null, agentId?: string | null): string[] {
+  if (model === null || model === DEFAULT_MODEL) return [];
+  return agentId === "openclaude" ? ["--provider", OPENCLAUDE_PROVIDER, "--model", model] : ["--model", model];
 }
 
 /** The seat's model as a choice, when its agent lists it. */
@@ -197,7 +214,7 @@ export const FAST_SETTINGS = '{"fastMode":true}';
 // agent's flag goes on ModelChoice when its models gain efforts (T-100-b).
 export function seatArgs(s: Seat): string[] {
   const m = choiceOf(s);
-  const out = modelArgs(s.model);
+  const out = modelArgs(s.model, s.agent);
   if (s.effort && m?.efforts?.includes(s.effort)) out.push(m.effortFlag ?? "--effort", s.effort);
   if (s.fast && m?.fast) out.push("--settings", FAST_SETTINGS);
   return out;

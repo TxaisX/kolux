@@ -140,6 +140,20 @@
 .chat-file-change { flex: none; font-size: 11px; color: var(--fg-muted); }
 .chat-files .chat-hand { flex: none; }
 .chat-files .chat-hand-note { max-width: none; margin-top: 4px; }
+
+/* T-965: the artifacts folder, under the last finished turn. Quiet like the files box: a picture is a
+   thumbnail, a page or a video is a card, and every row opens on a click. */
+.chat-artifacts { margin: 4px 12px 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; background: var(--surface); }
+.chat-artifacts-title { font-size: 11px; color: var(--fg-muted); margin-bottom: 4px; }
+.chat-artifacts ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-artifacts li { min-width: 0; }
+.chat-artifact { display: flex; align-items: center; gap: 8px; max-width: 280px; padding: 3px 6px 3px 3px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.chat-artifact:hover, .chat-artifact:focus-visible { background: var(--chip-bg); }
+.chat-artifact-thumb { flex: none; width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+.chat-artifact-kind { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 4px; font-size: 10px; color: var(--fg-muted); }
+.chat-artifact-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-artifact-meta { flex: none; font-size: 11px; color: var(--fg-muted); }
+.chat-artifacts-skip { margin: 4px 0 0; font-size: 11px; color: var(--fg-muted); }
 .chat-question-step { font-size: 11px; color: var(--fg-muted); margin-left: auto; }
 .chat-question-text { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-question-options { display: flex; flex-direction: column; gap: 4px; }
@@ -185,3 +199,87 @@
 .chat-control select:disabled, .chat-control button:disabled { color: var(--fg-faint); }
 .chat-control-status { color: var(--fg-muted); }
 .chat-control-status.failed { color: var(--status-bad); }
+
+/* ── The chat surface (2026-11-20, Txais: "more of a surface level look like Claude") ──────────────
+   A chat pane is not a terminal that happens to hold a conversation. The pane is the page: no inner
+   card or bar, one 720 px reading column that stays centred, prose at 15.5/1.62, quiet 12–13 px labels,
+   and a composer that floats at the foot like a message card. Every colour is a theme token, so all
+   16 appearances and the custom accent keep working. The terminal panes are untouched. */
+.chat-pane { background: var(--pane-bg); }
+.chat.chat-surface { margin: 0; border: 0; border-radius: 0; background: transparent; overflow: hidden; }
+
+/* The pane's own bar goes quiet: a small title line, and Close only when the pointer or keyboard is here. */
+.chat-pane > .pane-head { height: 38px; gap: 8px; padding: 0 10px 0 14px; border-bottom: 0; background: transparent; }
+.chat-pane > .pane-head .title { font-size: 13px; font-weight: 580; letter-spacing: -0.01em; }
+.chat-pane > .pane-head .preview-tag { padding: 0; border: 0; background: none; font-size: 11.5px; color: var(--fg-faint); }
+.chat-pane > .pane-head .right { margin-left: auto; opacity: 0.45; transition: opacity 120ms cubic-bezier(0, 0, 0.2, 1); }
+.chat-pane:hover > .pane-head .right,
+.chat-pane:focus-within > .pane-head .right { opacity: 1; }
+.chat-pane > .pane-head .ib { width: 24px; height: 24px; border-radius: 7px; }
+.chat-pane > .pane-head .ib:hover,
+.chat-pane > .pane-head .ib:focus-visible { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+
+/* One column, fixed measure: the transcript never stretches across a 2560 px window. */
+.chat.chat-surface .chat-list { padding: 26px max(18px, calc((100% - 720px) / 2)) 18px; gap: 22px; }
+.chat.chat-surface .chat-toolbar { width: min(720px, 100%); margin: 0 auto; padding: 6px 0 0; }
+.chat.chat-surface .chat-state { width: min(720px, 100%); margin: 0 auto; padding: 22px 0 0; font-size: 13.5px; line-height: 1.55; }
+.chat.chat-surface .chat-error { color: var(--status-bad); }
+
+/* Messages: the user gets one soft bubble on the right; Claude's reply is the page itself. */
+.chat.chat-surface .chat-msg { max-width: 100%; gap: 6px; font-size: 15.5px; line-height: 1.62; }
+.chat.chat-surface .chat-msg.assistant { align-self: stretch; }
+.chat.chat-surface .chat-msg.user { max-width: min(78%, 560px); align-items: flex-end; }
+.chat.chat-surface .chat-msg.user .chat-text { padding: 10px 14px; border: 0; border-radius: 18px; background: var(--chip-bg); color: var(--fg); line-height: 1.5; }
+.chat.chat-surface .chat-msg.preview .chat-text,
+.chat.chat-surface .chat-msg.pending .chat-text { background: color-mix(in srgb, var(--chip-bg) 65%, transparent); }
+.chat.chat-surface .chat-msg.command .chat-text { font-family: var(--mono-font); font-size: 13px; }
+.chat.chat-surface .chat-meta { gap: 10px; margin-top: 1px; font-size: 11.5px; color: var(--fg-faint); opacity: 0; transition: opacity 120ms cubic-bezier(0, 0, 0.2, 1) 100ms; }
+.chat.chat-surface .chat-msg:hover .chat-meta,
+.chat.chat-surface .chat-msg:focus-within .chat-meta { opacity: 1; }
+.chat.chat-surface .chat-status { padding: 4px 12px; border: 0; background: color-mix(in srgb, var(--fg) 4%, transparent); font-size: 12px; }
+
+/* Work rows: one quiet sentence each, the icon and subject in the UI face; only output is monospace. */
+.chat.chat-surface .chat-fold { max-width: 100%; font-size: 13px; }
+.chat.chat-surface .chat-fold-head { gap: 7px; padding: 5px 8px 5px 6px; border-radius: 8px; color: var(--fg-muted); }
+.chat.chat-surface .chat-fold-head:hover,
+.chat.chat-surface .chat-fold-head:focus-visible { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg-row); }
+.chat.chat-surface .chat-fold-body { margin: 6px 0 0 14px; padding-left: 12px; border-left-color: color-mix(in srgb, var(--fg) 10%, transparent); }
+.chat.chat-surface .chat-call { max-width: 54ch; font-family: var(--ui-font); font-size: 13px; color: inherit; }
+.chat.chat-surface .chat-out { margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line-subtle); border-radius: 10px; background: color-mix(in srgb, var(--fg) 3%, transparent); font: 12.5px/1.55 var(--mono-font); }
+.chat.chat-surface .chat-plan { max-width: 100%; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
+.chat.chat-surface .chat-diff { max-width: 100%; border-radius: 12px; }
+.chat.chat-surface .chat-diff-head { background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.chat.chat-surface .chat-working { gap: 8px; padding: 2px 0; font-size: 13.5px; }
+.chat.chat-surface .chat-worked { font-size: 12px; }
+.chat.chat-surface .chat-files,
+.chat.chat-surface .chat-artifacts { margin: 0; border-color: var(--line-subtle); border-radius: 12px; background: color-mix(in srgb, var(--fg) 3%, transparent); }
+.chat.chat-surface .chat-files-title,
+.chat.chat-surface .chat-artifacts-title { font-size: 11.5px; }
+
+/* The welcome: the one screen a new chat has. Plain words, three ways to start, the folder named. */
+.chat-welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px max(18px, calc((100% - 720px) / 2)); text-align: center; }
+.chat-welcome-mark { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 4px; border-radius: 50%; background: color-mix(in srgb, var(--fg) 5%, transparent); color: var(--fg-muted); }
+.chat-welcome-title { margin: 0; font-size: 22px; font-weight: 580; line-height: 1.27; letter-spacing: -0.015em; color: var(--fg); }
+.chat-welcome-line { max-width: 44ch; margin: 0; font-size: 14px; line-height: 1.55; color: var(--fg-muted); }
+.chat-starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+.chat-starters button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--fg-row); font: inherit; font-size: 13px; cursor: pointer; transition: background 120ms, border-color 120ms; }
+.chat-starters button:hover,
+.chat-starters button:focus-visible { border-color: var(--line-strong); background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
+
+/* The composer: one floating card, 16 px radius, a borderless field inside and a filled send pill. */
+.chat.chat-surface .chat-composer { margin: 0 max(12px, calc((100% - 744px) / 2)) 18px; padding: 10px 10px 8px 14px; gap: 8px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface); box-shadow: 0 6px 24px rgb(0 0 0 / 10%); transition: border-color 120ms cubic-bezier(0, 0, 0.2, 1); }
+.chat.chat-surface .chat-composer:focus-within { border-color: var(--focus-ring); }
+.chat.chat-surface .chat-box { min-height: 40px; padding: 8px 2px; border: 0; background: transparent; color: var(--fg); font: 15px/1.5 var(--ui-font); }
+.chat.chat-surface .chat-box:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; border: 0; }
+.chat.chat-surface .chat-box::placeholder { color: var(--fg-faint); }
+.chat.chat-surface .chat-attach { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--fg-muted); font-size: 16px; line-height: 1; }
+.chat.chat-surface .chat-attach:hover:not(:disabled),
+.chat.chat-surface .chat-attach:focus-visible:not(:disabled) { border-color: var(--line-strong); background: color-mix(in srgb, var(--fg) 7%, transparent); color: var(--fg); }
+.chat.chat-surface .chat-send { padding: 7px 16px; border: 0; border-radius: 999px; background: var(--fg); color: var(--pane-bg); font-size: 13px; font-weight: 580; }
+.chat.chat-surface .chat-send:hover:not(:disabled) { background: var(--fg-row); }
+.chat.chat-surface .chat-send:disabled { background: var(--chip-bg); color: var(--fg-faint); }
+.chat.chat-surface .chat-send.stop { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); }
+.chat.chat-surface .chat-controls { gap: 6px 12px; font-size: 12px; color: var(--fg-muted); }
+.chat.chat-surface .chat-chips { gap: 6px; }
+.chat.chat-surface .chat-jump { right: max(18px, calc((100% - 720px) / 2)); bottom: 150px; border-color: var(--line-strong); background: var(--surface); box-shadow: 0 4px 16px rgb(0 0 0 / 16%); }
+.chat.chat-surface .chat-asking { left: 0; right: 0; }

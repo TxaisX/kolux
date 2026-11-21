@@ -11,7 +11,7 @@ import { decide } from "../terminal/screenshotPaste";
 import { addHistory, draftOf, historyOf, keepDraft, keyAction, linesFor, stepHistory } from "./composer";
 import { applyPick, isDismissed, menuFor, needs, pathsOf, runsOnEnter, stepIndex, triggerAt, wordOf, type Dismissed, type Entry, type Load } from "./complete";
 import { MAX_ATTACHMENTS, dropHere, isImageName, nameOf, pastedName, refusal, sendable, update, withPaths, without, type Attachment } from "./attach";
-import { MODEL_NOT_SENT, TERMINAL_NOTE, confirmModel, controlsOff, failedChange, hasControls, loadSaved, modelCommand, opensPicker, routeOf, saveChoice, sentChange, type Change, type Choice } from "./controls";
+import { LAUNCH_NOTE, MODEL_NOT_SENT, TERMINAL_NOTE, confirmModel, controlsOff, failedChange, hasControls, loadSaved, modelCommand, opensPicker, routeOf, saveChoice, sentChange, type Change, type Choice } from "./controls";
 import { ModelControls } from "./ModelControls";
 import { buttonMode, stopArmed } from "./stop";
 import { useDismiss } from "./ux";
@@ -215,6 +215,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   const pickModel = (id: string) => {
     if (!controls) return;
     setSaved(saveChoice(controls, { model: id }));
+    if (routeOf(controls, "model") === "launch") {
+      setLocal(LAUNCH_NOTE);
+      return;
+    }
     if (routeOf(controls, "model") === "terminal") {
       setLocal(TERMINAL_NOTE);
       onTerminal?.();
@@ -421,7 +425,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
         aria-activedescendant={menuOpen && entries.length > 0 ? `${listId}-${cur}` : undefined}
         rows={linesFor(text)}
         value={text}
-        placeholder={live ? "Message the agent. Enter sends, Shift+Enter starts a new line." : "This session has no live terminal. Switch back to the terminal to reconnect."}
+        placeholder={live ? "Message Claude…" : "The chat is not running right now."}
+        title={live ? "Enter sends, Shift+Enter starts a new line." : undefined}
         onChange={(e) => change(e.target.value, e.target.selectionStart)}
         onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
         onPaste={onPaste}

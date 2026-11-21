@@ -1,4 +1,5 @@
-//! The chat engine: each chat is one hidden `claude -p` process that reads and writes
+//! The chat engine: each chat is one hidden agent process (`claude`, or `openclaude` for the other
+//! models, 2026-11-20) that reads and writes
 //! stream-json (one JSON message per line on stdin and stdout). docs/chat-engine.md is the
 //! contract for the page: the four commands, the `chat-event` event and its shapes, stop and
 //! idle-sleep rules, and what is not known about the agent's side.
@@ -65,10 +66,33 @@ impl Default for Config {
 /// What a chat is started with.
 #[derive(Clone, Debug)]
 pub struct Spec {
+    /// The agent whose program runs the chat: `claude`, or `openclaude` for the other models
+    /// (2026-11-20). Both speak the same stream-json CLI; nothing else does yet.
+    pub agent: String,
     pub cwd: PathBuf,
     pub model: Option<String>,
     /// Variables added to the inherited environment (sign-in first, then the caller's own).
     pub env: Vec<(String, String)>,
+}
+
+/// The agents a chat can run today. Both are Claude Code's CLI shape; an id outside this list has no
+/// chat engine, so `chat_start` refuses it instead of starting a program that cannot read the lines.
+pub const CHAT_AGENTS: [&str; 2] = ["claude", "openclaude"];
+
+/// The gateway OpenClaude's model list in the window (seats.ts, `openclaude`) is taken from: every id
+/// there is an OpenRouter name, so a picked model is routed there. A chat started with no model adds
+/// no provider and keeps whatever OpenClaude is configured for ("Program default").
+pub const OPENCLAUDE_PROVIDER: &str = "openrouter";
+
+/// The permission mode that lets a chat act with no prompt (DT-C283). Claude Code's `auto` is not a
+/// mode OpenClaude knows: it quietly falls back to `default`, where every tool call is refused, so
+/// OpenClaude gets `bypassPermissions` — the same "never ask" rule under the name it does know.
+fn permission_mode(agent: &str) -> &'static str {
+    if agent == "openclaude" {
+        "bypassPermissions"
+    } else {
+        "auto"
+    }
 }
 
 /// An image sent with a message.
@@ -80,9 +104,12 @@ pub struct Image {
 }
 
 /// The command line after the program. Never contains `--bare`.
-pub fn claude_args(model: Option<&str>, resume: Option<&str>) -> Vec<String> {
-    let mut a: Vec<String> = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-mode", "auto"].map(String::from).to_vec();
+pub fn chat_args(agent: &str, model: Option<&str>, resume: Option<&str>) -> Vec<String> {
+    let mut a: Vec<String> = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-mode", permission_mode(agent)].map(String::from).to_vec();
     if let Some(m) = model {
+        if agent == "openclaude" {
+            a.extend(["--provider".to_string(), OPENCLAUDE_PROVIDER.to_string()]);
+        }
         a.extend(["--model".to_string(), m.to_string()]);
     }
     if let Some(r) = resume {
@@ -155,12 +182,13 @@ impl Engine {
 
     /// Starts the process (resuming `session_id` when set). Called with the lock held.
     fn spawn(self: &Arc<Self>, inner: &mut Inner) -> Result<(), String> {
+        let agent = inner.spec.agent.clone();
         let (program, pre) = match &self.cfg.launch {
             Some(l) => (l.program.clone(), l.pre_args.clone()),
-            None => (crate::agents::find_program("claude").ok_or("Claude Code was not found on PATH. Install it, then open the chat again.")?, Vec::new()),
+            None => (crate::agents::find_program(&agent).ok_or_else(|| format!("{} was not found on PATH. Install it, then open the chat again.", crate::agents::agent_name(&agent)))?, Vec::new()),
         };
         let resume = inner.session_id.clone();
-        let args = claude_args(inner.spec.model.as_deref(), resume.as_deref());
+        let args = chat_args(&agent, inner.spec.model.as_deref(), resume.as_deref());
         let shim = program.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"));
         let mut cmd = if shim {
             let mut c = crate::winproc::command(crate::pty::system_program("cmd.exe"));
@@ -171,7 +199,7 @@ impl Engine {
         };
         cmd.args(&pre).args(&args).current_dir(&inner.spec.cwd).envs(inner.spec.env.iter().map(|(k, v)| (k, v))).env_remove(BARE_ENV);
         cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
-        let mut child = cmd.spawn().map_err(|e| format!("Could not start Claude Code: {e}"))?;
+        let mut child = cmd.spawn().map_err(|e| format!("Could not start {}: {e}", crate::agents::agent_name(&agent)))?;
         let pid = child.id();
         let (stdin, stdout, stderr) = (child.stdin.take(), child.stdout.take(), child.stderr.take());
         inner.gen += 1;
@@ -261,8 +289,9 @@ impl Engine {
             self.spawn(&mut inner)?;
         }
         let line = user_line(text, images);
+        let agent = inner.spec.agent.clone();
         let stdin = inner.child.as_mut().and_then(|r| r.stdin.as_mut()).ok_or("The chat's process is not running.")?;
-        stdin.write_all(line.as_bytes()).and_then(|_| stdin.write_all(b"\n")).and_then(|_| stdin.flush()).map_err(|e| format!("Could not send to Claude Code: {e}"))?;
+        stdin.write_all(line.as_bytes()).and_then(|_| stdin.write_all(b"\n")).and_then(|_| stdin.flush()).map_err(|e| format!("Could not send to {}: {e}", crate::agents::agent_name(&agent)))?;
         inner.busy = true;
         inner.last_active = Instant::now();
         Ok(())
@@ -464,20 +493,32 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Sen
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
 }
 
-/// Opens chat `chat_id` in `cwd` and starts its hidden `claude` process.
+/// Opens chat `chat_id` in `cwd` and starts its hidden agent process: `claude`, or `openclaude`
+/// when the page asks for it (2026-11-20). `agent` left out means Claude Code, as before.
 #[tauri::command]
-pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, model: Option<String>, resume_session_id: Option<String>, extra_env: Vec<(String, String)>) -> Result<(), String> {
+pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, model: Option<String>, resume_session_id: Option<String>, extra_env: Vec<(String, String)>, agent: Option<String>) -> Result<(), String> {
     use tauri::Manager;
+    let agent = agent.unwrap_or_else(|| "claude".to_string());
+    if !CHAT_AGENTS.contains(&agent.as_str()) {
+        return Err(format!("{agent} has no chat engine. A chat runs Claude Code or OpenClaude."));
+    }
+    let cwd = PathBuf::from(cwd);
+    let mut extra_env = extra_env;
+    // The Everyday folder is a plain folder under the home: keep any repository above it invisible
+    // to git, so a chat there never commits or branches the folder it sits in (plan v6, 2026-11-19).
+    if crate::everyday::is_everyday(&cwd) {
+        extra_env.extend(crate::claude_shared::everyday_env(&cwd));
+    }
     let sign_in = {
         let store = app.state::<Mutex<crate::state::Store>>();
         let store = store.lock().map_err(|e| e.to_string())?;
         let settings = store.settings();
-        crate::terminal::agent_env(&store, &settings, Some("claude"), None, None, &extra_env)?.env
+        crate::terminal::agent_env(&store, &settings, Some(&agent), None, None, &extra_env)?.env
     };
     // The caller's own variables first; the sign-in wins (ACCT-024 already refused a clash).
     let env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
     let (engines, sink) = (engines(&app), app_sink(&app));
-    blocking(move || engines.start(&chat_id, Spec { cwd: PathBuf::from(cwd), model, env }, resume_session_id, sink)).await
+    blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, env }, resume_session_id, sink)).await
 }
 
 /// Sends `text` (and images) to chat `chat_id` as the next user message.

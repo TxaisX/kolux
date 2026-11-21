@@ -2,4 +2,4 @@
 // panel its open agent and terminal panes, so a folder's removal question can say which of them still run there.
 import type { AgentState } from "./rows";
 
-export type FolderSession = { key: number; agent: string; title: string; cwd: string | null; view?: string | null; running: boolean; state?: AgentState };
+export type FolderSession = { key: number; agent: string; title: string; cwd: string | null; view?: string | null; running: boolean; state?: AgentState; /** This pane draws the chat page; an untitled one is a chat nobody has typed into yet. */ chat?: boolean; untitled?: boolean };
