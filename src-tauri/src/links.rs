@@ -348,6 +348,9 @@ pub fn fence(path: &str, roots: &[String]) -> Result<PathBuf, String> {
     if !under(&fence_key(path), roots) {
         return Err(format!("{path} is outside your projects; Kolux reads and writes only inside them"));
     }
+    // Wave 2 (review A3): every link on the way is read from its text first, so resolving the path
+    // below never follows one to another machine.
+    refuse_linked_host(p, roots)?;
     let real_roots: Vec<String> = roots.iter().map(|r| plain(real(Path::new(r)))).collect();
     if !under(&fence_key(&plain(real(p))), &real_roots) {
         return Err(format!("{path} leads outside your projects through a link"));
@@ -397,6 +400,11 @@ fn refuse_linked_host(path: &Path, roots: &[String]) -> Result<(), String> {
                 continue;
             }
             let to = std::fs::read_link(&cur).map_err(|e| format!("could not read the link {}: {e}", cur.display()))?;
+            // Wave 2 (review A3): Windows folds a `..` in a link's own target as text, while this
+            // walk would follow a link inside that target first, so such a link is never followed.
+            if to.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+                return Err(format!("the link {} points through ..; Kolux never opens it", cur.display()));
+            }
             let to = if to.is_absolute() { to } else { cur.parent().unwrap_or(Path::new("")).join(to) };
             refuse_host(&to.to_string_lossy(), roots)?;
             next = Some(comps[i + 1..].iter().fold(to, |p, c| p.join(c)));
@@ -1089,6 +1097,54 @@ mod tests {
         assert!(got.as_ref().is_err_and(|e| e.contains("..")), "{sneaky} must be refused, got {got:?}");
         let plain_dir = format!(r"{}\elsewhere\..\far\x.txt", d.display());
         assert!(open_target(&plain_dir, &[]).is_err(), "{plain_dir}: a .. step is refused as text, link or not");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A3, P2): a link whose own relative target holds a `..` step (`L` -> `a\..\b`)
+    /// is folded as text by Windows, but the walk followed the junction `a` inside it first and so
+    /// never read the link `b` (to another machine). A link target with a `..` step is refused. The
+    /// object-namespace spelling of a local folder stands in for a share; no real host is contacted.
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a3_a_link_whose_target_climbs_with_dot_dot_is_refused() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-a3-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("elsewhere").join("deep")).unwrap();
+        std::fs::create_dir_all(d.join("far")).unwrap();
+        std::fs::write(d.join("far").join("x.txt"), "hi").unwrap();
+        let made = std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/J"])
+            .arg(d.join("a"))
+            .arg(d.join("elsewhere").join("deep"))
+            .output()
+            .unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        let far = PathBuf::from(format!(r"\\?\GLOBALROOT\GLOBAL??\{}", d.join("far").display()));
+        std::os::windows::fs::symlink_dir(far, d.join("b")).unwrap();
+        std::os::windows::fs::symlink_dir(r"a\..\b", d.join("L")).unwrap();
+        let sneaky = d.join("L").join("x.txt");
+        let got = open_target(&sneaky.to_string_lossy(), &[]);
+        assert!(got.is_err(), "{} must be refused, got {got:?}", sneaky.display());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A3): the file fence reads every link on the way from its text before it
+    /// resolves the path, so a link in a project that leads to another machine is refused before
+    /// anything follows it (it used to be followed first and refused only for landing outside).
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a3_the_fence_refuses_a_link_to_another_machine_before_following_it() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-a3-fence-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("proj")).unwrap();
+        std::fs::create_dir_all(d.join("far")).unwrap();
+        std::fs::write(d.join("far").join("x.txt"), "hi").unwrap();
+        let far = PathBuf::from(format!(r"\\?\GLOBALROOT\GLOBAL??\{}", d.join("far").display()));
+        std::os::windows::fs::symlink_dir(far, d.join("proj").join("share")).unwrap();
+        let roots = vec![d.join("proj").to_string_lossy().into_owned()];
+        let p = d.join("proj").join("share").join("x.txt");
+        let got = fence(&p.to_string_lossy(), &roots);
+        assert!(got.as_ref().is_err_and(|e| e.contains("another computer")), "{} must be refused from the link's text, got {got:?}", p.display());
         let _ = std::fs::remove_dir_all(&d);
     }
 

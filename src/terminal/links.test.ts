@@ -175,6 +175,10 @@ describe("TERM-093 clickable file paths", () => {
     expect(resolvePath("C:/repo/./a/../../../x.txt", null)).toBe("C:\\x.txt");
     expect(resolvePath("/home/u/a/../b", "/x")).toBe("/home/u/a/../b"); // POSIX ".." follows links; left as is
     expect(resolvePath("\\\\srv\\share\\..\\f", "G:\\Dev")).toBe("\\\\srv\\share\\..\\f"); // a share is refused whole
+    // review A3: a pane folder holding ".." is folded too, so a plain relative link is not refused for it
+    expect(resolvePath("x.txt", "C:\\a\\..\\b")).toBe("C:\\b\\x.txt");
+    expect(resolvePath("../x.txt", "C:\\a\\.\\b\\..\\..")).toBe("C:\\x.txt");
+    expect(resolvePath("x.txt", "\\\\srv\\share")).toBe("\\\\srv\\share\\x.txt"); // a share folder keeps its form
     expect(fromFileUrl("file://server/share/x.txt")).toBe("\\\\server\\share\\x.txt");
     expect(hintFor(findLinks("src/a.ts:3")[0], false, "editor")).toBe("Ctrl+click to open src/a.ts at line 3 in the editor");
     expect(clickTarget(findLinks("src/a.ts")[0], { ctrlKey: true, metaKey: false, shiftKey: true }, false, true)).toBe("file");

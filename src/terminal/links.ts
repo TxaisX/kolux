@@ -111,7 +111,9 @@ export function resolvePath(target: string, cwd: string | null): string | null {
   if (!isAbsolute(p)) {
     if (!cwd) return null;
     const sep = /\\/.test(cwd) || /^[A-Za-z]:/.test(cwd) ? "\\" : "/";
-    p = fold(cwd.replace(/[\\/]+$/, "").split(/[\\/]/), p.split(/[\\/]/)).join(sep);
+    const base = cwd.replace(/[\\/]+$/, "").split(/[\\/]/);
+    // review A3: a drive folder's own "." and ".." steps are folded too (a share or POSIX folder keeps its form)
+    p = fold(/^[A-Za-z]:$/.test(base[0]) ? fold([base[0]], base.slice(1)) : base, p.split(/[\\/]/)).join(sep);
   } else if (/^[A-Za-z]:[\\/]/.test(p) && /[\\/]\.\.?(?:[\\/]|$)/.test(p)) {
     const parts = fold([p.slice(0, 2)], p.slice(3).split(/[\\/]/));
     p = parts.length === 1 ? `${parts[0]}\\` : parts.join("\\");

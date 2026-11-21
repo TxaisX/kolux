@@ -660,7 +660,9 @@ pub fn open_in(path: String, command: Option<String>, fence: tauri::State<'_, cr
     match command.as_deref() {
         // Wave 2 (review A2): the parsed folder item, not its name, so the shell cannot pick a
         // program that shares the folder's name; the folder's own default action still applies.
-        None => crate::links::open_file(&dir),
+        // Wave 2 (review A3): a real path over MAX_PATH keeps its `\\?\` prefix, which the shell's
+        // parser refuses; that folder then goes to Explorer the way the "explorer" app entry does.
+        None => crate::links::open_file(&dir).or_else(|e| if cfg!(windows) && dir.to_string_lossy().starts_with(r"\\?\") { launch_in(&dir, "explorer", std::env::var_os("PATH")) } else { Err(e) }),
         Some(c) => launch_in(&dir, c, std::env::var_os("PATH")),
     }
 }
