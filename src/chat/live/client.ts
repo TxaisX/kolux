@@ -6,6 +6,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { ChatEvent } from "./events";
+import type { ChatRead } from "../model";
 
 /** The one Tauri event every chat's events arrive on; each payload names its chat. */
 export const CHAT_EVENT = "chat-event";
@@ -22,9 +23,19 @@ export const chatIdOf = (paneKey: number): string => `pane-${paneKey}`;
  * `claude`, or `openclaude` for the other models (2026-11-20); the sign-in and the user's own setup
  * come from the Rust side, and a chat started here is never `--bare`. `resumeSessionId` (2026-11-21)
  * picks up a kept Everyday conversation where it stopped: the agent is started with `--resume`.
+ * `effort` (2026-11-21) is the level the conversation runs at; the page restarts the process on the
+ * same session when the user picks another model or effort.
  */
-export async function startChat(chatId: string, cwd: string, model: string | null = null, agent: string = "claude", resumeSessionId: string | null = null): Promise<void> {
-  await invoke("chat_start", { chatId, cwd, model, resumeSessionId, extraEnv: [], agent });
+export async function startChat(chatId: string, cwd: string, model: string | null = null, agent: string = "claude", resumeSessionId: string | null = null, effort: string | null = null): Promise<void> {
+  await invoke("chat_start", { chatId, cwd, model, effort, resumeSessionId, extraEnv: [], agent });
+}
+
+/**
+ * What a kept conversation already said (2026-11-21). A resumed process reads its history without saying
+ * it again, so the chat page reads the agent's own transcript of that session once and opens on it.
+ */
+export async function chatHistory(agent: string, cwd: string, session: string): Promise<ChatRead> {
+  return invoke<ChatRead>("chat_history", { agent, cwd, session });
 }
 
 /**

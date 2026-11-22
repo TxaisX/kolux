@@ -76,7 +76,6 @@ export default function WindowSidebar() {
           launching={launching}
           onLaunch={deeds.launch}
           onChat={deeds.newChat}
-          onSession={deeds.newSession}
           onOpenChat={deeds.openChat}
           onRenameChat={deeds.renamePane}
           onCloseChat={deeds.closePane}

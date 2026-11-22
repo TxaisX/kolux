@@ -15,7 +15,7 @@ import { tabName } from "../../terminal/tabName";
 import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
 import { nameOf, sameDir, viewOf } from "../../workspaces";
-import { EVERYDAY_CHATS_FIELD, everydayChatsOf, setEverydayName, setEverydaySession, type EverydayChat } from "../../projects/everydayChats";
+import { EVERYDAY_CHATS_FIELD, everydayChatsOf, setEverydayChoice, setEverydayName, setEverydaySession, type EverydayChat } from "../../projects/everydayChats";
 import { worktreeTag } from "../../projects/worktreeGrid";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
@@ -143,6 +143,14 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     chatSession: (id: string) => {
       if (p.everyday) saveChats((list) => setEverydaySession(list, p.everyday!, id));
     },
+    // A model or effort picked inside the chat (2026-11-21): the conversation keeps running on it, and the
+    // record says so, so reopening the row comes back on the same pair.
+    chatModel: (model: string | null) => {
+      if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { model }));
+    },
+    chatEffort: (effort: string) => {
+      if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { effort }));
+    },
     sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
     entry: (t: EntryTarget) => (t.kind === "web" ? void openExternal(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
     shell: (sh: ShellEntry) => void newTab({ shell: sh }), // TERM-043: the plus menu's shell choice, a tab like the New tab menu's
@@ -187,9 +195,12 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         named={!!p.title}
         onName={act.chatName}
         model={p.chatModel ?? null}
+        effort={p.chatEffort ?? null}
         agent={p.chatAgent ?? "claude"}
         resume={p.chatResume ?? null}
         onSession={act.chatSession}
+        onModel={act.chatModel}
+        onEffort={act.chatEffort}
         open={{ onOpenFile: openFile, onOpenLink: (url: string) => void openExternal(url), inKolux: settings.linksOpenInKolux === true }}
       />
     );

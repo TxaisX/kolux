@@ -33,7 +33,6 @@ export const sameProjects = sameProps<ProjectsProps>({
   launching: "same",
   onLaunch: "same",
   onChat: "same",
-  onSession: "same",
   onOpenChat: "same",
   onRenameChat: "same",
   onCloseChat: "same",

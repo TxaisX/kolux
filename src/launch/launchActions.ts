@@ -491,8 +491,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // other AI still opens its own screen.
   // `inFolder` (the Everyday row, 2026-11-20): a plain folder is not a Git project, so a chat there always
   // opens in the folder itself. Asking for a worktree on it fails with "no default branch was found".
-  // `model` (the Everyday New session menu, 2026-11-20): the chat page starts on that model; null keeps the
-  // saved choice.
+  // `model` (the Everyday row, 2026-11-20): the chat page starts on that model; null keeps the saved choice.
+  // 2026-11-21: Everyday's New session passes OpenClaude's default, and the model is changed inside the
+  // chat from then on, so nothing asks for a model before the session exists.
   const newChat = async (projectId: string | null = null, inFolder = false, model: string | null = null, agentId = "claude") => {
     const agent = agents.find((a) => a.id === agentId && a.installed);
     if (!agent) return setNotice(`${agentId} is not installed here, so a chat cannot start.`);
@@ -536,29 +537,8 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const extra = onModel ? modelArgs(onModel, agent.id) : savedArgs(agent.id);
       const key = await startIn(agent, rec.cwd, null, "", true, extra, rec.name);
       if (key === null) return;
-      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}) } : p)));
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}), ...(rec.effort ? { chatEffort: rec.effort } : {}) } : p)));
       keepChat((list) => touchEverydayChat(list, rec.id));
-      setRefresh((n) => n + 1);
-      setNotice(null);
-    } catch (err) {
-      setNotice(String(err));
-    } finally {
-      setLaunching(false);
-    }
-  };
-  // The Everyday row's other AIs (2026-11-20): one more session in that plain folder, on the model the
-  // menu lists. No worktree, no chat page: every AI but Claude keeps its own screen. A "Program default"
-  // pick adds no flag at all, so it starts on that AI's own default rather than a saved choice.
-  const newSession = async (projectId: string | null, agentId: string, model: string | null = null) => {
-    const agent = agents.find((a) => a.id === agentId && a.installed);
-    if (!agent) return setNotice(`${agentId} is not installed here, so it cannot start.`);
-    const proj = projects.find((p) => p.id === projectFor(projectId));
-    if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
-    setLaunching(true);
-    try {
-      const extra = modelArgs(model, agent.id);
-      const key = await startIn(agent, proj.path, null, "", true, extra);
-      if (key === null) return;
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -569,7 +549,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   };
   return {
     lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, fromItem, fromName, pretrust,
-    fixWithAI, projectFor, launch, newChat, newSession, openChat,
+    fixWithAI, projectFor, launch, newChat, openChat,
   };
 }
 

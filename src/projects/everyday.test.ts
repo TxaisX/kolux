@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { everydayAgents, everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
+import { everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
 import type { EverydayChat } from "./everydayChats";
 import type { FolderSession } from "./folderSessions";
 
@@ -43,38 +43,5 @@ test("panes no kept chat owns still draw; panes whose record was deleted are the
   const panes = [session(1, { record: "a" }), session(2, { chat: true }), session(3, { record: "gone" })];
   expect(everydayUnkept(panes, list).map((s) => s.key)).toEqual([2, 3]);
   expect(everydayUnkept(panes, [])).toBe(panes);
-});
-
-const ai = (id: string, name: string, installed = true) => ({ id, name, installed });
-const models: Record<string, { id: string; label: string }[]> = {
-  claude: [
-    { id: "opus", label: "Claude Opus" },
-    { id: "sonnet", label: "Claude Sonnet" },
-    { id: "default", label: "Program default" },
-  ],
-  codex: [
-    { id: "gpt-5-codex", label: "GPT-5 Codex" },
-    { id: "default", label: "Program default" },
-  ],
-  gemini: [{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }],
-  aider: [],
-};
-const modelsOf = (id: string) => models[id] ?? [];
-
-test("the New session menu offers every installed AI, the chat page's AIs first", () => {
-  const list = [ai("codex", "Codex"), ai("claude", "Claude Code"), ai("openclaude", "OpenClaude"), ai("gemini", "Gemini CLI", false), ai("aider", "Aider"), ai("grok", "Grok")];
-  const got = everydayAgents(list, modelsOf);
-  expect(got.map((x) => x.agent)).toEqual(["claude", "openclaude", "codex", "aider", "grok"]);
-  // Claude and OpenClaude draw the chat page; Codex opens its own screen.
-  expect(got.map((x) => x.chat)).toEqual([true, true, false, false, false]);
-  expect(got[0].models.map((m) => m.id)).toEqual(["opus", "sonnet", "default"]);
-  expect(got[2].name).toBe("Codex");
-});
-
-test("an AI with no model list still starts, on its own default; one not installed is left out", () => {
-  const got = everydayAgents([ai("aider", "Aider"), ai("gemini", "Gemini CLI", false)], modelsOf);
-  expect(got.map((x) => x.agent)).toEqual(["aider"]);
-  expect(got[0].models).toEqual([]);
-  expect(everydayAgents([], modelsOf)).toEqual([]);
 });
 

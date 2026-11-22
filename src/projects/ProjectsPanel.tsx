@@ -69,7 +69,7 @@ import { outsideCard } from "./outsideCard";
 import { isToggleClick } from "./selection";
 import { VOCAB } from "../terminal/status";
 import type { AgentPass } from "../launch/agents";
-import { DEFAULT_MODEL, modelsFor } from "../launch/seats";
+import { OPENCLAUDE_DEFAULT } from "../launch/seats";
 import { KeyText } from "../keys/KeymapContext";
 import { GLOSSARY } from "../glossary";
 import HelpMenu from "../onboarding/HelpMenu";
@@ -89,7 +89,7 @@ import { onWorkspaceStatus } from "./statusRefresh";
 import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
-import { everydayAgents, everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
+import { everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
 import { EVERYDAY_CHATS_FIELD, dropEverydayChat, everydayChatName, everydayChatsOf, readEverydayChats, setEverydayName, type EverydayChat } from "./everydayChats";
 import { FILE_MANAGER, loadTargets, openIn } from "../open/openIn";
 import { frontProjectRow } from "./frontRow";
@@ -134,11 +134,9 @@ type Props = {
   launching: boolean;
   onLaunch: (agent: AgentInfo, projectId: string | null) => void;
   /** Slice 1 of chat panes: "New chat" in the sidebar's New session menu, so a chat never needs a terminal first.
-   *  `model` (the Everyday New session menu) starts the chat page on that model; `agent` (2026-11-20) names
-   *  the AI that answers there — `claude`, or `openclaude` for the other models. */
+   *  `model` starts the chat page on that model; `agent` (2026-11-20) names the AI that answers there —
+   *  `claude`, or `openclaude` for the other models. Everyday's New session passes OpenClaude (2026-11-21). */
   onChat?: (projectId: string | null, inFolder?: boolean, model?: string | null, agent?: string) => void;
-  /** The Everyday New session menu's other AIs: one session in that folder on the picked model. */
-  onSession?: (projectId: string | null, agentId: string, model?: string | null) => void;
   /** Focus one pane by its key (the Everyday chats list). */
   onFocusPane?: (key: number) => void;
   /** A kept Everyday chat whose tab is closed was clicked: open the same conversation again. */
@@ -213,45 +211,21 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll, onSleep, agents, launching, onLaunch, onChat, onSession, onFocusPane, onOpenChat, onRenameChat, onCloseChat, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, onPending }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll, onSleep, agents, launching, onLaunch, onChat, onFocusPane, onOpenChat, onRenameChat, onCloseChat, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, refresh, onIndex, createRequest, worktreeRequest = null, onWorktreeSession, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, workDir = null, nest, onNest, onPending }: Props) {
   // The Everyday folder (2026-11-20): one plain folder above the projects for daily asks. The path comes
   // from Rust, so the sidebar never guesses where the user's home is; the folder is made only on the
   // first New chat, never at start-up.
   const [everydayPath, setEverydayPath] = useState<string | null>(null);
   const [everydayOpen, setEverydayOpen] = useState(true);
   const [everydayBusy, setEverydayBusy] = useState(false);
-  const [everydayChoose, setEverydayChoose] = useState(false);
-  // The New session menu: every AI and its models, so one daily ask can run on any of them.
-  const [everydayMenu, setEverydayMenu] = useState(false);
-  const everydayMenuRef = useRef<HTMLDivElement>(null);
+  // New session opens OpenClaude directly (2026-11-21): one press, no model to pick first. The model and
+  // effort are changed inside the chat as often as the user likes.
   const [everydayChatFor, setEverydayChatFor] = useState<string | null>(null);
-  const [everydayChatModel, setEverydayChatModel] = useState<string | null>(null);
-  const [everydayChatAgent, setEverydayChatAgent] = useState<string>("claude");
-  const [everydaySessionFor, setEverydaySessionFor] = useState<{ projectId: string; agent: string; model: string | null } | null>(null);
-  const [everydayAIFor, setEverydayAIFor] = useState<string | null>(null);
   // The kept chats' own menu (2026-11-21): Rename and Delete on a row whose tab may be gone.
   const [chatMenu, setChatMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [chatRenaming, setChatRenaming] = useState<string | null>(null);
   const [chatRenameText, setChatRenameText] = useState("");
   const [chatDelete, setChatDelete] = useState<EverydayChat | null>(null);
-  // A menu closes when the user clicks anywhere else or presses Escape, as every other menu in the window does.
-  useEffect(() => {
-    if (!everydayMenu) return;
-    const onDown = (e: PointerEvent) => {
-      const root = everydayMenuRef.current;
-      if (root && e.target instanceof Node && root.contains(e.target)) return;
-      setEverydayMenu(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setEverydayMenu(false);
-    };
-    window.addEventListener("pointerdown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [everydayMenu]);
   useEffect(() => {
     void invoke<string | null>("everyday_path")
       .then((p) => setEverydayPath(p ?? null))
@@ -1754,8 +1728,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       say("warn", `The chat is gone from the list, but its saved conversation could not be deleted: ${String(err)}`);
     }
   };
-  // The New session menu: every installed AI, Claude first, each with the models it can start on.
-  const everydayChoices = everydayAgents(agents, modelsFor);
   const everydayRow = everydayPath ? Object.entries(states).find(([dir]) => samePlace(dir, everydayPath))?.[1] : undefined;
   const openEveryday = async (): Promise<Project | null> => {
     setEverydayBusy(true);
@@ -1771,12 +1743,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setEverydayBusy(false);
     }
   };
-  const startEverydayChat = async (agent: string, model: string | null = null) => {
-    setEverydayMenu(false);
+  // New session (2026-11-21): one press opens an OpenClaude chat in the Everyday folder, on OpenClaude's
+  // cheap default. Nothing asks for a model here; the chat's own box switches model and effort any time,
+  // and its kept row comes back on the pair it last used.
+  const startEverydayChat = async () => {
     const p = everydayProject ?? (await openEveryday());
     if (!p) return;
-    setEverydayChatAgent(agent);
-    setEverydayChatModel(model === DEFAULT_MODEL ? null : model);
     setEverydayChatFor(p.id);
   };
   // The chat starts only once the window's project list holds the new Everyday project: the launch
@@ -1784,45 +1756,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // project first". `projects` here is set by the same reload that sets the window's list.
   useEffect(() => {
     if (!everydayChatFor || !projects.some((p) => p.id === everydayChatFor)) return;
-    const model = everydayChatModel;
     setEverydayChatFor(null);
-    setEverydayChatModel(null);
-    onChat?.(everydayChatFor, true, model, everydayChatAgent);
-  }, [everydayChatFor, everydayChatModel, everydayChatAgent, projects, onChat]);
-  // The menu's other AIs: their own session in the same plain folder, on the picked model.
-  const startEverydayOn = async (agent: string, model: string | null) => {
-    setEverydayMenu(false);
-    const p = everydayProject ?? (await openEveryday());
-    if (!p) return;
-    setEverydaySessionFor({ projectId: p.id, agent, model: model === DEFAULT_MODEL ? null : model });
-  };
-  useEffect(() => {
-    const want = everydaySessionFor;
-    if (!want || !projects.some((p) => p.id === want.projectId)) return;
-    setEverydaySessionFor(null);
-    onSession?.(want.projectId, want.agent, want.model);
-  }, [everydaySessionFor, projects, onSession]);
-  const startEverydayWithAI = async () => {
-    setEverydayMenu(false);
-    const p = everydayProject ?? (await openEveryday());
-    if (p) setEverydayAIFor(p.id);
-  };
-  // "Any AI…" waits for the same list, then puts the Everyday folder in front and opens the Start form.
-  useEffect(() => {
-    const p = everydayAIFor ? projects.find((x) => x.id === everydayAIFor) : undefined;
-    if (!p) return;
-    setEverydayAIFor(null);
-    onSelect(p.path, null);
-    setEverydayChoose(true);
-  }, [everydayAIFor, projects, onSelect]);
-  // "Any AI…" opens the Start form once the Everyday folder is really the one in front, so the form is
-  // prefilled with it instead of a project the user had selected a moment ago.
-  useEffect(() => {
-    if (!everydayChoose || !everydayPath || !activeDir) return;
-    if (!samePlace(activeDir, everydayPath)) return;
-    setEverydayChoose(false);
-    onChoose();
-  }, [everydayChoose, everydayPath, activeDir, onChoose]);
+    onChat?.(everydayChatFor, true, OPENCLAUDE_DEFAULT, "openclaude");
+  }, [everydayChatFor, projects, onChat]);
   const pinned = pinnedSet(pins, everyEntry.map((x) => x.w));
   const isPinned = (w: Worktree) => pins.some((x) => pathKey(x) === pathKey(w.path));
   const elsewhere = (w: Worktree) => copies || !pinned.has(pathKey(w.path));
@@ -2661,79 +2597,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                   </>
                 )}
               </div>
-              {/* New session (2026-11-20): each pick is its own session. The chat page's AIs (Claude,
-                  OpenClaude) open the chat page; every other AI opens its own screen in the same folder, on
-                  the model picked here. */}
-              <div className="sb-everyday-actions" data-open={everydayMenu ? "" : undefined} ref={everydayMenuRef}>
+              {/* New session (2026-11-21): one press, no menu. It opens an OpenClaude chat in this plain
+                  folder; the chat's own box switches model and effort from then on. */}
+              <div className="sb-everyday-actions">
                 <button
                   type="button"
                   className="sb-everyday-new"
                   data-testid="everyday-new-session"
-                  aria-haspopup="menu"
-                  aria-expanded={everydayMenu}
-                  aria-controls="everyday-session-menu"
-                  title="New session: pick any AI and model for this daily ask"
-                  onClick={() => setEverydayMenu((o) => !o)}
+                  title="New session: opens an OpenClaude chat in this folder"
+                  onClick={() => void startEverydayChat()}
                   disabled={everydayBusy || launching}
                 >
                   <Plus size={12} /> New session
-                  <span className="chev" aria-hidden="true">
-                    <ChevronDown size={10} />
-                  </span>
                 </button>
-                {everydayMenu && (
-                  <div
-                    className="sb-everyday-menu"
-                    id="everyday-session-menu"
-                    role="menu"
-                    aria-label="New everyday session"
-                    data-testid="everyday-session-menu"
-                    onKeyDown={(e) => {
-                      // Arrows walk the menu as every other menu in the window does; Escape closes it.
-                      if (e.key === "Escape") return setEverydayMenu(false);
-                      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-                      e.preventDefault();
-                      const all = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)')];
-                      const at = all.indexOf(document.activeElement as HTMLElement);
-                      const next = all[(at + (e.key === "ArrowDown" ? 1 : all.length - 1)) % all.length];
-                      next?.focus();
-                    }}
-                  >
-                    {everydayChoices.length === 0 && <div className="sb-everyday-empty">No AI found yet.</div>}
-                    {everydayChoices.map((a) => (
-                      <div key={a.agent} className="sb-everyday-group" role="group" aria-label={a.name}>
-                        <div className="sb-everyday-group-name">
-                          {a.name}
-                          {a.chat && <span className="sb-everyday-kind">chat</span>}
-                        </div>
-                        {(a.models.length === 0 ? [{ id: DEFAULT_MODEL, label: "Its own default" }] : a.models).map((m) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            role="menuitem"
-                            className="sb-everyday-model"
-                            data-agent={a.agent}
-                            data-model={m.id}
-                            disabled={everydayBusy || launching}
-                            onClick={() => void (a.chat ? startEverydayChat(a.agent, m.id) : startEverydayOn(a.agent, m.id))}
-                          >
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="sb-everyday-model sb-everyday-more"
-                      data-testid="everyday-any-ai"
-                      disabled={everydayBusy || launching}
-                      onClick={() => void startEverydayWithAI()}
-                    >
-                      Any AI…
-                    </button>
-                  </div>
-                )}
               </div>
             </>
           )}

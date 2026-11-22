@@ -7,6 +7,7 @@ import {
   newEverydayChat,
   putEverydayChat,
   readEverydayChats,
+  setEverydayChoice,
   setEverydayName,
   setEverydaySession,
   touchEverydayChat,
@@ -73,6 +74,21 @@ test("a session id and a name land on the one chat, and a no-op returns the same
   expect(named[0].name).toBe("Taxes");
   expect(setEverydayName(named, "a", "Taxes")).toBe(named);
   expect(setEverydayName(list, "a", "   ")).toBe(list);
+});
+
+test("a model or effort picked in the chat lands on the one record, and a no-op returns the same list", () => {
+  const list = [rec("a", { model: "sun", effort: "low" }), rec("b")];
+  const onB = setEverydayChoice(list, "b", { model: "anthropic/claude-opus-5.5", effort: "high" });
+  expect(onB[0].model).toBe("sun");
+  expect(onB[1]).toMatchObject({ model: "anthropic/claude-opus-5.5", effort: "high" });
+  expect(setEverydayChoice(onB, "b", { model: "anthropic/claude-opus-5.5" })).toBe(onB);
+  // A model pick alone leaves the effort as it was; null means the agent's own default, written as no model.
+  const effortOnly = setEverydayChoice(onB, "a", { effort: "max" });
+  expect(effortOnly[0]).toMatchObject({ model: "sun", effort: "max" });
+  const cleared = setEverydayChoice(onB, "b", { model: null });
+  expect(cleared[1].model).toBeUndefined();
+  expect(cleared[1].effort).toBe("high");
+  expect(setEverydayChoice(list, "gone", { model: "x" })).toBe(list);
 });
 
 test("touch moves a used chat to the top with the time it was used", () => {

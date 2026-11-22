@@ -36,11 +36,14 @@ type Props = {
   cwd?: string | null;
   shownModel?: string | null;
   onTerminal?: () => void;
+  /** A chat pane that can switch its own process (2026-11-21): a model or effort pick restarts the hidden
+   *  session on the same conversation instead of only saving the choice for the next launch. */
+  onLiveChoice?: (choice: Choice) => void;
 };
 
 let attachCounter = 0;
 
-export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ paneKey, live, blocked, note, onSend, working = false, onStop, agent, cwd = null, shownModel = null, onTerminal }, ref) {
+export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ paneKey, live, blocked, note, onSend, working = false, onStop, agent, cwd = null, shownModel = null, onTerminal, onLiveChoice }, ref) {
   const [text, setText] = useState(() => draftOf(paneKey));
   // The history index shown; history.length means the draft itself.
   const [at, setAt] = useState(() => historyOf(paneKey).length);
@@ -214,7 +217,16 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   const controls = hasControls(agent) ? (agent as string) : null;
   const pickModel = (id: string) => {
     if (!controls) return;
-    setSaved(saveChoice(controls, { model: id }));
+    // A chat pane owns its process: the pick is applied now, on the same conversation, and no note about
+    // waiting for the next launch is true there. The effort it runs at stays chosen: OpenClaude's levels
+    // are the same on every model, and `saveChoice` would otherwise clear it on a model change.
+    const keepEffort = onLiveChoice ? saved[controls]?.effort : undefined;
+    setSaved(saveChoice(controls, { model: id, ...(keepEffort ? { effort: keepEffort } : {}) }));
+    if (onLiveChoice) {
+      setLocal(null);
+      onLiveChoice({ model: id });
+      return;
+    }
     if (routeOf(controls, "model") === "launch") {
       setLocal(LAUNCH_NOTE);
       return;
@@ -232,6 +244,11 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   const pickEffort = (level: string) => {
     if (!controls) return;
     setSaved(saveChoice(controls, { effort: level }));
+    if (onLiveChoice) {
+      setLocal(null);
+      onLiveChoice({ effort: level });
+      return;
+    }
     if (routeOf(controls, "effort") === "terminal") {
       setLocal(TERMINAL_NOTE);
       onTerminal?.();
@@ -435,7 +452,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
       <button type="button" className="chat-attach" aria-label="Attach file" title={attachments.length >= MAX_ATTACHMENTS ? "Too many attachments" : "Attach a file"} disabled={!live} onClick={attachFile}>
         +
       </button>
-      {controls && <ModelControls agent={controls} shown={shownModel} saved={saved[controls] ?? {}} changes={changes} disabled={controlsOff(working, live)} openPicker={pickerAsk} onModel={pickModel} onEffort={pickEffort} onFast={pickFast} />}
+      {controls && <ModelControls agent={controls} shown={shownModel} saved={saved[controls] ?? {}} changes={changes} disabled={controlsOff(working, live)} openPicker={pickerAsk} onModel={pickModel} onEffort={pickEffort} onFast={pickFast} onLive={!!onLiveChoice} />}
       <button type="button" className={`chat-send${mode === "stop" ? " stop" : ""}`} aria-label={mode === "stop" ? "Stop" : "Send"} disabled={mode === "send" ? !live || !!blocked || !sendable(text, attachments) : !onStop} onClick={click}>
         {mode === "stop" ? "Stop" : "Send"}
       </button>

@@ -120,7 +120,7 @@ export function clean(saved: Saved): Saved {
     if (list.length === 0) continue;
     const next: Choice = {};
     if (c.model && c.model !== DEFAULT_MODEL && list.some((m) => m.id === c.model)) next.model = c.model;
-    if (c.effort && effortsFor(agent, next.model ?? c.model).includes(c.effort) && (next.model || agent === "codex")) next.effort = c.effort;
+    if (c.effort && effortsFor(agent, next.model ?? c.model).includes(c.effort) && (next.model || agent === "codex" || agent === "openclaude")) next.effort = c.effort;
     if (c.fast && next.model && fastOffered(agent, next.model)) next.fast = true;
     if (Object.keys(next).length > 0) out[agent] = next;
   }
