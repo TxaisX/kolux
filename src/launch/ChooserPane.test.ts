@@ -12,7 +12,7 @@ import { OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
 beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:\\bin\\claude.exe", docs: true };
-const render = (seats: Seat[], closable = true, inGit = true, copies: Copies = defaultCopies(seats.length, inGit), shape: Shape = "custom", task = "", saved: SavedShape[] = []) =>
+const render = (seats: Seat[], closable = true, inGit = true, copies: Copies = defaultCopies(inGit), shape: Shape = "custom", task = "", saved: SavedShape[] = []) =>
   renderToString(createElement(ChooserPane, { number: 2, agents: [claude], seats, onSeats: () => {}, onLineup: () => {}, shape, task, onTask: () => {}, onStart: () => {}, copies, inGit, onCopies: () => {}, closable, onClose: () => {}, saved, onSaved: () => {}, onPickSaved: () => {} }));
 // slice(1): the text before the first button holds the "Start" heading, which is not the button.
 const startButton = (html: string) => html.split("<button").slice(1).find((b) => b.includes(">Start"))!;
@@ -266,7 +266,7 @@ test("SESS-018: the page starts with the project's last count and files choice, 
   expect(start.seats.every((s) => s.agent === null && s.model === null)).toBe(true);
   // One folder per project (the default here): nothing is carried, the default is shared.
   expect(start.copies).toBeUndefined();
-  expect(start.copies ?? defaultCopies(3, true)).toBe("shared");
+  expect(start.copies ?? defaultCopies(true)).toBe("shared");
   // No earlier launch: one blank seat and no pick, so the live seat count decides.
   const none = sheetStart(undefined, true);
   expect(none.seats).toEqual([{ agent: null, model: null }]);
@@ -281,7 +281,7 @@ test("Txais 2026-11-12: raising the seat count from 1 to 2 switches to own folde
   const start = sheetStart(one, true);
   // 1 seat + shared is the default, not a pick: the chooser follows the count.
   expect(start.copies).toBeUndefined();
-  expect(start.copies ?? defaultCopies(2, true)).toBe("separate");
+  expect(start.copies ?? defaultCopies(true)).toBe("separate");
   // An explicit shared pick at 2+ seats is kept when raising further.
   const pickedShared = { ...one, seats: [one.seats[0], one.seats[0]] };
   expect(sheetStart(pickedShared, true).copies).toBe("shared");
@@ -290,7 +290,7 @@ test("Txais 2026-11-12: raising the seat count from 1 to 2 switches to own folde
 });
 
 // DT-C250: one folder per project is the default; with "Own folder for each agent" on, the chooser offers the choice again.
-test("DT-C250: the folder choice shows only while own folders are on, and starts on own folders for two or more seats in Git", () => {
+test("DT-C250: the folder choice shows only while own folders are on, and starts on own folders for every AI seat in Git", () => {
   const two: Seat[] = [{ agent: "claude", model: "opus" }, { agent: "claude", model: "opus" }];
   const off = render(two);
   expect(off).toContain("Every seat works in this project folder. Kolux does not make extra copies.");
@@ -314,7 +314,9 @@ test("DT-C250: the folder choice shows only while own folders are on, and starts
     const noGit = render(two, true, false);
     expect(noGit.split("<input").find((b) => b.includes('name="copies-2"'))).toContain("disabled");
     expect(noGit).toContain("Not a Git project");
-    expect(render([{ agent: "claude", model: "opus" }]).split("<input").filter((b) => b.includes('name="copies-2"'))[1], "one seat shares").toContain("checked");
+    const solo = render([{ agent: "claude", model: "opus" }]).split("<input").filter((b) => b.includes('name="copies-2"'));
+    expect(solo[0], "one seat alone gets a folder of its own too").toContain("checked");
+    expect(solo[1]).not.toContain("checked");
   } finally {
     setOwnFolders({ [OWN_FOLDERS_FIELD]: false });
   }

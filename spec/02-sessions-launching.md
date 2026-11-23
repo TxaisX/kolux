@@ -141,13 +141,13 @@ Source: D-02-024
 ### SESS-014 · Separate copy per agent, or one shared folder
 Tier: P0 · Pushed: 2 · State at 0.15.0: live-unverified
 User does: picks "Separate copy for each AI" or "Same folder for all" before launching.
-User sees: in a git project with two or more seats, separate copies is already selected; picking
-  the shared folder brings up a warning that several agents would be editing the same files, plus
-  a one-click fix labelled "Give each its own copy" that switches back.
-Rules: the default is one copy per seat for 2+ seats in a git project, and the shared folder for a
-  single seat or a folder outside git; outside git the separate-copy option is disabled with a
-  short explanation; plain terminal seats always open in the current folder, whichever option is
-  chosen.
+User sees: in a git project, separate copies is already selected for every seat, a single one
+  included; picking the shared folder brings up a warning that several agents would be editing
+  the same files, plus a one-click fix labelled "Give each its own copy" that switches back.
+Rules: the default is one fresh copy per AI seat in a git project, one seat or many, wherever the
+  chooser was opened; the shared folder is the default only for a folder outside git; outside git
+  the separate-copy option is disabled with a short explanation; plain terminal seats always open
+  in the current folder, whichever option is chosen.
 Acceptance:
   - [x] Open the launch screen with 3 seats in a git project → separate copies is selected. (cards; evidence/cards-SESS-014.txt)
   - [x] Switch to the shared folder → a warning with a fix button appears; click the fix → separate copies is selected again. (cards; evidence/cards-SESS-014.txt)

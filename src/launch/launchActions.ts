@@ -24,7 +24,7 @@ import { panesIn, sameDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
-import { bulkRefusal, failureNote, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
+import { bulkRefusal, failureNote, notACopyableFolder, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 import { acrossNote, landOnFree, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
@@ -118,7 +118,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // DT-C250: with "Own folder for each agent" on and the chooser set to own folders, every AI seat gets a
       // fresh worktree of its own (SESS-014, SESS-023), made one after another so no two pick one name. A plain
       // terminal seat stays in the chooser's folder. Off (the default), nothing is made.
-      const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
+      const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(inGitFor(chooser))) === "separate";
       // A launch whose first own folder cannot be made (a plain folder, or a Git project with no commit yet) turns both
       // off below and starts the agents together in the chooser's folder, so two agents never mean no agents.
       let makes = separate && picked.some(Boolean);
@@ -140,7 +140,8 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         return false;
       }
       const repo = makes && proj ? await invoke<{ mode?: string; wait?: boolean }>("repo_setup_get", { path: proj.path }).catch(() => null) : null;
-      const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes);
+      // Only a Start that makes two or more workspaces is a bulk launch; one AI alone is refused nowhere (as launch() never does).
+      const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes && picked.filter(Boolean).length >= 2);
       if (refused) throw new Error(refused);
       const madeNew: NewPlace[] = [];
       const setupTrouble: string[] = [];
@@ -156,11 +157,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         } catch (err) {
           // A later copy failing after earlier ones were made stops the Start (those folders are listed: failureNote).
           // The first one failing means nothing was made and nothing will be: the folder is not a Git project, or has
-          // no commit to copy from. Every agent then opens here together, as a one-agent Start already does.
+          // no commit to copy from. Every agent then opens here, in the folder the Start was opened in.
           if (kept.length > 0) throw err;
           makes = false;
           team = false;
-          setupTrouble.push(sharedFallback(err));
+          // Txais (2026-11-22): one AI alone has nothing to collide with, and its own folder is the one it was started
+          // in (Everyday is a plain folder by design), so a solo Start says nothing when the cause is only "this is not
+          // a Git project with a commit". Two or more do share files then, and any other cause (a full disk, a lock)
+          // is worth a line even for one, so the line says why.
+          if (picked.filter(Boolean).length >= 2 || !notACopyableFolder(err)) setupTrouble.push(sharedFallback(err));
           places.push({ cwd: place, branch: chooser.branch });
           continue;
         }
@@ -210,7 +215,10 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         if (kept.length) setRefresh((n) => n + 1);
         return false;
       }
-      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", separate ? "separate" : "shared", seats) };
+      // What the Start really did is what is saved: one AI that opened in place because no copy could be made is "shared".
+      // Two or more that fell back keep the choice made, so one bad folder does not turn a project's own-folders pick into shared.
+      const copiesSaved = separate && (makes || picked.filter(Boolean).length >= 2) ? "separate" : "shared";
+      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", copiesSaved, seats) };
       // A grid chooser gives its place to the new panes. The Start form (SESS-018) fills the grid's free cells first,
       // in grid order, and adds the rest after them (TERM-007: an empty pane is used first when one exists; a pane
       // with typed text is not empty, startForm.ts landOnFree).

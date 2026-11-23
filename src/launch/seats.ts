@@ -16,10 +16,10 @@ export const TERMINAL = "terminal";
 /** SESS-014: where the AIs work: a fresh worktree each, or the chooser's own folder for all. */
 export type Copies = "separate" | "shared";
 
-/** SESS-014 (owner change 2026-11-05): every seat works in the project folder. Kolux never makes
- * an automatic copy of the project. DT-C250: with "Own folder for each agent" on, two or more seats in a
- * Git project start with a copy each, as they did before that change. */
-export const defaultCopies = (seatCount: number, inGit: boolean): Copies => (!singleFolder() && inGit && seatCount >= 2 ? "separate" : "shared");
+/** Txais (2026-11-22): every launch in a Git project starts in a fresh worktree, whatever folder the
+ * Start form was opened in: the main checkout, an existing worktree, or one seat alone. "Same folder for
+ * all" stays an explicit choice; a folder outside Git, and "Own folder for each agent" turned off, share. */
+export const defaultCopies = (inGit: boolean): Copies => (!singleFolder() && inGit ? "separate" : "shared");
 
 /** SESS-014: the shared folder with 2+ seats in a Git project is worth a warning. */
 export const sharedWarning = (copies: Copies, seatCount: number, inGit: boolean): boolean => copies === "shared" && inGit && seatCount >= 2;
@@ -381,11 +381,14 @@ export const seatFolder = (chooser: string | null, project: string | null): stri
 
 /** SESS-018: the New session page starts from this project's previous launch for the count, but
  *  every seat starts blank (SESS-015). `copies` is left unset unless the previous launch departed
- *  from the default for its seat count (the user picked it): unset follows the live seat count
- *  through `defaultCopies`, so raising 1 seat to 2 switches to own folders (Txais 2026-11-12). */
+ *  from the default for its seat count (the user picked it): unset follows `defaultCopies`, which
+ *  since 2026-11-22 is own folders for every AI seat in a Git project. A saved copy equal to the
+ *  older default (one seat shared, two or more separate) was recorded by Kolux, not picked, so it
+ *  does not bring the old way back. */
 export function sheetStart(last: Lineup | undefined, inGit: boolean): { seats: Seat[]; copies?: Copies } {
   const n = Math.min(MAX_SESSIONS, Math.max(1, last?.seats.length ?? 1));
+  const wasDefault = (count: number): Copies => (!singleFolder() && inGit && count >= 2 ? "separate" : "shared");
   // DT-C250: with own folders on, a picked choice comes back (separate copies need Git).
-  const picked = !singleFolder() && last !== undefined && last.copies !== defaultCopies(last.seats.length, inGit) && !(last.copies === "separate" && !inGit);
+  const picked = !singleFolder() && last !== undefined && last.copies !== wasDefault(last.seats.length) && !(last.copies === "separate" && !inGit);
   return { seats: Array.from({ length: n }, emptySeat), ...(picked ? { copies: last.copies } : {}) };
 }

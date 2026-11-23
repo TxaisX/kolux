@@ -71,7 +71,7 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
       task={p.task ?? ""}
       onTask={(task) => setChooser(p.key, { task })}
       onStart={(s) => void (sheetOf ? startAcross(p, s) : startSeats(p.key, s))}
-      copies={p.copies ?? defaultCopies(p.seats.length, inGitFor(p))}
+      copies={p.copies ?? defaultCopies(inGitFor(p))}
       inGit={inGitFor(p)}
       onCopies={(copies) => setChooser(p.key, { copies })}
       busy={launching}

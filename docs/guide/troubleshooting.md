@@ -78,4 +78,4 @@ If a working terminal goes silent for 10 minutes, Kolux alerts you. Change the t
 
 Use "Send feedback" in Settings, General, Privacy. It opens a new issue page on GitHub in your browser, with a version and platform footer. Paste your diagnostics there; the app submits nothing by itself.
 
-<!-- verified against: src-tauri/src/diag.rs, src/terminal/errors.ts, src/terminal/TerminalPane.tsx, src/terminal/history.ts, src/terminal/layout.ts, src-tauri/src/projects.rs, src-tauri/src/procs.rs, src/settings/GeneralPage.tsx, src/settings/privacy.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/pty.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs, src-tauri/src/agents.rs, src/settings/AgentsPage.tsx at bf88bbb3 -->
+<!-- verified against: src-tauri/src/diag.rs, src/terminal/errors.ts, src/terminal/TerminalPane.tsx, src/terminal/history.ts, src/terminal/layout.ts, src-tauri/src/projects.rs, src-tauri/src/procs.rs, src/settings/GeneralPage.tsx, src/settings/privacy.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/pty.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs, src-tauri/src/agents.rs, src/settings/AgentsPage.tsx at 2ae2fe17 -->

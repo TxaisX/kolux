@@ -37,31 +37,30 @@ describe("DT-C250 own folder for each agent", () => {
   });
 
   it("off: every launch shares the project folder, whatever the last launch chose", () => {
-    expect(defaultCopies(1, true)).toBe("shared");
-    expect(defaultCopies(5, true)).toBe("shared");
-    expect(sheetStart({ shape: "custom", copies: "separate", seats: [{ agent: "claude", model: "default" }, { agent: "codex", model: "default" }] }, true).copies ?? defaultCopies(2, true)).toBe("shared");
+    expect(defaultCopies(true)).toBe("shared");
+    expect(sheetStart({ shape: "custom", copies: "separate", seats: [{ agent: "claude", model: "default" }, { agent: "codex", model: "default" }] }, true).copies ?? defaultCopies(true)).toBe("shared");
     expect(projectMenu().map((i) => i.id)).toEqual(["proj:settings", "proj:remove"]);
     expect(worktreesOffNote("workspace.create")).toBe(WORKTREES_OFF);
   });
 
-  it("on: two or more seats in a Git project start with a folder each; one seat, or a folder outside Git, shares", () => {
+  it("on: every seat in a Git project starts with a folder each, one seat alone included; a folder outside Git shares", () => {
     setOwnFolders({ [OWN_FOLDERS_FIELD]: true });
-    expect(defaultCopies(2, true)).toBe("separate");
-    expect(defaultCopies(8, true)).toBe("separate");
-    expect(defaultCopies(1, true)).toBe("shared");
-    expect(defaultCopies(4, false), "nothing to copy outside Git").toBe("shared");
+    expect(defaultCopies(true), "one seat or many, a Git project gets a fresh folder").toBe("separate");
+    expect(defaultCopies(false), "nothing to copy outside Git").toBe("shared");
   });
 
   it("on: the launch sheet brings back the last launch's choice, and never offers own folders outside Git", () => {
     setOwnFolders({ [OWN_FOLDERS_FIELD]: true });
     const two = [{ agent: "claude", model: "default" }, { agent: "codex", model: "default" }];
     // What the chooser shows: a picked choice, else the default for the live seat count.
-    const shown = (last: Parameters<typeof sheetStart>[0], inGit: boolean, seats: number) => sheetStart(last, inGit).copies ?? defaultCopies(seats, inGit);
-    expect(shown({ shape: "custom", copies: "shared", seats: two }, true, 2)).toBe("shared");
-    expect(shown({ shape: "custom", copies: "separate", seats: two }, true, 2)).toBe("separate");
-    expect(shown({ shape: "custom", copies: "separate", seats: two }, false, 2)).toBe("shared");
-    expect(shown(undefined, true, 1), "a first launch is one seat, so it shares").toBe("shared");
-    expect(shown(undefined, true, 2), "raising to two seats switches to a folder each").toBe("separate");
+    const shown = (last: Parameters<typeof sheetStart>[0], inGit: boolean) => sheetStart(last, inGit).copies ?? defaultCopies(inGit);
+    expect(shown({ shape: "custom", copies: "shared", seats: two }, true)).toBe("shared");
+    expect(shown({ shape: "custom", copies: "separate", seats: two }, true)).toBe("separate");
+    expect(shown({ shape: "custom", copies: "separate", seats: two }, false)).toBe("shared");
+    expect(shown(undefined, true), "a first launch gets a folder of its own, one seat or many").toBe("separate");
+    // A lineup saved before 2026-11-22 recorded one seat as shared by default: it does not count as a pick.
+    expect(shown({ shape: "custom", copies: "shared", seats: [two[0]] }, true), "the old default is not brought back").toBe("separate");
+    expect(shown({ shape: "custom", copies: "shared", seats: two }, true), "a picked shared stays picked").toBe("shared");
   });
 
   it("on: the sidebar's menus, the palette and the worktree commands work again", () => {

@@ -7,7 +7,7 @@ import { TEAM_WORKTREES_SETTING } from "../projects/rows";
 
 beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: true }));
 
-const h = vi.hoisted(() => ({ made: 0, calls: [] as string[], disk: null as Record<string, unknown> | null, failNotes: false, refuseAt: 0, refusal: "fatal: not a git repository" }));
+const h = vi.hoisted(() => ({ made: 0, calls: [] as string[], disk: null as Record<string, unknown> | null, failNotes: false, refuseAt: 0, refusal: "fatal: not a git repository", setupMode: null as string | null }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args: Record<string, unknown>) => {
     h.calls.push(cmd);
@@ -20,6 +20,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "handoff_note_prepare") return `notes/${String(args.name)}.md`;
     if (cmd === "agent_start_line") return { args: [], program: "claude", env: [], typed: null };
     if (cmd === "get_settings") return h.disk;
+    if (cmd === "repo_setup_get") return h.setupMode ? { mode: h.setupMode } : null;
     return null;
   },
 }));
@@ -160,8 +161,8 @@ test("each team worktree is recorded as soon as it is made, and stays recorded w
 });
 
 // Txais (2026-11-16): two agents in a folder that cannot be copied (a plain folder, or a Git project with no commit yet)
-// opened nothing, because every agent wanted a worktree of its own and Git refused the first. One agent worked, since it
-// shares the folder. Now the agents open together there, and the notice says why they share it.
+// opened nothing, because every agent wanted a worktree of its own and Git refused the first. Now the agents open
+// together there, and the notice says why they share it. One agent alone (2026-11-22) opens there without a line.
 test("the first own folder cannot be made: every agent opens in the chooser's folder, together, with a line saying so", async () => {
   h.made = 0;
   h.refuseAt = 1;
@@ -178,6 +179,89 @@ test("the first own folder cannot be made: every agent opens in the chooser's fo
   } finally {
     h.refuseAt = 0;
   }
+});
+
+// Txais (2026-11-22): one AI alone in a folder that cannot be copied (Everyday is a plain folder by design) opens
+// there quietly. It has no other agent to collide with, so the shared-folder line would be noise on every launch.
+test("one AI alone in a folder that cannot be copied opens there without a line", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  try {
+    const chooser: P = { ...shell(50), seats: [seat], copies: "separate" };
+    const { a, setPanes, setNotice, settingsRef } = setup([chooser]);
+    expect(await a.startSeats(50, [seat] as never)).toBe(true);
+    const next = setPanes.mock.calls[0][0]([chooser]) as { cwd: string; view?: string }[];
+    expect(next.map((p) => p.cwd)).toEqual(["C:\\r"]);
+    expect(next[0].view).toBeUndefined(); // the folder's own grid, not a team grid
+    expect(setNotice).not.toHaveBeenCalledWith(expect.stringContaining("could not make a separate folder"));
+    expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toBeUndefined();
+  } finally {
+    h.refuseAt = 0;
+  }
+});
+
+// Review of 2026-11-22: a solo Start made a worktree, so the "asks about setup for each new workspace" refusal for bulk
+// launches turned it away. One AI alone is not a bulk launch (launch() never refused it); two or more still are.
+test("a project that asks about setup for each workspace still starts one AI alone, and refuses two", async () => {
+  h.made = 0;
+  h.setupMode = "ask";
+  try {
+    const solo: P = { ...shell(50), seats: [seat], copies: "separate" };
+    const one = setup([solo]);
+    expect(await one.a.startSeats(50, [seat] as never)).toBe(true);
+    expect(one.setNotice).not.toHaveBeenCalledWith(expect.stringContaining("cannot be bulk-launched"));
+    const next = one.setPanes.mock.calls[0][0]([solo]) as { cwd: string }[];
+    expect(next.map((p) => p.cwd)).toEqual(["C:\\r\\wts\\wt1"]);
+    const duo: P = { ...shell(50), seats: [seat, seat], copies: "separate" };
+    const two = setup([duo]);
+    expect(await two.a.startSeats(50, [seat, seat] as never)).toBe(false);
+    expect(two.setNotice).toHaveBeenCalledWith(expect.stringContaining("cannot be bulk-launched"));
+  } finally {
+    h.setupMode = null;
+  }
+});
+
+// Review of 2026-11-22: a solo Start stays silent only when the folder cannot be copied (not Git, no commit). Any other
+// cause (a full disk, a lock) is still said, so a person is not left wondering why there is no worktree.
+test("one AI alone: a disk or lock failure is said, and the saved lineup records the folder it really used", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  h.refusal = "There is not enough space on the disk. (os error 112)";
+  try {
+    const chooser: P = { ...shell(50), seats: [seat], copies: "separate" };
+    const { a, setNotice, late } = setup([chooser]);
+    expect(await a.startSeats(50, [seat] as never)).toBe(true);
+    expect(setNotice).toHaveBeenCalledWith(sharedFallback(h.refusal));
+    const saved = Object.values(late.pendingLineup.current) as { lineup: { copies: string } }[];
+    expect(saved.map((e) => e.lineup.copies), "it opened in place, so it is saved as shared").toEqual(["shared"]);
+  } finally {
+    h.refuseAt = 0;
+    h.refusal = "fatal: not a git repository";
+  }
+});
+
+test("one AI alone in a Git project with no commit yet opens quietly, saved as shared", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  h.refusal = "no default branch was found in r; set a base ref for the project";
+  try {
+    const chooser: P = { ...shell(50), seats: [seat], copies: "separate" };
+    const { a, setNotice, late } = setup([chooser]);
+    expect(await a.startSeats(50, [seat] as never)).toBe(true);
+    expect(setNotice).not.toHaveBeenCalledWith(expect.stringContaining("could not make a separate folder"));
+    expect((Object.values(late.pendingLineup.current) as { lineup: { copies: string } }[]).map((e) => e.lineup.copies)).toEqual(["shared"]);
+  } finally {
+    h.refuseAt = 0;
+    h.refusal = "fatal: not a git repository";
+  }
+});
+
+test("a worktree made for one AI is saved in the lineup as separate", async () => {
+  h.made = 0;
+  const chooser: P = { ...shell(50), seats: [seat], copies: "separate" };
+  const { a, late } = setup([chooser]);
+  expect(await a.startSeats(50, [seat] as never)).toBe(true);
+  expect((Object.values(late.pendingLineup.current) as { lineup: { copies: string } }[]).map((e) => e.lineup.copies)).toEqual(["separate"]);
 });
 
 test("the notice gives the reason Git or the disk gave, so a full disk is not blamed on a missing commit", async () => {
