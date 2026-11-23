@@ -1,6 +1,6 @@
 [package]
 name = "kolux"
-version = "0.1.0"
+version = "0.3.0"
 description = "Kolux: run many AI coding agents side by side"
 authors = ["Txais Xiong"]
 license-file = "../LICENSE"
