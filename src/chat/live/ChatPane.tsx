@@ -173,12 +173,23 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // A kept chat opened again (2026-11-21): the agent's own transcript holds what was said, and a
           // resumed process does not say it again. A session whose file is gone is not resumed at all: the
           // agent would only answer "no conversation found", so the chat starts fresh and says so quietly.
-          let pick = sessionId.current ?? resume;
-          if (resume && pick === resume) {
-            const history = await chatHistory(agent, cwd, resume).catch(() => null);
-            if (!live) return;
+          let pick = sessionId.current;
+          if (pick && pick === resume) {
+            const history = await chatHistory(agent, cwd, pick).catch(() => null);
+            if (!live) {
+              // The effect was re-run or closed while the history loaded. A re-run saw `started` and
+              // skipped, so give the start back and ask for another run, or the chat has no process.
+              started.current = false;
+              setAgain((n) => n + 1);
+              return;
+            }
             if (history) setItems(applyRead([], history));
-            else pick = null;
+            else {
+              // The saved conversation is gone: forget its id here too, so a later model or effort pick
+              // cannot restart the process with `--resume <gone-id>`.
+              sessionId.current = null;
+              pick = null;
+            }
           }
           await startChat(chatId, cwd, choice.current.model, agent, pick, choice.current.effort);
           if (live) setSpawned(true);
@@ -378,8 +389,9 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     if (!cwd || open) return;
     void (async () => {
       try {
-        await endChat(chatId);
-        await startChat(chatId, cwd, next.model, agent, sessionId.current ?? resume, next.effort);
+        // `chat_start` closes the chat's old process itself (Engines::start), so no separate end here.
+        // Only the id this pane holds is resumed: a conversation found gone was cleared from it.
+        await startChat(chatId, cwd, next.model, agent, sessionId.current, next.effort);
         setSpawned(true);
       } catch (e) {
         setError(String(e));

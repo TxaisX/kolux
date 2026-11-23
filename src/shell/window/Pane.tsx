@@ -35,6 +35,7 @@ import type { AgentInfo } from "../../launch/PlusMenu";
 import { ChatPane } from "../../lazy/pages";
 import { CheckPane } from "../../lazy/panes";
 import { openExternal } from "../../open/openExternal";
+import { withChatPick } from "./chatPick";
 
 /** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
 const LostPane = deferred(() => import("./LostPane"));
@@ -148,11 +149,14 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     },
     // A model or effort picked inside the chat (2026-11-21): the conversation keeps running on it, and the
     // record says so, so reopening the row comes back on the same pair.
+    // The pane keeps the pick as well (any chat, kept or not), so the layout saved at quit restores it.
     chatModel: (model: string | null) => {
       if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { model }));
+      if ((p.chatModel ?? null) !== (model || null)) setPanes((ps) => withChatPick(ps, p.key, { model }));
     },
     chatEffort: (effort: string) => {
       if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { effort }));
+      if (p.chatEffort !== effort) setPanes((ps) => withChatPick(ps, p.key, { effort }));
     },
     sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
     entry: (t: EntryTarget) => (t.kind === "web" ? void openExternal(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
