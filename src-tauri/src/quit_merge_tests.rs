@@ -66,8 +66,9 @@ fn data(base: &Path) -> PathBuf {
     base.join("data")
 }
 
+/// The marker in the data folder (review P2-1: one per main folder), or the older single one's name.
 fn marker_file(base: &Path) -> PathBuf {
-    data(base).join(MARKER_FILE)
+    marker_files(&data(base)).into_iter().next().unwrap_or_else(|| data(base).join(MARKER_FILE))
 }
 
 fn tidy(base: &Path, store: &Mutex<Store>) -> Outcome {
@@ -264,16 +265,10 @@ fn more_than_five_kept_are_counted_not_listed() {
 }
 
 #[test]
-fn only_a_real_quit_with_the_setting_on_merges() {
+fn a_quit_tidy_keeps_the_folder_unless_removal_is_turned_on() {
     let on = serde_json::json!({});
-    assert_eq!(skip_reason(&on, false, false, false), None, "on by default");
     assert!(!removes_on_quit(&on), "a quit keeps the folder by default");
     assert!(removes_on_quit(&serde_json::json!({ REMOVE_ON_QUIT_SETTING: true })), "the old delete is opt-in");
-    assert!(skip_reason(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false }), false, false, false).is_some());
-    assert!(skip_reason(&serde_json::json!({ MERGE_ON_QUIT_SETTING: true }), false, false, false).is_none());
-    assert!(skip_reason(&on, true, false, false).is_some(), "a restart");
-    assert!(skip_reason(&on, false, true, false).is_some(), "Windows ending the session");
-    assert!(skip_reason(&on, false, false, true).is_some(), "terminals that outlive the window");
 }
 
 #[test]
@@ -1074,7 +1069,7 @@ fn the_marker_names_the_main_folder_the_sha_before_and_the_branch() {
     assert_eq!(json, serde_json::json!({ "mainDir": "C:/p", "beforeSha": "abc", "branch": "fix", "theirsSha": "def", "expectedTree": "abc", "time": 7 }));
     // A marker written before the tip was noted still reads, with no tip.
     fs::write(marker_file(&base), r#"{"mainDir":"C:/p","beforeSha":"abc","branch":"fix","time":7}"#).unwrap();
-    assert_eq!(read_marker(&data(&base)).unwrap().theirs_sha, None);
+    assert_eq!(read_marker(&marker_file(&base)).unwrap().theirs_sha, None);
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -1119,36 +1114,6 @@ fn a_panic_during_a_merge_still_clears_the_busy_flag() {
     }));
     assert!(result.is_err());
     assert_eq!(counter.load(Ordering::SeqCst), 0, "the quit is not held for a merge that is gone");
-}
-
-#[test]
-fn the_quits_wait_ends_at_once_when_the_merge_thread_is_done_or_gone() {
-    let (tx, rx) = std::sync::mpsc::channel::<()>();
-    drop(tx); // a thread that panicked drops its sender
-    let started = Instant::now();
-    assert!(wait_for_merge(&rx, Duration::from_secs(5), Instant::now() + Duration::from_secs(30), || true), "a closed channel is the end");
-    assert!(started.elapsed() < Duration::from_secs(2), "no spinning, no waiting: {:?}", started.elapsed());
-    let (tx, rx) = std::sync::mpsc::channel::<()>();
-    tx.send(()).unwrap();
-    assert!(wait_for_merge(&rx, Duration::from_secs(5), Instant::now() + Duration::from_secs(30), || true));
-}
-
-#[test]
-fn the_quits_wait_goes_past_its_budget_only_while_a_merge_runs_and_never_past_the_hard_cap() {
-    let (tx, rx) = std::sync::mpsc::channel::<()>();
-    let started = Instant::now();
-    assert!(!wait_for_merge(&rx, Duration::from_millis(100), started + Duration::from_millis(700), || true), "a merge that never ends is given up on at the cap");
-    let took = started.elapsed();
-    assert!(took >= Duration::from_millis(700) && took < Duration::from_secs(5), "{took:?}");
-    let started = Instant::now();
-    assert!(!wait_for_merge(&rx, Duration::from_millis(100), started + Duration::from_secs(30), || false), "nothing under way: the budget is the whole wait");
-    assert!(started.elapsed() < Duration::from_secs(5));
-    let sender = std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(300));
-        let _ = tx.send(());
-    });
-    assert!(wait_for_merge(&rx, Duration::from_millis(50), Instant::now() + Duration::from_secs(30), || true), "a merge that ends inside the cap is waited for");
-    sender.join().unwrap();
 }
 
 // ------------------------------------------------------------------ m1: what is known is saved as the quit goes
@@ -1587,4 +1552,145 @@ fn repo_with_exclude(name: &str, text: &str) -> (PathBuf, PathBuf, Mutex<Store>)
     fs::create_dir_all(repo.join(".git").join("info")).unwrap();
     fs::write(repo.join(".git").join("info").join("exclude"), text).unwrap();
     (base, repo, store)
+}
+
+// 19 (auto-land): the new switch, read from the old one until it is set.
+#[test]
+fn auto_land_follows_the_old_merge_on_quit_switch_until_it_is_set() {
+    assert!(auto_land_wanted(&serde_json::json!({})), "on by default");
+    assert!(!auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false })), "someone who turned the quit merge off gets auto-land off");
+    assert!(auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: true })));
+    assert!(auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false, AUTO_LAND_SETTING: true })), "the new switch wins once set");
+    assert!(!auto_land_wanted(&serde_json::json!({ AUTO_LAND_SETTING: false })));
+}
+
+/// Review P1-1: git refuses a merge cleanly (main's staged change would be overwritten), so no merge
+/// is open and nothing was changed: the undo must not reset, or the user's staged work is lost.
+#[test]
+fn undo_merge_keeps_staged_work_in_main_when_git_refused_the_merge() {
+    let (base, repo, store) = repo("p1-staged");
+    let side = workspace(&base, &repo, &store, "side", true);
+    commit(&side, "a.txt", "theirs
+");
+    let before = head(&repo, "HEAD");
+    let hooks = no_hooks(&data(&base)).unwrap();
+    fs::write(repo.join("a.txt"), "staged by the user
+").unwrap();
+    git_in(&repo, &["add", "a.txt"]);
+    assert!(!git_try(&repo, &["merge", "--ff-only", "side"]), "git refuses: the staged a.txt would be overwritten");
+    assert!(!repo.join(".git").join("MERGE_HEAD").exists());
+    assert!(!undo_merge(&repo, &before, &clock(), &hooks), "main is not clean, so not reported whole");
+    assert_eq!(head(&repo, "HEAD"), before);
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap(), "staged by the user
+", "the staged work survives");
+    assert_eq!(git_in(&repo, &["diff", "--cached", "--name-only"]), "a.txt", "and is still staged");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P2-1: two projects' markers live side by side, and the start looks at both.
+#[test]
+fn two_projects_markers_do_not_clobber_each_other() {
+    let (base, repo, _store) = repo("p2-markers");
+    let before = head(&repo, "HEAD");
+    let one = marker_for(&repo, &before, now_secs());
+    let two = Marker { main_dir: base.join("other").display().to_string(), ..marker_for(&repo, &before, now_secs()) };
+    note_merge(&data(&base), &one).unwrap();
+    note_merge(&data(&base), &two).unwrap();
+    let files = marker_files(&data(&base));
+    assert_eq!(files.len(), 2, "{files:?}");
+    let dirs: Vec<String> = files.iter().map(|f| read_marker(f).unwrap().main_dir).collect();
+    assert!(dirs.contains(&one.main_dir) && dirs.contains(&two.main_dir), "{dirs:?}");
+    clear_marker(&data(&base), Path::new(&one.main_dir));
+    assert_eq!(marker_files(&data(&base)).len(), 1, "clearing one leaves the other");
+    note_merge(&data(&base), &one).unwrap();
+    let _ = recover_at_start(&data(&base));
+    assert!(marker_files(&data(&base)).is_empty(), "the start went through both");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P3-3: only merge-tree's exit 1 is a clash; a timeout or another error is not.
+#[test]
+fn only_merge_tree_exit_one_counts_as_a_clash() {
+    assert_eq!(merge_tree_says(Ok((Some(1), "abc
+file".into()))), MergeTree::Clash);
+    assert_eq!(merge_tree_says(Ok((Some(0), "abc
+".into()))), MergeTree::Clean(Some("abc".into())));
+    assert!(matches!(merge_tree_says(Err("git did not finish within 90 s".into())), MergeTree::Unknown(_)));
+    assert!(matches!(merge_tree_says(Ok((Some(128), String::new()))), MergeTree::Unknown(_)));
+    assert!(matches!(merge_tree_says(Ok((None, String::new()))), MergeTree::Unknown(_)));
+}
+
+/// Re-review P2-A: a lock is never a reason to reset. With a lock still there the undo does not call
+/// main whole (the marker stays for the start); and when the lock was the user's own git, which lets
+/// go and stages work right after the undo looked, that staged work survives.
+#[test]
+fn undo_merge_never_resets_for_a_lock_and_keeps_the_marker_while_one_is_there() {
+    let (base, repo, store) = repo("p2a-lock");
+    let side = workspace(&base, &repo, &store, "lockside", true);
+    commit(&side, "a.txt", "theirs\n");
+    let before = head(&repo, "HEAD");
+    let hooks = no_hooks(&data(&base)).unwrap();
+    let lock = repo.join(".git").join("index.lock");
+    fs::write(&lock, "").unwrap();
+    assert!(write(&["merge", "--ff-only", "--no-overwrite-ignore", "-q", "lockside"], &repo, &clock(), &hooks).is_err(), "the lock makes the merge fail");
+    assert!(!undo_merge(&repo, &before, &clock(), &hooks), "a lock is there, so main is not called whole");
+    let (lock2, repo2) = (lock.clone(), repo.clone());
+    AFTER_LOCK_LOOK.with(|h| {
+        *h.borrow_mut() = Some(Box::new(move || {
+            let _ = fs::remove_file(&lock2);
+            fs::write(repo2.join("b.txt"), "staged by the user\n").unwrap();
+            git_in(&repo2, &["add", "b.txt"]);
+        }))
+    });
+    let whole = undo_merge(&repo, &before, &clock(), &hooks);
+    AFTER_LOCK_LOOK.with(|h| *h.borrow_mut() = None);
+    assert!(!whole);
+    assert_eq!(head(&repo, "HEAD"), before);
+    assert_eq!(git_in(&repo, &["diff", "--cached", "--name-only"]), "b.txt", "the staged work survives");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// A branch one commit ahead whose main has moved on too, so the merge runs merge-tree first.
+fn diverged(name: &str) -> (PathBuf, PathBuf, String) {
+    let (base, repo, store) = repo(name);
+    let side = workspace(&base, &repo, &store, name, true);
+    commit(&side, "s.txt", "side\n");
+    commit(&repo, "m.txt", "main\n");
+    let before = head(&repo, "HEAD");
+    (base, repo, before)
+}
+
+/// Re-review P2-B: time that runs out after the merge-tree stops the merge before anything is written.
+#[test]
+fn a_merge_refuses_before_its_write_when_time_runs_out_after_the_merge_tree() {
+    let (base, repo, before) = diverged("p2b-clock");
+    let (git, hooks) = (Git::detect().unwrap(), no_hooks(&data(&base)).unwrap());
+    let clock = Clock::with_hard(Instant::now() + Duration::from_secs(120), Instant::now() + MERGE_MIN + Duration::from_secs(3));
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = Some(Box::new(|| std::thread::sleep(Duration::from_secs(4)))));
+    let dir = data(&base);
+    let env = MergeEnv { git: &git, clock, data_dir: &dir, hooks: &hooks, subject: "s", body: "b", closing: &|| false };
+    let got = merge_branch(&env, &repo, &repo, "main", "p2b-clock");
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = None);
+    assert_eq!(got, Err(OUT_OF_TIME.to_string()));
+    assert_eq!(head(&repo, "HEAD"), before, "main did not move");
+    assert!(marker_files(&dir).is_empty(), "nothing was noted");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Re-review P2-B: a quit that begins while the merge is being looked at stops it before the write.
+#[test]
+fn a_merge_refuses_before_its_write_when_the_quit_begins_partway() {
+    let (base, repo, before) = diverged("p2b-closing");
+    let (git, hooks) = (Git::detect().unwrap(), no_hooks(&data(&base)).unwrap());
+    let flag = std::rc::Rc::new(std::cell::Cell::new(false));
+    let set = flag.clone();
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = Some(Box::new(move || set.set(true))));
+    let dir = data(&base);
+    let env = MergeEnv { git: &git, clock: clock(), data_dir: &dir, hooks: &hooks, subject: "s", body: "b", closing: &|| flag.get() };
+    let got = merge_branch(&env, &repo, &repo, "main", "p2b-closing");
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = None);
+    assert_eq!(got, Err(CLOSING.to_string()));
+    assert_eq!(head(&repo, "HEAD"), before, "main did not move");
+    assert!(marker_files(&dir).is_empty(), "nothing was noted");
+    let _ = fs::remove_dir_all(&base);
 }

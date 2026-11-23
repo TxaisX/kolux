@@ -56,7 +56,8 @@ pub struct Created {
 /// GIT-067: creations in one repository take turns; a failed one hands the turn on at once.
 pub(crate) fn repo_turn(repo: &Path) -> Arc<Mutex<()>> {
     static TURNS: OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = OnceLock::new();
-    let key = repo.to_string_lossy().to_lowercase();
+    // Re-review P3-6: the same folder written two ways (case, slashes, a trailing slash) is one turn.
+    let key = name_key(&repo.to_string_lossy());
     TURNS.get_or_init(Default::default).lock().unwrap_or_else(PoisonError::into_inner).entry(key).or_default().clone()
 }
 

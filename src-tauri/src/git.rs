@@ -1737,8 +1737,13 @@ pub(crate) fn bytes_within(args: &[&str], cwd: Option<&Path>, limit: std::time::
 /// R82-05: a short read through the same turn and time limit as `output`, with git's exit code and
 /// both streams kept, so a caller can tell one particular failure from any other.
 pub(crate) fn read_exit(args: &[&str], cwd: Option<&Path>) -> Result<std::process::Output, String> {
+    read_exit_within(args, cwd, SHORT_READ_LIMIT)
+}
+
+/// `read_exit` cut at `limit`, for a caller that runs on its own clock (a land's merge-tree).
+pub(crate) fn read_exit_within(args: &[&str], cwd: Option<&Path>, limit: std::time::Duration) -> Result<std::process::Output, String> {
     let _turn = cwd.map(|d| LIMITER.enter(d, FOREGROUND.get()));
-    finished_within(args, cwd, SHORT_READ_LIMIT)
+    finished_within(args, cwd, limit)
 }
 
 /// `bytes_within` before the exit code is read: the error is only "could not run" or the wait.
