@@ -195,7 +195,7 @@ impl Harness {
     fn spec(&self, extra: &[(&str, &str)]) -> Spec {
         let mut env = vec![("CLAUDE_CONFIG_DIR".to_string(), self.dir.join("claude-config").to_string_lossy().into_owned())];
         env.extend(extra.iter().map(|(k, v)| (k.to_string(), v.to_string())));
-        Spec { agent: "claude".to_string(), cwd: self.dir.clone(), model: None, env }
+        Spec { agent: "claude".to_string(), cwd: self.dir.clone(), model: None, env, handoff_at: 0, handoff_note: None }
     }
 
     fn start(&self, id: &str, extra: &[(&str, &str)]) {
@@ -337,4 +337,60 @@ fn bad_names_never_reach_the_command_line() {
     spec.cwd = h.dir.join("missing");
     assert!(h.engines.start("bad", spec, None, h.sink()).is_err());
     assert!(h.engines.engine("bad").is_none());
+}
+
+// Txais (2026-11-21): a chat is handed off on the turn's own reading, never a guess.
+#[test]
+fn a_turns_prompt_is_its_input_plus_both_cache_parts() {
+    let usage = json!({"input_tokens": 1000, "cache_creation_input_tokens": 20000, "cache_read_input_tokens": 79000});
+    assert_eq!(prompt_tokens(Some(&usage)), Some(100_000));
+    assert_eq!(prompt_tokens(Some(&json!({"input_tokens": 5}))), Some(5), "a turn with no cache still counts");
+    assert_eq!(prompt_tokens(None), None, "a turn with no usage is never guessed at");
+    assert_eq!(prompt_tokens(Some(&json!({"cache_read_input_tokens": 9}))), None, "no input number, no reading");
+    let absurd = json!({"input_tokens": u64::MAX, "cache_read_input_tokens": 1});
+    assert_eq!(prompt_tokens(Some(&absurd)), None, "an overflowing sum is no reading either");
+}
+
+#[test]
+fn the_handoff_note_is_the_prompt_and_a_missing_one_adds_nothing() {
+    let dir = std::env::temp_dir().join(format!("kolux-note-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let note = dir.join("handoff.md");
+    std::fs::write(&note, "# Handoff\n\n## Left to do\n- finish the readers").unwrap();
+    let prompt = note_prompt(&note);
+    assert!(prompt.contains(&note.display().to_string()), "it says where the note is: {prompt}");
+    assert!(prompt.contains("- finish the readers"), "it carries the note's own words: {prompt}");
+    // A note that has gone missing still names its place: the agent writes it there as it works.
+    let missing = dir.join("missing.md");
+    let gone = note_prompt(&missing);
+    assert!(gone.contains(&missing.display().to_string()), "a missing note still names the place: {gone}");
+    assert!(!gone.contains("Left to do"));
+    drop(std::fs::remove_dir_all(&dir));
+}
+
+// Txais (2026-11-21): at the handoff line the chat ends its process and forgets the session, so the
+// next message starts a fresh conversation. Nothing is typed into the agent: the turn already ended.
+#[test]
+fn a_chat_at_the_handoff_line_ends_its_process_and_forgets_the_session() {
+    let h = harness(IDLE_SLEEP, STOP_GRACE);
+    let mut spec = h.spec(&[]);
+    spec.handoff_at = 1; // the stub's own turn reports input_tokens: 1
+    h.engines.start("c1", spec, None, h.sink()).unwrap();
+    h.engines.send("c1", "hello", &[]).unwrap();
+    let handoffs = h.wait("c1", 1, |e| matches!(e, ChatEvent::Handoff { .. }));
+    assert_eq!(handoffs.clone(), vec![ChatEvent::Handoff { tokens: 1, at: 1 }]);
+    h.wait("c1", 1, |e| is_exit(e, ExitReason::Handoff));
+    assert_eq!(h.engines.engine("c1").unwrap().session_id(), None, "the next send starts fresh");
+    assert!(!h.engines.engine("c1").unwrap().is_running(), "the handed-off process is gone");
+    h.engines.close_all();
+}
+
+// The note is free text: through a cmd.exe shim it could cut the line short or start another
+// command, so only a plain Claude Code program takes it.
+#[test]
+fn the_note_rides_only_on_a_plain_claude_code_line() {
+    assert!(notes_on_line("claude", false));
+    assert!(!notes_on_line("claude", true), "never through cmd.exe");
+    assert!(!notes_on_line("openclaude", false), "not known to take the flag");
 }

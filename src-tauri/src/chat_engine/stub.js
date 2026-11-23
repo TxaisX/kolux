@@ -39,7 +39,7 @@ rl.on("line", (line) => {
       out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-slow", model: "stub-model", content: [{ type: "text", text: "working" }] } });
       return;
     }
-    out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-echo", model: "stub-model", content: [{ type: "text", text: `echo: ${text} (${images} images)` }] } });
+    out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-echo", model: "stub-model", content: [{ type: "text", text: `echo: ${text} (${images} images)` }], usage: { input_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 1 } } });
     out({ type: "result", subtype: "success", is_error: false, result: `echo: ${text}`, session_id: session, num_turns: 1, duration_ms: 5, total_cost_usd: 0.001, usage: { input_tokens: 1, output_tokens: 1 }, permission_denials: [] });
   } else if (m.type === "control_request" && m.request?.subtype === "interrupt") {
     if (deaf) return;

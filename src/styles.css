@@ -928,6 +928,8 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 /* ACCT-064: a question over one pane's terminal, not the window. */
 .pane-ask { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); }
 .agent-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--chip-bg); min-width: 0; }
+/* Txais (2026-11-21): a context reader that cannot read its store is a red line in Settings > Agents. */
+.agent-row small.warn { color: var(--warn); }
 .agent-on { display: flex; align-items: center; gap: 10px; min-height: 24px; cursor: pointer; }
 .agent-name { font-size: 13px; color: var(--fg-row); }
 .agent-row details { margin-left: 24px; font-size: 12px; color: var(--fg-muted); display: flex; flex-direction: column; gap: 6px; }

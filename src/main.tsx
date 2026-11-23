@@ -21,6 +21,12 @@ import "./look/glass.css";
 import { prefetch } from "./lazy/deferred";
 import { showStartFailure } from "./recovery/startFailed";
 import { sharedRead } from "./settings/sharedRead";
+import { bootMark } from "./bootTiming";
+
+/** Txais (2026-11-21): how long a restored tab waits for its own start line before mounting without
+ *  one. A local session lookup answers in milliseconds; this only fires when one is wedged, and then
+ *  the grid opens anyway instead of the window sitting empty until the ask gives up. */
+const RESTORE_ASK_MS = 2_000;
 
 // PKG-4: the page's start-up timeline. Marks are short and stable (ms since performance.timeOrigin); the page sends
 // them once, after `show`, so the diagnostics log holds one line with the Rust marks beside them. Never a reason to
@@ -131,6 +137,7 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
   if (!keep) forgetLastClose(saved);
   let layout = keep ? restoreLayout((stamped || saved || {})[LAYOUT_FIELD]) : null;
   if (layout) {
+    bootMark("restore:start");
     const dirs = [...new Set([...layout.panes.flatMap((p) => [p.cwd, p.view ?? null]), layout.activeDir].filter((d): d is string => d !== null))]; // DT-C274: a team tab's grid folder is checked too
     // PKG-4: one wave, not two. The folder checks and the history removal start together and both are awaited
     // before this returns, so nothing old is replayed before a pane opens. The history of
@@ -143,20 +150,38 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
     // Setup tab is defused. Every tab's saved output is removed before any pane opens, so nothing old is replayed.
     layout = resumeOnStart(stillThere(layout, (d) => kinds[dirs.indexOf(d)] !== "missing"));
     await forgotten;
+    bootMark("restore:folders");
     // TERM-106: the saved output of tabs no longer in the layout is cleaned up in the background.
     void invoke("terminal_prune_history", { keep: layout.panes.map((p) => p.key) }).catch(() => {});
     // SESS-030: an agent tab starts again on its standing start line (permission mode, the user's own
     // arguments and environment) plus its own resume command, built on the Rust side from the tab's
     // last session id (every catalogue agent, not only Claude Code and Codex); `resumed` drives the
     // TERM-107 mark. An agent no longer known keeps the bare line. restoreAsks skips plain shells.
-    for (const p of sessionOrder(layout.panes)) { // after-list #723: asked in session order; the panes keep their saved order
-      if (!restoreAsks(p)) continue;
-      const line = await invoke<{ args: string[]; program: string | null; env: [string, string][]; resumed: boolean }>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.session ?? null }).catch(() => null);
-      if (line) Object.assign(p, { args: line.args, program: line.program ?? p.program, env: line.env, resumed: line.resumed });
-      else p.resumed = false;
-    }
+    // Txais (2026-11-21): every ask goes out in one wave. Asked one at a time, a slow agent held every
+    // tab after it: five asks of 3 s were 15 s of empty window before the first pane could mount.
+    // They are still asked in session order (this map fires in that order) and each answer lands on
+    // its own pane, so the tab order is untouched.
+    const asked = sessionOrder(layout.panes).filter((p) => restoreAsks(p));
+    await Promise.all(
+      asked.map(async (p) => {
+        // A wedged agent must never hold the grid: its ask is raced against a short deadline, and a
+        // tab that misses it mounts on its own saved line instead (a resume may be lost; a window is
+        // never left empty for it).
+        const line = await new Promise<{ args: string[]; program: string | null; env: [string, string][]; resumed: boolean } | null>((resolve) => {
+          const late = setTimeout(() => resolve(null), RESTORE_ASK_MS);
+          invoke<{ args: string[]; program: string | null; env: [string, string][]; resumed: boolean }>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.session ?? null }).then(
+            (l) => (clearTimeout(late), resolve(l)),
+            () => (clearTimeout(late), resolve(null)),
+          );
+        });
+        if (line) Object.assign(p, { args: line.args, program: line.program ?? p.program, env: line.env, resumed: line.resumed });
+        else p.resumed = false;
+      }),
+    );
+    bootMark("restore:lines");
   }
   const initial = stamped || saved || {};
+  if (layout) bootMark("restore:done");
   return { initial: keep ? initial : withoutLastClose(initial), layout };
 }
 

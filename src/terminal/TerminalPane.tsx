@@ -91,6 +91,7 @@ import { applyKoluxUnicode } from "../shell/unicodeWidth";
 import { afterLigatures, importLigatures } from "../shell/ligatures";
 import { markShell, runningOf, shellInAgentPane } from "./remove";
 import { registerTurnSource, xtermSource } from "./turnRead";
+import { bootMark } from "../bootTiming";
 
 // TERM-036: the pane menu's copy items; Copy Session ID shows only once the session is known.
 const COPY_IDS = [["session", "Copy session ID"], ["terminal", "Copy terminal ID"], ["pane", "Copy pane ID"]] as const;
@@ -941,6 +942,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     });
 
     (async () => {
+      bootMark(`pane:${number ?? 0}:mount`);
       // ux card 6: the four registrations are IPC round trips; asked together they cost one, not four.
       unlisteners.push(
         ...(await Promise.all([
@@ -1004,6 +1006,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         ),
         ])),
       );
+      bootMark(`pane:${number ?? 0}:listeners`);
       if (!alive) {
         // Unmounted while the listeners were registering (StrictMode's double mount): let them go,
         // or a disposed terminal keeps answering screen requests for this pane.
@@ -1023,6 +1026,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         try {
           // APP-052: a terminal this run of the service still runs for the pane (the window reloaded) is taken back, not started again.
           const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: prog, account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
+          bootMark(`pane:${number ?? 0}:spawned`);
           setStarted(ran);
           // A shell taken back after a reload is past its prompt, and a fallback shell without hooks
           // (ACCT-046) prints no mark: neither is held.
@@ -1137,6 +1141,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // Kept-warm shell (setting on): a new plain shell takes its folder's warm shell, answered as attached.
         const warmAsk = warmAskOf({ on: currentInput().warmShell, key: number, restored, moved, program, args, env, typed, agent, account, cwd }, term.cols, term.rows);
         const back = number === undefined ? null : await reattach(serviceFor(warmAsk), number, serviceRef.current);
+        bootMark(`pane:${number ?? 0}:attached:${back?.kind ?? "none"}`);
         const orphan = orphanOf(back, alive, handed);
         if (orphan !== null) invoke("terminal_kill", { id: orphan }).catch(() => {});
         if (!alive) return;

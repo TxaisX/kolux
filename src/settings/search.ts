@@ -44,6 +44,7 @@ export const INDEX: Entry[] = [
   { page: "agents", section: "seat-default", title: "Default model and effort", words: "default model effort seat reasoning" },
   { page: "agents", section: "permissions", title: "Agent Permissions", words: "permission allow approve yolo skip ask safety" },
   { page: "agents", section: "agents", title: "Installed agents", words: "installed install cli programs " + agents.map(([id, name]) => `${id} ${name}`).join(" ") },
+  { page: "agents", section: "reads", title: "Context readings", words: "context reading reader token handoff clear codex opencode grok claude failed store" },
   { page: "terminal", section: "panes", title: "New workspaces start with", words: "panes grid workspace start count layout" },
   { page: "terminal", section: "text", title: "Terminal text and cursor", words: "terminal font size family typeface weight bold line height spacing cursor caret blink block bar underline contrast readable sample" },
   { page: "terminal", section: "scrolling", title: "History and scrolling", words: "scrollback history rows lines buffer scroll sensitivity speed fast wheel" },

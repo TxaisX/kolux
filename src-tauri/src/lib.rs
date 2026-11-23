@@ -64,6 +64,7 @@ mod tidy;
 mod retire;
 mod handoff;
 mod handoff_meter;
+mod boot_timing;
 mod resources;
 pub mod projects;
 mod quit_merge;
@@ -575,6 +576,7 @@ pub fn run() {
         .invoke_handler(|invoke: tauri::ipc::Invoke<tauri::Wry>| {
             let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             app_info,
+            boot_timing::boot_timing,
             notices::third_party_notices,
             edit_menu::edit_menu_ready,
             get_settings,
@@ -841,6 +843,8 @@ pub fn run() {
             tray::tray_close_switch_available, // APP-007: Settings hides the close-to-tray switch where it cannot work
             usage_alerts::usage_alerts_fired,
             usage_alerts::usage_alert_send,
+            // Txais (2026-11-21): what each context reader last found, for Settings > Agents.
+            handoff_meter::handoff_reads,
             // stage 3 (s3-engine)
             chat_engine::chat_start,
             chat_engine::chat_send,

@@ -12,6 +12,25 @@ test("the Agents page carries the 200k cap switch, on by default (USAGE-006)", (
   expect(renderToString(createElement(AgentsPageView, { cap: false, onCap: () => {} }))).not.toContain('checked=""');
 });
 
+test("a reader that cannot read its store is a red row on the Agents page (2026-11-21)", () => {
+  const html = renderToString(
+    createElement(AgentsPageView, {
+      cap: true,
+      onCap: () => {},
+      reads: [
+        { agent: "opencode", state: "failed", detail: "no OpenCode database at G:\\x\\opencode.db", tokens: null, ageMs: null },
+        { agent: "codex", state: "reading", detail: "", tokens: 171_240, ageMs: 20_000 },
+      ],
+    }),
+  );
+  expect(html).toContain('data-section="reads"');
+  expect(html).toContain("no OpenCode database at G:\\x\\opencode.db");
+  expect(html).toContain('data-read="failed"');
+  expect(html).toContain('role="alert"');
+  expect(html).toContain("Read 171k 20 s ago");
+  expect(html).toContain("Reports its own context on every turn.");
+});
+
 test("the status hooks switch installs only on a saved true, says what off does and names the file (STAT-002, T-152-gate)", () => {
   expect(hooksOn({})).toBe(false);
   expect(hooksOn({ agentStatusHooks: "x" })).toBe(false);

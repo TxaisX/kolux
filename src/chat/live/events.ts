@@ -7,6 +7,7 @@
 // nothing is written to a transcript: the event stream is the conversation.
 import type { ChatItem } from "../model";
 import type { Tool } from "../steps";
+import { shortTokens } from "../../usage/meter";
 
 /** One content block of an assistant message (Rust `chat_engine::events::Block`). */
 export type Block =
@@ -25,7 +26,7 @@ export type ToolResult = { toolUseId: string; output: string; isError: boolean }
  *  past `kind` is optional on purpose: an event the engine later grows a field for still reads here. */
 export type ChatEvent = {
   chatId: string;
-  kind: "started" | "init" | "assistant" | "user" | "compactBoundary" | "permissionDenied" | "apiRetry" | "result" | "stderr" | "exit" | "stopped" | "raw";
+  kind: "started" | "init" | "assistant" | "user" | "compactBoundary" | "permissionDenied" | "apiRetry" | "result" | "stderr" | "exit" | "stopped" | "handoff" | "raw";
   /** `assistant`: the message's blocks, in the order the agent wrote them. */
   blocks?: Block[];
   /** `assistant` and `user`: the subagent (Task) call this belongs to; null in the main conversation. */
@@ -57,6 +58,9 @@ export type ChatEvent = {
   /** `exit`: the exit code and why the process ended. */
   code?: number | null;
   reason?: string;
+  /** `handoff`: the reading that crossed the handoff line, and the line itself. */
+  tokens?: number;
+  at?: number;
   /** `stopped`: how the turn was stopped (`interrupt` or `ended`). */
   how?: string;
   /** `stderr`: one line the process printed. */
@@ -94,6 +98,10 @@ export function reduce(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq
       return [...prev, denied(ev, at, seq)];
     case "compactBoundary":
       return [...prev, { id: `compact-${seq}`, role: "status", kind: "compact", text: "The conversation was compacted here.", at }];
+    // A chat handed off at the context line: its process ended and the next message starts a fresh
+    // conversation, so the chat says why its replies stop carrying the old context.
+    case "handoff":
+      return [...prev, { id: `handoff-${seq}`, role: "status", kind: "notice", text: `Handed off at ${shortTokens(ev.tokens ?? ev.at ?? 0)} tokens. Your next message starts a fresh conversation.`, at }];
     case "apiRetry":
       return [...prev, retry(ev, at, seq)];
     case "exit":

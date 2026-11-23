@@ -73,6 +73,12 @@ pub struct Spec {
     pub model: Option<String>,
     /// Variables added to the inherited environment (sign-in first, then the caller's own).
     pub env: Vec<(String, String)>,
+    /// The context line this chat hands off at (`handoff::at`, 0 turns it off). At or past it the
+    /// turn's process is ended and the next message starts a fresh conversation.
+    pub handoff_at: u64,
+    /// The chat's handoff note, given to Claude Code as an appended system prompt so the agent keeps
+    /// the work on paper across a handoff. `None` for an agent whose CLI is not known to take one.
+    pub handoff_note: Option<PathBuf>,
 }
 
 /// The agents a chat can run today. Both are Claude Code's CLI shape; an id outside this list has no
@@ -154,6 +160,11 @@ struct Running {
 struct Inner {
     spec: Spec,
     session_id: Option<String>,
+    /// The prompt size of the last main-conversation message this process wrote (its input plus both
+    /// cache parts). The turn's `result` carries the whole turn's usage, summed across every tool
+    /// call, so it cannot be the context size; the last message's own usage is. Cleared at every
+    /// spawn and taken at every result, so a turn that reports nothing is never guessed at.
+    last_prompt: Option<u64>,
     child: Option<Running>,
     gen: u64,
     busy: bool,
@@ -188,8 +199,14 @@ impl Engine {
             None => (crate::agents::find_program(&agent).ok_or_else(|| format!("{} was not found on PATH. Install it, then open the chat again.", crate::agents::agent_name(&agent)))?, Vec::new()),
         };
         let resume = inner.session_id.clone();
-        let args = chat_args(&agent, inner.spec.model.as_deref(), resume.as_deref());
+        let mut args = chat_args(&agent, inner.spec.model.as_deref(), resume.as_deref());
         let shim = program.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"));
+        if notes_on_line(&agent, shim) {
+            if let Some(note) = inner.spec.handoff_note.as_deref() {
+                args.push("--append-system-prompt".to_string());
+                args.push(note_prompt(note));
+            }
+        }
         let mut cmd = if shim {
             let mut c = crate::winproc::command(crate::pty::system_program("cmd.exe"));
             c.arg("/d").arg("/c").arg(&program);
@@ -205,6 +222,7 @@ impl Engine {
         inner.gen += 1;
         let gen = inner.gen;
         inner.child = Some(Running { child, stdin, pid, gen });
+        inner.last_prompt = None;
         inner.busy = false;
         inner.last_active = Instant::now();
         self.emit(&ChatEvent::Started { pid, resumed: resume });
@@ -226,10 +244,18 @@ impl Engine {
     fn read_stdout(self: Arc<Self>, out: std::process::ChildStdout, gen: u64) {
         for line in BufReader::new(out).lines().map_while(Result::ok) {
             let Some(ev) = parse_line(&line) else { continue };
+            let mut cleared = None;
             {
                 let mut inner = lock(&self.inner);
                 match &ev {
                     ChatEvent::Init(i) if !i.session_id.is_empty() => inner.session_id = Some(i.session_id.clone()),
+                    // The reading is the last main-conversation message's own usage: the turn's
+                    // `result` sums every tool call of the turn, which is not how full the window is.
+                    ChatEvent::Assistant { parent_tool_use_id: None, usage, .. } => {
+                        if let Some(tokens) = prompt_tokens(usage.as_ref()) {
+                            inner.last_prompt = Some(tokens);
+                        }
+                    }
                     ChatEvent::Result(r) => {
                         if let Some(id) = &r.session_id {
                             inner.session_id = Some(id.clone());
@@ -238,11 +264,27 @@ impl Engine {
                             inner.busy = false;
                             inner.last_active = Instant::now();
                         }
+                        // Txais (2026-11-21): a chat is handed off at the same line a pane is. The last
+                        // message's usage is the reading (never a guess); at or past the line the
+                        // process ends and the next message starts a fresh conversation, with the note
+                        // on paper. A turn with no reading leaves the chat running.
+                        let reading = inner.last_prompt.take();
+                        let at = inner.spec.handoff_at;
+                        if at > 0 && !inner.closing {
+                            if let Some(tokens) = reading.filter(|t| *t >= at) {
+                                inner.session_id = None;
+                                Self::end_process(&mut inner, ExitReason::Handoff);
+                                cleared = Some((tokens, at));
+                            }
+                        }
                     }
                     _ => {}
                 }
             }
             self.emit(&ev);
+            if let Some((tokens, at)) = cleared {
+                self.emit(&ChatEvent::Handoff { tokens, at });
+            }
         }
         // Stdout closed: the process is ending. Collect it and say why it ended.
         let (running, ended) = {
@@ -420,7 +462,7 @@ impl Engines {
             id: chat_id.to_string(),
             cfg: self.cfg.clone(),
             sink,
-            inner: Mutex::new(Inner { spec, session_id: resume_session_id, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
+            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
         });
         {
             let mut inner = lock(&engine.inner);
@@ -472,6 +514,35 @@ fn engines(app: &tauri::AppHandle) -> Engines {
     app.state::<Engines>().inner().clone()
 }
 
+/// The prompt size a message reports: uncached input plus the cache write plus the cache read, the
+/// three parts of the prompt (the same sum `hooks.rs` takes from a status line). `None` when the
+/// message carried no usage at all, which is never guessed at.
+fn prompt_tokens(usage: Option<&serde_json::Value>) -> Option<u64> {
+    let u = usage?;
+    let n = |k: &str| u.get(k).and_then(serde_json::Value::as_u64);
+    let sum = n("input_tokens")?.checked_add(n("cache_creation_input_tokens").unwrap_or(0))?.checked_add(n("cache_read_input_tokens").unwrap_or(0))?;
+    Some(sum)
+}
+
+/// Whether the handoff note may ride on the command line. It is Claude Code's own flag, so an agent
+/// whose CLI is not known to take it gets no note. A `.cmd`/`.bat` shim never gets one either: the
+/// note is free text the agent itself writes, and through `cmd.exe /c` a newline would cut the line
+/// short and a `&` would start another command (the same reason `add_team` skips a shim).
+fn notes_on_line(agent: &str, shim: bool) -> bool {
+    agent == "claude" && !shim
+}
+
+/// The handoff note as an appended system prompt: the file's own words, capped so a long note never
+/// crowds the window it is meant to protect. A note that cannot be read adds nothing.
+fn note_prompt(note: &Path) -> String {
+    let text = std::fs::read_to_string(note).unwrap_or_default();
+    let mut kept: String = text.chars().take(8_000).collect();
+    if kept.chars().count() < text.chars().count() {
+        kept.push_str("\n\n(The handoff note is longer; read the file for the rest.)");
+    }
+    format!("Your handoff note is at {}. Keep it current as you work: the chat hands off at the context line, and this note is what the next conversation starts from.\n\n{}", note.display(), kept)
+}
+
 /// The page's payload: the chat id beside the event's own fields.
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -516,9 +587,29 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
         crate::terminal::agent_env(&store, &settings, Some(&agent), None, None, &extra_env)?.env
     };
     // The caller's own variables first; the sign-in wins (ACCT-024 already refused a clash).
-    let env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
+    let mut env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
+    // Txais (2026-11-21): chat panes follow the same 200k cap, handoff line and note as terminal
+    // panes. The cap goes on here (the CLI's own variable) rather than inside the engine, so the
+    // engine stays a plain stream reader. The note is created beside the folder's other Kolux
+    // scratch, and a folder that cannot take one simply runs without it.
+    let at = {
+        let store = app.state::<Mutex<crate::state::Store>>();
+        let store = store.lock().map_err(|e| e.to_string())?;
+        let settings = store.settings();
+        if crate::cap::on(&settings) {
+            // A variable the user set themselves (their own environment, or the agent's saved options)
+            // is their choice: the cap leaves it alone.
+            let set = crate::cap::env_set() || env.iter().any(|(k, _)| k.eq_ignore_ascii_case(crate::cap::CLAUDE_ENV));
+            crate::cap::apply(Some(agent.as_str()), &mut Vec::new(), &mut env, set);
+        }
+        crate::handoff::at(&settings)
+    };
+    // One note per folder, the way a worktree has one: two chats in the same folder start from the
+    // same page of paper. Best effort; a folder that cannot take one runs without it.
+    let name = cwd.file_name().and_then(|n| n.to_str()).unwrap_or("chat").to_string();
+    let note = crate::projects::prepare_handoff(&cwd, &name).ok();
     let (engines, sink) = (engines(&app), app_sink(&app));
-    blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, env }, resume_session_id, sink)).await
+    blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, env, handoff_at: at, handoff_note: note }, resume_session_id, sink)).await
 }
 
 /// Sends `text` (and images) to chat `chat_id` as the next user message.

@@ -88,6 +88,13 @@ test("a crashed process is a row; a sleep, a close and the engine's own line are
   for (const e of quiet) expect(reduce(crashed, e, 10, 2), e.kind).toBe(crashed);
 });
 
+test("a chat that handed off says so, and starts fresh on the next message", () => {
+  const items = reduce([], ev({ kind: "handoff", tokens: 171_240, at: 170_000 }), 10, 1);
+  expect(items[0]).toMatchObject({ role: "status", kind: "notice", text: "Handed off at 171k tokens. Your next message starts a fresh conversation." });
+  // The process ending for the handoff is not a crash: the row above already said what happened.
+  expect(reduce(items, ev({ kind: "exit", code: null, reason: "handoff" }), 10, 2)).toBe(items);
+});
+
 test("a compaction is the divider the chat already draws", () => {
   const items = reduce([], ev({ kind: "compactBoundary", trigger: "auto", preTokens: 167000 }), 11, 1);
   const views = fold(items.map((i) => ({ ...i, row: "message" as const })), false);

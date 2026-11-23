@@ -9,7 +9,9 @@
 //!
 //! Only an agent this module can actually read is ever cleared (`measured`). An agent with no reading
 //! keeps its session: the clear is driven by a number, never by a guess. An agent starting a fresh
-//! conversation measures as `Some(0)`, which is what re-arms it for the next fill.
+//! conversation measures as `Read::Tokens(0)`, which is what re-arms it for the next fill. A store
+//! that cannot be read at all is `Read::Failed` (never the same silence as "nothing yet") and shows
+//! up in Settings > Agents, so a reader that breaks is something the window says.
 //!
 //! A conversation the pane resumed is only read once it has been touched since that pane started. A
 //! worktree keeps several conversations per folder, and the newest one before the pane started is
@@ -45,28 +47,156 @@ pub fn measured(agent: &str) -> bool {
     matches!(agent, "codex" | "opencode" | "grok")
 }
 
-/// The prompt size of `agent`'s conversation in `cwd` that this pane owns, from its own store: the
-/// newest one it has touched since `since` (the pane's start). `home` is the `CODEX_HOME` the pane was
-/// started with. `None` when nothing can be read, which the caller takes as no clear.
-pub fn reading(agent: &str, cwd: &str, home: Option<&str>, since: SystemTime) -> Option<u64> {
-    match agent {
-        "opencode" => opencode_context(&opencode_db()?, cwd, since),
-        "codex" => codex_context(&codex_home(home)?, cwd, since),
-        "grok" => grok_context(&grok_home()?, cwd, since),
-        _ => None,
+/// What one look at an agent's own store found.
+///
+/// Txais (2026-11-21): the reader used to answer `Option`, so "this store cannot be read" and "this
+/// pane has not written anything yet" were the same silence, and a broken reader simply never fired.
+/// A failure is now its own answer, named with the file and the reason, and `handoff_reads` shows it.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Read {
+    /// The prompt size of this pane's newest answered turn.
+    Tokens(u64),
+    /// The store was read and holds nothing for this pane yet: no conversation in this folder since
+    /// it started, or one that has not answered. Not a failure, and not a clear either.
+    Nothing,
+    /// The store could not be read at all. The sentence says what was looked for and why it failed.
+    Failed(String),
+}
+
+/// One reader's last look, as Settings > Agents shows it (`handoff_reads`).
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderHealth {
+    /// The agent the row is about: `codex`, `opencode` or `grok`.
+    pub agent: &'static str,
+    /// `reading`, `nothing`, `failed`, or `never` (nothing has run yet this start).
+    pub state: &'static str,
+    /// What went wrong, for a failure; empty otherwise.
+    pub detail: String,
+    /// The last prompt size the reader put to the handoff check.
+    pub tokens: Option<u64>,
+    /// Milliseconds since that look; null when it has never looked.
+    pub age_ms: Option<u64>,
+}
+
+#[derive(Clone, Default)]
+struct Seen {
+    state: &'static str,
+    detail: String,
+    tokens: Option<u64>,
+    at: Option<SystemTime>,
+    /// The failure line already written to the log, so a store that stays broken is said once.
+    logged: String,
+}
+
+/// Every reader's last look, kept for the window. One row per agent, never cleared: a reader that
+/// stopped working keeps saying so instead of looking healthy because it has nothing new to report.
+pub struct Reads(std::sync::Mutex<std::collections::BTreeMap<&'static str, Seen>>);
+
+impl Reads {
+    const fn new() -> Self {
+        Reads(std::sync::Mutex::new(std::collections::BTreeMap::new()))
+    }
+
+    /// Records one look. Answers the failure line to log when this is a new failure (a different
+    /// sentence from the one already logged), so a store that stays broken is written once.
+    fn put(&self, agent: &'static str, read: &Read) -> Option<String> {
+        let mut seen = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        let slot = seen.entry(agent).or_default();
+        slot.at = Some(SystemTime::now());
+        let failure = match read {
+            Read::Tokens(n) => {
+                slot.tokens = Some(*n);
+                slot.logged.clear();
+                String::new()
+            }
+            Read::Nothing => {
+                slot.logged.clear();
+                String::new()
+            }
+            Read::Failed(why) => why.clone(),
+        };
+        slot.state = match read {
+            Read::Tokens(_) => "reading",
+            Read::Nothing => "nothing",
+            Read::Failed(_) => "failed",
+        };
+        slot.detail = failure.clone();
+        if failure.is_empty() || failure == slot.logged {
+            return None;
+        }
+        slot.logged = failure.clone();
+        Some(failure)
+    }
+
+    fn rows(&self) -> Vec<ReaderHealth> {
+        let seen = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        ["codex", "opencode", "grok"]
+            .into_iter()
+            .map(|agent| {
+                let Some(s) = seen.get(agent) else {
+                    return ReaderHealth { agent, state: "never", detail: String::new(), tokens: None, age_ms: None };
+                };
+                ReaderHealth {
+                    agent,
+                    state: s.state,
+                    detail: s.detail.clone(),
+                    tokens: s.tokens,
+                    age_ms: s.at.and_then(|at| SystemTime::now().duration_since(at).ok()).map(|d| d.as_millis().min(u64::MAX as u128) as u64),
+                }
+            })
+            .collect()
     }
 }
 
-/// OpenCode's database: `$XDG_DATA_HOME/opencode/opencode.db` (on Windows the data folder may still
-/// be `~/.local/share`). `None` when it is not there.
-pub fn opencode_db() -> Option<PathBuf> {
+static READS: Reads = Reads::new();
+
+/// SET: what each reader last found, for Settings > Agents. A reader that cannot read its store is a
+/// row that says so, so a session that will not hand off is never a mystery.
+#[tauri::command]
+pub fn handoff_reads() -> Vec<ReaderHealth> {
+    READS.rows()
+}
+
+/// The prompt size of `agent`'s conversation in `cwd` that this pane owns, from its own store: the
+/// newest one it has touched since `since` (the pane's start). `home` is the `CODEX_HOME` the pane was
+/// started with. `Read::Nothing` when the store is readable but holds no conversation of this pane's,
+/// `Read::Failed` when it cannot be read at all (the caller takes both as no clear).
+pub fn reading(agent: &str, cwd: &str, home: Option<&str>, since: SystemTime) -> Read {
+    match agent {
+        "opencode" => match opencode_db() {
+            Some(db) => opencode_context(&db, cwd, since),
+            None => Read::Failed(match opencode_db_path() {
+                Some(p) => format!("no OpenCode database at {}", p.display()),
+                None => "no OpenCode data folder (XDG_DATA_HOME or ~/.local/share)".to_string(),
+            }),
+        },
+        "codex" => match codex_home(home) {
+            Some(home) => codex_context(&home, cwd, since),
+            None => Read::Failed("no Codex home: neither CODEX_HOME nor ~/.codex was found".to_string()),
+        },
+        "grok" => match grok_home() {
+            Some(home) => grok_context(&home, cwd, since),
+            None => Read::Failed("no Grok home: neither GROK_HOME nor ~/.grok was found".to_string()),
+        },
+        other => Read::Failed(format!("{other} has no store Kolux reads")),
+    }
+}
+
+/// Where OpenCode would keep its database, whether or not it is there yet.
+pub fn opencode_db_path() -> Option<PathBuf> {
     let data = std::env::var_os("XDG_DATA_HOME")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("USERPROFILE").map(|h| PathBuf::from(h).join(".local").join("share")))
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local").join("share")))?;
-    let db = data.join("opencode").join("opencode.db");
-    db.is_file().then_some(db)
+    Some(data.join("opencode").join("opencode.db"))
+}
+
+/// OpenCode's database: `$XDG_DATA_HOME/opencode/opencode.db` (on Windows the data folder may still
+/// be `~/.local/share`). `None` when it is not there.
+pub fn opencode_db() -> Option<PathBuf> {
+    opencode_db_path().filter(|db| db.is_file())
 }
 
 /// Codex's home for a pane: the managed account's own home when the pane was started with one, then
@@ -104,13 +234,22 @@ pub fn grok_folder(cwd: &str) -> String {
 }
 
 /// Grok's reading: the newest session in `cwd` that this pane has touched, and its own live context
-/// signal.
-pub fn grok_context(home: &Path, cwd: &str, since: SystemTime) -> Option<u64> {
-    let dir = home.join("sessions").join(grok_folder(cwd));
+/// signal. A folder with no session yet is `Nothing`; a session file that cannot be read or parsed is
+/// `Failed`, with the file named.
+pub fn grok_context(home: &Path, cwd: &str, since: SystemTime) -> Read {
+    let folder = grok_folder(cwd);
+    if folder.len() > 255 {
+        return Read::Failed("Grok files this folder under a hashed name, so its context cannot be read".to_string());
+    }
+    let dir = home.join("sessions").join(&folder);
+    let listing = match std::fs::read_dir(&dir) {
+        Ok(listing) => listing,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Read::Nothing,
+        Err(e) => return Read::Failed(format!("Grok's sessions at {} cannot be read: {e}", dir.display())),
+    };
     let floor = since.checked_sub(GRACE).unwrap_or(SystemTime::UNIX_EPOCH);
     let mut newest: Option<(SystemTime, PathBuf)> = None;
-    for entry in std::fs::read_dir(&dir).ok()? {
-        let Ok(entry) = entry else { continue };
+    for entry in listing.flatten() {
         let file = entry.path().join("signals.json");
         let Ok(at) = std::fs::metadata(&file).and_then(|m| m.modified()) else { continue };
         if at < floor {
@@ -120,18 +259,32 @@ pub fn grok_context(home: &Path, cwd: &str, since: SystemTime) -> Option<u64> {
             newest = Some((at, file));
         }
     }
-    grok_tokens(&std::fs::read_to_string(newest?.1).ok()?)
+    let Some((_, file)) = newest else { return Read::Nothing };
+    let text = match std::fs::read_to_string(&file) {
+        Ok(text) => text,
+        Err(e) => return Read::Failed(format!("Grok's {} cannot be read: {e}", file.display())),
+    };
+    match grok_tokens(&text) {
+        Ok(Some(n)) => Read::Tokens(n),
+        Ok(None) => Read::Nothing,
+        Err(why) => Read::Failed(format!("Grok's {} {why}", file.display())),
+    }
 }
 
 /// Grok's own live context signal: `contextTokensUsed`, what its current conversation holds. A session
-/// that has not answered yet reads `0`, which re-arms the pane.
-pub fn grok_tokens(text: &str) -> Option<u64> {
-    serde_json::from_str::<serde_json::Value>(text).ok()?.get("contextTokensUsed").and_then(serde_json::Value::as_u64)
+/// that has not answered yet reads `Ok(Some(0))`, which re-arms the pane; a file that is not JSON is an
+/// error, never a silent nothing.
+pub fn grok_tokens(text: &str) -> Result<Option<u64>, String> {
+    let v: serde_json::Value = serde_json::from_str(text).map_err(|e| format!("is not JSON ({e})"))?;
+    Ok(v.get("contextTokensUsed").and_then(serde_json::Value::as_u64))
 }
 
 /// OpenCode's reading, from its database file.
-pub fn opencode_context(db: &Path, cwd: &str, since: SystemTime) -> Option<u64> {
-    let conn = rusqlite::Connection::open_with_flags(db, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
+pub fn opencode_context(db: &Path, cwd: &str, since: SystemTime) -> Read {
+    let conn = match rusqlite::Connection::open_with_flags(db, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY) {
+        Ok(conn) => conn,
+        Err(e) => return Read::Failed(format!("OpenCode's database at {} cannot be opened: {e}", db.display())),
+    };
     // The terminal is writing to the same database: wait a little rather than read nothing.
     let _ = conn.busy_timeout(Duration::from_millis(400));
     opencode_context_in(&conn, cwd, since)
@@ -139,51 +292,69 @@ pub fn opencode_context(db: &Path, cwd: &str, since: SystemTime) -> Option<u64> 
 
 /// OpenCode's newest top-level conversation in `cwd` that this pane has touched, and the prompt size of
 /// its last answered turn: uncached input plus the cache read plus the cache write, the three parts of
-/// the prompt. A conversation with no answered turn yet is `Some(0)`, which re-arms the pane for its
-/// next fill.
-pub fn opencode_context_in(conn: &rusqlite::Connection, cwd: &str, since: SystemTime) -> Option<u64> {
+/// the prompt. A conversation with no answered turn yet reads `Tokens(0)`, which re-arms the pane for its
+/// next fill. A table it cannot read is `Failed`, not an empty answer.
+pub fn opencode_context_in(conn: &rusqlite::Connection, cwd: &str, since: SystemTime) -> Read {
     // The database counts milliseconds from 1970; a stamp before it (or a pane start that far back) is 0.
     let since_ms = since.duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
     let floor_ms = i64::try_from(since_ms.saturating_sub(GRACE.as_millis())).unwrap_or(0);
-    let session: String = conn
-        .query_row(
-            "SELECT id FROM session_v2 WHERE parent_id IS NULL AND time_archived IS NULL \
-             AND lower(replace(directory, '\\', '/')) = lower(?1) AND time_updated >= ?2 \
-             ORDER BY time_updated DESC LIMIT 1",
-            rusqlite::params![cwd.replace('\\', "/"), floor_ms],
-            |r| r.get(0),
-        )
-        .ok()?;
-    let mut st = conn
-        .prepare(
-            "SELECT json_extract(data, '$.tokens.input'), json_extract(data, '$.tokens.cache.read'), \
-             json_extract(data, '$.tokens.cache.write') FROM session_message \
-             WHERE session_id = ?1 AND json_extract(data, '$.tokens') IS NOT NULL \
-             ORDER BY seq DESC LIMIT 1",
-        )
-        .ok()?;
-    let parts: Option<(Option<i64>, Option<i64>, Option<i64>)> = st
-        .query_row([&session], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
-        .ok();
-    let Some((input, read, write)) = parts else { return Some(0) };
-    let sum = [input, read, write].into_iter().flatten().fold(0u64, |acc, n| acc.saturating_add(u64::try_from(n).unwrap_or(0)));
-    Some(sum)
+    let session = match conn.query_row(
+        "SELECT id FROM session_v2 WHERE parent_id IS NULL AND time_archived IS NULL \
+         AND lower(replace(directory, '\\', '/')) = lower(?1) AND time_updated >= ?2 \
+         ORDER BY time_updated DESC LIMIT 1",
+        rusqlite::params![cwd.replace('\\', "/"), floor_ms],
+        |r| r.get::<_, String>(0),
+    ) {
+        Ok(id) => id,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Read::Nothing,
+        Err(e) => return Read::Failed(format!("OpenCode's conversation list cannot be read: {e}")),
+    };
+    let mut st = match conn.prepare(
+        "SELECT json_extract(data, '$.tokens.input'), json_extract(data, '$.tokens.cache.read'), \
+         json_extract(data, '$.tokens.cache.write') FROM session_message \
+         WHERE session_id = ?1 AND json_extract(data, '$.tokens') IS NOT NULL \
+         ORDER BY seq DESC LIMIT 1",
+    ) {
+        Ok(st) => st,
+        Err(e) => return Read::Failed(format!("OpenCode's messages cannot be read: {e}")),
+    };
+    match st.query_row([&session], |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?, r.get::<_, Option<i64>>(2)?))) {
+        Ok((input, read, write)) => {
+            let sum = [input, read, write].into_iter().flatten().fold(0u64, |acc, n| acc.saturating_add(u64::try_from(n).unwrap_or(0)));
+            Read::Tokens(sum)
+        }
+        Err(rusqlite::Error::QueryReturnedNoRows) => Read::Tokens(0),
+        Err(e) => Read::Failed(format!("OpenCode's token counts cannot be read: {e}")),
+    }
 }
 
 /// Codex's reading, from its home's session logs.
-pub fn codex_context(home: &Path, cwd: &str, since: SystemTime) -> Option<u64> {
-    let file = newest_rollout(home, cwd, since)?;
-    let text = tail(&file, TAIL)?;
-    // A log whose turns carry no count reads nothing rather than zero: a zero would claim the pane is
+pub fn codex_context(home: &Path, cwd: &str, since: SystemTime) -> Read {
+    let file = match newest_rollout(home, cwd, since) {
+        Ok(Some(file)) => file,
+        Ok(None) => return Read::Nothing,
+        Err(why) => return Read::Failed(why),
+    };
+    let Some(text) = tail(&file, TAIL) else {
+        return Read::Failed(format!("Codex's log at {} cannot be read", file.display()));
+    };
+    // A log whose turns carry no count is `Nothing` rather than zero: a zero would claim the pane is
     // empty. `codex exec` writes no `token_count` events; the interactive TUI does.
-    codex_tokens(&text)
+    match codex_tokens(&text) {
+        Some(n) => Read::Tokens(n),
+        None => Read::Nothing,
+    }
 }
 
 /// The newest rollout log in `home` whose session was started in `cwd` and written since the pane
 /// started. Only the last few day folders are looked at: a pane doing anything at all has written to one
-/// of them, and a resumed session appends to its own log, which moves its stamp.
-pub fn newest_rollout(home: &Path, cwd: &str, since: SystemTime) -> Option<PathBuf> {
+/// of them, and a resumed session appends to its own log, which moves its stamp. `Err` when the home has
+/// no readable `sessions` folder at all, which is the reader saying it cannot work.
+pub fn newest_rollout(home: &Path, cwd: &str, since: SystemTime) -> Result<Option<PathBuf>, String> {
     let root = home.join("sessions");
+    if !root.is_dir() {
+        return Err(format!("no Codex session logs under {}", root.display()));
+    }
     let mut days: Vec<PathBuf> = Vec::new();
     for year in read_dirs(&root) {
         for month in read_dirs(&year) {
@@ -210,7 +381,7 @@ pub fn newest_rollout(home: &Path, cwd: &str, since: SystemTime) -> Option<PathB
             }
         }
     }
-    found.into_iter().max_by_key(|(mtime, _)| *mtime).map(|(_, f)| f)
+    Ok(found.into_iter().max_by_key(|(mtime, _)| *mtime).map(|(_, f)| f))
 }
 
 fn read_dirs(dir: &Path) -> Vec<PathBuf> {
@@ -300,7 +471,15 @@ pub fn pass(app: &tauri::AppHandle) {
         if count[&format!("{agent}:{}", cwd.to_lowercase())] > 1 {
             continue;
         }
-        if let Some(tokens) = reading(agent, &cwd, home.as_deref(), started) {
+        let read = reading(agent, &cwd, home.as_deref(), started);
+        // Every look is recorded, so a reader that cannot read its store shows up in Settings > Agents
+        // (and once in the log) instead of never firing without a word.
+        if let Some(line) = READS.put(agent, &read) {
+            if let Ok(dir) = app.path().app_data_dir() {
+                crate::secrets::log(&dir, &format!("handoff: cannot read {agent}'s context: {line}"));
+            }
+        }
+        if let Read::Tokens(tokens) = read {
             crate::handoff::check(app, pane, Some(tokens), Some(agent));
         }
     }
@@ -364,7 +543,7 @@ mod tests {
         session(&conn, "new", "G:/Desktop/kolux/.worktrees/coral-anemone", None, 2);
         message(&conn, "m1", "old", 1, r#"{"tokens":{"input":900000,"output":1,"cache":{"read":0,"write":0}}}"#);
         message(&conn, "m2", "new", 1, r#"{"tokens":{"input":819,"output":390,"cache":{"read":124160,"write":256}}}"#);
-        assert_eq!(opencode_context_in(&conn, cwd, SystemTime::UNIX_EPOCH), Some(819 + 124_160 + 256), "the newest session, newest answered turn");
+        assert_eq!(opencode_context_in(&conn, cwd, SystemTime::UNIX_EPOCH), Read::Tokens(819 + 124_160 + 256), "the newest session, newest answered turn");
     }
 
     #[test]
@@ -376,16 +555,16 @@ mod tests {
         message(&conn, "c", "child", 1, r#"{"tokens":{"input":190000,"output":1,"cache":{"read":0,"write":0}}}"#);
         message(&conn, "a", "main", 1, r#"{"tokens":{"input":100,"output":1,"cache":{"read":50,"write":0}}}"#);
         message(&conn, "b", "main", 2, r#"{"agent":"x","content":[]}"#);
-        assert_eq!(opencode_context_in(&conn, cwd, SystemTime::UNIX_EPOCH), Some(150), "the child is not the conversation, and an unanswered turn is skipped");
+        assert_eq!(opencode_context_in(&conn, cwd, SystemTime::UNIX_EPOCH), Read::Tokens(150), "the child is not the conversation, and an unanswered turn is skipped");
         let other = opencode("oc-elsewhere");
-        assert_eq!(opencode_context_in(&other, cwd, SystemTime::UNIX_EPOCH), None, "no conversation in that folder: no reading");
+        assert_eq!(opencode_context_in(&other, cwd, SystemTime::UNIX_EPOCH), Read::Nothing, "no conversation in that folder: no reading");
     }
 
     #[test]
     fn a_fresh_opencode_conversation_reads_zero_so_the_pane_rearms() {
         let conn = opencode("oc-fresh");
         session(&conn, "new", "G:/Repo", None, 2);
-        assert_eq!(opencode_context_in(&conn, r"G:\Repo", SystemTime::UNIX_EPOCH), Some(0));
+        assert_eq!(opencode_context_in(&conn, r"G:\Repo", SystemTime::UNIX_EPOCH), Read::Tokens(0));
     }
 
     #[test]
@@ -419,8 +598,8 @@ mod tests {
             ),
         )
         .unwrap();
-        assert_eq!(codex_context(&home, r"G:\Repo", SystemTime::UNIX_EPOCH), Some(171_500));
-        assert_eq!(codex_context(&home, r"G:\Nope", SystemTime::UNIX_EPOCH), None, "no session in that folder");
+        assert_eq!(codex_context(&home, r"G:\Repo", SystemTime::UNIX_EPOCH), Read::Tokens(171_500));
+        assert_eq!(codex_context(&home, r"G:\Nope", SystemTime::UNIX_EPOCH), Read::Nothing, "no session in that folder");
     }
 
     #[test]
@@ -437,7 +616,7 @@ mod tests {
             ),
         )
         .unwrap();
-        assert_eq!(codex_context(&home, r"G:\Repo", SystemTime::UNIX_EPOCH), None, "no counts in the log: the pane is left alone");
+        assert_eq!(codex_context(&home, r"G:\Repo", SystemTime::UNIX_EPOCH), Read::Nothing, "no counts in the log: the pane is left alone");
     }
 
     #[test]
@@ -458,10 +637,10 @@ mod tests {
         write("old", 40_000);
         std::thread::sleep(std::time::Duration::from_millis(20));
         write("new", 171_500);
-        assert_eq!(grok_context(&home, r"G:\Repo", SystemTime::UNIX_EPOCH), Some(171_500), "the newest session in that folder");
-        assert_eq!(grok_context(&home, r"G:\Nope", SystemTime::UNIX_EPOCH), None, "no session in that folder: no reading");
-        assert_eq!(grok_tokens(r#"{"contextTokensUsed":0}"#), Some(0), "a fresh conversation re-arms the pane");
-        assert_eq!(grok_tokens(r#"{"other":1}"#), None, "no signal: no reading");
+        assert_eq!(grok_context(&home, r"G:\Repo", SystemTime::UNIX_EPOCH), Read::Tokens(171_500), "the newest session in that folder");
+        assert_eq!(grok_context(&home, r"G:\Nope", SystemTime::UNIX_EPOCH), Read::Nothing, "no session in that folder: no reading");
+        assert_eq!(grok_tokens(r#"{"contextTokensUsed":0}"#), Ok(Some(0)), "a fresh conversation re-arms the pane");
+        assert_eq!(grok_tokens(r#"{"other":1}"#), Ok(None), "no signal: no reading");
     }
 
     #[test]
@@ -472,9 +651,9 @@ mod tests {
         let conn = opencode("oc-resumed");
         session(&conn, "older", "G:/Repo", None, 1_000);
         message(&conn, "m", "older", 1, r#"{"tokens":{"input":190000,"output":1,"cache":{"read":0,"write":0}}}"#);
-        assert_eq!(opencode_context_in(&conn, r"G:\Repo", since), None, "that session was last written before this pane started");
+        assert_eq!(opencode_context_in(&conn, r"G:\Repo", since), Read::Nothing, "that session was last written before this pane started");
         session(&conn, "this-pane", "G:/Repo", None, 9_000);
-        assert_eq!(opencode_context_in(&conn, r"G:\Repo", since), Some(0), "the pane's own new conversation measures zero");
+        assert_eq!(opencode_context_in(&conn, r"G:\Repo", since), Read::Tokens(0), "the pane's own new conversation measures zero");
 
         let home = temp("cx-resumed");
         let day = home.join("sessions").join("2026").join("11").join("20");
@@ -489,13 +668,13 @@ mod tests {
         )
         .unwrap();
         let later = SystemTime::now() + Duration::from_secs(3600);
-        assert_eq!(codex_context(&home, r"G:\Repo", later), None, "a rollout not written since the pane started is somebody else's");
+        assert_eq!(codex_context(&home, r"G:\Repo", later), Read::Nothing, "a rollout not written since the pane started is somebody else's");
 
         let home = temp("grok-resumed");
         let dir = home.join("sessions").join(grok_folder(r"G:\Repo")).join("s1");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("signals.json"), r#"{"contextTokensUsed":171500}"#).unwrap();
-        assert_eq!(grok_context(&home, r"G:\Repo", SystemTime::now() + Duration::from_secs(3600)), None);
+        assert_eq!(grok_context(&home, r"G:\Repo", SystemTime::now() + Duration::from_secs(3600)), Read::Nothing);
     }
 
     #[test]
@@ -503,5 +682,45 @@ mod tests {
         assert_eq!(rollout_cwd(r#"{"type":"session_meta","payload":{"cwd":"G:\\Repo"}}"#), Some(r"G:\Repo".into()));
         assert_eq!(rollout_cwd("not json"), None);
         assert_eq!(rollout_cwd(r#"{"type":"event_msg","payload":{}}"#), None);
+    }
+
+    #[test]
+    fn a_store_that_cannot_be_read_says_so_instead_of_reading_nothing() {
+        // An OpenCode database with no tables at all: the file opens, the tables do not.
+        let dir = temp("oc-broken");
+        let db = dir.join("opencode.db");
+        rusqlite::Connection::open(&db).unwrap().execute_batch("CREATE TABLE unrelated (x INT);").unwrap();
+        let read = opencode_context(&db, r"G:\Repo", SystemTime::UNIX_EPOCH);
+        assert!(matches!(read, Read::Failed(ref why) if why.contains("conversation list")), "{read:?}");
+        let missing = opencode_context(&dir.join("missing.db"), r"G:\Repo", SystemTime::UNIX_EPOCH);
+        assert!(matches!(missing, Read::Failed(ref why) if why.contains("cannot be opened")), "{missing:?}");
+        // A Codex home with no sessions folder at all.
+        let home = temp("cx-empty-home");
+        let read = codex_context(&home, r"G:\Repo", SystemTime::UNIX_EPOCH);
+        assert!(matches!(read, Read::Failed(ref why) if why.contains("no Codex session logs")), "{read:?}");
+        // Grok's signals that are not JSON.
+        let grok = temp("grok-bad");
+        let sdir = grok.join("sessions").join(grok_folder(r"G:\Repo")).join("s1");
+        std::fs::create_dir_all(&sdir).unwrap();
+        std::fs::write(sdir.join("signals.json"), "not json").unwrap();
+        let read = grok_context(&grok, r"G:\Repo", SystemTime::UNIX_EPOCH);
+        assert!(matches!(read, Read::Failed(ref why) if why.contains("is not JSON")), "{read:?}");
+    }
+
+    #[test]
+    fn a_reader_that_fails_is_named_once_and_stays_visible() {
+        let reads = Reads::new();
+        assert_eq!(reads.rows().iter().map(|r| r.state).collect::<Vec<_>>(), vec!["never", "never", "never"], "nothing has looked yet");
+        let why = "no OpenCode database at C:\\x\\opencode.db".to_string();
+        assert_eq!(reads.put("opencode", &Read::Failed(why.clone())), Some(why.clone()), "the first failure is logged");
+        assert_eq!(reads.put("opencode", &Read::Failed(why.clone())), None, "the same failure again is not");
+        let row = reads.rows().into_iter().find(|r| r.agent == "opencode").unwrap();
+        assert_eq!((row.state, row.detail.as_str()), ("failed", why.as_str()));
+        assert!(row.age_ms.is_some());
+        assert_eq!(reads.put("opencode", &Read::Tokens(171_000)), None);
+        let row = reads.rows().into_iter().find(|r| r.agent == "opencode").unwrap();
+        assert_eq!((row.state, row.tokens), ("reading", Some(171_000)));
+        assert_eq!(reads.put("opencode", &Read::Failed(why.clone())), Some(why), "a failure after a good reading is said again");
+        assert_eq!(reads.put("grok", &Read::Nothing), None);
     }
 }

@@ -103,6 +103,9 @@ naming the event. Field names are camelCase. One example each:
 {"chatId":"c1","kind":"stopped","how":"interrupt"}
 ```
 ```json
+{"chatId":"c1","kind":"handoff","tokens":171240,"at":170000}
+```
+```json
 {"chatId":"c1","kind":"raw","line":"{\"type\":\"system\",\"subtype\":\"hook_started\"}","json":{"type":"system","subtype":"hook_started"}}
 ```
 
@@ -110,6 +113,8 @@ Notes on the shapes:
 
 - `parentToolUseId` is `null` for the main conversation. A subagent's rows name the Task call that
   started them (the docs say a skill forked by a prompt uses a `forked-command-` prefix).
+- `assistant.usage` is that message's own usage, kept for the handoff line: the turn's `result`
+  sums every tool call of the turn, which is not how full the window is.
 - `step` is the chat view's own reading of a tool call (`chat_tools::claude_step`): `kind: "tool"`
   with the tool row, or `kind: "plan"` with Markdown text for TodoWrite / ExitPlanMode.
 - A tool result's `output` is its text (a string, or the text parts joined by new lines), capped
@@ -117,9 +122,27 @@ Notes on the shapes:
 - `result.subtype` is `success` or an error subtype (`error_max_turns`, `error_during_execution`,
   `error_max_budget_usd`, `error_max_structured_output_retries`); error results carry `errors`.
 - `exit.reason`: `closed` (chat_end or quit), `sleep` (idle sleep), `stopped` (chat_stop had to
-  end the process), `ended` (it ended by itself with code 0), `crashed` (any other end).
+  end the process), `handoff` (the context reached the handoff line, below), `ended` (it ended by
+  itself with code 0), `crashed` (any other end).
+- `handoff.tokens` is the reading that crossed, `handoff.at` the line it crossed; the `exit` that
+  follows says `handoff` too.
 - Anything this reader does not know (hook events, `plugin_install`, control responses, stream
   events, a line that is not JSON) arrives as `raw`, whole. Nothing is dropped.
+
+## Handoff
+
+A chat follows the same cap and handoff line as a terminal pane. `chat_start` puts the 200k cap on
+the process (unless the switch is off or the environment already sets it), creates the folder's
+handoff note (`.kolux/handoffs/<folder>.md`, the same file a pane uses), and passes the line from
+`handoffAtTokens` (170,000 by default, `0` off).
+
+When a turn's `result` arrives and the last main-conversation `assistant` message of that turn carried a
+prompt size (`input_tokens` + `cache_creation_input_tokens` + `cache_read_input_tokens`) at or past the line, the engine sets the session id to `None`, ends the
+process and emits `handoff` then `exit` with reason `handoff`. Nothing is typed into the agent: the
+turn is already over. The next `chat_send` starts a fresh process with no `--resume`, and a Claude
+Code chat is started with the note as an appended system prompt (not when Claude Code runs through a
+`.cmd` shim: the note is free text and `cmd.exe` would split or run it). A result with no usage is never
+guessed at, so a turn that reports nothing leaves the chat running.
 
 ## Stop
 
