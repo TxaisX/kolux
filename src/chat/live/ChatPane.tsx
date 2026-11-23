@@ -171,13 +171,16 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         if (!started.current) {
           started.current = true;
           // A kept chat opened again (2026-11-21): the agent's own transcript holds what was said, and a
-          // resumed process does not say it again. Its failure is not the chat's: a session whose file is
-          // gone still starts a fresh conversation below.
-          if (resume) {
+          // resumed process does not say it again. A session whose file is gone is not resumed at all: the
+          // agent would only answer "no conversation found", so the chat starts fresh and says so quietly.
+          let pick = sessionId.current ?? resume;
+          if (resume && pick === resume) {
             const history = await chatHistory(agent, cwd, resume).catch(() => null);
-            if (live && history && history.items.length > 0) setItems(applyRead([], history));
+            if (!live) return;
+            if (history) setItems(applyRead([], history));
+            else pick = null;
           }
-          await startChat(chatId, cwd, choice.current.model, agent, sessionId.current ?? resume, choice.current.effort);
+          await startChat(chatId, cwd, choice.current.model, agent, pick, choice.current.effort);
           if (live) setSpawned(true);
         }
       } catch (e) {

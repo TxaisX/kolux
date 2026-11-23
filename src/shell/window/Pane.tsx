@@ -139,9 +139,12 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       renamePane(p.key, name);
       if (p.everyday) saveChats((list) => setEverydayName(list, p.everyday!, name));
     },
-    // The agent's own conversation id: what `--resume` needs when the chat is opened again.
+    // The agent's own conversation id: what `--resume` needs when the chat is opened again. The pane keeps
+    // it too, so a chat left open at quit comes back as itself instead of as a fresh conversation.
     chatSession: (id: string) => {
-      if (p.everyday) saveChats((list) => setEverydaySession(list, p.everyday!, id));
+      if (!p.everyday) return;
+      saveChats((list) => setEverydaySession(list, p.everyday!, id));
+      if (p.chatResume !== id) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, chatResume: id } : x)));
     },
     // A model or effort picked inside the chat (2026-11-21): the conversation keeps running on it, and the
     // record says so, so reopening the row comes back on the same pair.
