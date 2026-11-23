@@ -404,3 +404,91 @@ fn the_note_rides_only_on_a_plain_claude_code_line() {
     assert!(!notes_on_line("claude", true), "never through cmd.exe");
     assert!(!notes_on_line("openclaude", false), "not known to take the flag");
 }
+
+fn said(e: &ChatEvent, text: &str) -> bool {
+    matches!(e, ChatEvent::Assistant { blocks, .. } if blocks.iter().any(|b| matches!(b, Block::Text { text: t } if t.contains(text))))
+}
+
+/// The position of the first event of chat `id` that matches, in the order the sink saw them.
+fn first_at(h: &Harness, id: &str, hit: impl Fn(&ChatEvent) -> bool) -> Option<usize> {
+    h.seen.lock().unwrap().iter().filter(|(c, _)| c == id).position(|(_, e)| hit(e))
+}
+
+// Review P1-A (2026-11-23): a message the user wrote while a turn past the line was still running is
+// queued in the agent. Ending the process on that turn's result would lose it, so the handoff waits
+// for the last outstanding message's result.
+#[test]
+fn a_message_queued_during_a_turn_past_the_line_is_answered_before_the_handoff() {
+    let h = harness(IDLE_SLEEP, STOP_GRACE);
+    let mut spec = h.spec(&[]);
+    spec.handoff_at = 1_000;
+    h.engines.start("q1", spec, None, h.sink()).unwrap();
+    h.engines.send("q1", "hold [big] first", &[]).unwrap();
+    h.wait("q1", 1, |e| said(e, "holding"));
+    h.engines.send("q1", "second", &[]).unwrap();
+    h.wait("q1", 1, |e| matches!(e, ChatEvent::Handoff { .. }));
+    h.wait("q1", 1, |e| is_exit(e, ExitReason::Handoff));
+    let echo = first_at(&h, "q1", |e| said(e, "echo: second")).expect("the queued message was answered, not lost");
+    let handoff = first_at(&h, "q1", |e| matches!(e, ChatEvent::Handoff { .. })).unwrap();
+    assert!(echo < handoff, "the answer comes before the handoff");
+    let handoffs = h.wait("q1", 1, |e| matches!(e, ChatEvent::Handoff { .. }));
+    assert_eq!(handoffs, vec![ChatEvent::Handoff { tokens: 500_000, at: 1_000 }], "one handoff, on the reading that crossed");
+    h.engines.close_all();
+}
+
+// Review P2-D (2026-11-23): OpenClaude (and Claude Code through a .cmd shim) cannot take the note on
+// its command line, so the first message after a handoff carries it inside the JSON line instead.
+#[test]
+fn after_a_handoff_the_next_openclaude_message_carries_the_note_once() {
+    let h = harness(IDLE_SLEEP, STOP_GRACE);
+    let note = h.dir.join("note.md");
+    std::fs::write(&note, "# Handoff
+
+## Left to do
+- wire the readers").unwrap();
+    let mut spec = h.spec(&[]);
+    spec.agent = "openclaude".to_string();
+    spec.handoff_at = 1_000;
+    spec.handoff_note = Some(note.clone());
+    h.engines.start("n1", spec, None, h.sink()).unwrap();
+    h.engines.send("n1", "[big] first", &[]).unwrap();
+    h.wait("n1", 1, |e| is_exit(e, ExitReason::Handoff));
+    let args = h.stub_args("n1", 1);
+    assert!(!args[0]["args"].to_string().contains("wire the readers"), "never on the command line");
+    h.engines.send("n1", "second", &[]).unwrap();
+    h.wait("n1", 1, |e| said(e, "second"));
+    assert!(first_at(&h, "n1", |e| said(e, "wire the readers") && said(e, "second")).is_some(), "the message after the handoff carries the note");
+    h.engines.send("n1", "third", &[]).unwrap();
+    h.wait("n1", 1, |e| said(e, "echo: third"));
+    assert!(first_at(&h, "n1", |e| said(e, "third") && said(e, "wire the readers")).is_none(), "only the first message after the handoff carries it");
+    h.engines.close_all();
+}
+
+// Review P3-E (2026-11-23): a NUL in the note would end the string the CLI reads; it is dropped.
+#[test]
+fn a_nul_in_the_note_never_reaches_the_prompt() {
+    let dir = std::env::temp_dir().join(format!("kolux-note-nul-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let note = dir.join("handoff.md");
+    std::fs::write(&note, "left\0to do").unwrap();
+    let prompt = note_prompt(&note);
+    assert!(!prompt.contains('\0'), "no NUL survives: {prompt:?}");
+    assert!(prompt.contains("leftto do"));
+    drop(std::fs::remove_dir_all(&dir));
+}
+
+// Review P2-C (2026-11-23): the reader of a process that was already ended (a stop, a sleep, a
+// handoff) can still deliver a late line. Its usage and its result belong to the old process and
+// must never hand off, or count against, the process running now.
+#[test]
+fn a_stale_reader_never_hands_off_the_process_running_now() {
+    let spec = Spec { agent: "claude".to_string(), cwd: std::env::temp_dir(), model: None, effort: None, env: Vec::new(), handoff_at: 1_000, handoff_note: None };
+    let mut inner = Inner { spec, session_id: None, last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None };
+    let big = json!({ "input_tokens": 500_000 });
+    inner.saw_usage(1, Some(&big));
+    assert_eq!(inner.last_prompt, None, "an old process's usage is not this process's reading");
+    inner.last_prompt = Some(500_000);
+    assert_eq!(inner.handoff_after_result(1), None, "an old process's result never hands this one off");
+    assert_eq!(inner.outstanding, 1, "nor counts against this process's messages");
+    assert_eq!(inner.handoff_after_result(2), Some((500_000, 1_000)), "this process's own result still does");
+}

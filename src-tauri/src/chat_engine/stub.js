@@ -3,6 +3,10 @@
 // folder. It first prints a `stub_args` line (its arguments and two environment variables) so a
 // test can check the command line, then an init message, then answers each user message:
 // - a message starting with "slow" starts a turn that only an interrupt ends;
+// - a message starting with "hold" gets an assistant reply but no result until the next user message
+//   arrives; then the held result is printed and the new message is answered 300 ms later (a message
+//   the user wrote while a turn was still running, queued the way Claude Code queues it);
+// - a message containing "[big]" reports a 500,000-token prompt, any other 1 token;
 // - any other message gets an assistant echo and a success result.
 // An interrupt control request ends a slow turn with an error_during_execution result, unless
 // STUB_IGNORE_INTERRUPT=1 (to test the engine's fallback of ending the process).
@@ -22,6 +26,23 @@ out({ type: "system", subtype: "init", session_id: session, cwd: process.cwd(), 
 process.stderr.write("stub ready\n");
 
 let slow = false;
+let held = null;
+const usage = (text) => ({ input_tokens: text.includes("[big]") ? 500000 : 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 1 });
+const done = (text) => out({ type: "result", subtype: "success", is_error: false, result: `echo: ${text}`, session_id: session, num_turns: 1, duration_ms: 5, total_cost_usd: 0.001, usage: { input_tokens: 1, output_tokens: 1 }, permission_denials: [] });
+const answer = (text, images) => {
+  if (text.startsWith("slow")) {
+    slow = true;
+    out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-slow", model: "stub-model", content: [{ type: "text", text: "working" }] } });
+    return;
+  }
+  if (text.startsWith("hold")) {
+    held = text;
+    out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-hold", model: "stub-model", content: [{ type: "text", text: "holding" }], usage: usage(text) } });
+    return;
+  }
+  out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-echo", model: "stub-model", content: [{ type: "text", text: `echo: ${text} (${images} images)` }], usage: usage(text) } });
+  done(text);
+};
 const rl = readline.createInterface({ input: process.stdin });
 rl.on("line", (line) => {
   let m;
@@ -34,13 +55,13 @@ rl.on("line", (line) => {
     const content = m.message?.content ?? [];
     const text = content.find((c) => c.type === "text")?.text ?? "";
     const images = content.filter((c) => c.type === "image").length;
-    if (text.startsWith("slow")) {
-      slow = true;
-      out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-slow", model: "stub-model", content: [{ type: "text", text: "working" }] } });
+    if (held !== null) {
+      done(held);
+      held = null;
+      setTimeout(() => answer(text, images), 300);
       return;
     }
-    out({ type: "assistant", session_id: session, parent_tool_use_id: null, message: { id: "msg-echo", model: "stub-model", content: [{ type: "text", text: `echo: ${text} (${images} images)` }], usage: { input_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 1 } } });
-    out({ type: "result", subtype: "success", is_error: false, result: `echo: ${text}`, session_id: session, num_turns: 1, duration_ms: 5, total_cost_usd: 0.001, usage: { input_tokens: 1, output_tokens: 1 }, permission_denials: [] });
+    answer(text, images);
   } else if (m.type === "control_request" && m.request?.subtype === "interrupt") {
     if (deaf) return;
     out({ type: "control_response", response: { subtype: "success", request_id: m.request_id } });

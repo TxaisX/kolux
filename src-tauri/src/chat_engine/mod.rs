@@ -183,6 +183,16 @@ struct Inner {
     /// call, so it cannot be the context size; the last message's own usage is. Cleared at every
     /// spawn and taken at every result, so a turn that reports nothing is never guessed at.
     last_prompt: Option<u64>,
+    /// User messages written to this process whose turn has not reported its result yet. Claude Code
+    /// queues a message sent while a turn runs, so a handoff waits until this is back to 0: ending
+    /// the process earlier would lose what the user wrote. 0 at every spawn.
+    outstanding: u32,
+    /// A reading crossed the handoff line while messages were still outstanding: the handoff fires on
+    /// the first result that leaves none. Holds the reading that crossed.
+    handoff_due: Option<u64>,
+    /// The process was handed off and the next one cannot take the note on its command line
+    /// (OpenClaude, or Claude Code through a `.cmd` shim): the next message carries it instead.
+    note_due: bool,
     child: Option<Running>,
     gen: u64,
     busy: bool,
@@ -190,6 +200,41 @@ struct Inner {
     closing: bool,
     /// The process ended on purpose last: its generation, why, and its exit code.
     ending: Option<(u64, ExitReason, Option<i32>)>,
+}
+
+impl Inner {
+    /// A main-conversation message's usage, read by the stdout reader of process `gen`.
+    fn saw_usage(&mut self, gen: u64, usage: Option<&serde_json::Value>) {
+        // Review P2-C (2026-11-23): a late line from an ended process is not this process's reading.
+        if self.gen != gen {
+            return;
+        }
+        if let Some(tokens) = prompt_tokens(usage) {
+            self.last_prompt = Some(tokens);
+        }
+    }
+
+    /// A turn's result, read by the stdout reader of process `gen`. Answers the reading and the line
+    /// when the chat hands off now: a reading at or past the line marks the handoff due, and it fires
+    /// on the first result that leaves no message of the user's outstanding.
+    fn handoff_after_result(&mut self, gen: u64) -> Option<(u64, u64)> {
+        if self.gen != gen {
+            return None;
+        }
+        self.outstanding = self.outstanding.saturating_sub(1);
+        let reading = self.last_prompt.take();
+        let at = self.spec.handoff_at;
+        if at == 0 || self.closing {
+            return None;
+        }
+        if let Some(tokens) = reading.filter(|t| *t >= at) {
+            self.handoff_due = Some(self.handoff_due.map_or(tokens, |due| due.max(tokens)));
+        }
+        if self.outstanding > 0 {
+            return None;
+        }
+        self.handoff_due.take().map(|tokens| (tokens, at))
+    }
 }
 
 /// One chat.
@@ -224,6 +269,8 @@ impl Engine {
                 args.push("--append-system-prompt".to_string());
                 args.push(note_prompt(note));
             }
+            // The note is on this line already; the first message need not carry it as well.
+            inner.note_due = false;
         }
         let mut cmd = if shim {
             let mut c = crate::winproc::command(crate::pty::system_program("cmd.exe"));
@@ -241,6 +288,8 @@ impl Engine {
         let gen = inner.gen;
         inner.child = Some(Running { child, stdin, pid, gen });
         inner.last_prompt = None;
+        inner.outstanding = 0;
+        inner.handoff_due = None;
         inner.busy = false;
         inner.last_active = Instant::now();
         self.emit(&ChatEvent::Started { pid, resumed: resume });
@@ -269,11 +318,7 @@ impl Engine {
                     ChatEvent::Init(i) if !i.session_id.is_empty() => inner.session_id = Some(i.session_id.clone()),
                     // The reading is the last main-conversation message's own usage: the turn's
                     // `result` sums every tool call of the turn, which is not how full the window is.
-                    ChatEvent::Assistant { parent_tool_use_id: None, usage, .. } => {
-                        if let Some(tokens) = prompt_tokens(usage.as_ref()) {
-                            inner.last_prompt = Some(tokens);
-                        }
-                    }
+                    ChatEvent::Assistant { parent_tool_use_id: None, usage, .. } => inner.saw_usage(gen, usage.as_ref()),
                     ChatEvent::Result(r) => {
                         if let Some(id) = &r.session_id {
                             inner.session_id = Some(id.clone());
@@ -286,14 +331,13 @@ impl Engine {
                         // message's usage is the reading (never a guess); at or past the line the
                         // process ends and the next message starts a fresh conversation, with the note
                         // on paper. A turn with no reading leaves the chat running.
-                        let reading = inner.last_prompt.take();
-                        let at = inner.spec.handoff_at;
-                        if at > 0 && !inner.closing {
-                            if let Some(tokens) = reading.filter(|t| *t >= at) {
-                                inner.session_id = None;
-                                Self::end_process(&mut inner, ExitReason::Handoff);
-                                cleared = Some((tokens, at));
-                            }
+                        // Review P1-A (2026-11-23): never while a message the user wrote is still
+                        // queued in the process; see `Inner::handoff_after_result`.
+                        if let Some((tokens, at)) = inner.handoff_after_result(gen) {
+                            inner.session_id = None;
+                            inner.note_due = true;
+                            Self::end_process(&mut inner, ExitReason::Handoff);
+                            cleared = Some((tokens, at));
                         }
                     }
                     _ => {}
@@ -348,10 +392,17 @@ impl Engine {
         if inner.child.is_none() {
             self.spawn(&mut inner)?;
         }
-        let line = user_line(text, images);
+        // Review P2-D (2026-11-23): the first message after a handoff carries the note when the process
+        // could not take it on its command line. It goes inside the JSON line, never on a command line.
+        let line = match inner.spec.handoff_note.as_deref().filter(|_| inner.note_due) {
+            Some(note) => user_line(&note_message(note, text), images),
+            None => user_line(text, images),
+        };
         let agent = inner.spec.agent.clone();
         let stdin = inner.child.as_mut().and_then(|r| r.stdin.as_mut()).ok_or("The chat's process is not running.")?;
         stdin.write_all(line.as_bytes()).and_then(|_| stdin.write_all(b"\n")).and_then(|_| stdin.flush()).map_err(|e| format!("Could not send to {}: {e}", crate::agents::agent_name(&agent)))?;
+        inner.note_due = false;
+        inner.outstanding = inner.outstanding.saturating_add(1);
         inner.busy = true;
         inner.last_active = Instant::now();
         Ok(())
@@ -480,7 +531,7 @@ impl Engines {
             id: chat_id.to_string(),
             cfg: self.cfg.clone(),
             sink,
-            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
+            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due: false, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
         });
         {
             let mut inner = lock(&engine.inner);
@@ -553,12 +604,19 @@ fn notes_on_line(agent: &str, shim: bool) -> bool {
 /// The handoff note as an appended system prompt: the file's own words, capped so a long note never
 /// crowds the window it is meant to protect. A note that cannot be read adds nothing.
 fn note_prompt(note: &Path) -> String {
-    let text = std::fs::read_to_string(note).unwrap_or_default();
+    // Review P3-E (2026-11-23): a NUL would end the string the CLI reads; it is never part of a note.
+    let text = std::fs::read_to_string(note).unwrap_or_default().replace('\0', "");
     let mut kept: String = text.chars().take(8_000).collect();
     if kept.chars().count() < text.chars().count() {
         kept.push_str("\n\n(The handoff note is longer; read the file for the rest.)");
     }
     format!("Your handoff note is at {}. Keep it current as you work: the chat hands off at the context line, and this note is what the next conversation starts from.\n\n{}", note.display(), kept)
+}
+
+/// The first message after a handoff, for a process that could not take the note on its command
+/// line: the note first, then what the user wrote.
+fn note_message(note: &Path, text: &str) -> String {
+    format!("{}\n\n---\n\n{text}", note_prompt(note))
 }
 
 /// The page's payload: the chat id beside the event's own fields.
@@ -586,6 +644,9 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Sen
 /// when the page asks for it (2026-11-20). `agent` left out means Claude Code, as before. `effort`
 /// (2026-11-21) is the level the conversation runs at; a later pick restarts the process and resumes
 /// the same session on the new model or effort.
+// Each argument is a field the page sends by name (lively added `effort` as the eighth); a struct
+// would change the page's call, so the count is allowed here.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, model: Option<String>, effort: Option<String>, resume_session_id: Option<String>, extra_env: Vec<(String, String)>, agent: Option<String>) -> Result<(), String> {
     use tauri::Manager;

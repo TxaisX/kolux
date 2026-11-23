@@ -133,8 +133,9 @@ Notes on the shapes:
 
 A chat follows the same cap and handoff line as a terminal pane. `chat_start` puts the 200k cap on
 the process (unless the switch is off or the environment already sets it), creates the folder's
-handoff note (`.kolux/handoffs/<folder>.md`, the same file a pane uses), and passes the line from
-`handoffAtTokens` (170,000 by default, `0` off).
+handoff note in the chat's own folder (`<folder>/.kolux/handoffs/<folder name>.md`), and passes the line from
+`handoffAtTokens` (170,000 by default, `0` off). For a chat in a worktree that is not the note a pane
+in the same worktree keeps: a pane's note is written in the main project's `.kolux/handoffs/`.
 
 When a turn's `result` arrives and the last main-conversation `assistant` message of that turn carried a
 prompt size (`input_tokens` + `cache_creation_input_tokens` + `cache_read_input_tokens`) at or past the line, the engine sets the session id to `None`, ends the
@@ -143,6 +144,18 @@ turn is already over. The next `chat_send` starts a fresh process with no `--res
 Code chat is started with the note as an appended system prompt (not when Claude Code runs through a
 `.cmd` shim: the note is free text and `cmd.exe` would split or run it). A result with no usage is never
 guessed at, so a turn that reports nothing leaves the chat running.
+
+A message the user sends while a turn is still running is queued by the agent, so the engine counts
+the messages it has written that have not had their `result` yet. A reading past the line while one is
+still queued marks the handoff as due, and the process ends on the first `result` that leaves none
+outstanding: the queued message is answered first, never lost. Only the reader of the process running
+now counts: a late line from a process that was already ended is ignored for the reading and the
+handoff.
+
+An agent that cannot take the note on its command line (OpenClaude, or Claude Code through a `.cmd`
+shim) gets it in its first message after a handoff instead: the note text goes first inside the JSON
+user line on stdin, then what the user wrote. Only that one message carries it. A plain Claude Code
+chat keeps the appended system prompt, which also covers its very first start.
 
 ## Stop
 

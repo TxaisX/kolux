@@ -73,7 +73,7 @@ Every agent Kolux starts gets a handoff note before it begins, and every workspa
 
 The notes are what make clearing early cheap. Each time a session's context crosses its clear point (see [Settings](settings.md)) it is cleared with the agent's own new-conversation command - `/clear` in Claude Code, `/new` in Codex, OpenCode and Grok - and the next turn starts sharp with the state on paper rather than in a conversation the model was already losing track of. A long day relays as many times as it fills.
 
-A chat pane makes the same note, named after its folder, and hands off without typing anything: at the point its process ends, the chat says so, and the next message starts a fresh conversation with the note appended for Claude Code.
+A chat pane makes a note of its own in its own folder, named after that folder (for a chat in a worktree this is not the note a terminal pane there keeps), and hands off without typing anything: once its turn ends past the line, and after any message you sent meanwhile has been answered, the chat says so and the next message starts a fresh conversation with the note on hand.
 
 What still comes back:
 

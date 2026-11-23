@@ -22,11 +22,8 @@ import { prefetch } from "./lazy/deferred";
 import { showStartFailure } from "./recovery/startFailed";
 import { sharedRead } from "./settings/sharedRead";
 import { bootMark } from "./bootTiming";
+import { RESTORE_ASK_MS, within } from "./terminal/restoreLine";
 
-/** Txais (2026-11-21): how long a restored tab waits for its own start line before mounting without
- *  one. A local session lookup answers in milliseconds; this only fires when one is wedged, and then
- *  the grid opens anyway instead of the window sitting empty until the ask gives up. */
-const RESTORE_ASK_MS = 2_000;
 
 // PKG-4: the page's start-up timeline. Marks are short and stable (ms since performance.timeOrigin); the page sends
 // them once, after `show`, so the diagnostics log holds one line with the Rust marks beside them. Never a reason to
@@ -164,16 +161,15 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
     const asked = sessionOrder(layout.panes).filter((p) => restoreAsks(p));
     await Promise.all(
       asked.map(async (p) => {
-        // A wedged agent must never hold the grid: its ask is raced against a short deadline, and a
+        // A wedged agent must never hold the grid: its ask is raced against a deadline (RESTORE_ASK_MS), and a
         // tab that misses it mounts on its own saved line instead (a resume may be lost; a window is
         // never left empty for it).
-        const line = await new Promise<{ args: string[]; program: string | null; env: [string, string][]; resumed: boolean } | null>((resolve) => {
-          const late = setTimeout(() => resolve(null), RESTORE_ASK_MS);
-          invoke<{ args: string[]; program: string | null; env: [string, string][]; resumed: boolean }>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.session ?? null }).then(
-            (l) => (clearTimeout(late), resolve(l)),
-            () => (clearTimeout(late), resolve(null)),
-          );
-        });
+        // Review P1-B (2026-11-23): each miss is marked on the start-up timeline.
+        const line = await within(
+          invoke<{ args: string[]; program: string | null; env: [string, string][]; resumed: boolean }>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.session ?? null }),
+          RESTORE_ASK_MS,
+          () => bootMark("restore:miss"),
+        );
         if (line) Object.assign(p, { args: line.args, program: line.program ?? p.program, env: line.env, resumed: line.resumed });
         else p.resumed = false;
       }),
