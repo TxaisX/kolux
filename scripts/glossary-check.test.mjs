@@ -18,10 +18,12 @@ describe("glossary-check", () => {
     expect(text).not.toMatch(/Kolux makes no extra copies\./);
   });
 
-  it("says only a New session menu pick gets a worktree, and agents share the workspace only while Own folder is off (job 56)", () => {
+  it("says every launch in a Git project gets a worktree, and agents share the workspace only while Own folder is off (job 56, DT-C287)", () => {
     const text = fs.readFileSync(fileURLToPath(new URL("../docs/GLOSSARY.md", import.meta.url)), "utf8");
     expect(text).not.toContain("an agent started from **New session**");
-    expect(text.match(/an agent picked from the \*\*New session\*\* menu/g)?.length).toBe(2);
+    expect(text, "the old two-or-more rule is gone").not.toContain("when you start two or more together");
+    expect(text).toMatch(/every agent you launch works in a \*\*Worktree\*\* of its own/);
+    expect(text).toMatch(/one for every agent you launch, whether it starts alone or beside others/);
     expect(text).not.toContain("Because every agent shares it");
     expect(text).toMatch(/While "Own folder for each agent" \(Settings, Git\) is off, every agent shares it/);
     expect(text).not.toContain("in a new pane in the project folder");

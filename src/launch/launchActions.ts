@@ -118,7 +118,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // DT-C250: with "Own folder for each agent" on and the chooser set to own folders, every AI seat gets a
       // fresh worktree of its own (SESS-014, SESS-023), made one after another so no two pick one name. A plain
       // terminal seat stays in the chooser's folder. Off (the default), nothing is made.
-      const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
+      const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(inGitFor(chooser))) === "separate";
       // A launch whose first own folder cannot be made (a plain folder, or a Git project with no commit yet) turns both
       // off below and starts the agents together in the chooser's folder, so two agents never mean no agents.
       let makes = separate && picked.some(Boolean);
@@ -156,11 +156,14 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         } catch (err) {
           // A later copy failing after earlier ones were made stops the Start (those folders are listed: failureNote).
           // The first one failing means nothing was made and nothing will be: the folder is not a Git project, or has
-          // no commit to copy from. Every agent then opens here together, as a one-agent Start already does.
+          // no commit to copy from. Every agent then opens here, in the folder the Start was opened in.
           if (kept.length > 0) throw err;
           makes = false;
           team = false;
-          setupTrouble.push(sharedFallback(err));
+          // Txais (2026-11-22): one AI alone has nothing to collide with, and its own folder is the one it was started
+          // in (Everyday is a plain folder by design), so a solo Start says nothing when no copy can be made. Two or
+          // more do share files then, and the line says why.
+          if (picked.filter(Boolean).length >= 2) setupTrouble.push(sharedFallback(err));
           places.push({ cwd: place, branch: chooser.branch });
           continue;
         }

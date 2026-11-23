@@ -5,6 +5,11 @@ task needs from the table in part 2, and open only that file.
 
 ## 0. Owner changes after 0.15.0
 
+- **2026-11-22, a new worktree for every launch (DT-C287).** In a Git project, every AI seat
+  starts in a fresh worktree, whether it is one seat or several, and whatever folder the Start
+  form was opened in: the main checkout, an existing worktree, or the sidebar's New session
+  menu. "Same folder for all" stays a choice for one launch, and a folder outside Git, or "Own
+  folder for each agent" turned off, still shares.
 - **2026-11-05, one folder.** Kolux works in one folder per project. A session launch does not
   create a worktree or any other copy of the project: every seat runs in the project folder.
   SESS-014 and SESS-023 are superseded. Automations run in the project folder, and the app hides
@@ -15,13 +20,13 @@ task needs from the table in part 2, and open only that file.
   workspace commands still exist; removing them is the next change.
 - **2026-11-11, own folders by default (DT-C273).** Txais: "we do not want our agents to be tripping
   over each other." "Own folder for each agent" is now on unless a person turns it off, so in a
-  Git project a launch with two or more AI seats gives each its own worktree. Everything below
-  about the choice still holds; only which way Kolux starts has changed.
+  Git project every AI seat gets its own worktree. Everything below about the choice still
+  holds; only which way Kolux starts has changed.
 - **2026-11-11, own folders as a choice.** One folder per project stays the way Kolux starts, and
   everything in the 2026-11-05 change holds while this choice is off: no launch makes a worktree.
   A person can turn on "Own folder for each agent" in Settings, Git & worktrees. While it is on,
   SESS-014 and SESS-023 apply again. In a Git project a launch gives each AI seat a worktree of
-  its own on its own branch; that is the chooser's pick for two or more seats, and it also offers
+  its own on its own branch; that is the chooser's pick for every seat, and it also offers
   the same folder for all. An agent started on its own gets a fresh worktree. The sidebar lists
   workspaces again, with the new-workspace button, the palette create row, the issue/PR start
   action and the workspaces folder setting, and an agent working beside others is told to stay in

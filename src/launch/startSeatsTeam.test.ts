@@ -160,8 +160,8 @@ test("each team worktree is recorded as soon as it is made, and stays recorded w
 });
 
 // Txais (2026-11-16): two agents in a folder that cannot be copied (a plain folder, or a Git project with no commit yet)
-// opened nothing, because every agent wanted a worktree of its own and Git refused the first. One agent worked, since it
-// shares the folder. Now the agents open together there, and the notice says why they share it.
+// opened nothing, because every agent wanted a worktree of its own and Git refused the first. Now the agents open
+// together there, and the notice says why they share it. One agent alone (2026-11-22) opens there without a line.
 test("the first own folder cannot be made: every agent opens in the chooser's folder, together, with a line saying so", async () => {
   h.made = 0;
   h.refuseAt = 1;
@@ -174,6 +174,25 @@ test("the first own folder cannot be made: every agent opens in the chooser's fo
     expect(next.map((p) => p.cwd)).toEqual(["C:\\r", "C:\\r"]);
     expect(next.some((p) => p.view !== undefined)).toBe(false); // no team grid: the folder's own grid
     expect(setNotice).toHaveBeenCalledWith(sharedFallback("fatal: not a git repository"));
+    expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toBeUndefined();
+  } finally {
+    h.refuseAt = 0;
+  }
+});
+
+// Txais (2026-11-22): one AI alone in a folder that cannot be copied (Everyday is a plain folder by design) opens
+// there quietly. It has no other agent to collide with, so the shared-folder line would be noise on every launch.
+test("one AI alone in a folder that cannot be copied opens there without a line", async () => {
+  h.made = 0;
+  h.refuseAt = 1;
+  try {
+    const chooser: P = { ...shell(50), seats: [seat], copies: "separate" };
+    const { a, setPanes, setNotice, settingsRef } = setup([chooser]);
+    expect(await a.startSeats(50, [seat] as never)).toBe(true);
+    const next = setPanes.mock.calls[0][0]([chooser]) as { cwd: string; view?: string }[];
+    expect(next.map((p) => p.cwd)).toEqual(["C:\\r"]);
+    expect(next[0].view).toBeUndefined(); // the folder's own grid, not a team grid
+    expect(setNotice).not.toHaveBeenCalledWith(expect.stringContaining("could not make a separate folder"));
     expect(settingsRef.current[TEAM_WORKTREES_SETTING]).toBeUndefined();
   } finally {
     h.refuseAt = 0;

@@ -114,7 +114,7 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 | Shape | Pick a built-in or saved arrangement. "Save as team" stores yours under a Team name |
 | Folders | Start form only: tick the project folders to start in, or "Add folder" |
 | How many | Pick a quick count or type any number, and press "Same for all" to copy one choice to every seat. Start opens every seat as its own pane |
-| Folder or Folders | With **Own folder for each agent** on (Settings, Git) in a Git project: "Own folder for each AI", picked for two or more seats, gives each seat its own worktree; "Same folder for all" shares the project folder. With it off, every seat works in the project folder and Kolux makes no extra copies |
+| Folder or Folders | With **Own folder for each agent** on (Settings, Git) in a Git project: "Own folder for each AI", picked for every seat, gives each AI a new worktree, even when only one seat starts and wherever the form was opened; "Same folder for all" shares the folder for that launch. With it off, every seat works in the project folder and Kolux makes no extra copies |
 | Task for all of them | Optional first request for all sessions |
 | Per seat | Pick the AI and its model, and an optional job title |
 
