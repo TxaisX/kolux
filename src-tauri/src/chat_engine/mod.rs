@@ -235,6 +235,55 @@ impl Inner {
         }
         self.handoff_due.take().map(|tokens| (tokens, at))
     }
+
+    /// One line the stdout reader of process `gen` read: the chat's state follows it. Answers whether
+    /// the page hears the line, and the handoff it fires (the reading and the line), if any.
+    fn heard(&mut self, gen: u64, ev: &ChatEvent) -> (bool, Option<(u64, u64)>) {
+        let current = self.gen == gen;
+        match ev {
+            // Review P3 (2026-11-23): a late line from an ended process never names the session the
+            // chat resumes, and its init is not this process's start.
+            ChatEvent::Init(_) if !current => return (false, None),
+            ChatEvent::Init(i) if !i.session_id.is_empty() => self.session_id = Some(i.session_id.clone()),
+            ChatEvent::Assistant { parent_tool_use_id, usage, .. } => {
+                // A reply still being written keeps the chat awake.
+                if current {
+                    self.last_active = Instant::now();
+                }
+                // The reading is the last main-conversation message's own usage: the turn's `result`
+                // sums every tool call of the turn, which is not how full the window is.
+                if parent_tool_use_id.is_none() {
+                    self.saw_usage(gen, usage.as_ref());
+                }
+            }
+            ChatEvent::Result(r) => {
+                // Txais (2026-11-21): a chat is handed off at the same line a pane is. The last message's
+                // usage is the reading (never a guess); at or past the line the process ends and the next
+                // message starts a fresh conversation, with the note on paper. A turn with no reading
+                // leaves the chat running.
+                // Review P1-A (2026-11-23): never while a message the user wrote is still queued in the
+                // process; see `handoff_after_result`.
+                let handoff = self.handoff_after_result(gen);
+                if current {
+                    if let Some(id) = &r.session_id {
+                        self.session_id = Some(id.clone());
+                    }
+                    // Review P2 (2026-11-23): a message queued behind this turn still runs, so the chat
+                    // stays busy (no idle sleep, Stop still stops it) until its own result.
+                    self.busy = self.outstanding > 0;
+                    self.last_active = Instant::now();
+                }
+                if let Some(cleared) = handoff {
+                    self.session_id = None;
+                    self.note_due = true;
+                    Engine::end_process(self, ExitReason::Handoff);
+                    return (true, Some(cleared));
+                }
+            }
+            _ => {}
+        }
+        (true, None)
+    }
 }
 
 /// One chat.
@@ -311,39 +360,10 @@ impl Engine {
     fn read_stdout(self: Arc<Self>, out: std::process::ChildStdout, gen: u64) {
         for line in BufReader::new(out).lines().map_while(Result::ok) {
             let Some(ev) = parse_line(&line) else { continue };
-            let mut cleared = None;
-            {
-                let mut inner = lock(&self.inner);
-                match &ev {
-                    ChatEvent::Init(i) if !i.session_id.is_empty() => inner.session_id = Some(i.session_id.clone()),
-                    // The reading is the last main-conversation message's own usage: the turn's
-                    // `result` sums every tool call of the turn, which is not how full the window is.
-                    ChatEvent::Assistant { parent_tool_use_id: None, usage, .. } => inner.saw_usage(gen, usage.as_ref()),
-                    ChatEvent::Result(r) => {
-                        if let Some(id) = &r.session_id {
-                            inner.session_id = Some(id.clone());
-                        }
-                        if inner.gen == gen {
-                            inner.busy = false;
-                            inner.last_active = Instant::now();
-                        }
-                        // Txais (2026-11-21): a chat is handed off at the same line a pane is. The last
-                        // message's usage is the reading (never a guess); at or past the line the
-                        // process ends and the next message starts a fresh conversation, with the note
-                        // on paper. A turn with no reading leaves the chat running.
-                        // Review P1-A (2026-11-23): never while a message the user wrote is still
-                        // queued in the process; see `Inner::handoff_after_result`.
-                        if let Some((tokens, at)) = inner.handoff_after_result(gen) {
-                            inner.session_id = None;
-                            inner.note_due = true;
-                            Self::end_process(&mut inner, ExitReason::Handoff);
-                            cleared = Some((tokens, at));
-                        }
-                    }
-                    _ => {}
-                }
+            let (heard, cleared) = lock(&self.inner).heard(gen, &ev);
+            if heard {
+                self.emit(&ev);
             }
-            self.emit(&ev);
             if let Some((tokens, at)) = cleared {
                 self.emit(&ChatEvent::Handoff { tokens, at });
             }
@@ -527,11 +547,15 @@ impl Engines {
             return Err(format!("The folder {} does not exist.", spec.cwd.display()));
         }
         self.close(chat_id);
+        // Review P2 (2026-11-23): a fresh conversation starts from the note too. A process that takes it
+        // on its command line clears this at spawn; any other (OpenClaude, a shim) carries it in the
+        // first message. A resumed conversation already has it.
+        let note_due = spec.handoff_note.is_some() && resume_session_id.is_none();
         let engine = Arc::new(Engine {
             id: chat_id.to_string(),
             cfg: self.cfg.clone(),
             sink,
-            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due: false, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
+            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
         });
         {
             let mut inner = lock(&engine.inner);
@@ -614,9 +638,13 @@ fn note_prompt(note: &Path) -> String {
 }
 
 /// The first message after a handoff, for a process that could not take the note on its command
-/// line: the note first, then what the user wrote.
-fn note_message(note: &Path, text: &str) -> String {
-    format!("{}\n\n---\n\n{text}", note_prompt(note))
+/// line: the note first, then what the user wrote. Review P2 (2026-11-23): the note rides in a
+/// `<system-reminder>` envelope, which every transcript read hides (`chat.rs` `HIDDEN_TAGS`), so a
+/// reopened chat shows only the user's own words. The note is free text: a closing tag inside it is
+/// broken so it can never end the envelope early.
+pub(crate) fn note_message(note: &Path, text: &str) -> String {
+    let body = note_prompt(note).replace("</system-reminder", "</system_reminder");
+    format!("<system-reminder>\n{body}\n</system-reminder>\n\n{text}")
 }
 
 /// The page's payload: the chat id beside the event's own fields.

@@ -85,6 +85,25 @@ function put(out: ChatItem[], item: ChatItem): void {
 }
 
 /**
+ * The agent conversation an event says the chat is now on: the id an init line or a resumed start names,
+ * `null` after a handoff (the old conversation is over, so nothing may resume it again), and `undefined`
+ * when the event says nothing about it.
+ */
+export function sessionChange(ev: ChatEvent): string | null | undefined {
+  if (ev.kind === "init" && ev.sessionId) return ev.sessionId;
+  if (ev.kind === "started" && ev.resumed) return ev.resumed;
+  if (ev.kind === "handoff") return null;
+  return undefined;
+}
+
+/** A user turn's text without the `<system-reminder>` envelopes the engine or the agent adds (the
+ *  handoff note rides in one): the chat shows only what the user wrote. An unclosed one runs to the end. */
+export function userWords(text: string): string {
+  if (!text.includes("<system-reminder>")) return text.trim() ? text : "";
+  return text.replace(/<system-reminder>[\s\S]*?(<\/system-reminder>|$)/g, "").trim();
+}
+
+/**
  * Folds one `chat-event` into the conversation. `at`: when it arrived (ms since 1970), since the engine's
  * events carry no time of their own; `seq`: a counter the caller keeps, so two events the agent gives no
  * id still get stable, different row ids. Returns `prev` itself when the event draws nothing, so a
@@ -147,8 +166,9 @@ function heard(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq: number
   };
   // The message a box sent comes back here, so the waiting row it left is confirmed from the same rules
   // every transcript read uses (model.ts `combine` / `sentIn`).
-  (ev.text ?? []).forEach((text, i) => {
-    if (!text.trim()) return;
+  (ev.text ?? []).forEach((raw, i) => {
+    const text = userWords(raw);
+    if (!text) return;
     copy();
     put(out, { id: `u-${seq}-${i}`, role: "user", kind: "text", text, at });
   });

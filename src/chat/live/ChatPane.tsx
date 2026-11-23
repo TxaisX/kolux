@@ -18,7 +18,7 @@ import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
 import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
-import { reduce } from "./events";
+import { reduce, sessionChange } from "./events";
 import { applyRead, capPending, combine, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
 import { Composer } from "../MessageBox";
@@ -63,7 +63,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   /** The conversation to pick up (2026-11-21): a kept Everyday chat's own id, so reopening resumes it. */
   resume?: string | null;
   /** The agent's conversation id, once it names one: the window writes it on the chat's kept record. */
-  onSession?: (id: string) => void;
+  /** The agent conversation the chat is on now; `null` once a handoff ended it. */
+  onSession?: (id: string | null) => void;
   /** A model picked in the box (2026-11-21): the window writes it on the chat's kept record, so reopening
    *  resumes on the model the chat last used. */
   onModel?: (model: string | null) => void;
@@ -151,13 +152,12 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           if (ev.kind === "result" || ev.kind === "stopped") setOpen(false);
           // A kept Everyday chat learns the agent's own conversation id here: the init line names it, and a
           // resumed process (after a crash or a sleep) names the one it picked up (`Started.resumed`).
-          if (ev.kind === "init" && ev.sessionId) {
-            sessionId.current = ev.sessionId;
-            reportSession.current?.(ev.sessionId);
-          }
-          if (ev.kind === "started" && ev.resumed) {
-            sessionId.current = ev.resumed;
-            reportSession.current?.(ev.resumed);
+          // A handoff (2026-11-23) ends that conversation: the id is forgotten here and in the kept record, so
+          // a model or effort pick, or opening the chat again, starts fresh instead of resuming the full one.
+          const session = sessionChange(ev);
+          if (session !== undefined) {
+            sessionId.current = session;
+            reportSession.current?.(session);
           }
           // A finished turn is when most artifacts appear, so the folder is read again right then.
           if (ev.kind === "result") setLookAt((n) => n + 1);

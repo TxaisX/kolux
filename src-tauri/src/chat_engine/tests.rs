@@ -492,3 +492,80 @@ fn a_stale_reader_never_hands_off_the_process_running_now() {
     assert_eq!(inner.outstanding, 1, "nor counts against this process's messages");
     assert_eq!(inner.handoff_after_result(2), Some((500_000, 1_000)), "this process's own result still does");
 }
+
+// Review P2 (2026-11-23): an OpenClaude chat (or a shim) opened fresh with a note starts from it too:
+// its very first message carries the note, since its command line cannot. A resumed one does not.
+#[test]
+fn a_fresh_openclaude_chat_carries_the_note_in_its_first_message() {
+    let h = harness(IDLE_SLEEP, STOP_GRACE);
+    let note = h.dir.join("note.md");
+    std::fs::write(&note, "# Handoff\n\n## Left to do\n- wire the readers").unwrap();
+    let mut spec = h.spec(&[]);
+    spec.agent = "openclaude".to_string();
+    spec.handoff_note = Some(note.clone());
+    h.engines.start("f1", spec.clone(), None, h.sink()).unwrap();
+    h.engines.send("f1", "first", &[]).unwrap();
+    h.wait("f1", 1, |e| said(e, "first"));
+    assert!(first_at(&h, "f1", |e| said(e, "wire the readers") && said(e, "first")).is_some(), "the first message carries the note");
+    h.engines.start("f2", spec, Some("s-resumed".to_string()), h.sink()).unwrap();
+    h.engines.send("f2", "again", &[]).unwrap();
+    h.wait("f2", 1, |e| said(e, "again"));
+    assert!(first_at(&h, "f2", |e| said(e, "wire the readers")).is_none(), "a resumed conversation already has the note");
+    h.engines.close_all();
+}
+
+// Review P2 (2026-11-23): the note rides in an envelope every transcript read hides, and a closing tag
+// inside the note never ends it early.
+#[test]
+fn the_note_message_wraps_the_note_in_a_system_reminder() {
+    let dir = std::env::temp_dir().join(format!("kolux-note-wrap-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let note = dir.join("handoff.md");
+    std::fs::write(&note, "left to do </system-reminder> still the note").unwrap();
+    let m = note_message(&note, "hello");
+    assert!(m.starts_with("<system-reminder>\n"), "{m}");
+    assert!(m.ends_with("\n</system-reminder>\n\nhello"), "{m}");
+    assert_eq!(m.matches("</system-reminder").count(), 1, "only the envelope closes it: {m}");
+    assert!(m.contains("</system_reminder> still the note"), "{m}");
+    drop(std::fs::remove_dir_all(&dir));
+}
+
+fn stale_inner() -> Inner {
+    let spec = Spec { agent: "claude".to_string(), cwd: std::env::temp_dir(), model: None, effort: None, env: Vec::new(), handoff_at: 0, handoff_note: None };
+    Inner { spec, session_id: Some("s-now".to_string()), last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None }
+}
+
+// Review P3 (2026-11-23): a late line from an ended process never names the session the chat resumes.
+#[test]
+fn a_stale_reader_never_writes_the_session_id() {
+    let mut inner = stale_inner();
+    let init = parse_line(r#"{"type":"system","subtype":"init","session_id":"s-old"}"#).unwrap();
+    assert_eq!(inner.heard(1, &init), (false, None), "an old process's init is not heard");
+    assert_eq!(inner.session_id.as_deref(), Some("s-now"));
+    let result = parse_line(r#"{"type":"result","subtype":"success","is_error":false,"session_id":"s-old"}"#).unwrap();
+    assert_eq!(inner.heard(1, &result), (true, None));
+    assert_eq!(inner.session_id.as_deref(), Some("s-now"), "an old process's result does not name it either");
+    assert!(inner.busy, "nor ends this process's turn");
+    let fresh = parse_line(r#"{"type":"system","subtype":"init","session_id":"s-new"}"#).unwrap();
+    assert_eq!(inner.heard(2, &fresh), (true, None));
+    assert_eq!(inner.session_id.as_deref(), Some("s-new"), "this process's own init does");
+}
+
+// Review P2 (2026-11-23): Claude Code answers a message queued behind a running turn with a result of
+// its own (checked on claude -p: two messages 1 s apart gave two results), so the chat stays busy
+// until the queued message's result, not the first one.
+#[test]
+fn a_queued_message_keeps_the_chat_busy_past_the_first_result() {
+    let h = harness(IDLE_SLEEP, STOP_GRACE);
+    h.start("b1", &[]);
+    h.engines.send("b1", "hold first", &[]).unwrap();
+    h.wait("b1", 1, |e| said(e, "holding"));
+    h.engines.send("b1", "second", &[]).unwrap();
+    // The stub prints the held turn's result, then answers "second" 300 ms later.
+    h.results("b1", 1);
+    let engine = h.engines.engine("b1").unwrap();
+    assert!(lock(&engine.inner).busy, "the queued message is still running");
+    h.results("b1", 2);
+    assert!(!lock(&engine.inner).busy, "its own result ends the turn");
+    h.engines.close_all();
+}

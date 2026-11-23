@@ -2,7 +2,7 @@
 // Each case here is a line shape docs/chat-engine.md prints, and the last tests prove the reducer's rows
 // go through the same `combine` / `fold` the transcript chat uses, with no second renderer.
 import { expect, test } from "vitest";
-import { reduce, type ChatEvent } from "./events";
+import { reduce, sessionChange, type ChatEvent } from "./events";
 import { combine } from "../model";
 import { fold, type Tool } from "../steps";
 
@@ -99,4 +99,23 @@ test("a compaction is the divider the chat already draws", () => {
   const items = reduce([], ev({ kind: "compactBoundary", trigger: "auto", preTokens: 167000 }), 11, 1);
   const views = fold(items.map((i) => ({ ...i, row: "message" as const })), false);
   expect(views[0]).toMatchObject({ row: "message", kind: "compact" });
+});
+
+// Review P2 (2026-11-23): a handoff ends the conversation, so the pane and the kept record forget its id;
+// a model or effort pick, or reopening the chat, then starts fresh instead of resuming the full one.
+test("a handoff forgets the conversation; an init or a resumed start names it", () => {
+  expect(sessionChange(ev({ kind: "init", sessionId: "s-1" }))).toBe("s-1");
+  expect(sessionChange(ev({ kind: "started", resumed: "s-2" }))).toBe("s-2");
+  expect(sessionChange(ev({ kind: "handoff", tokens: 171_240, at: 170_000 }))).toBeNull();
+  expect(sessionChange(ev({ kind: "started" }))).toBeUndefined();
+  expect(sessionChange(ev({ kind: "result" }))).toBeUndefined();
+});
+
+// Review P2 (2026-11-23): the first message after a handoff carries the note inside a system-reminder; a
+// user line that comes back with it shows only what the user wrote.
+test("a user line shows only the user's words, never the handoff note's envelope", () => {
+  const sent = "<system-reminder>\nYour handoff note is at C:\n.md.\n\n- wire the readers\n</system-reminder>\n\nWhat is next?";
+  const items = reduce([], ev({ kind: "user", text: [sent] }), 5, 1);
+  expect(items.map((i) => i.text)).toEqual(["What is next?"]);
+  expect(reduce([], ev({ kind: "user", text: ["<system-reminder>only the note</system-reminder>"] }), 5, 2)).toEqual([]);
 });
