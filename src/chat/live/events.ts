@@ -96,11 +96,21 @@ export function sessionChange(ev: ChatEvent): string | null | undefined {
   return undefined;
 }
 
-/** A user turn's text without the `<system-reminder>` envelopes the engine or the agent adds (the
- *  handoff note rides in one): the chat shows only what the user wrote. An unclosed one runs to the end. */
+/** A user turn's text without the one leading `<system-reminder>` envelope the engine puts the handoff
+ *  note in: the chat shows only what the user wrote. A "<system-reminder>" the user typed anywhere else
+ *  stays visible, since only a leading, closed envelope is taken off. */
 export function userWords(text: string): string {
-  if (!text.includes("<system-reminder>")) return text.trim() ? text : "";
-  return text.replace(/<system-reminder>[\s\S]*?(<\/system-reminder>|$)/g, "").trim();
+  const words = text.replace(/^\s*<system-reminder>[\s\S]*?<\/system-reminder>\s*/, "");
+  return words.trim() ? words : "";
+}
+
+/** The page's count of messages sent and not yet answered, after one event. Claude Code answers each
+ *  queued message with a result of its own, so the working line stays until the count is back to 0. A
+ *  stop, or the process ending, leaves nothing waiting (a stop cancels what was queued). */
+export function stillWaiting(waiting: number, ev: ChatEvent): number {
+  if (ev.kind === "result") return Math.max(0, waiting - 1);
+  if (ev.kind === "stopped" || ev.kind === "exit") return 0;
+  return waiting;
 }
 
 /**

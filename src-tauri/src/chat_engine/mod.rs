@@ -12,7 +12,7 @@
 //! - Sign-in comes from [`crate::terminal::agent_env`], the same place terminal panes get it.
 //! - Stop sends the documented `interrupt` control request; when no turn end follows within
 //!   [`STOP_GRACE`], the process is ended and the next send resumes the session.
-//! - Idle sleep: after [`IDLE_SLEEP`] with no turn running the process is ended; the session id is
+//! - Idle sleep: after [`IDLE_SLEEP`] with no line from the process (a silent busy turn too) it is ended; the session id is
 //!   kept and the next send starts it again with `--resume`.
 #![allow(dead_code)] // wired in the chat-app screens stage
 
@@ -32,7 +32,7 @@ use std::time::{Duration, Instant};
 
 /// The Tauri event every chat's events go out on; the payload is `{ chatId, kind, ... }`.
 pub const EVENT: &str = "chat-event";
-/// Idle sleep: a chat's process ends after this long with no turn running.
+/// Idle sleep: a chat's process ends after this long with no line from it (no turn running, or a turn that has gone silent).
 pub const IDLE_SLEEP: Duration = Duration::from_secs(10 * 60);
 /// How long `chat_stop` waits for the interrupted turn to end before it ends the process.
 pub const STOP_GRACE: Duration = Duration::from_secs(5);
@@ -193,6 +193,10 @@ struct Inner {
     /// The process was handed off and the next one cannot take the note on its command line
     /// (OpenClaude, or Claude Code through a `.cmd` shim): the next message carries it instead.
     note_due: bool,
+    /// Stop sent an interrupt: the next result of this process ends everything sent to it, since an
+    /// interrupt can cancel messages queued behind the turn, whose results then never come. Cleared at
+    /// that result and at every spawn.
+    stopping: bool,
     child: Option<Running>,
     gen: u64,
     busy: bool,
@@ -240,16 +244,17 @@ impl Inner {
     /// the page hears the line, and the handoff it fires (the reading and the line), if any.
     fn heard(&mut self, gen: u64, ev: &ChatEvent) -> (bool, Option<(u64, u64)>) {
         let current = self.gen == gen;
+        // Review P2 (2026-11-23): any line of the process running now is a sign of life, so the idle
+        // sleep counts from the last one, whatever its kind.
+        if current {
+            self.last_active = Instant::now();
+        }
         match ev {
             // Review P3 (2026-11-23): a late line from an ended process never names the session the
             // chat resumes, and its init is not this process's start.
             ChatEvent::Init(_) if !current => return (false, None),
             ChatEvent::Init(i) if !i.session_id.is_empty() => self.session_id = Some(i.session_id.clone()),
             ChatEvent::Assistant { parent_tool_use_id, usage, .. } => {
-                // A reply still being written keeps the chat awake.
-                if current {
-                    self.last_active = Instant::now();
-                }
                 // The reading is the last main-conversation message's own usage: the turn's `result`
                 // sums every tool call of the turn, which is not how full the window is.
                 if parent_tool_use_id.is_none() {
@@ -263,6 +268,12 @@ impl Inner {
                 // leaves the chat running.
                 // Review P1-A (2026-11-23): never while a message the user wrote is still queued in the
                 // process; see `handoff_after_result`.
+                // Review P2 (2026-11-23): the first result after a Stop answers everything sent: what was
+                // queued behind the stopped turn may have been cancelled, and its results never come.
+                if current && self.stopping {
+                    self.outstanding = self.outstanding.min(1);
+                    self.stopping = false;
+                }
                 let handoff = self.handoff_after_result(gen);
                 if current {
                     if let Some(id) = &r.session_id {
@@ -339,6 +350,7 @@ impl Engine {
         inner.last_prompt = None;
         inner.outstanding = 0;
         inner.handoff_due = None;
+        inner.stopping = false;
         inner.busy = false;
         inner.last_active = Instant::now();
         self.emit(&ChatEvent::Started { pid, resumed: resume });
@@ -439,7 +451,9 @@ impl Engine {
             let gen = inner.gen;
             let line = interrupt_line(&request);
             let sent = inner.child.as_mut().and_then(|r| r.stdin.as_mut()).is_some_and(|s| s.write_all(line.as_bytes()).and_then(|_| s.write_all(b"\n")).and_then(|_| s.flush()).is_ok());
-            if !sent {
+            if sent {
+                inner.stopping = true;
+            } else {
                 Self::end_process(&mut inner, ExitReason::Stopped);
                 drop(inner);
                 self.emit(&ChatEvent::Stopped { how: StopHow::Ended });
@@ -473,7 +487,7 @@ impl Engine {
         Self::end_process(&mut inner, ExitReason::Closed);
     }
 
-    /// Idle sleep: ends the process after `cfg.idle` with no turn running. Runs until the chat closes.
+    /// Idle sleep: ends the process after `cfg.idle` with no line from the process (a busy one too, so a result that never came cannot keep it). Runs until the chat closes.
     fn watch_idle(self: Arc<Self>) {
         let tick = (self.cfg.idle / 4).clamp(Duration::from_millis(10), Duration::from_secs(1));
         loop {
@@ -482,7 +496,10 @@ impl Engine {
             if inner.closing {
                 return;
             }
-            if inner.child.is_some() && !inner.busy && inner.last_active.elapsed() >= self.cfg.idle {
+            // Review P2 (2026-11-23): a process silent for the whole idle period sleeps even when it looks
+            // busy: a result that never came (a cancelled or folded message) must not keep it forever.
+            // Every line it writes counts as activity (`Inner::heard`).
+            if inner.child.is_some() && inner.last_active.elapsed() >= self.cfg.idle {
                 Self::end_process(&mut inner, ExitReason::Sleep);
             }
         }
@@ -555,7 +572,7 @@ impl Engines {
             id: chat_id.to_string(),
             cfg: self.cfg.clone(),
             sink,
-            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
+            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due, stopping: false, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
         });
         {
             let mut inner = lock(&engine.inner);

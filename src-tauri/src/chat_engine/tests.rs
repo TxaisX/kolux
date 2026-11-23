@@ -483,7 +483,7 @@ fn a_nul_in_the_note_never_reaches_the_prompt() {
 #[test]
 fn a_stale_reader_never_hands_off_the_process_running_now() {
     let spec = Spec { agent: "claude".to_string(), cwd: std::env::temp_dir(), model: None, effort: None, env: Vec::new(), handoff_at: 1_000, handoff_note: None };
-    let mut inner = Inner { spec, session_id: None, last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None };
+    let mut inner = Inner { spec, session_id: None, last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, stopping: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None };
     let big = json!({ "input_tokens": 500_000 });
     inner.saw_usage(1, Some(&big));
     assert_eq!(inner.last_prompt, None, "an old process's usage is not this process's reading");
@@ -532,7 +532,7 @@ fn the_note_message_wraps_the_note_in_a_system_reminder() {
 
 fn stale_inner() -> Inner {
     let spec = Spec { agent: "claude".to_string(), cwd: std::env::temp_dir(), model: None, effort: None, env: Vec::new(), handoff_at: 0, handoff_note: None };
-    Inner { spec, session_id: Some("s-now".to_string()), last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None }
+    Inner { spec, session_id: Some("s-now".to_string()), last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, stopping: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None }
 }
 
 // Review P3 (2026-11-23): a late line from an ended process never names the session the chat resumes.
@@ -568,4 +568,50 @@ fn a_queued_message_keeps_the_chat_busy_past_the_first_result() {
     h.results("b1", 2);
     assert!(!lock(&engine.inner).busy, "its own result ends the turn");
     h.engines.close_all();
+}
+
+// Review P2 (2026-11-23): an interrupt can cancel the messages queued behind the stopped turn, so
+// their results never come. The first result after a Stop answers everything sent, and Stop ends in
+// an interrupt instead of waiting out its grace and killing the process.
+#[test]
+fn stop_with_a_queued_message_ends_in_an_interrupt_not_a_kill() {
+    let h = harness(IDLE_SLEEP, Duration::from_secs(3));
+    h.start("s1", &[]);
+    h.engines.send("s1", "queue first", &[]).unwrap();
+    h.wait("s1", 1, |e| said(e, "queueing"));
+    h.engines.send("s1", "second", &[]).unwrap();
+    assert_eq!(h.engines.stop("s1").unwrap(), Some(StopHow::Interrupt));
+    let engine = h.engines.engine("s1").unwrap();
+    assert!(!lock(&engine.inner).busy, "nothing is left running");
+    assert!(engine.is_running(), "the process was interrupted, not ended");
+    h.engines.close_all();
+}
+
+// Review P2 (2026-11-23): a turn whose result never comes leaves the chat looking busy; a process
+// silent for the whole idle period sleeps anyway, so it cannot linger forever.
+#[test]
+fn a_silent_busy_process_still_sleeps() {
+    let h = harness(Duration::from_millis(400), STOP_GRACE);
+    h.start("i1", &[]);
+    h.engines.send("i1", "queue forever", &[]).unwrap();
+    h.wait("i1", 1, |e| said(e, "queueing"));
+    assert!(lock(&h.engines.engine("i1").unwrap().inner).busy);
+    h.wait("i1", 1, |e| is_exit(e, ExitReason::Sleep));
+    h.engines.close_all();
+}
+
+// Review P2 (2026-11-23): every line of the process running now counts as activity, not only replies;
+// a late line from an ended process does not.
+#[test]
+fn every_current_line_counts_as_activity() {
+    let mut inner = stale_inner();
+    let long_ago = Instant::now().checked_sub(Duration::from_secs(60)).unwrap_or_else(Instant::now);
+    for line in [r#"{"type":"system","subtype":"init","session_id":"s-now"}"#, r#"{"type":"rate_limit_event"}"#, r#"{"type":"result","subtype":"success","is_error":false}"#] {
+        let ev = parse_line(line).unwrap();
+        inner.last_active = long_ago;
+        inner.heard(1, &ev);
+        assert_eq!(inner.last_active, long_ago, "a stale line is not activity: {line}");
+        inner.heard(2, &ev);
+        assert!(inner.last_active.elapsed() < Duration::from_secs(5), "a current line is: {line}");
+    }
 }

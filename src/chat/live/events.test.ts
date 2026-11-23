@@ -2,7 +2,7 @@
 // Each case here is a line shape docs/chat-engine.md prints, and the last tests prove the reducer's rows
 // go through the same `combine` / `fold` the transcript chat uses, with no second renderer.
 import { expect, test } from "vitest";
-import { reduce, sessionChange, type ChatEvent } from "./events";
+import { reduce, sessionChange, stillWaiting, userWords, type ChatEvent } from "./events";
 import { combine } from "../model";
 import { fold, type Tool } from "../steps";
 
@@ -118,4 +118,30 @@ test("a user line shows only the user's words, never the handoff note's envelope
   const items = reduce([], ev({ kind: "user", text: [sent] }), 5, 1);
   expect(items.map((i) => i.text)).toEqual(["What is next?"]);
   expect(reduce([], ev({ kind: "user", text: ["<system-reminder>only the note</system-reminder>"] }), 5, 2)).toEqual([]);
+});
+
+// Review P3 (2026-11-23): only the one leading envelope the engine adds is taken off; a
+// "<system-reminder>" the user typed anywhere else is their own words and stays.
+test("only a leading system-reminder envelope is hidden; the user's own tag text stays", () => {
+  expect(userWords("<system-reminder>\nthe note\n</system-reminder>\n\nhello")).toBe("hello");
+  expect(userWords("why does <system-reminder>x</system-reminder> show up?")).toBe("why does <system-reminder>x</system-reminder> show up?");
+  expect(userWords("<system-reminder>a</system-reminder>\n\nI typed <system-reminder>b</system-reminder>")).toBe("I typed <system-reminder>b</system-reminder>");
+  expect(userWords("<system-reminder> never closed, so it is the user's")).toBe("<system-reminder> never closed, so it is the user's");
+  expect(userWords("   ")).toBe("");
+});
+
+// Review P3 (2026-11-23): a message queued behind a running turn gets a result of its own, so the working
+// line and Stop stay until every sent message is answered; a stop or the process ending clears the count.
+test("the page counts unanswered sends: each result answers one, a stop or an exit answers all", () => {
+  let n = 2;
+  n = stillWaiting(n, ev({ kind: "result" }));
+  expect(n).toBe(1);
+  n = stillWaiting(n, ev({ kind: "assistant" }));
+  expect(n).toBe(1);
+  n = stillWaiting(n, ev({ kind: "result" }));
+  expect(n).toBe(0);
+  expect(stillWaiting(0, ev({ kind: "result" }))).toBe(0);
+  expect(stillWaiting(3, ev({ kind: "stopped" }))).toBe(0);
+  expect(stillWaiting(3, ev({ kind: "exit", code: 1, reason: "crashed" }))).toBe(0);
+  expect(stillWaiting(3, ev({ kind: "started" }))).toBe(3);
 });
