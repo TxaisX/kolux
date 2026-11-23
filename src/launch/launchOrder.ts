@@ -38,6 +38,13 @@ export function sharedFallback(err: unknown): string {
   return `Kolux could not make a separate folder for each agent here, so the agents share this folder.${why ? ` Reason: ${why}` : ""} Own folders need a Git project with at least one commit.`;
 }
 
+/** True when a failed own-folder copy only means the folder cannot be copied: not a Git project, or no commit to copy from
+ *  (no default branch). A full disk, a lock or a failed setup is not that, and is worth telling the person. */
+export function notACopyableFolder(err: unknown): boolean {
+  const why = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return /not a git (repository|project)|no default branch was found|no commits?|any commits|invalid reference|not a valid object name/.test(why);
+}
+
 /** The failure sentence, plus what happened to the workspaces made before it. */
 export function failureNote(err: unknown, made: number): string {
   const text = String(err);
