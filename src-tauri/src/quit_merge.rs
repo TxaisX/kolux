@@ -157,12 +157,6 @@ impl Outcome {
     fn keep(&mut self, project: &Project, w: &Worktree, why: impl Into<String>) {
         self.left.push(Left { project: project.name.clone(), path: w.path.clone(), branch: w.branch.clone(), why: why.into() });
     }
-
-    /// The one line the diagnostics log gets.
-    pub fn line(&self) -> String {
-        let kept: Vec<String> = self.left.iter().map(|l| format!("{} ({})", l.path, l.why)).collect();
-        format!("quit merge: {} merged, {} removed, {} kept{}{}", self.merged.len(), self.removed.len(), self.left.len(), if kept.is_empty() { "" } else { ": " }, kept.join("; "))
-    }
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
