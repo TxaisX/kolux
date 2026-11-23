@@ -596,12 +596,23 @@ fn rollout_id(stem: &str) -> Option<&str> {
     }
 }
 
+/// The folders a Claude-shaped transcript can live in: each Claude config folder's `projects`, and for
+/// OpenClaude its own `~/.openclaude/projects` too (2026-11-21), because it writes there whatever
+/// `CLAUDE_CONFIG_DIR` says.
+pub(super) fn project_dirs(roots: &Roots, agent: &str) -> Vec<PathBuf> {
+    let mut dirs: Vec<PathBuf> = roots.claude.iter().map(|c| c.join("projects")).collect();
+    if agent == "openclaude" {
+        dirs.extend(crate::chat::openclaude_projects(crate::chat::home()));
+    }
+    dirs
+}
+
 /// The one transcript file of session `id` and its Codex home, or why there is not exactly one.
 /// A Claude session is `<id>.jsonl`; a Codex rollout matches only when its whole id equals `id`.
 pub fn find_session_exact(roots: &Roots, agent: &str, id: &str) -> Result<(PathBuf, Option<PathBuf>), String> {
     let gone = || "That session is no longer on this computer.".to_string();
     match agent {
-        "claude" | "openclaude" => roots.claude.iter().find_map(|c| fs::read_dir(c.join("projects")).ok()?.flatten().map(|e| e.path().join(format!("{id}.jsonl"))).find(|p| p.is_file()).map(|p| (p, None))).ok_or_else(gone),
+        "claude" | "openclaude" => project_dirs(roots, agent).iter().find_map(|c| fs::read_dir(c).ok()?.flatten().map(|e| e.path().join(format!("{id}.jsonl"))).find(|p| p.is_file()).map(|p| (p, None))).ok_or_else(gone),
         "codex" => {
             let mut hits: Vec<(PathBuf, Option<PathBuf>)> = roots.codex.iter().flat_map(|h| codex_files(h).into_iter().filter(|f| f.file_stem().is_some_and(|s| rollout_id(&s.to_string_lossy()) == Some(id))).map(|f| (f, Some(h.clone()))).collect::<Vec<_>>()).collect();
             match hits.len() {

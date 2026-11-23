@@ -14,16 +14,22 @@ test("a chat's id is its pane's key, so two panes never share a process", () => 
   expect(chatIdOf(3)).toBe("pane-3");
 });
 
-test("starting a chat names the folder and asks for no model, no session and no extra variables", async () => {
+test("starting a chat names the folder and asks for no model, effort, session or extra variables", async () => {
   invoke.mockResolvedValueOnce(undefined);
   await startChat("pane-3", "C:/work/demo");
-  expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-3", cwd: "C:/work/demo", model: null, resumeSessionId: null, extraEnv: [], agent: "claude" });
+  expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-3", cwd: "C:/work/demo", model: null, effort: null, resumeSessionId: null, extraEnv: [], agent: "claude" });
 });
 
 test("a chat on OpenClaude names it, so the engine starts that program rather than Claude", async () => {
   invoke.mockResolvedValueOnce(undefined);
   await startChat("pane-4", "C:/work/demo", "deepseek/deepseek-v4.1-flash-1017", "openclaude");
-  expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-4", cwd: "C:/work/demo", model: "deepseek/deepseek-v4.1-flash-1017", resumeSessionId: null, extraEnv: [], agent: "openclaude" });
+  expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-4", cwd: "C:/work/demo", model: "deepseek/deepseek-v4.1-flash-1017", effort: null, resumeSessionId: null, extraEnv: [], agent: "openclaude" });
+});
+
+test("a restart on another model or effort carries all three, so the conversation carries on", async () => {
+  invoke.mockResolvedValueOnce(undefined);
+  await startChat("pane-5", "C:/work/demo", "openai/gpt-5.5", "openclaude", "s-42", "high");
+  expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-5", cwd: "C:/work/demo", model: "openai/gpt-5.5", effort: "high", resumeSessionId: "s-42", extraEnv: [], agent: "openclaude" });
 });
 
 test("a message goes as text; attachments are already paths in it, so no image is sent", async () => {

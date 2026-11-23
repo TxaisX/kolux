@@ -48,6 +48,14 @@ export type SavedPane = {
   chooser?: true;
   /** DT-C27: a workspace Setup tab (its program is the setup script); a fresh start opens a plain shell. */
   setupScript?: true;
+  /** A chat pane comes back as a chat on the conversation it was showing, never as a terminal (2026-11-21).
+   *  `everyday` names its kept Everyday record; `chatResume` is the agent's conversation id `--resume` takes. */
+  chat?: true;
+  everyday?: string;
+  chatResume?: string;
+  chatAgent?: string;
+  chatModel?: string;
+  chatEffort?: string;
 };
 export type SavedLayout = { panes: SavedPane[]; activeTab: Record<number, number>; focused: number; activeDir: string | null; stacked: Record<string, boolean> };
 
@@ -90,6 +98,14 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     if (p.account !== undefined) s.account = p.account;
     if (p.title !== undefined) s.title = p.title;
     if (p.setupScript) s.setupScript = true;
+    if (p.chat) {
+      s.chat = true;
+      if (p.everyday) s.everyday = p.everyday;
+      if (p.chatResume) s.chatResume = p.chatResume;
+      if (p.chatAgent) s.chatAgent = p.chatAgent;
+      if (p.chatModel) s.chatModel = p.chatModel;
+      if (p.chatEffort) s.chatEffort = p.chatEffort;
+    }
     if (p.group !== undefined) s.group = p.group;
     if (p.kind !== undefined) s.kind = p.kind;
     if (p.path !== undefined) s.path = p.path;
@@ -230,6 +246,14 @@ function readPane(v: unknown): SavedPane | null {
   if (isTabColor(o.color)) p.color = o.color;
   if (o.chooser === true && !p.kind && p.program === null) p.chooser = true;
   if (o.setupScript === true && !p.kind) p.setupScript = true;
+  if (o.chat === true) {
+    p.chat = true;
+    if (str(o.everyday) && o.everyday !== "") p.everyday = o.everyday;
+    if (str(o.chatResume) && o.chatResume !== "") p.chatResume = o.chatResume;
+    if (str(o.chatAgent) && o.chatAgent !== "") p.chatAgent = o.chatAgent;
+    if (str(o.chatModel) && o.chatModel !== "") p.chatModel = o.chatModel;
+    if (str(o.chatEffort) && o.chatEffort !== "") p.chatEffort = o.chatEffort;
+  }
   return p;
 }
 

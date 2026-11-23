@@ -141,7 +141,6 @@ The Zoom control under Interface changes the size of the whole window, and so do
 | Show app name in the title bar | Off | `titleBarAppName` |
 | Show status bar | On | `statusBarVisible` |
 | Status bar items: Agent status, Resource Manager, Terminals running, Agents running, Keep awake, Claude and Codex usage in the top pill (tick the ones you want) | All shown | `statusBarHidden` |
-| Usage percentages: Used or Remaining (how a pane header's context reading counts) | Used | `usagePercentages` |
 
 The View menu's Show Status Bar and Show Titlebar App Name ticks are the same two switches.
 

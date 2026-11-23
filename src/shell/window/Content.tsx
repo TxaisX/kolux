@@ -29,7 +29,7 @@ export default function WindowContent() {
   const {
     sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
     turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, openPane,
-    settings, activeDir, shown, setCount, toast, notice, setNotice,
+    settings, shown, setCount, toast, notice, setNotice,
     panes, waiting, statusOf,
     standIns, settingsRead, agentPass, launching, openStart, wizard, projectsRead, wizardKnown, layoutIn,
   } = useWindow();
@@ -68,7 +68,7 @@ export default function WindowContent() {
           onClose={() => setReviewing(null)}
         />
       )}
-      {terminals && <LayoutStrip count={shown.length} onLayout={setCount} workspace={activeDir} />}
+      {terminals && <LayoutStrip count={shown.length} onLayout={setCount} />}
       {terminals && waiting.length > 0 && (
         <div className="needs-strip" role="group" aria-label="Sessions that need you">
           {waiting.map((p) => (

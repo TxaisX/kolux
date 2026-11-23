@@ -15,9 +15,11 @@ type Props = {
   onModel: (id: string) => void;
   onEffort: (level: string) => void;
   onFast: (on: boolean) => void;
+  /** A chat pane that switches its own process (2026-11-21): a pick applies now, so nothing says "next launch". */
+  onLive?: boolean;
 };
 
-export function ModelControls({ agent, shown, saved, changes, disabled, openPicker, onModel, onEffort, onFast }: Props) {
+export function ModelControls({ agent, shown, saved, changes, disabled, openPicker, onModel, onEffort, onFast, onLive = false }: Props) {
   const select = useRef<HTMLSelectElement>(null);
   useEffect(() => {
     if (openPicker > 0) select.current?.focus();
@@ -29,7 +31,7 @@ export function ModelControls({ agent, shown, saved, changes, disabled, openPick
   const efforts = effortsFor(agent, modelValue || undefined);
   const effortValue = effort?.value ?? saved.effort ?? "";
   const fast = fastOffered(agent, modelValue || undefined);
-  const note = (what: What) => (routeOf(agent, what) === "launch" ? LAUNCH_NOTE : routeOf(agent, what) === "terminal" ? TERMINAL_NOTE : undefined);
+  const note = (what: What) => (onLive ? undefined : routeOf(agent, what) === "launch" ? LAUNCH_NOTE : routeOf(agent, what) === "terminal" ? TERMINAL_NOTE : undefined);
   return (
     <div className="chat-controls" role="group" aria-label="Model and effort">
       <label className="chat-control">
@@ -56,7 +58,7 @@ export function ModelControls({ agent, shown, saved, changes, disabled, openPick
               </option>
             ))}
           </select>
-          {routeOf(agent, "effort") === "launch" && <small className="chat-control-status">At next launch</small>}
+          {routeOf(agent, "effort") === "launch" && !onLive && <small className="chat-control-status">At next launch</small>}
           {statusText(effort) && <small className={`chat-control-status ${effort?.status}`} role="status">{statusText(effort)}</small>}
         </label>
       )}

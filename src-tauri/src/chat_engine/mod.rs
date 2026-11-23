@@ -71,6 +71,8 @@ pub struct Spec {
     pub agent: String,
     pub cwd: PathBuf,
     pub model: Option<String>,
+    /// The effort level this conversation runs at (`--effort`); none keeps the program's own.
+    pub effort: Option<String>,
     /// Variables added to the inherited environment (sign-in first, then the caller's own).
     pub env: Vec<(String, String)>,
 }
@@ -103,14 +105,30 @@ pub struct Image {
     pub base64: String,
 }
 
+/// The effort levels a chat accepts: OpenClaude's own list, also understood by Claude Code. `ultracode`
+/// stays OpenClaude-only.
+const EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
+const OPENCLAUDE_EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
+
+pub fn valid_effort(agent: &str, effort: &str) -> bool {
+    if agent == "openclaude" {
+        OPENCLAUDE_EFFORTS.contains(&effort)
+    } else {
+        EFFORTS.contains(&effort)
+    }
+}
+
 /// The command line after the program. Never contains `--bare`.
-pub fn chat_args(agent: &str, model: Option<&str>, resume: Option<&str>) -> Vec<String> {
+pub fn chat_args(agent: &str, model: Option<&str>, effort: Option<&str>, resume: Option<&str>) -> Vec<String> {
     let mut a: Vec<String> = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-mode", permission_mode(agent)].map(String::from).to_vec();
     if let Some(m) = model {
         if agent == "openclaude" {
             a.extend(["--provider".to_string(), OPENCLAUDE_PROVIDER.to_string()]);
         }
         a.extend(["--model".to_string(), m.to_string()]);
+    }
+    if let Some(e) = effort {
+        a.extend(["--effort".to_string(), e.to_string()]);
     }
     if let Some(r) = resume {
         a.extend(["--resume".to_string(), r.to_string()]);
@@ -188,7 +206,7 @@ impl Engine {
             None => (crate::agents::find_program(&agent).ok_or_else(|| format!("{} was not found on PATH. Install it, then open the chat again.", crate::agents::agent_name(&agent)))?, Vec::new()),
         };
         let resume = inner.session_id.clone();
-        let args = chat_args(&agent, inner.spec.model.as_deref(), resume.as_deref());
+        let args = chat_args(&agent, inner.spec.model.as_deref(), inner.spec.effort.as_deref(), resume.as_deref());
         let shim = program.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"));
         let mut cmd = if shim {
             let mut c = crate::winproc::command(crate::pty::system_program("cmd.exe"));
@@ -494,13 +512,20 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Sen
 }
 
 /// Opens chat `chat_id` in `cwd` and starts its hidden agent process: `claude`, or `openclaude`
-/// when the page asks for it (2026-11-20). `agent` left out means Claude Code, as before.
+/// when the page asks for it (2026-11-20). `agent` left out means Claude Code, as before. `effort`
+/// (2026-11-21) is the level the conversation runs at; a later pick restarts the process and resumes
+/// the same session on the new model or effort.
 #[tauri::command]
-pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, model: Option<String>, resume_session_id: Option<String>, extra_env: Vec<(String, String)>, agent: Option<String>) -> Result<(), String> {
+pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, model: Option<String>, effort: Option<String>, resume_session_id: Option<String>, extra_env: Vec<(String, String)>, agent: Option<String>) -> Result<(), String> {
     use tauri::Manager;
     let agent = agent.unwrap_or_else(|| "claude".to_string());
     if !CHAT_AGENTS.contains(&agent.as_str()) {
         return Err(format!("{agent} has no chat engine. A chat runs Claude Code or OpenClaude."));
+    }
+    if let Some(e) = effort.as_deref() {
+        if !valid_effort(&agent, e) {
+            return Err(format!("{e} is not an effort level {} knows.", crate::agents::agent_name(&agent)));
+        }
     }
     let cwd = PathBuf::from(cwd);
     let mut extra_env = extra_env;
@@ -518,7 +543,7 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
     // The caller's own variables first; the sign-in wins (ACCT-024 already refused a clash).
     let env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
     let (engines, sink) = (engines(&app), app_sink(&app));
-    blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, env }, resume_session_id, sink)).await
+    blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, effort, env }, resume_session_id, sink)).await
 }
 
 /// Sends `text` (and images) to chat `chat_id` as the next user message.

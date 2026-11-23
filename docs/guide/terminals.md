@@ -12,7 +12,7 @@ An empty workspace shows "Nothing running here yet." with the main button "Start
 
 The Layout strip sets how many panes the workspace in front holds. The quick counts are 1, 2, 4, 6, 9 and 12; the field beside them takes any number from 1 to 24, so a workspace is never limited to the presets. Splits add panes wherever you want them.
 
-The right end of the strip is the workspace spend ribbon. It totals the tokens and estimated cost of the workspace in front across every session that worked in it, including its subfolders, shows today's tokens and cost, and draws a gauge of the last 14 days. Hover it for the seven-day figure, the Claude and Codex split, and when the figures were last counted. The figures come from the local Claude and Codex logs, which stay on this computer; token tracking is opt-in per provider in Settings > Usage. With tracking off, the strip says so and opens that page.
+The strip only sets how many panes the workspace in front holds. Token and estimated cost figures left the screen on 2026-11-21 and live in Settings > Usage, where token tracking is opt-in per provider. The figures come from the local Claude and Codex logs, which stay on this computer.
 
 | Action | Result |
 |---|---|
@@ -47,7 +47,7 @@ Every pane has a header. Left to right it shows:
 | Crew label | For example "2 agents, 1 waiting", when an agent has helpers |
 | Age | "just now", then "5m ago", after a turn finishes |
 
-On the right sit the plan text (5-hour and weekly windows), a "Review plan" button when a plan is waiting, the "..." Pane menu, Expand, "Split right", "+" (start a new session in a new pane) and Close pane (Ctrl+W, which ends the program).
+On the right sit a "Review plan" button when a plan is waiting, the "..." Pane menu, Expand, "Split right", "+" (start a new session in a new pane) and Close pane (Ctrl+W, which ends the program). Token and plan figures are no longer drawn here; see Settings > Usage.
 
 In a narrow pane the header drops the branch chip, program word, buttons and status word, in that order. The dot, mark and name stay.
 

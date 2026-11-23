@@ -8,15 +8,14 @@ import { forget, hooksMuted, promptReturned } from "../../status/chip";
 import { BELL_NOTE } from "../../terminal/bellNote";
 import { canExpand, groupOf, toggleCard } from "../../terminal/grid";
 import { moveToTab } from "../tidy";
-import { readoutOf } from "../../terminal/headerUsage";
 import { showsDragHandle } from "../../terminal/rearrange";
 import { gpuOn } from "../../terminal/renderer";
 import { showsReview } from "../../terminal/planReview";
 import { tabName } from "../../terminal/tabName";
 import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
-import { capOn, readsLeft } from "../../usage/meter";
 import { nameOf, sameDir, viewOf } from "../../workspaces";
+import { EVERYDAY_CHATS_FIELD, everydayChatsOf, setEverydayChoice, setEverydayName, setEverydaySession, type EverydayChat } from "../../projects/everydayChats";
 import { worktreeTag } from "../../projects/worktreeGrid";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
@@ -36,6 +35,7 @@ import type { AgentInfo } from "../../launch/PlusMenu";
 import { ChatPane } from "../../lazy/pages";
 import { CheckPane } from "../../lazy/panes";
 import { openExternal } from "../../open/openExternal";
+import { withChatPick } from "./chatPick";
 
 /** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
 const LostPane = deferred(() => import("./LostPane"));
@@ -43,14 +43,24 @@ const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
 
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {
-    terminals, focused, closePane, setFocused, settings, titles, liveIds, openFile, restoredKeys, projects, setExpanded,
-    answer, context, agents, defaultId, setDefault, launching, launch, addChooser, savedName, ptys, unreadPanes,
+    terminals, focused, closePane, setFocused, settings, saveSetting, titles, liveIds, openFile, restoredKeys, projects, setExpanded,
+    answer, agents, defaultId, setDefault, launching, launch, addChooser, savedName, ptys, unreadPanes,
     hook, hookRef, turn, crew, setNeeds, setStamp, setRunning, runRef, liveRef, muteRef, setGuess, setLiveIds, setHook,
     setPanes, noticed, report,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
     splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu, cells, newChat,
   } = useWindow();
+  // The pane's chat keeps its Everyday record in step: the name the first message gives it and the agent's
+  // conversation id. The write builds on the key's latest value (a name and an id can land together), and an
+  // unchanged list writes nothing.
+  const saveChats = (change: (list: EverydayChat[]) => EverydayChat[]) => {
+    saveSetting(EVERYDAY_CHATS_FIELD, (prev: unknown) => {
+      const before = everydayChatsOf(prev);
+      const after = change(before);
+      return after === before ? undefined : after;
+    });
+  };
   // FT-1 (review 0.2.0): hidden unless really on screen: terminals shown, its folder in front, top tab, not zoomed away.
   const hidden = !paneInView(cells.find((c) => c.group === groupOf(p)), p.key, active, { terminals, activeDir, zoomed });
   // PKG-2: what the terminal runs from its handlers and effects, made here each render over this render's pane and
@@ -125,6 +135,29 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     moveToTab: () => moveOutToTab(p.key),
     expand: () => expandPane(p.key),
     rename: (name: string | undefined) => renamePane(p.key, name),
+    // A kept Everyday chat takes the name its first message gives it, so the row reads that after the tab is gone.
+    chatName: (name: string) => {
+      renamePane(p.key, name);
+      if (p.everyday) saveChats((list) => setEverydayName(list, p.everyday!, name));
+    },
+    // The agent's own conversation id: what `--resume` needs when the chat is opened again. The pane keeps
+    // it too, so a chat left open at quit comes back as itself instead of as a fresh conversation.
+    chatSession: (id: string) => {
+      if (!p.everyday) return;
+      saveChats((list) => setEverydaySession(list, p.everyday!, id));
+      if (p.chatResume !== id) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, chatResume: id } : x)));
+    },
+    // A model or effort picked inside the chat (2026-11-21): the conversation keeps running on it, and the
+    // record says so, so reopening the row comes back on the same pair.
+    // The pane keeps the pick as well (any chat, kept or not), so the layout saved at quit restores it.
+    chatModel: (model: string | null) => {
+      if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { model }));
+      if ((p.chatModel ?? null) !== (model || null)) setPanes((ps) => withChatPick(ps, p.key, { model }));
+    },
+    chatEffort: (effort: string) => {
+      if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { effort }));
+      if (p.chatEffort !== effort) setPanes((ps) => withChatPick(ps, p.key, { effort }));
+    },
     sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
     entry: (t: EntryTarget) => (t.kind === "web" ? void openExternal(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
     shell: (sh: ShellEntry) => void newTab({ shell: sh }), // TERM-043: the plus menu's shell choice, a tab like the New tab menu's
@@ -167,9 +200,14 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         onFocus={act.focus}
         onClose={act.close}
         named={!!p.title}
-        onName={act.rename}
+        onName={act.chatName}
         model={p.chatModel ?? null}
+        effort={p.chatEffort ?? null}
         agent={p.chatAgent ?? "claude"}
+        resume={p.chatResume ?? null}
+        onSession={act.chatSession}
+        onModel={act.chatModel}
+        onEffort={act.chatEffort}
         open={{ onOpenFile: openFile, onOpenLink: (url: string) => void openExternal(url), inKolux: settings.linksOpenInKolux === true }}
       />
     );
@@ -196,7 +234,6 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       args={p.args}
       env={p.env}
       stop={turn[p.key]?.stop}
-      usage={p.agent === "shell" ? undefined : readoutOf(context[p.key], capOn(settings), readsLeft(settings))}
       focused={p.key === focused}
       onFocus={act.focus}
       onRunning={act.running}

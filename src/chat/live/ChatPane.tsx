@@ -3,13 +3,12 @@
 // 2026-11-20) through the chat engine, hears every `chat-event`,
 // folds it into the rows the chat view already knows (`combine` and `fold`) and draws them with `ViewRow`.
 // The box is the same Composer the transcript chat uses, so drafts, attachments, history and the model
-// picker behave as they do there. There is no terminal behind this pane and no transcript file: the
-// engine's own events are the conversation.
+// picker behave as they do there. There is no terminal behind this pane; the engine's own events are the
+// conversation, and a kept chat opened again reads what was said from the agent's transcript (2026-11-21).
 //
-// Deliberately not here (the plan's later slices): the conversation does not survive a restart (2), the
-// pane dot and sidebar row do not move yet because a headless process gets no hook events (3), a refusal
-// is a read-only notice rather than an Allow / Deny card (4), and nothing under the reply reads the
-// artifacts folder (5).
+// Deliberately not here (the plan's later slices): the pane dot and sidebar row do not move yet because a
+// headless process gets no hook events (3), a refusal is a read-only notice rather than an Allow / Deny
+// card (4), and nothing under the reply reads the artifacts folder (5).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import AgentMark from "../../marks/AgentMark";
@@ -18,9 +17,9 @@ import { Close } from "../../chrome/icons";
 import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
-import { chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
+import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
 import { reduce } from "./events";
-import { capPending, combine, type ChatItem, type Pending } from "../model";
+import { applyRead, capPending, combine, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
 import { Composer } from "../MessageBox";
 import { BrowserChoice, LinkContext, type LinkHost } from "../ChatText";
@@ -29,7 +28,8 @@ import { nearBottom } from "../composer";
 import { loadLabel, visibleRows } from "../page";
 import { STOPPING_NOTE } from "../stop";
 import { NOTE_MS, selfClearing, sessionTitle, useDismiss } from "../ux";
-import { readModel } from "../controls";
+import { loadSaved, readModel, type Choice } from "../controls";
+import { DEFAULT_MODEL, OPENCLAUDE_DEFAULT } from "../../launch/seats";
 import { ViewRow, type ChatOpen } from "../ChatView";
 import { ArtifactsStrip } from "./Strip";
 import { changed, mimeOf, newest, POLL_MS, PREVIEW_CAP, readArtifact, scanArtifacts, stampOf, stripIndex, THUMB_CAP, toBlobUrl, type ArtifactRow, type ArtifactScan } from "./artifacts";
@@ -43,7 +43,7 @@ const CANNOT_STOP_NOTE = "Could not stop the agent from here.";
 const startingNote = (name: string) => `Starting ${name}…`;
 const crashedNote = (name: string) => `${name}'s process ended. Your next message starts it again.`;
 
-export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, agent = "claude", open: opener }: {
+export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, effort = null, agent = "claude", resume = null, onSession, onModel, onEffort, open: opener }: {
   pane: { key: number; cwd: string | null; title?: string };
   /** True while the grid hides this pane: it reads nothing new either way, the event stream pushes. */
   hidden?: boolean;
@@ -54,10 +54,21 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   named?: boolean;
   /** Names the session after its first message, as a chat app does, once per pane. */
   onName?: (name: string) => void;
-  /** The model this chat starts on (the Everyday New session menu); null keeps the program's own default. */
+  /** The model this chat starts on; null takes the last pick or OpenClaude's own cheap default. */
   model?: string | null;
+  /** The effort level this chat starts on; null takes the last pick. */
+  effort?: string | null;
   /** The AI that answers here (2026-11-20): `claude`, or `openclaude` for the other models. */
   agent?: string;
+  /** The conversation to pick up (2026-11-21): a kept Everyday chat's own id, so reopening resumes it. */
+  resume?: string | null;
+  /** The agent's conversation id, once it names one: the window writes it on the chat's kept record. */
+  onSession?: (id: string) => void;
+  /** A model picked in the box (2026-11-21): the window writes it on the chat's kept record, so reopening
+   *  resumes on the model the chat last used. */
+  onModel?: (model: string | null) => void;
+  /** An effort picked in the box, written on the record the same way. */
+  onEffort?: (effort: string) => void;
   /** The window's way of opening a link or a printed file, as a terminal pane gets it. */
   open?: ChatOpen;
 }) {
@@ -80,11 +91,26 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // CHAT-026: Thought rows start folded; the toolbar opens or folds them all.
   const [thoughts, setThoughts] = useState<Set<string>>(() => new Set());
   const seq = useRef(0);
+  // The newest way to report a session id: the listener below outlives one render's props, so it reads the
+  // ref instead of closing over a callback that may have been replaced.
+  const reportSession = useRef(onSession);
+  reportSession.current = onSession;
   // A chat is started once per pane. React's strict mode mounts an effect twice in development; the
   // second mount must not start a second process, or the conversation the first one began is thrown away.
   const started = useRef(false);
   // The session takes its name from the first message, once, unless the user already named the tab.
   const namedOnce = useRef(false);
+  // The model and effort this conversation runs at (2026-11-21). A pick in the box restarts the hidden
+  // process with `--resume`, so the conversation carries on under the new choice; the window writes both
+  // on the chat's kept record, so reopening comes back on the same pair. With nothing picked yet, the
+  // last choice wins, and an OpenClaude chat with no history starts on its own cheap default.
+  const savedChoice = useMemo(() => loadSaved()[agent], [agent]);
+  const choice = useRef({
+    model: model ?? savedChoice?.model ?? (agent === "openclaude" ? OPENCLAUDE_DEFAULT : null),
+    effort: effort ?? savedChoice?.effort ?? null,
+  });
+  const sessionId = useRef<string | null>(resume);
+  const [liveModel, setLiveModel] = useState(choice.current.model);
   const ending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -123,6 +149,16 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           setItems((prev) => reduce(prev, ev, now, seq.current));
           // The working line and the Stop button follow the turn, which only the turn's own end closes.
           if (ev.kind === "result" || ev.kind === "stopped") setOpen(false);
+          // A kept Everyday chat learns the agent's own conversation id here: the init line names it, and a
+          // resumed process (after a crash or a sleep) names the one it picked up (`Started.resumed`).
+          if (ev.kind === "init" && ev.sessionId) {
+            sessionId.current = ev.sessionId;
+            reportSession.current?.(ev.sessionId);
+          }
+          if (ev.kind === "started" && ev.resumed) {
+            sessionId.current = ev.resumed;
+            reportSession.current?.(ev.resumed);
+          }
           // A finished turn is when most artifacts appear, so the folder is read again right then.
           if (ev.kind === "result") setLookAt((n) => n + 1);
           if (ev.kind === "exit") {
@@ -134,7 +170,28 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         unheard = off;
         if (!started.current) {
           started.current = true;
-          await startChat(chatId, cwd, model, agent);
+          // A kept chat opened again (2026-11-21): the agent's own transcript holds what was said, and a
+          // resumed process does not say it again. A session whose file is gone is not resumed at all: the
+          // agent would only answer "no conversation found", so the chat starts fresh and says so quietly.
+          let pick = sessionId.current;
+          if (pick && pick === resume) {
+            const history = await chatHistory(agent, cwd, pick).catch(() => null);
+            if (!live) {
+              // The effect was re-run or closed while the history loaded. A re-run saw `started` and
+              // skipped, so give the start back and ask for another run, or the chat has no process.
+              started.current = false;
+              setAgain((n) => n + 1);
+              return;
+            }
+            if (history) setItems(applyRead([], history));
+            else {
+              // The saved conversation is gone: forget its id here too, so a later model or effort pick
+              // cannot restart the process with `--resume <gone-id>`.
+              sessionId.current = null;
+              pick = null;
+            }
+          }
+          await startChat(chatId, cwd, choice.current.model, agent, pick, choice.current.effort);
           if (live) setSpawned(true);
         }
       } catch (e) {
@@ -154,7 +211,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         void endChat(chatId).catch(() => {});
       }, 0);
     };
-  }, [chatId, pane.cwd, model, agent, again]);
+    // The model and effort props are the first pair only; a later pick is applied by `applyChoice` below,
+    // which restarts the process itself. Re-running this effect on a prop change would start a second
+    // process or skip the restart while the previous cleanup is still pending.
+  }, [chatId, pane.cwd, agent, again]);
 
   // The box's own note clears itself, except the stopping line, which goes when the turn ends.
   useEffect(() => {
@@ -247,9 +307,9 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const earlier = loadLabel(rows.length, pages, 0);
   const thoughtIds = idsOf(items);
   const toggle = (id: string) => setThoughts((t) => toggled(t, id));
-  // CHAT-024: the model the agent reported last, named beside the box (the picker sends Claude's own
-  // `/model` line, so a chat keeps it across turns as the terminal chat does).
-  const shownModel = useMemo(() => readModel(agent, items) ?? model, [agent, items, model]);
+  // CHAT-024: the model the agent reported last, named beside the box. Claude reports the change it made
+  // from `/model`; OpenClaude's pick restarts the process, so the choice this pane keeps is the truth.
+  const shownModel = useMemo(() => (agent === "claude" ? readModel(agent, items) : null) ?? liveModel, [agent, items, liveModel]);
 
   // CHAT-025: a link in a reply opens as it does in a terminal pane. Files are only openable when the
   // agent printed them recently (chatLinks.ts); with no in-app viewer every web link asks first.
@@ -311,6 +371,33 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   };
   /** A page or a video: the real file, in the program the user has for it. */
   const openOnDisk = (row: ArtifactRow) => void invoke("open_path", { path: row.path }).catch((e) => setNote(String(e)));
+
+  // A model or effort pick in the box (2026-11-21): the hidden process has no live switch in print mode,
+  // so it is ended and started again with `--resume` on the conversation's own id. The rows stay on
+  // screen; only the process behind them changes. The box disables these picks while a turn runs, so
+  // nothing is cut off mid-answer.
+  const applyChoice = (pick: Choice) => {
+    const next = {
+      model: pick.model === undefined ? choice.current.model : pick.model === DEFAULT_MODEL ? null : pick.model,
+      effort: pick.effort === undefined ? choice.current.effort : pick.effort,
+    };
+    choice.current = next;
+    setLiveModel(next.model);
+    if (pick.model !== undefined) onModel?.(next.model);
+    if (pick.effort !== undefined) onEffort?.(pick.effort);
+    const cwd = pane.cwd;
+    if (!cwd || open) return;
+    void (async () => {
+      try {
+        // `chat_start` closes the chat's old process itself (Engines::start), so no separate end here.
+        // Only the id this pane holds is resumed: a conversation found gone was cleared from it.
+        await startChat(chatId, cwd, next.model, agent, sessionId.current, next.effort);
+        setSpawned(true);
+      } catch (e) {
+        setError(String(e));
+      }
+    })();
+  };
 
   /** The box clears its text at once: a send that fails later marks its waiting row failed and says why
    *  under the box, so nothing typed is silently swallowed and nothing is held back on a guess. */
@@ -438,6 +525,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             agent={agent}
             cwd={pane.cwd}
             shownModel={shownModel}
+            onLiveChoice={agent === "openclaude" ? applyChoice : undefined}
           />
           {full && (
             <button type="button" className="chat-full" aria-label="Close image" onClick={closeFull}>

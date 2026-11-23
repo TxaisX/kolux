@@ -2,15 +2,14 @@
 // front (TERM-001). The quick counts are shortcuts, and the free field takes any number up to the
 // most one launch can start, so a workspace is never limited to 3, 5 or another unlisted count.
 // Splits, tabs and the pane's own plus menu still add panes wherever the user wants them.
-// Owner change 2026-11-06: the space freed by the New tab and Preview buttons carries the
-// workspace's token and spend ribbon (usage/WorkspaceSpend.tsx).
+// 2026-11-21: the token and spend ribbon that sat at the right end is gone from the window; the
+// same figures are still kept and drawn in Settings > Usage (usage/TokenAnalytics.tsx).
 import { useEffect, useRef, useState } from "react";
 import { MAX_PANES, PANE_COUNTS } from "../terminal/grid";
-import { WorkspaceSpend } from "../lazy/menus";
 
-type Props = { count: number; onLayout: (n: number) => void; workspace?: string | null };
+type Props = { count: number; onLayout: (n: number) => void };
 
-export default function LayoutStrip({ count, onLayout, workspace = null }: Props) {
+export default function LayoutStrip({ count, onLayout }: Props) {
   const box = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState(String(count));
   // A split, a close or Start changes the count from elsewhere: follow it unless the field is being typed in.
@@ -56,10 +55,6 @@ export default function LayoutStrip({ count, onLayout, workspace = null }: Props
           }}
         />
       </div>
-      {/* The workspace's token and spend ribbon sits at the right end of the strip. */}
-      <span className="strip-right" style={{ marginLeft: "auto" }}>
-        <WorkspaceSpend workspace={workspace} />
-      </span>
     </div>
   );
 }

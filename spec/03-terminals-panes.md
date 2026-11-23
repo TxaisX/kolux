@@ -250,13 +250,14 @@ Source: D-03-013
 ### TERM-019 · Every pane shows a header with title and usage
 Tier: P0 · Pushed: 7 · State at 0.15.0: live
 User does: looks at any pane.
-User sees: a header row on every pane shows who is running, the session name and the session usage
-  percentage.
-Rules: shown on every pane, single or split, since 2026-10-05; the usage meter shows context use
-  against the session cap; never drawn over hidden content.
+User sees: a header row on every pane shows who is running and the session name.
+Rules: shown on every pane, single or split, since 2026-10-05; never drawn over hidden content.
+  Amended 2026-11-21 (Txais): the usage figures left the pane header and every other screen. Token,
+  cost and plan figures live in Settings > Usage. The header keeps who is running, the session name
+  and the status word.
 Acceptance:
   - [x] A single-pane grid still shows the header. (cards; evidence/cards-TERM-019.txt)
-  - [x] In a split tab each pane carries its own header with its own usage percentage. (cards; evidence/cards-TERM-019.txt)
+  - [x] In a split tab each pane carries its own header. (cards; evidence/cards-TERM-019.txt)
 Compat: —
 Source: D-03-019
 
