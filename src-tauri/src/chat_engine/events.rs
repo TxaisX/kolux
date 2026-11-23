@@ -26,7 +26,7 @@ pub enum ChatEvent {
     Init(Init),
     /// An assistant message: text, thinking and tool calls. `parent_tool_use_id` names the
     /// subagent (Task) call this message belongs to; `None` is the main conversation.
-    Assistant { session_id: Option<String>, parent_tool_use_id: Option<String>, message_id: Option<String>, model: Option<String>, blocks: Vec<Block>, error: Option<String> },
+    Assistant { session_id: Option<String>, parent_tool_use_id: Option<String>, message_id: Option<String>, model: Option<String>, blocks: Vec<Block>, error: Option<String>, usage: Option<Value> },
     /// A user message: echoed text and, mostly, tool results.
     User { parent_tool_use_id: Option<String>, text: Vec<String>, tool_results: Vec<ToolResult> },
     /// `system/compact_boundary`: the conversation was compacted here.
@@ -39,11 +39,15 @@ pub enum ChatEvent {
     Result(TurnResult),
     /// One line the process wrote to stderr.
     Stderr { line: String },
-    /// The process ended. `code` is its exit code when it had one.
-    Exit { code: Option<i32>, reason: ExitReason },
+    /// The process ended. `pid` is the process's own id (as `Started` named it), so the page can
+    /// ignore a late exit of a process it has already replaced; `code` is its exit code when it had one.
+    Exit { pid: u32, code: Option<i32>, reason: ExitReason },
     /// `chat_stop` finished: `interrupt` when the agent ended the turn itself, `ended` when the
     /// process had to be ended (the next send resumes the session).
     Stopped { how: StopHow },
+    /// The chat reached the context handoff line (`handoffAtTokens`): its process was ended and the
+    /// next message starts a fresh conversation. `tokens` is the reading that crossed it.
+    Handoff { tokens: u64, at: u64 },
     /// A line this reader does not know, kept whole; `json` is set when it parsed as JSON.
     Raw { line: String, json: Option<Value> },
 }
@@ -62,6 +66,9 @@ pub enum ExitReason {
     Ended,
     /// It ended by itself with another code (or none).
     Crashed,
+    /// Handed off: the context reached the line, so the process was ended and the next send starts a
+    /// fresh conversation instead of resuming this one.
+    Handoff,
 }
 
 /// How `chat_stop` stopped the turn.
@@ -296,7 +303,7 @@ fn assistant(v: &Value) -> ChatEvent {
         })
         .collect();
     let error = v.get("error").filter(|e| !e.is_null()).map(|e| e.as_str().map(String::from).unwrap_or_else(|| e.to_string()));
-    ChatEvent::Assistant { session_id: s(v, "session_id"), parent_tool_use_id: s(v, "parent_tool_use_id"), message_id: s(&msg, "id"), model: s(&msg, "model"), blocks, error }
+    ChatEvent::Assistant { session_id: s(v, "session_id"), parent_tool_use_id: s(v, "parent_tool_use_id"), message_id: s(&msg, "id"), model: s(&msg, "model"), blocks, error, usage: msg.get("usage").cloned() }
 }
 
 /// A tool result's text: a plain string, or the text parts of a content array joined by lines.

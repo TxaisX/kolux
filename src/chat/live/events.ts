@@ -7,6 +7,7 @@
 // nothing is written to a transcript: the event stream is the conversation.
 import type { ChatItem } from "../model";
 import type { Tool } from "../steps";
+import { shortTokens } from "../../usage/meter";
 
 /** One content block of an assistant message (Rust `chat_engine::events::Block`). */
 export type Block =
@@ -25,7 +26,7 @@ export type ToolResult = { toolUseId: string; output: string; isError: boolean }
  *  past `kind` is optional on purpose: an event the engine later grows a field for still reads here. */
 export type ChatEvent = {
   chatId: string;
-  kind: "started" | "init" | "assistant" | "user" | "compactBoundary" | "permissionDenied" | "apiRetry" | "result" | "stderr" | "exit" | "stopped" | "raw";
+  kind: "started" | "init" | "assistant" | "user" | "compactBoundary" | "permissionDenied" | "apiRetry" | "result" | "stderr" | "exit" | "stopped" | "handoff" | "raw";
   /** `assistant`: the message's blocks, in the order the agent wrote them. */
   blocks?: Block[];
   /** `assistant` and `user`: the subagent (Task) call this belongs to; null in the main conversation. */
@@ -60,7 +61,13 @@ export type ChatEvent = {
   errorStatus?: number;
   /** `exit`: the exit code and why the process ended. */
   code?: number | null;
+  /** `started` and `exit`: the process's own id, so a late exit of a process already replaced is told
+   *  apart from the exit of the one running now. */
+  pid?: number;
   reason?: string;
+  /** `handoff`: the reading that crossed the handoff line, and the line itself. */
+  tokens?: number;
+  at?: number;
   /** `stopped`: how the turn was stopped (`interrupt` or `ended`). */
   how?: string;
   /** `stderr`: one line the process printed. */
@@ -81,6 +88,44 @@ function put(out: ChatItem[], item: ChatItem): void {
 }
 
 /**
+ * The agent conversation an event says the chat is now on: the id an init line or a resumed start names,
+ * `null` after a handoff (the old conversation is over, so nothing may resume it again), and `undefined`
+ * when the event says nothing about it.
+ */
+export function sessionChange(ev: ChatEvent): string | null | undefined {
+  if (ev.kind === "init" && ev.sessionId) return ev.sessionId;
+  if (ev.kind === "started" && ev.resumed) return ev.resumed;
+  if (ev.kind === "handoff") return null;
+  return undefined;
+}
+
+/** A user turn's text without the one leading `<system-reminder>` envelope the engine puts the handoff
+ *  note in: the chat shows only what the user wrote. A "<system-reminder>" the user typed anywhere else
+ *  stays visible, since only a leading, closed envelope is taken off. */
+export function userWords(text: string): string {
+  const words = text.replace(/^\s*<system-reminder>[\s\S]*?<\/system-reminder>\s*/, "");
+  return words.trim() ? words : "";
+}
+
+/** The page's count of messages sent and not yet answered, after one event. Claude Code answers each
+ *  queued message with a result of its own, so the working line stays until the count is back to 0. A
+ *  stop, or the process ending, leaves nothing waiting (a stop cancels what was queued). A reply while
+ *  nothing is waiting is a turn the page did not count (a message sent after a Stop, or a turn the agent
+ *  started itself), so it waits for that turn's result; a subagent's reply is not a new turn. */
+export function stillWaiting(waiting: number, ev: ChatEvent): number {
+  if (ev.kind === "result") return Math.max(0, waiting - 1);
+  if (ev.kind === "stopped" || ev.kind === "exit") return 0;
+  if (ev.kind === "assistant" && !ev.parentToolUseId && waiting === 0) return 1;
+  return waiting;
+}
+
+/** An exit of a process the pane has already replaced (its pid is not the last one started): the pane
+ *  ignores it, so it neither closes the running turn nor reports a crash of the process running now. */
+export function staleExit(ev: ChatEvent, lastPid: number | null): boolean {
+  return ev.kind === "exit" && ev.pid !== undefined && lastPid !== null && ev.pid !== lastPid;
+}
+
+/**
  * Folds one `chat-event` into the conversation. `at`: when it arrived (ms since 1970), since the engine's
  * events carry no time of their own; `seq`: a counter the caller keeps, so two events the agent gives no
  * id still get stable, different row ids. Returns `prev` itself when the event draws nothing, so a
@@ -98,6 +143,10 @@ export function reduce(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq
       return [...prev, denied(ev, at, seq)];
     case "compactBoundary":
       return [...prev, { id: `compact-${seq}`, role: "status", kind: "compact", text: "The conversation was compacted here.", at }];
+    // A chat handed off at the context line: its process ended and the next message starts a fresh
+    // conversation, so the chat says why its replies stop carrying the old context.
+    case "handoff":
+      return [...prev, { id: `handoff-${seq}`, role: "status", kind: "notice", text: `Handed off at ${shortTokens(ev.tokens ?? ev.at ?? 0)} tokens. Your next message starts a fresh conversation.`, at }];
     case "apiRetry":
       return [...prev, retry(ev, at, seq)];
     case "exit":
@@ -139,8 +188,9 @@ function heard(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq: number
   };
   // The message a box sent comes back here, so the waiting row it left is confirmed from the same rules
   // every transcript read uses (model.ts `combine` / `sentIn`).
-  (ev.text ?? []).forEach((text, i) => {
-    if (!text.trim()) return;
+  (ev.text ?? []).forEach((raw, i) => {
+    const text = userWords(raw);
+    if (!text) return;
     copy();
     put(out, { id: `u-${seq}-${i}`, role: "user", kind: "text", text, at });
   });

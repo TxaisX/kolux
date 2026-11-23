@@ -12,7 +12,7 @@
 //! - Sign-in comes from [`crate::terminal::agent_env`], the same place terminal panes get it.
 //! - Stop sends the documented `interrupt` control request; when no turn end follows within
 //!   [`STOP_GRACE`], the process is ended and the next send resumes the session.
-//! - Idle sleep: after [`IDLE_SLEEP`] with no turn running the process is ended; the session id is
+//! - Idle sleep: after [`IDLE_SLEEP`] with no line from the process (a silent busy turn too) it is ended; the session id is
 //!   kept and the next send starts it again with `--resume`.
 #![allow(dead_code)] // wired in the chat-app screens stage
 
@@ -32,8 +32,11 @@ use std::time::{Duration, Instant};
 
 /// The Tauri event every chat's events go out on; the payload is `{ chatId, kind, ... }`.
 pub const EVENT: &str = "chat-event";
-/// Idle sleep: a chat's process ends after this long with no turn running.
+/// Idle sleep: a chat's process with no turn running ends after this long with no line from it.
 pub const IDLE_SLEEP: Duration = Duration::from_secs(10 * 60);
+/// Idle sleep of a process that looks busy: it ends after this long with no line from it, so a result that
+/// never came cannot keep it forever, while a long silent tool call (a cargo build) is left to finish.
+pub const BUSY_IDLE_SLEEP: Duration = Duration::from_secs(60 * 60);
 /// How long `chat_stop` waits for the interrupted turn to end before it ends the process.
 pub const STOP_GRACE: Duration = Duration::from_secs(5);
 /// The environment variable `--bare` sets; removed so a chat always loads the user's setup.
@@ -54,12 +57,14 @@ pub struct Launch {
 pub struct Config {
     pub launch: Option<Launch>,
     pub idle: Duration,
+    /// The idle sleep while a turn looks busy; see [`BUSY_IDLE_SLEEP`].
+    pub busy_idle: Duration,
     pub stop_grace: Duration,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { launch: None, idle: IDLE_SLEEP, stop_grace: STOP_GRACE }
+        Config { launch: None, idle: IDLE_SLEEP, busy_idle: BUSY_IDLE_SLEEP, stop_grace: STOP_GRACE }
     }
 }
 
@@ -75,6 +80,12 @@ pub struct Spec {
     pub effort: Option<String>,
     /// Variables added to the inherited environment (sign-in first, then the caller's own).
     pub env: Vec<(String, String)>,
+    /// The context line this chat hands off at (`handoff::at`, 0 turns it off). At or past it the
+    /// turn's process is ended and the next message starts a fresh conversation.
+    pub handoff_at: u64,
+    /// The chat's handoff note, given to Claude Code as an appended system prompt so the agent keeps
+    /// the work on paper across a handoff. `None` for an agent whose CLI is not known to take one.
+    pub handoff_note: Option<PathBuf>,
 }
 
 /// The agents a chat can run today. Both are Claude Code's CLI shape; an id outside this list has no
@@ -155,9 +166,11 @@ pub fn user_line(text: &str, images: &[Image]) -> String {
     serde_json::json!({ "type": "user", "message": { "role": "user", "content": content }, "parent_tool_use_id": null }).to_string()
 }
 
-/// The interrupt control request line written to stdin by `chat_stop`.
+/// The interrupt control request line written to stdin by `chat_stop`. `cancel_queued` (checked live
+/// 2026-11-23 with Claude Code): without it a message queued behind the stopped turn still runs after the
+/// interrupt; with it that message is dropped, so Stop stops everything the user had sent.
 pub fn interrupt_line(request_id: &str) -> String {
-    serde_json::json!({ "type": "control_request", "request_id": request_id, "request": { "subtype": "interrupt" } }).to_string()
+    serde_json::json!({ "type": "control_request", "request_id": request_id, "request": { "subtype": "interrupt", "cancel_queued": true } }).to_string()
 }
 
 static REQUESTS: AtomicU64 = AtomicU64::new(1);
@@ -172,6 +185,26 @@ struct Running {
 struct Inner {
     spec: Spec,
     session_id: Option<String>,
+    /// The prompt size of the last main-conversation message this process wrote (its input plus both
+    /// cache parts). The turn's `result` carries the whole turn's usage, summed across every tool
+    /// call, so it cannot be the context size; the last message's own usage is. Cleared at every
+    /// spawn and taken at every result, so a turn that reports nothing is never guessed at.
+    last_prompt: Option<u64>,
+    /// User messages written to this process whose turn has not reported its result yet. Claude Code
+    /// queues a message sent while a turn runs, so a handoff waits until this is back to 0: ending
+    /// the process earlier would lose what the user wrote. 0 at every spawn.
+    outstanding: u32,
+    /// A reading crossed the handoff line while messages were still outstanding: the handoff fires on
+    /// the first result that leaves none. Holds the reading that crossed.
+    handoff_due: Option<u64>,
+    /// The process was handed off and the next one cannot take the note on its command line
+    /// (OpenClaude, or Claude Code through a `.cmd` shim): the next message carries it instead.
+    note_due: bool,
+    /// Stop sent an interrupt while this many messages were outstanding (the stopped turn and those
+    /// queued behind it). The interrupt cancels the queued ones (`cancel_queued`, checked live
+    /// 2026-11-23), so the next result of this process answers all of them; a message sent after the
+    /// Stop still runs and keeps its own count. Cleared at that result and whenever the process ends.
+    stop_mark: Option<u32>,
     child: Option<Running>,
     gen: u64,
     busy: bool,
@@ -179,6 +212,107 @@ struct Inner {
     closing: bool,
     /// The process ended on purpose last: its generation, why, and its exit code.
     ending: Option<(u64, ExitReason, Option<i32>)>,
+}
+
+impl Inner {
+    /// A main-conversation message's usage, read by the stdout reader of process `gen`.
+    fn saw_usage(&mut self, gen: u64, usage: Option<&serde_json::Value>) {
+        // Review P2-C (2026-11-23): a late line from an ended process is not this process's reading.
+        if self.gen != gen {
+            return;
+        }
+        if let Some(tokens) = prompt_tokens(usage) {
+            self.last_prompt = Some(tokens);
+        }
+    }
+
+    /// A turn's result, read by the stdout reader of process `gen`. Answers the reading and the line
+    /// when the chat hands off now: a reading at or past the line marks the handoff due, and it fires
+    /// on the first result that leaves no message of the user's outstanding.
+    fn handoff_after_result(&mut self, gen: u64) -> Option<(u64, u64)> {
+        if self.gen != gen {
+            return None;
+        }
+        self.outstanding = self.outstanding.saturating_sub(1);
+        let reading = self.last_prompt.take();
+        let at = self.spec.handoff_at;
+        if at == 0 || self.closing {
+            return None;
+        }
+        if let Some(tokens) = reading.filter(|t| *t >= at) {
+            self.handoff_due = Some(self.handoff_due.map_or(tokens, |due| due.max(tokens)));
+        }
+        if self.outstanding > 0 {
+            return None;
+        }
+        self.handoff_due.take().map(|tokens| (tokens, at))
+    }
+
+    /// One line the stdout reader of process `gen` read: the chat's state follows it. Answers whether
+    /// the page hears the line, and the handoff it fires (the reading and the line), if any.
+    fn heard(&mut self, gen: u64, ev: &ChatEvent) -> (bool, Option<(u64, u64)>) {
+        let current = self.gen == gen;
+        // Review P2 (2026-11-23): any line of the process running now is a sign of life, so the idle
+        // sleep counts from the last one, whatever its kind.
+        if current {
+            self.last_active = Instant::now();
+        }
+        match ev {
+            // Review P3 (2026-11-23): a late line from an ended process never names the session the
+            // chat resumes, and its init is not this process's start.
+            ChatEvent::Init(_) if !current => return (false, None),
+            ChatEvent::Init(i) if !i.session_id.is_empty() => self.session_id = Some(i.session_id.clone()),
+            ChatEvent::Assistant { parent_tool_use_id, usage, .. } => {
+                // Review P2 (2026-11-23): a reply with nothing outstanding is a turn this engine did not
+                // count (a queued message whose result came early, or a turn the agent started itself):
+                // the chat is busy again until that turn's result. Not while a Stop waits for its result,
+                // and only on a main-conversation reply: a subagent's line belongs to a counted turn.
+                if current && parent_tool_use_id.is_none() && self.outstanding == 0 && self.stop_mark.is_none() {
+                    self.outstanding = 1;
+                    self.busy = true;
+                }
+                // The reading is the last main-conversation message's own usage: the turn's `result`
+                // sums every tool call of the turn, which is not how full the window is.
+                if parent_tool_use_id.is_none() {
+                    self.saw_usage(gen, usage.as_ref());
+                }
+            }
+            ChatEvent::Result(r) => {
+                // Txais (2026-11-21): a chat is handed off at the same line a pane is. The last message's
+                // usage is the reading (never a guess); at or past the line the process ends and the next
+                // message starts a fresh conversation, with the note on paper. A turn with no reading
+                // leaves the chat running.
+                // Review P1-A (2026-11-23): never while a message the user wrote is still queued in the
+                // process; see `handoff_after_result`.
+                // Review P2 (2026-11-23): the first result after a Stop is the stopped turn's; the messages
+                // queued behind it were cancelled with it, so their results never come. Only what was
+                // outstanding at the Stop is dropped: a message sent after it still runs.
+                if current {
+                    if let Some(mark) = self.stop_mark.take() {
+                        self.outstanding = self.outstanding.saturating_sub(mark.saturating_sub(1));
+                    }
+                }
+                let handoff = self.handoff_after_result(gen);
+                if current {
+                    if let Some(id) = &r.session_id {
+                        self.session_id = Some(id.clone());
+                    }
+                    // Review P2 (2026-11-23): a message queued behind this turn still runs, so the chat
+                    // stays busy (no idle sleep, Stop still stops it) until its own result.
+                    self.busy = self.outstanding > 0;
+                    self.last_active = Instant::now();
+                }
+                if let Some(cleared) = handoff {
+                    self.session_id = None;
+                    self.note_due = true;
+                    Engine::end_process(self, ExitReason::Handoff);
+                    return (true, Some(cleared));
+                }
+            }
+            _ => {}
+        }
+        (true, None)
+    }
 }
 
 /// One chat.
@@ -206,8 +340,16 @@ impl Engine {
             None => (crate::agents::find_program(&agent).ok_or_else(|| format!("{} was not found on PATH. Install it, then open the chat again.", crate::agents::agent_name(&agent)))?, Vec::new()),
         };
         let resume = inner.session_id.clone();
-        let args = chat_args(&agent, inner.spec.model.as_deref(), inner.spec.effort.as_deref(), resume.as_deref());
+        let mut args = chat_args(&agent, inner.spec.model.as_deref(), inner.spec.effort.as_deref(), resume.as_deref());
         let shim = program.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"));
+        if notes_on_line(&agent, shim) {
+            if let Some(note) = inner.spec.handoff_note.as_deref() {
+                args.push("--append-system-prompt".to_string());
+                args.push(note_prompt(note));
+            }
+            // The note is on this line already; the first message need not carry it as well.
+            inner.note_due = false;
+        }
         let mut cmd = if shim {
             let mut c = crate::winproc::command(crate::pty::system_program("cmd.exe"));
             c.arg("/d").arg("/c").arg(&program);
@@ -223,6 +365,10 @@ impl Engine {
         inner.gen += 1;
         let gen = inner.gen;
         inner.child = Some(Running { child, stdin, pid, gen });
+        inner.last_prompt = None;
+        inner.outstanding = 0;
+        inner.handoff_due = None;
+        inner.stop_mark = None;
         inner.busy = false;
         inner.last_active = Instant::now();
         self.emit(&ChatEvent::Started { pid, resumed: resume });
@@ -236,36 +382,27 @@ impl Engine {
         }
         if let Some(out) = stdout {
             let me = Arc::clone(self);
-            std::thread::spawn(move || me.read_stdout(out, gen));
+            std::thread::spawn(move || me.read_stdout(out, gen, pid));
         }
         Ok(())
     }
 
-    fn read_stdout(self: Arc<Self>, out: std::process::ChildStdout, gen: u64) {
+    fn read_stdout(self: Arc<Self>, out: std::process::ChildStdout, gen: u64, pid: u32) {
         for line in BufReader::new(out).lines().map_while(Result::ok) {
             let Some(ev) = parse_line(&line) else { continue };
-            {
-                let mut inner = lock(&self.inner);
-                match &ev {
-                    ChatEvent::Init(i) if !i.session_id.is_empty() => inner.session_id = Some(i.session_id.clone()),
-                    ChatEvent::Result(r) => {
-                        if let Some(id) = &r.session_id {
-                            inner.session_id = Some(id.clone());
-                        }
-                        if inner.gen == gen {
-                            inner.busy = false;
-                            inner.last_active = Instant::now();
-                        }
-                    }
-                    _ => {}
-                }
+            let (heard, cleared) = lock(&self.inner).heard(gen, &ev);
+            if heard {
+                self.emit(&ev);
             }
-            self.emit(&ev);
+            if let Some((tokens, at)) = cleared {
+                self.emit(&ChatEvent::Handoff { tokens, at });
+            }
         }
         // Stdout closed: the process is ending. Collect it and say why it ended.
         let (running, ended) = {
             let mut inner = lock(&self.inner);
             let running = if inner.child.as_ref().is_some_and(|r| r.gen == gen) { inner.child.take() } else { None };
+            // The stop mark stays until the next start: a Stop still waiting sees that its process ended.
             if inner.gen == gen {
                 inner.busy = false;
             }
@@ -282,7 +419,7 @@ impl Engine {
                 (code, if code == Some(0) { ExitReason::Ended } else { ExitReason::Crashed })
             }
         };
-        self.emit(&ChatEvent::Exit { code, reason });
+        self.emit(&ChatEvent::Exit { pid, code, reason });
     }
 
     /// Ends the current process on purpose and records why, so its stdout reader reports the
@@ -306,10 +443,17 @@ impl Engine {
         if inner.child.is_none() {
             self.spawn(&mut inner)?;
         }
-        let line = user_line(text, images);
+        // Review P2-D (2026-11-23): the first message after a handoff carries the note when the process
+        // could not take it on its command line. It goes inside the JSON line, never on a command line.
+        let line = match inner.spec.handoff_note.as_deref().filter(|_| inner.note_due) {
+            Some(note) => user_line(&note_message(note, text), images),
+            None => user_line(text, images),
+        };
         let agent = inner.spec.agent.clone();
         let stdin = inner.child.as_mut().and_then(|r| r.stdin.as_mut()).ok_or("The chat's process is not running.")?;
         stdin.write_all(line.as_bytes()).and_then(|_| stdin.write_all(b"\n")).and_then(|_| stdin.flush()).map_err(|e| format!("Could not send to {}: {e}", crate::agents::agent_name(&agent)))?;
+        inner.note_due = false;
+        inner.outstanding = inner.outstanding.saturating_add(1);
         inner.busy = true;
         inner.last_active = Instant::now();
         Ok(())
@@ -326,7 +470,9 @@ impl Engine {
             let gen = inner.gen;
             let line = interrupt_line(&request);
             let sent = inner.child.as_mut().and_then(|r| r.stdin.as_mut()).is_some_and(|s| s.write_all(line.as_bytes()).and_then(|_| s.write_all(b"\n")).and_then(|_| s.flush()).is_ok());
-            if !sent {
+            if sent {
+                inner.stop_mark = Some(inner.outstanding);
+            } else {
                 Self::end_process(&mut inner, ExitReason::Stopped);
                 drop(inner);
                 self.emit(&ChatEvent::Stopped { how: StopHow::Ended });
@@ -338,8 +484,18 @@ impl Engine {
         loop {
             {
                 let mut inner = lock(&self.inner);
-                if !inner.busy || inner.gen != gen {
+                // The stopped turn's own result clears the mark; a message sent after the Stop may keep
+                // the chat busy past it, and that is not a failed stop. (A handoff on that result ends
+                // the process after the mark is cleared, so it still counts as an interrupt.)
+                if inner.stop_mark.is_none() {
                     break;
+                }
+                // Review N4 (2026-11-23): no result, and the process ended meanwhile (a crash, a close) or
+                // another one replaced it: the turn was not interrupted, it ended with its process.
+                if inner.child.is_none() || inner.gen != gen {
+                    drop(inner);
+                    self.emit(&ChatEvent::Stopped { how: StopHow::Ended });
+                    return Some(StopHow::Ended);
                 }
                 if Instant::now() >= end {
                     Self::end_process(&mut inner, ExitReason::Stopped);
@@ -360,16 +516,23 @@ impl Engine {
         Self::end_process(&mut inner, ExitReason::Closed);
     }
 
-    /// Idle sleep: ends the process after `cfg.idle` with no turn running. Runs until the chat closes.
+    /// Idle sleep: ends the process after `cfg.idle` with no line from it, or after the longer
+    /// `cfg.busy_idle` while a turn looks busy (so a result that never came cannot keep it forever).
+    /// Runs until the chat closes.
     fn watch_idle(self: Arc<Self>) {
-        let tick = (self.cfg.idle / 4).clamp(Duration::from_millis(10), Duration::from_secs(1));
+        let tick = (self.cfg.idle.min(self.cfg.busy_idle) / 4).clamp(Duration::from_millis(10), Duration::from_secs(1));
         loop {
             std::thread::sleep(tick);
             let mut inner = lock(&self.inner);
             if inner.closing {
                 return;
             }
-            if inner.child.is_some() && !inner.busy && inner.last_active.elapsed() >= self.cfg.idle {
+            // Review P2 (2026-11-23): a process that looks busy sleeps too, after the longer busy period: a
+            // result that never came (a cancelled or folded message) must not keep it forever, and a long
+            // silent tool call must not be cut off at the short one. Every line it writes counts as
+            // activity (`Inner::heard`).
+            let limit = if inner.busy { self.cfg.busy_idle } else { self.cfg.idle };
+            if inner.child.is_some() && inner.last_active.elapsed() >= limit {
                 Self::end_process(&mut inner, ExitReason::Sleep);
             }
         }
@@ -434,11 +597,15 @@ impl Engines {
             return Err(format!("The folder {} does not exist.", spec.cwd.display()));
         }
         self.close(chat_id);
+        // Review P2 (2026-11-23): a fresh conversation starts from the note too. A process that takes it
+        // on its command line clears this at spawn; any other (OpenClaude, a shim) carries it in the
+        // first message. A resumed conversation already has it.
+        let note_due = spec.handoff_note.is_some() && resume_session_id.is_none();
         let engine = Arc::new(Engine {
             id: chat_id.to_string(),
             cfg: self.cfg.clone(),
             sink,
-            inner: Mutex::new(Inner { spec, session_id: resume_session_id, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
+            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due, stop_mark: None, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
         });
         {
             let mut inner = lock(&engine.inner);
@@ -490,6 +657,46 @@ fn engines(app: &tauri::AppHandle) -> Engines {
     app.state::<Engines>().inner().clone()
 }
 
+/// The prompt size a message reports: uncached input plus the cache write plus the cache read, the
+/// three parts of the prompt (the same sum `hooks.rs` takes from a status line). `None` when the
+/// message carried no usage at all, which is never guessed at.
+fn prompt_tokens(usage: Option<&serde_json::Value>) -> Option<u64> {
+    let u = usage?;
+    let n = |k: &str| u.get(k).and_then(serde_json::Value::as_u64);
+    let sum = n("input_tokens")?.checked_add(n("cache_creation_input_tokens").unwrap_or(0))?.checked_add(n("cache_read_input_tokens").unwrap_or(0))?;
+    Some(sum)
+}
+
+/// Whether the handoff note may ride on the command line. It is Claude Code's own flag, so an agent
+/// whose CLI is not known to take it gets no note. A `.cmd`/`.bat` shim never gets one either: the
+/// note is free text the agent itself writes, and through `cmd.exe /c` a newline would cut the line
+/// short and a `&` would start another command (the same reason `add_team` skips a shim).
+fn notes_on_line(agent: &str, shim: bool) -> bool {
+    agent == "claude" && !shim
+}
+
+/// The handoff note as an appended system prompt: the file's own words, capped so a long note never
+/// crowds the window it is meant to protect. A note that cannot be read adds nothing.
+fn note_prompt(note: &Path) -> String {
+    // Review P3-E (2026-11-23): a NUL would end the string the CLI reads; it is never part of a note.
+    let text = std::fs::read_to_string(note).unwrap_or_default().replace('\0', "");
+    let mut kept: String = text.chars().take(8_000).collect();
+    if kept.chars().count() < text.chars().count() {
+        kept.push_str("\n\n(The handoff note is longer; read the file for the rest.)");
+    }
+    format!("Your handoff note is at {}. Keep it current as you work: the chat hands off at the context line, and this note is what the next conversation starts from.\n\n{}", note.display(), kept)
+}
+
+/// The first message after a handoff, for a process that could not take the note on its command
+/// line: the note first, then what the user wrote. Review P2 (2026-11-23): the note rides in a
+/// `<system-reminder>` envelope, which every transcript read hides (`chat.rs` `HIDDEN_TAGS`), so a
+/// reopened chat shows only the user's own words. The note is free text: a closing tag inside it is
+/// broken so it can never end the envelope early.
+pub(crate) fn note_message(note: &Path, text: &str) -> String {
+    let body = note_prompt(note).replace("</system-reminder", "</system_reminder");
+    format!("<system-reminder>\n{body}\n</system-reminder>\n\n{text}")
+}
+
 /// The page's payload: the chat id beside the event's own fields.
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -515,6 +722,9 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Sen
 /// when the page asks for it (2026-11-20). `agent` left out means Claude Code, as before. `effort`
 /// (2026-11-21) is the level the conversation runs at; a later pick restarts the process and resumes
 /// the same session on the new model or effort.
+// Each argument is a field the page sends by name (lively added `effort` as the eighth); a struct
+// would change the page's call, so the count is allowed here.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, model: Option<String>, effort: Option<String>, resume_session_id: Option<String>, extra_env: Vec<(String, String)>, agent: Option<String>) -> Result<(), String> {
     use tauri::Manager;
@@ -541,9 +751,29 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
         crate::terminal::agent_env(&store, &settings, Some(&agent), None, None, &extra_env)?.env
     };
     // The caller's own variables first; the sign-in wins (ACCT-024 already refused a clash).
-    let env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
+    let mut env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
+    // Txais (2026-11-21): chat panes follow the same 200k cap, handoff line and note as terminal
+    // panes. The cap goes on here (the CLI's own variable) rather than inside the engine, so the
+    // engine stays a plain stream reader. The note is created beside the folder's other Kolux
+    // scratch, and a folder that cannot take one simply runs without it.
+    let at = {
+        let store = app.state::<Mutex<crate::state::Store>>();
+        let store = store.lock().map_err(|e| e.to_string())?;
+        let settings = store.settings();
+        if crate::cap::on(&settings) {
+            // A variable the user set themselves (their own environment, or the agent's saved options)
+            // is their choice: the cap leaves it alone.
+            let set = crate::cap::env_set() || env.iter().any(|(k, _)| k.eq_ignore_ascii_case(crate::cap::CLAUDE_ENV));
+            crate::cap::apply(Some(agent.as_str()), &mut Vec::new(), &mut env, set);
+        }
+        crate::handoff::at(&settings)
+    };
+    // One note per folder, the way a worktree has one: two chats in the same folder start from the
+    // same page of paper. Best effort; a folder that cannot take one runs without it.
+    let name = cwd.file_name().and_then(|n| n.to_str()).unwrap_or("chat").to_string();
+    let note = crate::projects::prepare_handoff(&cwd, &name).ok();
     let (engines, sink) = (engines(&app), app_sink(&app));
-    blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, effort, env }, resume_session_id, sink)).await
+    blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, effort, env, handoff_at: at, handoff_note: note }, resume_session_id, sink)).await
 }
 
 /// Sends `text` (and images) to chat `chat_id` as the next user message.

@@ -142,8 +142,16 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     },
     // The agent's own conversation id: what `--resume` needs when the chat is opened again. The pane keeps
     // it too, so a chat left open at quit comes back as itself instead of as a fresh conversation.
-    chatSession: (id: string) => {
+    // A handoff (2026-11-23) reports `null`: that conversation is over, so the record and the pane forget it,
+    // and reopening the row or picking another model starts fresh instead of resuming the full one.
+    chatSession: (id: string | null) => {
       if (!p.everyday) return;
+      if (id === null) {
+        const rec = p.everyday;
+        saveChats((list) => (list.some((c) => c.id === rec && c.session) ? list.map((c) => (c.id === rec ? { ...c, session: undefined } : c)) : list));
+        if (p.chatResume !== undefined) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, chatResume: undefined } : x)));
+        return;
+      }
       saveChats((list) => setEverydaySession(list, p.everyday!, id));
       if (p.chatResume !== id) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, chatResume: id } : x)));
     },

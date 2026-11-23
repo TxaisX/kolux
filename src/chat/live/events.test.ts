@@ -2,7 +2,7 @@
 // Each case here is a line shape docs/chat-engine.md prints, and the last tests prove the reducer's rows
 // go through the same `combine` / `fold` the transcript chat uses, with no second renderer.
 import { expect, test } from "vitest";
-import { reduce, type ChatEvent } from "./events";
+import { reduce, sessionChange, staleExit, stillWaiting, userWords, type ChatEvent } from "./events";
 import { combine } from "../model";
 import { fold, type Tool } from "../steps";
 
@@ -88,8 +88,83 @@ test("a crashed process is a row; a sleep, a close and the engine's own line are
   for (const e of quiet) expect(reduce(crashed, e, 10, 2), e.kind).toBe(crashed);
 });
 
+test("a chat that handed off says so, and starts fresh on the next message", () => {
+  const items = reduce([], ev({ kind: "handoff", tokens: 171_240, at: 170_000 }), 10, 1);
+  expect(items[0]).toMatchObject({ role: "status", kind: "notice", text: "Handed off at 171k tokens. Your next message starts a fresh conversation." });
+  // The process ending for the handoff is not a crash: the row above already said what happened.
+  expect(reduce(items, ev({ kind: "exit", code: null, reason: "handoff" }), 10, 2)).toBe(items);
+});
+
 test("a compaction is the divider the chat already draws", () => {
   const items = reduce([], ev({ kind: "compactBoundary", trigger: "auto", preTokens: 167000 }), 11, 1);
   const views = fold(items.map((i) => ({ ...i, row: "message" as const })), false);
   expect(views[0]).toMatchObject({ row: "message", kind: "compact" });
+});
+
+// Review P2 (2026-11-23): a handoff ends the conversation, so the pane and the kept record forget its id;
+// a model or effort pick, or reopening the chat, then starts fresh instead of resuming the full one.
+test("a handoff forgets the conversation; an init or a resumed start names it", () => {
+  expect(sessionChange(ev({ kind: "init", sessionId: "s-1" }))).toBe("s-1");
+  expect(sessionChange(ev({ kind: "started", resumed: "s-2" }))).toBe("s-2");
+  expect(sessionChange(ev({ kind: "handoff", tokens: 171_240, at: 170_000 }))).toBeNull();
+  expect(sessionChange(ev({ kind: "started" }))).toBeUndefined();
+  expect(sessionChange(ev({ kind: "result" }))).toBeUndefined();
+});
+
+// Review P2 (2026-11-23): the first message after a handoff carries the note inside a system-reminder; a
+// user line that comes back with it shows only what the user wrote.
+test("a user line shows only the user's words, never the handoff note's envelope", () => {
+  const sent = "<system-reminder>\nYour handoff note is at C:\n.md.\n\n- wire the readers\n</system-reminder>\n\nWhat is next?";
+  const items = reduce([], ev({ kind: "user", text: [sent] }), 5, 1);
+  expect(items.map((i) => i.text)).toEqual(["What is next?"]);
+  expect(reduce([], ev({ kind: "user", text: ["<system-reminder>only the note</system-reminder>"] }), 5, 2)).toEqual([]);
+});
+
+// Review P3 (2026-11-23): only the one leading envelope the engine adds is taken off; a
+// "<system-reminder>" the user typed anywhere else is their own words and stays.
+test("only a leading system-reminder envelope is hidden; the user's own tag text stays", () => {
+  expect(userWords("<system-reminder>\nthe note\n</system-reminder>\n\nhello")).toBe("hello");
+  expect(userWords("why does <system-reminder>x</system-reminder> show up?")).toBe("why does <system-reminder>x</system-reminder> show up?");
+  expect(userWords("<system-reminder>a</system-reminder>\n\nI typed <system-reminder>b</system-reminder>")).toBe("I typed <system-reminder>b</system-reminder>");
+  expect(userWords("<system-reminder> never closed, so it is the user's")).toBe("<system-reminder> never closed, so it is the user's");
+  expect(userWords("   ")).toBe("");
+});
+
+// Review P3 (2026-11-23): a message queued behind a running turn gets a result of its own, so the working
+// line and Stop stay until every sent message is answered; a stop or the process ending clears the count.
+test("the page counts unanswered sends: each result answers one, a stop or an exit answers all", () => {
+  let n = 2;
+  n = stillWaiting(n, ev({ kind: "result" }));
+  expect(n).toBe(1);
+  n = stillWaiting(n, ev({ kind: "assistant" }));
+  expect(n).toBe(1);
+  expect(stillWaiting(2, ev({ kind: "assistant" }))).toBe(2);
+  n = stillWaiting(n, ev({ kind: "result" }));
+  expect(n).toBe(0);
+  expect(stillWaiting(0, ev({ kind: "result" }))).toBe(0);
+  expect(stillWaiting(3, ev({ kind: "stopped" }))).toBe(0);
+  expect(stillWaiting(3, ev({ kind: "exit", code: 1, reason: "crashed" }))).toBe(0);
+  expect(stillWaiting(3, ev({ kind: "started" }))).toBe(3);
+});
+
+// Review P2-2 (2026-11-23): a reply while nothing is waiting is a turn the page did not count (a message
+// sent after a Stop, or a turn the agent started itself); the page waits for that turn's result.
+test("a reply while nothing is waiting makes the page wait for that turn's result", () => {
+  expect(stillWaiting(0, ev({ kind: "assistant", parentToolUseId: "toolu_task" }))).toBe(0);
+  let n = stillWaiting(0, ev({ kind: "assistant", parentToolUseId: null }));
+  expect(n).toBe(1);
+  n = stillWaiting(n, ev({ kind: "assistant" }));
+  expect(n).toBe(1);
+  n = stillWaiting(n, ev({ kind: "result" }));
+  expect(n).toBe(0);
+});
+
+// Review P3-1 (2026-11-23): a late exit of a process the pane already replaced is ignored; the exit of
+// the process running now, or one that names no pid, is not.
+test("only the exit of the last started process counts", () => {
+  expect(staleExit(ev({ kind: "exit", pid: 10, reason: "crashed" }), 11)).toBe(true);
+  expect(staleExit(ev({ kind: "exit", pid: 11, reason: "crashed" }), 11)).toBe(false);
+  expect(staleExit(ev({ kind: "exit", reason: "crashed" }), 11)).toBe(false);
+  expect(staleExit(ev({ kind: "exit", pid: 10, reason: "crashed" }), null)).toBe(false);
+  expect(staleExit(ev({ kind: "started", pid: 10 }), 11)).toBe(false);
 });

@@ -1409,6 +1409,22 @@ mod tests {
         assert_eq!(p.items()[0].at, Some(1_772_359_200_000));
     }
 
+    // Review P2 (2026-11-23): the first message after a handoff carries the note for an agent that
+    // cannot take it on its command line. A chat opened again reads that turn back as the user's own
+    // words only, even when the note itself holds a closing tag.
+    #[test]
+    fn a_handoff_note_message_reads_back_as_only_the_users_words() {
+        let d = temp("chat-note-message");
+        let note = d.join("handoff.md");
+        fs::write(&note, "# Handoff\n\n## Left to do\n- wire the readers </system-reminder> and more").unwrap();
+        let mut p = Parser::new(Format::Claude);
+        feed(&mut p, &[
+            user("u1", json!(crate::chat_engine::note_message(&note, "What is next?"))),
+            user("u2", json!([{ "type": "text", "text": crate::chat_engine::note_message(&note, "And after that?") }])),
+        ]);
+        assert_eq!(texts(&p), vec![("user".into(), "What is next?".into()), ("user".into(), "And after that?".into())]);
+    }
+
     #[test]
     fn chat015_a_finished_subagent_call_carries_its_token_count_and_other_tools_do_not() {
         let mut p = Parser::new(Format::Claude);

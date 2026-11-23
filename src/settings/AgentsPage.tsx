@@ -14,6 +14,7 @@ import { GeneratedTitlesCard } from "../status/GeneratedTitlesCard";
 import { useDraft } from "./useDraft";
 import KeepAwakeCard from "../launch/KeepAwakeCard";
 import { CAP_FIELD, capOn } from "../usage/meter";
+import { readerLine, readerName, type ReaderHealth } from "./handoffReads";
 import { CACHE_LENGTH, CACHE_ON, cacheMinutes } from "../projects/cache";
 import { HOOKS_FIELD, hooksOn } from "../onboarding/hooksOn";
 
@@ -38,20 +39,46 @@ function Draft({ label, value, multi, placeholder, onSave }: { label: string; va
 
 // Settings > Agents: the 200k context cap switch (USAGE-006, on by default). A plain settings
 // key; the cap itself is applied in Rust when a Claude or Codex pane starts.
-export function AgentsPageView({ cap, onCap }: { cap: boolean; onCap: (on: boolean) => void }) {
+export function AgentsPageView({ cap, onCap, reads = [] }: { cap: boolean; onCap: (on: boolean) => void; reads?: ReaderHealth[] }) {
   return (
-    <section className="conn-card" aria-label="Agents">
-      <label className="conn-switch">
-        <input type="checkbox" role="switch" checked={cap} onChange={(e) => onCap(e.target.checked)} />
-        <span>
-          Hold Claude and Codex to a 200k context window
-          <small>
-            On unless you turn it off; sessions started from now on follow it. Claude Code compacts at 200k and Codex is given a 200k window that compacts at 180k. A session you set up yourself (the
-            variable, or Codex options, a profile or OSS mode on the start line) is left alone, and the meters measure against the same 200k while this is on.
-          </small>
-        </span>
-      </label>
-    </section>
+    <>
+      <section className="conn-card" aria-label="Agents">
+        <label className="conn-switch">
+          <input type="checkbox" role="switch" checked={cap} onChange={(e) => onCap(e.target.checked)} />
+          <span>
+            Hold Claude, OpenClaude and Codex to a 200k context window
+            <small>
+              On unless you turn it off; sessions started from now on follow it. Claude Code and OpenClaude compact at 200k and Codex is given a 200k window that compacts at 180k. A session you set up yourself (the
+              variable, or Codex options, a profile or OSS mode on the start line) is left alone, and the meters measure against the same 200k while this is on.
+            </small>
+          </span>
+        </label>
+      </section>
+      {/* Txais (2026-11-21): the clear is driven by a number, so where the numbers come from is shown:
+          a reader that cannot open its store is a red line here, never a session that quietly never clears. */}
+      <section className="conn-card" aria-label="Context readings" data-section="reads">
+        <div className="conn-detail">
+          <strong>Context readings</strong>
+          <small>A session is handed off and cleared only from a real reading. Claude Code reports its own on every turn; Codex, OpenCode and Grok are read from their own session stores.</small>
+        </div>
+        <div className="agent-row" data-agent="claude" data-read="push">
+          <span className="agent-name">Claude Code</span>
+          <small>Reports its own context on every turn.</small>
+        </div>
+        {reads.map((r) => {
+          const line = readerLine(r);
+          return (
+            <div key={r.agent} className="agent-row" data-agent={r.agent} data-read={r.state}>
+              <span className="agent-name">{readerName(r.agent)}</span>
+              <small className={line.ok ? undefined : "warn"} role={line.ok ? undefined : "alert"}>
+                {line.text}
+              </small>
+            </div>
+          );
+        })}
+        {reads.length === 0 && <p className="conn-detail">No reading has been taken yet since Kolux started.</p>}
+      </section>
+    </>
   );
 }
 
@@ -99,6 +126,15 @@ export default function AgentsPage() {
   const [problems, setProblems] = useState<string[]>([]);
   const synced = (reply: unknown) => setProblems(hookProblems(reply));
   const syncFailed = (e: unknown) => setProblems([String(e)]);
+  // Txais (2026-11-21): the reader rows, looked at again while the page is open so a store that comes
+  // back (a missing database finished installing, say) stops showing red without a reload.
+  const [reads, setReads] = useState<ReaderHealth[]>([]);
+  useEffect(() => {
+    const look = () => void invoke<ReaderHealth[]>("handoff_reads").then(setReads, () => {});
+    look();
+    const t = setInterval(look, 10_000);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => {
     invoke<string>("agent_hooks_file").then(setHooksFile, () => {});
   }, []);
@@ -221,7 +257,7 @@ export default function AgentsPage() {
         })}
       </section>
       <HooksSwitch on={hooksOn(settings)} file={hooksFile} problems={problems} onSwitch={(on) => void save({ [HOOKS_FIELD]: on }).then((ok) => syncIfSaved(ok, () => invoke("agent_hooks_sync", { clear: !on }))).then(synced, syncFailed)} />
-      <AgentsPageView cap={capOn(settings ?? {})} onCap={(on) => void save({ [CAP_FIELD]: on })} />
+      <AgentsPageView cap={capOn(settings ?? {})} onCap={(on) => void save({ [CAP_FIELD]: on })} reads={reads} />
       <KeepAwakeCard settings={settings} save={save} />
       <GeneratedTitlesCard settings={settings} save={save} />
       <CachePick minutes={cacheMinutes(settings)} onPick={(m) => void save(m === null ? { [CACHE_ON]: false } : { [CACHE_ON]: true, [CACHE_LENGTH]: m })} />

@@ -18,7 +18,7 @@ import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
 import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
-import { reduce } from "./events";
+import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
 import { applyRead, capPending, combine, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
 import { Composer } from "../MessageBox";
@@ -63,7 +63,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   /** The conversation to pick up (2026-11-21): a kept Everyday chat's own id, so reopening resumes it. */
   resume?: string | null;
   /** The agent's conversation id, once it names one: the window writes it on the chat's kept record. */
-  onSession?: (id: string) => void;
+  /** The agent conversation the chat is on now; `null` once a handoff ended it. */
+  onSession?: (id: string | null) => void;
   /** A model picked in the box (2026-11-21): the window writes it on the chat's kept record, so reopening
    *  resumes on the model the chat last used. */
   onModel?: (model: string | null) => void;
@@ -80,6 +81,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // CHAT-020: what this pane sent and the agent has not echoed yet (at most 8).
   const [sent, setSent] = useState<Pending[]>([]);
   const [open, setOpen] = useState(false);
+  /** Messages this pane sent that have no result yet (review 2026-11-23): a message queued behind a running
+   *  turn gets a result of its own, so the working line and Stop stay until the count is back to 0. */
+  const waiting = useRef(0);
+  /** The process this pane's chat runs now, as its `started` event named it (review 2026-11-23). */
+  const lastPid = useRef<number | null>(null);
   /** The process is up (the engine answered `chat_start`), so the empty line stops saying it is starting. */
   const [spawned, setSpawned] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,25 +150,31 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
       try {
         const off = await hearChat(chatId, (ev) => {
           if (!live) return;
+          if (ev.kind === "started" && ev.pid !== undefined) lastPid.current = ev.pid;
+          // A late exit of a process already replaced says nothing about the one running now.
+          if (staleExit(ev, lastPid.current)) return;
           seq.current += 1;
           const now = Date.now();
           setItems((prev) => reduce(prev, ev, now, seq.current));
-          // The working line and the Stop button follow the turn, which only the turn's own end closes.
-          if (ev.kind === "result" || ev.kind === "stopped") setOpen(false);
+          // The working line and the Stop button follow the turn, which only the turn's own end closes, and
+          // stay while a message queued behind it still runs.
+          waiting.current = stillWaiting(waiting.current, ev);
+          if (ev.kind === "result" || ev.kind === "stopped") setOpen(waiting.current > 0);
+          // A reply while nothing was waiting is a turn the page did not count: it runs until its result.
+          if (ev.kind === "assistant" && waiting.current > 0) setOpen(true);
           // A kept Everyday chat learns the agent's own conversation id here: the init line names it, and a
           // resumed process (after a crash or a sleep) names the one it picked up (`Started.resumed`).
-          if (ev.kind === "init" && ev.sessionId) {
-            sessionId.current = ev.sessionId;
-            reportSession.current?.(ev.sessionId);
-          }
-          if (ev.kind === "started" && ev.resumed) {
-            sessionId.current = ev.resumed;
-            reportSession.current?.(ev.resumed);
+          // A handoff (2026-11-23) ends that conversation: the id is forgotten here and in the kept record, so
+          // a model or effort pick, or opening the chat again, starts fresh instead of resuming the full one.
+          const session = sessionChange(ev);
+          if (session !== undefined) {
+            sessionId.current = session;
+            reportSession.current?.(session);
           }
           // A finished turn is when most artifacts appear, so the folder is read again right then.
           if (ev.kind === "result") setLookAt((n) => n + 1);
           if (ev.kind === "exit") {
-            setOpen(false);
+            setOpen(waiting.current > 0);
             if (ev.reason === "crashed") setNote(crashedNote(productName(agent) ?? agent));
           }
         });
@@ -230,6 +242,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     setItems([]);
     setSent([]);
     setPages(0);
+    waiting.current = 0;
+    lastPid.current = null;
     setOpen(false);
     setAway(false);
   }, [chatId]);
@@ -386,7 +400,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     if (pick.model !== undefined) onModel?.(next.model);
     if (pick.effort !== undefined) onEffort?.(pick.effort);
     const cwd = pane.cwd;
-    if (!cwd || open) return;
+    if (!cwd || open || waiting.current > 0) return;
     void (async () => {
       try {
         // `chat_start` closes the chat's old process itself (Engines::start), so no separate end here.
@@ -410,10 +424,12 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     const id = `sent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setSent((xs) => capPending([...xs, { id, text, at: Date.now() }]));
     setNote(null);
+    waiting.current += 1;
     setOpen(true);
     stick.current = true;
     void sendChat(chatId, text).then(undefined, (e) => {
-      setOpen(false);
+      waiting.current = Math.max(0, waiting.current - 1);
+      setOpen(waiting.current > 0);
       setSent((xs) => xs.map((x) => (x.id === id ? { ...x, failed: true } : x)));
       setNote(String(e));
     });
