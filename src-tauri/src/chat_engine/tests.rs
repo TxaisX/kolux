@@ -188,12 +188,17 @@ impl Drop for Harness {
 }
 
 fn harness(idle: Duration, stop_grace: Duration) -> Harness {
+    harness_busy(idle, BUSY_IDLE_SLEEP, stop_grace)
+}
+
+/// A harness with its own idle sleep for a process that looks busy.
+fn harness_busy(idle: Duration, busy_idle: Duration, stop_grace: Duration) -> Harness {
     let node = crate::agents::find_program("node").expect("the chat engine's process tests need node on PATH (CI installs it)");
     let dir = std::env::temp_dir().join(format!("kolux-chat-engine-{}-{}", std::process::id(), DIRS.fetch_add(1, Ordering::Relaxed)));
     std::fs::create_dir_all(dir.join("claude-config")).unwrap();
     std::fs::write(dir.join("stub.js"), STUB).unwrap();
     let launch = Launch { program: node, pre_args: vec![dir.join("stub.js").to_string_lossy().into_owned()] };
-    Harness { engines: Engines::new(Config { launch: Some(launch), idle, stop_grace }), seen: Arc::default(), dir }
+    Harness { engines: Engines::new(Config { launch: Some(launch), idle, busy_idle, stop_grace }), seen: Arc::default(), dir }
 }
 
 impl Harness {
@@ -588,10 +593,10 @@ fn stop_with_a_queued_message_ends_in_an_interrupt_not_a_kill() {
 }
 
 // Review P2 (2026-11-23): a turn whose result never comes leaves the chat looking busy; a process
-// silent for the whole idle period sleeps anyway, so it cannot linger forever.
+// silent for the whole busy idle period sleeps anyway, so it cannot linger forever.
 #[test]
 fn a_silent_busy_process_still_sleeps() {
-    let h = harness(Duration::from_millis(400), STOP_GRACE);
+    let h = harness_busy(IDLE_SLEEP, Duration::from_millis(400), STOP_GRACE);
     h.start("i1", &[]);
     h.engines.send("i1", "queue forever", &[]).unwrap();
     h.wait("i1", 1, |e| said(e, "queueing"));
@@ -614,4 +619,20 @@ fn every_current_line_counts_as_activity() {
         inner.heard(2, &ev);
         assert!(inner.last_active.elapsed() < Duration::from_secs(5), "a current line is: {line}");
     }
+}
+
+// Review P2 (2026-11-23): a long silent tool call (a cargo build) is a busy turn that writes nothing for
+// a while; the short idle sleep must not cut it off, only the much longer busy one.
+#[test]
+fn a_silent_busy_process_outlives_the_short_idle_sleep() {
+    let h = harness_busy(Duration::from_millis(200), BUSY_IDLE_SLEEP, STOP_GRACE);
+    h.start("i2", &[]);
+    h.engines.send("i2", "queue a long build", &[]).unwrap();
+    h.wait("i2", 1, |e| said(e, "queueing"));
+    std::thread::sleep(Duration::from_millis(1500));
+    let slept = h.seen.lock().unwrap().iter().any(|(id, e)| id == "i2" && is_exit(e, ExitReason::Sleep));
+    assert!(!slept, "a busy turn silent past the short idle sleep was cut off");
+    let engine = h.engines.engine("i2").unwrap();
+    assert!(engine.is_running() && lock(&engine.inner).busy, "the turn is still running");
+    h.engines.close_all();
 }

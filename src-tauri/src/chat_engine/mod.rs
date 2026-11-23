@@ -32,8 +32,11 @@ use std::time::{Duration, Instant};
 
 /// The Tauri event every chat's events go out on; the payload is `{ chatId, kind, ... }`.
 pub const EVENT: &str = "chat-event";
-/// Idle sleep: a chat's process ends after this long with no line from it (no turn running, or a turn that has gone silent).
+/// Idle sleep: a chat's process with no turn running ends after this long with no line from it.
 pub const IDLE_SLEEP: Duration = Duration::from_secs(10 * 60);
+/// Idle sleep of a process that looks busy: it ends after this long with no line from it, so a result that
+/// never came cannot keep it forever, while a long silent tool call (a cargo build) is left to finish.
+pub const BUSY_IDLE_SLEEP: Duration = Duration::from_secs(60 * 60);
 /// How long `chat_stop` waits for the interrupted turn to end before it ends the process.
 pub const STOP_GRACE: Duration = Duration::from_secs(5);
 /// The environment variable `--bare` sets; removed so a chat always loads the user's setup.
@@ -54,12 +57,14 @@ pub struct Launch {
 pub struct Config {
     pub launch: Option<Launch>,
     pub idle: Duration,
+    /// The idle sleep while a turn looks busy; see [`BUSY_IDLE_SLEEP`].
+    pub busy_idle: Duration,
     pub stop_grace: Duration,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { launch: None, idle: IDLE_SLEEP, stop_grace: STOP_GRACE }
+        Config { launch: None, idle: IDLE_SLEEP, busy_idle: BUSY_IDLE_SLEEP, stop_grace: STOP_GRACE }
     }
 }
 
@@ -487,19 +492,23 @@ impl Engine {
         Self::end_process(&mut inner, ExitReason::Closed);
     }
 
-    /// Idle sleep: ends the process after `cfg.idle` with no line from the process (a busy one too, so a result that never came cannot keep it). Runs until the chat closes.
+    /// Idle sleep: ends the process after `cfg.idle` with no line from it, or after the longer
+    /// `cfg.busy_idle` while a turn looks busy (so a result that never came cannot keep it forever).
+    /// Runs until the chat closes.
     fn watch_idle(self: Arc<Self>) {
-        let tick = (self.cfg.idle / 4).clamp(Duration::from_millis(10), Duration::from_secs(1));
+        let tick = (self.cfg.idle.min(self.cfg.busy_idle) / 4).clamp(Duration::from_millis(10), Duration::from_secs(1));
         loop {
             std::thread::sleep(tick);
             let mut inner = lock(&self.inner);
             if inner.closing {
                 return;
             }
-            // Review P2 (2026-11-23): a process silent for the whole idle period sleeps even when it looks
-            // busy: a result that never came (a cancelled or folded message) must not keep it forever.
-            // Every line it writes counts as activity (`Inner::heard`).
-            if inner.child.is_some() && inner.last_active.elapsed() >= self.cfg.idle {
+            // Review P2 (2026-11-23): a process that looks busy sleeps too, after the longer busy period: a
+            // result that never came (a cancelled or folded message) must not keep it forever, and a long
+            // silent tool call must not be cut off at the short one. Every line it writes counts as
+            // activity (`Inner::heard`).
+            let limit = if inner.busy { self.cfg.busy_idle } else { self.cfg.idle };
+            if inner.child.is_some() && inner.last_active.elapsed() >= limit {
                 Self::end_process(&mut inner, ExitReason::Sleep);
             }
         }
