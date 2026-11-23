@@ -67,7 +67,12 @@ const LARGE_FILE: u64 = 20 * 1024 * 1024;
 /// How many entries of one ignored folder are looked through for local files before giving up.
 const IGNORED_SCAN_LIMIT: usize = 20_000;
 /// The marker's file name in the app's data folder, and the empty folder git is told to look for hooks in.
+/// Each main folder's marker is `<MARKER_STEM>-<hash>.json` (review P2-1); `MARKER_FILE` is the older single one.
+const MARKER_STEM: &str = "quit-merge-marker";
+#[cfg(test)]
 const MARKER_FILE: &str = "quit-merge-marker.json";
+/// Main gained staged or changed files after it was looked at, so the merge did not start.
+const MAIN_CHANGED: &str = "the main folder has changes that are not committed";
 const NO_HOOKS_DIR: &str = "quit-merge-no-hooks";
 
 /// How many saves, merges, undos and removals are under way: the quit waits for them.
@@ -201,7 +206,7 @@ impl Clock {
         self.left() >= MIN_TO_START
     }
     /// A merge also needs `MERGE_MIN` of the hard cap, so a cut one is rare and an undo has room.
-    fn may_merge(&self) -> bool {
+    pub(crate) fn may_merge(&self) -> bool {
         self.may_start() && self.hard_left() >= MERGE_MIN
     }
     /// A read is cut at the deadline (with a floor, so a read that starts always gets a fair try).
@@ -809,9 +814,11 @@ pub(crate) fn merge_branch(env: &MergeEnv, repo: &Path, main_dir: &Path, target:
     // The tree the no-ff merge will make, when git can predict it (`merge-tree --write-tree`: first line).
     let mut merged_tree: Option<String> = None;
     if behind > 0 && git.predicts_merges() {
-        match read(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], repo, clock) {
-            Ok(out) => merged_tree = out.lines().next().map(str::trim).filter(|l| !l.is_empty()).map(str::to_string),
-            Err(_) => return Err(format!("its changes clash with {target}")),
+        let out = crate::git::read_exit(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], Some(repo));
+        match merge_tree_says(out.map(|o| (o.status.code(), String::from_utf8_lossy(&o.stdout).into_owned()))) {
+            MergeTree::Clean(tree) => merged_tree = tree,
+            MergeTree::Clash => return Err(clash_reason(target)),
+            MergeTree::Unknown(e) => return Err(format!("Kolux could not check it against {target} ({})", short(&e))),
         }
     }
     let tip = read(&["rev-parse", "--verify", &theirs], repo, clock).map_err(|e| format!("Kolux could not read the branch's tip ({})", short(&e)))?;
@@ -823,22 +830,30 @@ pub(crate) fn merge_branch(env: &MergeEnv, repo: &Path, main_dir: &Path, target:
     // A fast-forward leaves exactly the tip's tree; a merge commit leaves the predicted tree, if any.
     let expected_tree = if behind == 0 { read(&["rev-parse", "--verify", &format!("{tip}^{{tree}}")], repo, clock).ok() } else { merged_tree };
     let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip.clone()), expected_tree, time: now_secs() };
+    // Review P1-1: main is looked at once more right before the write; staged work that arrived since
+    // `main_ready` stops the merge before it starts.
+    match read(&["status", "--porcelain", "--untracked-files=no"], main_dir, clock) {
+        Ok(s) if s.trim().is_empty() => {}
+        Ok(_) => return Err(MAIN_CHANGED.into()),
+        Err(e) => return Err(format!("Kolux could not read the main folder ({})", short(&e))),
+    }
     note_merge(data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
     let _busy = Busy::start();
+    // Review P3-2: `--no-overwrite-ignore`: an ignored file in main is never replaced by the merge.
     let tried = if behind == 0 {
-        write(&["merge", "--ff-only", "--no-verify", "-q", &tip], main_dir, clock, hooks)
+        write(&["merge", "--ff-only", "--no-overwrite-ignore", "--no-verify", "-q", &tip], main_dir, clock, hooks)
     } else {
-        write(&["merge", "--no-ff", "--no-edit", "--no-verify", "-q", "-m", env.subject, "-m", env.body, &tip], main_dir, clock, hooks)
+        write(&["merge", "--no-ff", "--no-overwrite-ignore", "--no-edit", "--no-verify", "-q", "-m", env.subject, "-m", env.body, &tip], main_dir, clock, hooks)
     };
     match tried {
         Ok(_) => {
-            clear_marker(data_dir);
+            clear_marker(data_dir, main_dir);
             Ok(())
         }
         Err(e) => {
             let whole = undo_merge(main_dir, &before, clock, hooks);
             if whole {
-                clear_marker(data_dir);
+                clear_marker(data_dir, main_dir);
             }
             let note = if whole { "" } else { ". The main folder may not be exactly as it was: look at it before you work there" };
             Err(format!("it could not be merged into {target} ({}){note}", short(&e)))
@@ -846,15 +861,42 @@ pub(crate) fn merge_branch(env: &MergeEnv, repo: &Path, main_dir: &Path, target:
     }
 }
 
+/// Why a merge was not made: its changes clash with `target` (git's merge-tree said so, exit 1).
+pub(crate) fn clash_reason(target: &str) -> String {
+    format!("its changes clash with {target}")
+}
+
+/// What `git merge-tree --write-tree` said, from its exit code (review P3-3): 0 is a clean merge (the
+/// tree on the first line), 1 is a clash, and anything else (a timeout, an error) says nothing.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum MergeTree {
+    Clean(Option<String>),
+    Clash,
+    Unknown(String),
+}
+
+pub(crate) fn merge_tree_says(out: Result<(Option<i32>, String), String>) -> MergeTree {
+    match out {
+        Ok((Some(0), text)) => MergeTree::Clean(text.lines().next().map(str::trim).filter(|l| !l.is_empty()).map(str::to_string)),
+        Ok((Some(1), _)) => MergeTree::Clash,
+        Ok((code, _)) => MergeTree::Unknown(format!("git merge-tree ended with {code:?}")),
+        Err(e) => MergeTree::Unknown(e),
+    }
+}
+
 /// Puts the main checkout back after a failed merge: an open merge is aborted, and changes a cut
 /// merge left are reset (the checkout had none of its own: `main_ready`). True when it is as it was.
 fn undo_merge(main_dir: &Path, before: &str, clock: &Clock, hooks: &Path) -> bool {
-    if read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main_dir, clock).is_ok() {
+    let open = read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main_dir, clock).is_ok();
+    // Review P1-1: only a merge that got under way (MERGE_HEAD, or the lock a cut git left) is reset.
+    // A merge git refused cleanly changed nothing, and a reset would throw away the user's staged work.
+    let locked = read(&["rev-parse", "--git-path", "index.lock"], main_dir, clock).is_ok_and(|p| main_dir.join(p.trim()).exists());
+    if open {
         let _ = write(&["merge", "--abort"], main_dir, clock, hooks);
     }
     let head = || read(&["rev-parse", "HEAD"], main_dir, clock).ok();
     let clean = || read(&["status", "--porcelain", "--untracked-files=no"], main_dir, clock).is_ok_and(|s| s.trim().is_empty());
-    if head().as_deref() == Some(before) && !clean() {
+    if (open || locked) && head().as_deref() == Some(before) && !clean() {
         let _ = write(&["reset", "--merge"], main_dir, clock, hooks);
     }
     head().as_deref() == Some(before) && clean()
@@ -886,20 +928,40 @@ fn now_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
+/// Review P2-1: one marker per main folder (a hash of its name in the file name), so two projects
+/// merging at once never overwrite each other's. `MARKER_FILE` (no hash) is an older single one.
+fn marker_path(data_dir: &Path, main_dir: &Path) -> PathBuf {
+    // FNV-1a over the folder's name key: stable across runs and builds (std's hasher is not).
+    let hash = projects::name_key(&main_dir.to_string_lossy()).bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3));
+    data_dir.join(format!("{MARKER_STEM}-{hash:016x}.json"))
+}
+
+/// Every marker file in `data_dir`: the per-folder ones and an older single one.
+fn marker_files(data_dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(data_dir) else { return Vec::new() };
+    let mut all: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with(MARKER_STEM) && n.ends_with(".json")))
+        .collect();
+    all.sort();
+    all
+}
+
 fn note_merge(data_dir: &Path, marker: &Marker) -> Result<(), String> {
     std::fs::create_dir_all(data_dir).map_err(|e| e.to_string())?;
-    let file = data_dir.join(MARKER_FILE);
-    let tmp = data_dir.join(format!("{MARKER_FILE}.tmp"));
+    let file = marker_path(data_dir, Path::new(&marker.main_dir));
+    let tmp = file.with_extension("json.tmp");
     std::fs::write(&tmp, serde_json::to_string(marker).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, &file).map_err(|e| e.to_string())
 }
 
-fn clear_marker(data_dir: &Path) {
-    let _ = std::fs::remove_file(data_dir.join(MARKER_FILE));
+fn clear_marker(data_dir: &Path, main_dir: &Path) {
+    let _ = std::fs::remove_file(marker_path(data_dir, main_dir));
 }
 
-fn read_marker(data_dir: &Path) -> Option<Marker> {
-    serde_json::from_str(&std::fs::read_to_string(data_dir.join(MARKER_FILE)).ok()?).ok()
+fn read_marker(file: &Path) -> Option<Marker> {
+    serde_json::from_str(&std::fs::read_to_string(file).ok()?).ok()
 }
 
 /// At start: a merge the last quit began and never finished (the marker is still there) is put right.
@@ -913,15 +975,21 @@ fn read_marker(data_dir: &Path) -> Option<Marker> {
 /// when the cap cuts it short the marker is kept, so the next launch tries again.
 /// Returns what the start's notice should say, if anything.
 pub fn recover_at_start(data_dir: &Path) -> Vec<String> {
-    let Some(marker) = read_marker(data_dir) else {
-        clear_marker(data_dir); // an unreadable one is no use to anyone
-        return Vec::new();
-    };
-    let (note, cut_short) = recover(data_dir, &marker, &Clock::until(Instant::now() + RECOVER_CAP));
-    if !cut_short {
-        clear_marker(data_dir);
-    } // else the cap ran out before main was looked through: the marker stays so the next launch tries again
-    note.into_iter().collect()
+    // Review P2-1: every project's marker is looked at, all under the one cap.
+    let clock = Clock::until(Instant::now() + RECOVER_CAP);
+    let mut notes = Vec::new();
+    for file in marker_files(data_dir) {
+        let Some(marker) = read_marker(&file) else {
+            let _ = std::fs::remove_file(&file); // an unreadable one is no use to anyone
+            continue;
+        };
+        let (note, cut_short) = recover(data_dir, &marker, &clock);
+        if !cut_short {
+            let _ = std::fs::remove_file(&file);
+        } // else the cap ran out before main was looked through: the marker stays so the next launch tries again
+        notes.extend(note);
+    }
+    notes
 }
 
 /// The longest a start spends putting main right (m2): every git step of `recover` is cut by this

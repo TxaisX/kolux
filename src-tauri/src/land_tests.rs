@@ -3,6 +3,7 @@ use crate::projects::{name_key, same_folder, set_origin};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 fn temp(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("kolux-land-{name}-{}", std::process::id()));
@@ -72,7 +73,7 @@ fn never(_: &Path) -> bool {
 fn land_with(base: &Path, store: &Mutex<Store>, folder: &Path, trigger: Trigger, busy: &dyn Fn(&Path) -> bool) -> LandOutcome {
     let git = Git::detect().unwrap();
     let data = base.join("data");
-    land(&Deps { git: &git, store, data_dir: &data, busy }, folder, trigger)
+    land(&Deps { git: &git, store, data_dir: &data, busy, closing: &|| false }, folder, trigger)
 }
 
 fn land_as(base: &Path, store: &Mutex<Store>, folder: &Path, trigger: Trigger) -> LandOutcome {
@@ -201,10 +202,17 @@ fn a_main_folder_with_uncommitted_changes_refuses_the_land_before_anything_is_sa
 fn a_workspace_with_nothing_new_lands_as_nothing_new() {
     let (base, repo, store) = repo("nothing");
     let ws = workspace(&base, &repo, &store, "nothing", true);
+    let sib = workspace(&base, &repo, &store, "nsib", true);
+    commit(&repo, "d.txt", "d\n");
     let before = head(&repo, "main");
     let out = land_as(&base, &store, &ws, agent());
     assert_eq!(out.state, LandState::NothingNew, "{out:?}");
     assert_eq!(head(&repo, "main"), before);
+    assert_eq!(recorded(&store, &ws).as_deref(), Some("nothingNew"), "the land is recorded");
+    assert_eq!(sibling(&out, &ws).state, SiblingState::Updated, "the workspace itself is brought up: {out:?}");
+    assert_eq!(sibling(&out, &sib).state, SiblingState::Updated, "{out:?}");
+    assert_eq!(head(&sib, "HEAD"), before, "the sibling took in main");
+    assert_eq!(recorded(&store, &sib).as_deref(), Some("updated"));
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -309,10 +317,15 @@ fn a_sibling_that_would_clash_is_skipped_with_no_merge_left_open() {
     let b = workspace(&base, &repo, &store, "cb", true);
     commit(&a, "a.txt", "from a\n");
     commit(&b, "a.txt", "from b\n");
+    commit(&repo, "d.txt", "d\n");
     let b_before = head(&b, "HEAD");
+    TAKE_IN_WRITES.with(|w| w.borrow_mut().clear());
     let out = land_as(&base, &store, &a, Trigger::User);
     assert_eq!(out.state, LandState::Landed, "{out:?}");
     assert_eq!(sibling(&out, &b).state, SiblingState::Behind, "{out:?}");
+    let wrote = TAKE_IN_WRITES.with(|w| w.borrow().clone());
+    assert!(wrote.iter().any(|p| same_folder(Path::new(p), &a)), "the landed workspace's take-in is counted: {wrote:?}");
+    assert!(!wrote.iter().any(|p| same_folder(Path::new(p), &b)), "no merge was even tried in the clashing sibling: {wrote:?}");
     assert_eq!(head(&b, "HEAD"), b_before);
     assert!(!git_ok(&b, &["rev-parse", "-q", "--verify", "MERGE_HEAD"]), "no merge left open");
     assert_eq!(git_in(&b, &["status", "--porcelain"]), "");
@@ -360,9 +373,17 @@ fn two_lands_in_one_project_take_turns() {
     let b = workspace(&base, &repo, &store, "tb", true);
     commit(&a, "b.txt", "b\n");
     commit(&b, "c.txt", "c\n");
+    let git = Git::detect().unwrap();
+    let turn = crate::projects::repo_turn(&quit_merge::repo_of(&git.toplevel(&a).unwrap()).unwrap());
+    let main_before = head(&repo, "main");
+    let held = turn.lock().unwrap();
     let (oa, ob) = std::thread::scope(|s| {
         let ha = s.spawn(|| land_as(&base, &store, &a, Trigger::User));
         let hb = s.spawn(|| land_as(&base, &store, &b, Trigger::User));
+        std::thread::sleep(Duration::from_millis(700));
+        assert!(!ha.is_finished() && !hb.is_finished(), "both lands wait while the project's turn is held");
+        assert_eq!(head(&repo, "main"), main_before, "nothing reached main without the turn");
+        drop(held);
         (ha.join().unwrap(), hb.join().unwrap())
     });
     assert_eq!((oa.state, ob.state), (LandState::Landed, LandState::Landed), "{oa:?} {ob:?}");
@@ -384,7 +405,7 @@ fn a_behind_sibling_takes_in_main_on_retry_once_it_is_clean() {
     git_in(&b, &["commit", "-q", "-am", "finish"]);
     let git = Git::detect().unwrap();
     let data = base.join("data");
-    let got = retry_behind(&Deps { git: &git, store: &store, data_dir: &data, busy: &never }, &b);
+    let got = retry_behind(&Deps { git: &git, store: &store, data_dir: &data, busy: &never, closing: &|| false }, &b);
     assert_eq!(got.map(|s| s.state), Some(SiblingState::Updated));
     assert!(b.join("b.txt").is_file());
     assert_eq!(recorded(&store, &b).as_deref(), Some("updated"));
@@ -397,6 +418,8 @@ fn the_quit_no_longer_starts_a_merge_and_the_land_commands_are_registered() {
     let lib = include_str!("lib.rs");
     assert!(!lib.contains("quit_merge::start("), "the quit no longer merges every workspace");
     assert!(!lib.contains("quit_merge::finish("));
+    assert!(lib.contains("lifecycle::quit_began().unwrap_or_else(std::time::Instant::now)") && lib.contains("quit_merge::HARD_CAP.saturating_sub("), "the quit's wait for a land ends before the watchdog's hard cap");
+    assert!(!lib.contains("waited.elapsed() < quit_merge::WAIT"), "no longer a wait counted from the end of the quit");
     assert!(lib.contains("quit_merge::recover_at_start(") && lib.contains("quit_merge::take_notes("), "a cut merge is still put right at start");
     for c in ["land::workspace_land,", "land::workspace_land_preview,", "land::workspace_land_states,"] {
         assert!(lib.contains(c), "{c} is registered");
@@ -410,4 +433,185 @@ fn the_outcome_reaches_the_window_in_camel_case() {
     assert_eq!(v["state"], "nothingNew");
     assert_eq!(v["siblings"][0]["state"], "behind");
     assert_eq!(v["branch"], "b");
+}
+
+fn deps_for<'a>(git: &'a Git, store: &'a Mutex<Store>, data: &'a Path, busy: &'a dyn Fn(&Path) -> bool, closing: &'a dyn Fn() -> bool) -> Deps<'a> {
+    Deps { git, store, data_dir: data, busy, closing }
+}
+
+fn worktree_of(repo: &Path, folder: &Path) -> Worktree {
+    Git::detect().unwrap().worktrees(repo).unwrap().into_iter().find(|w| same_folder(Path::new(&w.path), folder)).unwrap()
+}
+
+/// Review P2-4: with auto-land off, an agent's land of a workspace with nothing new moves nothing.
+#[test]
+fn with_auto_land_off_a_nothing_new_agent_land_leaves_the_siblings_alone() {
+    let (base, repo, store) = repo("auto-off-nn");
+    store.lock().unwrap().save_settings(&serde_json::json!({ crate::quit_merge::AUTO_LAND_SETTING: false })).unwrap();
+    let ws = workspace(&base, &repo, &store, "aon", true);
+    let sib = workspace(&base, &repo, &store, "aos", true);
+    commit(&repo, "d.txt", "d\n");
+    let (ws_before, sib_before) = (head(&ws, "HEAD"), head(&sib, "HEAD"));
+    let out = land_as(&base, &store, &ws, agent());
+    assert_eq!(out.state, LandState::Ready, "{out:?}");
+    assert!(out.siblings.is_empty(), "{out:?}");
+    assert_eq!((head(&ws, "HEAD"), head(&sib, "HEAD")), (ws_before, sib_before), "no workspace moved");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P2-3: a take-in with less than the merge's room left on the clock is skipped, untouched.
+#[test]
+fn a_take_in_with_the_clock_nearly_out_is_skipped_as_out_of_time() {
+    let (base, repo, store) = repo("no-time");
+    let b = workspace(&base, &repo, &store, "nt", true);
+    commit(&repo, "d.txt", "d\n");
+    let before = head(&b, "HEAD");
+    let (git, data) = (Git::detect().unwrap(), base.join("data"));
+    let hooks = quit_merge::no_hooks(&data).unwrap();
+    let deps = deps_for(&git, &store, &data, &never, &|| false);
+    let clock = Clock::with_hard(Instant::now() + Duration::from_secs(120), Instant::now() + Duration::from_secs(3));
+    let s = take_in_main(&deps, &worktree_of(&repo, &b), "main", false, &clock, &hooks);
+    assert_eq!((s.state, s.why.as_deref()), (SiblingState::Behind, Some(NO_TIME)), "{s:?}");
+    assert_eq!(head(&b, "HEAD"), before);
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P2-2: once the quit has begun no land merges into main and no sibling takes in main.
+#[test]
+fn nothing_merges_once_the_quit_has_begun() {
+    let (base, repo, store) = repo("closing");
+    let a = workspace(&base, &repo, &store, "cla", true);
+    let b = workspace(&base, &repo, &store, "clb", true);
+    commit(&a, "b.txt", "b\n");
+    commit(&repo, "d.txt", "d\n");
+    let (main_before, b_before) = (head(&repo, "main"), head(&b, "HEAD"));
+    let (git, data) = (Git::detect().unwrap(), base.join("data"));
+    let out = land(&deps_for(&git, &store, &data, &never, &|| true), &a, Trigger::User);
+    assert_eq!(out.state, LandState::Refused, "{out:?}");
+    assert!(out.message.contains(CLOSING), "{out:?}");
+    assert_eq!(head(&repo, "main"), main_before);
+    let hooks = quit_merge::no_hooks(&data).unwrap();
+    let s = take_in_main(&deps_for(&git, &store, &data, &never, &|| true), &worktree_of(&repo, &b), "main", false, &Clock::until(Instant::now() + Duration::from_secs(120)), &hooks);
+    assert_eq!((s.state, s.why.as_deref()), (SiblingState::Behind, Some(CLOSING)), "{s:?}");
+    assert_eq!(head(&b, "HEAD"), b_before);
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P2-2: the land counts as a merge in progress (the quit waits for it) through the sibling steps too.
+#[test]
+fn the_land_counts_as_merging_while_its_siblings_are_brought_up() {
+    let (base, repo, store) = repo("busy-whole");
+    let a = workspace(&base, &repo, &store, "bwa", true);
+    let b = workspace(&base, &repo, &store, "bwb", true);
+    commit(&a, "b.txt", "b\n");
+    let seen = std::cell::Cell::new(None);
+    let busy = |p: &Path| {
+        if same_folder(p, &b) {
+            seen.set(Some(quit_merge::merging()));
+        }
+        false
+    };
+    let out = land_with(&base, &store, &a, Trigger::User, &busy);
+    assert_eq!(out.state, LandState::Landed, "{out:?}");
+    assert_eq!(seen.get(), Some(true), "merging() held while the sibling was looked at");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P2-5: a pane may land only its own workspace, named by a full path; anything unknown is refused.
+#[test]
+fn a_pane_may_land_only_its_own_workspace() {
+    let (base, repo, store) = repo("pane");
+    let a = workspace(&base, &repo, &store, "pa", true);
+    let b = workspace(&base, &repo, &store, "pb", true);
+    let plain = base.join("plain");
+    fs::create_dir_all(a.join("sub")).unwrap();
+    fs::create_dir_all(&plain).unwrap();
+    let git = Git::detect().unwrap();
+    assert!(own_workspace(&git, &a.join("sub"), &a));
+    assert!(!own_workspace(&git, &a, &b), "another workspace");
+    assert!(!own_workspace(&git, &a, &plain), "a folder in no Git project fails closed");
+    assert!(!own_workspace(&git, &plain, &a), "a pane in no Git project");
+    let body = a.to_string_lossy().into_owned();
+    assert_eq!(pane_may_land(&git, Some(&a), &format!(" {body}\n")).unwrap(), a);
+    assert_eq!(pane_may_land(&git, None, &body).unwrap_err(), UNKNOWN_PANE, "no terminal, or a pane folder Kolux does not know");
+    assert_eq!(pane_may_land(&git, Some(&a), "pa").unwrap_err(), NOT_ABSOLUTE);
+    assert_eq!(pane_may_land(&git, Some(&a), "").unwrap_err(), NOT_ABSOLUTE);
+    assert_eq!(pane_may_land(&git, Some(&a), &b.to_string_lossy()).unwrap_err(), OTHER_WORKSPACE);
+    let _ = fs::remove_dir_all(&base);
+}
+
+fn commit_ignored(dir: &Path, file: &str, text: &str) {
+    fs::write(dir.join(file), text).unwrap();
+    git_in(dir, &["add", "-f", file]);
+    git_in(dir, &["commit", "-q", "-m", file]);
+}
+
+/// Review P3-2: an ignored file in main is never overwritten by a land.
+#[test]
+fn a_land_never_overwrites_an_ignored_file_in_main() {
+    let (base, repo, store) = repo("ignored-main");
+    let a = workspace(&base, &repo, &store, "ima", true);
+    commit_ignored(&a, "x.log", "from the workspace\n");
+    fs::write(repo.join("x.log"), "mine\n").unwrap();
+    let before = head(&repo, "main");
+    let out = land_as(&base, &store, &a, Trigger::User);
+    assert_eq!(out.state, LandState::Refused, "{out:?}");
+    assert_eq!(head(&repo, "main"), before);
+    assert_eq!(fs::read_to_string(repo.join("x.log")).unwrap(), "mine\n");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P3-2: nor one in a sibling taking in main.
+#[test]
+fn a_take_in_never_overwrites_an_ignored_file_in_a_sibling() {
+    let (base, repo, store) = repo("ignored-sib");
+    let a = workspace(&base, &repo, &store, "isa", true);
+    let b = workspace(&base, &repo, &store, "isb", true);
+    commit_ignored(&a, "x.log", "from a\n");
+    fs::write(b.join("x.log"), "kept by b\n").unwrap();
+    let b_before = head(&b, "HEAD");
+    let out = land_as(&base, &store, &a, Trigger::User);
+    assert_eq!(out.state, LandState::Landed, "{out:?}");
+    assert_eq!(sibling(&out, &b).state, SiblingState::Behind, "{out:?}");
+    assert_eq!(head(&b, "HEAD"), b_before);
+    assert_eq!(fs::read_to_string(b.join("x.log")).unwrap(), "kept by b\n");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P3-4: a user's land that saved the work and then clashed says the work was saved.
+#[test]
+fn a_user_land_that_saved_then_clashed_says_the_changes_were_saved() {
+    let (base, repo, store) = repo("saved-clash");
+    let a = workspace(&base, &repo, &store, "sca", true);
+    commit(&repo, "a.txt", "main version\n");
+    fs::write(a.join("a.txt"), "workspace version\n").unwrap();
+    let out = land_as(&base, &store, &a, Trigger::User);
+    assert_eq!(out.state, LandState::Clashed, "{out:?}");
+    assert!(out.message.contains("Your changes were saved in the workspace."), "{out:?}");
+    assert_eq!(git_in(&a, &["log", "-1", "--format=%s"]), SAVED_MESSAGE, "and they were");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P2-7: siblings are brought up after the land lets go of the project's turn, each taking it
+/// for its own step: while someone else holds the turn, a sibling waits, then is left behind.
+#[test]
+fn each_sibling_takes_the_projects_turn_for_its_own_step() {
+    let (base, repo, store) = repo("turn-per-sibling");
+    let b = workspace(&base, &repo, &store, "tps", true);
+    commit(&repo, "d.txt", "d\n");
+    let before = head(&b, "HEAD");
+    let (git, data) = (Git::detect().unwrap(), base.join("data"));
+    let main_repo = quit_merge::repo_of(&git.toplevel(&b).unwrap()).unwrap();
+    let turn = crate::projects::repo_turn(&main_repo);
+    let deps = deps_for(&git, &store, &data, &never, &|| false);
+    let clock = Clock::until(Instant::now() + Duration::from_secs(120));
+    let held = turn.lock().unwrap();
+    let got = propagate(&deps, &main_repo, "main", None, &clock);
+    drop(held);
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert_eq!((got[0].state, got[0].why.as_deref()), (SiblingState::Behind, Some(BUSY_PROJECT)), "{got:?}");
+    assert_eq!(head(&b, "HEAD"), before);
+    let got = propagate(&deps, &main_repo, "main", None, &clock);
+    assert_eq!(got[0].state, SiblingState::Updated, "with the turn free it goes ahead: {got:?}");
+    let _ = fs::remove_dir_all(&base);
 }

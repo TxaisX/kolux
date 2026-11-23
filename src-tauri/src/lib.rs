@@ -901,8 +901,9 @@ pub fn run() {
                 }
                 // Txais (2026-11-23): a workspace is sent to main when its task is finished (land), so
                 // the quit no longer saves, merges or removes workspaces. A land that is mid-merge is
-                // waited for (the watchdog allows up to quit_merge::HARD_CAP while one runs), and one
-                // that is cut anyway is put right at the next start (quit_merge::recover_at_start).
+                // waited for, but only until quit_merge::HARD_CAP (less a second) after the quit began:
+                // the watchdog ends the app at that cap, so the wait never outlasts it. A land cut
+                // anyway is put right at the next start (quit_merge::recover_at_start).
                 if let Ok(dir) = app.path().app_data_dir() {
                     diag::write(&dir, &format!("quit: no merge runs at quit (restart: {}, session ending: {})", lifecycle::restart_requested(), lifecycle::ending_session()));
                 }
@@ -910,8 +911,9 @@ pub fn run() {
                 // T-552: the window's WebView2 processes let go of the profile folder before the app
                 // ends (up to 3 s), so a relaunch right after finds it free.
                 let webviews_left = tools::wait_webviews_closed();
-                let waited = std::time::Instant::now();
-                while quit_merge::merging() && waited.elapsed() < quit_merge::WAIT {
+                let quit_at = lifecycle::quit_began().unwrap_or_else(std::time::Instant::now);
+                let wait_until = quit_at + quit_merge::HARD_CAP.saturating_sub(std::time::Duration::from_secs(1));
+                while quit_merge::merging() && std::time::Instant::now() < wait_until {
                     std::thread::sleep(std::time::Duration::from_millis(50));
                 }
                 if let Ok(dir) = app.path().app_data_dir() {

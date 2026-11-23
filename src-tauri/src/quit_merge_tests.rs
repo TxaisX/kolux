@@ -66,8 +66,9 @@ fn data(base: &Path) -> PathBuf {
     base.join("data")
 }
 
+/// The marker in the data folder (review P2-1: one per main folder), or the older single one's name.
 fn marker_file(base: &Path) -> PathBuf {
-    data(base).join(MARKER_FILE)
+    marker_files(&data(base)).into_iter().next().unwrap_or_else(|| data(base).join(MARKER_FILE))
 }
 
 fn tidy(base: &Path, store: &Mutex<Store>) -> Outcome {
@@ -1068,7 +1069,7 @@ fn the_marker_names_the_main_folder_the_sha_before_and_the_branch() {
     assert_eq!(json, serde_json::json!({ "mainDir": "C:/p", "beforeSha": "abc", "branch": "fix", "theirsSha": "def", "expectedTree": "abc", "time": 7 }));
     // A marker written before the tip was noted still reads, with no tip.
     fs::write(marker_file(&base), r#"{"mainDir":"C:/p","beforeSha":"abc","branch":"fix","time":7}"#).unwrap();
-    assert_eq!(read_marker(&data(&base)).unwrap().theirs_sha, None);
+    assert_eq!(read_marker(&marker_file(&base)).unwrap().theirs_sha, None);
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -1561,4 +1562,60 @@ fn auto_land_follows_the_old_merge_on_quit_switch_until_it_is_set() {
     assert!(auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: true })));
     assert!(auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false, AUTO_LAND_SETTING: true })), "the new switch wins once set");
     assert!(!auto_land_wanted(&serde_json::json!({ AUTO_LAND_SETTING: false })));
+}
+
+/// Review P1-1: git refuses a merge cleanly (main's staged change would be overwritten), so no merge
+/// is open and nothing was changed: the undo must not reset, or the user's staged work is lost.
+#[test]
+fn undo_merge_keeps_staged_work_in_main_when_git_refused_the_merge() {
+    let (base, repo, store) = repo("p1-staged");
+    let side = workspace(&base, &repo, &store, "side", true);
+    commit(&side, "a.txt", "theirs
+");
+    let before = head(&repo, "HEAD");
+    let hooks = no_hooks(&data(&base)).unwrap();
+    fs::write(repo.join("a.txt"), "staged by the user
+").unwrap();
+    git_in(&repo, &["add", "a.txt"]);
+    assert!(!git_try(&repo, &["merge", "--ff-only", "side"]), "git refuses: the staged a.txt would be overwritten");
+    assert!(!repo.join(".git").join("MERGE_HEAD").exists());
+    assert!(!undo_merge(&repo, &before, &clock(), &hooks), "main is not clean, so not reported whole");
+    assert_eq!(head(&repo, "HEAD"), before);
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap(), "staged by the user
+", "the staged work survives");
+    assert_eq!(git_in(&repo, &["diff", "--cached", "--name-only"]), "a.txt", "and is still staged");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P2-1: two projects' markers live side by side, and the start looks at both.
+#[test]
+fn two_projects_markers_do_not_clobber_each_other() {
+    let (base, repo, _store) = repo("p2-markers");
+    let before = head(&repo, "HEAD");
+    let one = marker_for(&repo, &before, now_secs());
+    let two = Marker { main_dir: base.join("other").display().to_string(), ..marker_for(&repo, &before, now_secs()) };
+    note_merge(&data(&base), &one).unwrap();
+    note_merge(&data(&base), &two).unwrap();
+    let files = marker_files(&data(&base));
+    assert_eq!(files.len(), 2, "{files:?}");
+    let dirs: Vec<String> = files.iter().map(|f| read_marker(f).unwrap().main_dir).collect();
+    assert!(dirs.contains(&one.main_dir) && dirs.contains(&two.main_dir), "{dirs:?}");
+    clear_marker(&data(&base), Path::new(&one.main_dir));
+    assert_eq!(marker_files(&data(&base)).len(), 1, "clearing one leaves the other");
+    note_merge(&data(&base), &one).unwrap();
+    let _ = recover_at_start(&data(&base));
+    assert!(marker_files(&data(&base)).is_empty(), "the start went through both");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Review P3-3: only merge-tree's exit 1 is a clash; a timeout or another error is not.
+#[test]
+fn only_merge_tree_exit_one_counts_as_a_clash() {
+    assert_eq!(merge_tree_says(Ok((Some(1), "abc
+file".into()))), MergeTree::Clash);
+    assert_eq!(merge_tree_says(Ok((Some(0), "abc
+".into()))), MergeTree::Clean(Some("abc".into())));
+    assert!(matches!(merge_tree_says(Err("git did not finish within 90 s".into())), MergeTree::Unknown(_)));
+    assert!(matches!(merge_tree_says(Ok((Some(128), String::new()))), MergeTree::Unknown(_)));
+    assert!(matches!(merge_tree_says(Ok((None, String::new()))), MergeTree::Unknown(_)));
 }

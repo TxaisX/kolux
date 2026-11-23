@@ -61,6 +61,13 @@ const NOT_LISTED: &str = "Git does not list this folder as a workspace of its pr
 const CLOSING: &str = "Kolux is closing";
 const WORKING: &str = "its agent is working";
 const HAS_CHANGES: &str = "it has changes that are not committed";
+const NO_TIME: &str = "Kolux ran out of time for it";
+const SAVED_NOTE: &str = " Your changes were saved in the workspace.";
+const OTHER_WORKSPACE: &str = "Not sent to main: a pane can only send its own workspace.";
+const NOT_ABSOLUTE: &str = "Not sent to main: send the workspace's full folder path.";
+const UNKNOWN_PANE: &str = "Not sent to main: Kolux could not tell which workspace this pane is in.";
+/// How long one other workspace waits for the project's turn to take in main (review P2-7).
+const SIBLING_WAIT: Duration = Duration::from_secs(5);
 
 /// Who asked for the land.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -92,7 +99,8 @@ pub enum LandState {
     Ready,
     /// Not sent, for the reason in `message`; nothing was changed.
     Refused,
-    /// Its work clashes with main in `files`; nothing was changed.
+    /// Its work clashes with main in `files`; main was not changed. A user's land may have saved the
+    /// workspace's uncommitted changes first, and the message then says so.
     Clashed,
 }
 
@@ -175,6 +183,19 @@ pub struct Deps<'a> {
     pub data_dir: &'a Path,
     /// Whether an agent is working in the workspace at this folder.
     pub busy: &'a dyn Fn(&Path) -> bool,
+    /// Whether the quit has begun (review P2-2): no merge or take-in starts after that.
+    pub closing: &'a dyn Fn() -> bool,
+}
+
+// The folders take-ins were about to write to, on this thread (tests prove a skip wrote nothing).
+#[cfg(test)]
+thread_local! {
+    static TAKE_IN_WRITES: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn note_take_in_write(_folder: &str) {
+    #[cfg(test)]
+    TAKE_IN_WRITES.with(|w| w.borrow_mut().push(_folder.to_string()));
 }
 
 fn now_secs() -> u64 {
@@ -367,7 +388,9 @@ fn land_inner(deps: &Deps, folder: &Path, trigger: Trigger) -> LandOutcome {
         Err(why) => return LandOutcome::refused(&shown, None, &why),
     };
     let turn = projects::repo_turn(&repo);
-    let Some(_turn) = take_turn(&turn, TURN_WAIT) else { return LandOutcome::refused(&shown, None, BUSY_PROJECT) };
+    let Some(held) = take_turn(&turn, TURN_WAIT) else { return LandOutcome::refused(&shown, None, BUSY_PROJECT) };
+    // Review P2-2: one Busy for the whole land, siblings included, so `merging()` never drops between steps.
+    let _busy = quit_merge::Busy::start();
     let clock = Clock::until(Instant::now() + WINDOW);
     let Checked { all, w, branch, target } = match check(deps, &top, &repo, &clock) {
         Ok(c) => c,
@@ -384,18 +407,20 @@ fn land_inner(deps: &Deps, folder: &Path, trigger: Trigger) -> LandOutcome {
         out.files = changed.into_iter().take(NAMED).collect();
         return out;
     }
+    // Review P2-4, P3-1: with auto-land off an agent's land only marks the workspace ready, before
+    // anything else moves (a store that cannot be read counts as off).
+    let auto = deps.store.lock().map(|s| quit_merge::auto_land_wanted(&s.settings())).unwrap_or(false);
+    if agent && !auto {
+        return LandOutcome::new(&path, Some(branch.clone()), LandState::Ready, "Sending finished work to main by itself is turned off, so Kolux marked this workspace ready. The user sends it with Send to main.".to_string());
+    }
     let ahead = match quit_merge::ahead(&repo, &target, &branch, &clock) {
         Ok(n) => n,
         Err(why) => return refused(&why),
     };
     if changed.is_empty() && ahead == 0 {
         let mut out = LandOutcome::new(&path, Some(branch.clone()), LandState::NothingNew, format!("{target} already has everything in {branch}."));
-        out.siblings = propagate(deps, &repo, &target, Some(&here), &clock);
+        out.siblings = bring_up(deps, &repo, &target, &w, held, &clock);
         return out;
-    }
-    let auto = deps.store.lock().map(|s| quit_merge::auto_land_wanted(&s.settings())).unwrap_or(true);
-    if agent && !auto {
-        return LandOutcome::new(&path, Some(branch.clone()), LandState::Ready, "Sending finished work to main by itself is turned off, so Kolux marked this workspace ready. The user sends it with Send to main.".to_string());
     }
     // Main is looked at before anything is saved, so a main that cannot take the work costs no save commit.
     let main_dir = match quit_merge::main_ready(all.iter().find(|w| w.is_main), Some(&target), &clock) {
@@ -406,27 +431,34 @@ fn land_inner(deps: &Deps, folder: &Path, trigger: Trigger) -> LandOutcome {
         Ok(h) => h,
         Err(why) => return refused(&why),
     };
-    if !changed.is_empty() {
+    let saved = !changed.is_empty();
+    if saved {
         if let Err(why) = quit_merge::save_with(&clock, &hooks, &here, SAVED_MESSAGE, LAND_BODY) {
             return refused(&why);
         }
     }
+    // Review P3-4: once the work is saved, a land that stops later says where it went.
+    let kept = if saved { SAVED_NOTE } else { "" };
     let theirs = format!("refs/heads/{branch}");
     let behind = quit_merge::ahead(&repo, &branch, &target, &clock).unwrap_or(1);
     if behind > 0 {
         if let Some(files) = clash_files(deps.git, &repo, &format!("refs/heads/{target}"), &theirs) {
-            let mut out = LandOutcome::new(&path, Some(branch.clone()), LandState::Clashed, format!("Not sent to main: its work clashes with {target} in {}. Run git merge {target} in this workspace, fix the clashes, commit, then land again.", named(&files)));
+            let mut out = LandOutcome::new(&path, Some(branch.clone()), LandState::Clashed, format!("Not sent to main: its work clashes with {target} in {}. Run git merge {target} in this workspace, fix the clashes, commit, then land again.{kept}", named(&files)));
             out.files = files.into_iter().take(NAMED).collect();
             return out;
         }
     }
+    if (deps.closing)() {
+        return LandOutcome::new(&path, Some(branch.clone()), LandState::Refused, format!("Not sent to main: {CLOSING}.{kept}"));
+    }
     let subject = format!("Kolux: send {branch} to main");
     let env = MergeEnv { git: deps.git, clock, data_dir: deps.data_dir, hooks: &hooks, subject: &subject, body: LAND_BODY };
     if let Err(why) = quit_merge::merge_branch(&env, &repo, &main_dir, &target, &branch) {
-        let state = if why.contains("clash") { LandState::Clashed } else { LandState::Refused };
-        return LandOutcome::new(&path, Some(branch.clone()), state, format!("Not sent to main: {why}."));
+        // Review P3-3: a clash only when git's merge-tree said so (exit 1), never a timeout.
+        let state = if why == quit_merge::clash_reason(&target) { LandState::Clashed } else { LandState::Refused };
+        return LandOutcome::new(&path, Some(branch.clone()), state, format!("Not sent to main: {why}.{kept}"));
     }
-    let siblings = propagate(deps, &repo, &target, Some(&here), &clock);
+    let siblings = bring_up(deps, &repo, &target, &w, held, &clock);
     let others: Vec<&Sibling> = siblings.iter().filter(|s| !projects::same_folder(Path::new(&s.path), &here)).collect();
     let behind_n = others.iter().filter(|s| s.state == SiblingState::Behind).count();
     let mut message = format!("Sent {branch} to {target}.");
@@ -438,10 +470,23 @@ fn land_inner(deps: &Deps, folder: &Path, trigger: Trigger) -> LandOutcome {
     out
 }
 
-/// Every workspace Kolux made in the project takes in `target`, where that is safe. `landed` (the
-/// workspace that just landed) is brought up even while its agent works: it asked for the land.
-/// The caller holds the project's turn.
+/// Review P2-7: the landed workspace `w` takes in main while the project's turn (`held`) is still
+/// held; the turn is then let go and every other workspace takes it briefly for its own step, so a
+/// new workspace's launch never waits for all of them. The landed one is first in the list.
+fn bring_up(deps: &Deps, repo: &Path, target: &str, w: &Worktree, held: MutexGuard<'_, ()>, clock: &Clock) -> Vec<Sibling> {
+    let mut all = Vec::new();
+    if let Ok(hooks) = quit_merge::no_hooks(deps.data_dir) {
+        all.push(take_in_main(deps, w, target, true, clock, &hooks));
+    }
+    drop(held);
+    all.extend(propagate(deps, repo, target, Some(Path::new(&w.path)), clock));
+    all
+}
+
+/// Every other workspace Kolux made in the project takes in `target`, where that is safe, each with
+/// the project's turn for its own step. The caller does not hold the turn. `landed` is left out.
 fn propagate(deps: &Deps, repo: &Path, target: &str, landed: Option<&Path>, clock: &Clock) -> Vec<Sibling> {
+    let turn = projects::repo_turn(repo);
     let Ok(all) = deps.git.worktrees(repo) else { return Vec::new() };
     let Ok(hooks) = quit_merge::no_hooks(deps.data_dir) else { return Vec::new() };
     let (origins, listed) = match deps.store.lock() {
@@ -453,12 +498,13 @@ fn propagate(deps: &Deps, repo: &Path, target: &str, landed: Option<&Path>, cloc
     projects::kolux_made(&origins, all)
         .into_iter()
         .filter(|w| !w.is_main && Path::new(&w.path).is_dir() && !theirs(w))
+        .filter(|w| !landed.is_some_and(|l| projects::same_folder(l, Path::new(&w.path))))
         .map(|w| {
-            let is_landed = landed.is_some_and(|l| projects::same_folder(l, Path::new(&w.path)));
-            let s = take_in_main(deps, &w, target, is_landed, clock, &hooks);
-            if !is_landed {
-                record_sibling(deps.store, &s);
-            }
+            let s = match take_turn(&turn, SIBLING_WAIT) {
+                Some(_turn) => take_in_main(deps, &w, target, false, clock, &hooks),
+                None => Sibling { path: w.path.clone(), state: SiblingState::Behind, why: Some(BUSY_PROJECT.into()) },
+            };
+            record_sibling(deps.store, &s);
             s
         })
         .collect()
@@ -501,18 +547,32 @@ fn take_in_main(deps: &Deps, w: &Worktree, target: &str, landed: bool, clock: &C
         Ok(n) => n,
         Err(e) => return behind(format!("Kolux could not compare it with {target} ({})", quit_merge::short(&e))),
     };
+    if deps.git.predicts_merges() && own > 0 {
+        let out = crate::git::read_exit(&["merge-tree", "--write-tree", "HEAD", &main_ref], Some(here));
+        match quit_merge::merge_tree_says(out.map(|o| (o.status.code(), String::from_utf8_lossy(&o.stdout).into_owned()))) {
+            quit_merge::MergeTree::Clean(_) => {}
+            quit_merge::MergeTree::Clash => return behind(quit_merge::clash_reason(target)),
+            quit_merge::MergeTree::Unknown(e) => return behind(format!("Kolux could not check it against {target} ({})", quit_merge::short(&e))),
+        }
+    }
+    // Review P2-2, P2-3: no write starts once the quit has begun, or with too little time left for it.
+    if (deps.closing)() {
+        return behind(CLOSING.into());
+    }
+    if !clock.may_merge() {
+        return behind(NO_TIME.into());
+    }
     let _busy = quit_merge::Busy::start();
+    note_take_in_write(&w.path);
+    // Review P3-2: `--no-overwrite-ignore`: an ignored file in the workspace is never replaced.
     if own == 0 {
-        return match quit_merge::write(&["merge", "--ff-only", "-q", &main_ref], here, clock, hooks) {
+        return match quit_merge::write(&["merge", "--ff-only", "--no-overwrite-ignore", "-q", &main_ref], here, clock, hooks) {
             Ok(_) => done(SiblingState::Updated, None),
             Err(e) => behind(format!("it could not be moved up to {target} ({})", quit_merge::short(&e))),
         };
     }
-    if deps.git.predicts_merges() && quit_merge::read(&["merge-tree", "--write-tree", "HEAD", &main_ref], here, clock).is_err() {
-        return behind(format!("its changes clash with {target}"));
-    }
     let Ok(before) = quit_merge::read(&["rev-parse", "HEAD"], here, clock) else { return behind("Kolux could not read it".into()) };
-    match quit_merge::write(&["merge", "--no-ff", "--no-edit", "--no-verify", "-q", "-m", TAKE_IN_MESSAGE, "-m", TAKE_IN_BODY, &main_ref], here, clock, hooks) {
+    match quit_merge::write(&["merge", "--no-ff", "--no-overwrite-ignore", "--no-edit", "--no-verify", "-q", "-m", TAKE_IN_MESSAGE, "-m", TAKE_IN_BODY, &main_ref], here, clock, hooks) {
         Ok(_) => done(SiblingState::Updated, None),
         Err(e) => {
             if quit_merge::read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], here, clock).is_ok() {
@@ -597,7 +657,8 @@ fn with_app<R>(app: &tauri::AppHandle, f: impl FnOnce(&Deps) -> R) -> Result<R, 
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let (git, store, terminals) = (app.state::<Git>(), app.state::<Mutex<Store>>(), app.state::<crate::terminal::Terminals>());
     let busy = |p: &Path| agent_working(&terminals, p);
-    Ok(f(&Deps { git: &git, store: &store, data_dir: &dir, busy: &busy }))
+    let closing = || crate::lifecycle::quit_began().is_some();
+    Ok(f(&Deps { git: &git, store: &store, data_dir: &dir, busy: &busy, closing: &closing }))
 }
 
 /// A land from the app: never once the quit has begun (the quit no longer waits for new merges),
@@ -627,14 +688,27 @@ pub fn workspace_land_states(store: tauri::State<'_, Mutex<Store>>) -> Result<BT
     store.lock().map(|s| states(&s)).map_err(|e| e.to_string())
 }
 
-/// Whether `folder` is in the same workspace as the pane's own folder `pane_dir`.
+/// Whether `folder` is in the same workspace as the pane's own folder `pane_dir`. Review P2-5: false
+/// whenever either is in no Git project (it fails closed).
 fn own_workspace(git: &Git, pane_dir: &Path, folder: &Path) -> bool {
     match (git.toplevel(pane_dir), git.toplevel(folder)) {
         (Ok(a), Ok(b)) => projects::same_folder(&a, &b),
-        // A folder that is in no Git project is refused by the land itself, with its own reason.
-        (Ok(_), Err(_)) => true,
-        (Err(_), _) => false,
+        _ => false,
     }
+}
+
+/// Review P2-5: the folder a pane may land, or the 409 text. Refused: a body that is not a full
+/// path, a pane whose folder Kolux does not know, or a folder outside the pane's own workspace.
+fn pane_may_land(git: &Git, pane_dir: Option<&Path>, body: &str) -> Result<PathBuf, String> {
+    let folder = PathBuf::from(body.trim());
+    if !folder.is_absolute() {
+        return Err(NOT_ABSOLUTE.into());
+    }
+    let Some(dir) = pane_dir else { return Err(UNKNOWN_PANE.into()) };
+    if !own_workspace(git, dir, &folder) {
+        return Err(OTHER_WORKSPACE.into());
+    }
+    Ok(folder)
 }
 
 /// The hook listener's `/land`: the agent in pane `pane_key` (on `terminal`) says the task in the
@@ -643,13 +717,11 @@ fn own_workspace(git: &Git, pane_dir: &Path, folder: &Path) -> bool {
 #[allow(dead_code)] // the hook listener's /land (auto-land slice B)
 pub fn from_pane(app: &tauri::AppHandle, pane_key: u32, terminal: Option<u32>, body: &str) -> (u16, String) {
     use tauri::Manager;
-    let folder = PathBuf::from(body.trim());
     let pane_dir = terminal.and_then(|t| app.state::<crate::terminal::Terminals>().list().into_iter().find(|(id, _, _)| *id == t).and_then(|(_, _, d)| d));
-    if let Some(dir) = pane_dir {
-        if !own_workspace(&app.state::<Git>(), Path::new(&dir), &folder) {
-            return (409, "Not sent to main: a pane can only send its own workspace.".to_string());
-        }
-    }
+    let folder = match pane_may_land(&app.state::<Git>(), pane_dir.as_deref().map(Path::new), body) {
+        Ok(f) => f,
+        Err(why) => return (409, why),
+    };
     match land_in_app(app, &folder, Trigger::Agent { pane_key }) {
         Ok(out) => (if matches!(out.state, LandState::Landed | LandState::NothingNew | LandState::Ready) { 200 } else { 409 }, reply(&out)),
         Err(e) => (409, format!("Not sent to main: {e}.")),
