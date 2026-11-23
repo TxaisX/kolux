@@ -10,11 +10,12 @@
 //   it runs are queued. The interrupt ends the turn 300 ms later; with "cancel_queued": true it drops the
 //   queued messages (their results never come), without it they are answered after the turn's result,
 //   as Claude Code does (checked live 2026-11-23). A message arriving after the interrupt is a new one;
-// - a message starting with "late" is answered 800 ms after it arrives;
+// - a message starting with "late" is answered 1.5 s after it arrives;
 // - a message containing "[big]" reports a 500,000-token prompt, any other 1 token;
 // - any other message gets an assistant echo and a success result.
 // An interrupt control request ends a slow turn with an error_during_execution result, unless
-// STUB_IGNORE_INTERRUPT=1 (to test the engine's fallback of ending the process).
+// STUB_IGNORE_INTERRUPT=1 (to test the engine's fallback of ending the process). With
+// STUB_DIE_ON_INTERRUPT=1 the stub exits on the interrupt without a result (a crash mid-Stop).
 const readline = require("node:readline");
 
 const args = process.argv.slice(2);
@@ -24,6 +25,7 @@ const flag = (name) => {
 };
 const session = flag("--resume") ?? `stub-session-${process.pid}`;
 const deaf = process.env.STUB_IGNORE_INTERRUPT === "1";
+const dies = process.env.STUB_DIE_ON_INTERRUPT === "1";
 const out = (o) => process.stdout.write(JSON.stringify(o) + "\n");
 
 out({ type: "stub_args", args, bare_env: process.env.CLAUDE_CODE_SIMPLE ?? null, config_dir: process.env.CLAUDE_CONFIG_DIR ?? null });
@@ -43,7 +45,7 @@ const answer = (text, images) => {
     return;
   }
   if (text.startsWith("late")) {
-    setTimeout(() => answer(text.slice(4), images), 800);
+    setTimeout(() => answer(text.slice(4), images), 1500);
     return;
   }
   if (text.startsWith("slow")) {
@@ -84,6 +86,7 @@ rl.on("line", (line) => {
     answer(text, images);
   } else if (m.type === "control_request" && m.request?.subtype === "interrupt") {
     if (deaf) return;
+    if (dies) process.exit(3);
     out({ type: "control_response", response: { subtype: "success", request_id: m.request_id } });
     const interrupted = () => out({ type: "result", subtype: "error_during_execution", is_error: true, session_id: session, errors: ["interrupted"], permission_denials: [] });
     if (queueing) {

@@ -111,11 +111,11 @@ export function userWords(text: string): string {
  *  queued message with a result of its own, so the working line stays until the count is back to 0. A
  *  stop, or the process ending, leaves nothing waiting (a stop cancels what was queued). A reply while
  *  nothing is waiting is a turn the page did not count (a message sent after a Stop, or a turn the agent
- *  started itself), so it waits for that turn's result. */
+ *  started itself), so it waits for that turn's result; a subagent's reply is not a new turn. */
 export function stillWaiting(waiting: number, ev: ChatEvent): number {
   if (ev.kind === "result") return Math.max(0, waiting - 1);
   if (ev.kind === "stopped" || ev.kind === "exit") return 0;
-  if (ev.kind === "assistant" && waiting === 0) return 1;
+  if (ev.kind === "assistant" && !ev.parentToolUseId && waiting === 0) return 1;
   return waiting;
 }
 

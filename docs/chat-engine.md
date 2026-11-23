@@ -209,6 +209,10 @@ as outstanding that never gets an answer. The chat looks busy (working line, Sto
 60-minute busy sleep ends the process, or until the user presses Stop. No settle timer is used for
 this.
 
+**Known limit: a Stop between turns.** When the chat only looks busy and no turn is running (the
+folded queue above), the interrupt gets no `result`. Stop then waits the 5-second grace and ends the
+process (`stopped` with `ended`); the next send resumes the session.
+
 ## Empty-init alarm
 
 `chat_engine::events::empty_init_alarm(&Init, &Expected) -> bool` (pure). `Expected` holds the names of

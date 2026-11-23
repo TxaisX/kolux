@@ -296,6 +296,21 @@ fn stop_ends_a_deaf_process_and_the_next_send_resumes() {
     assert_eq!(h.results("c2", 1)[0].result.as_deref(), Some("echo: after"));
 }
 
+// Review N4 (2026-11-23): a process that ends during the Stop's wait, without the stopped turn's result,
+// was not interrupted: Stop reports `ended` at once, not `interrupt`, and does not wait out the grace.
+#[test]
+fn a_process_that_dies_during_stop_reports_ended() {
+    let h = harness(IDLE_SLEEP, Duration::from_secs(5));
+    h.start("c9", &[("STUB_DIE_ON_INTERRUPT", "1")]);
+    h.engines.send("c9", "slow job", &[]).unwrap();
+    h.wait("c9", 1, |e| matches!(e, ChatEvent::Assistant { .. }));
+    let asked = Instant::now();
+    assert_eq!(h.engines.stop("c9").unwrap(), Some(StopHow::Ended));
+    assert!(asked.elapsed() < Duration::from_secs(3), "no wait for the grace once the process is gone");
+    h.wait("c9", 1, |e| *e == ChatEvent::Stopped { how: StopHow::Ended });
+    assert!(first_at(&h, "c9", |e| *e == ChatEvent::Stopped { how: StopHow::Interrupt }).is_none());
+}
+
 #[test]
 fn an_idle_chat_sleeps_and_resumes_on_the_next_send() {
     let h = harness(Duration::from_millis(400), Duration::from_secs(5));
@@ -642,7 +657,9 @@ fn a_silent_busy_process_outlives_the_short_idle_sleep() {
 // chat stays busy until the later message's own result, and no handoff fires before it.
 #[test]
 fn a_message_sent_after_stop_keeps_the_chat_busy_until_its_result() {
-    let h = harness(IDLE_SLEEP, Duration::from_secs(3));
+    // The grace (700 ms) ends before the later message's answer (1.5 s after it is sent): Stop waits for
+    // the stopped turn's own result, not for the chat to stop being busy, so it still ends in an interrupt.
+    let h = harness(IDLE_SLEEP, Duration::from_millis(700));
     let mut spec = h.spec(&[]);
     spec.handoff_at = 1_000;
     h.engines.start("p1", spec, None, h.sink()).unwrap();
@@ -658,6 +675,7 @@ fn a_message_sent_after_stop_keeps_the_chat_busy_until_its_result() {
     });
     assert_eq!(how, Some(StopHow::Interrupt));
     let engine = h.engines.engine("p1").unwrap();
+    assert!(engine.is_running(), "the process was interrupted, not ended");
     assert!(lock(&engine.inner).busy, "the message sent after Stop is still running");
     assert!(first_at(&h, "p1", |e| matches!(e, ChatEvent::Handoff { .. })).is_none(), "no handoff before its result");
     h.wait("p1", 1, |e| matches!(e, ChatEvent::Handoff { .. }));
@@ -683,6 +701,9 @@ fn a_reply_with_nothing_outstanding_makes_the_chat_busy_again() {
     assert!(inner.busy && inner.outstanding == 1, "a current reply re-arms the chat");
     inner.heard(2, &result);
     assert!(!inner.busy && inner.outstanding == 0, "its result ends it");
+    let sub = parse_line(r#"{"type":"assistant","parent_tool_use_id":"toolu_task","message":{"id":"m2","content":[{"type":"text","text":"sub"}]}}"#).unwrap();
+    inner.heard(2, &sub);
+    assert!(!inner.busy && inner.outstanding == 0, "a subagent's reply re-arms nothing");
     inner.stop_mark = Some(0);
     inner.heard(2, &reply);
     assert!(!inner.busy && inner.outstanding == 0, "not while a Stop waits");

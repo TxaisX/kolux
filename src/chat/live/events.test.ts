@@ -150,7 +150,8 @@ test("the page counts unanswered sends: each result answers one, a stop or an ex
 // Review P2-2 (2026-11-23): a reply while nothing is waiting is a turn the page did not count (a message
 // sent after a Stop, or a turn the agent started itself); the page waits for that turn's result.
 test("a reply while nothing is waiting makes the page wait for that turn's result", () => {
-  let n = stillWaiting(0, ev({ kind: "assistant" }));
+  expect(stillWaiting(0, ev({ kind: "assistant", parentToolUseId: "toolu_task" }))).toBe(0);
+  let n = stillWaiting(0, ev({ kind: "assistant", parentToolUseId: null }));
   expect(n).toBe(1);
   n = stillWaiting(n, ev({ kind: "assistant" }));
   expect(n).toBe(1);

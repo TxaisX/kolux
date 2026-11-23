@@ -265,8 +265,9 @@ impl Inner {
             ChatEvent::Assistant { parent_tool_use_id, usage, .. } => {
                 // Review P2 (2026-11-23): a reply with nothing outstanding is a turn this engine did not
                 // count (a queued message whose result came early, or a turn the agent started itself):
-                // the chat is busy again until that turn's result. Not while a Stop waits for its result.
-                if current && self.outstanding == 0 && self.stop_mark.is_none() {
+                // the chat is busy again until that turn's result. Not while a Stop waits for its result,
+                // and only on a main-conversation reply: a subagent's line belongs to a counted turn.
+                if current && parent_tool_use_id.is_none() && self.outstanding == 0 && self.stop_mark.is_none() {
                     self.outstanding = 1;
                     self.busy = true;
                 }
@@ -401,9 +402,9 @@ impl Engine {
         let (running, ended) = {
             let mut inner = lock(&self.inner);
             let running = if inner.child.as_ref().is_some_and(|r| r.gen == gen) { inner.child.take() } else { None };
+            // The stop mark stays until the next start: a Stop still waiting sees that its process ended.
             if inner.gen == gen {
                 inner.busy = false;
-                inner.stop_mark = None;
             }
             let ended = if inner.ending.is_some_and(|(g, _, _)| g == gen) { inner.ending.take() } else { None };
             (running, ended)
@@ -431,7 +432,6 @@ impl Engine {
             let code = r.child.wait().ok().and_then(|s| s.code());
             inner.ending = Some((r.gen, reason, code));
         }
-        inner.stop_mark = None;
         inner.busy = false;
     }
 
@@ -485,9 +485,17 @@ impl Engine {
             {
                 let mut inner = lock(&self.inner);
                 // The stopped turn's own result clears the mark; a message sent after the Stop may keep
-                // the chat busy past it, and that is not a failed stop.
-                if inner.stop_mark.is_none() || inner.gen != gen {
+                // the chat busy past it, and that is not a failed stop. (A handoff on that result ends
+                // the process after the mark is cleared, so it still counts as an interrupt.)
+                if inner.stop_mark.is_none() {
                     break;
+                }
+                // Review N4 (2026-11-23): no result, and the process ended meanwhile (a crash, a close) or
+                // another one replaced it: the turn was not interrupted, it ended with its process.
+                if inner.child.is_none() || inner.gen != gen {
+                    drop(inner);
+                    self.emit(&ChatEvent::Stopped { how: StopHow::Ended });
+                    return Some(StopHow::Ended);
                 }
                 if Instant::now() >= end {
                     Self::end_process(&mut inner, ExitReason::Stopped);
