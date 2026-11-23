@@ -801,8 +801,16 @@ pub fn claude_folder(cwd: &str) -> String {
     cwd.chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect()
 }
 
-fn home() -> Option<PathBuf> {
+pub(crate) fn home() -> Option<PathBuf> {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from)
+}
+
+/// OpenClaude's own conversation folders (2026-11-21). It keeps them under `~/.openclaude/projects`
+/// and does not move them when `CLAUDE_CONFIG_DIR` is set — that variable is Claude Code's, and a
+/// probe of OpenClaude 0.33.0 wrote its file there whatever the variable said. So its transcript is
+/// looked for in its own folder, never in a Claude account's.
+pub fn openclaude_projects(user_home: Option<PathBuf>) -> Vec<PathBuf> {
+    user_home.map(|h| h.join(".openclaude").join("projects")).into_iter().collect()
 }
 
 fn env_of<'a>(pane_env: &'a [(String, String)], key: &str) -> Option<&'a str> {
@@ -814,15 +822,17 @@ fn env_of<'a>(pane_env: &'a [(String, String)], key: &str) -> Option<&'a str> {
 #[allow(dead_code)] // used by terminal.rs once evidence/chat-T-325-b-terminal.rs.patch is applied
 pub const HOME_KEYS: [&str; 5] = [crate::claude_accounts::CONFIG_ENV, crate::codex_accounts::HOME_ENV, crate::agents::GROK_HOME_ENV, "OMP_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"];
 
-/// CHAT-007: the home folders to look in, in order. Claude (and OpenClaude, read the same way):
-/// the config folder the pane was started with, then Kolux's own CLAUDE_CONFIG_DIR, then
-/// `~/.claude`. Codex: the managed account's home the pane was started with, then CODEX_HOME,
-/// then `~/.codex`. Grok: GROK_HOME, then `~/.grok`. omp: its agent directory variable (the
-/// public environment-variable page names `PI_CODING_AGENT_DIR`; `OMP_CODING_AGENT_DIR` is the
-/// name this app's spec uses), then `<home>/<PI_CONFIG_DIR, default .omp>/agent`.
+/// CHAT-007: the home folders to look in, in order. Claude: the config folder the pane was started
+/// with, then Kolux's own CLAUDE_CONFIG_DIR, then `~/.claude`. OpenClaude (2026-11-21): its own
+/// `~/.openclaude` only, because it writes there even when CLAUDE_CONFIG_DIR is set. Codex: the managed
+/// account's home the pane was started with, then CODEX_HOME, then `~/.codex`. Grok: GROK_HOME, then
+/// `~/.grok`. omp: its agent directory variable (the public environment-variable page names
+/// `PI_CODING_AGENT_DIR`; `OMP_CODING_AGENT_DIR` is the name this app's spec uses), then
+/// `<home>/<PI_CONFIG_DIR, default .omp>/agent`.
 pub fn homes(agent: &str, pane_env: &[(String, String)], process_env: impl Fn(&str) -> Option<String>, user_home: Option<PathBuf>) -> Vec<PathBuf> {
     let (keys, dot): (&[&str], PathBuf) = match agent {
-        "claude" | "openclaude" => (&[crate::claude_accounts::CONFIG_ENV], PathBuf::from(".claude")),
+        "claude" => (&[crate::claude_accounts::CONFIG_ENV], PathBuf::from(".claude")),
+        "openclaude" => (&[], PathBuf::from(".openclaude")),
         "codex" => (&[crate::codex_accounts::HOME_ENV], PathBuf::from(".codex")),
         "grok" => (&[crate::agents::GROK_HOME_ENV], PathBuf::from(".grok")),
         "omp" => {
@@ -924,6 +934,26 @@ pub fn find(agent: &str, homes: &[PathBuf], cwd: &str, since: SystemTime) -> Opt
     None
 }
 
+/// The transcript of one named conversation (2026-11-21): a kept chat that is opened again resumes a session
+/// it names, so its file is read directly instead of by `find`'s newest-in-the-folder rule, which would miss
+/// a file last written before the new tab opened. Only Claude files a session under its own id, and an
+/// Everyday chat is Claude or OpenClaude; any other agent has no such file here.
+pub fn session_file(agent: &str, homes: &[PathBuf], cwd: &str, session: &str) -> Option<PathBuf> {
+    let safe = !session.is_empty() && session.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    if !safe || !matches!(agent, "claude" | "openclaude") {
+        return None;
+    }
+    homes.iter().map(|h| h.join("projects").join(claude_folder(cwd)).join(format!("{session}.jsonl"))).find(|p| p.is_file())
+}
+
+fn format_of(agent: &str) -> Format {
+    match agent {
+        "codex" => Format::Codex,
+        "omp" => Format::Omp,
+        _ => Format::Claude,
+    }
+}
+
 /// What one look at the transcript tells the window.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -969,11 +999,7 @@ pub struct Follow {
 
 impl Follow {
     pub fn new(agent: &'static str, cwd: String, homes: Vec<PathBuf>, since: SystemTime, now: Instant) -> Self {
-        let format = match agent {
-            "codex" => Format::Codex,
-            "omp" => Format::Omp,
-            _ => Format::Claude,
-        };
+        let format = format_of(agent);
         Follow { agent, cwd, homes, since, tail: None, parser: Parser::new(format), opened: now, attempts: 0, next_try: now, sent_first: false, loose: false, first_lines: None }
     }
 
@@ -1145,6 +1171,46 @@ pub async fn chat_read(terminals: tauri::State<'_, crate::terminal::Terminals>, 
     off_main(move || read_pane(pane_key, run, detected, terminal.unwrap_or(0), cwd, Page { cursor, limit })).await?
 }
 
+/// Lines a reopened chat reads from its conversation. A long session opens on its newest part, as the chat
+/// page does; the older turns of a kept chat are not paged in today.
+pub const HISTORY_LINES: usize = 600;
+
+/// The conversation a kept chat picks up (2026-11-21). A chat pane starts a fresh process with `--resume`,
+/// and that process re-reads the agent's history without saying any of it again, so the page opens on the
+/// transcript the session itself wrote. No follower and no process: one read of a named file.
+#[tauri::command]
+pub async fn chat_history(agent: String, cwd: String, session: String, limit: Option<usize>) -> Result<ChatRead, String> {
+    off_main(move || {
+        let homes = homes(&agent, &[], |k| std::env::var(k).ok(), home());
+        history_of(&agent, &cwd, &session, limit.unwrap_or(HISTORY_LINES), &homes)
+    })
+    .await?
+}
+
+fn history_of(agent: &str, cwd: &str, session: &str, lines: usize, homes: &[PathBuf]) -> Result<ChatRead, String> {
+    let path = session_file(agent, homes, cwd, session).ok_or_else(|| "This chat's conversation is not on this computer anymore.".to_string())?;
+    let mut f = fs::File::open(&path).map_err(|e| e.to_string())?;
+    let len = f.metadata().map_err(|e| e.to_string())?.len();
+    let end = last_line_end(&mut f, len).map_err(|e| e.to_string())?;
+    let (page, start) = page_before(&path, end, lines).map_err(|e| e.to_string())?;
+    // Based past the newest window's numbering, as an older page is: a row id made here never meets one the
+    // live stream makes after the chat starts.
+    let mut parser = Parser::based(format_of(agent), (1u64 << 32) + start);
+    for line in &page {
+        parser.feed(line);
+    }
+    Ok(ChatRead {
+        state: if parser.items().is_empty() { "empty" } else { "ready" },
+        reset: true,
+        items: parser.items().to_vec(),
+        open: false,
+        error: None,
+        retry_ms: ATTACHED_POLL_MS,
+        older: Some(start).filter(|s| *s > 0),
+        earlier: false,
+    })
+}
+
 /// The pane's follower: the one it has when it follows `agent` the same way, else a new one from
 /// `make` (T-050-c: the agent in front changed, or a hand-started agent replaced the launch's).
 fn follow_for(pane_key: u32, agent: &'static str, loose: bool, make: impl FnOnce() -> Follow) -> Arc<Mutex<Follow>> {
@@ -1243,6 +1309,33 @@ mod tests {
     fn a_missing_transcript_is_looked_for_after_1_2_4_8_then_every_10_seconds() {
         let waits: Vec<u64> = (0..7).map(|a| retry_after(a).as_secs()).collect();
         assert_eq!(waits, vec![1, 2, 4, 8, 10, 10, 10]);
+    }
+
+    #[test]
+    fn a_kept_chats_history_is_read_from_the_file_its_session_id_names() {
+        let root = temp("chat-history");
+        let homes = [root.0.clone()];
+        let cwd = "C:\\work\\app";
+        let dir = root.join("projects").join(claude_folder(cwd));
+        fs::create_dir_all(&dir).unwrap();
+        // A transcript last written long before the new tab opened: `find`'s since-rule would miss it, the id
+        // names it exactly.
+        let mut f = fs::File::create(dir.join("s-42.jsonl")).unwrap();
+        for v in [
+            json!({"type":"user","uuid":"u-1","timestamp":"2026-11-21T10:00:00Z","message":{"role":"user","content":"What does this project do?"}}),
+            json!({"type":"assistant","uuid":"a-1","timestamp":"2026-11-21T10:00:04Z","message":{"id":"m-1","role":"assistant","content":[{"type":"text","text":"It keeps notes."}]}}),
+        ] {
+            writeln!(f, "{v}").unwrap();
+        }
+        let read = history_of("claude", cwd, "s-42", 100, &homes).unwrap();
+        assert!(read.reset, "one page replaces what the view holds");
+        let said: Vec<&str> = read.items.iter().map(|i| i.text.as_str()).collect();
+        assert!(said.iter().any(|t| t.contains("What does this project do?")), "{said:?}");
+        assert!(said.iter().any(|t| t.contains("It keeps notes.")), "{said:?}");
+        // Only a plain session id names a file, and only inside the projects folder.
+        assert!(history_of("claude", cwd, "..\\secret", 100, &homes).is_err());
+        assert!(history_of("claude", cwd, "gone", 100, &homes).is_err());
+        assert!(history_of("codex", cwd, "s-42", 100, &homes).is_err(), "another agent's files are not named by a session id");
     }
 
     #[test]
@@ -1469,6 +1562,18 @@ mod tests {
         assert_eq!(find("claude", &hs, cwd, SystemTime::now() + Duration::from_secs(60)), None, "a file older than the session is someone else's conversation");
         let codex = homes("codex", &[("CODEX_HOME".into(), "C:\\acct".into())], |k| (k == "CODEX_HOME").then(|| "C:\\env".to_string()), None);
         assert_eq!(codex, vec![PathBuf::from("C:\\acct"), PathBuf::from("C:\\env")], "the managed account's home first, then CODEX_HOME");
+    }
+
+    #[test]
+    fn openclaude_is_looked_for_in_its_own_folder_even_when_the_claude_variable_is_set() {
+        // 2026-11-21 probe: OpenClaude 0.33.0 writes `~/.openclaude/projects/...` whatever CLAUDE_CONFIG_DIR
+        // says, so a kept chat's history and Delete have to look there and nowhere else.
+        let d = temp("chat-openclaude-home");
+        let user_home = Some(d.0.clone());
+        let env = vec![("CLAUDE_CONFIG_DIR".to_string(), "C:\\acct".to_string())];
+        assert_eq!(homes("openclaude", &env, |_| Some("C:\\env".to_string()), user_home.clone()), vec![d.join(".openclaude")]);
+        assert_eq!(openclaude_projects(user_home.clone()), vec![d.join(".openclaude").join("projects")]);
+        assert_eq!(openclaude_projects(None), Vec::<PathBuf>::new());
     }
 
     #[test]

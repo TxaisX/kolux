@@ -12,7 +12,7 @@ An empty workspace shows "Nothing running here yet." with the main button "Start
 
 The Layout strip sets how many panes the workspace in front holds. The quick counts are 1, 2, 4, 6, 9 and 12; the field beside them takes any number from 1 to 24, so a workspace is never limited to the presets. Splits add panes wherever you want them.
 
-The right end of the strip is the workspace spend ribbon. It totals the tokens and estimated cost of the workspace in front across every session that worked in it, including its subfolders, shows today's tokens and cost, and draws a gauge of the last 14 days. Hover it for the seven-day figure, the Claude and Codex split, and when the figures were last counted. The figures come from the local Claude and Codex logs, which stay on this computer; token tracking is opt-in per provider in Settings > Usage. With tracking off, the strip says so and opens that page.
+The strip only sets how many panes the workspace in front holds. Token and estimated cost figures left the screen on 2026-11-21 and live in Settings > Usage, where token tracking is opt-in per provider. The figures come from the local Claude and Codex logs, which stay on this computer.
 
 | Action | Result |
 |---|---|
@@ -47,7 +47,7 @@ Every pane has a header. Left to right it shows:
 | Crew label | For example "2 agents, 1 waiting", when an agent has helpers |
 | Age | "just now", then "5m ago", after a turn finishes |
 
-On the right sit the plan text (5-hour and weekly windows), a "Review plan" button when a plan is waiting, the "..." Pane menu, Expand, "Split right", "+" (start a new session in a new pane) and Close pane (Ctrl+W, which ends the program).
+On the right sit a "Review plan" button when a plan is waiting, the "..." Pane menu, Expand, "Split right", "+" (start a new session in a new pane) and Close pane (Ctrl+W, which ends the program). Token and plan figures are no longer drawn here; see Settings > Usage.
 
 In a narrow pane the header drops the branch chip, program word, buttons and status word, in that order. The dot, mark and name stay.
 
@@ -114,7 +114,7 @@ The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06
 | Shape | Pick a built-in or saved arrangement. "Save as team" stores yours under a Team name |
 | Folders | Start form only: tick the project folders to start in, or "Add folder" |
 | How many | Pick a quick count or type any number, and press "Same for all" to copy one choice to every seat. Start opens every seat as its own pane |
-| Folder or Folders | With **Own folder for each agent** on (Settings, Git) in a Git project: "Own folder for each AI", picked for two or more seats, gives each seat its own worktree; "Same folder for all" shares the project folder. With it off, every seat works in the project folder and Kolux makes no extra copies |
+| Folder or Folders | With **Own folder for each agent** on (Settings, Git) in a Git project: "Own folder for each AI", picked for every seat, gives each AI a new worktree, even when only one seat starts and wherever the form was opened; "Same folder for all" shares the folder for that launch. With it off, every seat works in the project folder and Kolux makes no extra copies |
 | Task for all of them | Optional first request for all sessions |
 | Per seat | Pick the AI and its model, and an optional job title |
 
@@ -263,4 +263,4 @@ With "Terminal first", Kolux still keeps Ctrl+V, Ctrl+Tab, Ctrl+PageUp, Ctrl+Pag
 
 Keys that no Kolux shortcut uses always reach the program. Ctrl+R opens the shell's history search, for example, and Ctrl+Arrow moves by word. Alt+Left and Alt+Right move by word too. Ctrl+C with nothing selected is the program's interrupt. Ctrl+K and Ctrl+F belong to Kolux (clear and find); with "Terminal first" they go to the program instead, because they are not marked safe for terminals. A key you press while composing text with an input method is never taken by a Kolux shortcut.
 
-<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/pty.rs, PLAN.md, src/launch/PlusMenu.tsx, src/shell/window/Grid.tsx, src/terminal/paneActions.ts, src/launch/startForm.ts, src/shell/window/Content.tsx, src/keys/useWindowKeys.ts, src/projects/deleting.ts, src/projects/ProjectsPanel.tsx, src/projects/singleFolder.ts, src/terminal/grid.ts, src/launch/launchActions.ts at bf88bbb3 -->
+<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/pty.rs, PLAN.md, src/launch/PlusMenu.tsx, src/shell/window/Grid.tsx, src/terminal/paneActions.ts, src/launch/startForm.ts, src/shell/window/Content.tsx, src/keys/useWindowKeys.ts, src/projects/deleting.ts, src/projects/ProjectsPanel.tsx, src/projects/singleFolder.ts, src/terminal/grid.ts, src/launch/launchActions.ts at 9b6615ca -->

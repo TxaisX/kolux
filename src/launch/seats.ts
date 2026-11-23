@@ -16,10 +16,10 @@ export const TERMINAL = "terminal";
 /** SESS-014: where the AIs work: a fresh worktree each, or the chooser's own folder for all. */
 export type Copies = "separate" | "shared";
 
-/** SESS-014 (owner change 2026-11-05): every seat works in the project folder. Kolux never makes
- * an automatic copy of the project. DT-C250: with "Own folder for each agent" on, two or more seats in a
- * Git project start with a copy each, as they did before that change. */
-export const defaultCopies = (seatCount: number, inGit: boolean): Copies => (!singleFolder() && inGit && seatCount >= 2 ? "separate" : "shared");
+/** Txais (2026-11-22): every launch in a Git project starts in a fresh worktree, whatever folder the
+ * Start form was opened in: the main checkout, an existing worktree, or one seat alone. "Same folder for
+ * all" stays an explicit choice; a folder outside Git, and "Own folder for each agent" turned off, share. */
+export const defaultCopies = (inGit: boolean): Copies => (!singleFolder() && inGit ? "separate" : "shared");
 
 /** SESS-014: the shared folder with 2+ seats in a Git project is worth a warning. */
 export const sharedWarning = (copies: Copies, seatCount: number, inGit: boolean): boolean => copies === "shared" && inGit && seatCount >= 2;
@@ -144,18 +144,32 @@ const BUILT_IN: Record<string, ModelChoice[]> = {
     { id: "grok-code-fast-1", label: "Grok Code Fast 1" },
     { id: "grok-4", label: "Grok 4" },
   ],
-  // 2026-11-20: OpenClaude runs the other models through one gateway, so its list is OpenRouter's ids
-  // (each one answered a real prompt with this exact id that day: deepseek/deepseek-v4.1-flash-1017,
-  // openai/gpt-5, google/gemini-3-flash-preview, anthropic/claude-opus-4.5, x-ai/grok-4.6).
+  // 2026-11-21: the Everyday chat opens OpenClaude, and OpenClaude is the one engine that reaches every
+  // model we run. Its list is OpenRouter's ids, so one key answers for Claude, GPT, Gemini, Grok and
+  // DeepSeek alike, and a model can be switched without opening another program. The first row is the
+  // cheap default a new chat starts on; the rest are a current model from each family.
   openclaude: [
     { id: "deepseek/deepseek-v4.1-flash-1017", label: "DeepSeek V4.1 Flash" },
-    { id: "openai/gpt-5", label: "GPT-5" },
-    { id: "openai/gpt-5-mini", label: "GPT-5 mini" },
-    { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash" },
-    { id: "anthropic/claude-opus-4.5", label: "Claude Opus 4.5" },
-    { id: "x-ai/grok-4.6", label: "Grok 4.6" },
+    { id: "anthropic/claude-opus-5.5", label: "Claude Opus 5.5" },
+    { id: "anthropic/claude-sonnet-5.5", label: "Claude Sonnet 5.5" },
+    { id: "anthropic/claude-haiku-5.5", label: "Claude Haiku 5.5" },
+    { id: "openai/gpt-5.5", label: "GPT-5.5" },
+    { id: "openai/gpt-5.4-mini", label: "GPT-5.4 mini" },
+    { id: "openai/gpt-5.3-codex", label: "GPT-5.3 Codex" },
+    { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+    { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+    { id: "x-ai/grok-4.7", label: "Grok 4.7" },
   ],
 };
+
+/** OpenClaude's effort levels (its `--effort` flag). These are the same words Claude Code uses, so an
+ *  effort picked for one chat means the same thing in the next. */
+const OPENCLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"];
+for (const m of BUILT_IN.openclaude) Object.assign(m, { efforts: OPENCLAUDE_EFFORTS, effortFlag: "--effort" });
+
+/** The model a new OpenClaude chat starts on before the user picks another: cheap, quick, and already
+ *  proven against this gateway. */
+export const OPENCLAUDE_DEFAULT = "deepseek/deepseek-v4.1-flash-1017";
 
 /** SESS-029: Grok's effort levels, up to extra-high; left untouched it stays at Grok's own high. */
 const GROK_EFFORTS = ["low", "medium", "high", "xhigh"];
@@ -184,11 +198,13 @@ function listOf(agentId: string): ModelChoice[] | undefined {
 export const DEFAULT_MODEL = "default";
 
 /** The model row for an agent: its built-in list plus the program's own default, which is an
- * explicit pick that adds no model flag. ACCT-032: an agent without a built-in list has no model
- * step at all (empty). */
+ * explicit pick that adds no model flag. OpenClaude has no default row (2026-11-21): it has no provider
+ * profile to fall back to, and an Everyday chat always names a model. ACCT-032: an agent without a
+ * built-in list has no model step at all (empty). */
 export function modelsFor(agentId: string): ModelChoice[] {
   const list = listOf(agentId);
-  return list ? [...list, { id: DEFAULT_MODEL, label: "Program default" }] : [];
+  if (!list) return [];
+  return agentId === "openclaude" ? [...list] : [...list, { id: DEFAULT_MODEL, label: "Program default" }];
 }
 
 /** The gateway OpenClaude's list comes from; the Rust chat engine names the same one
@@ -381,11 +397,14 @@ export const seatFolder = (chooser: string | null, project: string | null): stri
 
 /** SESS-018: the New session page starts from this project's previous launch for the count, but
  *  every seat starts blank (SESS-015). `copies` is left unset unless the previous launch departed
- *  from the default for its seat count (the user picked it): unset follows the live seat count
- *  through `defaultCopies`, so raising 1 seat to 2 switches to own folders (Txais 2026-11-12). */
+ *  from the default for its seat count (the user picked it): unset follows `defaultCopies`, which
+ *  since 2026-11-22 is own folders for every AI seat in a Git project. A saved copy equal to the
+ *  older default (one seat shared, two or more separate) was recorded by Kolux, not picked, so it
+ *  does not bring the old way back. */
 export function sheetStart(last: Lineup | undefined, inGit: boolean): { seats: Seat[]; copies?: Copies } {
   const n = Math.min(MAX_SESSIONS, Math.max(1, last?.seats.length ?? 1));
+  const wasDefault = (count: number): Copies => (!singleFolder() && inGit && count >= 2 ? "separate" : "shared");
   // DT-C250: with own folders on, a picked choice comes back (separate copies need Git).
-  const picked = !singleFolder() && last !== undefined && last.copies !== defaultCopies(last.seats.length, inGit) && !(last.copies === "separate" && !inGit);
+  const picked = !singleFolder() && last !== undefined && last.copies !== wasDefault(last.seats.length) && !(last.copies === "separate" && !inGit);
   return { seats: Array.from({ length: n }, emptySeat), ...(picked ? { copies: last.copies } : {}) };
 }

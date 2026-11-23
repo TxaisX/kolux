@@ -13,7 +13,7 @@ const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude"
 const render = (shown: number, sheet: { project: string; path: string } | null) => {
   const seats = [emptySeat()];
   return renderToString(
-    createElement(ChooserPane, { number: 2, agents: [claude], seats, onSeats: () => {}, onLineup: () => {}, shape: "custom", task: "", onTask: () => {}, onStart: () => {}, copies: defaultCopies(1, true), inGit: true, onCopies: () => {}, closable: chooserClosable(shown, sheet !== null), onClose: () => {}, sheet, saved: [] } as never),
+    createElement(ChooserPane, { number: 2, agents: [claude], seats, onSeats: () => {}, onLineup: () => {}, shape: "custom", task: "", onTask: () => {}, onStart: () => {}, copies: defaultCopies(true), inGit: true, onCopies: () => {}, closable: chooserClosable(shown, sheet !== null), onClose: () => {}, sheet, saved: [] } as never),
   );
 };
 

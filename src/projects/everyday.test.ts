@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import { everydayAgents, everydaySessions, isEveryday, samePlace } from "./everyday";
+import { everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
+import type { EverydayChat } from "./everydayChats";
 import type { FolderSession } from "./folderSessions";
 
 test("the same place ignores case, separators and a trailing slash", () => {
@@ -27,36 +28,20 @@ test("the everyday list is the panes opened there, in the window's own order", (
   expect(everydaySessions(list, null)).toEqual([]);
 });
 
-const ai = (id: string, name: string, installed = true) => ({ id, name, installed });
-const models: Record<string, { id: string; label: string }[]> = {
-  claude: [
-    { id: "opus", label: "Claude Opus" },
-    { id: "sonnet", label: "Claude Sonnet" },
-    { id: "default", label: "Program default" },
-  ],
-  codex: [
-    { id: "gpt-5-codex", label: "GPT-5 Codex" },
-    { id: "default", label: "Program default" },
-  ],
-  gemini: [{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }],
-  aider: [],
-};
-const modelsOf = (id: string) => models[id] ?? [];
+const kept = (id: string, over: Partial<EverydayChat> = {}): EverydayChat => ({ id, agent: "claude", cwd: "C:\\E", at: 1, ...over });
 
-test("the New session menu offers every installed AI, the chat page's AIs first", () => {
-  const list = [ai("codex", "Codex"), ai("claude", "Claude Code"), ai("openclaude", "OpenClaude"), ai("gemini", "Gemini CLI", false), ai("aider", "Aider"), ai("grok", "Grok")];
-  const got = everydayAgents(list, modelsOf);
-  expect(got.map((x) => x.agent)).toEqual(["claude", "openclaude", "codex", "aider", "grok"]);
-  // Claude and OpenClaude draw the chat page; Codex opens its own screen.
-  expect(got.map((x) => x.chat)).toEqual([true, true, false, false, false]);
-  expect(got[0].models.map((m) => m.id)).toEqual(["opus", "sonnet", "default"]);
-  expect(got[2].name).toBe("Codex");
+test("a kept chat and its live tab are one row: the tab is found by the record it draws", () => {
+  const list = [kept("a", { at: 20 }), kept("b", { at: 10 }), kept("c", { at: 5 })];
+  const panes = [session(7, { record: "b", chat: true }), session(8, { record: "gone" })];
+  const got = everydayItems(list, panes);
+  expect(got.map((x) => x.chat.id)).toEqual(["a", "b", "c"]);
+  expect(got.map((x) => x.pane?.key ?? null)).toEqual([null, 7, null]);
 });
 
-test("an AI with no model list still starts, on its own default; one not installed is left out", () => {
-  const got = everydayAgents([ai("aider", "Aider"), ai("gemini", "Gemini CLI", false)], modelsOf);
-  expect(got.map((x) => x.agent)).toEqual(["aider"]);
-  expect(got[0].models).toEqual([]);
-  expect(everydayAgents([], modelsOf)).toEqual([]);
+test("panes no kept chat owns still draw; panes whose record was deleted are the tab's own row", () => {
+  const list = [kept("a")];
+  const panes = [session(1, { record: "a" }), session(2, { chat: true }), session(3, { record: "gone" })];
+  expect(everydayUnkept(panes, list).map((s) => s.key)).toEqual([2, 3]);
+  expect(everydayUnkept(panes, [])).toBe(panes);
 });
 

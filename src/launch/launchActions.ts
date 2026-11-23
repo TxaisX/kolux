@@ -22,9 +22,10 @@ import { cellsOf, freeCell, freeCells, groupOf, MAX_PANES } from "../terminal/gr
 import type { StartLine } from "../terminal/tabName";
 import { panesIn, sameDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
+import { EVERYDAY_CHATS_FIELD, everydayChatsOf, newEverydayChat, putEverydayChat, touchEverydayChat, type EverydayChat } from "../projects/everydayChats";
 import { addTeamFolders, mergedTeamFolders, TEAM_WORKTREES_SETTING, teamViewOf } from "../projects/rows";
 import { paneMark, type AgentInfo } from "./PlusMenu";
-import { bulkRefusal, failureNote, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
+import { bulkRefusal, failureNote, notACopyableFolder, setupMode, sharedFallback, type NewPlace } from "./launchOrder";
 import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, seatFolder, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 import { acrossNote, landOnFree, LAST_START_KEY, startEach, type StartSheet } from "./startForm";
@@ -36,6 +37,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     setRefresh, setScreen, setSettings, setSheet, setToast, settings, sheet
   } = s;
   const { settingsRef } = p;
+  // The kept Everyday chats (projects/everydayChats.ts) live in settings. p.saveSetting builds on the latest
+  // value, so an id reported by a chat while another write is in flight is never lost; an unchanged list
+  // writes nothing (undefined from the value function stops the write).
+  const keepChat = (change: (list: EverydayChat[]) => EverydayChat[]) =>
+    p.saveSetting(EVERYDAY_CHATS_FIELD, (prev: unknown) => {
+      const list = everydayChatsOf(prev);
+      const after = change(list);
+      return after === list ? undefined : after;
+    });
   const lineupsOf = (s: Record<string, unknown>) => (s[LAST_LINEUP_KEY] ?? {}) as Record<string, Lineup>;
   // DT-C274: the worktrees an own-folder team launch made and the grid they are shown in, kept so the sidebar leaves
   // them out and anything opened in one lands in that grid (projects/rows.ts). Row 794-c: laid over the disk copy
@@ -118,7 +128,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // DT-C250: with "Own folder for each agent" on and the chooser set to own folders, every AI seat gets a
       // fresh worktree of its own (SESS-014, SESS-023), made one after another so no two pick one name. A plain
       // terminal seat stays in the chooser's folder. Off (the default), nothing is made.
-      const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
+      const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(inGitFor(chooser))) === "separate";
       // A launch whose first own folder cannot be made (a plain folder, or a Git project with no commit yet) turns both
       // off below and starts the agents together in the chooser's folder, so two agents never mean no agents.
       let makes = separate && picked.some(Boolean);
@@ -140,7 +150,8 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         return false;
       }
       const repo = makes && proj ? await invoke<{ mode?: string; wait?: boolean }>("repo_setup_get", { path: proj.path }).catch(() => null) : null;
-      const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes);
+      // Only a Start that makes two or more workspaces is a bulk launch; one AI alone is refused nowhere (as launch() never does).
+      const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes && picked.filter(Boolean).length >= 2);
       if (refused) throw new Error(refused);
       const madeNew: NewPlace[] = [];
       const setupTrouble: string[] = [];
@@ -156,11 +167,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         } catch (err) {
           // A later copy failing after earlier ones were made stops the Start (those folders are listed: failureNote).
           // The first one failing means nothing was made and nothing will be: the folder is not a Git project, or has
-          // no commit to copy from. Every agent then opens here together, as a one-agent Start already does.
+          // no commit to copy from. Every agent then opens here, in the folder the Start was opened in.
           if (kept.length > 0) throw err;
           makes = false;
           team = false;
-          setupTrouble.push(sharedFallback(err));
+          // Txais (2026-11-22): one AI alone has nothing to collide with, and its own folder is the one it was started
+          // in (Everyday is a plain folder by design), so a solo Start says nothing when the cause is only "this is not
+          // a Git project with a commit". Two or more do share files then, and any other cause (a full disk, a lock)
+          // is worth a line even for one, so the line says why.
+          if (picked.filter(Boolean).length >= 2 || !notACopyableFolder(err)) setupTrouble.push(sharedFallback(err));
           places.push({ cwd: place, branch: chooser.branch });
           continue;
         }
@@ -210,7 +225,10 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         if (kept.length) setRefresh((n) => n + 1);
         return false;
       }
-      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", separate ? "separate" : "shared", seats) };
+      // What the Start really did is what is saved: one AI that opened in place because no copy could be made is "shared".
+      // Two or more that fell back keep the choice made, so one bad folder does not turn a project's own-folders pick into shared.
+      const copiesSaved = separate && (makes || picked.filter(Boolean).length >= 2) ? "separate" : "shared";
+      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", copiesSaved, seats) };
       // A grid chooser gives its place to the new panes. The Start form (SESS-018) fills the grid's free cells first,
       // in grid order, and adds the rest after them (TERM-007: an empty pane is used first when one exists; a pane
       // with typed text is not empty, startForm.ts landOnFree).
@@ -481,8 +499,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // other AI still opens its own screen.
   // `inFolder` (the Everyday row, 2026-11-20): a plain folder is not a Git project, so a chat there always
   // opens in the folder itself. Asking for a worktree on it fails with "no default branch was found".
-  // `model` (the Everyday New session menu, 2026-11-20): the chat page starts on that model; null keeps the
-  // saved choice.
+  // `model` (the Everyday row, 2026-11-20): the chat page starts on that model; null keeps the saved choice.
+  // 2026-11-21: Everyday's New session passes OpenClaude's default, and the model is changed inside the
+  // chat from then on, so nothing asks for a model before the session exists.
   const newChat = async (projectId: string | null = null, inFolder = false, model: string | null = null, agentId = "claude") => {
     const agent = agents.find((a) => a.id === agentId && a.installed);
     if (!agent) return setNotice(`${agentId} is not installed here, so a chat cannot start.`);
@@ -494,7 +513,11 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const extra = model && model !== DEFAULT_MODEL ? modelArgs(model, agent.id) : savedArgs(agent.id);
       const key = await startIn(agent, proj.path, null, "", true, extra);
       if (key === null) return;
-      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
+      // The chat's kept record (2026-11-21): the row outlives the tab, and the agent's own conversation id
+      // lands on it as soon as the chat reports one, so clicking the row later resumes this conversation.
+      const rec = newEverydayChat(agent.id, proj.path, model && model !== DEFAULT_MODEL ? model : null);
+      keepChat((list) => putEverydayChat(list, rec));
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(model && model !== DEFAULT_MODEL ? { chatModel: model } : {}) } : p)));
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -503,19 +526,27 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       setLaunching(false);
     }
   };
-  // The Everyday row's other AIs (2026-11-20): one more session in that plain folder, on the model the
-  // menu lists. No worktree, no chat page: every AI but Claude keeps its own screen. A "Program default"
-  // pick adds no flag at all, so it starts on that AI's own default rather than a saved choice.
-  const newSession = async (projectId: string | null, agentId: string, model: string | null = null) => {
-    const agent = agents.find((a) => a.id === agentId && a.installed);
-    if (!agent) return setNotice(`${agentId} is not installed here, so it cannot start.`);
-    const proj = projects.find((p) => p.id === projectFor(projectId));
-    if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
+  // A kept Everyday chat whose tab was closed (2026-11-21): a pane already showing it comes to the front;
+  // otherwise the same conversation opens with `--resume`, on the AI and model it started with, and the
+  // row moves to the top because it was used just now.
+  const openChat = async (rec: EverydayChat) => {
+    const open = panes.find((x) => x.everyday === rec.id);
+    if (open) {
+      const at = viewOf(open);
+      if (at !== null) setActiveDir(at);
+      setFocused(open.key);
+      return;
+    }
+    const agent = agents.find((a) => a.id === rec.agent && a.installed);
+    if (!agent) return setNotice(`${rec.agent} is not installed here, so this chat cannot open.`);
     setLaunching(true);
     try {
-      const extra = modelArgs(model, agent.id);
-      const key = await startIn(agent, proj.path, null, "", true, extra);
+      const onModel = rec.model && rec.model !== DEFAULT_MODEL ? rec.model : null;
+      const extra = onModel ? modelArgs(onModel, agent.id) : savedArgs(agent.id);
+      const key = await startIn(agent, rec.cwd, null, "", true, extra, rec.name);
       if (key === null) return;
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}), ...(rec.effort ? { chatEffort: rec.effort } : {}) } : p)));
+      keepChat((list) => touchEverydayChat(list, rec.id));
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
@@ -526,7 +557,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   };
   return {
     lineupsOf, rememberLineup, inGitFor, startSeats, startAcross, startIn, openIn, resumeIn, resumeOrFocus, fromItem, fromName, pretrust,
-    fixWithAI, projectFor, launch, newChat, newSession,
+    fixWithAI, projectFor, launch, newChat, openChat,
   };
 }
 

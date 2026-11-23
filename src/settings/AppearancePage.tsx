@@ -17,7 +17,6 @@ import { fontStack, loadFonts, rankFonts } from "./fonts";
 import { FIELDS as STATUS_FIELDS, readStatusBar, STATUS_ITEMS, toggleItem } from "../chrome/statusItems";
 import { CHROME, chromeShown, windowSummary } from "../chrome/chromeItems";
 import AppLookCard from "../chrome/AppLookCard";
-import { PERCENT_FIELD, percentMode, type PercentMode } from "../usage/meter";
 import { Segmented } from "./GeneralPage";
 import { CardDensityBody, SidebarLookBody } from "../look/SidebarSettings";
 import { FINISH_LABEL, FinishBody } from "../look/FinishSettings";
@@ -506,21 +505,8 @@ function TerminalColours({ look, onChange }: { look: Appearance; onChange: (a: A
   );
 }
 
-/** USAGE-025: how usage percentages read. A pane header's context reading follows it (the Agents screen it also set went on 2026-11-19). */
-export function UsagePercentPick({ value, onPick }: { value: PercentMode; onPick: (v: PercentMode) => void }) {
-  return (
-    <>
-      <div className="look-select">
-        <span>Usage percentages</span>
-        <select aria-label="Usage percentages" className="field" value={value} onChange={(e) => onPick(percentMode(e.target.value))}>
-          <option value="used">Used</option>
-          <option value="remaining">Remaining</option>
-        </select>
-      </div>
-      <p className="conn-detail">How a pane header's context reading counts; the top bar always shows what is left.</p>
-    </>
-  );
-}
+/** USAGE-025 retired with the usage figures (2026-11-21): the pane header no longer reads a
+ *  percentage, so nothing follows a used-or-remaining pick. */
 
 /** SET-020: the app name and the status bar with its items.
  *  VIEW-096: a status bar hidden from its right-click menu comes back here. */
@@ -558,7 +544,6 @@ function WindowSwitches({ settings, error, save }: ReturnType<typeof useSettings
             </label>
           ))}
         </div>
-        <UsagePercentPick value={percentMode(settings[PERCENT_FIELD])} onPick={(v) => void save({ [PERCENT_FIELD]: v })} />
         {error && <p className="conn-detail warn">{error}</p>}
       </section>
     </>

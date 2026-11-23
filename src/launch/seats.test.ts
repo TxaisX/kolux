@@ -67,10 +67,9 @@ test("an agent with a built-in list gets the program default as an explicit choi
   expect(modelArgs(null)).toEqual([]);
 });
 
-test("SESS-014 (owner change 2026-11-05): every launch shares the project folder; sharing in Git with 2+ seats warns", () => {
-  expect(defaultCopies(3, true)).toBe("shared");
-  expect(defaultCopies(1, true)).toBe("shared");
-  expect(defaultCopies(3, false)).toBe("shared");
+test("SESS-014 (owner change 2026-11-05): with own folders off every launch shares the project folder; sharing in Git with 2+ seats warns", () => {
+  expect(defaultCopies(true)).toBe("shared");
+  expect(defaultCopies(false)).toBe("shared");
   expect(sharedWarning("shared", 3, true)).toBe(true);
   expect(sharedWarning("separate", 3, true)).toBe(false);
   expect(sharedWarning("shared", 1, true)).toBe(false);

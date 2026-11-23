@@ -610,6 +610,7 @@ pub fn run() {
             terminal::terminal_attach,
             chat::chat_support,
             chat::chat_read,
+            chat::chat_history,
             chat::chat_close,
             terminal::terminal_resize,
             terminal::terminal_ack,
