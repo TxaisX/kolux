@@ -97,7 +97,7 @@ naming the event. Field names are camelCase. One example each:
 {"chatId":"c1","kind":"stderr","line":"some warning"}
 ```
 ```json
-{"chatId":"c1","kind":"exit","code":0,"reason":"sleep"}
+{"chatId":"c1","kind":"exit","pid":4242,"code":0,"reason":"sleep"}
 ```
 ```json
 {"chatId":"c1","kind":"stopped","how":"interrupt"}
@@ -124,6 +124,9 @@ Notes on the shapes:
 - `exit.reason`: `closed` (chat_end or quit), `sleep` (idle sleep), `stopped` (chat_stop had to
   end the process), `handoff` (the context reached the handoff line, below), `ended` (it ended by
   itself with code 0), `crashed` (any other end).
+- `exit.pid` is the ended process's own id, as its `started` event named it. The page ignores an
+  exit whose pid is not the last one started: a late exit of a replaced process says nothing about
+  the one running now.
 - `handoff.tokens` is the reading that crossed, `handoff.at` the line it crossed; the `exit` that
   follows says `handoff` too.
 - Anything this reader does not know (hook events, `plugin_install`, control responses, stream
@@ -161,9 +164,20 @@ chat keeps the appended system prompt, which also covers its very first start.
 
 `chat_stop` uses the documented **interrupt** control request first:
 
-1. It writes `{"type":"control_request","request_id":…,"request":{"subtype":"interrupt"}}`.
-   The docs say an interrupt ends the turn with an `error_during_execution` result and keeps the
-   session open, so the process stays and the chat goes on.
+1. It writes `{"type":"control_request","request_id":…,"request":{"subtype":"interrupt","cancel_queued":true}}`.
+   The interrupt ends the turn with an `error_during_execution` result and keeps the session open,
+   so the process stays and the chat goes on.
+   Checked live on 2026-11-23 with Claude Code and Haiku. Message A ran a 30-second Bash loop, B
+   ("say BEE") was sent 2 s later, then the interrupt.
+   - Without `cancel_queued`, B still ran after the interrupt and got its own `result`, 2 results
+     in all.
+   - With `"cancel_queued": true`, B never ran, 1 result in all.
+   - Both times the `control_response` reported `still_queued: []` (and `cancelled: []`), so those
+     lists are not a reliable count.
+
+   Kolux sends `cancel_queued`, so Stop stops everything the user had sent. The engine marks how
+   many messages were outstanding at the Stop. The first `result` after it answers all of them. A
+   message sent after the Stop is new: it runs, and the chat stays busy until its own result.
 2. If no `result` arrives within 5 seconds (`STOP_GRACE`; tests shorten it), the process tree is
    ended (`exit` with reason `stopped`). The session id is kept; the next `chat_send` starts the
    chat again with `--resume`.
@@ -175,11 +189,25 @@ stopped turn back up.
 
 ## Idle sleep
 
-After 10 minutes (`IDLE_SLEEP`, injectable through `Config.idle` for tests) with a process running
-and no turn running, the process is ended (`exit` with reason `sleep`). The chat stays open and keeps
-its session id; the next `chat_send` starts it with `--resume <session id>`. A chat that never got a
-session id (no init arrived) starts fresh instead. The idle clock restarts at every send and every
-`result`.
+After 10 minutes (`IDLE_SLEEP`, `Config.idle`) with a process running, no turn running and no line from
+it, the process is ended (`exit` with reason `sleep`). While a turn runs, the limit is 60 minutes
+(`BUSY_IDLE_SLEEP`, `Config.busy_idle`; tests shorten both). The longer limit protects a long silent
+tool call, such as a cargo build. It still ends a process that only looks busy because a result never
+came. The chat stays open and keeps its session id; the next `chat_send` starts it with
+`--resume <session id>`. A chat that never got a session id (no init arrived) starts fresh instead.
+
+The idle clock restarts at every send and at every line the running process writes, of any kind (a
+late line from an ended process does not count).
+
+A reply that arrives while nothing is outstanding is a turn the engine did not count, for example
+one the agent started by itself. The chat is busy again until that turn's result. The page does the
+same with its own count of unanswered sends.
+
+**Known limit: the folded queue.** At a tool boundary, Claude Code can fold a queued message into the
+running turn, and then that message gets no `result` of its own. The engine then counts one message
+as outstanding that never gets an answer. The chat looks busy (working line, Stop) until the
+60-minute busy sleep ends the process, or until the user presses Stop. No settle timer is used for
+this.
 
 ## Empty-init alarm
 
@@ -190,10 +218,9 @@ the sign of a start without the user's setup.
 
 ## Not known
 
-- **The exact interrupt request field.** The docs name an `interrupt` control request (with an
-  optional `cancel_queued`) inside the `control_request` envelope, but do not print the request
-  body. Kolux sends `"request":{"subtype":"interrupt"}`. If a real `claude` ignores it, the
-  5-second fallback still stops the turn (by ending the process), so stop always works.
+- **The interrupt request in other versions.** The shape above was checked live on 2026-11-23 (see
+  Stop). If a later `claude` ignores it, the 5-second fallback still stops the turn by ending the
+  process, so stop always works.
 - **The `control_response` shape.** Not printed in the docs. Control responses arrive as `raw`
   events; the engine waits for the turn's `result`, not for a control response.
 - **Whether `system/init` comes before the first user message** in stream-json input mode. The

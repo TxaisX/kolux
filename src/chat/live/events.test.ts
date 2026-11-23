@@ -2,7 +2,7 @@
 // Each case here is a line shape docs/chat-engine.md prints, and the last tests prove the reducer's rows
 // go through the same `combine` / `fold` the transcript chat uses, with no second renderer.
 import { expect, test } from "vitest";
-import { reduce, sessionChange, stillWaiting, userWords, type ChatEvent } from "./events";
+import { reduce, sessionChange, staleExit, stillWaiting, userWords, type ChatEvent } from "./events";
 import { combine } from "../model";
 import { fold, type Tool } from "../steps";
 
@@ -138,10 +138,32 @@ test("the page counts unanswered sends: each result answers one, a stop or an ex
   expect(n).toBe(1);
   n = stillWaiting(n, ev({ kind: "assistant" }));
   expect(n).toBe(1);
+  expect(stillWaiting(2, ev({ kind: "assistant" }))).toBe(2);
   n = stillWaiting(n, ev({ kind: "result" }));
   expect(n).toBe(0);
   expect(stillWaiting(0, ev({ kind: "result" }))).toBe(0);
   expect(stillWaiting(3, ev({ kind: "stopped" }))).toBe(0);
   expect(stillWaiting(3, ev({ kind: "exit", code: 1, reason: "crashed" }))).toBe(0);
   expect(stillWaiting(3, ev({ kind: "started" }))).toBe(3);
+});
+
+// Review P2-2 (2026-11-23): a reply while nothing is waiting is a turn the page did not count (a message
+// sent after a Stop, or a turn the agent started itself); the page waits for that turn's result.
+test("a reply while nothing is waiting makes the page wait for that turn's result", () => {
+  let n = stillWaiting(0, ev({ kind: "assistant" }));
+  expect(n).toBe(1);
+  n = stillWaiting(n, ev({ kind: "assistant" }));
+  expect(n).toBe(1);
+  n = stillWaiting(n, ev({ kind: "result" }));
+  expect(n).toBe(0);
+});
+
+// Review P3-1 (2026-11-23): a late exit of a process the pane already replaced is ignored; the exit of
+// the process running now, or one that names no pid, is not.
+test("only the exit of the last started process counts", () => {
+  expect(staleExit(ev({ kind: "exit", pid: 10, reason: "crashed" }), 11)).toBe(true);
+  expect(staleExit(ev({ kind: "exit", pid: 11, reason: "crashed" }), 11)).toBe(false);
+  expect(staleExit(ev({ kind: "exit", reason: "crashed" }), 11)).toBe(false);
+  expect(staleExit(ev({ kind: "exit", pid: 10, reason: "crashed" }), null)).toBe(false);
+  expect(staleExit(ev({ kind: "started", pid: 10 }), 11)).toBe(false);
 });

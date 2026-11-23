@@ -39,8 +39,9 @@ pub enum ChatEvent {
     Result(TurnResult),
     /// One line the process wrote to stderr.
     Stderr { line: String },
-    /// The process ended. `code` is its exit code when it had one.
-    Exit { code: Option<i32>, reason: ExitReason },
+    /// The process ended. `pid` is the process's own id (as `Started` named it), so the page can
+    /// ignore a late exit of a process it has already replaced; `code` is its exit code when it had one.
+    Exit { pid: u32, code: Option<i32>, reason: ExitReason },
     /// `chat_stop` finished: `interrupt` when the agent ended the turn itself, `ended` when the
     /// process had to be ended (the next send resumes the session).
     Stopped { how: StopHow },

@@ -155,11 +155,11 @@ fn stdin_lines_and_the_page_payload_have_the_documented_shapes() {
     let user: Value = serde_json::from_str(&user_line("hi", &[Image { media_type: "image/png".into(), base64: "AAAA".into() }])).unwrap();
     assert_eq!(user, json!({ "type": "user", "message": { "role": "user", "content": [{ "type": "text", "text": "hi" }, { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "AAAA" } }] }, "parent_tool_use_id": null }));
     let stop: Value = serde_json::from_str(&interrupt_line("r1")).unwrap();
-    assert_eq!(stop, json!({ "type": "control_request", "request_id": "r1", "request": { "subtype": "interrupt" } }));
+    assert_eq!(stop, json!({ "type": "control_request", "request_id": "r1", "request": { "subtype": "interrupt", "cancel_queued": true } }));
     let img: Image = serde_json::from_value(json!({ "mediaType": "image/jpeg", "base64": "B" })).unwrap();
     assert_eq!(img.media_type, "image/jpeg");
-    let ev = ChatEvent::Exit { code: Some(0), reason: ExitReason::Sleep };
-    assert_eq!(serde_json::to_value(Payload { chat_id: "c1", event: &ev }).unwrap(), json!({ "chatId": "c1", "kind": "exit", "code": 0, "reason": "sleep" }));
+    let ev = ChatEvent::Exit { pid: 42, code: Some(0), reason: ExitReason::Sleep };
+    assert_eq!(serde_json::to_value(Payload { chat_id: "c1", event: &ev }).unwrap(), json!({ "chatId": "c1", "kind": "exit", "pid": 42, "code": 0, "reason": "sleep" }));
     let init = ChatEvent::Init(init_fixture());
     let v = serde_json::to_value(Payload { chat_id: "c1", event: &init }).unwrap();
     assert_eq!((v["kind"].as_str(), v["sessionId"].as_str(), v["mcpServers"][1]["status"].as_str()), (Some("init"), Some("5f0e7a2c-1111-4222-8333-444455556666"), Some("failed")));
@@ -488,7 +488,7 @@ fn a_nul_in_the_note_never_reaches_the_prompt() {
 #[test]
 fn a_stale_reader_never_hands_off_the_process_running_now() {
     let spec = Spec { agent: "claude".to_string(), cwd: std::env::temp_dir(), model: None, effort: None, env: Vec::new(), handoff_at: 1_000, handoff_note: None };
-    let mut inner = Inner { spec, session_id: None, last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, stopping: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None };
+    let mut inner = Inner { spec, session_id: None, last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, stop_mark: None, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None };
     let big = json!({ "input_tokens": 500_000 });
     inner.saw_usage(1, Some(&big));
     assert_eq!(inner.last_prompt, None, "an old process's usage is not this process's reading");
@@ -537,7 +537,7 @@ fn the_note_message_wraps_the_note_in_a_system_reminder() {
 
 fn stale_inner() -> Inner {
     let spec = Spec { agent: "claude".to_string(), cwd: std::env::temp_dir(), model: None, effort: None, env: Vec::new(), handoff_at: 0, handoff_note: None };
-    Inner { spec, session_id: Some("s-now".to_string()), last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, stopping: false, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None }
+    Inner { spec, session_id: Some("s-now".to_string()), last_prompt: None, outstanding: 1, handoff_due: None, note_due: false, stop_mark: None, child: None, gen: 2, busy: true, last_active: Instant::now(), closing: false, ending: None }
 }
 
 // Review P3 (2026-11-23): a late line from an ended process never names the session the chat resumes.
@@ -635,4 +635,68 @@ fn a_silent_busy_process_outlives_the_short_idle_sleep() {
     let engine = h.engines.engine("i2").unwrap();
     assert!(engine.is_running() && lock(&engine.inner).busy, "the turn is still running");
     h.engines.close_all();
+}
+
+// Review P2-1 (2026-11-23): Stop cancels what was queued behind the stopped turn (cancel_queued), but a
+// message sent after the Stop is new and runs. Only what was outstanding at the Stop is dropped, so the
+// chat stays busy until the later message's own result, and no handoff fires before it.
+#[test]
+fn a_message_sent_after_stop_keeps_the_chat_busy_until_its_result() {
+    let h = harness(IDLE_SLEEP, Duration::from_secs(3));
+    let mut spec = h.spec(&[]);
+    spec.handoff_at = 1_000;
+    h.engines.start("p1", spec, None, h.sink()).unwrap();
+    h.engines.send("p1", "queue first [big]", &[]).unwrap();
+    h.wait("p1", 1, |e| said(e, "queueing"));
+    h.engines.send("p1", "second", &[]).unwrap();
+    let how = std::thread::scope(|s| {
+        let stopping = s.spawn(|| h.engines.stop("p1").unwrap());
+        // The stub ends the interrupted turn 300 ms after the interrupt; this lands inside that wait.
+        std::thread::sleep(Duration::from_millis(100));
+        h.engines.send("p1", "late after", &[]).unwrap();
+        stopping.join().unwrap()
+    });
+    assert_eq!(how, Some(StopHow::Interrupt));
+    let engine = h.engines.engine("p1").unwrap();
+    assert!(lock(&engine.inner).busy, "the message sent after Stop is still running");
+    assert!(first_at(&h, "p1", |e| matches!(e, ChatEvent::Handoff { .. })).is_none(), "no handoff before its result");
+    h.wait("p1", 1, |e| matches!(e, ChatEvent::Handoff { .. }));
+    let echo = first_at(&h, "p1", |e| said(e, "echo:  after")).expect("the message sent after Stop was answered");
+    let handoff = first_at(&h, "p1", |e| matches!(e, ChatEvent::Handoff { .. })).unwrap();
+    assert!(echo < handoff, "its answer comes before the handoff");
+    assert!(first_at(&h, "p1", |e| said(e, "echo: second")).is_none(), "the message queued before Stop was cancelled");
+    h.engines.close_all();
+}
+
+// Review P2-2 (2026-11-23): a reply with nothing outstanding is a turn the engine did not count; the
+// chat is busy again until that turn's result, but not while a Stop waits for its own result.
+#[test]
+fn a_reply_with_nothing_outstanding_makes_the_chat_busy_again() {
+    let reply = parse_line(r#"{"type":"assistant","parent_tool_use_id":null,"message":{"id":"m1","content":[{"type":"text","text":"hi"}]}}"#).unwrap();
+    let result = parse_line(r#"{"type":"result","subtype":"success","is_error":false}"#).unwrap();
+    let mut inner = stale_inner();
+    inner.outstanding = 0;
+    inner.busy = false;
+    inner.heard(1, &reply);
+    assert!(!inner.busy && inner.outstanding == 0, "a stale reply re-arms nothing");
+    inner.heard(2, &reply);
+    assert!(inner.busy && inner.outstanding == 1, "a current reply re-arms the chat");
+    inner.heard(2, &result);
+    assert!(!inner.busy && inner.outstanding == 0, "its result ends it");
+    inner.stop_mark = Some(0);
+    inner.heard(2, &reply);
+    assert!(!inner.busy && inner.outstanding == 0, "not while a Stop waits");
+}
+
+// Review P3-1 (2026-11-23): every exit names its process, so the page can tell a late exit of a
+// replaced process from the exit of the one it runs now.
+#[test]
+fn an_exit_names_the_process_that_ended() {
+    let h = harness(IDLE_SLEEP, STOP_GRACE);
+    h.start("x1", &[]);
+    let started = h.wait("x1", 1, |e| matches!(e, ChatEvent::Started { .. }));
+    let ChatEvent::Started { pid, .. } = started[0] else { unreachable!() };
+    h.engines.close("x1");
+    let exits = h.wait("x1", 1, |e| matches!(e, ChatEvent::Exit { .. }));
+    assert!(matches!(exits[0], ChatEvent::Exit { pid: p, .. } if p == pid), "{exits:?} names pid {pid}");
 }

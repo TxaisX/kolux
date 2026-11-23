@@ -166,9 +166,11 @@ pub fn user_line(text: &str, images: &[Image]) -> String {
     serde_json::json!({ "type": "user", "message": { "role": "user", "content": content }, "parent_tool_use_id": null }).to_string()
 }
 
-/// The interrupt control request line written to stdin by `chat_stop`.
+/// The interrupt control request line written to stdin by `chat_stop`. `cancel_queued` (checked live
+/// 2026-11-23 with Claude Code): without it a message queued behind the stopped turn still runs after the
+/// interrupt; with it that message is dropped, so Stop stops everything the user had sent.
 pub fn interrupt_line(request_id: &str) -> String {
-    serde_json::json!({ "type": "control_request", "request_id": request_id, "request": { "subtype": "interrupt" } }).to_string()
+    serde_json::json!({ "type": "control_request", "request_id": request_id, "request": { "subtype": "interrupt", "cancel_queued": true } }).to_string()
 }
 
 static REQUESTS: AtomicU64 = AtomicU64::new(1);
@@ -198,10 +200,11 @@ struct Inner {
     /// The process was handed off and the next one cannot take the note on its command line
     /// (OpenClaude, or Claude Code through a `.cmd` shim): the next message carries it instead.
     note_due: bool,
-    /// Stop sent an interrupt: the next result of this process ends everything sent to it, since an
-    /// interrupt can cancel messages queued behind the turn, whose results then never come. Cleared at
-    /// that result and at every spawn.
-    stopping: bool,
+    /// Stop sent an interrupt while this many messages were outstanding (the stopped turn and those
+    /// queued behind it). The interrupt cancels the queued ones (`cancel_queued`, checked live
+    /// 2026-11-23), so the next result of this process answers all of them; a message sent after the
+    /// Stop still runs and keeps its own count. Cleared at that result and whenever the process ends.
+    stop_mark: Option<u32>,
     child: Option<Running>,
     gen: u64,
     busy: bool,
@@ -260,6 +263,13 @@ impl Inner {
             ChatEvent::Init(_) if !current => return (false, None),
             ChatEvent::Init(i) if !i.session_id.is_empty() => self.session_id = Some(i.session_id.clone()),
             ChatEvent::Assistant { parent_tool_use_id, usage, .. } => {
+                // Review P2 (2026-11-23): a reply with nothing outstanding is a turn this engine did not
+                // count (a queued message whose result came early, or a turn the agent started itself):
+                // the chat is busy again until that turn's result. Not while a Stop waits for its result.
+                if current && self.outstanding == 0 && self.stop_mark.is_none() {
+                    self.outstanding = 1;
+                    self.busy = true;
+                }
                 // The reading is the last main-conversation message's own usage: the turn's `result`
                 // sums every tool call of the turn, which is not how full the window is.
                 if parent_tool_use_id.is_none() {
@@ -273,11 +283,13 @@ impl Inner {
                 // leaves the chat running.
                 // Review P1-A (2026-11-23): never while a message the user wrote is still queued in the
                 // process; see `handoff_after_result`.
-                // Review P2 (2026-11-23): the first result after a Stop answers everything sent: what was
-                // queued behind the stopped turn may have been cancelled, and its results never come.
-                if current && self.stopping {
-                    self.outstanding = self.outstanding.min(1);
-                    self.stopping = false;
+                // Review P2 (2026-11-23): the first result after a Stop is the stopped turn's; the messages
+                // queued behind it were cancelled with it, so their results never come. Only what was
+                // outstanding at the Stop is dropped: a message sent after it still runs.
+                if current {
+                    if let Some(mark) = self.stop_mark.take() {
+                        self.outstanding = self.outstanding.saturating_sub(mark.saturating_sub(1));
+                    }
                 }
                 let handoff = self.handoff_after_result(gen);
                 if current {
@@ -355,7 +367,7 @@ impl Engine {
         inner.last_prompt = None;
         inner.outstanding = 0;
         inner.handoff_due = None;
-        inner.stopping = false;
+        inner.stop_mark = None;
         inner.busy = false;
         inner.last_active = Instant::now();
         self.emit(&ChatEvent::Started { pid, resumed: resume });
@@ -369,12 +381,12 @@ impl Engine {
         }
         if let Some(out) = stdout {
             let me = Arc::clone(self);
-            std::thread::spawn(move || me.read_stdout(out, gen));
+            std::thread::spawn(move || me.read_stdout(out, gen, pid));
         }
         Ok(())
     }
 
-    fn read_stdout(self: Arc<Self>, out: std::process::ChildStdout, gen: u64) {
+    fn read_stdout(self: Arc<Self>, out: std::process::ChildStdout, gen: u64, pid: u32) {
         for line in BufReader::new(out).lines().map_while(Result::ok) {
             let Some(ev) = parse_line(&line) else { continue };
             let (heard, cleared) = lock(&self.inner).heard(gen, &ev);
@@ -391,6 +403,7 @@ impl Engine {
             let running = if inner.child.as_ref().is_some_and(|r| r.gen == gen) { inner.child.take() } else { None };
             if inner.gen == gen {
                 inner.busy = false;
+                inner.stop_mark = None;
             }
             let ended = if inner.ending.is_some_and(|(g, _, _)| g == gen) { inner.ending.take() } else { None };
             (running, ended)
@@ -405,7 +418,7 @@ impl Engine {
                 (code, if code == Some(0) { ExitReason::Ended } else { ExitReason::Crashed })
             }
         };
-        self.emit(&ChatEvent::Exit { code, reason });
+        self.emit(&ChatEvent::Exit { pid, code, reason });
     }
 
     /// Ends the current process on purpose and records why, so its stdout reader reports the
@@ -418,6 +431,7 @@ impl Engine {
             let code = r.child.wait().ok().and_then(|s| s.code());
             inner.ending = Some((r.gen, reason, code));
         }
+        inner.stop_mark = None;
         inner.busy = false;
     }
 
@@ -457,7 +471,7 @@ impl Engine {
             let line = interrupt_line(&request);
             let sent = inner.child.as_mut().and_then(|r| r.stdin.as_mut()).is_some_and(|s| s.write_all(line.as_bytes()).and_then(|_| s.write_all(b"\n")).and_then(|_| s.flush()).is_ok());
             if sent {
-                inner.stopping = true;
+                inner.stop_mark = Some(inner.outstanding);
             } else {
                 Self::end_process(&mut inner, ExitReason::Stopped);
                 drop(inner);
@@ -470,7 +484,9 @@ impl Engine {
         loop {
             {
                 let mut inner = lock(&self.inner);
-                if !inner.busy || inner.gen != gen {
+                // The stopped turn's own result clears the mark; a message sent after the Stop may keep
+                // the chat busy past it, and that is not a failed stop.
+                if inner.stop_mark.is_none() || inner.gen != gen {
                     break;
                 }
                 if Instant::now() >= end {
@@ -581,7 +597,7 @@ impl Engines {
             id: chat_id.to_string(),
             cfg: self.cfg.clone(),
             sink,
-            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due, stopping: false, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
+            inner: Mutex::new(Inner { spec, session_id: resume_session_id, last_prompt: None, outstanding: 0, handoff_due: None, note_due, stop_mark: None, child: None, gen: 0, busy: false, last_active: Instant::now(), closing: false, ending: None }),
         });
         {
             let mut inner = lock(&engine.inner);

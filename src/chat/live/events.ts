@@ -61,6 +61,9 @@ export type ChatEvent = {
   errorStatus?: number;
   /** `exit`: the exit code and why the process ended. */
   code?: number | null;
+  /** `started` and `exit`: the process's own id, so a late exit of a process already replaced is told
+   *  apart from the exit of the one running now. */
+  pid?: number;
   reason?: string;
   /** `handoff`: the reading that crossed the handoff line, and the line itself. */
   tokens?: number;
@@ -106,11 +109,20 @@ export function userWords(text: string): string {
 
 /** The page's count of messages sent and not yet answered, after one event. Claude Code answers each
  *  queued message with a result of its own, so the working line stays until the count is back to 0. A
- *  stop, or the process ending, leaves nothing waiting (a stop cancels what was queued). */
+ *  stop, or the process ending, leaves nothing waiting (a stop cancels what was queued). A reply while
+ *  nothing is waiting is a turn the page did not count (a message sent after a Stop, or a turn the agent
+ *  started itself), so it waits for that turn's result. */
 export function stillWaiting(waiting: number, ev: ChatEvent): number {
   if (ev.kind === "result") return Math.max(0, waiting - 1);
   if (ev.kind === "stopped" || ev.kind === "exit") return 0;
+  if (ev.kind === "assistant" && waiting === 0) return 1;
   return waiting;
+}
+
+/** An exit of a process the pane has already replaced (its pid is not the last one started): the pane
+ *  ignores it, so it neither closes the running turn nor reports a crash of the process running now. */
+export function staleExit(ev: ChatEvent, lastPid: number | null): boolean {
+  return ev.kind === "exit" && ev.pid !== undefined && lastPid !== null && ev.pid !== lastPid;
 }
 
 /**
