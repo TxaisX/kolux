@@ -67,6 +67,7 @@ mod handoff_meter;
 mod resources;
 pub mod projects;
 mod quit_merge;
+mod land;
 mod prompt_scan;
 pub mod scm;
 mod scm_open;
@@ -640,6 +641,9 @@ pub fn run() {
             everyday::everyday_path, everyday::everyday_open,
             repo_scan::repo_scan_start, repo_scan::repo_scan_stop, repo_scan::repo_scan_labels, repo_scan::repo_import,
             projects::workspace_list,
+            land::workspace_land,
+            land::workspace_land_preview,
+            land::workspace_land_states,
             projects::workspace_preview,
             projects::workspace_create,
             projects::workspace_create_cancel,
@@ -895,28 +899,20 @@ pub fn run() {
                 if let Ok(dir) = app.path().app_data_dir() {
                     diag::write(&dir, &report.line());
                 }
-                // Txais (2026-11-17): on a real quit, the workspaces Kolux made are saved, merged into
-                // main and removed (quit_merge), beside the WebView2 wait. Decided before kill_all,
-                // which lets go of the terminal service's link.
-                let merge = {
-                    let settings = app.state::<Mutex<Store>>().lock().map(|s| s.settings()).unwrap_or_default();
-                    quit_merge::skip_reason(&settings, lifecycle::restart_requested(), lifecycle::ending_session(), app.state::<Terminals>().outlive_window())
-                };
+                // Txais (2026-11-23): a workspace is sent to main when its task is finished (land), so
+                // the quit no longer saves, merges or removes workspaces. A land that is mid-merge is
+                // waited for (the watchdog allows up to quit_merge::HARD_CAP while one runs), and one
+                // that is cut anyway is put right at the next start (quit_merge::recover_at_start).
+                if let Ok(dir) = app.path().app_data_dir() {
+                    diag::write(&dir, &format!("quit: no merge runs at quit (restart: {}, session ending: {})", lifecycle::restart_requested(), lifecycle::ending_session()));
+                }
                 app.state::<Terminals>().kill_all();
-                let merging = match merge {
-                    None => Some((quit_merge::start(app.clone()), std::time::Instant::now())),
-                    Some(why) => {
-                        if let Ok(dir) = app.path().app_data_dir() {
-                            diag::write(&dir, &format!("quit merge: skipped ({why})"));
-                        }
-                        None
-                    }
-                };
                 // T-552: the window's WebView2 processes let go of the profile folder before the app
                 // ends (up to 3 s), so a relaunch right after finds it free.
                 let webviews_left = tools::wait_webviews_closed();
-                if let Some((running, started)) = merging {
-                    quit_merge::finish(app, running, started);
+                let waited = std::time::Instant::now();
+                while quit_merge::merging() && waited.elapsed() < quit_merge::WAIT {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
                 }
                 if let Ok(dir) = app.path().app_data_dir() {
                     if webviews_left > 0 {

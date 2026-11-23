@@ -264,16 +264,10 @@ fn more_than_five_kept_are_counted_not_listed() {
 }
 
 #[test]
-fn only_a_real_quit_with_the_setting_on_merges() {
+fn a_quit_tidy_keeps_the_folder_unless_removal_is_turned_on() {
     let on = serde_json::json!({});
-    assert_eq!(skip_reason(&on, false, false, false), None, "on by default");
     assert!(!removes_on_quit(&on), "a quit keeps the folder by default");
     assert!(removes_on_quit(&serde_json::json!({ REMOVE_ON_QUIT_SETTING: true })), "the old delete is opt-in");
-    assert!(skip_reason(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false }), false, false, false).is_some());
-    assert!(skip_reason(&serde_json::json!({ MERGE_ON_QUIT_SETTING: true }), false, false, false).is_none());
-    assert!(skip_reason(&on, true, false, false).is_some(), "a restart");
-    assert!(skip_reason(&on, false, true, false).is_some(), "Windows ending the session");
-    assert!(skip_reason(&on, false, false, true).is_some(), "terminals that outlive the window");
 }
 
 #[test]
@@ -1121,36 +1115,6 @@ fn a_panic_during_a_merge_still_clears_the_busy_flag() {
     assert_eq!(counter.load(Ordering::SeqCst), 0, "the quit is not held for a merge that is gone");
 }
 
-#[test]
-fn the_quits_wait_ends_at_once_when_the_merge_thread_is_done_or_gone() {
-    let (tx, rx) = std::sync::mpsc::channel::<()>();
-    drop(tx); // a thread that panicked drops its sender
-    let started = Instant::now();
-    assert!(wait_for_merge(&rx, Duration::from_secs(5), Instant::now() + Duration::from_secs(30), || true), "a closed channel is the end");
-    assert!(started.elapsed() < Duration::from_secs(2), "no spinning, no waiting: {:?}", started.elapsed());
-    let (tx, rx) = std::sync::mpsc::channel::<()>();
-    tx.send(()).unwrap();
-    assert!(wait_for_merge(&rx, Duration::from_secs(5), Instant::now() + Duration::from_secs(30), || true));
-}
-
-#[test]
-fn the_quits_wait_goes_past_its_budget_only_while_a_merge_runs_and_never_past_the_hard_cap() {
-    let (tx, rx) = std::sync::mpsc::channel::<()>();
-    let started = Instant::now();
-    assert!(!wait_for_merge(&rx, Duration::from_millis(100), started + Duration::from_millis(700), || true), "a merge that never ends is given up on at the cap");
-    let took = started.elapsed();
-    assert!(took >= Duration::from_millis(700) && took < Duration::from_secs(5), "{took:?}");
-    let started = Instant::now();
-    assert!(!wait_for_merge(&rx, Duration::from_millis(100), started + Duration::from_secs(30), || false), "nothing under way: the budget is the whole wait");
-    assert!(started.elapsed() < Duration::from_secs(5));
-    let sender = std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(300));
-        let _ = tx.send(());
-    });
-    assert!(wait_for_merge(&rx, Duration::from_millis(50), Instant::now() + Duration::from_secs(30), || true), "a merge that ends inside the cap is waited for");
-    sender.join().unwrap();
-}
-
 // ------------------------------------------------------------------ m1: what is known is saved as the quit goes
 
 #[test]
@@ -1587,4 +1551,14 @@ fn repo_with_exclude(name: &str, text: &str) -> (PathBuf, PathBuf, Mutex<Store>)
     fs::create_dir_all(repo.join(".git").join("info")).unwrap();
     fs::write(repo.join(".git").join("info").join("exclude"), text).unwrap();
     (base, repo, store)
+}
+
+// 19 (auto-land): the new switch, read from the old one until it is set.
+#[test]
+fn auto_land_follows_the_old_merge_on_quit_switch_until_it_is_set() {
+    assert!(auto_land_wanted(&serde_json::json!({})), "on by default");
+    assert!(!auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false })), "someone who turned the quit merge off gets auto-land off");
+    assert!(auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: true })));
+    assert!(auto_land_wanted(&serde_json::json!({ MERGE_ON_QUIT_SETTING: false, AUTO_LAND_SETTING: true })), "the new switch wins once set");
+    assert!(!auto_land_wanted(&serde_json::json!({ AUTO_LAND_SETTING: false })));
 }
