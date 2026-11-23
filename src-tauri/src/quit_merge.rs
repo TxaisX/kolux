@@ -74,6 +74,35 @@ const MARKER_FILE: &str = "quit-merge-marker.json";
 /// Main gained staged or changed files after it was looked at, so the merge did not start.
 const MAIN_CHANGED: &str = "the main folder has changes that are not committed";
 const NO_HOOKS_DIR: &str = "quit-merge-no-hooks";
+/// Why a merge did not start once the quit had begun (re-review P2-B).
+const CLOSING: &str = "Kolux is closing";
+
+// Test hooks on this thread: right before merge_branch's last checks (tests let time run out or the
+// quit begin there), and right after undo_merge looks for a lock (tests let another git act there).
+// `BUSY_HERE` counts this thread's own Busy steps, so a test is not misled by another test's.
+#[cfg(test)]
+type Hook = std::cell::RefCell<Option<Box<dyn FnMut()>>>;
+#[cfg(test)]
+thread_local! {
+    pub(crate) static BEFORE_LAST_CHECK: Hook = const { std::cell::RefCell::new(None) };
+    pub(crate) static AFTER_LOCK_LOOK: Hook = const { std::cell::RefCell::new(None) };
+    static BUSY_HERE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+fn run_hook(hook: &'static std::thread::LocalKey<Hook>) {
+    hook.with(|h| {
+        if let Some(f) = h.borrow_mut().as_mut() {
+            f();
+        }
+    });
+}
+
+/// Whether a Busy step started on this thread is still under way (tests only).
+#[cfg(test)]
+pub(crate) fn busy_on_this_thread() -> bool {
+    BUSY_HERE.with(|b| b.get() > 0)
+}
 
 /// How many saves, merges, undos and removals are under way: the quit waits for them.
 static BUSY: AtomicUsize = AtomicUsize::new(0);
@@ -89,6 +118,8 @@ pub(crate) struct Busy<'a>(&'a AtomicUsize);
 impl<'a> Busy<'a> {
     fn on(counter: &'a AtomicUsize) -> Self {
         counter.fetch_add(1, Ordering::SeqCst);
+        #[cfg(test)]
+        BUSY_HERE.with(|b| b.set(b.get() + 1));
         Self(counter)
     }
 }
@@ -102,6 +133,8 @@ impl Busy<'static> {
 impl Drop for Busy<'_> {
     fn drop(&mut self) {
         self.0.fetch_sub(1, Ordering::SeqCst);
+        #[cfg(test)]
+        BUSY_HERE.with(|b| b.set(b.get().saturating_sub(1)));
     }
 }
 
@@ -210,7 +243,7 @@ impl Clock {
         self.may_start() && self.hard_left() >= MERGE_MIN
     }
     /// A read is cut at the deadline (with a floor, so a read that starts always gets a fair try).
-    fn read_limit(&self) -> Duration {
+    pub(crate) fn read_limit(&self) -> Duration {
         self.left().clamp(Duration::from_secs(1), Duration::from_secs(10))
     }
     /// A commit or merge that started runs to the hard cap (a cut merge could leave main half done),
@@ -785,7 +818,7 @@ fn new_gitlink(line: &str) -> Option<String> {
 /// short is put right at the next start (`recover_at_start`).
 fn merge_into(cx: &Cx, repo: &Path, main_dir: &Path, target: &str, branch: &str) -> Result<(), String> {
     let subject = format!("Kolux: merge {branch} on quit");
-    merge_branch(&MergeEnv { git: cx.git, clock: cx.clock, data_dir: cx.data_dir, hooks: &cx.hooks, subject: &subject, body: AUTOMATIC }, repo, main_dir, target, branch)
+    merge_branch(&MergeEnv { git: cx.git, clock: cx.clock, data_dir: cx.data_dir, hooks: &cx.hooks, subject: &subject, body: AUTOMATIC, closing: &|| false }, repo, main_dir, target, branch)
 }
 
 /// What a merge needs besides the folders: the same pieces the quit's `Cx` holds, without the store
@@ -799,6 +832,8 @@ pub(crate) struct MergeEnv<'a> {
     pub subject: &'a str,
     /// Its second paragraph.
     pub body: &'a str,
+    /// True once Kolux is closing: no merge write starts after that (re-review P2-B).
+    pub closing: &'a dyn Fn() -> bool,
 }
 
 /// `merge_into` over `MergeEnv`: the one merge routine, used at quit and when a chat is finished.
@@ -814,7 +849,8 @@ pub(crate) fn merge_branch(env: &MergeEnv, repo: &Path, main_dir: &Path, target:
     // The tree the no-ff merge will make, when git can predict it (`merge-tree --write-tree`: first line).
     let mut merged_tree: Option<String> = None;
     if behind > 0 && git.predicts_merges() {
-        let out = crate::git::read_exit(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], Some(repo));
+        // Re-review P2-B: the merge-tree is cut by the land's own clock, not git's fixed short limit.
+        let out = crate::git::read_exit_within(&["merge-tree", "--write-tree", &format!("refs/heads/{target}"), &theirs], Some(repo), clock.read_limit());
         match merge_tree_says(out.map(|o| (o.status.code(), String::from_utf8_lossy(&o.stdout).into_owned()))) {
             MergeTree::Clean(tree) => merged_tree = tree,
             MergeTree::Clash => return Err(clash_reason(target)),
@@ -822,11 +858,6 @@ pub(crate) fn merge_branch(env: &MergeEnv, repo: &Path, main_dir: &Path, target:
         }
     }
     let tip = read(&["rev-parse", "--verify", &theirs], repo, clock).map_err(|e| format!("Kolux could not read the branch's tip ({})", short(&e)))?;
-    // F5: the reads above took time (a merge-tree of a big project can take seconds): the room a merge
-    // needs before the hard cap is checked again right before it is noted and started.
-    if !clock.may_merge() {
-        return Err(OUT_OF_TIME.into());
-    }
     // A fast-forward leaves exactly the tip's tree; a merge commit leaves the predicted tree, if any.
     let expected_tree = if behind == 0 { read(&["rev-parse", "--verify", &format!("{tip}^{{tree}}")], repo, clock).ok() } else { merged_tree };
     let marker = Marker { main_dir: main_dir.display().to_string(), before_sha: before.clone(), branch: branch.to_string(), theirs_sha: Some(tip.clone()), expected_tree, time: now_secs() };
@@ -836,6 +867,17 @@ pub(crate) fn merge_branch(env: &MergeEnv, repo: &Path, main_dir: &Path, target:
         Ok(s) if s.trim().is_empty() => {}
         Ok(_) => return Err(MAIN_CHANGED.into()),
         Err(e) => return Err(format!("Kolux could not read the main folder ({})", short(&e))),
+    }
+    #[cfg(test)]
+    run_hook(&BEFORE_LAST_CHECK);
+    // F5, re-review P2-B: the reads above took time (a merge-tree of a big project can take seconds),
+    // and the quit may have begun meanwhile: both are checked last, right before the merge is noted
+    // and started. Nothing has been written yet, so either is a clean refusal.
+    if !clock.may_merge() {
+        return Err(OUT_OF_TIME.into());
+    }
+    if (env.closing)() {
+        return Err(CLOSING.into());
     }
     note_merge(data_dir, &marker).map_err(|e| format!("Kolux could not note the merge, so it did not start it ({e})"))?;
     let _busy = Busy::start();
@@ -890,16 +932,22 @@ fn undo_merge(main_dir: &Path, before: &str, clock: &Clock, hooks: &Path) -> boo
     let open = read(&["rev-parse", "-q", "--verify", "MERGE_HEAD"], main_dir, clock).is_ok();
     // Review P1-1: only a merge that got under way (MERGE_HEAD, or the lock a cut git left) is reset.
     // A merge git refused cleanly changed nothing, and a reset would throw away the user's staged work.
+    // Re-review P2-A: a lock is never a reason to reset. It may be the user's own git (a `git add`)
+    // that lets go and stages work a moment later. A lock our cut merge left is put right at the next
+    // start (`recover` checks the lock's age and that the index is the merge's), so with one present
+    // the undo does not call main whole and the marker is kept for that.
     let locked = read(&["rev-parse", "--git-path", "index.lock"], main_dir, clock).is_ok_and(|p| main_dir.join(p.trim()).exists());
+    #[cfg(test)]
+    run_hook(&AFTER_LOCK_LOOK);
     if open {
         let _ = write(&["merge", "--abort"], main_dir, clock, hooks);
     }
     let head = || read(&["rev-parse", "HEAD"], main_dir, clock).ok();
     let clean = || read(&["status", "--porcelain", "--untracked-files=no"], main_dir, clock).is_ok_and(|s| s.trim().is_empty());
-    if (open || locked) && head().as_deref() == Some(before) && !clean() {
+    if open && head().as_deref() == Some(before) && !clean() {
         let _ = write(&["reset", "--merge"], main_dir, clock, hooks);
     }
-    head().as_deref() == Some(before) && clean()
+    !locked && head().as_deref() == Some(before) && clean()
 }
 
 /// What a merge in a main checkout leaves behind while it runs, so a start can tell a cut one.

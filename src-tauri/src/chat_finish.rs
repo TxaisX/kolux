@@ -243,7 +243,7 @@ fn local_path(tools: &Tools, project_dir: &Path, branch: &str, target: &str, out
                     Err(e) => return saved_only(out, first_line(&e)),
                 };
                 let subject = format!("Kolux: merge {branch} from a finished chat");
-                let env = MergeEnv { git: tools.git, clock, data_dir: tools.data_dir, hooks: &hooks, subject: &subject, body: crate::land::LAND_BODY };
+                let env = MergeEnv { git: tools.git, clock, data_dir: tools.data_dir, hooks: &hooks, subject: &subject, body: crate::land::LAND_BODY, closing: &|| crate::lifecycle::quit_began().is_some() };
                 match quit_merge::merge_branch(&env, project_dir, &main_dir, target, branch) {
                     Ok(()) => {
                         out.push(Announcement::MergedLocal);

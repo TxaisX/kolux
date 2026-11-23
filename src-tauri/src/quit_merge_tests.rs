@@ -1619,3 +1619,78 @@ file".into()))), MergeTree::Clash);
     assert!(matches!(merge_tree_says(Ok((Some(128), String::new()))), MergeTree::Unknown(_)));
     assert!(matches!(merge_tree_says(Ok((None, String::new()))), MergeTree::Unknown(_)));
 }
+
+/// Re-review P2-A: a lock is never a reason to reset. With a lock still there the undo does not call
+/// main whole (the marker stays for the start); and when the lock was the user's own git, which lets
+/// go and stages work right after the undo looked, that staged work survives.
+#[test]
+fn undo_merge_never_resets_for_a_lock_and_keeps_the_marker_while_one_is_there() {
+    let (base, repo, store) = repo("p2a-lock");
+    let side = workspace(&base, &repo, &store, "lockside", true);
+    commit(&side, "a.txt", "theirs\n");
+    let before = head(&repo, "HEAD");
+    let hooks = no_hooks(&data(&base)).unwrap();
+    let lock = repo.join(".git").join("index.lock");
+    fs::write(&lock, "").unwrap();
+    assert!(write(&["merge", "--ff-only", "--no-overwrite-ignore", "-q", "lockside"], &repo, &clock(), &hooks).is_err(), "the lock makes the merge fail");
+    assert!(!undo_merge(&repo, &before, &clock(), &hooks), "a lock is there, so main is not called whole");
+    let (lock2, repo2) = (lock.clone(), repo.clone());
+    AFTER_LOCK_LOOK.with(|h| {
+        *h.borrow_mut() = Some(Box::new(move || {
+            let _ = fs::remove_file(&lock2);
+            fs::write(repo2.join("b.txt"), "staged by the user\n").unwrap();
+            git_in(&repo2, &["add", "b.txt"]);
+        }))
+    });
+    let whole = undo_merge(&repo, &before, &clock(), &hooks);
+    AFTER_LOCK_LOOK.with(|h| *h.borrow_mut() = None);
+    assert!(!whole);
+    assert_eq!(head(&repo, "HEAD"), before);
+    assert_eq!(git_in(&repo, &["diff", "--cached", "--name-only"]), "b.txt", "the staged work survives");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// A branch one commit ahead whose main has moved on too, so the merge runs merge-tree first.
+fn diverged(name: &str) -> (PathBuf, PathBuf, String) {
+    let (base, repo, store) = repo(name);
+    let side = workspace(&base, &repo, &store, name, true);
+    commit(&side, "s.txt", "side\n");
+    commit(&repo, "m.txt", "main\n");
+    let before = head(&repo, "HEAD");
+    (base, repo, before)
+}
+
+/// Re-review P2-B: time that runs out after the merge-tree stops the merge before anything is written.
+#[test]
+fn a_merge_refuses_before_its_write_when_time_runs_out_after_the_merge_tree() {
+    let (base, repo, before) = diverged("p2b-clock");
+    let (git, hooks) = (Git::detect().unwrap(), no_hooks(&data(&base)).unwrap());
+    let clock = Clock::with_hard(Instant::now() + Duration::from_secs(120), Instant::now() + MERGE_MIN + Duration::from_secs(3));
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = Some(Box::new(|| std::thread::sleep(Duration::from_secs(4)))));
+    let dir = data(&base);
+    let env = MergeEnv { git: &git, clock, data_dir: &dir, hooks: &hooks, subject: "s", body: "b", closing: &|| false };
+    let got = merge_branch(&env, &repo, &repo, "main", "p2b-clock");
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = None);
+    assert_eq!(got, Err(OUT_OF_TIME.to_string()));
+    assert_eq!(head(&repo, "HEAD"), before, "main did not move");
+    assert!(marker_files(&dir).is_empty(), "nothing was noted");
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Re-review P2-B: a quit that begins while the merge is being looked at stops it before the write.
+#[test]
+fn a_merge_refuses_before_its_write_when_the_quit_begins_partway() {
+    let (base, repo, before) = diverged("p2b-closing");
+    let (git, hooks) = (Git::detect().unwrap(), no_hooks(&data(&base)).unwrap());
+    let flag = std::rc::Rc::new(std::cell::Cell::new(false));
+    let set = flag.clone();
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = Some(Box::new(move || set.set(true))));
+    let dir = data(&base);
+    let env = MergeEnv { git: &git, clock: clock(), data_dir: &dir, hooks: &hooks, subject: "s", body: "b", closing: &|| flag.get() };
+    let got = merge_branch(&env, &repo, &repo, "main", "p2b-closing");
+    BEFORE_LAST_CHECK.with(|h| *h.borrow_mut() = None);
+    assert_eq!(got, Err(CLOSING.to_string()));
+    assert_eq!(head(&repo, "HEAD"), before, "main did not move");
+    assert!(marker_files(&dir).is_empty(), "nothing was noted");
+    let _ = fs::remove_dir_all(&base);
+}

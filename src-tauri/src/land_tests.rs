@@ -453,7 +453,7 @@ fn with_auto_land_off_a_nothing_new_agent_land_leaves_the_siblings_alone() {
     commit(&repo, "d.txt", "d\n");
     let (ws_before, sib_before) = (head(&ws, "HEAD"), head(&sib, "HEAD"));
     let out = land_as(&base, &store, &ws, agent());
-    assert_eq!(out.state, LandState::Ready, "{out:?}");
+    assert_eq!(out.state, LandState::NothingNew, "re-review P3-3: nothing to send is said as such: {out:?}");
     assert!(out.siblings.is_empty(), "{out:?}");
     assert_eq!((head(&ws, "HEAD"), head(&sib, "HEAD")), (ws_before, sib_before), "no workspace moved");
     let _ = fs::remove_dir_all(&base);
@@ -504,10 +504,11 @@ fn the_land_counts_as_merging_while_its_siblings_are_brought_up() {
     let a = workspace(&base, &repo, &store, "bwa", true);
     let b = workspace(&base, &repo, &store, "bwb", true);
     commit(&a, "b.txt", "b\n");
+    // Re-review P3-4: this thread's own Busy count, which another test's merge cannot raise.
     let seen = std::cell::Cell::new(None);
     let busy = |p: &Path| {
         if same_folder(p, &b) {
-            seen.set(Some(quit_merge::merging()));
+            seen.set(Some(quit_merge::busy_on_this_thread()));
         }
         false
     };
@@ -614,4 +615,34 @@ fn each_sibling_takes_the_projects_turn_for_its_own_step() {
     let got = propagate(&deps, &main_repo, "main", None, &clock);
     assert_eq!(got[0].state, SiblingState::Updated, "with the turn free it goes ahead: {got:?}");
     let _ = fs::remove_dir_all(&base);
+}
+
+/// Re-review P3-1: once the quit has begun, a sibling is left behind as "closing" without taking the
+/// project's turn (here someone else holds it, so a sibling that tried would wait and say "busy").
+#[test]
+fn once_closing_the_siblings_are_left_behind_without_taking_the_turn() {
+    let (base, repo, store) = repo("closing-siblings");
+    let b = workspace(&base, &repo, &store, "csb", true);
+    commit(&repo, "d.txt", "d\n");
+    let before = head(&b, "HEAD");
+    let (git, data) = (Git::detect().unwrap(), base.join("data"));
+    let main_repo = quit_merge::repo_of(&git.toplevel(&b).unwrap()).unwrap();
+    let turn = crate::projects::repo_turn(&main_repo);
+    let deps = deps_for(&git, &store, &data, &never, &|| true);
+    let clock = Clock::until(Instant::now() + Duration::from_secs(120));
+    let held = turn.lock().unwrap();
+    let got = propagate(&deps, &main_repo, "main", None, &clock);
+    drop(held);
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert_eq!((got[0].state, got[0].why.as_deref()), (SiblingState::Behind, Some(CLOSING)), "{got:?}");
+    assert_eq!(head(&b, "HEAD"), before);
+    let _ = fs::remove_dir_all(&base);
+}
+
+/// Re-review P3-6: one folder written two ways (case, slashes, a trailing slash) is one turn.
+#[test]
+fn the_projects_turn_is_the_same_however_its_folder_is_written() {
+    let one = crate::projects::repo_turn(Path::new("C:/Kolux-Turn-Test/Repo/"));
+    let two = crate::projects::repo_turn(Path::new("c:\\kolux-turn-test\\repo"));
+    assert!(std::sync::Arc::ptr_eq(&one, &two));
 }

@@ -68,6 +68,8 @@ const NOT_ABSOLUTE: &str = "Not sent to main: send the workspace's full folder p
 const UNKNOWN_PANE: &str = "Not sent to main: Kolux could not tell which workspace this pane is in.";
 /// How long one other workspace waits for the project's turn to take in main (review P2-7).
 const SIBLING_WAIT: Duration = Duration::from_secs(5);
+/// How long a sibling's step pauses after letting go of the turn (re-review P3-2).
+const TURN_HANDOFF: Duration = Duration::from_millis(60);
 
 /// Who asked for the land.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -407,17 +409,22 @@ fn land_inner(deps: &Deps, folder: &Path, trigger: Trigger) -> LandOutcome {
         out.files = changed.into_iter().take(NAMED).collect();
         return out;
     }
-    // Review P2-4, P3-1: with auto-land off an agent's land only marks the workspace ready, before
-    // anything else moves (a store that cannot be read counts as off).
+    // Review P2-4, P3-1: with auto-land off an agent's land moves nothing (a store that cannot be
+    // read counts as off). Re-review P3-3: it still says "nothing new" when there is nothing to send,
+    // and "ready" only when there is.
     let auto = deps.store.lock().map(|s| quit_merge::auto_land_wanted(&s.settings())).unwrap_or(false);
-    if agent && !auto {
-        return LandOutcome::new(&path, Some(branch.clone()), LandState::Ready, "Sending finished work to main by itself is turned off, so Kolux marked this workspace ready. The user sends it with Send to main.".to_string());
-    }
     let ahead = match quit_merge::ahead(&repo, &target, &branch, &clock) {
         Ok(n) => n,
         Err(why) => return refused(&why),
     };
-    if changed.is_empty() && ahead == 0 {
+    let nothing_new = changed.is_empty() && ahead == 0;
+    if agent && !auto {
+        if nothing_new {
+            return LandOutcome::new(&path, Some(branch.clone()), LandState::NothingNew, format!("{target} already has everything in {branch}."));
+        }
+        return LandOutcome::new(&path, Some(branch.clone()), LandState::Ready, "Sending finished work to main by itself is turned off, so Kolux marked this workspace ready. The user sends it with Send to main.".to_string());
+    }
+    if nothing_new {
         let mut out = LandOutcome::new(&path, Some(branch.clone()), LandState::NothingNew, format!("{target} already has everything in {branch}."));
         out.siblings = bring_up(deps, &repo, &target, &w, held, &clock);
         return out;
@@ -452,7 +459,7 @@ fn land_inner(deps: &Deps, folder: &Path, trigger: Trigger) -> LandOutcome {
         return LandOutcome::new(&path, Some(branch.clone()), LandState::Refused, format!("Not sent to main: {CLOSING}.{kept}"));
     }
     let subject = format!("Kolux: send {branch} to main");
-    let env = MergeEnv { git: deps.git, clock, data_dir: deps.data_dir, hooks: &hooks, subject: &subject, body: LAND_BODY };
+    let env = MergeEnv { git: deps.git, clock, data_dir: deps.data_dir, hooks: &hooks, subject: &subject, body: LAND_BODY, closing: deps.closing };
     if let Err(why) = quit_merge::merge_branch(&env, &repo, &main_dir, &target, &branch) {
         // Review P3-3: a clash only when git's merge-tree said so (exit 1), never a timeout.
         let state = if why == quit_merge::clash_reason(&target) { LandState::Clashed } else { LandState::Refused };
@@ -500,9 +507,21 @@ fn propagate(deps: &Deps, repo: &Path, target: &str, landed: Option<&Path>, cloc
         .filter(|w| !w.is_main && Path::new(&w.path).is_dir() && !theirs(w))
         .filter(|w| !landed.is_some_and(|l| projects::same_folder(l, Path::new(&w.path))))
         .map(|w| {
-            let s = match take_turn(&turn, SIBLING_WAIT) {
-                Some(_turn) => take_in_main(deps, &w, target, false, clock, &hooks),
-                None => Sibling { path: w.path.clone(), state: SiblingState::Behind, why: Some(BUSY_PROJECT.into()) },
+            // Re-review P3-1: once the quit has begun no sibling takes the turn; it is left behind.
+            let s = if (deps.closing)() {
+                Sibling { path: w.path.clone(), state: SiblingState::Behind, why: Some(CLOSING.into()) }
+            } else {
+                match take_turn(&turn, SIBLING_WAIT) {
+                    Some(step) => {
+                        let s = take_in_main(deps, &w, target, false, clock, &hooks);
+                        drop(step);
+                        // Re-review P3-2: a short pause after letting go, so a land waiting for
+                        // the turn gets it before the next sibling takes it again.
+                        std::thread::sleep(TURN_HANDOFF);
+                        s
+                    }
+                    None => Sibling { path: w.path.clone(), state: SiblingState::Behind, why: Some(BUSY_PROJECT.into()) },
+                }
             };
             record_sibling(deps.store, &s);
             s
@@ -548,7 +567,7 @@ fn take_in_main(deps: &Deps, w: &Worktree, target: &str, landed: bool, clock: &C
         Err(e) => return behind(format!("Kolux could not compare it with {target} ({})", quit_merge::short(&e))),
     };
     if deps.git.predicts_merges() && own > 0 {
-        let out = crate::git::read_exit(&["merge-tree", "--write-tree", "HEAD", &main_ref], Some(here));
+        let out = crate::git::read_exit_within(&["merge-tree", "--write-tree", "HEAD", &main_ref], Some(here), clock.read_limit());
         match quit_merge::merge_tree_says(out.map(|o| (o.status.code(), String::from_utf8_lossy(&o.stdout).into_owned()))) {
             quit_merge::MergeTree::Clean(_) => {}
             quit_merge::MergeTree::Clash => return behind(quit_merge::clash_reason(target)),
