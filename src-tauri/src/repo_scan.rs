@@ -580,4 +580,15 @@ mod tests {
         let deep = vec![root.join("a/x/app"), root.join("b/x/app")];
         assert_eq!(labels(root, &deep), ["a/x/app", "b/x/app"]);
     }
+
+    #[test]
+    fn audit_r3_f05_a_double_star_ignore_hides_a_folder_at_any_depth() {
+        let root = temp("audit-f05");
+        fs::write(root.join(".gitignore"), "**/build\n").unwrap();
+        repo(&root.join("build"));
+        repo(&root.join("a").join("build"));
+        let (found, _) = run(&root, &LIMITS, &|| false);
+        assert!(rel(&root, &found).is_empty(), "`**/build` hides build at any depth, found {:?}", rel(&root, &found));
+        let _ = fs::remove_dir_all(&root);
+    }
 }
