@@ -45,7 +45,7 @@ export function kindsFor(t: Trigger, agent: string | undefined): Kind[] {
   if (t.sign === "$") return ["skill"];
   return isClaude(agent) ? ["command", "skill"] : ["command"];
 }
-const isClaude = (agent: string | undefined) => agent === "claude" || agent === "openclaude";
+const isClaude = (agent: string | undefined) => agent === "claude";
 
 // The agents' built-in slash commands, from their public documentation (Claude Code and Codex CLI).
 const CLAUDE_COMMANDS: Array<[string, string]> = [

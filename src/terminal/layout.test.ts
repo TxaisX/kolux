@@ -28,11 +28,11 @@ test("proj067: what is written down is each started tab, stripped to what a rest
 
 test("2026-11-21: a chat tab comes back as a chat on the same conversation, never as a terminal", () => {
   const panes = [
-    { ...shell(1, "C:\\w\\a"), agent: "claude" as const, agentId: "claude", program: "claude", args: ["--model", "x"], chat: true as const, everyday: "c-1", chatResume: "s-42", chatAgent: "openclaude", chatModel: "some/model", chatEffort: "high" },
+    { ...shell(1, "C:\\w\\a"), agent: "claude" as const, agentId: "claude", program: "claude", args: ["--model", "x"], chat: true as const, everyday: "c-1", chatResume: "s-42", chatAgent: "opencode", chatModel: "some/model", chatEffort: "high" },
     { ...shell(2, "C:\\w\\a"), agent: "claude" as const, agentId: "claude", program: "claude", args: [], chat: true as const }, // a chat with no Everyday record
   ];
   const l = layoutOf(panes, {}, 1, "C:\\w\\a", {});
-  expect(l.panes[0]).toMatchObject({ chat: true, everyday: "c-1", chatResume: "s-42", chatAgent: "openclaude", chatModel: "some/model", chatEffort: "high" });
+  expect(l.panes[0]).toMatchObject({ chat: true, everyday: "c-1", chatResume: "s-42", chatAgent: "opencode", chatModel: "some/model", chatEffort: "high" });
   expect(l.panes[1]).toMatchObject({ chat: true });
   // The round trip keeps it: the row and the tab stay one, and the conversation resumes.
   expect(restoreLayout(JSON.parse(JSON.stringify(l)))).toEqual(l);

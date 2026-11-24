@@ -596,15 +596,9 @@ fn rollout_id(stem: &str) -> Option<&str> {
     }
 }
 
-/// The folders a Claude-shaped transcript can live in: each Claude config folder's `projects`, and for
-/// OpenClaude its own `~/.openclaude/projects` too (2026-11-21), because it writes there whatever
-/// `CLAUDE_CONFIG_DIR` says.
-pub(super) fn project_dirs(roots: &Roots, agent: &str) -> Vec<PathBuf> {
-    let mut dirs: Vec<PathBuf> = roots.claude.iter().map(|c| c.join("projects")).collect();
-    if agent == "openclaude" {
-        dirs.extend(crate::chat::openclaude_projects(crate::chat::home()));
-    }
-    dirs
+/// The folders a Claude transcript can live in: each Claude config folder's `projects`.
+pub(super) fn project_dirs(roots: &Roots) -> Vec<PathBuf> {
+    roots.claude.iter().map(|c| c.join("projects")).collect()
 }
 
 /// Why a lookup that found more than one file with one id refuses to choose between them.
@@ -615,9 +609,9 @@ pub(crate) const SEVERAL: &str = "More than one session file has this id, so Kol
 pub fn find_session_exact(roots: &Roots, agent: &str, id: &str) -> Result<(PathBuf, Option<PathBuf>), String> {
     let gone = || "That session is no longer on this computer.".to_string();
     match agent {
-        "claude" | "openclaude" => {
-            let mut files: Vec<PathBuf> = project_dirs(roots, agent).iter().filter_map(|c| fs::read_dir(c).ok()).flat_map(|d| d.flatten().map(|e| e.path().join(format!("{id}.jsonl"))).filter(|p| p.is_file()).collect::<Vec<_>>()).collect();
-            // The same folder can be named twice (a config folder set to `~/.openclaude`, say), and
+        "claude" => {
+            let mut files: Vec<PathBuf> = project_dirs(roots).iter().filter_map(|c| fs::read_dir(c).ok()).flat_map(|d| d.flatten().map(|e| e.path().join(format!("{id}.jsonl"))).filter(|p| p.is_file()).collect::<Vec<_>>()).collect();
+            // The same folder can be named twice, and
             // two roots can spell one folder two ways: one file, not two. Files are compared by
             // their real path, so a junction, a short name or a `..` step is the same folder; a path
             // the system cannot resolve compares as written.

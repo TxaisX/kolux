@@ -20,7 +20,7 @@ test("kept chats are read back newest first, and a broken record is dropped rath
   const list = readEverydayChats({
     everydayChats: [
       { id: "a", agent: "claude", cwd: "C:\\E", at: 10 },
-      { id: "b", agent: "openclaude", cwd: "C:\\E", model: "sun", session: "s-1", name: "Taxes", at: 30 },
+      { id: "b", agent: "opencode", cwd: "C:\\E", model: "sun", session: "s-1", name: "Taxes", at: 30 },
       { id: "a", agent: "claude", cwd: "C:\\E", at: 20 }, // one row per id: the first wins
       { id: "c", agent: "claude" }, // no folder
       { id: "", agent: "claude", cwd: "C:\\E" }, // no id
@@ -30,7 +30,7 @@ test("kept chats are read back newest first, and a broken record is dropped rath
     ],
   });
   expect(list.map((c) => c.id)).toEqual(["b", "a"]);
-  expect(list[0]).toMatchObject({ agent: "openclaude", model: "sun", session: "s-1", name: "Taxes" });
+  expect(list[0]).toMatchObject({ agent: "opencode", model: "sun", session: "s-1", name: "Taxes" });
   expect(list[1].at).toBe(10);
 });
 
@@ -49,7 +49,7 @@ test("a new record names its AI, folder and model, and never reuses an id", () =
   expect(a.name).toBeUndefined();
   expect(a.session).toBeUndefined();
   expect(a.id).not.toBe(b.id);
-  expect(newEverydayChat("openclaude", "C:\\E", "sun", 2).model).toBe("sun");
+  expect(newEverydayChat("opencode", "C:\\E", "sun", 2).model).toBe("sun");
 });
 
 test("put adds a chat first and replaces one in place; an unchanged list comes back as it was", () => {

@@ -1,5 +1,5 @@
 // Chat panes, slice 1 (docs/research/chat-pane-plan-2026-11-20.md): one pane can be a chat instead of a
-// terminal. The pane runs one hidden agent process (`claude`, or `openclaude` for the other models,
+// terminal. The pane runs one hidden agent process (an OpenCode session for every model the chat page offers, or `claude`,
 // 2026-11-20) through the chat engine, hears every `chat-event`,
 // folds it into the rows the chat view already knows (`combine` and `fold`) and draws them with `ViewRow`.
 // The box is the same Composer the transcript chat uses, so drafts, attachments, history and the model
@@ -29,7 +29,8 @@ import { loadLabel, visibleRows } from "../page";
 import { STOPPING_NOTE } from "../stop";
 import { NOTE_MS, selfClearing, sessionTitle, useDismiss } from "../ux";
 import { loadSaved, readModel, type Choice } from "../controls";
-import { DEFAULT_MODEL, OPENCLAUDE_DEFAULT } from "../../launch/seats";
+import { DEFAULT_MODEL } from "../../launch/seats";
+import { CHAT_AGENT, DEFAULT_CHAT_MODEL } from "../opencode";
 import { ViewRow, type ChatOpen } from "../ChatView";
 import { ArtifactsStrip } from "./Strip";
 import { changed, mimeOf, newest, POLL_MS, PREVIEW_CAP, readArtifact, scanArtifacts, stampOf, stripIndex, THUMB_CAP, toBlobUrl, type ArtifactRow, type ArtifactScan } from "./artifacts";
@@ -54,11 +55,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   named?: boolean;
   /** Names the session after its first message, as a chat app does, once per pane. */
   onName?: (name: string) => void;
-  /** The model this chat starts on; null takes the last pick or OpenClaude's own cheap default. */
+  /** The model this chat starts on; null takes the last pick or the chat's cheap default. */
   model?: string | null;
   /** The effort level this chat starts on; null takes the last pick. */
   effort?: string | null;
-  /** The AI that answers here (2026-11-20): `claude`, or `openclaude` for the other models. */
+  /** The AI that answers here (2026-11-24): `opencode` for a chat that runs through OpenCode, or `claude`. */
   agent?: string;
   /** The conversation to pick up (2026-11-21): a kept Everyday chat's own id, so reopening resumes it. */
   resume?: string | null;
@@ -75,7 +76,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
 }) {
   const keymap = useKeymap();
   const chatId = chatIdOf(pane.key);
-  /** The AI's name for the pane's own words: "Claude Code", "OpenClaude", or the id as itself. */
+  /** The AI's name for the pane's own words: "Claude Code", "OpenCode", or the id as itself. */
   const name = productName(agent) ?? agent;
   const [items, setItems] = useState<ChatItem[]>([]);
   // CHAT-02: what this pane sent and no echo has confirmed yet, never capped (capPending stays for
@@ -110,10 +111,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // The model and effort this conversation runs at (2026-11-21). A pick in the box restarts the hidden
   // process with `--resume`, so the conversation carries on under the new choice; the window writes both
   // on the chat's kept record, so reopening comes back on the same pair. With nothing picked yet, the
-  // last choice wins, and an OpenClaude chat with no history starts on its own cheap default.
+  // last choice wins, and an OpenCode chat with no history starts on the cheap default.
   const savedChoice = useMemo(() => loadSaved()[agent], [agent]);
   const choice = useRef({
-    model: model ?? savedChoice?.model ?? (agent === "openclaude" ? OPENCLAUDE_DEFAULT : null),
+    model: model ?? savedChoice?.model ?? (agent === CHAT_AGENT ? DEFAULT_CHAT_MODEL : null),
     effort: effort ?? savedChoice?.effort ?? null,
   });
   const sessionId = useRef<string | null>(resume);
@@ -329,7 +330,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const thoughtIds = idsOf(items);
   const toggle = (id: string) => setThoughts((t) => toggled(t, id));
   // CHAT-024: the model the agent reported last, named beside the box. Claude reports the change it made
-  // from `/model`; OpenClaude's pick restarts the process, so the choice this pane keeps is the truth.
+  // from `/model`; an OpenCode chat's pick is applied by the engine, so the choice this pane keeps is the truth.
   const shownModel = useMemo(() => (agent === "claude" ? readModel(agent, items) : null) ?? liveModel, [agent, items, liveModel]);
 
   // CHAT-025: a link in a reply opens as it does in a terminal pane. Files are only openable when the
@@ -552,7 +553,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             agent={agent}
             cwd={pane.cwd}
             shownModel={shownModel}
-            onLiveChoice={agent === "openclaude" ? applyChoice : undefined}
+            onLiveChoice={agent === CHAT_AGENT ? applyChoice : undefined}
           />
           {full && (
             <button type="button" className="chat-full" aria-label="Close image" onClick={closeFull}>

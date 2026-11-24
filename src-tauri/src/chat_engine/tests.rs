@@ -126,28 +126,13 @@ fn the_command_line_never_asks_for_bare() {
 
 #[test]
 fn an_effort_pick_reaches_the_start_line_and_unknown_words_are_refused() {
-    let a = chat_args("openclaude", Some("deepseek/deepseek-v4.1-flash-1017"), Some("high"), None);
+    let a = chat_args("claude", Some("opus"), Some("high"), None);
     assert!(a.windows(2).any(|w| w == ["--effort", "high"]), "{a:?}");
-    assert!(valid_effort("openclaude", "ultracode"));
+    assert!(a.windows(2).any(|w| w == ["--permission-mode", "auto"]), "{a:?}");
+    assert!(!a.iter().any(|x| x == "--provider"), "a model pick names no gateway: {a:?}");
     assert!(!valid_effort("claude", "ultracode"), "Claude Code has no ultracode level");
     assert!(valid_effort("claude", "max"));
-    assert!(!valid_effort("openclaude", "turbo"));
-}
-
-/// 2026-11-20: OpenClaude reads the same stream-json lines, but its permission modes are not Claude
-/// Code's — measured: `auto` falls back to `default` and every tool call is refused, while
-/// `bypassPermissions` acts with no prompt (DT-C283: a chat never asks). Its picked model is routed
-/// through OpenRouter, the gateway its list in the window comes from; no model, no provider.
-#[test]
-fn openclaude_gets_the_mode_it_knows_and_its_gateway() {
-    let a = chat_args("openclaude", Some("deepseek/deepseek-v4.1-flash-1017"), None, None);
-    assert!(a.windows(2).any(|w| w == ["--permission-mode", "bypassPermissions"]), "{a:?}");
-    assert!(!a.windows(2).any(|w| w == ["--permission-mode", "auto"]), "{a:?}");
-    assert!(a.windows(2).any(|w| w == ["--provider", OPENCLAUDE_PROVIDER]), "{a:?}");
-    assert!(a.windows(2).any(|w| w == ["--model", "deepseek/deepseek-v4.1-flash-1017"]), "{a:?}");
-    let own = chat_args("openclaude", None, None, None);
-    assert!(!own.iter().any(|x| x == "--provider"), "Program default keeps OpenClaude's own setup: {own:?}");
-    assert!(own.windows(2).any(|w| w == ["--permission-mode", "bypassPermissions"]), "{own:?}");
+    assert!(!valid_effort("claude", "turbo"));
 }
 
 #[test]
@@ -422,7 +407,7 @@ fn a_chat_at_the_handoff_line_ends_its_process_and_forgets_the_session() {
 fn the_note_rides_only_on_a_plain_claude_code_line() {
     assert!(notes_on_line("claude", false));
     assert!(!notes_on_line("claude", true), "never through cmd.exe");
-    assert!(!notes_on_line("openclaude", false), "not known to take the flag");
+    assert!(!notes_on_line("codex", false), "not known to take the flag");
 }
 
 fn said(e: &ChatEvent, text: &str) -> bool {
@@ -456,10 +441,10 @@ fn a_message_queued_during_a_turn_past_the_line_is_answered_before_the_handoff()
     h.engines.close_all();
 }
 
-// Review P2-D (2026-11-23): OpenClaude (and Claude Code through a .cmd shim) cannot take the note on
+// Review P2-D (2026-11-23): a line that is not plain Claude Code (a .cmd shim) cannot take the note on
 // its command line, so the first message after a handoff carries it inside the JSON line instead.
 #[test]
-fn after_a_handoff_the_next_openclaude_message_carries_the_note_once() {
+fn after_a_handoff_the_next_message_carries_the_note_once_when_the_line_cannot() {
     let h = harness(IDLE_SLEEP, STOP_GRACE);
     let note = h.dir.join("note.md");
     std::fs::write(&note, "# Handoff
@@ -467,7 +452,7 @@ fn after_a_handoff_the_next_openclaude_message_carries_the_note_once() {
 ## Left to do
 - wire the readers").unwrap();
     let mut spec = h.spec(&[]);
-    spec.agent = "openclaude".to_string();
+    spec.agent = "not-claude".to_string(); // stands for a start line that cannot take the note
     spec.handoff_at = 1_000;
     spec.handoff_note = Some(note.clone());
     h.engines.start("n1", spec, None, h.sink()).unwrap();
@@ -513,15 +498,15 @@ fn a_stale_reader_never_hands_off_the_process_running_now() {
     assert_eq!(inner.handoff_after_result(2), Some((500_000, 1_000)), "this process's own result still does");
 }
 
-// Review P2 (2026-11-23): an OpenClaude chat (or a shim) opened fresh with a note starts from it too:
+// Review P2 (2026-11-23): a chat through a shim opened fresh with a note starts from it too:
 // its very first message carries the note, since its command line cannot. A resumed one does not.
 #[test]
-fn a_fresh_openclaude_chat_carries_the_note_in_its_first_message() {
+fn a_fresh_chat_whose_line_cannot_take_the_note_carries_it_in_its_first_message() {
     let h = harness(IDLE_SLEEP, STOP_GRACE);
     let note = h.dir.join("note.md");
     std::fs::write(&note, "# Handoff\n\n## Left to do\n- wire the readers").unwrap();
     let mut spec = h.spec(&[]);
-    spec.agent = "openclaude".to_string();
+    spec.agent = "not-claude".to_string(); // stands for a start line that cannot take the note
     spec.handoff_note = Some(note.clone());
     h.engines.start("f1", spec.clone(), None, h.sink()).unwrap();
     h.engines.send("f1", "first", &[]).unwrap();

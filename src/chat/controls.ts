@@ -4,6 +4,7 @@
 // the bare /model that opens the picker. The controls themselves are in ModelControls.tsx.
 import { DEFAULT_MODEL, modelsFor, seatArgs, type ModelChoice } from "../launch/seats";
 import type { ChatItem } from "./model";
+import { CHAT_AGENT, type ChatModel } from "./opencode";
 
 /** The effort levels from minimal to max, in order. */
 export const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
@@ -14,10 +15,20 @@ export type Choice = { model?: string; effort?: string; fast?: boolean };
 export type What = "model" | "effort" | "fast";
 
 /** The agents that have these controls. */
-export const hasControls = (agent: string | undefined) => agent === "claude" || agent === "openclaude" || agent === "codex";
+export const hasControls = (agent: string | undefined) => agent === "claude" || agent === CHAT_AGENT || agent === "codex";
 
-/** The models to pick from, the agent's own default named last. */
-export const choicesFor = (agent: string): ModelChoice[] => modelsFor(agent).map((m) => (m.id === DEFAULT_MODEL ? { ...m, label: "Agent default" } : m));
+// An OpenCode chat's models (2026-11-24) are not built in: they are the list OpenCode itself gives
+// (opencode.ts `listChatModels`), handed over here once it has been read. Empty until then.
+let chatModels: ModelChoice[] = [];
+
+/** Hands the controls OpenCode's model list. An OpenCode terminal is not touched: this is the chat page's list only. */
+export function setChatModels(list: readonly ChatModel[]): void {
+  chatModels = list.map((m) => ({ id: m.id, label: m.label, efforts: [...m.efforts] }));
+}
+
+/** The models to pick from, the agent's own default named last. An OpenCode chat has no default row: it always names a model. */
+export const choicesFor = (agent: string): ModelChoice[] =>
+  agent === CHAT_AGENT ? [...chatModels] : modelsFor(agent).map((m) => (m.id === DEFAULT_MODEL ? { ...m, label: "Agent default" } : m));
 
 /** The effort levels of `model`, minimal to max; Codex's models all list the same four. */
 export function effortsFor(agent: string, model: string | undefined): string[] {
@@ -29,11 +40,11 @@ export function effortsFor(agent: string, model: string | undefined): string[] {
 export const fastOffered = (agent: string, model: string | undefined) => !!choicesFor(agent).find((c) => c.id === model)?.fast;
 
 /** How a change is made: Claude takes `/model` in the box; Codex's changes go through its own picker in the terminal;
- * the rest can only be set when a session starts. OpenClaude's model (2026-11-20) is a start flag too — its
- * list is a gateway's ids, so it is picked when the session starts rather than typed as `/model`. */
+ * the rest can only be set when a session starts. An OpenCode chat (2026-11-24) takes this route too: the
+ * pick is handed to the chat engine, which applies it to the running conversation, and nothing is typed. */
 export type Route = "chat" | "terminal" | "launch";
 export function routeOf(agent: string, what: What): Route {
-  if (agent === "openclaude") return "launch";
+  if (agent === CHAT_AGENT) return "launch";
   if (agent === "claude") return what === "model" ? "chat" : "launch";
   return what === "fast" ? "launch" : "terminal";
 }
@@ -117,10 +128,14 @@ export function clean(saved: Saved): Saved {
   const out: Saved = {};
   for (const [agent, c] of Object.entries(saved)) {
     const list = choicesFor(agent);
-    if (list.length === 0) continue;
+    if (list.length === 0) {
+      // OpenCode's list arrives after the page opens: until then a saved pick is kept as it is, not forgotten.
+      if (agent === CHAT_AGENT && (c.model || c.effort)) out[agent] = { ...(c.model ? { model: c.model } : {}), ...(c.effort ? { effort: c.effort } : {}) };
+      continue;
+    }
     const next: Choice = {};
     if (c.model && c.model !== DEFAULT_MODEL && list.some((m) => m.id === c.model)) next.model = c.model;
-    if (c.effort && effortsFor(agent, next.model ?? c.model).includes(c.effort) && (next.model || agent === "codex" || agent === "openclaude")) next.effort = c.effort;
+    if (c.effort && effortsFor(agent, next.model ?? c.model).includes(c.effort) && (next.model || agent === "codex")) next.effort = c.effort;
     if (c.fast && next.model && fastOffered(agent, next.model)) next.fast = true;
     if (Object.keys(next).length > 0) out[agent] = next;
   }
@@ -155,10 +170,11 @@ export function saveChoice(agent: string, patch: Partial<Choice>, storage: Pick<
   return next;
 }
 
-/** The launch arguments of the choice saved for `agent` (none when nothing is saved or the model was withdrawn). */
+/** The launch arguments of the choice saved for `agent` (none when nothing is saved or the model was withdrawn).
+ * A pick made in an OpenCode chat is the chat's own: it never lands on an OpenCode terminal's start line. */
 export function savedArgs(agent: string, saved: Saved = loadSaved()): string[] {
   const c = saved[agent];
-  if (!c) return [];
+  if (!c || agent === CHAT_AGENT) return [];
   return seatArgs({ agent, model: c.model ?? null, effort: c.effort, fast: c.fast });
 }
 

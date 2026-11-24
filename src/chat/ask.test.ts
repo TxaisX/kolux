@@ -41,10 +41,10 @@ describe("the card", () => {
     ask({ tool: "ExitPlanMode", detail: undefined, plan: "# Plan\n1. do it" });
     expect(cardOf("claude", askOf(1), 70)?.review).toBe(true);
   });
-  it("shows no card for a shell, OpenClaude, an unnamed tool, another working state, or an event from another terminal", () => {
+  it("shows no card for a shell, another agent, an unnamed tool, another working state, or an event from another terminal", () => {
     ask();
     expect(cardOf("shell", askOf(1), 70)).toBeNull();
-    expect(cardOf("openclaude", askOf(1), 70)).toBeNull();
+    expect(cardOf("opencode", askOf(1), 70)).toBeNull();
     expect(cardOf(undefined, askOf(1), 70)).toBeNull();
     expect(cardOf("claude", askOf(1), 71)).toBeNull();
     emit({ paneKey: 2, state: "permission", terminal: 80 });

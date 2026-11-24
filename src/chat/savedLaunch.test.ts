@@ -17,7 +17,7 @@ test("a project's launch button starts the agent with its saved launch arguments
   // The folder is the worktree picked with "Start new sessions here", else the project folder.
   expect(app).toMatch(/const dir = startDirOf\(proj\.path\) \?\? proj\.path;/);
   // A picked model wins for that session; with none, the launch keeps the agent's saved arguments.
-  // The agent id rides along, so an OpenClaude pick also says which gateway to route the model to.
+  // The agent id rides along, so the start line is built for that agent.
   expect(app).toMatch(/const extra = model && model !== DEFAULT_MODEL \? modelArgs\(model, agent\.id\) : savedArgs\(agent\.id\);/);
   expect(app).toMatch(/startIn\(agent, dir, branch, "", true, extra\)/);
 });

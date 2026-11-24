@@ -7,7 +7,7 @@ import { normPath, type Session } from "./model";
 import { gridOf } from "../workspaces";
 
 /** The agents the chat screen can read (the Rust side's list), split by how their history is kept. */
-const PER_FOLDER = ["claude", "openclaude", "omp"];
+const PER_FOLDER = ["claude", "omp"];
 const ANYWHERE = ["codex"];
 
 export const NO_CHAT_AGENT = "Chat can only show Claude and Codex sessions, so this one resumes in a terminal.";

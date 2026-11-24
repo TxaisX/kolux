@@ -36,7 +36,7 @@ pub mod live;
 
 /// CHAT-002: the agents whose sessions can be shown as chat. Grok and omp are offered once their
 /// readers exist (T-420); until then they stay terminals.
-pub const SUPPORTED: [&str; 4] = ["claude", "openclaude", "codex", "omp"];
+pub const SUPPORTED: [&str; 3] = ["claude", "codex", "omp"];
 /// CHAT-006: a missing transcript shows an error only after this long.
 const GIVE_UP: Duration = Duration::from_secs(60);
 /// While attached, how often the file is checked for new lines (catches what a watcher misses).
@@ -805,13 +805,6 @@ pub(crate) fn home() -> Option<PathBuf> {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from)
 }
 
-/// OpenClaude's own conversation folders (2026-11-21). It keeps them under `~/.openclaude/projects`
-/// and does not move them when `CLAUDE_CONFIG_DIR` is set — that variable is Claude Code's, and a
-/// probe of OpenClaude 0.33.0 wrote its file there whatever the variable said. So its transcript is
-/// looked for in its own folder, never in a Claude account's.
-pub fn openclaude_projects(user_home: Option<PathBuf>) -> Vec<PathBuf> {
-    user_home.map(|h| h.join(".openclaude").join("projects")).into_iter().collect()
-}
 
 fn env_of<'a>(pane_env: &'a [(String, String)], key: &str) -> Option<&'a str> {
     pane_env.iter().rev().find(|(k, _)| k.eq_ignore_ascii_case(key)).map(|(_, v)| v.as_str()).filter(|v| !v.trim().is_empty())
@@ -823,8 +816,7 @@ fn env_of<'a>(pane_env: &'a [(String, String)], key: &str) -> Option<&'a str> {
 pub const HOME_KEYS: [&str; 5] = [crate::claude_accounts::CONFIG_ENV, crate::codex_accounts::HOME_ENV, crate::agents::GROK_HOME_ENV, "OMP_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"];
 
 /// CHAT-007: the home folders to look in, in order. Claude: the config folder the pane was started
-/// with, then Kolux's own CLAUDE_CONFIG_DIR, then `~/.claude`. OpenClaude (2026-11-21): its own
-/// `~/.openclaude` only, because it writes there even when CLAUDE_CONFIG_DIR is set. Codex: the managed
+/// with, then Kolux's own CLAUDE_CONFIG_DIR, then `~/.claude`. Codex: the managed
 /// account's home the pane was started with, then CODEX_HOME, then `~/.codex`. Grok: GROK_HOME, then
 /// `~/.grok`. omp: its agent directory variable (the public environment-variable page names
 /// `PI_CODING_AGENT_DIR`; `OMP_CODING_AGENT_DIR` is the name this app's spec uses), then
@@ -832,7 +824,7 @@ pub const HOME_KEYS: [&str; 5] = [crate::claude_accounts::CONFIG_ENV, crate::cod
 pub fn homes(agent: &str, pane_env: &[(String, String)], process_env: impl Fn(&str) -> Option<String>, user_home: Option<PathBuf>) -> Vec<PathBuf> {
     let (keys, dot): (&[&str], PathBuf) = match agent {
         "claude" => (&[crate::claude_accounts::CONFIG_ENV], PathBuf::from(".claude")),
-        "openclaude" => (&[], PathBuf::from(".openclaude")),
+
         "codex" => (&[crate::codex_accounts::HOME_ENV], PathBuf::from(".codex")),
         "grok" => (&[crate::agents::GROK_HOME_ENV], PathBuf::from(".grok")),
         "omp" => {
@@ -922,7 +914,7 @@ pub(crate) fn codex_rollouts(home: &Path, since: SystemTime) -> Vec<PathBuf> {
 pub fn find(agent: &str, homes: &[PathBuf], cwd: &str, since: SystemTime) -> Option<PathBuf> {
     for h in homes {
         let hit = match agent {
-            "claude" | "openclaude" => newest(jsonl_in(&h.join("projects").join(claude_folder(cwd))), since),
+            "claude" => newest(jsonl_in(&h.join("projects").join(claude_folder(cwd))), since),
             "codex" => newest(codex_rollouts(h, since).into_iter().filter(|f| codex_cwd(f).is_some_and(|c| same_dir(&c, cwd))), since),
             "omp" => newest(omp_sessions(h, since).into_iter().filter(|f| omp_cwd(f).is_some_and(|c| same_dir(&c, cwd))), since),
             _ => None,
@@ -937,10 +929,10 @@ pub fn find(agent: &str, homes: &[PathBuf], cwd: &str, since: SystemTime) -> Opt
 /// The transcript of one named conversation (2026-11-21): a kept chat that is opened again resumes a session
 /// it names, so its file is read directly instead of by `find`'s newest-in-the-folder rule, which would miss
 /// a file last written before the new tab opened. Only Claude files a session under its own id, and an
-/// Everyday chat is Claude or OpenClaude; any other agent has no such file here.
+/// Everyday chat read from a file is Claude Code's; any other agent has no such file here.
 pub fn session_file(agent: &str, homes: &[PathBuf], cwd: &str, session: &str) -> Option<PathBuf> {
     let safe = !session.is_empty() && session.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
-    if !safe || !matches!(agent, "claude" | "openclaude") {
+    if !safe || agent != "claude" {
         return None;
     }
     homes.iter().map(|h| h.join("projects").join(claude_folder(cwd)).join(format!("{session}.jsonl"))).find(|p| p.is_file())
@@ -1179,8 +1171,12 @@ pub const HISTORY_LINES: usize = 600;
 /// and that process re-reads the agent's history without saying any of it again, so the page opens on the
 /// transcript the session itself wrote. No follower and no process: one read of a named file.
 #[tauri::command]
-pub async fn chat_history(agent: String, cwd: String, session: String, limit: Option<usize>) -> Result<ChatRead, String> {
+pub async fn chat_history(app: tauri::AppHandle, agent: String, cwd: String, session: String, limit: Option<usize>) -> Result<ChatRead, String> {
     off_main(move || {
+        // An OpenCode chat (2026-11-24) is kept by OpenCode itself: its server is asked, no file is read.
+        if agent == crate::chat_engine::opencode::AGENT {
+            return crate::chat_engine::open_history(&app, &session, limit.unwrap_or(HISTORY_LINES));
+        }
         let homes = homes(&agent, &[], |k| std::env::var(k).ok(), home());
         history_of(&agent, &cwd, &session, limit.unwrap_or(HISTORY_LINES), &homes)
     })
@@ -1300,7 +1296,7 @@ mod tests {
     fn only_supported_agents_credited_with_the_pane_unlock_chat() {
         assert_eq!(chat_agent(Some("claude")), Some("claude"));
         assert_eq!(chat_agent(Some("codex")), Some("codex"));
-        assert_eq!(chat_agent(Some("openclaude")), Some("openclaude"));
+
         assert_eq!(chat_agent(Some("aider")), None);
         assert_eq!(chat_agent(None), None, "a shell has no credited agent; its title never counts");
     }
@@ -1580,17 +1576,6 @@ mod tests {
         assert_eq!(codex, vec![PathBuf::from("C:\\acct"), PathBuf::from("C:\\env")], "the managed account's home first, then CODEX_HOME");
     }
 
-    #[test]
-    fn openclaude_is_looked_for_in_its_own_folder_even_when_the_claude_variable_is_set() {
-        // 2026-11-21 probe: OpenClaude 0.33.0 writes `~/.openclaude/projects/...` whatever CLAUDE_CONFIG_DIR
-        // says, so a kept chat's history and Delete have to look there and nowhere else.
-        let d = temp("chat-openclaude-home");
-        let user_home = Some(d.0.clone());
-        let env = vec![("CLAUDE_CONFIG_DIR".to_string(), "C:\\acct".to_string())];
-        assert_eq!(homes("openclaude", &env, |_| Some("C:\\env".to_string()), user_home.clone()), vec![d.join(".openclaude")]);
-        assert_eq!(openclaude_projects(user_home.clone()), vec![d.join(".openclaude").join("projects")]);
-        assert_eq!(openclaude_projects(None), Vec::<PathBuf>::new());
-    }
 
     #[test]
     fn codex_is_found_by_the_folder_its_session_runs_in() {

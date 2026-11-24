@@ -1,5 +1,12 @@
-//! The chat engine: each chat is one hidden agent process (`claude`, or `openclaude` for the other
-//! models, 2026-11-20) that reads and writes
+//! The chat engine. A chat runs one of two ways (2026-11-24):
+//!
+//! - through OpenCode ([`opencode`]): every model the chat page offers. One shared `opencode serve`
+//!   answers for all open chats, each chat is one OpenCode session, and OpenCode's events are turned
+//!   into the same `chat-event` shapes here, so the page reads one stream whichever way a chat runs.
+//! - as one hidden `claude` process of its own, kept for the Claude Code chats that already exist. The
+//!   notes below are about that process.
+//!
+//! The hidden process reads and writes
 //! stream-json (one JSON message per line on stdin and stdout). docs/chat-engine.md is the
 //! contract for the page: the four commands, the `chat-event` event and its shapes, stop and
 //! idle-sleep rules, and what is not known about the agent's side.
@@ -17,11 +24,14 @@
 #![allow(dead_code)] // wired in the chat-app screens stage
 
 pub mod events;
+pub mod opencode;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 #[path = "replay_board_tests.rs"]
 mod replay_board_tests;
+#[cfg(test)]
+mod opencode_tests;
 
 pub use events::{parse_line, ChatEvent, ExitReason, StopHow};
 
@@ -74,8 +84,8 @@ impl Default for Config {
 /// What a chat is started with.
 #[derive(Clone, Debug)]
 pub struct Spec {
-    /// The agent whose program runs the chat: `claude`, or `openclaude` for the other models
-    /// (2026-11-20). Both speak the same stream-json CLI; nothing else does yet.
+    /// The agent that runs the chat: `opencode` (a session on the shared OpenCode server), or
+    /// `claude` (a hidden stream-json process of its own).
     pub agent: String,
     pub cwd: PathBuf,
     pub model: Option<String>,
@@ -91,25 +101,15 @@ pub struct Spec {
     pub handoff_note: Option<PathBuf>,
 }
 
-/// The agents a chat can run today. Both are Claude Code's CLI shape; an id outside this list has no
-/// chat engine, so `chat_start` refuses it instead of starting a program that cannot read the lines.
-pub const CHAT_AGENTS: [&str; 2] = ["claude", "openclaude"];
+/// The agents a chat can run today. An id outside this list has no chat engine, so `chat_start`
+/// refuses it instead of starting a program that cannot be read.
+pub const CHAT_AGENTS: [&str; 2] = ["claude", opencode::AGENT];
 
-/// The gateway OpenClaude's model list in the window (seats.ts, `openclaude`) is taken from: every id
-/// there is an OpenRouter name, so a picked model is routed there. A chat started with no model adds
-/// no provider and keeps whatever OpenClaude is configured for ("Program default").
-pub const OPENCLAUDE_PROVIDER: &str = "openrouter";
+/// The chat agents that run as a hidden stream-json process of their own (Claude Code's CLI shape).
+pub const STREAM_AGENTS: [&str; 1] = ["claude"];
 
-/// The permission mode that lets a chat act with no prompt (DT-C283). Claude Code's `auto` is not a
-/// mode OpenClaude knows: it quietly falls back to `default`, where every tool call is refused, so
-/// OpenClaude gets `bypassPermissions` — the same "never ask" rule under the name it does know.
-fn permission_mode(agent: &str) -> &'static str {
-    if agent == "openclaude" {
-        "bypassPermissions"
-    } else {
-        "auto"
-    }
-}
+/// The permission mode that lets a chat act with no prompt (DT-C283).
+const PERMISSION_MODE: &str = "auto";
 
 /// An image sent with a message.
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -119,14 +119,13 @@ pub struct Image {
     pub base64: String,
 }
 
-/// The effort levels a chat accepts: OpenClaude's own list, also understood by Claude Code. `ultracode`
-/// stays OpenClaude-only.
+/// The effort levels Claude Code's `--effort` accepts. An OpenCode model lists its own levels, so
+/// there the word only has to be one plain word; OpenCode refuses a level the model does not have.
 const EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
-const OPENCLAUDE_EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
 
 pub fn valid_effort(agent: &str, effort: &str) -> bool {
-    if agent == "openclaude" {
-        OPENCLAUDE_EFFORTS.contains(&effort)
+    if agent == opencode::AGENT {
+        opencode::valid_effort(effort)
     } else {
         EFFORTS.contains(&effort)
     }
@@ -136,16 +135,13 @@ pub fn valid_effort(agent: &str, effort: &str) -> bool {
 /// message back (`--replay-user-messages`), so the page can confirm a send from the echo instead of
 /// guessing that the message arrived.
 pub fn chat_args(agent: &str, model: Option<&str>, effort: Option<&str>, resume: Option<&str>) -> Vec<String> {
-    let mut a: Vec<String> = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-mode", permission_mode(agent)].map(String::from).to_vec();
-    // Right after the permission mode (the first eight are a fixed shape): only a chat agent's CLI is
-    // known to take the flag, so any other id gets no echo.
-    if CHAT_AGENTS.contains(&agent) {
+    let mut a: Vec<String> = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-mode", PERMISSION_MODE].map(String::from).to_vec();
+    // Right after the permission mode (the first eight are a fixed shape): only a stream agent's CLI
+    // is known to take the flag, so any other id gets no echo.
+    if STREAM_AGENTS.contains(&agent) {
         a.push("--replay-user-messages".to_string());
     }
     if let Some(m) = model {
-        if agent == "openclaude" {
-            a.extend(["--provider".to_string(), OPENCLAUDE_PROVIDER.to_string()]);
-        }
         a.extend(["--model".to_string(), m.to_string()]);
     }
     if let Some(e) = effort {
@@ -208,7 +204,7 @@ struct Inner {
     /// the first result that leaves none. Holds the reading that crossed.
     handoff_due: Option<u64>,
     /// The process was handed off and the next one cannot take the note on its command line
-    /// (OpenClaude, or Claude Code through a `.cmd` shim): the next message carries it instead.
+    /// (Claude Code through a `.cmd` shim): the next message carries it instead.
     note_due: bool,
     /// Stop sent an interrupt while this many messages were outstanding (the stopped turn and those
     /// queued behind it). The interrupt cancels the queued ones (`cancel_queued`, checked live
@@ -575,24 +571,73 @@ fn wait_or_kill(child: &mut Child, pid: u32, grace: Duration) -> Option<i32> {
     }
 }
 
-/// Every open chat, by chat id. No count limit.
+/// One open chat: a hidden stream-json process of its own, or a session on the shared OpenCode server.
+#[derive(Clone)]
+enum Chat {
+    Stream(Arc<Engine>),
+    Open(Arc<opencode::OpenChat>),
+}
+
+/// Every open chat, by chat id. No count limit. The one OpenCode server every OpenCode chat talks to
+/// lives here too, so it starts with the first such chat and ends with the app.
 #[derive(Clone, Default)]
 pub struct Engines {
-    map: Arc<Mutex<HashMap<String, Arc<Engine>>>>,
+    map: Arc<Mutex<HashMap<String, Chat>>>,
     cfg: Config,
+    open: Arc<opencode::Server>,
 }
 
 impl Engines {
     pub fn new(cfg: Config) -> Self {
-        Engines { map: Arc::default(), cfg }
+        Engines { map: Arc::default(), open: Arc::new(opencode::Server::new(cfg.clone())), cfg }
     }
 
-    fn get(&self, chat_id: &str) -> Result<Arc<Engine>, String> {
+    fn get(&self, chat_id: &str) -> Result<Chat, String> {
         self.map.lock().unwrap_or_else(|e| e.into_inner()).get(chat_id).cloned().ok_or_else(|| format!("No open chat {chat_id}."))
+    }
+
+    /// The shared OpenCode server (not started until something asks it a question).
+    pub fn open_server(&self) -> Arc<opencode::Server> {
+        Arc::clone(&self.open)
+    }
+
+    /// Opens an OpenCode chat: a new session, or `resume` picked up where it stopped. Everything is
+    /// checked before the server is touched, so a refused chat starts nothing. A start for the
+    /// conversation this chat already shows is a model or effort pick: it is applied in place, with
+    /// no restart, and the next message runs on it.
+    fn start_open(&self, chat_id: &str, spec: Spec, resume: Option<String>, sink: Sink) -> Result<(), String> {
+        if let Some(r) = &resume {
+            if !opencode::valid_session(r) {
+                return Err(format!("\"{r}\" is not a session id."));
+            }
+        }
+        if let Some(m) = &spec.model {
+            opencode::model_ref(m, None)?;
+        }
+        if let Some(e) = &spec.effort {
+            if !opencode::valid_effort(e) {
+                return Err(format!("{e} is not an effort level OpenCode knows."));
+            }
+        }
+        if !spec.cwd.is_dir() {
+            return Err(format!("The folder {} does not exist.", spec.cwd.display()));
+        }
+        if let Ok(Chat::Open(chat)) = self.get(chat_id) {
+            if chat.is(&spec.cwd, resume.as_deref()) {
+                return chat.retarget(spec);
+            }
+        }
+        self.close(chat_id);
+        let chat = opencode::OpenChat::open(&self.open, chat_id, spec, resume, sink)?;
+        self.map.lock().unwrap_or_else(|e| e.into_inner()).insert(chat_id.to_string(), Chat::Open(chat));
+        Ok(())
     }
 
     /// Opens a chat and starts its process. A chat id already open is closed first.
     pub fn start(&self, chat_id: &str, spec: Spec, resume_session_id: Option<String>, sink: Sink) -> Result<(), String> {
+        if spec.agent == opencode::AGENT {
+            return self.start_open(chat_id, spec, resume_session_id, sink);
+        }
         if let Some(m) = &spec.model {
             if !valid_model(m) {
                 return Err(format!("\"{m}\" is not a model name."));
@@ -608,7 +653,7 @@ impl Engines {
         }
         self.close(chat_id);
         // Review P2 (2026-11-23): a fresh conversation starts from the note too. A process that takes it
-        // on its command line clears this at spawn; any other (OpenClaude, a shim) carries it in the
+        // on its command line clears this at spawn; any other (a shim) carries it in the
         // first message. A resumed conversation already has it.
         let note_due = spec.handoff_note.is_some() && resume_session_id.is_none();
         let engine = Arc::new(Engine {
@@ -623,38 +668,55 @@ impl Engines {
         }
         let watcher = Arc::clone(&engine);
         std::thread::spawn(move || watcher.watch_idle());
-        self.map.lock().unwrap_or_else(|e| e.into_inner()).insert(chat_id.to_string(), engine);
+        self.map.lock().unwrap_or_else(|e| e.into_inner()).insert(chat_id.to_string(), Chat::Stream(engine));
         Ok(())
     }
 
-    /// Sends a message; a sleeping (or crashed) chat starts again with `--resume` first.
+    /// Sends a message; a sleeping (or crashed) chat starts again on its session first.
     pub fn send(&self, chat_id: &str, text: &str, images: &[Image]) -> Result<(), String> {
-        self.get(chat_id)?.send(text, images)
+        match self.get(chat_id)? {
+            Chat::Stream(e) => e.send(text, images),
+            Chat::Open(c) => c.send(text, images),
+        }
     }
 
     /// Stops the running turn and keeps the chat resumable. `None` when no turn was running.
     pub fn stop(&self, chat_id: &str) -> Result<Option<StopHow>, String> {
-        Ok(self.get(chat_id)?.stop())
+        Ok(match self.get(chat_id)? {
+            Chat::Stream(e) => e.stop(),
+            Chat::Open(c) => c.stop(),
+        })
     }
 
-    /// Closes a chat and ends its process. Closing a chat that is not open does nothing.
+    /// Closes a chat and ends its process (an OpenCode chat stops listening; its session is kept by
+    /// OpenCode). Closing a chat that is not open does nothing.
     pub fn close(&self, chat_id: &str) {
-        let engine = self.map.lock().unwrap_or_else(|e| e.into_inner()).remove(chat_id);
-        if let Some(e) = engine {
-            e.close();
+        let chat = self.map.lock().unwrap_or_else(|e| e.into_inner()).remove(chat_id);
+        match chat {
+            Some(Chat::Stream(e)) => e.close(),
+            Some(Chat::Open(c)) => c.close(),
+            None => {}
         }
     }
 
-    /// Ends every chat's process (the app is quitting).
+    /// Ends every chat's process and the shared OpenCode server (the app is quitting).
     pub fn close_all(&self) {
-        let all: Vec<Arc<Engine>> = self.map.lock().unwrap_or_else(|e| e.into_inner()).drain().map(|(_, e)| e).collect();
-        for e in all {
-            e.close();
+        let all: Vec<Chat> = self.map.lock().unwrap_or_else(|e| e.into_inner()).drain().map(|(_, c)| c).collect();
+        for chat in all {
+            match chat {
+                Chat::Stream(e) => e.close(),
+                Chat::Open(c) => c.close(),
+            }
         }
+        self.open.shutdown();
     }
 
+    /// The hidden process behind a stream chat; `None` for an OpenCode chat or an id that is not open.
     pub fn engine(&self, chat_id: &str) -> Option<Arc<Engine>> {
-        self.get(chat_id).ok()
+        match self.get(chat_id) {
+            Ok(Chat::Stream(e)) => Some(e),
+            _ => None,
+        }
     }
 }
 
@@ -728,10 +790,11 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Sen
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
 }
 
-/// Opens chat `chat_id` in `cwd` and starts its hidden agent process: `claude`, or `openclaude`
-/// when the page asks for it (2026-11-20). `agent` left out means Claude Code, as before. `effort`
-/// (2026-11-21) is the level the conversation runs at; a later pick restarts the process and resumes
-/// the same session on the new model or effort.
+/// Opens chat `chat_id` in `cwd`: an OpenCode session when the page asks for `opencode` (every model
+/// the chat page offers, 2026-11-24), or a hidden `claude` process. `agent` left out means Claude
+/// Code, as before. `effort` (2026-11-21) is the level the conversation runs at. A later pick calls
+/// this again with the same session: an OpenCode chat changes model or effort in place, a Claude
+/// Code chat restarts its process and resumes the session.
 // Each argument is a field the page sends by name (lively added `effort` as the eighth); a struct
 // would change the page's call, so the count is allowed here.
 #[allow(clippy::too_many_arguments)]
@@ -740,7 +803,7 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
     use tauri::Manager;
     let agent = agent.unwrap_or_else(|| "claude".to_string());
     if !CHAT_AGENTS.contains(&agent.as_str()) {
-        return Err(format!("{agent} has no chat engine. A chat runs Claude Code or OpenClaude."));
+        return Err(format!("{agent} has no chat engine. A chat runs through OpenCode or Claude Code."));
     }
     if let Some(e) = effort.as_deref() {
         if !valid_effort(&agent, e) {
@@ -762,11 +825,20 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
     };
     // The caller's own variables first; the sign-in wins (ACCT-024 already refused a clash).
     let mut env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
+    // One OpenCode server answers every chat, so it cannot be started with one folder's variables:
+    // it always carries the Everyday folder's git rule, whichever chat happens to start it.
+    if agent == opencode::AGENT {
+        env.extend(everyday_rule());
+    }
     // Txais (2026-11-21): chat panes follow the same 200k cap, handoff line and note as terminal
     // panes. The cap goes on here (the CLI's own variable) rather than inside the engine, so the
     // engine stays a plain stream reader. The note is created beside the folder's other Kolux
     // scratch, and a folder that cannot take one simply runs without it.
-    let at = {
+    // An OpenCode chat takes neither: OpenCode sizes and compacts its own sessions.
+    let open = agent == opencode::AGENT;
+    let at = if open {
+        0
+    } else {
         let store = app.state::<Mutex<crate::state::Store>>();
         let store = store.lock().map_err(|e| e.to_string())?;
         let settings = store.settings();
@@ -781,7 +853,7 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
     // One note per folder, the way a worktree has one: two chats in the same folder start from the
     // same page of paper. Best effort; a folder that cannot take one runs without it.
     let name = cwd.file_name().and_then(|n| n.to_str()).unwrap_or("chat").to_string();
-    let note = crate::projects::prepare_handoff(&cwd, &name).ok();
+    let note = if open { None } else { crate::projects::prepare_handoff(&cwd, &name).ok() };
     let (engines, sink) = (engines(&app), app_sink(&app));
     blocking(move || engines.start(&chat_id, Spec { agent, cwd, model, effort, env, handoff_at: at, handoff_note: note }, resume_session_id, sink)).await
 }
@@ -810,6 +882,57 @@ pub async fn chat_end(app: tauri::AppHandle, chat_id: String) -> Result<(), Stri
         Ok(())
     })
     .await
+}
+
+/// What the shared OpenCode server is started with: the sign-in and settings a terminal's OpenCode
+/// gets. Only the call that starts the server uses it.
+fn open_env(app: &tauri::AppHandle) -> Result<Vec<(String, String)>, String> {
+    use tauri::Manager;
+    let store = app.state::<Mutex<crate::state::Store>>();
+    let store = store.lock().map_err(|e| e.to_string())?;
+    let settings = store.settings();
+    let mut env = crate::terminal::agent_env(&store, &settings, Some(opencode::AGENT), None, None, &[])?.env;
+    env.extend(everyday_rule());
+    Ok(env)
+}
+
+/// Keeps any repository above the Everyday folder invisible to git (plan v6, 2026-11-19), for the
+/// shared OpenCode server. Empty when there is no Everyday folder.
+fn everyday_rule() -> Vec<(String, String)> {
+    crate::everyday::path().map(|p| crate::claude_shared::everyday_env(&p)).unwrap_or_default()
+}
+
+/// Every model OpenCode lists, for the chat page's model picker (src/chat/opencode.ts).
+#[tauri::command]
+pub async fn chat_models(app: tauri::AppHandle) -> Result<Vec<opencode::ModelRow>, String> {
+    let (server, env) = (engines(&app).open_server(), open_env(&app)?);
+    blocking(move || server.models(&env)).await
+}
+
+/// OpenCode's saved chats for the folder `cwd`, newest first.
+#[tauri::command]
+pub async fn chat_sessions(app: tauri::AppHandle, cwd: String) -> Result<Vec<opencode::SessionRow>, String> {
+    let (server, env) = (engines(&app).open_server(), open_env(&app)?);
+    blocking(move || server.sessions(&env, &cwd)).await
+}
+
+/// Deletes one of OpenCode's saved chats for good. `cwd` is the folder the page listed it under.
+#[tauri::command]
+pub async fn chat_session_delete(app: tauri::AppHandle, cwd: String, session: String) -> Result<(), String> {
+    let _ = cwd;
+    if !opencode::valid_session(&session) {
+        return Err(format!("\"{session}\" is not a session id."));
+    }
+    let (server, env) = (engines(&app).open_server(), open_env(&app)?);
+    blocking(move || server.delete(&env, &session)).await
+}
+
+/// What a saved OpenCode chat already said, for `chat_history` (chat.rs).
+pub fn open_history(app: &tauri::AppHandle, session: &str, limit: usize) -> Result<crate::chat::ChatRead, String> {
+    if !opencode::valid_session(session) {
+        return Err(format!("\"{session}\" is not a session id."));
+    }
+    engines(app).open_server().history(&open_env(app)?, session, limit)
 }
 
 /// Ends every chat's process; called once from the app's quit path.
