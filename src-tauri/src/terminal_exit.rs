@@ -3,7 +3,6 @@
 //! registry before the program is stopped, so it ends with code 1 exactly like a crash; the registry is
 //! what tells the two apart. Pure text in, text out: no file, no lock, no clock (the caller reads the
 //! seconds off the mark). Secrets are masked with the repo's own `crate::mask`.
-use crate::mask::mask;
 
 /// The end was Kolux's own: its session was already out of the registry when the program stopped.
 pub const CLOSED_BY_KOLUX: &str = "closed-by-kolux";
@@ -30,7 +29,7 @@ pub fn exit_reason(still_registered: bool) -> &'static str {
 /// progress bar's last repaint does not take the place of the error under it. `max == 0` gives none.
 pub fn tail_lines(text: &str, max: usize) -> Vec<String> {
     let lines: Vec<&str> = text.lines().map(str::trim_end).filter(|l| !l.is_empty()).collect();
-    lines[lines.len().saturating_sub(max)..].iter().map(|l| cut(&mask(l))).collect()
+    lines[lines.len().saturating_sub(max)..].iter().map(|l| cut(&crate::mask::mask(l))).collect()
 }
 
 /// One tail line cut to `LINE_MAX` characters, never a byte. The mask runs first (in `tail_lines`), so
