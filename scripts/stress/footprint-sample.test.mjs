@@ -1,0 +1,20 @@
+// AUD-S4 F03: footprint-sample.ps1 has a second GPU read for when the background counter job returns nothing
+// ("one plain read so the phase is not left without GPU numbers"). Its instance filter is written '^pid_(d+)_'
+// while the same filter in the job above is '^pid_(\d+)_', so the retry can never match a counter instance and
+// silently records no GPU rows while claiming "(retried once)".
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { expect, it } from "vitest";
+
+const PS1 = fileURLToPath(new URL("./footprint-sample.ps1", import.meta.url));
+
+it("[S4-F03] the GPU fallback's instance filter matches a real counter instance name", () => {
+  const line = readFileSync(PS1, "utf8")
+    .split(/\r?\n/)
+    .find((l) => l.includes("$x.InstanceName -match") && l.includes("retried once"));
+  expect(line, "the GPU fallback line with its instance filter").toBeTruthy();
+  const filter = /-match '([^']+)'/.exec(line);
+  expect(filter, "the fallback's -match '...' filter").toBeTruthy();
+  // Counter instance names look like pid_<pid>_<instance>, as the job's own filter above already assumes.
+  expect(new RegExp(filter[1]).exec("pid_4321_0")?.[1]).toBe("4321");
+});
