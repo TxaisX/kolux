@@ -1,3 +1,4 @@
+// retired: the Explorer tree it drove was removed in fccac517, so there are no .ex-row rows or "Hide the explorer" control.
 // LIVE proof, EDIT-033 box 1 (spec/12): Mod+Shift+E opens the explorer; Down, Right, Down, Enter opens the first file of the second folder.
 import { reporter, startPlain, finish, sleep, checker, editRepo, tabs } from "./live-edit-common.mjs";
 

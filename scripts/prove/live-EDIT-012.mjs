@@ -1,3 +1,4 @@
+// retired: the rich/source editor and its preview tab were removed in fccac517, so no file opens in that editor view.
 // LIVE proof, EDIT-012 boxes 1+2 (spec/12): README opens rich, Source shows plain markdown, Mod+Shift+V opens a preview tab;
 // a ~1 MB markdown file opens in source view with a banner, and Open anyway switches to the rich view.
 import { reporter, startPlain, finish, sleep, checker, editRepo, clickRow, tabs, vis, bigMd } from "./live-edit-common.mjs";
