@@ -612,7 +612,17 @@ pub(super) fn project_dirs(roots: &Roots, agent: &str) -> Vec<PathBuf> {
 pub fn find_session_exact(roots: &Roots, agent: &str, id: &str) -> Result<(PathBuf, Option<PathBuf>), String> {
     let gone = || "That session is no longer on this computer.".to_string();
     match agent {
-        "claude" | "openclaude" => project_dirs(roots, agent).iter().find_map(|c| fs::read_dir(c).ok()?.flatten().map(|e| e.path().join(format!("{id}.jsonl"))).find(|p| p.is_file()).map(|p| (p, None))).ok_or_else(gone),
+        "claude" | "openclaude" => {
+            let mut files: Vec<PathBuf> = project_dirs(roots, agent).iter().filter_map(|c| fs::read_dir(c).ok()).flat_map(|d| d.flatten().map(|e| e.path().join(format!("{id}.jsonl"))).filter(|p| p.is_file()).collect::<Vec<_>>()).collect();
+            // The same folder can be named twice (a config folder set to `~/.openclaude`, say): one file, not two.
+            files.sort();
+            files.dedup();
+            match files.len() {
+                0 => Err(gone()),
+                1 => Ok((files.remove(0), None)),
+                _ => Err("More than one session file has this id, so Kolux will not pick one.".into()),
+            }
+        }
         "codex" => {
             let mut hits: Vec<(PathBuf, Option<PathBuf>)> = roots.codex.iter().flat_map(|h| codex_files(h).into_iter().filter(|f| f.file_stem().is_some_and(|s| rollout_id(&s.to_string_lossy()) == Some(id))).map(|f| (f, Some(h.clone()))).collect::<Vec<_>>()).collect();
             match hits.len() {
@@ -1116,6 +1126,20 @@ mod tests {
             let _ = rollout_id(&hostile_stem[..cut]);
         }
         let _ = rollout_id(&format!("rollout-a{}", "\u{e9}".repeat(20)));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// AUD-R2 F02: `find_session`'s doc says an id that names more than one file finds nothing; the
+    /// Claude branch picked whichever `<id>.jsonl` the project folders yielded first.
+    #[test]
+    fn audit_r2_f02_two_claude_folders_holding_one_id_find_nothing() {
+        let root = tmp("claude-dup");
+        for folder in ["C--work-a", "C--work-b"] {
+            lines(&root.join("projects").join(folder).join("s1.jsonl"), &[claude_user("hi", r"C:\w")]);
+        }
+        let roots = Roots { claude: vec![root.clone()], codex: vec![] };
+        assert!(find_session(&roots, "claude", "s1").is_none(), "more than one file with this id finds nothing");
+        assert!(find_session_exact(&roots, "claude", "s1").is_err(), "and it says why rather than picking one");
         let _ = fs::remove_dir_all(&root);
     }
 }
