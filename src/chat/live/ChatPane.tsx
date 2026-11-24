@@ -71,7 +71,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   /** The pane already has a name the user gave it, so the first message must not replace it. */
   named?: boolean;
   /** Names the session after its first message, as a chat app does, once per pane. */
-  onName?: (name: string) => void;
+  onName?: (name: string | null) => void;
   /** The model this chat starts on; null takes the last pick or the chat's cheap default. */
   model?: string | null;
   /** The effort level this chat starts on; null takes the last pick. */
@@ -282,7 +282,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           if (pick && pick === resume) {
             const { read: history, legacy: old, unreachable } = await readKeptChat(cwd, pick);
             // A chat that continues an older Claude one shows that transcript above its own (read-only).
-            const before = !old && history && legacyOld.current ? await chatHistory("claude", cwd, legacyOld.current).catch(() => null) : null;
+            const before = !old && legacyOld.current ? await chatHistory("claude", cwd, legacyOld.current).catch(() => null) : null;
             if (!live) {
               // The effect was re-run or closed while the history loaded. A re-run saw `started` and
               // skipped, so give the start back and ask for another run, or the chat has no process.
@@ -309,7 +309,9 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
               if (history.items.length > 0) namedOnce.current = true;
             } else {
               // The saved conversation is gone: forget its id here too, so a later model or effort pick
-              // cannot restart the process with `--resume <gone-id>`.
+              // cannot restart the process with `--resume <gone-id>`. The older Claude transcript this chat
+              // continued stays above the fresh start (round 3 P3), and its id stays for the next session.
+              if (before) setItems(applyRead([], before));
               setSession(null);
               pick = null;
             }
@@ -583,6 +585,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     markLegacy(false);
     if (say) setNote(say);
     namedOnce.current = false;
+    // The old chat's own name leaves the tab and the sidebar row: this one has none yet (a name the user chose stays).
+    if (!byUser.current) onName?.(null);
     setSession(null);
     legacyOld.current = null;
     reportSession.current?.(null);
@@ -610,7 +614,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         const history = await chatHistory(agent, cwd, id);
         resetView();
         markLegacy(false);
-        namedOnce.current = true;
+        // A chat with words in it is named by the column (and by OpenCode's late title); one with nothing said in
+        // it is named by the first message sent, like a new chat. The old chat's automatic name goes either way.
+        namedOnce.current = history.items.length > 0;
+        if (!byUser.current) onName?.(null);
         setItems(applyRead([], history));
         setSession(id);
         legacyOld.current = null;
@@ -714,6 +721,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           mode={mode}
           activeId={activeSession}
           activeStarted={startedChat}
+          active={!hidden}
           refreshKey={historyTick}
           onNew={onNew}
           onOpen={onOpen}

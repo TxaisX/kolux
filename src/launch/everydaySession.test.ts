@@ -140,3 +140,21 @@ test("a chat with no conversation id yet still opens, as a fresh conversation", 
   expect(pane.chatResume).toBeUndefined();
   expect(pane.chatModel).toBeUndefined();
 });
+
+test("round 3 P2: a chat the user named opens again with the pane marked as named by the user", async () => {
+  const { a, state, settingsRef } = make();
+  const rec = { id: "c-9", agent: "opencode", cwd: "C:\\E", session: "ses_1", at: 5, name: "My taxes", nameByUser: true as const };
+  settingsRef.current = { everydayChats: [rec] };
+  await a.openChat({ ...rec });
+  const pane = state.panes[0] as { title?: string; titleByUser?: boolean };
+  expect(pane.title).toBe("My taxes");
+  expect(pane.titleByUser).toBe(true);
+});
+
+test("round 3 P2: a chat the chat itself named opens unmarked, so it keeps following the history column", async () => {
+  const { a, state, settingsRef } = make();
+  const rec = { id: "c-8", agent: "opencode", cwd: "C:\\E", session: "ses_1", at: 5, name: "Auto name" };
+  settingsRef.current = { everydayChats: [rec] };
+  await a.openChat({ ...rec });
+  expect((state.panes[0] as { titleByUser?: boolean }).titleByUser).toBeUndefined();
+});

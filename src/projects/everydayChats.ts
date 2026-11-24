@@ -26,6 +26,8 @@ export type EverydayChat = {
   session?: string;
   /** The older Claude conversation this chat continues on OpenCode: its read-only transcript shows above the new chat. */
   legacy?: string;
+  /** The user chose `name` by hand (the sidebar, the tab menu): the chat's own titles never replace it. */
+  nameByUser?: true;
   at: number;
 };
 
@@ -60,6 +62,7 @@ export function readEverydayChats(s: Record<string, unknown>): EverydayChat[] {
       cwd,
       ...(session === null ? {} : { session }),
       ...(legacy === null || session === null ? {} : { legacy }),
+      ...(r.nameByUser === true && name !== null ? { nameByUser: true as const } : {}),
       at: typeof r.at === "number" && Number.isFinite(r.at) ? r.at : 0,
     });
   }
@@ -133,14 +136,46 @@ export function touchEverydayChat(list: readonly EverydayChat[], id: string, now
 }
 
 /** The list with one chat named; the same list when the name is already that. An empty name is ignored. */
-export function setEverydayName(list: readonly EverydayChat[], id: string, name: string): EverydayChat[] {
-  const clean = name.trim();
-  if (!clean) return list as EverydayChat[];
+export function setEverydayName(list: readonly EverydayChat[], id: string, name: string | null): EverydayChat[] {
+  const clean = name === null ? null : name.trim();
+  if (clean === "") return list as EverydayChat[];
   let changed = false;
   const next = list.map((c) => {
-    if (c.id !== id || c.name === clean) return c;
+    // A name the user chose is not replaced by the chat's own title.
+    if (c.id !== id || c.nameByUser) return c;
+    if (clean === null) {
+      // `null`: the chat it named has been left, so the row reads New chat again.
+      if (c.name === undefined) return c;
+      changed = true;
+      const out = { ...c };
+      delete out.name;
+      return out;
+    }
+    if (c.name === clean) return c;
     changed = true;
     return { ...c, name: clean };
+  });
+  return changed ? next : (list as EverydayChat[]);
+}
+
+/** The list with one chat named by the user (marked, so the chat's own titles never replace it). `undefined`
+ *  clears the mark and leaves the name, and the chat names itself again from its next title. Blank text is ignored. */
+export function setEverydayUserName(list: readonly EverydayChat[], id: string, name: string | undefined): EverydayChat[] {
+  const clean = name === undefined ? undefined : name.trim();
+  if (clean === "") return list as EverydayChat[];
+  let changed = false;
+  const next = list.map((c) => {
+    if (c.id !== id) return c;
+    if (clean === undefined) {
+      if (!c.nameByUser) return c;
+      changed = true;
+      const out = { ...c };
+      delete out.nameByUser;
+      return out;
+    }
+    if (c.name === clean && c.nameByUser) return c;
+    changed = true;
+    return { ...c, name: clean, nameByUser: true as const };
   });
   return changed ? next : (list as EverydayChat[]);
 }

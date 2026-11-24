@@ -70,6 +70,8 @@ beforeEach(async () => {
   h.groups = 0;
   h.sections = 0;
   h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? SESSIONS : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
+  const { resetProbes } = await import("../webui/probe");
+  resetProbes();
   const { resetSessionBus } = await import("./sessionBus");
   resetSessionBus();
 });
@@ -78,13 +80,14 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-type Over = Partial<{ resume: string | null; legacyId: string | null; named: boolean; onSession: (id: string | null, legacy?: string | null) => void; onReveal: () => void; onEffort: (e: string | null) => void; onName: (n: string) => void; onFocus: () => void; key: number; agent: string }>;
+type Over = Partial<{ resume: string | null; legacyId: string | null; named: boolean; onSession: (id: string | null, legacy?: string | null) => void; onReveal: () => void; onEffort: (e: string | null) => void; onName: (n: string | null) => void; onFocus: () => void; key: number; agent: string; hidden: boolean }>;
 async function pane(over: Over = {}): Promise<FakeNode> {
   const { default: ChatPane } = await import("./ChatPane");
   const m = await mount(
     createElement(ChatPane, {
       pane: { key: over.key ?? 1, cwd: "C:/w" },
       agent: over.agent,
+      hidden: over.hidden,
       onFocus: over.onFocus ?? (() => {}),
       onClose: () => {},
       named: over.named ?? false,
@@ -151,6 +154,21 @@ test("review 2 P2-4: a chat continued on OpenCode reopens with the old Claude tr
   expect(c.textContent.indexOf("said in the old Claude chat")).toBeLessThan(c.textContent.indexOf("said after the move"));
   await until(() => starts().length === 1, "the start");
   expect(starts()[0].args.resumeSessionId).toBe("ses_a");
+});
+
+test("round 3 P3: a continued chat whose new OpenCode session is gone still shows the old Claude transcript above its fresh start", async () => {
+  const old = "0b1c2d3e-aaaa-bbbb-cccc-000000000000";
+  h.script = (cmd, args) => {
+    if (cmd === "chat_models") return MODELS;
+    if (cmd === "chat_sessions") return SESSIONS;
+    if (cmd === "artifacts_scan") return { rows: [], skipped: [] };
+    if (cmd === "chat_history") return args.agent === "claude" ? readOf("said in the old Claude chat") : Promise.reject("That chat is not in OpenCode anymore.");
+    return undefined;
+  };
+  const c = await pane({ resume: "ses_gone", legacyId: old });
+  await until(() => starts().length === 1, "the start");
+  expect(starts()[0].args.resumeSessionId).toBeNull();
+  expect(said(c, "said in the old Claude chat")).toBe(true);
 });
 
 test("review 2 P3-11: OpenCode being out of reach keeps the saved chat and offers Try again; it is not replaced by a blank one", async () => {
@@ -244,7 +262,7 @@ test("opening a chat another pane already holds brings that pane forward and doe
 
 test("the tab and the sidebar row follow the title the history column shows, not the first message", async () => {
   h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? SESSIONS : cmd === "chat_history" ? readOf("hello there, a long first message") : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
-  const names: string[] = [];
+  const names: (string | null)[] = [];
   await pane({ resume: "ses_a", onName: (n) => names.push(n) });
   await until(() => names.length > 0, "the title");
   expect(names).toEqual(["Greeting"]);
@@ -322,7 +340,7 @@ async function sendText(c: FakeNode, text: string) {
 const readingScript = () => (h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? SESSIONS : cmd === "chat_history" ? readOf("hello") : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined));
 
 test("a blank chat's 'New chat' is never pushed onto the tab; the first message names it", async () => {
-  const names: string[] = [];
+  const names: (string | null)[] = [];
   const c = await pane({ onName: (n) => names.push(n) });
   await until(() => starts().length === 1, "the start");
   await emit({ kind: "init", sessionId: "ses_blank" });
@@ -335,10 +353,10 @@ test("a blank chat's 'New chat' is never pushed onto the tab; the first message 
 
 test("a pane the user did not name keeps following the history column after a restore, even with a title on it", async () => {
   readingScript();
-  const names: string[] = [];
+  const names: (string | null)[] = [];
   // A restored pane carries its last automatic title in `pane.title`, with named false.
   const { default: ChatPane } = await import("./ChatPane");
-  const m = await mount(createElement(ChatPane, { pane: { key: 1, cwd: "C:/w", title: "hello" }, onFocus: () => {}, onClose: () => {}, named: false, onName: (n: string) => names.push(n), model: OPUS, resume: "ses_a" }), doc);
+  const m = await mount(createElement(ChatPane, { pane: { key: 1, cwd: "C:/w", title: "hello" }, onFocus: () => {}, onClose: () => {}, named: false, onName: (n: string | null) => names.push(n), model: OPUS, resume: "ses_a" }), doc);
   unmount = m.unmount;
   await until(() => names.length > 0, "the title");
   expect(names).toEqual(["Greeting"]);
@@ -350,7 +368,7 @@ test("a pane the user did not name keeps following the history column after a re
 
 test("renaming by hand before the column's first report is not overwritten", async () => {
   readingScript();
-  const names: string[] = [];
+  const names: (string | null)[] = [];
   const { useState } = await import("react");
   const { default: ChatPane } = await import("./ChatPane");
   let rename: () => void = () => {};
@@ -362,7 +380,7 @@ test("renaming by hand before the column's first report is not overwritten", asy
   function Harness() {
     const [named, setNamed] = useState(false);
     rename = () => setNamed(true);
-    return createElement(ChatPane, { pane: { key: 1, cwd: "C:/w" }, onFocus: () => {}, onClose: () => {}, named, onName: (n: string) => names.push(n), model: OPUS, resume: "ses_a" });
+    return createElement(ChatPane, { pane: { key: 1, cwd: "C:/w" }, onFocus: () => {}, onClose: () => {}, named, onName: (n: string | null) => names.push(n), model: OPUS, resume: "ses_a" });
   }
   const m = await mount(createElement(Harness), doc);
   unmount = m.unmount;
@@ -393,6 +411,111 @@ test("review 2 P2-5: blank means no words in it, not the title 'New chat': a cha
   expect(titles).toEqual(["Greeting", "New chat"]);
 });
 
+test("round 3 P3: New chat and opening another chat clear the automatic title, and going back brings the column's title again", async () => {
+  readingScript();
+  const names: (string | null)[] = [];
+  const c = await pane({ resume: "ses_a", onName: (n) => names.push(n) });
+  await until(() => names.length > 0, "the title");
+  expect(names).toEqual(["Greeting"]);
+  await click(c, find(c, (n) => n.attrs.class === "wui-new")[0]);
+  await until(() => names.length === 2, "the title cleared by New chat");
+  expect(names).toEqual(["Greeting", null]);
+  await click(c, find(c, (n) => n.attrs.class === "wui-row" && n.textContent.includes("Other chat"))[0]);
+  await until(() => names[names.length - 1] === "Other chat", "the opened chat's title");
+  expect(names[names.length - 2]).toBeNull();
+  // back to the first chat: its title comes again, though the column reported it before
+  await click(c, find(c, (n) => n.attrs.class === "wui-row" && n.textContent.includes("Greeting"))[0]);
+  await until(() => names[names.length - 1] === "Greeting", "the first chat's title again");
+});
+
+test("round 3 P3: a name the user chose is not cleared by New chat", async () => {
+  readingScript();
+  const names: (string | null)[] = [];
+  const c = await pane({ resume: "ses_a", named: true, onName: (n) => names.push(n) });
+  await until(() => find(c, (n) => n.attrs.class === "wui-row").length > 0, "the rows");
+  await click(c, find(c, (n) => n.attrs.class === "wui-new")[0]);
+  await settle(100);
+  expect(names).toEqual([]);
+});
+
+test("round 3 P3: a past chat with nothing said in it is still named by its first message", async () => {
+  h.script = (cmd, args) =>
+    cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? SESSIONS : cmd === "chat_history" ? (args.session === "ses_b" ? { ...readOf(""), items: [] } : readOf("hello")) : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined;
+  const names: (string | null)[] = [];
+  const c = await pane({ resume: "ses_a", onName: (n) => names.push(n) });
+  await until(() => find(c, (n) => n.attrs.class === "wui-row").length > 0, "the rows");
+  await click(c, find(c, (n) => n.attrs.class === "wui-row" && n.textContent.includes("Other chat"))[0]);
+  await until(() => starts().length >= 2, "the resume");
+  await sendText(c, "a brand new thought");
+  await until(() => names.includes("a brand new thought"), "the first message as the name");
+});
+
+test("round 3 P3: a title OpenCode writes late is picked up by re-listing after the reply, twice, then it stops", async () => {
+  const { LATE_TITLE } = await import("../webui/HistoryColumn");
+  LATE_TITLE.first = 30;
+  LATE_TITLE.second = 30;
+  let sessions: unknown[] = [{ id: "ses_new", title: "New chat", updatedAt: Date.now() }];
+  h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? sessions : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
+  const names: (string | null)[] = [];
+  const c = await pane({ onName: (n) => names.push(n) });
+  await until(() => starts().length === 1, "the start");
+  await emit({ kind: "init", sessionId: "ses_new" });
+  await sendText(c, "Reply with the word ok");
+  await emit({ kind: "assistant", messageId: "m1", blocks: [{ type: "text", text: "ok" }] });
+  await emit({ kind: "result" });
+  await settle(30);
+  const lists = () => h.calls.filter((x) => x.cmd === "chat_sessions").length;
+  // the title lands on the server only after the reply was listed: nothing else triggers a list
+  sessions = [{ id: "ses_new", title: "Acknowledgment response", updatedAt: Date.now() }];
+  await until(() => names.includes("Acknowledgment response"), "the late title");
+  // and a title that never comes stops being asked for
+  sessions = [{ id: "ses_new", title: "New chat", updatedAt: Date.now() }];
+  const before = lists();
+  await emit({ kind: "result" });
+  // (short waits: a React update made by a timer is applied when the wait's act scope ends)
+  for (let i = 0; i < 30; i++) await settle(20);
+  // the reply's own list, then the two late ones, and no more
+  expect(lists() - before).toBe(3);
+  for (let i = 0; i < 15; i++) await settle(20);
+  expect(lists() - before).toBe(3);
+});
+
+const probeSessions = [
+  { id: "ses_a", title: "Greeting", updatedAt: now },
+  { id: "ses_said", title: "New chat", updatedAt: now - 1000 },
+  { id: "ses_empty", title: "New chat", updatedAt: now - 2000 },
+];
+const probeScript = () =>
+  (h.script = (cmd, args) => {
+    if (cmd === "chat_models") return MODELS;
+    if (cmd === "chat_sessions") return probeSessions;
+    if (cmd === "artifacts_scan") return { rows: [], skipped: [] };
+    if (cmd === "chat_history") return args.session === "ses_said" ? readOf("I did talk here") : { ...readOf(""), items: [] };
+    return undefined;
+  });
+const probes = () => h.calls.filter((c) => c.cmd === "chat_history");
+
+test("round 3 P2 lag: the blank-row reads ask for one message, and a second pane reuses the first pane's answers", async () => {
+  probeScript();
+  const first = await pane();
+  await until(() => find(first, (n) => n.attrs.class === "wui-title").length >= 2, "the rows after the content check");
+  expect(probes().map((c) => c.args.session).sort()).toEqual(["ses_empty", "ses_said"]);
+  expect(probes().every((c) => c.args.limit === 1)).toBe(true);
+  await unmount();
+  h.calls.length = 0;
+  const second = await pane({ key: 2 });
+  await until(() => find(second, (n) => n.attrs.class === "wui-title").length >= 2, "the second pane's rows");
+  expect(find(second, (n) => n.attrs.class === "wui-title").map((n) => n.textContent)).toEqual(["Greeting", "New chat"]);
+  expect(probes()).toEqual([]);
+});
+
+test("round 3 P2 lag: a hidden pane reads nothing for its blank rows", async () => {
+  probeScript();
+  await pane({ hidden: true });
+  await settle(120);
+  expect(probes()).toEqual([]);
+});
+
 test("live A: after New chat and a first reply, the header, the Everyday row and the history column all carry the title OpenCode gives", async () => {
   const { useState } = await import("react");
   const { default: ChatPane } = await import("./ChatPane");
@@ -405,7 +528,7 @@ test("live A: after New chat and a first reply, the header, the Everyday row and
   function Harness() {
     const [panes, setPanes] = useState([{ key: 1, title: undefined as string | undefined }] as never[]);
     const [chats, setChats] = useState([{ id: "e1", name: "New chat", agent: "opencode", at: 1 }] as never[]);
-    const onName = (name: string) => {
+    const onName = (name: string | null) => {
       setPanes((ps) => withAutoTitle(ps as never, 1, name) as never[]);
       setChats((l) => setEverydayName(l as never, "e1", name) as never[]);
     };

@@ -51,3 +51,12 @@ test("review 2 P2-4: a new chat or an opened one drops the old Claude id; an unc
   expect(fresh.chatResume).toBeUndefined();
   expect(fresh.chatLegacy).toBeUndefined();
 });
+
+test("round 3 P3: leaving a chat takes its automatic name away, and never a name the user chose", () => {
+  const auto = [chat(1, { title: "Greeting" })];
+  const gone = withAutoTitle(auto, 1, null);
+  expect(gone[0].title).toBeUndefined();
+  expect(withAutoTitle(gone, 1, null)).toBe(gone);
+  const mine = [chat(1, { title: "My taxes", titleByUser: true })];
+  expect(withAutoTitle(mine, 1, null)).toBe(mine);
+});

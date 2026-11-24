@@ -40,7 +40,7 @@ export async function startChat(chatId: string, cwd: string, model: string | nul
 export const isOpenCodeSession = (id: string): boolean => id.startsWith("ses_");
 
 /** The engine's answers for a chat that is not there ("... is not in OpenCode anymore.", "... not on this computer anymore."). */
-const isGoneAnswer = (e: unknown): boolean => /\banymore\b/i.test(String(e));
+const isGoneAnswer = (e: unknown): boolean => /\banymore\b|is not a session id/i.test(String(e));
 
 /**
  * A kept chat's transcript, for opening it again. An OpenCode chat is read from OpenCode. An older Everyday
@@ -67,8 +67,8 @@ export async function readKeptChat(cwd: string, session: string): Promise<{ read
  * again, so the chat page reads it once and opens on it: from OpenCode for an OpenCode chat, from the
  * agent's own transcript file otherwise.
  */
-export async function chatHistory(agent: string, cwd: string, session: string): Promise<ChatRead> {
-  return invoke<ChatRead>("chat_history", { agent, cwd, session });
+export async function chatHistory(agent: string, cwd: string, session: string, limit?: number): Promise<ChatRead> {
+  return invoke<ChatRead>("chat_history", limit === undefined ? { agent, cwd, session } : { agent, cwd, session, limit });
 }
 
 /**

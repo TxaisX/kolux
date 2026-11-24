@@ -70,6 +70,12 @@ test("review 2 P3-11: a chat OpenCode could not be asked about is 'unreachable',
   invoke.mockReset();
 });
 
+test("round 3 P3: a malformed id ('is not a session id') is gone, not unreachable", async () => {
+  invoke.mockRejectedValue("\"ses_??\" is not a session id.");
+  expect(await readKeptChat("C:/work/demo", "ses_??")).toEqual({ read: null, legacy: false });
+  invoke.mockReset();
+});
+
 test("an older Claude chat's id is not an OpenCode one: its own transcript is read, flagged as old, and never silently dropped", async () => {
   invoke.mockImplementation((_cmd: string, args: { agent: string }) => (args.agent === "claude" ? Promise.resolve(readOf("from the old transcript")) : Promise.reject("not in OpenCode")));
   const got = await readKeptChat("C:/work/demo", "0b1c2d3e-aaaa-bbbb-cccc-000000000000");

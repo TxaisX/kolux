@@ -43,3 +43,16 @@ test("ChatPane: a gone conversation is forgotten, a re-run during the history re
   expect(choice).not.toContain("endChat(");
   expect(src("../../../src-tauri/src/chat_engine/mod.rs")).toMatch(/pub fn start\([\s\S]*?self\.close\(chat_id\);/);
 });
+
+test("round 3 P3: an effort pick that changes nothing on the pane does not rewrite the panes", () => {
+  const pane = src("./Pane.tsx");
+  expect(pane).toMatch(/chatEffort: \(effort: string \| null\) => \{[\s\S]{0,300}?if \(\(p\.chatEffort \?\? null\) !== \(effort \|\| null\)\) setPanes\(\(ps\) => withChatPick\(ps, p\.key, \{ effort \}\)\)/);
+});
+
+test("round 3 P3: the window hands the chat pane the user-name mark, the reveal action and the older Claude id", () => {
+  const pane = src("./Pane.tsx");
+  const chatTag = pane.slice(pane.indexOf("<ChatPane"), pane.indexOf("/>", pane.indexOf("<ChatPane")));
+  expect(chatTag).toContain("named={!!p.titleByUser}");
+  expect(chatTag).toMatch(/onReveal=\{\(\) => openPane\(p\.key\)\}/);
+  expect(chatTag).toContain("legacyId={p.chatLegacy ?? null}");
+});
