@@ -3752,6 +3752,17 @@ fn row895_forget_keeps_an_unreadable_list_aside_before_it_saves() {
     let _ = fs::remove_dir_all(profile);
 }
 
+
+#[test]
+fn audit_r3_f02_an_unreadable_origins_blob_is_kept_aside_not_wiped() {
+    let store = Store::open(&temp("audit-r3-f02")).unwrap();
+    let damaged = r#"{"c:\\w\\a":{"madeBy":"app","prEver":true"#;
+    store.set(ORIGINS_KEY, damaged).unwrap();
+    set_origin(&store, r"C:\w\b", Some(&serde_json::json!({"madeBy": "app"}))).unwrap();
+    assert_eq!(crate::state::kept::asides(&store, ORIGINS_KEY), vec![damaged.to_string()],
+               "the unreadable record survives as a corrupt- copy instead of being overwritten");
+}
+
 #[test]
 fn row895_adding_a_project_refuses_rather_than_wiping_an_unreadable_list() {
     let (store, profile) = broken_list_store("row895-add", true);
