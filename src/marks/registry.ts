@@ -42,7 +42,6 @@ export type NameOnlyEntry = { id: string; name: string };
 
 export const NAME_ONLY: readonly NameOnlyEntry[] = [
   // Agent makers (catalogue ids).
-  { id: "openclaude", name: "OpenClaude" },
   { id: "devin", name: "Devin" },
   { id: "ante", name: "Ante" },
   { id: "trae", name: "Trae" },

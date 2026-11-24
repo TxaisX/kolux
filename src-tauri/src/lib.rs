@@ -856,6 +856,9 @@ pub fn run() {
             chat_engine::chat_send,
             chat_engine::chat_stop,
             chat_engine::chat_end,
+            chat_engine::chat_models,
+            chat_engine::chat_sessions,
+            chat_engine::chat_session_delete,
             // Chat panes: the artifacts folder under a reply (DT-C281).
             artifacts::artifacts_scan,
             artifacts::artifact_read,

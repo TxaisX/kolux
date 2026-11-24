@@ -30,7 +30,7 @@ export type Action = {
 /** Every agent's id and name (TERM-041's new-tab commands; the settings search finds agents by them). */
 export const agents: Array<[string, string]> = [
   ["claude", "Claude"],
-  ["openclaude", "OpenClaude"],
+
   ["codex", "Codex"],
   ["devin", "Devin"],
   ["ante", "Ante"],

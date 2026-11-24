@@ -37,7 +37,7 @@ export type ChatRead = {
 };
 
 /** CHAT-002: the agents whose sessions can be shown as chat (Grok waits for a public description of its session files, T-325-b). */
-export const CHAT_AGENTS = ["claude", "openclaude", "codex", "omp"] as const;
+export const CHAT_AGENTS = ["claude", "codex", "omp"] as const;
 
 export type OfferInput = {
   /** The agent Kolux credits with the program running in the pane (Rust `chat_support`). */

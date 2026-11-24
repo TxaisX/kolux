@@ -1,9 +1,16 @@
-# Chat engine (Claude, stream-json)
+# Chat engine (OpenCode, and Claude stream-json)
 
-Written 2026-11-19. Code: `src-tauri/src/chat_engine/` (`mod.rs` process and commands,
-`events.rs` the typed reading of each line, `tests.rs`, `stub.js`, `fixtures/`).
+Written 2026-11-19; OpenCode added 2026-11-24. Code: `src-tauri/src/chat_engine/` (`mod.rs` process
+and commands, `opencode.rs` the OpenCode server, its chats and the translation of its events,
+`events.rs` the typed reading of each line, `tests.rs`, `opencode_tests.rs`, `stub.js`, `fixtures/`).
 
-Each chat is one hidden `claude` process. The page talks to it through four Tauri commands and
+Two agents run a chat. `opencode` (2026-11-24) is what the chat page starts: every model it offers,
+Claude's included, runs through OpenCode, and each chat is one OpenCode session on a server the
+engine shares between all chats (see "OpenCode chats"). `claude` is Claude Code's own stream-json
+process, one hidden process per chat, described under "The process". The page hears both the same
+way: the commands, the event name and the payload shapes below are the same for the two.
+
+Each `claude` chat is one hidden `claude` process. The page talks to it through four Tauri commands and
 hears back on one Tauri event. (The close command is `chat_end`: the terminal-pane chat still
 registers `chat_close` until it retires; rename then if wanted.) Any number of chats can run at once; they are keyed by the page's
 own chat id.
@@ -19,16 +26,10 @@ Sources (read 2026-11-19):
 
 ```
 claude -p --input-format stream-json --output-format stream-json --verbose --permission-mode auto [--model <m>] [--resume <session id>]
-openclaude -p --input-format stream-json --output-format stream-json --verbose --permission-mode bypassPermissions [--provider openrouter] [--model <m>] [--resume <session id>]
 ```
 
-- Two agents run a chat (2026-11-20), both with Claude Code's stream-json CLI: `claude`, and
-  `openclaude` for the other models. `chat_start` refuses any other id.
-- OpenClaude's permission mode is `bypassPermissions`, not `auto`: measured 2026-11-20, `auto` is
-  not a mode it knows and it falls back to `default`, where every tool call is refused, while
-  `bypassPermissions` acts with no prompt — the same rule as `auto` (DT-C283).
-- A picked OpenClaude model comes from the window's OpenRouter list, so it is started with
-  `--provider openrouter`; "Program default" adds neither and keeps OpenClaude's own setup.
+- This section is the `claude` agent only. `chat_start` takes `claude` or `opencode` and refuses
+  any other id.
 - The program is found on PATH by its agent id (PATHEXT included, so a `claude.cmd` shim works; a
   shim runs through the system `cmd.exe /d /c`). Started with the no-console-window helper,
   stdin/stdout/stderr piped.
@@ -41,14 +42,111 @@ openclaude -p --input-format stream-json --output-format stream-json --verbose -
 - A model name may hold only letters, digits and `-._:[]/@`; a session id only letters, digits
   and `-` (both can reach `cmd.exe`). Anything else is refused before a process starts.
 
+## OpenCode chats
+
+Added 2026-11-24. Measured against `opencode` 2.4.1.
+
+**Transport.** One `opencode serve --hostname 127.0.0.1 --port <free port>` for the whole app, started
+the first time a chat, the model list or a session list needs it, with no console window. The server
+prints a one-time password at start; the engine reads it from the server's output, keeps it in
+memory only and sends it as HTTP Basic auth on every call. Events arrive on one long `GET /api/event`
+stream (server-sent events) and are routed to the chat that owns the session. Each chat is one
+OpenCode session.
+
+Why a shared server and not one `opencode run` per turn: sessions, the model list, delete and history
+all come from the same API; a model or effort change between turns and an interrupt are single calls;
+and a process per turn would pay OpenCode's setup (about 31k to 35k tokens of instructions, plus the
+MCP servers starting) on every message and has no way to stop or queue a turn.
+
+**Calls used.**
+
+| Call | For |
+|---|---|
+| `POST /api/session` | a new chat (`directory` is the chat's `cwd`) |
+| `GET /api/session/{id}` | a resumed chat: the session must exist |
+| `POST /api/session/{id}/model` `{model: {id, providerID, variant?}}` | the model and the effort (`variant`), at open and whenever the page picks another pair |
+| `POST /api/session/{id}/prompt` | one user message |
+| `POST /api/session/{id}/interrupt` | Stop |
+| `GET /api/session?directory=` | `chat_sessions` |
+| `DELETE /api/session/{id}` | `chat_session_delete` |
+| `GET /api/session/{id}/message` | `chat_history` (the newest 200 messages) |
+| `GET /api/model` | `chat_models` (it can answer with nothing in the server's first moments, so an empty answer is asked again and never cached) |
+
+- A model id is `provider/model`, the string `opencode models` prints, for example
+  `openrouter/deepseek/deepseek-v4.1-flash-1017`: the first segment is the `providerID`, the rest the `id`.
+- The model and the effort can change between turns of one chat with no restart: `chat_start` on a
+  chat id that is already open on the same folder and the same session only posts the new pair and
+  emits a fresh `init`. With the server asleep the pick is kept and applied before the next message.
+- Efforts are per model and come from the model list (`efforts`). Seen 2026-11-24: DeepSeek V4.1
+  Flash `none, low, high, max`; Claude Opus 5.5 `low, medium, high, xhigh, max`; GPT-5.5 `none, low,
+  medium, high, xhigh`; some models none.
+- Permission questions (`permission.asked`) are answered `once` by the engine, so a chat acts with
+  no prompt: the same rule as the `claude` agent's `auto` mode. `init.permissionMode` says
+  `bypassPermissions`.
+- Environment: the app's own, plus the sign-in variables, plus the Everyday folder's
+  `GIT_CEILING_DIRECTORIES` rule, which the shared server always carries whichever chat woke it.
+- Pictures are not sent to an OpenCode chat: `chat_send` with `images` is refused for it.
+
+**Event mapping.** The page gets the same `chat-event` payloads as for `claude`.
+
+| OpenCode | `chat-event` |
+|---|---|
+| chat opened, or the server woken for it | `started {pid, resumed}` (the server's pid) |
+| session created, resumed, or given another model or effort | `init {sessionId, cwd, model, permissionMode: "bypassPermissions", effort, raw}`; `sessionId` is OpenCode's session id |
+| `session.inbox.enqueued` | remembered |
+| `session.inbox.delivered` | `user {text: [the message]}` |
+| `session.execution.started`, `session.step.started`, `session.text.started`, `session.reasoning.started`, `session.tool.input.started` | nothing |
+| `session.text.delta`, `session.reasoning.delta` | `assistant` with every block of the message so far (`messageId` is OpenCode's assistant message id, `model` is `providerID/id`), at most one per 80 ms per message |
+| `session.text.ended`, `session.reasoning.ended`, `session.tool.called` | `assistant`, always |
+| `session.tool.success`, `session.tool.failed` | `user {toolResults: [{toolUseId, output, isError}]}` (output capped) |
+| `session.step.ended` | `assistant` with `usage`; the cost is summed for the turn |
+| `session.step.failed` | the error is remembered for the turn's `result` |
+| `session.retry.scheduled` | `apiRetry` |
+| `session.compaction.ended` | `compactBoundary {trigger}` |
+| `session.execution.succeeded` | `result {subtype: "success", sessionId, numTurns, durationMs, totalCostUsd, usage, result}`, and one more success `result` for each further message delivered in that run |
+| `session.execution.interrupted` | `result {subtype: "error_during_execution", isError: true}` |
+| `session.execution.failed` | `result {isError: true, subtype: the error's type or "failed", errors: [message]}` |
+| `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.progress`, `session.usage.updated` | dropped |
+| any other session event | `raw {line: the event type, json}` |
+| the event stream is lost during a turn | `result {isError: true, subtype: "connection_lost"}` |
+
+- Tool names are mapped to the names the page already groups (`bash` to `Bash`, and so on), so a
+  tool row reads the same in both agents.
+- `handoff` is never emitted for an OpenCode chat: OpenCode compacts a long session itself.
+
+**Stop.** `chat_stop` posts the interrupt and waits the stop grace for the turn to end:
+`stopped {how: "interrupt"}` when it does, `stopped {how: "ended"}` when it does not. The shared
+server is never ended for one chat's stop.
+
+**Sleep and exit.** The server is ended after `IDLE_SLEEP` (10 minutes) with no event and no busy
+chat, or after `BUSY_IDLE_SLEEP` (60 minutes) of silence while a turn looks busy; every open chat
+then gets `exit {reason: "sleep"}` and stays open, and the next send, model list or session list
+starts the server again. A server that ends by itself gives `exit {reason: "crashed"}` (or `"ended"`
+on a clean code). `chat_end` gives that chat `exit {reason: "closed"}` and leaves the server for the
+others. `chat_engine::close_all` ends the server on quit.
+
+**Not known / limits.**
+
+- Whether OpenCode can read a picture by path or as an attachment through this API: not tried.
+- The largest `limit` the message list accepts: not measured; the newest 200 are read.
+- If Kolux itself is killed, the server it started is not ended with it and stays until it is ended by hand.
+- `chat_session_delete` takes `cwd` for the page's sake and does not check the session belongs to that folder.
+
 ## Commands
 
 | Command | Arguments (as the page passes them) | Returns |
 |---|---|---|
-| `chat_start` | `chatId: string, cwd: string, model: string \| null, resumeSessionId: string \| null, extraEnv: [string, string][], agent: string \| null` (`"claude"` when left out) | nothing; error text on failure |
+| `chat_start` | `chatId: string, cwd: string, model: string \| null, effort: string \| null, resumeSessionId: string \| null, extraEnv: [string, string][], agent: string \| null` (`"claude"` when left out) | nothing; error text on failure |
 | `chat_send` | `chatId: string, text: string, images: { media_type: string, base64: string }[]` (`mediaType` also accepted) | nothing |
 | `chat_stop` | `chatId: string` | `"interrupt"`, `"ended"`, or `null` when no turn was running |
 | `chat_end` | `chatId: string` | nothing (closing an unknown chat does nothing) |
+| `chat_models` | none | `{ id, label, provider, efforts: string[] }[]`: the models OpenCode lists |
+| `chat_sessions` | `cwd: string` | `{ id, title, updatedAt }[]` (`updatedAt` in ms): OpenCode's saved sessions of that folder, newest first |
+| `chat_session_delete` | `cwd: string, session: string` | nothing; the session is deleted from OpenCode for good |
+| `chat_history` | `agent: string, cwd: string, session: string, limit: number \| null` | what a kept conversation already said; for `opencode` it is read from the server, for the others from the agent's transcript file |
+
+The page's side of the three OpenCode commands is `src/chat/opencode.ts` (`listChatModels`,
+`listChatSessions`, `deleteChatSession`).
 
 - `chat_start` on a chat id that is already open closes the old one first. It starts the process
   at once; `cwd` must be an existing folder.
@@ -155,7 +253,7 @@ outstanding: the queued message is answered first, never lost. Only the reader o
 now counts: a late line from a process that was already ended is ignored for the reading and the
 handoff.
 
-An agent that cannot take the note on its command line (OpenClaude, or Claude Code through a `.cmd`
+An agent that cannot take the note on its command line (Claude Code through a `.cmd`
 shim) gets it in its first message after a handoff instead: the note text goes first inside the JSON
 user line on stdin, then what the user wrote. Only that one message carries it. A plain Claude Code
 chat keeps the appended system prompt, which also covers its very first start.
@@ -233,6 +331,12 @@ the sign of a start without the user's setup.
 - **The exit code after an interrupt-free end by stdin closing.** Read as reported.
 
 ## Tests
+
+OpenCode: `opencode_tests.rs` feeds the translator hand-written events and checks the payloads, the
+server-sent-event framing, the model and session rows and the history rows, with no server. One
+ignored test (`live_a_chat_streams_a_reply_and_resumes`) runs a real turn, an effort change and a
+resume against the installed `opencode`; it spends a few cents and is run by hand:
+`cargo test --manifest-path src-tauri/Cargo.toml --lib opencode_tests::live -- --ignored --nocapture`.
 
 `cargo test chat_engine`. Parsing tests use hand-written fixtures (`fixtures/*.jsonl`) shaped on
 the documented types, never captured from a real config folder. Process tests run `stub.js` with

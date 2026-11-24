@@ -6,7 +6,7 @@ import { overRect } from "../terminal/drop";
 /** Attachments waiting at once; more are refused with a message. */
 export const MAX_ATTACHMENTS = 5;
 /** The agents that take an image by its path. */
-export const IMAGE_AGENTS = ["claude", "openclaude", "codex"];
+export const IMAGE_AGENTS = ["claude", "codex"];
 
 export type Attachment = {
   id: string;

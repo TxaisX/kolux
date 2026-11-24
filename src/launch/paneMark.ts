@@ -12,7 +12,7 @@ import type { Agent } from "../chrome/VendorMark";
 /** The catalogue ids and the program names Rust credits them by (agents.rs CATALOGUE, same order: the first match wins). */
 export const CREDIT_NAMES: readonly (readonly [string, readonly string[]])[] = [
   ["claude", ["claude"]],
-  ["openclaude", ["openclaude"]],
+
   ["codex", ["codex"]],
   ["autohand", ["autohand"]],
   ["ante", ["ante"]],
@@ -124,7 +124,7 @@ export function programMark(program: string | null | undefined): Agent {
 }
 
 /**
- * Which vendor mark an agent draws. The built-in ids keep their marks; any other id (OpenClaude,
+ * Which vendor mark an agent draws. The built-in ids keep their marks; any other id (Aider,
  * Gemini...) takes the mark of the program it runs, so one whose Settings > Agents Command names
  * Claude or Codex is a Claude or Codex pane (FIX-2). Without a program, or for any other program,
  * it is the plain-shell glyph.

@@ -1,7 +1,7 @@
 // The Everyday row (2026-11-20): one plain folder above the projects, for daily asks. The path itself is
 // decided in Rust (`everyday_path`), so the window never guesses where the user's home is; this file holds
 // only the rules the sidebar needs to draw the folder's sessions and the chats kept out of it. New sessions
-// there open OpenClaude (2026-11-21), so there is no menu of AIs to offer.
+// there open a chat that runs through OpenCode (2026-11-24), so there is no menu of AIs to offer.
 import type { EverydayChat } from "./everydayChats";
 import type { FolderSession } from "./folderSessions";
 

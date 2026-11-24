@@ -28,7 +28,7 @@ pub const AT: u64 = 170_000;
 /// command it may read as a chat message.
 pub fn clear_for(agent: &str) -> Option<&'static str> {
     match agent {
-        "claude" | "openclaude" => Some("/clear"),
+        "claude" => Some("/clear"),
         "codex" | "opencode" | "grok" => Some("/new"),
         _ => None,
     }
@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn each_agent_gets_the_clear_its_own_cli_documents_and_no_other() {
         assert_eq!(clear_for("claude"), Some("/clear"));
-        assert_eq!(clear_for("openclaude"), Some("/clear"), "the same CLI under its other name");
+
         assert_eq!(clear_for("codex"), Some("/new"));
         assert_eq!(clear_for("opencode"), Some("/new"));
         assert_eq!(clear_for("grok"), Some("/new"));

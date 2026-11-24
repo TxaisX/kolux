@@ -20,16 +20,37 @@ test("starting a chat names the folder and asks for no model, effort, session or
   expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-3", cwd: "C:/work/demo", model: null, effort: null, resumeSessionId: null, extraEnv: [], agent: "claude" });
 });
 
-test("a chat on OpenClaude names it, so the engine starts that program rather than Claude", async () => {
-  invoke.mockResolvedValueOnce(undefined);
-  await startChat("pane-4", "C:/work/demo", "deepseek/deepseek-v4.1-flash-1017", "openclaude");
-  expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-4", cwd: "C:/work/demo", model: "deepseek/deepseek-v4.1-flash-1017", effort: null, resumeSessionId: null, extraEnv: [], agent: "openclaude" });
+test("a chat on OpenCode names it, so the engine asks OpenCode rather than starting Claude", async () => {
+  invoke.mockImplementation((cmd: string) => Promise.resolve(cmd === "chat_models" ? [] : undefined));
+  await startChat("pane-4", "C:/work/demo", "openrouter/deepseek/deepseek-v4.1-flash-1017", "opencode");
+  expect(invoke).toHaveBeenCalledWith("chat_start", { chatId: "pane-4", cwd: "C:/work/demo", model: "openrouter/deepseek/deepseek-v4.1-flash-1017", effort: null, resumeSessionId: null, extraEnv: [], agent: "opencode" });
+  invoke.mockReset();
 });
 
-test("a restart on another model or effort carries all three, so the conversation carries on", async () => {
-  invoke.mockResolvedValueOnce(undefined);
-  await startChat("pane-5", "C:/work/demo", "openai/gpt-5.5", "openclaude", "s-42", "high");
-  expect(invoke).toHaveBeenLastCalledWith("chat_start", { chatId: "pane-5", cwd: "C:/work/demo", model: "openai/gpt-5.5", effort: "high", resumeSessionId: "s-42", extraEnv: [], agent: "openclaude" });
+test("another model or effort on the same conversation carries all three", async () => {
+  invoke.mockImplementation((cmd: string) => Promise.resolve(cmd === "chat_models" ? [] : undefined));
+  await startChat("pane-5", "C:/work/demo", "openrouter/openai/gpt-5.5", "opencode", "ses_42", "high");
+  expect(invoke).toHaveBeenCalledWith("chat_start", { chatId: "pane-5", cwd: "C:/work/demo", model: "openrouter/openai/gpt-5.5", effort: "high", resumeSessionId: "ses_42", extraEnv: [], agent: "opencode" });
+  invoke.mockReset();
+});
+
+test("opening an OpenCode chat fetches its model list for the controls, and a Claude chat does not", async () => {
+  const { choicesFor, setChatModels } = await import("../controls");
+  const row = { id: "openrouter/x/fresh-for-this-test", label: "Fresh", provider: "x", efforts: ["low"] };
+  invoke.mockImplementation((cmd: string) => Promise.resolve(cmd === "chat_models" ? [row] : undefined));
+  await startChat("pane-6", "C:/work/demo");
+  expect(invoke).not.toHaveBeenCalledWith("chat_models");
+  await startChat("pane-6", "C:/work/demo", null, "opencode");
+  await vi.waitFor(() => expect(choicesFor("opencode").map((m) => m.id)).toEqual([row.id]));
+  setChatModels([]);
+  invoke.mockReset();
+});
+
+test("a pane kept by an older build names an engine that is gone: it opens on OpenCode as a fresh conversation", async () => {
+  invoke.mockImplementation((cmd: string) => Promise.resolve(cmd === "chat_models" ? [] : undefined));
+  await startChat("pane-7", "C:/work/demo", "anthropic/claude-sonnet-5.5", "an-engine-that-is-gone", "0b1c-old-conversation", "high");
+  expect(invoke).toHaveBeenCalledWith("chat_start", { chatId: "pane-7", cwd: "C:/work/demo", model: "openrouter/anthropic/claude-sonnet-5.5", effort: "high", resumeSessionId: null, extraEnv: [], agent: "opencode" });
+  invoke.mockReset();
 });
 
 test("a message goes as text; attachments are already paths in it, so no image is sent", async () => {

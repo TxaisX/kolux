@@ -280,7 +280,7 @@ fn init(v: &Value) -> Init {
     }
 }
 
-fn step_view(step: Step) -> StepView {
+pub(super) fn step_view(step: Step) -> StepView {
     match step {
         Step::Tool(tool) => StepView::Tool { tool },
         Step::Plan { text, per_turn } => StepView::Plan { text, per_turn },
