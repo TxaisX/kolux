@@ -480,6 +480,39 @@ test("round 3 P3: a title OpenCode writes late is picked up by re-listing after 
   expect(lists() - before).toBe(3);
 });
 
+const stopButtons = (c: FakeNode) => find(c, (n) => n.localName === "button" && n.attrs["aria-label"] === "Stop");
+
+test("round 4 P2-2: after the engine loses OpenCode's stream, Stop stays so the run can be interrupted, until a new turn or the stop answers", async () => {
+  h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? [] : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : cmd === "chat_stop" ? "ended" : undefined);
+  const c = await pane();
+  await until(() => starts().length === 1, "the start");
+  await emit({ kind: "init", sessionId: "ses_new" });
+  expect(stopButtons(c)).toHaveLength(0);
+  await emit({ kind: "result", subtype: "connection_lost", isError: true, errors: ["Lost OpenCode's event stream."] });
+  // the turn is closed on the page, yet OpenCode may still be running it: Stop is offered
+  expect(stopButtons(c)).toHaveLength(1);
+  await click(c, stopButtons(c)[0]);
+  await until(() => h.calls.some((x) => x.cmd === "chat_stop"), "the stop");
+  // the engine answers a stop with a stopped event, which closes the doubt
+  await emit({ kind: "stopped", how: "ended" });
+  expect(stopButtons(c)).toHaveLength(0);
+});
+
+test("round 4 P2-2: a new turn's init or a plain result takes the lost-run Stop away", async () => {
+  h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? [] : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
+  const c = await pane();
+  await until(() => starts().length === 1, "the start");
+  await emit({ kind: "init", sessionId: "ses_new" });
+  await emit({ kind: "result", subtype: "connection_lost", isError: true });
+  expect(stopButtons(c)).toHaveLength(1);
+  await emit({ kind: "init", sessionId: "ses_new" });
+  expect(stopButtons(c)).toHaveLength(0);
+  await emit({ kind: "result", subtype: "connection_lost", isError: true });
+  expect(stopButtons(c)).toHaveLength(1);
+  await emit({ kind: "result", subtype: "success" });
+  expect(stopButtons(c)).toHaveLength(0);
+});
+
 const probeSessions = [
   { id: "ses_a", title: "Greeting", updatedAt: now },
   { id: "ses_said", title: "New chat", updatedAt: now - 1000 },

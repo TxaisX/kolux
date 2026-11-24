@@ -106,6 +106,9 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // the transcript chat's own sends).
   const [sent, setSent] = useState<Pending[]>([]);
   const [open, setOpen] = useState(false);
+  /** The engine lost OpenCode's event stream (a `connection_lost` result): the turn is closed here, but OpenCode may still be
+   *  running it, so Stop stays. The next init, result, reply, stop or exit ends the doubt. */
+  const [lost, setLost] = useState(false);
   /** Messages this pane sent that have no result yet (review 2026-11-23): a message queued behind a running
    *  turn gets a result of its own, so the working line and Stop stay until the count is back to 0. */
   const waiting = useRef(0);
@@ -244,6 +247,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // stay while a message queued behind it still runs.
           waiting.current = stillWaiting(waiting.current, ev);
           if (ev.kind === "result" || ev.kind === "stopped") setOpen(waiting.current > 0);
+          if (ev.kind === "result") setLost(ev.subtype === "connection_lost");
+          else if (ev.kind === "init" || ev.kind === "assistant" || ev.kind === "stopped" || ev.kind === "exit") setLost(false);
           // A reply while nothing was waiting is a turn the page did not count: it runs until its result.
           if (ev.kind === "assistant" && waiting.current > 0) setOpen(true);
           // A kept Everyday chat learns the agent's own conversation id here: the init line names it, and a
@@ -348,8 +353,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     return () => clearTimeout(t);
   }, [note]);
   useEffect(() => {
-    if (!open) setNote((n) => (n === STOPPING_NOTE ? null : n));
-  }, [open]);
+    if (!open && !lost) setNote((n) => (n === STOPPING_NOTE ? null : n));
+  }, [open, lost]);
   // A new chat is a new conversation with its own scroll and drafts.
   useEffect(() => {
     setItems([]);
@@ -358,6 +363,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     waiting.current = 0;
     lastPid.current = null;
     setOpen(false);
+    setLost(false);
     setAway(false);
   }, [chatId]);
 
@@ -567,6 +573,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     setThoughts(new Set());
     setNote(null);
     setOpen(false);
+    setLost(false);
     setAway(false);
     waiting.current = 0;
     stick.current = true;
@@ -795,7 +802,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             live={!error}
             note={note ?? undefined}
             onSend={send}
-            working={open}
+            working={open || lost}
             onStop={stop}
             agent={agent}
             cwd={pane.cwd}
