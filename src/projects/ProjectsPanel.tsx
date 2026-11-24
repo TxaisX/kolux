@@ -30,7 +30,7 @@ import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/mod
 import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
-import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "./mergeOnQuit";
+import { AUTO_LAND_FIELD, AUTO_LAND_LABEL, autoLandNote, autoLandWanted } from "./autoLand";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead } from "./model";
 import { ArrowRight, Bell, ChevronDown, Close, EyeOff, Funnel, Minus, FolderPlus, Gear, Plus, Rail, Rocket, Target, Box, Pin, Moon, Spark } from "../chrome/icons";
 import { AddProject, StatusEditor, ScanRepos, StartGit, KeptBranches, IconPicker } from "../lazy/menus";
@@ -2697,11 +2697,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 <input type="checkbox" checked={nest} onChange={(e) => onNest(e.target.checked)} />
                 Nest child workspaces under their parent
               </label>
-              <label className="check" title={MERGE_ON_QUIT_NOTE}>
-                <input type="checkbox" aria-label="merge workspaces into main when Kolux closes" checked={mergesOnQuit(settings)} onChange={(e) => onSetting(MERGE_ON_QUIT_FIELD, e.target.checked)} />
-                Merge workspaces into main when Kolux closes
+              <label className="check" title={autoLandNote(autoLandWanted(settings))}>
+                <input type="checkbox" aria-label={AUTO_LAND_LABEL} checked={autoLandWanted(settings)} onChange={(e) => onSetting(AUTO_LAND_FIELD, e.target.checked)} />
+                {AUTO_LAND_LABEL}
               </label>
-              <span className="note" data-merge-on-quit-note>{MERGE_ON_QUIT_NOTE}</span>
+              <span className="note" data-auto-land-note>{autoLandNote(autoLandWanted(settings))}</span>
               {globalVis()}
             </div>
           )}
