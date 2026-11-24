@@ -895,10 +895,33 @@ const WORKER_DESCRIPTION: &str = "General worker for research, multi-step tasks 
 const WORKER_PROMPT: &str = "You are a worker subagent for a lead agent. Do the task in your brief fully with the tools you have, and check your own work before you report. If you get stuck, stop instead of guessing or looping. Stuck means the same error twice, a fact you cannot find, or a choice your brief does not settle. Then return a report whose first line is BLOCKED, followed by what you were doing, what you tried, the exact error or gap, your best guess at the cause, and what you need from the lead. The lead will send back a fix or another way to attack the problem. When you finish, end with a short report of what you did, what you verified, and anything left open.";
 const LEAD_NOTE: &str = "Subagents you spawn with the general-purpose type run on Sonnet at high effort. When a subagent report starts with BLOCKED, work out the cause yourself and answer with a concrete fix or a different approach, by SendMessage to that subagent or a new spawn with a corrected brief. Do not resend the same brief unchanged.";
 
+/// LAND-03: what a Claude Code seat is told about sending finished work to main. It travels through
+/// cmd.exe shims, so it holds none of `% & | < > ^ "`, no backtick and no line break, and it names
+/// the variable in words instead of writing `%KOLUX_LAND%`. Git Bash on Windows does not add `.cmd`
+/// to a bare name, so the script is named with its extension.
+pub(crate) const LAND_NOTE: &str = "When a task in a Kolux workspace is finished and its work is committed, send it to main by running kolux-land.cmd from the workspace folder. The KOLUX_LAND environment variable holds the full path of that script. Read its reply: if it names uncommitted files, commit them and run it again; if it reports a clash with main, merge main into the workspace, fix the clash, commit and run it again. In a folder that is not a Kolux workspace it refuses with a plain reason; then do not retry.";
+
+/// LAND-03: the note a Claude Code seat is given: the lead note alone, or the lead note and then the
+/// land note when Kolux knows where the land script is.
+pub(crate) fn lead_note(land: bool) -> String {
+    if land {
+        format!("{LEAD_NOTE} {LAND_NOTE}")
+    } else {
+        LEAD_NOTE.to_string()
+    }
+}
+
 /// The lead-and-workers setup for a Claude Code line: arguments in front and the subagent model
 /// variable. Nothing when the person replaced Claude's arguments in Settings (their line is theirs),
 /// and no arguments when the program starts through cmd.exe, which does not honour the JSON's quoting.
 fn add_team(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cmd: bool) {
+    add_team_with(settings, id, line, via_cmd, crate::hooks::land_script().is_some());
+}
+
+/// `add_team`, also told whether the land note goes in (LAND-03: it does whenever Kolux knows where
+/// the land script is; the note says itself that it applies only in a Kolux workspace, and the script
+/// refuses elsewhere with a plain reason).
+pub(crate) fn add_team_with(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cmd: bool, land: bool) {
     if id != "claude" || option_field(settings, id, "args").is_some() {
         return;
     }
@@ -909,7 +932,7 @@ fn add_team(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cm
         return;
     }
     let agents = serde_json::json!({ "general-purpose": { "description": WORKER_DESCRIPTION, "prompt": WORKER_PROMPT, "model": "sonnet", "effort": "high" } });
-    line.args.splice(0..0, ["--agents".to_string(), json_without_spaces(&agents), "--append-system-prompt".to_string(), LEAD_NOTE.to_string()]);
+    line.args.splice(0..0, ["--agents".to_string(), json_without_spaces(&agents), "--append-system-prompt".to_string(), lead_note(land)]);
 }
 
 /// c2-agents top bug 1: Claude Code takes `--agents` as inline JSON only (a file path needs `--print`,
