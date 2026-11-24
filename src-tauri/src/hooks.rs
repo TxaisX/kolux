@@ -729,8 +729,11 @@ struct Line {
     /// LAND-01: `/land` gives the proven pane, its terminal and the folder in the request body to the land
     /// logic. A land can take two minutes, so it runs on the connection's own thread: never under ORDER and
     /// never on the after queue, which would hold up every other pane's hooks.
-    land: Box<dyn Fn(u32, Option<u32>, &str) -> (u16, String) + Send + Sync>,
+    land: LandFn,
 }
+
+/// LAND-01: what answers `/land`: the pane, its terminal and the folder in, the status code and body out.
+type LandFn = Box<dyn Fn(u32, Option<u32>, &str) -> (u16, String) + Send + Sync>;
 
 /// LAND-01: the longest `/land` body taken, a folder path in bytes. A longer one is refused before any work.
 const LAND_MAX: usize = 1024;

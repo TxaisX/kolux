@@ -533,7 +533,7 @@ pub fn save_settings_released(
 
 /// A store lock poisoned by a save that panicked while holding it.
 fn store_poisoned() -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, "the store lock was poisoned")
+    std::io::Error::other("the store lock was poisoned")
 }
 
 /// One settings read (see `Store::read_file`).

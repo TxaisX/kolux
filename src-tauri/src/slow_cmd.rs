@@ -84,6 +84,7 @@ impl SlowLimiter {
     }
 
     /// Lines refused since [`SlowLimiter::new`].
+    #[cfg(test)]
     pub fn dropped(&self) -> u64 {
         self.dropped
     }
