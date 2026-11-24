@@ -21,6 +21,44 @@ pub fn alive(pid: u32) -> Option<bool> {
     imp::alive(pid)
 }
 
+/// LAG-11: whether some entry of `table` names `pid` as its parent. `table` is a process list as
+/// `(process id, parent id)` pairs; an entry that names itself as its parent is not its own child
+/// (the same rule as `imp::has_children` on Windows). An empty table has no children. Pure.
+#[cfg_attr(not(any(windows, test)), allow(dead_code))]
+pub(crate) fn children_in(table: &[(u32, u32)], pid: u32) -> bool {
+    table.iter().any(|&(p, parent)| parent == pid && p != pid)
+}
+
+/// LAG-11: one answer per entry of `pids`, from at most one read of the process list, so a batch of
+/// busy checks costs one snapshot instead of one per check. `take` is called exactly once and only
+/// when some entry carries a process id; when it cannot read the list (`None`) every answer is
+/// `None`, and it is not retried once per entry. Nothing is remembered between calls: the next
+/// call runs its own `take`.
+#[cfg_attr(not(any(windows, test)), allow(dead_code))]
+pub(crate) fn has_children_each(pids: &[Option<u32>], mut take: impl FnMut() -> Option<Vec<(u32, u32)>>) -> Vec<Option<bool>> {
+    if !pids.iter().any(Option::is_some) {
+        return vec![None; pids.len()];
+    }
+    match take() {
+        Some(table) => pids.iter().map(|id| id.map(|pid| children_in(&table, pid))).collect(),
+        None => vec![None; pids.len()],
+    }
+}
+
+/// LAG-11: the live batch check: one answer per entry of `pids`, in order. Windows reads the whole
+/// process list once for the batch; elsewhere every id asks `pgrep` as `has_children` does (no
+/// process-list reader is needed there; the finding is about the Windows snapshot).
+pub fn has_children_many(pids: &[Option<u32>]) -> Vec<Option<bool>> {
+    #[cfg(windows)]
+    {
+        has_children_each(pids, imp::table)
+    }
+    #[cfg(not(windows))]
+    {
+        pids.iter().map(|id| id.and_then(imp::has_children)).collect()
+    }
+}
+
 /// T-167-b: when process `pid` started, as a number that is the same on every read of the same
 /// process (Windows: creation time in 100 ns ticks; Linux: clock ticks after boot). Process ids
 /// are reused, so a saved id only names the same process while this still matches. `None` when
@@ -263,6 +301,31 @@ mod imp {
             }
             CloseHandle(snap);
             walked.then_some(found)
+        }
+    }
+
+    /// LAG-11: the whole process list as `(process id, parent id)` pairs, from one snapshot, so a
+    /// batch of busy checks needs one walk of the table. `None` when the snapshot or its first
+    /// entry cannot be read (the same failure rules as `any`).
+    pub fn table() -> Option<Vec<(u32, u32)>> {
+        // SAFETY: the snapshot handle is checked before use and closed once; the entry is zeroed
+        // with its size set, as Process32FirstW/NextW require, and only read after a success.
+        unsafe {
+            let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if snap == INVALID_HANDLE_VALUE {
+                return None;
+            }
+            let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+            entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+            let mut ok = Process32FirstW(snap, &mut entry) != 0;
+            let walked = ok;
+            let mut table = Vec::new();
+            while ok {
+                table.push((entry.th32ProcessID, entry.th32ParentProcessID));
+                ok = Process32NextW(snap, &mut entry) != 0;
+            }
+            CloseHandle(snap);
+            walked.then_some(table)
         }
     }
 
@@ -760,3 +823,5 @@ mod tests {
         assert_eq!(job.0.limit_flags(), Ok(JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_BREAKAWAY_OK));
     }
 }
+
+#[cfg(test)] #[path = "procs_busy_board_tests.rs"] mod busy_board_tests;
