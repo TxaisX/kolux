@@ -1,0 +1,951 @@
+{
+  "area": "T5",
+  "files": [
+    {
+      "path": "src/feedback/FeedbackDialog.tsx",
+      "symbols": [
+        "NOTE_MS",
+        "readFacts",
+        "copyFirst",
+        "FeedbackDialog"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 247 lines (APP-037 / PROJ-089 on screen: the Send Feedback message box). Checked NOTE_MS, readFacts, copyFirst, FeedbackDialog; no defect I could prove was found."
+    },
+    {
+      "path": "src/feedback/crashBundle.ts",
+      "symbols": [
+        "copyCrashBundle"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 28 lines (APP-038 (T-324-b-rest): a crash report takes no screenshots; when it is sent, the recent diagnostic). Checked copyCrashBundle; no defect I could prove was found."
+    },
+    {
+      "path": "src/feedback/images.ts",
+      "symbols": [
+        "starts",
+        "sniff"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 71 lines (APP-038 (T-324-b): screenshots on a feedback report). Checked starts, sniff; no defect I could prove was found."
+    },
+    {
+      "path": "src/feedback/model.ts",
+      "symbols": [
+        "block",
+        "extra"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 111 lines (APP-037 (the Send Feedback message box) and PROJ-089 (feedback opens already filled in; text typed). Checked block, extra; no defect I could prove was found."
+    },
+    {
+      "path": "src/feedback/request.ts",
+      "symbols": [
+        "requestFeedback"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 23 lines (The one-line request that opens the Send Feedback box). Checked requestFeedback; no defect I could prove was found."
+    },
+    {
+      "path": "src/feedback/scrub.ts",
+      "symbols": [
+        "trailingMarks",
+        "scrubPaths"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 124 lines (APP-037: paths and secrets are scrubbed from the feedback text before it goes into the new-issue). Checked trailingMarks, scrubPaths; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/CrashReportDialog.tsx",
+      "symbols": [
+        "copy",
+        "CrashReportDialog"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 121 lines (T-183 (APP-039): the crash report). Checked copy, CrashReportDialog; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/RecoveryMount.tsx",
+      "symbols": [
+        "RecoveryMount",
+        "repairSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 120 lines (T-183: the page's side of recovery, mounted once in App.tsx (evidence/reliability-T-183-App.tsx.patch).). Checked RecoveryMount, repairSettings; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/RecoveryNotes.tsx",
+      "symbols": [
+        "RecoveryNotes"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 24 lines (After-list row 789: the one notice that names what startup recovery set aside or restored.). Checked RecoveryNotes; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/ScreenBoundary.tsx",
+      "symbols": [
+        "Props",
+        "State"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 50 lines (T-183 (APP-042): a thrown render error never leaves a blank window). Checked Props, State; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/heartbeat.ts",
+      "symbols": [
+        "useHeartbeat"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 22 lines (APP-042: the page's heartbeat to the watch in recovery.rs, which reloads a page that sends none for 20 s.). Checked useHeartbeat; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/hidden.ts",
+      "symbols": [
+        "flushAll",
+        "heldListen"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 116 lines (T-286-b (APP-017): a hidden window does no interface work for live updates; they are held and). Checked flushAll, heldListen; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/model.ts",
+      "symbols": [
+        "captured",
+        "issueTitle"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 92 lines (T-183 (APP-039, APP-042, APP-043): the pure side of crash reports and recovery). Checked captured, issueTitle; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/startFailed.ts",
+      "symbols": [
+        "startFailureText"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 37 lines (FIX-5 (council d2 AFTER 4): the window starts hidden and is shown after the first draw). Checked startFailureText; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/startupNotes.ts",
+      "symbols": [
+        "loadRecoveryNotes"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 12 lines (After-list row 789: what startup recovery repaired or set aside, as sentences for one dismissible notice.). Checked loadRecoveryNotes; no defect I could prove was found."
+    },
+    {
+      "path": "src/recovery/windowBackground.ts",
+      "symbols": [
+        "opaqueRgb",
+        "installWindowBackground"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 56 lines (DT-C236 (APP-017): the engine's default background follows the page's own). Checked opaqueRgb, installWindowBackground; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/AutoPrStatus.tsx",
+      "symbols": [
+        "runLine",
+        "retryBlock"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 135 lines (T-655: the right panel's list of automatic pull request runs, one compact row per workspace: its). Checked runLine, retryBlock; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/CheckPane.tsx",
+      "symbols": [
+        "file",
+        "OUTSIDE",
+        "CheckCard",
+        "CheckPane"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 195 lines (T-235-b (EDIT-030): a CI check's tab, opened from the Checks panel: the check's steps with their status,). Checked file, OUTSIDE, CheckCard, CheckPane; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/ChecksPanel.tsx",
+      "symbols": [
+        "when",
+        "noPrSeen",
+        "GROUPS",
+        "ChecksPanel"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 246 lines (VIEW-073: the Checks tab of the right sidebar). Checked when, noPrSeen, GROUPS, ChecksPanel; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/CommentsPanel.tsx",
+      "symbols": [
+        "Composer",
+        "CommentsPanel",
+        "rowError",
+        "noReply"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 419 lines (VIEW-075 / GIT-030: the pull request's comments as cards in the Checks tab). Checked Composer, CommentsPanel, rowError, noReply; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/ConflictPanel.tsx",
+      "symbols": [
+        "CopyButton",
+        "ConflictPanel"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 93 lines (GIT-032: a pull request the host reports as conflicting). Checked CopyButton, ConflictPanel; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/GhBanner.tsx",
+      "symbols": [
+        "GhBanner",
+        "kind"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 49 lines (T-176-d (GIT-028): the banner for \"GitHub is unavailable\" and the sign-in help). Checked GhBanner, kind; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/LocalOnlyBadge.tsx",
+      "symbols": [
+        "Check"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 16 lines (T-654 (DT-C89): `<LocalOnlyBadge dir={path} />`, the small \"local only\" icon for a workspace whose). Checked Check; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/LocalOnlyCheck.tsx",
+      "symbols": [
+        "remoteOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 31 lines (T-654 (DT-C89): what sits behind the local-only badge (LocalOnlyBadge.tsx): the one-time question). Checked remoteOf; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/LocalOnlyIcon.tsx",
+      "symbols": [
+        "LocalOnlyIcon"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 22 lines (T-654 (DT-C89): the drawing and the words of the \"local only\" icon, kept apart from the badge's). Checked LocalOnlyIcon; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/MarkdownView.tsx",
+      "symbols": [
+        "spans"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 34 lines (GIT-050: draws markdown.ts's blocks as React elements (never HTML strings).). Checked spans; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/OneClickNotice.tsx",
+      "symbols": [
+        "OneClickView",
+        "OneClickNotice"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 62 lines (GIT-022 (T-228-d): the progress notice of the one-click flow). Checked OneClickView, OneClickNotice; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/PrStart.tsx",
+      "symbols": [
+        "PrStart",
+        "prepareComposer",
+        "answerAt",
+        "writingNow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 316 lines (VIEW-074: the Checks panel's empty state for a branch with no pull request). Checked PrStart, prepareComposer, answerAt, writingNow; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/SearchPick.tsx",
+      "symbols": [
+        "pickStep",
+        "SearchPick"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 78 lines (EDIT-048 (T-317): a text box for a repository or base branch that narrows its suggestions as you type). Checked pickStep, SearchPick; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/StackMap.tsx",
+      "symbols": [
+        "StackMap",
+        "asking",
+        "current",
+        "load"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 174 lines (GIT-034 (T-313-b): the stack the checked pull request belongs to, in the Checks tab). Checked StackMap, asking, current, load; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/WriterPicker.tsx",
+      "symbols": [
+        "WriterPicker",
+        "writer"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 122 lines (GIT-018 (T-228-d): who writes commit messages: an installed agent with its model (listed from the). Checked WriterPicker, writer; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/autoBranch.ts",
+      "symbols": [
+        "namingWriter",
+        "nameBranchFor"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 49 lines (GIT-020 (T-228-d): a workspace that starts with a placeholder branch gets a branch named after). Checked namingWriter, nameBranchFor; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/autoPr.ts",
+      "symbols": [
+        "enabledFor",
+        "runAutoPr",
+        "stopNotice",
+        "onAgentIdle"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 171 lines (T-653 / T-654 (DT-C89, DT-C90, DT-C91): automatic pull requests). Checked enabledFor, runAutoPr, stopNotice, onAgentIdle; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/autoPrWatch.ts",
+      "symbols": [
+        "listener"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 9 lines (T-653: the listener of the automatic pull request flow). Checked listener; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/checkCard.ts",
+      "symbols": [
+        "checkIdOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 31 lines (T-235-b (EDIT-030): the rules behind the CI check tab, kept apart from the screen: which tab a check). Checked checkIdOf; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/checkText.ts",
+      "symbols": [
+        "parse",
+        "folded"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 93 lines (T-235-b (EDIT-030): the card rules the CI check tab alone needs (path guard, card text, Fix with AI),). Checked parse, folded; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/checks.ts",
+      "symbols": [
+        "checksSummary",
+        "showing"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 81 lines (VIEW-073: the Checks panel's pure parts: the summary line, whether to keep polling, and the). Checked checksSummary, showing; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/forkPush.ts",
+      "symbols": [
+        "forkNotice"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 18 lines (GIT-010 (T-313-b): the notice that names the fork a branch will push to). Checked forkNotice; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/generate.ts",
+      "symbols": [
+        "writerOf",
+        "generate"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 101 lines (GIT-017: commit-message generations, by worktree). Checked writerOf, generate; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/ghHealth.ts",
+      "symbols": [
+        "classify",
+        "resetOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 110 lines (T-176-d (GIT-028): what Tasks (and the Checks panel) say when GitHub cannot be reached). Checked classify, resetOf; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/markdown.ts",
+      "symbols": [
+        "safeHref",
+        "parseInline"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 138 lines (GIT-050/GIT-051: a description or comment as blocks and spans the page draws itself). Checked safeHref, parseInline; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/model.ts",
+      "symbols": [
+        "cutBanner",
+        "pushBadge",
+        "graph",
+        "graphLines",
+        "fileTree",
+        "mergeHold"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 677 lines (The Source Control panel's data (GIT-002 / GIT-003 / GIT-004): a worktree's status as the back). Checked cutBanner, pushBadge, graph, graphLines and the rules around them; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/oneClick.ts",
+      "symbols": [
+        "linkedIssue",
+        "blocker",
+        "pushFor",
+        "needsOneClick"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 214 lines (GIT-022 (T-228-d): one click from unfinished work to a pull request). Checked linkedIssue, blocker, pushFor, needsOneClick; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/panelUx.ts",
+      "symbols": [
+        "replyBlock",
+        "copyText"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 83 lines (UX audit D (ux7): the small pure rules the Checks tab pieces share, kept out of the components so they can be tested). Checked replyBlock, copyText; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/paste.ts",
+      "symbols": [
+        "githubItem"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 36 lines (GitHub's own rules for an owner (user or organisation) and a repository name). Checked githubItem; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/pasteHosts.ts",
+      "symbols": [
+        "pasteHosts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 22 lines (Row 350 (T-315-b): the GitHub hosts a link pasted into the palette may name). Checked pasteHosts; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/pickerSearch.ts",
+      "symbols": [
+        "pickList"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 20 lines (EDIT-048 (T-317): typing into the repository or base-branch picker narrows its list). Checked pickList; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/poll.ts",
+      "symbols": [
+        "pollItems",
+        "rowPr"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 42 lines (GIT-027 / GIT-028: the background pull request poll behind every workspace row). Checked pollItems, rowPr; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/prCheckRules.ts",
+      "symbols": [
+        "failedChecks"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 26 lines (GIT-051: the rules for \"Fix with AI\" on a failed check: which checks count as failed, why the button is off,). Checked failedChecks; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/prDraft.ts",
+      "symbols": [
+        "readDraftGate",
+        "draftPrText"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 86 lines (Row 76 (VIEW-074 / GIT-024): the AI draft button in the Checks pull request composer). Checked readDraftGate, draftPrText; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/prFind.ts",
+      "symbols": [
+        "readReview",
+        "lookupOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 72 lines (Row 76 (T-226 / VIEW-074 / GIT-025): what the Checks composer knows about the branch's review). Checked readReview, lookupOf; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/prSearch.ts",
+      "symbols": [
+        "applyPoll",
+        "applyChecks"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 96 lines (VIEW-043: pull requests in the palette). Checked applyPoll, applyChecks; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/recipes.ts",
+      "symbols": [
+        "recipeProblem",
+        "recipesOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 140 lines (GIT-019 (T-313-b): Source Control AI actions tuned per action and per repository). Checked recipeProblem, recipesOf; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/repoId.ts",
+      "symbols": [
+        "readRepoRef"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 16 lines (Row 917: the provider-neutral id of a repository (scm_repo_id), the key of its per-repository AI switch.). Checked readRepoRef; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/review.ts",
+      "symbols": [
+        "checkGroups",
+        "capped",
+        "tailOf",
+        "fixPrompt"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 192 lines (GIT-029 / GIT-030: the pure parts of the Checks panel's groups and the review comments: grouping,). Checked checkGroups, capped, tailOf, fixPrompt; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/rules.ts",
+      "symbols": [
+        "windowRange",
+        "statusGuard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 119 lines (T-225-b: the rest of the Source Control rules (VIEW-062..065, VIEW-070) as pure functions, so). Checked windowRange, statusGuard; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/stack.ts",
+      "symbols": [
+        "chainThrough",
+        "planStackedCreate"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 123 lines (GIT-034 (T-313-b): stacked pull requests). Checked chainThrough, planStackedCreate; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/stackCreate.ts",
+      "symbols": [
+        "createNext"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 30 lines (GIT-034 (T-313-b): creating the next pull request of a stack and recording the stack in every). Checked createNext; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/startPr.ts",
+      "symbols": [
+        "assess",
+        "offerFor"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 90 lines (VIEW-074: starting a pull request from the Checks panel). Checked assess, offerFor; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/usePrRows.ts",
+      "symbols": [
+        "usePrRows"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 37 lines (VIEW-043: the palette's pull request rows). Checked usePrRows; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/watch.ts",
+      "symbols": [
+        "RETRY_MS",
+        "watchStatus"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 94 lines (GIT-001 (T-033-b): the git status watcher, front end). Checked RETRY_MS, watchStatus; no defect I could prove was found."
+    },
+    {
+      "path": "src/scm/writerPick.ts",
+      "symbols": [
+        "agentChoices"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 38 lines (GIT-018 (T-228-d): picking an agent, a model and a thinking effort for commit messages). Checked agentChoices; no defect I could prove was found."
+    },
+    {
+      "path": "src/update/UpdateCenter.tsx",
+      "symbols": [
+        "UpdateCenter"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 17 lines (The update center's door). Checked UpdateCenter; no defect I could prove was found."
+    },
+    {
+      "path": "src/update/UpdateCenterView.tsx",
+      "symbols": [
+        "FADE_MS",
+        "UpdateCenterView",
+        "tick",
+        "action"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 377 lines (APP-024..027 on screen: the quiet timetable, the automatic download, the update card a requested check). Checked FADE_MS, UpdateCenterView, tick, action; no defect I could prove was found."
+    },
+    {
+      "path": "src/update/__cards__/updateHarness.ts",
+      "symbols": [
+        "online",
+        "installUpdateDom"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 93 lines (Harness for the APP-024..027 cards: the real UpdateCenter on the small DOM under fake time, the back end). Checked online, installUpdateDom; no defect I could prove was found."
+    },
+    {
+      "path": "src/update/bus.ts",
+      "symbols": [
+        "requestUpdateCheck"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 21 lines (The few names the rest of the app reaches the update center by (Help, the command palette, recovery, the). Checked requestUpdateCheck; no defect I could prove was found."
+    },
+    {
+      "path": "src/update/card.ts",
+      "symbols": [
+        "initialCard",
+        "nextStep",
+        "versionOf",
+        "tipVisible"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 310 lines (APP-025 / APP-026 / APP-027: what the update card and the ready pop-up show). Checked initialCard, nextStep, versionOf, tipVisible; no defect I could prove was found."
+    },
+    {
+      "path": "src/update/schedule.ts",
+      "symbols": [
+        "INTERVAL_MS",
+        "RETRY_BASE_MS",
+        "RETRY_MAX_MS",
+        "retryDelay"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 157 lines (APP-024: the quiet update timetable). Checked INTERVAL_MS, RETRY_BASE_MS, RETRY_MAX_MS, retryDelay; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/Activity.tsx",
+      "symbols": [
+        "workTime",
+        "ActivityView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 53 lines (USAGE-011: the headline cards at the top of the Usage page: Kolux's own activity counts, kept on). Checked workTime, ActivityView; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/ClaudePill.tsx",
+      "symbols": [
+        "TroubleMark",
+        "ClaudePillView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 100 lines (The Claude half of the usage pill (STAT-040): the last status-line report at start, then). Checked TroubleMark, ClaudePillView; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/CodexPill.tsx",
+      "symbols": [
+        "CodexPillView",
+        "CodexPill"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 57 lines (The Codex half of the usage pill: real plan figures read in the background (USAGE-022), a). Checked CodexPillView, CodexPill; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/Ring.tsx",
+      "symbols": [
+        "Ring"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 17 lines (A context ring (USAGE-003): a track and an arc that fills with the percentage, coloured by). Checked Ring; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/ShareButton.tsx",
+      "symbols": [
+        "ShareButton"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 13 lines (USAGE-020: the button that shares a usage card to X is plain text). Checked ShareButton; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/ShareCard.tsx",
+      "symbols": [
+        "COPIED_MS",
+        "ShareCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 102 lines (USAGE-019: the Share dialog on the Claude and Codex usage panels). Checked COPIED_MS, ShareCard; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/TokenAnalytics.tsx",
+      "symbols": [
+        "Stat",
+        "Failed",
+        "ProviderPanel",
+        "LoadFailed"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 381 lines (USAGE-012 / USAGE-013: usage analytics on Settings > Usage). Checked Stat, Failed, ProviderPanel, LoadFailed; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/UsagePill.tsx",
+      "symbols": [
+        "UsagePillView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 36 lines (T-550: the top bar's usage pill (USAGE-008) is one button: the Claude and Codex parts inside it). Checked UsagePillView; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/WorkspaceSpend.tsx",
+      "symbols": [
+        "costText",
+        "SpendGauge",
+        "TrackingOff",
+        "WorkspaceSpendView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 169 lines (Owner change 2026-11-06: the token and spend ribbon at the right end of the layout strip, above). Checked costText, SpendGauge, TrackingOff, WorkspaceSpendView; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/alerts.ts",
+      "symbols": [
+        "windowWords",
+        "dueAlerts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 88 lines (USAGE-009: a system notification when a usage window reaches 80 % and again at 95 %). Checked windowWords, dueAlerts; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/analyticsNotes.ts",
+      "symbols": [
+        "LOGS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 18 lines (usage-status.md:3 / 4 / 10: the lines Settings > Usage shows when something behind the analytics panel failed, so a). Checked LOGS; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/claude.ts",
+      "symbols": [
+        "countdown",
+        "nextTick"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "T5-F01"
+      ],
+      "note": "Read all 50 lines (Claude's rate-limit windows as the usage pill shows them). Checked countdown, nextTick, weeklyLine and pillDetail; nextTick waits a whole extra unit when the time left is an exact multiple of its unit, so the countdown text stays stale (T5-F01)."
+    },
+    {
+      "path": "src/usage/codex.ts",
+      "symbols": [
+        "resetWords",
+        "pillText"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 59 lines (import { locale } from \"../language\";). Checked resetWords, pillText; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/forecast.ts",
+      "symbols": [
+        "record",
+        "forecast"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 74 lines (USAGE-031 (T-328): when a usage window runs out at the recent rate). Checked record, forecast; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/format.ts",
+      "symbols": [
+        "compactCount"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 19 lines (Shared number, currency, and date formatters for Usage and Insights views.). Checked compactCount; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/launchWarn.ts",
+      "symbols": [
+        "launchWarnings",
+        "publish"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 70 lines (SESS-022 / USAGE-010: the launch screen warns, without blocking, when a provider the chosen seats). Checked launchWarnings, publish; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/meter.ts",
+      "symbols": [
+        "contextLimit",
+        "contextFill",
+        "shortTokens"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "T5-F02"
+      ],
+      "note": "Read all 116 lines (the usage meters behind the card, ring and pane header). Checked contextLimit, contextFill, shortTokens, tone, percentMode and meterText; shortTokens rounds 999,500 to 999,999 up to the string \"1000k\" instead of rolling over to millions (T5-F02)."
+    },
+    {
+      "path": "src/usage/paneFigures.ts",
+      "symbols": [
+        "accountsToRead",
+        "useCodexPaneFigures"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 133 lines (T-548-b (OD-11): plan figures for the Codex accounts that panes run on but that are not the active). Checked accountsToRead, useCodexPaneFigures; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/plan.ts",
+      "symbols": [
+        "subs",
+        "useResetTick"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 68 lines (The plan figures the window knows (USAGE-005): the two top-bar pills read them and publish). Checked subs, useResetTick; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/pricing.ts",
+      "symbols": [
+        "base",
+        "family",
+        "indexOf",
+        "resolve"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 215 lines (USAGE-015: estimated cost from each model's published prices, in dollars per million tokens.). Checked base, family, indexOf, resolve; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/refresh.ts",
+      "symbols": [
+        "shouldFetch",
+        "ended",
+        "runner",
+        "refreshAll"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 188 lines (USAGE-023 (T-070): when the usage figures are read again, and how a read that fails is ridden). Checked shouldFetch, ended, runner, refreshAll; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/shareCardData.ts",
+      "symbols": [
+        "costText",
+        "cardOf",
+        "postText",
+        "drawMark"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 186 lines (USAGE-019: the usage card as a picture and as a post). Checked costText, cardOf, postText, drawMark; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/today.ts",
+      "symbols": [
+        "watchDay"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 19 lines (Settings > Usage can stay open across midnight; its day bars and grid end at \"today\", so the panel is told). Checked watchDay; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/tokens.ts",
+      "symbols": [
+        "overview",
+        "localDay",
+        "grid",
+        "shownProviders"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 185 lines (USAGE-012 / USAGE-013: the token figures the Usage page draws, from the rows the backend scans out). Checked overview, localDay, grid, shownProviders; no defect I could prove was found."
+    },
+    {
+      "path": "src/usage/workspaceRibbon.ts",
+      "symbols": [
+        "inKoluxWorktree",
+        "inWorkspace"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 146 lines (Owner change 2026-11-06: what the strip above the terminals shows: the tokens and estimated). Checked inKoluxWorktree, inWorkspace; no defect I could prove was found."
+    }
+  ]
+}
