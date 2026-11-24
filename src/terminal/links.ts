@@ -69,7 +69,9 @@ export function findLinks(text: string): Found[] {
 const CONTROL = /[\x00-\x1f\x7f]/;
 
 /** file:///C:/a/b.txt → C:/a/b.txt; file:///home/x → /home/x; file://server/share/x → \\server\share\x.
- *  Null for a malformed % escape. */
+ *  Null for a malformed % escape, and for a decoded name Windows would rewrite or read as a stream: an empty, "."
+ *  or ".." step, a step ending in a dot or a space ("LICENSE%2E" is LICENSE), or a ":" after the drive letter
+ *  ("notes.txt%3Arun.vbs" is a stream inside notes.txt). */
 export function fromFileUrl(s: string): string | null {
   const m = s.match(/^file:\/\/([^/]*)(\/.*)?$/i);
   if (!m) return s;
@@ -80,27 +82,41 @@ export function fromFileUrl(s: string): string | null {
   } catch {
     return null;
   }
-  if (host && host !== "localhost") return `\\\\${host}${path.replace(/\//g, "\\")}`;
-  if (/^\/[A-Za-z]:/.test(path)) path = path.slice(1);
+  const local = !host || host === "localhost";
+  if (local && /^\/[A-Za-z]:/.test(path)) path = path.slice(1);
+  const rest = local ? path.replace(/^[A-Za-z]:/, "") : path;
+  if (rest.includes(":") || rest.split(/[\\/]/).slice(1).some((t) => t === "" || t === "." || t === ".." || /[. ]$/.test(t))) return null;
+  if (!local) return `\\\\${host}${path.replace(/\//g, "\\")}`;
   return path;
 }
 
 const isAbsolute = (p: string) => /^(?:[A-Za-z]:[\\/]|\\\\|\/)/.test(p);
 
-/** A relative path resolved against the pane's folder; "." and ".." segments folded; an absolute path kept. */
+/** `segs` laid onto `parts` in place: "." and empty steps dropped, ".." steps back but never past the first part. */
+function fold(parts: string[], segs: string[]): string[] {
+  for (const seg of segs) {
+    if (seg === "." || seg === "") continue;
+    if (seg === "..") {
+      if (parts.length > 1) parts.pop();
+    } else parts.push(seg);
+  }
+  return parts;
+}
+
+/** A relative path resolved against the pane's folder; "." and ".." segments folded; an absolute path kept, except
+ *  that a drive path's "." and ".." steps are folded too (review A2: Windows folds them as text, so the path handed
+ *  to the back end is the one Windows will open). A share and a POSIX path keep theirs (POSIX ".." follows links). */
 export function resolvePath(target: string, cwd: string | null): string | null {
   let p = target.replace(/^~\//, "");
   if (!isAbsolute(p)) {
     if (!cwd) return null;
     const sep = /\\/.test(cwd) || /^[A-Za-z]:/.test(cwd) ? "\\" : "/";
-    const parts = cwd.replace(/[\\/]+$/, "").split(/[\\/]/);
-    for (const seg of p.split(/[\\/]/)) {
-      if (seg === "." || seg === "") continue;
-      if (seg === "..") {
-        if (parts.length > 1) parts.pop();
-      } else parts.push(seg);
-    }
-    p = parts.join(sep);
+    const base = cwd.replace(/[\\/]+$/, "").split(/[\\/]/);
+    // review A3: a drive folder's own "." and ".." steps are folded too (a share or POSIX folder keeps its form)
+    p = fold(/^[A-Za-z]:$/.test(base[0]) ? fold([base[0]], base.slice(1)) : base, p.split(/[\\/]/)).join(sep);
+  } else if (/^[A-Za-z]:[\\/]/.test(p) && /[\\/]\.\.?(?:[\\/]|$)/.test(p)) {
+    const parts = fold([p.slice(0, 2)], p.slice(3).split(/[\\/]/));
+    p = parts.length === 1 ? `${parts[0]}\\` : parts.join("\\");
   }
   return p;
 }

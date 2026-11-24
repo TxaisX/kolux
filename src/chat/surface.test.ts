@@ -43,7 +43,7 @@ test("the transcript keeps a readable 720 px measure and consumer type sizes", (
 
 test("the composer is one floating card with a borderless field inside it", () => {
   const box = rule(".chat.chat-surface .chat-composer");
-  expect(decl(box, "border-radius")).toBe("16px");
+  expect(decl(box, "border-radius")).toBe("26px");
   expect(decl(box, "background")).toBe("var(--surface)");
   expect(decl(rule(".chat.chat-surface .chat-box"), "border")).toBe("0");
   expect(decl(rule(".chat.chat-surface .chat-box"), "background")).toBe("transparent");

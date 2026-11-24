@@ -166,6 +166,8 @@
 .chat-list, .chat-box { zoom: var(--chat-zoom, 1); }
 .chat-load-earlier { align-self: center; flex: none; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 12px; cursor: pointer; }
 .chat-composer { flex-wrap: wrap; }
+/* The send arrow belongs to the chat surface only; the plain look keeps its word button. */
+.chat-send-icon { display: none; }
 .chat-box { flex: 1 1 200px; }
 .chat-chips { order: -1; flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .chat-chip { display: flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 4px 3px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--chip-bg); font-size: 12px; }
@@ -266,16 +268,27 @@
 .chat-starters button:hover,
 .chat-starters button:focus-visible { border-color: var(--line-strong); background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
 
-/* The composer: one floating card, 16 px radius, a borderless field inside and a filled send pill. */
-.chat.chat-surface .chat-composer { margin: 0 max(12px, calc((100% - 744px) / 2)) 18px; padding: 10px 10px 8px 14px; gap: 8px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface); box-shadow: 0 6px 24px rgb(0 0 0 / 10%); transition: border-color 120ms cubic-bezier(0, 0, 0.2, 1); }
+/* The composer (2026-11-24, Txais: copy the Open WebUI chat box): one rounded floating card in two rows.
+   The field takes the top row; underneath, + on the left, the model and effort pickers on the right and a
+   round send button at the end. Only order and basis change here, so the markup and every handler stay. */
+.chat.chat-surface .chat-composer { margin: 0 max(12px, calc((100% - 744px) / 2)) 18px; padding: 12px 12px 10px 18px; gap: 6px 8px; align-items: center; border: 1px solid var(--line-subtle); border-radius: 26px; background: var(--surface); box-shadow: 0 6px 24px rgb(0 0 0 / 10%); transition: border-color 120ms cubic-bezier(0, 0, 0.2, 1); }
+.chat.chat-surface .chat-controls { order: 3; flex: 1 1 0; min-width: 0; justify-content: flex-end; align-items: center; }
+.chat.chat-surface .chat-send-icon { display: block; }
+.chat.chat-surface .chat-send-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* The pickers read as quiet text with a chevron, not as form fields; the "Model" word goes (the picker says it). */
+.chat.chat-surface label.chat-control > span { display: none; }
+.chat.chat-surface .chat-control { min-width: 0; max-width: 100%; }
+.chat.chat-surface .chat-control select { max-width: min(220px, 100%); padding: 4px 6px; border: 0; border-radius: 8px; background: transparent; color: var(--fg-muted); font-size: 13px; cursor: pointer; }
+.chat.chat-surface .chat-control select:hover:not(:disabled),
+.chat.chat-surface .chat-control select:focus-visible { background: color-mix(in srgb, var(--fg) 7%, transparent); color: var(--fg); }
 .chat.chat-surface .chat-composer:focus-within { border-color: var(--focus-ring); }
-.chat.chat-surface .chat-box { min-height: 40px; padding: 8px 2px; border: 0; background: transparent; color: var(--fg); font: 15px/1.5 var(--ui-font); }
+.chat.chat-surface .chat-box { order: 1; flex: 1 1 100%; min-height: 40px; padding: 8px 2px; border: 0; background: transparent; color: var(--fg); font: 15px/1.5 var(--ui-font); }
 .chat.chat-surface .chat-box:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; border: 0; }
 .chat.chat-surface .chat-box::placeholder { color: var(--fg-faint); }
-.chat.chat-surface .chat-attach { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--fg-muted); font-size: 16px; line-height: 1; }
+.chat.chat-surface .chat-attach { order: 2; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--fg-muted); font-size: 16px; line-height: 1; }
 .chat.chat-surface .chat-attach:hover:not(:disabled),
 .chat.chat-surface .chat-attach:focus-visible:not(:disabled) { border-color: var(--line-strong); background: color-mix(in srgb, var(--fg) 7%, transparent); color: var(--fg); }
-.chat.chat-surface .chat-send { padding: 7px 16px; border: 0; border-radius: 999px; background: var(--fg); color: var(--pane-bg); font-size: 13px; font-weight: 580; }
+.chat.chat-surface .chat-send { order: 4; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 999px; background: var(--fg); color: var(--pane-bg); font-size: 13px; font-weight: 580; }
 .chat.chat-surface .chat-send:hover:not(:disabled) { background: var(--fg-row); }
 .chat.chat-surface .chat-send:disabled { background: var(--chip-bg); color: var(--fg-faint); }
 .chat.chat-surface .chat-send.stop { border: 1px solid var(--line-strong); background: transparent; color: var(--fg); }

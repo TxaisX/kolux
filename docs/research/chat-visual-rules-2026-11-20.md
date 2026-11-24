@@ -111,8 +111,9 @@ general population." The rows above are about a busy turn; this is about the pag
   reply is the page itself: no bubble, no avatar row, no shadow.
 - **Tool rows are sentences, not console lines.** The subject is set in the UI face at 13 px; only the
   output block and a command the user typed are monospace.
-- **The composer is a floating card.** 16 px radius, one border, a shadow, a borderless field inside,
-  a round attach button and a filled send pill. The model controls sit on the card's second line.
+- **The composer is a floating card.** 26 px radius (2026-11-24, copying the Open WebUI chat box), one
+  border, a shadow, a borderless field on the first line. The second line holds the round attach button
+  on the left, the model and effort pickers on the right and a round send arrow at the end.
 - **A new chat teaches.** The empty state is a centred mark, "What should we work on?", one plain line
   ("Ask in plain words. Claude works in this folder and shows you what it changes.") and three
   starters. Nothing is pre-sent; a starter is a normal message.

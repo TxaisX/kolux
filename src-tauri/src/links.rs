@@ -1,7 +1,7 @@
 //! SAFE-021 / SAFE-022: paths the interface hands to the system. A path on another machine is
 //! refused as text, before any filesystem call, so Windows never offers the user's credentials to
-//! that host; a file link aimed at a program, script, installer or shortcut is revealed in its
-//! folder instead of run. EDIT-045: `fence` guards every command that takes a path from the
+//! that host; a file link is opened only when it is a known document type (`DOCUMENTS`), and
+//! revealed in its folder otherwise, so a click never runs a program. EDIT-045: `fence` guards every command that takes a path from the
 //! interface: inside a registered root, never out through a link; `open_path`
 //! is the one door for handing a file to the system. SESS-039: `editor_open` opens a worktree
 //! folder (fenced the same way) in an outside editor.
@@ -16,23 +16,17 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-/// File types that run when opened: programs, scripts, installers, shortcuts, macro documents and
-/// the odd Office and web-query types that start a program. Lowercase, without the dot.
-const PROGRAMS: &[&str] = &[
-    "exe", "com", "scr", "pif", "bat", "cmd", "btm", "nt", "ps1", "psm1", "psd1", "ps1xml", "psc1", "pssc", "cdxml",
-    "ps2", "ps2xml", "msh", "msh1", "msh2", "mshxml", "msh1xml", "msh2xml", "vbs", "vbe", "vb", "js", "jse", "wsf",
-    "wsh", "wsc", "ws", "sct", "hta", "msi", "msp", "mst", "msix", "msixbundle", "appx", "appxbundle", "appinstaller",
-    "application", "manifest", "xbap", "gadget", "cpl", "msc", "inf", "reg", "lnk", "url", "scf", "website",
-    "library-ms", "search-ms", "searchconnector-ms", "settingcontent-ms", "theme", "themepack", "diagcab", "diagcfg",
-    "diagpkg", "chm", "hlp", "jar", "jnlp", "py", "pyw", "pyc", "pyz", "pyzw", "rb", "pl", "pm", "php", "phar", "sh",
-    "bash", "zsh", "ksh", "csh", "fish", "command", "tool", "app", "pkg", "mpkg", "dmg", "action", "workflow", "scpt",
-    "scptd", "applescript", "terminal", "webloc", "desktop", "run", "bin", "elf", "appimage", "deb", "rpm", "snap",
-    "appref-ms", "iso", "img", "vhd", "vhdx", "flatpak", "flatpakref", "apk", "ipa", "ocx", "dll", "sys", "drv", "vxd", "grp", "ins", "isp", "its", "mad",
-    "maf", "mag", "mam", "maq", "mar", "mas", "mat", "mau", "mav", "maw", "mcf", "mda", "mdb", "mde", "mdt", "mdw",
-    "mdz", "ade", "adp", "accdb", "accde", "accdr", "accdt", "docm", "dotm", "xlsm", "xltm", "xlam", "xla", "xll",
-    "pptm", "potm", "ppam", "ppsm", "sldm", "one", "onepkg", "onetoc2", "iqy", "oqy", "rqy", "dqy", "slk", "sylk",
-    "crt", "cer", "der", "p7b", "p7c", "pfx", "p12", "xnk", "shb", "shs", "prf", "prg", "pcd", "vsmacros", "vsw",
-    "rdp", "appref-ms", "wsb", "msu", "iso", "img", "vhd", "vhdx", "ppkg",
+/// Wave 2 (review A): the only file types a click opens in their own app. The rule is an allow list,
+/// because a deny list of programs always misses one (`.pyo` runs in py.exe, `.sln` and Office types
+/// start tooling or fetch remote templates). On the list: plain text and settings, source code an
+/// editor opens (never a type Windows runs: no js, py, rb, pl, ps1, vbs, sh, bat, cmd), images and
+/// pdf. Left off on purpose: html, htm, xml and svg (a browser runs their script), csv and tsv (Excel
+/// opens them and a formula can call out to the network), and every Office type. Any other type,
+/// and a name with no type at all, is revealed in its folder instead. Lowercase, without the dot.
+const DOCUMENTS: &[&str] = &[
+    "txt", "md", "markdown", "log", "json", "jsonc", "yaml", "yml", "toml", "ini", "cfg", "conf", "diff", "patch",
+    "rs", "ts", "tsx", "go", "c", "h", "cc", "cpp", "hpp", "cs", "java", "kt", "swift", "css", "scss",
+    "png", "jpg", "jpeg", "gif", "bmp", "webp", "ico", "pdf",
 ];
 
 /// What time it is, so the open limit can be tested with a clock that is moved by hand.
@@ -132,7 +126,7 @@ pub fn open_external(url: String) -> Result<(), String> {
 }
 
 /// Hands `url` (a link or a full file path) to the system's own handler. Callers check it first:
-/// `open_external` lets only web and mail links through, `open_path` reveals programs.
+/// `open_external` lets only web and mail links through; `open_path` uses `open_file` instead.
 pub(crate) fn system_open(url: &str) -> Result<(), String> {
     if url.contains('\0') {
         return Err("That path holds a control character; Kolux never opens it".into());
@@ -354,6 +348,9 @@ pub fn fence(path: &str, roots: &[String]) -> Result<PathBuf, String> {
     if !under(&fence_key(path), roots) {
         return Err(format!("{path} is outside your projects; Kolux reads and writes only inside them"));
     }
+    // Wave 2 (review A3): every link on the way is read from its text first, so resolving the path
+    // below never follows one to another machine.
+    refuse_linked_host(p, roots)?;
     let real_roots: Vec<String> = roots.iter().map(|r| plain(real(Path::new(r)))).collect();
     if !under(&fence_key(&plain(real(p))), &real_roots) {
         return Err(format!("{path} leads outside your projects through a link"));
@@ -361,30 +358,121 @@ pub fn fence(path: &str, roots: &[String]) -> Result<PathBuf, String> {
     Ok(p.to_path_buf())
 }
 
-/// SAFE-022: a file name of a type that runs when opened. On Windows an alternate-data-stream
-/// suffix, trailing dots or spaces and an 8.3 short name cannot hide the type (a short name's
-/// three-letter extension may be a cut-down program type, so the shape alone counts); on POSIX
-/// colons and tildes are ordinary characters.
-pub fn program_like(path: &str, windows: bool) -> bool {
-    let seps: &[char] = if windows { &['\\', '/'] } else { &['/'] };
-    let mut name = path.rsplit(seps).next().unwrap_or(path).to_ascii_lowercase();
-    if windows {
-        if let Some(i) = name.find(':') {
-            name.truncate(i);
-        }
-        name = name.trim_end_matches(['.', ' ']).to_string();
+/// SAFE-022 (wave 2): a file a click may open in its own app: its full final name ends in a type on
+/// `DOCUMENTS` (lowercased, never cut at a ':'), and on POSIX it has no execute bit. Callers pass
+/// the file's real path, so the type judged is the type that opens.
+pub fn document(path: &Path) -> bool {
+    let name = path.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    match name.rfind('.') {
+        Some(i) if i > 0 => DOCUMENTS.contains(&&name[i + 1..]) && !execute_bit(path),
+        _ => false,
     }
-    let (stem, ext) = match name.rfind('.') {
-        Some(i) if i > 0 => (&name[..i], &name[i + 1..]),
-        _ => (name.as_str(), ""),
-    };
-    PROGRAMS.contains(&ext)
-        || (windows && stem.len() <= 8 && ext.len() <= 3 && stem.as_bytes().windows(2).any(|w| w[0] == b'~' && w[1].is_ascii_digit()))
 }
 
-/// `program_like` for this platform, plus the execute bit on POSIX.
-pub fn launchable(path: &Path) -> bool {
-    program_like(&path.to_string_lossy(), cfg!(windows)) || execute_bit(path)
+/// Windows: a ':' anywhere after the drive letter names a stream inside a file (`notes.txt:run.vbs`
+/// opens as a .vbs), so such a path is never opened. The long-path and object prefixes are read
+/// past first. On POSIX a colon is an ordinary character.
+fn stream_colon(path: &str) -> bool {
+    if !cfg!(windows) {
+        return false;
+    }
+    let s = path.replace('/', "\\");
+    let s = ["\\\\?\\", "\\\\.\\", "\\??\\"].iter().find_map(|p| s.strip_prefix(p)).unwrap_or(&s);
+    let b = s.as_bytes();
+    let s = if b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':' { &s[2..] } else { s };
+    s.contains(':')
+}
+
+/// Wave 2 (review A): every link on the way to `path` (the file itself or a folder above it) is read
+/// from its own text, and one that leads to another machine is refused before anything follows it,
+/// so resolving the path never reaches a share. The walk goes from the top down and starts again
+/// from each link's target; at most 8 links (8 passes that each follow one, then a 9th that must
+/// find none).
+fn refuse_linked_host(path: &Path, roots: &[String]) -> Result<(), String> {
+    let mut path = path.to_path_buf();
+    for _ in 0..=8 {
+        let comps: Vec<std::path::Component> = path.components().collect();
+        let mut cur = PathBuf::new();
+        let mut next = None;
+        for (i, c) in comps.iter().enumerate() {
+            cur.push(c);
+            if !matches!(c, std::path::Component::Normal(_)) || !std::fs::symlink_metadata(&cur).is_ok_and(|m| m.file_type().is_symlink()) {
+                continue;
+            }
+            let to = std::fs::read_link(&cur).map_err(|e| format!("could not read the link {}: {e}", cur.display()))?;
+            // Wave 2 (review A3): Windows folds a `..` in a link's own target as text, while this
+            // walk would follow a link inside that target first, so such a link is never followed.
+            if to.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+                return Err(format!("the link {} points through ..; Kolux never opens it", cur.display()));
+            }
+            let to = if to.is_absolute() { to } else { cur.parent().unwrap_or(Path::new("")).join(to) };
+            refuse_host(&to.to_string_lossy(), roots)?;
+            next = Some(comps[i + 1..].iter().fold(to, |p, c| p.join(c)));
+            break;
+        }
+        match next {
+            Some(n) => path = n,
+            None => return Ok(()),
+        }
+    }
+    Err(format!("{} passes through too many links; Kolux never opens it", path.display()))
+}
+
+/// Opens `file` (the real path of an existing document, or a folder, which opens in the file
+/// manager) in its own app. On Windows the shell is handed the parsed item rather than the name
+/// (SHParseDisplayName, then ShellExecuteEx with SEE_MASK_IDLIST), so it cannot swap in a program
+/// beside it (`LICENSE.cmd` for `LICENSE`).
+pub(crate) fn open_file(file: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE};
+        use windows_sys::Win32::UI::Shell::{ShellExecuteExW, SEE_MASK_IDLIST, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW};
+        // Declared here: windows-sys puts both behind a feature (Win32_UI_Shell_Common) this crate
+        // does not turn on, and they need nothing from it but an opaque item pointer.
+        #[link(name = "shell32")]
+        extern "system" {
+            fn SHParseDisplayName(name: *const u16, bind: *mut core::ffi::c_void, item: *mut *mut core::ffi::c_void, sfgao_in: u32, sfgao_out: *mut u32) -> i32;
+            fn ILFree(item: *mut core::ffi::c_void);
+        }
+        let name: Vec<u16> = file.as_os_str().encode_wide().chain([0]).collect();
+        if name[..name.len() - 1].contains(&0) {
+            return Err("That path holds a control character; Kolux never opens it".into());
+        }
+        let verb: Vec<u16> = "open".encode_utf16().chain([0]).collect();
+        // SAFETY: NUL-terminated wide strings that live across the calls; the item SHParseDisplayName
+        // hands back is freed once with ILFree; every successful CoInitializeEx is matched by one
+        // CoUninitialize on this thread (see system_open).
+        let opened = unsafe {
+            let com = CoInitializeEx(std::ptr::null(), (COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) as u32);
+            let mut item = std::ptr::null_mut();
+            let mut opened = false;
+            if SHParseDisplayName(name.as_ptr(), std::ptr::null_mut(), &mut item, 0, std::ptr::null_mut()) >= 0 && !item.is_null() {
+                let mut info = SHELLEXECUTEINFOW {
+                    cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+                    fMask: SEE_MASK_IDLIST | SEE_MASK_NOASYNC,
+                    lpVerb: verb.as_ptr(),
+                    lpIDList: item,
+                    nShow: 1,
+                    ..Default::default()
+                };
+                opened = ShellExecuteExW(&mut info) != 0;
+                ILFree(item);
+            }
+            if com >= 0 {
+                CoUninitialize();
+            }
+            opened
+        };
+        if !opened {
+            return Err(format!("Windows could not open {}", file.display()));
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        system_open(&file.to_string_lossy())
+    }
 }
 
 /// A file with an execute bit set. Only POSIX has the bit, so elsewhere this is never true.
@@ -399,32 +487,41 @@ fn execute_bit(_path: &Path) -> bool {
     false
 }
 
-/// The file manager's own "show this file" call.
-fn reveal_command(path: &Path) -> std::process::Command {
+/// The file manager's own "show this file" call, on the file's real path (RS-5). A path holding a
+/// double quote is refused: on Windows it would end the quoted `/select,` argument early.
+fn reveal_command(path: &Path) -> Result<std::process::Command, String> {
+    let quoted = |p: &Path| p.to_string_lossy().contains('"');
+    if quoted(path) {
+        return Err(format!("{} holds a double quote; Kolux never hands it to the file manager", path.display()));
+    }
+    let real = PathBuf::from(plain(path.canonicalize().map_err(|e| format!("could not reveal {}: {e}", path.display()))?));
+    if quoted(&real) {
+        return Err(format!("{} holds a double quote; Kolux never hands it to the file manager", real.display()));
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         let mut c = crate::winproc::command("explorer.exe");
-        c.raw_arg(format!("/select,\"{}\"", path.display()));
-        c
+        c.raw_arg(format!("/select,\"{}\"", real.display()));
+        Ok(c)
     }
     #[cfg(target_os = "macos")]
     {
         let mut c = crate::winproc::command("open");
-        c.arg("-R").arg(path);
-        c
+        c.arg("-R").arg(&real);
+        Ok(c)
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         let mut c = crate::winproc::command("xdg-open");
-        c.arg(path.parent().unwrap_or(path));
-        c
+        c.arg(real.parent().unwrap_or(&real));
+        Ok(c)
     }
 }
 
 /// Opens the file manager with `path` selected.
 pub fn reveal(path: &Path) -> Result<(), String> {
-    reveal_command(path).spawn().map(|_| ()).map_err(|e| format!("could not reveal {}: {e}", path.display()))
+    reveal_command(path)?.spawn().map(|_| ()).map_err(|e| format!("could not reveal {}: {e}", path.display()))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -433,28 +530,75 @@ pub enum OpenChoice {
     Open,
 }
 
-/// The pure part of `open_path`: only a full path to an existing file is handed over.
+/// A final `.` or `..` step or a trailing separator. Windows drops or resolves them, so the name the
+/// eye reads is not the file that opens (`run.cmd\.` is `run.cmd`); on Windows a final step of only
+/// dots and spaces counts too, since Windows trims both.
+fn odd_ending(path: &str) -> bool {
+    let seps: &[char] = if cfg!(windows) { &['\\', '/'] } else { &['/'] };
+    let last = path.rsplit(seps).next().unwrap_or(path);
+    if cfg!(windows) {
+        last.trim_end_matches(['.', ' ']).is_empty()
+    } else {
+        last.is_empty() || last == "." || last == ".."
+    }
+}
+
+/// `open_target` with no registered roots (every share refused), answering the choice alone.
 pub fn open_choice(path: &str) -> Result<OpenChoice, String> {
+    open_target(path, &[]).map(|(choice, _)| choice)
+}
+
+/// The pure part of `open_path`: only a full path to an existing file is handed over, judged and
+/// handed over by its real path (RS-1), so a spelling Windows rewrites (a final `\.`, an 8.3 short
+/// name, a link) cannot make a program pass as a document. Wave 2: a stream name (`a.txt:b.vbs`)
+/// is refused, a link on the way that leads to another machine is refused before it is followed,
+/// and only a real file whose type is on `DOCUMENTS` is opened; everything else is revealed. A real
+/// path on a share is let through when it lies under a root's own real path (a project on a mapped
+/// drive), as `fence` does. Answers the choice and that real path.
+pub fn open_target(path: &str, roots: &[String]) -> Result<(OpenChoice, PathBuf), String> {
+    refuse_host(path, roots)?;
     let p = Path::new(path);
     if !p.is_absolute() {
         return Err(format!("{path} is not a full path"));
     }
-    if !p.is_file() {
+    if odd_ending(path) {
+        return Err(format!("{path} does not end in a file name; Kolux never opens it"));
+    }
+    if stream_colon(path) {
+        return Err(format!("{path} names a stream inside a file; Kolux never opens it"));
+    }
+    // Wave 2 (review A2): Windows folds `a\..\b` as text while the link walk below follows `a`
+    // first, so a `..` step could slip a link past it; refused as text, as `fence` does.
+    if p.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        return Err(format!("{path} climbs out with ..; Kolux never opens it"));
+    }
+    refuse_linked_host(p, roots)?;
+    let at = PathBuf::from(plain(p.canonicalize().map_err(|_| format!("{path} is not a file"))?));
+    let text = at.to_string_lossy().into_owned();
+    if refuse_host(&text, roots).is_err() {
+        let with_real: Vec<String> = roots.iter().cloned().chain(roots.iter().map(|r| plain(real(Path::new(r))))).collect();
+        refuse_host(&text, &with_real)?;
+    }
+    if stream_colon(&text) {
+        return Err(format!("{path} names a stream inside a file; Kolux never opens it"));
+    }
+    if !at.is_file() {
         return Err(format!("{path} is not a file"));
     }
-    Ok(if launchable(p) { OpenChoice::Reveal } else { OpenChoice::Open })
+    Ok((if document(&at) { OpenChoice::Open } else { OpenChoice::Reveal }, at))
 }
 
-/// SAFE-022: hands a file to the system. A program-like file is revealed in its folder, anything
-/// else is opened in its own app; a path on another machine or a relative one is refused.
+/// SAFE-022: hands a file to the system. A known document type is opened in its own app, anything
+/// else is revealed in its folder; a path on another machine or a relative one is refused.
 /// Answers "revealed" or "opened".
 #[tauri::command]
 pub async fn open_path(store: tauri::State<'_, Mutex<crate::state::Store>>, path: String) -> Result<&'static str, String> {
-    refuse_host(&path, &roots(&store))?;
+    let roots = roots(&store);
+    refuse_host(&path, &roots)?;
     // A slow file association never freezes the window; only an existing file is handed over.
-    tauri::async_runtime::spawn_blocking(move || match open_choice(&path)? {
-        OpenChoice::Reveal => reveal(Path::new(&path)).map(|_| "revealed"),
-        OpenChoice::Open => system_open(&path).map(|_| "opened"),
+    tauri::async_runtime::spawn_blocking(move || match open_target(&path, &roots)? {
+        (OpenChoice::Reveal, real) => reveal(&real).map(|_| "revealed"),
+        (OpenChoice::Open, real) => open_file(&real).map(|_| "opened"),
     })
     .await
     .map_err(|e| e.to_string())?
@@ -806,55 +950,25 @@ mod tests {
     }
 
     #[test]
-    fn safe022_programs_scripts_installers_and_shortcuts_are_told_from_documents_under_any_disguise() {
+    fn safe022_only_known_document_types_count_as_documents() {
         for p in [
-            "setup.bat",
-            r"C:\x\run.CMD",
-            "/home/me/a.js",
-            "tool.exe",
-            "link.lnk",
-            "install.msi",
-            "site.url",
-            "notes.one",
-            "query.iqy",
-            "data.slk",
-            "x.ps1",
-            "a.sh",
-            "a.py",
-            "a.jar",
-            "a.hta",
-            "a.scr",
-            "app.AppImage",
-            "a.desktop",
-            "x.docm",
-            "a.cpl",
-            "a.msix",
-            "a.pkg",
-            "a.dll",
-            "a.appref-ms",
-            "disk.iso",
-            "disk.img",
-            "disk.vhd",
-            "disk.VHDX",
+            "setup.bat", "run.CMD", "a.js", "a.mjs", "tool.exe", "link.lnk", "install.msi", "site.url", "notes.one", "query.iqy", "data.slk",
+            "x.ps1", "a.sh", "a.py", "a.pyo", "a.pyc", "a.rb", "a.pl", "a.vbs", "a.wsf", "a.jar", "a.hta", "a.scr", "x.docm", "report.docx",
+            "sheet.xls", "deck.ppt", "a.rtf", "a.sln", "a.vsix", "a.msstyles", "a.html", "a.htm", "a.xml", "a.svg", "a.csv", "a.tsv",
+            "Makefile", "LICENSE", ".bashrc", "a.txt.exe", "a.txt:x.vbs", "PROGRA~1.EXE",
         ] {
-            assert!(program_like(p, true), "{p}");
-            assert!(program_like(p, false), "{p}");
+            assert!(!document(Path::new(p)), "{p} must not be opened");
         }
-        for p in [r"C:\x\tool.exe:Zone.Identifier", r"C:\x\tool.exe:stream:$DATA", "tool.exe.", "tool.exe ", "tool.exe. . ", "PROGRA~1.EXE", "NOTES~1.TXT", "notes~1.txt", "backup~1.txt"] {
-            assert!(program_like(p, true), "{p}");
+        for p in ["readme.txt", "NOTES.MD", "photo.png", "a.JPG", "a.json", "a.yaml", "a.toml", "main.rs", "app.tsx", "a.pdf", "a.exe.txt", "notes~1.txt"] {
+            assert!(document(Path::new(p)), "{p} is a document");
         }
-        for p in ["readme.txt", "notes.md", "photo.png", "a.json", "report.docx", "Makefile", "a.exe.txt", ".bashrc", "my-long-report~1.txt", "notes~1.markdown"] {
-            assert!(!program_like(p, true), "{p}");
-            assert!(!program_like(p, false), "{p}");
-        }
-        // POSIX: colons and tildes are ordinary characters, and a backslash is part of the name
-        assert!(!program_like("/home/me/a:b.txt", false));
-        assert!(!program_like("/home/me/notes~1.txt", false));
-        assert!(!program_like("/home/me/report.txt:exe", false));
-        assert!(program_like("/home/me/a.txt:x.exe", false));
-        assert!(program_like(r"/home/me/weird\name.sh", false));
-        assert!(launchable(Path::new("C:/x/run.bat")));
-        assert!(!launchable(Path::new("C:/x/readme.txt")));
+        // Windows: a stream name is caught before the type is judged; on POSIX a colon is a character
+        assert_eq!(stream_colon(r"C:\x\notes.txt:run.vbs"), cfg!(windows));
+        assert_eq!(stream_colon(r"\\?\C:\x\notes.txt:run.vbs"), cfg!(windows));
+        assert_eq!(stream_colon(r"\??\C:\x\a.txt:s:$DATA"), cfg!(windows));
+        assert!(!stream_colon(r"C:\x\notes.txt"));
+        assert!(!stream_colon(r"\\?\C:\x\notes.txt"));
+        assert!(!stream_colon("/home/me/notes.txt"));
     }
 
     #[cfg(unix)]
@@ -863,12 +977,195 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let d = std::env::temp_dir().join(format!("krs-links-{}", std::process::id()));
         std::fs::create_dir_all(&d).unwrap();
-        let f = d.join("tool");
+        let f = d.join("tool.txt");
         std::fs::write(&f, "#!/bin/sh\n").unwrap();
         std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o644)).unwrap();
-        assert!(!launchable(&f));
+        assert!(document(&f));
         std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
-        assert!(launchable(&f));
+        assert!(!document(&f));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// RS-1: Windows drops a final `\.`, so `probe.cmd\.` is the script itself; it must never be opened.
+    #[cfg(windows)]
+    #[test]
+    fn rs1_a_script_spelled_with_a_final_dot_is_never_opened() {
+        let d = std::env::temp_dir().join(format!("krs-rs1-{}", std::process::id()));
+        std::fs::create_dir_all(&d).unwrap();
+        let f = d.join("probe.cmd");
+        std::fs::write(&f, "@echo off\r\n").unwrap();
+        let f = f.to_string_lossy().to_string();
+        for p in [format!(r"{f}\."), format!("{f}/."), format!(r"{f}\"), format!(r"{f}\ ."), format!(r"{f}\.\"), format!(r"{f}\..")] {
+            assert!(!matches!(open_target(&p, &[]), Ok((OpenChoice::Open, _))), "{p} must be revealed or refused, never opened");
+        }
+        let (choice, real) = open_target(&f, &[]).unwrap();
+        assert_eq!(choice, OpenChoice::Reveal);
+        assert!(!real.to_string_lossy().starts_with(r"\\?\"), "the plain real path is handed over");
+        let note = d.join("note.txt");
+        std::fs::write(&note, "hi").unwrap();
+        let (choice, real) = open_target(&note.to_string_lossy(), &[]).unwrap();
+        assert_eq!((choice, real), (OpenChoice::Open, PathBuf::from(plain(note.canonicalize().unwrap()))));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A, C): only a known document type is opened. A type the deny list missed
+    /// (`.pyo` runs in py.exe, `.sln` starts Visual Studio's build tooling) is revealed instead, and
+    /// a name with no type at all is revealed too: Windows may pick a `LICENSE.cmd` beside `LICENSE`
+    /// (review A, B). Files are only created here, never opened.
+    #[test]
+    fn rv2_only_known_document_types_are_opened_and_everything_else_is_revealed() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-allow-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        for name in ["byte.pyo", "app.sln", "LICENSE", "LICENSE.cmd", "notes.txt", "shot.png"] {
+            std::fs::write(d.join(name), "x").unwrap();
+        }
+        let choice = |name: &str| open_target(&d.join(name).to_string_lossy(), &[]).map(|(c, _)| c);
+        assert_eq!(choice("byte.pyo"), Ok(OpenChoice::Reveal), ".pyo runs in py.exe");
+        assert_eq!(choice("app.sln"), Ok(OpenChoice::Reveal), ".sln is not a plain document");
+        assert_eq!(choice("LICENSE"), Ok(OpenChoice::Reveal), "a name with no type is revealed (a LICENSE.cmd sits beside it)");
+        assert_eq!(choice("notes.txt"), Ok(OpenChoice::Open), "plain text still opens");
+        assert_eq!(choice("shot.png"), Ok(OpenChoice::Open), "an image still opens");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A, A): `notes.txt:run.vbs` is a stream inside notes.txt; Windows opens it by
+    /// its own type (.vbs runs in wscript), so a name with a stream part is refused outright.
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a_file_stream_is_refused() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-ads-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let note = d.join("notes.txt");
+        std::fs::write(&note, "hi").unwrap();
+        let stream = format!("{}:run.vbs", note.display());
+        std::fs::write(&stream, "' never run").unwrap();
+        let got = open_target(&stream, &[]);
+        assert!(got.is_err(), "{stream} must be refused, got {got:?}");
+        let long = format!(r"\\?\{stream}");
+        assert!(open_target(&long, &[]).is_err(), "{long} must be refused");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A, P2): a link on the way to the file (the file itself or a folder above it) that
+    /// leads to another machine is refused from its text, before anything resolves it. The
+    /// object-namespace spelling of a real local file stands in for a share.
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a_link_to_another_machine_is_refused_before_it_is_followed() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-link-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("far")).unwrap();
+        std::fs::write(d.join("far").join("real.txt"), "hi").unwrap();
+        let far = |p: &Path| PathBuf::from(format!(r"\\?\GLOBALROOT\GLOBAL??\{}", p.display()));
+        std::os::windows::fs::symlink_file(far(&d.join("far").join("real.txt")), d.join("doc.txt")).unwrap();
+        std::os::windows::fs::symlink_dir(far(&d.join("far")), d.join("sub")).unwrap();
+        for p in [d.join("doc.txt"), d.join("sub").join("real.txt")] {
+            let got = open_target(&p.to_string_lossy(), &[]);
+            assert!(got.as_ref().is_err_and(|e| e.contains("another computer")), "{} must be refused, got {got:?}", p.display());
+        }
+        let (choice, _) = open_target(&d.join("far").join("real.txt").to_string_lossy(), &[]).unwrap();
+        assert_eq!(choice, OpenChoice::Open, "the file itself, reached directly, still opens");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A2, P2): Windows folds `a\..\b` as text, but the link walk followed the
+    /// junction `a` first and then looked for `b` beside the junction's target, so the link `b` (to
+    /// another machine) was never read and resolving the path reached it. A `..` step is refused
+    /// before the walk, as `fence` does. The object-namespace spelling of a local folder stands in
+    /// for a share; no real host is contacted.
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a2_a_dot_dot_step_past_a_junction_cannot_reach_a_remote_link() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-dotdot-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("elsewhere").join("deep")).unwrap();
+        std::fs::create_dir_all(d.join("far")).unwrap();
+        std::fs::write(d.join("far").join("x.txt"), "hi").unwrap();
+        let made = std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/J"])
+            .arg(d.join("a"))
+            .arg(d.join("elsewhere").join("deep"))
+            .output()
+            .unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        let far = PathBuf::from(format!(r"\\?\GLOBALROOT\GLOBAL??\{}", d.join("far").display()));
+        std::os::windows::fs::symlink_dir(far, d.join("b")).unwrap();
+        let sneaky = format!(r"{}\a\..\b\x.txt", d.display());
+        let got = open_target(&sneaky, &[]);
+        assert!(got.as_ref().is_err_and(|e| e.contains("..")), "{sneaky} must be refused, got {got:?}");
+        let plain_dir = format!(r"{}\elsewhere\..\far\x.txt", d.display());
+        assert!(open_target(&plain_dir, &[]).is_err(), "{plain_dir}: a .. step is refused as text, link or not");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A3, P2): a link whose own relative target holds a `..` step (`L` -> `a\..\b`)
+    /// is folded as text by Windows, but the walk followed the junction `a` inside it first and so
+    /// never read the link `b` (to another machine). A link target with a `..` step is refused. The
+    /// object-namespace spelling of a local folder stands in for a share; no real host is contacted.
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a3_a_link_whose_target_climbs_with_dot_dot_is_refused() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-a3-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("elsewhere").join("deep")).unwrap();
+        std::fs::create_dir_all(d.join("far")).unwrap();
+        std::fs::write(d.join("far").join("x.txt"), "hi").unwrap();
+        let made = std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/J"])
+            .arg(d.join("a"))
+            .arg(d.join("elsewhere").join("deep"))
+            .output()
+            .unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        let far = PathBuf::from(format!(r"\\?\GLOBALROOT\GLOBAL??\{}", d.join("far").display()));
+        std::os::windows::fs::symlink_dir(far, d.join("b")).unwrap();
+        std::os::windows::fs::symlink_dir(r"a\..\b", d.join("L")).unwrap();
+        let sneaky = d.join("L").join("x.txt");
+        let got = open_target(&sneaky.to_string_lossy(), &[]);
+        assert!(got.is_err(), "{} must be refused, got {got:?}", sneaky.display());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// Wave 2 (review A3): the file fence reads every link on the way from its text before it
+    /// resolves the path, so a link in a project that leads to another machine is refused before
+    /// anything follows it (it used to be followed first and refused only for landing outside).
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a3_the_fence_refuses_a_link_to_another_machine_before_following_it() {
+        let d = std::env::temp_dir().join(format!("krs-rv2-a3-fence-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("proj")).unwrap();
+        std::fs::create_dir_all(d.join("far")).unwrap();
+        std::fs::write(d.join("far").join("x.txt"), "hi").unwrap();
+        let far = PathBuf::from(format!(r"\\?\GLOBALROOT\GLOBAL??\{}", d.join("far").display()));
+        std::os::windows::fs::symlink_dir(far, d.join("proj").join("share")).unwrap();
+        let roots = vec![d.join("proj").to_string_lossy().into_owned()];
+        let p = d.join("proj").join("share").join("x.txt");
+        let got = fence(&p.to_string_lossy(), &roots);
+        assert!(got.as_ref().is_err_and(|e| e.contains("another computer")), "{} must be refused from the link's text, got {got:?}", p.display());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// RS-5: the file manager is handed the real path, and never a path holding a double quote.
+    #[test]
+    fn rs5_reveal_uses_the_real_path_and_refuses_a_quote() {
+        assert!(reveal_command(Path::new("/tmp/a\"b.txt")).unwrap_err().contains("double quote"));
+        assert!(reveal_command(Path::new(r#"C:\x\a" /e,"C:\y.txt"#)).unwrap_err().contains("double quote"));
+        let d = std::env::temp_dir().join(format!("krs-rs5-{}", std::process::id()));
+        std::fs::create_dir_all(d.join("sub")).unwrap();
+        let f = d.join("seen.txt");
+        std::fs::write(&f, "hi").unwrap();
+        let c = reveal_command(&d.join("sub").join("..").join("seen.txt")).unwrap();
+        let args: Vec<String> = c.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
+        let real = plain(f.canonicalize().unwrap());
+        #[cfg(windows)]
+        assert_eq!(args, vec![format!("/select,\"{real}\"")]);
+        #[cfg(target_os = "macos")]
+        assert_eq!(args, vec!["-R".to_string(), real]);
+        #[cfg(all(unix, not(target_os = "macos")))]
+        assert_eq!(args, vec![Path::new(&real).parent().unwrap().to_string_lossy().into_owned()]);
         let _ = std::fs::remove_dir_all(&d);
     }
 
