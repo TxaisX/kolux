@@ -74,6 +74,23 @@ fn t441c_the_launch_sweep_forgets_only_worktrees_kolux_made() {
     let _ = fs::remove_dir_all(&base);
 }
 
+
+#[test]
+fn audit_r3_f03_a_details_record_alone_does_not_make_a_worktree_kolux_made() {
+    let base = temp("audit-r3-f03");
+    let repo = base.join("r");
+    init_repo(&repo);
+    let theirs = base.join("theirs");
+    git_in(&repo, &["worktree", "add", "-q", &theirs.to_string_lossy(), "-b", "theirs"]);
+    let store = Store::open(&base.join("db")).unwrap();
+    save_details(&store, &theirs.to_string_lossy(), "Their work", "", "").unwrap();
+    assert!(origin(&store, &theirs.to_string_lossy()).unwrap().get("madeBy").is_none(), "a details save writes no maker");
+    let all = Git::detect().unwrap().worktrees(&repo).unwrap();
+    assert!(kolux_made(&load_origins(&store), all).iter().all(|w| !same_folder(Path::new(&w.path), &theirs)),
+            "a worktree Kolux did not make must not be swept because it has a details record");
+    let _ = fs::remove_dir_all(&base);
+}
+
 #[test]
 fn app051_a_locked_worktree_record_survives_forget_gone_at_start() {
     // forget_gone is the sweep forget_gone_at_start runs for every project at launch.
@@ -2870,7 +2887,7 @@ fn fix4_the_launch_sweep_forgets_only_gone_worktrees_kolux_made_that_no_session_
     {
         let s = store.lock().unwrap();
         for p in [&a_made, &a_busy, &b_made] {
-            set_origin(&s, &key(p), Some(&serde_json::json!({"issue": 1}))).unwrap();
+            set_origin(&s, &key(p), Some(&serde_json::json!({"madeBy": "app", "issue": 1}))).unwrap();
         }
     }
     for p in [&a_made, &a_mine, &a_busy, &b_made] {
