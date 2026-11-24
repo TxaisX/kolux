@@ -52,9 +52,9 @@ export function chordToString(c: Chord): string {
   return parts.join("+");
 }
 
-/** The digit-index actions take a chord ending in 1 and cover 1 to 9; another digit is rewritten to 1. */
+/** The digit-index actions take a chord ending in 1 and cover 1 to 9; any digit, 0 included, is rewritten to 1. */
 export function normaliseIndexChord(chord: string): string {
-  return chord.replace(/\+[1-9]$/, "+1");
+  return chord.replace(/\+[0-9]$/, "+1");
 }
 
 /** How a chord reads on screen, as parts: "Mod+Shift+J" is ["Ctrl", "Shift", "J"] on Windows. */
