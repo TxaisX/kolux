@@ -282,7 +282,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           if (pick && pick === resume) {
             const { read: history, legacy: old, unreachable } = await readKeptChat(cwd, pick);
             // A chat that continues an older Claude one shows that transcript above its own (read-only).
-            const before = !old && history && legacyOld.current ? await chatHistory("claude", cwd, legacyOld.current).catch(() => null) : null;
+            const before = !old && legacyOld.current ? await chatHistory("claude", cwd, legacyOld.current).catch(() => null) : null;
             if (!live) {
               // The effect was re-run or closed while the history loaded. A re-run saw `started` and
               // skipped, so give the start back and ask for another run, or the chat has no process.
@@ -309,7 +309,9 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
               if (history.items.length > 0) namedOnce.current = true;
             } else {
               // The saved conversation is gone: forget its id here too, so a later model or effort pick
-              // cannot restart the process with `--resume <gone-id>`.
+              // cannot restart the process with `--resume <gone-id>`. The older Claude transcript this chat
+              // continued stays above the fresh start (round 3 P3), and its id stays for the next session.
+              if (before) setItems(applyRead([], before));
               setSession(null);
               pick = null;
             }

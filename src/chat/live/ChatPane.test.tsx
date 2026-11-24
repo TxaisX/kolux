@@ -156,6 +156,21 @@ test("review 2 P2-4: a chat continued on OpenCode reopens with the old Claude tr
   expect(starts()[0].args.resumeSessionId).toBe("ses_a");
 });
 
+test("round 3 P3: a continued chat whose new OpenCode session is gone still shows the old Claude transcript above its fresh start", async () => {
+  const old = "0b1c2d3e-aaaa-bbbb-cccc-000000000000";
+  h.script = (cmd, args) => {
+    if (cmd === "chat_models") return MODELS;
+    if (cmd === "chat_sessions") return SESSIONS;
+    if (cmd === "artifacts_scan") return { rows: [], skipped: [] };
+    if (cmd === "chat_history") return args.agent === "claude" ? readOf("said in the old Claude chat") : Promise.reject("That chat is not in OpenCode anymore.");
+    return undefined;
+  };
+  const c = await pane({ resume: "ses_gone", legacyId: old });
+  await until(() => starts().length === 1, "the start");
+  expect(starts()[0].args.resumeSessionId).toBeNull();
+  expect(said(c, "said in the old Claude chat")).toBe(true);
+});
+
 test("review 2 P3-11: OpenCode being out of reach keeps the saved chat and offers Try again; it is not replaced by a blank one", async () => {
   const { UNREACHABLE_NOTE } = await import("./ChatPane");
   let reachable = false;
