@@ -987,28 +987,55 @@ pub fn parse_inband(bytes: &[u8]) -> Option<&'static str> {
     INBAND_STATES.into_iter().find(|s| *s == state)
 }
 
+/// STAT-034 / LAG-05: an in-band status (an OSC 9999 line, or the 1.5 s prompt scan) reaches the
+/// window only when what the window would be told differs from what the pane showed just before.
+/// The fold always happens: the "heard from" time it stamps is what STAT-032 reads, so a report that
+/// moves nothing is still a sign of life. `emit` is called at most once, after the sessions lock is
+/// let go (the send is slow, the fold is not), and its answer is this call's answer. A payload that
+/// does not parse changes no session and sends nothing.
+pub(crate) fn inband_emit(pane_key: u32, terminal: Option<u32>, data: &str, emit: impl FnOnce(&Status) -> bool) -> bool {
+    let Some(state) = parse_inband(data.as_bytes()) else {
+        return false;
+    };
+    let (before, status, _) = inband_fold(pane_key, terminal, state);
+    let moved = match before {
+        None => true,
+        Some(before) => serde_json::to_value(&before).ok() != serde_json::to_value(&status).ok(),
+    };
+    moved && emit(&status)
+}
+
 /// STAT-034: a status a program printed in band; the window's terminal parser hands the payload
 /// over (and never draws the sequence). True when the pane's status moved. T-563: `terminal` is
 /// the pane's live terminal as the window knows it (absent from an older window); the activity lane
 /// takes it, the session does not store it.
 #[tauri::command]
 pub fn status_inband(app: tauri::AppHandle, pane_key: u32, terminal: Option<u32>, data: String) -> bool {
-    let Some(state) = parse_inband(data.as_bytes()) else {
-        return false;
-    };
-    let (status, _) = inband_change(pane_key, terminal, state);
-    tauri::Emitter::emit(&app, crate::hooks::EVENT, status).is_ok()
+    inband_emit(pane_key, terminal, &data, |status| tauri::Emitter::emit(&app, crate::hooks::EVENT, status.clone()).is_ok())
 }
 
 /// STAT-034 / T-563: folds an in-band state into the pane's session; the activity lane is noted
 /// for `terminal`, else the session's own. Returns the status and the terminal that was noted.
+// LAG-05: the fold and the "before" status must come from one hold of the sessions lock, so
+// `inband_emit` goes through `inband_fold`; this keeps the old shape for the tests that call it.
+#[allow(dead_code)]
 fn inband_change(pane_key: u32, terminal: Option<u32>, state: &'static str) -> (Status, Option<u32>) {
+    let (_, status, noted) = inband_fold(pane_key, terminal, state);
+    (status, noted)
+}
+
+/// LAG-05: one fold of an in-band state, and what the pane showed just before it (`None` when the
+/// pane had no session yet, so even a first report of "working" is news). Both are read under the
+/// one sessions lock, so a hook landing at that moment cannot slip between the two and leave the
+/// window behind. Returns (before, after, terminal noted).
+fn inband_fold(pane_key: u32, terminal: Option<u32>, state: &'static str) -> (Option<Status>, Status, Option<u32>) {
     with_sessions(|s| {
+        let before = s.get(&pane_key).map(|session| status_of(pane_key, session.terminal, session, Change { state: session.resolved(), ..Change::default() }, None));
         let session = s.entry(pane_key).or_default();
         let change = session.inband(state);
         let noted = terminal.or(session.terminal);
         crate::activity::note_from(pane_key, noted, change.state);
-        (status_of(pane_key, session.terminal, session, change, None), noted)
+        (before, status_of(pane_key, session.terminal, session, change, None), noted)
     })
 }
 
@@ -2392,3 +2419,5 @@ mod tests {
         assert_eq!(state(&mut s, r#"{"hook_event_name":"Stop"}"#), Some("working"), "b still works");
     }
 }
+
+#[cfg(test)] #[path = "status_inband_board_tests.rs"] mod inband_board_tests;
