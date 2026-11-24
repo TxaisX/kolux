@@ -136,8 +136,13 @@ fn clear_leftovers(top: &Path) {
             if is_link(&at) || !at.is_dir() || !at.join(TAG).is_file() {
                 continue;
             }
-            if let Err(e) = std::fs::remove_dir_all(&at) {
-                eprintln!("kolux: {} could not be deleted, so it is left for the next clear ({e})", at.display());
+            // Round 3 P3: the tag goes last here too, so a copy a file in use keeps from going still
+            // holds it and is swept by the next clear instead of staying untracked for good.
+            if clear_children_except_tag(&at) {
+                let _ = std::fs::remove_dir_all(&at);
+            }
+            if at.exists() {
+                eprintln!("kolux: {} could not be deleted, so it is left for the next clear", at.display());
             }
         }
     }
@@ -326,6 +331,22 @@ mod tests {
         assert!(!leftover.exists(), "a copy holding the tag is removed");
         assert!(!in_crate.exists(), "a crate in a child folder is swept too");
         assert_eq!(fs::read_to_string(stranger.join("debug").join("keep")).unwrap(), "not a build copy", "one without the tag is left alone");
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    // Round 3 P3: the sweep takes the tag last too, so a leftover with content under it goes whole,
+    // and a delete that stops part way still leaves the tag for the next clear to recognise.
+    #[test]
+    fn p3_b_a_leftover_holding_content_is_swept_with_the_tag_last() {
+        let base = temp("p3-b-leftover-content");
+        let tag = "Signature: 8a477f597d28d172789f06886806bc55\n";
+        let leftover = base.join("target.deleting-1");
+        fs::create_dir_all(leftover.join("debug").join("deps")).unwrap();
+        fs::write(leftover.join("CACHEDIR.TAG"), tag).unwrap();
+        fs::write(leftover.join("debug").join("deps").join("libapp.rlib"), "built").unwrap();
+        clear_leftovers(&base);
+        assert!(!leftover.exists(), "the leftover is gone, its content and tag with it");
+        assert_eq!(fs::read_dir(&base).unwrap().count(), 0, "nothing is left beside the crate");
         let _ = fs::remove_dir_all(&base);
     }
 
