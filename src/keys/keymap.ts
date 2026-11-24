@@ -189,7 +189,9 @@ function dropConflicts(bindings: Map<string, Binding>, errors: string[], platfor
     const seen = new Map<string, Binding[]>();
     for (const b of bindings.values()) {
       if (ignore.has(b.action.id)) continue;
-      for (const chord of b.chords) for (const bucket of buckets(b.action)) {
+      // T7-F01: a chord listed twice inside one command's own list is still one binding, so it must
+      // count once here; otherwise the binding clashes with itself and is dropped.
+      for (const chord of new Set(b.chords)) for (const bucket of buckets(b.action)) {
         const key = `${bucket}|${chord}`;
         seen.set(key, [...(seen.get(key) ?? []), b]);
       }
