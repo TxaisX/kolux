@@ -12,7 +12,6 @@ import type { Agent } from "../chrome/VendorMark";
 /** The catalogue ids and the program names Rust credits them by (agents.rs CATALOGUE, same order: the first match wins). */
 export const CREDIT_NAMES: readonly (readonly [string, readonly string[]])[] = [
   ["claude", ["claude"]],
-
   ["codex", ["codex"]],
   ["autohand", ["autohand"]],
   ["ante", ["ante"]],

@@ -546,7 +546,7 @@ Kolux learns what an agent is doing (working, blocked, waiting for Txais, done) 
 - The script runs the guard above before it touches stdin, then reads stdin with the system's built-in pager program called by its full Windows path, so a same-named program in the repo cannot capture the payload.
 - It sends with the system curl, then exits 0, then drains any leftover stdin so the agent never sees a broken pipe.
 - Claude: when Git Bash is present, the settings entry calls the batch script directly; otherwise it goes through an encoded PowerShell launcher. The Claude script skips itself when the Devin project variable is set, because Devin re-runs Claude hooks. (Kolux, DT-C4: not built, the variable's name is not public.)
-- OpenClaude uses the same script shape without the PowerShell launcher.
+- OpenClaude is gone: chats now run through OpenCode, so there is no separate OpenClaude script.
 - Gemini's script prints an empty JSON object first, then does the rest.
 - Antigravity gets one small script per event, each calling one shared script.
 - Copilot uses a PowerShell script in the PowerShell slot of its hook file (5 second timeout); on other systems the bash slot.
@@ -575,7 +575,6 @@ Kolux also installs a Claude status-line command, only when the user's own statu
 | Agent | Config file the user owns | Events Kolux installs | Mapped but not installed |
 |---|---|---|---|
 | Claude | `~/.claude/settings.json`, or the folder named by `CLAUDE_CONFIG_DIR` | 12: `SessionStart`, `UserPromptSubmit`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`, `TeammateIdle`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`, `PostCompact` (tool events match every tool) | `PreCompact` (never installed, refused if it arrives) |
-| OpenClaude | `~/.openclaude/settings.json` | Same 12 as Claude | `PreCompact` |
 | Codex | Kolux's own Codex home under `%APPDATA%\kolux\codex-runtime-home`, plus `~/.codex/hooks.json` and the hook trust entries in `~/.codex/config.toml` (Kolux, DT-C3: the entries are written with the keys and fingerprints Codex's own `hooks/list` reports; a user-level key is the `hooks.json` path, the event label, the group index and the handler index) | 8: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `SubagentStart`, `SubagentStop`, `Stop` | none |
 | Gemini | `~/.gemini/settings.json` | 4: `BeforeAgent`, `AfterAgent`, `BeforeTool`, `AfterTool` | `PreToolUse`, `PostToolUse` (old entries are swept out) |
 | Antigravity | `~/.gemini/config/hooks.json`, inside one named bundle (kolux-status) | 5: `PreInvocation`, `PostInvocation`, `Stop`, `PreToolUse`, `PostToolUse` | none |
@@ -596,7 +595,7 @@ Pi, OMP and Prime Agent report status through Kolux-managed extensions loaded by
 
 ### 3.5 Event to status, per agent (123 rows)
 
-Claude and OpenClaude (13 rows each, same mapping; OpenClaude sends `StopFailure` instead of `Stop` after model errors):
+Claude (13 rows; OpenClaude was removed when chats moved to OpenCode):
 
 | Event | Status effect |
 |---|---|
@@ -776,7 +775,7 @@ MiMo Code (5 status signals from its own plugin events):
 | `permission.asked` | waiting; cleared by `permission.replied`. |
 | `question.asked` | waiting; cleared by `question.replied` or `question.rejected`. |
 
-Verified against the old source for five agents (50 rows): Claude 13, OpenClaude 13 (it reuses the Claude installer and event list with its own config folder), Codex 8, Gemini 6 and Cursor 10. The other rows come from the hook-events registry as captured.
+Verified against the old source for five agents (50 rows): Claude 13, (OpenClaude 13 until it was removed when chats moved to OpenCode), Codex 8, Gemini 6 and Cursor 10. The other rows come from the hook-events registry as captured.
 
 ### 3.6 Cards that carry a hook or agent-config contract
 
@@ -784,7 +783,7 @@ Verified against the old source for five agents (50 rows): Claude 13, OpenClaude
 |---|---|
 | STAT-001 | The hook listener answers on the loopback address only; every terminal Kolux opens is handed the port, token and pane identity the hooks need (3.1, 5.5). The events per agent are in 3.4. |
 | STAT-005 | Installers recognise and remove the entries the old app wrote, so after an upgrade each event holds one Kolux entry, not two, and the user's own entries stay untouched (3.4). |
-| STAT-007 | Claude Code and OpenClaude: the 12 events of 3.4 in the user settings, following Claude Code's config-folder override (`CLAUDE_CONFIG_DIR`) when the user has set one. |
+| STAT-007 | Claude Code (OpenClaude was removed): the 12 events of 3.4 in the user settings, following Claude Code's config-folder override (`CLAUDE_CONFIG_DIR`) when the user has set one. |
 | STAT-008 | Codex: the 8 events of 3.4, with hook trust recorded in Codex's own TOML settings. |
 | STAT-009 | Gemini CLI: the 4 events of 3.4; the older pre-tool and post-tool entries are recognised and swept out. |
 | STAT-010 | Antigravity: the 5 events of 3.4 in its hooks file, inside one named Kolux bundle. |
@@ -937,7 +936,6 @@ The 27 rows marked "retired 2026-11-19" lost their feature in the slim-down (the
 | `terminals.focusNextNeedsYou` | Next That Needs You | Mod+J | no |
 | `tab.newAgent.claude` | New Claude tab | none | yes |
 | `tab.newAgent.claude-agent-teams` | New Claude Agent Teams tab | none | yes |
-| `tab.newAgent.openclaude` | New OpenClaude tab | none | yes |
 | `tab.newAgent.codex` | New Codex tab | none | yes |
 | `tab.newAgent.devin` | New Devin tab | none | yes |
 | `tab.newAgent.ante` | New Ante tab | none | yes |
@@ -1393,7 +1391,6 @@ An agent counts as installed when its command is found on PATH (or one of its al
 |---|---|---|---|---|---|---|
 | Claude (featured) | claude | claude |  |  | yes | hooks (3.4) |
 | Claude Agent Teams | claude-agent-teams | kolux | kolux-dev, kolux-ide; also needs claude on PATH; not offered on Windows or WSL | kolux claude-teams; Linux: kolux-ide claude-teams; Windows: kolux.cmd claude-teams | no | none of its own (it runs Claude) |
-| OpenClaude | openclaude | openclaude |  |  | no | hooks (3.4) |
 | Codex (featured) | codex | codex |  |  | yes | hooks (3.4) |
 | Autohand Code | autohand | autohand |  |  | no | none |
 | Ante | ante | ante |  |  | no | none |

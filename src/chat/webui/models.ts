@@ -8,15 +8,15 @@ export const STARRED_KEY = "kolux.chat.starredModels";
 
 /** The maker's name. OpenCode may name the route (`openrouter`) as the provider; the maker is then the second part of the id. */
 export function providerOf(m: ChatModel): string {
-  if (m.provider !== "openrouter") return m.provider;
+  if (m.provider !== "openrouter") return m.provider.replace(/^~/, "");
   const parts = m.id.split("/");
-  return parts.length >= 3 ? parts[1] : m.provider;
+  return (parts.length >= 3 ? parts[1] : m.provider).replace(/^~/, "");
 }
 
 /** The maker read off an id alone (`openrouter/anthropic/claude-opus-5.5` is anthropic), for before the model list has loaded. */
 export function providerFromId(id: string): string {
   const parts = id.split("/");
-  return parts.length >= 3 && parts[0] === "openrouter" ? parts[1] : parts[0];
+  return (parts.length >= 3 && parts[0] === "openrouter" ? parts[1] : parts[0]).replace(/^~/, "");
 }
 
 /** A saved or passed-in model is only usable if it is an OpenCode id (`route/maker/model`, or `maker/model`): an older Claude-era name like "opus" is not. */
@@ -35,9 +35,10 @@ export function filterModels(models: readonly ChatModel[], query: string): ChatM
 export type Sections = { starred: ChatModel[]; groups: { provider: string; models: ChatModel[] }[] };
 
 /** "Your models" first, then every model under its maker (makers A to Z, models in the engine's order). */
-export function buildSections(models: readonly ChatModel[], starred: readonly string[], query: string): Sections {
-  const hits = filterModels(models, query);
-  const mine = new Set(starred);
+export function buildSections(models: readonly ChatModel[], starred: readonly string[] | ReadonlySet<string>, query: string): Sections {
+  const seen = new Set<string>();
+  const hits = filterModels(models, query).filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+  const mine = starred instanceof Set ? starred : new Set(starred);
   const by = new Map<string, ChatModel[]>();
   for (const m of hits) by.set(providerOf(m), [...(by.get(providerOf(m)) ?? []), m]);
   return {
@@ -101,6 +102,64 @@ export function loadStarred(store?: Store): string[] | null {
 export const saveStarred = (ids: readonly string[], store?: Store): void => writeKey(STARRED_KEY, JSON.stringify(ids), store);
 
 export const toggleStar = (ids: readonly string[], id: string): string[] => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+
+// --- One shared list for every pane ---
+// Every chat pane draws the same stars. They live in this module (not in each picker), so a star set in one
+// pane shows in the others at once, and a toggle always starts from what is saved now, not from what the
+// picker last saw. Another window's change arrives as the browser's `storage` event.
+
+let shared: string[] = [];
+let sharedRead = false;
+const hearers = new Set<() => void>();
+let watching = false;
+
+function refreshShared(store?: Store): void {
+  const saved = loadStarred(store);
+  const next = saved ?? [];
+  sharedRead = true;
+  if (next.length === shared.length && next.every((id, i) => id === shared[i])) return;
+  shared = next;
+  for (const fn of [...hearers]) fn();
+}
+
+/** The starred ids as one stable array, until a star changes (what `useSyncExternalStore` needs). */
+export function starredNow(store?: Store): readonly string[] {
+  if (!sharedRead) refreshShared(store);
+  return shared;
+}
+
+/** Stars or unstars one model. The saved list is read again first, so another pane's star is never lost. */
+export function toggleShared(id: string, store?: Store): readonly string[] {
+  const next = toggleStar(loadStarred(store) ?? shared, id);
+  saveStarred(next, store);
+  refreshShared(store);
+  return shared;
+}
+
+/** The very first run only: the seed, once the model list is known. Nothing is written when a list was ever saved. */
+export function seedShared(models: readonly ChatModel[], store?: Store): void {
+  if (models.length === 0 || loadStarred(store) !== null) return refreshShared(store);
+  saveStarred(seedStarred(models), store);
+  refreshShared(store);
+}
+
+export function subscribeStarred(fn: () => void): () => void {
+  hearers.add(fn);
+  if (!watching && typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    watching = true;
+    window.addEventListener("storage", (e: StorageEvent) => {
+      if (e.key === null || e.key === STARRED_KEY) refreshShared();
+    });
+  }
+  return () => void hearers.delete(fn);
+}
+
+/** For tests: forget what was read, so the next read starts from the store again. */
+export function resetShared(): void {
+  shared = [];
+  sharedRead = false;
+  hearers.clear();
+}
 
 // --- The keyboard inside the open list ---
 

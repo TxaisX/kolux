@@ -28,18 +28,29 @@ export const chatIdOf = (paneKey: number): string => `pane-${paneKey}`;
  * up a kept conversation where it stopped. `model` and `effort` are what the conversation runs at:
  * calling this again for the same chat and conversation with another pair changes them in place on
  * OpenCode, with no restart.
- *
- * A pane kept by a build from before 2026-11-24 can still name an engine the chat page no longer has.
- * It opens on OpenCode instead: its old conversation is not one OpenCode can open, so it starts a fresh
- * one, and its model (an OpenRouter id) is named the way OpenCode lists it.
  */
 export async function startChat(chatId: string, cwd: string, model: string | null = null, agent: string = "claude", resumeSessionId: string | null = null, effort: string | null = null): Promise<void> {
   const engine = agent === "claude" ? agent : CHAT_AGENT;
-  const old = engine !== agent;
   // The controls beside Send list what OpenCode lists. The list is asked for once and is not waited for.
   if (engine === CHAT_AGENT) void listChatModels().then((list) => (list.length > 0 ? setChatModels(list) : undefined));
-  const onModel = old && model && !model.startsWith("openrouter/") ? `openrouter/${model}` : model;
-  await invoke("chat_start", { chatId, cwd, model: onModel, effort, resumeSessionId: old ? null : resumeSessionId, extraEnv: [], agent: engine });
+  await invoke("chat_start", { chatId, cwd, model, effort, resumeSessionId, extraEnv: [], agent: engine });
+}
+
+/** OpenCode ids all begin `ses_`; a Claude Code conversation id is a bare UUID. */
+export const isOpenCodeSession = (id: string): boolean => id.startsWith("ses_");
+
+/**
+ * A kept chat's transcript, for opening it again. An OpenCode chat is read from OpenCode. An older Everyday
+ * chat (kept before every chat ran through OpenCode, 2026-11-24) holds a Claude Code id that OpenCode does not
+ * know: its own transcript file is read instead, and `legacy` says the chat cannot be continued, only shown.
+ * `read` is null when nothing could be read; the pane then says so rather than starting fresh without a word.
+ */
+export async function readKeptChat(cwd: string, session: string): Promise<{ read: ChatRead | null; legacy: boolean }> {
+  const fromOpenCode = await chatHistory(CHAT_AGENT, cwd, session).catch(() => null);
+  if (fromOpenCode) return { read: fromOpenCode, legacy: false };
+  if (isOpenCodeSession(session)) return { read: null, legacy: false };
+  const fromClaude = await chatHistory("claude", cwd, session).catch(() => null);
+  return { read: fromClaude, legacy: true };
 }
 
 /**

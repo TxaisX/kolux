@@ -2,14 +2,16 @@
 // and a chevron; opened, a search box, "Your models" (starred) and then every model under its maker.
 // `ModelList` is the open list, drawn from what it is given; `ModelPopover` holds the open state, the
 // keyboard and the starred list, and keeps the stars in the browser (models.ts, STARRED_KEY).
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { ChevronDown } from "../../chrome/icons";
 import type { ChatModel } from "../opencode";
-import { buildSections, flatRows, loadStarred, nameOfId, popKey, saveStarred, seedStarred, toggleStar, type Row } from "./models";
+import { buildSections, flatRows, nameOfId, popKey, seedShared, starredNow, subscribeStarred, toggleShared, type Row, type Sections } from "./models";
+import { useStable } from "./useStable";
 
 type ListProps = {
-  models: readonly ChatModel[];
-  starred: readonly string[];
+  /** Built once by the popover (and reused for the keyboard rows), not rebuilt per draw. */
+  sections: Sections;
+  starred: ReadonlySet<string>;
   query: string;
   /** The highlighted row, as an index into `flatRows`. */
   active: number;
@@ -22,25 +24,43 @@ type ListProps = {
   onHover: (index: number) => void;
 };
 
-export function ModelList({ models, starred, query, active, value, listId, onPick, onStar, onQuery, onHover }: ListProps) {
-  const sections = buildSections(models, starred, query);
+type RowProps = {
+  model: ChatModel;
+  index: number;
+  listId: string;
+  /** The highlighted row. */
+  active: boolean;
+  /** The model the chat is on. */
+  current: boolean;
+  starred: boolean;
+  onPick: (id: string) => void;
+  onStar: (id: string) => void;
+  onHover: (index: number) => void;
+};
+
+/** One model row. Memoised: moving the highlight redraws the two rows that change, not all of them. */
+const ModelRow = memo(function ModelRow({ model: m, index: i, listId, active, current, starred: mine, onPick, onStar, onHover }: RowProps) {
+  return (
+    <li role="presentation" className={`wui-mrow${active ? " active" : ""}`}>
+      {/* The mouse only moves the highlight onto a row that does not hold it yet. */}
+      <div id={`${listId}-${i}`} role="option" aria-selected={current} className="wui-mopt" title={m.id} onClick={() => onPick(m.id)} onMouseMove={() => (active ? undefined : onHover(i))}>
+        <span className="wui-mname">{m.label}</span>
+      </div>
+      <button type="button" tabIndex={-1} className={`wui-star${mine ? " on" : ""}`} aria-pressed={mine} aria-label={mine ? `Remove ${m.label} from your models` : `Add ${m.label} to your models`} onClick={() => onStar(m.id)}>
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M8 1.8l1.9 4 4.3.5-3.2 3 .9 4.3L8 11.4 4.1 13.6 5 9.3l-3.2-3 4.3-.5z" fill={mine ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </li>
+  );
+});
+
+export function ModelList({ sections, starred, query, active, value, listId, onPick, onStar, onQuery, onHover }: ListProps) {
   const count = sections.starred.length + sections.groups.reduce((n, g) => n + g.models.length, 0);
   let index = 0;
   const row = (m: ChatModel, section: string) => {
     const i = index++;
-    const mine = starred.includes(m.id);
-    return (
-      <li key={`${section}:${m.id}`} role="presentation" className={`wui-mrow${i === active ? " active" : ""}`}>
-        <div id={`${listId}-${i}`} role="option" aria-selected={m.id === value} className="wui-mopt" title={m.id} onClick={() => onPick(m.id)} onMouseMove={() => onHover(i)}>
-          <span className="wui-mname">{m.label}</span>
-        </div>
-        <button type="button" tabIndex={-1} className={`wui-star${mine ? " on" : ""}`} aria-pressed={mine} aria-label={mine ? `Remove ${m.label} from your models` : `Add ${m.label} to your models`} onClick={() => onStar(m.id)}>
-          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-            <path d="M8 1.8l1.9 4 4.3.5-3.2 3 .9 4.3L8 11.4 4.1 13.6 5 9.3l-3.2-3 4.3-.5z" fill={mine ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </li>
-    );
+    return <ModelRow key={`${section}:${m.id}`} model={m} index={i} listId={listId} active={i === active} current={m.id === value} starred={starred.has(m.id)} onPick={onPick} onStar={onStar} onHover={onHover} />;
   };
   return (
     <div className="wui-pop-body">
@@ -89,34 +109,29 @@ type Props = {
   onPick: (id: string) => void;
 };
 
-/** The starred ids: the saved list, or on the very first run the seed (once the model list has loaded). */
-function useStarred(models: readonly ChatModel[]): [string[], (id: string) => void] {
-  const [starred, setStarred] = useState<string[]>(() => loadStarred() ?? []);
-  useEffect(() => {
-    if (models.length === 0 || loadStarred() !== null) return;
-    const seeded = seedStarred(models);
-    saveStarred(seeded);
-    setStarred(seeded);
-  }, [models]);
-  const star = (id: string) =>
-    setStarred((xs) => {
-      const next = toggleStar(xs, id);
-      saveStarred(next);
-      return next;
-    });
-  return [starred, star];
+/** The starred ids, shared by every pane (models.ts): a star set in one picker shows in the others, and the
+ *  first run seeds the list once the model list has loaded. */
+function useStarred(models: readonly ChatModel[]): [ReadonlySet<string>, (id: string) => void] {
+  const list = useSyncExternalStore(subscribeStarred, starredNow, starredNow);
+  useEffect(() => seedShared(models), [models]);
+  const set = useMemo(() => new Set(list), [list]);
+  return [set, toggleShared];
 }
 
-export function ModelPopover({ models, value, disabled = false, onPick }: Props) {
+export const ModelPopover = memo(function ModelPopover({ models, value, disabled = false, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const [starred, star] = useStarred(models);
+  const [starred, toggleStarred] = useStarred(models);
   const listId = useId().replace(/:/g, "");
   const wrap = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const rows = useMemo<Row[]>(() => flatRows(buildSections(models, starred, query)), [models, starred, query]);
-  const label = models.find((m) => m.id === value)?.label ?? nameOfId(value);
+  // Built once per change of list, stars or search, and handed to both the open list and the keyboard rows.
+  const sections = useMemo(() => buildSections(models, starred, query), [models, starred, query]);
+  const rows = useMemo<Row[]>(() => flatRows(sections), [sections]);
+  const label = useMemo(() => models.find((m) => m.id === value)?.label ?? nameOfId(value), [models, value]);
+  const star = useStable((id: string) => void toggleStarred(id));
+  const hover = useStable((i: number) => setActive(i));
 
   const close = (refocus: boolean) => {
     setOpen(false);
@@ -127,6 +142,7 @@ export function ModelPopover({ models, value, disabled = false, onPick }: Props)
     close(true);
     if (id !== value) onPick(id);
   };
+  const pick = useStable(choose);
 
   // Open: the highlight starts on the current model and the search takes focus.
   useEffect(() => {
@@ -181,9 +197,9 @@ export function ModelPopover({ models, value, disabled = false, onPick }: Props)
       </button>
       {open && (
         <div className="wui-pop" role="dialog" aria-label="Choose a model">
-          <ModelList models={models} starred={starred} query={query} active={active} value={value} listId={listId} onPick={choose} onStar={star} onQuery={setQuery} onHover={setActive} />
+          <ModelList sections={sections} starred={starred} query={query} active={active} value={value} listId={listId} onPick={pick} onStar={star} onQuery={setQuery} onHover={hover} />
         </div>
       )}
     </div>
   );
-}
+});

@@ -67,6 +67,44 @@ test("a row that is not a model is left out rather than drawn", async () => {
   expect(await m.listChatModels()).toEqual([rows[0], { id: "openrouter/x/y", label: "openrouter/x/y", provider: "", efforts: [] }]);
 });
 
+test("an OpenRouter alias (~anthropic) is filed under its maker and named as the latest of it", async () => {
+  const m = await fresh();
+  invoke.mockResolvedValueOnce([{ id: "openrouter/~anthropic/claude-opus-latest", label: "Claude Opus Latest", provider: "~anthropic", efforts: [] }]);
+  const [alias] = await m.listChatModels();
+  expect(alias.provider).toBe("anthropic");
+  expect(alias.label).toBe("Claude Opus (latest)");
+  expect(alias.id).toBe("openrouter/~anthropic/claude-opus-latest");
+});
+
+test("a new server run (another process id) makes the next ask read the model list again", async () => {
+  const m = await fresh();
+  invoke.mockResolvedValue(rows);
+  await m.listChatModels();
+  m.noteServer(100);
+  await m.listChatModels();
+  expect(invoke).toHaveBeenCalledTimes(1);
+  m.noteServer(100);
+  m.noteServer(200);
+  await m.listChatModels();
+  expect(invoke).toHaveBeenCalledTimes(2);
+});
+
+test("a server restart tells everyone who shows the list, and a list read before it is not kept", async () => {
+  const m = await fresh();
+  const heard = vi.fn();
+  m.onModelsStale(heard);
+  m.noteServer(1);
+  let release: (v: unknown) => void = () => {};
+  invoke.mockReturnValueOnce(new Promise((r) => (release = r)));
+  const slow = m.listChatModels();
+  m.noteServer(2);
+  expect(heard).toHaveBeenCalledTimes(1);
+  release(rows);
+  await slow;
+  invoke.mockResolvedValueOnce([rows[1]]);
+  expect(await m.listChatModels()).toEqual([rows[1]]);
+});
+
 test("a folder's saved chats come newest first", async () => {
   const m = await fresh();
   invoke.mockResolvedValueOnce([

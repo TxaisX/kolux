@@ -208,7 +208,7 @@ function heard(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq: number
 function ended(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq: number): ChatItem[] | null {
   if (!ev.isError) return null;
   // A stop ends the turn with this subtype; the row marks the turn so no "Worked for" line is claimed for it.
-  if (ev.subtype === "error_during_execution") return [...prev, { id: `stopped-${seq}`, role: "assistant", kind: "interrupted", text: "Interrupted before it finished.", at }];
+  if (ev.subtype === "error_during_execution") return [...prev, { id: `stopped-${seq}`, role: "assistant", kind: "interrupted", text: "Interrupted", at }];
   return [...prev, { id: `result-${seq}`, role: "status", kind: "notice", text: `The turn ended with an error (${ev.subtype || "unknown"}).`, details: (ev.errors ?? []).join("\n") || undefined, at }];
 }
 
