@@ -1,6 +1,6 @@
 [
  {
-  "id": "T7-F02",
+  "id": "T7-F01",
   "title": "A custom binding that lists one chord twice is dropped as a clash with itself",
   "severity": "low",
   "file": "src/keys/keymap.ts",
@@ -9,13 +9,13 @@
   "expected": "A chord repeated inside one command's own list is still one binding: it must be counted once (or de-duplicated), the custom binding must stay, no clash or clash error may be recorded, and pressing the chord must still run the command.",
   "test": {
    "runner": "vitest",
-   "file": "src/keys/auditT7F02.test.ts",
-   "name": "resolve with a repeated custom chord > [T7-F02] one binding listing a chord twice is not a clash"
+   "file": "src/keys/auditT7F01.test.ts",
+   "name": "resolve with a repeated custom chord > [T7-F01] one binding listing a chord twice is not a clash"
   },
-  "patch": "repro/T7-F02.patch"
+  "patch": "repro/T7-F01.patch"
  },
  {
-  "id": "T7-F03",
+  "id": "T7-F02",
   "title": "normaliseIndexChord leaves a recorded Mod+0 dead and takes Reset Zoom's chord",
   "severity": "low",
   "file": "src/keys/keymap.ts",
@@ -24,9 +24,9 @@
   "expected": "normaliseIndexChord must rewrite every trailing digit, 0 included, so a recorded Ctrl+0 becomes Mod+1 again; digits 1-9 then switch workspaces and Reset Zoom keeps its Mod+0.",
   "test": {
    "runner": "vitest",
-   "file": "src/keys/auditT7F03.test.ts",
-   "name": "recordKey on an index command > [T7-F03] Ctrl+0 becomes the index chord and still switches workspaces"
+   "file": "src/keys/auditT7F02.test.ts",
+   "name": "recordKey on an index command > [T7-F02] Ctrl+0 becomes the index chord and still switches workspaces"
   },
-  "patch": "repro/T7-F03.patch"
+  "patch": "repro/T7-F02.patch"
  }
 ]

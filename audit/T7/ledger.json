@@ -463,11 +463,11 @@
     "dropConflicts",
     "matchEvent"
    ],
-   "note": "Read chord parsing and labels, file sections, conflict dropping, yielding and matching. Two faults filed: T7-F02 counts one binding's duplicate chord as a clash, T7-F03 leaves a recorded Mod+0 un-normalised.",
+   "note": "Read chord parsing and labels, file sections, conflict dropping, yielding and matching. Two faults filed: T7-F01 counts one binding's duplicate chord as a clash, T7-F02 leaves a recorded Mod+0 un-normalised.",
    "verdict": "findings",
    "findings": [
-    "T7-F02",
-    "T7-F03"
+    "T7-F01",
+    "T7-F02"
    ]
   },
   {
@@ -486,7 +486,7 @@
     "recording",
     "Recorded"
    ],
-   "note": "Read the recorder: modifiers, Escape cancel, code-to-key spelling and index normalisation; its Ctrl+0 input exposes the T7-F03 fault in keymap.normaliseIndexChord. Clean here.",
+   "note": "Read the recorder: modifiers, Escape cancel, code-to-key spelling and index normalisation; its Ctrl+0 input exposes the T7-F02 fault in keymap.normaliseIndexChord. Clean here.",
    "verdict": "clean",
    "findings": []
   },
