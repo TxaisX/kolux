@@ -16,7 +16,11 @@ const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'main'
 const check = args.includes('--check');
 
 const git = (cwd, ...rest) =>
-  execFileSync('git', ['-C', cwd, ...rest], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  execFileSync('git', ['-C', cwd, ...rest], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  }).trim();
 
 const root = git(process.cwd(), 'rev-parse', '--show-toplevel');
 const baseSha = git(root, 'rev-parse', '--short', base);
