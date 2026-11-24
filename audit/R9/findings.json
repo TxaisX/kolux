@@ -1,0 +1,17 @@
+[
+  {
+    "id": "R9-F01",
+    "title": "A merge answer with no merged field is reported as a merge",
+    "severity": "medium",
+    "file": "src-tauri/src/pull_requests.rs",
+    "line": 166,
+    "what": "In merge, only merged == false is treated as a refusal. An answer that carries no merged field at all (an empty or non-JSON body, which write turns into Value::Null) falls through to Ok with an empty commit id, so chat_finish tells the user the pull request merged and deletes the local branch although GitHub never confirmed a merge.",
+    "expected": "A merge answer that does not say merged: true should be an error carrying what GitHub said, so the user is told it did not merge and the local branch is kept.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/pull_requests.rs",
+      "name": "github::pull_requests::tests::audit_r9_f01_a_merge_answer_without_the_merged_field_is_refused"
+    },
+    "patch": "repro/R9-F01.patch"
+  }
+]

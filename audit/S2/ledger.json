@@ -1,0 +1,923 @@
+{
+  "area": "S2",
+  "files": [
+    {
+      "path": "scripts/prove/agent-sleep-standin.cjs",
+      "symbols": [
+        "HOLD_MB",
+        "session"
+      ],
+      "note": "Read: the stand-in prints its banner, its argv and folder, stays quiet, exits 0. No selector or logic defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/diag-APP-052-service-exit.mjs",
+      "symbols": [
+        "live",
+        "ROOT"
+      ],
+      "note": "Read: polls the service pid, its shell child and the app pid every 200 ms. Diagnostic only; no assertion or selector defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/hidden-desktop.ps1",
+      "symbols": [
+        "list",
+        "CmdArgs"
+      ],
+      "note": "Read: creates a private desktop, starts one program on it and cleans up. No logic defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-962.mjs",
+      "symbols": [
+        "grok",
+        "sheet",
+        "stand",
+        "asserts"
+      ],
+      "note": "Read: the New session sheet and the piped `grok models` / `cursor-agent --list-models` answers. `Seat 1: which AI` is the runtime form of the chooser's template label; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-APP-050.mjs",
+      "symbols": [
+        "gone",
+        "probe"
+      ],
+      "note": "Read: holds an oplock on the profile log and checks the quit deadline. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-APP-052.mjs",
+      "symbols": [
+        "back",
+        "lines"
+      ],
+      "note": "Read: three quit/relaunch rounds with a printed marker. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-EDIT-001.mjs",
+      "symbols": [
+        "reading",
+        "before"
+      ],
+      "note": "Its first step is clickRow, which clicks .ex-row rows of the Explorer deleted in fccac517, so its tab comparison never runs; reported on live-edit-common.mjs (S2-F03).",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-EDIT-003.mjs",
+      "symbols": [
+        "disk",
+        "mine"
+      ],
+      "note": "Opens top.txt with clickRow (.ex-row, deleted Explorer) and reads CodeMirror (.cm-content, gone); reported on live-edit-common.mjs (S2-F03).",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-EDIT-012.mjs",
+      "symbols": [
+        "rich",
+        "opened"
+      ],
+      "note": "Opens README.md and big.md with clickRow (.ex-row) and reads the CodeMirror buffer; the editor was retired in fccac517. Reported as S2-F03.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-EDIT-027.mjs",
+      "symbols": [
+        "diff",
+        "inline"
+      ],
+      "note": "Retired on its first line: drives the Source Control panel removed by T-644. Its dead selectors are expected here, not a defect.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-EDIT-029.mjs",
+      "symbols": [
+        "opened",
+        "state"
+      ],
+      "note": "Opens All Changes through openAllChanges, whose Review changes item and pane are gone, then waits on the missing pane; reported on live-edit-common.mjs (S2-F04).",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-EDIT-033.mjs",
+      "symbols": [
+        "first",
+        "second"
+      ],
+      "note": "Drives the Explorer with `Hide the explorer`, `aside.explorer` and .ex-row rows; the component was deleted in fccac517. Reported as S2-F03.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-EDIT-041.mjs",
+      "symbols": [
+        "waiting",
+        "post"
+      ],
+      "note": "Read: inbox hook stand-in, Open in Code, correct worktree and pane focus. Its selectors and labels resolve; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-ESC-diag.mjs",
+      "symbols": [
+        "last"
+      ],
+      "note": "Read: sends Escape over CDP and reads PSReadLine's line back. Diagnostic; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-GIT-001.mjs",
+      "symbols": [
+        "tree",
+        "git001Fixture"
+      ],
+      "note": "Retired on its first line: the right-sidebar Source Control panel was removed by T-644. Its dead selectors are expected here.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-GIT-003.mjs",
+      "symbols": [
+        "dialog",
+        "btns"
+      ],
+      "note": "Retired on its first line: the Untracked section went with the Source Control panel. Its dead selectors are expected here.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-GIT-004.mjs",
+      "symbols": [
+        "hook",
+        "git004Fixture"
+      ],
+      "note": "Retired on its first line: types into the removed Source Control commit box. Its dead selectors are expected here.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-GIT-007.mjs",
+      "symbols": [
+        "remote",
+        "trace"
+      ],
+      "note": "Retired on its first line: watches git traces around the removed Source Control panel. Its dead selectors are expected here.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-GIT-037.mjs",
+      "symbols": [
+        "caret",
+        "diffInfo"
+      ],
+      "note": "Retired on its first line: opens a diff from the removed Source Control panel. Its dead selectors are expected here.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-GIT-038.mjs",
+      "symbols": [
+        "seventh",
+        "names"
+      ],
+      "note": "Opens All Changes through openAllChanges and asserts .all-changes, Side by side and Show whitespace changes; the pane and its toolbar are gone. Reported as S2-F04.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-GIT-040.mjs",
+      "symbols": [
+        "added",
+        "gone"
+      ],
+      "note": "Retired on its first line: line notes from the removed Source Control panel. Its dead selectors are expected here.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-PROJ-020b.mjs",
+      "symbols": [
+        "after",
+        "DONE"
+      ],
+      "note": "Read: a slow post-checkout hook and a background create that must not steal focus. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-PROJ-028.mjs",
+      "symbols": [
+        "saved",
+        "ORIGIN"
+      ],
+      "note": "Read: saved base branch deleted on a scratch remote, fallback notice shown. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-PROJ-063.mjs",
+      "symbols": [
+        "W_DIR",
+        "prepare"
+      ],
+      "note": "Read: branch switch picked up by the 5 s poll on the row. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-PROJ-066.mjs",
+      "symbols": [
+        "back",
+        "B_DIR"
+      ],
+      "note": "Read: workspace A/B switch keeps terminals and typed markers. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-PROJ-070.mjs",
+      "symbols": [
+        "scroll",
+        "name"
+      ],
+      "note": "Read: deletes a row in a scrolled 40-worktree list and measures the scroll. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-PROJ-077.mjs",
+      "symbols": [
+        "kolux",
+        "policy"
+      ],
+      "note": "Reads select[aria-label=\"setup policy\"] and .trust-prompt; neither label is rendered anywhere in src/ any more, so run077 reads .value of null and throws. See S2-F06.",
+      "verdict": "findings",
+      "findings": [
+        "S2-F06"
+      ]
+    },
+    {
+      "path": "scripts/prove/live-PROJ-create.mjs",
+      "symbols": [
+        "argv",
+        "note"
+      ],
+      "note": "Read: create fix-login, its branch and folder, a Claude prompt and no extra tab. Its selectors resolve; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-ROW-989.mjs",
+      "symbols": [
+        "SETTINGS_A"
+      ],
+      "note": "Read: a real Claude with no --settings override must still report status through the account's own hooks. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SAFE-003.mjs",
+      "symbols": [
+        "COMMENT",
+        "after"
+      ],
+      "note": "Read: plan-mode Approve through the review sheet. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SAFE-004.mjs",
+      "symbols": [
+        "before",
+        "count"
+      ],
+      "note": "Read: two section comments, Request changes, one message naming both ranges. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SAFE-024.mjs",
+      "symbols": [
+        "ROOT",
+        "picked"
+      ],
+      "note": "Focuses textarea[aria-label=\"Task for every seat\"]; the chooser renders \"Task for all of them\" (ChooserPane.tsx:731), so focusField throws before Start. See S2-F01.",
+      "verdict": "findings",
+      "findings": [
+        "S2-F01"
+      ]
+    },
+    {
+      "path": "scripts/prove/live-SESS-004.mjs",
+      "symbols": [
+        "claude",
+        "PLUS"
+      ],
+      "note": "Read: the header plus, Claude Code, the stand-in's argv and folder. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SESS-007.mjs",
+      "symbols": [
+        "left",
+        "look"
+      ],
+      "note": "Read: a chooser left as the only pane has no close button, in both looks. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SESS-018.mjs",
+      "symbols": [
+        "area",
+        "openSheet"
+      ],
+      "note": "Read: the New session sheet fills the workspace, headed with the project and its path. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SESS-024.mjs",
+      "symbols": [
+        "titles",
+        "classic"
+      ],
+      "note": "Read: four seats, four panes, seat titles. `Seat 1: which AI` is the runtime form of the chooser's template label; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SESS-030.mjs",
+      "symbols": [
+        "after",
+        "saved"
+      ],
+      "note": "Read: quit through the window and killed by pid, reopened both times. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SET-004.mjs",
+      "symbols": [
+        "first",
+        "frames",
+        "light",
+        "FONT"
+      ],
+      "note": "Read: dark Cobalt first frame; median of the top rows and the PNG filters. Hex --app-bg and the even-length median are sound; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SET-027.mjs",
+      "symbols": [
+        "agentOptions",
+        "live",
+        "CHORD",
+        "STUB"
+      ],
+      "note": "Read: default agent, switched off, a saved default no search finds. Stand-in commands only; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-STAT-001.mjs",
+      "symbols": [
+        "workingMs"
+      ],
+      "note": "Read: Working within a second of Enter and Done after the reply, from the header word and the events. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-STAT-053.mjs",
+      "symbols": [
+        "folder",
+        "pane"
+      ],
+      "note": "Read: Thought row Space/Enter over a stand-in transcript. Line 20 after the unconditional throw on line 17 is dead code, not a live defect.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-SUBAGENT-418.mjs",
+      "symbols": [
+        "after",
+        "card"
+      ],
+      "note": "Read: four sub-agent permission asks, denied from the card, Esc, chat card. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-T-544.mjs",
+      "symbols": [
+        "probe",
+        "launch",
+        "rows",
+        "wasOn"
+      ],
+      "note": "Read in thirds: installed-build fixtures, the paneStates snapshot, evidence and verdicts. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-T-640.mjs",
+      "symbols": [
+        "rows",
+        "look"
+      ],
+      "note": "Read: every left-pane row can be removed. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-T-643.mjs",
+      "symbols": [
+        "side",
+        "look"
+      ],
+      "note": "Read: sidebar clean at 900/1400/1920 and at the 220/480 px drag limits. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-T-655.mjs",
+      "symbols": [
+        "branch",
+        "file",
+        "hook",
+        "status"
+      ],
+      "note": "Read: the Insights pull requests section over a scratch remote. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-T-816-nowin.mjs",
+      "symbols": [
+        "probe",
+        "seat",
+        "start",
+        "before"
+      ],
+      "note": "Read: private desktop, no console window for any child. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-004.mjs",
+      "symbols": [
+        "asserts",
+        "check"
+      ],
+      "note": "Read: the 4-pane preset keeps the same four sessions by marker. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-006.mjs",
+      "symbols": [
+        "asserts",
+        "check"
+      ],
+      "note": "Read: split opens a shell in folder X, by chord and by the header button. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-013.mjs",
+      "symbols": [
+        "asserts",
+        "check"
+      ],
+      "note": "Read: expand/restore sizes and the scrollback stay unchanged. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-017.mjs",
+      "symbols": [
+        "after",
+        "moves"
+      ],
+      "note": "Read: ten seeded splits and moves keep each pane's own session. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-023.mjs",
+      "symbols": [
+        "asserts",
+        "check"
+      ],
+      "note": "Read: an unseen pane done 3 minutes ago shows Done with 3m. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-028.mjs",
+      "symbols": [
+        "look",
+        "asserts"
+      ],
+      "note": "Read: a one-tab group shows no strip; a second tab brings it. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-040.mjs",
+      "symbols": [
+        "asserts",
+        "check"
+      ],
+      "note": "Read: Ctrl+T opens a shell in the workspace folder with the cursor ready. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-041.mjs",
+      "symbols": [
+        "asserts",
+        "check"
+      ],
+      "note": "Read: Claude from the New tab menu, header shows Claude starting, stand-in command. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-103.mjs",
+      "symbols": [
+        "panes",
+        "asserts"
+      ],
+      "note": "Read: ten terminals, no blank pane, beyond-cap panes on the plain path. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-105.mjs",
+      "symbols": [
+        "asserts",
+        "check"
+      ],
+      "note": "Read: restored panes accept typing and the pre-quit focus comes back. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-106-service.mjs",
+      "symbols": [
+        "show",
+        "profile",
+        "tRelaunch",
+        "asserts"
+      ],
+      "note": "Read: the real background host, killed, reopened, earlier output shown. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-TERM-106.mjs",
+      "symbols": [
+        "killed",
+        "asserts"
+      ],
+      "note": "Read: host killed, earlier output above a new prompt in the same folder. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-USAGE-007.mjs",
+      "symbols": [
+        "pane",
+        "STANDIN"
+      ],
+      "note": "Read: resume switch off, nothing typed into a limit-stopped pane. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-001.mjs",
+      "symbols": [
+        "back",
+        "lines"
+      ],
+      "note": "Read: screens render and the clicked label is highlighted. The rail reading is only an OR fallback beside agentsGrid, so its stale wrapper cannot flip a verdict.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-002.mjs",
+      "symbols": [
+        "htmlBefore",
+        "rectsBefore"
+      ],
+      "note": "Read: the classic cycle chord changes nothing; before/after snaps. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-003.mjs",
+      "symbols": [
+        "hint"
+      ],
+      "note": "Read: the search hint opens the palette with focus in its input. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-004.mjs",
+      "symbols": [
+        "pids",
+        "pids2"
+      ],
+      "note": "Read: Agents and Board show no worktree list, Terminals does. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-017.mjs",
+      "symbols": [
+        "kill",
+        "word"
+      ],
+      "note": "Read: stand-in killed without a done signal; the label leaves Working inside 30 s. `.rail .sess` still exists; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-025-reproof.mjs",
+      "symbols": [
+        "card",
+        "LIMIT"
+      ],
+      "note": "Read: three permission asks, Deny from the card, Esc, chat card Deny. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-025.mjs",
+      "symbols": [
+        "made",
+        "after"
+      ],
+      "note": "Read: board Approve runs the command, Deny does not. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-026.mjs",
+      "symbols": [
+        "alive",
+        "slot"
+      ],
+      "note": "Read: board card expands, same output, closing returns the pane. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-050.mjs",
+      "symbols": [
+        "first",
+        "fully"
+      ],
+      "note": "Read: Ctrl+B hides the sidebar and the first tab stays fully visible. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-VIEW-107.mjs",
+      "symbols": [
+        "ORIGINAL",
+        "after"
+      ],
+      "note": "Waits 20 s for .cm-content, the CodeMirror editor retired in fccac517, then focuses it, so the close prompt is never reached. Reported as S2-F03.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-checks.mjs",
+      "symbols": [
+        "checks",
+        "name"
+      ],
+      "note": "b2 requires the palette rows Show Floor, Show Space, Show Workspace Statuses, Show Artifacts and Show Skills; none exists in src/ any more. See S2-F05.",
+      "verdict": "findings",
+      "findings": [
+        "S2-F05"
+      ]
+    },
+    {
+      "path": "scripts/prove/live-claude-common.mjs",
+      "symbols": [
+        "scenario",
+        "file"
+      ],
+      "note": "Read: scenario() wraps startProve, the evidence writer and finish. The chooser gap it inherits is reported on startProve (S2-F02); no defect of its own.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-common.mjs",
+      "symbols": [
+        "repo",
+        "evidence",
+        "TERM",
+        "picked"
+      ],
+      "note": "startProve adds the project then waits for section.pane[data-agent] without answering the session chooser that startPlain answers, so every scenario proof times out. See S2-F02.",
+      "verdict": "findings",
+      "findings": [
+        "S2-F02"
+      ]
+    },
+    {
+      "path": "scripts/prove/live-controls.mjs",
+      "symbols": [
+        "check",
+        "press"
+      ],
+      "note": "Read: four real mouse presses, the sidebar folder row and the pane header. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-edit-common.mjs",
+      "symbols": [
+        "multiBase",
+        "multiEdited"
+      ],
+      "note": "clickRow clicks .ex-row rows of the deleted Explorer, and openAllChanges clicks a Review changes item the row menu no longer offers. See S2-F03 and S2-F04.",
+      "verdict": "findings",
+      "findings": [
+        "S2-F03",
+        "S2-F04"
+      ]
+    },
+    {
+      "path": "scripts/prove/live-flood.mjs",
+      "symbols": [
+        "probe",
+        "guard",
+        "after",
+        "before",
+        "BLOCK",
+        "STREAM"
+      ],
+      "note": "Read in thirds: input paths, flood counters, CPU profile. Its removed-screen close labels are optional pollers, not verdicts; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-git-common.mjs",
+      "symbols": [
+        "RIGHT_TOGGLE",
+        "text"
+      ],
+      "note": "Read: GIT fixtures and the Source Control helpers kept for the retired GIT proofs. The View as tree/list labels are used only there; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-installed.mjs",
+      "symbols": [
+        "fresh",
+        "home",
+        "targets",
+        "runningPid"
+      ],
+      "note": "Read in thirds: attach and launch, page helpers, stop. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-latency.mjs",
+      "symbols": [
+        "check",
+        "item",
+        "shell",
+        "median"
+      ],
+      "note": "Read: the three latency numbers and how each one is measured. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-plan-common.mjs",
+      "symbols": [
+        "PLAN_ARGS",
+        "PLAN_PROMPT"
+      ],
+      "note": "Read: the plan review sheet steps shared by SAFE-003 and SAFE-004. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-proj-common.mjs",
+      "symbols": [
+        "panes",
+        "CLAUDE_PANE"
+      ],
+      "note": "Read: composer helpers, workspaceRows and the pane/tab readings. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-team-grid.mjs",
+      "symbols": [
+        "team",
+        "sidebar",
+        "rows",
+        "CLAUDE_PANE"
+      ],
+      "note": "Read: an own-folder team launch makes four worktrees in one grid. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-trust-common.mjs",
+      "symbols": [
+        "TRUST_RE",
+        "LOGIN_RE"
+      ],
+      "note": "Read: the screen regexes and the pane scan; the watcher never answers a trust menu. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/live-views-dom.mjs",
+      "symbols": [
+        "SNAP_JS",
+        "snap"
+      ],
+      "note": "Read: the SNAP_JS readings. rail-wrap is stale in src/, but its only consumer ORs it with agentsGrid, so no proof verdict changes.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/nowin-probe.ps1",
+      "symbols": [
+        "rows",
+        "samples",
+        "Args",
+        "MaxSeconds"
+      ],
+      "note": "Read: private desktop, every window and process sampled every 20 ms. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/pane-states.mjs",
+      "symbols": [
+        "paneStates"
+      ],
+      "note": "Read: a self-contained function sent to the page; TERM keys and process words only. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/update-rig.mjs",
+      "symbols": [
+        "feed",
+        "install",
+        "name",
+        "profile",
+        "profileDirs",
+        "newPid"
+      ],
+      "note": "Read in thirds: scratch identity and feed, installer runs, hashTree/sameTree/onPath. The theoretical comma case cannot occur for these paths; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/prove/visible-windows.ps1",
+      "symbols": [
+        "list",
+        "Belongs"
+      ],
+      "note": "Read: watches the person's own desktop and records proof windows. No defect found.",
+      "verdict": "clean",
+      "findings": []
+    }
+  ]
+}

@@ -221,6 +221,13 @@ pub fn poll(app: &tauri::AppHandle) {
     let now: Vec<(u32, Front)> = shells.iter().filter_map(|(id, pid, group)| pid.map(|p| (*id, front(p, *group)))).collect();
     for (id, now) in now {
         if note(id, now, &live) {
+            if now == Front::Shell {
+                // START-05: the pane's agent has left its shell, so a later start in that pane is
+                // the pane's own: this is the latch that frees it (see `saved::ended`).
+                for p in crate::status::panes_of(id) {
+                    crate::hooks::agent_hooks::saved::note_ended(p);
+                }
+            }
             // T-050-c: the chat looks for a hand-started transcript from this moment.
             crate::chat::live::noted(id, now.agent(), std::time::SystemTime::now());
             let _ = app.emit("pane-agent", serde_json::json!({ "terminal": id, "agent": now.agent(), "unknown": now == Front::Unknown }));

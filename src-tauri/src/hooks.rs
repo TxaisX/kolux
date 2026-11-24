@@ -19,6 +19,9 @@ use tauri::{AppHandle, Emitter, Manager};
 // STAT-004 / STAT-005: which agents get hooks, removal, the shared install lock (T-152).
 #[path = "agent_hooks/mod.rs"]
 pub mod agent_hooks;
+// START-05: a hook event from an agent started inside a pane is not the pane's own.
+#[path = "hooks_nested.rs"]
+pub(crate) mod nested;
 
 pub const EVENT: &str = "agent-status";
 pub const TOKEN_HEADER: &str = "x-kolux-token";
@@ -51,6 +54,10 @@ pub const ENDPOINT_FILE: &str = "agent-hooks-endpoint.txt";
 pub const PANE_ENDPOINT_PREFIX: &str = "agent-hooks-endpoint-";
 /// T-793: what the shared `ENDPOINT_FILE` carries where a token used to be: no pane can post with it.
 const NO_TOKEN: &str = "-";
+/// LAND-02: the line the hook scripts and the land script both use to read the running Kolux's port and
+/// token from the endpoint file, so a pane that outlived a Kolux restart still reaches it. The land
+/// script carries this line character for character.
+const ENDPOINT_LINE: &str = r#"if defined KE if exist "%KE%" for /f "usebackq tokens=1,2" %%a in ("%KE%") do (set "KP=%%a" & set "KT=%%b")"#;
 pub const HOOK_VERSION: u32 = 1;
 /// Claude Code's events Kolux listens to. `PreCompact` is never installed (COMPAT 3.4).
 pub const CLAUDE_EVENTS: [&str; 12] = [
@@ -425,6 +432,30 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
         // Any other route (an older Kolux's hook for another agent, still in that agent's settings) gets the empty 404.
         _ => return (404, None),
     };
+    // START-05: a Claude Code or Codex started inside the pane inherits KOLUX_HOOK_IDENTITY, so its
+    // events would be reported as the pane's own. Once the pane's own agent has reported for this
+    // terminal, an event from another session that runs outside the pane's folder (not in it, not
+    // above it) is not the pane's: reply as usual but report and save nothing. That includes a
+    // SessionStart, so a nested agent can never become the pane's known session. The pane's latch
+    // (`saved::ended`, set when the foreground poll sees the shell again) says its own agent has
+    // left, and frees the pane for a restart. A nested agent in the pane's folder or a parent
+    // folder is not caught (no process id in the event).
+    if let Some(t) = terminal {
+        if crate::status::panes_of(t).contains(&pane_key) {
+            if let Some(row) = agent_hooks::saved::live_row(pane_key) {
+                let ended = agent_hooks::saved::ended(pane_key);
+                if nested::foreign_event(row.cwd.as_deref(), row.session_id.as_deref(), ended, &event) {
+                    return (200, None);
+                }
+                // P1 (round 3): a resume keeps the pane's session id, so the latch above would never
+                // clear for it and the next event from a nested agent elsewhere would take the live
+                // row. A SessionStart for the id the pane already knows is the pane's own agent back.
+                if ended && nested::resumed_same_session(row.session_id.as_deref(), &event) {
+                    agent_hooks::saved::forget_ended(pane_key);
+                }
+            }
+        }
+    }
     (200, crate::status::report(pane_key, terminal, agent, &event))
 }
 
@@ -695,7 +726,17 @@ struct Line {
     raise: Box<dyn Fn(&crate::status::Status) + Send + Sync>,
     /// The work after the reply, handed over before the reply goes, so it keeps the order the hooks were answered in.
     after: Box<dyn Fn(After) + Send + Sync>,
+    /// LAND-01: `/land` gives the proven pane, its terminal and the folder in the request body to the land
+    /// logic. A land can take two minutes, so it runs on the connection's own thread: never under ORDER and
+    /// never on the after queue, which would hold up every other pane's hooks.
+    land: LandFn,
 }
+
+/// LAND-01: what answers `/land`: the pane, its terminal and the folder in, the status code and body out.
+type LandFn = Box<dyn Fn(u32, Option<u32>, &str) -> (u16, String) + Send + Sync>;
+
+/// LAND-01: the longest `/land` body taken, a folder path in bytes. A longer one is refused before any work.
+const LAND_MAX: usize = 1024;
 
 /// T-583: a connection read against one deadline: each read waits only for the time left of it.
 struct Within<'a>(&'a TcpStream, Instant);
@@ -788,6 +829,32 @@ fn handle(stream: &TcpStream, accepted: Instant, line: &Line) {
             }
             Err(code) => code,
         },
+        // LAND-01: an agent's "my task is finished, send this workspace to main". Only a proven pane reaches
+        // here (the gate arm above answers 404 otherwise). The land itself runs on this connection's own
+        // thread, so a slow merge holds up nothing else; the body is checked before any work starts.
+        Some(req) if req.path == "/land" => {
+            let (pane, terminal) = proven(&req, &line.token).expect("the gate proved this request");
+            if req.body.len() > LAND_MAX {
+                body = "Not sent to main: the folder is longer than 1024 bytes.".into();
+                413
+            } else {
+                match std::str::from_utf8(&req.body).map(|text| text.trim_matches([' ', '\r', '\n'])) {
+                    Err(_) => {
+                        body = "Not sent to main: the folder is not text this computer can read.".into();
+                        400
+                    }
+                    Ok("") => {
+                        body = "Not sent to main: the request body is empty. Send the workspace folder.".into();
+                        400
+                    }
+                    Ok(folder) => {
+                        let (code, text) = (line.land)(pane, terminal, folder);
+                        body = text;
+                        code
+                    }
+                }
+            }
+        }
         Some(req) => {
             let req = Arc::new(req);
             // T-583: one thread per connection, so a pane's step in the status machine, its emit and its queued
@@ -831,6 +898,9 @@ fn after_reply(app: &AppHandle, job: After) {
             crate::resume::on_stop(app, status.pane_key, status.stop.as_ref());
             agent_hooks::saved::note(app, &req.path, &req.body, &status, req.headers.get(IDENTITY_HEADER).and_then(|h| identity_version(h)));
             rename_on_prompt(app, &status);
+            // LAND-01: a workspace an earlier land left behind main tries again once its pane finishes a turn.
+            // It only starts the thread here; the git work never runs on this queue, which every pane shares.
+            retry_after_turn(app, &status);
         }
     }
 }
@@ -877,6 +947,46 @@ fn rename_on_prompt(app: &AppHandle, status: &crate::status::Status) {
     });
 }
 
+/// LAND-01: the lead agent has finished its turn: Claude's Stop set a plain `done`, not a session
+/// boundary (start, resume, clear) and not a sub-agent's step (those are the roster's).
+fn turn_finished(status: &crate::status::Status) -> bool {
+    status.change.state == "done" && !status.change.boundary && status.child.is_none()
+}
+
+/// Whether an agent in a pane started in `folder` (or in a folder inside it) is mid-turn. The same
+/// reading as `land.rs`'s own private `agent_working`, built here because that one is not reachable.
+fn agent_working(terminals: &crate::terminal::Terminals, folder: &Path) -> bool {
+    let want = crate::projects::name_key(&folder.to_string_lossy());
+    let inside = |d: &str| {
+        let k = crate::projects::name_key(d);
+        k == want || k.starts_with(&format!("{want}\\"))
+    };
+    terminals.list().into_iter().any(|(id, _, dir)| dir.as_deref().is_some_and(inside) && crate::status::panes_of(id).into_iter().any(crate::status::working))
+}
+
+/// LAND-01: a pane's finished turn gives its workspace one more chance to take in main when an earlier
+/// land left it "behind" (`land::retry_behind` records the outcome in the store itself). The check is
+/// cheap and runs first; the git work goes on a thread of its own, so the shared after-reply queue
+/// never waits on it.
+fn retry_after_turn(app: &AppHandle, status: &crate::status::Status) {
+    if !turn_finished(status) {
+        return;
+    }
+    let Some(dir) = status.terminal.and_then(|t| app.try_state::<crate::terminal::Terminals>()?.dir_of(&format!("term-{t}"))) else { return };
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let (Some(git), Some(store), Some(terminals), Ok(data_dir)) =
+            (app.try_state::<crate::git::Git>(), app.try_state::<Mutex<crate::state::Store>>(), app.try_state::<crate::terminal::Terminals>(), app.path().app_data_dir())
+        else {
+            return;
+        };
+        let busy = |p: &Path| agent_working(&terminals, p);
+        let closing = || crate::lifecycle::quit_began().is_some();
+        let deps = crate::land::Deps { git: &git, store: &store, data_dir: &data_dir, busy: &busy, closing: &closing };
+        let _ = crate::land::retry_behind(&deps, Path::new(&dir));
+    });
+}
+
 /// Opens the listener on a loopback port and writes the endpoint file; each hook connection is answered on a thread of
 /// its own, and what may wait (the store) runs after the reply (T-583).
 pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
@@ -888,11 +998,17 @@ pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     // A crash leaves the last run's per-pane files; their tokens mean nothing to this run.
     remove_endpoint_files(data_dir);
     std::fs::write(&endpoint, format!("{port} {NO_TOKEN}\n")).map_err(|e| e.to_string())?;
+    // LAND-02: the script an agent runs to land its work. A failed write is logged and never stops the listener.
+    if let Err(e) = write_land_script(&home_dir()) {
+        eprintln!("kolux: land script: {e}");
+    }
     let raise = app.clone();
+    let land_app = app.clone();
     let line = Line {
         token: token.clone(),
         raise: Box::new(move |status| drop(raise.emit(EVENT, status))),
         after: Box::new(queue(move |job| after_reply(&app, job))),
+        land: Box::new(move |pane, terminal, folder| crate::land::from_pane(&land_app, pane, terminal, folder)),
     };
     std::thread::spawn(move || accept(listener, Arc::new(line)));
     Ok(Hooks { port, token, endpoint })
@@ -1063,7 +1179,7 @@ fn script(agent: &str, route: &str, prints: bool) -> String {
         "set \"KT=%KOLUX_AGENT_HOOK_TOKEN%\"",
         "set \"KE=%KOLUX_HOOK_ENDPOINT%\"",
         "rem The endpoint file names the Kolux running now, so a pane outlives a Kolux restart.",
-        "if defined KE if exist \"%KE%\" for /f \"usebackq tokens=1,2\" %%a in (\"%KE%\") do (set \"KP=%%a\" & set \"KT=%%b\")",
+        ENDPOINT_LINE,
         "set \"KC=%CLAUDE_CONFIG_DIR%\"",
         // FIX-2: an unset variable's `%KC:...%` is not empty text but a broken line that stops
         // the whole script, so the edits run only on lines reached when KC is set.
@@ -1127,6 +1243,80 @@ fn write_script(home: &Path, name: &str, script: &str) -> Result<String, String>
         std::fs::write(&file, script).map_err(|e| e.to_string())?;
     }
     Ok(file.to_string_lossy().replace('\\', "/"))
+}
+
+/// LAND-02: the script an agent runs to land its work.
+pub const LAND_SCRIPT: &str = "kolux-land.cmd";
+
+/// LAND-02: where the land script sits under `home`: `<home>/.kolux/bin/kolux-land.cmd`. No disk access.
+/// It is never `SCRIPT_DIR`: the shim folder's `claude.cmd` / `codex.cmd` must never be shadowed on PATH.
+pub fn land_script_in(home: &Path) -> PathBuf {
+    home.join(".kolux").join("bin").join(LAND_SCRIPT)
+}
+
+/// LAND-02 (pinned for LAND-03): the land script's full path in the Kolux home's `bin` folder, computed
+/// without touching the disk. `None` when the home variable is unset or empty.
+pub fn land_script() -> Option<PathBuf> {
+    let home = std::env::var(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).ok().filter(|h| !h.trim().is_empty())?;
+    Some(land_script_in(Path::new(&home)))
+}
+
+/// LAND-02: the land script. An agent runs it from its workspace folder; it posts that folder to the
+/// running Kolux's `/land` route with the pane's own token, prints Kolux's answer, and exits 0 when
+/// Kolux said yes (2xx) or 1 for anything else. The folder goes into the body file as text, never into
+/// a command line, so `&`, `(`, `)`, `!`, `%` and spaces in it change nothing.
+pub fn land_script_text() -> String {
+    [
+        "@echo off",
+        "rem Kolux's land script. Written by Kolux; edits are overwritten.",
+        "setlocal DisableDelayedExpansion",
+        "rem Outside a Kolux pane there is nothing to land.",
+        "if \"%KOLUX_PANE_KEY%\"==\"\" goto nopane",
+        "if \"%KOLUX_HOOK_IDENTITY%\"==\"\" goto nopane",
+        "set \"KP=%KOLUX_AGENT_HOOK_PORT%\"",
+        "set \"KT=%KOLUX_AGENT_HOOK_TOKEN%\"",
+        "set \"KE=%KOLUX_HOOK_ENDPOINT%\"",
+        "rem The endpoint file names the Kolux running now, so a pane outlives a Kolux restart.",
+        ENDPOINT_LINE,
+        "if not defined KP goto noport",
+        "if not defined KT goto noport",
+        "chcp 65001 >NUL",
+        "set \"KF=%TEMP%\\kolux-land-%RANDOM%-%RANDOM%.txt\"",
+        "rem The folder goes into the body file as text: cd prints it and nothing expands it.",
+        "cd >\"%KF%\"",
+        "%SystemRoot%\\System32\\curl.exe -s --fail-with-body -m 150 --noproxy \"*\" -X POST -H \"X-Kolux-Token: %KT%\" -H \"X-Kolux-Pane: %KOLUX_HOOK_IDENTITY%\" --data-binary \"@%KF%\" \"http://127.0.0.1:%KP%/land\"",
+        "set \"RC=%ERRORLEVEL%\"",
+        "del \"%KF%\" >NUL 2>&1",
+        "if not \"%RC%\"==\"0\" exit /b 1",
+        "exit /b 0",
+        ":nopane",
+        "echo Not in a Kolux pane: run kolux-land.cmd from a Kolux terminal.",
+        "exit /b 1",
+        ":noport",
+        "echo Kolux is not running, or its port and token are unknown: start Kolux and run this again.",
+        "exit /b 1",
+        "",
+    ]
+    .join("\r\n")
+}
+
+/// LAND-02: creates `<home>/.kolux/bin` and writes the land script there, only when the file is
+/// missing or its text differs. A file Kolux did not write under that name is refused and left as it
+/// is; an older Kolux-written script is replaced. Returns the file's path. Creates nothing else.
+pub fn write_land_script(home: &Path) -> Result<PathBuf, String> {
+    let dir = home.join(".kolux").join("bin");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let file = land_script_in(home);
+    let script = land_script_text();
+    let old = std::fs::read(&file).ok();
+    if old.as_deref() != Some(script.as_bytes()) {
+        // A file of the user's under Kolux's name is never overwritten, even one that is not text.
+        if old.is_some_and(|o| !o.windows(16).any(|w| w == "Written by Kolux".as_bytes())) {
+            return Err(format!("{} is not Kolux's own script; left alone", file.display()));
+        }
+        std::fs::write(&file, script).map_err(|e| e.to_string())?;
+    }
+    Ok(file)
 }
 
 /// Claude Code's user settings: `~/.claude/settings.json`, or the one in `CLAUDE_CONFIG_DIR`
@@ -1773,7 +1963,7 @@ mod tests {
         let count = Arc::clone(&raised);
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let line = Line { token: "tok".into(), raise: Box::new(move |_| { count.fetch_add(1, Ordering::SeqCst); }), after: Box::new(|_| {}) };
+        let line = Line { token: "tok".into(), raise: Box::new(move |_| { count.fetch_add(1, Ordering::SeqCst); }), after: Box::new(|_| {}), land: Box::new(|_, _, _| (404, String::new())) };
         std::thread::spawn(move || accept(listener, Arc::new(line)));
         let send = |token: Option<&str>, id: &str| {
             let event = r#"{"hook_event_name":"UserPromptSubmit","prompt":"go","session_id":"t793"}"#;
@@ -2448,7 +2638,7 @@ Content-Length: {}
     fn line_with(after: impl Fn(After) + Send + Sync + 'static) -> u16 {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let line = Line { token: "tok".into(), raise: Box::new(|_| {}), after: Box::new(after) };
+        let line = Line { token: "tok".into(), raise: Box::new(|_| {}), after: Box::new(after), land: Box::new(|_, _, _| (404, String::new())) };
         std::thread::spawn(move || accept(listener, Arc::new(line)));
         port
     }
@@ -2590,3 +2780,15 @@ Content-Length: {}
         let _ = std::fs::remove_dir_all(&home);
     }
 }
+
+#[cfg(test)]
+#[path = "hooks_land_board_tests.rs"]
+mod land_board_tests;
+
+#[cfg(test)]
+#[path = "hooks_nested_board_tests.rs"]
+mod nested_board_tests;
+
+#[cfg(test)]
+#[path = "hooks_land_script_board_tests.rs"]
+mod land_script_board_tests;

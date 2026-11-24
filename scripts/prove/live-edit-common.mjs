@@ -30,12 +30,13 @@ export const clickTab = (app, name) =>
   app.evalJs(`(()=>{const t=[...document.querySelectorAll("div[role=tab]")].find(t=>t.textContent.trim().startsWith(${JSON.stringify(name)})); if(!t) return false; t.dispatchEvent(new MouseEvent("mousedown",{bubbles:true})); t.click(); return true;})()`);
 export const tabs = (app) => app.evalJs(`[...document.querySelectorAll("div[role=tab]")].map(t=>t.textContent.trim()+":"+t.ariaSelected)`);
 export const clickRow = (app, name) => app.evalJs(`(()=>{const r=[...document.querySelectorAll(".ex-row")].find(r=>r.textContent.trim()===${JSON.stringify(name)}); if(!r) return false; r.click(); return true;})()`);
-/** The visible All Changes pane: the one review of a worktree (EDIT-029). */
+/** The visible All Changes pane the retired EDIT-029 proof read (its module, src/editor/AllChangesPane.tsx, is gone). */
 export const AC = `[...document.querySelectorAll("section.pane.editor.all-changes")].find(p=>p.offsetParent!==null)`;
 /**
- * Opens the All Changes pane of the first project. The right-sidebar Source Control panel that used to hold it went
- * with T-644: the pane now opens from the project (or worktree) row's menu, "Review changes" (src/projects/menu.ts).
- * True when the pane is visible.
+ * Opened the All Changes pane of the first project from the project (or worktree) row's menu item "Review changes".
+ * That pane (src/editor/AllChangesPane.tsx) and the menu item were removed, so no active proof calls this: only the
+ * retired proofs (live-EDIT-029, and live-GIT-038 through live-git-common) still import it, so it stays for those
+ * scripts' sake, like clickScm/openScm below. True when the pane became visible, which it no longer does.
  */
 export async function openAllChanges(app, ms = 30000) {
   if (await app.evalJs(`!!${AC}`)) return true;
@@ -46,7 +47,7 @@ export async function openAllChanges(app, ms = 30000) {
   }
   return !!(await poll(() => app.evalJs(`!!${AC}`), ms, 500));
 }
-/** The changed-file count the All Changes tag states ("30 files changed"), or null. */
+/** The changed-file count the (now removed) All Changes tag stated ("30 files changed"), or null; only retired proofs read it. */
 export const acCount = async (app) => {
   const tag = await app.evalJs(`(()=>{const p=${AC}; return p?p.querySelector(".preview-tag")?.textContent??null:null;})()`);
   const m = /^(\d+)\s+files?/.exec(tag ?? "");

@@ -34,7 +34,7 @@ await scenario(
     const sepPick = await app.evalJs(`(() => { const g = document.querySelector(${R} + ' [role=radiogroup][aria-label="Where the AIs work"]'); const l = g && [...g.querySelectorAll("label")].find((x) => /Separate/i.test(x.textContent)); if (!l) return "no Separate choice"; const i = l.querySelector("input"); const was = i.checked; if (i.disabled) return "Separate is disabled"; i.click(); return was ? "already checked" : "clicked"; })()`);
     h.log(`Separate copy radio: ${sepPick}`);
     await sleep(500);
-    await app.focusField(`${ROOT} textarea[aria-label="Task for every seat"]`);
+    await app.focusField(`${ROOT} textarea[aria-label="Task for all of them"]`);
     await app.cdp("insert", "Reply with the single word ok. Do not use any tools.");
     const state = await app.evalJs(`(() => { const sheet = document.querySelector(${R}); const sep = [...sheet.querySelectorAll('[role=radiogroup][aria-label="Where the AIs work"] input')].map((i) => ({ text: i.parentElement.textContent.trim(), checked: i.checked })); const seats = [1,2,3,4,5,6].map((i) => ({ ai: [...sheet.querySelectorAll('[role=radiogroup][aria-label="Seat ' + i + ': which AI"] input')].filter((x) => x.checked).map((x) => x.parentElement.textContent.trim()), model: [...sheet.querySelectorAll('[role=radiogroup][aria-label="Seat ' + i + ': which model"] input')].filter((x) => x.checked).map((x) => x.parentElement.textContent.trim()) })); return { sep, seats }; })()`);
     h.log(`sheet: ${JSON.stringify(state).slice(0, 700)}`);

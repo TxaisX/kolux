@@ -7,9 +7,53 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const allowed = new Set(['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'Zlib', '0BSD', 'MPL-2.0', 'Unicode-3.0', 'Unicode-DFS-2016', 'BlueOak-1.0.0', 'CC0-1.0', 'Python-2.0', 'CC-BY-4.0', 'Unlicense']);
-// Expressions: every alternative of an OR must be allowed-or-not matter; one allowed alternative is enough.
-const ok = expr => expr.split(/\s+OR\s+/i).some(alt => allowed.has(alt.replace(/[()]/g, '').trim()))
-  || expr.split(/\s+AND\s+/i).every(alt => allowed.has(alt.replace(/[()]/g, '').trim()));
+// Expressions are read with their parentheses, AND binding tighter than OR: a licence is allowed when
+// it is on the list above, `A OR B` is allowed when either side is and `A AND B` only when both are.
+// A denied licence inside an AND therefore fails its whole expression even when a parenthesised OR
+// beside it offers an allowed alternative (audit S1-F01); anything not understood fails, the safe side.
+const ops = /^(and|or)$/i;
+
+const ok = expr => {
+  const tokens = String(expr ?? '').match(/\(|\)|[^\s()]+/g) ?? [];
+  let at = 0;
+  let broken = false;
+  const peek = () => tokens[at];
+  const licence = () => {
+    const words = [];
+    while (at < tokens.length && peek() !== '(' && peek() !== ')' && !ops.test(peek())) words.push(tokens[at++]);
+    if (!words.length) broken = true;
+    return words.length > 0 && allowed.has(words.join(' '));
+  };
+  function group() {
+    if (peek() !== '(') return licence();
+    at += 1;
+    const value = either();
+    if (peek() === ')') at += 1;
+    else broken = true;
+    return value;
+  }
+  function both() {
+    let value = group();
+    while (peek() !== undefined && /^and$/i.test(peek())) {
+      at += 1;
+      const next = group();
+      value = value && next;
+    }
+    return value;
+  }
+  function either() {
+    let value = both();
+    while (peek() !== undefined && /^or$/i.test(peek())) {
+      at += 1;
+      const next = both();
+      value = value || next;
+    }
+    return value;
+  }
+  const value = either();
+  if (at < tokens.length) broken = true;
+  return !broken && value;
+};
 
 // Scoped exceptions (DECISIONS DT-C232, approved by Txais 2026-11-09): a package the gate would reject for
 // a licence expression it offers, where one alternative was elected on purpose. The key is the package name,

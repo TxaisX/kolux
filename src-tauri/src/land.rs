@@ -278,15 +278,15 @@ fn locate(deps: &Deps, folder: &Path) -> Result<(PathBuf, PathBuf), String> {
 }
 
 /// The project a repository's main folder belongs to (its saved base names main), else a stand-in.
-fn project_of(deps: &Deps, repo: &Path) -> Project {
+fn project_of(git: &Git, store: &Mutex<Store>, repo: &Path) -> Project {
     let at = repo.display().to_string();
-    let known = match deps.store.lock() {
+    let known = match store.lock() {
         Ok(store) => projects::project_known(&store, &at),
         Err(_) => Err(Vec::new()),
     };
     let found = match known {
         Ok(p) => Some(p),
-        Err(list) => projects::project_by_git(deps.git, list, &at),
+        Err(list) => projects::project_by_git(git, list, &at),
     };
     found.unwrap_or_else(|| {
         let name = repo.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
@@ -318,7 +318,7 @@ fn check(deps: &Deps, top: &Path, repo: &Path, clock: &Clock) -> Result<Checked,
     }
     quit_merge::unfinished(Path::new(&w.path), clock).map_err(|why| (w.branch.clone(), why))?;
     let branch = w.branch.clone().ok_or((None, quit_merge::DETACHED.to_string()))?;
-    let target = quit_merge::target_branch(repo, &project_of(deps, repo), clock).ok_or((Some(branch.clone()), quit_merge::NO_MAIN.to_string()))?;
+    let target = quit_merge::target_branch(repo, &project_of(deps.git, deps.store, repo), clock).ok_or((Some(branch.clone()), quit_merge::NO_MAIN.to_string()))?;
     if branch == target {
         return Err((Some(branch), format!("it is on {target} itself")));
     }
@@ -623,7 +623,7 @@ pub fn retry_behind(deps: &Deps, folder: &Path) -> Option<Sibling> {
         return None;
     }
     let clock = Clock::until(Instant::now() + WINDOW);
-    let target = quit_merge::target_branch(&repo, &project_of(deps, &repo), &clock)?;
+    let target = quit_merge::target_branch(&repo, &project_of(deps.git, deps.store, &repo), &clock)?;
     let hooks = quit_merge::no_hooks(deps.data_dir).ok()?;
     let s = take_in_main(deps, &w, &target, false, &clock, &hooks);
     record_sibling(deps.store, &s);
@@ -670,6 +670,17 @@ fn agent_working(terminals: &crate::terminal::Terminals, folder: &Path) -> bool 
     terminals.list().into_iter().any(|(id, _, dir)| dir.as_deref().is_some_and(inside) && crate::status::panes_of(id).into_iter().any(crate::status::working))
 }
 
+/// Whether any pane is open in the workspace at `folder` (or a folder inside it): the same folder
+/// rule as `agent_working`, without the "working" check. A pane with no known folder does not count.
+fn pane_open_in(terminals: &crate::terminal::Terminals, folder: &Path) -> bool {
+    let want = projects::name_key(&folder.to_string_lossy());
+    let inside = |d: &str| {
+        let k = projects::name_key(d);
+        k == want || k.starts_with(&format!("{want}\\"))
+    };
+    terminals.list().into_iter().any(|(_, _, dir)| dir.as_deref().is_some_and(inside))
+}
+
 /// Runs `f` with the app's own `Deps`.
 fn with_app<R>(app: &tauri::AppHandle, f: impl FnOnce(&Deps) -> R) -> Result<R, String> {
     use tauri::Manager;
@@ -686,7 +697,31 @@ fn land_in_app(app: &tauri::AppHandle, folder: &Path, trigger: Trigger) -> Resul
     use tauri::Emitter;
     let out = if crate::lifecycle::quit_began().is_some() { LandOutcome::refused(&folder.display().to_string(), None, CLOSING) } else { with_app(app, |d| land(d, folder, trigger))? };
     let _ = app.emit(EVENT, &out);
+    clear_after(app, &out);
     Ok(out)
+}
+
+/// Deletes the finished, idle workspaces' build output after a land, on a thread of its own: neither
+/// the agent's reply nor the window waits for the delete. One diag line per workspace it asks about.
+fn clear_after(app: &tauri::AppHandle, out: &LandOutcome) {
+    use tauri::Manager;
+    let app = app.clone();
+    let out = out.clone();
+    let _ = std::thread::spawn(move || {
+        let Ok(dir) = app.path().app_data_dir() else { return };
+        let git = app.state::<Git>();
+        let store = app.state::<Mutex<Store>>();
+        let terminals = app.state::<crate::terminal::Terminals>();
+        let pane_open = |p: &Path| pane_open_in(&terminals, p);
+        let deps = clear::ClearDeps { git: &git, store: &store, pane_open: &pane_open };
+        for (path, result) in clear::after_land(&deps, &out) {
+            let line = match &result {
+                Ok(removed) => format!("land: freed the build output of {path} ({} folder(s))", removed.len()),
+                Err(why) => format!("land: kept the build output of {path}: {why}"),
+            };
+            crate::diag::write(&dir, &line);
+        }
+    });
 }
 
 /// "Send to main": lands the workspace at `path`, saving its uncommitted work first.
@@ -760,3 +795,6 @@ fn reply(out: &LandOutcome) -> String {
 #[cfg(test)]
 #[path = "land_tests.rs"]
 mod tests;
+
+#[path = "land_clear.rs"]
+mod clear;

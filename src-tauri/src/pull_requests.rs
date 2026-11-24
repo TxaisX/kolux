@@ -163,7 +163,10 @@ pub fn merge(gh: &Path, host: &str, repo: &str, number: u64, method: &str, confi
             e
         }
     })?;
-    if v["merged"].as_bool() == Some(false) {
+    // AUD-R9 F01: only an answer that says it merged is a merge. `write` turns an empty or non-JSON
+    // answer into Value::Null, and a body without `merged` says nothing either way: reporting it as
+    // merged would tell the user it landed and delete the local branch.
+    if v["merged"].as_bool() != Some(true) {
         return Err(if s(&v["message"]).is_empty() { "GitHub did not merge it.".into() } else { s(&v["message"]) });
     }
     Ok(s(&v["sha"]))
@@ -303,5 +306,16 @@ mod tests {
         let (gh, _keep) = failing_stand_in("pr-merge-500", "gh: Server Error (HTTP 500)");
         let e = merge(&gh, "github.com", "acme/app", 7, "squash", true, "abc1234").unwrap_err();
         assert!(e.contains("HTTP 500") && !e.contains("changed"), "{e}");
+    }
+
+    #[test]
+    fn audit_r9_f01_a_merge_answer_without_the_merged_field_is_refused() {
+        // AUD-R9 F01: `write` turns an empty or non-JSON answer into `Value::Null`, and `merge`
+        // only refuses `merged: false`, so an answer that never says it merged comes back as
+        // Ok("") and chat_finish tells the user it merged and deletes the local branch.
+        let (gh, dir) = stand_in("r9-f01-merge", &json!({ "message": "Pull request is queued" }));
+        let got = merge(&gh, "github.com", "acme/app", 7, "merge", true, "abc1234");
+        assert!(got.is_err(), "an answer with no merged field was reported as merged: {got:?}");
+        assert!(calls(&dir).contains("api -X PUT repos/acme/app/pulls/7/merge"));
     }
 }

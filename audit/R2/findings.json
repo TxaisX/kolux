@@ -1,0 +1,77 @@
+[
+  {
+    "id": "R2-F01",
+    "title": "A Devanagari vowel sign is cut away from its consonant",
+    "severity": "medium",
+    "file": "src-tauri/src/session_rows.rs",
+    "line": 70,
+    "what": "clip() keeps multi-part characters whole through its sticks() table, which lists Latin combining marks, emoji joiners, skin tones and tags but no Indic vowel sign. A preview that falls between a consonant and its matra therefore cuts the matra off: clipping an 11-letter prefix followed by U+0915 U+093F to 13 characters returns the bare consonant and an ellipsis, which renders as a dotted circle in the prompt card, the latest-turn preview, a child run's title and the tab name.",
+    "expected": "The cut backs up before the consonant so the letter and its vowel sign stay whole, as it already does for a letter with a Latin combining accent.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/session_rows.rs",
+      "name": "session_rows::tests::audit_r2_f01_a_devanagari_matra_stays_with_its_consonant"
+    },
+    "patch": "repro/R2-F01.patch"
+  },
+  {
+    "id": "R2-F02",
+    "title": "A Claude session id held in two project folders is picked arbitrarily",
+    "severity": "medium",
+    "file": "src-tauri/src/session_list.rs",
+    "line": 615,
+    "what": "find_session_exact's Claude branch walks the project folders and takes the first <id>.jsonl it meets, so when two folders hold the same id (a managed account folder and ~/.claude, or a copied config) it returns whichever read_dir yields first, and the pick can change when the folder set does. plan() then builds the resume line and the working folder from that arbitrary transcript, and find_session hands it on as if it were the one session, though its own doc says an id naming more than one file finds nothing.",
+    "expected": "An id with more than one transcript is refused with the reason, exactly as the Codex branch of the same function already does.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/session_list.rs",
+      "name": "sessions::list::tests::audit_r2_f02_two_claude_folders_holding_one_id_find_nothing"
+    },
+    "patch": "repro/R2-F02.patch"
+  },
+  {
+    "id": "R2-F03",
+    "title": "An unanswered WSL check is reported as a stopped distribution",
+    "severity": "low",
+    "file": "src-tauri/src/session_scan.rs",
+    "line": 254,
+    "what": "without_stopped_wsl asks running_distros() once, and None means wsl.exe could not be run within three seconds. The code folds that None into the same false answer as an empty list, so every WSL root is dropped and the scan report tells the user each distribution 'is not running', a state Kolux never learned, while the function's own doc says None (could not tell) skips them all.",
+    "expected": "A distribution Kolux could not ask about is named as unknown, not stated to be stopped, so the report says what was actually known.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/session_scan.rs",
+      "name": "sessions::scan::tests::audit_r2_f03_a_wsl_distro_kolux_could_not_ask_about_is_not_reported_as_stopped"
+    },
+    "patch": "repro/R2-F03.patch"
+  },
+  {
+    "id": "R2-F04",
+    "title": "A workspace sleep drops the other workspaces' restored rows from the save",
+    "severity": "low",
+    "file": "src-tauri/src/agent_hooks/saved.rs",
+    "line": 326,
+    "what": "at_sleep rewrites SAVED_KEY from `kept`, this run's live rows minus the sleeping workspace's. At that moment the save still holds the previous run's restored rows (startup wrote them there and no live event has replaced them yet), so sleeping a workspace before any agent reports writes an empty rows list and every other workspace's restored row leaves the save. Those rows stay in RESTORED for this run, but the next start reads an empty save, so an exit that skips at_quit (a crash, a kill, the watchdog) loses those panes' last status. keep_panes documents and guards exactly this state (\"While no live event has rewritten the save from this run's rows, the save (still the restored rows) loses them too\"); at_sleep is the one path that rewrites it from an empty live set.",
+    "expected": "The save is rewritten without the sleeping rows and nothing else: while no live event has replaced it, it should be written from the restored rows that remain (RESTORED after sleeping), the way keep_panes does, and from `kept` only once a live event has made this run's rows the save.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/agent_hooks/tests.rs",
+      "name": "hooks::agent_hooks::tests::audit_r2_f04_workspace_sleep_keeps_the_other_workspaces_restored_rows_in_the_save"
+    },
+    "patch": "repro/R2-F04.patch"
+  },
+  {
+    "id": "R2-F05",
+    "title": "One unreadable managed Codex home stops the hooks being removed from the others",
+    "severity": "low",
+    "file": "src-tauri/src/agent_hooks/mod.rs",
+    "line": 698,
+    "what": "apply's codex Remove arm loops the profile's managed Codex homes and propagates the first failure with `?`. remove_codex returns Err for a hooks.json that is not JSON (it is refused and left alone), so one damaged account home ends the loop and every home after it keeps Kolux's entries. The same removal for Claude Code goes through each_claude_target, which runs every file and joins the failures, so one refused file never hides the others. Switching the status hooks off can therefore leave Kolux's hooks installed in some managed accounts while the reply names only the first bad file.",
+    "expected": "Every managed home is tried and the failures are joined into the one error, as the Claude Code path already does, so off takes Kolux's entries out of every home it can read.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/agent_hooks/tests.rs",
+      "name": "hooks::agent_hooks::tests::audit_r2_f05_off_clears_every_managed_codex_home_when_one_cannot_be_read"
+    },
+    "patch": "repro/R2-F05.patch"
+  }
+]

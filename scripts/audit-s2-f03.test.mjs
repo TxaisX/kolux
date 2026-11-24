@@ -1,0 +1,41 @@
+// AUD-S2 / S2-F03: the code editor and its Explorer were removed in fccac517. live-edit-common's
+// clickRow clicks .ex-row rows and visText/cmOf read the CodeMirror editor; live-EDIT-033 opens
+// the Explorer with "Hide the explorer"; live-VIEW-107 waits for .cm-content. No component in
+// src/ renders any of it, so every one of those active proofs stops at its first step.
+import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+const active = (rel) => !read(rel).trimStart().startsWith("// retired:");
+
+const srcText = (() => {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\./.test(e.name)) out.push(fs.readFileSync(p, "utf8"));
+    }
+  };
+  walk(path.join(ROOT, "src"));
+  return out.join("\n");
+})();
+
+const helper = read("scripts/prove/live-edit-common.mjs");
+const users = ["live-EDIT-001", "live-EDIT-003", "live-EDIT-012", "live-EDIT-033", "live-VIEW-107"].filter((n) => active(`scripts/prove/${n}.mjs`));
+
+describe("audit S2 > retired editor and Explorer", () => {
+  it("[S2-F03] the editor surface the proofs drive is rendered by a component", () => {
+    if (!users.length) return; // retired proofs may keep dead selectors
+    const checks = [];
+    if (helper.includes(".ex-row")) checks.push(["a component renders the tree's .ex-row", /className=\{?[`"'][^`"']*\bex-row\b/.test(srcText)]);
+    if (helper.includes(".cm-content") || active("scripts/prove/live-VIEW-107.mjs")) checks.push(["src/ mounts a CodeMirror editor", srcText.includes("@codemirror/view")]);
+    if (active("scripts/prove/live-EDIT-033.mjs")) checks.push(["a component has the Hide the explorer control", srcText.includes("Hide the explorer")]);
+    expect(checks.length).toBeGreaterThan(0);
+    const missing = checks.filter(([, ok]) => !ok).map(([what]) => what);
+    expect(missing, "src/ no longer has the editor or Explorer these active proofs drive").toEqual([]);
+  });
+});

@@ -28,7 +28,8 @@ export type KeptBranch = { branch: string; commit: string };
 export type KeptItem = KeptBranch & { projectId: string };
 
 export type Cleaned = { removed: string[]; left: { path: string; why: string }[]; kept: KeptBranch[] };
-export type BranchResult = { branch: string; deleted: boolean; why: string | null };
+/** What one branch's delete reported. `projectId` is optional: a caller that runs the delete per project fills it in, so the result can only clear its own project's item (T2-F01). */
+export type BranchResult = { branch: string; deleted: boolean; why: string | null; projectId?: string };
 
 const lastSegment = (path: string) => path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? path;
 
@@ -127,8 +128,18 @@ export function keptBatches(items: KeptItem[], ticked: Record<string, boolean>):
   return out;
 }
 
-/** What is left on the list after a delete: the refused ones stay, so the reason can be read. */
-export const keptAfter = (items: KeptItem[], results: BranchResult[]): KeptItem[] => items.filter((k) => !results.some((r) => r.branch === k.branch && r.deleted));
+/** What is left on the list after a delete: the refused ones stay, so the reason can be read.
+ *  One reported delete clears one pending item (T2-F01): a result that names its project clears only
+ *  that project's item, and a bare result clears the first item with that branch name. */
+export const keptAfter = (items: KeptItem[], results: BranchResult[]): KeptItem[] => {
+  const cleared = new Set<number>();
+  for (const r of results) {
+    if (!r.deleted) continue;
+    const i = items.findIndex((k, n) => !cleared.has(n) && r.branch === k.branch && (r.projectId === undefined || r.projectId === k.projectId));
+    if (i >= 0) cleared.add(i);
+  }
+  return items.filter((_, n) => !cleared.has(n));
+};
 
 // PROJ-081: filters, search and sorting in the cleanup list. Sizes are read only when a size
 // filter or the size sort needs them (`needsSizes`); rows whose size is unknown, or that were

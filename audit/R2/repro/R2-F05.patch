@@ -1,0 +1,36 @@
+diff --git a/src-tauri/src/agent_hooks/tests.rs b/src-tauri/src/agent_hooks/tests.rs
+index 7aee7403..d7ee4e9f 100644
+--- a/src-tauri/src/agent_hooks/tests.rs
++++ b/src-tauri/src/agent_hooks/tests.rs
+@@ -15,6 +15,31 @@ fn temp(name: &str) -> PathBuf {
+ 
+ const MINE: &str = "\"C:/Users/me/.kolux/agent-hooks/claude.cmd\" || exit 0";
+ 
++// ---- AUD-R2: repro for audit/R2/findings.json R2-F05 ----
++
++/// R2-F05: one managed Codex home whose hooks.json cannot be read stops the removal loop, so the
++/// homes after it keep Kolux's entries.
++#[test]
++fn audit_r2_f05_off_clears_every_managed_codex_home_when_one_cannot_be_read() {
++    let profile = temp("R2-F05");
++    let accounts = profile.join(crate::codex_accounts::FOLDER);
++    let bad = accounts.join("a-corrupt");
++    let good = accounts.join("b-good");
++    fs::create_dir_all(&bad).unwrap();
++    fs::create_dir_all(&good).unwrap();
++    fs::write(bad.join("hooks.json"), "{ not json").unwrap();
++    let mut v = json!({ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "keep.cmd" }] }] } });
++    install_codex_hooks(&mut v, MINE);
++    fs::write(good.join("hooks.json"), v.to_string()).unwrap();
++    let homes = managed_codex_homes(&profile);
++    assert_eq!(homes.first(), Some(&bad), "this test needs the unreadable home first: {homes:?}");
++    let out = apply(&profile.join("home"), &profile, &Value::Null, "codex", Plan::Remove);
++    assert!(out.is_err(), "the unreadable home is reported");
++    let left: Value = serde_json::from_str(&fs::read_to_string(good.join("hooks.json")).unwrap()).unwrap();
++    assert_eq!(left, json!({ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "keep.cmd" }] }] } }), "the readable home still lost Kolux's entries");
++    let _ = fs::remove_dir_all(&profile);
++}
++
+ /// hooks FIX-2: the tests that read `CLAUDE_CONFIG_DIR` twice (t_152_*) and the one that sets it
+ /// for a moment (t_134_b) take turns, so no test sees the variable change between its two reads.
+ static CLAUDE_CONFIG_ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());

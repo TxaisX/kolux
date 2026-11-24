@@ -291,6 +291,10 @@ const SWEEP_WINDOW: Duration = Duration::from_secs(120);
 pub(crate) fn prepare_retire(_git: &Git, _store: &Mutex<Store>, _terminals: &Terminals, data_dir: &Path, here: &Path, main: Option<&Path>) -> Result<(), String> {
     let clock = Clock::until(Instant::now() + SWEEP_WINDOW);
     let hooks = no_hooks(data_dir)?;
+    // B1: never save over a half-done merge, cherry-pick, revert or rebase: the save would commit its
+    // conflict markers as if they were the user's work and the sweep would then remove the folder. The
+    // same guard tidy_one uses, and it comes first so nothing is written before the refusal.
+    unfinished(here, &clock)?;
     local_files(here, main, &clock)?;
     save_with(&clock, &hooks, here, SAVE_MESSAGE, AUTOMATIC)
 }

@@ -1,0 +1,4 @@
+pnpm smoke at 2026-11-20T17:19:29.061Z on 39359f03 (G:\Desktop\kolux\.worktrees\keen-beluga)
+args: --keep --only 1 --temp G:/Temp/kb-live; T-184 ticked: false; flow 5 report-only
+PASS 1: grid 3 -> 6 through the Start form (it asked for 3 seats and started nothing before Start); the 3 shells that were running each echoed the marker set before the change (same PTY processes)
+smoke: 1/1 flows passed

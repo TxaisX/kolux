@@ -278,14 +278,14 @@ mod tests {
 
     #[test]
     fn a_lone_chunk_goes_at_once() {
-        let (b, sent) = batcher(50, usize::MAX);
+        let (b, sent) = batcher(5_000, usize::MAX);
         let at = Instant::now();
         b.push(item(1, 5, "hello"));
         wait_until(&sent, 1);
         let got = sent.lock().unwrap();
         assert_eq!(got.len(), 1, "one event");
         assert_eq!(got[0].1, vec![item(1, 5, "hello")]);
-        assert!(got[0].0 - at < Duration::from_millis(40), "sent in {:?}, not after the window", got[0].0 - at);
+        assert!(got[0].0 - at < Duration::from_secs(2), "sent in {:?}, not after the window", got[0].0 - at);
     }
 
     #[test]

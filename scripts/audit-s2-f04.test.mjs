@@ -1,0 +1,23 @@
+// AUD-S2 / S2-F04: openAllChanges opens the All Changes pane from the project row menu's
+// "Review changes". That pane and the menu item are gone: src/editor/AllChangesPane.tsx was
+// deleted (a6195136, fccac517) and src/projects/menu.ts no longer offers the item, so EDIT-029
+// and GIT-038 wait 30 s for a pane nothing can open.
+import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
+
+const helper = read("scripts/prove/live-edit-common.mjs");
+const users = ["scripts/prove/live-EDIT-029.mjs", "scripts/prove/live-GIT-038.mjs"].filter((rel) => !read(rel).trimStart().startsWith("// retired:"));
+
+describe("audit S2 > live-edit-common all changes", () => {
+  it("[S2-F04] the Review changes item it clicks is still offered by the row menu", () => {
+    if (!users.length || !helper.includes("Review changes")) return; // retired, or the helper moved on
+    expect(helper).toContain('.sb-menu [role="menuitem"]');
+    expect(fs.existsSync(path.join(ROOT, "src/editor/AllChangesPane.tsx")), "the All Changes pane module is gone").toBe(true);
+    expect(read("src/projects/menu.ts"), "the project row menu no longer offers Review changes").toContain("Review changes");
+  });
+});

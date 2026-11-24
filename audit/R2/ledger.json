@@ -1,0 +1,124 @@
+{
+  "area": "R2",
+  "files": [
+    {
+      "path": "src-tauri/src/activity.rs",
+      "symbols": ["Counts", "TIMELINE_MS", "note_from", "activity_counts", "t260c_fix2_quit_ends_the_open_lane_and_its_last_terminal_stays_retired", "usage_011_two_turns_with_a_reconnect_count_two"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the lane bookkeeping end to end: note/mark/retired_from/timeline pruning, the save and quit paths, and the restart-reopen tests. Lane retirement, the reach window and the once-per-turn counting agree with the tests; no defect proved."
+    },
+    {
+      "path": "src-tauri/src/agent_hooks/codex_mirror.rs",
+      "symbols": ["copy_groups", "key_of", "split_key", "copy_approvals", "mirror"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the mirror of a user Codex home into the managed one: key splitting, group copying, the new-index map and approval copying. The index map matches where each user group lands and the stale-approval sweep uses the same snake-cased event. Unproven: a user group that mixes one of Kolux's hooks with one of theirs is skipped whole by is_mine, so their hook is not copied; the doc says the copy takes the groups that are \"theirs, not Kolux's\", which reads as whole-group intent."
+    },
+    {
+      "path": "src-tauri/src/agent_hooks/mod.rs",
+      "symbols": ["DISABLED_KEY", "target_dir", "Lock", "fenced", "sha256", "install_claude_once", "strip", "remove_groups", "apply"],
+      "verdict": "findings",
+      "findings": ["R2-F05"],
+      "note": "Read the install/remove machinery, the shared lock with its stale reclaim, the scratch-marker fencing, the backup records and the per-account installs. Lock ordering and the atomic-write contract look consistent. R2-F05: apply's codex Remove arm propagates the first failing home with `?`, so a managed Codex home whose hooks.json is not JSON stops the rest being cleared, while the Claude path (each_claude_target) runs every file and joins the errors."
+    },
+    {
+      "path": "src-tauri/src/agent_hooks/saved.rs",
+      "symbols": ["RESTART_EVENT", "row_of", "sleeping", "unconfirmed_rows", "at_sleep", "replay", "sleep_record", "resumable"],
+      "verdict": "findings",
+      "findings": ["R2-F04"],
+      "note": "Read the save/restore of pane rows: expiry filtering, spool folding at startup, the resumable record at quit and sleep, the pane sleep record, and the unconfirmed rows served to the window. R2-F04: at_sleep rewrites the save from this run's live rows, which are empty before the first live event, so the other workspaces' restored rows leave the save and an exit that skips at_quit loses them. Unproven: replay rebuilds a pane's row with the fresh replay session's children, so a saved child row goes even when the pane's process may still live (keep_living_children is meant to keep it); the fresh-session comment makes intent arguable."
+    },
+    {
+      "path": "src-tauri/src/agent_hooks/switch.rs",
+      "symbols": ["SWITCH_KEY", "inspect"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the agents-page switch state reader: missing and malformed values read as on. Fine."
+    },
+    {
+      "path": "src-tauri/src/agents.rs",
+      "symbols": ["CATALOGUE", "safe_session", "start_line_as", "credited_agent", "set027_options_and_permission_mode_shape_the_start_line", "sess051_an_agent_run_through_an_interpreter_is_credited_by_its_entry_script"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the catalogue, program search (registry Path, PATHEXT, scratch-marker filtering, version folders), the start-line builders for every route, resume safety, the model/effort defaults and the opening-prompt claim. Checked the edge cases named in the card (paths, long input, quoting); nothing proved. Unproven: claim_opening never removes a terminal id from OPENED, so a terminal id the OS recycles within one run would silently skip that pane's opening prompt (the doc comment says 'false ever after', so this may be intended)."
+    },
+    {
+      "path": "src-tauri/src/boot_timing.rs",
+      "symbols": ["clean_name", "boot_timing"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the startup mark writer: names are clipped and stripped of line breaks before they reach the log. Fine."
+    },
+    {
+      "path": "src-tauri/src/handoff.rs",
+      "symbols": ["clear_for", "keys", "crossing", "check"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the handoff point, the once-per-crossing registry and the clear command per agent. The rearm-on-drop rule matches its tests; no defect proved. Unproven: check() consumes the crossing before it looks up the pane's terminal, so a pane with no terminal yet (an OpenCode or Grok pane, or a Claude pane before its first hook) returns without rearming and can never clear in that conversation."
+    },
+    {
+      "path": "src-tauri/src/handoff_meter.rs",
+      "symbols": ["EVERY", "measured", "grok_tokens", "opencode_context_in", "codex_context", "a_codex_log_without_a_token_event_reads_nothing_rather_than_zero"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read each store reader (Codex rollout, OpenCode SQLite, Grok signals), the freshness rules, the failure reporting and the throttled pass. The readers distinguish nothing-yet from unreadable as documented; nothing proved. Unproven, both in pass(): it feeds list()'s process id to of_pane, which matches window pane keys, so the meter finds no pane at all; and it extracts only CODEX_HOME from the pane's environment, so a Grok pane started under its own GROK_HOME is measured from ~/.grok."
+    },
+    {
+      "path": "src-tauri/src/hooks.rs",
+      "symbols": ["claude_change", "parse_request", "install_groups", "apply_trust", "the_session_id_rides_along_so_a_pane_can_be_resumed_later", "b20_a_broken_codex_config_line_is_named_by_number_never_quoted"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the event mappings, the request parser and identity/token gate, the usage reader, the hook and status-line installers with their atomic write, the Codex mirror plus trust table and the land route. Checked the boundaries the card names (long bodies, u32 ids, paths, CRLF, TOML); nothing proved. Unproven: iso_ms never checks the date separators or the hour/minute/second ranges, so a malformed stamp reads as a wrong time; and limits_key folds a config folder that normalises to empty onto the default account key. Neither has a caller that sends such a value."
+    },
+    {
+      "path": "src-tauri/src/lifecycle.rs",
+      "symbols": ["DUPLICATE_EXIT", "arm_once", "watchdog_sleep", "merged_path", "stored_paths", "app050b2_the_quit_watchdog_exits_on_time_while_the_log_write_is_stalled"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read single-instance claiming, the second-launch forwarding, the quit watchdog budgets, the save point and restart guards, and the fresh-PATH merge. The deadline arithmetic leaves the documented room; nothing proved."
+    },
+    {
+      "path": "src-tauri/src/session_list.rs",
+      "symbols": ["HEAD_CAP", "summarize", "roots_for", "session_resume_plan", "view085_the_resume_command_fits_each_shell", "view089_codex_lookup_matches_the_whole_id_not_a_tail"],
+      "verdict": "findings",
+      "findings": ["R2-F02"],
+      "note": "Read transcript summarising (title, prompt, tails), root resolution, exact-session lookup, the resume plan per shell and the scan cache. Path scoping and id matching match the tests. R2-F02: the Claude branch of find_session_exact takes the first <id>.jsonl across the project folders, so an id held in two folders is picked silently, though find_session's doc and the Codex branch refuse that case."
+    },
+    {
+      "path": "src-tauri/src/session_rows.rs",
+      "symbols": ["PROMPT_MAX", "turn_of", "session_row_detail", "view084_a_long_transcript_without_an_early_prompt_offers_the_recent_one"],
+      "verdict": "findings",
+      "findings": ["R2-F01"],
+      "note": "Read the row detail builder: head and tail slices, multi-byte clipping, turn extraction, child states and the name rule. R2-F01: clip's combining-mark table leaves out the Indic vowel signs, so a preview cuts a consonant from its matra. Unproven: the network-path guard skips \\\\server\\share but not its long-path spelling \\\\?\\UNC\\server\\share, which is probed and so contacts the server."
+    },
+    {
+      "path": "src-tauri/src/session_scan.rs",
+      "symbols": ["CACHE_VERSION", "worker", "running_distros", "view092_a_spent_budget_stops_the_scan_and_says_so"],
+      "verdict": "findings",
+      "findings": ["R2-F03"],
+      "note": "Read the budgeted scan worker, the cache load/save with its version, WSL distribution probing and the UTF-16 decode. The budget and restart behaviour match the tests. R2-F03: without_stopped_wsl reads None from running_distros (could not ask) as an empty list and reports each distribution as 'not running', a fact it never learned."
+    },
+    {
+      "path": "src-tauri/src/startup_marks.rs",
+      "symbols": ["START", "begin", "startup_report", "the_line_parses_back_into_its_marks"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the startup mark ring, the plain-name rule, the one-line report and its parse-back. Ordering and escaping are covered by the tests; nothing proved."
+    },
+    {
+      "path": "src-tauri/src/status.rs",
+      "symbols": ["SESSIONS", "resolved", "settle_cancel", "fit_plan", "state_of", "b_set_aside_behind_a_full_idle_roster"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the per-pane session fold: lead and child states, cancels and their grace, parking, the answer path, plan fitting, terminal retirement and the in-band states. Checked the state priority table, the boundaries of the fit search and the lock order; nothing proved. Unproven: state_of's ORDER leaves out \"idle\" though resolved() can return it, so on a terminal holding an idle pane and a done pane the needier-of rule reports done."
+    },
+    {
+      "path": "src-tauri/src/hooks_nested.rs",
+      "symbols": ["norm_path", "foreign_event"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the nested-agent filter: path normalisation and the same-or-ancestor test. Fine."
+    }
+  ]
+}

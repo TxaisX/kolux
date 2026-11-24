@@ -4,7 +4,7 @@
 use rusqlite::{params, Connection};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 /// Row 193: a saved blob that no longer reads is kept aside, never saved over.
 pub mod kept;
@@ -32,6 +32,12 @@ pub struct Store {
     /// P3 perf: the last good parse of settings.json with the (modified time, length) it was read
     /// at, so the many callers on timers do not read and parse the file each time.
     settings_cache: std::sync::Mutex<Option<(Stamp, serde_json::Value)>>,
+    /// LAG-03: the second lock, only for the released saves (`save_settings_released`), so two of
+    /// them take turns writing their temp files. Never taken while the store lock is held.
+    save_lane: std::sync::Arc<std::sync::Mutex<()>>,
+    /// LAG-03: how many settings saves have landed. A released save notes it before its lock-free
+    /// writes and looks again before its renames; a change means another save got in first.
+    saves_landed: AtomicU64,
 }
 
 /// A file's last-modified time and length, as a settings read saw them.
@@ -53,7 +59,7 @@ impl Store {
             "PRAGMA journal_mode=WAL;
              CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
         )?;
-        let store = Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default(), settings_cache: Default::default() };
+        let store = Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default(), settings_cache: Default::default(), save_lane: Default::default(), saves_landed: AtomicU64::new(0) };
         store.carry_setup_policy();
         Ok(store)
     }
@@ -307,6 +313,7 @@ impl Store {
         }
         self.forget_settings();
         self.read_failed.store(false, Ordering::SeqCst);
+        self.note_saved();
         Ok(kept)
     }
 
@@ -367,7 +374,62 @@ impl Store {
         write_synced(&tmp, &serde_json::to_vec_pretty(&crate::import::without_retired(value.clone()))?)?; // HID-036: never written back
         let renamed = fs::rename(&tmp, &self.settings_path);
         self.forget_settings();
+        if renamed.is_ok() {
+            self.note_saved();
+        }
         renamed
+    }
+
+    /// LAG-03: the lane released saves take turns on.
+    pub fn save_lane(&self) -> std::sync::Arc<std::sync::Mutex<()>> {
+        self.save_lane.clone()
+    }
+
+    /// LAG-03: how many settings saves have landed (a direct one, a repair, or a released one).
+    fn saves_landed(&self) -> u64 {
+        self.saves_landed.load(Ordering::SeqCst)
+    }
+
+    /// LAG-03: one more save has landed.
+    fn note_saved(&self) {
+        self.saves_landed.fetch_add(1, Ordering::SeqCst);
+    }
+
+    /// LAG-03: everything `save_settings` decides, as a list of disk steps, changing nothing on
+    /// disk. The file writes come first, so the caller can do the slow part with the store lock
+    /// free and only the renames under it. Refuses exactly as `save_settings` does.
+    pub fn plan_settings_save(&self, value: &serde_json::Value) -> std::io::Result<Vec<DiskStep>> {
+        if self.read_failed.load(Ordering::SeqCst) {
+            return Err(self.refused("an earlier read of it failed", std::io::ErrorKind::InvalidData));
+        }
+        let current = self.read_file().map_err(|e| self.refused(&e, e.kind()))?;
+        let bak = self.bak_path();
+        let bak_tmp = self.settings_path.with_extension("json.bak.tmp2");
+        let tmp = self.settings_path.with_extension("json.tmp2");
+        // The writes go first and every rename after them, in the order `save_settings` does.
+        let mut writes = Vec::new();
+        let mut moves = Vec::new();
+        match current {
+            Read::File(bytes, old) => {
+                // after-list #39 kept: an empty set never replaces a backup that exists.
+                if !bak.exists() || old.as_object().is_some_and(|o| !o.is_empty()) {
+                    writes.push(DiskStep::WriteSynced { path: bak_tmp.clone(), bytes });
+                    moves.push(DiskStep::Rename { from: bak_tmp, to: bak });
+                }
+            }
+            // T-075 kept: the corrupt file is set aside before the save may land, never deleted.
+            Read::Backup(_) => {
+                if self.settings_path.exists() {
+                    moves.push(DiskStep::SetAside { from: self.settings_path.clone(), to: self.corrupt_path() });
+                }
+            }
+            Read::None => {}
+        }
+        let bytes = serde_json::to_vec_pretty(&crate::import::without_retired(value.clone()))?; // HID-036: never written back
+        writes.push(DiskStep::WriteSynced { path: tmp.clone(), bytes });
+        moves.push(DiskStep::Rename { from: tmp, to: self.settings_path.clone() });
+        writes.extend(moves);
+        Ok(writes)
     }
 
     /// Writes only the keys in `set` and drops those in `remove`, over what is on disk now, so a
@@ -377,6 +439,101 @@ impl Store {
         let now = self.try_settings().map_err(|e| self.refused(&e, e.kind()))?;
         self.save_settings(&patched(now, set, remove))
     }
+}
+
+/// One disk change a settings save makes, so the slow writes can run with the store lock free
+/// (LAG-03).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DiskStep {
+    /// Create or truncate `path`, write all of `bytes` to it, and sync the file to disk.
+    WriteSynced { path: PathBuf, bytes: Vec<u8> },
+    /// Rename `from` to `to`, replacing `to` if it exists.
+    Rename { from: PathBuf, to: PathBuf },
+    /// The same rename, used only to move a corrupt `settings.json` to its `corrupt-` name.
+    SetAside { from: PathBuf, to: PathBuf },
+}
+
+impl DiskStep {
+    /// Does the step on the disk. Errors come back unchanged.
+    pub fn run(&self) -> std::io::Result<()> {
+        match self {
+            DiskStep::WriteSynced { path, bytes } => {
+                use std::io::Write;
+                let mut f = fs::File::create(path)?;
+                f.write_all(bytes)?;
+                f.sync_all()
+            }
+            DiskStep::Rename { from, to } | DiskStep::SetAside { from, to } => fs::rename(from, to),
+        }
+    }
+}
+
+/// LAG-03: a save from the window. Takes the store lock only to read and plan (first hold) and to
+/// rename the finished files into place (second hold); the two synced file writes run with the
+/// lock free, so no command, and no window thread, waits on the disk. Saves take turns on the
+/// store's lane, their temp names are their own (`.tmp2`), and a direct save that lands while the
+/// lock is free is kept: the stale plan is thrown away and the change is made again under the lock.
+/// Returns `(old, new)`: the settings the save was built on and the settings that were saved.
+pub fn save_settings_released(
+    store: &std::sync::Mutex<Store>,
+    change: &dyn Fn(serde_json::Value) -> serde_json::Value,
+    run: &mut dyn FnMut(&DiskStep) -> std::io::Result<()>,
+) -> std::io::Result<(serde_json::Value, serde_json::Value)> {
+    // The lane first: taking it never needs the store lock held, so two saves cannot wedge each other.
+    let lane = {
+        let s = store.lock().map_err(|_| store_poisoned())?;
+        s.save_lane()
+    };
+    let _lane = lane.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+
+    // First hold: read what is on disk and plan the save.
+    let (old, new, steps, landed) = {
+        let s = store.lock().map_err(|_| store_poisoned())?;
+        let old = s.settings();
+        let new = change(old.clone());
+        let steps = s.plan_settings_save(&new)?;
+        let landed = s.saves_landed();
+        (old, new, steps, landed)
+    };
+
+    // The lock is free: the slow part, the file writes that are synced to the disk.
+    for step in steps.iter().filter(|st| matches!(st, DiskStep::WriteSynced { .. })) {
+        run(step)?;
+    }
+
+    // Second hold: the renames are the commit, so nothing can slip in between the check and them.
+    let s = store.lock().map_err(|_| store_poisoned())?;
+    if s.saves_landed() != landed {
+        // Another save landed while the lock was free, so this plan is stale. Run none of it and
+        // save again over what is on disk now, as a direct save would.
+        let old = s.settings();
+        let new = change(old.clone());
+        s.save_settings(&new)?;
+        return Ok((old, new));
+    }
+    let mut failure = None;
+    for step in steps.iter().filter(|st| !matches!(st, DiskStep::WriteSynced { .. })) {
+        if let Err(e) = run(step) {
+            failure = Some(match step {
+                DiskStep::SetAside { .. } => s.refused(format!("it could not be set aside: {e}"), e.kind()),
+                _ => e,
+            });
+            break;
+        }
+    }
+    s.forget_settings();
+    match failure {
+        Some(e) => Err(e),
+        None => {
+            s.note_saved();
+            Ok((old, new))
+        }
+    }
+}
+
+/// A store lock poisoned by a save that panicked while holding it.
+fn store_poisoned() -> std::io::Error {
+    std::io::Error::other("the store lock was poisoned")
 }
 
 /// One settings read (see `Store::read_file`).
@@ -967,3 +1124,4 @@ mod tests {
         let _ = fs::remove_dir_all(dir);
     }
 }
+#[cfg(test)] #[path = "state_lock_board_tests.rs"] mod lock_board_tests;

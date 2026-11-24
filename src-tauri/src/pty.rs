@@ -88,7 +88,7 @@ pub fn chosen_then_auto(chosen: Option<(String, Vec<String>)>, auto: Vec<(PathBu
 pub fn shell_commands(cwd: Option<&str>, chosen: Option<(String, Vec<String>)>) -> Vec<CommandBuilder> {
     let dir = cwd.map(PathBuf::from).or_else(home_dir);
     let chain = if cfg!(windows) {
-        chosen_then_auto(chosen, auto_shells(crate::agents::find_program, std::env::var_os("ComSpec").map(PathBuf::from)))
+        chosen_then_auto(chosen, auto_shells(crate::agents::agent_shell::find_shell, std::env::var_os("ComSpec").map(PathBuf::from)))
     } else {
         // ACCT-065: a bare name is passed through alone; a missing full path falls back to zsh, bash, sh.
         let login = std::env::var("SHELL").ok();
@@ -273,7 +273,7 @@ pub fn chosen_first(mut list: Vec<ShellInfo>, settings: &serde_json::Value) -> V
 /// SET-026: the program and arguments a plain new terminal starts with, when a default is chosen.
 pub fn default_shell(settings: &serde_json::Value) -> Option<(String, Vec<String>)> {
     let choice = shell_choice(settings)?;
-    let first = chosen_first(shells(crate::agents::find_program), settings).into_iter().next()?;
+    let first = chosen_first(shells(crate::agents::agent_shell::find_shell), settings).into_iter().next()?;
     (first.id == choice).then_some((first.program, first.args))
 }
 

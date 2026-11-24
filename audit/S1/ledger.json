@@ -1,0 +1,201 @@
+{
+  "area": "S1",
+  "files": [
+    {
+      "path": "scripts/bundle-budget.mjs",
+      "symbols": ["CEILING", "budget"],
+      "note": "budget() reads dist/index.html, follows the static import graph from the entry chunks and the single App chunk, and sums file sizes; the ceiling and the walk look right, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/ci-gate.mjs",
+      "symbols": ["decide", "WAIT_MS"],
+      "note": "decide() and WAIT_MS decide whether a CI wait carries on; the poll loop and the timeout branches agree with the notes in the header, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/docs/build.mjs",
+      "symbols": ["wantsHtml", "render", "standfirst", "walk"],
+      "note": "wantsHtml, render, walk and the --check loop read line by line; the footer stamp comes from the wall clock and is compared as content, so every twin goes stale at midnight (S1-F02).",
+      "verdict": "findings",
+      "findings": ["S1-F02"]
+    },
+    {
+      "path": "scripts/evidence/app-launch.mjs",
+      "symbols": ["waitFor", "createGuardTrack", "createApp", "gracefulClose", "armOrThrow", "viteServing"],
+      "note": "createApp, the CDP guard track, the process-tree walk, gracefulClose and the vite wait read end to end; the scratch homes and the pid handling are consistent, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/evidence/cdp.mjs",
+      "symbols": ["MAIN_PORT", "isMain"],
+      "note": "the target picker, the command switch and the main-window filter read in full; every branch writes a result or exits, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/evidence/overlap.mjs",
+      "symbols": ["targets"],
+      "note": "one eval over the debugging port that measures each selector; missing elements are counted, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/evidence/shot.ps1",
+      "symbols": ["PrintWindow", "MoveWindow"],
+      "note": "PrintWindow capture, the window pick by owner process and the -Grow resize read in full; no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/evidence/silent-run.ps1",
+      "symbols": ["EnumProc", "CloseHandle"],
+      "note": "the hidden-desktop launch, the foreground and visible-window probes and the proof file read in full; exit 3 on a leaked window, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/evidence/smoke-standins.mjs",
+      "symbols": ["agentLog", "standinFile", "writeStandins"],
+      "note": "standinFile writes each agent .cmd and its hook event files, writeStandins builds the paths; quoting and the marks folder are right, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/evidence/smoke.mjs",
+      "symbols": ["TEMP_MARKER", "cpuBusyPct", "startTerminalFromChooser", "writeStandins", "quitS", "removeTemp"],
+      "note": "the flow list, the temp-folder marker and cleanup, the CPU sampler, the five flows and the summary table read end to end; nothing contradicts a flow's own PASS condition, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/evidence/type.ps1",
+      "symbols": ["EnumChildWindows", "PostMessage"],
+      "note": "the web view child window is found and keys are posted to it; the per-char pause and the capture path read in full, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/firewall-check.ps1",
+      "symbols": ["Allowed", "RelPath"],
+      "note": "the rule set, the allow-list match, the baseline mode and the -WriteBaseline path read in full; hits are counted per entry, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/glossary-check.mjs",
+      "symbols": ["LABELS", "DROPPED", "entries"],
+      "note": "LABELS, DROPPED, entries() and check() read in full; the singular/plural fold and the split on ' and ' / ' / ' match the header's promise, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/guide-check.mjs",
+      "symbols": ["stripMarker", "readMarker"],
+      "note": "readMarker, stripMarker, the ancestor test and the missing-source test read in full; a page that changed after its marker fails, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/invoke-contract.mjs",
+      "symbols": ["registered", "invoked"],
+      "note": "registered() parses generate_handler!, invoked() walks the type arguments and counts dynamic names, listed() reads NAMED_COMMANDS; the three agree, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/license-check.mjs",
+      "symbols": ["licenceFromFile", "failures"],
+      "note": "allowed, ok(), EXCEPTIONS, licenceFromFile and failures read line by line; ok() splits on ' OR ' before ' AND ', so a parenthesised OR hides a denied AND part (S1-F01).",
+      "verdict": "findings",
+      "findings": ["S1-F01"]
+    },
+    {
+      "path": "scripts/local-run.mjs",
+      "symbols": ["configText", "targetDir", "profile"],
+      "note": "configText, profile, targetDir and the build/launch sequence read in full; the exe path follows the target folder, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/notices.mjs",
+      "symbols": ["licenceText", "groupJs", "renderJs"],
+      "note": "licenceText, groupJs, renderJs and the --check comparison read in full; the text of each package is grouped and deduplicated, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/plan-check.mjs",
+      "symbols": ["parseCards", "parseStrikes", "mergeGate", "coverageErrors", "headCounts"],
+      "note": "the card parser, the strike parser, mergeGate, coverageErrors, headCounts and the STATE.md rewrite read in full; the counts and the gate keys line up, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/profile-fixture-expected.mjs",
+      "symbols": ["DatabaseSync"],
+      "note": "reads settings.json and the kv table read-only, drops the -wal/-shm files and writes expected.json; no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/reclaim-old-kolux.ps1",
+      "symbols": ["StringComparison", "PSIsContainer"],
+      "note": "the LOOP.md folder list, the inside-G:-Dev test, the link refusal and the -Delete walk read in full; nothing is removed without the switch, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/release.mjs",
+      "symbols": ["nextVersion", "changelogSection", "acquire", "takeQueued", "appVersion", "finish"],
+      "note": "the version bump, the changelog section, the lock and queue, the signature check and the build/upload/publish path read end to end; the release-only paths match their tests, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/ship.mjs",
+      "symbols": ["parseArgs", "mergeOrStop", "aiMessage", "startRelease"],
+      "note": "parseArgs, the dirty-tree stop, mergeOrStop, the AI subject line and startRelease read in full; a conflict stops before the push, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/test-env.ps1",
+      "symbols": ["KRS_SCRATCH_ROOT"],
+      "note": "the scratch root, the four redirected homes and TEMP/TMP read in full; re-running reuses the root, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/test-env.sh",
+      "symbols": ["KRS_SCRATCH_ROOT"],
+      "note": "the same redirects for macOS and Linux, with a random root per shell and a reuse path; no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/token-report.py",
+      "symbols": ["fmt_tokens", "scan_claude", "scan_codex", "scan_opencode", "render", "update_ledger"],
+      "note": "the price tables, the three scanners, row_tokens/build_report, render and update_ledger read end to end; totals and the ledger write agree with the docstring, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/workflow-check.mjs",
+      "symbols": ["checkWorkflow", "checkPromises"],
+      "note": "checkWorkflow and checkPromises read in full; every promise the file claims is matched against the workflow text, no finding.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/worktree-status.mjs",
+      "symbols": ["branchRows", "mainRow"],
+      "note": "the worktree rows, branchRows, the state letters and the summary read in full; --check counts only worktrees, so unmerged work on a folder-less branch exits 0 (S1-F03).",
+      "verdict": "findings",
+      "findings": ["S1-F03"]
+    }
+  ]
+}

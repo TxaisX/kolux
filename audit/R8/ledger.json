@@ -1,0 +1,435 @@
+{
+  "area": "R8",
+  "files": [
+    {
+      "path": "src-tauri/src/agent_list_command.rs",
+      "symbols": [
+        "agent_list"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked agent_list: the blocking catalogue probe runs off the UI thread and a join failure falls back to an empty list; no panic or swallowed user-visible error in this thin wrapper."
+    },
+    {
+      "path": "src-tauri/src/agent_sleep.rs",
+      "symbols": [
+        "idle_delay",
+        "quiet_enough",
+        "Slept",
+        "agent_pane_sleep"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the idle-delay bounds, front_agent and quiet_enough checks, sleep_record's session bookkeeping and its writer; a refused sleep writes nothing and a missing or blank session is rejected. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/app_look.rs",
+      "symbols": [
+        "icon_choice",
+        "variant",
+        "apply_saved",
+        "app_look_apply"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed icon_choice/blur_on, variant's pixel maths and apply's per-window icon and effect calls; a refused effect would stop the loop, but that needs a real window to prove, so it is left unproven."
+    },
+    {
+      "path": "src-tauri/src/awake.rs",
+      "symbols": [
+        "mode",
+        "want",
+        "step",
+        "Fake"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed mode parsing, want, the Windows SetThreadExecutionState hold and the Unix blocker lifecycle, plus step's retry backoff; the blocker is reaped on drop and a dead one is retaken. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/badge.rs",
+      "symbols": [
+        "shown",
+        "overlay_rgba"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked shown's cap, overlay_rgba's disc and digit bounds (every drawn pixel stays inside the 16x16 image) and badge_set's ignored platform failures; no bug found."
+    },
+    {
+      "path": "src-tauri/src/bulk.rs",
+      "symbols": [
+        "forget_check",
+        "slug",
+        "StatusState",
+        "dir_size",
+        "row919_a_status_keeps_the_fields_this_version_does_not_know_when_the_list_is_saved_again"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed forget_check/forget_verdict, the status list save (caller ids reserved before slugging, blank labels dropped, an unreadable list is an error) and dir_size's no-follow walk and budget; no defect proved."
+    },
+    {
+      "path": "src-tauri/src/cap.rs",
+      "symbols": [
+        "env_set",
+        "apply"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed on/env_set and apply's Claude environment and Codex -c overrides, including the terminator and user-choice checks; the existing tests cover the edge cases and no boundary defect was found."
+    },
+    {
+      "path": "src-tauri/src/capture.rs",
+      "symbols": [
+        "parse_time",
+        "claude_dir"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "R8-F02"
+      ],
+      "note": "Checked parse_time and claude_dir. parse_time accepts impossible dates such as month 13, reported as R8-F02; the folder lookup correctly reads CLAUDE_CONFIG_DIR before the home folder."
+    },
+    {
+      "path": "src-tauri/src/chat_live.rs",
+      "symbols": [
+        "front_of",
+        "decide",
+        "seen_since",
+        "find_loose"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed front_of/decide, the seen_since clock map and find_loose's newest-since search; the clock is forgotten when the agent leaves and the loose search only takes transcripts written after the sighting. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/chat_writeup.rs",
+      "symbols": [
+        "safe_name",
+        "start",
+        "list_past_chats",
+        "the_folder_log_collects_lines"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed safe_name (reserved devices, trailing dots and spaces, 80-character cut), start's create_new counter loop, transcript copy/restore and list_past_chats' byte-checked stamp slicing; no defect proved."
+    },
+    {
+      "path": "src-tauri/src/clipboard.rs",
+      "symbols": [
+        "verified_copy",
+        "formats",
+        "Facts",
+        "fix1_the_restore_guard_runs_when_a_test_body_ends_and_when_it_panics"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed verified_copy's byte comparison, the OpenClipboard retry with CloseClipboard on drop, global-memory ownership when SetClipboardData refuses a block and the fixed 64-unit registry read; no reachable panic or leak proved."
+    },
+    {
+      "path": "src-tauri/src/creatures.rs",
+      "symbols": [
+        "candidates",
+        "creature_name"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked creature_name's bijective pair walk, its case-insensitive taken set and the never-ending candidate list; the expect is unreachable and no bug was found."
+    },
+    {
+      "path": "src-tauri/src/diag.rs",
+      "symbols": [
+        "write",
+        "rotate",
+        "scrub_word",
+        "scrub_bytes",
+        "summary",
+        "t792_an_escape_sequence_ends_a_word_and_a_cut_chunk_still_masks_its_whole_part"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "R8-F03"
+      ],
+      "note": "Reviewed scrub's masking rules (the no-space Authorization scheme leak is reported as R8-F03), the write-time mask and rotation caps, strip_home's boundary regex and scrub_bytes' UTF-8 handling; the other rules held."
+    },
+    {
+      "path": "src-tauri/src/edit_menu.rs",
+      "symbols": [
+        "is_suggestion",
+        "takes_over",
+        "read_entries",
+        "hook"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked the WebView2 context-menu hook, the page-ready flag and the suggestion cap; an unready page or a read error leaves the engine's own menu alone. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/engine_crash.rs",
+      "symbols": [
+        "classify",
+        "memory_line",
+        "memory_now",
+        "add_or_merge",
+        "report",
+        "t286b_shutdown_exits_and_kills_are_not_crashes"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed crash filtering by kind and shutdown, the in-flight dedup window, memory readings and the recovery record merge; a duplicate inside the window is merged rather than recorded twice. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/env_name.rs",
+      "symbols": [
+        "legacy",
+        "var_os"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked the KOLUX_ to KOLUX_RS_ fallback, new-name precedence and the refusal to fall back for names outside Kolux's prefix; no bug."
+    },
+    {
+      "path": "src-tauri/src/everyday.rs",
+      "symbols": [
+        "is_everyday",
+        "everyday_path"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the home-folder lookup, path/is_everyday comparison, folder creation and project reuse; a missing home returns a plain error and no Git repository is made. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/final_save.rs",
+      "symbols": [
+        "begin",
+        "quitting",
+        "Step",
+        "Report"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed begin's one-shot flag, the per-step thread and deadline arithmetic, panic reporting and the line report; steps past the deadline are started but not waited for as documented. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/fonts.rs",
+      "symbols": [
+        "tidy_fonts",
+        "list_fonts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked tidy_fonts' alias, blank and repeat handling and the PowerShell and fc-list command setup, including the hidden window and the empty-list error; no bug."
+    },
+    {
+      "path": "src-tauri/src/import.rs",
+      "symbols": [
+        "bare",
+        "is_retired",
+        "without_retired",
+        "drop_retired"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed bare's prefix normalisation, the retired-key list and without_retired/drop_retired; only exact old spellings are removed and live keys survive a load and a save. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/include.rs",
+      "symbols": [
+        "INCLUDE_FILE",
+        "copy_tree",
+        "copy_within",
+        "unlink_shared"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed tidy_rel's absolute, `..`, .git and drive checks, the include and sharedDirectories scanners, the copy budget accounting and the junction fallback; no boundary defect proved."
+    },
+    {
+      "path": "src-tauri/src/install.rs",
+      "symbols": [
+        "command_args",
+        "reread_path",
+        "agent_install_cancel",
+        "LIMIT"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed progress parsing, the WinGet exit-code table, the per-agent job and run guard, the timeout and the fresh PATH merge; the job map and view updates are run-guarded. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/inventory.rs",
+      "symbols": [
+        "Placement",
+        "agent_of",
+        "compose",
+        "session_tabs"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked compose's live-session join with the latest layout, placement field validation and the foreground fallback for typed agents; a stale layout row adds nothing. No bug."
+    },
+    {
+      "path": "src-tauri/src/keybindings.rs",
+      "symbols": [
+        "read",
+        "platform_name",
+        "keybindings_write",
+        "a_file_that_is_not_an_object_is_reported"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed home lookup, empty-file creation, the per-platform write path and the parse-before-write rule; a broken file is left untouched and its parse error is shown. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/lib.rs",
+      "symbols": [
+        "AppInfo",
+        "app_info",
+        "write_settings",
+        "CLAUDE_CONFIG_DIR",
+        "terminal_host_end",
+        "CODEX_HOME"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the command registration and startup wiring (badge, notifications, diagnostics, permissions and quit paths); the dev-only panic hook is behind an environment variable and not user-reachable. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/local_token.rs",
+      "symbols": [
+        "secret"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked secret(): two independently keyed RandomState hashes give a 128-bit local token; no predictable value or shared state is involved."
+    },
+    {
+      "path": "src-tauri/src/login_env.rs",
+      "symbols": [
+        "start",
+        "parse_env"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed start/get, read's timeout and child kill and reap, and parse_env's mark and multi-line value handling; the reader thread ends when the child is killed. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "symbols": [
+        "main"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked the --terminal-service dispatch and its exit code; the windowed path is a plain call into the library."
+    },
+    {
+      "path": "src-tauri/src/menu.rs",
+      "symbols": [
+        "current",
+        "spec",
+        "for_platform",
+        "menu_sync",
+        "navigation",
+        "app_015_only_a_debug_build_allows_its_own_dev_server_and_only_that_host_and_port"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the menu state sync, navigation and new-window URL checks and the platform menu builders; external addresses are rejected or opened in the browser as intended. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/models.rs",
+      "symbols": [
+        "listing_args",
+        "label_of",
+        "parse_listing",
+        "list_from"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed listing_args, line's bullet, name and disabled parsing and parse_listing's all-or-nothing banner rule; a malformed row drops the whole listing as documented. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/names.rs",
+      "symbols": [
+        "safe_name",
+        "silent",
+        "push_sep",
+        "nothing_usable_is_rejected"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "R8-F01"
+      ],
+      "note": "Reviewed safe_name's separators, emoji and Unicode names, dot collapsing and trailing trim. A double .lock suffix still leaves a name ending in .lock, reported as R8-F01."
+    },
+    {
+      "path": "src-tauri/src/notices.rs",
+      "symbols": [
+        "read_first",
+        "third_party_notices"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked places and read_first's search order, the development source-tree fallback and the error that names every place it looked; no bug."
+    },
+    {
+      "path": "src-tauri/src/notifications.rs",
+      "symbols": [
+        "toasts_off",
+        "sound_file_ok",
+        "welcome_step",
+        "first_run_welcome"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed toasts_off, Targets' capped dedup, notify_event and notification_clicked, the WAV/MP3/Ogg/FLAC head checks and the 10 MB sound read; no defect proved."
+    },
+    {
+      "path": "src-tauri/src/openrouter.rs",
+      "symbols": [
+        "saved_key",
+        "pane_env"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the pinned variable names, the sealed-key read and blank handling, and pane_env's empty-key refusal; the key is never logged. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/pasted_image.rs",
+      "symbols": [
+        "ext_for",
+        "save_into",
+        "sweep",
+        "paste_image_save"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed ext_for, save_into's create_new counter and its empty and size refusals, and sweep's timestamp parse and 14-day cutoff; a failed write returns an error. No defect proved."
+    },
+    {
+      "path": "src-tauri/src/ports.rs",
+      "symbols": [
+        "parse_netstat",
+        "deepest_workspace",
+        "scan_listeners",
+        "t726_scans_close_together_share_one_table"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed parse_netstat and listening_row's locale-independent state test, deepest_workspace's boundary, rows_for's dedup and session walk, cap_external and the shared netstat cache; no defect proved."
+    },
+    {
+      "path": "src-tauri/src/project_new.rs",
+      "symbols": [
+        "SIGNED_IN_LIMIT",
+        "project_new",
+        "signed_in",
+        "github_badge"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed check_name's Windows refusals, start_repository's identity fallback, publish's gh errors and badge_with's visibility read. A failed locate or register leaves the new folder behind, but proving it needs a failing store, so it is unproven."
+    }
+  ]
+}

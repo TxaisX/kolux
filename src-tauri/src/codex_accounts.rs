@@ -230,6 +230,37 @@ pub fn config_drift(home: &Path) -> bool {
     top_level(&config, "cli_auth_credentials_store").as_deref() != Some("file") || custom_provider(&config)
 }
 
+/// R5-F01: the home's config.toml keeps Codex's sign-in in the home's own file. A home without one
+/// gets Kolux's line; a file that is already there keeps every setting and project trust in it,
+/// gains the line only when the top level lacks it, and is left byte-identical when it has it and no
+/// other provider took over. A top-level `model_provider` another provider set comes out with the
+/// sign-in (F3): the account is signed in to OpenAI, so leaving it would send every turn to that
+/// provider's key and keep the home drifted (`config_drift`) no matter how often the person signs in
+/// again.
+fn keep_sign_in_in_file(home: &Path) -> Result<(), String> {
+    let file = home.join("config.toml");
+    let old = match fs::read_to_string(&file) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return fs::write(&file, HOME_CONFIG).map_err(|e| e.to_string());
+        }
+        Err(e) => return Err(e.to_string()),
+    };
+    let keeps_line = top_level(&old, "cli_auth_credentials_store").as_deref() == Some("file");
+    let custom = custom_provider(&old);
+    if keeps_line && !custom {
+        return Ok(());
+    }
+    let mut doc: toml_edit::DocumentMut = old.parse().map_err(|_| "The account's Codex settings file (config.toml) is not valid TOML, so Codex's sign-in could not be kept in the account's own file. Fix or remove that file and sign in again.".to_string())?;
+    if !keeps_line {
+        doc["cli_auth_credentials_store"] = toml_edit::value("file");
+    }
+    if custom {
+        doc.as_table_mut().remove("model_provider");
+    }
+    crate::trust::write_parsed(&file, &doc.to_string(), Some(&old))
+}
+
 /// The link and the one-time code of a device sign-in, only once both have been printed.
 pub fn device_prompt(clean: &str) -> Option<(String, String)> {
     let words = || clean.split_whitespace().map(|w| w.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '/' && c != ':' && c != '-' && c != '.' && c != '_'));
@@ -316,7 +347,10 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
     };
     let id = id.as_str();
     let auth = home.join("auth.json");
-    fs::write(home.join("config.toml"), HOME_CONFIG).map_err(|e| e.to_string())?;
+    // R5-F01: only a home without a settings file gets Kolux's line put in; an existing account's
+    // settings and project trust are not the sign-in's to lose, and a cancelled or failed login
+    // leaves its file exactly as it was.
+    keep_sign_in_in_file(&home)?;
     // ACCT-019: only a home Kolux just made is removed, and only when the login left no sign-in file
     // in it (one that cannot be read may still hold a working sign-in). An existing account's home
     // keeps its settings, project trust and sessions even when the sign-in failed or was cancelled.
@@ -1095,6 +1129,25 @@ mod tests {
         assert!(config_drift(home));
     }
 
+    // F3: the user's settings are copied into an account home with a custom provider, so
+    // `config_drift` says the home no longer keeps the sign-in in its file, and signing in again
+    // only re-adds the sign-in line: the account stays drifted for good. The sign-in's own write
+    // leaves the settings and trust but takes that provider's top-level line out.
+    #[test]
+    fn f3_a_re_sign_in_clears_a_custom_provider_from_the_accounts_settings() {
+        let d = temp("f3-provider");
+        let home = d.as_path();
+        let trust = "[projects.\"C:\\\\w\"]\ntrust_level = \"trusted\"\n";
+        fs::write(home.join("config.toml"), format!("{HOME_CONFIG}model_provider = \"ollama\"\n{trust}")).unwrap();
+        assert!(config_drift(home), "the copied provider keeps the home drifted");
+        keep_sign_in_in_file(home).unwrap();
+        assert!(!config_drift(home), "a re-sign-in clears the drift");
+        let kept = fs::read_to_string(home.join("config.toml")).unwrap();
+        assert_eq!(top_level(&kept, "cli_auth_credentials_store").as_deref(), Some("file"), "{kept}");
+        assert!(kept.contains("[projects.\"C:\\\\w\"]"), "the project trust stays: {kept}");
+        assert!(top_level(&kept, "model_provider").is_none(), "the other provider's line is gone: {kept}");
+    }
+
     #[test]
     fn a_codex_that_rejects_its_arguments_is_not_a_refused_sign_in() {
         let clap = "error: unexpected argument '--device-auth' found\n\nUsage: codex login\n\nFor more information, try '--help'.\n";
@@ -1298,6 +1351,46 @@ mod tests {
         assert!(home.join("config.toml").is_file(), "its settings file is still there");
         assert_eq!(fs::read_to_string(home.join("sessions").join("rollout.jsonl")).unwrap(), "a turn\n", "its sessions stay");
         assert_eq!(load(&store.lock().unwrap()).len(), 1, "the account is still listed");
+    }
+
+    // AUD-R5-F01: a re-authentication (even a cancelled one) writes Kolux's sign-in line over the
+    // existing home's config.toml, losing the settings and project trust the home already held.
+    #[test]
+    fn audit_r5_f01_a_cancelled_re_sign_in_keeps_the_existing_config() {
+        let profile = temp("audit-r5-f01-config");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        sign_in(&store, &profile, "c1", false, 1, |home: &Path| {
+            fs::write(home.join("auth.json"), token("kim@example.com")).unwrap();
+            (String::new(), Ended::Exited(Some(0)), None)
+        })
+        .unwrap();
+        let home = profile.join(FOLDER).join("c1");
+        let kept = format!("{HOME_CONFIG}model = \"o3\"\n[projects.'C:\\work']\ntrust_level = \"trusted\"\n");
+        fs::write(home.join("config.toml"), &kept).unwrap();
+        let e = sign_in(&store, &profile, "c1", true, 2, |_| (String::new(), Ended::Cancelled, None)).unwrap_err();
+        assert_eq!(e, "Sign-in cancelled.");
+        assert_eq!(fs::read_to_string(home.join("config.toml")).unwrap(), kept, "the existing settings and project trust are not the sign-in's to lose");
+    }
+
+    // R5-F01: a home whose settings file lacks Kolux's sign-in line gains it without losing what is
+    // already there, so a successful re-sign-in keeps the settings and project trust too.
+    #[test]
+    fn r5_f01_a_re_sign_in_merges_the_sign_in_line_and_keeps_the_settings() {
+        let profile = temp("r5-f01-merge");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        let ok = |email: &'static str| move |home: &Path| {
+            fs::write(home.join("auth.json"), token(email)).unwrap();
+            (String::new(), Ended::Exited(Some(0)), None)
+        };
+        sign_in(&store, &profile, "c1", false, 1, ok("kim@example.com")).unwrap();
+        let home = profile.join(FOLDER).join("c1");
+        fs::write(home.join("config.toml"), "model = \"o3\"\n[projects.'C:\\work']\ntrust_level = \"trusted\"\n").unwrap();
+        sign_in(&store, &profile, "c1", true, 2, ok("kim2@example.com")).unwrap();
+        let doc: toml_edit::DocumentMut = fs::read_to_string(home.join("config.toml")).unwrap().parse().unwrap();
+        assert_eq!(doc["cli_auth_credentials_store"].as_str(), Some("file"), "the sign-in line is merged in");
+        assert_eq!(doc["model"].as_str(), Some("o3"));
+        assert_eq!(doc["projects"]["C:\\work"]["trust_level"].as_str(), Some("trusted"));
+        assert!(!config_drift(&home));
     }
 
     #[test]

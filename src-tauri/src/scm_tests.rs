@@ -898,6 +898,9 @@ fn the_sidebar_badge_counts_unpushed_commits_and_never_calls_an_unreadable_count
     assert_eq!(head.head.as_deref().map(str::len), Some(40));
     run(&["switch", "-q", "feature"], Some(&dir)).unwrap();
     assert_eq!(head_of(&dir).unwrap().branch.as_deref(), Some("feature"));
+    assert_eq!(head_at(&dir.to_string_lossy(), &[]).unwrap().branch.as_deref(), Some("feature"), "the page's door reads the same chip");
+    // RS-4: a folder on another machine has no chip; git is never started there.
+    assert_eq!(head_at(r"\\no-such-host-kolux.invalid\share\x", &[]), None);
     let plain = std::env::temp_dir().join(format!("kolux-scm-plain-{}", std::process::id()));
     fs::create_dir_all(&plain).unwrap();
     assert_eq!(head_of(&plain), None, "a plain folder has no chip");
@@ -2174,4 +2177,22 @@ fn r82_a_broken_branch_list_does_not_unstage_by_removal() {
     let _ = fs::remove_dir_all(&dir);
     assert!(said.is_err(), "Git's words come back: {said:?}");
     assert!(listed.as_ref().is_ok_and(|l| l.lines().any(|l| l == "foo")), "foo is still in the index: {listed:?}");
+}
+
+/// R4-F01: a URL scheme is case-insensitive (RFC 3986), and git itself reads `HTTPS://host/o/r`
+/// as the https transport. A remote written that way is the same repository as the lowercase
+/// form; `github_repo` must not lose it (the pull request panel, gh's `--repo` and the saved
+/// per-repository switch all read this function).
+#[test]
+fn audit_r4_f01_uppercase_remote_scheme_is_read_like_lowercase() {
+    let lower = github_repo("https://github.com/o/r", "").expect("the lowercase form is read");
+    assert_eq!(github_repo("HTTPS://github.com/o/r", ""), Some(lower));
+    for (upper, plain) in [
+        ("HTTP://github.com/o/r", "http://github.com/o/r"),
+        ("SSH://git@github.com/o/r.git", "ssh://git@github.com/o/r.git"),
+        ("GIT+SSH://git@github.com/o/r.git", "git+ssh://git@github.com/o/r.git"),
+        ("GIT://github.com/o/r.git", "git://github.com/o/r.git"),
+    ] {
+        assert_eq!(github_repo(upper, ""), github_repo(plain, ""), "{upper}");
+    }
 }

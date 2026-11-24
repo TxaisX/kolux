@@ -170,6 +170,15 @@ describe("TERM-093 clickable file paths", () => {
     expect(resolvePath("C:\\x\\y.txt", "G:\\Dev")).toBe("C:\\x\\y.txt");
     expect(resolvePath("\\\\srv\\share\\f", "G:\\Dev")).toBe("\\\\srv\\share\\f");
     expect(resolvePath("src/a.ts", null)).toBeNull();
+    // review A2: Windows folds ".." in a drive path as text, so the path handed over is already folded
+    expect(resolvePath("C:\\repo\\a\\..\\b\\x.txt", "G:\\Dev")).toBe("C:\\repo\\b\\x.txt");
+    expect(resolvePath("C:/repo/./a/../../../x.txt", null)).toBe("C:\\x.txt");
+    expect(resolvePath("/home/u/a/../b", "/x")).toBe("/home/u/a/../b"); // POSIX ".." follows links; left as is
+    expect(resolvePath("\\\\srv\\share\\..\\f", "G:\\Dev")).toBe("\\\\srv\\share\\..\\f"); // a share is refused whole
+    // review A3: a pane folder holding ".." is folded too, so a plain relative link is not refused for it
+    expect(resolvePath("x.txt", "C:\\a\\..\\b")).toBe("C:\\b\\x.txt");
+    expect(resolvePath("../x.txt", "C:\\a\\.\\b\\..\\..")).toBe("C:\\x.txt");
+    expect(resolvePath("x.txt", "\\\\srv\\share")).toBe("\\\\srv\\share\\x.txt"); // a share folder keeps its form
     expect(fromFileUrl("file://server/share/x.txt")).toBe("\\\\server\\share\\x.txt");
     expect(hintFor(findLinks("src/a.ts:3")[0], false, "editor")).toBe("Ctrl+click to open src/a.ts at line 3 in the editor");
     expect(clickTarget(findLinks("src/a.ts")[0], { ctrlKey: true, metaKey: false, shiftKey: true }, false, true)).toBe("file");
@@ -190,5 +199,35 @@ describe("TERM-093 a file link never hides a control character", () => {
     expect(() => findLinks("file:///%E0%A4%A")).not.toThrow();
     expect(findLinks("file:///%E0%A4%A")).toEqual([]);
     expect(fromFileUrl("file:///C:/%ZZ")).toBeNull();
+  });
+});
+
+describe("wave 2: a file URL never decodes into a name Windows rewrites", () => {
+  it("drops an empty, . or .. step, a step ending in a dot or space, and a stream colon", () => {
+    for (const url of [
+      "file:///C:/repo/LICENSE%2E",
+      "file:///C:/repo/run.cmd%20",
+      "file:///C:/repo/run.cmd/.",
+      "file:///C:/repo/x/%2E%2E/run.cmd",
+      "file:///C:/repo/./a.txt",
+      "file:///C:/repo//a.txt",
+      "file:///C:/repo/notes.txt:run.vbs",
+      "file:///C:/repo/notes.txt%3Arun.vbs",
+      "file://server/share/a.txt%3Ax",
+      "file:///home/me/a%2F..%2Fb",
+    ]) {
+      expect(fromFileUrl(url), url).toBeNull();
+      expect(findLinks(url), url).toEqual([]);
+    }
+    // in running text a final dot is the sentence's and is left off the link before decoding
+    expect(fromFileUrl("file:///C:/repo/LICENSE.")).toBeNull();
+  });
+
+  it("an ordinary file URL still decodes", () => {
+    expect(fromFileUrl("file:///C:/repo/a%20b.txt")).toBe("C:/repo/a b.txt");
+    expect(fromFileUrl("file:///home/me/.bashrc")).toBe("/home/me/.bashrc");
+    expect(fromFileUrl("file://localhost/C:/a/b.txt")).toBe("C:/a/b.txt");
+    expect(fromFileUrl("file://server/share/x.txt")).toBe("\\\\server\\share\\x.txt");
+    expect(fromFileUrl("C:\\plain\\path.txt")).toBe("C:\\plain\\path.txt");
   });
 });

@@ -180,10 +180,16 @@ pub fn sound_file_ok(name: &str, head: &[u8]) -> Result<(), String> {
 /// STAT-043: the bytes of the user's custom sound file (base64), after the type and size checks.
 /// The page decodes and plays it; nothing else is ever read through this command.
 #[tauri::command]
-pub fn notification_sound_load(path: String) -> Result<String, String> {
+pub fn notification_sound_load(store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, path: String) -> Result<String, String> {
+    sound_load(&path, &crate::links::roots(&store))
+}
+
+/// The body of `notification_sound_load`; a path on another machine is refused before it is opened (RS-4).
+fn sound_load(path: &str, roots: &[String]) -> Result<String, String> {
     use base64::Engine;
     use std::io::Read;
-    let f = std::fs::File::open(&path).map_err(|e| format!("the sound file cannot be opened: {e}"))?;
+    crate::links::refuse_host(path, roots)?;
+    let f = std::fs::File::open(path).map_err(|e| format!("the sound file cannot be opened: {e}"))?;
     let meta = f.metadata().map_err(|e| e.to_string())?;
     if !meta.is_file() {
         return Err("that is not a file".into());
@@ -193,7 +199,7 @@ pub fn notification_sound_load(path: String) -> Result<String, String> {
     }
     let mut bytes = Vec::with_capacity(meta.len() as usize);
     f.take(SOUND_MAX_BYTES).read_to_end(&mut bytes).map_err(|e| e.to_string())?;
-    sound_file_ok(&path, &bytes[..bytes.len().min(16)])?;
+    sound_file_ok(path, &bytes[..bytes.len().min(16)])?;
     Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
 }
 
@@ -278,7 +284,22 @@ pub fn first_run_welcome(app: &tauri::AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{sound_file_ok, toasts_off};
+    use super::{sound_file_ok, sound_load, toasts_off};
+
+    /// RS-4: a sound path on another machine is refused before it is opened. The object-namespace
+    /// spelling of a local file stands in for a share: it really opens, so only the guard refuses it.
+    #[cfg(windows)]
+    #[test]
+    fn rs4_a_sound_on_another_machine_is_never_opened() {
+        let d = std::env::temp_dir().join(format!("rs4-sound-{}", std::process::id()));
+        std::fs::create_dir_all(&d).unwrap();
+        let f = d.join("ding.wav");
+        std::fs::write(&f, b"RIFF\x24\x00\x00\x00WAVEfmt ").unwrap();
+        assert!(sound_load(&f.to_string_lossy(), &[]).is_ok());
+        let spelled = format!(r"\\?\GLOBALROOT\GLOBAL??\{}", f.display());
+        assert!(sound_load(&spelled, &[]).unwrap_err().contains("another computer"));
+        let _ = std::fs::remove_dir_all(&d);
+    }
 
     #[test]
     fn stat043_a_custom_sound_must_be_an_allowed_audio_type_and_look_like_one() {
@@ -307,11 +328,11 @@ mod tests {
         std::fs::write(&bad, b"MZ not audio").unwrap();
         let txt = dir.join("note.txt");
         std::fs::write(&txt, b"RIFF....WAVE").unwrap();
-        assert!(super::notification_sound_load(good.to_string_lossy().into()).is_ok());
-        assert!(super::notification_sound_load(bad.to_string_lossy().into()).is_err());
-        assert!(super::notification_sound_load(txt.to_string_lossy().into()).is_err());
-        assert!(super::notification_sound_load(dir.join("gone.wav").to_string_lossy().into()).is_err());
-        assert!(super::notification_sound_load(dir.to_string_lossy().into()).is_err());
+        assert!(super::sound_load(&good.to_string_lossy(), &[]).is_ok());
+        assert!(super::sound_load(&bad.to_string_lossy(), &[]).is_err());
+        assert!(super::sound_load(&txt.to_string_lossy(), &[]).is_err());
+        assert!(super::sound_load(&dir.join("gone.wav").to_string_lossy(), &[]).is_err());
+        assert!(super::sound_load(&dir.to_string_lossy(), &[]).is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

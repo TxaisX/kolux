@@ -1,3 +1,4 @@
+// retired: the code editor tab it drove was removed in fccac517, so its caret and scroll can no longer be read back.
 // LIVE proof, EDIT-001 box 2 (spec/12): go to the terminal view and come back -> same tab in front, caret and scroll where they were.
 // "Terminal view" is read both ways: the terminal tab beside the editor tab, and the Agents screen then Terminals again.
 import { reporter, startPlain, finish, sleep, checker, editRepo, clickTab, clickRow, pickScreen2, tabs, visText, cmOf } from "./live-edit-common.mjs";

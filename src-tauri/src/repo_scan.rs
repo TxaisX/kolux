@@ -72,6 +72,10 @@ fn rules_of(dir: &Path, file: &str) -> Vec<Rule> {
         .map(|l| {
             let negate = l.starts_with('!');
             let l = l.trim_start_matches('!').trim_end_matches('/');
+            // A leading `**/` means "in every folder", as Git reads it: `**/build` hides a build
+            // folder at any depth, the same as an unanchored `build`. Dropping it before the
+            // anchored test is what lets the rule match a folder below the top level too.
+            let l = l.strip_prefix("**/").unwrap_or(l);
             let anchored = l.starts_with('/') || l.contains('/');
             Rule { base: dir.to_path_buf(), glob: l.trim_start_matches('/').replace("**/", "").replace("**", "*"), anchored, negate }
         })
@@ -93,11 +97,14 @@ fn ignored(rules: &[Rule], child: &Path) -> bool {
     .is_some_and(|r| !r.negate)
 }
 
-/// For a `.git` file (a linked worktree), the main checkout it belongs to.
+/// For a `.git` file (a linked worktree), the main checkout it belongs to. A `gitdir:` on another
+/// machine is refused from its text before anything looks at it (a cloned or unzipped folder can
+/// carry such a file), and the folder is then listed as itself.
 fn main_of_linked(dir: &Path) -> Option<PathBuf> {
     let text = std::fs::read_to_string(dir.join(".git")).ok()?;
     let target = PathBuf::from(text.lines().find_map(|l| l.strip_prefix("gitdir:"))?.trim());
     let target = if target.is_absolute() { target } else { dir.join(target) };
+    crate::links::refuse_host(&target.to_string_lossy(), &[]).ok()?;
     let comps: Vec<_> = target.components().collect();
     let at = comps.iter().rposition(|c| c.as_os_str() == "worktrees")?;
     // <main>/.git/worktrees/<name>: the main checkout is two levels above `worktrees`.
@@ -308,15 +315,23 @@ struct ScanEvent {
     limit: Option<&'static str>,
 }
 
-/// PROJ-012: starts a scan in the background; `repo-scan` events carry each repository found,
-/// the running count of folders looked at, and a last one with `done`.
-#[tauri::command]
-pub fn repo_scan_start(app: tauri::AppHandle, root: String, scan_id: u64) -> Result<(), String> {
-    use tauri::Emitter;
+/// The folder a scan starts from: a full path to an existing folder on this machine. A path on
+/// another machine is refused before anything looks at it (RS-4).
+fn scan_root(root: &str, roots: &[String]) -> Result<PathBuf, String> {
+    crate::links::refuse_host(root.trim(), roots)?;
     let root = PathBuf::from(root.trim());
     if !root.is_absolute() || !root.is_dir() {
         return Err(format!("{} is not an existing folder", root.display()));
     }
+    Ok(root)
+}
+
+/// PROJ-012: starts a scan in the background; `repo-scan` events carry each repository found,
+/// the running count of folders looked at, and a last one with `done`.
+#[tauri::command]
+pub fn repo_scan_start(app: tauri::AppHandle, root: String, scan_id: u64) -> Result<(), String> {
+    use tauri::{Emitter, Manager};
+    let root = scan_root(&root, &crate::links::roots(&app.state::<Mutex<Store>>()))?;
     stops().lock().unwrap_or_else(|e| e.into_inner()).remove(&scan_id);
     std::thread::spawn(move || {
         let count = std::cell::Cell::new(0usize);
@@ -382,6 +397,50 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// RS-4: a scan root on another machine is refused before it is looked at. The object-namespace
+    /// spelling of a local folder stands in for a share: it really exists, so only the guard refuses it.
+    #[cfg(windows)]
+    #[test]
+    fn rs4_a_scan_root_on_another_machine_is_refused() {
+        let dir = temp("rs4");
+        assert_eq!(scan_root(&dir.to_string_lossy(), &[]).unwrap(), dir);
+        let spelled = format!(r"\\?\GLOBALROOT\GLOBAL??\{}", dir.display());
+        assert!(scan_root(&spelled, &[]).unwrap_err().contains("another computer"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Wave 2 (review A): a `.git` file whose `gitdir:` names another machine is never followed. The
+    /// volume spelling of a real local checkout stands in for a share: it exists, so only
+    /// the guard keeps it out. The `.invalid` host is answered at once, as text.
+    #[cfg(windows)]
+    #[test]
+    fn rv2_a_linked_worktree_pointing_at_a_share_is_not_followed() {
+        let dir = temp("rv2-gitdir");
+        let main = dir.join("main");
+        fs::create_dir_all(main.join(".git").join("worktrees").join("wt")).unwrap();
+        let wt = dir.join("wt");
+        fs::create_dir_all(&wt).unwrap();
+        fs::write(wt.join(".git"), format!("gitdir: {}\n", main.join(".git/worktrees/wt").display())).unwrap();
+        assert_eq!(main_of_linked(&wt), Some(main.clone()), "a local main checkout is found");
+        // `\\?\Volume{guid}\<rest>`: the volume spelling of the same local folder (no `C:` step, which
+        // would make Rust's path join drop the prefix)
+        let mut vol = [0u16; 64];
+        let drive: Vec<u16> = main.to_string_lossy()[..3].encode_utf16().chain([0]).collect();
+        // SAFETY: a NUL-terminated drive root and a buffer whose length is passed with it.
+        let ok = unsafe { windows_sys::Win32::Storage::FileSystem::GetVolumeNameForVolumeMountPointW(drive.as_ptr(), vol.as_mut_ptr(), vol.len() as u32) };
+        assert_ne!(ok, 0, "the temp folder's volume has a name");
+        let vol = String::from_utf16_lossy(&vol[..vol.iter().position(|&c| c == 0).unwrap()]);
+        let far = format!("{vol}{}", &main.join(r".git\worktrees\wt").to_string_lossy()[3..]);
+        assert!(Path::new(&far).parent().unwrap().is_dir(), "{far} is the same local folder");
+        fs::write(wt.join(".git"), format!("gitdir: {far}\n")).unwrap();
+        assert_eq!(main_of_linked(&wt), None, "a share spelling is refused before it is looked at");
+        fs::write(wt.join(".git"), "gitdir: \\\\no-such-host-kolux.invalid\\s\\.git\\worktrees\\wt\n").unwrap();
+        let t = std::time::Instant::now();
+        assert_eq!(main_of_linked(&wt), None);
+        assert!(t.elapsed() < std::time::Duration::from_millis(500), "refused as text, took {:?}", t.elapsed());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     fn repo(at: &Path) {
@@ -579,5 +638,16 @@ mod tests {
         assert_eq!(labels(root, &b), ["lib", "two/app", "one/app"], "the same label for the same path in any order");
         let deep = vec![root.join("a/x/app"), root.join("b/x/app")];
         assert_eq!(labels(root, &deep), ["a/x/app", "b/x/app"]);
+    }
+
+    #[test]
+    fn audit_r3_f05_a_double_star_ignore_hides_a_folder_at_any_depth() {
+        let root = temp("audit-f05");
+        fs::write(root.join(".gitignore"), "**/build\n").unwrap();
+        repo(&root.join("build"));
+        repo(&root.join("a").join("build"));
+        let (found, _) = run(&root, &LIMITS, &|| false);
+        assert!(rel(&root, &found).is_empty(), "`**/build` hides build at any depth, found {:?}", rel(&root, &found));
+        let _ = fs::remove_dir_all(&root);
     }
 }

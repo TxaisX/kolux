@@ -129,6 +129,7 @@ pub fn set_status(store: &Store, path: &str, id: &str) -> Result<(), String> {
     store.set(STATUS_OF_KEY, &serde_json::to_string(&map).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
+#[cfg(test)]
 pub fn clear_status(store: &Store, path: &str) -> Result<(), String> {
     let mut map = status_map_to_change(store)?;
     if map.remove(&name_key(path)).is_none() {

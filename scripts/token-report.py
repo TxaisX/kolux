@@ -40,6 +40,8 @@ DEFAULT_CODEX = HOME / ".codex" / "sessions"
 DEFAULT_OPENCODE = Path(
     os.environ.get("OPENCODE_DB", r"G:\Dev\AI\.local\share\opencode\opencode.db")
 )
+# Usage kept from chats deleted by the 30-day digest job (G:\Dev\claude-config\scripts\session-digest.py).
+ARCHIVED_USAGE = Path(os.environ.get("KOLUX_ARCHIVED_USAGE", r"G:\Dev\AI\sessions-usage"))
 LEDGER = Path(__file__).resolve().parent.parent / "docs" / "history" / "token-usage-ledger.md"
 
 TX_PROJECT = "G--Dev-Projects-Txais-Brain"
@@ -146,9 +148,9 @@ def text_from_claude_message(obj: dict) -> str:
     return "\n".join(out)
 
 
-def scan_claude(root: Path):
+def scan_claude(root: Path, seen=None):
     rows = []
-    seen = set()
+    seen = set() if seen is None else seen
     if not root.exists():
         return rows
 
@@ -241,9 +243,9 @@ def scan_claude(root: Path):
     return rows
 
 
-def scan_codex(root: Path):
+def scan_codex(root: Path, seen=None):
     rows = []
-    seen = set()
+    seen = set() if seen is None else seen
     if not root.exists():
         return rows
     for path in root.rglob("*.jsonl"):
@@ -607,8 +609,11 @@ def main():
     )
     args = parser.parse_args()
 
-    claude_rows = scan_claude(args.claude_root)
-    codex_rows = scan_codex(args.codex_root)
+    claude_seen, codex_seen = set(), set()
+    claude_rows = scan_claude(args.claude_root, claude_seen)
+    claude_rows += scan_claude(ARCHIVED_USAGE / "claude", claude_seen)
+    codex_rows = scan_codex(args.codex_root, codex_seen)
+    codex_rows += scan_codex(ARCHIVED_USAGE / "codex", codex_seen)
     oc_rows = scan_opencode(args.opencode_db)
     report = build_report(claude_rows, codex_rows, oc_rows)
 

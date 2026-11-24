@@ -801,6 +801,37 @@ fn credited_name(stem: &str, packages: bool) -> Option<&'static str> {
     })
 }
 
+/// START-01: a restored Claude pane resumes only a conversation Claude really saved. The id the
+/// SessionStart hook supplied at launch exists before any transcript does: when the person never
+/// typed in that pane, `claude --resume <id>` prints "No conversation found with session ID ..."
+/// and exits, on every restart. So a Claude id is kept only when that transcript file is on disk
+/// (`<root>/projects/<folder>/<id>.jsonl`), one copy of it or several (F5: Claude resumes by id);
+/// otherwise the pane comes back at its prompt, exactly as with no id, and one line says why. Only
+/// Claude is checked (the confirmed case); every other agent keeps today's behaviour. An id that
+/// cannot pass [`safe_session`] is never looked up, since the finder joins it into a path.
+pub(crate) fn restorable<'a>(roots: &crate::sessions::list::Roots, agent: &str, start: Start<'a>) -> (Start<'a>, Option<String>) {
+    let given = match start {
+        Start::Fresh => return (Start::Fresh, None),
+        Start::Restore(given) => given,
+    };
+    let Some(sid) = given.map(str::trim).filter(|s| !s.is_empty()) else { return (Start::Restore(None), None) };
+    if agent != "claude" {
+        return (start, None);
+    }
+    let skipped = |id: &str| format!("resume skipped: agent claude, session {id}: no saved conversation, starting fresh");
+    if !safe_session(sid) {
+        return (Start::Restore(None), Some(skipped(&format!("{sid:?}"))));
+    }
+    match crate::sessions::list::find_session_exact(roots, "claude", sid) {
+        Ok(_) => (Start::Restore(Some(sid)), None),
+        // F5: two files with one id still name a saved conversation, and Claude resumes by id, so
+        // the pane resumes rather than starting fresh and losing it. Only an id with no file at all
+        // comes back without a resume.
+        Err(e) if e == crate::sessions::list::SEVERAL => (Start::Restore(Some(sid)), None),
+        Err(_) => (Start::Restore(None), Some(skipped(sid))),
+    }
+}
+
 /// `restore` (SESS-030) marks a tab brought back after a quit or a crash; `session` is its last
 /// known session id. Both are left out for a plain new tab, which never carries a resume form.
 // Async: finding the program reads the registry and looks in every PATH folder for each
@@ -808,8 +839,28 @@ fn credited_name(stem: &str, packages: bool) -> Option<&'static str> {
 #[allow(clippy::too_many_arguments)]
 #[tauri::command(async)]
 pub fn agent_start_line(app: tauri::AppHandle, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, id: String, extra: Vec<String>, prompt: String, picked: Option<bool>, restore: Option<bool>, session: Option<String>) -> Result<StartLine, String> {
-    let settings = store.lock().map_err(|e| e.to_string())?.settings();
-    let start = if restore.unwrap_or(false) { Start::Restore(session.as_deref().map(str::trim).filter(|s| !s.is_empty())) } else { Start::Fresh };
+    let (settings, store_dir) = {
+        let store = store.lock().map_err(|e| e.to_string())?;
+        (store.settings(), store.dir())
+    };
+    let mut start = if restore.unwrap_or(false) { Start::Restore(session.as_deref().map(str::trim).filter(|s| !s.is_empty())) } else { Start::Fresh };
+    // START-01: a restored Claude pane resumes only when its conversation is really on disk.
+    if id == "claude" && matches!(start, Start::Restore(Some(_))) {
+        let roots = crate::sessions::list::roots_for(
+            &settings,
+            |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty()),
+            std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from),
+            Some(&store_dir),
+        );
+        let (checked, skipped) = restorable(&roots, &id, start);
+        start = checked;
+        if let Some(line) = skipped {
+            match tauri::Manager::path(&app).app_data_dir() {
+                Ok(dir) => crate::diag::write(&dir, &line),
+                Err(_) => eprintln!("kolux-rs: {line}"),
+            }
+        }
+    }
     // SESS-005: a line that cannot be put together is refused here, before any pane is made, and
     // the refusal names the agent.
     let name = agent_name(&id);
@@ -848,10 +899,33 @@ const WORKER_DESCRIPTION: &str = "General worker for research, multi-step tasks 
 const WORKER_PROMPT: &str = "You are a worker subagent for a lead agent. Do the task in your brief fully with the tools you have, and check your own work before you report. If you get stuck, stop instead of guessing or looping. Stuck means the same error twice, a fact you cannot find, or a choice your brief does not settle. Then return a report whose first line is BLOCKED, followed by what you were doing, what you tried, the exact error or gap, your best guess at the cause, and what you need from the lead. The lead will send back a fix or another way to attack the problem. When you finish, end with a short report of what you did, what you verified, and anything left open.";
 const LEAD_NOTE: &str = "Subagents you spawn with the general-purpose type run on Sonnet at high effort. When a subagent report starts with BLOCKED, work out the cause yourself and answer with a concrete fix or a different approach, by SendMessage to that subagent or a new spawn with a corrected brief. Do not resend the same brief unchanged.";
 
+/// LAND-03: what a Claude Code seat is told about sending finished work to main. It travels through
+/// cmd.exe shims, so it holds none of `% & | < > ^ "`, no backtick and no line break, and it names
+/// the variable in words instead of writing `%KOLUX_LAND%`. Git Bash on Windows does not add `.cmd`
+/// to a bare name, so the script is named with its extension.
+pub(crate) const LAND_NOTE: &str = "When a task in a Kolux workspace is finished and its work is committed, send it to main by running kolux-land.cmd from the workspace folder. The KOLUX_LAND environment variable holds the full path of that script. Read its reply: if it names uncommitted files, commit them and run it again; if it reports a clash with main, merge main into the workspace, fix the clash, commit and run it again. In a folder that is not a Kolux workspace it refuses with a plain reason; then do not retry.";
+
+/// LAND-03: the note a Claude Code seat is given: the lead note alone, or the lead note and then the
+/// land note when Kolux knows where the land script is.
+pub(crate) fn lead_note(land: bool) -> String {
+    if land {
+        format!("{LEAD_NOTE} {LAND_NOTE}")
+    } else {
+        LEAD_NOTE.to_string()
+    }
+}
+
 /// The lead-and-workers setup for a Claude Code line: arguments in front and the subagent model
 /// variable. Nothing when the person replaced Claude's arguments in Settings (their line is theirs),
 /// and no arguments when the program starts through cmd.exe, which does not honour the JSON's quoting.
 fn add_team(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cmd: bool) {
+    add_team_with(settings, id, line, via_cmd, crate::hooks::land_script().is_some());
+}
+
+/// `add_team`, also told whether the land note goes in (LAND-03: it does whenever Kolux knows where
+/// the land script is; the note says itself that it applies only in a Kolux workspace, and the script
+/// refuses elsewhere with a plain reason).
+pub(crate) fn add_team_with(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cmd: bool, land: bool) {
     if id != "claude" || option_field(settings, id, "args").is_some() {
         return;
     }
@@ -862,7 +936,7 @@ fn add_team(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cm
         return;
     }
     let agents = serde_json::json!({ "general-purpose": { "description": WORKER_DESCRIPTION, "prompt": WORKER_PROMPT, "model": "sonnet", "effort": "high" } });
-    line.args.splice(0..0, ["--agents".to_string(), json_without_spaces(&agents), "--append-system-prompt".to_string(), LEAD_NOTE.to_string()]);
+    line.args.splice(0..0, ["--agents".to_string(), json_without_spaces(&agents), "--append-system-prompt".to_string(), lead_note(land)]);
 }
 
 /// c2-agents top bug 1: Claude Code takes `--agents` as inline JSON only (a file path needs `--print`,
@@ -1106,6 +1180,10 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
 }
 
 #[cfg(test)]
+#[path = "agents_restore_board_tests.rs"]
+mod restore_board_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -1158,6 +1236,34 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    // F5: two roots can spell one config folder two ways, and the finder counted the same
+    // transcript twice, so a saved conversation "had more than one file" and the restored pane
+    // started fresh. One file spelled twice is one file; two real copies still name a saved
+    // conversation, so the pane resumes it.
+    #[test]
+    fn f5_one_transcript_spelled_twice_resumes_and_two_copies_keep_the_id() {
+        use crate::sessions::list::Roots;
+        let root = temp_dir("f5-resume");
+        let folder = root.join("projects").join("C--w");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("abc-123.jsonl"), "{}\n").unwrap();
+        // `projects/C--w/../..` is the root again: the same file, reached by a second spelling.
+        let round_about = folder.join("..").join("..");
+        let two_spellings = Roots { claude: vec![root.clone(), round_about], codex: vec![] };
+        assert_eq!(restorable(&two_spellings, "claude", Start::Restore(Some("abc-123"))), (Start::Restore(Some("abc-123")), None), "one file, not two");
+        // Two real copies in two project folders: the id still names a saved conversation.
+        let copies = temp_dir("f5-copies");
+        for name in ["C--w-a", "C--w-b"] {
+            std::fs::create_dir_all(copies.join("projects").join(name)).unwrap();
+            std::fs::write(copies.join("projects").join(name).join("abc-123.jsonl"), "{}\n").unwrap();
+        }
+        let (start, log) = restorable(&Roots { claude: vec![copies.clone()], codex: vec![] }, "claude", Start::Restore(Some("abc-123")));
+        assert_eq!(start, Start::Restore(Some("abc-123")), "an id with copies is still a saved conversation");
+        assert!(log.is_none(), "{log:?}");
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&copies);
     }
 
     #[test]

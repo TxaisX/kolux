@@ -4,7 +4,6 @@
 import { writeFileSync } from "node:fs";
 
 const [name, outFile] = process.argv.slice(2);
-const [base, sub] = name.split(":"); // csi:N runs only item N of the malformed-CSI list
 const ESC = "\x1b";
 const CSI = `${ESC}[`;
 const OSC = `${ESC}]`;
@@ -159,10 +158,12 @@ win`, items: list.length };
   },
 };
 
-if (!payloads[base] || !outFile) {
+if (!name || !outFile || !payloads[name.split(":")[0]]) {
   console.error(`usage: node s6-torture-payloads.mjs <${Object.keys(payloads).join("|")}> <result.json>`);
   process.exit(2);
 }
+// csi:N runs only item N of the malformed-CSI list. Parsed after the argument check so a bad call never reaches it.
+const [base, sub] = name.split(":");
 
 let inbuf = "";
 process.stdin.setRawMode?.(true);

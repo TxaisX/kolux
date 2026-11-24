@@ -12,7 +12,7 @@ use crate::names::safe_name;
 use crate::state::Store;
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use tauri::State;
 
@@ -223,43 +223,92 @@ pub fn set_parent(store: &Store, path: &str, parent: Option<&str>) -> Result<(),
 
 /// Drops what Kolux remembers about a removed workspace, so a later one in the same folder starts
 /// clean: its typed name, its parent and its origin.
+/// R3-F06: every record is read, and its new value built, before anything is written; the writes
+/// then land in one transaction, so a refused write anywhere leaves every record as it was.
 pub fn forget_workspace(store: &Store, path: &str) -> Result<(), String> {
-    retire_workspace_names(store, path)?;
+    let key = name_key(path);
+    let mut writes: Vec<(String, String)> = Vec::new();
+    // PROJ-024: the folder's name and the typed name are retired, so neither is suggested again.
+    writes.extend(retired_after_forget(store, path)?);
     // PROJ-068: Git can give a later worktree the same Git folder; it must not inherit this one's records.
     let mut admins = load_map(store, ADMIN_KEY);
     let before = admins.len();
-    admins.retain(|_, v| v.as_str() != Some(name_key(path).as_str()));
+    admins.retain(|_, v| v.as_str() != Some(key.as_str()));
     if admins.len() != before {
-        store.set(ADMIN_KEY, &serde_json::Value::Object(admins).to_string()).map_err(|e| e.to_string())?;
+        writes.push((ADMIN_KEY.to_string(), serde_json::Value::Object(admins).to_string()));
     }
-    set_name(store, path, None)?;
-    set_parent(store, path, None)?;
+    // Its typed name and the workspace it was made from go with it.
+    for (owned, mut map) in [(NAMES_KEY, load_names(store)), (PARENTS_KEY, load_map(store, PARENTS_KEY))] {
+        if map.remove(&key).is_some() {
+            writes.push((owned.to_string(), serde_json::Value::Object(map).to_string()));
+        }
+    }
     // The next worktree at this path starts with no history, so a stale "last opened" cannot make it
     // expire the moment it is made.
     let mut opened = load_map(store, OPENED_KEY);
-    if opened.remove(&name_key(path)).is_some() {
-        store.set(OPENED_KEY, &serde_json::Value::Object(opened).to_string()).map_err(|e| e.to_string())?;
+    if opened.remove(&key).is_some() {
+        writes.push((OPENED_KEY.to_string(), serde_json::Value::Object(opened).to_string()));
     }
     // After-list row 59: every way a workspace goes drops its board status too.
-    crate::bulk::clear_status(store, path)?;
-    set_origin(store, path, None)
+    writes.extend(cleared_status(store, path)?);
+    let mut origins = load_origins_for_write(store)?;
+    if origins.remove(&key).is_some() {
+        writes.push((ORIGINS_KEY.to_string(), serde_json::Value::Object(origins).to_string()));
+    }
+    let pairs: Vec<(&str, &str)> = writes.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    store.set_all(&pairs).map_err(|e| e.to_string())
+}
+
+/// PROJ-084's status map, cleared here so a forget writes it in the same transaction as the rest
+/// (R3-F06): `None` when this workspace had no status of its own. The key is `bulk`'s own
+/// (`STATUS_OF_KEY` there); it is named here because `bulk::clear_status` writes the key on its
+/// own, and a forget may not write anything until every record is ready.
+fn cleared_status(store: &Store, path: &str) -> Result<Option<(String, String)>, String> {
+    const STATUS_OF_KEY: &str = "workspaceStatusOf";
+    let mut map: std::collections::HashMap<String, String> = crate::state::kept::load(store, STATUS_OF_KEY)?;
+    if map.remove(&name_key(path)).is_none() {
+        return Ok(None);
+    }
+    Ok(Some((STATUS_OF_KEY.to_string(), serde_json::to_string(&map).map_err(|e| e.to_string())?)))
 }
 
 /// PROJ-024: the folder the workspace at `path` lived in is the scope; a suggested name, folder or
 /// typed, is not offered again there. Used by every way a workspace goes: removed by the user
 /// (`forget_workspace`) and found gone from disk (`forget_gone`).
 pub fn retire_workspace_names(store: &Store, path: &str) -> Result<(), String> {
+    match retired_after_forget(store, path)? {
+        Some((_, blob)) => store.set(RETIRED_KEY, &blob).map_err(|e| e.to_string()),
+        None => Ok(()),
+    }
+}
+
+/// The retired-names blob `path`'s going leaves behind, read and built without writing it, or `None`
+/// when it retires nothing. `forget_workspace` writes it in the same transaction as the rest of the
+/// records (R3-F06).
+fn retired_after_forget(store: &Store, path: &str) -> Result<Option<(String, String)>, String> {
     let folder = Path::new(path);
     let scope = name_key(&folder.parent().unwrap_or(folder).to_string_lossy());
     let typed = load_names(store).get(&name_key(path)).and_then(|v| v.as_str().map(String::from));
+    let mut all = retired_all(store);
+    let mut changed = false;
     for name in folder.file_name().map(|n| n.to_string_lossy().to_string()).into_iter().chain(typed) {
-        retire_name(store, &scope, &name)?;
+        changed |= retire_in(&mut all, &scope, &name);
     }
-    Ok(())
+    if !changed {
+        return Ok(None);
+    }
+    Ok(Some((RETIRED_KEY.to_string(), serde_json::to_string(&all).map_err(|e| e.to_string())?)))
 }
 
+/// For display and lookup only: an unreadable record shows empty (after being kept aside, R3-F02).
 pub(crate) fn load_origins(store: &Store) -> serde_json::Map<String, serde_json::Value> {
-    store.get(ORIGINS_KEY).ok().flatten().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+    crate::state::kept::or_default(store, ORIGINS_KEY)
+}
+
+/// The records a save starts from (R3-F02): a blob that does not read is kept aside first, and a
+/// store or copy that fails is an error, never an empty map that the save would write over it.
+fn load_origins_for_write(store: &Store) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+    crate::state::kept::load(store, ORIGINS_KEY)
 }
 
 /// VIEW-038: the issue or pull request number an origin links to: `issue`, or the number at the
@@ -284,7 +333,7 @@ pub const MADE_BRANCH_KEY: &str = "madeBranch";
 /// writer (the details form, the CLI's `worktree set`, a link to an issue) can bring the pre-trust
 /// back; only forgetting the workspace (`None`) drops it.
 pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>) -> Result<(), String> {
-    let mut all = load_origins(store);
+    let mut all = load_origins_for_write(store)?;
     let key = name_key(path);
     match origin {
         Some(o) => {
@@ -1013,12 +1062,48 @@ pub fn chosen_workspaces_dir(own: Option<&str>, env: Option<&str>, setting: Opti
     non_blank(own).or(non_blank(setting)).or(non_blank(env)).map(PathBuf::from)
 }
 
-/// The root and layout for a project at `project_path`: a chosen folder (relative counts from the
-/// project root) with the saved layout, else `<project>\.worktrees`, always flat (the folder is the
-/// project's own, so a folder per project inside it would only repeat the name).
+/// A folder chosen for a project's workspaces read as steps from its root: a `.` is dropped and a
+/// `..` kept as it is, so it steps back from the project's own folder when the two are joined.
+/// Windows needs this: `C:ws` is relative to the current folder on drive C and `\ws` to the drive's
+/// root, so neither may be saved as a folder that counts from the project root; a `..` does count
+/// from it and is kept.
+fn inside_project(dir: &Path) -> Option<PathBuf> {
+    let mut steps = PathBuf::new();
+    for part in dir.components() {
+        match part {
+            Component::Normal(step) => steps.push(step),
+            Component::ParentDir => steps.push(".."),
+            Component::CurDir => {}
+            Component::Prefix(_) | Component::RootDir => return None,
+        }
+    }
+    (!steps.as_os_str().is_empty()).then_some(steps)
+}
+
+/// Whether a folder may be saved as a relative workspaces folder: exactly the folders
+/// `inside_project` reads back, so nothing is saved that `place_root` would then throw away. A `.`
+/// (or `./.`) leaves no steps, so it is refused like a blank setting rather than saved as a folder
+/// that silently means the default. Windows' `is_absolute` is not the inverse of "relative": `C:ws`
+/// is relative to the current folder on drive C and `\ws` to the drive's root, so neither may be
+/// saved as a folder that counts from the project root.
+fn stays_inside(dir: &Path) -> bool {
+    inside_project(dir).is_some()
+}
+
+/// The root and layout for a project at `project_path`: a chosen folder (a relative one counts from
+/// the project root, with `..` stepping back from it) with the saved layout, else
+/// `<project>\.worktrees`, always flat (the folder is the project's own, so a folder for each
+/// project inside it would only repeat the name).
 pub fn place_root(project_path: &Path, chosen: Option<PathBuf>, flat_saved: bool) -> (PathBuf, bool) {
+    let chosen = chosen.and_then(|dir| {
+        if dir.is_absolute() {
+            Some(dir)
+        } else {
+            inside_project(&dir).map(|steps| project_path.join(steps))
+        }
+    });
     match chosen {
-        Some(dir) => (project_path.join(dir), flat_saved),
+        Some(dir) => (dir, flat_saved),
         None => (project_path.join(PROJECT_LOCAL_DIR), true),
     }
 }
@@ -1608,11 +1693,20 @@ fn from_suggestions(name: &str) -> bool {
 
 /// Keeps `name` as retired in `scope` when the suggestion list made it; any other name is left alone.
 pub fn retire_name(store: &Store, scope: &str, name: &str) -> Result<(), String> {
-    if !from_suggestions(name) {
+    let mut all = retired_all(store);
+    if !retire_in(&mut all, scope, name) {
         return Ok(());
     }
+    store.set(RETIRED_KEY, &serde_json::to_string(&all).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+}
+
+/// Keeps `name` as retired in `scope` inside `all`; false when it was not a suggested name or is
+/// already there, so a caller building a batch writes only when something changed.
+fn retire_in(all: &mut Vec<Retired>, scope: &str, name: &str) -> bool {
+    if !from_suggestions(name) {
+        return false;
+    }
     let form = name_form(name);
-    let mut all = retired_all(store);
     let at = match all.iter().position(|r| r.scope == scope) {
         Some(i) => i,
         None => {
@@ -1621,7 +1715,7 @@ pub fn retire_name(store: &Store, scope: &str, name: &str) -> Result<(), String>
         }
     };
     if all[at].names.contains(&form) {
-        return Ok(());
+        return false;
     }
     all[at].names.push(form);
     let extra = all[at].names.len().saturating_sub(RETIRED_PER_SCOPE);
@@ -1635,7 +1729,7 @@ pub fn retire_name(store: &Store, scope: &str, name: &str) -> Result<(), String>
             None => break,
         }
     }
-    store.set(RETIRED_KEY, &serde_json::to_string(&all).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    true
 }
 
 /// A creature name in use nowhere, now or before (SESS-023).
@@ -2038,11 +2132,34 @@ pub fn scanned_of(store: &Store, project: &Project, all: Vec<Worktree>) -> Resul
     Ok(Scanned { list, unseen })
 }
 
-/// The sidebar's poll: one `git worktree list` per project instead of one per command.
-#[tauri::command]
-pub async fn workspace_scan(git: State<'_, Git>, store: StoreState<'_>, project_id: String) -> Result<Scanned, String> {
-    let (project, all) = scan(&git, &store, &project_id)?;
+/// The scan body, synchronous: the caller decides which thread runs it.
+pub(crate) fn workspace_scan_now(git: &Git, store: &Mutex<Store>, project_id: &str) -> Result<Scanned, String> {
+    let (project, all) = scan(git, store, project_id)?;
     scanned_of(&*store.lock().map_err(|e| e.to_string())?, &project, all)
+}
+
+/// Runs `work` once on the runtime's blocking pool and awaits the answer, so slow work (store locks,
+/// `git worktree list`, folder checks) never holds an async worker. The work's own answer comes back
+/// unchanged; a panicking work comes back as the join error's text, not as an unwind.
+pub(crate) async fn on_blocking_pool<T, F>(work: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(work).await.map_err(|e| e.to_string())?
+}
+
+/// The sidebar's poll: one `git worktree list` per project instead of one per command, run on the
+/// blocking pool so a sweep of projects never starves the async workers other commands wait on.
+#[tauri::command]
+pub async fn workspace_scan(app: tauri::AppHandle, project_id: String) -> Result<Scanned, String> {
+    use tauri::Manager;
+    on_blocking_pool(move || {
+        let git = app.state::<Git>();
+        let store = app.state::<Mutex<Store>>();
+        workspace_scan_now(&git, &store, &project_id)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -2065,7 +2182,6 @@ pub fn workspace_opened(store: StoreState<'_>, path: String) {
 /// T-442 (TERM-115): a project's worktrees as Git lists them, with the store let go while git runs,
 /// so a terminal printing a pull request link never waits on it. The commands that call this are
 /// async, so they run off the window's thread and typing never queues behind a slow git.
-/// ponytail: git still blocks one async worker while it runs; spawn_blocking if workers ever starve.
 fn scan(git: &Git, store: &Mutex<Store>, project_id: &str) -> Result<(Project, Vec<Worktree>), String> {
     let (project, folder) = {
         let store = store.lock().map_err(|e| e.to_string())?;
@@ -2371,7 +2487,12 @@ pub(crate) fn project_known(store: &Store, path: &str) -> Result<Project, Vec<Pr
     if let Some(p) = projects.iter().find(|p| seen_of(store, p).is_some_and(|s| s.contains(&key))) {
         return Ok(p.clone());
     }
-    if let Some(p) = projects.iter().find(|p| name_key(&p.path) == key || key.starts_with(&format!("{}/", name_key(&p.path).trim_end_matches('/')))) {
+    // A folder inside a project is matched with the separator `name_key` itself produces: it turns
+    // every slash into a backslash, so a forward slash here would never match a child on Windows.
+    if let Some(p) = projects.iter().find(|p| {
+        let base = name_key(&p.path);
+        key == base || key.starts_with(&format!("{base}\\"))
+    }) {
         return Ok(p.clone());
     }
     Err(projects)
@@ -2949,7 +3070,11 @@ pub fn workspaces_place_set(store: StoreState<'_>, dir: String, flat: bool) -> R
 }
 
 /// An absolute folder is made right away (so a folder that cannot be made is a failed save the
-/// user can retry, SET-032); a relative one counts from each project root, so it is only saved.
+/// user can retry, SET-032); a relative one counts from each project root, so it is only saved
+/// (`..` included: it steps back from that root). A folder that is neither is refused rather than
+/// saved: `C:ws` and `\ws` are not absolute, but they name a place of their own on the drive, so
+/// saving one as if it counted from each project root would put the workspaces outside the project
+/// (`place_root` never reads them that way).
 fn set_place(store: &Store, dir: &str, flat: bool) -> Result<PlaceInfo, String> {
     let mut settings = store.settings();
     let trimmed = dir.trim();
@@ -2958,6 +3083,8 @@ fn set_place(store: &Store, dir: &str, flat: bool) -> Result<PlaceInfo, String> 
     } else {
         if Path::new(trimmed).is_absolute() {
             std::fs::create_dir_all(trimmed).map_err(|e| format!("{trimmed} cannot be made: {e}"))?;
+        } else if !stays_inside(Path::new(trimmed)) {
+            return Err(format!("{trimmed} is not a folder this setting can use: use a full folder (C:\\ws) or a relative one with no drive letter (it counts from each project's folder), so it was not saved"));
         }
         settings[WORKSPACES_DIR_SETTING] = serde_json::Value::String(trimmed.to_string());
     }
@@ -3101,8 +3228,16 @@ pub(crate) fn set_aside_record(repo: &Path, path: &str) -> Result<SetAside, Stri
 /// T-441-c: the worktrees among `all` that Kolux made itself, by the origin record it keeps for
 /// each one it creates (the same test as trust::made_by_kolux). Txais, 2026-10-13: "Only Kolux's
 /// own": a worktree made by Claude Code or any other tool is never forgotten, folder gone or not.
+/// R3-F03: a record alone is no proof. The details form writes a record for any folder the user
+/// names, with no maker, so only a record that names its maker counts.
 pub(crate) fn kolux_made(origins: &serde_json::Map<String, serde_json::Value>, all: Vec<Worktree>) -> Vec<Worktree> {
-    all.into_iter().filter(|w| origins.contains_key(&name_key(&w.path))).collect()
+    all.into_iter().filter(|w| origins.get(&name_key(&w.path)).is_some_and(names_its_maker)).collect()
+}
+
+/// Whether an origin record was written by a Kolux creator (a non-empty `madeBy`), the same test
+/// `trust::made_by_kolux` uses.
+fn names_its_maker(origin: &serde_json::Value) -> bool {
+    origin["madeBy"].as_str().is_some_and(|who| !who.trim().is_empty())
 }
 
 /// The sweep over one project's worktrees: `forget_gone`, and what Kolux remembers about each one
@@ -3169,10 +3304,15 @@ pub(crate) fn trash_folders(store: &Mutex<Store>, git: &Git, projects: &[Project
         out.extend(used_dirs(&store).into_iter().map(PathBuf::from));
     }
     for p in projects {
-        out.extend(p.workspaces_dir.iter().map(PathBuf::from));
+        let root = Path::new(&p.path);
+        // A relative folder counts from the project root, read the same way `place_root` reads it
+        // (R3-F08): the workspaces are made there, so the trash is there too, not beside the app.
+        if let Some(dir) = non_blank(p.workspaces_dir.as_deref()) {
+            out.push(place_root(root, Some(PathBuf::from(dir)), false).0);
+        }
         // The project-local default: removed workspaces leave their trash beside the others there.
-        out.push(Path::new(&p.path).join(PROJECT_LOCAL_DIR));
-        if let Ok(all) = git.worktrees(Path::new(&p.path)) {
+        out.push(root.join(PROJECT_LOCAL_DIR));
+        if let Ok(all) = git.worktrees(root) {
             out.extend(kolux_made(origins, all).iter().filter_map(|w| Path::new(&w.path).parent().map(Path::to_path_buf)));
         }
     }
@@ -3526,3 +3666,7 @@ mod branch_prefix_async_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "projects_scan_board_tests.rs"]
+mod scan_board_tests;

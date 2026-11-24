@@ -1,0 +1,931 @@
+{
+ "area": "T7",
+ "files": [
+  {
+   "path": "src/App.tsx",
+   "symbols": [
+    "ShellTarget",
+    "Pane",
+    "Window",
+    "useWindowChrome"
+   ],
+   "note": "Read the window shell: Pane and ShellTarget types, the App/Window split, pane wiring, chrome hooks and screen routing; no independent logic fault found.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/app-info.ts",
+   "symbols": [
+    "AppInfo"
+   ],
+   "note": "Read the window title builder and its version/needing count inputs; plural and waiting-count wording checked. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/bootTiming.ts",
+   "symbols": [
+    "bootMark"
+   ],
+   "note": "Read bootMark and its stage marks; it records only when timing is enabled and keeps no state beyond the marks. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/AppLookCard.tsx",
+   "symbols": [
+    "AppLookCard",
+    "applyWindowBlur",
+    "blurRefused"
+   ],
+   "note": "Read the icon and blur chooser: a pick saves, applies the window look, and puts the CSS blur back when the Rust apply fails. Matches SET-041.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/Ask.tsx",
+   "symbols": [
+    "askKey",
+    "Question"
+   ],
+   "note": "Read the ask/answer key helper and the question component; keys are scoped, answers clear, and a stale question id is not reused. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/LayoutStrip.tsx",
+   "symbols": [
+    "LayoutStrip",
+    "onLayout"
+   ],
+   "note": "Read the grid layout chooser: the count comes from the caller and each press reports the chosen layout; no off-by-one found. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/OutOfFlow.tsx",
+   "symbols": [
+    "OutOfFlow"
+   ],
+   "note": "Read the out-of-flow wrapper: it renders children into a positioned box and changes nothing else in the tree. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/RightSidebar.tsx",
+   "symbols": [
+    "RightTab",
+    "RIGHT_TABS",
+    "RIGHT_KEYS",
+    "RIGHT_MIN"
+   ],
+   "note": "Read the right sidebar tabs, width persistence, narrow More menu, panel error boundary and grip resizing; remembered-tab fallback checked. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/StatusBar.tsx",
+   "symbols": [
+    "StatusBar",
+    "formatMemory",
+    "pollWhileVisible",
+    "KeepAwakeItem"
+   ],
+   "note": "Read the status bar's two-second memory poll, item visibility menu and keep-awake item; polling stops while hidden and the menu reads the saved list. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/Tip.tsx",
+   "symbols": [
+    "DELAY_MS",
+    "tooltip"
+   ],
+   "note": "Read the delayed tooltip: one timer, cleared on leave, and no tip is shown while the pointer is down. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/TopBar.tsx",
+   "symbols": [
+    "SCREEN_IDS",
+    "Screen"
+   ],
+   "note": "Read the top bar screens list, switcher cycle order and drag regions; SCREEN_IDS matches the Screen union and Classic hides the switcher. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/VendorMark.tsx",
+   "symbols": [
+    "Agent"
+   ],
+   "note": "Read the agent vendor mark: an unknown agent falls back to the neutral mark instead of throwing. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/appLook.ts",
+   "symbols": [
+    "ICON_FIELD",
+    "BLUR_FIELD"
+   ],
+   "note": "Read the icon and blur readers plus applyWindowBlur; unknown icons read classic, only a saved true blurs, and a refusal keeps the page solid. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/chromeItems.ts",
+   "symbols": [
+    "CHROME",
+    "ChromeItem"
+   ],
+   "note": "Read menu accelerators, menu state, edit dispatch, setting flips and help actions; HINT_FROM maps menu zoom to the interface zoom keys. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/dialogFocus.ts",
+   "symbols": [
+    "FOCUSABLE",
+    "tabTarget"
+   ],
+   "note": "Read the dialog and menu focus traps, Tab wrapping, capture-phase Escape, menu room and arrow stepping; only the top shown modal answers. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/icons.tsx",
+   "symbols": [
+    "Glyph",
+    "Mark",
+    "FileCode",
+    "StatusGlyph"
+   ],
+   "note": "Read the icon set from the shared Glyph through Mark, the later glyph components and StatusGlyph; names, paths and status glyph mapping checked. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/modalStack.ts",
+   "symbols": [
+    "Modal"
+   ],
+   "note": "Read the modal stack: push and release keep identity, isTopModal skips hidden dialogs, and release removes an entry wherever it sits. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/noticeSink.ts",
+   "symbols": [
+    "setNoticeSink"
+   ],
+   "note": "Read the notice sink: one setter, sentences dropped before mount, and the sink cleared on unmount. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/paletteOpen.ts",
+   "symbols": [
+    "setPaletteOpen"
+   ],
+   "note": "Read the palette open store and its subscription hook; the external store snapshot is stable and listeners are released. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/pulseRest.ts",
+   "symbols": [
+    "PULSE_REST_MS",
+    "WAKE_EVENTS"
+   ],
+   "note": "Read the pulse rest timer: input wakes it, the running cycle ends before it rests, and cleanup removes every passive listener and cancels the wait. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/reach.ts",
+   "symbols": [
+    "screenTarget"
+   ],
+   "note": "Read screen reach: Classic keeps switcher screens on Terminals and the palette rows use the same screen target. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/reopenTab.ts",
+   "symbols": [
+    "folderKind",
+    "ClosedPane"
+   ],
+   "note": "Read closed-tab records, the folder check, ring take with path forms, pane rebuild and cell placement; full grids fall back to the first cell. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/statusItems.ts",
+   "symbols": [
+    "STATUS_ITEMS"
+   ],
+   "note": "Read status item ids, saved hidden-list filtering and the usage pill rule; retired or unknown ids drop out and visibility defaults to shown. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/titleHeader.ts",
+   "symbols": [
+    "HEADER_MIN"
+   ],
+   "note": "Read Classic/New layout mapping and header width: a hidden sidebar gives the minimum, and width rounds the sidebar plus its gap. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/useChrome.ts",
+   "symbols": [
+    "useChrome",
+    "useNativeChords"
+   ],
+   "note": "Read palette, notice and toast state, the native chord store, help actions and menu sync; the toast timer re-arms only while hovered. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/useScreens.tsx",
+   "symbols": [
+    "useScreens",
+    "Screens"
+   ],
+   "note": "Read the screens hook: one screen at a time and the setter is stable; Classic is forced to Terminals in useWindowChrome. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/chrome/useWindowChrome.ts",
+   "symbols": [
+    "useWindowChrome",
+    "WindowChrome"
+   ],
+   "note": "Read the title count, keymap notice, Classic screen reset and the settings-link listener; every effect has a matching cleanup. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/crash.tsx",
+   "symbols": [
+    "STACK_LINES",
+    "crashText"
+   ],
+   "note": "Read crash text extraction, the report button and feedback: stack lines are bounded and retry is disabled while a report is sending. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/editmenu/EditMenuHost.tsx",
+   "symbols": [
+    "describeField",
+    "runEdit",
+    "EditMenuHost",
+    "SUGGESTION_WAIT_MS"
+   ],
+   "note": "Read field description, selection checks, clipboard actions and the popup menu; terminal edits stay copy and select-all only. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/editmenu/editMenuModel.ts",
+   "symbols": [
+    "FieldLike",
+    "FieldKind"
+   ],
+   "note": "Read field kinds, menu item construction and shortcut labels; unavailable rows are left out and disabled rows cannot run. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/editmenu/suggestionGate.ts",
+   "symbols": [
+    "SuggestionGate",
+    "MAX_OWED"
+   ],
+   "note": "Read the suggestion gate: waits a short beat, ignores stale suggestions and closes on blur; its timer and token handling checked. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/glossary.ts",
+   "symbols": [
+    "GlossaryId",
+    "BANNED"
+   ],
+   "note": "Read banned-word matching and the glossary getters; hover keys are excluded by the lookup caller and every id has both plain and hover text. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/en.ts",
+   "symbols": [
+    "TextKey"
+   ],
+   "note": "Read the English text catalogue and its key type; keys are literal and checked for accidental duplicates by the compiler. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/lookup.ts",
+   "symbols": [
+    "Pack",
+    "registerPack"
+   ],
+   "note": "Read pack registration, one load per language, English fallback and value substitution; a failed pack load leaves English and can retry later. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/packs.ts",
+   "symbols": [
+    "PackMeta"
+   ],
+   "note": "Read the bundled pack registry: modules load lazily and only known languages are registered. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/packs/es.ts",
+   "symbols": [
+    "META"
+   ],
+   "note": "Read the Spanish pack metadata and texts; keys exist in the English catalogue and only translated strings are exported. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/packs/fr.ts",
+   "symbols": [
+    "META"
+   ],
+   "note": "Read the French pack metadata and texts; keys exist in the English catalogue and only translated strings are exported. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/packs/ja.ts",
+   "symbols": [
+    "META"
+   ],
+   "note": "Read the Japanese pack metadata and texts; keys exist in the English catalogue and only translated strings are exported. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/packs/ko.ts",
+   "symbols": [
+    "META"
+   ],
+   "note": "Read the Korean pack metadata and texts; keys exist in the English catalogue and only translated strings are exported. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/i18n/packs/zh-CN.ts",
+   "symbols": [
+    "META"
+   ],
+   "note": "Read the Simplified Chinese pack metadata and texts; keys exist in the English catalogue and only translated strings are exported. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/ipc/commands.ts",
+   "symbols": [
+    "NAMED_COMMANDS"
+   ],
+   "note": "Read the named command list and invoke wrapper; command names are a closed union and the wrapper adds no hidden arguments. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/KeymapContext.tsx",
+   "symbols": [
+    "KeybindingsFile",
+    "KeymapState"
+   ],
+   "note": "Read the keymap provider, file load and save, label helpers and context hooks; a stale save is guarded and missing contexts have defaults. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/actions.ts",
+   "symbols": [
+    "Platform",
+    "Scope",
+    "Group",
+    "Action"
+   ],
+   "note": "Read the 95-action table, platform defaults, aliases and index flags; no duplicate ids and every index action has a digit default. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/commands.ts",
+   "symbols": [
+    "commandRows",
+    "WindowCalls"
+   ],
+   "note": "Read command rows, window commands, rename targets, the reload question and worktree-off notes; every id resolves to an action. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/doubleTap.ts",
+   "symbols": [
+    "DOUBLE_TAP_MS",
+    "TapKey"
+   ],
+   "note": "Read double-tap matching: same physical key, about 300 ms, no other modifier held and repeats ignored; spelling round-trips. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/keyScopes.ts",
+   "symbols": [
+    "KeySurface"
+   ],
+   "note": "Read the surface-to-scope map: settings, terminal and tab surfaces map to the expected scope lists. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/keymap.ts",
+   "symbols": [
+    "parseChord",
+    "normaliseIndexChord",
+    "dropConflicts",
+    "matchEvent"
+   ],
+   "note": "Read chord parsing and labels, file sections, conflict dropping, yielding and matching. Two faults filed: T7-F01 counts one binding's duplicate chord as a clash, T7-F02 leaves a recorded Mod+0 un-normalised.",
+   "verdict": "findings",
+   "findings": [
+    "T7-F01",
+    "T7-F02"
+   ]
+  },
+  {
+   "path": "src/keys/paletteKey.ts",
+   "symbols": [
+    "kPalette",
+    "kTaken"
+   ],
+   "note": "Read the palette stand-in key and hint: a palette pick answers once and the hint excludes chords already taken. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/record.ts",
+   "symbols": [
+    "recording",
+    "Recorded"
+   ],
+   "note": "Read the recorder: modifiers, Escape cancel, code-to-key spelling and index normalisation; its Ctrl+0 input exposes the T7-F02 fault in keymap.normaliseIndexChord. Clean here.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/runCommand.ts",
+   "symbols": [
+    "commandOf",
+    "answerCommand"
+   ],
+   "note": "Read command stand-in events, scope notes and the running-command guard; an answer consumes the key once and leaves later presses alone. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/tabKeysSeed.ts",
+   "symbols": [
+    "SEEDED_FIELD"
+   ],
+   "note": "Read first-load seeding: an unreadable file retries, the marker prevents repeats, and a file naming any of the four commands is untouched. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/tabKeysUpgrade.ts",
+   "symbols": [
+    "OLD_PAIRING"
+   ],
+   "note": "Read old tab pairing seeding: new installs untouched, any section naming an id stops it, and malformed keybindings are left for the user. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/tapHit.ts",
+   "symbols": [
+    "tapHit"
+   ],
+   "note": "Read tap-to-command matching: only global, tabs and terminal scopes qualify and old ids map through matchOf. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/terminalPolicy.ts",
+   "symbols": [
+    "POLICY_FIELD"
+   ],
+   "note": "Read the terminal policy reader and helpers; unknown policies fall back, the field is a closed list and the terminal scope is respected. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/keys/useWindowKeys.ts",
+   "symbols": [
+    "SHOW_PROJECTS_EVENT",
+    "focusList",
+    "showProjects",
+    "typingHolds"
+   ],
+   "note": "Read the window key handler end to end: overlays hold keys, typing holds own-key chords, the switch covers every action, and index commands use hit.index with a 0 fallback. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/language.ts",
+   "symbols": [
+    "LANGUAGE_FIELD",
+    "LANGUAGES"
+   ],
+   "note": "Read language choices, saved and system resolution, Traditional Chinese fallback and listener cleanup; the primary OS tag decides. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/lazy/deferred.tsx",
+   "symbols": [
+    "Warm",
+    "forgetStages"
+   ],
+   "note": "Read staged lazy loading: stages advance on time and input, active windows stay warm, and forget clears timers. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/lazy/menus.tsx",
+   "symbols": [
+    "AddProject"
+   ],
+   "note": "Read the menu lazy exports: every named export maps to a module and stays behind Suspense. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/lazy/pages.tsx",
+   "symbols": [
+    "PlanSheet",
+    "SettingsPage"
+   ],
+   "note": "Read the page lazy exports and their fallbacks; no heavy page is imported eagerly. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/lazy/panes.tsx",
+   "symbols": [
+    "CheckPane"
+   ],
+   "note": "Read the pane lazy export and fallback; a missing chunk shows the fallback instead of crashing the window. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/lazy/uiMenu.tsx",
+   "symbols": [
+    "Menu"
+   ],
+   "note": "Read the UI menu wrappers: Menu, ContextMenu and MenuItem forward props and keep the lazy boundary. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/CardDetailsChooser.tsx",
+   "symbols": [
+    "CardDetailsChooser"
+   ],
+   "note": "Read the card detail chooser: locked status cannot be unticked and each tick saves through detailsAfter. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/CardLine.tsx",
+   "symbols": [
+    "CARD_INDENT"
+   ],
+   "note": "Read card indent steps; depth is clamped at zero and grows by one level at a time. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/FinishSettings.tsx",
+   "symbols": [
+    "FINISH_LABEL",
+    "METALS"
+   ],
+   "note": "Read finish labels, metals and the finish body: unknown metals fall back and strength stays inside its span. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/HeaderBadge.tsx",
+   "symbols": [
+    "HeaderBadge"
+   ],
+   "note": "Read the header badge and swatch picker: only palette ids are saved, the chosen swatch is the Tab stop, and arrows wrap. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/SidebarSettings.tsx",
+   "symbols": [
+    "SidebarLookBody",
+    "CardDensityBody"
+   ],
+   "note": "Read the sidebar look and card density bodies; saved values go through the readers and clamps, and labels match the stored ids. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/cardChanges.ts",
+   "symbols": [
+    "changedCount",
+    "ChangesAsk"
+   ],
+   "note": "Read changed-file counting, the one-at-a-time queue, the TTL cache and focus/finish refresh; a failed read keeps the last count and never blocks drawing. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/cardPorts.ts",
+   "symbols": [
+    "PortRow",
+    "ownPorts"
+   ],
+   "note": "Read own-port filtering, the TTL cache and single-flight scans; failed scans keep the last answer and a hover never shows an error. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/cards.ts",
+   "symbols": [
+    "CARD_DENSITY_FIELD",
+    "CARD_DETAILS_FIELD"
+   ],
+   "note": "Read density presets, custom detail lists, preset markers, port and task lines, and hover text; tidy order and marker round-trip checked. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/glass.ts",
+   "symbols": [
+    "Finish",
+    "finishOf"
+   ],
+   "note": "Read finish resolution, metals, glass spans and the ground/vars helpers; unknown finishes read flat and values stay in span. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/headerColour.ts",
+   "symbols": [
+    "HEADER_COLOURS_SETTING",
+    "HeaderColour"
+   ],
+   "note": "Read palette filtering, pick and forget, plus group-delete cleanup; grey is never saved and sub-groups are included in the gone set. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/sidebar.ts",
+   "symbols": [
+    "SIDEBAR_LOOKS",
+    "SidebarLook"
+   ],
+   "note": "Read sidebar looks, strength span, tint default and wash cap; the terminal look takes the terminal ground and tint is clamped. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/look/stage.ts",
+   "symbols": [
+    "STAGE_POOLS",
+    "STAGE_SIZE",
+    "stretch",
+    "stagePixels"
+   ],
+   "note": "Read stage pools, pixel stretching and picture selection; the same seed gives the same picture and an unknown pool falls back. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/main.tsx",
+   "symbols": [
+    "bootMark",
+    "applyLanguage",
+    "settle",
+    "start"
+   ],
+   "note": "Read boot: cached appearance first, settings settle, language and theme apply, then crash reporting; timing marks record only when enabled. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/open/missingFile.ts",
+   "symbols": [
+    "missingFileToast"
+   ],
+   "note": "Read the missing-file toast: a null stamp reports the file name, a failed check never blocks the open. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/open/openExternal.ts",
+   "symbols": [
+    "openExternal"
+   ],
+   "note": "Read the open-external wrapper; it delegates the address checks to the Rust side and rejects with its words. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/open/openIn.ts",
+   "symbols": [
+    "Target",
+    "cleanApps"
+   ],
+   "note": "Read the open-in list cleaning, targets, command fallback and relInside; relative file paths are rejected when they escape the worktree root. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/open/openInEdit.ts",
+   "symbols": [
+    "editApp"
+   ],
+   "note": "Read app editing and duplicate detection; both fields are required, an unchanged row keeps its id, and a command already listed is refused. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/sleep/AsleepPane.tsx",
+   "symbols": [
+    "AsleepPane",
+    "onWake"
+   ],
+   "note": "Read the asleep pane: wake is disabled while waking and the hidden state keeps the pane layout. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/sleep/agentSleep.ts",
+   "symbols": [
+    "SLEEP_ON_FIELD",
+    "SLEEP_MINUTES_FIELD"
+   ],
+   "note": "Read sleep settings, idle clamping, due selection and the persisted stamp; invalid numbers fall back and disabled sleep selects nothing. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/sleep/useAgentSleep.ts",
+   "symbols": [
+    "Stamp",
+    "SleepDeps"
+   ],
+   "note": "Read the minute tick, re-check before sleep, wake resume line and idle restart; a stale tick is skipped and a refusal keeps the pane asleep with a toast. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/switcher/AccountSwitcher.tsx",
+   "symbols": [
+    "useAccountSwitcher",
+    "AccountSwitcherView",
+    "EscapeWatch",
+    "openAccounts"
+   ],
+   "note": "Read the switcher hook, view and Escape watch; busy groups are not switchable and the capture listener closes the menu once. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/switcher/accounts.ts",
+   "symbols": [
+    "Provider",
+    "ClaudeSwitchView"
+   ],
+   "note": "Read account labels, duplicate disambiguation, pick and cycle rules, and palette rows; an unlisted active id reads as System default. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/test/clickTree.ts",
+   "symbols": [
+    "Host",
+    "hosts"
+   ],
+   "note": "Read the test click and typing helpers: events bubble to React handlers and label lookup is bounded to the host tree. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/test/fakeDom.ts",
+   "symbols": [
+    "FakeNode",
+    "FakeDocument",
+    "find",
+    "byText"
+   ],
+   "note": "Read the stand-in DOM: node tree, attributes, listeners, events and animation stubs; only what React asks for is implemented and nothing leaks between tests. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/test/windowSource.ts",
+   "symbols": [
+    "windowFiles",
+    "windowSource"
+   ],
+   "note": "Read the source-reading helper: files resolve under src and a missing file reports a clear error. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/theme.ts",
+   "symbols": [
+    "classic",
+    "readAppearance",
+    "buildTheme",
+    "appearanceVars"
+   ],
+   "note": "Read token tables, appearance read/write, contrast floors, built-in and custom themes, terminal mapping and appearance vars; clamps keep values in span. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/ui/Dialog.tsx",
+   "symbols": [
+    "DialogProps",
+    "Dialog"
+   ],
+   "note": "Read the dialog and alert wrappers: focus trapping and Escape go through the shared hooks, and labels are wired. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/ui/Menu.tsx",
+   "symbols": [
+    "MenuProps",
+    "Menu"
+   ],
+   "note": "Read the menu and context menu components: row roles, disabled handling and focus trap keys. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/ui/Select.tsx",
+   "symbols": [
+    "SelectOption",
+    "Select"
+   ],
+   "note": "Read the select wrapper: option list, change forwarding and disabled state stay in step with props. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/ui/Tabs.tsx",
+   "symbols": [
+    "Tabs"
+   ],
+   "note": "Read tabs, tab list and tab panel: aria wiring and controlled selection stay in step. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/ui/layer.ts",
+   "symbols": [
+    "useLayer"
+   ],
+   "note": "Read the layer hook and point anchoring: one layer at a time and the anchor is clamped to the window. Clean.",
+   "verdict": "clean",
+   "findings": []
+  },
+  {
+   "path": "src/workspaces.ts",
+   "symbols": [
+    "PaneLike",
+    "setGridRoots"
+   ],
+   "note": "Read workspace grouping, grid roots, dirKey/sameDir/underDir, removal, stays and fallback; absolute Windows paths normalise correctly, including .. climbs. Clean.",
+   "verdict": "clean",
+   "findings": []
+  }
+ ]
+}

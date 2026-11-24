@@ -1,3 +1,4 @@
+// retired: the code editor and its Compare view were removed in fccac517, so there is no buffer to compare against the disk.
 // LIVE proof, EDIT-003 box 3 (spec/12): with unsaved edits and the file changed on disk, Compare shows the disk copy on the left and the buffer on the right.
 import { reporter, startPlain, finish, sleep, poll, checker, editRepo, clickTab, clickRow, tabs, vis, visText, cmOf, typeInTerminal } from "./live-edit-common.mjs";
 
