@@ -13,7 +13,13 @@ export function samePrompt(typed: string, prompt: string): boolean {
   const t = words(typed);
   const p = words(prompt);
   if (t === "" || p === "") return false;
-  if (p.endsWith("…")) return t.startsWith(p.slice(0, -1).trimEnd());
+  if (p.endsWith("…")) {
+    const start = p.slice(0, -1).trimEnd();
+    // A prompt that is only the cut marker has nothing to match by its start: it matches only a typed
+    // line that is also just the marker. An empty prefix is not a wildcard.
+    if (start === "") return t === p;
+    return t.startsWith(start);
+  }
   return t === p;
 }
 
