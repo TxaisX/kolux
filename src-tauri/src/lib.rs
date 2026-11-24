@@ -173,15 +173,14 @@ fn settings_repair(store: tauri::State<'_, Mutex<Store>>) -> Result<Vec<String>,
     Ok(kept.iter().map(|p| p.display().to_string()).collect())
 }
 
-/// The settings `change` makes of what is on disk, written under one lock.
-fn write_settings(app: &tauri::AppHandle, store: &Mutex<Store>, change: impl FnOnce(serde_json::Value) -> serde_json::Value, payload: serde_json::Value) -> Result<(), String> {
-    let store = store.lock().map_err(|e| e.to_string())?;
-    let old = store.settings();
+/// The settings `change` makes of what is on disk. LAG-03: the two synced file writes run with the
+/// store lock free, so no command and no window thread waits on the disk; only the renames land
+/// under the lock.
+fn write_settings(app: &tauri::AppHandle, store: &Mutex<Store>, change: impl Fn(serde_json::Value) -> serde_json::Value, payload: serde_json::Value) -> Result<(), String> {
     // The window cannot write a secret field; the sealed values on disk are kept as they are.
-    let value = secrets::keep_stored_secrets(&old, change(old.clone()));
+    let keep = |old: serde_json::Value| secrets::keep_stored_secrets(&old, change(old.clone()));
+    let (old, value) = state::save_settings_released(store, &keep, &mut |step: &state::DiskStep| step.run()).map_err(|e| e.to_string())?;
     let before = old.get(resume::FIELD) == Some(&serde_json::Value::Bool(true));
-    store.save_settings(&value).map_err(|e| e.to_string())?;
-    drop(store);
     // USAGE-007: off discards the waits, on picks up the panes already stopped on a limit.
     let after = value.get(resume::FIELD) == Some(&serde_json::Value::Bool(true));
     if before != after {
