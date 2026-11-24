@@ -676,10 +676,11 @@ fn the_server_gets_no_user_name_of_the_users_own() {
     assert_eq!(envs.get("OPENCODE_SERVER_USERNAME"), Some(&None));
 }
 
-// Review 2 P3-8: a model pick made while the server slept that OpenCode then refuses is reported, the
-// message is not sent on the old model, and the pick is tried again on the next send.
+// Review 2 P3-8, changed by review 3 F2: a model pick made while the server slept that OpenCode then
+// refuses is reported and the message is not sent on the old model. The refused pick is dropped (a
+// pick kept would lock the chat): the next send goes on the session's own model.
 #[test]
-fn a_model_pick_refused_at_send_is_reported_and_kept() {
+fn a_model_pick_refused_at_send_is_reported_and_dropped() {
     let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Json(500, "{\"message\":\"no such model\"}".to_string()) } else { plain(m, p) });
     let (server, _) = server_on(&fake);
     let (seen, sink) = sink();
@@ -690,8 +691,9 @@ fn a_model_pick_refused_at_send_is_reported_and_kept() {
     assert!(chat.send("hi", &[]).is_err(), "the message is not sent on the old model");
     assert!(!fake.any("/prompt"), "nothing was sent");
     assert!(kinds_of(&seen, "c1").contains(&"stderr".to_string()), "the page is told why");
-    let _ = chat.send("hi", &[]);
-    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/model")), 2, "the pick is tried again");
+    chat.send("hi", &[]).unwrap();
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/model")), 1, "the refused pick is not tried again");
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/prompt")), 1, "the next message goes");
     server.shutdown();
 }
 
@@ -749,4 +751,236 @@ fn a_gone_conversation_is_told_apart_from_a_server_that_cannot_be_reached() {
     let e = server.history(&[], SES, 50).unwrap_err();
     assert!(!e.contains("anymore") && e.starts_with("Could not reach OpenCode"), "a closed port is not a gone conversation: {e}");
     server.shutdown();
+}
+
+/// One event-stream frame of this session.
+fn frame(kind: &str, extra: Value) -> String {
+    let (k, d) = ev(kind, extra);
+    format!("data: {}\n\n", json!({ "type": k, "data": d }))
+}
+
+fn results_of(out: &[ChatEvent]) -> Vec<TurnResult> {
+    out.iter().filter_map(|e| if let ChatEvent::Result(r) = e { Some(r.clone()) } else { None }).collect()
+}
+
+/// A server like [`server_on`] whose lost streams are tried again quickly.
+fn quick_server_on(fake: &Fake, tries: u32) -> Arc<Server> {
+    let (server, _) = server_on(fake);
+    let mut s = Arc::try_unwrap(server).ok().unwrap();
+    s.retry_base = Duration::from_millis(20);
+    s.retry_tries = tries;
+    Arc::new(s)
+}
+
+// Review 3 F1 (a): a message still waiting when the run ends (its own take-up was missed, or never
+// sent) gets a plain result, orphaned run or not; a run that then takes it up again adds none.
+#[test]
+fn a_message_still_waiting_when_the_run_ends_gets_its_result() {
+    let now = Instant::now();
+    let run = [
+        ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
+        ev("session.execution.started", json!({})),
+        ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
+        ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
+    ];
+    let (k_end, d_end) = ev("session.execution.succeeded", json!({}));
+    // Lost in the gap: m1's turn was ended on the page, m2's take-up was missed.
+    let mut tr = Translator::new(SES);
+    for (k, d) in run.clone() {
+        tr.on_event(&k, &d, now);
+    }
+    assert_eq!(results_of(&tr.lost(Vec::new(), now)).len(), 1);
+    let out = results_of(&tr.on_event(&k_end, &d_end, now));
+    assert_eq!(out.len(), 1, "m2 gets its result");
+    assert!(!out[0].is_error);
+    assert!(!tr.busy());
+    // Not orphaned: the run's own result, then m2's.
+    let mut tr = Translator::new(SES);
+    for (k, d) in run {
+        tr.on_event(&k, &d, now);
+    }
+    let out = results_of(&tr.on_event(&k_end, &d_end, now));
+    assert_eq!(out.len(), 2, "the run's result and m2's");
+    assert!(!tr.busy());
+    // A run that then takes m2 up after all is not answered twice.
+    let mut late = Vec::new();
+    for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.text.ended", json!({ "assistantMessageID": "a2", "ordinal": 0, "text": "ok" })), ev("session.execution.succeeded", json!({}))] {
+        late.extend(tr.on_event(&k, &d, now));
+    }
+    assert!(results_of(&late).is_empty(), "m2 already has its result: {late:?}");
+    assert!(!tr.busy());
+}
+
+// Review 3 F1 (b): a run that ended while the stream was down is settled when the stream opens again.
+#[test]
+fn a_reopened_stream_settles_a_run_that_ended_in_the_gap() {
+    let opens = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let o = Arc::clone(&opens);
+    let fake = fake(move |m: &str, p: &str| {
+        if p == "/api/event" {
+            if o.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                return Reply::Dropped(vec![
+                    CONNECTED.to_string(),
+                    frame("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
+                    frame("session.execution.started", json!({})),
+                    frame("session.inbox.delivered", json!({ "inboxID": "m1" })),
+                    frame("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
+                ]);
+            }
+            return Reply::Events(Duration::ZERO, vec![CONNECTED.to_string()]);
+        }
+        if m == "GET" && p.starts_with(&format!("/api/session/{SES}/message")) {
+            return Reply::Json(200, "{\"data\":[{\"id\":\"msg_z\",\"type\":\"idle\",\"outcome\":\"succeeded\"}]}".to_string());
+        }
+        plain(m, p)
+    });
+    let server = quick_server_on(&fake, 8);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 1, sink);
+    let w = Arc::clone(&server);
+    std::thread::spawn(move || {
+        let _ = w.wake();
+    });
+    let results = || kinds_of(&seen, "c1").iter().filter(|k| *k == "result").count();
+    wait_until("a result for m1 and one for m2", Duration::from_secs(5), || results() == 2);
+    assert!(!chat.busy());
+    server.shutdown();
+}
+
+// Review 3 F2: a refused model pick does not lock the chat: it is dropped, and a later pick and the
+// message go through.
+#[test]
+fn a_refused_model_pick_does_not_lock_the_chat() {
+    let fake = refuses_first_model_pick();
+    let (server, _) = server_on(&fake);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
+    // Picked while the server sleeps, refused at the send.
+    let mut bad = spec(Vec::new());
+    bad.model = Some("opencode/bad".to_string());
+    chat.retarget(bad).unwrap();
+    assert!(chat.send("one", &[]).is_err());
+    assert!(kinds_of(&seen, "c1").contains(&"stderr".to_string()), "the page is told why");
+    assert_eq!(chat.lock().model.as_ref().and_then(|m| m.get("id")).and_then(Value::as_str), Some("real"), "back on the session's own model");
+    // A new pick while the server is up, then a send: only that pick is posted, and the message goes.
+    let mut good = spec(Vec::new());
+    good.model = Some("opencode/good".to_string());
+    chat.retarget(good).unwrap();
+    chat.send("two", &[]).unwrap();
+    let picks: Vec<String> = fake.calls.lock().unwrap().iter().filter(|(m, p, _)| m == "POST" && p.ends_with("/model")).map(|(_, _, b)| b.clone()).collect();
+    assert_eq!(picks.len(), 2, "{picks:?}");
+    assert!(picks[0].contains("\"bad\"") && picks[1].contains("\"good\""), "{picks:?}");
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/prompt")), 1);
+    server.shutdown();
+}
+
+/// A stand-in whose first model pick is refused, and whose session is on model `opencode/real`.
+fn refuses_first_model_pick() -> Fake {
+    let picks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    fake(move |m: &str, p: &str| {
+        if m == "POST" && p.ends_with("/model") && picks.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+            return Reply::Json(400, "{\"message\":\"no such model\"}".to_string());
+        }
+        if m == "GET" && p == format!("/api/session/{SES}") {
+            return Reply::Json(200, format!("{{\"data\":{{\"id\":\"{SES}\",\"model\":{{\"id\":\"real\",\"providerID\":\"opencode\"}}}}}}"));
+        }
+        plain(m, p)
+    })
+}
+
+// Review 3 F2: a resumed chat whose model pick is refused still opens, on the session's own model.
+#[test]
+fn a_refused_model_pick_on_resume_still_opens_the_chat() {
+    let fake = refuses_first_model_pick();
+    let (server, _) = server_on(&fake);
+    let (seen, sink) = sink();
+    let mut bad = spec(Vec::new());
+    bad.model = Some("opencode/bad".to_string());
+    let chat = OpenChat::open(&server, "c1", bad, Some(SES.to_string()), sink).expect("the chat opens");
+    assert!(kinds_of(&seen, "c1").contains(&"stderr".to_string()), "the page is told the pick was refused");
+    assert_eq!(chat.lock().model.as_ref().and_then(|m| m.get("id")).and_then(Value::as_str), Some("real"));
+    server.shutdown();
+}
+
+// Review 3 F3: a stream that carries events before it drops is never given up, however often.
+#[test]
+fn an_event_stream_that_carries_events_is_never_given_up() {
+    let fake = fake(|m: &str, p: &str| if p == "/api/event" { Reply::Dropped(vec![CONNECTED.to_string(), frame("session.usage.updated", json!({}))]) } else { plain(m, p) });
+    let server = quick_server_on(&fake, 3);
+    let w = Arc::clone(&server);
+    std::thread::spawn(move || {
+        let _ = w.wake();
+    });
+    std::thread::sleep(Duration::from_millis(2000));
+    assert!(fake.count("GET", "/api/event") > 4, "still tried again");
+    assert!(server.is_running(), "a server whose stream carries events is not ended");
+    server.shutdown();
+}
+
+// Review 3 F4: Stop asks OpenCode to stop even when no turn was seen yet (a message sent whose
+// queueing was not heard).
+#[test]
+fn stop_with_nothing_seen_still_asks_opencode_to_stop() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    assert_eq!(chat.stop(), Some(StopHow::Ended));
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 1);
+    assert_eq!(kinds_of(&seen, "c1"), ["stopped"]);
+    server.shutdown();
+}
+
+// Review 3 F5: a message OpenCode dropped is told "cancelled", which the page shows as a notice with
+// the reason, not as an interrupted turn.
+#[test]
+fn a_dropped_message_is_shown_as_cancelled() {
+    let now = Instant::now();
+    let mut tr = Translator::new(SES);
+    let mut out = Vec::new();
+    for (k, d) in [
+        ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
+        ev("session.execution.started", json!({})),
+        ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
+        ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
+        ev("session.execution.interrupted", json!({})),
+    ] {
+        out.extend(tr.on_event(&k, &d, now));
+    }
+    let r = results_of(&out);
+    assert_eq!(r[0].subtype, "error_during_execution", "the stopped run");
+    assert_eq!((r[1].subtype.as_str(), r[1].is_error), ("cancelled", true), "the dropped message");
+    assert!(!r[1].errors.is_empty());
+}
+
+// Review 3 F6: a model list read from a server that went away meanwhile is not kept.
+#[test]
+fn a_model_list_read_across_a_restart_is_not_kept() {
+    let fake = fake(|m: &str, p: &str| {
+        if p.starts_with("/api/model") {
+            return Reply::Late(Duration::from_millis(400), "{\"data\":[{\"id\":\"a\",\"providerID\":\"opencode\",\"name\":\"A\",\"variants\":[]}]}".to_string());
+        }
+        plain(m, p)
+    });
+    let (server, _) = server_on(&fake);
+    let r = Arc::clone(&server);
+    let read = std::thread::spawn(move || r.models(&[]));
+    wait_until("the model read is under way", Duration::from_secs(5), || fake.count("GET", "/api/model") == 1);
+    server.shutdown();
+    let _ = read.join().unwrap();
+    let _ = server.models(&[]);
+    assert_eq!(fake.count("GET", "/api/model"), 2, "the new server's list is read, not the old one's kept");
+    server.shutdown();
+}
+
+// Review 3 F7: once the app is closing, nothing starts the server again.
+#[test]
+fn a_closing_app_starts_no_server() {
+    let fake = fake(plain);
+    let (server, envs) = server_on(&fake);
+    server.close();
+    assert!(server.wake().is_err());
+    assert!(envs.lock().unwrap().is_empty(), "no server was started");
+    assert!(!server.is_running());
 }

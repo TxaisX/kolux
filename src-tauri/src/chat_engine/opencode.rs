@@ -20,7 +20,7 @@ use super::events::{Block, ChatEvent, ExitReason, Init, StopHow, ToolResult, Tur
 use super::{Config, Image, Sink, Spec};
 use crate::chat_tools::{self, Step};
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Stdio};
 use std::sync::{mpsc, Arc, Condvar, Mutex, MutexGuard};
@@ -235,6 +235,9 @@ pub struct Translator {
     /// a lost event stream). That run's late events are dropped until the next run starts, so the
     /// finished turn does not come back with no end.
     orphan: bool,
+    /// Messages already answered on the page while their take-up was never heard (see
+    /// [`Translator::flush_inbox`]): a run that takes one up after all is not answered again.
+    flushed: HashSet<String>,
 }
 
 impl Translator {
@@ -298,7 +301,50 @@ impl Translator {
     fn drop_queue(&mut self) -> Vec<ChatEvent> {
         let n = self.inbox.len();
         self.inbox.clear();
-        (0..n).map(|_| ChatEvent::Result(TurnResult { subtype: "error_during_execution".to_string(), is_error: true, errors: vec!["This message was not run: OpenCode dropped it when the run before it ended.".to_string()], session_id: Some(self.session.clone()), ..TurnResult::default() })).collect()
+        (0..n).map(|_| self.dropped()).collect()
+    }
+
+    /// The result of a message OpenCode dropped unrun: "cancelled", which the page shows as a notice
+    /// with the reason (not as a stopped turn).
+    fn dropped(&self) -> ChatEvent {
+        ChatEvent::Result(TurnResult { subtype: "cancelled".to_string(), is_error: true, errors: vec!["This message was not run: OpenCode dropped it when the run before it ended.".to_string()], session_id: Some(self.session.clone()), ..TurnResult::default() })
+    }
+
+    /// Answers the messages still waiting when a run ended well: OpenCode took each one up in a part
+    /// of the run that was not heard (a lost stream), so each gets a plain result of its own.
+    fn flush_inbox(&mut self) -> Vec<ChatEvent> {
+        let ids: Vec<String> = self.inbox.drain().map(|(id, _)| id).collect();
+        let out = ids.iter().map(|_| ChatEvent::Result(TurnResult { subtype: "success".to_string(), session_id: Some(self.session.clone()), ..TurnResult::default() })).collect();
+        self.flushed.extend(ids);
+        out
+    }
+
+    /// The waiting messages to check with OpenCode after a lost stream: some when the run was cut on
+    /// the page or a message is waiting, and no run is being followed.
+    pub fn unsettled(&self) -> Option<Vec<String>> {
+        (!self.running && (self.orphan || !self.inbox.is_empty())).then(|| self.inbox.keys().cloned().collect())
+    }
+
+    /// OpenCode says the session is idle after a lost stream: the cut run is over, and each of `ids`
+    /// still waiting was run (a plain result) or, when the run was stopped or failed, dropped. A run
+    /// heard since the check is left alone.
+    pub fn settle(&mut self, ids: &[String], dropped: bool) -> Vec<ChatEvent> {
+        if self.running {
+            return Vec::new();
+        }
+        self.orphan = false;
+        let mut out = Vec::new();
+        for id in ids {
+            if self.inbox.remove(id).is_some() {
+                if dropped {
+                    out.push(self.dropped());
+                } else {
+                    out.push(ChatEvent::Result(TurnResult { subtype: "success".to_string(), session_id: Some(self.session.clone()), ..TurnResult::default() }));
+                    self.flushed.insert(id.clone());
+                }
+            }
+        }
+        out
     }
 
     /// Ends the running turn as stopped without OpenCode's own word for it, when OpenCode dropped its
@@ -352,9 +398,10 @@ impl Translator {
                     self.orphan = false;
                     self.begin(now);
                 }
+                // The cut run ended well: a message still waiting was taken up unheard.
                 "session.execution.succeeded" => {
                     self.orphan = false;
-                    return Vec::new();
+                    return self.flush_inbox();
                 }
                 // A stopped or failed run drops OpenCode's queue with it.
                 "session.execution.interrupted" | "session.execution.failed" => {
@@ -382,6 +429,17 @@ impl Translator {
             }
             // The message is taken up now: the echo the page confirms its waiting row with.
             "session.inbox.delivered" => {
+                let id = s("inboxID");
+                if self.flushed.remove(&id) {
+                    // Already answered on the page. A run of that message alone is dropped like a cut
+                    // run's, so it does not end with a second result.
+                    if self.delivered == 0 {
+                        self.orphan = true;
+                        self.running = false;
+                        self.began = None;
+                    }
+                    return Vec::new();
+                }
                 self.delivered += 1;
                 match self.inbox.remove(&s("inboxID")) {
                     Some(text) if !text.is_empty() => vec![ChatEvent::User { parent_tool_use_id: None, text: vec![text], tool_results: Vec::new() }],
@@ -466,7 +524,11 @@ impl Translator {
                 vec![ChatEvent::ApiRetry { attempt: data.get("attempt").and_then(Value::as_u64), max_retries: None, retry_delay_ms: None, error_status: e.and_then(|e| e.get("status")).and_then(Value::as_u64), error: e.map(|e| text_of(e, "message")).filter(|m| !m.is_empty()) }]
             }
             "session.compaction.ended" => vec![ChatEvent::CompactBoundary { trigger: Some(s("reason")).filter(|r| !r.is_empty()), pre_tokens: None }],
-            "session.execution.succeeded" => self.finish("success", false, Vec::new(), now),
+            "session.execution.succeeded" => {
+                let mut out = self.finish("success", false, Vec::new(), now);
+                out.extend(self.flush_inbox());
+                out
+            }
             // A stop: the page marks the turn "Interrupted" from this subtype, as it does for Claude Code.
             // A stopped or failed run leaves no message waiting: OpenCode drops its queue with the run.
             "session.execution.interrupted" => {
@@ -617,12 +679,24 @@ impl Api {
 
     /// A call that must succeed: the body as JSON (`null` for an empty one), or OpenCode's own message.
     fn ok(&self, method: &str, path: &str, body: Option<Value>) -> Result<Value, String> {
+        self.answer(method, path, body)?
+    }
+
+    /// A call whose refusal matters apart from a failed call: the outer error is a call that got no
+    /// answer, the inner one OpenCode's own refusal (any status that is not 2xx).
+    fn answer(&self, method: &str, path: &str, body: Option<Value>) -> Result<Result<Value, String>, String> {
         let (status, text) = self.call(method, path, body)?;
         let v: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
         if (200..300).contains(&status) {
-            return Ok(v);
+            return Ok(Ok(v));
         }
-        Err(v.get("message").and_then(Value::as_str).map_or_else(|| format!("OpenCode answered {status}."), |m| format!("OpenCode: {m}")))
+        Ok(Err(v.get("message").and_then(Value::as_str).map_or_else(|| format!("OpenCode answered {status}."), |m| format!("OpenCode: {m}"))))
+    }
+
+    /// The model the session is on, as OpenCode says; `None` when it cannot be read.
+    fn session_model(&self, session: &str) -> Option<Value> {
+        let info = self.find(&format!("/api/session/{session}")).ok().flatten()?;
+        info.get("data").unwrap_or(&info).get("model").cloned()
     }
 
     /// A read of something that may be gone: `None` only when OpenCode says it is not there (404, or
@@ -718,12 +792,14 @@ struct State {
     halts: u64,
     /// The current start's event stream is open: events are heard, so requests may be sent.
     ready: bool,
-    /// Event streams in a row that ended without opening.
+    /// Event streams in a row that failed: never opened, or dropped at once with no session event.
     stream_fails: u32,
     /// A model-list read is under way; other callers wait for its answer.
     models_reading: bool,
     models_round: u64,
     models_last: Option<Result<Vec<ModelRow>, String>>,
+    /// The app is quitting (see [`Server::close`]): nothing starts the server again.
+    closing: bool,
 }
 
 /// The app's one `opencode serve`, started when first needed.
@@ -913,6 +989,9 @@ impl Server {
     /// server's own environment.
     fn wake(self: &Arc<Self>) -> Result<(Api, u32, u64), String> {
         let mut st = self.lock();
+        if st.closing {
+            return Err("Kolux is closing.".to_string());
+        }
         st.last_active = Some(Instant::now());
         // A quit while this caller waits for another start must not be followed by a fresh start.
         let halts = st.halts;
@@ -967,7 +1046,7 @@ impl Server {
         drop(st);
         self.cv.notify_all();
         let out = out?;
-        self.listen(out.0.clone(), out.2);
+        self.listen(out.0.clone(), out.2, false);
         let watcher = Arc::clone(self);
         let gen = out.2;
         std::thread::spawn(move || watcher.watch(gen));
@@ -993,8 +1072,9 @@ impl Server {
 
     /// Opens the event stream and routes each event to its chats. The stream counts as open (the
     /// state's `ready`) once its first event has arrived; a refused stream (a status that is not 2xx)
-    /// never opens.
-    fn listen(self: &Arc<Self>, api: Api, gen: u64) {
+    /// never opens. A stream opened again `after_loss` first settles what ended in the gap (see
+    /// [`Server::settle`]).
+    fn listen(self: &Arc<Self>, api: Api, gen: u64, after_loss: bool) {
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
         let req = api.http.get(format!("{}/api/event", api.base)).basic_auth(USER, Some(&api.password)).header("accept", "text/event-stream");
         tauri::async_runtime::spawn(async move {
@@ -1013,20 +1093,61 @@ impl Server {
         std::thread::spawn(move || {
             let mut frames = Frames::default();
             let mut opened = None;
+            let mut carried = false;
             for chunk in rx {
                 for (kind, data) in frames.feed(&chunk) {
                     if opened.is_none() {
                         opened = Some(Instant::now());
                         me.opened(gen);
+                        if after_loss {
+                            let (s, api) = (Arc::clone(&me), api.clone());
+                            std::thread::spawn(move || s.settle(gen, &api));
+                        }
                     }
+                    carried |= !kind.starts_with("server.");
                     me.route(gen, &kind, &data);
                 }
             }
-            // A stream that opened and dropped at once counts as a failure, or a server that keeps
-            // dropping it would be re-opened forever.
+            // A stream that opened and dropped at once with nothing in it counts as a failure, or a
+            // server that keeps dropping it would be re-opened forever. One that carried events works.
             let steady = opened.is_some_and(|t| t.elapsed() >= STREAM_STEADY);
-            me.stream_ended(gen, api, opened.is_some(), steady);
+            me.stream_ended(gen, api, opened.is_some(), steady || carried);
         });
+    }
+
+    /// The stream is open again after a loss: a run that ended in the gap sent its end unheard. Each
+    /// chat cut on the page, or with a message still waiting, asks OpenCode whether its session is
+    /// idle; if so the cut run is over and each waiting message is answered. No lock is held over a
+    /// call.
+    fn settle(&self, gen: u64, api: &Api) {
+        let chats: Vec<(Arc<OpenChat>, String, Vec<String>)> = {
+            let st = self.lock();
+            if st.gen != gen {
+                return;
+            }
+            Self::chats_of(&st)
+        }
+        .into_iter()
+        .filter_map(|c| {
+            let (session, ids) = {
+                let i = c.lock();
+                (i.session.clone(), if i.closed { None } else { i.tr.unsettled() })
+            };
+            ids.map(|ids| (c, session, ids))
+        })
+        .collect();
+        for (chat, session, ids) in chats {
+            let Ok(Some(v)) = api.find(&format!("/api/session/{session}/message?limit=1&order=desc")) else { continue };
+            let last = v.get("data").and_then(Value::as_array).and_then(|a| a.first()).cloned().unwrap_or(Value::Null);
+            if last.get("type").and_then(Value::as_str) != Some("idle") {
+                continue;
+            }
+            let dropped = last.get("outcome").and_then(Value::as_str) != Some("succeeded");
+            let out = chat.lock().tr.settle(&ids, dropped);
+            for e in &out {
+                chat.emit(e);
+            }
+        }
     }
 
     /// The stream of start `gen` is open: waiting callers may go on.
@@ -1070,7 +1191,7 @@ impl Server {
     /// the stream is opened again. A stream that keeps failing to open is tried again after a wait
     /// that doubles each time; after `retry_tries` in a row the server is given up and its chats are
     /// told why.
-    fn stream_ended(self: &Arc<Self>, gen: u64, api: Api, opened: bool, steady: bool) {
+    fn stream_ended(self: &Arc<Self>, gen: u64, api: Api, opened: bool, worked: bool) {
         // A server that crashed closes its stream first: give its end a moment to show, so its chats
         // hear the crash rather than a lost link.
         std::thread::sleep(self.retry_base.min(Duration::from_millis(300)));
@@ -1081,7 +1202,7 @@ impl Server {
                 return;
             }
             st.ready = false;
-            if steady {
+            if worked {
                 st.stream_fails = 0;
             } else {
                 st.stream_fails += 1;
@@ -1110,7 +1231,7 @@ impl Server {
             st.gen == gen && st.up.as_mut().is_some_and(|u| u.ended().is_none())
         };
         if alive {
-            self.listen(api, gen);
+            self.listen(api, gen, true);
         }
     }
 
@@ -1157,6 +1278,13 @@ impl Server {
         }
     }
 
+    /// Ends the server for good: the app is quitting, so a send, a model read or a stream retry that
+    /// comes after this starts nothing.
+    pub fn close(&self) {
+        self.lock().closing = true;
+        self.shutdown();
+    }
+
     /// Whether the server process is up right now.
     pub fn is_running(&self) -> bool {
         self.lock().up.is_some()
@@ -1179,13 +1307,15 @@ impl Server {
             }
             st.models_reading = true;
         }
-        let out = self.read_models();
+        let read = self.read_models();
+        let out = read.clone().map(|(rows, _)| rows);
         {
             let mut st = self.lock();
             st.models_reading = false;
             st.models_round += 1;
-            if let Ok(rows) = &out {
-                if !rows.is_empty() {
+            // Kept only from the server still running: one that ended meanwhile may differ from the next.
+            if let Ok((rows, gen)) = &read {
+                if !rows.is_empty() && st.gen == *gen && st.up.is_some() {
                     st.models = Some(rows.clone());
                 }
             }
@@ -1195,8 +1325,9 @@ impl Server {
         out
     }
 
-    fn read_models(self: &Arc<Self>) -> Result<Vec<ModelRow>, String> {
-        let (api, _, _) = self.wake()?;
+    /// The models, and the start they were read from.
+    fn read_models(self: &Arc<Self>) -> Result<(Vec<ModelRow>, u64), String> {
+        let (api, _, gen) = self.wake()?;
         let mut rows = Vec::new();
         for _ in 0..MODEL_TRIES {
             rows = model_rows(&api.ok("GET", "/api/model", None)?);
@@ -1205,7 +1336,7 @@ impl Server {
             }
             std::thread::sleep(self.model_poll);
         }
-        Ok(rows)
+        Ok((rows, gen))
     }
 
     /// The saved chats of a folder, newest first.
@@ -1322,15 +1453,30 @@ impl OpenChat {
         let data = info.get("data").cloned().unwrap_or(info);
         let session = data.get("id").and_then(Value::as_str).filter(|id| valid_session(id)).ok_or_else(|| "OpenCode did not name the conversation.".to_string())?.to_string();
         let mut model = data.get("model").cloned();
+        // A pick OpenCode refuses does not fail the open: the chat goes on on the session's model.
+        let (mut pending, mut refused) = (None, None);
         if let (Some(_), Some(w)) = (&resume, &want) {
             if !same_model(model.as_ref(), w) {
-                api.ok("POST", &format!("/api/session/{session}/model"), Some(json!({ "model": w })))?;
-                model = Some(w.clone());
+                match api.answer("POST", &format!("/api/session/{session}/model"), Some(json!({ "model": w }))) {
+                    Ok(Ok(_)) => model = Some(w.clone()),
+                    Ok(Err(e)) => refused = Some(format!("OpenCode did not switch this chat to {}, so it stays on {}. ({e})", model_name(Some(w)).unwrap_or_default(), model_name(model.as_ref()).unwrap_or_else(|| "its model".to_string()))),
+                    // No answer: the pick is tried again before the next message.
+                    Err(_) => pending = Some(w.clone()),
+                }
             }
         }
+        let mut spec = spec;
+        if refused.is_some() {
+            spec.model = model_name(model.as_ref());
+            spec.effort = model.as_ref().and_then(|m| m.get("variant")).and_then(Value::as_str).map(str::to_string);
+        }
         let chat = Self::attach(server, chat_id, spec, &session, model, gen, sink);
+        chat.lock().pending_model = pending;
         chat.emit(&ChatEvent::Started { pid, resumed: resume });
         chat.emit(&chat.init(data));
+        if let Some(line) = refused {
+            chat.emit(&ChatEvent::Stderr { line });
+        }
         Ok(chat)
     }
 
@@ -1352,12 +1498,15 @@ impl OpenChat {
     /// the server asleep the pick is kept and applied before the next message.
     pub fn retarget(&self, spec: Spec) -> Result<(), String> {
         let want = spec.model.as_deref().map(|m| model_ref(m, spec.effort.as_deref())).transpose()?;
+        let api = self.server.api();
         let (session, current) = {
-            let i = self.lock();
-            (i.session.clone(), i.model.clone())
+            let mut i = self.lock();
+            // With the server up, this pick replaces any older one still waiting; the model that one
+            // set here was never applied, so it is not the session's.
+            let waiting = api.is_some() && i.pending_model.take().is_some();
+            (i.session.clone(), if waiting { None } else { i.model.clone() })
         };
         let change = want.filter(|w| !same_model(current.as_ref(), w));
-        let api = self.server.api();
         if let (Some(w), Some(api)) = (&change, &api) {
             api.ok("POST", &format!("/api/session/{session}/model"), Some(json!({ "model": w })))?;
         }
@@ -1394,16 +1543,32 @@ impl OpenChat {
             self.emit(&ChatEvent::Started { pid, resumed: Some(session.clone()) });
         }
         if let Some(w) = pending {
-            if let Err(e) = api.ok("POST", &format!("/api/session/{session}/model"), Some(json!({ "model": w }))) {
-                // The pick stays waiting for the next send, and the page is told the message did not go.
-                let name = model_name(Some(&w)).unwrap_or_default();
-                {
+            let name = model_name(Some(&w)).unwrap_or_default();
+            let line = match api.answer("POST", &format!("/api/session/{session}/model"), Some(json!({ "model": w }))) {
+                Ok(Ok(_)) => None,
+                // No answer: the pick stays waiting for the next send.
+                Err(e) => {
                     let mut i = self.lock();
                     if i.pending_model.is_none() {
                         i.pending_model = Some(w);
                     }
+                    Some(format!("OpenCode did not switch this chat to {name}, so the message was not sent. Send again to retry. ({e})"))
                 }
-                let line = format!("OpenCode did not switch this chat to {name}, so the message was not sent. Pick the model again or send again to retry. ({e})");
+                // Refused: the pick is dropped and the chat is back on the session's own model, so the
+                // next message goes.
+                Ok(Err(e)) => {
+                    let real = api.session_model(&session);
+                    {
+                        let mut i = self.lock();
+                        i.spec.model = model_name(real.as_ref());
+                        i.spec.effort = real.as_ref().and_then(|m| m.get("variant")).and_then(Value::as_str).map(str::to_string);
+                        i.model = real;
+                    }
+                    self.emit(&self.init(Value::Null));
+                    Some(format!("OpenCode refused {name}, so the message was not sent. The chat stays on its model; send again, or pick another model. ({e})"))
+                }
+            };
+            if let Some(line) = line {
                 self.emit(&ChatEvent::Stderr { line: line.clone() });
                 return Err(line);
             }
@@ -1416,18 +1581,23 @@ impl OpenChat {
     /// over anyway (the shared server is never ended for one chat's stop).
     ///
     /// A run the page was already told is over but OpenCode may still be running (a lost stream, a
-    /// stop that got no answer) is stopped too. With nothing to stop, the page still hears `stopped`,
-    /// so a Stop never leaves it waiting.
+    /// stop that got no answer) is stopped too. With nothing seen running, OpenCode is still asked to
+    /// stop when it is up (a message sent whose queueing was not heard yet may be starting), and the
+    /// page still hears `stopped`, so a Stop never leaves it waiting.
     pub fn stop(&self) -> Option<StopHow> {
         let (session, busy, orphan) = {
             let i = self.lock();
             (i.session.clone(), i.tr.busy(), i.tr.orphaned())
         };
+        let api = self.server.api();
         if !busy && !orphan {
+            if let Some(api) = &api {
+                let _ = api.call("POST", &format!("/api/session/{session}/interrupt"), None);
+            }
             self.emit(&ChatEvent::Stopped { how: StopHow::Ended });
             return Some(StopHow::Ended);
         }
-        let asked = self.server.api().is_some_and(|api| api.ok("POST", &format!("/api/session/{session}/interrupt"), None).is_ok());
+        let asked = api.is_some_and(|api| api.ok("POST", &format!("/api/session/{session}/interrupt"), None).is_ok());
         let end = Instant::now() + self.server.cfg.stop_grace;
         let how = loop {
             if !asked || Instant::now() >= end {

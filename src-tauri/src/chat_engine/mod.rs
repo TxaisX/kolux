@@ -680,7 +680,8 @@ impl Engines {
         }
     }
 
-    /// Stops the running turn and keeps the chat resumable. `None` when no turn was running.
+    /// Stops the running turn and keeps the chat resumable. `None` when a stream chat had no turn
+    /// running; an OpenCode chat always answers (`Ended` when there was nothing to stop).
     pub fn stop(&self, chat_id: &str) -> Result<Option<StopHow>, String> {
         Ok(match self.get(chat_id)? {
             Chat::Stream(e) => e.stop(),
@@ -709,7 +710,8 @@ impl Engines {
                 Chat::Open(c) => c.close_for_quit(),
             }
         }
-        self.open.shutdown();
+        // For good: a send or a model read that comes after this starts no server.
+        self.open.close();
     }
 
     /// The hidden process behind a stream chat; `None` for an OpenCode chat or an id that is not open.
@@ -868,7 +870,8 @@ pub async fn chat_send(app: tauri::AppHandle, chat_id: String, text: String, ima
     blocking(move || engines.send(&chat_id, &text, &images)).await
 }
 
-/// Stops chat `chat_id`'s running turn: `"interrupt"`, `"ended"`, or `null` when none was running.
+/// Stops chat `chat_id`'s running turn: `"interrupt"`, `"ended"`, or `null` when a stream chat had
+/// none running (an OpenCode chat answers `"ended"` then).
 #[tauri::command]
 pub async fn chat_stop(app: tauri::AppHandle, chat_id: String) -> Result<Option<StopHow>, String> {
     let engines = engines(&app);
