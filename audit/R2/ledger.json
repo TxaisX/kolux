@@ -55,14 +55,14 @@
       "symbols": ["clear_for", "keys", "crossing", "check"],
       "verdict": "clean",
       "findings": [],
-      "note": "Read the handoff point, the once-per-crossing registry and the clear command per agent. The rearm-on-drop rule matches its tests; no defect proved."
+      "note": "Read the handoff point, the once-per-crossing registry and the clear command per agent. The rearm-on-drop rule matches its tests; no defect proved. Unproven: check() consumes the crossing before it looks up the pane's terminal, so a pane with no terminal yet (an OpenCode or Grok pane, or a Claude pane before its first hook) returns without rearming and can never clear in that conversation."
     },
     {
       "path": "src-tauri/src/handoff_meter.rs",
       "symbols": ["EVERY", "measured", "grok_tokens", "opencode_context_in", "codex_context", "a_codex_log_without_a_token_event_reads_nothing_rather_than_zero"],
       "verdict": "clean",
       "findings": [],
-      "note": "Read each store reader (Codex rollout, OpenCode SQLite, Grok signals), the freshness rules, the failure reporting and the throttled pass. The readers distinguish nothing-yet from unreadable as documented; nothing proved."
+      "note": "Read each store reader (Codex rollout, OpenCode SQLite, Grok signals), the freshness rules, the failure reporting and the throttled pass. The readers distinguish nothing-yet from unreadable as documented; nothing proved. Unproven, both in pass(): it feeds list()'s process id to of_pane, which matches window pane keys, so the meter finds no pane at all; and it extracts only CODEX_HOME from the pane's environment, so a Grok pane started under its own GROK_HOME is measured from ~/.grok."
     },
     {
       "path": "src-tauri/src/hooks.rs",
@@ -81,23 +81,23 @@
     {
       "path": "src-tauri/src/session_list.rs",
       "symbols": ["HEAD_CAP", "summarize", "roots_for", "session_resume_plan", "view085_the_resume_command_fits_each_shell", "view089_codex_lookup_matches_the_whole_id_not_a_tail"],
-      "verdict": "clean",
-      "findings": [],
-      "note": "Read transcript summarising (title, prompt, tails), root resolution, exact-session lookup, the resume plan per shell and the scan cache. Path scoping and id matching match the tests; nothing proved."
+      "verdict": "findings",
+      "findings": ["R2-F02"],
+      "note": "Read transcript summarising (title, prompt, tails), root resolution, exact-session lookup, the resume plan per shell and the scan cache. Path scoping and id matching match the tests. R2-F02: the Claude branch of find_session_exact takes the first <id>.jsonl across the project folders, so an id held in two folders is picked silently, though find_session's doc and the Codex branch refuse that case."
     },
     {
       "path": "src-tauri/src/session_rows.rs",
       "symbols": ["PROMPT_MAX", "turn_of", "session_row_detail", "view084_a_long_transcript_without_an_early_prompt_offers_the_recent_one"],
-      "verdict": "clean",
-      "findings": [],
-      "note": "Read the row detail builder: head and tail slices, multi-byte clipping, turn extraction, child states and the name rule. Nothing proved."
+      "verdict": "findings",
+      "findings": ["R2-F01"],
+      "note": "Read the row detail builder: head and tail slices, multi-byte clipping, turn extraction, child states and the name rule. R2-F01: clip's combining-mark table leaves out the Indic vowel signs, so a preview cuts a consonant from its matra. Unproven: the network-path guard skips \\\\server\\share but not its long-path spelling \\\\?\\UNC\\server\\share, which is probed and so contacts the server."
     },
     {
       "path": "src-tauri/src/session_scan.rs",
       "symbols": ["CACHE_VERSION", "worker", "running_distros", "view092_a_spent_budget_stops_the_scan_and_says_so"],
-      "verdict": "clean",
-      "findings": [],
-      "note": "Read the budgeted scan worker, the cache load/save with its version, WSL distribution probing and the UTF-16 decode. The budget and restart behaviour match the tests; nothing proved."
+      "verdict": "findings",
+      "findings": ["R2-F03"],
+      "note": "Read the budgeted scan worker, the cache load/save with its version, WSL distribution probing and the UTF-16 decode. The budget and restart behaviour match the tests. R2-F03: without_stopped_wsl reads None from running_distros (could not ask) as an empty list and reports each distribution as 'not running', a fact it never learned."
     },
     {
       "path": "src-tauri/src/startup_marks.rs",

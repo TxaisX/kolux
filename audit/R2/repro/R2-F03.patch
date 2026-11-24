@@ -1,0 +1,21 @@
+diff --git a/src-tauri/src/session_scan.rs b/src-tauri/src/session_scan.rs
+index 42cd37e8..30ae26ab 100644
+--- a/src-tauri/src/session_scan.rs
++++ b/src-tauri/src/session_scan.rs
+@@ -478,4 +478,16 @@ mod tests {
+         assert_eq!(parse_running(b"Ubuntu\nDebian\n"), vec!["Ubuntu".to_string(), "Debian".to_string()]);
+         assert!(parse_running(b"").is_empty());
+     }
++
++    /// AUD-R2 F03: a WSL question Kolux could not answer is not the same answer as "not running".
++    #[test]
++    fn audit_r2_f03_a_wsl_distro_kolux_could_not_ask_about_is_not_reported_as_stopped() {
++        let roots = vec![PathBuf::from(r"\\wsl.localhost\Ubuntu\home\me\.claude")];
++        let mut unknown = Report::default();
++        let _ = without_stopped_wsl(roots.clone(), &mut unknown, || None);
++        let mut stopped = Report::default();
++        let _ = without_stopped_wsl(roots, &mut stopped, || Some(Vec::new()));
++        assert!(!unknown.unreadable.is_empty(), "a skipped distribution is named in the report");
++        assert_ne!(unknown.unreadable, stopped.unreadable, "a distribution Kolux could not ask about must not read as one it knows is not running");
++    }
+ }

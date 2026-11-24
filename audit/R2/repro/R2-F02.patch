@@ -1,0 +1,23 @@
+diff --git a/src-tauri/src/session_list.rs b/src-tauri/src/session_list.rs
+index 9547ebb8..a998d0be 100644
+--- a/src-tauri/src/session_list.rs
++++ b/src-tauri/src/session_list.rs
+@@ -1118,4 +1118,18 @@ mod tests {
+         let _ = rollout_id(&format!("rollout-a{}", "\u{e9}".repeat(20)));
+         let _ = fs::remove_dir_all(&root);
+     }
++
++    /// AUD-R2 F02: `find_session`'s doc says an id that names more than one file finds nothing; the
++    /// Claude branch picked whichever `<id>.jsonl` the project folders yielded first.
++    #[test]
++    fn audit_r2_f02_two_claude_folders_holding_one_id_find_nothing() {
++        let root = tmp("claude-dup");
++        for folder in ["C--work-a", "C--work-b"] {
++            lines(&root.join("projects").join(folder).join("s1.jsonl"), &[claude_user("hi", r"C:\w")]);
++        }
++        let roots = Roots { claude: vec![root.clone()], codex: vec![] };
++        assert!(find_session(&roots, "claude", "s1").is_none(), "more than one file with this id finds nothing");
++        assert!(find_session_exact(&roots, "claude", "s1").is_err(), "and it says why rather than picking one");
++        let _ = fs::remove_dir_all(&root);
++    }
+ }
