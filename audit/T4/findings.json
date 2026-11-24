@@ -1,0 +1,17 @@
+[
+  {
+    "id": "T4-F01",
+    "title": "samePrompt treats an ellipsis-only prompt as an empty prefix and matches any typed line",
+    "severity": "low",
+    "file": "src/sessions/livePane.ts",
+    "line": 16,
+    "what": "samePrompt strips a trailing ellipsis from the session's first prompt and matches the rest as a prefix, for prompts the Rust side cut short. A prompt that is only an ellipsis normalizes to the single character U+2026; stripping it leaves the empty string, and t.startsWith(\"\") is true for every typed line. livePane then accepts any one candidate pane of that agent as the session's pane and focuses it, although the pane's opening line has nothing to do with the prompt.",
+    "expected": "A prompt with nothing before its ellipsis matches only a pane whose typed line is also just an ellipsis; after stripping the marker an empty prefix must be treated as no match, not as a wildcard.",
+    "test": {
+      "runner": "vitest",
+      "file": "src/sessions/auditT4.test.ts",
+      "name": "samePrompt > [T4-F01] an ellipsis-only prompt matches itself, not every opening line"
+    },
+    "patch": "repro/T4-F01.patch"
+  }
+]
