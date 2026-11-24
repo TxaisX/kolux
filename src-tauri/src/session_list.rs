@@ -607,6 +607,9 @@ pub(super) fn project_dirs(roots: &Roots, agent: &str) -> Vec<PathBuf> {
     dirs
 }
 
+/// Why a lookup that found more than one file with one id refuses to choose between them.
+pub(crate) const SEVERAL: &str = "More than one session file has this id, so Kolux will not pick one.";
+
 /// The one transcript file of session `id` and its Codex home, or why there is not exactly one.
 /// A Claude session is `<id>.jsonl`; a Codex rollout matches only when its whole id equals `id`.
 pub fn find_session_exact(roots: &Roots, agent: &str, id: &str) -> Result<(PathBuf, Option<PathBuf>), String> {
@@ -614,21 +617,29 @@ pub fn find_session_exact(roots: &Roots, agent: &str, id: &str) -> Result<(PathB
     match agent {
         "claude" | "openclaude" => {
             let mut files: Vec<PathBuf> = project_dirs(roots, agent).iter().filter_map(|c| fs::read_dir(c).ok()).flat_map(|d| d.flatten().map(|e| e.path().join(format!("{id}.jsonl"))).filter(|p| p.is_file()).collect::<Vec<_>>()).collect();
-            // The same folder can be named twice (a config folder set to `~/.openclaude`, say): one file, not two.
+            // The same folder can be named twice (a config folder set to `~/.openclaude`, say), and
+            // two roots can spell one folder two ways: one file, not two. Files are compared by
+            // their real path, so a junction, a short name or a `..` step is the same folder; a path
+            // the system cannot resolve compares as written.
             files.sort();
-            files.dedup();
+            let mut seen = std::collections::HashSet::new();
+            files.retain(|p| seen.insert(p.canonicalize().unwrap_or_else(|_| p.clone())));
             match files.len() {
                 0 => Err(gone()),
                 1 => Ok((files.remove(0), None)),
-                _ => Err("More than one session file has this id, so Kolux will not pick one.".into()),
+                _ => Err(SEVERAL.into()),
             }
         }
         "codex" => {
             let mut hits: Vec<(PathBuf, Option<PathBuf>)> = roots.codex.iter().flat_map(|h| codex_files(h).into_iter().filter(|f| f.file_stem().is_some_and(|s| rollout_id(&s.to_string_lossy()) == Some(id))).map(|f| (f, Some(h.clone()))).collect::<Vec<_>>()).collect();
+            // A home named twice yields the same rollout twice: that is one file (see the Claude branch).
+            hits.sort();
+            let mut seen = std::collections::HashSet::new();
+            hits.retain(|(f, _)| seen.insert(f.canonicalize().unwrap_or_else(|_| f.clone())));
             match hits.len() {
                 0 => Err(gone()),
                 1 => Ok(hits.remove(0)),
-                _ => Err("More than one session file has this id, so Kolux will not pick one.".into()),
+                _ => Err(SEVERAL.into()),
             }
         }
         _ => Err(gone()),

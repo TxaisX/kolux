@@ -3927,6 +3927,34 @@ fn audit_r3_f07_a_drive_relative_workspaces_folder_never_leaves_the_project() {
 }
 
 #[test]
+fn f2_a_saved_relative_workspaces_folder_may_climb_with_dot_dot() {
+    let project = Path::new(r"C:\repos\app");
+    let climbing = PathBuf::from("..").join("worktrees");
+    // A setting that worked before the regression: it counts from the project root and steps back.
+    let (root, flat) = place_root(project, Some(climbing.clone()), false);
+    assert_eq!(root, project.join(&climbing), ".. is resolved against the project path, not dropped");
+    assert!(!flat);
+    // Saving it is allowed, and the old workspaces stay under the same root.
+    let store = Store::open(&temp("f2-dot-dot")).unwrap();
+    set_place(&store, &climbing.to_string_lossy(), false).expect("a relative folder with .. is a folder this setting can use");
+    let chosen = chosen_workspaces_dir(None, None, store.settings()[WORKSPACES_DIR_SETTING].as_str());
+    assert_eq!(place_root(project, chosen, false).0, project.join(&climbing));
+    // A bare `..` is a step back too, and the only other thing the setting may hold.
+    set_place(&store, "..", false).expect("a bare .. is a folder this setting can use");
+    let chosen = chosen_workspaces_dir(None, None, store.settings()[WORKSPACES_DIR_SETTING].as_str());
+    assert_eq!(place_root(project, chosen, false).0, project.join(".."));
+    // The spellings that name a place of their own are still refused, so they cannot be saved as if
+    // they counted from every project root.
+    #[cfg(windows)]
+    {
+        assert_eq!(place_root(project, Some(PathBuf::from(r"C:ws")), false).0, project.join(PROJECT_LOCAL_DIR), "drive-relative");
+        assert_eq!(place_root(project, Some(PathBuf::from(r"\ws")), false).0, project.join(PROJECT_LOCAL_DIR), "root-relative");
+        assert!(set_place(&store, r"C:ws", false).is_err());
+        assert!(set_place(&store, r"\ws", false).is_err());
+    }
+}
+
+#[test]
 fn the_exclude_line_is_added_once_to_the_repos_own_file_and_gitignore_is_never_touched() {
     let base = temp("exclude");
     let repo = base.join("r");

@@ -92,6 +92,8 @@ struct Saved {
 
 /// This run's rows, by pane.
 static LIVE: Mutex<Option<HashMap<u32, Row>>> = Mutex::new(None);
+/// START-05: the panes whose known session has ended (`SessionEnd` seen), with the session id.
+static ENDED: Mutex<Vec<(u32, String)>> = Mutex::new(Vec::new());
 /// The rows the previous run left, after the holding file was folded onto them.
 static RESTORED: Mutex<Vec<Row>> = Mutex::new(Vec::new());
 /// The panes that reported live since the start: their restored rows are confirmed, so no longer served.
@@ -364,6 +366,22 @@ pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32, idle: std::time
 /// TERM-123: the pane's live row as the hooks last left it, for agent sleep's own checks.
 pub fn live_row(pane_key: u32) -> Option<Row> {
     LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).cloned()
+}
+
+/// START-05: the pane's known session has ended (its `SessionEnd` was seen), so nothing a later
+/// agent in the pane sends is foreign. The id is kept beside the pane, so a new session in the same
+/// pane is not ended by it.
+pub fn note_ended(pane_key: u32) {
+    let Some(id) = live_row(pane_key).and_then(|r| r.session_id) else { return };
+    let mut ended = ENDED.lock().unwrap_or_else(|p| p.into_inner());
+    ended.retain(|(k, _)| *k != pane_key);
+    ended.push((pane_key, id));
+}
+
+/// START-05: whether the pane's live row names a session already marked ended.
+pub fn ended(pane_key: u32) -> bool {
+    let Some(id) = live_row(pane_key).and_then(|r| r.session_id) else { return false };
+    ENDED.lock().unwrap_or_else(|p| p.into_inner()).iter().any(|(k, s)| *k == pane_key && s.eq_ignore_ascii_case(id.trim()))
 }
 
 /// TERM-123: the window did not end the pane after `at_pane_sleep` (its state changed meanwhile), so the

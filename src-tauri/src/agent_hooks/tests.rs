@@ -2707,3 +2707,53 @@ fn audit_r2_f04_workspace_sleep_keeps_the_other_workspaces_restored_rows_in_the_
     drop(store);
     let _ = fs::remove_dir_all(&dir);
 }
+
+// ---- F1: a restarted agent in a shell pane keeps its hooks ----
+
+/// One hook request the way a pane's script sends it, signed with that pane's token.
+fn hook_request(pane: u32, terminal: u32, body: &str) -> crate::hooks::Request {
+    use base64::Engine as _;
+    let id = base64::engine::general_purpose::STANDARD.encode(json!({ "paneKey": pane, "terminal": terminal, "hookVersion": 1 }).to_string());
+    let mut headers = std::collections::HashMap::new();
+    headers.insert(crate::hooks::TOKEN_HEADER.to_string(), crate::hooks::pane_token("tok", pane, Some(terminal)));
+    headers.insert(crate::hooks::IDENTITY_HEADER.to_string(), id);
+    crate::hooks::Request { path: "/claude".into(), headers, body: body.as_bytes().to_vec() }
+}
+
+/// F1: in a shell pane the user ran claude, exited, and ran it again from another folder. A
+/// subfolder of the pane's folder counts as inside, the dead session's own end frees the pane, and
+/// the new SessionStart replaces the dead session, so the pane is never frozen.
+#[test]
+fn f1_a_restarted_agent_in_a_shell_pane_keeps_its_hooks() {
+    let _turn = SAVED_ROWS.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = temp("f1-restarted");
+    let store = crate::state::Store::open(&dir).unwrap();
+    let (pane, terminal) = (901, 1901);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    let event = |name: &str, sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"{name}","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let start = |sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"SessionStart","source":"startup","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let ask = |body: &str| crate::hooks::answer(&hook_request(pane, terminal, body), "tok");
+    let row = |sid: &str, cwd: &str| Row { pane_key: pane, agent: "claude".into(), state: "done".into(), at: now, session_id: Some(sid.into()), cwd: Some(cwd.into()), stop: None, hook_version: Some(crate::hooks::HOOK_VERSION), pid: None, pid_started: None, children: Vec::new() };
+    // The pane's own agent starts and reports for this terminal; its saved row is what the hooks left.
+    assert!(ask(&start("s-dead", r"C:\work\app")).1.is_some(), "the pane's agent starts");
+    saved::unsleep(&store, row("s-dead", r"C:\work\app"));
+    // While that session is live, a nested agent in another folder is still foreign...
+    assert!(ask(&event("PostToolUse", "s-nested", r"D:\elsewhere")).1.is_none(), "a nested agent elsewhere is dropped");
+    // ...but one in a folder below the pane's is the pane's own (a worktree under it, say).
+    assert!(ask(&event("PostToolUse", "s-nested", r"C:\work\app\sub")).1.is_some(), "a subfolder is inside");
+    // The dead session's own end frees the pane: another session in a far folder is heard again.
+    assert!(ask(&event("SessionEnd", "s-dead", r"C:\work\app")).1.is_none(), "an end is not a state change");
+    assert!(saved::ended(pane), "the dead session is marked ended");
+    assert!(ask(&event("PostToolUse", "s-late", r"D:\elsewhere")).1.is_some(), "nothing is foreign after the end");
+    // A claude started again in a sibling folder is the pane's own session from then on.
+    assert!(ask(&start("s-new", r"C:\work\other")).1.is_some(), "a restart is the pane's own");
+    // What the hooks' reply records live: the pane's row is the new session now.
+    saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
+    saved::unsleep(&store, row("s-new", r"C:\work\other"));
+    assert!(!saved::ended(pane), "the new session is not the ended one");
+    assert!(ask(&event("UserPromptSubmit", "s-new", r"C:\work\other")).1.is_some(), "the new session is heard");
+    // Hand the live row back, so the rest of the suite starts from an empty LIVE set.
+    saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
+    crate::status::terminal_ended(terminal);
+    let _ = fs::remove_dir_all(&dir);
+}

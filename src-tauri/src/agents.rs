@@ -804,11 +804,11 @@ fn credited_name(stem: &str, packages: bool) -> Option<&'static str> {
 /// START-01: a restored Claude pane resumes only a conversation Claude really saved. The id the
 /// SessionStart hook supplied at launch exists before any transcript does: when the person never
 /// typed in that pane, `claude --resume <id>` prints "No conversation found with session ID ..."
-/// and exits, on every restart. So a Claude id is kept only when exactly that transcript file is
-/// on disk (`<root>/projects/<folder>/<id>.jsonl`); otherwise the pane comes back at its prompt,
-/// exactly as with no id, and one line says why. Only Claude is checked (the confirmed case);
-/// every other agent keeps today's behaviour. An id that cannot pass [`safe_session`] is never
-/// looked up, since the finder joins it into a path.
+/// and exits, on every restart. So a Claude id is kept only when that transcript file is on disk
+/// (`<root>/projects/<folder>/<id>.jsonl`), one copy of it or several (F5: Claude resumes by id);
+/// otherwise the pane comes back at its prompt, exactly as with no id, and one line says why. Only
+/// Claude is checked (the confirmed case); every other agent keeps today's behaviour. An id that
+/// cannot pass [`safe_session`] is never looked up, since the finder joins it into a path.
 pub(crate) fn restorable<'a>(roots: &crate::sessions::list::Roots, agent: &str, start: Start<'a>) -> (Start<'a>, Option<String>) {
     let given = match start {
         Start::Fresh => return (Start::Fresh, None),
@@ -824,6 +824,10 @@ pub(crate) fn restorable<'a>(roots: &crate::sessions::list::Roots, agent: &str, 
     }
     match crate::sessions::list::find_session_exact(roots, "claude", sid) {
         Ok(_) => (Start::Restore(Some(sid)), None),
+        // F5: two files with one id still name a saved conversation, and Claude resumes by id, so
+        // the pane resumes rather than starting fresh and losing it. Only an id with no file at all
+        // comes back without a resume.
+        Err(e) if e == crate::sessions::list::SEVERAL => (Start::Restore(Some(sid)), None),
         Err(_) => (Start::Restore(None), Some(skipped(sid))),
     }
 }
@@ -1232,6 +1236,34 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    // F5: two roots can spell one config folder two ways, and the finder counted the same
+    // transcript twice, so a saved conversation "had more than one file" and the restored pane
+    // started fresh. One file spelled twice is one file; two real copies still name a saved
+    // conversation, so the pane resumes it.
+    #[test]
+    fn f5_one_transcript_spelled_twice_resumes_and_two_copies_keep_the_id() {
+        use crate::sessions::list::Roots;
+        let root = temp_dir("f5-resume");
+        let folder = root.join("projects").join("C--w");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("abc-123.jsonl"), "{}\n").unwrap();
+        // `projects/C--w/../..` is the root again: the same file, reached by a second spelling.
+        let round_about = folder.join("..").join("..");
+        let two_spellings = Roots { claude: vec![root.clone(), round_about], codex: vec![] };
+        assert_eq!(restorable(&two_spellings, "claude", Start::Restore(Some("abc-123"))), (Start::Restore(Some("abc-123")), None), "one file, not two");
+        // Two real copies in two project folders: the id still names a saved conversation.
+        let copies = temp_dir("f5-copies");
+        for name in ["C--w-a", "C--w-b"] {
+            std::fs::create_dir_all(copies.join("projects").join(name)).unwrap();
+            std::fs::write(copies.join("projects").join(name).join("abc-123.jsonl"), "{}\n").unwrap();
+        }
+        let (start, log) = restorable(&Roots { claude: vec![copies.clone()], codex: vec![] }, "claude", Start::Restore(Some("abc-123")));
+        assert_eq!(start, Start::Restore(Some("abc-123")), "an id with copies is still a saved conversation");
+        assert!(log.is_none(), "{log:?}");
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&copies);
     }
 
     #[test]
