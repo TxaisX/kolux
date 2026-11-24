@@ -10,24 +10,24 @@
     },
     {
       "path": "src-tauri/src/agent_hooks/codex_mirror.rs",
-      "symbols": ["copy_groups", "mirror"],
+      "symbols": ["copy_groups", "key_of", "split_key", "copy_approvals", "mirror"],
       "verdict": "clean",
       "findings": [],
-      "note": "Read the mirror of a user Codex home into the managed one: key splitting, group copying and approval copying. Nothing proved."
+      "note": "Read the mirror of a user Codex home into the managed one: key splitting, group copying, the new-index map and approval copying. The index map matches where each user group lands and the stale-approval sweep uses the same snake-cased event. Unproven: a user group that mixes one of Kolux's hooks with one of theirs is skipped whole by is_mine, so their hook is not copied; the doc says the copy takes the groups that are \"theirs, not Kolux's\", which reads as whole-group intent."
     },
     {
       "path": "src-tauri/src/agent_hooks/mod.rs",
-      "symbols": ["DISABLED_KEY", "target_dir", "Lock", "fenced", "sha256", "install_claude_once"],
-      "verdict": "clean",
-      "findings": [],
-      "note": "Read the install/remove machinery, the shared lock with its stale reclaim, the scratch-marker fencing, the backup records and the per-account installs. Lock ordering and the atomic-write contract look consistent; no defect proved."
+      "symbols": ["DISABLED_KEY", "target_dir", "Lock", "fenced", "sha256", "install_claude_once", "strip", "remove_groups", "apply"],
+      "verdict": "findings",
+      "findings": ["R2-F05"],
+      "note": "Read the install/remove machinery, the shared lock with its stale reclaim, the scratch-marker fencing, the backup records and the per-account installs. Lock ordering and the atomic-write contract look consistent. R2-F05: apply's codex Remove arm propagates the first failing home with `?`, so a managed Codex home whose hooks.json is not JSON stops the rest being cleared, while the Claude path (each_claude_target) runs every file and joins the errors."
     },
     {
       "path": "src-tauri/src/agent_hooks/saved.rs",
-      "symbols": ["RESTART_EVENT", "row_of", "sleeping", "unconfirmed_rows"],
-      "verdict": "clean",
-      "findings": [],
-      "note": "Read the save/restore of pane rows: expiry filtering, spool folding at startup, the resumable record at quit and sleep, and the unconfirmed rows served to the window. Behaviour matches the documented rules; nothing proved."
+      "symbols": ["RESTART_EVENT", "row_of", "sleeping", "unconfirmed_rows", "at_sleep", "replay", "sleep_record", "resumable"],
+      "verdict": "findings",
+      "findings": ["R2-F04"],
+      "note": "Read the save/restore of pane rows: expiry filtering, spool folding at startup, the resumable record at quit and sleep, the pane sleep record, and the unconfirmed rows served to the window. R2-F04: at_sleep rewrites the save from this run's live rows, which are empty before the first live event, so the other workspaces' restored rows leave the save and an exit that skips at_quit loses them. Unproven: replay rebuilds a pane's row with the fresh replay session's children, so a saved child row goes even when the pane's process may still live (keep_living_children is meant to keep it); the fresh-session comment makes intent arguable."
     },
     {
       "path": "src-tauri/src/agent_hooks/switch.rs",
