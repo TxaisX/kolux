@@ -18,7 +18,7 @@ import { newPaceMemory, noteId, paced } from "../notify/pace";
 import { badgeCount } from "../notify/badge";
 import { dirsToClear, forgetAcks, toAcknowledge } from "../notify/seen";
 import { admit, ledger } from "./gone";
-import { claim } from "../sessions/ownership";
+import { claimFrom } from "./sessionClaim";
 import { finished } from "./finished";
 import { forgetSession, onInbandTurn } from "./inbandSession";
 
@@ -234,14 +234,16 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
   useEffect(() => {
     // STAT-001: the hooks report each pane's state; a turn ending out of view is noticed like an exit.
     const off = listen<{ paneKey: number; children: Crew; tool?: string; detail?: string; ask?: string; wrote?: string; plan?: string; planCut?: boolean; session?: string; fresh?: boolean } & Turn>("agent-status", (e) => {
-      const { paneKey, state, children, tool, detail, ask, reply, wrote, boundary, stop, plan, planCut, session, monitoring, fresh } = e.payload;
+      const { paneKey, state, children, tool, detail, ask, reply, wrote, boundary, stop, plan, planCut, monitoring, fresh } = e.payload;
       // STAT-031 / T-275: a closed tab's late event, or a retired pane's, changes nothing.
       // Review of PR #16 (d): a late Stop or done from an agent that already gave the prompt back changes nothing.
       if (droppedLate(paneKey, fresh)) return;
       if (!admit(ledger, paneKey, new Set(panesRef.current.map((x) => x.key)), { state, fresh })) return;
       // SESS-030: the newest session id is what a restart resumes (a /clear or a resume brings a new one).
       // ACCT-063: the pane owns the session it reports; another pane holding the same id lets go of it.
-      if (session) setPanes((ps) => claim(ps, paneKey, session));
+      // START-03: only once the conversation exists. A SessionStart (a start, a /clear, a resume) names
+      // an id Claude has not written down yet, so it saves nothing; the first report after it claims.
+      setPanes((ps) => claimFrom(ps, e.payload));
       setCrew((c) => (children.length === 0 && !(paneKey in c) ? c : { ...c, [paneKey]: children }));
       setTurn((t) => ({ ...t, [paneKey]: { tool, detail, ask, reply, stop, plan, planCut, monitoring, wrote: boundary ? undefined : (wrote ?? t[paneKey]?.wrote) } }));
       setStale((m) => (m[paneKey] ? { ...m, [paneKey]: false } : m));
