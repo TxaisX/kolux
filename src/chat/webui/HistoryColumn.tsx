@@ -163,12 +163,12 @@ export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, 
   // The pane's tab and sidebar row follow the chat open now, with the words this list shows for it.
   const reported = useRef<{ id: string | null; title: string } | null>(null);
   useEffect(() => {
-    const title = titleOf(sessions, activeId, activeStarted);
+    const title = titleOf(sessions, activeId);
     // Another chat is a new thing to report, even when it has the same title as the last one.
     if (title === null || (reported.current?.id === activeId && reported.current.title === title)) return;
     reported.current = { id: activeId, title };
     onTitle?.(title);
-  }, [sessions, activeId, activeStarted, onTitle]);
+  }, [sessions, activeId, onTitle]);
 
   // The "..." menu and the Delete question close on Escape, and the menu on a click anywhere else.
   useEffect(() => {

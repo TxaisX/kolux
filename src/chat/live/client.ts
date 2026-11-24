@@ -39,16 +39,25 @@ export async function startChat(chatId: string, cwd: string, model: string | nul
 /** OpenCode ids all begin `ses_`; a Claude Code conversation id is a bare UUID. */
 export const isOpenCodeSession = (id: string): boolean => id.startsWith("ses_");
 
+/** The engine's answers for a chat that is not there ("... is not in OpenCode anymore.", "... not on this computer anymore."). */
+const isGoneAnswer = (e: unknown): boolean => /\banymore\b/i.test(String(e));
+
 /**
  * A kept chat's transcript, for opening it again. An OpenCode chat is read from OpenCode. An older Everyday
  * chat (kept before every chat ran through OpenCode, 2026-11-24) holds a Claude Code id that OpenCode does not
  * know: its own transcript file is read instead, and `legacy` says the chat cannot be continued, only shown.
  * `read` is null when nothing could be read; the pane then says so rather than starting fresh without a word.
+ * `unreachable` (review 2 P3-11) tells "OpenCode could not be asked" from "OpenCode says the chat is gone": only
+ * the engine's own "... anymore." answers mean gone, so any other failure keeps the id and offers a retry.
  */
-export async function readKeptChat(cwd: string, session: string): Promise<{ read: ChatRead | null; legacy: boolean }> {
-  const fromOpenCode = await chatHistory(CHAT_AGENT, cwd, session).catch(() => null);
+export async function readKeptChat(cwd: string, session: string): Promise<{ read: ChatRead | null; legacy: boolean; unreachable?: true }> {
+  let unreachable = false;
+  const fromOpenCode = await chatHistory(CHAT_AGENT, cwd, session).catch((e) => {
+    if (!isGoneAnswer(e)) unreachable = true;
+    return null;
+  });
   if (fromOpenCode) return { read: fromOpenCode, legacy: false };
-  if (isOpenCodeSession(session)) return { read: null, legacy: false };
+  if (isOpenCodeSession(session)) return unreachable ? { read: null, legacy: false, unreachable: true } : { read: null, legacy: false };
   const fromClaude = await chatHistory("claude", cwd, session).catch(() => null);
   return { read: fromClaude, legacy: true };
 }

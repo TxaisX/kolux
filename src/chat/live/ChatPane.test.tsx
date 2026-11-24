@@ -78,7 +78,7 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-type Over = Partial<{ resume: string | null; named: boolean; onSession: (id: string | null) => void; onName: (n: string) => void; onFocus: () => void; key: number; agent: string }>;
+type Over = Partial<{ resume: string | null; legacyId: string | null; named: boolean; onSession: (id: string | null, legacy?: string | null) => void; onReveal: () => void; onEffort: (e: string | null) => void; onName: (n: string) => void; onFocus: () => void; key: number; agent: string }>;
 async function pane(over: Over = {}): Promise<FakeNode> {
   const { default: ChatPane } = await import("./ChatPane");
   const m = await mount(
@@ -92,6 +92,9 @@ async function pane(over: Over = {}): Promise<FakeNode> {
       model: OPUS,
       resume: over.resume ?? null,
       onSession: over.onSession,
+      legacyId: over.legacyId ?? null,
+      onReveal: over.onReveal,
+      onEffort: over.onEffort,
     }),
     doc,
   );
@@ -115,17 +118,90 @@ test("an older Claude chat is never opened as a blank one: its words show, a not
     if (cmd === "chat_history") return args.agent === "claude" ? readOf("from the old transcript") : Promise.reject("not in OpenCode");
     return undefined;
   };
-  const sessions: Array<string | null> = [];
-  const c = await pane({ resume: old, onSession: (id) => sessions.push(id) });
+  const sessions: Array<[string | null, string | null | undefined]> = [];
+  const c = await pane({ resume: old, onSession: (id, legacy) => sessions.push([id, legacy]) });
   await until(() => said(c, LEGACY_NOTE), "the older-chat notice");
   expect(LEGACY_NOTE).toBe("This older Claude chat can't be reopened here. A new chat starts below.");
   expect(h.calls.some((x) => x.cmd === "chat_history" && x.args.agent === "claude" && x.args.session === old)).toBe(true);
   await until(() => starts().length === 1, "the new chat to start");
   expect(starts()[0].args.resumeSessionId).toBeNull();
-  // The new chat names its own id; the kept row is not told, so it keeps the old one.
+  // The new chat names its own id; until something is sent in it the kept row keeps the old one.
   await emit({ kind: "init", sessionId: "ses_new" });
   await settle();
   expect(sessions).toEqual([]);
+  // Review 2 P2-4: the first send makes the new chat real. Its id is reported with the old Claude id beside it,
+  // so a restart still shows the old transcript above and does not open a blank chat.
+  await sendText(c, "carry on from there");
+  await until(() => h.calls.some((x) => x.cmd === "chat_send"), "the send");
+  expect(sessions).toEqual([["ses_new", old]]);
+});
+
+test("review 2 P2-4: a chat continued on OpenCode reopens with the old Claude transcript above its own words", async () => {
+  const old = "0b1c2d3e-aaaa-bbbb-cccc-000000000000";
+  h.script = (cmd, args) => {
+    if (cmd === "chat_models") return MODELS;
+    if (cmd === "chat_sessions") return SESSIONS;
+    if (cmd === "artifacts_scan") return { rows: [], skipped: [] };
+    if (cmd === "chat_history") return args.agent === "claude" ? readOf("said in the old Claude chat") : readOf("said after the move");
+    return undefined;
+  };
+  const c = await pane({ resume: "ses_a", legacyId: old });
+  await until(() => said(c, "said after the move"), "the new transcript");
+  expect(said(c, "said in the old Claude chat")).toBe(true);
+  expect(c.textContent.indexOf("said in the old Claude chat")).toBeLessThan(c.textContent.indexOf("said after the move"));
+  await until(() => starts().length === 1, "the start");
+  expect(starts()[0].args.resumeSessionId).toBe("ses_a");
+});
+
+test("review 2 P3-11: OpenCode being out of reach keeps the saved chat and offers Try again; it is not replaced by a blank one", async () => {
+  const { UNREACHABLE_NOTE } = await import("./ChatPane");
+  let reachable = false;
+  h.script = (cmd) => {
+    if (cmd === "chat_models") return MODELS;
+    if (cmd === "chat_sessions") return SESSIONS;
+    if (cmd === "artifacts_scan") return { rows: [], skipped: [] };
+    if (cmd === "chat_history") return reachable ? readOf("still here") : Promise.reject("error sending request: connection refused");
+    return undefined;
+  };
+  const sessions: Array<string | null> = [];
+  const c = await pane({ resume: "ses_a", onSession: (id) => sessions.push(id) });
+  await until(() => said(c, UNREACHABLE_NOTE), "the retry line");
+  await settle(60);
+  expect(starts()).toHaveLength(0);
+  expect(sessions).toEqual([]);
+  reachable = true;
+  await click(c, find(c, (n) => n.textContent === "Try again")[0]);
+  await until(() => said(c, "still here"), "the chat after the retry");
+  await until(() => starts().length === 1, "the start");
+  expect(starts()[0].args.resumeSessionId).toBe("ses_a");
+});
+
+test("review 2 P3-8: a refused effort pick puts the effort back on the record too", async () => {
+  const efforts = [{ ...MODELS[0], efforts: ["low", "high"] }, MODELS[1]];
+  h.script = (cmd) => (cmd === "chat_models" ? efforts : cmd === "chat_sessions" ? SESSIONS : cmd === "chat_start" ? Promise.reject("no such effort") : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
+  const seen: Array<string | null> = [];
+  const c = await pane({ onEffort: (e) => seen.push(e) });
+  await until(() => starts().length === 1, "the first start");
+  await until(() => find(c, (n) => n.attrs["aria-label"] === "Effort").length > 0, "the effort picker");
+  const select = find(c, (n) => n.attrs["aria-label"] === "Effort")[0];
+  const { fire } = await import("../../test/fakeDom");
+  Object.getOwnPropertyDescriptor((await import("../../test/fakeDom")).FakeNode.prototype, "value")!.set!.call(select, "high");
+  await fire(c, "change", select);
+  await until(() => said(c, "Could not switch"), "the switch notice");
+  expect(seen).toEqual(["high", null]);
+});
+
+test("live B: a chat another pane holds is brought into view (its tab and folder), not only marked focused", async () => {
+  const { holderOf } = await import("./sessionBus");
+  const reveal = vi.fn();
+  const focus = vi.fn();
+  readingScript();
+  const c = await pane({ key: 5, resume: "ses_b", onReveal: reveal, onFocus: focus });
+  await until(() => find(c, (n) => n.attrs.class === "wui-row").length > 0, "the rows");
+  // Another pane asks to open the chat this one holds: the bus calls the reveal, which goes to the window's openPane.
+  holderOf("ses_b", 99)!.focus();
+  expect(reveal).toHaveBeenCalledTimes(1);
+  expect(focus).not.toHaveBeenCalled();
 });
 
 test("a chat deleted from another pane's list starts a new chat here, with a line that says why", async () => {
@@ -228,4 +304,67 @@ test.each(["claude", "openclaude", undefined])("a chat opened with the engine na
   await pane({ agent });
   await until(() => starts().length === 1, "the start");
   expect(starts()[0].args.agent).toBe("opencode");
+});
+
+// --- Titles (review 2, P2-3 and P3-10) -------------------------------------------------------------
+const SENT = "hello there friend";
+async function sendText(c: FakeNode, text: string) {
+  const { typeInto, fire } = await import("../../test/fakeDom");
+  const box = find(c, (n) => n.localName === "textarea")[0];
+  await typeInto(c, box, text);
+  await fire(c, "keydown", box, { key: "Enter", keyCode: 13, shiftKey: false, ctrlKey: false, altKey: false, metaKey: false, nativeEvent: { isComposing: false } });
+}
+const readingScript = () => (h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? SESSIONS : cmd === "chat_history" ? readOf("hello") : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined));
+
+test("a blank chat's 'New chat' is never pushed onto the tab; the first message names it", async () => {
+  const names: string[] = [];
+  const c = await pane({ onName: (n) => names.push(n) });
+  await until(() => starts().length === 1, "the start");
+  await emit({ kind: "init", sessionId: "ses_blank" });
+  await settle(100);
+  expect(names).toEqual([]);
+  await sendText(c, SENT);
+  await until(() => h.calls.some((x) => x.cmd === "chat_send"), "the send");
+  expect(names).toEqual([SENT]);
+});
+
+test("a pane the user did not name keeps following the history column after a restore, even with a title on it", async () => {
+  readingScript();
+  const names: string[] = [];
+  // A restored pane carries its last automatic title in `pane.title`, with named false.
+  const { default: ChatPane } = await import("./ChatPane");
+  const m = await mount(createElement(ChatPane, { pane: { key: 1, cwd: "C:/w", title: "hello" }, onFocus: () => {}, onClose: () => {}, named: false, onName: (n: string) => names.push(n), model: OPUS, resume: "ses_a" }), doc);
+  unmount = m.unmount;
+  await until(() => names.length > 0, "the title");
+  expect(names).toEqual(["Greeting"]);
+  // A restored chat that already has messages is not renamed by a later first send.
+  await sendText(m.container as FakeNode, "another thing");
+  await until(() => h.calls.some((x) => x.cmd === "chat_send"), "the send");
+  expect(names).toEqual(["Greeting"]);
+});
+
+test("renaming by hand before the column's first report is not overwritten", async () => {
+  readingScript();
+  const names: string[] = [];
+  const { useState } = await import("react");
+  const { default: ChatPane } = await import("./ChatPane");
+  let rename: () => void = () => {};
+  // The sessions list is held back so the user's rename lands first.
+  let release: (v: unknown) => void = () => {};
+  const held = new Promise((r) => (release = r));
+  const base = h.script;
+  h.script = (cmd, args) => (cmd === "chat_sessions" ? held : base(cmd, args));
+  function Harness() {
+    const [named, setNamed] = useState(false);
+    rename = () => setNamed(true);
+    return createElement(ChatPane, { pane: { key: 1, cwd: "C:/w" }, onFocus: () => {}, onClose: () => {}, named, onName: (n: string) => names.push(n), model: OPUS, resume: "ses_a" });
+  }
+  const m = await mount(createElement(Harness), doc);
+  unmount = m.unmount;
+  await settle(60);
+  const { act } = await import("react");
+  await act(async () => rename());
+  release(SESSIONS);
+  await settle(100);
+  expect(names).toEqual([]);
 });

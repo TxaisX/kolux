@@ -56,6 +56,8 @@ export type SavedPane = {
   resumed?: boolean;
   account?: string | null;
   title?: string;
+  /** A chat pane's name was chosen by the user; a record saved before this reads as automatic. */
+  titleByUser?: true;
   group?: number;
   kind?: PaneKind;
   path?: string;
@@ -72,6 +74,8 @@ export type SavedPane = {
   chat?: true;
   everyday?: string;
   chatResume?: string;
+  /** The older Claude conversation this chat continues on OpenCode; its transcript shows above the new chat. */
+  chatLegacy?: string;
   chatAgent?: string;
   chatModel?: string;
   chatEffort?: string;
@@ -119,11 +123,13 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     if (p.forkOf) s.forkOf = p.forkOf;
     if (p.account !== undefined) s.account = p.account;
     if (p.title !== undefined) s.title = p.title;
+    if (p.chat && p.titleByUser && p.title) s.titleByUser = true;
     if (p.setupScript) s.setupScript = true;
     if (p.chat) {
       s.chat = true;
       if (p.everyday) s.everyday = p.everyday;
       if (p.chatResume) s.chatResume = p.chatResume;
+      if (p.chatResume && p.chatLegacy) s.chatLegacy = p.chatLegacy;
       if (p.chatAgent) s.chatAgent = p.chatAgent;
       if (p.chatModel) s.chatModel = p.chatModel;
       if (p.chatEffort) s.chatEffort = p.chatEffort;
@@ -286,6 +292,8 @@ function readPane(v: unknown): SavedPane | null {
     p.chat = true;
     if (str(o.everyday) && o.everyday !== "") p.everyday = o.everyday;
     if (str(o.chatResume) && o.chatResume !== "") p.chatResume = o.chatResume;
+    if (p.chatResume && str(o.chatLegacy) && o.chatLegacy !== "") p.chatLegacy = o.chatLegacy;
+    if (o.titleByUser === true && p.title) p.titleByUser = true;
     if (str(o.chatAgent) && o.chatAgent !== "") p.chatAgent = o.chatAgent;
     if (str(o.chatModel) && o.chatModel !== "") p.chatModel = o.chatModel;
     if (str(o.chatEffort) && o.chatEffort !== "") p.chatEffort = o.chatEffort;
