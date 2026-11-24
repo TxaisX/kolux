@@ -1,0 +1,364 @@
+{
+  "area": "R9",
+  "files": [
+    {
+      "path": "src-tauri/src/prompt_scan.rs",
+      "symbols": [
+        "FRAME_LINES",
+        "PaneScan",
+        "Scanner",
+        "prompt_scan"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the whole scan: the 40-line frame, the menu and question windows, the hint and option word lists, the per-pane cursor so restored scrollback never counts, and the memo keyed on the log cursor. The frame edges and the prune path looked right; no panic or swallowed error found."
+    },
+    {
+      "path": "src-tauri/src/pty_pump.rs",
+      "symbols": [
+        "start",
+        "step",
+        "collect",
+        "BATCH_MAX"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read both threads, the bounded queue, the batch cap and the shrink-after-idle rule. Ordering and the blocking flow-control path are covered by tests; no lost chunk, leak or unbounded growth found."
+    },
+    {
+      "path": "src-tauri/src/pty_window_ops.rs",
+      "symbols": [
+        "WindowOpScan",
+        "feed",
+        "SizeKeeper",
+        "guarded"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the window-op scan: size reports, cursor queries, the squeeze guard and the pack/unpack of the reply. Malformed replies are ignored rather than panicking; nothing found."
+    },
+    {
+      "path": "src-tauri/src/pull_requests.rs",
+      "symbols": [
+        "steps_of",
+        "merge",
+        "read_check_detail",
+        "merging_is_refused_until_the_user_confirmed_it"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "R9-F01"
+      ],
+      "note": "Read every read and the merge write. The merge answer is only checked for merged:false, so an answer that carries no merged field (or is not JSON, which write turns into Null) returns Ok with an empty sha and the caller deletes the branch: that is R9-F01. The paging, the sha check and the 409 wording looked right."
+    },
+    {
+      "path": "src-tauri/src/resources.rs",
+      "symbols": [
+        "Proc",
+        "snapshot",
+        "memory",
+        "seconds"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the process table, the tree walk, the CPU share and the unknown handling for a process that cannot be read. Totals are clamped and null when any process is unreadable; no defect found."
+    },
+    {
+      "path": "src-tauri/src/resume.rs",
+      "symbols": [
+        "Waiting",
+        "Registry",
+        "tick",
+        "card16c_waits_that_could_not_be_read_or_kept_aside_are_never_saved_over"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the waiting registry, the settle and give-up windows, the restore-from-store path and the switch-off cancel. Times come from the caller and no logic sleeps; nothing found."
+    },
+    {
+      "path": "src-tauri/src/retire.rs",
+      "symbols": [
+        "keep_days",
+        "Swept",
+        "pass",
+        "retire_one"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the idle sweep: the keep-days setting, the first-pass clock, future timestamps, zero days and the refusal reasons. Only idleness removes a workspace and the branch is kept; nothing found."
+    },
+    {
+      "path": "src-tauri/src/scm_open.rs",
+      "symbols": [
+        "file_in",
+        "command_allowed"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the path gate (plain components, no .., exists, inside the worktree after links) and the command allow-list. Both refuse before an app starts; nothing found."
+    },
+    {
+      "path": "src-tauri/src/scm_recipe.rs",
+      "symbols": [
+        "Recipe",
+        "compose",
+        "resolve",
+        "t663_an_unknown_template_program_is_refused"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the variable expansion, the one-pass rule, the value clipping, the quoting and the template program check. A hostile value stays inside one argument; nothing found."
+    },
+    {
+      "path": "src-tauri/src/scm_stack.rs",
+      "symbols": [
+        "Link",
+        "stack_note",
+        "create_args",
+        "record"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the create, view and edit argument builders, the note block markers and the idempotent record path. Flag-like and empty values are refused; nothing found."
+    },
+    {
+      "path": "src-tauri/src/session_files.rs",
+      "symbols": [
+        "confined",
+        "locate",
+        "claude_roots",
+        "view089_an_outside_path_and_a_dotdot_path_are_refused_and_nothing_is_deleted"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the confinement check (.., links, canonical root), the delete that waits for an open pane, and the locate, reveal and open paths. An outside path is refused before any file call; nothing found."
+    },
+    {
+      "path": "src-tauri/src/sessions.rs",
+      "symbols": [
+        "folder_key",
+        "claude_history_dir"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the folder key (forward slashes, drive letter case) and the history folder lookup. Both spellings find the same folder; nothing found."
+    },
+    {
+      "path": "src-tauri/src/settings_sync.rs",
+      "symbols": [
+        "accepted",
+        "broadcast"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the accepted-patch filter and the broadcast payload. Retired keys and secret fields are dropped in both directions; nothing found."
+    },
+    {
+      "path": "src-tauri/src/shared_setup.rs",
+      "symbols": [
+        "START",
+        "apply",
+        "write_through",
+        "shared_setup_apply"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the fence merge, the source size cap, the link write-through and the skill copy. A second run changes nothing and a missing source is an error; nothing found."
+    },
+    {
+      "path": "src-tauri/src/star.rs",
+      "symbols": [
+        "starred_with",
+        "star_put"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the star check and put argument builders and how the answer is read. The prompt stays off until a repository is set; nothing found."
+    },
+    {
+      "path": "src-tauri/src/state.rs",
+      "symbols": [
+        "KeepAside",
+        "Store",
+        "save_settings",
+        "patch_settings",
+        "t075_a_settings_layout_and_kv_rows_round_trip_through_a_reopen",
+        "row944_a_missing_settings_file_reads_the_last_good_copy_and_says_so"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the store open, the settings cache and its settle window, the poison and refusal path, repair, and the last-good-copy fallbacks. A refused save never overwrites a good blob; nothing found."
+    },
+    {
+      "path": "src-tauri/src/state/kept.rs",
+      "symbols": [
+        "load",
+        "set_aside_at",
+        "row193_a_second_set_aside_in_the_same_millisecond_takes_a_free_name_and_the_first_copy_stays",
+        "row875_the_key_is_not_reset_when_it_changed_after_it_was_read"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the keep-aside naming, the rollback, the poison rules and the rule that an existing copy is never overwritten. Every failure path is covered by a test; nothing found."
+    },
+    {
+      "path": "src-tauri/src/sub_work.rs",
+      "symbols": [
+        "parse",
+        "annotate"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the submodule status parse and the annotate step. Non-submodule rows are ignored and the refusal names the submodule; nothing found."
+    },
+    {
+      "path": "src-tauri/src/sysmem.rs",
+      "symbols": [
+        "working_set_bytes",
+        "meminfo_total",
+        "process_memory",
+        "host_memory"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Windows memory counters, the host tree walk and the byte conversions. Figures are clamped and the tests hold on this machine; nothing found."
+    },
+    {
+      "path": "src-tauri/src/terminal_session_id.rs",
+      "symbols": [
+        "Listing",
+        "source",
+        "hint_session",
+        "screen_text"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the id sources, the screen tail cap, the hint and the listed-session picking. Prose and the wrong resume form give nothing; nothing found."
+    },
+    {
+      "path": "src-tauri/src/test_dir.rs",
+      "symbols": [
+        "TempDir"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the temp dir helper: a unique name, cleanup on drop, no real home folder. Nothing found."
+    },
+    {
+      "path": "src-tauri/src/theme_file.rs",
+      "symbols": [
+        "default_name",
+        "write_theme"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the suggested name slug (ASCII only) and the size-capped write. Nothing outside a .json name is written; nothing found."
+    },
+    {
+      "path": "src-tauri/src/tidy.rs",
+      "symbols": [
+        "tidy_repo",
+        "prune_safe",
+        "quiet_secs",
+        "pass"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the quiet-period arithmetic, the prune-safe check and the once-a-day stamp. Dirty worktrees and worktrees on an unplugged drive are left alone; nothing found."
+    },
+    {
+      "path": "src-tauri/src/tray.rs",
+      "symbols": [
+        "TRAY_ID",
+        "paint",
+        "on_close_requested",
+        "tray_ping",
+        "install",
+        "app_008_the_icon_gets_an_amber_dot_and_a_dev_marker_only_when_asked"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the menu, the close-to-tray flow, the quit fallback, the icon painting and the branch and dev markers. Pixel writes are bounds-guarded in paint and the badge painter; nothing found."
+    },
+    {
+      "path": "src-tauri/src/usage_alerts.rs",
+      "symbols": [
+        "usage_alerts_fired",
+        "usage_alert_send"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the fired-key and the send path. An alert goes out once per key; nothing found."
+    },
+    {
+      "path": "src-tauri/src/visibility.rs",
+      "symbols": [
+        "CLAUDE",
+        "apply",
+        "remove_root",
+        "card13b_listing_worktrees_degrades_when_the_choices_cannot_be_kept_aside"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the choice store, the ensure and seed paths and the apply step. A failed keep-aside is never saved over; nothing found."
+    },
+    {
+      "path": "src-tauri/src/web_icon.rs",
+      "symbols": [
+        "web_icon_url",
+        "CACHE",
+        "only_https_web_addresses",
+        "manifest_and_page_places"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the URL derivation, the public-address guard on every hop, the size cap and the cache. Private and link-local hosts are refused; nothing found."
+    },
+    {
+      "path": "src-tauri/src/webview_args.rs",
+      "symbols": [
+        "proxy_flag",
+        "with_proxy",
+        "without_proxy",
+        "fedcm_off"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the proxy switch, the FedCM list and the shapes that are refused. Credentials are never echoed back; nothing found."
+    },
+    {
+      "path": "src-tauri/src/webview_engine.rs",
+      "symbols": [
+        "watch_failures",
+        "watch_app_failures"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the failure watch and the take path. A crashed engine is reported once; nothing found."
+    },
+    {
+      "path": "src-tauri/src/webview_power.rs",
+      "symbols": [
+        "Step",
+        "hide",
+        "tick",
+        "apply"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the hide and show generation guard and the low-memory timer. A timer left by an older hide does nothing; nothing found."
+    },
+    {
+      "path": "src-tauri/src/winproc.rs",
+      "symbols": [
+        "CREATE_NO_WINDOW",
+        "quiet",
+        "command",
+        "unhidden_spawns"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the creation flags, quiet and command, and the scanner that keeps every new production spawn hidden. Terminal panes are exempt by design; nothing found."
+    }
+  ]
+}
