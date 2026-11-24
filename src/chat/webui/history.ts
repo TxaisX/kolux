@@ -35,7 +35,8 @@ export function groupSessions(sessions: readonly ChatSessionSummary[], now: numb
 export const isBlankTitle = (title: string): boolean => /^(new chat|new session\b.*)$/i.test(title.trim());
 
 /** The chats the column shows. A chat with no message in it yet is a blank row nobody asked for, so it is left
- *  out, except the chat open now once something has been said in it (its title is still being written). */
+ *  out (blank by its title, unless `filled` says the column read words in it), except the chat open now once
+ *  something has been said in it (its title is still being written). */
 export function visibleSessions(sessions: readonly ChatSessionSummary[], activeId: string | null, activeStarted: boolean, filled: ReadonlySet<string> = NONE): ChatSessionSummary[] {
   return sessions.filter((s) => !isBlankTitle(s.title) || filled.has(s.id) || (activeStarted && s.id === activeId));
 }

@@ -374,6 +374,25 @@ test("renaming by hand before the column's first report is not overwritten", asy
   expect(names).toEqual([]);
 });
 
+test("review 2 P2-5: blank means no words in it, not the title 'New chat': a chat with messages shows, an empty one stays hidden", async () => {
+  const sessions = [
+    { id: "ses_a", title: "Greeting", updatedAt: now },
+    { id: "ses_said", title: "New chat", updatedAt: now - 1000 },
+    { id: "ses_empty", title: "New chat", updatedAt: now - 2000 },
+  ];
+  h.script = (cmd, args) => {
+    if (cmd === "chat_models") return MODELS;
+    if (cmd === "chat_sessions") return sessions;
+    if (cmd === "artifacts_scan") return { rows: [], skipped: [] };
+    if (cmd === "chat_history") return args.session === "ses_said" ? readOf("I did talk here") : { ...readOf(""), items: [] };
+    return undefined;
+  };
+  const c = await pane();
+  await until(() => find(c, (n) => n.attrs.class === "wui-title").length >= 2, "the rows after the content check");
+  const titles = find(c, (n) => n.attrs.class === "wui-title").map((n) => n.textContent);
+  expect(titles).toEqual(["Greeting", "New chat"]);
+});
+
 test("live A: after New chat and a first reply, the header, the Everyday row and the history column all carry the title OpenCode gives", async () => {
   const { useState } = await import("react");
   const { default: ChatPane } = await import("./ChatPane");
