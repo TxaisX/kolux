@@ -307,7 +307,12 @@ impl Service {
                 Ok(row)
             }
             Err(e) => {
+                // AUD-R1 F01: a start that fails leaves the service as it was, so the terminal's flow
+                // goes with its tail (as on_exit and kill remove them) and a paused reader is let go.
                 g.snaps.remove(&id);
+                if let Some(f) = g.flows.remove(&id) {
+                    f.release();
+                }
                 Err(e)
             }
         }
