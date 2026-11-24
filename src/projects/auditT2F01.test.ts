@@ -1,0 +1,11 @@
+import { expect, test } from "vitest";
+import { keptAfter, type KeptItem } from "./cleanup";
+
+test("[T2-F01] deleting a kept branch in one project keeps the same-named branch of another project on the list", () => {
+  const items: KeptItem[] = [
+    { projectId: "proj-a", branch: "release/1.0", commit: "aaa1111" },
+    { projectId: "proj-b", branch: "release/1.0", commit: "bbb2222" },
+  ];
+  const left = keptAfter(items, [{ branch: "release/1.0", deleted: true, why: null }]);
+  expect(left).toEqual([{ projectId: "proj-b", branch: "release/1.0", commit: "bbb2222" }]);
+});
