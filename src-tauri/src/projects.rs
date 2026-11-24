@@ -223,39 +223,81 @@ pub fn set_parent(store: &Store, path: &str, parent: Option<&str>) -> Result<(),
 
 /// Drops what Kolux remembers about a removed workspace, so a later one in the same folder starts
 /// clean: its typed name, its parent and its origin.
+/// R3-F06: every record is read, and its new value built, before anything is written; the writes
+/// then land in one transaction, so a refused write anywhere leaves every record as it was.
 pub fn forget_workspace(store: &Store, path: &str) -> Result<(), String> {
-    retire_workspace_names(store, path)?;
+    let key = name_key(path);
+    let mut writes: Vec<(String, String)> = Vec::new();
+    // PROJ-024: the folder's name and the typed name are retired, so neither is suggested again.
+    writes.extend(retired_after_forget(store, path)?);
     // PROJ-068: Git can give a later worktree the same Git folder; it must not inherit this one's records.
     let mut admins = load_map(store, ADMIN_KEY);
     let before = admins.len();
-    admins.retain(|_, v| v.as_str() != Some(name_key(path).as_str()));
+    admins.retain(|_, v| v.as_str() != Some(key.as_str()));
     if admins.len() != before {
-        store.set(ADMIN_KEY, &serde_json::Value::Object(admins).to_string()).map_err(|e| e.to_string())?;
+        writes.push((ADMIN_KEY.to_string(), serde_json::Value::Object(admins).to_string()));
     }
-    set_name(store, path, None)?;
-    set_parent(store, path, None)?;
+    // Its typed name and the workspace it was made from go with it.
+    for (owned, mut map) in [(NAMES_KEY, load_names(store)), (PARENTS_KEY, load_map(store, PARENTS_KEY))] {
+        if map.remove(&key).is_some() {
+            writes.push((owned.to_string(), serde_json::Value::Object(map).to_string()));
+        }
+    }
     // The next worktree at this path starts with no history, so a stale "last opened" cannot make it
     // expire the moment it is made.
     let mut opened = load_map(store, OPENED_KEY);
-    if opened.remove(&name_key(path)).is_some() {
-        store.set(OPENED_KEY, &serde_json::Value::Object(opened).to_string()).map_err(|e| e.to_string())?;
+    if opened.remove(&key).is_some() {
+        writes.push((OPENED_KEY.to_string(), serde_json::Value::Object(opened).to_string()));
     }
     // After-list row 59: every way a workspace goes drops its board status too.
-    crate::bulk::clear_status(store, path)?;
-    set_origin(store, path, None)
+    writes.extend(cleared_status(store, path)?);
+    let mut origins = load_origins_for_write(store)?;
+    if origins.remove(&key).is_some() {
+        writes.push((ORIGINS_KEY.to_string(), serde_json::Value::Object(origins).to_string()));
+    }
+    let pairs: Vec<(&str, &str)> = writes.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    store.set_all(&pairs).map_err(|e| e.to_string())
+}
+
+/// PROJ-084's status map, cleared here so a forget writes it in the same transaction as the rest
+/// (R3-F06): `None` when this workspace had no status of its own. The key is `bulk`'s own
+/// (`STATUS_OF_KEY` there); it is named here because `bulk::clear_status` writes the key on its
+/// own, and a forget may not write anything until every record is ready.
+fn cleared_status(store: &Store, path: &str) -> Result<Option<(String, String)>, String> {
+    const STATUS_OF_KEY: &str = "workspaceStatusOf";
+    let mut map: std::collections::HashMap<String, String> = crate::state::kept::load(store, STATUS_OF_KEY)?;
+    if map.remove(&name_key(path)).is_none() {
+        return Ok(None);
+    }
+    Ok(Some((STATUS_OF_KEY.to_string(), serde_json::to_string(&map).map_err(|e| e.to_string())?)))
 }
 
 /// PROJ-024: the folder the workspace at `path` lived in is the scope; a suggested name, folder or
 /// typed, is not offered again there. Used by every way a workspace goes: removed by the user
 /// (`forget_workspace`) and found gone from disk (`forget_gone`).
 pub fn retire_workspace_names(store: &Store, path: &str) -> Result<(), String> {
+    match retired_after_forget(store, path)? {
+        Some((_, blob)) => store.set(RETIRED_KEY, &blob).map_err(|e| e.to_string()),
+        None => Ok(()),
+    }
+}
+
+/// The retired-names blob `path`'s going leaves behind, read and built without writing it, or `None`
+/// when it retires nothing. `forget_workspace` writes it in the same transaction as the rest of the
+/// records (R3-F06).
+fn retired_after_forget(store: &Store, path: &str) -> Result<Option<(String, String)>, String> {
     let folder = Path::new(path);
     let scope = name_key(&folder.parent().unwrap_or(folder).to_string_lossy());
     let typed = load_names(store).get(&name_key(path)).and_then(|v| v.as_str().map(String::from));
+    let mut all = retired_all(store);
+    let mut changed = false;
     for name in folder.file_name().map(|n| n.to_string_lossy().to_string()).into_iter().chain(typed) {
-        retire_name(store, &scope, &name)?;
+        changed |= retire_in(&mut all, &scope, &name);
     }
-    Ok(())
+    if !changed {
+        return Ok(None);
+    }
+    Ok(Some((RETIRED_KEY.to_string(), serde_json::to_string(&all).map_err(|e| e.to_string())?)))
 }
 
 /// For display and lookup only: an unreadable record shows empty (after being kept aside, R3-F02).
@@ -1615,11 +1657,20 @@ fn from_suggestions(name: &str) -> bool {
 
 /// Keeps `name` as retired in `scope` when the suggestion list made it; any other name is left alone.
 pub fn retire_name(store: &Store, scope: &str, name: &str) -> Result<(), String> {
-    if !from_suggestions(name) {
+    let mut all = retired_all(store);
+    if !retire_in(&mut all, scope, name) {
         return Ok(());
     }
+    store.set(RETIRED_KEY, &serde_json::to_string(&all).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+}
+
+/// Keeps `name` as retired in `scope` inside `all`; false when it was not a suggested name or is
+/// already there, so a caller building a batch writes only when something changed.
+fn retire_in(all: &mut Vec<Retired>, scope: &str, name: &str) -> bool {
+    if !from_suggestions(name) {
+        return false;
+    }
     let form = name_form(name);
-    let mut all = retired_all(store);
     let at = match all.iter().position(|r| r.scope == scope) {
         Some(i) => i,
         None => {
@@ -1628,7 +1679,7 @@ pub fn retire_name(store: &Store, scope: &str, name: &str) -> Result<(), String>
         }
     };
     if all[at].names.contains(&form) {
-        return Ok(());
+        return false;
     }
     all[at].names.push(form);
     let extra = all[at].names.len().saturating_sub(RETIRED_PER_SCOPE);
@@ -1642,7 +1693,7 @@ pub fn retire_name(store: &Store, scope: &str, name: &str) -> Result<(), String>
             None => break,
         }
     }
-    store.set(RETIRED_KEY, &serde_json::to_string(&all).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    true
 }
 
 /// A creature name in use nowhere, now or before (SESS-023).
