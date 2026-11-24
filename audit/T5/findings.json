@@ -1,0 +1,32 @@
+[
+  {
+    "id": "T5-F01",
+    "title": "Reset countdown stalls for a whole extra unit at an exact boundary",
+    "severity": "medium",
+    "file": "src/usage/claude.ts",
+    "line": 33,
+    "what": "nextTick computes the wait as (left % unit || unit) + 250, so when the nearest reset is exactly a whole number of minutes or hours away the remainder is 0 and it returns a full unit plus 250 ms. The countdown text changes one millisecond later (\"1m\" to \"under 1m\", \"2d\" to \"1d 23h\"), but the pill keeps the old words for another minute, or another hour for a reset more than a day away.",
+    "expected": "At an exact unit boundary nextTick should return a short delay (a little over 0 ms), so the countdown re-renders when its text actually changes.",
+    "test": {
+      "runner": "vitest",
+      "file": "src/usage/claude.auditT5.test.ts",
+      "name": "[T5-F01] nextTick fires just after the countdown changes at an exact unit boundary"
+    },
+    "patch": "repro/T5-F01.patch"
+  },
+  {
+    "id": "T5-F02",
+    "title": "shortTokens prints 1000k instead of 1M at the rounding boundary",
+    "severity": "low",
+    "file": "src/usage/meter.ts",
+    "line": 38,
+    "what": "Values from 999,500 to 999,999 are below 1,000,000, so they take the k branch, whose Math.round turns 999.5 into 1000 and prints \"1000k\". The short token figure then jumps 999k, 1000k, 1M instead of rolling over to millions.",
+    "expected": "A k figure that rounds up to 1000 or more should be shown in millions, so 999,500 and 999,950 both read \"1M\".",
+    "test": {
+      "runner": "vitest",
+      "file": "src/usage/meter.auditT5.test.ts",
+      "name": "[T5-F02] shortTokens rolls a rounded 1000k over to 1M"
+    },
+    "patch": "repro/T5-F02.patch"
+  }
+]

@@ -1,0 +1,16 @@
+diff --git a/src/usage/meter.auditT5.test.ts b/src/usage/meter.auditT5.test.ts
+new file mode 100644
+index 00000000..509daafe
+--- /dev/null
++++ b/src/usage/meter.auditT5.test.ts
+@@ -0,0 +1,10 @@
++// AUD-T5 repro (T5-F02): a token count that rounds up to 1000k is printed as "1000k" instead of
++// rolling over to millions, so the short form jumps 999k, 1000k, 1M.
++import { expect, test } from "vitest";
++import { shortTokens } from "./meter";
++
++test("[T5-F02] shortTokens rolls a rounded 1000k over to 1M", () => {
++  expect(shortTokens(999_499)).toBe("999k");
++  expect(shortTokens(999_500)).toBe("1M");
++  expect(shortTokens(999_950)).toBe("1M");
++});
