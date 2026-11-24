@@ -593,4 +593,15 @@ secrets: one-off sealing pass sealed 0 settings field(s) and 0 file(s)";
         assert!(b.contains("ANTHROPIC_API_KEY=[masked] leaked") && b.contains("app start 7, Kolux 0.1.0"), "{b}");
         let _ = fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn audit_r8_f03_a_header_without_a_space_still_masks_its_credential() {
+        // HTTP allows `Authorization:Basic <credential>` with no space after the colon; the
+        // base64 of "user:pass" must never reach a diagnostics bundle.
+        let out = scrub("Authorization:Basic dXNlcjpwYXNz");
+        assert!(!out.contains("dXNlcjpwYXNz"), "the credential leaked: {out}");
+        assert!(out.contains(MASK), "nothing was masked: {out}");
+        let out = scrub("Authorization:Bearer abc123def456ghi789");
+        assert!(!out.contains("abc123def456ghi789"), "the bearer token leaked: {out}");
+    }
 }
