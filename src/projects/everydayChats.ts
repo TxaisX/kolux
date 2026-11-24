@@ -24,6 +24,8 @@ export type EverydayChat = {
   effort?: string;
   cwd: string;
   session?: string;
+  /** The older Claude conversation this chat continues on OpenCode: its read-only transcript shows above the new chat. */
+  legacy?: string;
   at: number;
 };
 
@@ -48,6 +50,7 @@ export function readEverydayChats(s: Record<string, unknown>): EverydayChat[] {
     const model = text(r.model);
     const effort = text(r.effort);
     const session = text(r.session);
+    const legacy = text(r.legacy);
     out.push({
       id,
       ...(name === null ? {} : { name }),
@@ -56,6 +59,7 @@ export function readEverydayChats(s: Record<string, unknown>): EverydayChat[] {
       ...(effort === null ? {} : { effort }),
       cwd,
       ...(session === null ? {} : { session }),
+      ...(legacy === null || session === null ? {} : { legacy }),
       at: typeof r.at === "number" && Number.isFinite(r.at) ? r.at : 0,
     });
   }
@@ -85,14 +89,21 @@ export function putEverydayChat(list: readonly EverydayChat[], rec: EverydayChat
   return sameChats(list, next) ? (list as EverydayChat[]) : sortChats(next);
 }
 
-/** The list with one chat's conversation id written down; the same list when it already says so. */
-export function setEverydaySession(list: readonly EverydayChat[], id: string, session: string): EverydayChat[] {
+/** The list with one chat's conversation id written down; the same list when it already says so. `legacy` is the
+ *  older Claude conversation this one continues (kept in its own field); `null` clears it, and leaving it out
+ *  keeps whatever the row has. */
+export function setEverydaySession(list: readonly EverydayChat[], id: string, session: string, legacy?: string | null): EverydayChat[] {
   if (!session) return list as EverydayChat[];
   let changed = false;
   const next = list.map((c) => {
-    if (c.id !== id || c.session === session) return c;
+    if (c.id !== id) return c;
+    const old = legacy === undefined ? c.legacy : (legacy ?? undefined);
+    if (c.session === session && c.legacy === old) return c;
     changed = true;
-    return { ...c, session };
+    const out: EverydayChat = { ...c, session };
+    if (old) out.legacy = old;
+    else delete out.legacy;
+    return out;
   });
   return changed ? next : (list as EverydayChat[]);
 }
@@ -146,4 +157,4 @@ export const everydayChatName = (c: EverydayChat): string => c.name || "New chat
 const sortChats = (list: readonly EverydayChat[]): EverydayChat[] => [...list].sort((a, b) => b.at - a.at);
 
 const sameChats = (a: readonly EverydayChat[], b: readonly EverydayChat[]): boolean =>
-  a.length === b.length && a.every((c, i) => c.id === b[i].id && c.name === b[i].name && c.agent === b[i].agent && c.model === b[i].model && c.effort === b[i].effort && c.session === b[i].session && c.cwd === b[i].cwd && c.at === b[i].at);
+  a.length === b.length && a.every((c, i) => c.id === b[i].id && c.name === b[i].name && c.agent === b[i].agent && c.model === b[i].model && c.effort === b[i].effort && c.session === b[i].session && c.legacy === b[i].legacy && c.cwd === b[i].cwd && c.at === b[i].at);

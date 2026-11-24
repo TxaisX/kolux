@@ -127,13 +127,18 @@ describe("blank chats and the title a pane carries", () => {
   it("keeps the open chat once something has been said in it", () => {
     expect(visibleSessions(list, "ses_open", true).map((x) => x.id)).toEqual(["ses_a", "ses_open"]);
   });
+  it("review 2 P2-5: a row the column read words in is kept whatever its title says, and is found by search", () => {
+    const shown = visibleSessions(list, "ses_none", false, new Set(["ses_blank1"]));
+    expect(shown.map((x) => x.id)).toEqual(["ses_blank1", "ses_a"]);
+    expect(filterSessions(shown, "new chat").map((x) => x.id)).toEqual(["ses_blank1"]);
+  });
   it("the tab and sidebar row take the column's title for the open chat, not the first message", () => {
-    expect(titleOf(list, "ses_a", true)).toBe("Greeting");
+    expect(titleOf(list, "ses_a")).toBe("Greeting");
   });
   it("a fresh blank chat is called New chat; a started one waits for its real title", () => {
-    expect(titleOf(list, "ses_open", false)).toBe("New chat");
-    expect(titleOf(list, "ses_open", true)).toBeNull();
-    expect(titleOf(list, "ses_not_listed", true)).toBeNull();
-    expect(titleOf(list, null, false)).toBeNull();
+    expect(titleOf(list, "ses_open")).toBeNull();
+    expect(titleOf(list, "ses_open")).toBeNull();
+    expect(titleOf(list, "ses_not_listed")).toBeNull();
+    expect(titleOf(list, null)).toBeNull();
   });
 });

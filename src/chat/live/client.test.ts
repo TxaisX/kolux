@@ -54,9 +54,19 @@ test("a kept chat is read from OpenCode first; an OpenCode id never asks Claude'
   expect(got).toMatchObject({ legacy: false, read: { items: [{ text: "hello" }] } });
   expect(invoke).toHaveBeenCalledWith("chat_history", { agent: "opencode", cwd: "C:/work/demo", session: "ses_42" });
   invoke.mockReset();
-  invoke.mockRejectedValueOnce("gone");
+  invoke.mockRejectedValueOnce("This chat's conversation is not in OpenCode anymore.");
   expect(await readKeptChat("C:/work/demo", "ses_42")).toEqual({ read: null, legacy: false });
   expect(invoke).toHaveBeenCalledTimes(1);
+  invoke.mockReset();
+});
+
+test("review 2 P3-11: a chat OpenCode could not be asked about is 'unreachable', never read as gone", async () => {
+  invoke.mockRejectedValueOnce("error sending request for url (http://127.0.0.1:4096/): connection refused");
+  expect(await readKeptChat("C:/work/demo", "ses_42")).toEqual({ read: null, legacy: false, unreachable: true });
+  invoke.mockReset();
+  // A missing Claude transcript file is "gone" too, not unreachable.
+  invoke.mockRejectedValue("This chat's conversation is not on this computer anymore.");
+  expect(await readKeptChat("C:/work/demo", "0b1c2d3e-aaaa-bbbb-cccc-000000000000")).toEqual({ read: null, legacy: true });
   invoke.mockReset();
 });
 
