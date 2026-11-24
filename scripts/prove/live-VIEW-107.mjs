@@ -1,3 +1,4 @@
+// retired: the code editor it drove was removed in fccac517, so there is no unsaved buffer left to prompt about.
 // LIVE proof, VIEW-107 box 2 (spec/05): quit with an unsaved editor buffer -> a prompt, no silent loss. Hidden app: open a
 // file of the throwaway repo in an editor tab, type into it (unsaved), ask the window to close (what the X button sends),
 // read the prompt, keep working, and check the window stayed and the file on disk is untouched.
