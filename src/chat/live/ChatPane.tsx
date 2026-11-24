@@ -19,7 +19,7 @@ import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
 import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
 import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
-import { applyRead, capPending, combine, type ChatItem, type Pending } from "../model";
+import { applyRead, combine, livePending, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
 import { Composer } from "../MessageBox";
 import { BrowserChoice, LinkContext, type LinkHost } from "../ChatText";
@@ -78,7 +78,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   /** The AI's name for the pane's own words: "Claude Code", "OpenClaude", or the id as itself. */
   const name = productName(agent) ?? agent;
   const [items, setItems] = useState<ChatItem[]>([]);
-  // CHAT-020: what this pane sent and the agent has not echoed yet (at most 8).
+  // CHAT-02: what this pane sent and no echo has confirmed yet, never capped (capPending stays for
+  // the transcript chat's own sends).
   const [sent, setSent] = useState<Pending[]>([]);
   const [open, setOpen] = useState(false);
   /** Messages this pane sent that have no result yet (review 2026-11-23): a message queued behind a running
@@ -312,7 +313,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     [],
   );
 
-  const pending = useMemo(() => capPending(sent), [sent]);
+  const pending = useMemo(() => livePending(sent, items), [sent, items]);
   const rows = useMemo(() => combine(items, [], null, pending), [items, pending]);
   const shown = useMemo(() => visibleRows(rows, pages), [rows, pages]);
   const views = useMemo(() => fold(shown, open, pane.cwd), [shown, open, pane.cwd]);
@@ -422,7 +423,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
       if (name) onName?.(name);
     }
     const id = `sent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    setSent((xs) => capPending([...xs, { id, text, at: Date.now() }]));
+    setSent((xs) => [...xs, { id, text, at: Date.now() }]);
     setNote(null);
     waiting.current += 1;
     setOpen(true);

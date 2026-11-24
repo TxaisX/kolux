@@ -201,19 +201,34 @@ const SEND_SLACK_MS = 5_000;
 
 /** CHAT-010: the transcript's messages, plus hook messages it does not have yet, each once, in
  * time order (then by identity); the streaming preview after real content; sends not yet
- * confirmed last. */
+ * confirmed in time order among them. CHAT-02: a waiting send sits just before the first message
+ * that arrived after it (ties after the message), so the user's words stay above the reply to
+ * them; a send with no later message waits after the preview. */
 export function combine(transcript: ChatItem[], extras: Extra[], preview: string | null, pending: Pending[]): Row[] {
   const has = (role: string, text: string) => transcript.some((t) => t.role === role && norm(t.text) === norm(text));
   const real: ChatItem[] = [...transcript, ...extras.filter((e) => !has(e.role, e.text)).map((e) => ({ ...e, kind: "text" }))];
   const order = real.map((item, i) => ({ item, i }));
   order.sort((a, b) => (a.item.at ?? 0) - (b.item.at ?? 0) || (a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : a.i - b.i));
   const rows: Row[] = order.map(({ item }) => ({ ...item, row: "message" as const }));
-  if (preview) rows.push({ row: "preview", id: "preview", text: preview });
+  const late: Row[] = [];
   for (const p of pending) {
     const confirmed = transcript.some((t) => t.role === "user" && sentIn(t.text, p.text) && (t.at ?? Infinity) >= p.at - SEND_SLACK_MS);
-    if (!confirmed) rows.push({ row: "pending", id: p.id, text: p.text, at: p.at, failed: p.failed });
+    if (confirmed) continue;
+    const row: Row = { row: "pending", id: p.id, text: p.text, at: p.at, failed: p.failed };
+    const i = rows.findIndex((r) => r.row === "message" && (r.at ?? 0) > p.at);
+    if (i >= 0) rows.splice(i, 0, row);
+    else late.push(row);
   }
+  if (preview) rows.push({ row: "preview", id: "preview", text: preview });
+  rows.push(...late);
   return rows;
+}
+
+/** CHAT-02: the sends a live pane keeps waiting on: those no user row in `items` confirms, in the
+ * order they were sent, failed ones included. Never capped, so a message the user sent is never
+ * dropped from view. Pure. */
+export function livePending(sent: Pending[], items: ChatItem[]): Pending[] {
+  return sent.filter((p) => !items.some((t) => t.role === "user" && sentIn(t.text, p.text) && (t.at ?? Infinity) >= p.at - SEND_SLACK_MS));
 }
 
 /** CHAT-020: a send shows up in a recorded user turn: the same text, or its lines inside a turn
