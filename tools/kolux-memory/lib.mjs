@@ -405,19 +405,31 @@ export function build(opts = {}) {
   const counts = { sessions: 0, messages: 0, tools: 0, commits: 0, prs: 0, releases: 0, cards: 0, evidence: 0, documents: 0, handoffs: 0, work_items: 0 };
 
   // ---- agent sessions -------------------------------------------------------
+  // A store that answers one query but not the other is as unreadable as a missing
+  // file. Read both here, inside the one guard, and only insert rows when both reads
+  // succeeded, so a bad schema leaves a recorded reason and no sessions rather than
+  // killing the whole build (README: a missing source produces a smaller database,
+  // never a crash).
   let sessions = [];
+  let msgs = [];
   if (o.sessions && existsSync(o.sessions)) {
     debug(`reading sessions from ${o.sessions}`);
     let sdb;
+    let readable = false;
     try {
       sdb = openRead(o.sessions);
       sessions = sdb.prepare("select id,parent_id,title,directory,agent,model,time_created,time_updated,cost,tokens_input,tokens_output from session_v2").all();
+      msgs = sdb.prepare("select session_id,seq,type,time_created,data from session_message order by session_id,seq").all();
+      readable = true;
     } catch (e) {
       insertMeta.run("sessions_error", String(e.message || e));
       sessions = [];
+      msgs = [];
+    } finally {
+      try { sdb?.close(); } catch { /* already closed */ }
     }
     debug(`${sessions.length} sessions`);
-    if (sdb) {
+    if (readable) {
       const per = new Map();
       for (const s of sessions) {
         let model = {};
@@ -433,7 +445,6 @@ export function build(opts = {}) {
         insertEvent.run(row.created_at, "session", row.id, `${row.agent || "agent"} · ${row.model || "model"} · ${row.title}`.slice(0, 300));
         counts.sessions++;
       }
-      const msgs = sdb.prepare("select session_id,seq,type,time_created,data from session_message order by session_id,seq").all();
       for (const m of msgs) {
         const s = per.get(m.session_id);
         if (!s) continue;
@@ -477,7 +488,6 @@ export function build(opts = {}) {
       for (const s of per.values()) {
         db.prepare("update sessions set message_count=?, user_messages=? where id=?").run(s.message_count, s.user_messages, s.id);
       }
-      sdb.close();
       insertMeta.run("sessions_db", o.sessions);
     }
   } else {
