@@ -13,6 +13,12 @@ use tauri::{AppHandle, Emitter, Manager};
 pub mod session_id;
 #[cfg(test)]
 mod flood;
+// START-04: how a pane ended (Kolux closed it, or its program did), for the log line and the exit event.
+#[path = "terminal_exit.rs"]
+pub(crate) mod exit_note;
+#[cfg(test)]
+#[path = "terminal_exit_board_tests.rs"]
+mod exit_board_tests;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
 mod output_channel;
@@ -1057,9 +1063,33 @@ struct ExitPayload {
     /// ORCH-057: "exited" when the end was confirmed with an exit code, "unverifiable" when Kolux could
     /// not learn how the program ended (viewers say so instead of calling it an exit).
     outcome: &'static str,
+    /// START-04: `closed-by-kolux` when Kolux ended the pane itself, `exited` when its program did; a
+    /// viewer shows the "Start fresh" banner only for the second.
+    reason: &'static str,
+    /// START-04: the pane's last output line (masked, cut), for that banner; none for a close by Kolux.
+    #[serde(rename = "lastLine", skip_serializing_if = "Option::is_none")]
+    last_line: Option<String>,
+    /// START-04: how many whole seconds the program ran, none when it was never timed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    secs: Option<u64>,
     /// T-066-d: the session id the agent printed in its own resume hint before it exited, when it printed one.
     #[serde(skip_serializing_if = "Option::is_none")]
     session: Option<String>,
+}
+
+/// START-04: the end note's payload. `outcome` keeps its ORCH-057 meaning (a close by Kolux still says
+/// `exited` for an exit code); `reason` is what tells the two ends apart. The last output line goes to
+/// a banner only for a real exit, so a pane Kolux closed hands the window no text to offer "Start fresh" on.
+fn exit_payload(id: u32, code: Option<u32>, session: Option<String>, reason: &'static str, tail: &[String], secs: Option<u64>) -> ExitPayload {
+    ExitPayload {
+        id,
+        code,
+        outcome: outcome_of(code),
+        reason,
+        last_line: tail.last().filter(|_| reason == exit_note::EXITED).cloned(),
+        secs,
+        session,
+    }
 }
 
 /// Terminal `id` ended, however: it exited, its pane closed, or (USAGE-011, T-067-b) the
@@ -1305,12 +1335,19 @@ impl Terminals {
                 let mut log = None;
                 let mut hist = None;
                 let mut agent = None;
+                let mut started = None;
                 let mut removed = None;
+                let mut folder = None;
                 let mut warm_gone = Vec::new();
                 if let Ok(mut inner) = registry.lock() {
-                    agent = inner.marks.get(&id).and_then(|m| m.agent);
+                    // START-04: the mark's start and the folder go with the session, so both are read
+                    // here: the seconds it ran, and the folder the log line names.
+                    if let Some(m) = inner.marks.get(&id) {
+                        agent = m.agent;
+                        started = Some(m.started.elapsed());
+                    }
                     removed = inner.sessions.remove(&id);
-                    inner.dirs.remove(&id);
+                    folder = inner.dirs.remove(&id);
                     inner.marks.remove(&id);
                     inner.ended.insert(id);
                     log = inner.logs.remove(&id);
@@ -1328,18 +1365,24 @@ impl Terminals {
                 }
                 // SESS-030: the end of the pane's output, read for the agent's resume hint before the log
                 // goes. Its lock waits for a chunk the pump counted before the registry was taken above (P2 perf).
-                let tail = log.map(|l| session_id::screen_text(&lock(&l).read(None, Some(session_id::SCREEN_LINES))));
-                let session = agent.zip(tail.as_ref()).and_then(|(agent, text)| session_id::hint_session(agent, text));
+                let text = log.map(|l| session_id::screen_text(&lock(&l).read(None, Some(session_id::SCREEN_LINES))));
+                let session = agent.zip(text.as_ref()).and_then(|(agent, text)| session_id::hint_session(agent, text));
+                // START-04: the last lines the pane wrote, masked and cut for the one-line log entry.
+                let tail = text.as_deref().map_or_else(Vec::new, |text| exit_note::tail_lines(text, exit_note::EXIT_TAIL_LINES));
                 // The history file is left alone from here: a write already counted finishes first, and
                 // the file handle goes at once.
                 if let Some(h) = hist {
                     drop(lock(&h));
                 }
+                // START-04: a session Kolux took out of the registry before it stopped the program is a
+                // close of its own; one still there ended by itself (a crash, a normal exit, a lost link).
+                let reason = exit_note::exit_reason(removed.is_some());
+                let secs = started.map(|d| d.as_secs());
                 // Row 784: the PTY closes here, not under the registry the pump needs.
                 drop(removed);
                 turns_end(id);
                 if let Some(d) = &exit_dir {
-                    crate::diag::write(d, &format!("terminal {id} exited ({code:?})"));
+                    crate::diag::write(d, &exit_note::exit_line(id, reason, code, secs, agent, folder.as_deref(), &tail));
                 }
                 // DT-C243: output already read and waiting for its frame window goes before the end note.
                 // Bytes the pump reads after this still follow the end note, as they did before batching.
@@ -1347,7 +1390,7 @@ impl Terminals {
                 // Flood memory (DT-C244): a large last batch reaches the page by a fetch, so an end note sent as an
                 // event could run first; on the channel it keeps its place after that output. The event only
                 // when no web view took it, so no reader sees one end twice.
-                let exit = ExitPayload { id, code, outcome: outcome_of(code), session };
+                let exit = exit_payload(id, code, session, reason, &tail, secs);
                 if let Err(m) = send_to_readers(&exit_app, ExitMessage { items: [], exit }) {
                     let _ = exit_app.emit(EXIT_EVENT, m.exit);
                 }
@@ -3427,9 +3470,9 @@ mod tests {
 
     #[test]
     fn t066d_the_exit_event_carries_a_printed_session_id_only_when_there_is_one() {
-        let with = ExitPayload { id: 3, code: Some(0), outcome: "exited", session: Some("run-2026.10.13-a1b2c3".into()) };
+        let with = ExitPayload { id: 3, code: Some(0), outcome: "exited", reason: "exited", last_line: None, secs: None, session: Some("run-2026.10.13-a1b2c3".into()) };
         assert_eq!(serde_json::to_value(&with).unwrap()["session"], "run-2026.10.13-a1b2c3");
-        let without = ExitPayload { id: 3, code: None, outcome: "unverifiable", session: None };
+        let without = ExitPayload { id: 3, code: None, outcome: "unverifiable", reason: "exited", last_line: None, secs: None, session: None };
         assert!(serde_json::to_value(&without).unwrap().get("session").is_none(), "an old window sees the payload it always saw");
     }
 
