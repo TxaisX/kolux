@@ -2,7 +2,7 @@
 // then the gh login; custom text; or none), the default compare base, and whether a new
 // workspace refreshes its base first, and the order of the Source Control groups. PROJ-070: whether deleting one clean workspace asks first. T-116-a-fix moved the prefix and compare base here from the sidebar gear.
 import { OWN_FOLDERS_FIELD, ownFoldersOn } from "../projects/singleFolder";
-import { MERGE_ON_QUIT_FIELD, MERGE_ON_QUIT_NOTE, mergesOnQuit } from "../projects/mergeOnQuit";
+import { AUTO_LAND_FIELD, AUTO_LAND_LABEL, autoLandNote, autoLandWanted } from "../projects/autoLand";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { CONFIRM_DELETE_FIELD, asksBeforeDelete } from "../projects/deleting";
@@ -128,10 +128,10 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
             : "Off: every agent works in the project's own folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other."}
         </p>
         <label className="conn-switch">
-          <input type="checkbox" role="switch" aria-label="Merge workspaces into main when Kolux closes" checked={mergesOnQuit(settings)} onChange={(e) => void save({ [MERGE_ON_QUIT_FIELD]: e.target.checked })} />
-          Merge workspaces into main when Kolux closes
+          <input type="checkbox" role="switch" aria-label={AUTO_LAND_LABEL} checked={autoLandWanted(settings)} onChange={(e) => void save({ [AUTO_LAND_FIELD]: e.target.checked })} />
+          {AUTO_LAND_LABEL}
         </label>
-        <p className="conn-detail" data-merge-on-quit-note>{MERGE_ON_QUIT_NOTE}</p>
+        <p className="conn-detail" data-auto-land-note>{autoLandNote(autoLandWanted(settings))}</p>
       </section>
       <section className="conn-card" data-section="base">
         <h2 className="conn-name">Base branch</h2>
