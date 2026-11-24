@@ -178,11 +178,16 @@ test("review 2 P3-11: OpenCode being out of reach keeps the saved chat and offer
 
 test("review 2 P3-8: a refused effort pick puts the effort back on the record too", async () => {
   const efforts = [{ ...MODELS[0], efforts: ["low", "high"] }, MODELS[1]];
-  h.script = (cmd) => (cmd === "chat_models" ? efforts : cmd === "chat_sessions" ? SESSIONS : cmd === "chat_start" ? Promise.reject("no such effort") : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
+  // The model list is kept between panes; a restarted server (a new pid) drops it, so this list is the one read.
+  const { noteServer } = await import("../opencode");
+  noteServer(1001);
+  noteServer(1002);
+  h.script = (cmd) => (cmd === "chat_models" ? efforts : cmd === "chat_sessions" ? SESSIONS : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
   const seen: Array<string | null> = [];
   const c = await pane({ onEffort: (e) => seen.push(e) });
   await until(() => starts().length === 1, "the first start");
   await until(() => find(c, (n) => n.attrs["aria-label"] === "Effort").length > 0, "the effort picker");
+  h.script = (cmd) => (cmd === "chat_models" ? efforts : cmd === "chat_sessions" ? SESSIONS : cmd === "chat_start" ? Promise.reject("no such effort") : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
   const select = find(c, (n) => n.attrs["aria-label"] === "Effort")[0];
   const { fire } = await import("../../test/fakeDom");
   Object.getOwnPropertyDescriptor((await import("../../test/fakeDom")).FakeNode.prototype, "value")!.set!.call(select, "high");
@@ -367,4 +372,39 @@ test("renaming by hand before the column's first report is not overwritten", asy
   release(SESSIONS);
   await settle(100);
   expect(names).toEqual([]);
+});
+
+test("live A: after New chat and a first reply, the header, the Everyday row and the history column all carry the title OpenCode gives", async () => {
+  const { useState } = await import("react");
+  const { default: ChatPane } = await import("./ChatPane");
+  const { withAutoTitle } = await import("../../shell/window/chatRecord");
+  const { setEverydayName } = await import("../../projects/everydayChats");
+  let sessions: unknown[] = [{ id: "ses_new", title: "New chat", updatedAt: Date.now() }];
+  h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? sessions : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
+  let seen: { title: string | undefined; row: string } = { title: undefined, row: "New chat" };
+  // The window's glue, as Pane.tsx wires it: the chat's own name goes to the pane record and the Everyday row.
+  function Harness() {
+    const [panes, setPanes] = useState([{ key: 1, title: undefined as string | undefined }] as never[]);
+    const [chats, setChats] = useState([{ id: "e1", name: "New chat", agent: "opencode", at: 1 }] as never[]);
+    const onName = (name: string) => {
+      setPanes((ps) => withAutoTitle(ps as never, 1, name) as never[]);
+      setChats((l) => setEverydayName(l as never, "e1", name) as never[]);
+    };
+    seen = { title: (panes[0] as { title?: string }).title, row: (chats[0] as { name: string }).name };
+    return createElement(ChatPane, { pane: { key: 1, cwd: "C:/w", title: (panes[0] as { title?: string }).title }, onFocus: () => {}, onClose: () => {}, named: false, onName, model: OPUS, resume: null });
+  }
+  const m = await mount(createElement(Harness), doc);
+  unmount = m.unmount;
+  const c = m.container as FakeNode;
+  await until(() => starts().length === 1, "the start");
+  await emit({ kind: "init", sessionId: "ses_new" });
+  await sendText(c, "Reply with the word ok");
+  await until(() => seen.title === "Reply with the word ok", "the first message as the name");
+  // OpenCode titles the chat; the list answers with it after the reply.
+  sessions = [{ id: "ses_new", title: "Acknowledgment response", updatedAt: Date.now() }];
+  await emit({ kind: "assistant", messageId: "m1", blocks: [{ type: "text", text: "ok" }] });
+  await emit({ kind: "result" });
+  await until(() => seen.title === "Acknowledgment response", "the header to take the server title");
+  expect(seen.row).toBe("Acknowledgment response");
+  await until(() => find(c, (n) => n.attrs.class === "wui-title").some((n) => n.textContent === "Acknowledgment response"), "the column row");
 });
