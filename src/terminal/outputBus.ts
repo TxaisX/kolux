@@ -6,6 +6,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { OutputEvent } from "./codec";
+import { createListenHub, type ListenHub } from "./listenHub";
 import { decodeFrame } from "./outputFrame";
 
 export const OUTPUT_EVENT = "terminal-output";
@@ -30,6 +31,8 @@ type Bus = {
   readers: Set<Reader>;
   exits: Set<ExitReader>;
   subscribed: Promise<void> | null;
+  /** LAG-09: the page's one hub of backend listeners, one per event name, shared by every pane. */
+  hub?: ListenHub;
   /** Probes (the live-flood proof script) set this to count channel batches and time their hand-out. */
   probe?: (batch: OutputBatch, ms: number) => void;
 };
@@ -104,7 +107,7 @@ function join<T>(set: Set<T>, reader: T, unlisten: Promise<UnlistenFn>): Promise
 /** Calls `onChunk` once per chunk, in the order the window process read them, until the returned function runs. */
 export function onTerminalOutput(onChunk: (chunk: OutputEvent) => void): Promise<UnlistenFn> {
   const reader: Reader = (chunk) => onChunk(chunk);
-  return join(bus.readers, reader, listen<OutputBatch>(OUTPUT_EVENT, (e) => eachChunk(e.payload, onChunk)));
+  return join(bus.readers, reader, listenShared<OutputBatch>(OUTPUT_EVENT, (e) => eachChunk(e.payload, onChunk)));
 }
 
 /**
@@ -114,7 +117,17 @@ export function onTerminalOutput(onChunk: (chunk: OutputEvent) => void): Promise
  */
 export function onTerminalExit<T>(onExit: (e: { payload: T }) => void): Promise<UnlistenFn> {
   const reader: ExitReader = (exit) => onExit({ payload: exit as T });
-  return join(bus.exits, reader, listen<T>(EXIT_EVENT, (e) => onExit({ payload: e.payload })));
+  return join(bus.exits, reader, listenShared<T>(EXIT_EVENT, (e) => onExit({ payload: e.payload })));
+}
+
+/**
+ * LAG-09: registers one handler on this page's one backend listener for `event`, whoever else reads it, and
+ * resolves to a function that removes this handler only. The backend listener goes when its last handler does.
+ * The hub lives on the window's bus, so a hot-reloaded copy of this file shares it too.
+ */
+export function listenShared<T>(event: string, handler: (e: { payload: T }) => void): Promise<UnlistenFn> {
+  bus.hub ??= createListenHub((name, onEvent) => listen(name, onEvent));
+  return bus.hub.on<T>(event, handler);
 }
 
 /**

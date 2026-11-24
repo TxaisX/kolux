@@ -1,0 +1,9 @@
+{
+  "id": "LAG-09",
+  "summary": "Counts backend listen() calls with a fake listen: 1 and 10 panes reading terminal output, terminal exit, pane-agent and workspace-land make exactly one backend listen per event kind (not one per pane), and the last pane leaving makes exactly one unlisten.",
+  "tests": [
+    {"runner": "vitest", "file": "src/terminal/listenHub.board.test.ts", "name": "LAG-09 shared listeners > ten panes reading output and exits make one backend listen per event kind, not one per pane"},
+    {"runner": "vitest", "file": "src/terminal/listenHub.board.test.ts", "name": "LAG-09 shared listeners > ten panes reading pane-agent and workspace-land through listenShared make one backend listen each"},
+    {"runner": "vitest", "file": "src/terminal/listenHub.board.test.ts", "name": "LAG-09 shared listeners > the last pane leaving removes the shared listener, not before, and a pane mounting later listens again"}
+  ]
+}
