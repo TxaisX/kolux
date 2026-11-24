@@ -3291,10 +3291,15 @@ pub(crate) fn trash_folders(store: &Mutex<Store>, git: &Git, projects: &[Project
         out.extend(used_dirs(&store).into_iter().map(PathBuf::from));
     }
     for p in projects {
-        out.extend(p.workspaces_dir.iter().map(PathBuf::from));
+        let root = Path::new(&p.path);
+        // A relative folder counts from the project root, read the same way `place_root` reads it
+        // (R3-F08): the workspaces are made there, so the trash is there too, not beside the app.
+        if let Some(dir) = non_blank(p.workspaces_dir.as_deref()) {
+            out.push(place_root(root, Some(PathBuf::from(dir)), false).0);
+        }
         // The project-local default: removed workspaces leave their trash beside the others there.
-        out.push(Path::new(&p.path).join(PROJECT_LOCAL_DIR));
-        if let Ok(all) = git.worktrees(Path::new(&p.path)) {
+        out.push(root.join(PROJECT_LOCAL_DIR));
+        if let Ok(all) = git.worktrees(root) {
             out.extend(kolux_made(origins, all).iter().filter_map(|w| Path::new(&w.path).parent().map(Path::to_path_buf)));
         }
     }
