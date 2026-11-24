@@ -25,6 +25,7 @@ const ALLOWED = {
   "src-tauri/src/net.rs": [/\breqwest::/], // project and site icons (APP-070); moved here from browser.rs when the web pane was removed (2026-11-12)
   "src-tauri/src/update.rs": [/tauri_plugin_updater/], // GitHub Releases
   "src-tauri/src/lib.rs": [/tauri_plugin_updater/],
+  "src-tauri/src/chat_engine/opencode.rs": [/\breqwest::/, /\bhttp\.request\(/], // the chat screen's client to the OpenCode server Kolux starts on 127.0.0.1 (no_proxy, one builder; pinned below). `http.request(` there is the field holding that reqwest client, not Node's
   "src-tauri/src/pty_service.rs": [TCP_CONNECT], // pty_service.rs:514 Client::connect: the host is the literal [127,0,0,1], only the port comes from the service's endpoint file
 };
 // The one loopback call each file may make, as exact text: it is cut out before the scan, so any
@@ -44,6 +45,8 @@ const PINNED = {
     [/\breqwest::/g, 11],
     [/\bicon_client_for\b/g, 4],
   ],
+  // chat_engine/opencode.rs: one builder (no proxy, so the loopback server is never routed elsewhere) and three reqwest paths in all.
+  "src-tauri/src/chat_engine/opencode.rs": [["reqwest::Client::builder().no_proxy().build()", 1], [/\breqwest::/g, 3], [/\bhttp\.request\(/g, 1]],
   // pty_service.rs holds exactly one loopback connect (its ALLOWED line); a second one fails the audit.
   "src-tauri/src/pty_service.rs": [[TCP_CONNECT_ALL, 1]],
 };

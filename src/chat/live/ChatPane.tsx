@@ -13,7 +13,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import AgentMark from "../../marks/AgentMark";
 import { productName } from "../../marks/registry";
-import { Close } from "../../chrome/icons";
+import { Close, Plus } from "../../chrome/icons";
 import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
@@ -21,17 +21,23 @@ import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat
 import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
 import { applyRead, combine, livePending, prunePending, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
-import { Composer } from "../MessageBox";
+import { Composer, type ComposerHandle } from "../MessageBox";
 import { BrowserChoice, LinkContext, type LinkHost } from "../ChatText";
 import { printedPaths } from "../chatLinks";
 import { nearBottom } from "../composer";
 import { loadLabel, visibleRows } from "../page";
 import { STOPPING_NOTE } from "../stop";
 import { NOTE_MS, selfClearing, sessionTitle, useDismiss } from "../ux";
-import { loadSaved, readModel, type Choice } from "../controls";
-import { DEFAULT_MODEL } from "../../launch/seats";
-import { CHAT_AGENT, DEFAULT_CHAT_MODEL } from "../opencode";
+import { loadSaved, saveChoice } from "../controls";
 import { ViewRow, type ChatOpen } from "../ChatView";
+import { CHAT_AGENT, DEFAULT_CHAT_MODEL, listChatModels, type ChatModel } from "../opencode";
+import { HistoryColumn } from "../webui/HistoryColumn";
+import { ModelPopover } from "../webui/ModelPopover";
+import { EffortPicker } from "../webui/EffortPicker";
+import { Suggestions, Welcome } from "../webui/WelcomeView";
+import { columnMode, loadCollapsed, saveCollapsed } from "../webui/history";
+import { effortsOf, nameOfId, providerFromId, usableModel } from "../webui/models";
+import { useWidth } from "../webui/useWidth";
 import { ArtifactsStrip } from "./Strip";
 import { changed, mimeOf, newest, POLL_MS, PREVIEW_CAP, readArtifact, scanArtifacts, stampOf, stripIndex, THUMB_CAP, toBlobUrl, type ArtifactRow, type ArtifactScan } from "./artifacts";
 import "../chat.css";
@@ -40,11 +46,10 @@ import "../chat.css";
  *  which a chat pane does not have, so this one says only what happened. */
 const CANNOT_STOP_NOTE = "Could not stop the agent from here.";
 
-/** The pane's own words while its process is being started or has just failed. */
-const startingNote = (name: string) => `Starting ${name}…`;
+/** The pane's own words when its process has just failed (the empty chat's own "Starting…" is drawn by Welcome). */
 const crashedNote = (name: string) => `${name}'s process ended. Your next message starts it again.`;
 
-export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, effort = null, agent = "claude", resume = null, onSession, onModel, onEffort, open: opener }: {
+export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, effort = null, resume = null, onSession, onModel, onEffort, open: opener }: {
   pane: { key: number; cwd: string | null; title?: string };
   /** True while the grid hides this pane: it reads nothing new either way, the event stream pushes. */
   hidden?: boolean;
@@ -59,7 +64,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   model?: string | null;
   /** The effort level this chat starts on; null takes the last pick. */
   effort?: string | null;
-  /** The AI that answers here (2026-11-24): `opencode` for a chat that runs through OpenCode, or `claude`. */
+  /** Kept so callers still compile. Every chat now runs through OpenCode (CHAT_AGENT), whatever is passed (2026-11-24). */
   agent?: string;
   /** The conversation to pick up (2026-11-21): a kept Everyday chat's own id, so reopening resumes it. */
   resume?: string | null;
@@ -76,7 +81,9 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
 }) {
   const keymap = useKeymap();
   const chatId = chatIdOf(pane.key);
-  /** The AI's name for the pane's own words: "Claude Code", "OpenCode", or the id as itself. */
+  /** Every chat runs through OpenCode (2026-11-24); the models behind it are picked at the top of the chat. */
+  const agent = CHAT_AGENT;
+  /** The AI's name for the pane's own words: "OpenCode", or the id as itself. */
   const name = productName(agent) ?? agent;
   const [items, setItems] = useState<ChatItem[]>([]);
   // CHAT-02: what this pane sent and no echo has confirmed yet, never capped (capPending stays for
@@ -113,12 +120,35 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // on the chat's kept record, so reopening comes back on the same pair. With nothing picked yet, the
   // last choice wins, and an OpenCode chat with no history starts on the cheap default.
   const savedChoice = useMemo(() => loadSaved()[agent], [agent]);
-  const choice = useRef({
-    model: model ?? savedChoice?.model ?? (agent === CHAT_AGENT ? DEFAULT_CHAT_MODEL : null),
+  const choice = useRef<{ model: string; effort: string | null }>({
+    // An older chat may hold a Claude-era name like "opus"; only an OpenCode id (route/maker/model) is used.
+    model: usableModel(model) ?? usableModel(savedChoice?.model) ?? DEFAULT_CHAT_MODEL,
     effort: effort ?? savedChoice?.effort ?? null,
   });
   const sessionId = useRef<string | null>(resume);
+  /** The chat open now, for the history column's highlight (the ref above is what the listener reads). */
+  const [activeSession, setActiveSession] = useState<string | null>(resume);
   const [liveModel, setLiveModel] = useState(choice.current.model);
+  const [liveEffort, setLiveEffort] = useState(choice.current.effort);
+  // The Open WebUI screen (2026-11-24): the model list for the top picker, the history column and its width.
+  const [models, setModels] = useState<ChatModel[]>([]);
+  const [collapsed, setCollapsed] = useState(() => loadCollapsed());
+  const [screen, width] = useWidth<HTMLDivElement>();
+  const mode = columnMode(width, collapsed);
+  const [historyTick, setHistoryTick] = useState(0);
+  const composer = useRef<ComposerHandle>(null);
+  useEffect(() => {
+    let live = true;
+    void listChatModels().then((list) => live && setModels(list), () => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+  const setSession = (id: string | null) => {
+    sessionId.current = id;
+    setActiveSession(id);
+    setHistoryTick((n) => n + 1);
+  };
   const ending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -170,11 +200,15 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // a model or effort pick, or opening the chat again, starts fresh instead of resuming the full one.
           const session = sessionChange(ev);
           if (session !== undefined) {
-            sessionId.current = session;
+            setSession(session);
             reportSession.current?.(session);
           }
-          // A finished turn is when most artifacts appear, so the folder is read again right then.
-          if (ev.kind === "result") setLookAt((n) => n + 1);
+          // A finished turn is when most artifacts appear, so the folder is read again right then, and the
+          // history column's list has a new or retitled chat.
+          if (ev.kind === "result") {
+            setLookAt((n) => n + 1);
+            setHistoryTick((n) => n + 1);
+          }
           if (ev.kind === "exit") {
             setOpen(waiting.current > 0);
             if (ev.reason === "crashed") setNote(crashedNote(productName(agent) ?? agent));
@@ -201,7 +235,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             else {
               // The saved conversation is gone: forget its id here too, so a later model or effort pick
               // cannot restart the process with `--resume <gone-id>`.
-              sessionId.current = null;
+              setSession(null);
               pick = null;
             }
           }
@@ -330,8 +364,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const thoughtIds = idsOf(items);
   const toggle = (id: string) => setThoughts((t) => toggled(t, id));
   // CHAT-024: the model the agent reported last, named beside the box. Claude reports the change it made
-  // from `/model`; an OpenCode chat's pick is applied by the engine, so the choice this pane keeps is the truth.
-  const shownModel = useMemo(() => (agent === "claude" ? readModel(agent, items) : null) ?? liveModel, [agent, items, liveModel]);
+  // OpenCode's pick restarts the process, so the choice this pane keeps is the truth.
+  const shownModel = liveModel;
+  const modelName = models.find((m) => m.id === liveModel)?.label ?? nameOfId(liveModel);
+  const efforts = effortsOf(models, liveModel);
+  const empty = rows.length === 0 && !error;
 
   // CHAT-025: a link in a reply opens as it does in a terminal pane. Files are only openable when the
   // agent printed them recently (chatLinks.ts); with no in-app viewer every web link asks first.
@@ -398,15 +435,16 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // so it is ended and started again with `--resume` on the conversation's own id. The rows stay on
   // screen; only the process behind them changes. The box disables these picks while a turn runs, so
   // nothing is cut off mid-answer.
-  const applyChoice = (pick: Choice) => {
+  const applyChoice = (pick: { model?: string; effort?: string | null }) => {
     const next = {
-      model: pick.model === undefined ? choice.current.model : pick.model === DEFAULT_MODEL ? null : pick.model,
+      model: pick.model === undefined ? choice.current.model : pick.model,
       effort: pick.effort === undefined ? choice.current.effort : pick.effort,
     };
     choice.current = next;
     setLiveModel(next.model);
+    setLiveEffort(next.effort);
     if (pick.model !== undefined) onModel?.(next.model);
-    if (pick.effort !== undefined) onEffort?.(pick.effort);
+    if (pick.effort) onEffort?.(pick.effort);
     const cwd = pane.cwd;
     if (!cwd || open || waiting.current > 0) return;
     void (async () => {
@@ -417,6 +455,70 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         setSpawned(true);
       } catch (e) {
         setError(String(e));
+      }
+    })();
+  };
+
+  /** The top picker: the model changes for the next turn on the same conversation. An effort the new model
+   *  does not offer is dropped, so the box never shows a level the model cannot run at. */
+  const pickModel = (id: string) => {
+    const offered = effortsOf(models, id);
+    const keep = choice.current.effort && offered.includes(choice.current.effort) ? choice.current.effort : null;
+    saveChoice(agent, { model: id, ...(keep ? { effort: keep } : {}) });
+    applyChoice({ model: id, effort: keep });
+  };
+  const pickEffort = (level: string) => {
+    saveChoice(agent, { effort: level });
+    applyChoice({ effort: level });
+  };
+
+  /** Wipes what is on screen for another conversation: the rows, the sends still waiting and the scroll. */
+  const resetView = () => {
+    setItems([]);
+    setSent([]);
+    setPages(0);
+    setThoughts(new Set());
+    setNote(null);
+    setOpen(false);
+    setAway(false);
+    waiting.current = 0;
+    stick.current = true;
+  };
+  const BUSY_NOTE = "Wait for the reply to finish, or press Stop, before switching chats.";
+
+  /** New chat: a fresh conversation in the same folder. */
+  const newChat = (force = false) => {
+    const cwd = pane.cwd;
+    if (!cwd) return;
+    if (!force && (open || waiting.current > 0)) return setNote(BUSY_NOTE);
+    if (!force && rows.length === 0 && sessionId.current === null) return composer.current?.focus();
+    resetView();
+    namedOnce.current = false;
+    setSession(null);
+    reportSession.current?.(null);
+    void startChat(chatId, cwd, choice.current.model, agent, null, choice.current.effort).then(
+      () => (setSpawned(true), composer.current?.focus()),
+      (e) => setError(String(e)),
+    );
+  };
+
+  /** A past chat from the history column: its transcript is read back and the process resumes on it. */
+  const openSession = (id: string) => {
+    const cwd = pane.cwd;
+    if (!cwd || id === sessionId.current) return;
+    if (open || waiting.current > 0) return setNote(BUSY_NOTE);
+    void (async () => {
+      try {
+        const history = await chatHistory(agent, cwd, id);
+        resetView();
+        namedOnce.current = true;
+        setItems(applyRead([], history));
+        setSession(id);
+        reportSession.current?.(id);
+        await startChat(chatId, cwd, choice.current.model, agent, id, choice.current.effort);
+        setSpawned(true);
+      } catch (e) {
+        setNote(`Could not open that chat. ${String(e)}`);
       }
     })();
   };
@@ -479,7 +581,26 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         {/* `cover` is what the transcript chat uses when it takes the whole frame: .chat is only capped
             at 45% when it shares a screen with a terminal. `chat-surface` is the app-like page: the pane
             is the page, so there is no inner card, no bar and one centred reading column. */}
-        <div className="chat cover chat-surface" aria-label="Chat">
+        <div className="wui-screen" ref={screen}>
+        <HistoryColumn
+          cwd={pane.cwd}
+          mode={mode}
+          activeId={activeSession}
+          refreshKey={historyTick}
+          onNew={() => newChat()}
+          onOpen={openSession}
+          onDeleted={(id) => id === sessionId.current && newChat(true)}
+          onToggle={() => setCollapsed((c) => (saveCollapsed(!c), !c))}
+        />
+        <div className="chat cover chat-surface wui-chat" aria-label="Chat" data-empty={empty ? "true" : undefined}>
+          <div className="wui-bar">
+            {mode === "hidden" && (
+              <button type="button" className="wui-icon" aria-label="New chat" title="New chat" onClick={() => newChat()}>
+                <Plus size={16} />
+              </button>
+            )}
+            <ModelPopover models={models} value={liveModel} disabled={open} onPick={pickModel} />
+          </div>
           {error ? (
             <div className="chat-state chat-error" role="alert">
               {error}{" "}
@@ -489,26 +610,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             </div>
           ) : rows.length === 0 ? (
             <div className="chat-welcome">
-              <span className="chat-welcome-mark" aria-hidden="true">
-                <AgentMark id={agent} size={30} label={name} />
-              </span>
-              <h2 className="chat-welcome-title">{spawned ? "What should we work on?" : startingNote(name)}</h2>
-              {spawned && (
-                <>
-                  <p className="chat-welcome-line">Ask in plain words. {name} works in this folder and shows you what it changes.</p>
-                  <div className="chat-starters" role="group" aria-label="Things to try">
-                    <button type="button" onClick={() => send("Explain what this project does, in plain words.")}>
-                      Explain this project
-                    </button>
-                    <button type="button" onClick={() => send("Look through this project and find the most likely bug. Tell me what you find before changing anything.")}>
-                      Find a bug
-                    </button>
-                    <button type="button" onClick={() => send("Suggest one improvement to this project and explain why it matters.")}>
-                      Suggest an improvement
-                    </button>
-                  </div>
-                </>
-              )}
+              <Welcome label={modelName} provider={providerFromId(liveModel)} starting={!spawned} />
             </div>
           ) : null}
           {thoughtIds.length > 0 && (
@@ -543,7 +645,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             </button>
           )}
           {menu && <BrowserChoice url={menu.url} at={menu.at} onPick={pickBrowser} onClose={() => setMenu(null)} />}
+          {/* The box keeps one place in the tree whether the chat is empty or not, so a draft and the files
+              attached survive the first send; only the page's CSS moves it from the middle to the bottom. */}
           <Composer
+            ref={composer}
             paneKey={pane.key}
             live={!error}
             note={note ?? undefined}
@@ -553,13 +658,15 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             agent={agent}
             cwd={pane.cwd}
             shownModel={shownModel}
-            onLiveChoice={agent === CHAT_AGENT ? applyChoice : undefined}
+            tools={<EffortPicker efforts={efforts} value={liveEffort} disabled={open} onPick={pickEffort} />}
           />
+          {empty && spawned ? <Suggestions onFill={(text) => composer.current?.fill(text)} /> : null}
           {full && (
             <button type="button" className="chat-full" aria-label="Close image" onClick={closeFull}>
               <img src={full} alt="Attached" />
             </button>
           )}
+        </div>
         </div>
       </section>
     </LinkContext.Provider>

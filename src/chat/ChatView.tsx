@@ -172,7 +172,7 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   };
   // CHAT-022: the agent's multiple-choice question as a card; its answer is typed in as the option numbers (question.ts).
   const waiting = stateOf ? stateOf(key) === "waiting" : hookState === undefined ? undefined : hookState === "waiting";
-  const asking = agent === "claude" || agent === "openclaude" || agent === "codex" ? openQuestion(items, waiting) : null;
+  const asking = agent === "claude" || agent === "opencode" || agent === "codex" ? openQuestion(items, waiting) : null;
   const askId = useRef<string | undefined>(undefined);
   askId.current = asking?.id;
   const [typing, setTyping] = useState<{ id: string; cancel: () => void } | null>(null);
