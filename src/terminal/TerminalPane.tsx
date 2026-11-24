@@ -3,6 +3,7 @@
 // The card and its header follow design/DESIGN.md section 7: status icon, agent mark, title,
 // branch chip, program, status word; then gauge, more, expand, split, close on the right.
 import { trapTab } from "../chrome/dialogFocus";
+import Ask from "../chrome/Ask";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, statusAgent, takesInband, type Crew } from "./status";
 import WorktreeChip from "../shell/WorktreeChip";
@@ -11,6 +12,7 @@ import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
+import { canSendToMain, LAND_EVENT, landChip, landFlash, landStep, recordFor, SEND_TO_MAIN, SEND_TO_MAIN_ID, SEND_TO_MAIN_TIP } from "./landState";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
@@ -325,6 +327,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   const [renderer, setRenderer] = useState<RendererMode | null>(null);
   // TERM-065: a short line in the header when the clipboard refused a copy; the selection stays.
   const [flash, setFlash] = useState<string | null>(null);
+  // LAND-05: every workspace's last land or take-in, for the header chip; null until the backend answers.
+  const [landRecords, setLandRecords] = useState<unknown>(null);
+  // LAND-05: the question Send to main asks first, held while the dialog is drawn.
+  const [landAsk, setLandAsk] = useState<{ path: string; question: { title: string; body: string; confirm: string } } | null>(null);
   useEffect(() => {
     if (!focused) return;
     const fn = (op: "copy" | "selectAll") => {
@@ -350,6 +356,34 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
     const t = setTimeout(() => setFlash(null), 6000);
     return () => clearTimeout(t);
   }, [flash]);
+  // LAND-05: the chip follows the workspace's last land, live: the backend emits the event after every land.
+  const landFolder = worktree?.path ?? null;
+  useEffect(() => {
+    if (!landFolder) {
+      setLandRecords(null);
+      return;
+    }
+    let live = true;
+    const load = () => {
+      invoke<Record<string, unknown>>("workspace_land_states").then(
+        (all) => {
+          if (live) setLandRecords(all);
+        },
+        () => {
+          if (live) setLandRecords(null);
+        },
+      );
+    };
+    load();
+    const stop = listen(LAND_EVENT, () => load());
+    return () => {
+      live = false;
+      void stop.then(
+        (off) => off(),
+        () => {},
+      );
+    };
+  }, [landFolder]);
   // TERM-107: a restored pane wears a mark in its header until the first key or click in it; an agent
   // pane whose start line does not resume its conversation is marked as restored without resume.
   // T-566: decided from the props at the first paint, not after the restore's first IPC answers.
@@ -1645,6 +1679,30 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   // PaneMenu moves itself back inside the window once it knows its own size.
   const openMenu = (x: number, y: number) => setMenuAt({ top: y, left: x, selected: !!termRef.current?.hasSelection() });
   menuRef.current = openMenu;
+  // LAND-05: the header chip for this workspace's last land, and the menu's Send to main.
+  const land = landChip(recordFor(landRecords, worktree?.path));
+  const sendPath = worktree && canSendToMain(worktree) ? worktree.path : null;
+  const landNow = async (path: string) => {
+    try {
+      setFlash(landFlash(await invoke("workspace_land", { path })));
+    } catch {
+      setFlash(landFlash(null));
+    }
+  };
+  const sendToMain = async () => {
+    const path = sendPath;
+    if (path === null) return;
+    let preview: unknown;
+    try {
+      preview = await invoke("workspace_land_preview", { path });
+    } catch {
+      preview = null;
+    }
+    const step = landStep(preview);
+    if (step.kind === "stop") setFlash(step.text);
+    else if (step.kind === "go") await landNow(path);
+    else setLandAsk({ path, question: step.question });
+  };
 
   return (
     <section ref={box} className={`pane${focused ? " focused" : ""}${glow || unread ? " glow" : ""}${unread ? " unread" : ""}${card ? " card" : ""}${card?.expanded ? " expanded" : ""}`} hidden={hidden} aria-label={`${title} pane`} data-testid="terminal-pane" onMouseDown={onFocus} data-agent={shown} data-key={number} data-dropping={dropping || undefined} style={{ ...(card?.column ? { gridColumn: card.column } : {}), ...(dropping ? { outline: "2px solid var(--line-focus)", outlineOffset: -2 } : {}) }}>
@@ -1710,6 +1768,11 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         ) : chip && (
           <span className="chip" title={chip.tip}>
             {chip.text}
+          </span>
+        )}
+        {land && (
+          <span className="chip" data-land-chip style={{ color: land.color }} title={land.tip}>
+            {land.text}
           </span>
         )}
         {/* SESS-025: the start line shown back leaves out the rules block of a side-by-side launch. */}
@@ -1862,6 +1925,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             agentActions: [
               ...(onReviewPlan ? [{ id: "reviewPlan", name: "Review plan", title: "Read the plan, comment on it, then approve or ask for changes", run: onReviewPlan }] : []),
               ...sessionMenuActions({ agent, session, program, args, cwd, branch, title: jobTitle }, { launch: onSessionLaunch, askFork: setForkAsk, copy: copyContext }),
+              ...(sendPath !== null ? [{ id: SEND_TO_MAIN_ID, name: SEND_TO_MAIN, title: SEND_TO_MAIN_TIP, run: () => void sendToMain() }] : []),
             ],
             onSplit,
             onEqualize,
@@ -2087,6 +2151,20 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             </div>
           </div>
         </div>
+      )}
+      {landAsk && (
+        <Ask
+          title={landAsk.question.title}
+          body={landAsk.question.body}
+          confirm={landAsk.question.confirm}
+          safe
+          onConfirm={() => {
+            const path = landAsk.path;
+            setLandAsk(null);
+            void landNow(path);
+          }}
+          onCancel={() => setLandAsk(null)}
+        />
       )}
     </section>
   );
