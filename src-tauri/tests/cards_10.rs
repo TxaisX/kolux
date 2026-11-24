@@ -169,7 +169,7 @@ fn safe001_box2_a_shell_permission_carries_no_plan() {
 
 // ---- SAFE-021 / SAFE-022 (batch 4): only fake path strings; no opener, no explorer, no network is ever called ----
 use kolux_lib::fence::{check, Fence};
-use kolux_lib::links::{fence as file_fence, host_path, launchable, open_external, program_like, refuse_host};
+use kolux_lib::links::{document, fence as file_fence, host_path, open_choice, open_external, refuse_host, OpenChoice};
 use kolux_lib::state::Store;
 
 const OTHER_MACHINES: [&str; 9] = [
@@ -330,43 +330,48 @@ fn safe021_box5_a_repo_folder_linked_to_the_home_folder_never_exposes_what_is_be
 }
 
 #[test]
-fn safe022_box1_batch_js_exe_and_shortcut_files_are_launchable_so_they_are_revealed_not_opened() {
+fn safe022_box1_batch_js_exe_and_shortcut_files_are_revealed_not_opened() {
     let d = scratch("programs");
     for name in ["setup.bat", "run.cmd", "build.js", "tool.exe", "link.lnk", "app.com", "task.vbs", "x.ps1", "pkg.msi", "page.hta"] {
         let f = d.join(name);
         std::fs::write(&f, "").unwrap();
-        assert!(launchable(&f), "{name}");
-        assert!(program_like(&f.to_string_lossy(), true), "{name} on Windows");
-        assert!(program_like(&f.to_string_lossy(), false), "{name} on POSIX");
+        assert!(!document(&f), "{name}");
+        assert_eq!(open_choice(&f.to_string_lossy()), Ok(OpenChoice::Reveal), "{name}");
     }
     // the unusual office / web-query types the card names
     for name in ["notes.one", "query.iqy", "data.slk"] {
-        assert!(program_like(name, true) && program_like(name, false), "{name}");
+        assert!(!document(Path::new(name)), "{name}");
     }
 }
 
 #[test]
 fn safe022_box2_a_stream_suffix_a_trailing_dot_or_space_or_a_short_name_cannot_hide_a_program() {
     for p in [r"C:\w\run.bat::$DATA", r"C:\w\run.bat:Zone.Identifier", r"C:\w\run.bat.", r"C:\w\run.bat ", r"C:\w\run.bat. .", r"C:\w\tool.exe:x", r"C:\w\SETUP.CMD...", r"C:\w\PROGRA~1.EXE", r"C:\w\RUNME~1.BAT", "run.bat::$DATA"] {
-        assert!(program_like(p, true), "{p}");
+        assert!(!document(Path::new(p)), "{p}");
     }
+    // on disk the click is judged by the file's real name, so a hiding spelling is revealed and a
+    // stream is refused outright
     #[cfg(windows)]
-    for p in [r"C:\w\run.bat::$DATA", r"C:\w\run.bat.", r"C:\w\run.bat ", r"C:\w\tool.exe:x"] {
-        assert!(launchable(Path::new(p)), "launchable on this platform: {p}");
-    }
-    // the same names are not over-blocked when the program type is not what the suffix hides
-    for p in [r"C:\w\notes.txt:stream", r"C:\w\notes.txt.", r"C:\w\readme.md "] {
-        assert!(!program_like(p, true), "{p}");
+    {
+        let d = scratch("hidden-programs");
+        std::fs::write(d.join("run.bat"), "").unwrap();
+        for name in ["run.bat.", "run.bat ", "run.bat. ."] {
+            assert_eq!(open_choice(&d.join(name).to_string_lossy()), Ok(OpenChoice::Reveal), "{name:?}");
+        }
+        assert!(open_choice(&format!("{}:x", d.join("run.bat").display())).is_err(), "a stream is refused");
+        // the same spelling on a real document still opens it: nothing is over-blocked
+        std::fs::write(d.join("notes.txt"), "").unwrap();
+        assert_eq!(open_choice(&d.join("notes.txt.").to_string_lossy()), Ok(OpenChoice::Open));
     }
 }
 
 #[test]
-fn safe022_box3_a_plain_text_file_is_not_launchable_so_it_opens_normally() {
+fn safe022_box3_a_plain_text_file_is_a_document_so_it_opens_normally() {
     let d = scratch("plain-text");
-    for name in ["notes.txt", "README.md", "data.json", "photo.png", "log.txt."] {
-        let f = d.join(name.trim_end_matches('.'));
+    for name in ["notes.txt", "README.md", "data.json", "photo.png"] {
+        let f = d.join(name);
         std::fs::write(&f, "hello").unwrap();
-        assert!(!launchable(&f), "{name}");
-        assert!(!program_like(name, true) && !program_like(name, false), "{name}");
+        assert!(document(&f), "{name}");
+        assert_eq!(open_choice(&f.to_string_lossy()), Ok(OpenChoice::Open), "{name}");
     }
 }

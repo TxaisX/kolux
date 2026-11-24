@@ -362,10 +362,12 @@ pub fn cleanup_remove(git: State<'_, Git>, store: State<'_, Mutex<Store>>, termi
 /// PROJ-081: the size of each workspace folder, read only when the cleanup list is sorted or
 /// filtered by size (never during the scan). None = unknown: the folder is missing, unreadable, or
 /// bigger than the walk budget; the list puts those rows last.
-pub fn sizes_of(paths: &[String], budget: u64) -> Vec<Option<u64>> {
+pub fn sizes_of(paths: &[String], budget: u64, roots: &[String]) -> Vec<Option<u64>> {
     paths
         .iter()
         .map(|p| {
+            // RS-4: a path on another machine is never looked at, so no share is contacted.
+            crate::links::refuse_host(p, roots).ok()?;
             let path = Path::new(p);
             if !path.is_dir() { return None }
             let s = crate::bulk::dir_size(path, budget);
@@ -375,8 +377,8 @@ pub fn sizes_of(paths: &[String], budget: u64) -> Vec<Option<u64>> {
 }
 
 #[tauri::command(async)]
-pub fn cleanup_sizes(paths: Vec<String>) -> Vec<Option<u64>> {
-    sizes_of(&paths, 200_000)
+pub fn cleanup_sizes(store: tauri::State<'_, Mutex<Store>>, paths: Vec<String>) -> Vec<Option<u64>> {
+    sizes_of(&paths, 200_000, &crate::links::roots(&store))
 }
 
 #[cfg(test)]
@@ -392,8 +394,21 @@ mod tests {
         fs::write(root.join("a/sub/y.txt"), "678").unwrap();
         let a = root.join("a").to_string_lossy().to_string();
         let gone = root.join("gone").to_string_lossy().to_string();
-        assert_eq!(sizes_of(&[a.clone(), gone], 1000), vec![Some(8), None]);
-        assert_eq!(sizes_of(&[a], 1), vec![None], "over the walk budget the size is unknown, not wrong");
+        assert_eq!(sizes_of(&[a.clone(), gone], 1000, &[]), vec![Some(8), None]);
+        assert_eq!(sizes_of(&[a], 1, &[]), vec![None], "over the walk budget the size is unknown, not wrong");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// RS-4: a path the host guard refuses is never measured. The object-namespace spelling of a
+    /// local folder stands in for a share: it really exists, so only the guard can make it unknown.
+    #[cfg(windows)]
+    #[test]
+    fn rs4_a_refused_path_is_never_measured() {
+        let root = std::env::temp_dir().join(format!("rs4-sizes-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("x.txt"), "12345").unwrap();
+        let spelled = format!(r"\\?\GLOBALROOT\GLOBAL??\{}", root.display());
+        assert_eq!(sizes_of(&[spelled], 1000, &[]), vec![None]);
         let _ = fs::remove_dir_all(&root);
     }
     use crate::projects::set_origin;

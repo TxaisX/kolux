@@ -838,16 +838,23 @@ pub fn rescan(store: &Mutex<Store>, provider: &str) {
 /// git worktree of the same repo, so the spend ribbon counts the sessions that ran in a child
 /// worktree too. A folder that is not a repo (or git failing) answers just the folder.
 #[tauri::command]
-pub async fn workspace_worktrees(path: String) -> Vec<String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let mut out = vec![path.clone()];
-        if let Ok(text) = crate::git::run(&["worktree", "list", "--porcelain"], Some(Path::new(&path))) {
-            out.extend(crate::git::parse_worktrees(&text).into_iter().map(|w| w.path));
-        }
-        out
-    })
-    .await
-    .unwrap_or_default()
+pub async fn workspace_worktrees(app: tauri::AppHandle, path: String) -> Vec<String> {
+    use tauri::Manager;
+    let roots = crate::links::roots(&app.state::<Mutex<Store>>());
+    tauri::async_runtime::spawn_blocking(move || worktrees_of(path, &roots)).await.unwrap_or_default()
+}
+
+/// The body of `workspace_worktrees`. A folder on another machine answers nothing: git is never
+/// started there (RS-4).
+fn worktrees_of(path: String, roots: &[String]) -> Vec<String> {
+    if crate::links::refuse_host(&path, roots).is_err() {
+        return Vec::new();
+    }
+    let mut out = vec![path.clone()];
+    if let Ok(text) = crate::git::run(&["worktree", "list", "--porcelain"], Some(Path::new(&path))) {
+        out.extend(crate::git::parse_worktrees(&text).into_iter().map(|w| w.path));
+    }
+    out
 }
 
 #[tauri::command]
@@ -871,6 +878,13 @@ mod tests {
     use super::*;
     use jiff::tz::TimeZone;
     use serde_json::json;
+
+    /// RS-4: a workspace on another machine answers nothing, and git is never started there.
+    #[test]
+    fn rs4_a_workspace_on_another_machine_answers_nothing() {
+        assert!(worktrees_of(r"\\no-such-host-kolux.invalid\share\x".into(), &[]).is_empty());
+        assert!(worktrees_of("file://no-such-host-kolux.invalid/share/x".into(), &[]).is_empty());
+    }
 
     fn file(name: &str, lines: &[Value]) -> (String, String) {
         (name.into(), lines.iter().map(|l| l.to_string()).collect::<Vec<_>>().join("\n"))
