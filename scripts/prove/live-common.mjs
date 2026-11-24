@@ -163,7 +163,17 @@ export async function startProve(id, opts) {
   await waitFor("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
   await focusField('input[aria-label="project folder"]');
   await cdp("insert", repo, "enter");
-  await waitFor("the first shell pane", async () => (await shown("section.pane[data-agent]")) >= 1, 30000);
+  await waitFor("the first pane (shell or session chooser)", async () => (await shown(TERM)) >= 1 || (await exists(TID.chooser)), 30000);
+  // A new workspace opens the session chooser, which starts no terminal until a seat's Terminal button and Start are
+  // pressed. These are the same steps, in the same order, with the same test ids as startPlain's (audit S2-F02): without
+  // them the wait below expired after 30 s and no scenario() proof ever started its agent.
+  if (!(await shown(TERM))) {
+    const picked = await evalJs(`(() => { let n = 0; for (const b of document.querySelectorAll('${TID.seats} ${TID.seatTerminal}')) { b.click(); n++; } return n; })()`);
+    log(`session chooser: Terminal picked for ${picked} seat(s)`);
+    await waitFor("the chooser's Start button", () => exists(`${TID.chooserStart}:not(:disabled)`), 60000);
+    await click(`${TID.chooserStart}:not(:disabled)`);
+  }
+  await waitFor("the first shell pane", async () => (await shown(TERM)) >= 1, 30000);
 
   const ctx = {
     app, TEMP, repo, settingsFile, log,
