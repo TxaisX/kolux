@@ -49,8 +49,8 @@ FAIL  case C (profile folder that refuses new files and writes (deny ACL for the
 
 notes:
   - golden profile: browser-helpers.json, crash-dumps-seen.json, memory-last.json, settings.json, settings.json.bak, skill-op.lock, state.db, state.db-shm, state.db-wal; settings.json 327 bytes
-  - case C acl right after the deny: G:\Temp\stress\ready-tools-T-813\s4\home\AppData\Roaming\com.txaisxiong.kolux-rs.stress TxaisX\XiongT:(OI)(CI)(DENY)(WD,AD,WEA,DC,WA) S-1-5-21-3183308034-2968228786-2434996503-830841024:(I)(OI)(CI)(M) S-1-5-21-3345849068-1621676835-3876831534-1003:(I)(OI)(CI)(M) S-1-5-21-4038351606-1521650012-238002
-  - case C acl while running: G:\Temp\stress\ready-tools-T-813\s4\home\AppData\Roaming\com.txaisxiong.kolux-rs.stress TxaisX\XiongT:(OI)(CI)(F) Successfully processed 1 files; Failed processing 0 files 
+  - case C acl right after the deny: G:\Temp\stress\ready-tools-T-813\s4\home\AppData\Roaming\com.txaisxiong.kolux-rs.stress TxaisX\user:(OI)(CI)(DENY)(WD,AD,WEA,DC,WA) S-1-5-21-3183308034-2968228786-2434996503-830841024:(I)(OI)(CI)(M) S-1-5-21-3345849068-1621676835-3876831534-1003:(I)(OI)(CI)(M) S-1-5-21-4038351606-1521650012-238002
+  - case C acl while running: G:\Temp\stress\ready-tools-T-813\s4\home\AppData\Roaming\com.txaisxiong.kolux-rs.stress TxaisX\user:(OI)(CI)(F) Successfully processed 1 files; Failed processing 0 files 
   - case C save result: saved; files now: agent-hooks-endpoint.txt, browser-helpers.json, cli.json, crash-dumps-seen.json, memory-last.json, settings.json, settings.json.bak, skill-op.lock, state.db, state.db-shm, state.db-wal, state.db.bak
 
 S4: FAIL
