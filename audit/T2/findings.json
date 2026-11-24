@@ -1,0 +1,17 @@
+[
+  {
+    "id": "T2-F01",
+    "title": "Deleting one project's kept branch also drops another project's same-named branch",
+    "severity": "medium",
+    "file": "src/projects/cleanup.ts",
+    "line": 131,
+    "what": "After a kept branch is deleted in one project, keptAfter removes every pending item with that branch name, so another project's same-named branch disappears from the notice and can no longer be deleted there.",
+    "expected": "Only the item whose own project reports the delete leaves the list; the other project's same-named branch stays.",
+    "test": {
+      "runner": "vitest",
+      "file": "src/projects/auditT2F01.test.ts",
+      "name": "[T2-F01] deleting a kept branch in one project keeps the same-named branch of another project on the list"
+    },
+    "patch": "repro/T2-F01.patch"
+  }
+]
