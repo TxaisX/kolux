@@ -122,6 +122,19 @@ ${body}
 `;
 }
 
+// The footer carries the day the page was generated. That date is not derived from the markdown,
+// so it says nothing about whether the twin still matches its source: two twins whose only
+// difference is the date stamp hold the same content. Ignore just that stamp when comparing, so a
+// committed twin does not turn stale at midnight, and a rebuild does not churn every page's date.
+const STAMP = /<span>generated \d{4}-\d{2}-\d{2} by scripts\/docs\/build\.mjs<\/span>/g;
+const withoutStamp = (html) =>
+  html.replace(STAMP, "<span>generated <date> by scripts/docs/build.mjs</span>");
+
+/** Whether two twins hold the same content, the generation date aside. */
+function sameContent(a, b) {
+  return a === b || withoutStamp(a) === withoutStamp(b);
+}
+
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
@@ -144,7 +157,7 @@ for (const md of files) {
   const htmlPath = md.replace(/\.md$/, ".html");
   const html = render(md);
   const exists = fs.existsSync(htmlPath);
-  const same = exists && fs.readFileSync(htmlPath, "utf8") === html;
+  const same = exists && sameContent(fs.readFileSync(htmlPath, "utf8"), html);
   if (same) continue;
   if (check) {
     stale.push(path.relative(root, htmlPath).replace(/\\/g, "/"));
