@@ -1,0 +1,61 @@
+{
+  "area": "R4",
+  "files": [
+    {
+      "path": "src-tauri/src/auto_pr.rs",
+      "symbols": ["scan", "commit_step", "push_step", "remote_in", "auto_pr_scan", "t652_a_hook_refusal_puts_the_staging_area_back"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the whole automatic pull request path: name/content secret shapes (UTF-16, NUL bytes, batching), the fence, default-branch and upstream gates, index.lock handling, staged-blob and commit-range scans, and the push guards. The fail-closed rules hold; found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/github.rs",
+      "symbols": ["full_name_ok", "host_allowed_reading", "a_parent_name_outside_the_owner_name_rule_is_dropped", "a_config_answer_of_more_than_one_line_is_no_answer_and_refuses_the_host"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked repo_path, full_name_ok and the host gates (host_ok, host_allowed_reading, config_read), plus the tests that feed gh's config answers, including a shim and a timeout. A top-level gh user is deliberately not a host sign-in, which errs safe; found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/net.rs",
+      "symbols": ["local_ip", "hop_ok", "public_addrs", "head_with", "fix2_c_ipv4_compatible_addresses_and_a_trailing_dot_are_caught", "app070_a_public_only_probe_never_reaches_this_machine"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed allowed, local_host/local_ip, hop_ok, the resolver and both icon clients, the saved/system proxy rules, time limits and the update probe. Suspect but could not prove: local_ip does not classify multicast (224/4, ff00::/8) as local; a fetch can only fail to connect there, so no failing test was written."
+    },
+    {
+      "path": "src-tauri/src/pr_review.rs",
+      "symbols": ["lookup_plan", "parse_pr_text", "act_args", "check_target", "link_names_repo", "t235b_a_check_link_with_a_port_reads_like_host_ok"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the lookup plan, PR text prompt/parsing, review and reaction arguments, check-link targeting, provider gates and the agent-send path with its tests. parse_pr_text only strips Title:/title: case-sensitively, which is cosmetic for a prompt we write; found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/scm.rs",
+      "symbols": ["submodule_state", "github_repo", "trim_diff", "split_command", "pr_create", "parse_status"],
+      "verdict": "findings",
+      "findings": ["R4-F01"],
+      "note": "Read porcelain status, remote/github_repo/ssh_host, the gh runners, diff and message helpers, pr_create/prs_poll, merge and stage/commit. R4-F01: github_repo matches the URL scheme only in lowercase, so an uppercase scheme git accepts reads as no repository. Suspect but unproven: ok allows an owner or name of . or .., which github::full_name_ok rejects."
+    },
+    {
+      "path": "src-tauri/src/scm_repo_id.rs",
+      "symbols": ["path_id", "identity", "row917_origin_wins_over_other_remotes_else_the_first_remote_is_used", "row917_a_folder_workspace_is_its_own_path", "row76_a_repository_with_a_remote_names_its_host_and_one_without_names_none"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed remote_id, path_id, root_from, identity, typed_id and host_of_id with the row917/row76 tests. remote_id matches the scheme with eq_ignore_ascii_case, which is the reading github_repo should share (R4-F01); no separate defect found here."
+    },
+    {
+      "path": "src-tauri/src/scm_watch.rs",
+      "symbols": ["matters", "counts", "parse_notify", "Schedule", "worker", "t033e_a_pausing_churn_reads_at_every_pause_without_the_gap_and_at_most_15_a_minute_with_it"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed ignore answers, matters/counts, Debounce and Schedule, notify parsing, watch/unwatch, the worker and the break/overflow seams with their tests. The debounce, gap and overflow restart logic matched the promises; found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/scm_writers.rs",
+      "symbols": ["invocation", "parse_claude_help", "slug", "rename_branch", "scm_name_branch", "git018_d_claude_keeps_sonnet_until_a_model_is_picked_and_takes_an_effort"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed invocation and argument limits, the model-help parsers (including the non-ASCII lowercase test), branch slug/placeholder/rename, name_branch and the writer run with its Scratch folder. Found no provable defect."
+    }
+  ]
+}

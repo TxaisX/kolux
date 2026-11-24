@@ -1,0 +1,17 @@
+[
+  {
+    "id": "R4-F01",
+    "title": "An uppercase remote scheme hides the repository from github_repo",
+    "severity": "low",
+    "file": "src-tauri/src/scm.rs",
+    "line": 637,
+    "what": "github_repo matches the remote URL scheme with an exact lowercase match, so a remote written HTTPS://github.com/o/r (or SSH://git@github.com/o/r), which git itself accepts, returns None. The pull request poll then drops that workspace with no error, gh_repo_arg passes no --repo, and scm_repo_id::identity loses the legacy owner/name key.",
+    "expected": "A URL scheme is case-insensitive (RFC 3986), so github_repo must match it without regard to case and return the same GhRepo for the uppercase form as for the lowercase one.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/scm_tests.rs",
+      "name": "scm::tests::audit_r4_f01_uppercase_remote_scheme_is_read_like_lowercase"
+    },
+    "patch": "repro/R4-F01.patch"
+  }
+]
