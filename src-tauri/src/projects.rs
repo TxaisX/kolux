@@ -1080,13 +1080,14 @@ fn inside_project(dir: &Path) -> Option<PathBuf> {
     (!steps.as_os_str().is_empty()).then_some(steps)
 }
 
-/// Whether a folder may be read from a project root by the steps `inside_project` reads back: any
-/// non-empty folder that names no drive and no root, with `.` and `..` between its names changing
-/// nothing but where the steps land. Windows' `is_absolute` is not the inverse of "relative": `C:ws`
+/// Whether a folder may be saved as a relative workspaces folder: exactly the folders
+/// `inside_project` reads back, so nothing is saved that `place_root` would then throw away. A `.`
+/// (or `./.`) leaves no steps, so it is refused like a blank setting rather than saved as a folder
+/// that silently means the default. Windows' `is_absolute` is not the inverse of "relative": `C:ws`
 /// is relative to the current folder on drive C and `\ws` to the drive's root, so neither may be
 /// saved as a folder that counts from the project root.
 fn stays_inside(dir: &Path) -> bool {
-    !dir.as_os_str().is_empty() && !dir.components().any(|part| matches!(part, Component::Prefix(_) | Component::RootDir))
+    inside_project(dir).is_some()
 }
 
 /// The root and layout for a project at `project_path`: a chosen folder (a relative one counts from

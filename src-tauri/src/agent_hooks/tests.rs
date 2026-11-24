@@ -2720,9 +2720,11 @@ fn hook_request(pane: u32, terminal: u32, body: &str) -> crate::hooks::Request {
     crate::hooks::Request { path: "/claude".into(), headers, body: body.as_bytes().to_vec() }
 }
 
-/// F1: in a shell pane the user ran claude, exited, and ran it again from another folder. A
-/// subfolder of the pane's folder counts as inside, the dead session's own end frees the pane, and
-/// the new SessionStart replaces the dead session, so the pane is never frozen.
+/// F1: in a shell pane the user ran claude, exited, and ran it again from another folder. While the
+/// pane's agent is live, a nested agent in a worktree below the pane's folder and a SessionStart
+/// from another folder are both dropped, so a nested agent never becomes the pane's known session.
+/// The foreground poll's latch (the shell again) frees the pane, the new SessionStart is heard, and
+/// from then on the new session is the pane's own and a foreign event is dropped again.
 #[test]
 fn f1_a_restarted_agent_in_a_shell_pane_keeps_its_hooks() {
     let _turn = SAVED_ROWS.lock().unwrap_or_else(|e| e.into_inner());
@@ -2737,21 +2739,23 @@ fn f1_a_restarted_agent_in_a_shell_pane_keeps_its_hooks() {
     // The pane's own agent starts and reports for this terminal; its saved row is what the hooks left.
     assert!(ask(&start("s-dead", r"C:\work\app")).1.is_some(), "the pane's agent starts");
     saved::unsleep(&store, row("s-dead", r"C:\work\app"));
-    // While that session is live, a nested agent in another folder is still foreign...
-    assert!(ask(&event("PostToolUse", "s-nested", r"D:\elsewhere")).1.is_none(), "a nested agent elsewhere is dropped");
-    // ...but one in a folder below the pane's is the pane's own (a worktree under it, say).
-    assert!(ask(&event("PostToolUse", "s-nested", r"C:\work\app\sub")).1.is_some(), "a subfolder is inside");
-    // The dead session's own end frees the pane: another session in a far folder is heard again.
-    assert!(ask(&event("SessionEnd", "s-dead", r"C:\work\app")).1.is_none(), "an end is not a state change");
-    assert!(saved::ended(pane), "the dead session is marked ended");
-    assert!(ask(&event("PostToolUse", "s-late", r"D:\elsewhere")).1.is_some(), "nothing is foreign after the end");
-    // A claude started again in a sibling folder is the pane's own session from then on.
+    // (i) While that session is live, a nested agent in a worktree below the pane's folder is foreign.
+    assert!(ask(&event("PostToolUse", "s-nested", r"C:\work\app\.worktrees\lane")).1.is_none(), "a worktree under the pane's folder is not the pane's");
+    // (ii) A SessionStart from another session elsewhere is foreign too: it never becomes the known session.
+    assert!(ask(&start("s-nested", r"D:\elsewhere")).1.is_none(), "a nested agent's start is dropped");
+    assert!(!saved::ended(pane), "nothing has ended yet");
+    // The foreground poll saw the pane's shell again: the latch frees the pane, no SessionEnd needed.
+    saved::note_ended(pane);
+    assert!(saved::ended(pane), "the live session is marked ended");
+    // (iii) A claude started again in a sibling folder is the pane's own session from then on.
     assert!(ask(&start("s-new", r"C:\work\other")).1.is_some(), "a restart is the pane's own");
     // What the hooks' reply records live: the pane's row is the new session now.
     saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
     saved::unsleep(&store, row("s-new", r"C:\work\other"));
+    // (iv) The new id is the known session, the latch no longer applies, and a foreign event drops.
     assert!(!saved::ended(pane), "the new session is not the ended one");
     assert!(ask(&event("UserPromptSubmit", "s-new", r"C:\work\other")).1.is_some(), "the new session is heard");
+    assert!(ask(&event("PostToolUse", "s-other", r"D:\elsewhere")).1.is_none(), "a foreign event is dropped again");
     // Hand the live row back, so the rest of the suite starts from an empty LIVE set.
     saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
     crate::status::terminal_ended(terminal);

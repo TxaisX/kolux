@@ -3954,6 +3954,20 @@ fn f2_a_saved_relative_workspaces_folder_may_climb_with_dot_dot() {
     }
 }
 
+/// P3-a: `.` leaves no steps for `inside_project`, so `place_root` would silently fall back to
+/// `.worktrees` while the setting looked saved. It is refused instead, like the other spellings
+/// that name no folder.
+#[test]
+fn p3_a_a_dot_is_not_a_workspaces_folder() {
+    let store = Store::open(&temp("p3-a-dot")).unwrap();
+    for dot in [".", "./."] {
+        let err = set_place(&store, dot, false).unwrap_err();
+        assert!(err.contains("is not a folder this setting can use"), "{dot}: {err}");
+        assert_eq!(store.settings()[WORKSPACES_DIR_SETTING], serde_json::Value::Null, "{dot} is not saved");
+    }
+    assert!(used_dirs(&store).is_empty(), "nor remembered");
+}
+
 #[test]
 fn the_exclude_line_is_added_once_to_the_repos_own_file_and_gitignore_is_never_touched() {
     let base = temp("exclude");

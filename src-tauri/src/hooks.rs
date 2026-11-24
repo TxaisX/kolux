@@ -420,13 +420,6 @@ pub fn proven(req: &Request, secret: &str) -> Option<(u32, Option<u32>)> {
     same(token, &pane_token(secret, pane_key, terminal)).then_some((pane_key, terminal))
 }
 
-/// START-05: whether the pane's agent has left its shell (the foreground poll sees the shell again):
-/// nothing in the pane can then be nested inside a live agent, so no event is foreign. A poll that
-/// has not answered for the terminal yet says nothing either way.
-fn agent_gone(terminal: u32) -> bool {
-    crate::foreground::found_front(terminal) == Some(crate::foreground::Front::Shell)
-}
-
 pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>) {
     let Some((pane_key, terminal)) = req.headers.get(IDENTITY_HEADER).and_then(|h| identity(h)) else { return (400, None) };
     if proven(req, token).is_none() {
@@ -442,18 +435,15 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
     // START-05: a Claude Code or Codex started inside the pane inherits KOLUX_HOOK_IDENTITY, so its
     // events would be reported as the pane's own. Once the pane's own agent has reported for this
     // terminal, an event from another session that runs outside the pane's folder (not in it, not
-    // below it, not above it) is not the pane's: reply as usual but report and save nothing. A
-    // SessionStart from a new session is the person starting the agent again in the pane, and an
-    // event after the known session ended (its SessionEnd, or its process gone from the pane's
-    // foreground) is never foreign. A nested agent in the pane's folder or a parent folder is not
-    // caught (no process id in the event).
+    // above it) is not the pane's: reply as usual but report and save nothing. That includes a
+    // SessionStart, so a nested agent can never become the pane's known session. The pane's latch
+    // (`saved::ended`, set when the foreground poll sees the shell again) says its own agent has
+    // left, and frees the pane for a restart. A nested agent in the pane's folder or a parent
+    // folder is not caught (no process id in the event).
     if let Some(t) = terminal {
         if crate::status::panes_of(t).contains(&pane_key) {
             if let Some(row) = agent_hooks::saved::live_row(pane_key) {
-                if nested::ends_known(row.session_id.as_deref(), &event) {
-                    agent_hooks::saved::note_ended(pane_key);
-                }
-                let ended = agent_gone(t) || agent_hooks::saved::ended(pane_key);
+                let ended = agent_hooks::saved::ended(pane_key);
                 if nested::foreign_event(row.cwd.as_deref(), row.session_id.as_deref(), ended, &event) {
                     return (200, None);
                 }

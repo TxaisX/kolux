@@ -92,7 +92,8 @@ struct Saved {
 
 /// This run's rows, by pane.
 static LIVE: Mutex<Option<HashMap<u32, Row>>> = Mutex::new(None);
-/// START-05: the panes whose known session has ended (`SessionEnd` seen), with the session id.
+/// START-05: the panes whose agent has left its shell (the foreground poll's latch), with the
+/// session id it was running then.
 static ENDED: Mutex<Vec<(u32, String)>> = Mutex::new(Vec::new());
 /// The rows the previous run left, after the holding file was folded onto them.
 static RESTORED: Mutex<Vec<Row>> = Mutex::new(Vec::new());
@@ -320,6 +321,8 @@ pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
         live.retain(|_, r| !taken.contains(r));
         (taken, rows, save_from_live)
     };
+    // START-05: the panes this sleep took have no live row left, so their latches go with them.
+    ENDED.lock().unwrap_or_else(|p| p.into_inner()).retain(|(k, _)| kept.iter().any(|r| r.pane_key == *k));
     let (restored, still_restored) = {
         let mut restored = RESTORED.lock().unwrap_or_else(|p| p.into_inner());
         let taken = sleeping(&mut restored, paths);
@@ -357,6 +360,7 @@ pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32, idle: std::time
         live.remove(&pane_key);
         live.values().cloned().collect()
     };
+    forget_ended(pane_key);
     if let Err(e) = store.set(SAVED_KEY, &serialize(&kept)) {
         eprintln!("kolux: the agents' status could not be saved: {e}");
     }
@@ -368,9 +372,9 @@ pub fn live_row(pane_key: u32) -> Option<Row> {
     LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).cloned()
 }
 
-/// START-05: the pane's known session has ended (its `SessionEnd` was seen), so nothing a later
-/// agent in the pane sends is foreign. The id is kept beside the pane, so a new session in the same
-/// pane is not ended by it.
+/// START-05: the pane's agent has left its shell (the foreground poll saw the shell again), so
+/// nothing a later agent in the pane sends is foreign. The id is kept beside the pane, so once the
+/// pane reports a new session the latch no longer applies to it.
 pub fn note_ended(pane_key: u32) {
     let Some(id) = live_row(pane_key).and_then(|r| r.session_id) else { return };
     let mut ended = ENDED.lock().unwrap_or_else(|p| p.into_inner());
@@ -382,6 +386,12 @@ pub fn note_ended(pane_key: u32) {
 pub fn ended(pane_key: u32) -> bool {
     let Some(id) = live_row(pane_key).and_then(|r| r.session_id) else { return false };
     ENDED.lock().unwrap_or_else(|p| p.into_inner()).iter().any(|(k, s)| *k == pane_key && s.eq_ignore_ascii_case(id.trim()))
+}
+
+/// START-05: drops a pane's latch once the pane has no live row left (its agent slept, or its
+/// terminal ended), so the latch never grows without bound.
+pub fn forget_ended(pane_key: u32) {
+    ENDED.lock().unwrap_or_else(|p| p.into_inner()).retain(|(k, _)| *k != pane_key);
 }
 
 /// TERM-123: the window did not end the pane after `at_pane_sleep` (its state changed meanwhile), so the
