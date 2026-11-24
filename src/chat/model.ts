@@ -199,11 +199,28 @@ const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 /** How far back a confirmed send may be timestamped from when it was typed. */
 const SEND_SLACK_MS = 5_000;
 
+/** CHAT-02: where a waiting send goes among the real messages: before the first later user row (a
+ *  turn of its own), or before the first later row while no user turn was under way when it was
+ *  typed (that row is the reply the send gets, before the user's echo arrives). A later assistant,
+ *  tool or thought row of a turn already under way is that turn still streaming, so the send waits
+ *  at the tail (no index). */
+function waitingBefore(rows: Row[], p: Pending): number {
+  const first = rows.findIndex((r) => r.row === "message" && (r.at ?? 0) > p.at);
+  if (first < 0) return -1;
+  const later = rows[first];
+  if (later.row === "message" && later.role === "user") return first;
+  const turnUnderWay = rows.some((r) => r.row === "message" && r.role === "user" && (r.at ?? 0) <= p.at);
+  return turnUnderWay ? -1 : first;
+}
+
 /** CHAT-010: the transcript's messages, plus hook messages it does not have yet, each once, in
  * time order (then by identity); the streaming preview after real content; sends not yet
- * confirmed in time order among them. CHAT-02: a waiting send sits just before the first message
- * that arrived after it (ties after the message), so the user's words stay above the reply to
- * them; a send with no later message waits after the preview. */
+ * confirmed in time order among them. CHAT-02: a waiting send sits above a later user message (a
+ * turn of its own), so the user's words stay above the reply to them. The turn it was typed into
+ * keeps streaming assistant, tool and thought rows after it, so those never sit above it: with a
+ * turn already under way the send waits at the tail, after the preview. A send typed before any
+ * turn ran (no user row yet) takes the first later row as its own reply and sits above it, which
+ * keeps the send above the answer even when the agent's words arrive before the user's echo. */
 export function combine(transcript: ChatItem[], extras: Extra[], preview: string | null, pending: Pending[]): Row[] {
   const has = (role: string, text: string) => transcript.some((t) => t.role === role && norm(t.text) === norm(text));
   const real: ChatItem[] = [...transcript, ...extras.filter((e) => !has(e.role, e.text)).map((e) => ({ ...e, kind: "text" }))];
@@ -215,7 +232,7 @@ export function combine(transcript: ChatItem[], extras: Extra[], preview: string
     const confirmed = transcript.some((t) => t.role === "user" && sentIn(t.text, p.text) && (t.at ?? Infinity) >= p.at - SEND_SLACK_MS);
     if (confirmed) continue;
     const row: Row = { row: "pending", id: p.id, text: p.text, at: p.at, failed: p.failed };
-    const i = rows.findIndex((r) => r.row === "message" && (r.at ?? 0) > p.at);
+    const i = waitingBefore(rows, p);
     if (i >= 0) rows.splice(i, 0, row);
     else late.push(row);
   }
@@ -229,6 +246,14 @@ export function combine(transcript: ChatItem[], extras: Extra[], preview: string
  * dropped from view. Pure. */
 export function livePending(sent: Pending[], items: ChatItem[]): Pending[] {
   return sent.filter((p) => !items.some((t) => t.role === "user" && sentIn(t.text, p.text) && (t.at ?? Infinity) >= p.at - SEND_SLACK_MS));
+}
+
+/** CHAT-02 review (P2): a live pane's kept sends once `items` has moved: the confirmed ones are dropped
+ * once, and with none confirmed the very same array comes back, so React does not redraw and the
+ * `livePending` scan behind the memo only ever walks the sends still waiting. Pure. */
+export function prunePending(sent: Pending[], items: ChatItem[]): Pending[] {
+  const left = livePending(sent, items);
+  return left.length === sent.length ? sent : left;
 }
 
 /** CHAT-020: a send shows up in a recorded user turn: the same text, or its lines inside a turn

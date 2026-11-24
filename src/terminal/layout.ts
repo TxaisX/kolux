@@ -18,14 +18,17 @@ export const RESUME_FAIL_MS = 15_000;
 /** START-02: the one grey line a pane prints when its saved conversation could not be reopened. */
 export const RESUME_FAILED_NOTE = "The saved conversation could not be reopened. The next start begins a fresh one.";
 
-/** START-02: what a pane knows when its program exits: was it started on a saved conversation, what did it
- *  exit with, how long did it run, and had its agent said anything (a hook event) since that start. */
-export type ResumeExit = { resumed: boolean; code: number | null; aliveMs: number; hookSeen: boolean; outcome?: "exited" | "unverifiable" };
+/** START-02: what a pane knows when its program exits: was it started on a saved conversation, did it end by
+ *  itself or did Kolux close it (START-04's reason), what did it exit with, how long did it run, and had its
+ *  agent said anything (a hook event) since that start. */
+export type ResumeExit = { resumed: boolean; reason: "closed" | "exited"; code: number | null; aliveMs: number; hookSeen: boolean; outcome?: "exited" | "unverifiable" };
 
 /** START-02: a resumed conversation that dies non-zero in under fifteen seconds, before any hook event, was
- *  never saved: the id is dead, and restoring it again would fail the same way for ever. */
+ *  never saved: the id is dead, and restoring it again would fail the same way for ever. Only a program that
+ *  ended by itself counts: on Windows Kolux's own kill reports exit 1, so a pane the user ended (Resource
+ *  Manager's End, the backend close) must never read as a failed resume. */
 export function isFailedResume(e: ResumeExit): boolean {
-  return e.resumed && typeof e.code === "number" && e.code !== 0 && Number.isFinite(e.aliveMs) && e.aliveMs >= 0 && e.aliveMs < RESUME_FAIL_MS && !e.hookSeen && e.outcome !== "unverifiable";
+  return e.resumed && e.reason === "exited" && typeof e.code === "number" && e.code !== 0 && Number.isFinite(e.aliveMs) && e.aliveMs >= 0 && e.aliveMs < RESUME_FAIL_MS && !e.hookSeen && e.outcome !== "unverifiable";
 }
 
 export type PaneKind = "editor" | "preview" | "diff" | "changes" | "check";

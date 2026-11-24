@@ -118,12 +118,14 @@ describe("CHAT-02 fold keeps the order", () => {
     expect(v.some((x) => x.row === "responding")).toBe(false);
   });
 
-  it("a waiting send in the middle starts a turn of its own", () => {
+  // Review (P2) supersedes this CHAT-02 case: a send typed while the turn is still streaming belongs
+  // after the turn's rows, not in the middle of them, so it no longer starts a turn of its own here.
+  it("a waiting send typed during a running turn waits after its rows", () => {
     const rows = combine([msg("u1", "user", "first", 0), msg("a1", "assistant", "done one", 2000), msg("a2", "assistant", "done two", 13000)], [], null, [pend("p1", "second", 10000)]);
     const v = fold(rows, false);
-    expect(tags(v)).toEqual(["message:u1", "message:a1", "worked:worked-u1", "pending:p1", "message:a2", "worked:worked-p1"]);
-    expect((v[2] as { ms: number }).ms).toBe(2000);
-    expect((v[5] as { ms: number }).ms).toBe(3000);
+    expect(tags(v)).toEqual(["message:u1", "message:a1", "message:a2", "worked:worked-u1", "pending:p1", "responding:responding"]);
+    expect((v[3] as { ms: number }).ms).toBe(13000);
+    expect(v.some((x) => x.row === "worked" && x.id === "worked-p1")).toBe(false);
   });
 
   it("while the reply to a waiting send runs, the working line counts from the send", () => {

@@ -281,11 +281,21 @@ export function titleFrameKey(title: string | null): string | null {
   return title === null ? null : title.replace(SPINNER_RUN, "");
 }
 
+/** Whether a title carries a leading spinner frame: the agent's working animation (spinning) or a
+ *  title that is not animating (still). A change between the two is a change the window must see, not
+ *  a frame of the same animation: an agent that starts working after saying what it works on has to
+ *  reach the paced title, which is what the sidebar's "N working" reads (STAT-036). */
+export function titleState(title: string | null): "spinning" | "still" {
+  return title !== null && titleFrameKey(title) !== title ? "spinning" : "still";
+}
+
 /** Hands identities to `apply`: a change of `running` or `agent` at once (the hook and guess rules
  *  read those transitions), a change of the title alone held and applied once it has been the newest
  *  for TITLE_PACE_MS. A title that is only a spinner frame of the one shown (titleFrameKey) restarts
  *  that wait, so an agent animating its title many times a second hands the window nothing while it
- *  turns and the newest frame once it stops; a real change of the text still lands within the pace. */
+ *  turns and the newest frame once it stops; a real change of the text still lands within the pace. A
+ *  title that starts or stops spinning is not a frame of the animation: it takes the normal pace and is
+ *  never held behind the frames that follow it. */
 export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => void, ms: number) => () => void = (fn, ms) => {
   const t = setTimeout(fn, ms);
   return () => clearTimeout(t);
@@ -308,7 +318,7 @@ export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => vo
     note(next: Identity) {
       pending = next;
       if (next.running !== shown.running || next.agent !== shown.agent) flush();
-      else if (titleFrameKey(next.title) === titleFrameKey(shown.title)) {
+      else if (titleState(next.title) === titleState(shown.title) && titleFrameKey(next.title) === titleFrameKey(shown.title)) {
         // A spinner frame, or the same text: hold it and wait for the animation to stop.
         cancel?.();
         cancel = wait(flush, TITLE_PACE_MS);

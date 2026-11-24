@@ -7,7 +7,7 @@ import paneRaw from "./TerminalPane.tsx?raw";
 import windowRaw from "../shell/window/Pane.tsx?raw";
 import propsRaw from "../shell/window/terminalProps.ts?raw";
 
-const base = { resumed: true, code: 1 as number | null, aliveMs: 2_000, hookSeen: false };
+const base = { resumed: true, reason: "exited" as const, code: 1 as number | null, aliveMs: 2_000, hookSeen: false };
 
 describe("isFailedResume", () => {
   test("the window is fifteen seconds", () => {

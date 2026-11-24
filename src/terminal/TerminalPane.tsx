@@ -519,6 +519,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   // anything since. The window clears `hook` when its program stops, so the prop at exit is too late.
   const runBegan = useRef(0);
   const hookSeen = useRef(false);
+  // START-02: whether this run took back a terminal the service still ran (the window reloaded). Its clock
+  // restarts at the bind, so an early end of a taken-back terminal says nothing about the saved conversation.
+  const attachedRun = useRef(false);
   if (hook !== undefined) hookSeen.current = true;
 
   useEffect(() => {
@@ -1051,8 +1054,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
           term.write(`\r\n\x1b[90m[process ${endedLabel(e.payload.code, e.payload.outcome)}]\x1b[0m\r\n`);
             // START-02: a conversation resumed on a saved id that was never saved dies at once, before its
             // agent says anything. The pane says so and tells the window, which forgets the id, so the next
-            // start opens the agent fresh instead of failing the same way for ever.
-            if (isFailedResume({ resumed: !!resumed, code: e.payload.code, aliveMs: Date.now() - runBegan.current, hookSeen: hookSeen.current, outcome: e.payload.outcome })) {
+            // start opens the agent fresh instead of failing the same way for ever. A pane Kolux closed (its
+            // reason is not START-04's "exited", and on Windows its exit is 1) and a terminal taken back after
+            // a reload are never judged: only a program that ended by itself can have failed its resume.
+            if (!attachedRun.current && isFailedResume({ resumed: !!resumed, reason: e.payload.reason === "exited" ? "exited" : "closed", code: e.payload.code, aliveMs: Date.now() - runBegan.current, hookSeen: hookSeen.current, outcome: e.payload.outcome })) {
               term.write(`\x1b[90m${RESUME_FAILED_NOTE}\x1b[0m\r\n`);
               resumeFailed.current?.();
             }
@@ -1091,6 +1096,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
       // TERM-111: start() also serves the overlay's Restart (the original start line) and the shell an
       // agent pane gets on Enter after its program ended; the buffer is kept both times.
       const start = async (prog: string | null, argv: readonly string[], keepInView: boolean, back: Reattached | null = null) => {
+        // START-02: a terminal taken back after a reload is a run of its own, but it did not ask for a saved
+        // conversation now: its end is never read as that conversation having failed to reopen.
+        attachedRun.current = back?.kind === "attached";
         try {
           // APP-052: a terminal this run of the service still runs for the pane (the window reloaded) is taken back, not started again.
           const { id, program: ran, account: used } = back?.kind === "attached" ? { id: back.id, program: prog, account: account ?? null } : await invoke<{ id: number; program: string | null; account: string | null }>("terminal_spawn", { cols: term.cols, rows: term.rows, cwd, program: prog, args: argv, env: env ?? null, paneKey: number, account: account ?? null });
