@@ -40,7 +40,7 @@ export async function startChat(chatId: string, cwd: string, model: string | nul
 export const isOpenCodeSession = (id: string): boolean => id.startsWith("ses_");
 
 /** The engine's answers for a chat that is not there ("... is not in OpenCode anymore.", "... not on this computer anymore."). */
-const isGoneAnswer = (e: unknown): boolean => /\banymore\b/i.test(String(e));
+const isGoneAnswer = (e: unknown): boolean => /\banymore\b|is not a session id/i.test(String(e));
 
 /**
  * A kept chat's transcript, for opening it again. An OpenCode chat is read from OpenCode. An older Everyday
