@@ -1,0 +1,23 @@
+diff --git a/src-tauri/src/projects_tests.rs b/src-tauri/src/projects_tests.rs
+index 7db63b47..7c091bad 100644
+--- a/src-tauri/src/projects_tests.rs
++++ b/src-tauri/src/projects_tests.rs
+@@ -3843,6 +3843,18 @@ fn a_chosen_folder_beats_the_project_local_default_in_the_documented_order() {
+     assert_eq!(root, Path::new(r"C:\repos\app").join("ws"), "a relative folder counts from the project root");
+ }
+ 
++
++#[test]
++#[cfg(windows)]
++fn audit_r3_f07_a_drive_relative_workspaces_folder_never_leaves_the_project() {
++    let store = Store::open(&temp("audit-r3-f07")).unwrap();
++    if set_place(&store, r"C:ws", false).is_ok() {
++        let chosen = chosen_workspaces_dir(None, None, store.settings()[WORKSPACES_DIR_SETTING].as_str());
++        let (root, _) = place_root(Path::new(r"D:\proj"), chosen, false);
++        assert!(root.starts_with(Path::new(r"D:\proj")), "a saved non-absolute folder must stay inside the project: {root:?}");
++    }
++}
++
+ #[test]
+ fn the_exclude_line_is_added_once_to_the_repos_own_file_and_gitignore_is_never_touched() {
+     let base = temp("exclude");
