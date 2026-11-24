@@ -2142,11 +2142,34 @@ pub fn scanned_of(store: &Store, project: &Project, all: Vec<Worktree>) -> Resul
     Ok(Scanned { list, unseen })
 }
 
-/// The sidebar's poll: one `git worktree list` per project instead of one per command.
-#[tauri::command]
-pub async fn workspace_scan(git: State<'_, Git>, store: StoreState<'_>, project_id: String) -> Result<Scanned, String> {
-    let (project, all) = scan(&git, &store, &project_id)?;
+/// The scan body, synchronous: the caller decides which thread runs it.
+pub(crate) fn workspace_scan_now(git: &Git, store: &Mutex<Store>, project_id: &str) -> Result<Scanned, String> {
+    let (project, all) = scan(git, store, project_id)?;
     scanned_of(&*store.lock().map_err(|e| e.to_string())?, &project, all)
+}
+
+/// Runs `work` once on the runtime's blocking pool and awaits the answer, so slow work (store locks,
+/// `git worktree list`, folder checks) never holds an async worker. The work's own answer comes back
+/// unchanged; a panicking work comes back as the join error's text, not as an unwind.
+pub(crate) async fn on_blocking_pool<T, F>(work: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(work).await.map_err(|e| e.to_string())?
+}
+
+/// The sidebar's poll: one `git worktree list` per project instead of one per command, run on the
+/// blocking pool so a sweep of projects never starves the async workers other commands wait on.
+#[tauri::command]
+pub async fn workspace_scan(app: tauri::AppHandle, project_id: String) -> Result<Scanned, String> {
+    use tauri::Manager;
+    on_blocking_pool(move || {
+        let git = app.state::<Git>();
+        let store = app.state::<Mutex<Store>>();
+        workspace_scan_now(&git, &store, &project_id)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -2169,7 +2192,6 @@ pub fn workspace_opened(store: StoreState<'_>, path: String) {
 /// T-442 (TERM-115): a project's worktrees as Git lists them, with the store let go while git runs,
 /// so a terminal printing a pull request link never waits on it. The commands that call this are
 /// async, so they run off the window's thread and typing never queues behind a slow git.
-/// ponytail: git still blocks one async worker while it runs; spawn_blocking if workers ever starve.
 fn scan(git: &Git, store: &Mutex<Store>, project_id: &str) -> Result<(Project, Vec<Worktree>), String> {
     let (project, folder) = {
         let store = store.lock().map_err(|e| e.to_string())?;
@@ -3653,3 +3675,7 @@ mod branch_prefix_async_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "projects_scan_board_tests.rs"]
+mod scan_board_tests;
