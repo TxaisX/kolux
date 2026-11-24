@@ -40,6 +40,7 @@ import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
 import { AUTO, autoSender, trackInputSource } from "./inputSource";
 import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, holdsBeforeBind, type ExitEvent } from "./codec";
+import { isFailedResume, RESUME_FAILED_NOTE } from "./layout";
 import { sizeGate } from "./sizeGate";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
@@ -168,6 +169,8 @@ type Props = {
   clipboardFromPrograms?: boolean;
   /** TERM-107 (T-066-c): false when the restored agent's start line carries no resume form. */
   resumed?: boolean;
+  /** START-02: the restored conversation could not be resumed (it was never saved); the window forgets its id. */
+  onResumeFailed?: () => void;
   /** The session failed to start (SESS-024: the window drops the pane rather than leaving it blank). */
   onFailed?: (error: string) => void;
   /** C24-R1-01: a restored tab could not take its terminal back; the window keeps it and stops
@@ -274,7 +277,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, cwd = null, branch = null, worktree = null, onWorktree, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onChat, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, cwd = null, branch = null, worktree = null, onWorktree, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, onResumeFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onChat, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -499,6 +502,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   failed.current = onFailed;
   const restoreFailed = useRef(onRestoreFailed);
   restoreFailed.current = onRestoreFailed;
+  // START-02: the window forgets the saved conversation; read through a ref like the callers above.
+  const resumeFailed = useRef(onResumeFailed);
+  resumeFailed.current = onResumeFailed;
+  // START-02: how a resume is judged to have failed: when THIS run began, and whether its agent has said
+  // anything since. The window clears `hook` when its program stops, so the prop at exit is too late.
+  const runBegan = useRef(0);
+  const hookSeen = useRef(false);
+  if (hook !== undefined) hookSeen.current = true;
 
   useEffect(() => {
     report.current?.(runningOf(status.kind));
@@ -1019,6 +1030,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             term.write(resetAfterExit(modeView(term.modes), term.buffer.active.type === "alternate"));
             kitty.reset(); // VIEW-109: the key protocol resets cleanly after the program exits
           term.write(`\r\n\x1b[90m[process ${endedLabel(e.payload.code, e.payload.outcome)}]\x1b[0m\r\n`);
+            // START-02: a conversation resumed on a saved id that was never saved dies at once, before its
+            // agent says anything. The pane says so and tells the window, which forgets the id, so the next
+            // start opens the agent fresh instead of failing the same way for ever.
+            if (isFailedResume({ resumed: !!resumed, code: e.payload.code, aliveMs: Date.now() - runBegan.current, hookSeen: hookSeen.current, outcome: e.payload.outcome })) {
+              term.write(`\x1b[90m${RESUME_FAILED_NOTE}\x1b[0m\r\n`);
+              resumeFailed.current?.();
+            }
             setStatus({ kind: "ended", code: e.payload.code });
             // TERM-111: a shell that exited by itself closes its pane (its neighbours take the space and
             // the tab goes with its last pane); one that died stays, with the exit code and a Restart;
@@ -1076,6 +1094,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             });
           }
           setStatus({ kind: "running", id, account: used });
+          // START-02: each run of the program is judged on its own clock and on its own hook events,
+          // counted from the moment the terminal is up (a slow spawn is not the agent's running time).
+          runBegan.current = Date.now();
+          hookSeen.current = false;
           const queued = early ?? [];
           early = null;
           for (const h of queued) if (h.id === id) h.run();

@@ -12,6 +12,22 @@ import { isTabColor, type TabColors } from "./tabColor";
 
 export const LAYOUT_FIELD = "savedLayout";
 
+/** START-02: how long a program started on a saved conversation may run before its end stops reading as
+ *  "the conversation it asked for was not there": a resume that fails dies at once. */
+export const RESUME_FAIL_MS = 15_000;
+/** START-02: the one grey line a pane prints when its saved conversation could not be reopened. */
+export const RESUME_FAILED_NOTE = "The saved conversation could not be reopened. The next start begins a fresh one.";
+
+/** START-02: what a pane knows when its program exits: was it started on a saved conversation, what did it
+ *  exit with, how long did it run, and had its agent said anything (a hook event) since that start. */
+export type ResumeExit = { resumed: boolean; code: number | null; aliveMs: number; hookSeen: boolean; outcome?: "exited" | "unverifiable" };
+
+/** START-02: a resumed conversation that dies non-zero in under fifteen seconds, before any hook event, was
+ *  never saved: the id is dead, and restoring it again would fail the same way for ever. */
+export function isFailedResume(e: ResumeExit): boolean {
+  return e.resumed && typeof e.code === "number" && e.code !== 0 && Number.isFinite(e.aliveMs) && e.aliveMs >= 0 && e.aliveMs < RESUME_FAIL_MS && !e.hookSeen && e.outcome !== "unverifiable";
+}
+
 export type PaneKind = "editor" | "preview" | "diff" | "changes" | "check";
 // No file tab is restored: a saved editor, preview, diff or changes tab of an earlier version is dropped (a check tab is never saved).
 const KINDS: PaneKind[] = ["check"];
@@ -79,6 +95,9 @@ type LivePane = Omit<SavedPane, "env"> & {
    *  newest session when the tab was opened, which may be an older one), replaced by the agent's own exit hint or
    *  a newer listed one. Never written down: a restored tab really runs the id it was restored with. */
   sessionListed?: boolean;
+  /** START-02: the saved conversation this pane was resumed on did not exist; its id is forgotten and the
+   *  pane says so. Live only: `layoutOf` never writes it down. */
+  resumeFailed?: true;
 };
 
 /** What to write down: every tab, stripped to what a restart can rebuild. A chooser that was never
@@ -161,6 +180,20 @@ export function withListedSession<T extends LivePane>(panes: T[], key: number, i
  *  agent knows its session better than its list, source 1 over source 2), never over a settled id. */
 export function withHintedSession<T extends LivePane>(panes: T[], key: number, id: string): T[] {
   return panes.map((p) => (p.key === key && (!p.session || p.sessionListed) ? { ...p, session: id, sessionListed: false } : p));
+}
+
+/** START-02: the pane whose restored conversation could not be resumed forgets it. The saved id and a listed
+ *  guess are deleted (not set undefined), so the next save writes no id and the next start opens the agent
+ *  fresh, and the pane is marked. Other panes are the very same objects in the same order; a pane that is
+ *  already clear and marked is left alone, so a second report of the same failure does not redraw. */
+export function withoutFailedResume<T extends LivePane>(panes: T[], key: number): T[] {
+  return panes.map((p) => {
+    if (p.key !== key || (p.session === undefined && p.sessionListed === undefined && p.resumeFailed === true)) return p;
+    const cleared: LivePane = { ...p, resumeFailed: true };
+    delete cleared.session;
+    delete cleared.sessionListed;
+    return cleared as T;
+  });
 }
 
 /** A saved pane as App's live pane: a saved chooser gets its seat back (the agent it was pre-set to, else blank). */
