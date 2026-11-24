@@ -1694,3 +1694,20 @@ fn a_merge_refuses_before_its_write_when_the_quit_begins_partway() {
     assert!(marker_files(&dir).is_empty(), "nothing was noted");
     let _ = fs::remove_dir_all(&base);
 }
+
+#[test]
+fn audit_r3_f01_an_idle_workspace_mid_merge_is_never_committed_over() {
+    let (base, repo, store) = repo("audit-r3-f01");
+    git_in(&repo, &["checkout", "-q", "-b", "side"]);
+    commit(&repo, "a.txt", "side\n");
+    git_in(&repo, &["checkout", "-q", "main"]);
+    let ws = workspace(&base, &repo, &store, "mid", true);
+    commit(&ws, "a.txt", "mid\n");
+    assert!(!git_try(&ws, &["merge", "side"]), "the merge conflicts");
+    let tip = head(&ws, "HEAD");
+    let got = prepare_retire(&Git::detect().unwrap(), &store, &Terminals::default(), &data(&base), &ws, Some(&repo));
+    assert_eq!(got.err().as_deref(), Some(UNFINISHED), "an unfinished merge must be left, not committed over");
+    assert_eq!(head(&ws, "HEAD"), tip, "no commit was made over the unfinished merge");
+    assert!(fs::read_to_string(ws.join("a.txt")).unwrap().contains("<<<<<<<"), "the conflict markers are still there to resolve");
+    let _ = fs::remove_dir_all(&base);
+}

@@ -33,7 +33,9 @@ export default function KeptBranches({ items, onChange, onSay, onDeleted = () =>
     try {
       // one repository at a time, one branch after another
       for (const batch of keptBatches(items, all)) {
-        results.push(...(await invoke<BranchResult[]>("branch_delete_kept", { projectId: batch.projectId, items: batch.items })));
+        const done = await invoke<BranchResult[]>("branch_delete_kept", { projectId: batch.projectId, items: batch.items });
+        // Each result clears only its own project's item, even when two projects share a branch name (T2-F01).
+        results.push(...done.map((r) => ({ ...r, projectId: batch.projectId })));
       }
     } catch (err) {
       onSay("warn", String(err));

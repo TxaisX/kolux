@@ -1,0 +1,36 @@
+{
+  "id": "LAG-02",
+  "summary": "Counts new window state objects: a repeated, unchanged agent-status, crew, usage or quiet event makes none after the first (putIfChanged, wired into useAgentStatus), and 10 panes animating a title spinner hand the window no identity while it turns and one when it stops (identityPacer).",
+  "tests": [
+    {
+      "runner": "vitest",
+      "file": "src/status/statusChurn.board.test.ts",
+      "name": "LAG-02: a repeated, unchanged status event makes no new state > putIfChanged gives back the same object when nothing changed, a new one for a real change"
+    },
+    {
+      "runner": "vitest",
+      "file": "src/status/statusChurn.board.test.ts",
+      "name": "LAG-02: a repeated, unchanged status event makes no new state > the same agent-status payload 50 times makes one change"
+    },
+    {
+      "runner": "vitest",
+      "file": "src/status/statusChurn.board.test.ts",
+      "name": "LAG-02: a repeated, unchanged status event makes no new state > 10 panes sending unchanged status for 200 ticks make 10 changes, none after the first"
+    },
+    {
+      "runner": "vitest",
+      "file": "src/status/statusChurn.board.test.ts",
+      "name": "LAG-02: a repeated, unchanged status event makes no new state > the agent-status, usage and quiet listeners go through putIfChanged"
+    },
+    {
+      "runner": "vitest",
+      "file": "src/status/statusChurn.board.test.ts",
+      "name": "LAG-02: title frames of an animating agent stay out of the window > 10 panes animating a spinner for 10 seconds hand the window one title each, after the spinner stops"
+    },
+    {
+      "runner": "vitest",
+      "file": "src/status/statusChurn.board.test.ts",
+      "name": "LAG-02: title frames of an animating agent stay out of the window > 10 panes repeating the same title for 100 ticks hand the window nothing after the agent appears"
+    }
+  ]
+}

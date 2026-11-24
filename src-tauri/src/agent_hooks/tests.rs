@@ -15,6 +15,31 @@ fn temp(name: &str) -> PathBuf {
 
 const MINE: &str = "\"C:/Users/me/.kolux/agent-hooks/claude.cmd\" || exit 0";
 
+// ---- AUD-R2: repro for audit/R2/findings.json R2-F05 ----
+
+/// R2-F05: one managed Codex home whose hooks.json cannot be read stops the removal loop, so the
+/// homes after it keep Kolux's entries.
+#[test]
+fn audit_r2_f05_off_clears_every_managed_codex_home_when_one_cannot_be_read() {
+    let profile = temp("R2-F05");
+    let accounts = profile.join(crate::codex_accounts::FOLDER);
+    let bad = accounts.join("a-corrupt");
+    let good = accounts.join("b-good");
+    fs::create_dir_all(&bad).unwrap();
+    fs::create_dir_all(&good).unwrap();
+    fs::write(bad.join("hooks.json"), "{ not json").unwrap();
+    let mut v = json!({ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "keep.cmd" }] }] } });
+    install_codex_hooks(&mut v, MINE);
+    fs::write(good.join("hooks.json"), v.to_string()).unwrap();
+    let homes = managed_codex_homes(&profile);
+    assert_eq!(homes.first(), Some(&bad), "this test needs the unreadable home first: {homes:?}");
+    let out = apply(&profile.join("home"), &profile, &Value::Null, "codex", Plan::Remove);
+    assert!(out.is_err(), "the unreadable home is reported");
+    let left: Value = serde_json::from_str(&fs::read_to_string(good.join("hooks.json")).unwrap()).unwrap();
+    assert_eq!(left, json!({ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "keep.cmd" }] }] } }), "the readable home still lost Kolux's entries");
+    let _ = fs::remove_dir_all(&profile);
+}
+
 /// hooks FIX-2: the tests that read `CLAUDE_CONFIG_DIR` twice (t_152_*) and the one that sets it
 /// for a moment (t_134_b) take turns, so no test sees the variable change between its two reads.
 static CLAUDE_CONFIG_ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -2658,5 +2683,27 @@ fn p3_a_malformed_hooks_value_is_refused_and_the_file_left_as_it_was() {
         assert!(install_claude(&claude, command, "status").is_err(), "{text}");
         assert_eq!(fs::read_to_string(&claude).unwrap(), text, "{text}: the settings are untouched");
     }
+    let _ = fs::remove_dir_all(&dir);
+}
+
+// ---- AUD-R2: repro for audit/R2/findings.json R2-F04 ----
+
+/// R2-F04: a workspace sleep rewrites the save from this run's rows, which is empty before the
+/// first live event, so the other workspaces' restored rows leave the save.
+#[test]
+fn audit_r2_f04_workspace_sleep_keeps_the_other_workspaces_restored_rows_in_the_save() {
+    let _turn = SAVED_ROWS.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = std::env::temp_dir().join(format!("kolux-R2-F04-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let store = crate::state::Store::open(&dir).unwrap();
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    let rows = [Row { at: now - 1000, ..at(71, "working", "r2-a", "T:/r2/ws1") }, Row { at: now - 1000, ..at(73, "waiting", "r2-b", "T:/r2/ws2") }];
+    store.set(saved::SAVED_KEY, &saved::serialize(&rows)).unwrap();
+    saved::startup(&store, &dir);
+    saved::at_sleep(&store, &["T:/r2/ws1".to_string()]);
+    let saved_now = saved::parse(store.get(saved::SAVED_KEY).unwrap().as_deref(), now);
+    assert_eq!(saved_now.iter().map(|r| r.pane_key).collect::<Vec<_>>(), [73], "the sleeping workspace's row leaves the save; the other workspace's restored row stays in it");
+    drop(store);
     let _ = fs::remove_dir_all(&dir);
 }

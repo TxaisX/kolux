@@ -1,0 +1,19 @@
+{
+  "id": "LAG-04",
+  "summary": "The cause of the two 20 s window freezes is unknown, so these tests prove the window now records any main-thread block of 500 ms or more: one capped log line per block naming its duration, start and context, with a fake observer and a fake clock; and any backend command of 100 ms or more: one capped log line naming the command and its duration, with a fake clock.",
+  "tests": [
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "longTask > a block counts from 500 ms; shorter or broken durations do not"},
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "longTask > a 20 s block becomes one record naming its duration, start and context"},
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "longTask > the limiter lets 5 records through per minute and counts the rest as dropped"},
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "longTask > a 20 s freeze leaves exactly one record with the right fields"},
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "longTask > short blocks leave nothing"},
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "longTask > a storm of long blocks is capped, and the cap opens again after a minute"},
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "LAG-04A wiring > the window starts the long-task watch at load"},
+    {"runner": "vitest", "file": "src/recovery/longTask.board.test.ts", "name": "LAG-04A wiring > the record goes to the app log through the existing boot_timing command"},
+    {"runner": "cargo", "file": "src-tauri/src/slow_cmd_board_tests.rs", "name": "slow_cmd::slow_cmd_board_tests::a_command_counts_as_slow_from_100_ms"},
+    {"runner": "cargo", "file": "src-tauri/src/slow_cmd_board_tests.rs", "name": "slow_cmd::slow_cmd_board_tests::a_99_ms_command_leaves_nothing"},
+    {"runner": "cargo", "file": "src-tauri/src/slow_cmd_board_tests.rs", "name": "slow_cmd::slow_cmd_board_tests::a_20_s_command_leaves_exactly_one_line_with_its_name_and_duration"},
+    {"runner": "cargo", "file": "src-tauri/src/slow_cmd_board_tests.rs", "name": "slow_cmd::slow_cmd_board_tests::the_limiter_lets_20_lines_through_per_minute_and_counts_the_rest"},
+    {"runner": "cargo", "file": "src-tauri/src/slow_cmd_board_tests.rs", "name": "slow_cmd::slow_cmd_board_tests::a_storm_of_slow_commands_is_capped_and_opens_again_after_a_minute"}
+  ]
+}

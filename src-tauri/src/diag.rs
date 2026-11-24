@@ -204,6 +204,14 @@ fn scrub_word(word: &str) -> (String, bool) {
         let after = &word[p + 1..];
         if !name.is_empty() && !after.starts_with("//") && (secret_name(name) || (word.as_bytes()[p] == b'=' && env_name(name))) {
             if !after.is_empty() {
+                // HTTP leaves the space out after the colon: "Authorization:Bearer x" keeps its
+                // credential in the next word the way "Authorization: Bearer x" does, so the
+                // scheme word stays and the value after it is masked (R8-F03).
+                let scheme = after.trim_matches(['"', '\'', ',', ';']).to_ascii_lowercase();
+                let header = name.eq_ignore_ascii_case("authorization") || name.eq_ignore_ascii_case("proxy-authorization");
+                if header && matches!(scheme.as_str(), "bearer" | "basic") {
+                    return (word.to_string(), true);
+                }
                 return (format!("{}{}", &word[..=p], masked(after)), false);
             }
             if quoted || EXACT.contains(&name.to_ascii_lowercase().as_str()) {
@@ -592,5 +600,16 @@ secrets: one-off sealing pass sealed 0 settings field(s) and 0 file(s)";
         assert!(!b.contains("BUNDLESECRET"), "{b}");
         assert!(b.contains("ANTHROPIC_API_KEY=[masked] leaked") && b.contains("app start 7, Kolux 0.1.0"), "{b}");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn audit_r8_f03_a_header_without_a_space_still_masks_its_credential() {
+        // HTTP allows `Authorization:Basic <credential>` with no space after the colon; the
+        // base64 of "user:pass" must never reach a diagnostics bundle.
+        let out = scrub("Authorization:Basic dXNlcjpwYXNz");
+        assert!(!out.contains("dXNlcjpwYXNz"), "the credential leaked: {out}");
+        assert!(out.contains(MASK), "nothing was masked: {out}");
+        let out = scrub("Authorization:Bearer abc123def456ghi789");
+        assert!(!out.contains("abc123def456ghi789"), "the bearer token leaked: {out}");
     }
 }

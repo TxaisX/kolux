@@ -72,6 +72,10 @@ fn rules_of(dir: &Path, file: &str) -> Vec<Rule> {
         .map(|l| {
             let negate = l.starts_with('!');
             let l = l.trim_start_matches('!').trim_end_matches('/');
+            // A leading `**/` means "in every folder", as Git reads it: `**/build` hides a build
+            // folder at any depth, the same as an unanchored `build`. Dropping it before the
+            // anchored test is what lets the rule match a folder below the top level too.
+            let l = l.strip_prefix("**/").unwrap_or(l);
             let anchored = l.starts_with('/') || l.contains('/');
             Rule { base: dir.to_path_buf(), glob: l.trim_start_matches('/').replace("**/", "").replace("**", "*"), anchored, negate }
         })
@@ -579,5 +583,16 @@ mod tests {
         assert_eq!(labels(root, &b), ["lib", "two/app", "one/app"], "the same label for the same path in any order");
         let deep = vec![root.join("a/x/app"), root.join("b/x/app")];
         assert_eq!(labels(root, &deep), ["a/x/app", "b/x/app"]);
+    }
+
+    #[test]
+    fn audit_r3_f05_a_double_star_ignore_hides_a_folder_at_any_depth() {
+        let root = temp("audit-f05");
+        fs::write(root.join(".gitignore"), "**/build\n").unwrap();
+        repo(&root.join("build"));
+        repo(&root.join("a").join("build"));
+        let (found, _) = run(&root, &LIMITS, &|| false);
+        assert!(rel(&root, &found).is_empty(), "`**/build` hides build at any depth, found {:?}", rel(&root, &found));
+        let _ = fs::remove_dir_all(&root);
     }
 }

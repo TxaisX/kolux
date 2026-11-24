@@ -1,0 +1,663 @@
+{
+  "area": "T2",
+  "files": [
+    {
+      "path": "src/projects/AddProject.tsx",
+      "symbols": [
+        "AddProjectView",
+        "ViewProps",
+        "nextChoice",
+        "closeAction"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the add-project wizard: clone, open and new-folder steps, busy guards and the ticket that keeps a late answer from closing a newer form. The transitions and draft handling are consistent; no provable defect."
+    },
+    {
+      "path": "src/projects/AttachedTabs.tsx",
+      "symbols": [
+        "AttachedWorktreesTab",
+        "FolderChecksTab"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the attached-worktree and PR-check tabs; rows come from the pure helpers and reload on the shared timer. Caller data is keyed by path. No defect found."
+    },
+    {
+      "path": "src/projects/CacheTimer.tsx",
+      "symbols": [
+        "CacheTimerView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the cache countdown component; it renders the pure cache text and clears its timer on unmount. No defect found."
+    },
+    {
+      "path": "src/projects/CleanupDialog.tsx",
+      "symbols": [
+        "CleanupDialog",
+        "ticksRef",
+        "rescan",
+        "listed"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the cleanup dialog: scan, remember, rescan, tick carry-over, size loading and the remove adapter. State is keyed by path and stale answers are discarded by scan id; no provable defect."
+    },
+    {
+      "path": "src/projects/FolderRenameAsk.tsx",
+      "symbols": [
+        "FolderRenameAsk",
+        "useFolderOffers"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the folder-rename offer card; it renders the offer and calls the move only on confirm. No defect found."
+    },
+    {
+      "path": "src/projects/IconPicker.tsx",
+      "symbols": [
+        "IconPicker",
+        "Glyph"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the icon picker: emoji, built-in icon and image choices, with size and type checks before reading a file. No defect found."
+    },
+    {
+      "path": "src/projects/IconView.tsx",
+      "symbols": [
+        "ProjectIcon"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the icon renderer; unknown built-in names fall back to a folder as documented. No defect found."
+    },
+    {
+      "path": "src/projects/KeptBranches.tsx",
+      "symbols": [
+        "KeptBranches",
+        "keyOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the kept-branch notice; it merges results from several projects into one list and calls keptAfter with them. This is the caller of the T2-F01 defect; the notice itself only reports what the model returns."
+    },
+    {
+      "path": "src/projects/MessageNote.tsx",
+      "symbols": [
+        "MessageNote"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the sidebar message component; a note clears through its caller and an undo runs only when present. No defect found."
+    },
+    {
+      "path": "src/projects/Picker.tsx",
+      "symbols": [
+        "Picker",
+        "PickItem"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the searchable picker; filtering, keyboard take and close paths are bounded and keep the marked item valid. No defect found."
+    },
+    {
+      "path": "src/projects/ProjectsPanel.tsx",
+      "symbols": [
+        "showScanned",
+        "sweepWorktrees",
+        "askCard",
+        "runNote",
+        "standIn",
+        "projectBlock"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 3002 lines: project list loading, workspace scan gate and poll, create and remove flows, context menus, filters, pin, sleep, drag and drop, Everyday chats and settings writes. The three delete flows and the two scan answers were compared with their pure helpers; no defect beyond the cleanup model finding in another file."
+    },
+    {
+      "path": "src/projects/ScanRepos.tsx",
+      "symbols": [
+        "ScanRepos",
+        "lastSegment",
+        "start",
+        "stop"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the repository scan dialog: start, stop, found rows, tick state and the finished summary. Stop keeps what was found and a late event from another scan id is ignored; no provable defect."
+    },
+    {
+      "path": "src/projects/SetupCard.tsx",
+      "symbols": [
+        "SetupCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the setup suggestion card; it shows the card view and saves only when the view has save arguments. No defect found."
+    },
+    {
+      "path": "src/projects/ShortcodeInput.tsx",
+      "symbols": [
+        "ShortcodeInput",
+        "Shortcode"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the shortcode input: caret reading, suggestion list, keyboard handling and composing guards. The list closes on blur and outside press; no provable defect."
+    },
+    {
+      "path": "src/projects/StartGit.tsx",
+      "symbols": [
+        "StartGit",
+        "firstCommitLine"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the start-a-repository card; the first file and missing-repository paths are bounded and the buttons map to distinct actions. No defect found."
+    },
+    {
+      "path": "src/projects/StatusEditorForm.tsx",
+      "symbols": [
+        "StatusEditor",
+        "StatusRow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the status editor form; rows move within bounds and saving is refused when no label is left. No defect found."
+    },
+    {
+      "path": "src/projects/WorktreePalette.tsx",
+      "symbols": [
+        "dirMonitoring",
+        "worktreeItems",
+        "chipFilter",
+        "paletteRows",
+        "chipLabel",
+        "addChip"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the worktree palette: item build, scoring, section order, chip filters, keyboard budget and the paste path. Rows are keyed by path and the empty and pasted cases stay bounded; no provable defect."
+    },
+    {
+      "path": "src/projects/attachedTabs.ts",
+      "symbols": [
+        "attachedRows",
+        "rollupLine"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the attached rows and PR rollup helpers; cycles are cut, dismissed checks are left out and the worst result wins. No defect found."
+    },
+    {
+      "path": "src/projects/baseHint.ts",
+      "symbols": [
+        "isBehindHint"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the base-behind hint rules; the pattern is anchored and the dismissed setting is read as a flag. No defect found."
+    },
+    {
+      "path": "src/projects/bulkRemove.ts",
+      "symbols": [
+        "runBulk",
+        "lossKinds"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the bulk removal model; children are ordered first, a slow removal is marked without blocking siblings, and a parent waits for every child before it starts. Counts and the refusal path agree with the dialog; no provable defect."
+    },
+    {
+      "path": "src/projects/cache.ts",
+      "symbols": [
+        "cacheDue"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the prompt-cache timer rules; off is the default, only done or interrupted Claude panes count and the soonest time wins. No defect found."
+    },
+    {
+      "path": "src/projects/cardAsk.ts",
+      "symbols": [
+        "cardProjectOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the setup-card ask ticket; only the newest ask may answer. No defect found."
+    },
+    {
+      "path": "src/projects/cleanup.ts",
+      "symbols": [
+        "childrenFirst",
+        "keptAfter",
+        "keptBatches",
+        "arrangeRows"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "T2-F01"
+      ],
+      "note": "Read the cleanup model: shown rows, tick carry-over, child-first order, kept-branch batches and the filters, search and sorts. keptAfter at line 131 drops a pending branch by name alone, so a delete in one project also removes another project's same-named branch."
+    },
+    {
+      "path": "src/projects/commands.ts",
+      "symbols": [
+        "PROJECT_COMMANDS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the palette command list and event helper; ids are checked before dispatch. No defect found."
+    },
+    {
+      "path": "src/projects/deleting.ts",
+      "symbols": [
+        "blocker",
+        "skipsQuestion"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the delete checks and question rules; blocking, clean, commits, force and batch order are consistent with the dialog. No provable defect."
+    },
+    {
+      "path": "src/projects/details.ts",
+      "symbols": [
+        "itemFromPaste",
+        "commentBlocks"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the details form helpers; pasted links are normalized, only web addresses open and inline spans are bounded. No defect found."
+    },
+    {
+      "path": "src/projects/draft.ts",
+      "symbols": [
+        "restoreField"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read restoreField; it only fills a field that is still empty. No defect found."
+    },
+    {
+      "path": "src/projects/everyday.ts",
+      "symbols": [
+        "everydayItems",
+        "samePlace"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Everyday folder rules; paths compare case and separator insensitively and kept chats are matched by id. No defect found."
+    },
+    {
+      "path": "src/projects/everydayChats.ts",
+      "symbols": [
+        "readEverydayChats",
+        "putEverydayChat",
+        "dropEverydayChat",
+        "everydayChatsOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Everyday chat records: read, upsert, rename and drop, with bad records dropped and ids kept stable. The pure list operations preserve order and never duplicate an id; no provable defect."
+    },
+    {
+      "path": "src/projects/filter.ts",
+      "symbols": [
+        "filtersFrom",
+        "rowShown"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the filter values and row rules; project selection, default-row and sleeping exceptions agree with the checklist. No defect found."
+    },
+    {
+      "path": "src/projects/folderRename.ts",
+      "symbols": [
+        "offerFrom",
+        "moveFolder"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the folder rename offer; it is made only for a renamed branch and the move uses the back end. No defect found."
+    },
+    {
+      "path": "src/projects/folderSessions.ts",
+      "symbols": [
+        "FolderSession"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the folder session type; it carries the pane key and title used by the sidebar. No defect found."
+    },
+    {
+      "path": "src/projects/folderWorkspace.ts",
+      "symbols": [
+        "attachedTo",
+        "folderResult"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the attached-folder walk and worst-check rollup; cycles are cut and dismissed checks do not count. No defect found."
+    },
+    {
+      "path": "src/projects/frontRow.ts",
+      "symbols": [
+        "frontProjectRow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the front-project selector and its two readers; both use the same marked row. No defect found."
+    },
+    {
+      "path": "src/projects/gridScan.ts",
+      "symbols": [
+        "scanGridOwners"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the start-time grid owner scan; a failed answer adds no owner and the pool helper does the fan-out. No defect found."
+    },
+    {
+      "path": "src/projects/groupMembers.ts",
+      "symbols": [
+        "projectsInGroup"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read projectsInGroup; it takes the group and every sub-group and ignores every other group. No defect found."
+    },
+    {
+      "path": "src/projects/groups.ts",
+      "symbols": [
+        "groupTree",
+        "groupChoices"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the group tree and choices; the tree puts groups before projects and cuts a cycle by keeping the newer parent. No defect found."
+    },
+    {
+      "path": "src/projects/headers.ts",
+      "symbols": [
+        "headerLabels"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the header labels; only clashing names get a path hint and the hint is cut in the middle. No defect found."
+    },
+    {
+      "path": "src/projects/jump.ts",
+      "symbols": [
+        "topButtonAllowed",
+        "filtersToClear"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the scroll-to-top, filter clearing and delayed row reveal; thresholds and the retry count are bounded. No defect found."
+    },
+    {
+      "path": "src/projects/menu.ts",
+      "symbols": [
+        "projectMenu",
+        "rowMenu",
+        "menuMove",
+        "menuGaps"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the context menu model and keyboard move; separating lines only change drawing and disabled parts are reported in the note. Submenus and removals map to the same ids the panel runs; no provable defect."
+    },
+    {
+      "path": "src/projects/missingFolders.ts",
+      "symbols": [
+        "findMissing"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the missing-folder check; a failed lookup flags nothing and the listener is removed with the effect. No defect found."
+    },
+    {
+      "path": "src/projects/model.ts",
+      "symbols": [
+        "placeFieldAction",
+        "matchLetters",
+        "middle",
+        "prefixSample",
+        "workItem",
+        "splitGitSaid"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the shapes and pure helpers: labels, relative paths, nesting, parent choices, preview text, matching, ranking, path hints, shortcodes, work items and the create notes. Edge cases for empty lists, cycles and detached heads are handled; no provable defect."
+    },
+    {
+      "path": "src/projects/nav.ts",
+      "symbols": [
+        "navTarget",
+        "queryWords"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read keyboard targets, history visit and travel, text folding and palette scoring; wrapping, caps and typo limits are bounded. No defect found."
+    },
+    {
+      "path": "src/projects/order.ts",
+      "symbols": [
+        "inSavedOrder",
+        "dropBefore"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read saved order helpers; unknown ids are dropped, drops before a sibling keep the rest in order and drag start is stable. No defect found."
+    },
+    {
+      "path": "src/projects/outsideCard.ts",
+      "symbols": [
+        "outsideCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the outside-workspace card rules; empty, dismissed and collapsed states hide it and rows without another row go under the header. No defect found."
+    },
+    {
+      "path": "src/projects/parentDrop.ts",
+      "symbols": [
+        "parentDropTarget"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the drop bands and parent target; self, descendants, main and the current parent are refused. No defect found."
+    },
+    {
+      "path": "src/projects/projectIcon.ts",
+      "symbols": [
+        "iconView",
+        "autoIconView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the icon values and automatic icon choice; unknown names fall back and image values are capped and type checked. No defect found."
+    },
+    {
+      "path": "src/projects/renameOnWork.ts",
+      "symbols": [
+        "renameOnFirstPrompt",
+        "promptTarget"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the rename-on-first-prompt flow; the ask is made once per folder, failures are remembered and listeners are removed. No defect found."
+    },
+    {
+      "path": "src/projects/rows.ts",
+      "symbols": [
+        "asleepAfter",
+        "sleepPlan",
+        "showSleepingFrom",
+        "sessionsUnder"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the row info, grouping and ordering rules; live state, cache and pull request states are keyed by path and sorting is stable. No provable defect."
+    },
+    {
+      "path": "src/projects/scanView.ts",
+      "symbols": [
+        "take",
+        "stopNow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the scan event fold; another scan id and a duplicate repository change nothing, and stop keeps what was found. No defect found."
+    },
+    {
+      "path": "src/projects/selection.ts",
+      "symbols": [
+        "clickRow",
+        "batchQuestion"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read selection toggling and the batch delete question; paths are compared through the caller's same and blocked rows separate the question. No defect found."
+    },
+    {
+      "path": "src/projects/settingWrite.ts",
+      "symbols": [
+        "applySettings",
+        "rebaseSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settings write queue; a second write builds on the latest cell and a page rebase keeps only what it changed. No defect found."
+    },
+    {
+      "path": "src/projects/setupSuggestion.ts",
+      "symbols": [
+        "cardView",
+        "saveArgs"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the setup card view and save arguments; a missing save id leaves the button off and skipped fields are named. No defect found."
+    },
+    {
+      "path": "src/projects/shortcodes.ts",
+      "symbols": [
+        "flagOf",
+        "shortcodeAt",
+        "suggest",
+        "rank"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the emoji tables, flag lookup, shortcode insertion and ranking. The flag lookup is only called with fixed ISO codes, so odd input cannot reach it; the editing helpers keep the caret in range. No provable defect."
+    },
+    {
+      "path": "src/projects/singleFolder.ts",
+      "symbols": [
+        "ownFoldersOn"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the own-folder switch; only a saved false turns it off and the note matches the state. No defect found."
+    },
+    {
+      "path": "src/projects/startArgs.ts",
+      "symbols": [
+        "startFields"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read startFields; the line's program wins over the fallback and env is passed as is. No defect found."
+    },
+    {
+      "path": "src/projects/statusEditor.ts",
+      "symbols": [
+        "moveRow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the status row helpers; moves stay in range, blank labels are left out and one label is required. No defect found."
+    },
+    {
+      "path": "src/projects/statusRefresh.ts",
+      "symbols": [
+        "onWorkspaceStatus"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the status event helper; it returns the remover for unmount. No defect found."
+    },
+    {
+      "path": "src/projects/suggest.ts",
+      "symbols": [
+        "takeSuggestion"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read takeSuggestion; an untouched field follows the newest name and a typed one stays. No defect found."
+    },
+    {
+      "path": "src/projects/usePrPoll.ts",
+      "symbols": [
+        "usePrPoll",
+        "pollKey"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the PR poll effect; it backs off after failures, honors the rate limit, stops after unmount and refreshes on focus or finish. No defect found."
+    },
+    {
+      "path": "src/projects/useWorkspaces.ts",
+      "symbols": [
+        "useWorkspaces",
+        "useWorkspaceActions"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the projects and actions hooks; startup reads once, removal picks the next active dir and start panes are built from the seat ports. No provable defect."
+    },
+    {
+      "path": "src/projects/workspaceStart.ts",
+      "symbols": [
+        "startPanes"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read startPanes and createStart; panes are built from the seat and the front flag follows the shown folder. No defect found."
+    },
+    {
+      "path": "src/projects/worktreeGrid.ts",
+      "symbols": [
+        "gridRootsOf",
+        "worktreeColors",
+        "worktreeTag",
+        "readGridMap"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the grid root map, colours, tags, start dirs and the saved map readers. A project's own folder is never remapped and bad saved values are dropped; no provable defect."
+    },
+    {
+      "path": "src/projects/worktreeScan.ts",
+      "symbols": [
+        "scanProjects",
+        "ScanGate"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the project scan pool and gate; answers arrive per project, errors do not stop the rest and one scan runs at a time. No defect found."
+    },
+    {
+      "path": "src/projects/autoLand.ts",
+      "symbols": [
+        "autoLandWanted"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the auto-merge setting helpers; the old field name is read, the default is off and both notes match the switch. No defect found."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+// AUD-S4 F01: coverage's liveIdsOf() is documented as reading "every id a live check carries, from its file name
+// and its text", but the comment scan's word boundaries are backspace bytes, so an id that appears only inside a
+// live check's // header is never found. This test names a real one without writing the id literally, so the
+// generated tests/coverage.md counts do not move when this file is present.
+import { expect, it } from "vitest";
+import { liveIdsOf } from "./coverage.mjs";
+
+it("[S4-F01] liveIdsOf reads a task id from a live check's comment, not only from its file name", () => {
+  const id = ["PROJ", "038"].join("-");
+  expect([...liveIdsOf()]).toContain(id);
+});

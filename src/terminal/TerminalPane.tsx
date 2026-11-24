@@ -3,6 +3,7 @@
 // The card and its header follow design/DESIGN.md section 7: status icon, agent mark, title,
 // branch chip, program, status word; then gauge, more, expand, split, close on the right.
 import { trapTab } from "../chrome/dialogFocus";
+import Ask from "../chrome/Ask";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, statusAgent, takesInband, type Crew } from "./status";
 import WorktreeChip from "../shell/WorktreeChip";
@@ -11,7 +12,9 @@ import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
-import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
+import { canSendToMain, LAND_EVENT, landChip, landFlash, landStep, recordFor, SEND_TO_MAIN, SEND_TO_MAIN_ID, SEND_TO_MAIN_TIP } from "./landState";
+import { baseArgs, contextText, sessionMenuActions, type Launch } from "./sessionFork";
+import { exitBanner, type ExitBanner } from "./exitBanner";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
 import { shellIconOf, type ShellEntry } from "./shellChoice";
@@ -24,7 +27,7 @@ import { ChipRow } from "../status/ChipRow";
 import type { AgentState } from "../projects/rows";
 import { invoke } from "@tauri-apps/api/core";
 import { withMilestones } from "../onboarding/milestoneNote";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Terminal, type ITerminalAddon } from "@xterm/xterm";
 import { xtermLogger } from "./xtermLogger";
@@ -38,11 +41,12 @@ import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
 import { AUTO, autoSender, trackInputSource } from "./inputSource";
 import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, holdsBeforeBind, type ExitEvent } from "./codec";
+import { isFailedResume, RESUME_FAILED_NOTE } from "./layout";
 import { sizeGate } from "./sizeGate";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
-import { onTerminalOutput, onTerminalExit } from "./outputBus";
+import { listenShared as listen, onTerminalOutputRouted, onTerminalExit, type RoutedOutput } from "./outputBus";
 import { notePrinted } from "./printedAddresses";
-import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
+import { afterReplay, encodeHistory, replay, replayGate, viewTop, type Rows } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
 import { fromThisService, needsSize, orphanOf, reattach, warmAskOf, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
@@ -166,6 +170,8 @@ type Props = {
   clipboardFromPrograms?: boolean;
   /** TERM-107 (T-066-c): false when the restored agent's start line carries no resume form. */
   resumed?: boolean;
+  /** START-02: the restored conversation could not be resumed (it was never saved); the window forgets its id. */
+  onResumeFailed?: () => void;
   /** The session failed to start (SESS-024: the window drops the pane rather than leaving it blank). */
   onFailed?: (error: string) => void;
   /** C24-R1-01: a restored tab could not take its terminal back; the window keeps it and stops
@@ -248,6 +254,11 @@ type Props = {
   };
 };
 
+// START-06: START-04 widened the exit event with the reason it ended and its last output line;
+// codec.ts's ExitEvent predates that and is not this card's to change, so the listener names the
+// wider payload itself.
+type ExitPayload = ExitEvent & { reason?: string; lastLine?: string; secs?: number };
+
 // APP-052: the terminal service as the pane reaches it (reattach.ts is tested over a fake one).
 const tauriService = {
   info: () => invoke<ServiceInfo>("terminal_service_info"),
@@ -272,7 +283,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, cwd = null, branch = null, worktree = null, onWorktree, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onChat, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, cwd = null, branch = null, worktree = null, onWorktree, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, onResumeFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onChat, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -325,6 +336,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   const [renderer, setRenderer] = useState<RendererMode | null>(null);
   // TERM-065: a short line in the header when the clipboard refused a copy; the selection stays.
   const [flash, setFlash] = useState<string | null>(null);
+  // LAND-05: every workspace's last land or take-in, for the header chip; null until the backend answers.
+  const [landRecords, setLandRecords] = useState<unknown>(null);
+  // LAND-05: the question Send to main asks first, held while the dialog is drawn.
+  const [landAsk, setLandAsk] = useState<{ path: string; question: { title: string; body: string; confirm: string } } | null>(null);
   useEffect(() => {
     if (!focused) return;
     const fn = (op: "copy" | "selectAll") => {
@@ -350,6 +365,34 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
     const t = setTimeout(() => setFlash(null), 6000);
     return () => clearTimeout(t);
   }, [flash]);
+  // LAND-05: the chip follows the workspace's last land, live: the backend emits the event after every land.
+  const landFolder = worktree?.path ?? null;
+  useEffect(() => {
+    if (!landFolder) {
+      setLandRecords(null);
+      return;
+    }
+    let live = true;
+    const load = () => {
+      invoke<Record<string, unknown>>("workspace_land_states").then(
+        (all) => {
+          if (live) setLandRecords(all);
+        },
+        () => {
+          if (live) setLandRecords(null);
+        },
+      );
+    };
+    load();
+    const stop = listen(LAND_EVENT, () => load());
+    return () => {
+      live = false;
+      void stop.then(
+        (off) => off(),
+        () => {},
+      );
+    };
+  }, [landFolder]);
   // TERM-107: a restored pane wears a mark in its header until the first key or click in it; an agent
   // pane whose start line does not resume its conversation is marked as restored without resume.
   // T-566: decided from the props at the first paint, not after the restore's first IPC answers.
@@ -358,6 +401,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   // pane; restart() re-runs the start line, or opens a plain shell, keeping the buffer.
   const [died, setDied] = useState<number | null>(null);
   const restart = useRef<(shell: boolean) => void>(() => {});
+  // START-06: an agent whose program ended by itself with an error shows why and offers Start fresh;
+  // a pane Kolux closed shows nothing. startFresh() starts the same agent again in this pane.
+  const [exitNote, setExitNote] = useState<ExitBanner | null>(null);
+  const startFresh = useRef<() => void>(() => {});
   // C24-R1-01: a tab that came back from the saved layout and could not take its terminal back keeps
   // its place, with the reason and a Try again; the layout keeps its key, so its saved output survives.
   const [restoreAsk, setRestoreAsk] = useState<string | null>(null);
@@ -465,6 +512,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   failed.current = onFailed;
   const restoreFailed = useRef(onRestoreFailed);
   restoreFailed.current = onRestoreFailed;
+  // START-02: the window forgets the saved conversation; read through a ref like the callers above.
+  const resumeFailed = useRef(onResumeFailed);
+  resumeFailed.current = onResumeFailed;
+  // START-02: how a resume is judged to have failed: when THIS run began, and whether its agent has said
+  // anything since. The window clears `hook` when its program stops, so the prop at exit is too late.
+  const runBegan = useRef(0);
+  const hookSeen = useRef(false);
+  if (hook !== undefined) hookSeen.current = true;
 
   useEffect(() => {
     report.current?.(runningOf(status.kind));
@@ -721,6 +776,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
       else if (id === idRef.current) run();
     };
     const unlisteners: UnlistenFn[] = [];
+    // LAG-10: this pane's output reader, routed to the terminal it is bound to so the page hands it only
+    // its own chunks. It starts unrouted (every chunk, while the id is unknown) and follows the bind.
+    let routed: RoutedOutput | null = null;
     // TERM-098: output drawn before terminal_spawn hands back the id can hold the console's
     // opening cursor query; the terminal's answer goes through write() like a key, so it is held
     // here and sent once the id is known, or the shell never starts.
@@ -940,7 +998,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         ...(await Promise.all([
         // TERM-098: a chunk tagged with this pane's key is drawn at once, before terminal_spawn answers;
         // anything else that arrives first is held until the id is known and replayed then.
-        onTerminalOutput((e) => {
+        onTerminalOutputRouted((e) => {
           // APP-052: output from a replaced run of the terminal service is dropped, never drawn.
           if (!fromThisService(e.generation, serviceRef.current)) return;
           const draw = () => {
@@ -968,11 +1026,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
           if (idRef.current === null && !(moved || restored) && forPane(e, null, number)) draw();
           // FT-5 (review 0.2.0): before the id is known only this pane's chunks (or untagged ones) are held.
           else if (idRef.current !== null || holdsBeforeBind(e, number)) mine(e.id, draw);
+        }).then((r) => {
+          routed = r;
+          return r.stop;
         }),
         listen<{ terminal: number; agent: string | null }>("pane-agent", (e) =>
           mine(e.payload.terminal, () => setFound(foundAgent(e.payload.agent))),
         ),
-        onTerminalExit<ExitEvent>((e) =>
+        onTerminalExit<ExitPayload>((e) =>
           mine(e.payload.id, () => {
             ended = true;
             openGate(); // whatever a shell printed before dying is shown with its exit
@@ -984,14 +1045,29 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             // off now that it is gone, so the shell that follows works normally; a program still running is never touched.
             term.write(resetAfterExit(modeView(term.modes), term.buffer.active.type === "alternate"));
             kitty.reset(); // VIEW-109: the key protocol resets cleanly after the program exits
+            // START-06: the banner's line is the program's own last row, read before the pane writes
+            // its end note; START-04's masked line wins when the exit event carried one.
+            const lastLine = e.payload.lastLine ?? lastShownLine(term.buffer.active);
           term.write(`\r\n\x1b[90m[process ${endedLabel(e.payload.code, e.payload.outcome)}]\x1b[0m\r\n`);
+            // START-02: a conversation resumed on a saved id that was never saved dies at once, before its
+            // agent says anything. The pane says so and tells the window, which forgets the id, so the next
+            // start opens the agent fresh instead of failing the same way for ever.
+            if (isFailedResume({ resumed: !!resumed, code: e.payload.code, aliveMs: Date.now() - runBegan.current, hookSeen: hookSeen.current, outcome: e.payload.outcome })) {
+              term.write(`\x1b[90m${RESUME_FAILED_NOTE}\x1b[0m\r\n`);
+              resumeFailed.current?.();
+            }
             setStatus({ kind: "ended", code: e.payload.code });
             // TERM-111: a shell that exited by itself closes its pane (its neighbours take the space and
             // the tab goes with its last pane); one that died stays, with the exit code and a Restart;
             // an agent pane keeps what its program printed and Enter starts a shell in it.
             const code = e.payload.code;
-            if (agent !== "shell") term.write("\x1b[90mEnter starts a shell here\x1b[0m\r\n");
-            else if (e.payload.outcome === "unverifiable") return; // ORCH-057: not known to have exited cleanly, so it stays
+            if (agent !== "shell") {
+              term.write("\x1b[90mEnter starts a shell here\x1b[0m\r\n");
+              // START-06: the program ended by itself with an error: say why and offer the same agent
+              // again without its resume arguments. A pane Kolux closed shows nothing: its exit code
+              // (1 on Windows) cannot tell the two ends apart, which is why START-04's reason decides.
+              setExitNote(exitBanner({ reason: e.payload.reason === "exited" ? "exited" : "closed", code, lastLine, resumed: resumed === true }));
+            } else if (e.payload.outcome === "unverifiable") return; // ORCH-057: not known to have exited cleanly, so it stays
             else if (code === 0 || code === null) closeRef.current?.();
             else setDied(code);
           }),
@@ -1029,6 +1105,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             return;
           }
           idRef.current = id;
+          routed?.route(id); // LAG-10: from here this pane's reader hears this terminal's chunks only
           sizes.reset(); // FT-4: a newly bound terminal hears its size again
           takeOver(number); // DT-C248: the hand-over ends here, with the terminal bound to this view
           // DT-C248 review: a terminal taken back is sized to its old view; the observer fired during the
@@ -1042,6 +1119,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             });
           }
           setStatus({ kind: "running", id, account: used });
+          // START-02: each run of the program is judged on its own clock and on its own hook events,
+          // counted from the moment the terminal is up (a slow spawn is not the agent's running time).
+          runBegan.current = Date.now();
+          hookSeen.current = false;
           const queued = early ?? [];
           early = null;
           for (const h of queued) if (h.id === id) h.run();
@@ -1059,12 +1140,30 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         if (!alive) return;
         ended = false;
         idRef.current = null;
+        routed?.route(null); // LAG-10: no terminal bound, so this pane hears every chunk again
         early = [];
         setDied(null);
+        setExitNote(null); // START-06: a program is starting again, so its end banner goes
         // FIX-1: an agent pane that got a shell on Enter is asked about as a shell (terminal/remove.ts classify).
         markShell(shellInAgentPane, number, shell, agent);
         setStatus({ kind: "starting" });
         void start(shell ? null : program, shell ? [] : args, false);
+      };
+      // START-06: Start fresh starts the pane's program again in place, without the resume / continue /
+      // fork arguments of its first start line; a resumed pane tells the window to forget the old id
+      // before the new conversation claims its own (START-02).
+      startFresh.current = () => {
+        if (!alive) return;
+        setExitNote(null);
+        if (resumed) resumeFailed.current?.();
+        ended = false;
+        idRef.current = null;
+        routed?.route(null); // LAG-10: no terminal bound, so this pane hears every chunk again
+        early = [];
+        setDied(null);
+        markShell(shellInAgentPane, number, false, agent);
+        setStatus({ kind: "starting" });
+        void start(program, baseArgs(agent, args), false);
       };
       // C24-R1-01: Try again asks the service for the terminal once more and starts on the answer. The
       // saved output is already on screen, so nothing is replayed a second time.
@@ -1645,6 +1744,30 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   // PaneMenu moves itself back inside the window once it knows its own size.
   const openMenu = (x: number, y: number) => setMenuAt({ top: y, left: x, selected: !!termRef.current?.hasSelection() });
   menuRef.current = openMenu;
+  // LAND-05: the header chip for this workspace's last land, and the menu's Send to main.
+  const land = landChip(recordFor(landRecords, worktree?.path));
+  const sendPath = worktree && canSendToMain(worktree) ? worktree.path : null;
+  const landNow = async (path: string) => {
+    try {
+      setFlash(landFlash(await invoke("workspace_land", { path })));
+    } catch {
+      setFlash(landFlash(null));
+    }
+  };
+  const sendToMain = async () => {
+    const path = sendPath;
+    if (path === null) return;
+    let preview: unknown;
+    try {
+      preview = await invoke("workspace_land_preview", { path });
+    } catch {
+      preview = null;
+    }
+    const step = landStep(preview);
+    if (step.kind === "stop") setFlash(step.text);
+    else if (step.kind === "go") await landNow(path);
+    else setLandAsk({ path, question: step.question });
+  };
 
   return (
     <section ref={box} className={`pane${focused ? " focused" : ""}${glow || unread ? " glow" : ""}${unread ? " unread" : ""}${card ? " card" : ""}${card?.expanded ? " expanded" : ""}`} hidden={hidden} aria-label={`${title} pane`} data-testid="terminal-pane" onMouseDown={onFocus} data-agent={shown} data-key={number} data-dropping={dropping || undefined} style={{ ...(card?.column ? { gridColumn: card.column } : {}), ...(dropping ? { outline: "2px solid var(--line-focus)", outlineOffset: -2 } : {}) }}>
@@ -1710,6 +1833,11 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         ) : chip && (
           <span className="chip" title={chip.tip}>
             {chip.text}
+          </span>
+        )}
+        {land && (
+          <span className="chip" data-land-chip style={{ color: land.color }} title={land.tip}>
+            {land.text}
           </span>
         )}
         {/* SESS-025: the start line shown back leaves out the rules block of a side-by-side launch. */}
@@ -1862,6 +1990,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             agentActions: [
               ...(onReviewPlan ? [{ id: "reviewPlan", name: "Review plan", title: "Read the plan, comment on it, then approve or ask for changes", run: onReviewPlan }] : []),
               ...sessionMenuActions({ agent, session, program, args, cwd, branch, title: jobTitle }, { launch: onSessionLaunch, askFork: setForkAsk, copy: copyContext }),
+              ...(sendPath !== null ? [{ id: SEND_TO_MAIN_ID, name: SEND_TO_MAIN, title: SEND_TO_MAIN_TIP, run: () => void sendToMain() }] : []),
             ],
             onSplit,
             onEqualize,
@@ -1957,6 +2086,18 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         </div>
       )}
       <div ref={host} className="pane-body" />
+      {/* START-06: an agent whose program ended by itself with an error says why and starts fresh in place. */}
+      {exitNote && (
+        <div className="notice" role="status" style={{ margin: "0 8px 8px", alignItems: "center" }}>
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={exitNote.lastLine ?? exitNote.title}>
+            {exitNote.title}
+            {exitNote.lastLine && <span style={{ marginLeft: 8, color: "var(--fg-muted)", fontFamily: "var(--mono-font)" }}>{exitNote.lastLine}</span>}
+          </span>
+          <button className="btn" style={{ flex: "none", marginLeft: "auto" }} onClick={() => startFresh.current()}>
+            Start fresh
+          </button>
+        </div>
+      )}
       {finding && <FindBar focusTick={findTick} count={hits.count} current={hits.current} slow={hits.slow} onSearch={runFind} onStep={stepFind} onClose={closeFind} onFocus={onFocus} />}
       {notice && (
         <div className="pane-ask" onMouseDown={(e) => e.stopPropagation()}>
@@ -2088,8 +2229,32 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
           </div>
         </div>
       )}
+      {landAsk && (
+        <Ask
+          title={landAsk.question.title}
+          body={landAsk.question.body}
+          confirm={landAsk.question.confirm}
+          safe
+          onConfirm={() => {
+            const path = landAsk.path;
+            setLandAsk(null);
+            void landNow(path);
+          }}
+          onCancel={() => setLandAsk(null)}
+        />
+      )}
     </section>
   );
+}
+
+/** START-06: the last row with text in the pane, for the banner when the exit event carries no line.
+ *  Read before the pane writes its own `[process ...]` end note, so the note is not the last line. */
+function lastShownLine(buf: Rows): string | null {
+  for (let y = buf.length - 1; y >= 0; y--) {
+    const text = buf.getLine(y)?.translateToString(true) ?? "";
+    if (text.trim() !== "") return text;
+  }
+  return null;
 }
 
 /** The model a start line asks for (`--model x`), for the pane header. */

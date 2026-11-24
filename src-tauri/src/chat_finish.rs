@@ -322,10 +322,23 @@ fn finish_blocked(project_dir: &Path, wt: &Path, branch: &str, kept: &Path, b: B
     if b.nested.is_empty() {
         saved_in_git = auto_pr::commit_step(wt).map(|s| matches!(s.kind.as_str(), "done" | "clean")).unwrap_or(false);
     }
-    // What could not go into git goes out as plain files: changed files, and any repository inside.
+    // What could not go into git goes out as plain files: changed files, any repository inside, and
+    // every file of an untracked folder. Git reports such a folder as one entry ending in '/', so
+    // skipping those entries would throw away whatever the folder holds (drafts/plan.md and the like)
+    // when the folder is removed below.
     if !saved_in_git {
         for (x, rel) in status_entries(wt, false) {
-            if x == '!' || rel.ends_with('/') {
+            if x == '!' {
+                continue;
+            }
+            if rel.ends_with('/') {
+                // A repository inside is copied by the loop after this one, whole and unchanged.
+                let dir = rel.trim_end_matches('/');
+                if !b.nested.iter().any(|n| n == dir) {
+                    if let Some(a) = keep_folder(wt, dir, kept) {
+                        out.push(a);
+                    }
+                }
                 continue;
             }
             if let Some(a) = keep_file(wt, &rel, kept) {

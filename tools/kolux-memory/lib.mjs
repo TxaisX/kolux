@@ -61,13 +61,18 @@ const SECRETS = [
   /\bAIza[0-9A-Za-z_-]{30,}\b/g,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
   /\b(Bearer)\s+[A-Za-z0-9._~+/-]{20,}=*/g,
-  /(api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*["']?([A-Za-z0-9._~+/-]{16,})["']?/gi,
+  // The key and the value may each carry the quote JSON puts around them, so the
+  // separator does not always follow the key directly: `password=hunter2`,
+  // `{"password":"hunter2"}`, `api_key: 'hunter2'`.
+  /(api[_-]?key|secret|password|passwd|token)\b["']?\s*[:=]\s*["']?([A-Za-z0-9._~+/-]{16,})/gi,
 ];
 
 export function redact(text) {
   let s = textOf(text);
-  for (const re of SECRETS) s = s.replace(re, (m, a, b) => {
-    if (a && typeof a === "string" && /^(api|secret|password|passwd|token|bearer)$/i.test(a)) return `${a}: [redacted]`;
+  for (const re of SECRETS) s = s.replace(re, (m, key, value) => {
+    // A key/value match: keep the key, the separator and the quotes; replace only the value.
+    if (typeof value === "string") return m.slice(0, m.length - value.length) + "[redacted]";
+    if (key && typeof key === "string" && /^(api|secret|password|passwd|token|bearer)$/i.test(key)) return `${key}: [redacted]`;
     return "[redacted]";
   });
   return s;
@@ -121,7 +126,11 @@ function gitRoot(repo) {
 
 function readGit(repo) {
   if (!gitRoot(repo)) return { commits: [], worktrees: [] };
-  const fmt = "%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%b";
+  // `%b` holds the whole body, newlines and blank lines included, so the record needs an end
+  // marker: without one the first newline after the header reads as the end of the record and
+  // every body line after it is treated as --numstat output. %x1d is a group separator no commit
+  // message carries, and it closes the message before git appends the numstat block.
+  const fmt = "%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%b%x1d";
   let raw = "";
   try {
     raw = execFileSync("git", ["-C", repo, "log", "--all", "--date=iso-strict", `--pretty=format:${fmt}`, "--numstat"], {
@@ -134,10 +143,12 @@ function readGit(repo) {
   }
   const commits = [];
   for (const rec of raw.split("\x1e").slice(1)) {
-    const nl = rec.indexOf("\n");
-    const head = nl >= 0 ? rec.slice(0, nl) : rec;
-    const rest = nl >= 0 ? rec.slice(nl + 1) : "";
-    const [sha, author, email, date, subject, ...tail] = head.split("\x1f");
+    // The marker is the record's last one: git C-quotes unusual bytes in the numstat paths, so a
+    // body that happens to carry one still keeps its text instead of being cut at it.
+    const msgEnd = rec.lastIndexOf("\x1d");
+    const msg = msgEnd >= 0 ? rec.slice(0, msgEnd) : rec;
+    const rest = msgEnd >= 0 ? rec.slice(msgEnd + 1) : "";
+    const [sha, author, email, date, subject, body] = msg.split("\x1f", 6);
     if (!sha || !/^[0-9a-f]{7,40}$/.test(sha)) continue;
     let files = 0;
     let insertions = 0;
@@ -149,7 +160,7 @@ function readGit(repo) {
       if (m[1] !== "-") insertions += Number(m[1]);
       if (m[2] !== "-") deletions += Number(m[2]);
     }
-    commits.push({ sha, author: author || "", email: email || "", date: isoDate(date), subject: subject || "", body: tail.join("\x1f") || "", files, insertions, deletions });
+    commits.push({ sha, author: author || "", email: email || "", date: isoDate(date), subject: subject || "", body: body || "", files, insertions, deletions });
   }
   let worktrees = [];
   try {
@@ -299,7 +310,12 @@ function workTable(db) {
   db.exec("create table if not exists work_items(id integer primary key, at text, agent text, title text, status text, detail text, evidence text, source text)");
 }
 
-/** Append one completed work item to the ledger and, when the DB exists, to it. */
+/**
+ * Append one completed work item to the ledger and, when the DB exists, to it.
+ *
+ * The ledger is replayed on every build and copied into the row and the search
+ * body, so the text is redacted here, once, before it reaches any of the three.
+ */
 export function recordItem(opts = {}) {
   const dbPath = resolve(opts.db || defaults().db);
   const ledger = resolve(opts.ledger || join(dirname(dbPath), "work-items.jsonl"));
@@ -308,10 +324,10 @@ export function recordItem(opts = {}) {
   const item = {
     at: opts.at || new Date().toISOString(),
     agent: String(opts.agent || "").trim(),
-    title,
+    title: redact(title),
     status: String(opts.status || "done").trim(),
-    detail: String(opts.detail || "").trim(),
-    evidence: String(opts.evidence || "").trim(),
+    detail: redact(String(opts.detail || "").trim()),
+    evidence: redact(String(opts.evidence || "").trim()),
   };
   mkdirSync(dirname(ledger), { recursive: true });
   appendFileSync(ledger, JSON.stringify(item) + "\n");
@@ -395,19 +411,31 @@ export function build(opts = {}) {
   const counts = { sessions: 0, messages: 0, tools: 0, commits: 0, prs: 0, releases: 0, cards: 0, evidence: 0, documents: 0, handoffs: 0, work_items: 0 };
 
   // ---- agent sessions -------------------------------------------------------
+  // A store that answers one query but not the other is as unreadable as a missing
+  // file. Read both here, inside the one guard, and only insert rows when both reads
+  // succeeded, so a bad schema leaves a recorded reason and no sessions rather than
+  // killing the whole build (README: a missing source produces a smaller database,
+  // never a crash).
   let sessions = [];
+  let msgs = [];
   if (o.sessions && existsSync(o.sessions)) {
     debug(`reading sessions from ${o.sessions}`);
     let sdb;
+    let readable = false;
     try {
       sdb = openRead(o.sessions);
       sessions = sdb.prepare("select id,parent_id,title,directory,agent,model,time_created,time_updated,cost,tokens_input,tokens_output from session_v2").all();
+      msgs = sdb.prepare("select session_id,seq,type,time_created,data from session_message order by session_id,seq").all();
+      readable = true;
     } catch (e) {
       insertMeta.run("sessions_error", String(e.message || e));
       sessions = [];
+      msgs = [];
+    } finally {
+      try { sdb?.close(); } catch { /* already closed */ }
     }
     debug(`${sessions.length} sessions`);
-    if (sdb) {
+    if (readable) {
       const per = new Map();
       for (const s of sessions) {
         let model = {};
@@ -423,7 +451,6 @@ export function build(opts = {}) {
         insertEvent.run(row.created_at, "session", row.id, `${row.agent || "agent"} · ${row.model || "model"} · ${row.title}`.slice(0, 300));
         counts.sessions++;
       }
-      const msgs = sdb.prepare("select session_id,seq,type,time_created,data from session_message order by session_id,seq").all();
       for (const m of msgs) {
         const s = per.get(m.session_id);
         if (!s) continue;
@@ -467,7 +494,6 @@ export function build(opts = {}) {
       for (const s of per.values()) {
         db.prepare("update sessions set message_count=?, user_messages=? where id=?").run(s.message_count, s.user_messages, s.id);
       }
-      sdb.close();
       insertMeta.run("sessions_db", o.sessions);
     }
   } else {
@@ -697,9 +723,11 @@ export function resumeMarkdown(db, path) {
   for (const a of agents) lines.push(`| ${a.kind} | ${a.name} | ${a.sessions} | ${a.messages} | ${a.last_seen || ""} |`);
   lines.push("");
   lines.push("## Next", "");
-  if (fails.length) lines.push("1. Start with the failing evidence above; each is a card that was attempted and did not pass.");
-  if (open.length) lines.push(`${fails.length ? 2 : 1}. Close the open P0 cards listed above; run one proof at a time and record the result in evidence/.`);
-  lines.push(`${fails.length || open.length ? 3 : 1}. Rebuild this memory after the work so the next session inherits the result: \`node tools/kolux-memory/cli.mjs build\`.`);
+  const steps = [];
+  if (fails.length) steps.push("Start with the failing evidence above; each is a card that was attempted and did not pass.");
+  if (open.length) steps.push("Close the open P0 cards listed above; run one proof at a time and record the result in evidence/.");
+  steps.push("Rebuild this memory after the work so the next session inherits the result: `node tools/kolux-memory/cli.mjs build`.");
+  steps.forEach((step, i) => lines.push(`${i + 1}. ${step}`));
   return lines.join("\n") + "\n";
 }
 

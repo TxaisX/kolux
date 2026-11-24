@@ -4,7 +4,7 @@ command: node scripts/prove/live-T-816-nowin.mjs --exe G:/Temp/ready-nowin-exe/k
   (itself wrapped in hidden-desktop.ps1 -Desktop kolux-t816, watched by visible-windows.ps1 on the default desktop)
   -> exit 0 after 90 s; default-desktop watcher: 701 polls, visible proof windows 0, focus takes 0
 counting scope: the probe counts only windows owned by its own process tree on its private desktop, so Txais's
-  running Kolux RS (C:\Users\XiongT\AppData\Local\Kolux RS\kolux-rs.exe) cannot be in the count.
+  running Kolux RS (C:\Users\user\AppData\Local\Kolux RS\kolux-rs.exe) cannot be in the count.
 result: VISIBLE CONSOLE WINDOWS FROM KOLUX CHILDREN: 0 (162 child processes, 29 windows seen)
 gap: step "start an agent seat" FAILED in the script: it clicks button.newtab, which no longer exists anywhere in src/
   (the seat now shows featured-agent buttons). Deterministic selector drift, not load. So agent-seat launch was NOT

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "R1-F01",
+    "title": "A failed terminal spawn leaks its flow entry in the service",
+    "severity": "low",
+    "file": "src-tauri/src/pty_service.rs",
+    "line": 310,
+    "what": "When Service::spawn cannot start the program it was asked for, the error arm removes the terminal's snapshot from Inner::snaps but leaves its entry in Inner::flows, so every failed start keeps one Arc<Flow> for the life of the service. A client that retries a program that is not installed grows the map without bound, while the exit handler and the kill op both remove the snapshot and the flow together.",
+    "expected": "A start that fails should leave the service exactly as it was: the error arm must remove the flow entry for the id as well (and release it), the same way the exit handler and kill already do, so no state is left for a terminal that never existed.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/pty_service.rs",
+      "name": "pty::service::tests::audit_r1_f01_a_failed_spawn_releases_its_flow"
+    },
+    "patch": "repro/R1-F01.patch"
+  }
+]

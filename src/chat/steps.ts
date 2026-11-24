@@ -90,7 +90,7 @@ export type View =
   | { row: "responding"; id: string }
   | { row: "files"; id: string; files: WrittenFile[] };
 
-type Turn = { user: ChatItem | null; interrupted: boolean; replied: boolean; last?: number; end?: number; tools: ChatItem[] };
+type Turn = { user: ChatItem | Extract<Row, { row: "pending" }> | null; interrupted: boolean; replied: boolean; last?: number; end?: number; tools: ChatItem[] };
 
 const worst = (states: ChildState[]): ChildState => states.reduce<ChildState>((w, s) => (CHILD_STATES.indexOf(s) > CHILD_STATES.indexOf(w) ? s : w), "completed");
 
@@ -116,8 +116,20 @@ export function fold(rows: Row[], open: boolean, cwd: string | null = null): Vie
     // It sits under the turn's last reply, above any status line (a compaction) that followed.
     if (ms >= 1000) out.splice(at, 0, { row: "worked", id: `worked-${t.user.id}`, ms });
   };
-  for (const r of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
     if (r.row !== "message") {
+      // CHAT-02: a waiting send with a message after it is drawn in place and starts a turn of its
+      // own, exactly as a user message row does; only a waiting send after everything goes to the tail.
+      if (r.row === "pending" && rows.slice(i + 1).some((x) => x.row === "message")) {
+        settle(turn);
+        turn = { user: r, interrupted: false, replied: false, last: r.at, tools: [] };
+        turns.push(turn);
+        steps = null;
+        roster = null;
+        out.push(r);
+        continue;
+      }
       tail.push(r);
       continue;
     }

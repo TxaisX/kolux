@@ -1,0 +1,47 @@
+[
+  {
+    "id": "S4-F01",
+    "title": "coverage.mjs's liveIdsOf() never reads an id from a live check's comment header",
+    "what": "liveIdsOf() is meant to read every id a live check carries, from its file name and its text, but its comment scan is written with literal backspace bytes where the word boundaries \\b belong (byte dump: 46,42,8,40 and 93,63,41,8,47). A backspace matches no text, so no id is ever collected from a live check's // header. Verified today: liveIdsOf() returns false for PROJ-038, PROJ-020 and APP-053, which appear in the headers of scripts/prove/live-PROJ-create.mjs and scripts/prove/live-T-544.mjs.",
+    "expected": "liveIdsOf() contains every id a live check carries in its header, so PROJ-038, PROJ-020 and APP-053 count as live-covered and their guides stop showing as unproven in the generated coverage report.",
+    "severity": "medium",
+    "file": "scripts/stress/coverage.mjs",
+    "line": 136,
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/stress/coverage.test.mjs",
+      "name": "[S4-F01] liveIdsOf reads a task id from a live check's comment, not only from its file name"
+    },
+    "patch": "repro/S4-F01.patch"
+  },
+  {
+    "id": "S4-F02",
+    "title": "s6-torture-payloads.mjs crashes on an argument-less call before it prints usage",
+    "what": "The script reads its arguments and immediately runs name.split(\":\") on line 7, while its argument guard (no payload, no result path) is not reached until lines 162-165. Running it with no arguments throws TypeError: Cannot read properties of undefined (reading 'split') and exits 1, so the usage line and exit code 2 the guard exists to give are never produced.",
+    "expected": "An argument-less run prints 'usage: node s6-torture-payloads.mjs <payload> <result.json>' on stderr and exits 2, instead of crashing with a TypeError and exit 1.",
+    "severity": "low",
+    "file": "scripts/stress/s6-torture-payloads.mjs",
+    "line": 7,
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/stress/s6-torture-payloads.test.mjs",
+      "name": "[S4-F02] with no arguments prints the usage line and exits 2"
+    },
+    "patch": "repro/S4-F02.patch"
+  },
+  {
+    "id": "S4-F03",
+    "title": "footprint-sample.ps1's GPU fallback filter can never match a counter instance",
+    "what": "When the background Get-Counter job returns no rows, line 68 falls back to one plain read so the phase still gets GPU numbers. Its instance filter is written '^pid_(d+)_' while the same filter in the job above (line 16) is '^pid_(\\d+)_': the missing backslash turns \\d into a literal 'd', so no instance name ever matches and the fallback records zero GPU rows while appending '(retried once)', implying the read succeeded.",
+    "expected": "The GPU fallback's instance filter matches real names such as pid_4321_0 and captures the pid, so a retried read returns GPU rows instead of silently none.",
+    "severity": "medium",
+    "file": "scripts/stress/footprint-sample.ps1",
+    "line": 69,
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/stress/footprint-sample.test.mjs",
+      "name": "[S4-F03] the GPU fallback's instance filter matches a real counter instance name"
+    },
+    "patch": "repro/S4-F03.patch"
+  }
+]

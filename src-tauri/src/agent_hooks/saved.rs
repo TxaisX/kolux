@@ -304,17 +304,25 @@ pub fn sleeping(rows: &mut Vec<Row>, paths: &[String]) -> Vec<Row> {
 /// STAT-037 at sleep (T-167-b): before a workspace's terminals are ended, the agents in it that
 /// can be resumed join the record (provider session details first), then their rows are cleared
 /// from this run's and the previous run's rows and the save is rewritten without them.
+/// R2-F04: until a live event has rewritten the save from this run's rows (the same state
+/// `keep_panes` reads), the save still holds the restored rows, so sleeping a workspace before the
+/// first live event rewrites it from the restored rows that remain, never from an empty live set.
 #[cfg_attr(not(test), allow(dead_code))] // live once evidence/hooks-T-167-b-projects.rs.patch lands
 pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
-    let (mut taken, kept) = {
+    let (mut taken, kept, save_from_live) = {
         let mut live = LIVE.lock().unwrap_or_else(|p| p.into_inner());
         let live = live.get_or_insert_with(HashMap::new);
+        let save_from_live = !live.is_empty();
         let mut rows: Vec<Row> = live.values().cloned().collect();
         let taken = sleeping(&mut rows, paths);
         live.retain(|_, r| !taken.contains(r));
-        (taken, rows)
+        (taken, rows, save_from_live)
     };
-    let restored = sleeping(&mut RESTORED.lock().unwrap_or_else(|p| p.into_inner()), paths);
+    let (restored, still_restored) = {
+        let mut restored = RESTORED.lock().unwrap_or_else(|p| p.into_inner());
+        let taken = sleeping(&mut restored, paths);
+        (taken, restored.clone())
+    };
     if taken.is_empty() && restored.is_empty() {
         return;
     }
@@ -323,7 +331,8 @@ pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
     if let Err(e) = store.set(RESUMABLE_KEY, &serialize(&rows)) {
         eprintln!("kolux: the agents to resume could not be recorded: {e}");
     }
-    if let Err(e) = store.set(SAVED_KEY, &serialize(&kept)) {
+    let save = if save_from_live { kept } else { still_restored };
+    if let Err(e) = store.set(SAVED_KEY, &serialize(&save)) {
         eprintln!("kolux: the agents' status could not be saved: {e}");
     }
 }

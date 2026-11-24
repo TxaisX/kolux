@@ -1,0 +1,26 @@
+diff --git a/src-tauri/src/projects_tests.rs b/src-tauri/src/projects_tests.rs
+index 7db63b47..c13d6fb2 100644
+--- a/src-tauri/src/projects_tests.rs
++++ b/src-tauri/src/projects_tests.rs
+@@ -1448,6 +1448,21 @@ fn proj019_an_icon_is_an_emoji_a_built_in_icon_or_a_small_picture() {
+     assert!(clean_icon(&over).unwrap_err().contains("too large"));
+ }
+ 
++
++#[test]
++fn audit_r3_f08_a_relative_project_folder_is_swept_where_the_worktrees_are() {
++    let base = temp("audit-r3-f08");
++    let repo = base.join("r");
++    init_repo(&repo);
++    let mut p = project_at("p1", &repo);
++    p.workspaces_dir = Some("ws".to_string());
++    let store = Mutex::new(Store::open(&base.join("db")).unwrap());
++    let folders = trash_folders(&store, &Git::detect().unwrap(), std::slice::from_ref(&p), &serde_json::Map::new());
++    assert!(folders.iter().any(|f| same_folder(f, &repo.join("ws"))),
++            "a relative project folder's trash lives under the project, folders: {folders:?}");
++    let _ = fs::remove_dir_all(&base);
++}
++
+ #[test]
+ fn proj019_a_chosen_icon_stays_after_a_restart_and_reset_brings_the_automatic_one_back() {
+     let git = Git::detect().unwrap();

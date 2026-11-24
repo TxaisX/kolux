@@ -1,0 +1,77 @@
+[
+  {
+    "id": "S3-F01",
+    "title": "A sessions store with a different schema kills the whole memory build",
+    "file": "tools/kolux-memory/lib.mjs",
+    "line": 426,
+    "severity": "medium",
+    "what": "build() guards only the first read of the sessions store: a failure there is recorded as `sessions_error` and the build carries on with no sessions. The message query on the next line sits outside that guard, so a store that answers neither query (an older opencode.db with no session_message table, or any other SQLite file passed to --sessions) throws `no such table: session_message` and the build dies before writing a database, although the README says an unreadable source produces a smaller database, never a crash.",
+    "expected": "A sessions store that cannot be read produces a database with no sessions and a recorded reason, so cards, evidence and commits are still built from the other sources.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s3-f01.test.mjs",
+      "name": "audit S3 · memory build over a source it cannot read > [S3-F01] a sessions store with no message table still produces a database"
+    },
+    "patch": "repro/S3-F01.patch"
+  },
+  {
+    "id": "S3-F02",
+    "title": "The redactor misses a key that JSON writes beside a quote and a colon",
+    "file": "tools/kolux-memory/lib.mjs",
+    "line": 64,
+    "severity": "medium",
+    "what": "The key=value pattern in SECRETS needs the separator to follow the key name directly, so it matches `password=hunter2` but not `\"password\":\"hunter2\"`. keep() runs every tool input through JSON.stringify before redact(), and a tool input is the most likely place a credential appears, so the JSON form is stored in messages, tools and the search index with the value in plain text.",
+    "expected": "redact() replaces the value of a password, api_key, secret or token however it is written, including the JSON form `{\"password\":\"...\"}` that a tool input takes.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s3-f02.test.mjs",
+      "name": "audit S3 · credential redaction > [S3-F02] a key inside a JSON tool input is redacted"
+    },
+    "patch": "repro/S3-F02.patch"
+  },
+  {
+    "id": "S3-F03",
+    "title": "Every commit body is cut at its first line when the memory build reads git",
+    "file": "tools/kolux-memory/lib.mjs",
+    "line": 138,
+    "severity": "medium",
+    "what": "readGit asks git for `%b`, the whole body, then cuts each record at the first newline, which is the end of the header and the start of the body, so only the header reaches the field split and the body is stored as the first line that happened to follow it. A body with a second paragraph loses it, and the search index copies the cut text; on this repository's history 4,453 of 5,299 commits lose body text.",
+    "expected": "The stored commit keeps every line of its body, up to the 4,000-character clip the insert already applies, so a word from any paragraph can be found again.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s3-f03.test.mjs",
+      "name": "audit S3 · the memory build reads commits > [S3-F03] a commit body keeps every line, not just its first"
+    },
+    "patch": "repro/S3-F03.patch"
+  },
+  {
+    "id": "S3-F04",
+    "title": "The resume brief numbers its next steps 1 and 3",
+    "file": "tools/kolux-memory/lib.mjs",
+    "line": 702,
+    "severity": "low",
+    "what": "The three items under `## Next` are numbered by hand. The second item is skipped when there is no failing evidence, but the third still takes the number 3 whenever either an open card or a failure exists, so a brief with open P0 cards and no failures prints `1.` then `3.` and never shows a 2, which reads as a missing step.",
+    "expected": "The list is numbered 1, 2, 3 with no gap whatever items are present, so the brief reads as one sequence.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s3-f04.test.mjs",
+      "name": "audit S3 · the resume brief's next steps > [S3-F04] the next-steps list has no gap in its numbering"
+    },
+    "patch": "repro/S3-F04.patch"
+  },
+  {
+    "id": "S3-F05",
+    "title": "recordItem writes passwords to the ledger and the database in plain text",
+    "file": "tools/kolux-memory/lib.mjs",
+    "line": 308,
+    "severity": "medium",
+    "what": "recordItem copies title, detail and evidence into the JSONL ledger, the work_items row and the search body without calling redact(). `record --detail \"password=...\"` therefore keeps the secret in all three, while the README's privacy section says credential-shaped strings in stored text, key=value secrets included, are replaced with `[redacted]`. Every rebuild replays the unredacted ledger line, so the leak survives the cache being replaced.",
+    "expected": "A recorded item is redacted before it reaches the ledger, the row or the search index, so no credential-shaped string passed to `record` is stored.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s3-f05.test.mjs",
+      "name": "audit S3 · the work-item ledger > [S3-F05] a recorded item is redacted in the ledger and in the database"
+    },
+    "patch": "repro/S3-F05.patch"
+  }
+]

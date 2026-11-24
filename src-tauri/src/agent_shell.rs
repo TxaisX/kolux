@@ -69,7 +69,7 @@ pub fn wraps(program: &str) -> bool {
 /// Elsewhere: the chosen default shell when Kolux knows its kind, else the login shell (`$SHELL`).
 pub fn pick(settings: &serde_json::Value) -> Option<PathBuf> {
     let chosen = crate::pty::default_shell(settings).map(|(p, _)| PathBuf::from(p));
-    pick_from(cfg!(windows), chosen, || crate::agents::find_program("pwsh.exe").filter(|p| !in_windows_apps(p)), std::env::var_os("SHELL").map(PathBuf::from), || crate::pty::system_program(crate::pty::WINDOWS_POWERSHELL))
+    pick_from(cfg!(windows), chosen, || find_shell("pwsh.exe").filter(|p| !in_windows_apps(p)), std::env::var_os("SHELL").map(PathBuf::from), || crate::pty::system_program(crate::pty::WINDOWS_POWERSHELL))
 }
 
 /// `pick` with its inputs handed in, so a test covers every system.
@@ -265,6 +265,130 @@ pub fn shim_safe(prompt: &str) -> bool {
 pub fn is_script_shim(resolved: &Path) -> bool {
     resolved.extension().is_some_and(|e| ["cmd", "bat", "ps1"].iter().any(|x| e.eq_ignore_ascii_case(x)))
 }
+
+/// PERF-01: what one program lookup is remembered as. A hit keeps the path; a miss keeps the
+/// folder stamp it was seen under, so an install into any PATH folder is noticed.
+struct Remembered {
+    key: String,
+    name: String,
+    path: Option<PathBuf>,
+    stamp: Option<String>,
+}
+
+/// PERF-01: the programs looked up so far, for the search path they were looked up on. Every pane
+/// start asks this instead of walking PATH again: a hit costs one `still_there` check, a miss one
+/// `stamp` read (each folder's last-change time, not a probe per folder per PATHEXT ending).
+pub struct ProgramMemo {
+    seen: std::sync::Mutex<Vec<Remembered>>,
+}
+
+impl ProgramMemo {
+    pub fn new() -> ProgramMemo {
+        ProgramMemo { seen: std::sync::Mutex::new(Vec::new()) }
+    }
+
+    /// `name` on the search path `key` names. A remembered hit is returned while `still_there`
+    /// says the file is there; a remembered miss while `stamp` is unchanged; otherwise `search`
+    /// runs once and its answer is remembered. `stamp` is asked for at most once per call, and
+    /// never for a hit that stands.
+    pub fn find(&self, key: &str, name: &str, search: impl FnOnce(&str) -> Option<PathBuf>, still_there: impl Fn(&Path) -> bool, stamp: impl Fn() -> String) -> Option<PathBuf> {
+        let remembered = {
+            let seen = self.seen.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            seen.iter().find(|e| e.key == key && e.name == name).map(|e| (e.path.clone(), e.stamp.clone()))
+        };
+        if let Some((Some(path), _)) = &remembered {
+            if still_there(path) {
+                return Some(path.clone());
+            }
+        }
+        let mut current: Option<String> = None;
+        if let Some((None, Some(remembered_stamp))) = &remembered {
+            let now = stamp();
+            if now == *remembered_stamp {
+                return None;
+            }
+            current = Some(now);
+        }
+        let found = search(name);
+        let (path, stamp) = match found {
+            Some(p) => (Some(p), None),
+            None => (None, Some(current.unwrap_or_else(|| stamp()))),
+        };
+        {
+            let mut seen = self.seen.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            // Another search path's answers are never used for this one, so only this key's stay.
+            seen.retain(|e| e.key == key && e.name != name);
+            seen.push(Remembered { key: key.to_string(), name: name.to_string(), path: path.clone(), stamp });
+        }
+        path
+    }
+}
+
+/// PERF-01: a fingerprint of everything a program search depends on: the process PATH, the
+/// registry's machine and user Path, and PATHEXT. Length-prefixed parts, so text moving from one
+/// input to the next is still a different key. Pure: no disk and no registry.
+pub fn search_key_of(process_path: Option<&std::ffi::OsStr>, machine: Option<&str>, user: Option<&str>, pathext: Option<&str>) -> String {
+    let part = |v: Option<String>| match v {
+        Some(s) => format!("{}:{s}", s.len()),
+        None => "-".to_string(),
+    };
+    [part(process_path.map(|p| p.to_string_lossy().into_owned())), part(machine.map(String::from)), part(user.map(String::from)), part(pathext.map(String::from))].join("|")
+}
+
+/// The registry Path values a shell opened now would get: the machine Path, then the user Path.
+#[cfg(windows)]
+fn live_shell_paths() -> (Option<String>, Option<String>) {
+    use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    (
+        crate::agents::registry_string(HKEY_LOCAL_MACHINE, crate::agents::MACHINE_ENVIRONMENT, "Path"),
+        crate::agents::registry_string(HKEY_CURRENT_USER, "Environment", "Path"),
+    )
+}
+
+#[cfg(not(windows))]
+fn live_shell_paths() -> (Option<String>, Option<String>) {
+    (None, None)
+}
+
+/// PERF-01: `search_key_of` over the live values: two cheap registry reads, no folder walk.
+pub fn search_key() -> String {
+    let (machine, user) = live_shell_paths();
+    search_key_of(std::env::var_os("PATH").as_deref(), machine.as_deref(), user.as_deref(), std::env::var("PATHEXT").ok().as_deref())
+}
+
+/// PERF-01: the folders' last-change times, in order, with a fixed marker for a folder that is
+/// missing or unreadable. An install into a folder, or the folder appearing at all, changes it.
+pub fn path_stamp(dirs: &[PathBuf]) -> String {
+    dirs.iter()
+        .map(|d| match std::fs::metadata(d).and_then(|m| m.modified()) {
+            Ok(t) => format!("{t:?}"),
+            Err(_) => "missing".to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join("|")
+}
+
+/// PERF-01: the process-wide memory of shell lookups. Panes start on several runtime workers, so
+/// this is asked from any thread.
+static SHELL_MEMO: std::sync::LazyLock<ProgramMemo> = std::sync::LazyLock::new(ProgramMemo::new);
+
+/// PERF-01: `crate::agents::find_program`, remembered for the life of the app. A hit is re-checked
+/// with one disk check; a miss by the PATH folders' last-change times. The path is returned as
+/// found, unfiltered, like `find_program`; callers filter afterwards.
+pub fn find_shell(name: &str) -> Option<PathBuf> {
+    SHELL_MEMO.find(&search_key(), name, crate::agents::find_program, Path::is_file, || {
+        let (machine, user) = live_shell_paths();
+        let mut dirs: Vec<PathBuf> = std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
+        for p in [machine, user].into_iter().flatten() {
+            dirs.extend(std::env::split_paths(&p));
+        }
+        path_stamp(&dirs)
+    })
+}
+
+#[cfg(test)]
+#[path = "agent_shell_find_board_tests.rs"]
+mod find_board_tests;
 
 #[cfg(test)]
 mod tests {
