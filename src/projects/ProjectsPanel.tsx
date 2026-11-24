@@ -91,7 +91,7 @@ import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
-import { EVERYDAY_CHATS_FIELD, dropEverydayChat, everydayChatName, everydayChatsOf, readEverydayChats, setEverydayName, type EverydayChat } from "./everydayChats";
+import { EVERYDAY_CHATS_FIELD, dropEverydayChat, everydayChatName, everydayChatsOf, readEverydayChats, setEverydayUserName, type EverydayChat } from "./everydayChats";
 import { FILE_MANAGER, loadTargets, openIn } from "../open/openIn";
 import { frontProjectRow } from "./frontRow";
 import { projectsInGroup } from "./groupMembers";
@@ -1708,7 +1708,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (!clean) return;
     onSetting(EVERYDAY_CHATS_FIELD, (prev: unknown) => {
       const list = everydayChatsOf(prev);
-      const after = setEverydayName(list, id, clean);
+      const after = setEverydayUserName(list, id, clean);
       return after === list ? undefined : after;
     });
     const pane = chatPaneOf(id);

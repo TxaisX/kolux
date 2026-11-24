@@ -9,6 +9,7 @@ import {
   readEverydayChats,
   setEverydayChoice,
   setEverydayName,
+  setEverydayUserName,
   setEverydaySession,
   touchEverydayChat,
   type EverydayChat,
@@ -123,4 +124,20 @@ test("an unnamed chat reads as New chat until its first message names it", () =>
 
 test("the settings key is the one the window writes", () => {
   expect(EVERYDAY_CHATS_FIELD).toBe("everydayChats");
+});
+
+test("round 3 P2: a name the user chose is marked, reads back, and the chat's own names never replace it", () => {
+  const list = [rec("a", { name: "Auto" })];
+  const mine = setEverydayUserName(list, "a", "My taxes");
+  expect(mine[0]).toMatchObject({ name: "My taxes", nameByUser: true });
+  // the settings file round trip keeps the mark
+  expect(readEverydayChats({ everydayChats: JSON.parse(JSON.stringify(mine)) })[0].nameByUser).toBe(true);
+  // an automatic name over a user's name is ignored
+  expect(setEverydayName(mine, "a", "Something OpenCode said")).toBe(mine);
+  // clearing the user's name hands the row back to the chat
+  const cleared = setEverydayUserName(mine, "a", undefined);
+  expect(cleared[0].nameByUser).toBeUndefined();
+  expect(setEverydayName(cleared, "a", "Auto again")[0].name).toBe("Auto again");
+  // a user name with no text is not a name
+  expect(setEverydayUserName(list, "a", "  ")).toBe(list);
 });

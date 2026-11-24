@@ -554,7 +554,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const extra = onModel ? modelArgs(onModel, agent.id) : savedArgs(agent.id);
       const key = await startIn(agent, rec.cwd, null, "", true, extra, rec.name);
       if (key === null) return;
-      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(rec.session && rec.legacy ? { chatLegacy: rec.legacy } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}), ...(rec.effort ? { chatEffort: rec.effort } : {}) } : p)));
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(rec.session && rec.legacy ? { chatLegacy: rec.legacy } : {}), ...(rec.nameByUser && rec.name ? { titleByUser: true as const } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}), ...(rec.effort ? { chatEffort: rec.effort } : {}) } : p)));
       keepChat((list) => touchEverydayChat(list, rec.id));
       setRefresh((n) => n + 1);
       setNotice(null);
