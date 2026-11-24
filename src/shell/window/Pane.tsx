@@ -32,6 +32,7 @@ import { ChatPane } from "../../lazy/pages";
 import { CheckPane } from "../../lazy/panes";
 import { openExternal } from "../../open/openExternal";
 import { withChatPick } from "./chatPick";
+import { withAutoTitle, withChatSession } from "./chatRecord";
 
 /** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
 const LostPane = deferred(() => import("./LostPane"));
@@ -45,7 +46,7 @@ export default function WindowPane({ pane: p, active, tabs }: { pane: Pane; acti
     setPanes, noticed, report,
     dragging, setDropHint, equalizePanes, moveOutToTab, zoomed, expandPane, names,
     renamePane, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
-    splitPane, rememberLineup, activeDir, wakePane, setSidebarOpen, setWorktreeMenu, cells, newChat,
+    splitPane, rememberLineup, activeDir, wakePane, setSidebarOpen, setWorktreeMenu, cells, newChat, openPane,
   } = w;
   // The pane's chat keeps its Everyday record in step: the name the first message gives it and the agent's
   // conversation id. The write builds on the key's latest value (a name and an id can land together), and an
@@ -135,24 +136,27 @@ export default function WindowPane({ pane: p, active, tabs }: { pane: Pane; acti
     expand: () => expandPane(p.key),
     rename: (name: string | undefined) => renamePane(p.key, name),
     // A kept Everyday chat takes the name its first message gives it, so the row reads that after the tab is gone.
+    // It is the chat's own name, not one the user chose: it never sets `titleByUser`, and never replaces one that is.
     chatName: (name: string) => {
-      renamePane(p.key, name);
-      if (p.everyday) saveChats((list) => setEverydayName(list, p.everyday!, name));
+      setPanes((ps) => withAutoTitle(ps, p.key, name));
+      if (p.everyday && !p.titleByUser) saveChats((list) => setEverydayName(list, p.everyday!, name));
     },
     // The agent's own conversation id: what `--resume` needs when the chat is opened again. The pane keeps
     // it too, so a chat left open at quit comes back as itself instead of as a fresh conversation.
     // A handoff (2026-11-23) reports `null`: that conversation is over, so the record and the pane forget it,
     // and reopening the row or picking another model starts fresh instead of resuming the full one.
-    chatSession: (id: string | null) => {
+    // `legacy` is the older Claude conversation a chat continues on OpenCode (2026-11-24): it goes in a field of
+    // its own, on the pane and on the row, so its transcript still shows above the new chat after a restart.
+    chatSession: (id: string | null, legacy: string | null = null) => {
       if (!p.everyday) return;
       if (id === null) {
         const rec = p.everyday;
-        saveChats((list) => (list.some((c) => c.id === rec && c.session) ? list.map((c) => (c.id === rec ? { ...c, session: undefined } : c)) : list));
-        if (p.chatResume !== undefined) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, chatResume: undefined } : x)));
+        saveChats((list) => (list.some((c) => c.id === rec && (c.session || c.legacy)) ? list.map((c) => (c.id === rec ? { ...c, session: undefined, legacy: undefined } : c)) : list));
+        setPanes((ps) => withChatSession(ps, p.key, null, null));
         return;
       }
-      saveChats((list) => setEverydaySession(list, p.everyday!, id));
-      if (p.chatResume !== id) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, chatResume: id } : x)));
+      saveChats((list) => setEverydaySession(list, p.everyday!, id, legacy));
+      setPanes((ps) => withChatSession(ps, p.key, id, legacy));
     },
     // A model or effort picked inside the chat (2026-11-21): the conversation keeps running on it, and the
     // record says so, so reopening the row comes back on the same pair.
@@ -161,7 +165,7 @@ export default function WindowPane({ pane: p, active, tabs }: { pane: Pane; acti
       if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { model }));
       if ((p.chatModel ?? null) !== (model || null)) setPanes((ps) => withChatPick(ps, p.key, { model }));
     },
-    chatEffort: (effort: string) => {
+    chatEffort: (effort: string | null) => {
       if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { effort }));
       if (p.chatEffort !== effort) setPanes((ps) => withChatPick(ps, p.key, { effort }));
     },
@@ -206,13 +210,15 @@ export default function WindowPane({ pane: p, active, tabs }: { pane: Pane; acti
         hidden={hidden}
         focused={p.key === focused}
         onFocus={act.focus}
+        onReveal={() => openPane(p.key)}
         onClose={act.close}
-        named={!!p.title}
+        named={!!p.titleByUser}
         onName={act.chatName}
         model={p.chatModel ?? null}
         effort={p.chatEffort ?? null}
         agent={p.chatAgent ?? "claude"}
         resume={p.chatResume ?? null}
+        legacyId={p.chatLegacy ?? null}
         onSession={act.chatSession}
         onModel={act.chatModel}
         onEffort={act.chatEffort}

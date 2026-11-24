@@ -3,9 +3,10 @@
 // list from OpenCode and holds the search, the "..." menu and the delete question.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dots, PanelLeft, Plus, Search, Trash } from "../../chrome/icons";
-import { deleteChatSession, listChatSessions, type ChatSessionSummary } from "../opencode";
-import { onSessionDeleted } from "../live/sessionBus";
-import { filterSessions, groupSessions, titleOf, visibleSessions, type ColumnMode } from "./history";
+import { CHAT_AGENT, deleteChatSession, listChatSessions, type ChatSessionSummary } from "../opencode";
+import { chatHistory } from "../live/client";
+import { onSessionDeleted, sameFolder } from "../live/sessionBus";
+import { filterSessions, groupSessions, isBlankTitle, titleOf, visibleSessions, type ColumnMode } from "./history";
 
 export type HistoryViewProps = {
   mode: ColumnMode;
@@ -157,18 +158,42 @@ export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, 
     };
   }, [cwd, refreshKey]);
 
+  // Review 2 P2-5: a row is blank by what is in it, not by its title. The list carries no message count, so a row
+  // still called "New chat" (or OpenCode's "New session ...") is read once: one with words in it is shown. Only
+  // those rows are read, once per change of their `updatedAt`, so a long list costs nothing.
+  const [filled, setFilled] = useState<ReadonlySet<string>>(() => new Set());
+  const probed = useRef(new Map<string, number>());
+  useEffect(() => {
+    if (!cwd) return;
+    const todo = sessions.filter((s) => isBlankTitle(s.title) && probed.current.get(s.id) !== s.updatedAt).slice(0, 12);
+    if (todo.length === 0) return;
+    let live = true;
+    let done = false;
+    for (const s of todo) probed.current.set(s.id, s.updatedAt);
+    void Promise.all(todo.map((s) => chatHistory(CHAT_AGENT, cwd, s.id).then((r) => (Array.isArray(r?.items) && r.items.length > 0 ? s.id : null), () => null))).then((ids) => {
+      done = true;
+      const got = ids.filter((id): id is string => id !== null);
+      if (live && got.length > 0) setFilled((prev) => new Set([...prev, ...got]));
+    });
+    return () => {
+      live = false;
+      // A read cut short is asked again by the next run.
+      if (!done) for (const s of todo) probed.current.delete(s.id);
+    };
+  }, [sessions, cwd]);
+
   // A chat deleted in any pane leaves every pane's list at once.
-  useEffect(() => onSessionDeleted((d) => d.cwd === cwd && setSessions((xs) => xs.filter((s) => s.id !== d.id))), [cwd]);
+  useEffect(() => onSessionDeleted((d) => cwd !== null && sameFolder(d.cwd, cwd) && setSessions((xs) => xs.filter((s) => s.id !== d.id))), [cwd]);
 
   // The pane's tab and sidebar row follow the chat open now, with the words this list shows for it.
   const reported = useRef<{ id: string | null; title: string } | null>(null);
   useEffect(() => {
-    const title = titleOf(sessions, activeId, activeStarted);
+    const title = titleOf(sessions, activeId);
     // Another chat is a new thing to report, even when it has the same title as the last one.
     if (title === null || (reported.current?.id === activeId && reported.current.title === title)) return;
     reported.current = { id: activeId, title };
     onTitle?.(title);
-  }, [sessions, activeId, activeStarted, onTitle]);
+  }, [sessions, activeId, onTitle]);
 
   // The "..." menu and the Delete question close on Escape, and the menu on a click anywhere else.
   useEffect(() => {
@@ -205,7 +230,7 @@ export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, 
   );
   const askDelete = useCallback((id: string) => (setMenu(null), setAsking(id)), []);
   const cancelDelete = useCallback(() => setAsking(null), []);
-  const visible = useMemo(() => visibleSessions(sessions, activeId, activeStarted), [sessions, activeId, activeStarted]);
+  const visible = useMemo(() => visibleSessions(sessions, activeId, activeStarted, filled), [sessions, activeId, activeStarted, filled]);
 
   return (
     <HistoryView

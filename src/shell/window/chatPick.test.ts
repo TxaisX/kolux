@@ -26,13 +26,14 @@ test("the default model clears the pane's model, and an unchanged pick returns t
 test("the window wires the model and effort handlers to the pane, not only to the kept record", () => {
   const pane = src("./Pane.tsx");
   expect(pane).toMatch(/chatModel: \(model: string \| null\) => \{[\s\S]{0,300}?withChatPick\(ps, p\.key, \{ model \}\)/);
-  expect(pane).toMatch(/chatEffort: \(effort: string\) => \{[\s\S]{0,300}?withChatPick\(ps, p\.key, \{ effort \}\)/);
+  expect(pane).toMatch(/chatEffort: \(effort: string \| null\) => \{[\s\S]{0,300}?withChatPick\(ps, p\.key, \{ effort \}\)/);
 });
 
 test("ChatPane: a gone conversation is forgotten, a re-run during the history read gives the start back, and a pick restarts without a separate end", () => {
   const code = src("../../chat/live/ChatPane.tsx");
   // 1. the failed history read clears the pane's own id, and a restart only ever resumes that id
-  expect(code).toMatch(/else \{[^}]*sessionId\.current = null;[^}]*pick = null;/);
+  // (setSession writes sessionId.current; this assertion was stale at 72e680ac, which also called setSession here)
+  expect(code).toMatch(/else \{[^}]*setSession\(null\);[^}]*pick = null;/);
   expect(code).not.toMatch(/sessionId\.current \?\? resume/);
   expect(code).toMatch(/startChat\(chatId, cwd, next\.model, agent, sessionId\.current, next\.effort\)/);
   // 3. a stale run after the history read releases `started` and asks for another run

@@ -35,18 +35,19 @@ export function groupSessions(sessions: readonly ChatSessionSummary[], now: numb
 export const isBlankTitle = (title: string): boolean => /^(new chat|new session\b.*)$/i.test(title.trim());
 
 /** The chats the column shows. A chat with no message in it yet is a blank row nobody asked for, so it is left
- *  out, except the chat open now once something has been said in it (its title is still being written). */
-export function visibleSessions(sessions: readonly ChatSessionSummary[], activeId: string | null, activeStarted: boolean): ChatSessionSummary[] {
-  return sessions.filter((s) => !isBlankTitle(s.title) || (activeStarted && s.id === activeId));
+ *  out (blank by its title, unless `filled` says the column read words in it), except the chat open now once
+ *  something has been said in it (its title is still being written). */
+export function visibleSessions(sessions: readonly ChatSessionSummary[], activeId: string | null, activeStarted: boolean, filled: ReadonlySet<string> = NONE): ChatSessionSummary[] {
+  return sessions.filter((s) => !isBlankTitle(s.title) || filled.has(s.id) || (activeStarted && s.id === activeId));
 }
+const NONE: ReadonlySet<string> = new Set();
 
 /** The words the pane's tab and sidebar row should carry: the title the column shows for the chat open now.
- *  Null when the list does not hold it yet, or when it is still blank while the pane has said something (the
- *  first message names the tab until OpenCode writes a title). */
-export function titleOf(sessions: readonly ChatSessionSummary[], activeId: string | null, activeStarted: boolean): string | null {
+ *  Null when the list does not hold it yet, and null while it is still blank ("New chat" is OpenCode's
+ *  placeholder, never a name): the first message names the tab until OpenCode writes a real title. */
+export function titleOf(sessions: readonly ChatSessionSummary[], activeId: string | null): string | null {
   const hit = activeId ? sessions.find((s) => s.id === activeId) : undefined;
-  if (!hit) return null;
-  if (isBlankTitle(hit.title)) return activeStarted ? null : "New chat";
+  if (!hit || isBlankTitle(hit.title)) return null;
   return hit.title;
 }
 

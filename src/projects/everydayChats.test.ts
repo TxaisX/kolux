@@ -62,6 +62,17 @@ test("put adds a chat first and replaces one in place; an unchanged list comes b
   expect(same).toBe(list);
 });
 
+test("review 2 P2-4: a Claude chat continued on OpenCode keeps its old id in its own field, which reads back", () => {
+  const list = [rec("a", { session: "0b1c2d3e-old" })];
+  const next = setEverydaySession(list, "a", "ses_new", "0b1c2d3e-old");
+  expect(next[0]).toMatchObject({ session: "ses_new", legacy: "0b1c2d3e-old" });
+  expect(setEverydaySession(next, "a", "ses_new", "0b1c2d3e-old")).toBe(next);
+  expect(readEverydayChats({ [EVERYDAY_CHATS_FIELD]: JSON.parse(JSON.stringify(next)) })[0]).toMatchObject({ session: "ses_new", legacy: "0b1c2d3e-old" });
+  // Opening another chat on the row, or leaving the field out, clears or keeps it as asked.
+  expect(setEverydaySession(next, "a", "ses_other", null)[0].legacy).toBeUndefined();
+  expect(setEverydaySession(next, "a", "ses_other")[0].legacy).toBe("0b1c2d3e-old");
+});
+
 test("a session id and a name land on the one chat, and a no-op returns the same list", () => {
   const list = [rec("a"), rec("b")];
   const withSession = setEverydaySession(list, "b", "s-9");

@@ -4,23 +4,39 @@
 // the news that a saved chat was deleted (so a pane showing it starts a new chat instead of failing on its
 // next send). A module, not React state: no pane re-draws for it unless it is the one concerned.
 
+import { sameDir } from "../../workspaces";
+
 type Holder = { paneKey: number; focus: () => void };
-const holders = new Map<string, Holder>();
+// Every pane that holds a chat, newest claim last: two panes can hold one chat for a moment (a restored layout, a
+// pane still opening it), and closing one must not release the chat while the other still shows it.
+const holders = new Map<string, Map<number, Holder>>();
 
-/** This pane now shows the saved chat `id`; `focus` brings the pane forward. Another pane's claim on the same chat is replaced. */
+/** The same folder, whatever the case, slash style or trailing slash (Windows paths). */
+export const sameFolder = (a: string, b: string): boolean => sameDir(a, b);
+
+/** This pane now shows the saved chat `id`; `focus` brings the pane forward. */
 export function claimSession(id: string, paneKey: number, focus: () => void): void {
-  holders.set(id, { paneKey, focus });
+  const at = holders.get(id) ?? new Map<number, Holder>();
+  at.delete(paneKey);
+  at.set(paneKey, { paneKey, focus });
+  holders.set(id, at);
 }
 
-/** This pane no longer shows `id` (it opened another, or closed). Only the pane that holds it can let it go. */
+/** This pane no longer shows `id` (it opened another, or closed). Only its own claim is dropped. */
 export function releaseSession(id: string, paneKey: number): void {
-  if (holders.get(id)?.paneKey === paneKey) holders.delete(id);
+  const at = holders.get(id);
+  if (!at) return;
+  at.delete(paneKey);
+  if (at.size === 0) holders.delete(id);
 }
 
-/** The pane (other than `exceptKey`) that holds `id`, if any. */
+/** The pane (other than `exceptKey`) that holds `id`, if any: the newest claim. */
 export function holderOf(id: string, exceptKey: number): Holder | null {
-  const h = holders.get(id);
-  return h && h.paneKey !== exceptKey ? h : null;
+  const at = holders.get(id);
+  if (!at) return null;
+  let found: Holder | null = null;
+  for (const h of at.values()) if (h.paneKey !== exceptKey) found = h;
+  return found;
 }
 
 export type Deleted = { cwd: string; id: string; /** The pane whose history column deleted it, or null. */ source: number | null };
