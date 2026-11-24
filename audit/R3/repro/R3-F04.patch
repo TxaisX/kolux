@@ -1,0 +1,24 @@
+diff --git a/src-tauri/src/projects_tests.rs b/src-tauri/src/projects_tests.rs
+index 7db63b47..e6e4e3cb 100644
+--- a/src-tauri/src/projects_tests.rs
++++ b/src-tauri/src/projects_tests.rs
+@@ -2529,6 +2529,19 @@ fn t107d_the_first_prompt_renames_a_suggested_branch_once_from_the_task_and_find
+     }
+ }
+ 
++
++#[test]
++fn audit_r3_f04_a_folder_inside_a_project_resolves_to_that_project() {
++    let store = Store::open(&temp("audit-r3-f04")).unwrap();
++    let root = temp("audit-r3-f04-project");
++    let p = project_at("p1", &root);
++    store.set(PROJECTS_KEY, &serde_json::json!([p]).to_string()).unwrap();
++    let inside = root.join("src");
++    assert_eq!(project_known(&store, &inside.to_string_lossy()).map(|p| p.id).ok(), Some("p1".to_string()),
++               "a folder inside the project's own folder must resolve to it");
++    let _ = fs::remove_dir_all(&root);
++}
++
+ #[test]
+ fn t107d_a_pushed_branch_one_with_a_pull_request_or_one_renamed_by_hand_is_never_renamed() {
+     let (git, store, project, profile, repo, root) = rename_fixture("first-prompt-guards", None);

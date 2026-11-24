@@ -1,0 +1,122 @@
+[
+  {
+    "id": "R3-F01",
+    "title": "Retiring an idle workspace mid-merge commits the conflict",
+    "severity": "high",
+    "file": "src-tauri/src/quit_merge.rs",
+    "line": 295,
+    "what": "prepare_retire goes from local_files straight to save_with without the unfinished() guard tidy_one uses, so a sweep over an idle workspace with a half-done merge, cherry-pick, revert or rebase commits its conflict markers as a normal save and then removes the folder.",
+    "expected": "It should refuse with the same unfinished message tidy_one gives, leaving the merge and its markers for the user to resolve.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/quit_merge_tests.rs",
+      "name": "quit_merge::tests::audit_r3_f01_an_idle_workspace_mid_merge_is_never_committed_over"
+    },
+    "patch": "repro/R3-F01.patch"
+  },
+  {
+    "id": "R3-F02",
+    "title": "A damaged origin record is overwritten without being kept aside",
+    "severity": "high",
+    "file": "src-tauri/src/projects.rs",
+    "line": 262,
+    "what": "load_origins turns a workspaceOrigins blob that does not parse into an empty map, and the next set_origin writes a fresh map over the key, so every madeBy and prEver record is lost with no copy kept aside and nothing shown.",
+    "expected": "A blob that does not read should be kept aside the way kept::load does, and the caller told, so no record is silently destroyed.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/projects_tests.rs",
+      "name": "projects::tests::audit_r3_f02_an_unreadable_origins_blob_is_kept_aside_not_wiped"
+    },
+    "patch": "repro/R3-F02.patch"
+  },
+  {
+    "id": "R3-F03",
+    "title": "A worktree Kolux did not make counts as Kolux's own",
+    "severity": "high",
+    "file": "src-tauri/src/projects.rs",
+    "line": 3105,
+    "what": "kolux_made accepts every worktree whose path merely has an origin record, but save_details writes such a record without madeBy, so a worktree opened from another tool and given a display name is treated as Kolux's own and the sweep may forget or retire it.",
+    "expected": "Only a record that names Kolux as its maker, the madeBy check trust::made_by_kolux uses, should count, so a foreign worktree is never swept.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/projects_tests.rs",
+      "name": "projects::tests::audit_r3_f03_a_details_record_alone_does_not_make_a_worktree_kolux_made"
+    },
+    "patch": "repro/R3-F03.patch"
+  },
+  {
+    "id": "R3-F04",
+    "title": "A folder inside a project never resolves to that project",
+    "severity": "medium",
+    "file": "src-tauri/src/projects.rs",
+    "line": 2374,
+    "what": "project_known builds its containment prefix as name_key(project.path) plus a forward slash, but name_key has already turned slashes into backslashes, so on Windows the prefix never matches a child path and the folder falls through to the Git lookup.",
+    "expected": "A path under the project's folder should resolve to that project, using the separator name_key itself produces.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/projects_tests.rs",
+      "name": "projects::tests::audit_r3_f04_a_folder_inside_a_project_resolves_to_that_project"
+    },
+    "patch": "repro/R3-F04.patch"
+  },
+  {
+    "id": "R3-F05",
+    "title": "A double-star ignore stops hiding folders below the top level",
+    "severity": "medium",
+    "file": "src-tauri/src/repo_scan.rs",
+    "line": 76,
+    "what": "rules_of rewrites a pattern with replace(\"**/\", \"\"), so `**/build` becomes `build`; the rule stays anchored and only a top-level build matches, while a nested a/build is scanned and repositories inside it are found.",
+    "expected": "`**/build` should hide a build folder at any depth, as Git does, so nothing under it is scanned.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/repo_scan.rs",
+      "name": "repo_scan::tests::audit_r3_f05_a_double_star_ignore_hides_a_folder_at_any_depth"
+    },
+    "patch": "repro/R3-F05.patch"
+  },
+  {
+    "id": "R3-F06",
+    "title": "A failed forget leaves the workspace's records half wiped",
+    "severity": "medium",
+    "file": "src-tauri/src/projects.rs",
+    "line": 235,
+    "what": "forget_workspace clears the admin record, typed name, parent, opened time, board status and origin as separate writes; when a later write fails the call returns Err but the earlier records are already gone, so a retry or a new worktree at that path inherits a half-forgotten state.",
+    "expected": "The records should go in one all-or-nothing write, or in an order that leaves nothing lost, so a failed forget changes nothing.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/projects_tests.rs",
+      "name": "projects::tests::audit_r3_f06_forgetting_a_workspace_is_all_or_nothing"
+    },
+    "patch": "repro/R3-F06.patch"
+  },
+  {
+    "id": "R3-F07",
+    "title": "A drive-relative workspaces folder escapes the project root",
+    "severity": "low",
+    "file": "src-tauri/src/projects.rs",
+    "line": 1021,
+    "what": "set_place saves any folder that is not is_absolute() as if it were project-relative, but on Windows `C:ws` is drive-relative and Path::join replaces the whole base with it, so the workspaces land outside the project the setting promised.",
+    "expected": "A saved folder that is not fully absolute should be joined safely, by refusing it or treating it as relative, so it can never leave the project root.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/projects_tests.rs",
+      "name": "projects::tests::audit_r3_f07_a_drive_relative_workspaces_folder_never_leaves_the_project"
+    },
+    "patch": "repro/R3-F07.patch"
+  },
+  {
+    "id": "R3-F08",
+    "title": "A project's relative workspaces folder is never swept for trash",
+    "severity": "low",
+    "file": "src-tauri/src/projects.rs",
+    "line": 3172,
+    "what": "trash_folders turns each project's saved workspaces folder straight into a PathBuf, but that value is stored verbatim and resolved from the project root when worktrees are made, so with a relative folder such as `ws` the sweep looks in the app's own directory and the real trash is never cleared.",
+    "expected": "A relative per-project folder should be joined to the project path the same way place_root does, so the sweep looks where the worktrees are.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/projects_tests.rs",
+      "name": "projects::tests::audit_r3_f08_a_relative_project_folder_is_swept_where_the_worktrees_are"
+    },
+    "patch": "repro/R3-F08.patch"
+  }
+]
