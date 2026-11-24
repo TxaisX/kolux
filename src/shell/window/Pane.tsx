@@ -12,6 +12,7 @@ import { showsDragHandle } from "../../terminal/rearrange";
 import { gpuOn } from "../../terminal/renderer";
 import { showsReview } from "../../terminal/planReview";
 import { tabName } from "../../terminal/tabName";
+import { withoutFailedResume } from "../../terminal/layout";
 import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
 import { nameOf, sameDir, viewOf } from "../../workspaces";
@@ -128,6 +129,9 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       restoredKeys.current.delete(p.key);
       startWatch.seen(p.key);
     },
+    // START-02: the restored conversation could not be resumed (it was never saved), so the pane forgets its
+    // id: the next save writes none and the next start opens the agent fresh.
+    resumeFailed: () => setPanes((ps) => withoutFailedResume(ps, p.key)),
     split: (dir: "right" | "down") => splitPane(p.key, dir),
     dragStart: () => void (dragging.current = { cell: groupOf(p) }),
     dragEnd: () => (dragging.current = null, setDropHint(null)),
@@ -259,6 +263,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       notice={notice && { ...notice, onPrimary: act.noticePrimary, onSecondary: notice.onSecondary && act.noticeSecondary }}
       onFailed={act.failed}
       onRestoreFailed={act.restoreFailed}
+      onResumeFailed={act.resumeFailed}
       onSplit={act.split}
       dragCell={showsDragHandle(shown.length) ? { onStart: act.dragStart, onEnd: act.dragEnd } : undefined}
       onEqualize={terminals && gridCount > 1 ? act.equalize : undefined}
