@@ -167,7 +167,7 @@ export default function WindowPane({ pane: p, active, tabs }: { pane: Pane; acti
     },
     chatEffort: (effort: string | null) => {
       if (p.everyday) saveChats((list) => setEverydayChoice(list, p.everyday!, { effort }));
-      if (p.chatEffort !== effort) setPanes((ps) => withChatPick(ps, p.key, { effort }));
+      if ((p.chatEffort ?? null) !== (effort || null)) setPanes((ps) => withChatPick(ps, p.key, { effort }));
     },
     sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
     entry: (t: EntryTarget) => (t.kind === "web" ? void openExternal(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
