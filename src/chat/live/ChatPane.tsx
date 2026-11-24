@@ -19,7 +19,7 @@ import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
 import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
 import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
-import { applyRead, combine, livePending, type ChatItem, type Pending } from "../model";
+import { applyRead, combine, livePending, prunePending, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
 import { Composer } from "../MessageBox";
 import { BrowserChoice, LinkContext, type LinkHost } from "../ChatText";
@@ -313,6 +313,12 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     [],
   );
 
+  // CHAT-02 review (P2): as the transcript grows, a send it now confirms is forgotten once, so the memo
+  // below only scans the sends still waiting rather than every send this pane ever made. A change with
+  // nothing confirmed gives back the same array, so it costs no redraw.
+  useEffect(() => {
+    setSent((xs) => prunePending(xs, items));
+  }, [items]);
   const pending = useMemo(() => livePending(sent, items), [sent, items]);
   const rows = useMemo(() => combine(items, [], null, pending), [items, pending]);
   const shown = useMemo(() => visibleRows(rows, pages), [rows, pages]);
@@ -423,7 +429,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
       if (name) onName?.(name);
     }
     const id = `sent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    setSent((xs) => [...xs, { id, text, at: Date.now() }]);
+    // A send typed while an earlier send has no result yet is queued behind that turn: its rows keep
+    // streaming after it, so the row waits at the tail. With nothing waiting, the next reply is this
+    // send's own, so it sits above it (the finished turn before it leaves no turn under way).
+    const queued = waiting.current > 0;
+    setSent((xs) => [...xs, { id, text, at: Date.now(), queued }]);
     setNote(null);
     waiting.current += 1;
     setOpen(true);
