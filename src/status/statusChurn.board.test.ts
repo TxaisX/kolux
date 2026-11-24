@@ -165,8 +165,8 @@ describe("LAG-02: title frames of an animating agent stay out of the window", ()
     const r = animate(10, 100, 100, (i) => `${SPIN[i % 4]} Fix the login bug`);
     // The agent appearing goes at once (running, then agent): two applies per pane.
     expect(r.atStart).toEqual(Array(10).fill(2));
-    // While the spinner turns: nothing reaches the window.
-    expect(r.during.reduce((a, b) => a + b, 0)).toBe(0);
+    // Amended 2026-11-24 (coordinator): the one idle->working flip must reach the paced title; frame-to-frame changes stay held.
+    expect(r.during).toEqual(Array(10).fill(1));
     // Once it stops: exactly one apply per pane, and it is the newest frame.
     expect(r.after).toEqual(Array(10).fill(1));
     for (let k = 0; k < 10; k++) {

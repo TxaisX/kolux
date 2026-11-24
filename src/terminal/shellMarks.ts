@@ -11,6 +11,7 @@
 
 import type { Agent } from "../chrome/VendorMark";
 import { titleOwner } from "../status/titleOwner";
+import { titleState as reading } from "./status";
 
 import { heldBytes } from "./codec";
 
@@ -289,13 +290,20 @@ export function titleState(title: string | null): "spinning" | "still" {
   return title !== null && titleFrameKey(title) !== title ? "spinning" : "still";
 }
 
+/** What the status vocabulary (STAT-033) reads a title as, with a null title reading as nothing. The
+ *  pacer compares these, so the flip it must let through is the one the header shows, not merely a
+ *  spinner appearing: Claude Code's idle mark (✳ U+2733) is a spinner run to `titleFrameKey` but
+ *  reads done, and its first braille frame reads working. */
+const titleReading = (title: string | null) => reading(title ?? "");
+
 /** Hands identities to `apply`: a change of `running` or `agent` at once (the hook and guess rules
  *  read those transitions), a change of the title alone held and applied once it has been the newest
  *  for TITLE_PACE_MS. A title that is only a spinner frame of the one shown (titleFrameKey) restarts
  *  that wait, so an agent animating its title many times a second hands the window nothing while it
  *  turns and the newest frame once it stops; a real change of the text still lands within the pace. A
- *  title that starts or stops spinning is not a frame of the animation: it takes the normal pace and is
- *  never held behind the frames that follow it. */
+ *  title whose status reading flips (STAT-033: ✳ done to a braille frame working, or the reverse) is
+ *  not a frame of the animation: it takes the normal pace and is never held behind the frames that
+ *  follow it, whose holds no longer restart its wait. */
 export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => void, ms: number) => () => void = (fn, ms) => {
   const t = setTimeout(fn, ms);
   return () => clearTimeout(t);
@@ -318,7 +326,7 @@ export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => vo
     note(next: Identity) {
       pending = next;
       if (next.running !== shown.running || next.agent !== shown.agent) flush();
-      else if (titleState(next.title) === titleState(shown.title) && titleFrameKey(next.title) === titleFrameKey(shown.title)) {
+      else if (titleReading(next.title) === titleReading(shown.title) && titleFrameKey(next.title) === titleFrameKey(shown.title)) {
         // A spinner frame, or the same text: hold it and wait for the animation to stop.
         cancel?.();
         cancel = wait(flush, TITLE_PACE_MS);

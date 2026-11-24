@@ -429,7 +429,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
       if (name) onName?.(name);
     }
     const id = `sent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    setSent((xs) => [...xs, { id, text, at: Date.now() }]);
+    // A send typed while an earlier send has no result yet is queued behind that turn: its rows keep
+    // streaming after it, so the row waits at the tail. With nothing waiting, the next reply is this
+    // send's own, so it sits above it (the finished turn before it leaves no turn under way).
+    const queued = waiting.current > 0;
+    setSent((xs) => [...xs, { id, text, at: Date.now(), queued }]);
     setNote(null);
     waiting.current += 1;
     setOpen(true);

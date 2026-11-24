@@ -307,6 +307,32 @@ describe("title storm (perf: one render per real change, titles paced)", () => {
       vi.useRealTimers();
     }
   });
+  it("Claude Code's idle ✳ title flips to working once, within the pace", () => {
+    vi.useFakeTimers();
+    try {
+      const applied: Identity[] = [];
+      const pacer = identityPacer((id) => applied.push(id));
+      // Between turns Claude Code leaves its done mark in the title. ✳ is a spinner run to titleFrameKey
+      // but reads done (STAT-033), so the first braille frame is a real idle->working flip the paced
+      // title must show, not a frame of an animation already under way.
+      pacer.note({ running: true, agent: "claude", title: "✳ Claude Code" });
+      applied.length = 0;
+      const frames = ["⠂", "⠐", "⠈", "⠁", "⠃", "⠇", "⠏", "⠋", "⠙", "⠹"];
+      let spinnerAt = -1;
+      for (let t = 0; t < 2_000; t += 80) {
+        pacer.note({ running: true, agent: "claude", title: `${frames[(t / 80) % frames.length]} Claude Code` });
+        vi.advanceTimersByTime(80);
+        if (spinnerAt < 0 && applied.some((id) => titleState(id.title) === "spinning")) spinnerAt = t + 80;
+      }
+      expect(spinnerAt).toBeGreaterThanOrEqual(0);
+      expect(spinnerAt).toBeLessThanOrEqual(250);
+      // The frames after the flip stay held: the whole 2 s animation hands the window exactly one title.
+      expect(applied).toHaveLength(1);
+      pacer.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("DT-C248 review: a pane remounted in another cell", () => {

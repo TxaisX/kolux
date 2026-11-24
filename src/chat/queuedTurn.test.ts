@@ -1,12 +1,13 @@
 // CHAT-02 review (P2): a message typed while the agent is replying is queued behind the running turn. It
 // must be drawn at the end of that turn, however many assistant, tool or thought rows the turn still
 // streams, and the turn must keep its own worked time instead of settling early under the queued send.
+// Round 2: a send after a finished turn is not queued, so its own reply goes below it, never above.
 import { describe, expect, it } from "vitest";
 import { combine, type ChatItem, type Pending } from "./model";
 import { fold } from "./steps";
 
 const msg = (id: string, role: ChatItem["role"], text: string, at: number): ChatItem => ({ id, role, kind: "text", text, at });
-const pend: Pending = { id: "p1", text: "second", at: 2_500 };
+const pend: Pending = { id: "p1", text: "second", at: 2_500, queued: true };
 const tags = (rows: { row: string; id: string }[]) => rows.map((r) => `${r.row}:${r.id}`);
 
 describe("CHAT-02 review (P2): a send typed mid-reply waits out the running turn", () => {
@@ -32,5 +33,15 @@ describe("CHAT-02 review (P2): a send typed mid-reply waits out the running turn
     expect(tags(v)).toEqual(["message:u1", "message:a1", "message:a2", "message:a3", "worked:worked-u1", "pending:p1", "responding:responding"]);
     expect((v[4] as { ms: number }).ms).toBe(3_000);
     expect(v.some((x) => x.row === "worked" && x.id === "worked-p1")).toBe(false);
+  });
+});
+
+describe("CHAT-02 review round 2: a send after a finished turn sits above its own reply", () => {
+  it("no queued send: the reply that arrives before the echo goes below the send", () => {
+    // u1's turn finished at a1, so nothing was waiting when "second" was typed at 10 000. The reply to
+    // it arrives at 13 000, before the user's echo; it is that send's own reply, so it goes below it.
+    const items = [msg("u1", "user", "first", 0), msg("a1", "assistant", "done one", 2_000), msg("a2", "assistant", "done two", 13_000)];
+    const rows = combine(items, [], null, [{ id: "p1", text: "second", at: 10_000 }]);
+    expect(tags(rows)).toEqual(["message:u1", "message:a1", "pending:p1", "message:a2"]);
   });
 });

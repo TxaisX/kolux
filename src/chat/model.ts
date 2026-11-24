@@ -190,8 +190,10 @@ export function applyRead(prev: ChatItem[], read: ChatRead): ChatItem[] {
 
 /** A message the hooks reported (the prompt, the last reply) before the transcript had it. */
 export type Extra = { id: string; role: "user" | "assistant"; text: string; at: number };
-/** Something typed from chat that the transcript has not confirmed yet. */
-export type Pending = { id: string; text: string; at: number; failed?: boolean };
+/** Something typed from chat that the transcript has not confirmed yet. `queued` marks a send typed
+ *  while a turn was still running (the pane had a send with no result yet): that turn's rows keep
+ *  streaming after it, so it waits at the tail instead of above them. */
+export type Pending = { id: string; text: string; at: number; failed?: boolean; queued?: boolean };
 /** A row of the conversation as drawn. */
 export type Row = (ChatItem & { row: "message" }) | { row: "preview"; id: string; text: string } | { row: "pending"; id: string; text: string; at: number; failed?: boolean };
 
@@ -200,17 +202,18 @@ const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 const SEND_SLACK_MS = 5_000;
 
 /** CHAT-02: where a waiting send goes among the real messages: before the first later user row (a
- *  turn of its own), or before the first later row while no user turn was under way when it was
- *  typed (that row is the reply the send gets, before the user's echo arrives). A later assistant,
- *  tool or thought row of a turn already under way is that turn still streaming, so the send waits
- *  at the tail (no index). */
+ *  turn of its own), or before the first later row unless it was typed into a running turn (that
+ *  row is the reply the send gets, before the user's echo arrives). A send typed into a running
+ *  turn is queued: that turn's rows keep streaming after it, so it waits at the tail (no index).
+ *  Whether a turn was running is the pane's own count of sends with no result yet, not a scan of
+ *  earlier user rows: a finished turn leaves no marker, so any earlier user row would make every
+ *  later send look queued and drop it below its own reply. */
 function waitingBefore(rows: Row[], p: Pending): number {
   const first = rows.findIndex((r) => r.row === "message" && (r.at ?? 0) > p.at);
   if (first < 0) return -1;
   const later = rows[first];
   if (later.row === "message" && later.role === "user") return first;
-  const turnUnderWay = rows.some((r) => r.row === "message" && r.role === "user" && (r.at ?? 0) <= p.at);
-  return turnUnderWay ? -1 : first;
+  return p.queued ? -1 : first;
 }
 
 /** CHAT-010: the transcript's messages, plus hook messages it does not have yet, each once, in
