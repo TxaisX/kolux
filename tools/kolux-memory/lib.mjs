@@ -723,9 +723,11 @@ export function resumeMarkdown(db, path) {
   for (const a of agents) lines.push(`| ${a.kind} | ${a.name} | ${a.sessions} | ${a.messages} | ${a.last_seen || ""} |`);
   lines.push("");
   lines.push("## Next", "");
-  if (fails.length) lines.push("1. Start with the failing evidence above; each is a card that was attempted and did not pass.");
-  if (open.length) lines.push(`${fails.length ? 2 : 1}. Close the open P0 cards listed above; run one proof at a time and record the result in evidence/.`);
-  lines.push(`${fails.length || open.length ? 3 : 1}. Rebuild this memory after the work so the next session inherits the result: \`node tools/kolux-memory/cli.mjs build\`.`);
+  const steps = [];
+  if (fails.length) steps.push("Start with the failing evidence above; each is a card that was attempted and did not pass.");
+  if (open.length) steps.push("Close the open P0 cards listed above; run one proof at a time and record the result in evidence/.");
+  steps.push("Rebuild this memory after the work so the next session inherits the result: `node tools/kolux-memory/cli.mjs build`.");
+  steps.forEach((step, i) => lines.push(`${i + 1}. ${step}`));
   return lines.join("\n") + "\n";
 }
 
