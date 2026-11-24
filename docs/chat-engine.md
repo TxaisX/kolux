@@ -50,8 +50,11 @@ Added 2026-11-24. Measured against `opencode` 2.4.1.
 first time a chat, the model list or a session list needs it, with no console window. The system
 picks the port and the server names it in its first line (`server listening on http://127.0.0.1:<port>`).
 Kolux makes a fresh password for each start (32 bytes from the system's secure random source, as
-hex), passes it as `OPENCODE_PASSWORD` (an `OPENCODE_SERVER_PASSWORD` in the environment is removed),
-keeps it in memory only and sends it as HTTP Basic auth (user `opencode`) on every call. Events
+hex), passes it as `OPENCODE_PASSWORD` (an `OPENCODE_SERVER_PASSWORD` or `OPENCODE_SERVER_USERNAME`
+in the environment is removed), keeps it in memory only and sends it as HTTP Basic auth (user
+`opencode`) on every call. The programs OpenCode starts inherit the variable; it opens only this
+loopback server. An npm `opencode.cmd` shim is not run through `cmd.exe`: the `opencode.exe` it names
+is started directly, the same way a terminal pane resolves a shim. Events
 arrive on one long `GET /api/event` stream (server-sent events) and are routed to every chat that has
 the session open (one session may be open in two chats). Each chat is one OpenCode session.
 
@@ -61,8 +64,10 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
 - A stream that closes is opened again. One that fails to open (a refused status, no connection) is
   tried again after a wait that doubles each time (from 300 ms, at most 10 s); after 8 failures in a
   row the server is ended and each chat gets a `stderr` line saying why, then `exit {reason: "crashed"}`.
+  A stream that opens but closes within 5 seconds counts as a failure too.
 - A turn the page was told is over before OpenCode said so (a stop that got no answer in time, a
-  lost stream) stays over: that run's late events are dropped until the next run starts.
+  lost stream) stays over: that run's late events are dropped until the next run starts. A message
+  that was still waiting is kept: when OpenCode takes it up, it is shown as a turn of its own.
 
 Why a shared server and not one `opencode run` per turn: sessions, the model list, delete and history
 all come from the same API; a model or effort change between turns and an interrupt are single calls;
@@ -88,6 +93,8 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 - The model and the effort can change between turns of one chat with no restart: `chat_start` on a
   chat id that is already open on the same folder and the same session only posts the new pair and
   emits a fresh `init`. With the server asleep the pick is kept and applied before the next message.
+  If OpenCode refuses it then, the message is not sent, the chat gets a `stderr` line saying so, and
+  the pick stays waiting for the next send.
 - Efforts are per model and come from the model list (`efforts`). Seen 2026-11-24: DeepSeek V4.1
   Flash `none, low, high, max`; Claude Opus 5.5 `low, medium, high, xhigh, max`; GPT-5.5 `none, low,
   medium, high, xhigh`; some models none.
@@ -118,8 +125,8 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 | `session.retry.scheduled` | `apiRetry` |
 | `session.compaction.ended` | `compactBoundary {trigger}` |
 | `session.execution.succeeded` | `result {subtype: "success", sessionId, numTurns, durationMs, totalCostUsd, usage, result}`, and one more success `result` for each further message delivered in that run |
-| `session.execution.interrupted` | `result {subtype: "error_during_execution", isError: true}`; messages still queued are forgotten |
-| `session.execution.failed` | `result {isError: true, subtype: the error's type or "failed", errors: [message]}`; messages still queued are forgotten |
+| `session.execution.interrupted` | `result {subtype: "error_during_execution", isError: true}`; each message still queued is forgotten and gets its own `result {subtype: "error_during_execution", isError: true}` |
+| `session.execution.failed` | `result {isError: true, subtype: the error's type or "failed", errors: [message]}`; each message still queued is forgotten and gets its own `result {subtype: "error_during_execution", isError: true}` |
 | `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.progress`, `session.usage.updated` | dropped |
 | any other session event | `raw {line: the event type, json}` |
 | the event stream is lost during a turn | `result {isError: true, subtype: "connection_lost"}` |
@@ -130,7 +137,11 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 
 **Stop.** `chat_stop` posts the interrupt and waits the stop grace for the turn to end:
 `stopped {how: "interrupt"}` when it does, `stopped {how: "ended"}` when it does not. The shared
-server is never ended for one chat's stop.
+server is never ended for one chat's stop. A run the page was already told is over (a lost stream,
+an earlier stop with no answer) is still interrupted. With nothing to stop, an OpenCode chat still
+answers `stopped {how: "ended"}` (and returns `"ended"`, never `null`), so the page never waits. When
+the interrupt was taken but the turn did not end in time, each message still queued gets a `result`;
+when the interrupt could not be sent, queued messages are kept and run as turns of their own.
 
 **Sleep and exit.** The server is ended after `IDLE_SLEEP` (10 minutes) with no event and no busy
 chat, or after `BUSY_IDLE_SLEEP` (60 minutes) of silence while a turn looks busy; every open chat
@@ -139,14 +150,17 @@ starts the server again. A server that ends by itself gives `exit {reason: "cras
 on a clean code). `chat_end` gives that chat `exit {reason: "closed"}` and leaves the server for the
 others. `chat_engine::close_all` ends the server on quit: each OpenCode chat gets `exit {reason:
 "closed"}` with no interrupt sent, a start under way is not waited for (its server is ended when it
-finishes), and the process is ended after every lock is let go. The server runs in a kill-on-close
-job of its own, so it and everything it started end with Kolux.
+finishes), and the process is ended after every lock is let go. On Windows the server is put in a
+kill-on-close job of its own right after it starts, before it reads its settings, so it and the
+programs it starts (MCP servers, language servers) end with the job.
 
 **Not known / limits.**
 
 - Whether OpenCode can read a picture by path or as an attachment through this API: not tried.
 - The largest `limit` the message list accepts: not measured; the newest 200 are read.
-- If Kolux itself is killed, Windows closes the server's job and ends it. On other systems the
+- If Kolux itself is killed, Windows closes the server's job and ends the server and what it
+  started. A program started in the moment between the server's start and its job (a few
+  microseconds; OpenCode starts nothing that early) would be outside it. On other systems the
   server has no job and may stay until it is ended by hand.
 - `chat_session_delete` takes `cwd` for the page's sake and does not check the session belongs to that folder.
 

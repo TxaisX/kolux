@@ -831,8 +831,8 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
     // pane's extra variables cannot be carried per session and are not used for an OpenCode chat.
     if agent == opencode::AGENT {
         env.extend(everyday_rule());
-        engines(&app).open_server().set_env(open_env(&app)?);
     }
+    set_open_env(&engines(&app).open_server(), &agent, || open_env(&app))?;
     // Txais (2026-11-21): chat panes follow the same 200k cap, handoff line and note as terminal
     // panes. The cap goes on here (the CLI's own variable) rather than inside the engine, so the
     // engine stays a plain stream reader. The note is created beside the folder's other Kolux
@@ -885,6 +885,15 @@ pub async fn chat_end(app: tauri::AppHandle, chat_id: String) -> Result<(), Stri
         Ok(())
     })
     .await
+}
+
+/// Before an OpenCode chat starts (and may wake the server), the server is given its own fixed
+/// environment; a chat of another agent leaves it alone.
+fn set_open_env(server: &opencode::Server, agent: &str, env: impl FnOnce() -> Result<Vec<(String, String)>, String>) -> Result<(), String> {
+    if agent == opencode::AGENT {
+        server.set_env(env()?);
+    }
+    Ok(())
 }
 
 /// What the shared OpenCode server is started with: the sign-in and settings a terminal's OpenCode
