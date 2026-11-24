@@ -12,7 +12,7 @@ use crate::names::safe_name;
 use crate::state::Store;
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use tauri::State;
 
@@ -1062,12 +1062,58 @@ pub fn chosen_workspaces_dir(own: Option<&str>, env: Option<&str>, setting: Opti
     non_blank(own).or(non_blank(setting)).or(non_blank(env)).map(PathBuf::from)
 }
 
-/// The root and layout for a project at `project_path`: a chosen folder (relative counts from the
-/// project root) with the saved layout, else `<project>\.worktrees`, always flat (the folder is the
-/// project's own, so a folder per project inside it would only repeat the name).
+/// A folder chosen for a project's workspaces read as steps down from its root: a drive, a root and
+/// a `.` are dropped, and a `..` steps back (so `ws\..\x` is `x`); None when nothing is left or a
+/// `..` climbs above the project root. Windows needs this: `C:ws` is relative to the current folder
+/// on drive C and `\ws` to the drive's root, and `Path::join` with either replaces the project's
+/// folder, so a folder that must count from the project root would leave the project instead.
+fn inside_project(dir: &Path) -> Option<PathBuf> {
+    let mut steps = PathBuf::new();
+    for part in dir.components() {
+        match part {
+            Component::Normal(step) => steps.push(step),
+            Component::ParentDir => {
+                if !steps.pop() {
+                    return None;
+                }
+            }
+            Component::Prefix(_) | Component::RootDir | Component::CurDir => {}
+        }
+    }
+    (!steps.as_os_str().is_empty()).then_some(steps)
+}
+
+/// Whether a folder is nothing but steps down from a project root: a name, or a name and a name
+/// (a `.` between them changes nothing). Windows' `is_absolute` is not the inverse of "relative":
+/// `C:ws` is relative to the current folder on drive C and `\ws` to the drive's root, so neither
+/// may be saved as a folder that counts from the project root (`inside_project` is what reads one
+/// back).
+fn stays_inside(dir: &Path) -> bool {
+    let mut named = false;
+    for part in dir.components() {
+        match part {
+            Component::Normal(_) => named = true,
+            Component::CurDir => {}
+            Component::Prefix(_) | Component::RootDir | Component::ParentDir => return false,
+        }
+    }
+    named
+}
+
+/// The root and layout for a project at `project_path`: a chosen folder (a relative one counts from
+/// the project root, and only the steps down that `inside_project` keeps) with the saved layout,
+/// else `<project>\.worktrees`, always flat (the folder is the project's own, so a folder for each
+/// project inside it would only repeat the name).
 pub fn place_root(project_path: &Path, chosen: Option<PathBuf>, flat_saved: bool) -> (PathBuf, bool) {
+    let chosen = chosen.and_then(|dir| {
+        if dir.is_absolute() {
+            Some(dir)
+        } else {
+            inside_project(&dir).map(|steps| project_path.join(steps))
+        }
+    });
     match chosen {
-        Some(dir) => (project_path.join(dir), flat_saved),
+        Some(dir) => (dir, flat_saved),
         None => (project_path.join(PROJECT_LOCAL_DIR), true),
     }
 }
@@ -3013,6 +3059,9 @@ pub fn workspaces_place_set(store: StoreState<'_>, dir: String, flat: bool) -> R
 
 /// An absolute folder is made right away (so a folder that cannot be made is a failed save the
 /// user can retry, SET-032); a relative one counts from each project root, so it is only saved.
+/// A folder that is neither is refused rather than saved: `C:ws` and `\ws` are not absolute, but
+/// they name a place of their own on the drive, so saving one as if it counted from each project
+/// root would put the workspaces outside the project (`place_root` never reads them that way).
 fn set_place(store: &Store, dir: &str, flat: bool) -> Result<PlaceInfo, String> {
     let mut settings = store.settings();
     let trimmed = dir.trim();
@@ -3021,6 +3070,8 @@ fn set_place(store: &Store, dir: &str, flat: bool) -> Result<PlaceInfo, String> 
     } else {
         if Path::new(trimmed).is_absolute() {
             std::fs::create_dir_all(trimmed).map_err(|e| format!("{trimmed} cannot be made: {e}"))?;
+        } else if !stays_inside(Path::new(trimmed)) {
+            return Err(format!("{trimmed} is not a folder this setting can use: use a full folder (C:\\ws) or a relative one with no drive letter and no .. (it counts from each project's folder), so it was not saved"));
         }
         settings[WORKSPACES_DIR_SETTING] = serde_json::Value::String(trimmed.to_string());
     }
