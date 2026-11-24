@@ -1,0 +1,32 @@
+[
+  {
+    "id": "R6-F01",
+    "title": "An impossible bypass port covers every port instead of none",
+    "severity": "low",
+    "file": "src-tauri/src/resources/app_proxy.rs",
+    "line": 51,
+    "what": "entry_covers splits `host:port` and keeps `p.parse::<u16>().ok()`. A port that cannot exist (`example.com:99999`, or 65536 and above) still matches the all-digits arm, so the number is silently dropped (want_port becomes None) and the entry is read as a bare host name that covers every port. The neighbouring case for an impossible IPv4 range (`1.2.3.4/40`) is refused, so two malformed entries behave in opposite ways: the range covers nothing, the port covers everything.",
+    "expected": "A bypass entry whose port is outside 0..=65535 cannot name a port, so it must cover nothing, exactly like an IPv4 range wider than 32 bits; `example.com:99999` must not put example.com on port 80 or 443 on the direct route.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/resources/app_proxy.rs",
+      "name": "resources::app_proxy::tests::audit_r6_f01_an_impossible_bypass_port_covers_nothing"
+    },
+    "patch": "repro/R6-F01.patch"
+  },
+  {
+    "id": "R6-F02",
+    "title": "The old database's hot journal is copied into the new profile",
+    "severity": "medium",
+    "file": "src-tauri/src/profile_move.rs",
+    "line": 191,
+    "what": "skipped leaves out state.db, state.db-wal, state.db-shm, state.db.copying and lock files, but not state.db-journal. copy_tree therefore carries the old profile's rollback journal into the new profile, and move_profile then writes the fresh VACUUM INTO snapshot as state.db beside it. The function's own comments clear the .copying side files so a stale log cannot replay over the snapshot, yet the real journal is copied; on the first start SQLite can replay the old database's pages over the new snapshot.",
+    "expected": "A side file that belongs to the old database must stay with it: the new profile must contain no state.db-journal, just as it contains no state.db-wal, state.db-shm or stale .copying files, so the first start opens the new snapshot alone.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/profile_move.rs",
+      "name": "profile_move::tests::audit_r6_f02_the_old_database_journal_is_not_carried_into_the_new_profile"
+    },
+    "patch": "repro/R6-F02.patch"
+  }
+]
