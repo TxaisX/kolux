@@ -35,6 +35,10 @@ const SKIPPED: &[&str] = &["cli.json"];
 /// The write-ahead log that belongs to `state.db`.
 const WAL: &str = "state.db-wal";
 
+/// The rollback journal that belongs to `state.db`. It is the old database's, so it stays with it: the
+/// copy is one self-contained snapshot, and a journal carried beside it would replay old pages over it.
+const JOURNAL: &str = "state.db-journal";
+
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Moved {
     pub from: PathBuf,
@@ -187,8 +191,9 @@ fn copy_database(old: &Path, tmp: &Path, from: &Path, to: &Path) -> Result<u64, 
 
 fn skipped(name: &str, top: bool) -> bool {
     let lower = name.to_ascii_lowercase();
-    // The database and its log are placed last by `move_profile`; `.copying` is a leftover of an earlier try.
-    (top && (SKIPPED.contains(&lower.as_str()) || lower == "state.db.bak" || lower == "settings.json.bak" || lower == STATE_FILE || lower == WAL || lower == format!("{STATE_FILE}.copying") || lower == "state.db-shm")) || lower.ends_with(".lock")
+    // The database and its side files (log, journal, shared memory) are placed last by `move_profile`, or not
+    // at all; `.copying` is a leftover of an earlier try.
+    (top && (SKIPPED.contains(&lower.as_str()) || lower == "state.db.bak" || lower == "settings.json.bak" || lower == STATE_FILE || lower == WAL || lower == JOURNAL || lower == format!("{STATE_FILE}.copying") || lower == "state.db-shm")) || lower.ends_with(".lock")
 }
 
 fn copy_file(from: &Path, to: &Path, out: &mut Moved) {
@@ -475,6 +480,22 @@ mod tests {
         assert!(m.left.iter().any(|l| l.contains("snapshot") && l.contains("copied as it is")), "{m:?}");
         assert!(!new.join("state.db.copying-wal").exists() && !new.join("state.db.copying").exists());
         assert!(!new.join("state.db.bak").exists() && !new.join("settings.json.bak").exists());
+        let _ = fs::remove_dir_all(&r);
+    }
+
+    /// R6-F02: the old database's hot journal belongs to the database the snapshot replaced. The
+    /// other side files (`-wal`, `-shm`, `.copying`) stay behind, and the snapshot is written as one
+    /// self-contained file, so the journal must stay behind too: carried along it sits beside the
+    /// fresh `state.db` and SQLite replays the old pages over it on the first start.
+    #[test]
+    fn audit_r6_f02_the_old_database_journal_is_not_carried_into_the_new_profile() {
+        let r = root("journal");
+        let (old, new) = (r.join("com.txaisxiong.kolux-proof-rs"), r.join("com.txaisxiong.kolux-proof"));
+        db(&old.join("state.db"), "the database");
+        put(&old.join("state.db-journal"), "a hot journal from the old profile");
+        move_profile(&new).expect("moved");
+        assert!(!new.join("state.db-journal").exists(), "the old journal must stay with the old database");
+        assert_eq!(kv(&new.join("state.db")), "the database");
         let _ = fs::remove_dir_all(&r);
     }
 
