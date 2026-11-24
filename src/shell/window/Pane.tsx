@@ -6,18 +6,13 @@
 import type { Pane } from "../../App";
 import { forget, hooksMuted, promptReturned } from "../../status/chip";
 import { BELL_NOTE } from "../../terminal/bellNote";
-import { canExpand, groupOf, toggleCard } from "../../terminal/grid";
-import { moveToTab } from "../tidy";
-import { showsDragHandle } from "../../terminal/rearrange";
-import { gpuOn } from "../../terminal/renderer";
-import { showsReview } from "../../terminal/planReview";
-import { tabName } from "../../terminal/tabName";
+import { groupOf, toggleCard } from "../../terminal/grid";
 import { withoutFailedResume } from "../../terminal/layout";
 import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
-import { nameOf, sameDir, viewOf } from "../../workspaces";
+import { nameOf } from "../../workspaces";
 import { EVERYDAY_CHATS_FIELD, everydayChatsOf, setEverydayChoice, setEverydayName, setEverydaySession, type EverydayChat } from "../../projects/everydayChats";
-import { worktreeTag } from "../../projects/worktreeGrid";
+import { terminalPaneProps, type EntryTab } from "./paneProps";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
 import { deferred } from "../../lazy/deferred";
@@ -42,16 +37,16 @@ import { withChatPick } from "./chatPick";
 const LostPane = deferred(() => import("./LostPane"));
 const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
 
-export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
+export default function WindowPane({ pane: p, active, tabs }: { pane: Pane; active: number; tabs?: EntryTab[] }) {
+  const w = useWindow();
   const {
-    terminals, focused, closePane, setFocused, settings, saveSetting, titles, liveIds, openFile, restoredKeys, projects, setExpanded,
-    answer, agents, defaultId, setDefault, launching, launch, addChooser, savedName, ptys, unreadPanes,
-    hook, hookRef, turn, crew, setNeeds, setStamp, setRunning, runRef, liveRef, muteRef, setGuess, setLiveIds, setHook,
+    terminals, focused, closePane, setFocused, settings, saveSetting, openFile, restoredKeys, setExpanded,
+    answer, agents, setDefault, launch, addChooser, ptys, hookRef, turn, setNeeds, setStamp, setRunning, runRef, liveRef, muteRef, setGuess, setLiveIds, setHook,
     setPanes, noticed, report,
-    dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
-    renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
-    splitPane, rememberLineup, panes, activeDir, wakePane, owner, setSidebarOpen, setWorktreeMenu, cells, newChat,
-  } = useWindow();
+    dragging, setDropHint, equalizePanes, moveOutToTab, zoomed, expandPane, names,
+    renamePane, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
+    splitPane, rememberLineup, activeDir, wakePane, setSidebarOpen, setWorktreeMenu, cells, newChat,
+  } = w;
   // The pane's chat keeps its Everyday record in step: the name the first message gives it and the agent's
   // conversation id. The write builds on the key's latest value (a name and an id can land together), and an
   // unchanged list writes nothing.
@@ -183,6 +178,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     newChat: () => void newChat(),
     choose: () => addChooser(),
     openFile: (path: string, line?: number) => openFile(path, line),
+    openLink: (url: string) => void openExternal(url),
     toggleCard: () => setExpanded((x) => toggleCard(x, p.key)),
     answer: (ok: boolean) => void answer(p, ok),
     // ACCT-064: the question's buttons run what the newest render's question says.
@@ -224,76 +220,13 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       />
     );
   }
-  const notice = noticeFor(p);
   return (
     <TerminalPane
       key={p.key}
       hidden={hidden}
-      restored={restoredKeys.current.has(p.key)}
-      identityBefore={liveRef.current[p.key]}
-      resumed={p.resumed}
+      {...terminalPaneProps(p, w, act, { hidden, tabs: tabs ?? [] })}
       onOpenFile={act.openFile}
-      onOpenLink={(url: string) => void openExternal(url)}
-      linksOpenInKolux={settings.linksOpenInKolux === true}
-      gpu={gpuOn(settings)}
-      cwd={p.cwd}
-      branch={p.branch}
-      worktree={worktreeTag(p.cwd, p.branch ?? null, { projects, owner, names })}
-      onWorktree={act.worktree}
-      agent={p.agent}
-      name={savedName(p)}
-      program={p.program}
-      args={p.args}
-      env={p.env}
-      stop={turn[p.key]?.stop}
-      focused={p.key === focused}
-      onFocus={act.focus}
-      onRunning={act.running}
-      hook={hook[p.key] === "working" && turn[p.key]?.monitoring ? "background" : hook[p.key]}
-      pendingTool={hook[p.key] === "permission" ? turn[p.key]?.tool : undefined}
-      keySettings={settings}
-      crew={crew[p.key]}
-      onNeedsYou={act.needsYou}
-      onIdentity={act.identity}
-      onGuess={act.guess}
-      onBell={act.bell}
-      unread={unreadPanes.has(p.key)}
-      onPty={act.pty}
-      account={p.account}
-      notice={notice && { ...notice, onPrimary: act.noticePrimary, onSecondary: notice.onSecondary && act.noticeSecondary }}
-      onFailed={act.failed}
-      onRestoreFailed={act.restoreFailed}
       onResumeFailed={act.resumeFailed}
-      onSplit={act.split}
-      dragCell={showsDragHandle(shown.length) ? { onStart: act.dragStart, onEnd: act.dragEnd } : undefined}
-      onEqualize={terminals && gridCount > 1 ? act.equalize : undefined}
-      onMoveToTab={terminals && gridCount > 1 && moveToTab(panes, p.key) ? act.moveToTab : undefined}
-      expand={{ on: zoomed === groupOf(p), can: canExpand(shown.length, classic), toggle: act.expand }}
-      title={p.title || nameOf(names, p.cwd)}
-      custom={!!p.title}
-      onRename={act.rename}
-      renameAsk={askName[p.key]}
-      sessionKnown={!!p.session}
-      session={p.session}
-      onSessionLaunch={act.sessionLaunch} // after-list #117: Continue / Fork open a second pane beside this one
-      entryTabs={panes.filter((q) => sameDir(viewOf(q), activeDir)).map((q) => ({ key: q.key, name: tabName(q, titles, liveIds) }))}
-      onEntry={act.entry}
-      shells={shells}
-      onShell={act.shell}
-      onCopyId={act.copyId}
-      findHandle={act.findHandle}
-      typed={p.typed}
-      shellName={p.word}
-      number={p.key}
-      onClose={act.close}
-      onReviewPlan={showsReview(hook[p.key], turn[p.key]) ? act.reviewPlan : undefined}
-      agents={agents}
-      defaultId={defaultId}
-      onSetDefault={act.setDefault}
-      launching={launching}
-      onLaunch={act.launch}
-      onChoose={act.choose}
-      onChat={act.newChat}
     />
   );
 }

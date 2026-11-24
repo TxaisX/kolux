@@ -31,9 +31,12 @@ export default function Grid() {
     weightsOf, shown, activeDir, addShell, addChooser, cells, activeOf, dropHint, dragging,
     setDropHint, dropTabOn, dropCellOn, pinned, tabColors, titles, renamingTab, closePane, setFocused,
     setRenamingTab, setTabMenu, liveIds, running, statusOf, unreadPanes, hook, context, settings, plan,
-    accountSwitcher, tabLabel, renamePane,
+    accountSwitcher, tabLabel, renamePane, panes,
   } = useWindow();
   const frame = gridFrame({ zoomed, classic, terminals });
+  // LAG-01: the one tab list for the folder in front, built once per render and handed to every pane, so a
+  // pane's terminal does not build its own copy of it.
+  const tabs = panes.filter((q) => sameDir(viewOf(q), activeDir)).map((q) => ({ key: q.key, name: tabName(q, titles, liveIds) }));
   return (
     <div
       className={frame.className}
@@ -175,7 +178,7 @@ export default function Grid() {
               </div>
             )}
             {c.panes.map((p) => (
-              <Pane key={p.key} pane={p} active={active} />
+              <Pane key={p.key} pane={p} active={active} tabs={tabs} />
             ))}
           </div>
         );
