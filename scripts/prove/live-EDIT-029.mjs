@@ -1,3 +1,4 @@
+// retired: it drove the All Changes review pane, removed with src/editor/AllChangesPane.tsx; the project row menu no longer offers "Review changes"
 // LIVE proof, EDIT-029 boxes 1+2 (spec/12): 30 changed files -> All Changes draws sections while scrolling, the tree filters and jumps;
 // a viewed mark and the scroll position survive a tab switch.
 import { reporter, startPlain, finish, sleep, poll, checker, editRepo, clickTab, openAllChanges, acCount, tabs, vis } from "./live-edit-common.mjs";
