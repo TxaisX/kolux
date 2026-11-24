@@ -9,7 +9,7 @@
 // Deliberately not here (the plan's later slices): the pane dot and sidebar row do not move yet because a
 // headless process gets no hook events (3), a refusal is a read-only notice rather than an Allow / Deny
 // card (4), and nothing under the reply reads the artifacts folder (5).
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import AgentMark from "../../marks/AgentMark";
 import { productName } from "../../marks/registry";
@@ -17,7 +17,8 @@ import { Close, Plus } from "../../chrome/icons";
 import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
-import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
+import { chatHistory, chatIdOf, endChat, hearChat, readKeptChat, sendChat, startChat, stopChat } from "./client";
+import { announceDeleted, claimSession, holderOf, onSessionDeleted, releaseSession } from "./sessionBus";
 import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
 import { applyRead, combine, livePending, prunePending, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
@@ -30,7 +31,7 @@ import { STOPPING_NOTE } from "../stop";
 import { NOTE_MS, selfClearing, sessionTitle, useDismiss } from "../ux";
 import { loadSaved, saveChoice } from "../controls";
 import { ViewRow, type ChatOpen } from "../ChatView";
-import { CHAT_AGENT, DEFAULT_CHAT_MODEL, listChatModels, type ChatModel } from "../opencode";
+import { CHAT_AGENT, DEFAULT_CHAT_MODEL, listChatModels, noteServer, onModelsStale, type ChatModel } from "../opencode";
 import { HistoryColumn } from "../webui/HistoryColumn";
 import { ModelPopover } from "../webui/ModelPopover";
 import { EffortPicker } from "../webui/EffortPicker";
@@ -38,6 +39,7 @@ import { Suggestions, Welcome } from "../webui/WelcomeView";
 import { columnMode, loadCollapsed, saveCollapsed } from "../webui/history";
 import { effortsOf, nameOfId, providerFromId, usableModel } from "../webui/models";
 import { useWidth } from "../webui/useWidth";
+import { useStable } from "../webui/useStable";
 import { ArtifactsStrip } from "./Strip";
 import { changed, mimeOf, newest, POLL_MS, PREVIEW_CAP, readArtifact, scanArtifacts, stampOf, stripIndex, THUMB_CAP, toBlobUrl, type ArtifactRow, type ArtifactScan } from "./artifacts";
 import "../chat.css";
@@ -45,6 +47,15 @@ import "../chat.css";
 /** A Stop that did nothing. The transcript chat's own line tells the user to press Escape in a terminal,
  *  which a chat pane does not have, so this one says only what happened. */
 const CANNOT_STOP_NOTE = "Could not stop the agent from here.";
+
+/** A model or effort switch the engine refused: the chat stays on what it had, and says so. */
+export const switchFailed = (to: string, stay: string) => `Could not switch to ${to}. Staying on ${stay}.`;
+/** An older Claude chat opened here (2026-11-24): its words show, and a new chat starts under them. */
+export const LEGACY_NOTE = "This older Claude chat can't be reopened here. A new chat starts below.";
+/** What a pane says when the chat it showed was deleted from another pane. */
+export const DELETED_NOTE = "That chat was deleted in another pane. A new chat started.";
+/** What a pane says when the chat it is asked to open is already open in another pane. */
+export const HELD_NOTE = "That chat is already open in another pane.";
 
 /** The pane's own words when its process has just failed (the empty chat's own "Starting…" is drawn by Welcome). */
 const crashedNote = (name: string) => `${name}'s process ended. Your next message starts it again.`;
@@ -110,6 +121,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // ref instead of closing over a callback that may have been replaced.
   const reportSession = useRef(onSession);
   reportSession.current = onSession;
+  // The last name this pane gave itself. A name the pane has that is not this one was typed by the user, and a
+  // pane that opened with a name of its own is the user's: neither is written over by the history column's titles.
+  const lastName = useRef<string | null>(null);
+  const userNamed = useRef(named);
   // A chat is started once per pane. React's strict mode mounts an effect twice in development; the
   // second mount must not start a second process, or the conversation the first one began is thrown away.
   const started = useRef(false);
@@ -139,16 +154,38 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const composer = useRef<ComposerHandle>(null);
   useEffect(() => {
     let live = true;
-    void listChatModels().then((list) => live && setModels(list), () => {});
+    // One request is shared by every pane (opencode.ts), and the list is asked for again when the engine's
+    // server restarted: the list a pane drew before then may name models the new server no longer has.
+    const ask = () => void listChatModels().then((list) => live && list.length > 0 && setModels(list), () => {});
+    ask();
+    const off = onModelsStale(ask);
     return () => {
       live = false;
+      off();
     };
   }, []);
+  /** An older Everyday chat that cannot be continued here (2026-11-24): its transcript is shown, a new chat runs below,
+   *  and the kept row keeps its old id, so nothing about it is lost or silently replaced. */
+  const [legacy, setLegacy] = useState(false);
+  const legacyRef = useRef(false);
+  const markLegacy = (on: boolean) => {
+    legacyRef.current = on;
+    setLegacy(on);
+  };
   const setSession = (id: string | null) => {
     sessionId.current = id;
     setActiveSession(id);
     setHistoryTick((n) => n + 1);
   };
+  // The newest focus action, for another pane that is asked to open the chat this pane holds.
+  const focusPane = useRef(onFocus);
+  focusPane.current = onFocus;
+  // This pane holds the saved chat it shows, so no other pane opens it as well; the others are sent here instead.
+  useEffect(() => {
+    if (!activeSession) return;
+    claimSession(activeSession, pane.key, () => focusPane.current());
+    return () => releaseSession(activeSession, pane.key);
+  }, [activeSession, pane.key]);
   const ending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -182,7 +219,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
       try {
         const off = await hearChat(chatId, (ev) => {
           if (!live) return;
-          if (ev.kind === "started" && ev.pid !== undefined) lastPid.current = ev.pid;
+          if (ev.kind === "started" && ev.pid !== undefined) {
+            lastPid.current = ev.pid;
+            // A new server process means the model list may have changed: this asks every pane to read it again.
+            noteServer(ev.pid);
+          }
           // A late exit of a process already replaced says nothing about the one running now.
           if (staleExit(ev, lastPid.current)) return;
           seq.current += 1;
@@ -201,7 +242,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           const session = sessionChange(ev);
           if (session !== undefined) {
             setSession(session);
-            reportSession.current?.(session);
+            // An older Claude chat keeps the id on its kept row: the new chat below it is not written over it.
+            if (!legacyRef.current) reportSession.current?.(session);
           }
           // A finished turn is when most artifacts appear, so the folder is read again right then, and the
           // history column's list has a new or retitled chat.
@@ -221,9 +263,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // A kept chat opened again (2026-11-21): the agent's own transcript holds what was said, and a
           // resumed process does not say it again. A session whose file is gone is not resumed at all: the
           // agent would only answer "no conversation found", so the chat starts fresh and says so quietly.
+          // An older Claude chat (kept before every chat ran through OpenCode) is different: its own transcript
+          // is shown and a notice says it cannot be continued, so it never turns into a blank chat unannounced.
           let pick = sessionId.current;
           if (pick && pick === resume) {
-            const history = await chatHistory(agent, cwd, pick).catch(() => null);
+            const { read: history, legacy: old } = await readKeptChat(cwd, pick);
             if (!live) {
               // The effect was re-run or closed while the history loaded. A re-run saw `started` and
               // skipped, so give the start back and ask for another run, or the chat has no process.
@@ -231,7 +275,12 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
               setAgain((n) => n + 1);
               return;
             }
-            if (history) setItems(applyRead([], history));
+            if (old) {
+              markLegacy(true);
+              if (history) setItems(applyRead([], history));
+              setSession(null);
+              pick = null;
+            } else if (history) setItems(applyRead([], history));
             else {
               // The saved conversation is gone: forget its id here too, so a later model or effort pick
               // cannot restart the process with `--resume <gone-id>`.
@@ -436,6 +485,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // screen; only the process behind them changes. The box disables these picks while a turn runs, so
   // nothing is cut off mid-answer.
   const applyChoice = (pick: { model?: string; effort?: string | null }) => {
+    const before = choice.current;
     const next = {
       model: pick.model === undefined ? choice.current.model : pick.model,
       effort: pick.effort === undefined ? choice.current.effort : pick.effort,
@@ -454,7 +504,14 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         await startChat(chatId, cwd, next.model, agent, sessionId.current, next.effort);
         setSpawned(true);
       } catch (e) {
-        setError(String(e));
+        // The switch did not happen, so the chat is still on the model it was on: the picker, the saved
+        // choice and the kept record go back to it, and a line says so. The chat itself is not in an error state.
+        choice.current = before;
+        setLiveModel(before.model);
+        setLiveEffort(before.effort);
+        saveChoice(agent, { model: before.model, ...(before.effort ? { effort: before.effort } : {}) });
+        if (pick.model !== undefined) onModel?.(before.model);
+        setNote(`${switchFailed(pick.model !== undefined ? nameOfId(next.model) : "that effort", nameOfId(before.model))} ${String(e)}`);
       }
     })();
   };
@@ -487,12 +544,16 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const BUSY_NOTE = "Wait for the reply to finish, or press Stop, before switching chats.";
 
   /** New chat: a fresh conversation in the same folder. */
-  const newChat = (force = false) => {
+  const newChat = (force = false, say: string | null = null) => {
     const cwd = pane.cwd;
     if (!cwd) return;
     if (!force && (open || waiting.current > 0)) return setNote(BUSY_NOTE);
-    if (!force && rows.length === 0 && sessionId.current === null) return composer.current?.focus();
+    // A chat nothing has been said in is already the blank chat New chat would make, so it is kept (the engine
+    // makes a saved chat the moment one starts, so a New chat on a blank one would only pile up empty rows).
+    if (!force && rows.length === 0 && !legacyRef.current) return composer.current?.focus();
     resetView();
+    markLegacy(false);
+    if (say) setNote(say);
     namedOnce.current = false;
     setSession(null);
     reportSession.current?.(null);
@@ -507,10 +568,19 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     const cwd = pane.cwd;
     if (!cwd || id === sessionId.current) return;
     if (open || waiting.current > 0) return setNote(BUSY_NOTE);
+    // Another pane already holds this chat: that pane comes forward, and this one stays where it is, so two
+    // panes never type into one conversation.
+    const held = holderOf(id, pane.key);
+    if (held) {
+      held.focus();
+      setNote(HELD_NOTE);
+      return;
+    }
     void (async () => {
       try {
         const history = await chatHistory(agent, cwd, id);
         resetView();
+        markLegacy(false);
         namedOnce.current = true;
         setItems(applyRead([], history));
         setSession(id);
@@ -529,7 +599,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     if (!namedOnce.current) {
       namedOnce.current = true;
       const name = named ? null : sessionTitle(text);
-      if (name) onName?.(name);
+      if (name) {
+        lastName.current = name;
+        onName?.(name);
+      }
     }
     const id = `sent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     // A send typed while an earlier send has no result yet is queued behind that turn: its rows keep
@@ -560,6 +633,32 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     );
   };
 
+  // --- What the history column gets (2026-11-24): callbacks that keep one identity, so the column and the model
+  // picker are not redrawn for every word the reply streams. `useStable` hands out one function that always
+  // runs the newest closure above.
+  const onNew = useStable(() => newChat());
+  const onOpen = useStable(openSession);
+  const onToggleColumn = useCallback(() => setCollapsed((c) => (saveCollapsed(!c), !c)), []);
+  const onPickModel = useStable(pickModel);
+  // The tab and the sidebar row carry the title the history column shows for this chat.
+  const onColumnTitle = useStable((t: string) => {
+    if (userNamed.current) return;
+    if (named && lastName.current !== null && pane.title !== lastName.current) {
+      userNamed.current = true;
+      return;
+    }
+    lastName.current = t;
+    onName?.(t);
+  });
+  // A chat deleted from any pane's list: the pane that shows it starts a new chat and says why.
+  const onDeleted = useStable((id: string) => announceDeleted({ cwd: pane.cwd ?? "", id, source: pane.key }));
+  const whenDeleted = useStable((d: { cwd: string; id: string; source: number | null }) => {
+    if (d.cwd !== (pane.cwd ?? "") || d.id !== sessionId.current) return;
+    newChat(true, d.source === pane.key ? null : DELETED_NOTE);
+  });
+  useEffect(() => onSessionDeleted(whenDeleted), [whenDeleted]);
+  const startedChat = rows.length > 0;
+
   const title = pane.title || name;
   return (
     <LinkContext.Provider value={host}>
@@ -586,11 +685,13 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           cwd={pane.cwd}
           mode={mode}
           activeId={activeSession}
+          activeStarted={startedChat}
           refreshKey={historyTick}
-          onNew={() => newChat()}
-          onOpen={openSession}
-          onDeleted={(id) => id === sessionId.current && newChat(true)}
-          onToggle={() => setCollapsed((c) => (saveCollapsed(!c), !c))}
+          onNew={onNew}
+          onOpen={onOpen}
+          onDeleted={onDeleted}
+          onToggle={onToggleColumn}
+          onTitle={onColumnTitle}
         />
         <div className="chat cover chat-surface wui-chat" aria-label="Chat" data-empty={empty ? "true" : undefined}>
           <div className="wui-bar">
@@ -599,8 +700,13 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
                 <Plus size={16} />
               </button>
             )}
-            <ModelPopover models={models} value={liveModel} disabled={open} onPick={pickModel} />
+            <ModelPopover models={models} value={liveModel} disabled={open} onPick={onPickModel} />
           </div>
+          {legacy && (
+            <div className="chat-state" role="status">
+              {LEGACY_NOTE}
+            </div>
+          )}
           {error ? (
             <div className="chat-state chat-error" role="alert">
               {error}{" "}

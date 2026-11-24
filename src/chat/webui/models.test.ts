@@ -2,9 +2,9 @@
 // kept in the browser, keyboard steps, and the effort picker that only shows when the model has levels.
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_CHAT_MODEL, type ChatModel } from "../opencode";
-import { STARRED_KEY, buildSections, effortsOf, filterModels, flatRows, loadStarred, popKey, providerOf, saveStarred, seedStarred, toggleStar } from "./models";
+import { STARRED_KEY, buildSections, effortsOf, resetShared, starredNow, subscribeStarred, toggleShared, filterModels, flatRows, loadStarred, popKey, providerOf, saveStarred, seedStarred, toggleStar } from "./models";
 import { ModelList } from "./ModelPopover";
 import { EffortPicker } from "./EffortPicker";
 
@@ -125,7 +125,7 @@ describe("keyboard", () => {
 describe("the open list", () => {
   const html = (over: Partial<Parameters<typeof ModelList>[0]> = {}) =>
     renderToStaticMarkup(
-      createElement(ModelList, { models: MODELS, starred: [MODELS[0].id], query: "", active: 0, value: MODELS[0].id, listId: "t", onPick: () => {}, onStar: () => {}, onQuery: () => {}, onHover: () => {}, ...over }),
+      createElement(ModelList, { sections: buildSections(MODELS, [MODELS[0].id], over.query ?? ""), starred: new Set([MODELS[0].id]), query: "", active: 0, value: MODELS[0].id, listId: "t", onPick: () => {}, onStar: () => {}, onQuery: () => {}, onHover: () => {}, ...over }),
     );
   it("has a search box, Your models, and a group per maker, with names for every control", () => {
     const out = html();
@@ -153,5 +153,55 @@ describe("effort", () => {
     const out = renderToStaticMarkup(createElement(EffortPicker, { efforts: ["low", "high"], value: "high", disabled: false, onPick: () => {} }));
     expect(out).toContain('aria-label="Effort"');
     expect(out).toContain("high");
+  });
+});
+
+describe("the stars shared by every pane", () => {
+  const memory = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  };
+  it("a toggle starts from what is saved now, so a star set in another pane is not lost", () => {
+    resetShared();
+    const store = memory();
+    saveStarred(["a"], store);
+    expect(starredNow(store)).toEqual(["a"]);
+    // Another pane (or window) stars "b" behind this pane's back.
+    saveStarred(["a", "b"], store);
+    expect(toggleShared("c", store)).toEqual(["a", "b", "c"]);
+    expect(loadStarred(store)).toEqual(["a", "b", "c"]);
+  });
+  it("every picker hears a toggle, and stops hearing once it unsubscribes", () => {
+    resetShared();
+    const store = memory();
+    saveStarred([], store);
+    starredNow(store);
+    const one = vi.fn();
+    const two = vi.fn();
+    const off = subscribeStarred(one);
+    subscribeStarred(two);
+    toggleShared("a", store);
+    expect([one.mock.calls.length, two.mock.calls.length]).toEqual([1, 1]);
+    off();
+    toggleShared("b", store);
+    expect([one.mock.calls.length, two.mock.calls.length]).toEqual([1, 2]);
+  });
+  it("the list is the same array until a star changes, so a picker does not redraw for nothing", () => {
+    resetShared();
+    const store = memory();
+    saveStarred(["a"], store);
+    expect(starredNow(store)).toBe(starredNow(store));
+  });
+});
+
+describe("an OpenRouter alias is one model of its maker, listed once", () => {
+  const alias = (id: string, label: string): ChatModel => ({ id, label, provider: "~anthropic", efforts: [] });
+  it("folds the tilde group into the maker's group and does not repeat an id", () => {
+    const list = [...MODELS, alias("openrouter/~anthropic/claude-opus-latest", "Claude Opus (latest)"), alias("openrouter/~anthropic/claude-opus-latest", "Claude Opus (latest)")];
+    const s = buildSections(list, [], "");
+    expect(s.groups.map((g) => g.provider)).not.toContain("~anthropic");
+    const ids = s.groups.flatMap((g) => g.models.map((m) => m.id));
+    expect(ids.filter((id) => id.includes("~anthropic"))).toHaveLength(1);
+    expect(providerOf(list[list.length - 1])).toBe("anthropic");
   });
 });

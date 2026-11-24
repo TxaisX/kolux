@@ -31,6 +31,25 @@ export function groupSessions(sessions: readonly ChatSessionSummary[], now: numb
   return ORDER.filter((l) => by.has(l)).map((label) => ({ label, sessions: by.get(label)! }));
 }
 
+/** The title OpenCode's list gives a chat nobody has written in yet ("New chat" from the engine, or OpenCode's own "New session - <date>"). */
+export const isBlankTitle = (title: string): boolean => /^(new chat|new session\b.*)$/i.test(title.trim());
+
+/** The chats the column shows. A chat with no message in it yet is a blank row nobody asked for, so it is left
+ *  out, except the chat open now once something has been said in it (its title is still being written). */
+export function visibleSessions(sessions: readonly ChatSessionSummary[], activeId: string | null, activeStarted: boolean): ChatSessionSummary[] {
+  return sessions.filter((s) => !isBlankTitle(s.title) || (activeStarted && s.id === activeId));
+}
+
+/** The words the pane's tab and sidebar row should carry: the title the column shows for the chat open now.
+ *  Null when the list does not hold it yet, or when it is still blank while the pane has said something (the
+ *  first message names the tab until OpenCode writes a title). */
+export function titleOf(sessions: readonly ChatSessionSummary[], activeId: string | null, activeStarted: boolean): string | null {
+  const hit = activeId ? sessions.find((s) => s.id === activeId) : undefined;
+  if (!hit) return null;
+  if (isBlankTitle(hit.title)) return activeStarted ? null : "New chat";
+  return hit.title;
+}
+
 /** The chats whose title holds every word typed (any case). An empty search keeps them all. */
 export function filterSessions(sessions: readonly ChatSessionSummary[], query: string): ChatSessionSummary[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);

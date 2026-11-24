@@ -1,10 +1,11 @@
 // The chat history column (2026-11-24, the Open WebUI screen): New chat, a search over titles and the past
 // chats of this folder grouped by day. `HistoryView` only draws what it is given; `HistoryColumn` loads the
 // list from OpenCode and holds the search, the "..." menu and the delete question.
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dots, PanelLeft, Plus, Search, Trash } from "../../chrome/icons";
 import { deleteChatSession, listChatSessions, type ChatSessionSummary } from "../opencode";
-import { filterSessions, groupSessions, type ColumnMode } from "./history";
+import { onSessionDeleted } from "../live/sessionBus";
+import { filterSessions, groupSessions, titleOf, visibleSessions, type ColumnMode } from "./history";
 
 export type HistoryViewProps = {
   mode: ColumnMode;
@@ -28,7 +29,10 @@ export type HistoryViewProps = {
   emptyNote?: string;
 };
 
-export function HistoryView({ mode, sessions, now, activeId, query, asking, menu = null, onQuery, onNew, onOpen, onMenu, onAskDelete, onCancelDelete, onDelete, onToggle, emptyNote }: HistoryViewProps) {
+/** Memoised: the pane redraws on every streamed word, and this list (hundreds of rows) must not. */
+export const HistoryView = memo(function HistoryView({ mode, sessions, now, activeId, query, asking, menu = null, onQuery, onNew, onOpen, onMenu, onAskDelete, onCancelDelete, onDelete, onToggle, emptyNote }: HistoryViewProps) {
+  // Grouped only when the list, the search or the clock moved; hooks run before the early returns below.
+  const groups = useMemo(() => (mode === "full" ? groupSessions(filterSessions(sessions, query), now) : []), [mode, sessions, query, now]);
   if (mode === "hidden") return null;
   if (mode === "rail") {
     return (
@@ -45,7 +49,6 @@ export function HistoryView({ mode, sessions, now, activeId, query, asking, menu
       </nav>
     );
   }
-  const groups = groupSessions(filterSessions(sessions, query), now);
   return (
     <nav className="wui-history" aria-label="Chat history">
       <div className="wui-top">
@@ -108,22 +111,28 @@ export function HistoryView({ mode, sessions, now, activeId, query, asking, menu
       </div>
     </nav>
   );
-}
+});
+
 
 type ColumnProps = {
   cwd: string | null;
   mode: ColumnMode;
   activeId: string | null;
+  /** Something has been said in the chat open now: its row shows even while OpenCode has not titled it. */
+  activeStarted?: boolean;
   /** Counts up when the list may have changed (a turn ended, a chat began). */
   refreshKey: number;
   onNew: () => void;
   onOpen: (id: string) => void;
-  /** A chat was deleted from the list; the open one going away starts a new chat. */
+  /** A chat was deleted from the list here. The pane announces it to every pane (sessionBus). */
   onDeleted: (id: string) => void;
   onToggle: () => void;
+  /** The title this column shows for the chat open now, so the pane's tab and sidebar row can carry the same words. */
+  onTitle?: (title: string) => void;
 };
 
-export function HistoryColumn({ cwd, mode, activeId, refreshKey, onNew, onOpen, onDeleted, onToggle }: ColumnProps) {
+/** Memoised, and fed only stable callbacks by the pane, so a streamed word does not redraw it. */
+export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, activeStarted = false, refreshKey, onNew, onOpen, onDeleted, onToggle, onTitle }: ColumnProps) {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [query, setQuery] = useState("");
@@ -148,6 +157,19 @@ export function HistoryColumn({ cwd, mode, activeId, refreshKey, onNew, onOpen, 
     };
   }, [cwd, refreshKey]);
 
+  // A chat deleted in any pane leaves every pane's list at once.
+  useEffect(() => onSessionDeleted((d) => d.cwd === cwd && setSessions((xs) => xs.filter((s) => s.id !== d.id))), [cwd]);
+
+  // The pane's tab and sidebar row follow the chat open now, with the words this list shows for it.
+  const reported = useRef<{ id: string | null; title: string } | null>(null);
+  useEffect(() => {
+    const title = titleOf(sessions, activeId, activeStarted);
+    // Another chat is a new thing to report, even when it has the same title as the last one.
+    if (title === null || (reported.current?.id === activeId && reported.current.title === title)) return;
+    reported.current = { id: activeId, title };
+    onTitle?.(title);
+  }, [sessions, activeId, activeStarted, onTitle]);
+
   // The "..." menu and the Delete question close on Escape, and the menu on a click anywhere else.
   useEffect(() => {
     if (menu === null && asking === null) return;
@@ -167,22 +189,28 @@ export function HistoryColumn({ cwd, mode, activeId, refreshKey, onNew, onOpen, 
     };
   }, [menu, asking]);
 
-  const remove = (id: string) => {
-    if (!cwd) return;
-    setAsking(null);
-    void deleteChatSession(cwd, id).then(
-      () => {
-        setSessions((xs) => xs.filter((s) => s.id !== id));
-        onDeleted(id);
-      },
-      () => setFailed("That chat could not be deleted."),
-    );
-  };
+  const remove = useCallback(
+    (id: string) => {
+      if (!cwd) return;
+      setAsking(null);
+      void deleteChatSession(cwd, id).then(
+        () => {
+          setSessions((xs) => xs.filter((s) => s.id !== id));
+          onDeleted(id);
+        },
+        () => setFailed("That chat could not be deleted."),
+      );
+    },
+    [cwd, onDeleted],
+  );
+  const askDelete = useCallback((id: string) => (setMenu(null), setAsking(id)), []);
+  const cancelDelete = useCallback(() => setAsking(null), []);
+  const visible = useMemo(() => visibleSessions(sessions, activeId, activeStarted), [sessions, activeId, activeStarted]);
 
   return (
     <HistoryView
       mode={mode}
-      sessions={sessions}
+      sessions={visible}
       now={now}
       activeId={activeId}
       query={query}
@@ -193,10 +221,10 @@ export function HistoryColumn({ cwd, mode, activeId, refreshKey, onNew, onOpen, 
       onNew={onNew}
       onOpen={onOpen}
       onMenu={setMenu}
-      onAskDelete={(id) => (setMenu(null), setAsking(id))}
-      onCancelDelete={() => setAsking(null)}
+      onAskDelete={askDelete}
+      onCancelDelete={cancelDelete}
       onDelete={remove}
       onToggle={onToggle}
     />
   );
-}
+});

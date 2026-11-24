@@ -7,7 +7,7 @@ const { invoke, listen } = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() 
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen }));
 
-import { CHAT_EVENT, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
+import { CHAT_EVENT, chatIdOf, endChat, hearChat, readKeptChat, sendChat, startChat, stopChat } from "./client";
 import type { ChatEvent } from "./events";
 
 test("a chat's id is its pane's key, so two panes never share a process", () => {
@@ -46,10 +46,29 @@ test("opening an OpenCode chat fetches its model list for the controls, and a Cl
   invoke.mockReset();
 });
 
-test("a pane kept by an older build names an engine that is gone: it opens on OpenCode as a fresh conversation", async () => {
-  invoke.mockImplementation((cmd: string) => Promise.resolve(cmd === "chat_models" ? [] : undefined));
-  await startChat("pane-7", "C:/work/demo", "anthropic/claude-sonnet-5.5", "an-engine-that-is-gone", "0b1c-old-conversation", "high");
-  expect(invoke).toHaveBeenCalledWith("chat_start", { chatId: "pane-7", cwd: "C:/work/demo", model: "openrouter/anthropic/claude-sonnet-5.5", effort: "high", resumeSessionId: null, extraEnv: [], agent: "opencode" });
+const readOf = (text: string) => ({ state: "ready", reset: true, items: [{ id: "u1", role: "user", kind: "text", text }], open: false, error: null, retryMs: 0, older: null, earlier: false });
+
+test("a kept chat is read from OpenCode first; an OpenCode id never asks Claude's transcript files", async () => {
+  invoke.mockResolvedValueOnce(readOf("hello"));
+  const got = await readKeptChat("C:/work/demo", "ses_42");
+  expect(got).toMatchObject({ legacy: false, read: { items: [{ text: "hello" }] } });
+  expect(invoke).toHaveBeenCalledWith("chat_history", { agent: "opencode", cwd: "C:/work/demo", session: "ses_42" });
+  invoke.mockReset();
+  invoke.mockRejectedValueOnce("gone");
+  expect(await readKeptChat("C:/work/demo", "ses_42")).toEqual({ read: null, legacy: false });
+  expect(invoke).toHaveBeenCalledTimes(1);
+  invoke.mockReset();
+});
+
+test("an older Claude chat's id is not an OpenCode one: its own transcript is read, flagged as old, and never silently dropped", async () => {
+  invoke.mockImplementation((_cmd: string, args: { agent: string }) => (args.agent === "claude" ? Promise.resolve(readOf("from the old transcript")) : Promise.reject("not in OpenCode")));
+  const got = await readKeptChat("C:/work/demo", "0b1c2d3e-aaaa-bbbb-cccc-000000000000");
+  expect(got.legacy).toBe(true);
+  expect(got.read?.items[0]).toMatchObject({ text: "from the old transcript" });
+  // And when that file is gone too, the pane still learns the chat was an old one, so it can say so.
+  invoke.mockReset();
+  invoke.mockRejectedValue("gone");
+  expect(await readKeptChat("C:/work/demo", "0b1c2d3e-aaaa-bbbb-cccc-000000000000")).toEqual({ read: null, legacy: true });
   invoke.mockReset();
 });
 

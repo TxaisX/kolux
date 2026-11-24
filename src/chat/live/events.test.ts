@@ -74,6 +74,12 @@ test("a finished turn draws nothing of its own, and one that failed says how", (
   expect(stopped[1]).toMatchObject({ role: "assistant", kind: "interrupted" });
 });
 
+test("a stopped turn says the same word live as the reopened transcript does", () => {
+  // The Rust history reader writes "Interrupted" (chat.rs, opencode.rs); the live row must match it.
+  const stopped = reduce([], ev({ kind: "result", isError: true, subtype: "error_during_execution" }), 4, 4);
+  expect(stopped[0].text).toBe("Interrupted");
+});
+
 test("a refused tool call and a retried request are said in the chat", () => {
   const denied = reduce([], ev({ kind: "permissionDenied", toolName: "Bash", message: "Permission to use Bash was denied.", decisionReason: "Bash(rm:*) is denied" }), 7, 1);
   expect(denied[0]).toMatchObject({ role: "status", kind: "notice", text: "Claude was not allowed to use Bash.", details: "Permission to use Bash was denied.\nBash(rm:*) is denied" });

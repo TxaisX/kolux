@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ChatSessionSummary } from "../opencode";
-import { COLLAPSED_KEY, NARROW_PX, columnMode, filterSessions, groupSessions, loadCollapsed, saveCollapsed } from "./history";
+import { COLLAPSED_KEY, NARROW_PX, columnMode, filterSessions, groupSessions, loadCollapsed, saveCollapsed, titleOf, visibleSessions } from "./history";
 import { HistoryView } from "./HistoryColumn";
 
 const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h, 0, 0).getTime();
@@ -116,5 +116,24 @@ describe("HistoryView", () => {
 
   it("is not drawn at all when the pane is narrow", () => {
     expect(html({ mode: "hidden" })).toBe("");
+  });
+});
+
+describe("blank chats and the title a pane carries", () => {
+  const list = [s("ses_blank1", "New chat", NOW), s("ses_blank2", "New session - 2026-11-24T10:00:00.000Z", NOW), s("ses_a", "Greeting", NOW), s("ses_open", "New chat", NOW)];
+  it("leaves out chats nobody has written in, so blank rows do not pile up", () => {
+    expect(visibleSessions(list, "ses_open", false).map((x) => x.id)).toEqual(["ses_a"]);
+  });
+  it("keeps the open chat once something has been said in it", () => {
+    expect(visibleSessions(list, "ses_open", true).map((x) => x.id)).toEqual(["ses_a", "ses_open"]);
+  });
+  it("the tab and sidebar row take the column's title for the open chat, not the first message", () => {
+    expect(titleOf(list, "ses_a", true)).toBe("Greeting");
+  });
+  it("a fresh blank chat is called New chat; a started one waits for its real title", () => {
+    expect(titleOf(list, "ses_open", false)).toBe("New chat");
+    expect(titleOf(list, "ses_open", true)).toBeNull();
+    expect(titleOf(list, "ses_not_listed", true)).toBeNull();
+    expect(titleOf(list, null, false)).toBeNull();
   });
 });
