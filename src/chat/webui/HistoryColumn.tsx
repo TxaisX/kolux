@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dots, PanelLeft, Plus, Search, Trash } from "../../chrome/icons";
 import { CHAT_AGENT, deleteChatSession, listChatSessions, type ChatSessionSummary } from "../opencode";
 import { chatHistory } from "../live/client";
-import { onSessionDeleted } from "../live/sessionBus";
+import { onSessionDeleted, sameFolder } from "../live/sessionBus";
 import { filterSessions, groupSessions, isBlankTitle, titleOf, visibleSessions, type ColumnMode } from "./history";
 
 export type HistoryViewProps = {
@@ -183,7 +183,7 @@ export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, 
   }, [sessions, cwd]);
 
   // A chat deleted in any pane leaves every pane's list at once.
-  useEffect(() => onSessionDeleted((d) => d.cwd === cwd && setSessions((xs) => xs.filter((s) => s.id !== d.id))), [cwd]);
+  useEffect(() => onSessionDeleted((d) => cwd !== null && sameFolder(d.cwd, cwd) && setSessions((xs) => xs.filter((s) => s.id !== d.id))), [cwd]);
 
   // The pane's tab and sidebar row follow the chat open now, with the words this list shows for it.
   const reported = useRef<{ id: string | null; title: string } | null>(null);

@@ -18,7 +18,7 @@ import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
 import { chatHistory, chatIdOf, endChat, hearChat, readKeptChat, sendChat, startChat, stopChat } from "./client";
-import { announceDeleted, claimSession, holderOf, onSessionDeleted, releaseSession } from "./sessionBus";
+import { announceDeleted, claimSession, holderOf, onSessionDeleted, releaseSession, sameFolder } from "./sessionBus";
 import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
 import { applyRead, combine, livePending, prunePending, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
@@ -681,7 +681,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // A chat deleted from any pane's list: the pane that shows it starts a new chat and says why.
   const onDeleted = useStable((id: string) => announceDeleted({ cwd: pane.cwd ?? "", id, source: pane.key }));
   const whenDeleted = useStable((d: { cwd: string; id: string; source: number | null }) => {
-    if (d.cwd !== (pane.cwd ?? "") || d.id !== sessionId.current) return;
+    if (!sameFolder(d.cwd, pane.cwd ?? "") || d.id !== sessionId.current) return;
     newChat(true, d.source === pane.key ? null : DELETED_NOTE);
   });
   useEffect(() => onSessionDeleted(whenDeleted), [whenDeleted]);
