@@ -2,7 +2,6 @@
 //! behind main after a pane's turn finishes. Wired from hooks.rs with
 //! `#[cfg(test)] #[path = "hooks_land_board_tests.rs"] mod land_board_tests;`
 use super::*;
-use std::io::Read as _;
 use std::sync::atomic::{AtomicUsize, Ordering as AtOrdering};
 use std::sync::mpsc;
 

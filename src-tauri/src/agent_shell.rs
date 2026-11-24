@@ -278,6 +278,7 @@ struct Remembered {
 /// PERF-01: the programs looked up so far, for the search path they were looked up on. Every pane
 /// start asks this instead of walking PATH again: a hit costs one `still_there` check, a miss one
 /// `stamp` read (each folder's last-change time, not a probe per folder per PATHEXT ending).
+#[derive(Default)]
 pub struct ProgramMemo {
     seen: std::sync::Mutex<Vec<Remembered>>,
 }
@@ -312,7 +313,7 @@ impl ProgramMemo {
         let found = search(name);
         let (path, stamp) = match found {
             Some(p) => (Some(p), None),
-            None => (None, Some(current.unwrap_or_else(|| stamp()))),
+            None => (None, Some(current.unwrap_or_else(&stamp))),
         };
         {
             let mut seen = self.seen.lock().unwrap_or_else(std::sync::PoisonError::into_inner);

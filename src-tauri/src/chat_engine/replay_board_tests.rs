@@ -106,7 +106,7 @@ fn the_stub_replays_only_when_asked() {
     let content = json!([{ "type": "text", "text": "hello there" }, { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "AAAA" } }]);
     let msg = json!({ "type": "user", "message": { "role": "user", "content": content }, "parent_tool_use_id": null });
 
-    let plain = run_stub(&base_args(), &[msg.clone()]);
+    let plain = run_stub(&base_args(), std::slice::from_ref(&msg));
     assert!(plain.iter().any(|l| l["type"] == "assistant"), "the stub still answers: {plain:?}");
     assert!(!plain.iter().any(|l| l["type"] == "user"), "no echo without the flag: {plain:?}");
 

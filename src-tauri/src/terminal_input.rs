@@ -30,17 +30,12 @@ impl InputQueue {
         // takes to read, and that wait must never sit on an async runtime worker.
         let _ = std::thread::Builder::new().name("kolux-terminal-input".to_string()).spawn(move || {
             let mut write = write;
-            loop {
-                match rx.recv() {
-                    // One write per send, with exactly that send's bytes: `write_shared` decides per
-                    // call whether the bytes are a terminal reply to convert, so chunks never merge.
-                    Ok(chunk) => {
-                        if write(&chunk).is_err() {
-                            break;
-                        }
-                    }
-                    // The queue was dropped and every chunk it held has been written.
-                    Err(_) => break,
+            // One write per send, with exactly that send's bytes: `write_shared` decides per
+            // call whether the bytes are a terminal reply to convert, so chunks never merge. The
+            // loop also ends when the queue was dropped and every chunk it held has been written.
+            while let Ok(chunk) = rx.recv() {
+                if write(&chunk).is_err() {
+                    break;
                 }
             }
             drop(rx);
