@@ -1,0 +1,75 @@
+{
+  "area": "S3",
+  "files": [
+    {
+      "path": "package.json",
+      "symbols": ["scripts", "devDependencies"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read all 20 scripts against the tree: every node, python and vitest entry file exists, `check` chains the seven gates plus the memory tests, and `tokens` points at the real report script. Dependency names match the imports used by the src tree; no script is duplicated, stale or missing its file."
+    },
+    {
+      "path": "src-tauri/Cargo.toml",
+      "symbols": ["dependencies", "profile"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the package, lib, features, dependency and profile sections: Rust 1.90 floor, tray on by default, test-fakes kept out of release, local profile inherits release with thin LTO, and the Windows-only crates are pinned to the versions wry builds. No crate used by the files of this area is missing."
+    },
+    {
+      "path": "src-tauri/build.rs",
+      "symbols": ["tauri_build"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked the msvc branch: tauri-build runs without its own manifest, the segment-heap manifest is written to OUT_DIR and linked into every target, and the two failure points are build-time expect() calls that cannot fire at runtime."
+    },
+    {
+      "path": "src-tauri/capabilities/default.json",
+      "symbols": ["permissions"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Matched every window call in src/ (show, close, minimize, toggle-maximize, is-maximized, start-dragging, set-focus, unminimize, webview zoom) to a permission here, and checked the dialog plugin: only `open` is used, so allow-save is rightly absent. core:default covers the event listen calls."
+    },
+    {
+      "path": "src-tauri/main.rs",
+      "symbols": ["kolux_lib"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The entry point only calls kolux_lib::run(); the release build keeps the console window hidden. Nothing in this file can panic or swallow an error."
+    },
+    {
+      "path": "src-tauri/tauri.conf.json",
+      "symbols": ["productName", "bundle"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The three resources resolve relative to src-tauri and all exist. The CSP is the one scripts/csp.test.mjs compares with vite.config.ts, and style-src is the only disabled injection. The empty updater pubkey is deliberate: release.mjs writes the real key per build and update.rs turns checks off when it is absent."
+    },
+    {
+      "path": "tools/kolux-memory/cli.mjs",
+      "symbols": ["parseArgs", "recordItem", "resumeMarkdown", "exportMarkdown"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Traced every subcommand from parseArgs into lib.mjs: build, status, search, timeline, session, agent, card, record, items, resume, export. `record` hands detail and evidence straight to recordItem, whose missing redaction is reported against lib.mjs as S3-F05, and no command catches an error and then prints a success line."
+    },
+    {
+      "path": "tools/kolux-memory/lib.mjs",
+      "symbols": ["redact", "readLedger", "build", "parseCards", "resumeMarkdown", "exportMarkdown"],
+      "verdict": "findings",
+      "findings": ["S3-F01", "S3-F02", "S3-F03", "S3-F04", "S3-F05"],
+      "note": "Read the whole builder: build and its source readers, redact and keep, readGit, recordItem and readLedger, resumeMarkdown and exportMarkdown. Five defects are proved by the repro tests: the sessions guard does not cover the message query, redact misses the JSON form, readGit drops body lines after the first, recordItem never redacts, and the Next list numbers 1 then 3. search, timeline, status, findSession and listItems were also called on a probe database with empty, wildcard and quote input and returned sane results."
+    },
+    {
+      "path": "tools/kolux-memory/test.mjs",
+      "symbols": ["recordItem", "resumeMarkdown", "listItems", "openDb"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The five tests build a synthetic machine and never touch the real profile; all five pass today. They cover build, record plus rebuild, search, items and resume, but none covers a store with a different schema, a JSON-shaped secret, a multi-line commit body or the Next numbering, which is why the five repro tests sit in their own files."
+    },
+    {
+      "path": "vite.config.ts",
+      "symbols": ["defineConfig", "assetsInlineLimit"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Checked the dev server (fixed port 1420, strict, no screen clear, src-tauri ignored), the vendor-mark asset rule and the vitest include patterns. The repro tests were written under scripts/ because `scripts/**/*.test.mjs` is what this config picks up."
+    }
+  ]
+}
