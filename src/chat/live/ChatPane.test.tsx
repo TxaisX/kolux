@@ -78,12 +78,13 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-type Over = Partial<{ resume: string | null; named: boolean; onSession: (id: string | null) => void; onName: (n: string) => void; onFocus: () => void; key: number }>;
+type Over = Partial<{ resume: string | null; named: boolean; onSession: (id: string | null) => void; onName: (n: string) => void; onFocus: () => void; key: number; agent: string }>;
 async function pane(over: Over = {}): Promise<FakeNode> {
   const { default: ChatPane } = await import("./ChatPane");
   const m = await mount(
     createElement(ChatPane, {
       pane: { key: over.key ?? 1, cwd: "C:/w" },
+      agent: over.agent,
       onFocus: over.onFocus ?? (() => {}),
       onClose: () => {},
       named: over.named ?? false,
@@ -207,4 +208,24 @@ test("streaming a reply does not group the history again or rebuild the model pi
   await settle();
   expect(h.groups).toBe(groups);
   expect(h.sections).toBe(sections);
+});
+
+test("a restarted OpenCode server (a new pid on `started`) makes the pane read the model list again", async () => {
+  await pane();
+  await until(() => starts().length === 1, "the start");
+  await emit({ kind: "started", pid: 11 });
+  await settle(100);
+  const asked = () => h.calls.filter((c) => c.cmd === "chat_models").length;
+  const before = asked();
+  await emit({ kind: "started", pid: 11 });
+  await settle(100);
+  expect(asked(), "the same server asks nothing new").toBe(before);
+  await emit({ kind: "started", pid: 12 });
+  await until(() => asked() > before, "a second models request");
+});
+
+test.each(["claude", "openclaude", undefined])("a chat opened with the engine name %s starts on OpenCode", async (agent) => {
+  await pane({ agent });
+  await until(() => starts().length === 1, "the start");
+  expect(starts()[0].args.agent).toBe("opencode");
 });

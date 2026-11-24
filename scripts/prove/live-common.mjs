@@ -183,7 +183,7 @@ export async function startProve(id, opts) {
     async screenText() {
       return ((await ctx.screen()) ?? []).join("\n");
     },
-    async openClaude() {
+    async openClaudeCodeSession() {
       // The plus in a shown pane's header opens the same New session menu the old button.newtab did.
       await focusPane(TERM, 0, ".xterm-helper-textarea");
       await click(`${TERM}.focused ${TID.paneNewSession}`);

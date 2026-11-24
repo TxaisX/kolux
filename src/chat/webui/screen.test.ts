@@ -46,10 +46,6 @@ describe("the screen draws", () => {
 });
 
 describe("the chat pane puts the screen together", () => {
-  it("runs every chat through OpenCode and no longer reads the agent prop", () => {
-    expect(pane).toContain("const agent = CHAT_AGENT");
-    expect(pane).not.toMatch(/agent === "claude"|agent === "openclaude"/);
-  });
   it("has the column, the picker on top, the welcome and the chips that fill the box", () => {
     for (const piece of ["<HistoryColumn", "<ModelPopover", "<Welcome", "<Suggestions", "<EffortPicker"]) expect(pane, piece).toContain(piece);
     expect(pane).toContain("composer.current?.fill(text)");
