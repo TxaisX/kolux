@@ -25,6 +25,9 @@ mod exit_board_tests;
 mod output_batch;
 mod output_channel;
 mod output_frame;
+// LAG-07: each terminal's input goes onto its own queue, drained by its own writer thread.
+#[path = "terminal_input.rs"]
+mod input;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
@@ -127,6 +130,9 @@ struct Inner {
     warm: WarmMap,
     /// Folders whose warm shell is starting now, so two starts at once make one.
     warming: HashSet<String>,
+    /// LAG-07: each session's input queue, one writer thread per session that has had input. A
+    /// blocked pipe holds only this session's writer, never a caller or another pane.
+    inputs: HashMap<u32, input::InputQueue>,
 }
 
 /// Kept-warm shell: the setting, off unless set. Off, nothing here runs and terminals start as before.
@@ -196,6 +202,9 @@ impl Inner {
     fn take_session(&mut self, id: u32) -> Taken {
         self.dirs.remove(&id);
         self.marks.remove(&id);
+        // LAG-07: the input queue goes with the session; its writer ends once what it already holds
+        // is written, and the drop never waits for a stuck pipe.
+        self.inputs.remove(&id);
         let hist = self.hist.remove(&id);
         // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
         // waiter, which reads the pane's tail for its resume hint and then drops it; `read` already refuses it).
@@ -338,6 +347,8 @@ impl Inner {
         self.typed.remove(&id);
         self.hist.remove(&id);
         self.snaps.remove(&id);
+        // LAG-07: a reused handle gets a new queue, not the ended session's writer.
+        self.inputs.remove(&id);
         if let Some(f) = self.flow.remove(&id) {
             f.release();
         }
@@ -1403,6 +1414,9 @@ impl Terminals {
                     log = inner.logs.remove(&id);
                     inner.owned.remove(&id);
                     inner.typed.remove(&id);
+                    // LAG-07: the session's input queue goes with it; the writer ends once what it
+                    // already holds is written, and this drop never waits for a stuck pipe.
+                    inner.inputs.remove(&id);
                     hist = inner.hist.remove(&id);
                     inner.snaps.remove(&id);
                     if let Some(f) = inner.flow.remove(&id) {
@@ -1483,9 +1497,9 @@ impl Terminals {
         log.and_then(|l| lock(&l).written).map(|t| t.elapsed())
     }
 
-    /// Council D2 MERGE 31 item 1: the registry lock is held only to find the session's writer; the
-    /// write itself (which blocks for as long as the program takes to read, ~12 KB/s into ConPTY)
-    /// runs under that writer's own lock, so other panes' ack, resize and kill never wait on it.
+    /// LAG-07: the bytes are put on this terminal's own input queue and the call returns at once.
+    /// The queue's writer thread does the pipe write, so a program that stops reading only ever
+    /// holds its own writer, never this caller or another pane.
     pub fn write(&self, id: u32, data: &str) -> Result<(), String> {
         self.write_as(id, data, true)
     }
@@ -1498,19 +1512,19 @@ impl Terminals {
     }
 
     fn write_as(&self, id: u32, data: &str, typed: bool) -> Result<(), String> {
-        let writer = {
-            let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
-            let writer = inner.sessions.get(&id).ok_or("no such terminal")?.writer()?;
-            // TERM-123: typing is activity, echoed or not; a terminal reply is not typing.
-            if typed {
-                if let Some(m) = inner.marks.get_mut(&id) {
-                    m.last_input = Some(Instant::now());
-                }
-                inner.typed.insert(id, Instant::now());
+        let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
+        let writer = inner.sessions.get(&id).ok_or("no such terminal")?.writer()?;
+        // TERM-123: typing is activity, echoed or not; a terminal reply is not typing.
+        if typed {
+            if let Some(m) = inner.marks.get_mut(&id) {
+                m.last_input = Some(Instant::now());
             }
-            writer
-        };
-        crate::pty::write_shared(&writer, data.as_bytes())
+            inner.typed.insert(id, Instant::now());
+        }
+        // LAG-07: one queue per session, made on its first input over that session's own writer.
+        // Sending never blocks (the queue is unbounded), so holding the registry lock here is fine.
+        let queue = inner.inputs.entry(id).or_insert_with(|| input::InputQueue::start(move |chunk| crate::pty::write_shared(&writer, chunk)));
+        queue.send(data.as_bytes())
     }
 
     pub fn resize(&self, id: u32, cols: u16, rows: u16) -> Result<(), String> {
@@ -2418,8 +2432,9 @@ pub fn terminal_busy(terminals: tauri::State<'_, Terminals>, ids: Vec<u32>) -> V
     ids.into_iter().map(|id| terminals.busy(id)).collect()
 }
 
-/// TERM-115: async, so a pipe write that blocks (a program not reading its input) holds a
-/// runtime worker, never the window's thread; typing elsewhere stays responsive.
+/// TERM-115: async, so the registry lock is taken off the window's thread. LAG-07: the bytes go on
+/// the terminal's own input queue, so this returns once they are queued and a program that stops
+/// reading its input holds only that terminal's writer thread.
 #[tauri::command]
 pub async fn terminal_write(app: AppHandle, terminals: tauri::State<'_, Terminals>, id: u32, data: String, generation: Option<u64>, auto: Option<bool>) -> Result<(), String> {
     if data.len() > MAX_WRITE {
@@ -3860,3 +3875,7 @@ mod input_source_tests {
         assert_eq!(super::HKL_NEXT, 1);
     }
 }
+
+#[cfg(test)]
+#[path = "terminal_input_board_tests.rs"]
+mod input_board_tests;
