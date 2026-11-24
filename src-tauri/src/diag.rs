@@ -204,6 +204,14 @@ fn scrub_word(word: &str) -> (String, bool) {
         let after = &word[p + 1..];
         if !name.is_empty() && !after.starts_with("//") && (secret_name(name) || (word.as_bytes()[p] == b'=' && env_name(name))) {
             if !after.is_empty() {
+                // HTTP leaves the space out after the colon: "Authorization:Bearer x" keeps its
+                // credential in the next word the way "Authorization: Bearer x" does, so the
+                // scheme word stays and the value after it is masked (R8-F03).
+                let scheme = after.trim_matches(['"', '\'', ',', ';']).to_ascii_lowercase();
+                let header = name.eq_ignore_ascii_case("authorization") || name.eq_ignore_ascii_case("proxy-authorization");
+                if header && matches!(scheme.as_str(), "bearer" | "basic") {
+                    return (word.to_string(), true);
+                }
                 return (format!("{}{}", &word[..=p], masked(after)), false);
             }
             if quoted || EXACT.contains(&name.to_ascii_lowercase().as_str()) {
