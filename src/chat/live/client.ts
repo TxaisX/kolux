@@ -67,8 +67,8 @@ export async function readKeptChat(cwd: string, session: string): Promise<{ read
  * again, so the chat page reads it once and opens on it: from OpenCode for an OpenCode chat, from the
  * agent's own transcript file otherwise.
  */
-export async function chatHistory(agent: string, cwd: string, session: string): Promise<ChatRead> {
-  return invoke<ChatRead>("chat_history", { agent, cwd, session });
+export async function chatHistory(agent: string, cwd: string, session: string, limit?: number): Promise<ChatRead> {
+  return invoke<ChatRead>("chat_history", limit === undefined ? { agent, cwd, session } : { agent, cwd, session, limit });
 }
 
 /**

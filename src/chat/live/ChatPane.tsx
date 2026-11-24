@@ -714,6 +714,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           mode={mode}
           activeId={activeSession}
           activeStarted={startedChat}
+          active={!hidden}
           refreshKey={historyTick}
           onNew={onNew}
           onOpen={onOpen}

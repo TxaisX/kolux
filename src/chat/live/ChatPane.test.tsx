@@ -70,6 +70,8 @@ beforeEach(async () => {
   h.groups = 0;
   h.sections = 0;
   h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? SESSIONS : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : undefined);
+  const { resetProbes } = await import("../webui/probe");
+  resetProbes();
   const { resetSessionBus } = await import("./sessionBus");
   resetSessionBus();
 });
@@ -78,13 +80,14 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-type Over = Partial<{ resume: string | null; legacyId: string | null; named: boolean; onSession: (id: string | null, legacy?: string | null) => void; onReveal: () => void; onEffort: (e: string | null) => void; onName: (n: string) => void; onFocus: () => void; key: number; agent: string }>;
+type Over = Partial<{ resume: string | null; legacyId: string | null; named: boolean; onSession: (id: string | null, legacy?: string | null) => void; onReveal: () => void; onEffort: (e: string | null) => void; onName: (n: string) => void; onFocus: () => void; key: number; agent: string; hidden: boolean }>;
 async function pane(over: Over = {}): Promise<FakeNode> {
   const { default: ChatPane } = await import("./ChatPane");
   const m = await mount(
     createElement(ChatPane, {
       pane: { key: over.key ?? 1, cwd: "C:/w" },
       agent: over.agent,
+      hidden: over.hidden,
       onFocus: over.onFocus ?? (() => {}),
       onClose: () => {},
       named: over.named ?? false,
@@ -391,6 +394,42 @@ test("review 2 P2-5: blank means no words in it, not the title 'New chat': a cha
   await until(() => find(c, (n) => n.attrs.class === "wui-title").length >= 2, "the rows after the content check");
   const titles = find(c, (n) => n.attrs.class === "wui-title").map((n) => n.textContent);
   expect(titles).toEqual(["Greeting", "New chat"]);
+});
+
+const probeSessions = [
+  { id: "ses_a", title: "Greeting", updatedAt: now },
+  { id: "ses_said", title: "New chat", updatedAt: now - 1000 },
+  { id: "ses_empty", title: "New chat", updatedAt: now - 2000 },
+];
+const probeScript = () =>
+  (h.script = (cmd, args) => {
+    if (cmd === "chat_models") return MODELS;
+    if (cmd === "chat_sessions") return probeSessions;
+    if (cmd === "artifacts_scan") return { rows: [], skipped: [] };
+    if (cmd === "chat_history") return args.session === "ses_said" ? readOf("I did talk here") : { ...readOf(""), items: [] };
+    return undefined;
+  });
+const probes = () => h.calls.filter((c) => c.cmd === "chat_history");
+
+test("round 3 P2 lag: the blank-row reads ask for one message, and a second pane reuses the first pane's answers", async () => {
+  probeScript();
+  const first = await pane();
+  await until(() => find(first, (n) => n.attrs.class === "wui-title").length >= 2, "the rows after the content check");
+  expect(probes().map((c) => c.args.session).sort()).toEqual(["ses_empty", "ses_said"]);
+  expect(probes().every((c) => c.args.limit === 1)).toBe(true);
+  await unmount();
+  h.calls.length = 0;
+  const second = await pane({ key: 2 });
+  await until(() => find(second, (n) => n.attrs.class === "wui-title").length >= 2, "the second pane's rows");
+  expect(find(second, (n) => n.attrs.class === "wui-title").map((n) => n.textContent)).toEqual(["Greeting", "New chat"]);
+  expect(probes()).toEqual([]);
+});
+
+test("round 3 P2 lag: a hidden pane reads nothing for its blank rows", async () => {
+  probeScript();
+  await pane({ hidden: true });
+  await settle(120);
+  expect(probes()).toEqual([]);
 });
 
 test("live A: after New chat and a first reply, the header, the Everyday row and the history column all carry the title OpenCode gives", async () => {

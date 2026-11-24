@@ -3,9 +3,9 @@
 // list from OpenCode and holds the search, the "..." menu and the delete question.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dots, PanelLeft, Plus, Search, Trash } from "../../chrome/icons";
-import { CHAT_AGENT, deleteChatSession, listChatSessions, type ChatSessionSummary } from "../opencode";
-import { chatHistory } from "../live/client";
+import { deleteChatSession, listChatSessions, type ChatSessionSummary } from "../opencode";
 import { onSessionDeleted, sameFolder } from "../live/sessionBus";
+import { probeChat, probed } from "./probe";
 import { filterSessions, groupSessions, isBlankTitle, titleOf, visibleSessions, type ColumnMode } from "./history";
 
 export type HistoryViewProps = {
@@ -121,6 +121,8 @@ type ColumnProps = {
   activeId: string | null;
   /** Something has been said in the chat open now: its row shows even while OpenCode has not titled it. */
   activeStarted?: boolean;
+  /** False while the pane is out of sight: it reads nothing for its blank rows then. */
+  active?: boolean;
   /** Counts up when the list may have changed (a turn ended, a chat began). */
   refreshKey: number;
   onNew: () => void;
@@ -133,7 +135,7 @@ type ColumnProps = {
 };
 
 /** Memoised, and fed only stable callbacks by the pane, so a streamed word does not redraw it. */
-export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, activeStarted = false, refreshKey, onNew, onOpen, onDeleted, onToggle, onTitle }: ColumnProps) {
+export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, activeStarted = false, active = true, refreshKey, onNew, onOpen, onDeleted, onToggle, onTitle }: ColumnProps) {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [query, setQuery] = useState("");
@@ -159,28 +161,28 @@ export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, 
   }, [cwd, refreshKey]);
 
   // Review 2 P2-5: a row is blank by what is in it, not by its title. The list carries no message count, so a row
-  // still called "New chat" (or OpenCode's "New session ...") is read once: one with words in it is shown. Only
-  // those rows are read, once per change of their `updatedAt`, so a long list costs nothing.
+  // still called "New chat" (or OpenCode's "New session ...") is read to see if words are in it, and one with words
+  // is shown. Round 3 (lag): the answers come from one cache shared by every pane (probe.ts: one read per chat and
+  // `updatedAt`, one message each, three at a time in all), and a pane that is out of sight, or whose column is
+  // folded away, asks nothing: it has no rows to show.
   const [filled, setFilled] = useState<ReadonlySet<string>>(() => new Set());
-  const probed = useRef(new Map<string, number>());
+  const reading = active && mode === "full";
   useEffect(() => {
-    if (!cwd) return;
-    const todo = sessions.filter((s) => isBlankTitle(s.title) && probed.current.get(s.id) !== s.updatedAt).slice(0, 12);
+    if (!cwd || !reading) return;
+    const blank = sessions.filter((s) => isBlankTitle(s.title));
+    const already = blank.filter((s) => probed(cwd, s.id, s.updatedAt) === true).map((s) => s.id);
+    if (already.length > 0) setFilled((prev) => (already.every((id) => prev.has(id)) ? prev : new Set([...prev, ...already])));
+    const todo = blank.filter((s) => probed(cwd, s.id, s.updatedAt) === undefined).slice(0, 12);
     if (todo.length === 0) return;
     let live = true;
-    let done = false;
-    for (const s of todo) probed.current.set(s.id, s.updatedAt);
-    void Promise.all(todo.map((s) => chatHistory(CHAT_AGENT, cwd, s.id).then((r) => (Array.isArray(r?.items) && r.items.length > 0 ? s.id : null), () => null))).then((ids) => {
-      done = true;
+    void Promise.all(todo.map((s) => probeChat(cwd, s.id, s.updatedAt).then((has) => (has ? s.id : null)))).then((ids) => {
       const got = ids.filter((id): id is string => id !== null);
       if (live && got.length > 0) setFilled((prev) => new Set([...prev, ...got]));
     });
     return () => {
       live = false;
-      // A read cut short is asked again by the next run.
-      if (!done) for (const s of todo) probed.current.delete(s.id);
     };
-  }, [sessions, cwd]);
+  }, [sessions, cwd, reading]);
 
   // A chat deleted in any pane leaves every pane's list at once.
   useEffect(() => onSessionDeleted((d) => cwd !== null && sameFolder(d.cwd, cwd) && setSessions((xs) => xs.filter((s) => s.id !== d.id))), [cwd]);
