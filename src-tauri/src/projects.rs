@@ -258,8 +258,15 @@ pub fn retire_workspace_names(store: &Store, path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// For display and lookup only: an unreadable record shows empty (after being kept aside, R3-F02).
 pub(crate) fn load_origins(store: &Store) -> serde_json::Map<String, serde_json::Value> {
-    store.get(ORIGINS_KEY).ok().flatten().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+    crate::state::kept::or_default(store, ORIGINS_KEY)
+}
+
+/// The records a save starts from (R3-F02): a blob that does not read is kept aside first, and a
+/// store or copy that fails is an error, never an empty map that the save would write over it.
+fn load_origins_for_write(store: &Store) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+    crate::state::kept::load(store, ORIGINS_KEY)
 }
 
 /// VIEW-038: the issue or pull request number an origin links to: `issue`, or the number at the
@@ -284,7 +291,7 @@ pub const MADE_BRANCH_KEY: &str = "madeBranch";
 /// writer (the details form, the CLI's `worktree set`, a link to an issue) can bring the pre-trust
 /// back; only forgetting the workspace (`None`) drops it.
 pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>) -> Result<(), String> {
-    let mut all = load_origins(store);
+    let mut all = load_origins_for_write(store)?;
     let key = name_key(path);
     match origin {
         Some(o) => {
