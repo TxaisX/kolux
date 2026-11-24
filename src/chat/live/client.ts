@@ -80,7 +80,8 @@ export async function sendChat(chatId: string, text: string): Promise<void> {
   await invoke("chat_send", { chatId, text, images: [] });
 }
 
-/** Stops the running turn. `null` when no turn was running, so a Stop on a finished turn says nothing. */
+/** Stops the running turn, and answers how it ended. The engine always answers a stop (a stop with no turn running
+ *  answers "ended" and sends a `stopped` event); `null` is only a reply with no body, which the page reads as "could not stop". */
 export async function stopChat(chatId: string): Promise<StopHow | null> {
   return (await invoke<StopHow | null>("chat_stop", { chatId })) ?? null;
 }

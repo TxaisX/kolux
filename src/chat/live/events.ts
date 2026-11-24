@@ -209,6 +209,8 @@ function ended(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq: number
   if (!ev.isError) return null;
   // A stop ends the turn with this subtype; the row marks the turn so no "Worked for" line is claimed for it.
   if (ev.subtype === "error_during_execution") return [...prev, { id: `stopped-${seq}`, role: "assistant", kind: "interrupted", text: "Interrupted", at }];
+  // A message that was queued behind a run and never ran: the engine's own words say why, shown as the detail.
+  if (ev.subtype === "cancelled") return [...prev, { id: `result-${seq}`, role: "status", kind: "notice", text: "A message was not run.", details: (ev.errors ?? []).join("\n") || undefined, at }];
   return [...prev, { id: `result-${seq}`, role: "status", kind: "notice", text: `The turn ended with an error (${ev.subtype || "unknown"}).`, details: (ev.errors ?? []).join("\n") || undefined, at }];
 }
 
