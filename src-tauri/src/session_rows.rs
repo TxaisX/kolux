@@ -441,4 +441,12 @@ mod tests {
         assert_eq!(name_of(&roots, "claude", "missing").unwrap(), None);
         let _ = fs::remove_dir_all(&root);
     }
+
+    /// AUD-R2 F01: a Devanagari vowel sign is a combining mark too, so a cut must not leave its
+    /// consonant behind (U+0915 + U+093F would read as a bare consonant with a dotted circle).
+    #[test]
+    fn audit_r2_f01_a_devanagari_matra_stays_with_its_consonant() {
+        let text = format!("{}{}z", "a".repeat(11), "\u{0915}\u{093F}");
+        assert_eq!(clip(&text, 13), format!("{}\u{2026}", "a".repeat(11)));
+    }
 }
