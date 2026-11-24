@@ -947,12 +947,12 @@ pub fn working_now(live: impl Fn(u32) -> bool) -> usize {
 /// hooks FIX-5: the terminal is also remembered as ended on its own, so a pane that had no
 /// session yet (its first hook still in flight) drops that hook too.
 pub fn terminal_ended(terminal: u32) {
-    with_sessions(|s| {
+    let gone = with_sessions(|s| {
         let gone: Vec<u32> = s.iter().filter(|(_, x)| x.terminal == Some(terminal)).map(|(k, _)| *k).collect();
         gone.iter().for_each(|k| drop(s.remove(k)));
         with_retired(|r| {
-            for pane in gone {
-                let list = r.by_pane.entry(pane).or_default();
+            for pane in &gone {
+                let list = r.by_pane.entry(*pane).or_default();
                 list.push_back(terminal);
                 while list.len() > RETIRED_KEEP {
                     list.pop_front();
@@ -963,7 +963,12 @@ pub fn terminal_ended(terminal: u32) {
                 r.ended.pop_front();
             }
         });
+        gone
     });
+    // START-05: these panes have no live row left, so their ended-session latches go with them.
+    for pane in gone {
+        crate::hooks::agent_hooks::saved::forget_ended(pane);
+    }
 }
 
 /// STAT-032: the panes whose working reading just went the whole window without a signal, each

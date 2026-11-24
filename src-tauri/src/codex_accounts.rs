@@ -232,7 +232,11 @@ pub fn config_drift(home: &Path) -> bool {
 
 /// R5-F01: the home's config.toml keeps Codex's sign-in in the home's own file. A home without one
 /// gets Kolux's line; a file that is already there keeps every setting and project trust in it,
-/// gains the line only when the top level lacks it, and is left byte-identical when it has it.
+/// gains the line only when the top level lacks it, and is left byte-identical when it has it and no
+/// other provider took over. A top-level `model_provider` another provider set comes out with the
+/// sign-in (F3): the account is signed in to OpenAI, so leaving it would send every turn to that
+/// provider's key and keep the home drifted (`config_drift`) no matter how often the person signs in
+/// again.
 fn keep_sign_in_in_file(home: &Path) -> Result<(), String> {
     let file = home.join("config.toml");
     let old = match fs::read_to_string(&file) {
@@ -242,11 +246,18 @@ fn keep_sign_in_in_file(home: &Path) -> Result<(), String> {
         }
         Err(e) => return Err(e.to_string()),
     };
-    if top_level(&old, "cli_auth_credentials_store").as_deref() == Some("file") {
+    let keeps_line = top_level(&old, "cli_auth_credentials_store").as_deref() == Some("file");
+    let custom = custom_provider(&old);
+    if keeps_line && !custom {
         return Ok(());
     }
     let mut doc: toml_edit::DocumentMut = old.parse().map_err(|_| "The account's Codex settings file (config.toml) is not valid TOML, so Codex's sign-in could not be kept in the account's own file. Fix or remove that file and sign in again.".to_string())?;
-    doc["cli_auth_credentials_store"] = toml_edit::value("file");
+    if !keeps_line {
+        doc["cli_auth_credentials_store"] = toml_edit::value("file");
+    }
+    if custom {
+        doc.as_table_mut().remove("model_provider");
+    }
     crate::trust::write_parsed(&file, &doc.to_string(), Some(&old))
 }
 
@@ -1116,6 +1127,25 @@ mod tests {
         assert!(config_drift(home), "inside a table it is not the top-level setting");
         fs::write(home.join("config.toml"), format!("{HOME_CONFIG}model_provider = \"ollama\"\n")).unwrap();
         assert!(config_drift(home));
+    }
+
+    // F3: the user's settings are copied into an account home with a custom provider, so
+    // `config_drift` says the home no longer keeps the sign-in in its file, and signing in again
+    // only re-adds the sign-in line: the account stays drifted for good. The sign-in's own write
+    // leaves the settings and trust but takes that provider's top-level line out.
+    #[test]
+    fn f3_a_re_sign_in_clears_a_custom_provider_from_the_accounts_settings() {
+        let d = temp("f3-provider");
+        let home = d.as_path();
+        let trust = "[projects.\"C:\\\\w\"]\ntrust_level = \"trusted\"\n";
+        fs::write(home.join("config.toml"), format!("{HOME_CONFIG}model_provider = \"ollama\"\n{trust}")).unwrap();
+        assert!(config_drift(home), "the copied provider keeps the home drifted");
+        keep_sign_in_in_file(home).unwrap();
+        assert!(!config_drift(home), "a re-sign-in clears the drift");
+        let kept = fs::read_to_string(home.join("config.toml")).unwrap();
+        assert_eq!(top_level(&kept, "cli_auth_credentials_store").as_deref(), Some("file"), "{kept}");
+        assert!(kept.contains("[projects.\"C:\\\\w\"]"), "the project trust stays: {kept}");
+        assert!(top_level(&kept, "model_provider").is_none(), "the other provider's line is gone: {kept}");
     }
 
     #[test]

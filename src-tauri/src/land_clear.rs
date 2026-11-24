@@ -13,7 +13,9 @@
 //!
 //! `std::fs::remove_dir_all` deletes the links inside a build folder without following them, so a
 //! link out of the workspace loses its link and nothing else. A folder that will not go (a file in
-//! use) is skipped: nothing panics and nothing is retried.
+//! use) is skipped: nothing panics and nothing is retried. Round 3 P3: the moved-aside copy's
+//! children are deleted first, all but `CACHEDIR.TAG`, so the tag is the last thing to go and a copy
+//! the delete could not finish is still recognised by the leftover sweep (`clear_leftovers`).
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -72,13 +74,9 @@ fn tracked(top: &Path, folder: &Path) -> Result<String, String> {
     crate::git::run_within(&["ls-files", "--", &rel], Some(top), LIMIT)
 }
 
-/// The build output of the workspace at `top`, read only: the folders a clear would delete.
-///
-/// A folder counts only when all hold: it is named `target` and sits in `top` itself or in a direct
-/// child folder of it (so a Rust crate at the top and one in `src-tauri`, never deeper and never in
-/// `.git`); neither it nor the child folder it sits in is a link; a `Cargo.toml` sits next to it; it
-/// holds `CACHEDIR.TAG`; and Git tracks nothing under it.
-pub(crate) fn build_output(top: &Path) -> Vec<PathBuf> {
+/// The folders a build output can sit in: `top` itself and each direct child folder of it (so a
+/// Rust crate at the top and one in `src-tauri`, never deeper and never in `.git`).
+fn crates(top: &Path) -> Vec<PathBuf> {
     let mut crates = vec![top.to_path_buf()];
     if let Ok(entries) = std::fs::read_dir(top) {
         for entry in entries.flatten() {
@@ -90,8 +88,18 @@ pub(crate) fn build_output(top: &Path) -> Vec<PathBuf> {
             }
         }
     }
+    crates
+}
+
+/// The build output of the workspace at `top`, read only: the folders a clear would delete.
+///
+/// A folder counts only when all hold: it is named `target` and sits in `top` itself or in a direct
+/// child folder of it (so a Rust crate at the top and one in `src-tauri`, never deeper and never in
+/// `.git`); neither it nor the child folder it sits in is a link; a `Cargo.toml` sits next to it; it
+/// holds `CACHEDIR.TAG`; and Git tracks nothing under it.
+pub(crate) fn build_output(top: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
-    for (i, dir) in crates.iter().enumerate() {
+    for (i, dir) in crates(top).iter().enumerate() {
         if i > 0 && is_link(dir) {
             continue;
         }
@@ -107,6 +115,32 @@ pub(crate) fn build_output(top: &Path) -> Vec<PathBuf> {
         }
     }
     found
+}
+
+/// P3-b: a clear that was cut short leaves its half-deleted copy (`target.deleting-1`) in the
+/// workspace, where it shows as untracked and makes every later clear refuse with HAS_CHANGES. A
+/// `target.deleting-N` beside a build folder is never anything but that copy, and only one holding
+/// cargo's `CACHEDIR.TAG` is Kolux's own. Best effort: one that will not go is logged and left.
+fn clear_leftovers(top: &Path) {
+    let prefix = format!("{TARGET}.deleting-");
+    for (i, dir) in crates(top).iter().enumerate() {
+        if i > 0 && is_link(dir) {
+            continue;
+        }
+        let Ok(entries) = std::fs::read_dir(dir) else { continue };
+        for entry in entries.flatten() {
+            if !entry.file_name().to_string_lossy().starts_with(&prefix) {
+                continue;
+            }
+            let at = entry.path();
+            if is_link(&at) || !at.is_dir() || !at.join(TAG).is_file() {
+                continue;
+            }
+            if let Err(e) = std::fs::remove_dir_all(&at) {
+                eprintln!("kolux: {} could not be deleted, so it is left for the next clear ({e})", at.display());
+            }
+        }
+    }
 }
 
 /// Deletes the build output of the workspace at `folder` (`folder` may be a folder inside it), or
@@ -134,6 +168,9 @@ pub(crate) fn clear_workspace(deps: &ClearDeps, folder: &Path) -> Result<Vec<Pat
     if !deps.git.merged_into(&top, &format!("refs/heads/{target}")) {
         return Err(format!("its work is not in {target}"));
     }
+    // P3-b: a half-deleted copy an earlier clear left behind would count as a change below and make
+    // this clear refuse for good, so it goes first (only a `target.deleting-N` holding cargo's tag).
+    clear_leftovers(&top);
     let status = quit_merge::read(&["status", "--porcelain", "--untracked-files=all"], &top, &clock)?;
     if !status.trim().is_empty() {
         return Err(super::HAS_CHANGES.into());
@@ -144,11 +181,61 @@ pub(crate) fn clear_workspace(deps: &ClearDeps, folder: &Path) -> Result<Vec<Pat
     let mut removed = Vec::new();
     for at in build_output(&top) {
         // A folder a file in use keeps from going is left for the next land; nothing here is fatal.
-        if std::fs::remove_dir_all(&at).is_ok() {
+        if move_aside_and_remove(&at, |from, to| std::fs::rename(from, to)) {
             removed.push(at);
         }
     }
     Ok(removed)
+}
+
+/// Round 3 P3: deletes every child of a moved-aside build copy but cargo's `CACHEDIR.TAG`, best
+/// effort, and says whether the tag is now all that is left. `remove_dir_all` deletes top-level
+/// files first on Windows, so a delete cut short by a file still open would take the tag with it and
+/// leave a `target.deleting-N` that `clear_leftovers` no longer recognises as Kolux's own. With this
+/// pass first the tag is the last thing to go, so a copy that keeps it is swept by the next clear.
+fn clear_children_except_tag(at: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(at) else { return false };
+    for entry in entries.flatten() {
+        if entry.file_name() == TAG {
+            continue;
+        }
+        let path = entry.path();
+        // A link goes as the link; what it names is never followed. `remove_dir` takes a junction
+        // or a directory symlink (a plain `remove_file` cannot on Windows), `remove_file` a file one.
+        let _ = if is_link(&path) {
+            std::fs::remove_dir(&path).or_else(|_| std::fs::remove_file(&path))
+        } else if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+            std::fs::remove_dir_all(&path)
+        } else {
+            std::fs::remove_file(&path)
+        };
+    }
+    std::fs::read_dir(at).is_ok_and(|left| left.flatten().all(|e| e.file_name() == TAG))
+}
+
+/// Takes a build folder out of its name first, then deletes the copy: a folder with a file still
+/// open cannot be renamed on Windows, so the folder is skipped whole instead of being half deleted
+/// and left as a broken `target`. The copy is a sibling (`target.deleting-1`), so the delete never
+/// crosses a drive, and the first free name is used so a copy an earlier clear could not delete is
+/// not written over. `rename` is a parameter only so a test can make it fail.
+///
+/// Round 3 P3: the copy's children go first, all but `CACHEDIR.TAG`, so the tag is the last thing to
+/// go, and a copy the delete could not finish keeps it for `clear_leftovers`. True when the copy is
+/// gone whole.
+fn move_aside_and_remove(at: &Path, rename: impl Fn(&Path, &Path) -> std::io::Result<()>) -> bool {
+    let Some(parent) = at.parent() else { return false };
+    let name = at.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let aside = (1..=999).map(|n| parent.join(format!("{name}.deleting-{n}"))).find(|to| !to.exists());
+    let Some(aside) = aside else { return false };
+    if let Err(e) = rename(at, &aside) {
+        eprintln!("kolux: {} could not be moved aside, so it was left alone ({e})", at.display());
+        return false;
+    }
+    if !clear_children_except_tag(&aside) {
+        return false;
+    }
+    let _ = std::fs::remove_dir_all(&aside);
+    !aside.exists()
 }
 
 /// What a land should clear: after "Landed" or "Nothing new", every Kolux-made linked worktree of
@@ -178,3 +265,102 @@ pub(crate) fn after_land(deps: &ClearDeps, out: &LandOutcome) -> Vec<(String, Re
 #[cfg(test)]
 #[path = "land_clear_board_tests.rs"]
 mod board_tests;
+
+#[cfg(test)]
+mod tests {
+    use super::{clear_children_except_tag, clear_leftovers, move_aside_and_remove};
+    use std::fs;
+    use std::io;
+    use std::path::Path;
+
+    fn temp(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("kolux-land-clear-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    // F4: a file still open in a build folder cannot be deleted on Windows, and deleting what could
+    // be deleted first left a `target` that had lost part of its content, so the next build ran on a
+    // half-cleared folder. The folder is moved aside whole first: a failed rename leaves it exactly
+    // as it was, and only the copy (a free `target.deleting-N`, never one an earlier clear left
+    // behind) is deleted.
+    #[test]
+    fn f4_a_build_folder_a_file_keeps_is_left_whole() {
+        let base = temp("f4-aside");
+        let target = base.join("target");
+        fs::create_dir_all(target.join("debug")).unwrap();
+        fs::write(target.join("debug").join("app.exe"), "in use").unwrap();
+        let busy = |_: &Path, _: &Path| Err(io::Error::new(io::ErrorKind::PermissionDenied, "file in use"));
+        assert!(!move_aside_and_remove(&target, busy), "a folder that cannot be moved aside is not deleted");
+        assert_eq!(fs::read_to_string(target.join("debug").join("app.exe")).unwrap(), "in use", "the folder is whole");
+        assert_eq!(fs::read_dir(&base).unwrap().count(), 1, "nothing was left beside it");
+        // A copy an earlier clear could not delete keeps its name; the copy made now takes the next
+        // free one and is the only one deleted.
+        fs::create_dir_all(base.join("target.deleting-1")).unwrap();
+        fs::write(base.join("target.deleting-1").join("old"), "kept").unwrap();
+        assert!(move_aside_and_remove(&target, |from, to| fs::rename(from, to)));
+        assert!(!target.exists(), "the build folder is gone");
+        assert_eq!(fs::read_to_string(base.join("target.deleting-1").join("old")).unwrap(), "kept", "the earlier copy is not written over");
+        assert!(!base.join("target.deleting-2").exists(), "the copy made now is deleted");
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    // P3-b: a clear cut short by a file in use leaves its copy as `target.deleting-N`, which shows
+    // as untracked and makes every later clear refuse with HAS_CHANGES. Only a copy that holds
+    // cargo's own tag is Kolux's; anything else with that name is left alone.
+    #[test]
+    fn p3_b_a_half_deleted_build_copy_holding_the_cache_tag_is_removed() {
+        let base = temp("p3-b-leftovers");
+        let tag = "Signature: 8a477f597d28d172789f06886806bc55\n";
+        let leftover = base.join("target.deleting-1");
+        fs::create_dir_all(leftover.join("debug")).unwrap();
+        fs::write(leftover.join("CACHEDIR.TAG"), tag).unwrap();
+        let stranger = base.join("target.deleting-2");
+        fs::create_dir_all(stranger.join("debug")).unwrap();
+        fs::write(stranger.join("debug").join("keep"), "not a build copy").unwrap();
+        let in_crate = base.join("src-tauri").join("target.deleting-3");
+        fs::create_dir_all(in_crate.join("debug")).unwrap();
+        fs::write(in_crate.join("CACHEDIR.TAG"), tag).unwrap();
+        clear_leftovers(&base);
+        assert!(!leftover.exists(), "a copy holding the tag is removed");
+        assert!(!in_crate.exists(), "a crate in a child folder is swept too");
+        assert_eq!(fs::read_to_string(stranger.join("debug").join("keep")).unwrap(), "not a build copy", "one without the tag is left alone");
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    // Round 3 P3: the tag is the last child to go, so a delete cut short by a file in use leaves a
+    // copy `clear_leftovers` can still recognise. The pass is its own function so stopping after it
+    // can be checked on its own.
+    #[test]
+    fn p3_the_child_pass_leaves_the_cache_tag_for_last() {
+        let base = temp("p3-tag-last");
+        let copy = base.join("target.deleting-1");
+        fs::create_dir_all(copy.join("debug").join("deps")).unwrap();
+        fs::create_dir_all(copy.join("build")).unwrap();
+        let tag = "Signature: 8a477f597d28d172789f06886806bc55\n";
+        fs::write(copy.join("CACHEDIR.TAG"), tag).unwrap();
+        fs::write(copy.join("debug").join("app.exe"), "in use").unwrap();
+        fs::write(copy.join("build").join("out"), "x").unwrap();
+        assert!(clear_children_except_tag(&copy), "nothing but the tag is left");
+        assert!(copy.join("CACHEDIR.TAG").is_file(), "the tag is still there for the leftover sweep");
+        assert_eq!(fs::read_dir(&copy).unwrap().count(), 1, "only the tag is left");
+        assert!(!copy.join("debug").exists() && !copy.join("build").exists(), "the folders are gone");
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    // Round 3 P3: with its children gone first, the moved-aside copy goes whole, tag included, and
+    // nothing of it is left beside the workspace.
+    #[test]
+    fn p3_a_moved_aside_copy_is_deleted_whole() {
+        let base = temp("p3-deleted-whole");
+        let target = base.join("target");
+        fs::create_dir_all(target.join("debug")).unwrap();
+        fs::write(target.join("CACHEDIR.TAG"), "Signature: 8a477f597d28d172789f06886806bc55\n").unwrap();
+        fs::write(target.join("debug").join("app.exe"), "built").unwrap();
+        assert!(move_aside_and_remove(&target, |from, to| fs::rename(from, to)), "the copy is deleted whole");
+        assert!(!target.exists(), "the build folder is gone");
+        assert_eq!(fs::read_dir(&base).unwrap().count(), 0, "nothing remains, the tag included");
+        let _ = fs::remove_dir_all(&base);
+    }
+}

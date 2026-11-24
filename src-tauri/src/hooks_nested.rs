@@ -7,8 +7,14 @@
 //! an event is foreign only when the pane's own agent has already reported, the event is from a
 //! different session, and it runs in a folder that is neither the pane's folder nor one above it.
 //!
+//! The latch (`saved::ended`) says the pane's agent has left its shell (the foreground poll saw the
+//! shell again): nothing in the pane can then be nested inside a live agent, so no event is foreign
+//! and a new `SessionStart` in the pane is heard.
+//!
 //! Known limit: a nested agent that runs in the pane's own folder, or in a parent of it, is not
-//! caught (its event looks exactly like the pane's own agent changing folder).
+//! caught (its event looks exactly like the pane's own agent changing folder). A restart quicker
+//! than one foreground poll (~2 s) is not seen either: the shell never shows, so the latch stays
+//! unset and the new session's first event is dropped as foreign. Known residual.
 
 use serde_json::Value;
 
@@ -29,11 +35,14 @@ pub fn same_or_ancestor(event_cwd: &str, known_cwd: &str) -> bool {
 }
 
 /// Whether a hook event comes from an agent other than the pane's own: the pane's last reported
-/// folder and session are both known and not blank, the event carries both as non-blank strings,
-/// the sessions differ (trimmed, ASCII case ignored), and the event runs outside the pane's folder
-/// (not in it and not in a folder above it). Anything missing, blank or not a string keeps the
-/// event: a genuine event is never dropped.
-pub fn foreign_event(known_cwd: Option<&str>, known_session: Option<&str>, event: &Value) -> bool {
+/// folder and session are both known and not blank, the pane's agent has not left its shell, the
+/// event carries both folder and session as non-blank strings, the sessions differ (trimmed, ASCII
+/// case ignored), and the event runs outside the pane's folder (not in it and not in a folder above
+/// it). Anything missing, blank or not a string keeps the event: a genuine event is never dropped.
+pub fn foreign_event(known_cwd: Option<&str>, known_session: Option<&str>, known_ended: bool, event: &Value) -> bool {
+    if known_ended {
+        return false;
+    }
     let (Some(known_cwd), Some(known_session)) = (non_blank(known_cwd), non_blank(known_session)) else { return false };
     let (Some(event_cwd), Some(event_session)) = (
         non_blank(event.get("cwd").and_then(Value::as_str)),
@@ -42,6 +51,21 @@ pub fn foreign_event(known_cwd: Option<&str>, known_session: Option<&str>, event
         return false;
     };
     !known_session.eq_ignore_ascii_case(event_session) && !same_or_ancestor(event_cwd, known_cwd)
+}
+
+/// Round 3 P1: `claude -c` / `claude --resume` and `codex resume` keep the session id, so the pane's
+/// latch (`saved::ended`) would stay set for that id for the whole resumed session, and the first
+/// event from a nested agent elsewhere would take the live row. A `SessionStart` that names the
+/// very session the pane already knows is the pane's own agent coming back, not a nested one, so
+/// the latch is lifted for it (trimmed, ASCII case ignored).
+pub fn resumed_same_session(known_session: Option<&str>, event: &Value) -> bool {
+    if event.get("hook_event_name").and_then(Value::as_str) != Some("SessionStart") {
+        return false;
+    }
+    match (non_blank(known_session), non_blank(event.get("session_id").and_then(Value::as_str))) {
+        (Some(known), Some(start)) => known.eq_ignore_ascii_case(start),
+        _ => false,
+    }
 }
 
 /// The text, trimmed; none when it is absent or blank.

@@ -2707,3 +2707,89 @@ fn audit_r2_f04_workspace_sleep_keeps_the_other_workspaces_restored_rows_in_the_
     drop(store);
     let _ = fs::remove_dir_all(&dir);
 }
+
+// ---- F1: a restarted agent in a shell pane keeps its hooks ----
+
+/// One hook request the way a pane's script sends it, signed with that pane's token.
+fn hook_request(pane: u32, terminal: u32, body: &str) -> crate::hooks::Request {
+    use base64::Engine as _;
+    let id = base64::engine::general_purpose::STANDARD.encode(json!({ "paneKey": pane, "terminal": terminal, "hookVersion": 1 }).to_string());
+    let mut headers = std::collections::HashMap::new();
+    headers.insert(crate::hooks::TOKEN_HEADER.to_string(), crate::hooks::pane_token("tok", pane, Some(terminal)));
+    headers.insert(crate::hooks::IDENTITY_HEADER.to_string(), id);
+    crate::hooks::Request { path: "/claude".into(), headers, body: body.as_bytes().to_vec() }
+}
+
+/// F1: in a shell pane the user ran claude, exited, and ran it again from another folder. While the
+/// pane's agent is live, a nested agent in a worktree below the pane's folder and a SessionStart
+/// from another folder are both dropped, so a nested agent never becomes the pane's known session.
+/// The foreground poll's latch (the shell again) frees the pane, the new SessionStart is heard, and
+/// from then on the new session is the pane's own and a foreign event is dropped again.
+#[test]
+fn f1_a_restarted_agent_in_a_shell_pane_keeps_its_hooks() {
+    let _turn = SAVED_ROWS.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = temp("f1-restarted");
+    let store = crate::state::Store::open(&dir).unwrap();
+    let (pane, terminal) = (901, 1901);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    let event = |name: &str, sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"{name}","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let start = |sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"SessionStart","source":"startup","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let ask = |body: &str| crate::hooks::answer(&hook_request(pane, terminal, body), "tok");
+    let row = |sid: &str, cwd: &str| Row { pane_key: pane, agent: "claude".into(), state: "done".into(), at: now, session_id: Some(sid.into()), cwd: Some(cwd.into()), stop: None, hook_version: Some(crate::hooks::HOOK_VERSION), pid: None, pid_started: None, children: Vec::new() };
+    // The pane's own agent starts and reports for this terminal; its saved row is what the hooks left.
+    assert!(ask(&start("s-dead", r"C:\work\app")).1.is_some(), "the pane's agent starts");
+    saved::unsleep(&store, row("s-dead", r"C:\work\app"));
+    // (i) While that session is live, a nested agent in a worktree below the pane's folder is foreign.
+    assert!(ask(&event("PostToolUse", "s-nested", r"C:\work\app\.worktrees\lane")).1.is_none(), "a worktree under the pane's folder is not the pane's");
+    // (ii) A SessionStart from another session elsewhere is foreign too: it never becomes the known session.
+    assert!(ask(&start("s-nested", r"D:\elsewhere")).1.is_none(), "a nested agent's start is dropped");
+    assert!(!saved::ended(pane), "nothing has ended yet");
+    // The foreground poll saw the pane's shell again: the latch frees the pane, no SessionEnd needed.
+    saved::note_ended(pane);
+    assert!(saved::ended(pane), "the live session is marked ended");
+    // (iii) A claude started again in a sibling folder is the pane's own session from then on.
+    assert!(ask(&start("s-new", r"C:\work\other")).1.is_some(), "a restart is the pane's own");
+    // What the hooks' reply records live: the pane's row is the new session now.
+    saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
+    saved::unsleep(&store, row("s-new", r"C:\work\other"));
+    // (iv) The new id is the known session, the latch no longer applies, and a foreign event drops.
+    assert!(!saved::ended(pane), "the new session is not the ended one");
+    assert!(ask(&event("UserPromptSubmit", "s-new", r"C:\work\other")).1.is_some(), "the new session is heard");
+    assert!(ask(&event("PostToolUse", "s-other", r"D:\elsewhere")).1.is_none(), "a foreign event is dropped again");
+    // Hand the live row back, so the rest of the suite starts from an empty LIVE set.
+    saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
+    crate::status::terminal_ended(terminal);
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// P1 (round 3): `claude -c` / `claude --resume` (and `codex resume`) keep the pane's session id, so
+/// the latch (`saved::ended`) would stay set for that id for the whole resumed session and the first
+/// event from a nested agent elsewhere would take the live row. A SessionStart naming the same
+/// session lifts the latch, and the nested agent's event is dropped again.
+#[test]
+fn p1_a_resume_that_keeps_the_session_id_lifts_the_latch() {
+    let _turn = SAVED_ROWS.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = temp("p1-resumed");
+    let store = crate::state::Store::open(&dir).unwrap();
+    let (pane, terminal) = (902, 1902);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    let event = |name: &str, sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"{name}","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let start = |sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"SessionStart","source":"resume","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let ask = |body: &str| crate::hooks::answer(&hook_request(pane, terminal, body), "tok");
+    let row = |sid: &str, cwd: &str| Row { pane_key: pane, agent: "claude".into(), state: "done".into(), at: now, session_id: Some(sid.into()), cwd: Some(cwd.into()), stop: None, hook_version: Some(crate::hooks::HOOK_VERSION), pid: None, pid_started: None, children: Vec::new() };
+    // The pane's own agent reported earlier, then the foreground poll saw the shell again: latch set.
+    assert!(ask(&start("s1", r"C:\work\app")).1.is_some(), "the pane's agent starts");
+    saved::unsleep(&store, row("s1", r"C:\work\app"));
+    saved::note_ended(pane);
+    assert!(saved::ended(pane), "the live session is marked ended");
+    // `claude -c` in the pane's folder: the same session id comes back, so it is the pane's own.
+    assert!(ask(&start("s1", r"C:\work\app")).1.is_some(), "the resumed start is heard");
+    assert!(!saved::ended(pane), "a start for the latched id lifts the latch");
+    assert!(ask(&event("PostToolUse", "s1", r"C:\work\app")).1.is_some(), "the resumed session is the pane's own");
+    // A nested agent's event from another folder is dropped again, not taken as the pane's.
+    assert!(ask(&event("PostToolUse", "s-nested", r"D:\elsewhere")).1.is_none(), "a foreign event is dropped after the resume");
+    // Hand the live row back, so the rest of the suite starts from an empty LIVE set.
+    saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
+    crate::status::terminal_ended(terminal);
+    let _ = fs::remove_dir_all(&dir);
+}

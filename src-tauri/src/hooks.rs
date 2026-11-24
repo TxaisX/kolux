@@ -435,13 +435,23 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
     // START-05: a Claude Code or Codex started inside the pane inherits KOLUX_HOOK_IDENTITY, so its
     // events would be reported as the pane's own. Once the pane's own agent has reported for this
     // terminal, an event from another session that runs outside the pane's folder (not in it, not
-    // above it) is not the pane's: reply as usual but report and save nothing. A nested agent in
-    // the pane's folder or a parent folder is not caught (no process id in the event).
+    // above it) is not the pane's: reply as usual but report and save nothing. That includes a
+    // SessionStart, so a nested agent can never become the pane's known session. The pane's latch
+    // (`saved::ended`, set when the foreground poll sees the shell again) says its own agent has
+    // left, and frees the pane for a restart. A nested agent in the pane's folder or a parent
+    // folder is not caught (no process id in the event).
     if let Some(t) = terminal {
         if crate::status::panes_of(t).contains(&pane_key) {
             if let Some(row) = agent_hooks::saved::live_row(pane_key) {
-                if nested::foreign_event(row.cwd.as_deref(), row.session_id.as_deref(), &event) {
+                let ended = agent_hooks::saved::ended(pane_key);
+                if nested::foreign_event(row.cwd.as_deref(), row.session_id.as_deref(), ended, &event) {
                     return (200, None);
+                }
+                // P1 (round 3): a resume keeps the pane's session id, so the latch above would never
+                // clear for it and the next event from a nested agent elsewhere would take the live
+                // row. A SessionStart for the id the pane already knows is the pane's own agent back.
+                if ended && nested::resumed_same_session(row.session_id.as_deref(), &event) {
+                    agent_hooks::saved::forget_ended(pane_key);
                 }
             }
         }
