@@ -34,7 +34,8 @@ fn v4(s: &str) -> Option<Ipv4Addr> {
 
 /// Does one bypass entry cover this host and port? Entries are host names, `*.suffix` / `.suffix`
 /// (the domain and its subdomains), `<local>` (names with no dot), `*`, an IPv4 address or an
-/// IPv4 range `a.b.c.d/n`; an entry may end in `:port`.
+/// IPv4 range `a.b.c.d/n`; an entry may end in `:port`. An entry with a port or range that cannot
+/// exist covers nothing.
 fn entry_covers(entry: &str, host: &str, port: u16) -> bool {
     let entry = entry.trim().to_ascii_lowercase();
     let host = host.trim_matches(|c| c == '[' || c == ']').to_ascii_lowercase();
@@ -48,7 +49,13 @@ fn entry_covers(entry: &str, host: &str, port: u16) -> bool {
         return !host.contains('.') && !host.contains(':');
     }
     let (name, want_port) = match entry.rsplit_once(':') {
-        Some((n, p)) if !n.contains(':') && p.chars().all(|c| c.is_ascii_digit()) && !p.is_empty() => (n.to_string(), p.parse::<u16>().ok()),
+        // A port that cannot exist (65536 and above) is an impossible entry, like a range of more
+        // than 32 bits: it covers nothing. It must not fall back to a bare host name, which would
+        // cover every port.
+        Some((n, p)) if !n.contains(':') && p.chars().all(|c| c.is_ascii_digit()) && !p.is_empty() => match p.parse::<u16>() {
+            Ok(port) => (n.to_string(), Some(port)),
+            Err(_) => return false,
+        },
         _ => (entry.clone(), None),
     };
     if want_port.is_some_and(|p| p != port) {
@@ -169,5 +176,16 @@ mod tests {
         assert!(!entry_covers("<local>", "a.b", 80));
         assert!(entry_covers("EXAMPLE.com", "example.COM", 80), "case is ignored");
         assert!(!entry_covers("", "example.com", 80));
+    }
+
+    /// R6-F01: a port that cannot exist is an impossible entry, like a range of more than 32 bits:
+    /// it covers nothing. Today the unreadable number is dropped and the entry covers every port,
+    /// so `example.com:99999` bypasses the proxy for `example.com` on 80 and 443 alike.
+    #[test]
+    fn audit_r6_f01_an_impossible_bypass_port_covers_nothing() {
+        for entry in ["example.com:99999", "example.com:65536"] {
+            assert!(!entry_covers(entry, "example.com", 80), "{entry} must not cover port 80");
+            assert!(!entry_covers(entry, "example.com", 443), "{entry} must not cover port 443");
+        }
     }
 }
