@@ -3,7 +3,7 @@
 // and the unsent draft is kept per pane. The rules live in composer.ts. T-334 adds the autocomplete
 // menu (CHAT-019, complete.ts), the model and effort controls (CHAT-024, controls.ts) and the
 // attachment chips (CHAT-021, attach.ts).
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { Scan } from "./skills";
@@ -16,7 +16,8 @@ import { ModelControls } from "./ModelControls";
 import { buttonMode, stopArmed } from "./stop";
 import { useDismiss } from "./ux";
 
-export type ComposerHandle = { focus: () => void };
+/** `fill` puts text in the box with the caret at its end and focuses it, sending nothing (a suggestion chip). */
+export type ComposerHandle = { focus: () => void; fill: (text: string) => void };
 
 type Props = {
   paneKey: number;
@@ -39,11 +40,13 @@ type Props = {
   /** A chat pane that can switch its own process (2026-11-21): a model or effort pick restarts the hidden
    *  session on the same conversation instead of only saving the choice for the next launch. */
   onLiveChoice?: (choice: Choice) => void;
+  /** The chat screen's own pickers (the effort picker), drawn where the model and effort selects sit. */
+  tools?: ReactNode;
 };
 
 let attachCounter = 0;
 
-export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ paneKey, live, blocked, note, onSend, working = false, onStop, agent, cwd = null, shownModel = null, onTerminal, onLiveChoice }, ref) {
+export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ paneKey, live, blocked, note, onSend, working = false, onStop, agent, cwd = null, shownModel = null, onTerminal, onLiveChoice, tools }, ref) {
   const [text, setText] = useState(() => draftOf(paneKey));
   // The history index shown; history.length means the draft itself.
   const [at, setAt] = useState(() => historyOf(paneKey).length);
@@ -52,7 +55,18 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   const wrap = useRef<HTMLDivElement>(null);
   // CHAT-018: when this box last sent, so a quick second click on Send is never taken as Stop.
   const sentAt = useRef<number | null>(null);
-  useImperativeHandle(ref, () => ({ focus: () => box.current?.focus() }), []);
+  const fillRef = useRef<(t: string) => void>(() => {});
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus: () => box.current?.focus(),
+      fill: (t: string) => {
+        fillRef.current(t);
+        box.current?.focus();
+      },
+    }),
+    [],
+  );
 
   // --- CHAT-019: the autocomplete menu ---
   const [caret, setCaret] = useState(0);
@@ -272,8 +286,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
     keepDraft(paneKey, t);
     setAt(historyOf(paneKey).length);
   };
+  fillRef.current = (t) => change(t, t.length);
 
-  const submit = (override?: string) => {
+  const submit =(override?: string) => {
     const typed = override ?? text;
     if (!live || blocked || !sendable(typed, attachments)) return;
     // CHAT-024: a bare /model opens the model list instead of going to the agent as text.
@@ -453,6 +468,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
         +
       </button>
       {controls && <ModelControls agent={controls} shown={shownModel} saved={saved[controls] ?? {}} changes={changes} disabled={controlsOff(working, live)} openPicker={pickerAsk} onModel={pickModel} onEffort={pickEffort} onFast={pickFast} onLive={!!onLiveChoice} />}
+      {tools}
       <button type="button" className={`chat-send${mode === "stop" ? " stop" : ""}`} aria-label={mode === "stop" ? "Stop" : "Send"} disabled={mode === "send" ? !live || !!blocked || !sendable(text, attachments) : !onStop} onClick={click}>
         {/* A round button with an arrow (a square while a turn runs), as chat apps draw it. The words stay
             for screen readers through aria-label, and for the plain-chat look through .chat-send-word. */}
