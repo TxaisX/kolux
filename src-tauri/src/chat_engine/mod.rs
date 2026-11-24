@@ -19,6 +19,9 @@
 pub mod events;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+#[path = "replay_board_tests.rs"]
+mod replay_board_tests;
 
 pub use events::{parse_line, ChatEvent, ExitReason, StopHow};
 
@@ -129,9 +132,16 @@ pub fn valid_effort(agent: &str, effort: &str) -> bool {
     }
 }
 
-/// The command line after the program. Never contains `--bare`.
+/// The command line after the program. Never contains `--bare`. A chat agent echoes every user
+/// message back (`--replay-user-messages`), so the page can confirm a send from the echo instead of
+/// guessing that the message arrived.
 pub fn chat_args(agent: &str, model: Option<&str>, effort: Option<&str>, resume: Option<&str>) -> Vec<String> {
     let mut a: Vec<String> = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--permission-mode", permission_mode(agent)].map(String::from).to_vec();
+    // Right after the permission mode (the first eight are a fixed shape): only a chat agent's CLI is
+    // known to take the flag, so any other id gets no echo.
+    if CHAT_AGENTS.contains(&agent) {
+        a.push("--replay-user-messages".to_string());
+    }
     if let Some(m) = model {
         if agent == "openclaude" {
             a.extend(["--provider".to_string(), OPENCLAUDE_PROVIDER.to_string()]);

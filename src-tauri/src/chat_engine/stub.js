@@ -13,6 +13,12 @@
 // - a message starting with "late" is answered 1.5 s after it arrives;
 // - a message containing "[big]" reports a 500,000-token prompt, any other 1 token;
 // - any other message gets an assistant echo and a success result.
+// With `--replay-user-messages` (the flag the chat engine now always passes a chat agent) every user
+// line is echoed first, exactly once and as soon as it arrives, as the real CLI does:
+// `{"type":"user","isReplay":true,"session_id":<init's session_id>,"parent_tool_use_id":null,
+// "message":{"role":"user","content":<the content that was sent>}}`. The echo comes before whatever
+// the message does (answer, hold, queue), a held or queued message included. Without the flag the stub
+// prints no user line at all.
 // An interrupt control request ends a slow turn with an error_during_execution result, unless
 // STUB_IGNORE_INTERRUPT=1 (to test the engine's fallback of ending the process). With
 // STUB_DIE_ON_INTERRUPT=1 the stub exits on the interrupt without a result (a crash mid-Stop).
@@ -24,6 +30,7 @@ const flag = (name) => {
   return i >= 0 ? args[i + 1] : null;
 };
 const session = flag("--resume") ?? `stub-session-${process.pid}`;
+const replay = args.includes("--replay-user-messages");
 const deaf = process.env.STUB_IGNORE_INTERRUPT === "1";
 const dies = process.env.STUB_DIE_ON_INTERRUPT === "1";
 const out = (o) => process.stdout.write(JSON.stringify(o) + "\n");
@@ -71,6 +78,8 @@ rl.on("line", (line) => {
   }
   if (m.type === "user") {
     const content = m.message?.content ?? [];
+    // The echo the page confirms a send from: as soon as the line arrives, before anything else it does.
+    if (replay) out({ type: "user", isReplay: true, session_id: session, parent_tool_use_id: null, message: { role: "user", content } });
     const text = content.find((c) => c.type === "text")?.text ?? "";
     const images = content.filter((c) => c.type === "image").length;
     if (queueing) {
