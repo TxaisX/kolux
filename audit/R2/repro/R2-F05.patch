@@ -1,12 +1,11 @@
 diff --git a/src-tauri/src/agent_hooks/tests.rs b/src-tauri/src/agent_hooks/tests.rs
-index 7aee7403..af0f065e 100644
+index 7aee7403..d7ee4e9f 100644
 --- a/src-tauri/src/agent_hooks/tests.rs
 +++ b/src-tauri/src/agent_hooks/tests.rs
-@@ -2660,3 +2660,28 @@ fn p3_a_malformed_hooks_value_is_refused_and_the_file_left_as_it_was() {
-     }
-     let _ = fs::remove_dir_all(&dir);
- }
-+
+@@ -15,6 +15,31 @@ fn temp(name: &str) -> PathBuf {
+ 
+ const MINE: &str = "\"C:/Users/me/.kolux/agent-hooks/claude.cmd\" || exit 0";
+ 
 +// ---- AUD-R2: repro for audit/R2/findings.json R2-F05 ----
 +
 +/// R2-F05: one managed Codex home whose hooks.json cannot be read stops the removal loop, so the
@@ -31,3 +30,7 @@ index 7aee7403..af0f065e 100644
 +    assert_eq!(left, json!({ "hooks": { "Stop": [{ "hooks": [{ "type": "command", "command": "keep.cmd" }] }] } }), "the readable home still lost Kolux's entries");
 +    let _ = fs::remove_dir_all(&profile);
 +}
++
+ /// hooks FIX-2: the tests that read `CLAUDE_CONFIG_DIR` twice (t_152_*) and the one that sets it
+ /// for a moment (t_134_b) take turns, so no test sees the variable change between its two reads.
+ static CLAUDE_CONFIG_ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());
