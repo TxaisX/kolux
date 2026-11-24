@@ -64,6 +64,7 @@ export const sameTerminal = sameProps<TerminalProps>({
   onPty: "same",
   onFailed: "same",
   onRestoreFailed: "same",
+  onResumeFailed: "same",
   title: "same",
   typed: "same",
   shellName: "same",

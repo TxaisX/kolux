@@ -1,0 +1,103 @@
+{
+  "area": "R6",
+  "files": [
+    {
+      "path": "src-tauri/src/claude_setup.rs",
+      "symbols": ["HEAD", "mask_url", "mask_word", "mcp_rows", "claude_setup", "SECRET"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Claude setup summary end to end: the file caps and layer precedence, the never-read list, the masking path (mask, mask_url, mask_word, mask_text, headers and env values), MCP rows and their flags, skills, plugins and memory, and the tests for masks, links and malformed project entries. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/onboarding.rs",
+      "symbols": ["VERSION", "Guide", "tours_read", "onboarding_reopen", "card13_an_onboarding_record_that_could_not_be_kept_aside_is_never_saved_over", "row884_a_failed_onboarding_save_never_stops_startup"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the first-run record: the step and close rules, the version upgrade, the guide and automatic-tour records, the reopen and milestone commands, and the tests for damaged or unwritable stores. The fail-closed load path keeps unknown fields and never saves over a record it could not keep aside; found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/profile_move.rs",
+      "symbols": ["FORMER_SUFFIX", "SKIPPED", "skipped", "copy_tree", "t790_a_junction_is_never_followed", "t790_paths_into_the_old_profile_are_repointed_to_the_new_one"],
+      "verdict": "findings",
+      "findings": ["R6-F02"],
+      "note": "Read the profile copy end to end: former_of, the skip rules, copy_tree and its link handling, the SQLite snapshot and path repointing, the fallback for a damaged database, and the copy/snapshot/link tests. R6-F02: the old database's rollback journal is not skipped, so it is copied beside the fresh snapshot."
+    },
+    {
+      "path": "src-tauri/src/resources/app_http.rs",
+      "symbols": ["http1_on", "plan_from_store", "plan_for", "app_032_each_route_reaches_the_updater_fields"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the HTTP plan: the HTTP/1 switch, the proxy and bypass fields read from the store, the per-route plan and the tests that keep the command surface from returning the address. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/resources/app_proxy.rs",
+      "symbols": ["parse", "entry_covers", "bypassed", "app032_bypass_entries_cover_ports_ranges_and_the_wildcard"],
+      "verdict": "findings",
+      "findings": ["R6-F01"],
+      "note": "Read the proxy route: the address parser and its scheme and host gate, the bypass entry matcher (wildcards, <local>, IPv4 ranges, ports), the direct/via decision and the saved-setting reader. R6-F01: a bypass port that cannot exist is dropped, so the entry covers every port instead of none."
+    },
+    {
+      "path": "src-tauri/src/resources/crashdump.rs",
+      "symbols": ["u32_at", "fault", "code_text", "t286b_the_faulting_module_is_named_by_file_name_only"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the minidump reader: the stream directory walk, module names, the exception record and faulting address, the code text, bounds checks on every offset, and the tests for a broken dump and an address outside every module. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/resources/recovery.rs",
+      "symbols": ["now_secs", "backup_state", "memory_sample", "row789_a_restored_or_fresh_state_file_is_named_for_the_user_with_where_it_went", "t183_a_stalled_page_is_reloaded_once_retried_once_then_the_user_is_asked", "statement_end"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the recovery and crash-report machinery: state health and set-aside, the last-good copy and its delayed VACUUM, the version stamp, permission repair, the heartbeat reload and breaker, graphics flags, crash records and dumps, the browser argument scan, and their tests. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/resources/renderer_heap.rs",
+      "symbols": ["heap_mb", "with_heap", "apply", "app022_the_switch_is_added_once_and_merged_into_an_existing_js_flags"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the renderer heap choice: the RAM thresholds, the explicit override and its bounds, merging the switch into existing JS flags, and the apply tests. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/resources/update_care.rs",
+      "symbols": ["Attempt", "classify", "compat_mode", "the_next_launch_reports_a_failed_or_a_finished_install_once", "download_problems_are_sorted", "scrub_paths"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the update care record: the attempt and its age, the compatibility switch and environment override, the installer watchdog, plain cause text with paths scrubbed, download problem sorting, and the record/expiry tests. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/resources/update_guard.rs",
+      "symbols": ["SignState", "decide", "refused_add", "system_dir", "powershell_comes_from_windows_own_folder", "the_refused_list_can_only_be_emptied"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the Windows signature gate: report parsing, publisher comparison, the decide and pinned-publisher rules, the held copy and its reopen-gap replacement, the refused-installer list and its cap, the system PowerShell path, bounded output and the hang limit with their tests. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/setup.rs",
+      "symbols": ["is_posix", "trust_ask", "repo_map", "setup_suggestion", "t721_stop_trusting_shows_on_the_page_and_asks_again", "card13_setup_choices_that_could_not_be_kept_aside_are_never_saved_over"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the setup path: shell and interpreter selection, the kolux.yaml and package import shapes, the trust record and fingerprint, local versus shared policy, per-repository waits and modes, the suggestion and save rules, capped reads, and the trust/policy/suggestion tests. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/skills.rs",
+      "symbols": ["SKILL_FILE", "spots", "read_skill", "share_link", "as_share", "a_walk_past_the_time_limit_is_told_to_stop"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the skill scan: the home and workspace spots, plugin caches and their version choice, the bounded walk and link handling, UNC share paths and their refusal, front-matter and heading description parsing, the cache, and the walk/link/share tests. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/tools.rs",
+      "symbols": ["host_of", "editors_in", "wait_webviews_closed", "fix5_only_agents_tools_and_foreground_name_credited_agent", "row961_a_probe_with_more_output_than_the_pipe_holds_is_not_reported_hung", "t552_a_busy_profile_folder_is_waited_out_and_the_window_opens"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the tool checks and window plumbing: the bounded probes and their drain, gh sign-in, host_of and dismissal keys, editor discovery including JetBrains launchers, the busy WebView2 profile wait and its messages, and the probe/wait tests. Found no provable defect."
+    },
+    {
+      "path": "src-tauri/src/update.rs",
+      "symbols": ["clean_notes", "update_status", "update_check", "restart_now", "install_on_quit", "t293_the_refused_list_reset_and_the_issuer_pin_are_wired"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed the update path: the feed and its development override, the release host check, the notes cleaner, status and marks, the download and restart flow, the installer hook and quit path, and the feed/install/refusal tests. Found no provable defect."
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "S2-F01",
+    "title": "live-SAFE-024 focuses a task box label the chooser does not render",
+    "file": "scripts/prove/live-SAFE-024.mjs",
+    "line": 37,
+    "severity": "medium",
+    "what": "live-SAFE-024 fills the shared task box before Start with focusField on `${ROOT} textarea[aria-label=\"Task for every seat\"]`. The chooser labels that box \"Task for all of them\" (src/launch/ChooserPane.tsx:731) and each seat's own box \"Seat N: opening prompt\" (line 718); \"Task for every seat\" appears nowhere in src/. focusField therefore throws before the six-seat launch, so the proof's own subject (six real Claude agents starting with no folder-trust question) is never exercised.",
+    "expected": "The shared task box the proof focuses carries the label the chooser renders (\"Task for all of them\"), or the proof types into the per-seat \"Seat N: opening prompt\" box, so the six seats can be started.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s2-f01.test.mjs",
+      "name": "audit S2 > live-SAFE-024 label drift > [S2-F01] the task box it focuses is one the chooser renders"
+    },
+    "patch": "repro/S2-F01.patch"
+  },
+  {
+    "id": "S2-F02",
+    "title": "startProve never answers the session chooser, so every scenario proof times out",
+    "file": "scripts/prove/live-common.mjs",
+    "line": 166,
+    "severity": "high",
+    "what": "startProve adds the project by path and then waits 30 s for `section.pane[data-agent]`, but a new workspace opens the session chooser (`section.pane.chooser`), which starts no terminal until a seat's Terminal button and Start are pressed. startPlain solves exactly this at live-common.mjs:404-412 (pick TID.seatTerminal for every seat, then click TID.chooserStart); startProve never refers to the chooser at all. Every proof that goes through scenario() (live-SAFE-003, live-SAFE-004, live-SAFE-024, live-STAT-001, live-ROW-989, live-SESS-030, live-SUBAGENT-418, live-VIEW-025, live-VIEW-025-reproof, live-ESC-diag, live-flood) stops at that wait; a run of live-SAFE-024 against the real app ended with `ERROR Error: timed out after 30000 ms waiting for the first shell pane`.",
+    "expected": "startProve picks Terminal for the seats and presses Start when the first pane is the session chooser, the way startPlain does, and only then waits for the Claude pane.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s2-f02.test.mjs",
+      "name": "audit S2 > live-common startProve > [S2-F02] startProve answers the session chooser before it waits for a pane"
+    },
+    "patch": "repro/S2-F02.patch"
+  },
+  {
+    "id": "S2-F03",
+    "title": "Five active proofs still drive the editor and Explorer removed in fccac517",
+    "file": "scripts/prove/live-edit-common.mjs",
+    "line": 32,
+    "severity": "high",
+    "what": "The code editor and its Explorer were deleted in fccac517: `.ex-row` survives only as orphan CSS (src/styles.css:122), no component mounts CodeMirror (no @codemirror/view anywhere in src/), and no component contains the control \"Hide the explorer\". live-edit-common's clickRow clicks `.ex-row` rows (line 32) and visText/cmOf read `.cm-content`; live-EDIT-001, live-EDIT-003, live-EDIT-012 and live-VIEW-107 use them, and live-EDIT-033 clicks `button[aria-label=\"Hide the explorer\"]` (line 16). None of those five is marked `// retired:`, so each is an active proof that cannot get past its first step: clickRow returns false, and the wait for `.cm-content` or the focus call times out.",
+    "expected": "An active proof that drives the editor or its Explorer either finds those components in src/ again or is retired with the repo's `// retired:` first line; no active proof waits on a screen the app no longer has.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s2-f03.test.mjs",
+      "name": "audit S2 > retired editor and Explorer > [S2-F03] the editor surface the proofs drive is rendered by a component"
+    },
+    "patch": "repro/S2-F03.patch"
+  },
+  {
+    "id": "S2-F04",
+    "title": "openAllChanges clicks a Review changes item and opens a pane that were deleted",
+    "file": "scripts/prove/live-edit-common.mjs",
+    "line": 45,
+    "severity": "high",
+    "what": "openAllChanges right-clicks the first project or worktree row and clicks a `.sb-menu` menuitem whose text is exactly \"Review changes\" (line 45), then waits 30 s for `section.pane.editor.all-changes`. The All Changes pane module was deleted (src/editor/AllChangesPane.tsx in a6195136 and fccac517), `.all-changes` appears nowhere in src/ except a comment in Pane.tsx, and src/projects/menu.ts offers no \"Review changes\" item at all (the removePaths test records that it went with the screens that showed it). live-EDIT-029 and live-GIT-038, both active, call it as their first step, so both time out before any check runs.",
+    "expected": "The review surface the proofs open exists and the row menu still offers the item that opens it, or EDIT-029 and GIT-038 are retired and openAllChanges goes with them.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s2-f04.test.mjs",
+      "name": "audit S2 > live-edit-common all changes > [S2-F04] the Review changes item it clicks is still offered by the row menu"
+    },
+    "patch": "repro/S2-F04.patch"
+  },
+  {
+    "id": "S2-F05",
+    "title": "live-checks b2 requires five palette screens the app no longer has",
+    "file": "scripts/prove/live-checks.mjs",
+    "line": 60,
+    "severity": "medium",
+    "what": "live-checks' b2 check asserts that the palette has rows starting \"Show Floor\", \"Show Space\", \"Show Workspace Statuses\", \"Show Artifacts\" and \"Show Skills\", then opens each row and looks for `section.floor`, `section.space`, `.ws-board`, `div.artifacts` and `section.skills`. Those screens were removed (a6195136 removed artifacts, skills and automations; the later wave A removals took the rest): none of the five labels and none of the five DOM classes exists anywhere in src/ or in src-tauri. b2 prints FAIL on the first row and can never pass, whatever the app does.",
+    "expected": "b2 requires only palette rows and pages the app still renders, or the check is removed with the screens it tested.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s2-f05.test.mjs",
+      "name": "audit S2 > live-checks b2 > [S2-F05] the palette rows b2 requires still exist"
+    },
+    "patch": "repro/S2-F05.patch"
+  },
+  {
+    "id": "S2-F06",
+    "title": "live-PROJ-077 reads a setup-policy select the composer no longer renders",
+    "file": "scripts/prove/live-PROJ-077.mjs",
+    "line": 16,
+    "severity": "medium",
+    "what": "run077 starts with `document.querySelector('select[aria-label=\"setup policy\"]').value` (line 16) and later sets the same select. No select labelled \"setup policy\" exists in src/ any more, and the `.trust-prompt` element the control waits for (line 11) is gone too. The first line of run077 reads `.value` of null and throws, so neither the skip case nor the control that makes it meaningful ever runs; the proof is active, with no `// retired:` marker.",
+    "expected": "The proof reads the setup policy from the control the composer renders today (and the trust question the app asks today), or it is retired; a missing control must not make the proof throw silently.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s2-f06.test.mjs",
+      "name": "audit S2 > live-PROJ-077 setup policy > [S2-F06] the setup-policy select it reads is rendered by the composer"
+    },
+    "patch": "repro/S2-F06.patch"
+  }
+]

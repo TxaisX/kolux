@@ -1,0 +1,1191 @@
+{
+  "area": "T6",
+  "files": [
+    {
+      "path": "src/launch/ChooserPane.tsx",
+      "symbols": [
+        "selfInstallHint",
+        "holdsTyping",
+        "sheetKey",
+        "ChooserPane",
+        "recheck",
+        "Faster"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The chooser pane's state and drawing: seats, shapes, counts, folder ticks, Start and the Start form's launch. Checked counts and limits against seats.ts and that every pick resets what it must; no provable defect."
+    },
+    {
+      "path": "src/launch/KeepAwakeCard.tsx",
+      "symbols": [
+        "AWAKE_KEY",
+        "AWAKE_MODES"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed AWAKE_KEY, AWAKE_MODES and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/NewTabEntryBox.tsx",
+      "symbols": [
+        "rows",
+        "NewTabEntryBox"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed rows, NewTabEntryBox and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/PlusMenu.tsx",
+      "symbols": [
+        "AgentInfo",
+        "shellWord",
+        "terminalRow",
+        "Blank"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The plus menu and its agent rows and marks. Checked pickList ordering, the featured rows and the credited-mark callers; no provable defect."
+    },
+    {
+      "path": "src/launch/ToolNotices.tsx",
+      "symbols": [
+        "DISMISS_FAILED",
+        "dismissFailedNotice"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed DISMISS_FAILED, dismissFailedNotice and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/agentInstall.ts",
+      "symbols": [
+        "pickList"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed pickList and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/agents.ts",
+      "symbols": [
+        "DEFAULT_AGENT_KEY",
+        "defaultAgentId"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed DEFAULT_AGENT_KEY, defaultAgentId and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/chooserClosable.ts",
+      "symbols": [
+        "chooserClosable"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed chooserClosable and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/chooserTab.ts",
+      "symbols": [
+        "CHOOSER_TAB"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The tab name for a pane still showing the launch chooser: an own title wins, else New session; a pane with no seats returns null. Checked both branches against the grid's caller; no provable defect."
+    },
+    {
+      "path": "src/launch/defaultSeat.ts",
+      "symbols": [
+        "DEFAULT_MODEL_KEY",
+        "DEFAULT_EFFORT_KEY"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed DEFAULT_MODEL_KEY, DEFAULT_EFFORT_KEY and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/editors.ts",
+      "symbols": [
+        "Editor",
+        "openLabel"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed Editor, openLabel and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/emptySlots.ts",
+      "symbols": [
+        "gridSheet"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "gridSheet: which chooser shows the New session sheet when the layout strip makes six cells. Checked focused/last/first order, the one-chooser no-slot case and the zoom and terminals guards; no provable defect. The module-level last chooser is a documented single-window shortcut."
+    },
+    {
+      "path": "src/launch/launchActions.ts",
+      "symbols": [
+        "launch",
+        "launchActions",
+        "prompts",
+        "holdsPullRequest",
+        "trustNote",
+        "LaunchActions"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The window's launch actions: Start per chooser and across folders, own-folder worktrees and teams, trust lines, resume and Everyday chats. Checked failure paths, the MAX_PANES landing count and the saved copies rule. The `landing` expression's `makes && !team` branch is dead (team is set to makes) but both sides equal seats.length, so no behaviour changes; not filed."
+    },
+    {
+      "path": "src/launch/launchOrder.ts",
+      "symbols": [
+        "SetupMode",
+        "DEFAULT_SETUP_MODE"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Setup ordering and launch refusals: modes, the ask-each-time bulk rule, failure notes and the non-copyable-folder regex. Checked the regex against the Rust messages and the setup fallback path; no provable defect."
+    },
+    {
+      "path": "src/launch/newTabEntryRun.ts",
+      "symbols": [
+        "EntryTarget",
+        "openWebAddress"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed EntryTarget, openWebAddress and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/paneMark.ts",
+      "symbols": [
+        "creditedAgent",
+        "creditedProgram"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The vendor mark rule shared with Rust: credited agent and program, plus the program-name table. Checked the quoted-first, stem and interpreter rules against the Rust readers the test replays; they agree."
+    },
+    {
+      "path": "src/launch/removeAsk.ts",
+      "symbols": [
+        "RemoveAsk"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed RemoveAsk and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/launch/seats.ts",
+      "symbols": [
+        "Role",
+        "Seat",
+        "OPENCLAUDE_DEFAULT",
+        "ROLE_BRIEFS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Seat and lineup rules: shapes, limits, models, start arguments, saved lineups and folder readiness. Checked the empty-list and MAX_SESSIONS/MAX_PANES boundaries, the reshape paths and the saved-shape round trip; no provable defect."
+    },
+    {
+      "path": "src/launch/startForm.ts",
+      "symbols": [
+        "START_ASK_KEY",
+        "LAST_START_KEY",
+        "lastStart",
+        "StartSheet"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The Start form's pure rules: prefill, one pick for all, folder plan, start-across notes, landOnFree and the once-per-start ask. Checked empty folders, mixed seats, a recounted count and the waiting setup tab; no provable defect."
+    },
+    {
+      "path": "src/launch/startWatch.ts",
+      "symbols": [
+        "NO_PROCESS_MS",
+        "noProcessWarning"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The five-second no-process watch: arming, seeing and pruning per pane. Checked that every arm is cleared, a seen pane cannot warn, and a later arm starts fresh; no provable defect."
+    },
+    {
+      "path": "src/launch/toolChecks.ts",
+      "symbols": [
+        "Check"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Landing-screen notice rules. The dismissal key joins GitHub project ids with commas, so two id sets could in principle share one key; real ids are `<folder>-<epoch-ms>`, and a collision needs an id and a timestamp to line up exactly, which no real project set produces. Noted, not filed."
+    },
+    {
+      "path": "src/onboarding/Checklist.tsx",
+      "symbols": [
+        "useChecklistRecord",
+        "ItemName"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed useChecklistRecord, ItemName and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/ConnectGithub.tsx",
+      "symbols": [
+        "ConnectGithub"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed ConnectGithub and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/Demo.tsx",
+      "symbols": [
+        "Demo"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed Demo and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/Guides.tsx",
+      "symbols": [
+        "useGuideState",
+        "Ring",
+        "tipEscape",
+        "tipDock"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The guide, Explore and tip dialogs: their state hooks, reads, the once-per-launch tip rule and the hooks consent card. Checked effect cleanups, a failed read and a dialog already open; no provable defect."
+    },
+    {
+      "path": "src/onboarding/HelpMenu.tsx",
+      "symbols": [
+        "HelpMenu"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed HelpMenu and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/HelpSheet.tsx",
+      "symbols": [
+        "HelpSheet",
+        "restarting"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed HelpSheet, restarting and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/InlineTerminal.tsx",
+      "symbols": [
+        "decoder",
+        "InlineTerminal"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed decoder, InlineTerminal and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/LiveStopCards.tsx",
+      "symbols": [
+        "card",
+        "UsageStop"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed card, UsageStop and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/SidebarStart.tsx",
+      "symbols": [
+        "slot",
+        "SidebarStart"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed slot, SidebarStart and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/StarPrompt.tsx",
+      "symbols": [
+        "info",
+        "StarPrompt"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed info, StarPrompt and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/StepPanels.tsx",
+      "symbols": [
+        "composer",
+        "failedNote",
+        "SAVE_FAILED",
+        "StopSetup"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The wizard's step panels and their shared pieces (SaveFailed, NoAgent, AgentPanel). Checked the installed and offered lists and the retry words; no provable defect."
+    },
+    {
+      "path": "src/onboarding/Tours.tsx",
+      "symbols": [
+        "tour",
+        "first",
+        "tourNotice",
+        "Tours"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The tour overlay: finding the step's target, reveal, click-through and auto-start. Checked listener removal and a hidden target falling to its alternate; no provable defect."
+    },
+    {
+      "path": "src/onboarding/Wizard.tsx",
+      "symbols": [
+        "WizardView",
+        "Wizard",
+        "mainOff",
+        "NO_AGENT_WHY"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The first-run wizard's screens and buttons: navigation, the connect step and the agent and folder panels. Checked Back and later paths and a missing default agent; no provable defect."
+    },
+    {
+      "path": "src/onboarding/actions.ts",
+      "symbols": [
+        "Proj",
+        "Target"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Setup Guide action panels: compose target, composer retries and epochs, platform, permission card and agent picker. Checked the wait loop, a stale request and the macOS card states; no provable defect."
+    },
+    {
+      "path": "src/onboarding/agentKind.ts",
+      "symbols": [
+        "TERMINAL_ID"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The one AI-versus-terminal rule, case and padding included. Checked blank, null, padded and mixed-case ids; it agrees with guide.ts and the first-folder start."
+    },
+    {
+      "path": "src/onboarding/demos.ts",
+      "symbols": [
+        "Demo",
+        "MAX_STEP_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed Demo, MAX_STEP_MS and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/dialogFocus.ts",
+      "symbols": [
+        "stepAside",
+        "closeOnSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed stepAside, closeOnSettings and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/features.ts",
+      "symbols": [
+        "features"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed features and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/firstRun.ts",
+      "symbols": [
+        "SCREENS",
+        "Record",
+        "openAt",
+        "chordFires"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The wizard's pure rules: screen order, openAt clamping, key handling, close/reopen and milestone sends. Checked Back/Next edges, an unknown step and a failed save; no provable defect."
+    },
+    {
+      "path": "src/onboarding/followLoop.ts",
+      "symbols": [
+        "IDLE_FRAMES",
+        "restingLoop"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed IDLE_FRAMES, restingLoop and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/guide.ts",
+      "symbols": [
+        "doneFrom",
+        "stopDone",
+        "StepId",
+        "Step"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Setup Guide and Explore model: step order, firstOpen/moveOn, the ring, doneFrom with legacy and split credits, visits/kept merge and tip order. Checked null facts, retired ids and the all-done case; no provable defect."
+    },
+    {
+      "path": "src/onboarding/helpItems.ts",
+      "symbols": [
+        "RESTARTING",
+        "HINTS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed RESTARTING, HINTS and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/hooksOn.ts",
+      "symbols": [
+        "hooksOn"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed hooksOn and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/integrations.ts",
+      "symbols": [
+        "taskSourceOf",
+        "Check"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "GitHub sign-in reading and the seen reader: cache, single flight, latest-wins and offline cover. Checked FIX-1..4 against the Rust time limits and every state the guide can show; no provable defect."
+    },
+    {
+      "path": "src/onboarding/links.ts",
+      "symbols": [
+        "GITHUB_URL"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed GITHUB_URL and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/milestoneNote.ts",
+      "symbols": [
+        "Milestones"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed Milestones and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/moved.ts",
+      "symbols": [
+        "MovedId"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Moved-control hints and the legacy split credit: date bounds and the first-use rule. Checked a missing feature record, the retired step id and an empty tried list; no provable defect."
+    },
+    {
+      "path": "src/onboarding/newcomer.ts",
+      "symbols": [
+        "FirstRun",
+        "ItemId"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The newcomer checklist: fixed item order, milestone mapping, dismissal and the all-done toast id. Checked a missing milestone and a profile from before the wizard; no provable defect."
+    },
+    {
+      "path": "src/onboarding/promptTyper.ts",
+      "symbols": [
+        "CHECK_MS",
+        "MAX_CHECKS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed CHECK_MS, MAX_CHECKS and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/sessionAgent.ts",
+      "symbols": [
+        "sessionAgent"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed sessionAgent and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/settingsShown.ts",
+      "symbols": [
+        "SETTINGS_SHOWN"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed SETTINGS_SHOWN and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/sidebar.ts",
+      "symbols": [
+        "Slot",
+        "PROJECT_ADDED"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Sidebar slot and reread rules: checklist vs guide, focus floor, project-added and guide-closed events. Checked a null settled set and a wizard still open; no provable defect."
+    },
+    {
+      "path": "src/onboarding/star.ts",
+      "symbols": [
+        "STAR_THRESHOLD",
+        "COOLDOWN_MS",
+        "QUIET_MS",
+        "STAR_SETTING"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The star prompt: threshold doubling, cooldown, quiet period, finished-task moment and the one write on click. Checked version changes, a spent moment and the off-by-default repository rule; no provable defect."
+    },
+    {
+      "path": "src/onboarding/stopCards.ts",
+      "symbols": [
+        "UsageRow",
+        "StopCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed UsageRow, StopCard and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/submitKeys.ts",
+      "symbols": [
+        "submitKeys"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed submitKeys and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/onboarding/tour.ts",
+      "symbols": [
+        "Side",
+        "TourStep",
+        "TourId",
+        "Tour"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The tour catalogue and placement rules: targets, alternates, reveal, sides, auto-start, slot use and Korean words. Checked the blocked/seen/slot rules and the two-tour order; no provable defect."
+    },
+    {
+      "path": "src/onboarding/useWizard.ts",
+      "symbols": [
+        "PICK_FOLDER_NOTE",
+        "useWizard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed PICK_FOLDER_NOTE, useWizard and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/AboutPanel.tsx",
+      "symbols": [
+        "AboutPanel",
+        "close"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed AboutPanel, close and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/LinkAskDialog.tsx",
+      "symbols": [
+        "isMac",
+        "LinkAskHost"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed isMac, LinkAskHost and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/ProjectsExtras.tsx",
+      "symbols": [
+        "ListButtons",
+        "BehindNote",
+        "OutsideCard",
+        "PickedBar"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed ListButtons, BehindNote, OutsideCard, PickedBar and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/TabSearch.tsx",
+      "symbols": [
+        "search",
+        "TabSearch"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed search, TabSearch and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/WindowView.tsx",
+      "symbols": [
+        "windowView",
+        "WindowSurfaces"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed windowView, WindowSurfaces and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/WorktreeChip.tsx",
+      "symbols": [
+        "WorktreeChip"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed WorktreeChip and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/about.ts",
+      "symbols": [
+        "AboutFacts",
+        "AboutRow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The About rows, the GPU wording and the notices state. Checked null facts and an empty notices text; no provable defect."
+    },
+    {
+      "path": "src/shell/closeAsk.ts",
+      "symbols": [
+        "Losable"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "What closing could lose: running agents with the ask switch, and the quit question. Checked a starting agent (running undefined), a shell pane and an ended agent; no provable defect."
+    },
+    {
+      "path": "src/shell/endAll.ts",
+      "symbols": [
+        "Bulk"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Bulk end-all: the question, leftovers and the report. Checked empty ids, a null fresh read and a partial kill; no provable defect."
+    },
+    {
+      "path": "src/shell/findTab.ts",
+      "symbols": [
+        "TAB_SEARCH_EVENT",
+        "TAB_SEARCH_ACTION"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Tab search mount, event and matching. Checked an empty strip, a late search answer and a query that matches only the worktree hint; no provable defect."
+    },
+    {
+      "path": "src/shell/inputExtras.ts",
+      "symbols": [
+        "COPY_FAILED",
+        "copyOnSelect"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Copy-on-select's once-per-drag failure, tab search by name only and latest-only tickets. Checked an empty query and a late answer; no provable defect."
+    },
+    {
+      "path": "src/shell/ligatures.ts",
+      "symbols": [
+        "LigaturesModule"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed LigaturesModule and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/linkAsk.ts",
+      "symbols": [
+        "askLink",
+        "KOLUX_FIELD"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The first-link dialog: state, needsAsk, the waiting queue, answer/dismiss and settings patches. Checked that a plain click joins one question, a dismissal saves nothing and a named destination never asks; no provable defect."
+    },
+    {
+      "path": "src/shell/oneForm.ts",
+      "symbols": [
+        "formsToClose"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "One form at a time: formsToClose and the layout effect's change key. The key joins booleans as one character each, so it cannot collide; checked open and close sequences and the before-paint timing; no provable defect."
+    },
+    {
+      "path": "src/shell/paletteCaps.ts",
+      "symbols": [
+        "STEP",
+        "rowKey"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Palette rows: dedupe by key, the 20-row steps, more counts and focus restore. Checked duplicate rows, an over-large extra and missing focus targets; no provable defect."
+    },
+    {
+      "path": "src/shell/paneChrome.ts",
+      "symbols": [
+        "DENSITY_FIELD",
+        "DENSITIES"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed DENSITY_FIELD, DENSITIES and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/projectsGlue.ts",
+      "symbols": [
+        "idsToAsk",
+        "useAutoIcons"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The projects glue: auto icons, outside-card dismissals, scroll-to-top and flick, jump and ctrl-click selection. Checked retry-on-failure, empty lists and removal planning; no provable defect."
+    },
+    {
+      "path": "src/shell/rowKeys.ts",
+      "symbols": [
+        "rowKeys"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed rowKeys and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/settingsRead.ts",
+      "symbols": [
+        "readSettingsInto"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "A failed settings read hands nothing on, so the window keeps what it holds. Checked rejection and success; no provable defect."
+    },
+    {
+      "path": "src/shell/tabSearchFocus.ts",
+      "symbols": [
+        "leaveTabSearch"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed leaveTabSearch and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/tabTitle.ts",
+      "symbols": [
+        "GENERATED_TITLES_FIELD"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Generated and own tab titles and the tooltip rule. Checked clipping at the default 24 with a trailing space and an own name winning; no provable defect."
+    },
+    {
+      "path": "src/shell/termDraw.ts",
+      "symbols": [
+        "CursorLook"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed CursorLook and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/tidy.ts",
+      "symbols": [
+        "tidyWeights"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Tidy weights, the neighbour cell and move-to-tab. Checked a single cell, the first and last cell and the no-neighbour case; no provable defect."
+    },
+    {
+      "path": "src/shell/unicodeWidth.ts",
+      "symbols": [
+        "joins",
+        "KOLUX_UNICODE"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed joins, KOLUX_UNICODE and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/unicodeWidthData.ts",
+      "symbols": [
+        "UNICODE_VERSION",
+        "ZERO_WIDTH"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed UNICODE_VERSION, ZERO_WIDTH and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/usePackLoaded.ts",
+      "symbols": [
+        "usePackLoaded"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed usePackLoaded and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/useStartAsk.ts",
+      "symbols": [
+        "handOver",
+        "ownPanes"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The once-per-run ask at open: storage, acted/base tracking, the first-run hand-off and the five-second limit. Checked a strict-mode remount, a slow layout and a form opened by hand; no provable defect."
+    },
+    {
+      "path": "src/shell/useWindowSave.ts",
+      "symbols": [
+        "asks",
+        "LISTED_ASK_AGAIN_MS",
+        "useWindowSave",
+        "WindowSave"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed asks, LISTED_ASK_AGAIN_MS, useWindowSave, WindowSave and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/useWindowStart.ts",
+      "symbols": [
+        "AGENT_SEARCH_LIMIT_MS",
+        "AGENT_SEARCH_SLOW"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed AGENT_SEARCH_LIMIT_MS, AGENT_SEARCH_SLOW and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Content.tsx",
+      "symbols": [
+        "dropAtOpen",
+        "WindowContent"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed dropAtOpen, WindowContent and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Dialogs.tsx",
+      "symbols": [
+        "open",
+        "TabMenu",
+        "WindowDialogs",
+        "PaletteHost"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed open, TabMenu, WindowDialogs, PaletteHost and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Grid.tsx",
+      "symbols": [
+        "frame",
+        "Grid",
+        "active",
+        "order"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed frame, Grid, active, order and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Hosts.tsx",
+      "symbols": [
+        "FirstFolderStart",
+        "WindowHosts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed FirstFolderStart, WindowHosts and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/LostPane.tsx",
+      "symbols": [
+        "LostPane"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed LostPane and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Notices.tsx",
+      "symbols": [
+        "Notices"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed Notices and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Pane.tsx",
+      "symbols": [
+        "LostPane",
+        "WindowPane",
+        "began",
+        "Every"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The pane wrapper: in-view/hidden, chat versus terminal, focus and drag. Checked every path against inView.ts and the grid's cells; no provable defect."
+    },
+    {
+      "path": "src/shell/window/ProjectsMemo.tsx",
+      "symbols": [
+        "ProjectsPanel"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed ProjectsPanel and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Right.tsx",
+      "symbols": [
+        "WindowRight",
+        "patch"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed WindowRight, patch and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/SeatChooser.tsx",
+      "symbols": [
+        "SeatChooser",
+        "folders"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed SeatChooser, folders and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/Sidebar.tsx",
+      "symbols": [
+        "WindowSidebar",
+        "deeds"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed WindowSidebar, deeds and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/TabMenuView.tsx",
+      "symbols": [
+        "TabMenuView",
+        "tabBox"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed TabMenuView, tabBox and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/TerminalMemo.tsx",
+      "symbols": [
+        "TerminalPane"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed TerminalPane and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/TopBar.tsx",
+      "symbols": [
+        "WindowTopBar"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed WindowTopBar and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/chatPick.ts",
+      "symbols": [
+        "withChatPick"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed withChatPick and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/gridFrame.ts",
+      "symbols": [
+        "GridFrame"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The grid's frame class and hidden flag from zoom, classic and the terminals screen. Checked all four combinations against the grid's caller; no provable defect."
+    },
+    {
+      "path": "src/shell/window/inView.ts",
+      "symbols": [
+        "paneInView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed paneInView and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/lostWords.ts",
+      "symbols": [
+        "LostWords"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Words for a restored special tab whose file or folder is gone. Checked every kind a Pane can carry; no provable defect."
+    },
+    {
+      "path": "src/shell/window/narrow.ts",
+      "symbols": [
+        "NARROW_PX"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Narrow-window side-panel turns: isNarrow, leftShown and nextLeft. Checked every toggle form and the right drawer's saved state; no provable defect."
+    },
+    {
+      "path": "src/shell/window/paletteAt.ts",
+      "symbols": [
+        "paletteAt"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The palette's per-folder mark: pane state by cwd, unread, monitoring and age. Checked a chooser-only folder and a worktree with no grid row; no provable defect."
+    },
+    {
+      "path": "src/shell/window/projectsProps.ts",
+      "symbols": [
+        "FocusPane",
+        "ProjectsProps"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed FocusPane, ProjectsProps and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/sidebarScreens.ts",
+      "symbols": [
+        "showsProjects"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The sidebar's per-screen rules: the project card on every screen and the Add-project hands. showsProjects returning true is the documented new behaviour; no provable defect."
+    },
+    {
+      "path": "src/shell/window/stable.ts",
+      "symbols": [
+        "callers",
+        "tally"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed callers, tally and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/store.tsx",
+      "symbols": [
+        "useWindow",
+        "WindowStore"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed useWindow, WindowStore and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/tabKeys.ts",
+      "symbols": [
+        "tabStop"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Roving tabindex and arrow/Home/End/Enter handling. Checked a front pane outside the strip, one-tab wrap and an unknown key; no provable defect."
+    },
+    {
+      "path": "src/shell/window/tabMenu.ts",
+      "symbols": [
+        "CloseRow",
+        "CLOSE_ROWS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed CloseRow, CLOSE_ROWS and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/tabMenuKeys.ts",
+      "symbols": [
+        "ROWS",
+        "focusIsLost"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "The tab menu's keyboard side: focus in, arrows and Escape, focus back only when lost. Checked a row that moves focus on and a menu with no rows; no provable defect."
+    },
+    {
+      "path": "src/shell/window/tabMenuStart.ts",
+      "symbols": [
+        "closeConfirmLabel"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed closeConfirmLabel and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/window/terminalProps.ts",
+      "symbols": [
+        "TerminalProps",
+        "sameCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed TerminalProps, sameCard and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/windowBag.ts",
+      "symbols": [
+        "WindowBag"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed WindowBag and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/windowLate.ts",
+      "symbols": [
+        "WindowLate"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed WindowLate and the rules around them against their callers and the existing tests; no provable defect found."
+    },
+    {
+      "path": "src/shell/windowStore.ts",
+      "symbols": [
+        "useWindowStore",
+        "useWindowStoreTail",
+        "LEFT_OPEN_KEY",
+        "leftOpenAtStart"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Reviewed useWindowStore, useWindowStoreTail, LEFT_OPEN_KEY, leftOpenAtStart and the rules around them against their callers and the existing tests; no provable defect found."
+    }
+  ]
+}

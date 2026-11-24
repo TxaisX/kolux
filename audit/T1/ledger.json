@@ -1,0 +1,928 @@
+{
+  "area": "T1",
+  "files": [
+    {
+      "path": "src/terminal/BackgroundSessions.tsx",
+      "symbols": [
+        "HostSessionsView",
+        "BackgroundSessions"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the background-sessions panel: which panes count as working behind the front tab, the counts and the open/close rows. It only draws; the status and tab rules it reads are tested elsewhere. Nothing provable."
+    },
+    {
+      "path": "src/terminal/FindBar.tsx",
+      "symbols": [
+        "FindOptions",
+        "FindBar"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the find bar: query and option fields, the count label, Next/Previous and the regex delay notice. The logic lives in find.ts; this file only wires state, focus and keys. No defect found."
+    },
+    {
+      "path": "src/terminal/ForkDialog.tsx",
+      "symbols": [
+        "Props",
+        "ForkDialog"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the fork dialog: the name field, Create disabled while busy, Escape cancelling. newFork, beginFork and endFork in sessionFork own the once-only rule and are tested. Nothing provable here."
+    },
+    {
+      "path": "src/terminal/LinkActionMenu.tsx",
+      "symbols": [
+        "rows",
+        "LinkActionMenu"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the link action menu: the items linkMenuItems builds, the door each pick names, Escape and outside dismissal. linkMenu.ts carries the rules; the component passes picks through unchanged."
+    },
+    {
+      "path": "src/terminal/NameField.tsx",
+      "symbols": [
+        "Props",
+        "NameField"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the inline rename field: Enter commits, Escape cancels, blur commits once, and an empty value clears the title. Local state only, no shared rule to break."
+    },
+    {
+      "path": "src/terminal/PaneMenu.tsx",
+      "symbols": [
+        "paneMenuItems",
+        "PaneMenu",
+        "MenuItem",
+        "MenuContext"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the pane menu: paneMenuItems order and gating (Copy only with a selection, Expand only when it can expand, Close last and apart), the open guard, fitIn, menuStep and the shared focus trap. Checked each gate against its caller; no wrong item."
+    },
+    {
+      "path": "src/terminal/PlanSheet.tsx",
+      "symbols": [
+        "PlanDraft",
+        "PlanSheet"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the plan review sheet: section comments keyed by start row, the overall note, Approve/Request disabled while sending or closed, and Close cancelling a waiting send first. planReview.ts owns canRequest and the sections. Nothing provable."
+    },
+    {
+      "path": "src/terminal/ShellMark.tsx",
+      "symbols": [
+        "ShellMark"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the small shell icon: a size prop into the shared icon. No logic and nothing to break."
+    },
+    {
+      "path": "src/terminal/TerminalPane.tsx",
+      "symbols": [
+        "pane",
+        "focusedTerminalEdit",
+        "PaneNotice",
+        "TerminalPane",
+        "drain",
+        "drawnAt"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the pane end to end: startup and attach (warm attach, generation guard, early chunks, restart and Start fresh), the output path (frame outputs, write queue, history replay and append), renderer attach/park/wake, resize and the size gate, find over the buffer, links and OSC 8/OSC 52, paste and drop, permission answers, status and identity, the header, the menu and the land chip. Checked effect cleanups, the alive-flag stale-closure guards, marker and decoration disposal, and the attach/reap handshake. Nothing provable found."
+    },
+    {
+      "path": "src/terminal/UsageReadout.tsx",
+      "symbols": [
+        "UsageReadoutView",
+        "HeaderUsage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the usage meter: meterText, shortTokens and tone from usage/meter drawn in the header with a tooltip. Formatting only, and meter.ts is tested; nothing found."
+    },
+    {
+      "path": "src/terminal/accountChange.ts",
+      "symbols": [
+        "CodexAccount",
+        "AccountPrompt"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Codex account rules: accountLabel (email or eight-character id), the active-account comparison, a removed account, and the setup-change stamp. The transitions agree with the pane notice in paneActions. No defect."
+    },
+    {
+      "path": "src/terminal/bellNote.ts",
+      "symbols": [
+        "BELL_NOTE"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the bell gate: a bell inside the quiet window is dropped and the rest pass. Pure and covered by its test; matches the documented rule."
+    },
+    {
+      "path": "src/terminal/blinkRest.ts",
+      "symbols": [
+        "BLINK_REST_MS",
+        "blinkRest"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the blink rest: blinking stops after the idle time and resumes on input or output, with the timer cleared on dispose. Checked the boundary times; nothing provable."
+    },
+    {
+      "path": "src/terminal/closedTabs.ts",
+      "symbols": [
+        "CLOSED_MAX"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the closed-tab stack: remember with a cap, pop the newest, and clear on demand. The order and cap agree with how reopenTab uses it."
+    },
+    {
+      "path": "src/terminal/closing.ts",
+      "symbols": [
+        "CONFIRM_CLOSE_FIELD",
+        "asksBeforeClose"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the close questions: asksBeforeClose from the setting, busyCheck counting ids and failures, and closeQuestion wording for one and many. The wording matches the counts; no defect."
+    },
+    {
+      "path": "src/terminal/codec.ts",
+      "symbols": [
+        "decodeOutput",
+        "chunkBytes"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the output codec: chunk framing, UTF-8 decoding across chunk boundaries, exit labels, and held bytes on a split sequence. Checked a split multi-byte character and a split escape; nothing provable."
+    },
+    {
+      "path": "src/terminal/colourMode.ts",
+      "symbols": [
+        "modeReport"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the colour-mode hook: the palette's dark-or-light answer is reported to xterm when it changes, with the listener removed. A null palette falls back cleanly."
+    },
+    {
+      "path": "src/terminal/copy.ts",
+      "symbols": [
+        "CopyOutcome",
+        "COPY_CAP"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read copySelection: the selected text, the platform line-ending rule, and the clipboard failure path. Matches what its callers expect."
+    },
+    {
+      "path": "src/terminal/dividers.ts",
+      "symbols": [
+        "dragging",
+        "tracks"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the divider arithmetic: track positions from cell rectangles, gapAt hits in the gap, dragWeights keeping both sides positive, and the drag-done event. The weights sum is preserved; no defect."
+    },
+    {
+      "path": "src/terminal/drop.ts",
+      "symbols": [
+        "ShellKind",
+        "shellKind"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the drop rules: which paths are refused (control characters and shell-expandable characters), quoting per shell kind, and the summary wording. Checked each refused character against the quoting rule; nothing provable."
+    },
+    {
+      "path": "src/terminal/errors.ts",
+      "symbols": [
+        "explain"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the error text helpers: explain() flattening an unknown error and exitAdvice per exit code. Wording only, with no logic to break."
+    },
+    {
+      "path": "src/terminal/find.ts",
+      "symbols": [
+        "Match",
+        "QUERY_CAP",
+        "MATCH_CAP",
+        "FindOptions"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the find logic: compile (cap, escape, an invalid pattern), findIn (zero-length skip, match cap), stepIndex/nearestFrom/countLabel, and the cell mapping in linesOf/placeMatches/segments for wide characters and wrapped rows. Checked a wide character at a row boundary and a match ending on it; the spans agree. No provable defect."
+    },
+    {
+      "path": "src/terminal/findWorker.ts",
+      "symbols": [
+        "FindOptions"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the worker: one message in and findIn's matches out. No state and no rule of its own."
+    },
+    {
+      "path": "src/terminal/flow.ts",
+      "symbols": [
+        "ACK_EVERY",
+        "ACK_DELAY_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read flow control: batch acknowledgements and the memory-profile rows, with the fallback when the profile is unknown. Values agree with their consumers in TerminalPane."
+    },
+    {
+      "path": "src/terminal/frame.ts",
+      "symbols": [
+        "FrameSink",
+        "FRAME_MS",
+        "frameOutputs",
+        "total"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the frame scheduler end to end: the output budget, the per-pane queues, push/plan/tick, writeUpTo and the drop rule for a pane that fell behind. Checked tick ordering, the budget accounting and the close path; no defect found."
+    },
+    {
+      "path": "src/terminal/grid.ts",
+      "symbols": [
+        "Tabbed",
+        "groupOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the grid arithmetic: cellsOf grouping by tab group, columnsFor/rowsFor, resizePlan add and drop, blocking, splitIndex/insertBefore, toggleZoom and canExpand. Checked the empty and one-pane cases; behaviour matches the tests."
+    },
+    {
+      "path": "src/terminal/handover.ts",
+      "symbols": [
+        "takeOver",
+        "movedKeys"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read terminal handover: handing a live terminal to a new key, moving keys out of a plan, and cancelling a pending handover on close. The map is cleaned on every path; no leak found."
+    },
+    {
+      "path": "src/terminal/headerUsage.ts",
+      "symbols": [
+        "PlanWindow",
+        "windowsOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the header usage text: piecesFor, hoverLines, costText and the meter/tone choice. Checked zero, unknown and capped values; wording and rounding agree with their tests."
+    },
+    {
+      "path": "src/terminal/history.ts",
+      "symbols": [
+        "replay",
+        "RESET"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read history replay: encodeHistory's row format, replay chunking, the replay gate, viewTop and afterReplay. Checked the empty history and a single-row case; nothing provable."
+    },
+    {
+      "path": "src/terminal/hostSessions.ts",
+      "symbols": [
+        "HostSession",
+        "offerable"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read host session labels: hostPlural and the per-agent session wording. Grammar only; no defect."
+    },
+    {
+      "path": "src/terminal/inputPrefs.ts",
+      "symbols": [
+        "Auto",
+        "INPUT_FIELDS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read input preferences: ligatures, the GPU preference, yen-to-backslash and their defaults from settings. Each falls back correctly when unset."
+    },
+    {
+      "path": "src/terminal/inputSource.ts",
+      "symbols": [
+        "InputSource",
+        "trackInputSource"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read input source tracking: AUTO detection, autoSender and trackInputSource's cleanup. Checked that the listener is removed; fine."
+    },
+    {
+      "path": "src/terminal/inputWire.ts",
+      "symbols": [
+        "INPUT_EVENT",
+        "currentInput"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the input wiring: input options, the middle-click paste source, pointer watching and the GPU probe, with settings applied live. Defaults and cleanup checked."
+    },
+    {
+      "path": "src/terminal/keepWorkspaces.ts",
+      "symbols": [
+        "KEEP_WORKSPACES_FIELD"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the keep-workspaces rule: only an explicit false starts empty, withoutLastClose drops the saved layout and Start choice, and forgetLastClose writes the removal and prunes history. Checked the null-settings and missing-key paths; no defect."
+    },
+    {
+      "path": "src/terminal/keyLayout.ts",
+      "symbols": [
+        "LayoutMap",
+        "chordKeyCode"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the key layout mapping: chord parts to a display string and back, with the platform differences. Checked the round trip; no defect."
+    },
+    {
+      "path": "src/terminal/kittyKeys.ts",
+      "symbols": [
+        "KITTY",
+        "KITTY_STACK_CAP",
+        "KittyKey",
+        "usBase"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Kitty keyboard protocol: modifier bits, the US base layout, key encoding, the INPUT_SOURCE action and latinControl. Checked the modifier mask and a shifted key; the encoding matches the protocol table."
+    },
+    {
+      "path": "src/terminal/layout.ts",
+      "symbols": [
+        "LAYOUT_FIELD",
+        "SavedLayout",
+        "withListedSession",
+        "restoreLayout"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the saved layout: what is written down, the resume forms and the resume-failure window, folder pruning, restoring the active workspace and tab, and the isFailedResume wording. Checked an unreadable entry and a missing folder; each drops on its own as documented."
+    },
+    {
+      "path": "src/terminal/layoutSave.ts",
+      "symbols": [
+        "LayoutWriter",
+        "MAX_WAIT_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the layout writer: debounce with a maximum wait, flush on quit, an equality check against the last write, and the pending flag. Checked a stream of changes that never goes quiet; the maximum wait still writes."
+    },
+    {
+      "path": "src/terminal/linkClick.ts",
+      "symbols": [
+        "Press"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the click claim rule: a modifier-click on a link while a program tracks the mouse belongs to Kolux. Matches paneLinks' use."
+    },
+    {
+      "path": "src/terminal/linkMenu.ts",
+      "symbols": [
+        "LINK_MENU_FIELD",
+        "linkMenuOn"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the link menu rules: opensMenu, planClick's ask/open/menu decision, the item list and door mapping, and openFailed's text. Checked Shift versus Alt precedence; it agrees with links.clickTarget."
+    },
+    {
+      "path": "src/terminal/links.ts",
+      "symbols": [
+        "Found",
+        "findLinks",
+        "fromFileUrl",
+        "resolvePath"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the link scan: the regex shapes and their guards, trailing punctuation, file URL decoding, path resolution with dot segments, wrapped-row spans and cell ranges, clickTarget, allowed and safeLinks. Checked a wrapped link's range and a UNC file URL; the mapping is right."
+    },
+    {
+      "path": "src/terminal/modeReset.ts",
+      "symbols": [
+        "ModeView",
+        "resetAfterExit"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read mode reset: which terminal modes are cleared after a program ends, and the alternate-screen view. Checked a nested mode set; the reset list covers it."
+    },
+    {
+      "path": "src/terminal/mouseFeel.ts",
+      "symbols": [
+        "NOTCH_PX",
+        "NOTCH_LINES"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read mouse feel: wheel-drain accumulation, the drag hint rules and shownAgain. Checked sub-line wheel deltas accumulating to a whole line; fine."
+    },
+    {
+      "path": "src/terminal/newTab.ts",
+      "symbols": [
+        "ShellInfo"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the NewTab union: the chooser, an agent, or a named shell. A type only, with no behaviour."
+    },
+    {
+      "path": "src/terminal/newTabEntry.ts",
+      "symbols": [
+        "webAddress",
+        "looksLikePath"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the new-tab entry: which rows the chooser offers, the default first row and the filter. Ordering and filtering match their tests."
+    },
+    {
+      "path": "src/terminal/notify.ts",
+      "symbols": [
+        "StopInfo",
+        "Turn"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the notification wording: the stop line, the note title, preview trimming and resetWords. Checked the trim boundaries; nothing provable."
+    },
+    {
+      "path": "src/terminal/osc52.ts",
+      "symbols": [
+        "PAYLOAD_CAP",
+        "Osc52"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read OSC 52: parsing the clipboard request, the allow-or-reject decision from the setting, and sayOnce's dedupe. Checked a base64 payload and a malformed one; fine."
+    },
+    {
+      "path": "src/terminal/outputBus.ts",
+      "symbols": [
+        "onTerminalOutput",
+        "OUTPUT_EVENT"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the output bus: channel fan-out, join and leave, eachChunk ordering, and the fromChannel filter. Checked two listeners and a late join; no duplicate or lost chunk."
+    },
+    {
+      "path": "src/terminal/outputFrame.ts",
+      "symbols": [
+        "FRAME_MAGIC"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the frame decoder: the chunk header offsets and the payload slice. Verified the header length and a multi-chunk frame; the offsets agree with the encoder."
+    },
+    {
+      "path": "src/terminal/paneActions.ts",
+      "symbols": [
+        "pane",
+        "paneActions",
+        "step",
+        "PaneActions"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the window's pane and tab actions end to end: new tab/chooser/split, the cell count and resize plan, close and reopen with focus return, drop and move, restart, Codex notices, the palette rows, copy ids and the handle lookup. Checked the focus fallbacks and the failed-pane re-entry; no defect proved."
+    },
+    {
+      "path": "src/terminal/paneGeneration.ts",
+      "symbols": [
+        "nextGeneration"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the pane generation counter and killsOnUnmount: one generation per window so an old pane does not kill the new one's terminal. Matches its use."
+    },
+    {
+      "path": "src/terminal/paneGrid.ts",
+      "symbols": [
+        "paneGrid",
+        "PaneGrid"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the grid assembly: cells and shown cells, zoom, weights and the divider drag, Move to Tab, the waiting strip, and each cell's active tab. Checked the fallback when the remembered active key is gone; it picks the last pane."
+    },
+    {
+      "path": "src/terminal/paneLinks.ts",
+      "symbols": [
+        "LinkDeps",
+        "wireLinks"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the link wiring: the handle provider, the link provider with hint and hot tracking, the OSC 8 link handler, the click claim and the link-menu right click, plus the cleanup. Checked listener removal and the hot reset on leave."
+    },
+    {
+      "path": "src/terminal/paste.ts",
+      "symbols": [
+        "pasteFromClipboard",
+        "CHUNK",
+        "LIMIT",
+        "bracketed"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read paste: bracketed paste, chunking, the unsafe/ask rules for a multi-line paste, line counting and the clipboard read. Checked CRLF and a trailing newline; the ask rule matches the setting."
+    },
+    {
+      "path": "src/terminal/permissionAnswer.ts",
+      "symbols": [
+        "Answer"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read permission answers: which keys answer, the buttons shown per prompt kind, and nextPrompt. Checked a prompt with no buttons; it stays unanswered."
+    },
+    {
+      "path": "src/terminal/pin.ts",
+      "symbols": [
+        "PIN_ASK_FIELD",
+        "pinAsks"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read pinning: the pin question, closeOne and stripOrderOf (pinned first, then tab order). Checked a pinned tab that is not first in the pane array; the order follows the strip."
+    },
+    {
+      "path": "src/terminal/planReview.ts",
+      "symbols": [
+        "Section",
+        "PlanComment"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read plan review: splitting a plan into sections, sectionQuote, canRequest and the plan draft shape. Checked an empty plan and a one-line section; no defect."
+    },
+    {
+      "path": "src/terminal/printedAddresses.ts",
+      "symbols": [
+        "notePrinted",
+        "isLocalWeb"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read printed address detection: which URLs a program prints are remembered, and notePrinted's dedupe. Fine."
+    },
+    {
+      "path": "src/terminal/projectRows.ts",
+      "symbols": [
+        "projectRows"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the palette's project rows: the add, group and scan rows. Data only, with no rule to break."
+    },
+    {
+      "path": "src/terminal/queries.ts",
+      "symbols": [
+        "paletteIsDark",
+        "DA1_WINDOWS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the capability queries: DA1 on Windows, the XTVERSION reply, the Grok hold, luminance and paletteIsDark. Checked 3-, 6- and 8-digit hex and rgb() inputs; luminance and the dark threshold follow WCAG."
+    },
+    {
+      "path": "src/terminal/rearrange.ts",
+      "symbols": [
+        "showsDragHandle",
+        "Zone"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read rearrange: dropTab and dropCell zones, cellsHere and rehome, and the refusal when the layout would not change. Checked a drop on itself and a drop that only reorders; both are handled."
+    },
+    {
+      "path": "src/terminal/reattach.ts",
+      "symbols": [
+        "ServiceInfo",
+        "Attach"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read reattach: the warm-attach decision, orphan detection, needsSize and fromThisService. Checked a stale service generation; it is refused."
+    },
+    {
+      "path": "src/terminal/recover.ts",
+      "symbols": [
+        "shouldRefocus",
+        "watchScale"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read recover: held keys, screen lines, refocus after a resize, and the scale watcher. Checked the key-release path; nothing leaks."
+    },
+    {
+      "path": "src/terminal/remove.ts",
+      "symbols": [
+        "REMOVE_FIELD",
+        "RemoveSetting"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read remove: classifying a pane's state, the removal plan from settings, shell-in-agent-pane marking and runningOf. The states and wording agree."
+    },
+    {
+      "path": "src/terminal/renderer.ts",
+      "symbols": [
+        "PARK_AFTER_MS",
+        "onSlotFree",
+        "afterPaint",
+        "watchResume"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the renderer choice end to end: the GPU pool and its slot watchers, attachRenderer's load/park/wake/fallback, the shared glyph-atlas rebuild, the park-when-hidden timing, the resume and render hooks, the heartbeat and quietSelection. Checked the pool accounting on park, dispose and evict, and the waiting/asleep flags; no defect found."
+    },
+    {
+      "path": "src/terminal/restoreAsk.ts",
+      "symbols": [
+        "keepsTab"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read keepsTab: whether a restored pane keeps its tab. One rule, matching its caller."
+    },
+    {
+      "path": "src/terminal/restoreLine.ts",
+      "symbols": [
+        "RESTORE_ASK_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the restore line text: the grey line naming a resume that failed. Wording only."
+    },
+    {
+      "path": "src/terminal/resync.ts",
+      "symbols": [
+        "Snapshot"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read resync: the gate, applySnapshot and the live snapshot shape. Checked applying an older snapshot; the gate refuses it."
+    },
+    {
+      "path": "src/terminal/reviewActions.ts",
+      "symbols": [
+        "PLAN_STALE",
+        "answerFailed"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the review actions: answerFailed wording, the plan and permission review outcomes, and their handlers. Checked a closed prompt; both answers go dead."
+    },
+    {
+      "path": "src/terminal/schemes.ts",
+      "symbols": [
+        "Scheme",
+        "CustomScheme"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the colour schemes: the scheme table and its lookup with a fallback. Checked an unknown scheme; the fallback is used."
+    },
+    {
+      "path": "src/terminal/screenshotPaste.ts",
+      "symbols": [
+        "Clip",
+        "bracketedPath"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read screenshot paste: the text-versus-image decision, the first image item, the bracketed and quoted path, save-then-send with both failure paths reported, and the async clipboard read. Checked an unreadable text clipboard; the image is still tried."
+    },
+    {
+      "path": "src/terminal/sessionFork.ts",
+      "symbols": [
+        "SessionPane",
+        "canContinue"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read continue, fork and copy context: canContinue, baseArgs stripping resume/continue/fork flags, the claude and codex launch forms, the fork dialog's once-only create, and contextText's caps. Checked a resumed pane's arguments and the 40-line and 8000-character caps."
+    },
+    {
+      "path": "src/terminal/shellChoice.ts",
+      "symbols": [
+        "ShellEntry"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read shell choice: the auto PowerShell order, shell icons, the Windows menu and the default-first list. The ordering matches the documented preference."
+    },
+    {
+      "path": "src/terminal/shellKeys.ts",
+      "symbols": [
+        "Route",
+        "RoutedKey"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read key routing: Kolux chords first, Ctrl+C as the interrupt without a selection, the macOS shell chords kept, Alt and Cmd arrows, and IME compositions left alone. Checked each carve-out against its condition; no defect."
+    },
+    {
+      "path": "src/terminal/shellMarks.ts",
+      "symbols": [
+        "Mark",
+        "parseOsc",
+        "startupText",
+        "identityPacer"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read shell marks: the agent identity scanner and reducer, startup detection, the ready wait, the shell-prompt gate, identity pacing and printed marks. Checked a title that changes mid-stream and a second prompt; the reducer settles on the right identity."
+    },
+    {
+      "path": "src/terminal/sizeGate.ts",
+      "symbols": [
+        "sizeGate"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the size gate: a resize is sent only when the size really changed and both dimensions are positive. Matches xterm's resize events."
+    },
+    {
+      "path": "src/terminal/status.ts",
+      "symbols": [
+        "VOCAB",
+        "Kind"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the header status: headerOf and statusAgent, the branch and crew labels, and takesInband. Checked an agent that is also a shell and a crew with no members; the wording stays right."
+    },
+    {
+      "path": "src/terminal/tabClose.ts",
+      "symbols": [
+        "Which"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read tab close: returnTab picks the previously used tab, else the right neighbour, else the left, never a closing one. Checked a single-tab cell; it falls through to focusIn."
+    },
+    {
+      "path": "src/terminal/tabColor.ts",
+      "symbols": [
+        "TabColor",
+        "TAB_COLORS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read tab colours: the palette, isTabColor, forgetColors and the colour name shown in the menu. Checked removing one of several; the rest stay."
+    },
+    {
+      "path": "src/terminal/tabCycle.ts",
+      "symbols": [
+        "TabInfo",
+        "typeOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read tab cycling: next and previous with wrap, and the jump to a numbered tab. Checked one tab and zero tabs; nothing moves when there is nothing to move to."
+    },
+    {
+      "path": "src/terminal/tabName.tsx",
+      "symbols": [
+        "tabName",
+        "apartName"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read tab naming: apartName, tabName's fallback chain (title, shell name, program folder, agent name) and the name field. Checked an empty title and a null folder; the tab is still named."
+    },
+    {
+      "path": "src/terminal/tabSplit.ts",
+      "symbols": [
+        "splitTabOut",
+        "splitMenuState"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read split-tab-out: whether a tab can move to a cell of its own and the stacked flag it returns. Checked a one-tab cell; it refuses."
+    },
+    {
+      "path": "src/terminal/tabs.ts",
+      "symbols": [
+        "Badge",
+        "tabBadge"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read tab badges and waiting: tabBadge's one mark per state and waitingInGrid's order. Checked a stopped agent that is also unread; the documented precedence holds."
+    },
+    {
+      "path": "src/terminal/text.ts",
+      "symbols": [
+        "TEXT_EVENT",
+        "FIELDS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the terminal text settings: clampNumber, readText's defaults, scrollbackRows and the profile fallback, familyOf, optionsOf and paneOptionsOf, currentText, and applyText's live event. Checked out-of-range and string values; each is corrected."
+    },
+    {
+      "path": "src/terminal/turnRead.ts",
+      "symbols": [
+        "blocks",
+        "ReadLine",
+        "ReadBuf",
+        "TurnPreview"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the turn reading: logicalLines joining wrapped rows, turnStart's echo search, the trimChrome edge rules, blocks and replyOf, readTurn, the pane source registry and watchTurn's throttle. Checked an alternate-screen read and a marker that scrolled away; both paths read as documented."
+    },
+    {
+      "path": "src/terminal/useLayoutReport.ts",
+      "symbols": [
+        "layoutInView",
+        "useLayoutReport"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the layout report hook: what it reports to the window and when, with the effect cleanup. No stale state found."
+    },
+    {
+      "path": "src/terminal/useResumeHint.ts",
+      "symbols": [
+        "useResumeHint"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the resume hint hook: whether the hint shows for a restored pane. One condition, matching layout."
+    },
+    {
+      "path": "src/terminal/viewKeep.ts",
+      "symbols": [
+        "EditorView"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read kept views: keepView's cap and LRU order, takeView, clampView and forgetView. Checked the eviction order at the cap; the oldest goes."
+    },
+    {
+      "path": "src/terminal/writeQueue.ts",
+      "symbols": [
+        "JOIN_MAX",
+        "QueuedWrite"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the write queue: the backlog cap, coalescing, goesAlone for input that must not wait, and drain ordering. Checked a write larger than the cap and a lone write during a backlog; order is preserved."
+    },
+    {
+      "path": "src/terminal/xtermLogger.ts",
+      "symbols": [
+        "makeXtermLogger"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the xterm logger: parse errors counted and summed up at most once per window, every other level passed through. Checked the first error and a burst inside the window; one summary."
+    },
+    {
+      "path": "src/terminal/landState.ts",
+      "symbols": [
+        "LandOutcome",
+        "LAND_EVENT"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the land chip state: recordFor, landChip, landFlash, landStep, canSendToMain and the send-to-main labels. The board's own test covers it; checked the no-record and finished cases, no defect."
+    },
+    {
+      "path": "src/terminal/exitBanner.ts",
+      "symbols": [
+        "ExitFacts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the exit banner: cleanLine and the cut and exit wording. The board's own test covers it; checked code zero and a null code, no defect."
+    }
+  ]
+}

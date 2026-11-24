@@ -1,0 +1,8 @@
+{
+  "id": "LAG-10",
+  "summary": "Counts how many readers one terminal output chunk is handed to: with 12 panes routed by terminal id, the router and the page bus's fanOut hand a chunk for terminal 5 to exactly one reader, called once, instead of to all 12.",
+  "tests": [
+    {"runner": "vitest", "file": "src/terminal/outputRoute.board.test.ts", "name": "LAG-10 routed output > the router hands a chunk for terminal 5 to the one reader routed to 5, not to all 12"},
+    {"runner": "vitest", "file": "src/terminal/outputRoute.board.test.ts", "name": "LAG-10 routed output > twelve panes: one chunk for terminal 5 calls one reader once, not twelve"}
+  ]
+}

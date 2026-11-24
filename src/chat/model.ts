@@ -190,8 +190,10 @@ export function applyRead(prev: ChatItem[], read: ChatRead): ChatItem[] {
 
 /** A message the hooks reported (the prompt, the last reply) before the transcript had it. */
 export type Extra = { id: string; role: "user" | "assistant"; text: string; at: number };
-/** Something typed from chat that the transcript has not confirmed yet. */
-export type Pending = { id: string; text: string; at: number; failed?: boolean };
+/** Something typed from chat that the transcript has not confirmed yet. `queued` marks a send typed
+ *  while a turn was still running (the pane had a send with no result yet): that turn's rows keep
+ *  streaming after it, so it waits at the tail instead of above them. */
+export type Pending = { id: string; text: string; at: number; failed?: boolean; queued?: boolean };
 /** A row of the conversation as drawn. */
 export type Row = (ChatItem & { row: "message" }) | { row: "preview"; id: string; text: string } | { row: "pending"; id: string; text: string; at: number; failed?: boolean };
 
@@ -199,21 +201,62 @@ const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 /** How far back a confirmed send may be timestamped from when it was typed. */
 const SEND_SLACK_MS = 5_000;
 
+/** CHAT-02: where a waiting send goes among the real messages: before the first later user row (a
+ *  turn of its own), or before the first later row unless it was typed into a running turn (that
+ *  row is the reply the send gets, before the user's echo arrives). A send typed into a running
+ *  turn is queued: that turn's rows keep streaming after it, so it waits at the tail (no index).
+ *  Whether a turn was running is the pane's own count of sends with no result yet, not a scan of
+ *  earlier user rows: a finished turn leaves no marker, so any earlier user row would make every
+ *  later send look queued and drop it below its own reply. */
+function waitingBefore(rows: Row[], p: Pending): number {
+  const first = rows.findIndex((r) => r.row === "message" && (r.at ?? 0) > p.at);
+  if (first < 0) return -1;
+  const later = rows[first];
+  if (later.row === "message" && later.role === "user") return first;
+  return p.queued ? -1 : first;
+}
+
 /** CHAT-010: the transcript's messages, plus hook messages it does not have yet, each once, in
  * time order (then by identity); the streaming preview after real content; sends not yet
- * confirmed last. */
+ * confirmed in time order among them. CHAT-02: a waiting send sits above a later user message (a
+ * turn of its own), so the user's words stay above the reply to them. The turn it was typed into
+ * keeps streaming assistant, tool and thought rows after it, so those never sit above it: with a
+ * turn already under way the send waits at the tail, after the preview. A send typed before any
+ * turn ran (no user row yet) takes the first later row as its own reply and sits above it, which
+ * keeps the send above the answer even when the agent's words arrive before the user's echo. */
 export function combine(transcript: ChatItem[], extras: Extra[], preview: string | null, pending: Pending[]): Row[] {
   const has = (role: string, text: string) => transcript.some((t) => t.role === role && norm(t.text) === norm(text));
   const real: ChatItem[] = [...transcript, ...extras.filter((e) => !has(e.role, e.text)).map((e) => ({ ...e, kind: "text" }))];
   const order = real.map((item, i) => ({ item, i }));
   order.sort((a, b) => (a.item.at ?? 0) - (b.item.at ?? 0) || (a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : a.i - b.i));
   const rows: Row[] = order.map(({ item }) => ({ ...item, row: "message" as const }));
-  if (preview) rows.push({ row: "preview", id: "preview", text: preview });
+  const late: Row[] = [];
   for (const p of pending) {
     const confirmed = transcript.some((t) => t.role === "user" && sentIn(t.text, p.text) && (t.at ?? Infinity) >= p.at - SEND_SLACK_MS);
-    if (!confirmed) rows.push({ row: "pending", id: p.id, text: p.text, at: p.at, failed: p.failed });
+    if (confirmed) continue;
+    const row: Row = { row: "pending", id: p.id, text: p.text, at: p.at, failed: p.failed };
+    const i = waitingBefore(rows, p);
+    if (i >= 0) rows.splice(i, 0, row);
+    else late.push(row);
   }
+  if (preview) rows.push({ row: "preview", id: "preview", text: preview });
+  rows.push(...late);
   return rows;
+}
+
+/** CHAT-02: the sends a live pane keeps waiting on: those no user row in `items` confirms, in the
+ * order they were sent, failed ones included. Never capped, so a message the user sent is never
+ * dropped from view. Pure. */
+export function livePending(sent: Pending[], items: ChatItem[]): Pending[] {
+  return sent.filter((p) => !items.some((t) => t.role === "user" && sentIn(t.text, p.text) && (t.at ?? Infinity) >= p.at - SEND_SLACK_MS));
+}
+
+/** CHAT-02 review (P2): a live pane's kept sends once `items` has moved: the confirmed ones are dropped
+ * once, and with none confirmed the very same array comes back, so React does not redraw and the
+ * `livePending` scan behind the memo only ever walks the sends still waiting. Pure. */
+export function prunePending(sent: Pending[], items: ChatItem[]): Pending[] {
+  const left = livePending(sent, items);
+  return left.length === sent.length ? sent : left;
 }
 
 /** CHAT-020: a send shows up in a recorded user turn: the same text, or its lines inside a turn

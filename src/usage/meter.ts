@@ -34,8 +34,13 @@ export function contextFill(r: ContextReading, capped = true): number {
 
 /** 84k, 1.3M, 950. */
 export function shortTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  const millions = (m: number) => `${m.toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000_000) return millions(n / 1_000_000);
+  if (n >= 1_000) {
+    // T5-F02: a k figure that rounds up to 1000 reads as millions, so 999,500 is "1M", not "1000k".
+    const k = Math.round(n / 1_000);
+    return k >= 1_000 ? millions(k / 1_000) : `${k}k`;
+  }
   return String(Math.round(n));
 }
 

@@ -307,7 +307,12 @@ impl Service {
                 Ok(row)
             }
             Err(e) => {
+                // AUD-R1 F01: a start that fails leaves the service as it was, so the terminal's flow
+                // goes with its tail (as on_exit and kill remove them) and a paused reader is let go.
                 g.snaps.remove(&id);
+                if let Some(f) = g.flows.remove(&id) {
+                    f.release();
+                }
                 Err(e)
             }
         }
@@ -1473,5 +1478,16 @@ mod tests {
         let ev = c.read().expect("the event connection must not time out while idle");
         assert_eq!(ev["ev"], "output");
         server.join().unwrap();
+    }
+
+    /// AUD-R1 F01: a spawn that fails must not leave the flow it made for the terminal behind.
+    #[test]
+    fn audit_r1_f01_a_failed_spawn_releases_its_flow() {
+        let service = Service::default();
+        let request = json!({ "program": "kolux-no-such-program-r1f01" });
+        assert!(service.spawn(&request).is_err(), "a program that is not on this PC must not start");
+        let g = service.lock();
+        assert!(g.snaps.is_empty(), "a failed spawn left its snapshot behind");
+        assert!(g.flows.is_empty(), "a failed spawn left {} flow entry behind", g.flows.len());
     }
 }

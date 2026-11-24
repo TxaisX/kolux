@@ -1,3 +1,4 @@
+// retired: it drove the All Changes review pane, removed with src/editor/AllChangesPane.tsx; the project row menu no longer offers "Review changes"
 // LIVE proof, GIT-038 boxes 1+2 (spec/11): 10 changed files -> All Changes has 10 sections, the scroll position at the seventh survives
 // a tab switch; Side by side and Whitespace change the layout and the change markers at once.
 import { pathToFileURL } from "node:url";

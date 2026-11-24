@@ -13,10 +13,21 @@ use tauri::{AppHandle, Emitter, Manager};
 pub mod session_id;
 #[cfg(test)]
 mod flood;
+// START-04: how a pane ended (Kolux closed it, or its program did), for the log line and the exit event.
+#[path = "terminal_exit.rs"]
+pub(crate) mod exit_note;
+#[cfg(test)]
+#[path = "terminal_exit_board_tests.rs"]
+mod exit_board_tests;
+// LAND-03: the pane's land variables and the Claude land note.
+#[cfg(test)] #[path = "terminal_land_board_tests.rs"] mod land_board_tests;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
 mod output_channel;
 mod output_frame;
+// LAG-07: each terminal's input goes onto its own queue, drained by its own writer thread.
+#[path = "terminal_input.rs"]
+mod input;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
@@ -119,6 +130,9 @@ struct Inner {
     warm: WarmMap,
     /// Folders whose warm shell is starting now, so two starts at once make one.
     warming: HashSet<String>,
+    /// LAG-07: each session's input queue, one writer thread per session that has had input. A
+    /// blocked pipe holds only this session's writer, never a caller or another pane.
+    inputs: HashMap<u32, input::InputQueue>,
 }
 
 /// Kept-warm shell: the setting, off unless set. Off, nothing here runs and terminals start as before.
@@ -188,6 +202,9 @@ impl Inner {
     fn take_session(&mut self, id: u32) -> Taken {
         self.dirs.remove(&id);
         self.marks.remove(&id);
+        // LAG-07: the input queue goes with the session; its writer ends once what it already holds
+        // is written, and the drop never waits for a stuck pipe.
+        self.inputs.remove(&id);
         let hist = self.hist.remove(&id);
         // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
         // waiter, which reads the pane's tail for its resume hint and then drops it; `read` already refuses it).
@@ -218,6 +235,46 @@ impl Inner {
 
 /// DT-C248 review 2: the error a superseded start gets (the pane's view has since asked for another start).
 pub const SUPERSEDED: &str = "Another start for this pane came after this one.";
+
+/// LAND-03: the variables a pane needs to send its finished work to main: `PATH` with the land
+/// script's folder at its END, and `KOLUX_LAND` naming the script. Pure: reads no environment and
+/// no disk. The folder goes last so it can never shadow a program the person has. Nothing is set
+/// when the script is not a full path in a folder, when that folder is the agent-hooks folder
+/// (its `claude.cmd` / `codex.cmd` shims would run instead of the real programs), or when the
+/// entries cannot be joined.
+pub(crate) fn land_env(path: Option<&std::ffi::OsStr>, script: &std::path::Path) -> Vec<(&'static str, std::ffi::OsString)> {
+    let folder = match script.parent() {
+        Some(p) if script.is_absolute() && !p.as_os_str().is_empty() => p,
+        _ => return Vec::new(),
+    };
+    if folder.components().any(|c| same_name(c.as_os_str(), "agent-hooks")) {
+        return Vec::new();
+    }
+    let mut entries: Vec<std::path::PathBuf> = path.map(std::env::split_paths).into_iter().flatten().filter(|p| !p.as_os_str().is_empty()).collect();
+    if !entries.iter().any(|e| same_folder(e, folder)) {
+        entries.push(folder.to_path_buf());
+    }
+    match std::env::join_paths(&entries) {
+        Ok(joined) => vec![("PATH", joined), ("KOLUX_LAND", script.as_os_str().to_os_string())],
+        Err(_) => Vec::new(),
+    }
+}
+
+/// LAND-03: two names are the same name, ignoring case on Windows (its folders do).
+fn same_name(a: &std::ffi::OsStr, b: &str) -> bool {
+    let a = a.to_string_lossy();
+    if cfg!(windows) {
+        a.eq_ignore_ascii_case(b)
+    } else {
+        a == b
+    }
+}
+
+/// LAND-03: two folders are the same folder: equal once trailing separators are dropped.
+fn same_folder(a: &std::path::Path, b: &std::path::Path) -> bool {
+    let trim = |p: &std::path::Path| p.to_string_lossy().trim_end_matches(['\\', '/']).to_string();
+    same_name(std::ffi::OsStr::new(&trim(a)), &trim(b))
+}
 
 /// One chunk of session `id`'s output taken in; returns its output count (ORCH-057). Under the
 /// registry lock only the count, the snapshot tail, the screen bits and the last-output time are
@@ -290,6 +347,8 @@ impl Inner {
         self.typed.remove(&id);
         self.hist.remove(&id);
         self.snaps.remove(&id);
+        // LAG-07: a reused handle gets a new queue, not the ended session's writer.
+        self.inputs.remove(&id);
         if let Some(f) = self.flow.remove(&id) {
             f.release();
         }
@@ -1057,9 +1116,33 @@ struct ExitPayload {
     /// ORCH-057: "exited" when the end was confirmed with an exit code, "unverifiable" when Kolux could
     /// not learn how the program ended (viewers say so instead of calling it an exit).
     outcome: &'static str,
+    /// START-04: `closed-by-kolux` when Kolux ended the pane itself, `exited` when its program did; a
+    /// viewer shows the "Start fresh" banner only for the second.
+    reason: &'static str,
+    /// START-04: the pane's last output line (masked, cut), for that banner; none for a close by Kolux.
+    #[serde(rename = "lastLine", skip_serializing_if = "Option::is_none")]
+    last_line: Option<String>,
+    /// START-04: how many whole seconds the program ran, none when it was never timed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    secs: Option<u64>,
     /// T-066-d: the session id the agent printed in its own resume hint before it exited, when it printed one.
     #[serde(skip_serializing_if = "Option::is_none")]
     session: Option<String>,
+}
+
+/// START-04: the end note's payload. `outcome` keeps its ORCH-057 meaning (a close by Kolux still says
+/// `exited` for an exit code); `reason` is what tells the two ends apart. The last output line goes to
+/// a banner only for a real exit, so a pane Kolux closed hands the window no text to offer "Start fresh" on.
+fn exit_payload(id: u32, code: Option<u32>, session: Option<String>, reason: &'static str, tail: &[String], secs: Option<u64>) -> ExitPayload {
+    ExitPayload {
+        id,
+        code,
+        outcome: outcome_of(code),
+        reason,
+        last_line: tail.last().filter(|_| reason == exit_note::EXITED).cloned(),
+        secs,
+        session,
+    }
 }
 
 /// Terminal `id` ended, however: it exited, its pane closed, or (USAGE-011, T-067-b) the
@@ -1193,6 +1276,14 @@ impl Terminals {
             // T-182 (APP-020): a tool installed after the app started is on the stored Path, not
             // the process's; the pane gets both, the process's entries first.
             command.env("PATH", crate::lifecycle::fresh_path(command.get_env("PATH").map(std::ffi::OsStr::to_os_string)));
+            // LAND-03: a pane can send its finished work to main by itself: the Kolux bin folder
+            // (where LAND-02 writes kolux-land.cmd) goes at the END of PATH, so it never shadows a
+            // program the person has, and KOLUX_LAND names the script.
+            if let Some(script) = crate::hooks::land_script() {
+                for (k, v) in land_env(command.get_env("PATH"), &script) {
+                    command.env(k, v);
+                }
+            }
             if let Ok(dir) = tauri::Manager::path(&exit_app).app_data_dir() {
                 // T-580: the pane names the Kolux that opened it, so the other-build
                 // override (COMPAT 7) it may have inherited from the shell that started Kolux, stripped
@@ -1305,17 +1396,27 @@ impl Terminals {
                 let mut log = None;
                 let mut hist = None;
                 let mut agent = None;
+                let mut started = None;
                 let mut removed = None;
+                let mut folder = None;
                 let mut warm_gone = Vec::new();
                 if let Ok(mut inner) = registry.lock() {
-                    agent = inner.marks.get(&id).and_then(|m| m.agent);
+                    // START-04: the mark's start and the folder go with the session, so both are read
+                    // here: the seconds it ran, and the folder the log line names.
+                    if let Some(m) = inner.marks.get(&id) {
+                        agent = m.agent;
+                        started = Some(m.started.elapsed());
+                    }
                     removed = inner.sessions.remove(&id);
-                    inner.dirs.remove(&id);
+                    folder = inner.dirs.remove(&id);
                     inner.marks.remove(&id);
                     inner.ended.insert(id);
                     log = inner.logs.remove(&id);
                     inner.owned.remove(&id);
                     inner.typed.remove(&id);
+                    // LAG-07: the session's input queue goes with it; the writer ends once what it
+                    // already holds is written, and this drop never waits for a stuck pipe.
+                    inner.inputs.remove(&id);
                     hist = inner.hist.remove(&id);
                     inner.snaps.remove(&id);
                     if let Some(f) = inner.flow.remove(&id) {
@@ -1328,18 +1429,24 @@ impl Terminals {
                 }
                 // SESS-030: the end of the pane's output, read for the agent's resume hint before the log
                 // goes. Its lock waits for a chunk the pump counted before the registry was taken above (P2 perf).
-                let tail = log.map(|l| session_id::screen_text(&lock(&l).read(None, Some(session_id::SCREEN_LINES))));
-                let session = agent.zip(tail.as_ref()).and_then(|(agent, text)| session_id::hint_session(agent, text));
+                let text = log.map(|l| session_id::screen_text(&lock(&l).read(None, Some(session_id::SCREEN_LINES))));
+                let session = agent.zip(text.as_ref()).and_then(|(agent, text)| session_id::hint_session(agent, text));
+                // START-04: the last lines the pane wrote, masked and cut for the one-line log entry.
+                let tail = text.as_deref().map_or_else(Vec::new, |text| exit_note::tail_lines(text, exit_note::EXIT_TAIL_LINES));
                 // The history file is left alone from here: a write already counted finishes first, and
                 // the file handle goes at once.
                 if let Some(h) = hist {
                     drop(lock(&h));
                 }
+                // START-04: a session Kolux took out of the registry before it stopped the program is a
+                // close of its own; one still there ended by itself (a crash, a normal exit, a lost link).
+                let reason = exit_note::exit_reason(removed.is_some());
+                let secs = started.map(|d| d.as_secs());
                 // Row 784: the PTY closes here, not under the registry the pump needs.
                 drop(removed);
                 turns_end(id);
                 if let Some(d) = &exit_dir {
-                    crate::diag::write(d, &format!("terminal {id} exited ({code:?})"));
+                    crate::diag::write(d, &exit_note::exit_line(id, reason, code, secs, agent, folder.as_deref(), &tail));
                 }
                 // DT-C243: output already read and waiting for its frame window goes before the end note.
                 // Bytes the pump reads after this still follow the end note, as they did before batching.
@@ -1347,7 +1454,7 @@ impl Terminals {
                 // Flood memory (DT-C244): a large last batch reaches the page by a fetch, so an end note sent as an
                 // event could run first; on the channel it keeps its place after that output. The event only
                 // when no web view took it, so no reader sees one end twice.
-                let exit = ExitPayload { id, code, outcome: outcome_of(code), session };
+                let exit = exit_payload(id, code, session, reason, &tail, secs);
                 if let Err(m) = send_to_readers(&exit_app, ExitMessage { items: [], exit }) {
                     let _ = exit_app.emit(EXIT_EVENT, m.exit);
                 }
@@ -1390,9 +1497,9 @@ impl Terminals {
         log.and_then(|l| lock(&l).written).map(|t| t.elapsed())
     }
 
-    /// Council D2 MERGE 31 item 1: the registry lock is held only to find the session's writer; the
-    /// write itself (which blocks for as long as the program takes to read, ~12 KB/s into ConPTY)
-    /// runs under that writer's own lock, so other panes' ack, resize and kill never wait on it.
+    /// LAG-07: the bytes are put on this terminal's own input queue and the call returns at once.
+    /// The queue's writer thread does the pipe write, so a program that stops reading only ever
+    /// holds its own writer, never this caller or another pane.
     pub fn write(&self, id: u32, data: &str) -> Result<(), String> {
         self.write_as(id, data, true)
     }
@@ -1405,19 +1512,19 @@ impl Terminals {
     }
 
     fn write_as(&self, id: u32, data: &str, typed: bool) -> Result<(), String> {
-        let writer = {
-            let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
-            let writer = inner.sessions.get(&id).ok_or("no such terminal")?.writer()?;
-            // TERM-123: typing is activity, echoed or not; a terminal reply is not typing.
-            if typed {
-                if let Some(m) = inner.marks.get_mut(&id) {
-                    m.last_input = Some(Instant::now());
-                }
-                inner.typed.insert(id, Instant::now());
+        let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
+        let writer = inner.sessions.get(&id).ok_or("no such terminal")?.writer()?;
+        // TERM-123: typing is activity, echoed or not; a terminal reply is not typing.
+        if typed {
+            if let Some(m) = inner.marks.get_mut(&id) {
+                m.last_input = Some(Instant::now());
             }
-            writer
-        };
-        crate::pty::write_shared(&writer, data.as_bytes())
+            inner.typed.insert(id, Instant::now());
+        }
+        // LAG-07: one queue per session, made on its first input over that session's own writer.
+        // Sending never blocks (the queue is unbounded), so holding the registry lock here is fine.
+        let queue = inner.inputs.entry(id).or_insert_with(|| input::InputQueue::start(move |chunk| crate::pty::write_shared(&writer, chunk)));
+        queue.send(data.as_bytes())
     }
 
     pub fn resize(&self, id: u32, cols: u16, rows: u16) -> Result<(), String> {
@@ -1439,6 +1546,37 @@ impl Terminals {
             Err(_) => return false,
         };
         pid.and_then(crate::procs::has_children).unwrap_or(false)
+    }
+
+    /// LAG-11: `busy` for many ids at once, with exactly the same rules, from ONE read of the
+    /// process list instead of one per id. The registry lock is taken once and dropped before the
+    /// list is read (it is never held across the read); a poisoned lock or a failed check reads as
+    /// idle, exactly as `busy` does.
+    pub fn busy_many(&self, ids: &[u32]) -> Vec<bool> {
+        let mut answers = vec![false; ids.len()];
+        let mut asked: Vec<Option<u32>> = Vec::with_capacity(ids.len());
+        let mut slots: Vec<usize> = Vec::with_capacity(ids.len());
+        match self.inner.lock() {
+            Ok(inner) => {
+                for (slot, &id) in ids.iter().enumerate() {
+                    match inner.sessions.get(&id) {
+                        // TERM-132: while a program holds the screen or the mouse the shell is never idle.
+                        Some(_) if inner.marks.contains_key(&id) || inner.owned.get(&id).is_some_and(|o| *o != 0) => answers[slot] = true,
+                        Some(s) => {
+                            asked.push(s.pid());
+                            slots.push(slot);
+                        }
+                        None => {}
+                    }
+                }
+            }
+            Err(_) => return answers,
+        }
+        let found = crate::procs::has_children_many(&asked);
+        for (slot, busy) in slots.into_iter().zip(found) {
+            answers[slot] = busy.unwrap_or(false);
+        }
+        answers
     }
 
 
@@ -2319,14 +2457,18 @@ pub async fn terminal_host_end(terminals: tauri::State<'_, Terminals>, id: u32) 
     .map_err(|e| e.to_string())?
 }
 
-/// TERM-045: for each id, whether closing it would stop a live program.
+/// TERM-045 / LAG-11: for each id, whether closing it would stop a live program. Async and on a
+/// blocking worker, so neither the process-list read nor the wait for it ever runs on the window's
+/// thread; one batch of ids reads that list once instead of once per id.
 #[tauri::command]
-pub fn terminal_busy(terminals: tauri::State<'_, Terminals>, ids: Vec<u32>) -> Vec<bool> {
-    ids.into_iter().map(|id| terminals.busy(id)).collect()
+pub async fn terminal_busy(terminals: tauri::State<'_, Terminals>, ids: Vec<u32>) -> Result<Vec<bool>, String> {
+    let me = terminals.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || me.busy_many(&ids)).await.map_err(|e| e.to_string())
 }
 
-/// TERM-115: async, so a pipe write that blocks (a program not reading its input) holds a
-/// runtime worker, never the window's thread; typing elsewhere stays responsive.
+/// TERM-115: async, so the registry lock is taken off the window's thread. LAG-07: the bytes go on
+/// the terminal's own input queue, so this returns once they are queued and a program that stops
+/// reading its input holds only that terminal's writer thread.
 #[tauri::command]
 pub async fn terminal_write(app: AppHandle, terminals: tauri::State<'_, Terminals>, id: u32, data: String, generation: Option<u64>, auto: Option<bool>) -> Result<(), String> {
     if data.len() > MAX_WRITE {
@@ -3427,9 +3569,9 @@ mod tests {
 
     #[test]
     fn t066d_the_exit_event_carries_a_printed_session_id_only_when_there_is_one() {
-        let with = ExitPayload { id: 3, code: Some(0), outcome: "exited", session: Some("run-2026.10.13-a1b2c3".into()) };
+        let with = ExitPayload { id: 3, code: Some(0), outcome: "exited", reason: "exited", last_line: None, secs: None, session: Some("run-2026.10.13-a1b2c3".into()) };
         assert_eq!(serde_json::to_value(&with).unwrap()["session"], "run-2026.10.13-a1b2c3");
-        let without = ExitPayload { id: 3, code: None, outcome: "unverifiable", session: None };
+        let without = ExitPayload { id: 3, code: None, outcome: "unverifiable", reason: "exited", last_line: None, secs: None, session: None };
         assert!(serde_json::to_value(&without).unwrap().get("session").is_none(), "an old window sees the payload it always saw");
     }
 
@@ -3767,3 +3909,7 @@ mod input_source_tests {
         assert_eq!(super::HKL_NEXT, 1);
     }
 }
+
+#[cfg(test)]
+#[path = "terminal_input_board_tests.rs"]
+mod input_board_tests;

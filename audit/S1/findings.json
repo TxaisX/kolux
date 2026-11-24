@@ -1,0 +1,47 @@
+[
+  {
+    "id": "S1-F01",
+    "title": "The licence gate passes an expression that requires a denied licence",
+    "file": "scripts/license-check.mjs",
+    "line": 11,
+    "severity": "high",
+    "what": "ok() splits the whole expression on ' OR ' first and accepts the package when any one piece is on the allow-list. For `EPL-2.0 AND (MIT OR Apache-2.0)` the split gives 'EPL-2.0 AND (MIT' and 'Apache-2.0)'; the second piece is allowed after the parentheses are stripped, so failures() reports nothing and the gate passes a package whose licence requires EPL-2.0, which the file itself says is deliberately not allowed. No parenthesised expression reaches the AND branch, so a denied conjunct is dropped whenever an OR sits beside it.",
+    "expected": "failures() lists a package whose expression requires a licence that is not allowed, whatever parentheses it uses: `EPL-2.0 AND (MIT OR Apache-2.0)` must fail, while `MIT AND (Apache-2.0 OR ISC)` still passes.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s1-f01.test.mjs",
+      "name": "audit S1 · JS licence gate, mixed AND/OR > [S1-F01] an AND keeps its denied part even when the parenthesised OR offers an allowed one"
+    },
+    "patch": "repro/S1-F01.patch"
+  },
+  {
+    "id": "S1-F02",
+    "title": "The docs builder marks every committed twin stale at midnight",
+    "file": "scripts/docs/build.mjs",
+    "line": 96,
+    "severity": "medium",
+    "what": "render() fills the footer with `new Date().toISOString().slice(0, 10)`, and the --check loop compares the regenerated text with the committed .html byte for byte. The committed twins were written on the day they were built, so from the next day on `node scripts/docs/build.mjs --check` reports every one of them stale and exits 1 even though no markdown changed. The date is not derived from the source, so the gate can only pass on the day the docs were last rebuilt.",
+    "expected": "`--check` reports a twin stale only when its markdown would produce different content: a twin whose only difference is the generation date stamp must still exit 0, so the gate stays green on an untouched tree.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s1-f02.test.mjs",
+      "name": "audit S1 · docs builder --check > [S1-F02] a twin whose markdown did not change is not stale because its date stamp is old"
+    },
+    "patch": "repro/S1-F02.patch"
+  },
+  {
+    "id": "S1-F03",
+    "title": "worktree-status --check ignores work on a branch whose folder is gone",
+    "file": "scripts/worktree-status.mjs",
+    "line": 101,
+    "severity": "medium",
+    "what": "The report's second table lists the branches whose worktree is gone but whose commits are not in the base, and the header calls those the ones that would surprise someone. The --check exit is computed from the worktree rows only: `unmerged` counts `others`, so a branch that still holds commits main does not have never reaches the test. A session that ends with `--check` therefore exits 0 with a clean state while that work is still missing from main, which is exactly the case a person has to look at.",
+    "expected": "`--check` exits 1 whenever the report lists work the base does not have, including commits on a branch with no worktree attached, so the state a session ends on is really known.",
+    "test": {
+      "runner": "vitest",
+      "file": "scripts/audit-s1-f03.test.mjs",
+      "name": "audit S1 · worktree-status --check > [S1-F03] a branch whose worktree is gone still counts as work main does not have"
+    },
+    "patch": "repro/S1-F03.patch"
+  }
+]

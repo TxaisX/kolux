@@ -51,7 +51,7 @@ $ node scripts/prove/update-rig.mjs prove-785
 ## Clean up
 $ node scripts/prove/update-rig.mjs clean
 21:24:59 uninstall: exit 0; install folder still has uninstall.exe
-21:24:59 clean: removed C:\Users\XiongT\AppData\Roaming\com.txaisxiong.kolux-proof-rs
+21:24:59 clean: removed C:\Users\user\AppData\Roaming\com.txaisxiong.kolux-proof-rs
 21:24:59 clean: removed G:\Temp\ready-identity-rig\home\AppData\Roaming\com.txaisxiong.kolux-proof-rs
 21:24:59 clean: removed G:\Temp\ready-identity-rig\home\AppData\Local\com.txaisxiong.kolux-proof-rs
 21:25:00 clean: user PATH no longer holds G:\Temp\ready-identity-rig\install\bin

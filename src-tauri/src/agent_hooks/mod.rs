@@ -693,11 +693,15 @@ fn apply(home: &Path, profile: &Path, settings: &Value, id: &str, plan: Plan) ->
         // the cutline, so on and off leave its bytes exactly as they were; only the managed homes a
         // pane starts in (Kolux's own folders) are cleared.
         ("codex", Plan::Install) => Ok("not written (Codex hooks wait for T-025-e)"),
+        // R2-F05: one home that cannot be read must not stop the others being cleared, so every
+        // home is tried and the failures come back together, as `each_claude_target` does.
         ("codex", Plan::Remove) => {
-            for h in managed_codex_homes(profile) {
-                remove_codex(&h)?;
+            let failed: Vec<String> = managed_codex_homes(profile).into_iter().filter_map(|h| remove_codex(&h).err()).collect();
+            if failed.is_empty() {
+                Ok("removed")
+            } else {
+                Err(failed.join("; "))
             }
-            Ok("removed")
         }
         _ => Ok("left as it was"),
     }

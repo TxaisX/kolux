@@ -238,7 +238,8 @@ pub fn parse_running(raw: &[u8]) -> Vec<String> {
 
 /// Keeps the roots that can be searched: every non-WSL root, and a WSL root only when its distribution
 /// is running. `running` is asked once, and only when a WSL root exists; None (could not tell) skips
-/// them all. Skipped distributions are named in the report.
+/// them all. A skipped distribution is named in the report as stopped only when it was known to be
+/// stopped, and as one Kolux could not ask about otherwise.
 pub fn without_stopped_wsl(roots: Vec<PathBuf>, report: &mut Report, running: impl FnOnce() -> Option<Vec<String>>) -> Vec<PathBuf> {
     if !roots.iter().any(|r| wsl_distro(r).is_some()) {
         return roots;
@@ -248,13 +249,17 @@ pub fn without_stopped_wsl(roots: Vec<PathBuf>, report: &mut Report, running: im
         .into_iter()
         .filter(|r| match wsl_distro(r) {
             None => true,
-            Some(d) => {
-                let ok = up.as_ref().is_some_and(|u| u.contains(&d.to_lowercase()));
-                if !ok {
+            Some(d) => match up.as_ref().map(|u| u.contains(&d.to_lowercase())) {
+                Some(true) => true,
+                Some(false) => {
                     report.note_unreadable(&format!("the WSL distribution {d}, which is not running"));
+                    false
                 }
-                ok
-            }
+                None => {
+                    report.note_unreadable(&format!("the WSL distribution {d}, which Kolux could not ask about"));
+                    false
+                }
+            },
         })
         .collect()
 }
@@ -477,5 +482,17 @@ mod tests {
         assert_eq!(parse_running(&utf16), vec!["Ubuntu".to_string(), "Debian".to_string()]);
         assert_eq!(parse_running(b"Ubuntu\nDebian\n"), vec!["Ubuntu".to_string(), "Debian".to_string()]);
         assert!(parse_running(b"").is_empty());
+    }
+
+    /// AUD-R2 F03: a WSL question Kolux could not answer is not the same answer as "not running".
+    #[test]
+    fn audit_r2_f03_a_wsl_distro_kolux_could_not_ask_about_is_not_reported_as_stopped() {
+        let roots = vec![PathBuf::from(r"\\wsl.localhost\Ubuntu\home\me\.claude")];
+        let mut unknown = Report::default();
+        let _ = without_stopped_wsl(roots.clone(), &mut unknown, || None);
+        let mut stopped = Report::default();
+        let _ = without_stopped_wsl(roots, &mut stopped, || Some(Vec::new()));
+        assert!(!unknown.unreadable.is_empty(), "a skipped distribution is named in the report");
+        assert_ne!(unknown.unreadable, stopped.unreadable, "a distribution Kolux could not ask about must not read as one it knows is not running");
     }
 }

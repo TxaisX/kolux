@@ -22,7 +22,9 @@ const say = (s) => { log.push(s); console.log(s); };
 const expect = (label, ok, detail = '') => { say(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`); return ok; };
 
 const PALETTE = '.palette[role="dialog"][aria-label="Go to / Run a command"]';
-const rows = (page) => page.eval(`[...document.querySelectorAll('${PALETTE} [role=option]')].map(o=>({ label:(o.innerText||'').trim().split('\\n')[0], sel:o.getAttribute('aria-selected') }))`);
+// The row's own text sits in its .name span; the button also holds the Alt+number badge and the
+// agent mark, whose text comes first in innerText and is not part of the label.
+const rows = (page) => page.eval(`[...document.querySelectorAll('${PALETTE} [role=option]')].map(o=>({ label:((o.querySelector('.name')||o).innerText||'').trim(), sel:o.getAttribute('aria-selected') }))`);
 
 async function openPalette(page) {
   const open = await page.exists(PALETTE);
@@ -40,16 +42,19 @@ async function pick(page, text) {
   const hit = await page.eval(`(()=>{
     const rows=[...document.querySelectorAll('${PALETTE} [role=option]')];
     const want=${JSON.stringify(text.toLowerCase())};
-    const r=rows.find(x=>(x.innerText||'').trim().toLowerCase().startsWith(want)) || rows.find(x=>(x.innerText||'').toLowerCase().includes(want));
-    if(!r) return { picked:null, labels: rows.map(x=>(x.innerText||'').trim().split('\\n')[0]) };
-    r.click(); return { picked:(r.innerText||'').trim().split('\\n')[0] };
+    const named=(x)=>((x.querySelector('.name')||x).innerText||'').trim().toLowerCase();
+    const r=rows.find(x=>named(x).startsWith(want)) || rows.find(x=>(x.innerText||'').toLowerCase().includes(want));
+    if(!r) return { picked:null, labels: rows.map(x=>((x.querySelector('.name')||x).innerText||'').trim()) };
+    r.click(); return { picked:((r.querySelector('.name')||r).innerText||'').trim() };
   })()`);
   await sleep(600);
   return hit;
 }
 
 const checks = {
-  // B-2 / T-610: every screen behind the palette opens its own page.
+  // B-2 / T-610: every screen behind the palette opens its own page. Terminals is the only screen the
+  // window still has (src/chrome/TopBar.tsx SCREEN_IDS): Floor, Space, Workspace Statuses, Artifacts
+  // and Skills were removed, so b2 no longer asks for their rows or the pages behind them.
   async b2(page) {
     say('B-2 / T-610 — every screen can be reached from the palette');
     await openPalette(page);
@@ -57,24 +62,17 @@ const checks = {
     const labels = list.map((r) => r.label);
     say(`  palette rows: ${labels.join(' | ')}`);
     let ok = true;
-    for (const want of ['Show Floor', 'Show Space', 'Show Workspace Statuses', 'Show Artifacts', 'Show Skills']) {
-      ok = expect(`row "${want}" is in the palette`, labels.some((l) => l.startsWith(want))) && ok;
+    for (const want of ['Terminals']) {
+      ok = expect(`row "Show ${want}" is in the palette`, labels.some((l) => l.startsWith(`Show ${want}`))) && ok;
     }
-    // Each row must open its own page.
-    const opens = [
-      ['Show Floor', 'section.floor[aria-label="Floor"]'],
-      ['Show Space', 'section.space[aria-label="Space"]'],
-      ['Show Workspace Statuses', '.ws-board[role="dialog"]'],
-      ['Show Artifacts', 'div.artifacts'],
-      ['Show Skills', 'section.skills'],
-    ];
-    for (const [label, sel] of opens) {
+    // Each row must open its own page: picking it closes the palette and lands on that screen.
+    const opens = [['Terminals', '.grid']];
+    for (const [want, sel] of opens) {
       await openPalette(page);
-      const r = await pick(page, label);
-      const shown = await waitFor(`the page for ${label}`, async () => page.exists(sel), 8000).catch(() => false);
-      ok = expect(`${label} opens its page`, !!shown, `picked ${r.picked ?? 'nothing'}; looked for ${sel}`) && ok;
-      // A dialog or page that opened can block the next palette; dismiss with Escape.
-      if (shown && (await page.exists('.ws-board[role="dialog"]'))) { await page.key('Escape'); await sleep(300); }
+      const r = await pick(page, `Show ${want}`);
+      const closed = await waitFor('the palette to close', async () => !(await page.exists(PALETTE)), 8000).catch(() => false);
+      const shown = await waitFor(`the page for Show ${want}`, async () => page.eval(`(()=>{const e=document.querySelector(${JSON.stringify(sel)}); return !!e && e.offsetParent !== null})()`), 8000).catch(() => false);
+      ok = expect(`Show ${want} opens its page`, !!closed && !!shown, `picked ${r.picked ?? 'nothing'}; palette ${closed ? 'closed' : 'stayed'}; looked for ${sel}`) && ok;
     }
     return ok;
   },

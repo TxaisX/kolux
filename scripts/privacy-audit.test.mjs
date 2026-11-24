@@ -3,6 +3,7 @@
 import { expect, test } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { testOnlyRustFiles } from "./rust-test-files.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -65,6 +66,13 @@ test("app070: no network client in the shipped source beyond the connections the
   const harness = ["evidence", "prove", "stress"].map((d) => `${path.sep}scripts${path.sep}${d}${path.sep}`);
   const files = [...walk(path.join(root, "src")), ...walk(path.join(root, "src-tauri/src")), ...walk(path.join(root, "scripts")).filter((f) => !harness.some((h) => f.includes(h)))];
   expect(files.length).toBeGreaterThan(50);
+  // A whole file of tests pulled in only under #[cfg(test)] does not ship; a file nobody pulls
+  // in, or one pulled in without it, is still scanned.
+  const rust = {};
+  for (const f of walk(path.join(root, "src-tauri/src"))) {
+    if (f.endsWith(".rs")) rust[path.relative(root, f).replace(/\\/g, "/")] = fs.readFileSync(f, "utf8");
+  }
+  const testOnly = testOnlyRustFiles(rust);
   // Keeps the folder exclusions honest: nothing shipped may name a harness folder, and the bundle carries no extra files or sidecars.
   const imports = [...walk(path.join(root, "src")), ...walk(path.join(root, "src-tauri/src"))].filter((f) => /scripts[\\/]+(?:evidence|prove|stress)\b/.test(fs.readFileSync(f, "utf8"))).map((f) => path.relative(root, f));
   expect(imports).toEqual([]);
@@ -76,6 +84,7 @@ test("app070: no network client in the shipped source beyond the connections the
   const found = [];
   for (const f of files) {
     const rel = path.relative(root, f).replace(/\\/g, "/");
+    if (testOnly.has(rel)) continue;
     let text = shipped(fs.readFileSync(f, "utf8"));
     if (EXACT[rel]) {
       expect(text.match(EXACT[rel]) ?? [], rel).toHaveLength(1);

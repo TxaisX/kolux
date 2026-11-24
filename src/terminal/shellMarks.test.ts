@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { agentFromTitle, followedTitle, Gate, identityPacer, IDLE, TITLE_PACE_MS, parseOsc, printsMarks, reduceIdentity, Scanner, seededIdentity, shownAgent, Startup, startupCommand, startupText, tabAgent, typedAsIs, type Identity, type Mark } from "./shellMarks";
+import { agentFromTitle, followedTitle, Gate, identityPacer, IDLE, TITLE_PACE_MS, titleState, parseOsc, printsMarks, reduceIdentity, Scanner, seededIdentity, shownAgent, Startup, startupCommand, startupText, tabAgent, typedAsIs, type Identity, type Mark } from "./shellMarks";
 
 const enc = new TextEncoder();
 const bytes = (s: string) => enc.encode(s);
@@ -276,6 +276,58 @@ describe("title storm (perf: one render per real change, titles paced)", () => {
       expect(applied).toEqual([a, IDLE]);
       vi.advanceTimersByTime(TITLE_PACE_MS * 2);
       expect(applied).toEqual([a, IDLE]);
+      pacer.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a spinner that starts after a still title reaches the paced title within the pace", () => {
+    vi.useFakeTimers();
+    try {
+      const applied: Identity[] = [];
+      const pacer = identityPacer((id) => applied.push(id));
+      // The agent named what it is working on, then started its spinner: the spinner is not a frame of
+      // that still title, so the paced title (which the sidebar's "N working" reads) must show it.
+      pacer.note({ running: true, title: "Claude Code", agent: "claude" });
+      applied.length = 0;
+      const frames = ["⠂", "⠐", "⠈", "⠁", "⠃", "⠇", "⠏", "⠋", "⠙", "⠹"];
+      let spinnerAt = -1;
+      for (let t = 0; t < 2_000; t += 80) {
+        pacer.note({ running: true, agent: "claude", title: `${frames[(t / 80) % frames.length]} Claude Code` });
+        vi.advanceTimersByTime(80);
+        if (spinnerAt < 0 && applied.some((id) => titleState(id.title) === "spinning")) spinnerAt = t + 80;
+      }
+      expect(spinnerAt).toBeGreaterThanOrEqual(0);
+      expect(spinnerAt).toBeLessThanOrEqual(250);
+      // The frames after the first spinner are still held, so the window is not redrawn for each one.
+      expect(applied.length).toBeLessThanOrEqual(2);
+      pacer.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("Claude Code's idle ✳ title flips to working once, within the pace", () => {
+    vi.useFakeTimers();
+    try {
+      const applied: Identity[] = [];
+      const pacer = identityPacer((id) => applied.push(id));
+      // Between turns Claude Code leaves its done mark in the title. ✳ is a spinner run to titleFrameKey
+      // but reads done (STAT-033), so the first braille frame is a real idle->working flip the paced
+      // title must show, not a frame of an animation already under way.
+      pacer.note({ running: true, agent: "claude", title: "✳ Claude Code" });
+      applied.length = 0;
+      const frames = ["⠂", "⠐", "⠈", "⠁", "⠃", "⠇", "⠏", "⠋", "⠙", "⠹"];
+      let spinnerAt = -1;
+      for (let t = 0; t < 2_000; t += 80) {
+        pacer.note({ running: true, agent: "claude", title: `${frames[(t / 80) % frames.length]} Claude Code` });
+        vi.advanceTimersByTime(80);
+        if (spinnerAt < 0 && applied.some((id) => titleState(id.title) === "spinning")) spinnerAt = t + 80;
+      }
+      expect(spinnerAt).toBeGreaterThanOrEqual(0);
+      expect(spinnerAt).toBeLessThanOrEqual(250);
+      // The frames after the flip stay held: the whole 2 s animation hands the window exactly one title.
+      expect(applied).toHaveLength(1);
       pacer.stop();
     } finally {
       vi.useRealTimers();

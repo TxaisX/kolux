@@ -1,0 +1,882 @@
+{
+  "area": "T4",
+  "files": [
+    {
+      "path": "src/agents/rail.ts",
+      "symbols": [
+        "sessionLabel",
+        "Session"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; rail labels and ordering helpers agree with their callers in useRailAndTower; no defect found."
+    },
+    {
+      "path": "src/agents/useRailAndTower.ts",
+      "symbols": [
+        "useRailAndTower"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the polling effect cleans its timer and reads rail data only while mounted; no defect found."
+    },
+    {
+      "path": "src/chat/ChatText.tsx",
+      "symbols": [
+        "LinkHost",
+        "LinkContext"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; text and markdown rendering escape user text and defer link handling to chatLinks; no defect found."
+    },
+    {
+      "path": "src/chat/ChatView.tsx",
+      "symbols": [
+        "ChatPane",
+        "Hand",
+        "pickBrowser",
+        "makeHand"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full (596 lines); checked the message list, scroll follow, empty state and live pane wiring for stale closures and missing cleanup; no defect found."
+    },
+    {
+      "path": "src/chat/MessageBox.tsx",
+      "symbols": [
+        "Composer",
+        "ComposerHandle",
+        "addPaths",
+        "plain"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full (467 lines); checked draft persistence, attachment chips, paste and drop listeners, and their cleanup; no defect found."
+    },
+    {
+      "path": "src/chat/ModelControls.tsx",
+      "symbols": [
+        "Props",
+        "ModelControls"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; model and effort choices pass the current model through controls.ts; no defect found."
+    },
+    {
+      "path": "src/chat/PermissionCard.tsx",
+      "symbols": [
+        "PermissionCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; Allow and Deny route through ask.ts and stay hidden once answered; no defect found."
+    },
+    {
+      "path": "src/chat/QuestionCard.tsx",
+      "symbols": [
+        "QuestionCard",
+        "total"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; answers are only offered while the prompt on screen is the one counted; no defect found."
+    },
+    {
+      "path": "src/chat/StepRows.tsx",
+      "symbols": [
+        "ThoughtRow",
+        "DiffRow",
+        "useNow",
+        "openLink"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full (321 lines); checked step grouping, running and finished rows, and the empty and long tool output cases; no defect found."
+    },
+    {
+      "path": "src/chat/ask.ts",
+      "symbols": [
+        "Payload",
+        "Listen",
+        "BLANK",
+        "takeAsk"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; permission prompts are counted and an answered prompt stays answered until the next one; no defect found."
+    },
+    {
+      "path": "src/chat/attach.ts",
+      "symbols": [
+        "MAX_ATTACHMENTS",
+        "IMAGE_AGENTS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the five attachment cap and the image-capable agent list match the callers in MessageBox; no defect found."
+    },
+    {
+      "path": "src/chat/chatLinks.ts",
+      "symbols": [
+        "LinkTarget",
+        "Part",
+        "FILE_AT",
+        "SCHEME"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; fileJump accepts a fractional line but classify only emits integer line numbers, so no wrong jump is reachable today; noted, not reported."
+    },
+    {
+      "path": "src/chat/complete.ts",
+      "symbols": [
+        "Kind",
+        "Entry",
+        "Trigger",
+        "MENU_LIMIT"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the completion list dedupes, filters by the typed prefix and keeps the chosen index in range; no defect found."
+    },
+    {
+      "path": "src/chat/composer.ts",
+      "symbols": [
+        "MAX_LINES",
+        "DRAFT_LIMIT",
+        "HISTORY_LIMIT",
+        "PENDING_LIMIT"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; key handling, drafts, history caps and the send queue agree with the box and send.ts; no defect found."
+    },
+    {
+      "path": "src/chat/controls.ts",
+      "symbols": [
+        "EFFORT_ORDER",
+        "CODEX_EFFORTS",
+        "Choice",
+        "What"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; readModel matches a saved model by substring, which cannot pick a wrong entry from today's model lists; noted, not reported."
+    },
+    {
+      "path": "src/chat/live/ChatPane.tsx",
+      "symbols": [
+        "ChatPane",
+        "CANNOT_STOP_NOTE",
+        "sync",
+        "preview"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full (557 lines); checked the live chat stream, event ordering, reconnect path and effect cleanup for races; no defect found."
+    },
+    {
+      "path": "src/chat/live/Strip.tsx",
+      "symbols": [
+        "KIND_LABEL",
+        "ArtifactsStrip"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the strip shows live state from the client and hides itself when idle; no defect found."
+    },
+    {
+      "path": "src/chat/live/artifacts.ts",
+      "symbols": [
+        "ArtifactKind",
+        "ArtifactRow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; artifact names and paths are reduced to safe labels before showing; no defect found."
+    },
+    {
+      "path": "src/chat/live/client.ts",
+      "symbols": [
+        "CHAT_EVENT",
+        "StopHow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the client closes its stream on stop and ignores events after close; no defect found."
+    },
+    {
+      "path": "src/chat/live/events.ts",
+      "symbols": [
+        "Block",
+        "Step",
+        "ToolResult",
+        "ChatEvent"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; live events are parsed defensively and unknown kinds are dropped; no defect found."
+    },
+    {
+      "path": "src/chat/menuEdit.ts",
+      "symbols": [
+        "BoxEdit",
+        "BoxLike"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; edit-menu key handling matches the composer's own keys; no defect found."
+    },
+    {
+      "path": "src/chat/model.ts",
+      "symbols": [
+        "ChatItem",
+        "ChatRead",
+        "CHAT_AGENTS",
+        "OfferInput"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; model labels, providers and the default choice agree with the settings and Rust lists; no defect found."
+    },
+    {
+      "path": "src/chat/notePictures.ts",
+      "symbols": [
+        "DATA_PICTURE_LIMIT",
+        "TYPES"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; note pictures are only read for paths that exist and the list stays small; no defect found."
+    },
+    {
+      "path": "src/chat/page.ts",
+      "symbols": [
+        "FIRST_PAGE",
+        "NEXT_PAGE"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; paging and page-size constants match the callers in ChatView; no defect found."
+    },
+    {
+      "path": "src/chat/question.ts",
+      "symbols": [
+        "openQuestion",
+        "answerSteps",
+        "QuestionCard",
+        "Pick"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; question choices and free-text answers are read only while the question is current; no defect found."
+    },
+    {
+      "path": "src/chat/reading.ts",
+      "symbols": [
+        "keptFor",
+        "keepSeen",
+        "NOTHING",
+        "FAILED_RETRY_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the reader's ordering and grouping keep user turns above their replies; no defect found."
+    },
+    {
+      "path": "src/chat/renderMarkdown.ts",
+      "symbols": [
+        "NOTE_HTML",
+        "RENDERER_CLASSES"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the renderer escapes raw HTML and keeps code fences whole; no defect found."
+    },
+    {
+      "path": "src/chat/send.ts",
+      "symbols": [
+        "UNSEEN_NOTE",
+        "TOO_LONG_NOTE",
+        "NO_TERMINAL_NOTE",
+        "TOOL_WAIT_NOTE"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; every write re-checks the pane's own state and a send is refused while the agent asks something; no defect found."
+    },
+    {
+      "path": "src/chat/skills.ts",
+      "symbols": [
+        "Scan",
+        "Skill",
+        "Root"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; skill names are trimmed and empty names dropped; no defect found."
+    },
+    {
+      "path": "src/chat/steps.ts",
+      "symbols": [
+        "isFullPath",
+        "root",
+        "unreachable",
+        "depth"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; step state changes are ordered and a finished step is not reopened by a late event; no defect found."
+    },
+    {
+      "path": "src/chat/stop.ts",
+      "symbols": [
+        "STOP_ARM_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; stop text is chosen from the pane's state; no defect found."
+    },
+    {
+      "path": "src/chat/ux.ts",
+      "symbols": [
+        "CopyOutcome",
+        "COPY_RESET_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; timing constants and the copy helper handle a refused clipboard write without throwing; no defect found."
+    },
+    {
+      "path": "src/chat/zoom.ts",
+      "symbols": [
+        "ZOOM_MIN"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; zoom steps clamp at both ends; no defect found."
+    },
+    {
+      "path": "src/marks/AgentMark.tsx",
+      "symbols": [
+        "AgentMark"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the mark draws the agent's own icon and falls back cleanly for an unknown agent; no defect found."
+    },
+    {
+      "path": "src/marks/registry.ts",
+      "symbols": [
+        "VendorMarkEntry",
+        "VENDOR_MARKS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the registry's keys are unique and lookups fall back to a generic mark; no defect found."
+    },
+    {
+      "path": "src/notify/badge.ts",
+      "symbols": [
+        "BADGE_CAP"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the unread badge counts only unread marks; no defect found."
+    },
+    {
+      "path": "src/notify/pace.ts",
+      "symbols": [
+        "COOLDOWN_MS",
+        "MEMORY_CAP"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the notify pace constants and the quiet-window rule match the callers; no defect found."
+    },
+    {
+      "path": "src/notify/seen.ts",
+      "symbols": [
+        "SeenInput",
+        "ackKey"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; seen state is keyed per pane and cleared with it; no defect found."
+    },
+    {
+      "path": "src/sessions/AgentsPanel.tsx",
+      "symbols": [
+        "AgentsPanel",
+        "request",
+        "arrived",
+        "block"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full (370 lines); checked the session list, grouping and selection, plus the loading and empty states, for stale data; no defect found."
+    },
+    {
+      "path": "src/sessions/SessionDetail.tsx",
+      "symbols": [
+        "Props",
+        "SessionDetail"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; detail fields render only when present and the recent-prompt flag is respected; no defect found."
+    },
+    {
+      "path": "src/sessions/SessionFiles.tsx",
+      "symbols": [
+        "Props",
+        "heldByPane"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; file chips are opened through the shared jump path and a missing file shows a note; no defect found."
+    },
+    {
+      "path": "src/sessions/chatResume.ts",
+      "symbols": [
+        "chatResumeBlock",
+        "isRemoteDir",
+        "NO_CHAT_AGENT"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; resume only starts for a session that exists and has a folder; no defect found."
+    },
+    {
+      "path": "src/sessions/files.ts",
+      "symbols": [
+        "runFileAction",
+        "deleteQuestion",
+        "doneNote",
+        "FileAction"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the file list is deduped and sorted without dropping entries; no defect found."
+    },
+    {
+      "path": "src/sessions/folderTabs.ts",
+      "symbols": [
+        "tabFor",
+        "offeredTabs",
+        "isFolderWorkspace",
+        "rememberTab"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; tabFor's \"insights\" fallback is unreachable because offeredTabs never returns an empty list; noted, not reported."
+    },
+    {
+      "path": "src/sessions/inflight.ts",
+      "symbols": [
+        "SETTLE_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the in-flight set is added to and removed from on both outcomes; no defect found."
+    },
+    {
+      "path": "src/sessions/livePane.ts",
+      "symbols": [
+        "samePrompt",
+        "livePane",
+        "SeatLike"
+      ],
+      "verdict": "findings",
+      "findings": [
+        "T4-F01"
+      ],
+      "note": "Read in full; samePrompt's ellipsis branch strips the marker and then accepts an empty prefix, which matches any typed line; reported as T4-F01."
+    },
+    {
+      "path": "src/sessions/model.ts",
+      "symbols": [
+        "Session",
+        "GroupBy"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; session paths and ids are reduced to repo-relative labels safely; no defect found."
+    },
+    {
+      "path": "src/sessions/notices.ts",
+      "symbols": [
+        "asListing",
+        "notices",
+        "ScanReport",
+        "MAX_NOTICES"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; notice keys are stable and a notice is dropped when its session goes; no defect found."
+    },
+    {
+      "path": "src/sessions/openPanes.ts",
+      "symbols": [
+        "openSessions",
+        "Held"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the open-pane set matches the panes the window keeps; no defect found."
+    },
+    {
+      "path": "src/sessions/ownership.ts",
+      "symbols": [
+        "claim",
+        "Seat"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; ownership compares folders case-insensitively and tolerates a trailing slash; no defect found."
+    },
+    {
+      "path": "src/sessions/prefs.ts",
+      "symbols": [
+        "VIEW_KEY",
+        "SCOPE_KEY"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; saved filters are read defensively and defaults are applied; no defect found."
+    },
+    {
+      "path": "src/sessions/redraw.ts",
+      "symbols": [
+        "WATCHED_SETTINGS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the redraw key changes only when the pane's state does; no defect found."
+    },
+    {
+      "path": "src/sessions/refresh.ts",
+      "symbols": [
+        "QUIET_MS",
+        "MAX_LATE_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; refresh coalesces overlapping reads and keeps the last result; no defect found."
+    },
+    {
+      "path": "src/sessions/restoreOrder.ts",
+      "symbols": [
+        "sessionOrder"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; restore order is stable for equal keys; no defect found."
+    },
+    {
+      "path": "src/sessions/resume.ts",
+      "symbols": [
+        "ResumePlan",
+        "NO_TURNS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; a resume is skipped when the session or folder is missing; no defect found."
+    },
+    {
+      "path": "src/sessions/rows.ts",
+      "symbols": [
+        "worktreeLine",
+        "promptHeading",
+        "childState",
+        "childCount"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; row state is derived from the strongest agent state as intended; no defect found."
+    },
+    {
+      "path": "src/sessions/tabTitles.ts",
+      "symbols": [
+        "Seat",
+        "Named"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; a failed name read keeps the old name and a tab that goes drops its name; no defect found."
+    },
+    {
+      "path": "src/sessions/useWorkspaceKind.ts",
+      "symbols": [
+        "WorkspaceKind"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the folder-workspace check matches folderTabs.isFolderWorkspace; no defect found."
+    },
+    {
+      "path": "src/sessions/windowSync.ts",
+      "symbols": [
+        "syncedScreen",
+        "Args"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; window sync ignores events for a pane that is gone; no defect found."
+    },
+    {
+      "path": "src/status/ChipRow.tsx",
+      "symbols": [
+        "chip",
+        "ChipRow"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; chips render only known states and keep a stable key; no defect found."
+    },
+    {
+      "path": "src/status/GeneratedTitlesCard.tsx",
+      "symbols": [
+        "GeneratedTitlesCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the card hides itself when there is nothing generated; no defect found."
+    },
+    {
+      "path": "src/status/ResourceManager.tsx",
+      "symbols": [
+        "committedCell",
+        "ResourceManager",
+        "BackgroundSessions",
+        "Props"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full (265 lines); checked the session and memory tables, sorting and the empty and loading states for wrong totals; no defect found."
+    },
+    {
+      "path": "src/status/chip.ts",
+      "symbols": [
+        "Lane",
+        "LANES",
+        "Signal",
+        "Chip"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; chip text and tone map every agent state and fall back safely; no defect found."
+    },
+    {
+      "path": "src/status/credit.ts",
+      "symbols": [
+        "LaunchRecord",
+        "launchedAgent"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; credit figures are formatted from whole numbers and clamp at zero; no defect found."
+    },
+    {
+      "path": "src/status/finished.ts",
+      "symbols": [
+        "FINISH_DEBOUNCE_MS",
+        "REFRESH_AFTER_MS"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; a finished turn clears when the next turn starts; no defect found."
+    },
+    {
+      "path": "src/status/gone.ts",
+      "symbols": [
+        "useGone",
+        "retire",
+        "deadKeys",
+        "admit"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the render-time mutation of ledger.running is contained to the hook's own ref and does not leak across panes; noted, not reported."
+    },
+    {
+      "path": "src/status/inbandSession.ts",
+      "symbols": [
+        "STATES",
+        "InbandState"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; an in-band session id is accepted only when it is a plain id; no defect found."
+    },
+    {
+      "path": "src/status/manage.tsx",
+      "symbols": [
+        "InventoryTab",
+        "handleOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; only unshown non-agent sessions are offered and End N ends only what the question named; no defect found."
+    },
+    {
+      "path": "src/status/memory.ts",
+      "symbols": [
+        "formatMemory",
+        "Visible"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; formatMemory handles null, negative and non-finite input and keeps one decimal; no defect found."
+    },
+    {
+      "path": "src/status/notificationClick.ts",
+      "symbols": [
+        "clickedPane"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; a click focuses the pane it named and is ignored when that pane is gone; no defect found."
+    },
+    {
+      "path": "src/status/notifyMaster.ts",
+      "symbols": [
+        "MASTER_FIELD"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the master switch suppresses every notification kind; no defect found."
+    },
+    {
+      "path": "src/status/promptScan.ts",
+      "symbols": [
+        "SCAN_EVERY_MS",
+        "Call"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the prompt scan stops at the first user turn and ignores injected envelopes; no defect found."
+    },
+    {
+      "path": "src/status/resources.ts",
+      "symbols": [
+        "groupSessions",
+        "formatMemory",
+        "sessionLabel",
+        "Usage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; groupSessions' \"No workspace\" label outlives its comment but an existing test pins the label, so it is not a defect; noted, not reported."
+    },
+    {
+      "path": "src/status/restored.ts",
+      "symbols": [
+        "SavedRow",
+        "RESTART_TEXT"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; a restored state is used once and then cleared; no defect found."
+    },
+    {
+      "path": "src/status/review.ts",
+      "symbols": [
+        "canReview"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the review flag is derived from the agent state; no defect found."
+    },
+    {
+      "path": "src/status/sources.ts",
+      "symbols": [
+        "sourceOf",
+        "Source"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the source constants match the status surfaces that use them; no defect found."
+    },
+    {
+      "path": "src/status/tabNameRule.ts",
+      "symbols": [
+        "OWN_TITLE_AGENTS",
+        "FRAMES",
+        "BEAT_MS",
+        "NEEDS_YOU"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the user's own name wins over the session and program names in the documented order; no defect found."
+    },
+    {
+      "path": "src/status/titleOwner.ts",
+      "symbols": [
+        "TitleOwner",
+        "NONE"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; title ownership picks one owner per pane and releases it when the pane goes; no defect found."
+    },
+    {
+      "path": "src/status/useAgentStatus.ts",
+      "symbols": [
+        "TurnInfo",
+        "UsageEvent",
+        "markDir",
+        "offUsage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full (376 lines); checked hook-event ordering, session-claim timing, the done and interrupted transitions and listener cleanup; no defect found."
+    },
+    {
+      "path": "src/status/useRestoredStatus.ts",
+      "symbols": [
+        "useRestoredStatus",
+        "SavedRow",
+        "Deps"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; restored status is applied once per pane and cleaned up; no defect found."
+    },
+    {
+      "path": "src/status/useStatusSurfaces.ts",
+      "symbols": [
+        "useStatusSurfaces",
+        "sources",
+        "Source"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; the surfaces read the strongest state and the cache timing matches projects/cache; no defect found."
+    },
+    {
+      "path": "src/status/working.ts",
+      "symbols": [
+        "workingByDir",
+        "CountedPane",
+        "LiveTitle"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; workingByDir groups only working panes and drops empty folders; no defect found."
+    },
+    {
+      "path": "src/status/sessionClaim.ts",
+      "symbols": [
+        "claimable",
+        "claimFrom",
+        "HookReport"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read in full; a conversation id is saved only after the conversation exists, and a failed save does not block the next try; no defect found."
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "area": "S4",
+  "files": [
+    {
+      "path": "scripts/stress/_t783.mjs",
+      "symbols": ["opts"],
+      "note": "Read: a tiny ad-hoc T-783 probe; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/coverage.mjs",
+      "symbols": ["walk", "guideRows", "anyTestFiles", "liveIdsOf"],
+      "note": "Read all of it: the guide rows, test-id scan, card and live file lists, test-file scan and report. liveIdsOf's comment scan uses backspace bytes for word boundaries, so comment-only ids are missed (S4-F01).",
+      "verdict": "findings",
+      "findings": ["S4-F01"]
+    },
+    {
+      "path": "scripts/stress/footprint-sample.ps1",
+      "symbols": ["cores", "gpuErr"],
+      "note": "Read all of it; the GPU fallback's instance filter is wrong (S4-F03).",
+      "verdict": "findings",
+      "findings": ["S4-F03"]
+    },
+    {
+      "path": "scripts/stress/lib.mjs",
+      "symbols": ["TERM", "Checks", "seedProfile", "perfSession", "FOOTPRINT_ROLES"],
+      "note": "Read the shared helpers: process and memory sampling, Checks, temp homes, app launch, git repo seeding, terminal helpers, page CPU and allocation. Behaviour matched its comments.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/run-all.mjs",
+      "symbols": ["slotConfig", "parseArgs", "selectorDrift", "parseProveOutput", "formatSummaryMarkdown", "timestampSlug"],
+      "note": "Read the slot allocator, process table parser, prove-script discovery and classification, selector drift checks, output parser, summary writer and main. Slot arithmetic and parsing matched run-all.test.mjs.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/run.mjs",
+      "symbols": ["keepSlot", "summary"],
+      "note": "Read the runner, slot and keep-slot handling, and summary; clean.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s1-pane-churn.mjs",
+      "symbols": ["ROUNDS", "closeScript"],
+      "note": "Read the open and close scripts and the memory bars; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s10-git-load.mjs",
+      "symbols": ["ECHO_P95_MS", "slotStatus", "ECHO_JS", "PAGE_JS"],
+      "note": "Read the repo setup, diagnostic JS, echo and page probes, the load loop and its thresholds. The script builds its own repo and measures a live app; no defect found in the parts read.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s10-repo.mjs",
+      "symbols": ["bigText", "buildRepo"],
+      "note": "Read the fast-import repo builder and its fixture sizes; clean.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s11-footprint.mjs",
+      "symbols": ["title", "table", "onePass", "discarded"],
+      "note": "Read the phase plan, sampling helpers, aggregation, table and compare lines, and the minimize/restore handling. GPU rows come from footprint-sample.ps1, where S4-F03 lives; the rest read clean.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s12-everyday.mjs",
+      "symbols": ["title", "aggregate", "compareLines", "onePass"],
+      "note": "Read the two everyday states, pane roles, row aggregation with medians and spreads, the table and the compare path. Metrics and ordering matched their labels; nothing wrong found here.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s13-agent-sleep.mjs",
+      "symbols": ["title", "treeTotals", "asleepState", "sleptAt"],
+      "note": "Read the stand-in seeding, log reading, pane and tab helpers, the sleep hold loop, wake path and its checks. Timing and resume assertions followed the documented rules; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s14-tab-move.mjs",
+      "symbols": ["paneKeys", "cellIndexOf", "dragTabOntoCell", "dragTabOntoTab"],
+      "note": "Read the drag helpers, cell and tab geometry, pane key and text helpers and the alive-pid checks. Drag coordinates and tab moves matched the DT-C248 intent; nothing wrong found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s15-host-memory.mjs",
+      "symbols": ["title", "words", "ORDER", "onePass"],
+      "note": "Read the three phases, glyph painter, sampling loop and per-role rows. The script only samples and reports; thresholds live in the caller, so nothing wrong found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s2-output-flood.mjs",
+      "symbols": ["FLOODERS", "FLOOD_JS", "ECHO_PROBE_JS", "echoScript"],
+      "note": "Read the flood script, echo probes, allocation sampling and memory checks. Budgets and thresholds matched the comments; no defect found in this file.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s3-many-projects.mjs",
+      "symbols": ["PROJECTS", "SIDEBAR_BAR_MS", "SCROLL_JS", "FILTER_JS"],
+      "note": "Read the 150-project seed, sqlite project list, scroll and filter probes and frame-gap checks. The frame-gap check can pass vacuously but no deterministic repro exists, so it is not filed.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s4-corrupt-state.mjs",
+      "symbols": ["ABOUT_DAMAGE", "closeCleanly"],
+      "note": "Read the damage fixtures and notice checks; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s5-hard-kill.mjs",
+      "symbols": ["KILLS", "CHURN_JS", "dbCheck", "savedPanes"],
+      "note": "Read the kill and churn loop, on-save delay, db and pane checks. The on-save delay is computed but never slept, yet a live-app repro is not deterministic, so it is noted and not filed.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s6-torture-payloads.mjs",
+      "symbols": ["cols", "payloads", "writeChunked", "cprBody"],
+      "note": "Read the payload table, writer helpers and cursor query. The argument guard runs after name.split, so an argument-less call crashes instead of printing usage (S4-F02).",
+      "verdict": "findings",
+      "findings": ["S4-F02"]
+    },
+    {
+      "path": "scripts/stress/s6-unicode-ansi.mjs",
+      "symbols": ["NAMES", "HANG_MS", "MONITOR_JS", "unwrap"],
+      "note": "Read the monitor and cursor probes, the revive helper and its checks. The inconclusive pass flag is deliberate for this scenario, so it is not filed as a defect.",
+      "verdict": "clean",
+      "findings": []
+    },
+    {
+      "path": "scripts/stress/s8-soak.mjs",
+      "symbols": ["MINUTES", "MONITOR_JS", "slopePerMin", "series"],
+      "note": "Read the soak loop, monitor scripts, slope and median helpers and the six-pane churn. Bars and sampling matched the header comment; no defect found.",
+      "verdict": "clean",
+      "findings": []
+    }
+  ]
+}

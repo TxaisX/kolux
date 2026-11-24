@@ -1,0 +1,738 @@
+{
+  "area": "T3",
+  "files": [
+    {
+      "path": "src/settings/AccountRow.tsx",
+      "symbols": [
+        "signedInAt",
+        "AccountRow",
+        "AccountsReadError"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the account row and its two helpers: the signed-in time format, the row's pick/manage buttons and the read-error line. It only draws state the parent owns; no rule of its own to break."
+    },
+    {
+      "path": "src/settings/AgentsPage.tsx",
+      "symbols": [
+        "syncIfSaved",
+        "hookProblems",
+        "HooksSwitch",
+        "AgentsPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the agents page: the sync helper that skips a failed save, the hook-problem reader, the hooks switch and the page that wires settings, caps and reader health. Checked the save-skip and problem parsing against their tests; nothing provable."
+    },
+    {
+      "path": "src/settings/AiRecipesSection.tsx",
+      "symbols": [
+        "RecipeEditor",
+        "AiRecipesSection"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the AI-recipes section: one editor per action with variable chips and a save guard, and the per-repository mode rows. The recipe rules live in scm/recipes and are tested there; the wiring here is clean."
+    },
+    {
+      "path": "src/settings/AppearancePage.tsx",
+      "symbols": [
+        "ThemePreview",
+        "ZoomControl",
+        "AppearanceView",
+        "PaneLook",
+        "TerminalColours",
+        "AppearancePage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the whole appearance page: theme preview, zoom steps, fonts and language, the look/screen/window controls, pane look, the scheme import preview and terminal colours. The import path was checked closely: tidy() lowercases both sides of sameColours, so an uppercase hex file still matches. No defect found."
+    },
+    {
+      "path": "src/settings/Attention.tsx",
+      "symbols": [
+        "AttentionNote",
+        "openInstallPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the attention card: the reason-to-fix table, the button words per reason, the note text and the install-page opener. An unknown reason is shown without a button, as documented; no defect."
+    },
+    {
+      "path": "src/settings/ClaudeAccounts.tsx",
+      "symbols": [
+        "ClaudeAccountsView",
+        "setUpkeep",
+        "addClaudeAccount",
+        "ClaudeAccounts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Claude accounts section: the system-default row, per-account pick/rename/remove, the upkeep switch and the 1-year-key note. Checked that removing asks first and that the active-account rule matches the backend view; clean."
+    },
+    {
+      "path": "src/settings/ClaudeSetupPage.tsx",
+      "symbols": [
+        "PRECEDENCE",
+        "SharedSection",
+        "ClaudeSetupView",
+        "ClaudeSetupPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the read-only Claude setup page: precedence order, the merged settings and permissions tables, hooks, MCP, skills, plugins, CLAUDE.md sizes and the shared-with-other-agents card. The page only draws the backend's answer; the workspace pick and retry were checked, nothing provable."
+    },
+    {
+      "path": "src/settings/CodexAccounts.tsx",
+      "symbols": [
+        "NAME_MAX",
+        "CodexAccountsView",
+        "NameInput",
+        "CodexAccounts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Codex accounts section: the system-default row re-read on focus, the managed rows with pick/name/re-sign/remove and the two-accounts-one-email naming rule. The name cap and leave-save were checked; no defect."
+    },
+    {
+      "path": "src/settings/CodexCard.tsx",
+      "symbols": [
+        "CodexView",
+        "taglineOf",
+        "liveCheck",
+        "CodexCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Codex card: one state at a time, connect and sign-in-with-a-code, install steps, Manage/Disconnect and the system-login explanation. State transitions follow the documented ACCT-002 rule; nothing provable."
+    },
+    {
+      "path": "src/settings/ConnectGrid.tsx",
+      "symbols": [
+        "ConnectId",
+        "OtherWays",
+        "taglineOf",
+        "ConnectGrid"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the connect grid: the loading placeholder before detection, install with progress and Cancel, the shared other-ways menu and the live check. Checked that a card never claims an agent is missing before it is read; clean."
+    },
+    {
+      "path": "src/settings/CustomThemeEditor.tsx",
+      "symbols": [
+        "MAIN",
+        "Chip",
+        "keepLook",
+        "CustomThemeEditor"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the custom theme editor: the four main colours, advanced groups, terminal palette, contrast chips with Fix, save/rename/duplicate/delete/reset/export/import. keepLook preserves the theme's own tint, saturation and depth; the memo deps on userThemes are deliberate. Nothing provable."
+    },
+    {
+      "path": "src/settings/ExperimentalCard.tsx",
+      "symbols": [
+        "MinutesField"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the experimental card: the agent-sleep switch and the clamped minutes box, both delegated to tested helpers. Default-on comes from sleepOn; the card only draws it."
+    },
+    {
+      "path": "src/settings/GeneralPage.tsx",
+      "symbols": [
+        "Segmented",
+        "GeneralView",
+        "PrivacyCard",
+        "GeneralPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the general page: the segmented control, the look/first-screen controls, diagnostics, privacy text, confirmations, open-in apps and the proxy card. Checked the saved-first and start-screen rules against general.ts tests; clean."
+    },
+    {
+      "path": "src/settings/GitPage.tsx",
+      "symbols": [
+        "RENAME_FIELD",
+        "GitView",
+        "BotsField",
+        "GitPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the git page: branch naming and rename fields, refresh-base, the review-bots box, the writer model picker, instructions and automatic pull requests. The derived namingPatch and renamesBranches rules were checked; no defect."
+    },
+    {
+      "path": "src/settings/InputCards.tsx",
+      "symbols": [
+        "InputCard",
+        "PowerShellCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the input cards: the auto-switch mode, line count and the PowerShell-specific card, all reading terminal/inputPrefs. Only draws saved prefs; nothing provable."
+    },
+    {
+      "path": "src/settings/KeyLostNotice.tsx",
+      "symbols": [
+        "lostText",
+        "KeyLostNotice"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the lost-key notice: the per-agent label table, the wording for one or several lost keys, the view and the wrapper that reads the backend. lostText's singular/plural join was checked; clean."
+    },
+    {
+      "path": "src/settings/NotificationSwitches.tsx",
+      "symbols": [
+        "QUIET_FIELD",
+        "Notifications"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the quiet-alert minutes box: a missing threshold reads as 10, a pause saves only a whole number and leaving saves what is stored. The empty-box rule matches SET-036; no defect."
+    },
+    {
+      "path": "src/settings/NotificationsPage.tsx",
+      "symbols": [
+        "NotificationsView",
+        "releaseVolume",
+        "choose",
+        "NotificationsPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the notifications page: the master switch, per-kind switches, sound and volume, the test button and the close-to-tray row. Checked that kinds come from notifications.ts and that the master switch greys the rest; clean."
+    },
+    {
+      "path": "src/settings/NumberDraftField.tsx",
+      "symbols": [
+        "NumberDraftField",
+        "onBlur"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the number draft field: parse, clamp to min/max, save on pause and on leave, and show what was stored. The clamp and empty-input handling were checked against its tests."
+    },
+    {
+      "path": "src/settings/NumberField.tsx",
+      "symbols": [
+        "NumberField",
+        "commit"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the plain number field: typed value, parse and commit on blur or Enter, with a min/max guard. No draft state of its own; nothing provable."
+    },
+    {
+      "path": "src/settings/RepoPage.tsx",
+      "symbols": [
+        "draftSave",
+        "FIELD_LABELS",
+        "DraftField",
+        "RepoPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read one repository's page: display name, base branch, workspaces folder, the inherited-value display and the leave-save handoff. draftSave trims both sides so viewing writes nothing; the C20-R4-01 take-back was checked; clean."
+    },
+    {
+      "path": "src/settings/RepoSetup.tsx",
+      "symbols": [
+        "SetupActions",
+        "RepoSetupView",
+        "trust",
+        "RepoSetupSection"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the repository setup section: the saved script box with composition guard, remove with confirmation, which-runs choice, trust rows and the setup mode. The leave-save keep/fail/take-back path was traced; no defect."
+    },
+    {
+      "path": "src/settings/ResetButton.tsx",
+      "symbols": [
+        "ResetButton"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the reset button: it asks in the shared Ask dialog first and derives the confirm word from 'Yes, ...'. Small and self-contained; nothing provable."
+    },
+    {
+      "path": "src/settings/SchemePicker.tsx",
+      "symbols": [
+        "schemeOptions",
+        "SchemeList"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the scheme picker: Kolux and Match first, then the catalogue, then the user's own schemes, with one search box over both lists. findSchemes owns the matching; the ordering here is as documented."
+    },
+    {
+      "path": "src/settings/SettingsError.tsx",
+      "symbols": [
+        "SettingsError"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settings error line: a failed save says the change could not be saved and keeps controls; a failed first read says so and offers Try again. Matches T-752; clean."
+    },
+    {
+      "path": "src/settings/SettingsPage.tsx",
+      "symbols": [
+        "warmPages",
+        "ClaudeCardView",
+        "PageBody",
+        "matching"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settings shell: the rail and groups, lazy page bodies, the search that filters the rail and draws matching pages, scroll-to-section, focus on open, Escape ownership and the repository pages. The search/fold and Escape rules were checked; no defect."
+    },
+    {
+      "path": "src/settings/SetupPolicyRow.tsx",
+      "symbols": [
+        "SetupPolicyView",
+        "globalChoice"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the global setup-policy row: it reads and saves the store key the runner reads through its own commands, never settings.json. The stored-to-choice mapping is globalChoice; clean."
+    },
+    {
+      "path": "src/settings/SignInNotice.tsx",
+      "symbols": [
+        "lapsed",
+        "SignInNotice"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the lapsed sign-in notice: which Claude or Codex account counts as lapsed, that it waits for both lists, and the Codex scan wiring. The lapsed rule was checked against ACCT-012; nothing provable."
+    },
+    {
+      "path": "src/settings/TerminalPage.tsx",
+      "symbols": [
+        "SHELL_HISTORY_FIELD",
+        "Sample",
+        "WeightField",
+        "TerminalPage"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the terminal page: the sample preview, font family and weight, size, cursor and the shell-history switch. The sample is static text and the fields read terminal prefs; clean."
+    },
+    {
+      "path": "src/settings/WarmShellCard.tsx",
+      "symbols": [
+        "WarmShellCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the kept-warm shell card: one switch saving terminalWarmShell through the input prefs key. The label states the cost; nothing provable."
+    },
+    {
+      "path": "src/settings/__cards__/shallow-react.ts",
+      "symbols": [
+        "patchReact",
+        "findAll"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the test-only shallow React helper: the slot-based useState/useRef shim, mount, find/findAll and text walkers. It exists to render cards without a DOM; no app behaviour to break."
+    },
+    {
+      "path": "src/settings/autoPr.tsx",
+      "symbols": [
+        "DEFAULT_OPTIONS",
+        "readAutoPr",
+        "AutoPrView",
+        "AutoPrSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read automatic pull requests: the three defaults, the per-workspace choice, the folder normalisation and the entries list. norm lowercases and strips trailing slashes on both sides, so a saved folder matches its project; clean."
+    },
+    {
+      "path": "src/settings/claudeKey.ts",
+      "symbols": [
+        "KeyStatus",
+        "keyCard"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Claude key card rules: the status-to-card state, headline, detail and actions, plus the own-sign-in line and the resume setting. Checked the expired/warning/attention branches; no defect."
+    },
+    {
+      "path": "src/settings/codexSignInScan.ts",
+      "symbols": [
+        "startCodexSignInScan",
+        "TAIL_BYTES"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Codex sign-in scanner: bounded tail decoding, carry of letters across chunks, one report per pane per interval, and only managed accounts. The bounds and the spacing-insensitive match were checked; clean."
+    },
+    {
+      "path": "src/settings/confirmations.ts",
+      "symbols": [
+        "SKIPPABLE"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the skippable confirmations: the three fields, skippedOf and the ask-again patch that touches only those keys. Straightforward; nothing provable."
+    },
+    {
+      "path": "src/settings/customTheme.ts",
+      "symbols": [
+        "CustomTheme",
+        "tidyThemes"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the custom theme model: the theme shape, ownLook, luminance and dark-ground test, resolve and tidyThemes, plus customTokens. Checked that tidying drops bad entries and keeps the first of a name; clean."
+    },
+    {
+      "path": "src/settings/customThemeContrast.ts",
+      "symbols": [
+        "contrast"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the contrast helper: relative luminance, the contrast ratio, the AA constant, the pairs to check and the nudge-to-contrast fix. The ratio formula follows WCAG; no defect."
+    },
+    {
+      "path": "src/settings/customThemeFile.ts",
+      "symbols": [
+        "exportTheme",
+        "parseThemeFile"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the theme file format: the export object, the parse and validation of an imported file, the size cap and the format/version check. Bad files are refused with a readable reason; clean."
+    },
+    {
+      "path": "src/settings/customThemeStore.ts",
+      "symbols": [
+        "saveTheme",
+        "deleteTheme"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the theme store operations: save (add or replace), duplicate with a free name, delete and reset to default, all against the appearance look. Checked the cap and name rules; nothing provable."
+    },
+    {
+      "path": "src/settings/draft.ts",
+      "symbols": [
+        "createDraft",
+        "Draft"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the draft text model: the pause, readiness, composition, save-on-leave and the race guard that keeps the latest text. The many draft tests cover the ordering and failure cases; no defect found."
+    },
+    {
+      "path": "src/settings/fonts.ts",
+      "symbols": [
+        "rankFonts"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the font list helpers: the fallback families, the start-then-contain ranking and the loader that falls back when the system list cannot be read. rankFonts keeps list order within each group; clean."
+    },
+    {
+      "path": "src/settings/general.ts",
+      "symbols": [
+        "readLook",
+        "startScreen"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the general settings rules: look, first screen, last screen, the layout save with a debounce and durable-only fields, and the needs-strip flag. The saved-first and start-screen rules are covered by tests; nothing provable."
+    },
+    {
+      "path": "src/settings/handoffReads.ts",
+      "symbols": [
+        "readerLine"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the reader-health lines: the agent names, the ago wording at each boundary and the per-state row text with its problem flag. The thresholds and the token suffix were checked; clean."
+    },
+    {
+      "path": "src/settings/importSchemes.ts",
+      "symbols": [
+        "MAX_CUSTOM",
+        "parseWarpTheme",
+        "parseGhostty",
+        "sameColours"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the scheme importers: the Warp YAML reader with a line and time budget, the Ghostty reader with its palette, the file-kind pick, sameColours, planImport and the summaries. sameColours is safe because tidy() lowercases every colour on both sides; no defect."
+    },
+    {
+      "path": "src/settings/leave.ts",
+      "symbols": [
+        "bindLeave",
+        "useLeaveSave"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the leave-save helpers: the window-close binding that also saves on cleanup, the latest-save ref, and the keep/fail/take-left handoff used by repository fields. The once-only cleanup save was checked; clean."
+    },
+    {
+      "path": "src/settings/menuWheel.ts",
+      "symbols": [
+        "wheelTarget",
+        "installMenuWheel"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the menu wheel rule: the scrollable-and-has-room test, walking out to the menu, sideways pass-through, swallowing when nothing moves, and the arm-on-first-reach listener. The pixel modes and the popup cleanup were checked; no defect."
+    },
+    {
+      "path": "src/settings/notifications.ts",
+      "symbols": [
+        "KINDS",
+        "readNotifications",
+        "testPlan",
+        "quietFromText"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the notification model: the kinds, the focused-suppression migration, sound and volume fields, the test plan, tone playback and quietFromText's clamp. quietFromText floors and clamps 0 to 600; clean."
+    },
+    {
+      "path": "src/settings/openIn.ts",
+      "symbols": [
+        "PRESETS",
+        "addCustom"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the open-in apps: the presets, the default list, reading saved rows, draft readiness, add/remove/move and the presets left. Rows saved without an id are matched by command; nothing provable."
+    },
+    {
+      "path": "src/settings/outbound.ts",
+      "symbols": [
+        "OUTBOUND"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the outbound list: the addresses the app itself contacts, each with when. It is data shown by the privacy card, not logic; nothing to break."
+    },
+    {
+      "path": "src/settings/pageWarm.ts",
+      "symbols": [
+        "idleLater",
+        "pageWarmer"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the page warmer: idle scheduling with a timeout fallback, one page per idle moment, ask-once per page and the rest promise. The dedupe and the hover path were checked; clean."
+    },
+    {
+      "path": "src/settings/pages.ts",
+      "symbols": [
+        "PAGE_GROUPS",
+        "pageOf"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the page model: the eleven pages, the group order, the repo: prefix, settings targets, pageOf's fallback to a remembered repository and rememberPage's storage. The fallback was checked; no defect."
+    },
+    {
+      "path": "src/settings/pending.ts",
+      "symbols": [
+        "settleWithin"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the pending helper: resolve on settle or after the timeout, never reject, and clear the timer. The 30-second cap matches ACCT-002; clean."
+    },
+    {
+      "path": "src/settings/privacy.ts",
+      "symbols": [
+        "FEEDBACK_REPO"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the feedback address builder: the GitHub new-issue URL, the URL cap, the system facts, the emoji repair and the trim-with-note. The well-formed replacement avoids encodeURIComponent throwing; clean."
+    },
+    {
+      "path": "src/settings/proxy.ts",
+      "symbols": [
+        "PROXY_FIELD",
+        "tidyProxy"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the proxy helpers: the three fields, the scheme list, the host:port tidying, the protocol check and the bypass parsing. An unsupported scheme is refused with a readable reason; nothing provable."
+    },
+    {
+      "path": "src/settings/reviewBots.ts",
+      "symbols": [
+        "MAX_BOTS",
+        "parseBots"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the review-bot parser: splitting on commas/spaces/semicolons/newlines, stripping @ and [bot], the name character set and case-insensitive dedupe under the caps. Matches the backend's case-insensitive match; clean."
+    },
+    {
+      "path": "src/settings/saveChanged.ts",
+      "symbols": [
+        "saveChanged"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the changed-keys diff: it returns only keys whose value differs, so a save writes what changed and nothing else. Small and covered by tests."
+    },
+    {
+      "path": "src/settings/search.ts",
+      "symbols": [
+        "hideRule",
+        "searchSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settings search: the index of settings per page and section, the multi-term match, the length refusal and the hide rule that folds a page to its matching sections. The family and fold rules are tested; no defect."
+    },
+    {
+      "path": "src/settings/searchMore.ts",
+      "symbols": [
+        "searchLaunch",
+        "searchAll"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the extended search: launch rows matched on command, args and environment names only, advanced controls that open their fold, and the merge with the base hits. Env values are never searched; clean."
+    },
+    {
+      "path": "src/settings/settingsSync.ts",
+      "symbols": [
+        "applyBroadcast",
+        "createLoadRace"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settings sync: the secret keys removed before a broadcast, reading a broadcast, the window-only keys, applying a broadcast and the load race that keeps the newest read. The race guard was checked; nothing provable."
+    },
+    {
+      "path": "src/settings/settledQuery.ts",
+      "symbols": [
+        "useSettled"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settled search query: no delay for an empty box, the delay otherwise, and the emptied-box render guard. Matches EDIT-049; clean."
+    },
+    {
+      "path": "src/settings/setupChoice.ts",
+      "symbols": [
+        "choiceOptions",
+        "trustedWords"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the setup-choice rules: the script save kinds, effective choice, options, choice save, runs note, trust note and the global choice/options. The both-scripts and empty-script cases were checked; no defect."
+    },
+    {
+      "path": "src/settings/sharedRead.ts",
+      "symbols": [
+        "sharedReader"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the shared settings reader: one in-flight read shared by callers, cleared when it settles so the next read is real. No cache is the documented rule; clean."
+    },
+    {
+      "path": "src/settings/tidy.ts",
+      "symbols": [
+        "tidySettings",
+        "tidyBypassList"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settings tidier: the app-icon whitelist, the bypass list tidying and the full settings pass that drops unknown shapes. Checked that it never invents values; nothing provable."
+    },
+    {
+      "path": "src/settings/useAppSettings.ts",
+      "symbols": [
+        "useAppSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the window settings hook: the copy, the read flag that gates usage alerts, the look test and the two publishes made before children draw. The ordering matches DT-C250; clean."
+    },
+    {
+      "path": "src/settings/useDraft.ts",
+      "symbols": [
+        "useDraft",
+        "createDraft"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the draft hook: the latest-save ref, the failure-to-false mapping so text stays for another try, and the props it spreads. The save-on-unmount path was checked; no defect."
+    },
+    {
+      "path": "src/settings/useSearchHits.ts",
+      "symbols": [
+        "launchRowsOf",
+        "useSearchHits"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the search-hits hook: one launch row per agent from saved options, the read-once on the first search, the memoised hits and the folds set. A failed read searches without launch rows; clean."
+    },
+    {
+      "path": "src/settings/useSettings.ts",
+      "symbols": [
+        "inTurn",
+        "useSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the settings hook: the one-call-at-a-time queue, deep equality, the read race, broadcast adoption, window settings seeding and the save/patch helpers. The queue and the stale-read guard were checked; nothing provable."
+    },
+    {
+      "path": "src/settings/useSettingsPlumbing.ts",
+      "symbols": [
+        "useSettingsPlumbing",
+        "Plumbing"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the window's settings plumbing: the saved/notice state, the re-read on settings-saved, the drag and keymap wiring and the classic look flag. It moves the old App effect as-is; no defect."
+    },
+    {
+      "path": "src/settings/windowSettings.ts",
+      "symbols": [
+        "holdWindowSettings"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the window settings holder: set on each render and read by pages, null before the first read. Two lines of state with no logic to break."
+    },
+    {
+      "path": "src/settings/writerModels.ts",
+      "symbols": [
+        "DEFAULT_MODELS",
+        "rememberPatch"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the commit-writer model lists: the built-in per-agent defaults, remembered lists, the installed/remembered/default source and the patch that remembers an answer. The blank-model default is kept; clean."
+    },
+    {
+      "path": "src/settings/zoom.ts",
+      "symbols": [
+        "readZoom",
+        "zoomLevel"
+      ],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the zoom helpers: the level clamp, half-step rounding, the 1.2 factor, the percent and the next-level step, plus applying and restoring the zoom. The clamp and rounding were checked; no defect."
+    }
+  ]
+}

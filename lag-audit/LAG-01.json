@@ -1,0 +1,10 @@
+{"id": "LAG-01", "summary": "Counts how many of 12 terminal panes React would redraw between two window renders, using the pane's own prop builder and the terminal's memo comparator: 0 when nothing changed, exactly 1 when one pane's state changed, 2 on a focus move.", "tests": [
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 one pane's change redraws one terminal > a window render that changes nothing redraws none of 12 terminals"},
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 one pane's change redraws one terminal > an agent state change in one pane redraws that terminal and not the other 11"},
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 one pane's change redraws one terminal > a crew reading, an unread mark and a rename request each reach only their own pane"},
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 one pane's change redraws one terminal > focus moving from one pane to another redraws those two terminals only"},
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 one pane's change redraws one terminal > readings rebuilt with equal values, and a settings save of the layout alone, redraw nothing"},
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 one pane's change redraws one terminal > every terminal gets the window's one tab list and a link opener that keeps its identity"},
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 wiring > Pane.tsx draws the terminal from terminalPaneProps and makes no link opener or tab list of its own"},
+  {"runner": "vitest", "file": "src/shell/window/paneProps.board.test.ts", "name": "LAG-01 wiring > Grid.tsx builds the tab list once and hands it to every pane"}
+]}

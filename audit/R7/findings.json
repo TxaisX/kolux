@@ -1,0 +1,17 @@
+[
+  {
+    "id": "R7-F01",
+    "title": "A blocked chat finish deletes untracked folders silently",
+    "severity": "high",
+    "file": "src-tauri/src/chat_finish.rs",
+    "line": 328,
+    "what": "When a finish is blocked (for example a repository inside the chat folder), finish_blocked lists the worktree with git status. An untracked folder is collapsed to a single entry ending in '/', and every such entry is skipped, so files such as drafts/plan.md are never copied to the kept folder. wrap_up then runs git worktree remove --force and those files are gone, with no announcement naming them.",
+    "expected": "Every file under an untracked folder should be copied to the kept folder (or the folder left in place) before the worktree is removed, so a blocked finish never deletes work the user cannot get back.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/chat_finish_tests.rs",
+      "name": "chat_finish::tests::audit_r7_f01_an_untracked_folder_is_copied_out_before_a_blocked_finish_removes_it"
+    },
+    "patch": "repro/R7-F01.patch"
+  }
+]

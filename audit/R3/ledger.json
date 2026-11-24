@@ -1,0 +1,82 @@
+{
+  "area": "R3",
+  "files": [
+    {
+      "path": "src-tauri/src/cleanup.rs",
+      "symbols": ["locked", "remove_selected", "scan_project", "scan_once", "cleanup_remove", "preselected_paths"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the whole file: offerable/locked/left_in_place, scan_project, the scan_once leader flight, cleanup_remove, cleanup_sizes and the preselection tests. Selection is gated on Kolux's own record and never forces, and sizes are read on demand; no provable defect found."
+    },
+    {
+      "path": "src-tauri/src/folder_projects.rs",
+      "symbols": ["folder_ids", "unflag_write", "project_add_folder", "shared_repo", "f1_two_projects_on_one_repository_each_ends_only_its_own_folder", "r02_removing_a_folder_project_spares_a_nested_project_that_stays"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the whole file: folder_ids/unflag_write/add_folder, project_add_folder, project_remove, end_sessions and the F1/F79/R02 tests. Removal ends each folder's sessions once and spares a staying nested project; no provable defect found."
+    },
+    {
+      "path": "src-tauri/src/git.rs",
+      "symbols": ["worktree_changes", "parse_listing", "folder_trusted", "push_gate", "path_too_long", "move_to_trash"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the command runner, remote and URL handling, failure_reason, hide_userinfo, path_too_long, is_trash_name and the trash sweeps. The long-path limit is checked before every command and the trash confirmation matches its callers; no provable defect found."
+    },
+    {
+      "path": "src-tauri/src/groups.rs",
+      "symbols": ["subtree", "nest", "delete", "change", "row193_unreadable_groups_survive_the_next_change", "r02_deleting_a_group_spares_the_terminals_of_a_nested_project_that_stays"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read load/put/delete/nest/change/subtree and the terminal-sparing tests. A stored cycle could make subtree loop, but every writer goes through change under the store lock and nest refuses a group inside itself, so I could not build one; unproven, no finding."
+    },
+    {
+      "path": "src-tauri/src/land.rs",
+      "symbols": ["state_name", "take_turn", "land_inner", "bring_up", "retry_behind", "clear_after"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read land/land_inner, locate/project_of, the changed-file and clash checks, take_in_main, retry_behind and clear_after. The fast-forward versus merge choice and the behind retry match their callers; no provable defect found."
+    },
+    {
+      "path": "src-tauri/src/newproject.rs",
+      "symbols": ["clean_url", "suggest_target", "clone_with", "create_project", "project_clone", "project_create"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read clean_url, repo_name, suggest_target, clone_into/clone_with, kill_tree and create_project. A pasted C:name value is not absolute, so the join nests it and create_dir fails rather than escaping a folder; no provable defect found."
+    },
+    {
+      "path": "src-tauri/src/pr_checkout.rs",
+      "symbols": ["parse_heads", "fork_url", "push_target", "lookup_refused", "proj030_a_local_pr_branch_is_reused_only_at_the_pr_head", "git010_the_fork_is_named_by_owner_and_name_when_the_address_is_github_shaped"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read parse_heads, fork_url, remote_for, push_target/push_args and scm_push_target with the GitHub tests. fork_url builds its owner/name tail from origin's own address, so the case-sensitive search cannot miss where I first suspected; no provable defect found."
+    },
+    {
+      "path": "src-tauri/src/projects.rs",
+      "symbols": ["same_folder", "name_key", "load_origins", "refresh_base", "create_workspace", "project_known", "kolux_made", "trash_folders"],
+      "verdict": "findings",
+      "findings": ["R3-F02", "R3-F03", "R3-F04", "R3-F06", "R3-F07", "R3-F08"],
+      "note": "Read the record readers and writers, project_for_path, the details form, places, forget/removal, the origin sweep and the icon cleaner. Six provable defects are listed here; the rest of the store and workspace flows I reviewed looked correct."
+    },
+    {
+      "path": "src-tauri/src/quit_merge.rs",
+      "symbols": ["auto_land_wanted", "save_record", "tidy_one", "unfinished", "merge_tree_says", "marker_path"],
+      "verdict": "findings",
+      "findings": ["R3-F01"],
+      "note": "Read tidy_one/save_with/unfinished, the merge and clash paths, recover_at_start and the marker files. tidy_one refuses an unfinished merge but prepare_retire does not, which is F01; the rest of the quit and land merge flow matched its callers."
+    },
+    {
+      "path": "src-tauri/src/repo_scan.rs",
+      "symbols": ["rules_of", "ignored", "main_of_linked", "repo_scan_start", "proj012_ignore_files_hide_folders_and_a_bare_repository_is_recognised_without_being_entered", "proj013_a_linked_worktree_found_by_the_scan_is_mapped_to_its_main_checkout"],
+      "verdict": "findings",
+      "findings": ["R3-F05"],
+      "note": "Read the whole file including its tests: glob, rules_of/ignored, main_of_linked, scan and the level order. rules_of rewriting the double-star prefix is F05; the rest of the walk, label and limit logic looked correct."
+    },
+    {
+      "path": "src-tauri/src/land_clear.rs",
+      "symbols": ["tracked", "build_output", "clear_workspace", "after_land"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read build_output, clear_workspace, after_land and is_link. Build output is cleared only from folders that are not links and only for paths the land touched; no provable defect found."
+    }
+  ]
+}

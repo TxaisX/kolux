@@ -1,0 +1,28 @@
+diff --git a/src-tauri/src/projects_tests.rs b/src-tauri/src/projects_tests.rs
+index 7db63b47..c6d5709b 100644
+--- a/src-tauri/src/projects_tests.rs
++++ b/src-tauri/src/projects_tests.rs
+@@ -74,6 +74,23 @@ fn t441c_the_launch_sweep_forgets_only_worktrees_kolux_made() {
+     let _ = fs::remove_dir_all(&base);
+ }
+ 
++
++#[test]
++fn audit_r3_f03_a_details_record_alone_does_not_make_a_worktree_kolux_made() {
++    let base = temp("audit-r3-f03");
++    let repo = base.join("r");
++    init_repo(&repo);
++    let theirs = base.join("theirs");
++    git_in(&repo, &["worktree", "add", "-q", &theirs.to_string_lossy(), "-b", "theirs"]);
++    let store = Store::open(&base.join("db")).unwrap();
++    save_details(&store, &theirs.to_string_lossy(), "Their work", "", "").unwrap();
++    assert!(origin(&store, &theirs.to_string_lossy()).unwrap().get("madeBy").is_none(), "a details save writes no maker");
++    let all = Git::detect().unwrap().worktrees(&repo).unwrap();
++    assert!(kolux_made(&load_origins(&store), all).iter().all(|w| !same_folder(Path::new(&w.path), &theirs)),
++            "a worktree Kolux did not make must not be swept because it has a details record");
++    let _ = fs::remove_dir_all(&base);
++}
++
+ #[test]
+ fn app051_a_locked_worktree_record_survives_forget_gone_at_start() {
+     // forget_gone is the sweep forget_gone_at_start runs for every project at launch.

@@ -74,6 +74,23 @@ fn t441c_the_launch_sweep_forgets_only_worktrees_kolux_made() {
     let _ = fs::remove_dir_all(&base);
 }
 
+
+#[test]
+fn audit_r3_f03_a_details_record_alone_does_not_make_a_worktree_kolux_made() {
+    let base = temp("audit-r3-f03");
+    let repo = base.join("r");
+    init_repo(&repo);
+    let theirs = base.join("theirs");
+    git_in(&repo, &["worktree", "add", "-q", &theirs.to_string_lossy(), "-b", "theirs"]);
+    let store = Store::open(&base.join("db")).unwrap();
+    save_details(&store, &theirs.to_string_lossy(), "Their work", "", "").unwrap();
+    assert!(origin(&store, &theirs.to_string_lossy()).unwrap().get("madeBy").is_none(), "a details save writes no maker");
+    let all = Git::detect().unwrap().worktrees(&repo).unwrap();
+    assert!(kolux_made(&load_origins(&store), all).iter().all(|w| !same_folder(Path::new(&w.path), &theirs)),
+            "a worktree Kolux did not make must not be swept because it has a details record");
+    let _ = fs::remove_dir_all(&base);
+}
+
 #[test]
 fn app051_a_locked_worktree_record_survives_forget_gone_at_start() {
     // forget_gone is the sweep forget_gone_at_start runs for every project at launch.
@@ -1448,6 +1465,21 @@ fn proj019_an_icon_is_an_emoji_a_built_in_icon_or_a_small_picture() {
     assert!(clean_icon(&over).unwrap_err().contains("too large"));
 }
 
+
+#[test]
+fn audit_r3_f08_a_relative_project_folder_is_swept_where_the_worktrees_are() {
+    let base = temp("audit-r3-f08");
+    let repo = base.join("r");
+    init_repo(&repo);
+    let mut p = project_at("p1", &repo);
+    p.workspaces_dir = Some("ws".to_string());
+    let store = Mutex::new(Store::open(&base.join("db")).unwrap());
+    let folders = trash_folders(&store, &Git::detect().unwrap(), std::slice::from_ref(&p), &serde_json::Map::new());
+    assert!(folders.iter().any(|f| same_folder(f, &repo.join("ws"))),
+            "a relative project folder's trash lives under the project, folders: {folders:?}");
+    let _ = fs::remove_dir_all(&base);
+}
+
 #[test]
 fn proj019_a_chosen_icon_stays_after_a_restart_and_reset_brings_the_automatic_one_back() {
     let git = Git::detect().unwrap();
@@ -1506,6 +1538,21 @@ fn fix1_a_worktree_deleted_outside_kolux_retires_its_name_when_the_sweep_forgets
     assert_eq!(retired_names(&store, &scope).len(), 1);
     drop(store);
     let _ = fs::remove_dir_all(&base);
+}
+
+
+#[test]
+fn audit_r3_f06_forgetting_a_workspace_is_all_or_nothing() {
+    let store = Store::open(&temp("audit-r3-f06")).unwrap();
+    let path = r"C:\w\audit-r3-f06";
+    set_name(&store, path, Some("typed")).unwrap();
+    set_parent(&store, path, Some(r"C:\w\parent")).unwrap();
+    set_origin(&store, path, Some(&serde_json::json!({"madeBy": "app", "existingBranch": true}))).unwrap();
+    store.poison(PARENTS_KEY);
+    assert!(forget_workspace(&store, path).is_err(), "the refused write is reported");
+    assert_eq!(load_names(&store).get(&name_key(path)).and_then(|v| v.as_str()), Some("typed"),
+               "a failure part way must leave the typed name in place");
+    assert!(origin(&store, path).is_some(), "and the origin record must not be half forgotten");
 }
 
 #[test]
@@ -2529,6 +2576,19 @@ fn t107d_the_first_prompt_renames_a_suggested_branch_once_from_the_task_and_find
     }
 }
 
+
+#[test]
+fn audit_r3_f04_a_folder_inside_a_project_resolves_to_that_project() {
+    let store = Store::open(&temp("audit-r3-f04")).unwrap();
+    let root = temp("audit-r3-f04-project");
+    let p = project_at("p1", &root);
+    store.set(PROJECTS_KEY, &serde_json::json!([p]).to_string()).unwrap();
+    let inside = root.join("src");
+    assert_eq!(project_known(&store, &inside.to_string_lossy()).map(|p| p.id).ok(), Some("p1".to_string()),
+               "a folder inside the project's own folder must resolve to it");
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn t107d_a_pushed_branch_one_with_a_pull_request_or_one_renamed_by_hand_is_never_renamed() {
     let (git, store, project, profile, repo, root) = rename_fixture("first-prompt-guards", None);
@@ -2870,7 +2930,7 @@ fn fix4_the_launch_sweep_forgets_only_gone_worktrees_kolux_made_that_no_session_
     {
         let s = store.lock().unwrap();
         for p in [&a_made, &a_busy, &b_made] {
-            set_origin(&s, &key(p), Some(&serde_json::json!({"issue": 1}))).unwrap();
+            set_origin(&s, &key(p), Some(&serde_json::json!({"madeBy": "app", "issue": 1}))).unwrap();
         }
     }
     for p in [&a_made, &a_mine, &a_busy, &b_made] {
@@ -3752,6 +3812,17 @@ fn row895_forget_keeps_an_unreadable_list_aside_before_it_saves() {
     let _ = fs::remove_dir_all(profile);
 }
 
+
+#[test]
+fn audit_r3_f02_an_unreadable_origins_blob_is_kept_aside_not_wiped() {
+    let store = Store::open(&temp("audit-r3-f02")).unwrap();
+    let damaged = r#"{"c:\\w\\a":{"madeBy":"app","prEver":true"#;
+    store.set(ORIGINS_KEY, damaged).unwrap();
+    set_origin(&store, r"C:\w\b", Some(&serde_json::json!({"madeBy": "app"}))).unwrap();
+    assert_eq!(crate::state::kept::asides(&store, ORIGINS_KEY), vec![damaged.to_string()],
+               "the unreadable record survives as a corrupt- copy instead of being overwritten");
+}
+
 #[test]
 fn row895_adding_a_project_refuses_rather_than_wiping_an_unreadable_list() {
     let (store, profile) = broken_list_store("row895-add", true);
@@ -3841,6 +3912,60 @@ fn a_chosen_folder_beats_the_project_local_default_in_the_documented_order() {
     assert_eq!((root, flat), (PathBuf::from(r"D:\ws"), true), "the saved layout applies to a chosen folder");
     let (root, _) = place_root(Path::new(r"C:\repos\app"), Some(PathBuf::from("ws")), false);
     assert_eq!(root, Path::new(r"C:\repos\app").join("ws"), "a relative folder counts from the project root");
+}
+
+
+#[test]
+#[cfg(windows)]
+fn audit_r3_f07_a_drive_relative_workspaces_folder_never_leaves_the_project() {
+    let store = Store::open(&temp("audit-r3-f07")).unwrap();
+    if set_place(&store, r"C:ws", false).is_ok() {
+        let chosen = chosen_workspaces_dir(None, None, store.settings()[WORKSPACES_DIR_SETTING].as_str());
+        let (root, _) = place_root(Path::new(r"D:\proj"), chosen, false);
+        assert!(root.starts_with(Path::new(r"D:\proj")), "a saved non-absolute folder must stay inside the project: {root:?}");
+    }
+}
+
+#[test]
+fn f2_a_saved_relative_workspaces_folder_may_climb_with_dot_dot() {
+    let project = Path::new(r"C:\repos\app");
+    let climbing = PathBuf::from("..").join("worktrees");
+    // A setting that worked before the regression: it counts from the project root and steps back.
+    let (root, flat) = place_root(project, Some(climbing.clone()), false);
+    assert_eq!(root, project.join(&climbing), ".. is resolved against the project path, not dropped");
+    assert!(!flat);
+    // Saving it is allowed, and the old workspaces stay under the same root.
+    let store = Store::open(&temp("f2-dot-dot")).unwrap();
+    set_place(&store, &climbing.to_string_lossy(), false).expect("a relative folder with .. is a folder this setting can use");
+    let chosen = chosen_workspaces_dir(None, None, store.settings()[WORKSPACES_DIR_SETTING].as_str());
+    assert_eq!(place_root(project, chosen, false).0, project.join(&climbing));
+    // A bare `..` is a step back too, and the only other thing the setting may hold.
+    set_place(&store, "..", false).expect("a bare .. is a folder this setting can use");
+    let chosen = chosen_workspaces_dir(None, None, store.settings()[WORKSPACES_DIR_SETTING].as_str());
+    assert_eq!(place_root(project, chosen, false).0, project.join(".."));
+    // The spellings that name a place of their own are still refused, so they cannot be saved as if
+    // they counted from every project root.
+    #[cfg(windows)]
+    {
+        assert_eq!(place_root(project, Some(PathBuf::from(r"C:ws")), false).0, project.join(PROJECT_LOCAL_DIR), "drive-relative");
+        assert_eq!(place_root(project, Some(PathBuf::from(r"\ws")), false).0, project.join(PROJECT_LOCAL_DIR), "root-relative");
+        assert!(set_place(&store, r"C:ws", false).is_err());
+        assert!(set_place(&store, r"\ws", false).is_err());
+    }
+}
+
+/// P3-a: `.` leaves no steps for `inside_project`, so `place_root` would silently fall back to
+/// `.worktrees` while the setting looked saved. It is refused instead, like the other spellings
+/// that name no folder.
+#[test]
+fn p3_a_a_dot_is_not_a_workspaces_folder() {
+    let store = Store::open(&temp("p3-a-dot")).unwrap();
+    for dot in [".", "./."] {
+        let err = set_place(&store, dot, false).unwrap_err();
+        assert!(err.contains("is not a folder this setting can use"), "{dot}: {err}");
+        assert_eq!(store.settings()[WORKSPACES_DIR_SETTING], serde_json::Value::Null, "{dot} is not saved");
+    }
+    assert!(used_dirs(&store).is_empty(), "nor remembered");
 }
 
 #[test]

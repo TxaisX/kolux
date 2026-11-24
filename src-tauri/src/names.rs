@@ -65,12 +65,16 @@ pub fn safe_name(input: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    // Git refuses a name ending in ".lock"; the folder would also be odd.
-    let trimmed = trimmed.strip_suffix(".lock").map(|s| s.to_string()).unwrap_or(trimmed);
+    // Git refuses every name ending in ".lock"; the folder would also be odd. A typed name can
+    // carry more than one (".lock.lock"), so strip until none is left rather than just the last.
+    let mut trimmed = trimmed.as_str();
+    while let Some(stripped) = trimmed.strip_suffix(".lock") {
+        trimmed = stripped;
+    }
     if trimmed.is_empty() {
         None
     } else {
-        Some(trimmed)
+        Some(trimmed.to_string())
     }
 }
 
@@ -146,5 +150,13 @@ mod tests {
         assert_eq!(safe_name("..."), None);
         assert_eq!(safe_name("-"), None);
         assert_eq!(safe_name(".lock").as_deref(), Some("lock"), "a leading dot goes first, so lock itself is fine");
+    }
+
+    #[test]
+    fn audit_r8_f01_a_name_is_never_left_ending_in_lock() {
+        // A typed workspace name may end in ".lock" more than once; git refuses every name
+        // ending in ".lock", so every trailing one has to go, not just the last.
+        assert_eq!(safe_name("notes.lock.lock").as_deref(), Some("notes"));
+        assert_eq!(safe_name("a.lock.lock.lock").as_deref(), Some("a"));
     }
 }

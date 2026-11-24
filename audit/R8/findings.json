@@ -1,0 +1,47 @@
+[
+  {
+    "id": "R8-F01",
+    "title": "A name ending in .lock twice is left ending in .lock",
+    "severity": "low",
+    "file": "src-tauri/src/names.rs",
+    "line": 69,
+    "what": "safe_name removes a trailing \".lock\" with a single strip_suffix call, so a typed workspace name such as \"notes.lock.lock\" comes back as \"notes.lock\". The function exists to produce a name git and the file system both accept, and git refuses every ref ending in .lock, so the cleaned name cannot be used for the branch and folder it was made for.",
+    "expected": "Every trailing \".lock\" should be stripped, repeating until none is left, so \"notes.lock.lock\" becomes \"notes\" and safe_name never returns a name ending in .lock.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/names.rs",
+      "name": "names::tests::audit_r8_f01_a_name_is_never_left_ending_in_lock"
+    },
+    "patch": "repro/R8-F01.patch"
+  },
+  {
+    "id": "R8-F02",
+    "title": "An impossible date in a transcript parses as a time",
+    "severity": "low",
+    "file": "src-tauri/src/capture.rs",
+    "line": 14,
+    "what": "parse_time checks the punctuation shape and parses the numbers, but never the ranges: month 13, month 0, day 0, 30 February, 31 April, hour 24 and minute 60 all return Some, each silently mapped to a nearby instant by the day-of-era arithmetic. chat.rs and token_usage.rs use this value to date and order transcript lines, so a corrupt or hand-edited timestamp sorts and buckets the entry at an invented time instead of being treated as undated.",
+    "expected": "An impossible field should return None (month 1 to 12, day valid for the month and leap year, hour under 24, minute and second under 60), while a real date such as 2026-01-01T00:00:00Z still parses to its UTC milliseconds.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/capture.rs",
+      "name": "capture::tests::audit_r8_f02_an_impossible_date_is_not_a_time"
+    },
+    "patch": "repro/R8-F02.patch"
+  },
+  {
+    "id": "R8-F03",
+    "title": "A no-space Authorization header leaves its credential unmasked",
+    "severity": "medium",
+    "file": "src-tauri/src/diag.rs",
+    "line": 205,
+    "what": "scrub_word's name:value branch treats everything after \"Authorization:\" as the value. In the no-space HTTP form \"Authorization:Basic dXNlcjpwYXNz\" it masks the scheme word \"Basic\" and returns, leaving the base64 credential in the text, although the spaced form is masked by the next-word rule. \"Authorization:Bearer <token>\" leaks the same way. The terminal log is written through scrub_bytes, and diag_bundle and the help-menu summary call scrub, so the credential survives into Kolux's own log and into the diagnostics file the user is asked to share.",
+    "expected": "The credential after \"Authorization:\" should be masked whether or not a space follows the colon, so the base64 or bearer token never survives scrub; masking the scheme word as well is fine.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/diag.rs",
+      "name": "diag::tests::audit_r8_f03_a_header_without_a_space_still_masks_its_credential"
+    },
+    "patch": "repro/R8-F03.patch"
+  }
+]

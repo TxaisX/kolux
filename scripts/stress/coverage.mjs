@@ -133,7 +133,7 @@ export function liveIdsOf() {
     const base = file.replace(/[\/]/g, "/").split("/").pop();
     for (const m of base.matchAll(/([A-Z]{2,}-\d+[a-z]?)/g)) ids.add(m[1]);
     const text = readFileSync(file, "utf8");
-    for (const m of text.matchAll(/^\/\/.*([A-Z]{2,}-\d+[a-z]?)/gm)) ids.add(m[1]);
+    for (const m of text.matchAll(/^\/\/.*\b([A-Z]{2,}-\d+[a-z]?)\b/gm)) ids.add(m[1]);
   }
   return ids;
 }

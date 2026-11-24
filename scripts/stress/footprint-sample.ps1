@@ -66,7 +66,7 @@ $gpuErr = ''
 try { $rows = @(Receive-Job -Job $job -Wait -ErrorVariable jobErr -ErrorAction SilentlyContinue); if ($jobErr) { $gpuErr = ($jobErr | ForEach-Object { $_.ToString() }) -join ' | ' } } catch { $gpuErr = $_.ToString() }
 Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
 if ($rows.Count -eq 0) { # the background read gave nothing: one plain read so the phase is not left without GPU numbers
-  try { $rows = @(Get-Counter -Counter 'GPU Process Memory(*)Dedicated Usage', 'GPU Process Memory(*)Shared Usage', 'GPU Process Memory(*)Total Committed', 'GPU Engine(*)Utilization Percentage' -SampleInterval 2 -MaxSamples 2 | ForEach-Object { $t = $_.Timestamp; foreach ($x in $_.CounterSamples) { if ($x.InstanceName -match '^pid_(d+)_') { [pscustomobject]@{ pid = [int]$Matches[1]; kind = $x.Path.Substring($x.Path.LastIndexOf(')') + 2); v = [double]$x.CookedValue; t = $t.Ticks } } } }); $gpuErr += ' (retried once)' } catch { $gpuErr += ' retry: ' + $_.ToString() }
+  try { $rows = @(Get-Counter -Counter 'GPU Process Memory(*)Dedicated Usage', 'GPU Process Memory(*)Shared Usage', 'GPU Process Memory(*)Total Committed', 'GPU Engine(*)Utilization Percentage' -SampleInterval 2 -MaxSamples 2 | ForEach-Object { $t = $_.Timestamp; foreach ($x in $_.CounterSamples) { if ($x.InstanceName -match '^pid_(\d+)_') { [pscustomobject]@{ pid = [int]$Matches[1]; kind = $x.Path.Substring($x.Path.LastIndexOf(')') + 2); v = [double]$x.CookedValue; t = $t.Ticks } } } }); $gpuErr += ' (retried once)' } catch { $gpuErr += ' retry: ' + $_.ToString() }
 }
 foreach ($r in $rows) {
   if (-not $roles.ContainsKey([int]$r.pid)) { continue }

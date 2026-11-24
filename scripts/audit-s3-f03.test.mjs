@@ -1,0 +1,42 @@
+// AUD-S3 / S3-F03: lib.mjs reads git's pretty record and cuts it at the first newline, which is
+// the first line of the commit body. Every later line of a multi-line body is dropped from the
+// stored commit (the README's table promises the body, and search indexes it), so a body with a
+// second paragraph cannot be found again.
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { build, openDb } from "../tools/kolux-memory/lib.mjs";
+
+const git = (repo, ...args) =>
+  execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+
+describe("audit S3 · the memory build reads commits", () => {
+  it("[S3-F03] a commit body keeps every line, not just its first", () => {
+    const root = mkdtempSync(join(tmpdir(), "audit-s3-f03-"));
+    const repo = join(root, "repo");
+    mkdirSync(repo, { recursive: true });
+    git(repo, "init", "-q");
+    git(repo, "config", "user.email", "audit@example.invalid");
+    git(repo, "config", "user.name", "Audit S3");
+    git(repo, "config", "commit.gpgsign", "false");
+    writeFileSync(join(repo, "a.txt"), "one\n");
+    git(repo, "add", "a.txt");
+    git(repo, "commit", "-q", "--no-verify", "-m", "Add a.txt", "-m", "The first body line.\nThe second body line is the one that gets lost.");
+
+    const db = join(root, "memory.db");
+    try {
+      build({ sessions: join(root, "none.db"), repo, vault: join(root, "vault"), db, github: false, git: true });
+      const opened = openDb(db);
+      const row = opened.prepare("select subject, body, files from commits").get();
+      expect(row.subject).toBe("Add a.txt");
+      expect(row.body).toContain("The first body line.");
+      expect(row.body).toContain("The second body line is the one that gets lost.");
+      expect(row.files).toBe(1);
+      opened.close();
+    } finally {
+      try { rmSync(root, { recursive: true, force: true }); } catch { /* open temp file */ }
+    }
+  });
+});

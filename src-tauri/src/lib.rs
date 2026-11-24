@@ -117,6 +117,8 @@ mod openrouter;
 // stage 3 (s3-publish)
 mod project_new;
 mod chat_finish;
+// LAG-04B: one `kolux.log` line per command that took 100 ms or more (see the invoke handler below).
+mod slow_cmd;
 
 use state::Store;
 use std::sync::Mutex;
@@ -173,15 +175,14 @@ fn settings_repair(store: tauri::State<'_, Mutex<Store>>) -> Result<Vec<String>,
     Ok(kept.iter().map(|p| p.display().to_string()).collect())
 }
 
-/// The settings `change` makes of what is on disk, written under one lock.
-fn write_settings(app: &tauri::AppHandle, store: &Mutex<Store>, change: impl FnOnce(serde_json::Value) -> serde_json::Value, payload: serde_json::Value) -> Result<(), String> {
-    let store = store.lock().map_err(|e| e.to_string())?;
-    let old = store.settings();
+/// The settings `change` makes of what is on disk. LAG-03: the two synced file writes run with the
+/// store lock free, so no command and no window thread waits on the disk; only the renames land
+/// under the lock.
+fn write_settings(app: &tauri::AppHandle, store: &Mutex<Store>, change: impl Fn(serde_json::Value) -> serde_json::Value, payload: serde_json::Value) -> Result<(), String> {
     // The window cannot write a secret field; the sealed values on disk are kept as they are.
-    let value = secrets::keep_stored_secrets(&old, change(old.clone()));
+    let keep = |old: serde_json::Value| secrets::keep_stored_secrets(&old, change(old.clone()));
+    let (old, value) = state::save_settings_released(store, &keep, &mut |step: &state::DiskStep| step.run()).map_err(|e| e.to_string())?;
     let before = old.get(resume::FIELD) == Some(&serde_json::Value::Bool(true));
-    store.save_settings(&value).map_err(|e| e.to_string())?;
-    drop(store);
     // USAGE-007: off discards the waits, on picks up the panes already stopped on a limit.
     let after = value.get(resume::FIELD) == Some(&serde_json::Value::Bool(true));
     if before != after {
@@ -861,7 +862,16 @@ pub fn run() {
             // stage 3 (s3-publish)
             project_new::github_badge
             ];
-            handler(invoke)
+            // LAG-04B: a command without `async` runs here on the main thread, so the time around
+            // `handler(invoke)` is how long it held that thread. The name and the webview are taken
+            // before `invoke` moves; the log folder is looked up only when a line is written.
+            let name = invoke.message.command().to_string();
+            let app = invoke.message.webview();
+            slow_cmd::timed(&slow_cmd::LIMITER, &name, &std::time::Instant::now, || handler(invoke), &mut |line: &str| {
+                if let Ok(dir) = tauri::Manager::path(&app).app_data_dir() {
+                    crate::diag::write(&dir, line);
+                }
+            })
         })
         .build(context)
         .unwrap_or_else(|e| tools::startup_failed(&e.to_string()))

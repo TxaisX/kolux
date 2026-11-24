@@ -1,0 +1,17 @@
+[
+  {
+    "id": "R5-F01",
+    "title": "A Codex re-sign-in wipes the existing account's config.toml before the login",
+    "severity": "medium",
+    "file": "src-tauri/src/codex_accounts.rs",
+    "line": 319,
+    "what": "sign_in writes HOME_CONFIG over the account home's config.toml before running the login, even when the home belongs to an existing account. A cancelled, failed or merely repeated re-authentication therefore replaces the home's settings and its Codex project trust entries with the single sign-in line, contradicting the comment below it and the C25 test that promise an existing home keeps its settings, project trust and sessions.",
+    "expected": "For an existing home, config.toml keeps its settings and project trust: the sign-in line is merged in (or the file is only created when missing), and a cancelled or failed re-authentication leaves the file exactly as it was.",
+    "test": {
+      "runner": "cargo",
+      "file": "src-tauri/src/codex_accounts.rs",
+      "name": "codex_accounts::tests::audit_r5_f01_a_cancelled_re_sign_in_keeps_the_existing_config"
+    },
+    "patch": "repro/R5-F01.patch"
+  }
+]

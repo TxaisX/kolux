@@ -64,10 +64,30 @@ pub struct Detail {
 
 // ---- text ----
 
+/// A combining mark, which shapes the letter it is typed after instead of standing on its own:
+/// the Latin diacritics, and the vowel signs, viramas, anusvaras, candrabindus and nuktas of the
+/// Indic scripts. A cut between such a letter and its mark leaves the mark behind, and a bare
+/// vowel sign renders as a dotted circle (audit R2-F01).
+fn combining(c: char) -> bool {
+    matches!(c as u32,
+        0x0300..=0x036F | 0x1AB0..=0x1AFF | 0x1DC0..=0x1DFF | 0x20D0..=0x20FF // Latin and marks for symbols
+        | 0x0900..=0x0903 | 0x093A..=0x093C | 0x093E..=0x094F | 0x0951..=0x0957 | 0x0962..=0x0963 // Devanagari
+        | 0x0981..=0x0983 | 0x09BC | 0x09BE..=0x09C4 | 0x09C7..=0x09C8 | 0x09CB..=0x09CD | 0x09D7 | 0x09E2..=0x09E3 | 0x09FE // Bengali
+        | 0x0A01..=0x0A03 | 0x0A3C | 0x0A3E..=0x0A42 | 0x0A47..=0x0A48 | 0x0A4B..=0x0A4D | 0x0A51 | 0x0A70..=0x0A71 | 0x0A75 // Gurmukhi
+        | 0x0A81..=0x0A83 | 0x0ABC | 0x0ABE..=0x0AC5 | 0x0AC7..=0x0AC9 | 0x0ACB..=0x0ACD | 0x0AE2..=0x0AE3 | 0x0AFA..=0x0AFF // Gujarati
+        | 0x0B01..=0x0B03 | 0x0B3C | 0x0B3E..=0x0B44 | 0x0B47..=0x0B48 | 0x0B4B..=0x0B4D | 0x0B55..=0x0B57 | 0x0B62..=0x0B63 // Oriya
+        | 0x0B82 | 0x0BBE..=0x0BC2 | 0x0BC6..=0x0BC8 | 0x0BCA..=0x0BCD | 0x0BD7 // Tamil
+        | 0x0C00..=0x0C04 | 0x0C3C | 0x0C3E..=0x0C44 | 0x0C46..=0x0C48 | 0x0C4A..=0x0C4D | 0x0C55..=0x0C56 | 0x0C62..=0x0C63 // Telugu
+        | 0x0C81..=0x0C83 | 0x0CBC | 0x0CBE..=0x0CC4 | 0x0CC6..=0x0CC8 | 0x0CCA..=0x0CCD | 0x0CD5..=0x0CD6 | 0x0CE2..=0x0CE3 | 0x0CF3 // Kannada
+        | 0x0D00..=0x0D03 | 0x0D3B..=0x0D3C | 0x0D3E..=0x0D44 | 0x0D46..=0x0D48 | 0x0D4A..=0x0D4D | 0x0D57 | 0x0D62..=0x0D63 // Malayalam
+        | 0x0D81..=0x0D83 | 0x0DCA | 0x0DCF..=0x0DD4 | 0x0DD6 | 0x0DD8..=0x0DDF | 0x0DF2..=0x0DF3 // Sinhala
+    )
+}
+
 /// A character that must stay with the one before it: joiner, variation selector, combining mark,
 /// skin-tone modifier, enclosing keycap or tag character.
 fn sticks(c: char) -> bool {
-    matches!(c as u32, 0x200D | 0xFE00..=0xFE0F | 0x0300..=0x036F | 0x1AB0..=0x1AFF | 0x1DC0..=0x1DFF | 0x20D0..=0x20FF | 0x1F3FB..=0x1F3FF | 0xE0020..=0xE007F)
+    combining(c) || matches!(c as u32, 0x200D | 0xFE00..=0xFE0F | 0x1F3FB..=0x1F3FF | 0xE0020..=0xE007F)
 }
 
 fn indicator(c: char) -> bool {
@@ -440,5 +460,13 @@ mod tests {
         assert_eq!(name_of(&roots, "claude", "plain").unwrap(), None);
         assert_eq!(name_of(&roots, "claude", "missing").unwrap(), None);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    /// AUD-R2 F01: a Devanagari vowel sign is a combining mark too, so a cut must not leave its
+    /// consonant behind (U+0915 + U+093F would read as a bare consonant with a dotted circle).
+    #[test]
+    fn audit_r2_f01_a_devanagari_matra_stays_with_its_consonant() {
+        let text = format!("{}{}z", "a".repeat(11), "\u{0915}\u{093F}");
+        assert_eq!(clip(&text, 13), format!("{}\u{2026}", "a".repeat(11)));
     }
 }

@@ -1,0 +1,30 @@
+diff --git a/src-tauri/src/codex_accounts.rs b/src-tauri/src/codex_accounts.rs
+index a08e024f..3ed9a104 100644
+--- a/src-tauri/src/codex_accounts.rs
++++ b/src-tauri/src/codex_accounts.rs
+@@ -1300,6 +1300,25 @@ mod tests {
+         assert_eq!(load(&store.lock().unwrap()).len(), 1, "the account is still listed");
+     }
+ 
++    // AUD-R5-F01: a re-authentication (even a cancelled one) writes Kolux's sign-in line over the
++    // existing home's config.toml, losing the settings and project trust the home already held.
++    #[test]
++    fn audit_r5_f01_a_cancelled_re_sign_in_keeps_the_existing_config() {
++        let profile = temp("audit-r5-f01-config");
++        let store = Mutex::new(Store::open(&profile).unwrap());
++        sign_in(&store, &profile, "c1", false, 1, |home: &Path| {
++            fs::write(home.join("auth.json"), token("kim@example.com")).unwrap();
++            (String::new(), Ended::Exited(Some(0)), None)
++        })
++        .unwrap();
++        let home = profile.join(FOLDER).join("c1");
++        let kept = format!("{HOME_CONFIG}model = \"o3\"\n[projects.'C:\\work']\ntrust_level = \"trusted\"\n");
++        fs::write(home.join("config.toml"), &kept).unwrap();
++        let e = sign_in(&store, &profile, "c1", true, 2, |_| (String::new(), Ended::Cancelled, None)).unwrap_err();
++        assert_eq!(e, "Sign-in cancelled.");
++        assert_eq!(fs::read_to_string(home.join("config.toml")).unwrap(), kept, "the existing settings and project trust are not the sign-in's to lose");
++    }
++
+     #[test]
+     fn signing_in_again_updates_the_account_in_place_and_clears_its_error() {
+         let profile = temp("again");

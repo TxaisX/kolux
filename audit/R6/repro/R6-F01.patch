@@ -1,0 +1,20 @@
+diff --git a/src-tauri/src/resources/app_proxy.rs b/src-tauri/src/resources/app_proxy.rs
+index 32921d93..e4ef1055 100644
+--- a/src-tauri/src/resources/app_proxy.rs
++++ b/src-tauri/src/resources/app_proxy.rs
+@@ -170,4 +170,15 @@ mod tests {
+         assert!(entry_covers("EXAMPLE.com", "example.COM", 80), "case is ignored");
+         assert!(!entry_covers("", "example.com", 80));
+     }
++
++    /// R6-F01: a port that cannot exist is an impossible entry, like a range of more than 32 bits:
++    /// it covers nothing. Today the unreadable number is dropped and the entry covers every port,
++    /// so `example.com:99999` bypasses the proxy for `example.com` on 80 and 443 alike.
++    #[test]
++    fn audit_r6_f01_an_impossible_bypass_port_covers_nothing() {
++        for entry in ["example.com:99999", "example.com:65536"] {
++            assert!(!entry_covers(entry, "example.com", 80), "{entry} must not cover port 80");
++            assert!(!entry_covers(entry, "example.com", 443), "{entry} must not cover port 443");
++        }
++    }
+ }

@@ -1,0 +1,32 @@
+[
+ {
+  "id": "T7-F01",
+  "title": "A custom binding that lists one chord twice is dropped as a clash with itself",
+  "severity": "low",
+  "file": "src/keys/keymap.ts",
+  "line": 200,
+  "what": "dropConflicts adds one entry to the `seen` list for every chord of every binding. A custom binding whose list repeats a chord (a hand-edited keybindings.json, which COMPAT.md allows) is therefore added to the same bucket twice. The test `group.filter((b) => b.custom).length < 2` counts those two entries as two custom bindings, so the binding is dropped, its default chords are restored, an error says it clashes with another shortcut, and the recorded clash names the same command twice.",
+  "expected": "A chord repeated inside one command's own list is still one binding: it must be counted once (or de-duplicated), the custom binding must stay, no clash or clash error may be recorded, and pressing the chord must still run the command.",
+  "test": {
+   "runner": "vitest",
+   "file": "src/keys/auditT7F01.test.ts",
+   "name": "resolve with a repeated custom chord > [T7-F01] one binding listing a chord twice is not a clash"
+  },
+  "patch": "repro/T7-F01.patch"
+ },
+ {
+  "id": "T7-F02",
+  "title": "normaliseIndexChord leaves a recorded Mod+0 dead and takes Reset Zoom's chord",
+  "severity": "low",
+  "file": "src/keys/keymap.ts",
+  "line": 57,
+  "what": "normaliseIndexChord rewrites a trailing digit 1-9 to 1, so a digit-index command's chord always ends in 1 and chordMatches reads the pressed digit from the event. The Shortcuts recorder accepts Ctrl+0 for such a command (recordKey slices Digit0 to key 0), but the regex leaves Mod+0 alone. chordMatches then skips the index branch because the chord does not end in 1, returns a match with no index, and useWindowKeys falls back to index 0, which selects nothing. yieldToUser also treats the saved Mod+0 as a user chord and strips Mod+0 from zoom.reset, so Reset Zoom stops working too.",
+  "expected": "normaliseIndexChord must rewrite every trailing digit, 0 included, so a recorded Ctrl+0 becomes Mod+1 again; digits 1-9 then switch workspaces and Reset Zoom keeps its Mod+0.",
+  "test": {
+   "runner": "vitest",
+   "file": "src/keys/auditT7F02.test.ts",
+   "name": "recordKey on an index command > [T7-F02] Ctrl+0 becomes the index chord and still switches workspaces"
+  },
+  "patch": "repro/T7-F02.patch"
+ }
+]

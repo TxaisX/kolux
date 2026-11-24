@@ -1,0 +1,43 @@
+diff --git a/scripts/audit-s2-f05.test.mjs b/scripts/audit-s2-f05.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/audit-s2-f05.test.mjs
+@@ -0,0 +1,38 @@
++// AUD-S2 / S2-F05: live-checks' b2 check requires the palette rows "Show Floor", "Show Space",
++// "Show Workspace Statuses", "Show Artifacts" and "Show Skills", and the page each row opens.
++// Those screens were removed (a6195136 and wave A); no such label or DOM class is left in src/,
++// so b2 reports FAIL on every run it is asked for.
++import { describe, expect, it } from "vitest";
++import fs from "node:fs";
++import path from "node:path";
++import { fileURLToPath } from "node:url";
++
++const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
++const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
++
++const srcText = (() => {
++  const out = [];
++  const walk = (dir) => {
++    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
++      const p = path.join(dir, e.name);
++      if (e.isDirectory()) walk(p);
++      else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\./.test(e.name)) out.push(fs.readFileSync(p, "utf8"));
++    }
++  };
++  walk(path.join(ROOT, "src"));
++  return out.join("\n");
++})();
++
++const script = read("scripts/prove/live-checks.mjs");
++
++describe("audit S2 > live-checks b2", () => {
++  it("[S2-F05] the palette rows b2 requires still exist", () => {
++    const b2 = script.split("async b2(")[1]?.split("async b4(")[0] ?? "";
++    const list = /for \(const want of \[([^\]]+)\]\)/.exec(b2);
++    if (!list) return; // the check is gone: nothing left to keep in step
++    const wants = [...list[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
++    expect(wants.length).toBeGreaterThan(0);
++    const missing = wants.filter((w) => !srcText.includes(w));
++    expect(missing, "the palette has no such row; those screens are gone").toEqual([]);
++  });
++});

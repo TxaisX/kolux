@@ -11,6 +11,7 @@
 
 import type { Agent } from "../chrome/VendorMark";
 import { titleOwner } from "../status/titleOwner";
+import { titleState as reading } from "./status";
 
 import { heldBytes } from "./codec";
 
@@ -270,10 +271,39 @@ export function reduceIdentity(state: Identity, mark: Mark, restored = false): I
 /** A title-only change reaches the pane (and the window's tab names) at most this late. */
 export const TITLE_PACE_MS = 200;
 
+/** The leading run an agent's title animation is made of: whitespace, the braille frames U+2800 to
+ *  U+28FF, the quarter circles ◐ ◓ ◑ ◒, the stars ✳ ✢ ✶ ✻ ✽ and the middle dot ·. */
+const SPINNER_RUN = /^[\s\u2800-\u28FF\u25D0\u25D3\u25D1\u25D2\u2733\u2722\u2736\u273B\u273D\u00B7]+/;
+
+/** The title without its leading spinner decoration: the key under which two frames of the same
+ *  animation are one title (`⠂ Fix the login bug`, `⠐ Fix the login bug` and `✳ Fix the login bug` all
+ *  give `Fix the login bug`). Nothing else is removed, in the middle or the end, and null stays null. */
+export function titleFrameKey(title: string | null): string | null {
+  return title === null ? null : title.replace(SPINNER_RUN, "");
+}
+
+/** Whether a title carries a leading spinner frame: the agent's working animation (spinning) or a
+ *  title that is not animating (still). A change between the two is a change the window must see, not
+ *  a frame of the same animation: an agent that starts working after saying what it works on has to
+ *  reach the paced title, which is what the sidebar's "N working" reads (STAT-036). */
+export function titleState(title: string | null): "spinning" | "still" {
+  return title !== null && titleFrameKey(title) !== title ? "spinning" : "still";
+}
+
+/** What the status vocabulary (STAT-033) reads a title as, with a null title reading as nothing. The
+ *  pacer compares these, so the flip it must let through is the one the header shows, not merely a
+ *  spinner appearing: Claude Code's idle mark (✳ U+2733) is a spinner run to `titleFrameKey` but
+ *  reads done, and its first braille frame reads working. */
+const titleReading = (title: string | null) => reading(title ?? "");
+
 /** Hands identities to `apply`: a change of `running` or `agent` at once (the hook and guess rules
- *  read those transitions), a change of the title alone at most once per TITLE_PACE_MS, the newest
- *  title winning. An agent that animates its title many times a second costs about five renders a
- *  second instead of one per frame of its spinner. */
+ *  read those transitions), a change of the title alone held and applied once it has been the newest
+ *  for TITLE_PACE_MS. A title that is only a spinner frame of the one shown (titleFrameKey) restarts
+ *  that wait, so an agent animating its title many times a second hands the window nothing while it
+ *  turns and the newest frame once it stops; a real change of the text still lands within the pace. A
+ *  title whose status reading flips (STAT-033: ✳ done to a braille frame working, or the reverse) is
+ *  not a frame of the animation: it takes the normal pace and is never held behind the frames that
+ *  follow it, whose holds no longer restart its wait. */
 export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => void, ms: number) => () => void = (fn, ms) => {
   const t = setTimeout(fn, ms);
   return () => clearTimeout(t);
@@ -287,7 +317,8 @@ export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => vo
     if (pending === null) return;
     const next = pending;
     pending = null;
-    if (next === shown) return;
+    // The identity shown already, in a fresh object (a repaint): nothing reaches the window.
+    if (next.running === shown.running && next.agent === shown.agent && next.title === shown.title) return;
     shown = next;
     apply(next);
   };
@@ -295,7 +326,11 @@ export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => vo
     note(next: Identity) {
       pending = next;
       if (next.running !== shown.running || next.agent !== shown.agent) flush();
-      else cancel ??= wait(flush, TITLE_PACE_MS);
+      else if (titleReading(next.title) === titleReading(shown.title) && titleFrameKey(next.title) === titleFrameKey(shown.title)) {
+        // A spinner frame, or the same text: hold it and wait for the animation to stop.
+        cancel?.();
+        cancel = wait(flush, TITLE_PACE_MS);
+      } else cancel ??= wait(flush, TITLE_PACE_MS);
     },
     flush,
     stop() {
