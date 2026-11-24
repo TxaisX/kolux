@@ -1,0 +1,25 @@
+diff --git a/scripts/audit-s1-f01.test.mjs b/scripts/audit-s1-f01.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/audit-s1-f01.test.mjs
+@@ -0,0 +1,20 @@
++// AUD-S1 / S1-F01: the JS licence gate splits an expression on " OR " before it looks at " AND ",
++// so a denied licence that an AND requires is dropped whenever a parenthesised OR offers an
++// allowed alternative. EPL-2.0 is deliberately not on the allow-list (see the comment above
++// EXCEPTIONS in scripts/license-check.mjs), so `EPL-2.0 AND (MIT OR Apache-2.0)` must fail.
++import { describe, expect, it } from "vitest";
++import { failures } from "./license-check.mjs";
++
++const pkg = (name) => [{ name, versions: ["1.0.0"], paths: [] }];
++
++describe("audit S1 · JS licence gate, mixed AND/OR", () => {
++  it("[S1-F01] an AND keeps its denied part even when the parenthesised OR offers an allowed one", () => {
++    const listed = { "EPL-2.0 AND (MIT OR Apache-2.0)": pkg("dual-licensed") };
++    expect(failures(listed)).toHaveLength(1);
++  });
++
++  it("[S1-F01] an expression that needs only allowed licences still passes", () => {
++    const listed = { "MIT AND (Apache-2.0 OR ISC)": pkg("fine") };
++    expect(failures(listed)).toEqual([]);
++  });
++});
