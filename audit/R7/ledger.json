@@ -1,0 +1,75 @@
+{
+  "area": "R7",
+  "files": [
+    {
+      "path": "src-tauri/src/artifacts.rs",
+      "symbols": ["FOLDER", "on_share", "scan_folder", "read_file", "a_read_checks_the_path_again"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read scan_folder, read_file, on_share, real_folder and the size/count caps; checked junctions, links, stamps and the byte cap. Only a message/behavior mismatch at the byte cap remains, and an existing test pins the behavior, so no finding."
+    },
+    {
+      "path": "src-tauri/src/chat.rs",
+      "symbols": ["chat_agent", "drop_image_markers", "FIRST_READ_CAP", "page_before", "older_page", "a_half_written_last_line_waits_until_it_is_complete"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read Parser, clean, user_words, drop_image_markers, image_url, Tail read/page_before/older_page and the home/follow helpers; checked caps, partial lines, CRLF and image markers. No provable defect."
+    },
+    {
+      "path": "src-tauri/src/chat_engine/events.rs",
+      "symbols": ["ChatEvent", "Plugin", "parse_line", "empty_init_alarm"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read ChatEvent, parse_line, init, step_view, assistant, result, user and empty_init_alarm; checked malformed and unknown lines against the locked chat tests. No provable defect."
+    },
+    {
+      "path": "src-tauri/src/chat_engine/mod.rs",
+      "symbols": ["EVENT", "chat_args", "Inner", "read_stdout", "watch_idle", "chat_send"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the engine lifecycle (spawn, read_stdout, send, stop, watch_idle, start, close) and the CHAT-01 echo/replay handling; checked idle limits and the agent arguments. Behavior matches the locked replay tests."
+    },
+    {
+      "path": "src-tauri/src/chat_finish.rs",
+      "symbols": ["chat_finish", "remote_path", "find_blocker", "status_entries", "keep_file"],
+      "verdict": "findings",
+      "findings": ["R7-F01"],
+      "note": "Read chat_finish, remote_path, local_path, find_blocker, finish_blocked, wrap_up and status_entries. R7-F01: a blocked finish skips untracked folders reported as dir/ and then force-removes the worktree, losing their files."
+    },
+    {
+      "path": "src-tauri/src/chat_tools.rs",
+      "symbols": ["MAX_DIFF_LINES", "questions_of", "diff_lines", "patch_cards", "codex_step"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read cap, questions_of, diff_lines, card, patch_cards, the claude/omp/codex step mappers and codex_output; checked long diffs, patch grammar and caps. No provable defect."
+    },
+    {
+      "path": "src-tauri/src/codex_usage.rs",
+      "symbols": ["Window", "figures", "Claim", "read_with", "codex_usage", "one_read_per_codex_home_at_a_time"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read figures, conclude, read_with, finish, scrub and Claim; checked window choice, sign-in kinds, line scrubbing and one read per home. No provable defect."
+    },
+    {
+      "path": "src-tauri/src/files.rs",
+      "symbols": ["STALE_COPY_SECS", "replace_with", "natural_key", "path_kind", "open_in", "edit043_the_folder_opened_is_the_canonical_one_not_the_callers_spelling"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read replace_with, clear_stale_copies, natural_key, file_list, path_kind and the open/launch helpers; checked temp copies, non-UTF-8 names, fences and path shapes. No provable defect."
+    },
+    {
+      "path": "src-tauri/src/links.rs",
+      "symbols": ["PROGRAMS", "host_path", "OpenChoice", "editor_plan", "safe022_programs_scripts_installers_and_shortcuts_are_told_from_documents_under_any_disguise", "wsl_shares_are_known"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read OpenLimit, external_url, system_open, host_path, fence, reveal, open_choice, editor_open and the path/program guards; checked UNC, WSL, shares and program types. No provable defect."
+    },
+    {
+      "path": "src-tauri/src/token_usage.rs",
+      "symbols": ["PROVIDERS", "codex_key", "bucket", "codex_lines", "Held", "scan", "token_usage", "sorted"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read bucket, claude_lines, codex_lines, scan, Cache/Held and read_from; checked bands, forks, growth and save retry. A timestamp-less codex event may lose its delta, but the intent is not provable, so no finding."
+    }
+  ]
+}
