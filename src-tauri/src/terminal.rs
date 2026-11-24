@@ -19,6 +19,8 @@ pub(crate) mod exit_note;
 #[cfg(test)]
 #[path = "terminal_exit_board_tests.rs"]
 mod exit_board_tests;
+// LAND-03: the pane's land variables and the Claude land note.
+#[cfg(test)] #[path = "terminal_land_board_tests.rs"] mod land_board_tests;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
 mod output_channel;
@@ -224,6 +226,46 @@ impl Inner {
 
 /// DT-C248 review 2: the error a superseded start gets (the pane's view has since asked for another start).
 pub const SUPERSEDED: &str = "Another start for this pane came after this one.";
+
+/// LAND-03: the variables a pane needs to send its finished work to main: `PATH` with the land
+/// script's folder at its END, and `KOLUX_LAND` naming the script. Pure: reads no environment and
+/// no disk. The folder goes last so it can never shadow a program the person has. Nothing is set
+/// when the script is not a full path in a folder, when that folder is the agent-hooks folder
+/// (its `claude.cmd` / `codex.cmd` shims would run instead of the real programs), or when the
+/// entries cannot be joined.
+pub(crate) fn land_env(path: Option<&std::ffi::OsStr>, script: &std::path::Path) -> Vec<(&'static str, std::ffi::OsString)> {
+    let folder = match script.parent() {
+        Some(p) if script.is_absolute() && !p.as_os_str().is_empty() => p,
+        _ => return Vec::new(),
+    };
+    if folder.components().any(|c| same_name(c.as_os_str(), "agent-hooks")) {
+        return Vec::new();
+    }
+    let mut entries: Vec<std::path::PathBuf> = path.map(std::env::split_paths).into_iter().flatten().filter(|p| !p.as_os_str().is_empty()).collect();
+    if !entries.iter().any(|e| same_folder(e, folder)) {
+        entries.push(folder.to_path_buf());
+    }
+    match std::env::join_paths(&entries) {
+        Ok(joined) => vec![("PATH", joined), ("KOLUX_LAND", script.as_os_str().to_os_string())],
+        Err(_) => Vec::new(),
+    }
+}
+
+/// LAND-03: two names are the same name, ignoring case on Windows (its folders do).
+fn same_name(a: &std::ffi::OsStr, b: &str) -> bool {
+    let a = a.to_string_lossy();
+    if cfg!(windows) {
+        a.eq_ignore_ascii_case(b)
+    } else {
+        a == b
+    }
+}
+
+/// LAND-03: two folders are the same folder: equal once trailing separators are dropped.
+fn same_folder(a: &std::path::Path, b: &std::path::Path) -> bool {
+    let trim = |p: &std::path::Path| p.to_string_lossy().trim_end_matches(['\\', '/']).to_string();
+    same_name(std::ffi::OsStr::new(&trim(a)), &trim(b))
+}
 
 /// One chunk of session `id`'s output taken in; returns its output count (ORCH-057). Under the
 /// registry lock only the count, the snapshot tail, the screen bits and the last-output time are
@@ -1223,6 +1265,14 @@ impl Terminals {
             // T-182 (APP-020): a tool installed after the app started is on the stored Path, not
             // the process's; the pane gets both, the process's entries first.
             command.env("PATH", crate::lifecycle::fresh_path(command.get_env("PATH").map(std::ffi::OsStr::to_os_string)));
+            // LAND-03: a pane can send its finished work to main by itself: the Kolux bin folder
+            // (where LAND-02 writes kolux-land.cmd) goes at the END of PATH, so it never shadows a
+            // program the person has, and KOLUX_LAND names the script.
+            if let Some(script) = crate::hooks::land_script() {
+                for (k, v) in land_env(command.get_env("PATH"), &script) {
+                    command.env(k, v);
+                }
+            }
             if let Ok(dir) = tauri::Manager::path(&exit_app).app_data_dir() {
                 // T-580: the pane names the Kolux that opened it, so the other-build
                 // override (COMPAT 7) it may have inherited from the shell that started Kolux, stripped
