@@ -1474,4 +1474,15 @@ mod tests {
         assert_eq!(ev["ev"], "output");
         server.join().unwrap();
     }
+
+    /// AUD-R1 F01: a spawn that fails must not leave the flow it made for the terminal behind.
+    #[test]
+    fn audit_r1_f01_a_failed_spawn_releases_its_flow() {
+        let service = Service::default();
+        let request = json!({ "program": "kolux-no-such-program-r1f01" });
+        assert!(service.spawn(&request).is_err(), "a program that is not on this PC must not start");
+        let g = service.lock();
+        assert!(g.snaps.is_empty(), "a failed spawn left its snapshot behind");
+        assert!(g.flows.is_empty(), "a failed spawn left {} flow entry behind", g.flows.len());
+    }
 }
