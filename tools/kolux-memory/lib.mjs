@@ -304,7 +304,12 @@ function workTable(db) {
   db.exec("create table if not exists work_items(id integer primary key, at text, agent text, title text, status text, detail text, evidence text, source text)");
 }
 
-/** Append one completed work item to the ledger and, when the DB exists, to it. */
+/**
+ * Append one completed work item to the ledger and, when the DB exists, to it.
+ *
+ * The ledger is replayed on every build and copied into the row and the search
+ * body, so the text is redacted here, once, before it reaches any of the three.
+ */
 export function recordItem(opts = {}) {
   const dbPath = resolve(opts.db || defaults().db);
   const ledger = resolve(opts.ledger || join(dirname(dbPath), "work-items.jsonl"));
@@ -313,10 +318,10 @@ export function recordItem(opts = {}) {
   const item = {
     at: opts.at || new Date().toISOString(),
     agent: String(opts.agent || "").trim(),
-    title,
+    title: redact(title),
     status: String(opts.status || "done").trim(),
-    detail: String(opts.detail || "").trim(),
-    evidence: String(opts.evidence || "").trim(),
+    detail: redact(String(opts.detail || "").trim()),
+    evidence: redact(String(opts.evidence || "").trim()),
   };
   mkdirSync(dirname(ledger), { recursive: true });
   appendFileSync(ledger, JSON.stringify(item) + "\n");
