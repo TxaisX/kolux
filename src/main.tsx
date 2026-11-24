@@ -22,6 +22,7 @@ import { prefetch } from "./lazy/deferred";
 import { showStartFailure } from "./recovery/startFailed";
 import { sharedRead } from "./settings/sharedRead";
 import { bootMark } from "./bootTiming";
+import { installLongTaskWatch } from "./recovery/longTask";
 import { RESTORE_ASK_MS, within } from "./terminal/restoreLine";
 
 
@@ -182,6 +183,7 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
 }
 
 installMenuWheel(document);
+installLongTaskWatch();
 // FIX-5 (council d2 AFTER 4): a start that fails (the App chunk did not load, a restore step threw)
 // shows a message and the window instead of leaving the hidden window blank.
 void start().catch((e) => showStartFailure(e, document, () => getCurrentWindow().show()));
