@@ -19,6 +19,9 @@ use tauri::{AppHandle, Emitter, Manager};
 // STAT-004 / STAT-005: which agents get hooks, removal, the shared install lock (T-152).
 #[path = "agent_hooks/mod.rs"]
 pub mod agent_hooks;
+// START-05: a hook event from an agent started inside a pane is not the pane's own.
+#[path = "hooks_nested.rs"]
+pub(crate) mod nested;
 #[cfg(test)] #[path = "hooks_land_script_board_tests.rs"] mod land_script_board_tests;
 
 pub const EVENT: &str = "agent-status";
@@ -430,6 +433,20 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
         // Any other route (an older Kolux's hook for another agent, still in that agent's settings) gets the empty 404.
         _ => return (404, None),
     };
+    // START-05: a Claude Code or Codex started inside the pane inherits KOLUX_HOOK_IDENTITY, so its
+    // events would be reported as the pane's own. Once the pane's own agent has reported for this
+    // terminal, an event from another session that runs outside the pane's folder (not in it, not
+    // above it) is not the pane's: reply as usual but report and save nothing. A nested agent in
+    // the pane's folder or a parent folder is not caught (no process id in the event).
+    if let Some(t) = terminal {
+        if crate::status::panes_of(t).contains(&pane_key) {
+            if let Some(row) = agent_hooks::saved::live_row(pane_key) {
+                if nested::foreign_event(row.cwd.as_deref(), row.session_id.as_deref(), &event) {
+                    return (200, None);
+                }
+            }
+        }
+    }
     (200, crate::status::report(pane_key, terminal, agent, &event))
 }
 
@@ -2755,3 +2772,7 @@ Content-Length: {}
 #[cfg(test)]
 #[path = "hooks_land_board_tests.rs"]
 mod land_board_tests;
+
+#[cfg(test)]
+#[path = "hooks_nested_board_tests.rs"]
+mod nested_board_tests;
