@@ -13,7 +13,8 @@ import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
 import { canSendToMain, LAND_EVENT, landChip, landFlash, landStep, recordFor, SEND_TO_MAIN, SEND_TO_MAIN_ID, SEND_TO_MAIN_TIP } from "./landState";
-import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
+import { baseArgs, contextText, sessionMenuActions, type Launch } from "./sessionFork";
+import { exitBanner, type ExitBanner } from "./exitBanner";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
 import { shellIconOf, type ShellEntry } from "./shellChoice";
@@ -45,7 +46,7 @@ import { sizeGate } from "./sizeGate";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
 import { notePrinted } from "./printedAddresses";
-import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
+import { afterReplay, encodeHistory, replay, replayGate, viewTop, type Rows } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
 import { fromThisService, needsSize, orphanOf, reattach, warmAskOf, type Attach, type Reattached, type ServiceInfo, type WarmAsk } from "./reattach";
@@ -253,6 +254,11 @@ type Props = {
   };
 };
 
+// START-06: START-04 widened the exit event with the reason it ended and its last output line;
+// codec.ts's ExitEvent predates that and is not this card's to change, so the listener names the
+// wider payload itself.
+type ExitPayload = ExitEvent & { reason?: string; lastLine?: string; secs?: number };
+
 // APP-052: the terminal service as the pane reaches it (reattach.ts is tested over a fake one).
 const tauriService = {
   info: () => invoke<ServiceInfo>("terminal_service_info"),
@@ -395,6 +401,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
   // pane; restart() re-runs the start line, or opens a plain shell, keeping the buffer.
   const [died, setDied] = useState<number | null>(null);
   const restart = useRef<(shell: boolean) => void>(() => {});
+  // START-06: an agent whose program ended by itself with an error shows why and offers Start fresh;
+  // a pane Kolux closed shows nothing. startFresh() starts the same agent again in this pane.
+  const [exitNote, setExitNote] = useState<ExitBanner | null>(null);
+  const startFresh = useRef<() => void>(() => {});
   // C24-R1-01: a tab that came back from the saved layout and could not take its terminal back keeps
   // its place, with the reason and a Try again; the layout keeps its key, so its saved output survives.
   const [restoreAsk, setRestoreAsk] = useState<string | null>(null);
@@ -1017,7 +1027,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         listen<{ terminal: number; agent: string | null }>("pane-agent", (e) =>
           mine(e.payload.terminal, () => setFound(foundAgent(e.payload.agent))),
         ),
-        onTerminalExit<ExitEvent>((e) =>
+        onTerminalExit<ExitPayload>((e) =>
           mine(e.payload.id, () => {
             ended = true;
             openGate(); // whatever a shell printed before dying is shown with its exit
@@ -1029,6 +1039,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             // off now that it is gone, so the shell that follows works normally; a program still running is never touched.
             term.write(resetAfterExit(modeView(term.modes), term.buffer.active.type === "alternate"));
             kitty.reset(); // VIEW-109: the key protocol resets cleanly after the program exits
+            // START-06: the banner's line is the program's own last row, read before the pane writes
+            // its end note; START-04's masked line wins when the exit event carried one.
+            const lastLine = e.payload.lastLine ?? lastShownLine(term.buffer.active);
           term.write(`\r\n\x1b[90m[process ${endedLabel(e.payload.code, e.payload.outcome)}]\x1b[0m\r\n`);
             // START-02: a conversation resumed on a saved id that was never saved dies at once, before its
             // agent says anything. The pane says so and tells the window, which forgets the id, so the next
@@ -1042,8 +1055,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             // the tab goes with its last pane); one that died stays, with the exit code and a Restart;
             // an agent pane keeps what its program printed and Enter starts a shell in it.
             const code = e.payload.code;
-            if (agent !== "shell") term.write("\x1b[90mEnter starts a shell here\x1b[0m\r\n");
-            else if (e.payload.outcome === "unverifiable") return; // ORCH-057: not known to have exited cleanly, so it stays
+            if (agent !== "shell") {
+              term.write("\x1b[90mEnter starts a shell here\x1b[0m\r\n");
+              // START-06: the program ended by itself with an error: say why and offer the same agent
+              // again without its resume arguments. A pane Kolux closed shows nothing: its exit code
+              // (1 on Windows) cannot tell the two ends apart, which is why START-04's reason decides.
+              setExitNote(exitBanner({ reason: e.payload.reason === "exited" ? "exited" : "closed", code, lastLine, resumed: resumed === true }));
+            } else if (e.payload.outcome === "unverifiable") return; // ORCH-057: not known to have exited cleanly, so it stays
             else if (code === 0 || code === null) closeRef.current?.();
             else setDied(code);
           }),
@@ -1117,10 +1135,26 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         idRef.current = null;
         early = [];
         setDied(null);
+        setExitNote(null); // START-06: a program is starting again, so its end banner goes
         // FIX-1: an agent pane that got a shell on Enter is asked about as a shell (terminal/remove.ts classify).
         markShell(shellInAgentPane, number, shell, agent);
         setStatus({ kind: "starting" });
         void start(shell ? null : program, shell ? [] : args, false);
+      };
+      // START-06: Start fresh starts the pane's program again in place, without the resume / continue /
+      // fork arguments of its first start line; a resumed pane tells the window to forget the old id
+      // before the new conversation claims its own (START-02).
+      startFresh.current = () => {
+        if (!alive) return;
+        setExitNote(null);
+        if (resumed) resumeFailed.current?.();
+        ended = false;
+        idRef.current = null;
+        early = [];
+        setDied(null);
+        markShell(shellInAgentPane, number, false, agent);
+        setStatus({ kind: "starting" });
+        void start(program, baseArgs(agent, args), false);
       };
       // C24-R1-01: Try again asks the service for the terminal once more and starts on the answer. The
       // saved output is already on screen, so nothing is replayed a second time.
@@ -2043,6 +2077,18 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         </div>
       )}
       <div ref={host} className="pane-body" />
+      {/* START-06: an agent whose program ended by itself with an error says why and starts fresh in place. */}
+      {exitNote && (
+        <div className="notice" role="status" style={{ margin: "0 8px 8px", alignItems: "center" }}>
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={exitNote.lastLine ?? exitNote.title}>
+            {exitNote.title}
+            {exitNote.lastLine && <span style={{ marginLeft: 8, color: "var(--fg-muted)", fontFamily: "var(--mono-font)" }}>{exitNote.lastLine}</span>}
+          </span>
+          <button className="btn" style={{ flex: "none", marginLeft: "auto" }} onClick={() => startFresh.current()}>
+            Start fresh
+          </button>
+        </div>
+      )}
       {finding && <FindBar focusTick={findTick} count={hits.count} current={hits.current} slow={hits.slow} onSearch={runFind} onStep={stepFind} onClose={closeFind} onFocus={onFocus} />}
       {notice && (
         <div className="pane-ask" onMouseDown={(e) => e.stopPropagation()}>
@@ -2190,6 +2236,16 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
       )}
     </section>
   );
+}
+
+/** START-06: the last row with text in the pane, for the banner when the exit event carries no line.
+ *  Read before the pane writes its own `[process ...]` end note, so the note is not the last line. */
+function lastShownLine(buf: Rows): string | null {
+  for (let y = buf.length - 1; y >= 0; y--) {
+    const text = buf.getLine(y)?.translateToString(true) ?? "";
+    if (text.trim() !== "") return text;
+  }
+  return null;
 }
 
 /** The model a start line asks for (`--model x`), for the pane header. */
