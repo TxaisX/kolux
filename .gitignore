@@ -23,3 +23,6 @@ src-tauri/release.conf.json
 .DS_Store
 Thumbs.db
 .vitest/
+
+# Open WebUI writes its signing key into whatever folder it was started from
+.webui_secret_key

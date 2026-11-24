@@ -454,7 +454,12 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
       </button>
       {controls && <ModelControls agent={controls} shown={shownModel} saved={saved[controls] ?? {}} changes={changes} disabled={controlsOff(working, live)} openPicker={pickerAsk} onModel={pickModel} onEffort={pickEffort} onFast={pickFast} onLive={!!onLiveChoice} />}
       <button type="button" className={`chat-send${mode === "stop" ? " stop" : ""}`} aria-label={mode === "stop" ? "Stop" : "Send"} disabled={mode === "send" ? !live || !!blocked || !sendable(text, attachments) : !onStop} onClick={click}>
-        {mode === "stop" ? "Stop" : "Send"}
+        {/* A round button with an arrow (a square while a turn runs), as chat apps draw it. The words stay
+            for screen readers through aria-label, and for the plain-chat look through .chat-send-word. */}
+        <svg className="chat-send-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          {mode === "stop" ? <rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor" /> : <path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
+        </svg>
+        <span className="chat-send-word">{mode === "stop" ? "Stop" : "Send"}</span>
       </button>
       {preview?.thumb && (
         <button type="button" className="chat-full" aria-label="Close preview" onClick={() => setPreview(null)}>
