@@ -2378,7 +2378,12 @@ pub(crate) fn project_known(store: &Store, path: &str) -> Result<Project, Vec<Pr
     if let Some(p) = projects.iter().find(|p| seen_of(store, p).is_some_and(|s| s.contains(&key))) {
         return Ok(p.clone());
     }
-    if let Some(p) = projects.iter().find(|p| name_key(&p.path) == key || key.starts_with(&format!("{}/", name_key(&p.path).trim_end_matches('/')))) {
+    // A folder inside a project is matched with the separator `name_key` itself produces: it turns
+    // every slash into a backslash, so a forward slash here would never match a child on Windows.
+    if let Some(p) = projects.iter().find(|p| {
+        let base = name_key(&p.path);
+        key == base || key.starts_with(&format!("{base}\\"))
+    }) {
         return Ok(p.clone());
     }
     Err(projects)
