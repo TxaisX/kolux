@@ -1,3 +1,4 @@
+// retired: the composer's "setup policy" select and the .trust-prompt question it drove were removed; the setup choice now lives in Settings > Repository setup ("Which setup script runs")
 // LIVE proof, PROJ-077 box 2 (spec/01): create with setup skipped -> no setup script runs for it.
 // The repo commits a kolux.yaml whose setup script drops setup-ran.txt in the new folder. A first create with the setup policy "Skip setup" must leave no
 // file, ask no trust question and open no Setup terminal. A control create with the policy left on Run then asks, and on "Run hooks" does write the file.
