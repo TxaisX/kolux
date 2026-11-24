@@ -388,3 +388,25 @@ fn a_repository_inside_the_chat_folder_is_copied_out_and_reported() {
     assert_eq!(fs::read_to_string(w.kept().join("mine.txt")).unwrap(), "m\n", "what could not go into git was kept as a file");
     assert!(!wt.exists());
 }
+
+#[test]
+fn audit_r7_f01_an_untracked_folder_is_copied_out_before_a_blocked_finish_removes_it() {
+    let w = world("cf-r7-f01", false);
+    let wt = w.chat();
+    let inner = wt.join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    git_in(&inner, &["init", "-q", "-b", "main"]);
+    fs::write(inner.join("note.txt"), "n\n").unwrap();
+    write_in(&wt, "drafts/plan.md", "the plan\n");
+    write_in(&wt, "mine.txt", "m\n");
+    let out = w.finish(&wt, true, false);
+    assert!(matches!(&out[0], Announcement::Blocked { reason } if reason.contains("another repository")), "{out:?}");
+    assert!(!wt.exists(), "the chat's folder is removed either way");
+    assert_eq!(fs::read_to_string(w.kept().join("mine.txt")).unwrap(), "m\n");
+    assert_eq!(fs::read_to_string(w.kept().join("inner").join("note.txt")).unwrap(), "n\n");
+    assert_eq!(
+        fs::read_to_string(w.kept().join("drafts").join("plan.md")).unwrap_or_default(),
+        "the plan\n",
+        "an untracked folder's files are kept out of the removed folder"
+    );
+}
