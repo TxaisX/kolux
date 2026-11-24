@@ -22,7 +22,6 @@ pub mod agent_hooks;
 // START-05: a hook event from an agent started inside a pane is not the pane's own.
 #[path = "hooks_nested.rs"]
 pub(crate) mod nested;
-#[cfg(test)] #[path = "hooks_land_script_board_tests.rs"] mod land_script_board_tests;
 
 pub const EVENT: &str = "agent-status";
 pub const TOKEN_HEADER: &str = "x-kolux-token";
@@ -2776,3 +2775,7 @@ mod land_board_tests;
 #[cfg(test)]
 #[path = "hooks_nested_board_tests.rs"]
 mod nested_board_tests;
+
+#[cfg(test)]
+#[path = "hooks_land_script_board_tests.rs"]
+mod land_script_board_tests;
