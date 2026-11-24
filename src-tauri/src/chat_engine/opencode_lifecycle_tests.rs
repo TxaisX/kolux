@@ -20,6 +20,8 @@ enum Reply {
     Events(Duration, Vec<String>),
     /// Answer after a wait.
     Late(Duration, String),
+    /// An event stream that sends these frames and closes at once.
+    Dropped(Vec<String>),
 }
 
 struct Fake {
@@ -79,6 +81,13 @@ fn serve_one(mut s: TcpStream, calls: Calls, answer: Answer) {
             }
             let _ = s.flush();
             std::thread::sleep(Duration::from_secs(30));
+        }
+        Reply::Dropped(frames) => {
+            let _ = write!(s, "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncache-control: no-cache\r\nconnection: close\r\n\r\n");
+            for f in frames {
+                let _ = s.write_all(f.as_bytes());
+            }
+            let _ = s.flush();
         }
     }
 }
@@ -390,29 +399,310 @@ fn a_second_waker_waits_for_the_event_stream() {
     server.shutdown();
 }
 
-// Finding 16: the server sits in a kill-on-close job of its own.
+/// A fresh empty folder under the system temp folder for one test.
+fn temp_folder(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("kolux-oc-{name}-{}-{}", std::process::id(), new_password().unwrap().get(..8).unwrap_or("x")));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+// Finding 16 / review 2 P2-1: the server is in its job from its start, so a program it starts before it
+// prints its address (an MCP or language server) ends with the job too.
 #[cfg(windows)]
 #[test]
-fn the_server_process_is_in_a_job_that_ends_it() {
-    let child = crate::winproc::command(crate::pty::system_program("cmd.exe")).args(["/d", "/c", "ping", "-n", "30", "127.0.0.1"]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap();
-    let mut p = own(child);
+fn a_program_the_server_starts_before_it_is_ready_ends_with_its_job() {
+    let dir = temp_folder("job");
+    // The "server" waits a moment, starts a helper in the background, then says it is ready and stays.
+    // The helper writes a marker a few seconds later unless it was ended first.
+    std::fs::write(dir.join("late.bat"), "@echo off\r\nping -n 5 127.0.0.1 >nul\r\necho late>\"%~dp0marker.txt\"\r\n").unwrap();
+    std::fs::write(dir.join("serve.bat"), "@echo off\r\nping -n 2 127.0.0.1 >nul\r\nstart \"\" /b cmd /d /c \"%~dp0late.bat\"\r\necho server listening on http://127.0.0.1:1\r\nping -n 60 127.0.0.1 >nul\r\n").unwrap();
+    let mut up = launch(&dir.join("serve.bat"), &[], "pw").unwrap();
+    let p = up.proc.as_mut().unwrap();
     let has_job = p.job.is_some();
     drop(p.job.take());
-    let end = Instant::now() + Duration::from_secs(5);
-    let mut ended = false;
-    while Instant::now() < end {
-        if matches!(p.child.try_wait(), Ok(Some(_))) {
-            ended = true;
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(50));
-    }
-    if !ended {
-        // Only the process this test started.
-        crate::procs::kill_tree(p.pid);
-        let _ = p.child.kill();
-        let _ = p.child.wait();
-    }
+    std::thread::sleep(Duration::from_secs(7));
+    let marker = dir.join("marker.txt").exists();
+    // Only the process this test started, and its own tree.
+    crate::procs::kill_tree(p.pid);
+    let _ = p.child.kill();
+    let _ = p.child.wait();
+    let _ = std::fs::remove_dir_all(&dir);
     assert!(has_job, "the server is put in a job of its own");
-    assert!(ended, "closing the job ends the server");
+    assert!(!marker, "the helper the server started before it was ready was not ended with the job");
+}
+
+// Review 2 P2-1: OpenCode's npm shim is not run through cmd.exe; the program it names is started.
+#[cfg(windows)]
+#[test]
+fn the_npm_shim_of_opencode_starts_its_own_program() {
+    let dir = temp_folder("shim");
+    let bin = dir.join("node_modules").join("@opencode").join("cli").join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::write(bin.join("opencode.exe"), b"").unwrap();
+    let shim = dir.join("opencode.cmd");
+    std::fs::write(&shim, "@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\n\"%dp0%\\node_modules\\@opencode\\cli\\bin\\opencode.exe\"   %*\r\n").unwrap();
+    let cmd = serve_command(&shim, &[], "pw").unwrap();
+    let program = std::path::PathBuf::from(cmd.get_program());
+    let args: Vec<String> = cmd.get_args().map(|s| s.to_string_lossy().into_owned()).collect();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(program, bin.join("opencode.exe"), "the server is OpenCode's own program, not cmd.exe");
+    assert_eq!(args, ["serve", "--hostname", "127.0.0.1", "--port", "0"]);
+}
+
+// Review 2 P1-1: a message still waiting when a run fails or is stopped gets a result of its own, so
+// the page never keeps waiting for it.
+#[test]
+fn a_failed_or_stopped_run_answers_every_waiting_message() {
+    for end in ["session.execution.interrupted", "session.execution.failed"] {
+        let now = Instant::now();
+        let mut tr = Translator::new(SES);
+        let mut out = Vec::new();
+        for (k, d) in [
+            ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
+            ev("session.execution.started", json!({})),
+            ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
+            ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
+            ev(end, json!({})),
+        ] {
+            out.extend(tr.on_event(&k, &d, now));
+        }
+        let results = out.iter().filter(|e| matches!(e, ChatEvent::Result(_))).count();
+        assert_eq!(results, 2, "{end}: one result for the run, one for the message still waiting: {out:?}");
+        assert!(!tr.busy());
+    }
+}
+
+// Review 2 P1-1: Stop with nothing running still tells the page, so its Stop never fails.
+#[test]
+fn stop_with_nothing_running_still_tells_the_page() {
+    let server = Arc::new(Server::default());
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
+    assert_eq!(chat.stop(), Some(StopHow::Ended));
+    assert_eq!(kinds_of(&seen, "c1"), ["stopped"]);
+}
+
+// Review 2 P2-2: a run the page lost track of is still stopped by Stop.
+#[test]
+fn stop_after_a_lost_stream_still_interrupts_the_run() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" }))] {
+        chat.heard(&k, &d);
+    }
+    chat.stream_lost();
+    assert!(!chat.busy());
+    assert!(chat.stop().is_some(), "the run OpenCode may still have is stopped");
+    assert!(fake.any(&format!("/api/session/{SES}/interrupt")), "an interrupt is posted");
+    assert_eq!(kinds_of(&seen, "c1").last().map(String::as_str), Some("stopped"));
+    server.shutdown();
+}
+
+// Review 2 P1-2: a lost stream does not forget a waiting message: OpenCode still runs it, and the page
+// sees it as a turn of its own.
+#[test]
+fn a_lost_stream_keeps_the_waiting_message_for_its_own_turn() {
+    let now = Instant::now();
+    let mut tr = Translator::new(SES);
+    for (k, d) in [
+        ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
+        ev("session.execution.started", json!({})),
+        ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
+        ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
+    ] {
+        tr.on_event(&k, &d, now);
+    }
+    assert_eq!(tr.lost(Vec::new(), now).len(), 1);
+    let mut out = Vec::new();
+    for (k, d) in [ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.text.ended", json!({ "assistantMessageID": "a2", "ordinal": 0, "text": "ok" })), ev("session.execution.succeeded", json!({}))] {
+        out.extend(tr.on_event(&k, &d, now));
+    }
+    let kinds: Vec<String> = out.iter().map(|e| serde_json::to_value(e).unwrap()["kind"].as_str().unwrap().to_string()).collect();
+    assert_eq!(kinds, ["user", "assistant", "result"]);
+}
+
+// Review 2 P1-2: a Stop OpenCode did not take leaves the waiting message to run, and it is shown.
+#[test]
+fn a_stop_opencode_did_not_take_keeps_the_waiting_message() {
+    // No server is up, so the interrupt cannot be asked.
+    let server = Arc::new(Server::default());
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
+    for (k, d) in [
+        ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
+        ev("session.execution.started", json!({})),
+        ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
+        ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
+    ] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(chat.stop(), Some(StopHow::Ended));
+    let before = kinds_of(&seen, "c1").len();
+    for (k, d) in [ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.text.ended", json!({ "assistantMessageID": "a2", "ordinal": 0, "text": "ok" })), ev("session.execution.succeeded", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(kinds_of(&seen, "c1")[before..], ["user", "assistant", "result"]);
+}
+
+// Review 2 P3-1: a cut run that then ends stopped or failed drops the queue, and answers each message.
+#[test]
+fn a_cut_run_that_ends_stopped_answers_the_messages_sent_after_the_cut() {
+    for end in ["session.execution.interrupted", "session.execution.failed"] {
+        let now = Instant::now();
+        let mut tr = Translator::new(SES);
+        for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" }))] {
+            tr.on_event(&k, &d, now);
+        }
+        tr.cut(now);
+        let (k, d) = ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } }));
+        tr.on_event(&k, &d, now);
+        let (k, d) = ev(end, json!({}));
+        let out = tr.on_event(&k, &d, now);
+        assert_eq!(out.iter().filter(|e| matches!(e, ChatEvent::Result(_))).count(), 1, "{end}: {out:?}");
+        assert!(!tr.busy(), "{end}");
+    }
+}
+
+// Review 2 P3-2: a new server's models are read again, not the old server's list.
+#[test]
+fn a_new_server_reads_its_model_list_again() {
+    let reads = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let r = Arc::clone(&reads);
+    let fake = fake(move |m: &str, p: &str| {
+        if p.starts_with("/api/model") {
+            let list = if r.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                "{\"data\":[{\"id\":\"a\",\"providerID\":\"opencode\",\"name\":\"A\",\"variants\":[]}]}"
+            } else {
+                "{\"data\":[{\"id\":\"a\",\"providerID\":\"opencode\",\"name\":\"A\",\"variants\":[]},{\"id\":\"b\",\"providerID\":\"opencode\",\"name\":\"B\",\"variants\":[]}]}"
+            };
+            return Reply::Json(200, list.to_string());
+        }
+        plain(m, p)
+    });
+    let (server, _) = server_on(&fake);
+    assert_eq!(server.models(&[]).unwrap().len(), 1);
+    server.shutdown();
+    assert_eq!(server.models(&[]).unwrap().len(), 2, "the second server's own list");
+    server.shutdown();
+}
+
+// Review 2 P3-3: a caller waiting on a start when the app quits does not start a server of its own.
+#[test]
+fn a_caller_waiting_on_a_start_does_not_start_again_after_quit() {
+    let fake = fake(plain);
+    let base = fake.base.clone();
+    let starts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let n = Arc::clone(&starts);
+    let start: Starter = Arc::new(move |_: &[(String, String)]| {
+        n.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        std::thread::sleep(Duration::from_millis(800));
+        Ok(Up::fake(Api::local(&base, "pw")))
+    });
+    let server = Arc::new(Server::with_starter(cfg(), start));
+    let s = Arc::clone(&server);
+    let first = std::thread::spawn(move || s.wake().map(|_| ()));
+    std::thread::sleep(Duration::from_millis(200));
+    let s = Arc::clone(&server);
+    let second = std::thread::spawn(move || s.wake().map(|_| ()));
+    std::thread::sleep(Duration::from_millis(200));
+    server.shutdown();
+    let (a, b) = (first.join().unwrap(), second.join().unwrap());
+    let count = starts.load(std::sync::atomic::Ordering::SeqCst);
+    server.shutdown();
+    assert!(a.is_err() && b.is_err(), "neither caller gets a server after the quit: {a:?} {b:?}");
+    assert_eq!(count, 1, "the waiting caller started no server of its own");
+}
+
+// Review 2 P3-4: a start that panics does not leave every later caller waiting.
+#[test]
+fn a_start_that_panics_does_not_block_the_next_start() {
+    let fake = fake(plain);
+    let base = fake.base.clone();
+    let starts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let n = Arc::clone(&starts);
+    let start: Starter = Arc::new(move |_: &[(String, String)]| {
+        if n.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+            panic!("a starter bug");
+        }
+        Ok(Up::fake(Api::local(&base, "pw")))
+    });
+    let server = Arc::new(Server::with_starter(cfg(), start));
+    let s = Arc::clone(&server);
+    let first = std::thread::spawn(move || s.wake().map(|_| ())).join();
+    assert!(matches!(first, Ok(Err(_))), "the panic is a plain error to the caller");
+    let (tx, rx) = mpsc::channel();
+    let s = Arc::clone(&server);
+    std::thread::spawn(move || {
+        let _ = tx.send(s.wake().map(|_| ()));
+    });
+    let second = rx.recv_timeout(Duration::from_secs(5)).expect("the next caller is not left waiting");
+    assert!(second.is_ok(), "{second:?}");
+    server.shutdown();
+}
+
+// Review 2 P3-5: a stream that opens and drops at once counts as a failure, so it is given up.
+#[test]
+fn an_event_stream_that_keeps_dropping_at_once_is_given_up() {
+    let fake = fake(|m: &str, p: &str| if p == "/api/event" { Reply::Dropped(vec![CONNECTED.to_string()]) } else { plain(m, p) });
+    let (server, _) = server_on(&fake);
+    let mut s = Arc::try_unwrap(server).ok().unwrap();
+    s.retry_base = Duration::from_millis(20);
+    s.retry_tries = 3;
+    let server = Arc::new(s);
+    let (seen, sink) = sink();
+    let _chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 1, sink);
+    let w = Arc::clone(&server);
+    std::thread::spawn(move || {
+        let _ = w.wake();
+    });
+    std::thread::sleep(Duration::from_millis(2000));
+    let tries = fake.count("GET", "/api/event");
+    assert!(tries <= 4, "tried {tries} times");
+    std::thread::sleep(Duration::from_millis(600));
+    assert_eq!(fake.count("GET", "/api/event"), tries, "no more tries once given up");
+    assert!(kinds_of(&seen, "c1").contains(&"exit".to_string()));
+    assert!(!server.is_running());
+}
+
+// Review 2 P3-6: a user name of the user's own does not replace Kolux's sign-in.
+#[test]
+fn the_server_gets_no_user_name_of_the_users_own() {
+    let env = vec![("OPENCODE_SERVER_USERNAME".to_string(), "theirs".to_string())];
+    let cmd = serve_command(std::path::Path::new("opencode.exe"), &env, "pw").unwrap();
+    let envs: HashMap<String, Option<String>> = cmd.get_envs().map(|(k, v)| (k.to_string_lossy().into_owned(), v.map(|v| v.to_string_lossy().into_owned()))).collect();
+    assert_eq!(envs.get("OPENCODE_SERVER_USERNAME"), Some(&None));
+}
+
+// Review 2 P3-8: a model pick made while the server slept that OpenCode then refuses is reported, the
+// message is not sent on the old model, and the pick is tried again on the next send.
+#[test]
+fn a_model_pick_refused_at_send_is_reported_and_kept() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Json(500, "{\"message\":\"no such model\"}".to_string()) } else { plain(m, p) });
+    let (server, _) = server_on(&fake);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
+    let mut pick = spec(Vec::new());
+    pick.model = Some("opencode/big-pickle".to_string());
+    chat.retarget(pick).unwrap();
+    assert!(chat.send("hi", &[]).is_err(), "the message is not sent on the old model");
+    assert!(!fake.any("/prompt"), "nothing was sent");
+    assert!(kinds_of(&seen, "c1").contains(&"stderr".to_string()), "the page is told why");
+    let _ = chat.send("hi", &[]);
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/model")), 2, "the pick is tried again");
+    server.shutdown();
+}
+
+// Review 2: a chat_start of an OpenCode chat gives the server its own environment; another agent's
+// chat leaves it alone.
+#[test]
+fn starting_an_opencode_chat_sets_the_servers_environment() {
+    let server = Server::default();
+    let fixed = vec![("OPENCODE_SIGN_IN".to_string(), "app".to_string())];
+    super::super::set_open_env(&server, AGENT, || Ok(fixed.clone())).unwrap();
+    assert_eq!(server.env(), fixed);
+    super::super::set_open_env(&server, "claude", || panic!("not read for another agent")).unwrap();
+    assert_eq!(server.env(), fixed);
 }

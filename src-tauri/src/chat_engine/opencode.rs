@@ -1,7 +1,7 @@
 //! The OpenCode backend of the chat engine (2026-11-24): every chat-pane model runs through OpenCode.
 //!
 //! One `opencode serve` is shared by the whole app. It is started the first time a chat (or a model or
-//! session list) needs it, on a free loopback port, with no console window; it is ended when the app
+//! session list) needs it, on a loopback port the system picks, with no console window; it is ended when the app
 //! quits and after the engine's idle time with no chat active. Each chat is one OpenCode session, so
 //! its session id is what the page keeps to resume the chat and to list a folder's saved chats.
 //!
@@ -12,8 +12,10 @@
 //! stream. [`Translator`] turns those events into the same [`ChatEvent`]s the stream-json engine
 //! sends, so the page draws an OpenCode chat with no change (see docs/chat-engine.md for the table).
 //!
-//! The server prints a one-time password when it starts. It is read from that line and kept in memory
-//! only: it is never written to a file, a log or an event.
+//! Kolux makes a fresh random password for each start and hands it to the server as
+//! `OPENCODE_PASSWORD`. It is kept in memory only: it is never written to a file, a log or an event.
+//! The server's environment carries it, so the programs OpenCode starts can read it too; it opens
+//! only this loopback server, which those programs already run under.
 use super::events::{Block, ChatEvent, ExitReason, Init, StopHow, ToolResult, TurnResult};
 use super::{Config, Image, Sink, Spec};
 use crate::chat_tools::{self, Step};
@@ -34,6 +36,8 @@ const START_WAIT: Duration = Duration::from_secs(60);
 const READY_WAIT: Duration = Duration::from_secs(10);
 /// The longest wait between two tries of a refused event stream.
 const RETRY_MAX: Duration = Duration::from_secs(10);
+/// An event stream that lived less than this before it dropped counts as a failed one.
+const STREAM_STEADY: Duration = Duration::from_secs(5);
 /// Reads of a model list that came back empty, before the empty list is the answer.
 const MODEL_TRIES: u32 = 20;
 /// How long one API call may take.
@@ -284,20 +288,43 @@ impl Translator {
         out
     }
 
-    /// Ends the running turn as stopped without OpenCode's own word for it (the stop got no answer in
-    /// time, or the server went away): the page must not wait for a result that will not come.
+    /// The run's late events are being dropped (see `orphan`): OpenCode may still be running it.
+    pub fn orphaned(&self) -> bool {
+        self.orphan
+    }
+
+    /// Forgets the messages still waiting, which OpenCode dropped with its queue: each gets a result of
+    /// its own, so the page never waits for one that will not run.
+    fn drop_queue(&mut self) -> Vec<ChatEvent> {
+        let n = self.inbox.len();
+        self.inbox.clear();
+        (0..n).map(|_| ChatEvent::Result(TurnResult { subtype: "error_during_execution".to_string(), is_error: true, errors: vec!["This message was not run: OpenCode dropped it when the run before it ended.".to_string()], session_id: Some(self.session.clone()), ..TurnResult::default() })).collect()
+    }
+
+    /// Ends the running turn as stopped without OpenCode's own word for it, when OpenCode dropped its
+    /// queue too (an accepted stop that did not end in time, or the server went away): the page must
+    /// not wait for a result that will not come, for the turn or for a message still waiting.
     pub fn cut(&mut self, now: Instant) -> Vec<ChatEvent> {
+        let mut out = self.end_unseen("error_during_execution", Vec::new(), now);
+        out.extend(self.drop_queue());
+        out
+    }
+
+    /// Ends the running turn on the page while OpenCode may still have it and its queue (a stop that
+    /// OpenCode did not take): a message still waiting is kept, and starts a turn of its own when
+    /// OpenCode takes it up.
+    pub fn cut_kept(&mut self, now: Instant) -> Vec<ChatEvent> {
         self.end_unseen("error_during_execution", Vec::new(), now)
     }
 
     /// Ends the running turn because Kolux lost OpenCode's event stream: what the run does next is not
-    /// seen, so it is dropped like a cut run's.
+    /// seen, so it is dropped like a cut run's. OpenCode was not stopped, so a message still waiting is
+    /// kept for the turn it will start.
     pub fn lost(&mut self, errors: Vec<String>, now: Instant) -> Vec<ChatEvent> {
         self.end_unseen("connection_lost", errors, now)
     }
 
     fn end_unseen(&mut self, subtype: &str, errors: Vec<String>, now: Instant) -> Vec<ChatEvent> {
-        self.inbox.clear();
         if self.running || self.delivered > 0 {
             self.orphan = true;
         }
@@ -325,9 +352,14 @@ impl Translator {
                     self.orphan = false;
                     self.begin(now);
                 }
-                "session.execution.succeeded" | "session.execution.interrupted" | "session.execution.failed" => {
+                "session.execution.succeeded" => {
                     self.orphan = false;
                     return Vec::new();
+                }
+                // A stopped or failed run drops OpenCode's queue with it.
+                "session.execution.interrupted" | "session.execution.failed" => {
+                    self.orphan = false;
+                    return self.drop_queue();
                 }
                 _ => return Vec::new(),
             }
@@ -438,14 +470,16 @@ impl Translator {
             // A stop: the page marks the turn "Interrupted" from this subtype, as it does for Claude Code.
             // A stopped or failed run leaves no message waiting: OpenCode drops its queue with the run.
             "session.execution.interrupted" => {
-                self.inbox.clear();
-                self.finish("error_during_execution", true, Vec::new(), now)
+                let mut out = self.finish("error_during_execution", true, Vec::new(), now);
+                out.extend(self.drop_queue());
+                out
             }
             "session.execution.failed" => {
-                self.inbox.clear();
                 let named = data.get("error").map(|e| (text_of(e, "type"), text_of(e, "message"))).filter(|(_, m)| !m.is_empty());
                 let (kind, message) = named.or(self.last_error.take()).unwrap_or_default();
-                self.finish(if kind.is_empty() { "failed" } else { &kind }, true, if message.is_empty() { Vec::new() } else { vec![message] }, now)
+                let mut out = self.finish(if kind.is_empty() { "failed" } else { &kind }, true, if message.is_empty() { Vec::new() } else { vec![message] }, now);
+                out.extend(self.drop_queue());
+                out
             }
             // Written piece by piece and repeated whole by the event that ends it: nothing to draw yet.
             "session.tool.input.delta" | "session.tool.input.ended" | "session.tool.progress" | "session.usage.updated" => Vec::new(),
@@ -724,16 +758,14 @@ pub(super) fn listening(line: &str) -> Option<String> {
 
 /// The `opencode serve` command for `program`: a port the system picks (the server names it in its
 /// first line), and Kolux's own password. A password variable in `env` is replaced, never used.
+/// An npm `.cmd` shim is not run through cmd.exe: the program it names (OpenCode's own `opencode.exe`)
+/// is started directly, so the server is Kolux's child and not a cmd.exe in front of it. The user name
+/// and password variables in `env` are removed, so only Kolux's own pair is used.
 pub(super) fn serve_command(program: &std::path::Path, env: &[(String, String)], password: &str) -> Result<std::process::Command, String> {
-    let shim = program.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"));
-    let mut cmd = if shim {
-        let mut c = crate::winproc::command(crate::pty::system_program("cmd.exe"));
-        c.arg("/d").arg("/c").arg(program);
-        c
-    } else {
-        crate::winproc::command(program)
-    };
-    cmd.args(["serve", "--hostname", "127.0.0.1", "--port", "0"]).envs(env.iter().map(|(k, v)| (k, v))).env("OPENCODE_PASSWORD", password).env_remove("OPENCODE_SERVER_PASSWORD");
+    let (exe, pre) = crate::pty::start_line(program);
+    let mut cmd = crate::winproc::command(exe);
+    cmd.args(pre);
+    cmd.args(["serve", "--hostname", "127.0.0.1", "--port", "0"]).envs(env.iter().map(|(k, v)| (k, v))).env("OPENCODE_PASSWORD", password).env_remove("OPENCODE_SERVER_PASSWORD").env_remove("OPENCODE_SERVER_USERNAME");
     Ok(cmd)
 }
 
@@ -741,14 +773,20 @@ pub(super) fn serve_command(program: &std::path::Path, env: &[(String, String)],
 /// for the line that names its address.
 fn start_server(env: &[(String, String)]) -> Result<Up, String> {
     let program = crate::agents::find_program(AGENT).ok_or_else(|| "OpenCode was not found on PATH. Install it, then open the chat again.".to_string())?;
-    let password = new_password()?;
-    let mut cmd = serve_command(&program, env, &password)?;
+    launch(&program, env, &new_password()?)
+}
+
+/// Starts `program` as the server. It is put in its own job right after it starts, before anything it
+/// starts in turn (MCP servers, language servers), so all of them end with the job.
+pub(super) fn launch(program: &std::path::Path, env: &[(String, String)], password: &str) -> Result<Up, String> {
+    let password = password.to_string();
+    let mut cmd = serve_command(program, env, &password)?;
     if let Some(home) = crate::chat::home().filter(|h| h.is_dir()) {
         cmd.current_dir(home);
     }
     cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
-    let mut child = cmd.spawn().map_err(|e| format!("Could not start OpenCode: {e}"))?;
-    let pid = child.id();
+    let mut proc = own(cmd.spawn().map_err(|e| format!("Could not start OpenCode: {e}"))?);
+    let (child, pid) = (&mut proc.child, proc.pid);
     // Both pipes are read for as long as the server lives, so it never blocks on a full one. Its
     // stdout lines are not kept or sent anywhere.
     let (tx, rx) = mpsc::channel::<String>();
@@ -792,7 +830,6 @@ fn start_server(env: &[(String, String)]) -> Result<Up, String> {
     }
     // A local address: never through a system proxy.
     let http = reqwest::Client::builder().no_proxy().build().map_err(|e| e.to_string())?;
-    let proc = own(child);
     Ok(Up { proc: Some(proc), api: Api { base: base.unwrap_or_default(), password, http } })
 }
 
@@ -811,6 +848,11 @@ impl Server {
         self.lock().env = env;
     }
 
+    #[cfg(test)]
+    pub(super) fn env(&self) -> Vec<(String, String)> {
+        self.lock().env.clone()
+    }
+
     fn lock(&self) -> MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
@@ -824,6 +866,8 @@ impl Server {
     fn take_down(st: &mut State) -> Option<(Up, Vec<Arc<OpenChat>>)> {
         let up = st.up.take()?;
         st.ready = false;
+        // The next server may list other models (another sign-in, a changed setting).
+        st.models = None;
         Some((up, Self::chats_of(st)))
     }
 
@@ -847,8 +891,13 @@ impl Server {
     fn wake(self: &Arc<Self>) -> Result<(Api, u32, u64), String> {
         let mut st = self.lock();
         st.last_active = Some(Instant::now());
+        // A quit while this caller waits for another start must not be followed by a fresh start.
+        let halts = st.halts;
         while st.starting {
             st = self.cv.wait(st).unwrap_or_else(|e| e.into_inner());
+        }
+        if st.halts != halts {
+            return Err("Kolux is closing.".to_string());
         }
         let mut lost = None;
         if let Some(up) = st.up.as_mut() {
@@ -865,12 +914,13 @@ impl Server {
         }
         let gone = Self::take_down(&mut st);
         st.starting = true;
-        let (env, halts) = (st.env.clone(), st.halts);
+        let env = st.env.clone();
         drop(st);
         if lost.is_some() {
             self.bring_down(gone, lost.flatten(), ExitReason::Crashed);
         }
-        let started = (self.start)(&env);
+        // A starter that panics must not leave `starting` set, or every later waker waits forever.
+        let started = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (self.start)(&env))).unwrap_or_else(|_| Err("OpenCode could not be started.".to_string()));
         let mut st = self.lock();
         st.starting = false;
         let out = match started {
@@ -939,17 +989,20 @@ impl Server {
         let me = Arc::clone(self);
         std::thread::spawn(move || {
             let mut frames = Frames::default();
-            let mut opened = false;
+            let mut opened = None;
             for chunk in rx {
                 for (kind, data) in frames.feed(&chunk) {
-                    if !opened {
-                        opened = true;
+                    if opened.is_none() {
+                        opened = Some(Instant::now());
                         me.opened(gen);
                     }
                     me.route(gen, &kind, &data);
                 }
             }
-            me.stream_ended(gen, api, opened);
+            // A stream that opened and dropped at once counts as a failure, or a server that keeps
+            // dropping it would be re-opened forever.
+            let steady = opened.is_some_and(|t| t.elapsed() >= STREAM_STEADY);
+            me.stream_ended(gen, api, opened.is_some(), steady);
         });
     }
 
@@ -961,7 +1014,6 @@ impl Server {
                 return;
             }
             st.ready = true;
-            st.stream_fails = 0;
         }
         self.cv.notify_all();
     }
@@ -995,7 +1047,7 @@ impl Server {
     /// the stream is opened again. A stream that keeps failing to open is tried again after a wait
     /// that doubles each time; after `retry_tries` in a row the server is given up and its chats are
     /// told why.
-    fn stream_ended(self: &Arc<Self>, gen: u64, api: Api, opened: bool) {
+    fn stream_ended(self: &Arc<Self>, gen: u64, api: Api, opened: bool, steady: bool) {
         // A server that crashed closes its stream first: give its end a moment to show, so its chats
         // hear the crash rather than a lost link.
         std::thread::sleep(self.retry_base.min(Duration::from_millis(300)));
@@ -1006,7 +1058,9 @@ impl Server {
                 return;
             }
             st.ready = false;
-            if !opened {
+            if steady {
+                st.stream_fails = 0;
+            } else {
                 st.stream_fails += 1;
             }
             let fails = st.stream_fails;
@@ -1317,35 +1371,62 @@ impl OpenChat {
             self.emit(&ChatEvent::Started { pid, resumed: Some(session.clone()) });
         }
         if let Some(w) = pending {
-            api.ok("POST", &format!("/api/session/{session}/model"), Some(json!({ "model": w })))?;
+            if let Err(e) = api.ok("POST", &format!("/api/session/{session}/model"), Some(json!({ "model": w }))) {
+                // The pick stays waiting for the next send, and the page is told the message did not go.
+                let name = model_name(Some(&w)).unwrap_or_default();
+                {
+                    let mut i = self.lock();
+                    if i.pending_model.is_none() {
+                        i.pending_model = Some(w);
+                    }
+                }
+                let line = format!("OpenCode did not switch this chat to {name}, so the message was not sent. Pick the model again or send again to retry. ({e})");
+                self.emit(&ChatEvent::Stderr { line: line.clone() });
+                return Err(line);
+            }
         }
         api.ok("POST", &format!("/api/session/{session}/prompt"), Some(json!({ "text": text }))).map(|_| ())
     }
 
-    /// Stops the running turn. `None` when none was running. `Interrupt` when OpenCode ended the turn
+    /// Stops the running turn. Never `None`: with nothing running it is `Ended`. `Interrupt` when OpenCode ended the turn
     /// itself; `Ended` when it did not say so within the stop grace, and the page is told the turn is
     /// over anyway (the shared server is never ended for one chat's stop).
+    ///
+    /// A run the page was already told is over but OpenCode may still be running (a lost stream, a
+    /// stop that got no answer) is stopped too. With nothing to stop, the page still hears `stopped`,
+    /// so a Stop never leaves it waiting.
     pub fn stop(&self) -> Option<StopHow> {
-        let session = {
+        let (session, busy, orphan) = {
             let i = self.lock();
-            if !i.tr.busy() {
-                return None;
-            }
-            i.session.clone()
+            (i.session.clone(), i.tr.busy(), i.tr.orphaned())
         };
+        if !busy && !orphan {
+            self.emit(&ChatEvent::Stopped { how: StopHow::Ended });
+            return Some(StopHow::Ended);
+        }
         let asked = self.server.api().is_some_and(|api| api.ok("POST", &format!("/api/session/{session}/interrupt"), None).is_ok());
         let end = Instant::now() + self.server.cfg.stop_grace;
         let how = loop {
             if !asked || Instant::now() >= end {
                 break StopHow::Ended;
             }
-            if !self.lock().tr.running() {
+            let i = self.lock();
+            if !i.tr.running() && !i.tr.orphaned() {
                 break StopHow::Interrupt;
             }
+            drop(i);
             std::thread::sleep(Duration::from_millis(20));
         };
         if how == StopHow::Ended {
-            let cut = self.lock().tr.cut(Instant::now());
+            // A stop OpenCode took drops its queue; one it did not take leaves the queue to run.
+            let cut = {
+                let mut i = self.lock();
+                if asked {
+                    i.tr.cut(Instant::now())
+                } else {
+                    i.tr.cut_kept(Instant::now())
+                }
+            };
             for e in &cut {
                 self.emit(e);
             }
