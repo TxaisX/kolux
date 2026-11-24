@@ -706,3 +706,47 @@ fn starting_an_opencode_chat_sets_the_servers_environment() {
     super::super::set_open_env(&server, "claude", || panic!("not read for another agent")).unwrap();
     assert_eq!(server.env(), fixed);
 }
+
+// Coordinator round 2: only a conversation OpenCode says is gone reads "not in OpenCode anymore"
+// (the screen keys on that word); a server that cannot be reached or fails says so instead.
+#[test]
+fn a_gone_conversation_is_told_apart_from_a_server_that_cannot_be_reached() {
+    let answering = |status: u16| {
+        let session = format!("/api/session/{SES}");
+        fake(move |m: &str, p: &str| {
+            if m == "GET" && p.starts_with(&session) {
+                let body = if status == 404 { format!("{{\"name\":\"NotFoundError\",\"data\":{{\"message\":\"Session not found: {SES}\"}}}}") } else { "{}".to_string() };
+                return Reply::Json(status, body);
+            }
+            plain(m, p)
+        })
+    };
+    let gone = answering(404);
+    let (server, _) = server_on(&gone);
+    let e = server.history(&[], SES, 50).unwrap_err();
+    assert!(e.contains("anymore"), "a 404 is a gone conversation: {e}");
+    let (_, s) = sink();
+    let e = OpenChat::open(&server, "c1", spec(vec![]), Some(SES.to_string()), s).err().expect("resume of a gone session fails");
+    assert!(e.contains("anymore"), "resume of a gone session: {e}");
+    server.shutdown();
+
+    let failing = answering(500);
+    let (server, _) = server_on(&failing);
+    let e = server.history(&[], SES, 50).unwrap_err();
+    assert!(!e.contains("anymore") && e.starts_with("Could not reach OpenCode"), "a 500 is not a gone conversation: {e}");
+    let (_, s) = sink();
+    let e = OpenChat::open(&server, "c1", spec(vec![]), Some(SES.to_string()), s).err().expect("resume on a failing server fails");
+    assert!(!e.contains("anymore") && e.starts_with("Could not reach OpenCode"), "resume on a failing server: {e}");
+    server.shutdown();
+
+    // Nothing listens on this port any more.
+    let base = {
+        let l = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        format!("http://{}", l.local_addr().unwrap())
+    };
+    let start: Starter = Arc::new(move |_: &[(String, String)]| Ok(Up::fake(Api::local(&base, "pw"))));
+    let server = Arc::new(Server::with_starter(cfg(), start));
+    let e = server.history(&[], SES, 50).unwrap_err();
+    assert!(!e.contains("anymore") && e.starts_with("Could not reach OpenCode"), "a closed port is not a gone conversation: {e}");
+    server.shutdown();
+}

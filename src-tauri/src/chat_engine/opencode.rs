@@ -602,10 +602,17 @@ impl Api {
         rx.recv_timeout(CALL_WAIT + Duration::from_secs(5)).map_err(|_| "OpenCode did not answer in time.".to_string())?.map_err(|e| format!("OpenCode could not be reached: {e}"))
     }
 
+    /// The API of a server at `base` (a local address: never through a system proxy). The one client
+    /// carries every call and the event stream.
+    fn at(base: String, password: String) -> Result<Api, String> {
+        let http = reqwest::Client::builder().no_proxy().build().map_err(|e| e.to_string())?;
+        Ok(Api { base, password, http })
+    }
+
     /// An API on a local address, for the tests' stand-in server.
     #[cfg(test)]
     pub(super) fn local(base: &str, password: &str) -> Api {
-        Api { base: base.to_string(), password: password.to_string(), http: reqwest::Client::builder().no_proxy().build().expect("a client") }
+        Api::at(base.to_string(), password.to_string()).expect("a client")
     }
 
     /// A call that must succeed: the body as JSON (`null` for an empty one), or OpenCode's own message.
@@ -617,7 +624,25 @@ impl Api {
         }
         Err(v.get("message").and_then(Value::as_str).map_or_else(|| format!("OpenCode answered {status}."), |m| format!("OpenCode: {m}")))
     }
+
+    /// A read of something that may be gone: `None` only when OpenCode says it is not there (404, or
+    /// its `NotFoundError`). A call that fails any other way (no answer, a refused connection, a 5xx)
+    /// is "could not reach", never "gone".
+    fn find(&self, path: &str) -> Result<Option<Value>, String> {
+        let (status, text) = self.call("GET", path, None).map_err(|e| format!("Could not reach OpenCode: {}", e.trim_start_matches("OpenCode could not be reached: ")))?;
+        let v: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+        if (200..300).contains(&status) {
+            return Ok(Some(v));
+        }
+        if status == 404 || v.get("name").and_then(Value::as_str) == Some("NotFoundError") {
+            return Ok(None);
+        }
+        Err(format!("Could not reach OpenCode: it answered {status}."))
+    }
 }
+
+/// What a chat whose session OpenCode no longer has is told. The screen keys on "anymore".
+const GONE: &str = "This chat's conversation is not in OpenCode anymore.";
 
 /// The server process Kolux started.
 pub(super) struct Proc {
@@ -828,9 +853,7 @@ pub(super) fn launch(program: &std::path::Path, env: &[(String, String)], passwo
             }
         }
     }
-    // A local address: never through a system proxy.
-    let http = reqwest::Client::builder().no_proxy().build().map_err(|e| e.to_string())?;
-    Ok(Up { proc: Some(proc), api: Api { base: base.unwrap_or_default(), password, http } })
+    Ok(Up { proc: Some(proc), api: Api::at(base.unwrap_or_default(), password)? })
 }
 
 impl Server {
@@ -1209,11 +1232,11 @@ impl Server {
         if !valid_session(session) {
             return Err(format!("\"{session}\" is not a session id."));
         }
-        let gone = |_| "This chat's conversation is not in OpenCode anymore.".to_string();
         self.set_env(env.to_vec());
         let (api, _, _) = self.wake()?;
-        api.ok("GET", &format!("/api/session/{session}"), None).map_err(gone)?;
-        let list = api.ok("GET", &format!("/api/session/{session}/message?limit={}&order=desc", limit.clamp(1, HISTORY_MESSAGES)), None).map_err(gone)?;
+        let gone = || GONE.to_string();
+        api.find(&format!("/api/session/{session}"))?.ok_or_else(gone)?;
+        let list = api.find(&format!("/api/session/{session}/message?limit={}&order=desc", limit.clamp(1, HISTORY_MESSAGES)))?.ok_or_else(gone)?;
         let mut messages = list.get("data").and_then(Value::as_array).cloned().unwrap_or_default();
         messages.reverse();
         let items = history_items(&messages);
@@ -1287,7 +1310,7 @@ impl OpenChat {
         let want = spec.model.as_deref().map(|m| model_ref(m, spec.effort.as_deref())).transpose()?;
         let (api, pid, gen) = server.wake()?;
         let info = match &resume {
-            Some(id) => api.ok("GET", &format!("/api/session/{id}"), None).map_err(|_| "This chat's conversation is not in OpenCode anymore.".to_string())?,
+            Some(id) => api.find(&format!("/api/session/{id}"))?.ok_or_else(|| GONE.to_string())?,
             None => {
                 let mut body = json!({ "location": { "directory": spec.cwd.to_string_lossy() } });
                 if let Some(w) = &want {
