@@ -2,8 +2,11 @@
 // plain path if it fails to load or loses its context later. At most twelve panes hold a GPU
 // context at a time, hidden tabs counted while they hold one; the rest draw plain until a slot frees
 // up. A pane hidden for PARK_AFTER_MS gives its context back and takes one again when it is shown,
-// evicting a pane hidden at least that long when the pool is full (DT-C229). Pure so it can be tested
-// without a browser; the pane hands in the real addon factory.
+// evicting a pane hidden at least that long when the pool is full (DT-C229). A shown pane left plain
+// by a full pool takes the slot of the pane hidden longest after SWAP_AFTER_MS (LAG-08). Pure so it
+// can be tested without a browser; the pane hands in the real addon factory.
+
+import { pickSlotVictim } from "./gpuSlots";
 
 export type RendererMode = "webgl" | "dom";
 
@@ -250,6 +253,9 @@ export function afterPaint(fn: () => void): () => void {
 /** DT-C229: how long a pane stays hidden before its GPU context goes back to the pool. */
 export const PARK_AFTER_MS = 30_000;
 
+/** LAG-08: how long a shown pane drawing plain for a full pool waits before it takes the slot of the pane hidden longest. */
+export const SWAP_AFTER_MS = 1_000;
+
 /** DT-C229: how long a reveal waits for synchronized output to end before it goes ahead anyway (just
  *  past xterm's own 1 s limit on it), so a program that never ends it never keeps the pane plain. */
 export const SYNC_WAIT_MS = 1_100;
@@ -310,13 +316,14 @@ export type ParkHooks = {
 type Parker = { hiddenSince: number | null; after: number; holds(): boolean; evict(): void };
 const parkersOf = new WeakMap<GpuPool, Set<Parker>>();
 
-/** DT-C229: parks `choice` once the pane has been hidden for `after` ms. On show, a parked pane, or
- *  one drawing plain only because the pool was full, takes a GPU context again and repaints before
- *  the frame is drawn (the pane calls `hidden(false)` from a layout effect). With the pool full it
- *  evicts the pane hidden longest, but only one hidden at least its own `after` (it would park
- *  anyway); otherwise it draws plain and takes the next slot freed. While the program holds the
- *  screen in synchronized output the take waits for it to end, so the new context's first frame is
- *  not blank. */
+/** DT-C229 / LAG-08: parks `choice` once the pane has been hidden for `after` ms. On show, a parked
+ *  pane, or one drawing plain only because the pool was full, takes a GPU context again and repaints
+ *  before the frame is drawn (the pane calls `hidden(false)` from a layout effect). With the pool full
+ *  it evicts the pane hidden longest, but only one hidden at least its own `after` (it would park
+ *  anyway); a pane still plain after that asks again in SWAP_AFTER_MS and then takes the slot of the
+ *  hidden pane hidden longest, so a folder switch into a full pool costs a second, not a 30 s park.
+ *  With no such pane it draws plain and takes the next slot freed. While the program holds the screen
+ *  in synchronized output the take waits for it to end, so the new context's first frame is not blank. */
 export function parkWhenHidden(
   choice: Pick<RendererChoice, "park" | "wake" | "mode" | "waiting"> & { readonly asleep?: boolean },
   hooks: ParkHooks,
@@ -324,6 +331,7 @@ export function parkWhenHidden(
 ) {
   let cancel: (() => void) | null = null;
   let pending: (() => void) | null = null;
+  let swap: (() => void) | null = null;
   let parked = false;
   let hidden = false;
   let parkers = parkersOf.get(pool);
@@ -337,6 +345,10 @@ export function parkWhenHidden(
     pending?.();
     pending = null;
   };
+  const stopSwap = () => {
+    swap?.();
+    swap = null;
+  };
   const park = (quiet: boolean) => {
     stopWaiting();
     if (!choice.park(quiet)) return;
@@ -345,6 +357,29 @@ export function parkWhenHidden(
   };
   const me: Parker = { hiddenSince: null, after, holds: () => choice.mode === "webgl", evict: () => park(true) };
   all.add(me);
+  /** Resume xterm, take the context a freed slot allows, and repaint once with the mode now in force. */
+  const wake = (evicted: boolean) => {
+    hooks.resume();
+    parked = false;
+    const mode = choice.wake();
+    // Still plain after a quiet eviction (the slot went elsewhere meanwhile, or this pane cannot take
+    // one): the evicted slot is offered to the waiting panes after all.
+    if (evicted && mode === "dom") queueMicrotask(() => slotFreed(pool));
+    hooks.redraw(mode);
+  };
+  /** LAG-08: the grace ran out while the pane is shown and plain for a full pool. Take the slot of the
+   *  pane hidden longest (any hidden pane holding one), rather than wait for its own 30 s park. */
+  const swapToLongestHidden = () => {
+    if (hidden || !choice.waiting) return; // shown again, got a slot or stopped meanwhile: nothing to do
+    let evicted = false;
+    if (pool.live >= pool.max) {
+      const victim = pickSlotVictim(all, now(), () => 0);
+      if (!victim) return; // nothing hidden holds a slot: the pane takes the next one freed, as before
+      victim.evict();
+      evicted = true;
+    }
+    wake(evicted);
+  };
   const take = (force = false) => {
     if (pending) return;
     if (!force && hooks.whenFree && hooks.held?.()) {
@@ -363,24 +398,23 @@ export function parkWhenHidden(
     }
     let evicted = false;
     if (pool.live >= pool.max) {
-      const t = now();
-      let victim: Parker | null = null;
-      for (const p of all) {
-        if (p === me || p.hiddenSince === null || t - p.hiddenSince < p.after || !p.holds()) continue;
-        if (victim === null || p.hiddenSince < (victim.hiddenSince as number)) victim = p;
-      }
+      // A pane's own `after` is its minimum hidden time: one that would park anyway may be evicted here.
+      const victim = pickSlotVictim(all, now(), (p) => p.after);
       if (victim) {
         victim.evict();
         evicted = true;
       }
     }
-    hooks.resume();
-    parked = false;
-    const mode = choice.wake();
-    // Still plain after a quiet eviction (the slot went elsewhere meanwhile, or this pane cannot take
-    // one): the evicted slot is offered to the waiting panes after all.
-    if (evicted && mode === "dom") queueMicrotask(() => slotFreed(pool));
-    hooks.redraw(mode);
+    wake(evicted);
+    // LAG-08: still plain because every slot is held, by panes hidden too briefly to evict: ask again
+    // after a short grace, then take the slot of the pane hidden longest instead of a 30 s park. One
+    // timer per pane; a pane that got a slot, is hidden again or has stopped does nothing when it fires.
+    if (!swap && !hidden && choice.waiting) {
+      swap = wait(() => {
+        swap = null;
+        swapToLongestHidden();
+      }, SWAP_AFTER_MS);
+    }
   };
   const stopSlots = onSlotFree(pool, () => {
     if (!hidden && choice.waiting) take();
@@ -393,6 +427,7 @@ export function parkWhenHidden(
       hidden = on;
       if (on) {
         stopPending();
+        stopSwap();
         me.hiddenSince ??= now();
         cancel ??= wait(() => {
           cancel = null;
@@ -408,6 +443,7 @@ export function parkWhenHidden(
     stop() {
       stopWaiting();
       stopPending();
+      stopSwap();
       stopSlots();
       all.delete(me);
     },

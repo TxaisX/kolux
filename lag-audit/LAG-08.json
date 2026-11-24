@@ -1,0 +1,10 @@
+{
+  "id": "LAG-08",
+  "summary": "Folder switch with more panes than the 12 GPU slots: counts WebGL contexts made and disposed and slots live; shown panes get the GPU within SWAP_AFTER_MS from the panes hidden longest, with no extra churn.",
+  "tests": [
+    {"runner": "vitest", "file": "src/terminal/gpuSlots.board.test.ts", "name": "LAG-08 GPU slots > a folder switch into a full pool: within SWAP_AFTER_MS every shown pane draws on the GPU and the folder hidden longest gives its slots"},
+    {"runner": "vitest", "file": "src/terminal/gpuSlots.board.test.ts", "name": "LAG-08 GPU slots > switching back to a folder that kept its slots makes no context and releases none; the next switch evicts the folder hidden longest"},
+    {"runner": "vitest", "file": "src/terminal/gpuSlots.board.test.ts", "name": "LAG-08 GPU slots > a quick look at another folder (shown under SWAP_AFTER_MS) evicts nobody and makes no context"},
+    {"runner": "vitest", "file": "src/terminal/gpuSlots.board.test.ts", "name": "LAG-08 GPU slots > 20 panes, 12 slots, folders of 6/6/6/2: each switch moves only the slots it needs, from the panes hidden longest"}
+  ]
+}
