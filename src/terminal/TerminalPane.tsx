@@ -44,7 +44,7 @@ import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, holdsBefore
 import { isFailedResume, RESUME_FAILED_NOTE } from "./layout";
 import { sizeGate } from "./sizeGate";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
-import { listenShared as listen, onTerminalOutput, onTerminalExit } from "./outputBus";
+import { listenShared as listen, onTerminalOutputRouted, onTerminalExit, type RoutedOutput } from "./outputBus";
 import { notePrinted } from "./printedAddresses";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop, type Rows } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
@@ -776,6 +776,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
       else if (id === idRef.current) run();
     };
     const unlisteners: UnlistenFn[] = [];
+    // LAG-10: this pane's output reader, routed to the terminal it is bound to so the page hands it only
+    // its own chunks. It starts unrouted (every chunk, while the id is unknown) and follows the bind.
+    let routed: RoutedOutput | null = null;
     // TERM-098: output drawn before terminal_spawn hands back the id can hold the console's
     // opening cursor query; the terminal's answer goes through write() like a key, so it is held
     // here and sent once the id is known, or the shell never starts.
@@ -995,7 +998,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         ...(await Promise.all([
         // TERM-098: a chunk tagged with this pane's key is drawn at once, before terminal_spawn answers;
         // anything else that arrives first is held until the id is known and replayed then.
-        onTerminalOutput((e) => {
+        onTerminalOutputRouted((e) => {
           // APP-052: output from a replaced run of the terminal service is dropped, never drawn.
           if (!fromThisService(e.generation, serviceRef.current)) return;
           const draw = () => {
@@ -1023,6 +1026,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
           if (idRef.current === null && !(moved || restored) && forPane(e, null, number)) draw();
           // FT-5 (review 0.2.0): before the id is known only this pane's chunks (or untagged ones) are held.
           else if (idRef.current !== null || holdsBeforeBind(e, number)) mine(e.id, draw);
+        }).then((r) => {
+          routed = r;
+          return r.stop;
         }),
         listen<{ terminal: number; agent: string | null }>("pane-agent", (e) =>
           mine(e.payload.terminal, () => setFound(foundAgent(e.payload.agent))),
@@ -1099,6 +1105,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
             return;
           }
           idRef.current = id;
+          routed?.route(id); // LAG-10: from here this pane's reader hears this terminal's chunks only
           sizes.reset(); // FT-4: a newly bound terminal hears its size again
           takeOver(number); // DT-C248: the hand-over ends here, with the terminal bound to this view
           // DT-C248 review: a terminal taken back is sized to its old view; the observer fired during the
@@ -1133,6 +1140,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         if (!alive) return;
         ended = false;
         idRef.current = null;
+        routed?.route(null); // LAG-10: no terminal bound, so this pane hears every chunk again
         early = [];
         setDied(null);
         setExitNote(null); // START-06: a program is starting again, so its end banner goes
@@ -1150,6 +1158,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, cwd = n
         if (resumed) resumeFailed.current?.();
         ended = false;
         idRef.current = null;
+        routed?.route(null); // LAG-10: no terminal bound, so this pane hears every chunk again
         early = [];
         setDied(null);
         markShell(shellInAgentPane, number, false, agent);

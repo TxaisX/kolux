@@ -8,6 +8,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { OutputEvent } from "./codec";
 import { createListenHub, type ListenHub } from "./listenHub";
 import { decodeFrame } from "./outputFrame";
+import { createOutputRouter, type OutputRouter } from "./outputRouter";
 
 export const OUTPUT_EVENT = "terminal-output";
 export const EXIT_EVENT = "terminal-exit";
@@ -33,6 +34,8 @@ type Bus = {
   subscribed: Promise<void> | null;
   /** LAG-09: the page's one hub of backend listeners, one per event name, shared by every pane. */
   hub?: ListenHub;
+  /** LAG-10: the page's routed readers, keyed by the terminal id each pane bound itself to. */
+  router?: OutputRouter<Reader>;
   /** Probes (the live-flood proof script) set this to count channel batches and time their hand-out. */
   probe?: (batch: OutputBatch, ms: number) => void;
 };
@@ -46,6 +49,22 @@ const bus: Bus = ((globalThis as { __koluxOutputBus?: Bus }).__koluxOutputBus ??
 export function fanOut(batch: OutputBatch | undefined): void {
   const t = bus.probe ? performance.now() : 0;
   for (const reader of [...bus.readers]) eachChunk(batch, reader);
+  // LAG-10: a routed reader hears only the chunks for the terminal id it is bound to (an unrouted one
+  // hears every chunk). The route is read per chunk, so a reader re-routed mid-batch gets the rest of
+  // the batch under its new route.
+  const router = bus.router;
+  const items = batch?.items;
+  if (router && Array.isArray(items)) {
+    for (const chunk of items) {
+      for (const reader of router.targets(chunk.id)) {
+        try {
+          reader(chunk);
+        } catch (err) {
+          console.error("terminal output: a reader failed on one chunk; the rest of the batch still goes", err);
+        }
+      }
+    }
+  }
   if (batch?.exit !== undefined) {
     for (const reader of [...bus.exits]) {
       try {
@@ -108,6 +127,64 @@ function join<T>(set: Set<T>, reader: T, unlisten: Promise<UnlistenFn>): Promise
 export function onTerminalOutput(onChunk: (chunk: OutputEvent) => void): Promise<UnlistenFn> {
   const reader: Reader = (chunk) => onChunk(chunk);
   return join(bus.readers, reader, listenShared<OutputBatch>(OUTPUT_EVENT, (e) => eachChunk(e.payload, onChunk)));
+}
+
+/** LAG-10: one pane's output reader, with the terminal it is bound to; `route(null)` makes it unrouted. */
+export type RoutedOutput = { stop: UnlistenFn; route: (id: number | null) => void };
+
+/** The page's routed readers, created on first use and kept on the window's bus like `readers`. */
+function routedReaders(): OutputRouter<Reader> {
+  return (bus.router ??= createOutputRouter<Reader>());
+}
+
+/**
+ * LAG-10: calls `onChunk` once per chunk of the terminal it is routed to, until `stop` runs. It starts
+ * unrouted, so it hears every chunk until the pane knows its terminal id and calls `route(id)`; with
+ * twelve bound panes a chunk then reaches one reader, not twelve. `route` re-routes at any time (the next
+ * chunk follows the new route), `stop` removes it and drops its event-path handler (safe to call twice).
+ */
+export function onTerminalOutputRouted(onChunk: (chunk: OutputEvent) => void): Promise<RoutedOutput> {
+  const router = routedReaders();
+  const reader: Reader = (chunk) => onChunk(chunk);
+  router.add(reader, null);
+  let off: UnlistenFn = () => {};
+  let stopped = false;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    router.remove(reader);
+    off();
+  };
+  const route = (id: number | null) => {
+    if (stopped) return;
+    router.add(reader, id);
+  };
+  bus.subscribed ??= subscribe();
+  const unlisten = listenShared<OutputBatch>(OUTPUT_EVENT, (e) => {
+    const items = e.payload?.items;
+    if (!Array.isArray(items)) return;
+    for (const chunk of items) {
+      // The event path only runs while the page has no channel; it follows the same route.
+      if (!router.targets(chunk.id).includes(reader)) continue;
+      try {
+        reader(chunk);
+      } catch (err) {
+        console.error("terminal output: a reader failed on one chunk; the rest of the batch still goes", err);
+      }
+    }
+  });
+  return Promise.all([unlisten, bus.subscribed]).then(
+    ([fn]) => {
+      off = fn;
+      if (stopped) fn(); // stopped before its listener was ready: let the handler go now
+      return { stop, route };
+    },
+    (err) => {
+      stopped = true;
+      router.remove(reader);
+      throw err;
+    },
+  );
 }
 
 /**
