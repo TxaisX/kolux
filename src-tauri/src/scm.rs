@@ -634,7 +634,9 @@ fn ssh_host(alias: &str, config: &str) -> Option<String> {
 pub fn github_repo(url: &str, ssh_config: &str) -> Option<GhRepo> {
     let url = url.trim();
     let (host, path, ssh) = if let Some((scheme, rest)) = url.split_once("://") {
-        let ssh = match scheme {
+        // R4-F01: a URL scheme is case-insensitive (RFC 3986), and git reads `HTTPS://` as the
+        // https transport, so the match must not care about case either.
+        let ssh = match scheme.to_ascii_lowercase().as_str() {
             "https" | "http" | "git" => false,
             "ssh" | "git+ssh" => true,
             _ => return None,
