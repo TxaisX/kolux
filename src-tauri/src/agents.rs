@@ -801,6 +801,33 @@ fn credited_name(stem: &str, packages: bool) -> Option<&'static str> {
     })
 }
 
+/// START-01: a restored Claude pane resumes only a conversation Claude really saved. The id the
+/// SessionStart hook supplied at launch exists before any transcript does: when the person never
+/// typed in that pane, `claude --resume <id>` prints "No conversation found with session ID ..."
+/// and exits, on every restart. So a Claude id is kept only when exactly that transcript file is
+/// on disk (`<root>/projects/<folder>/<id>.jsonl`); otherwise the pane comes back at its prompt,
+/// exactly as with no id, and one line says why. Only Claude is checked (the confirmed case);
+/// every other agent keeps today's behaviour. An id that cannot pass [`safe_session`] is never
+/// looked up, since the finder joins it into a path.
+pub(crate) fn restorable<'a>(roots: &crate::sessions::list::Roots, agent: &str, start: Start<'a>) -> (Start<'a>, Option<String>) {
+    let given = match start {
+        Start::Fresh => return (Start::Fresh, None),
+        Start::Restore(given) => given,
+    };
+    let Some(sid) = given.map(str::trim).filter(|s| !s.is_empty()) else { return (Start::Restore(None), None) };
+    if agent != "claude" {
+        return (start, None);
+    }
+    let skipped = |id: &str| format!("resume skipped: agent claude, session {id}: no saved conversation, starting fresh");
+    if !safe_session(sid) {
+        return (Start::Restore(None), Some(skipped(&format!("{sid:?}"))));
+    }
+    match crate::sessions::list::find_session_exact(roots, "claude", sid) {
+        Ok(_) => (Start::Restore(Some(sid)), None),
+        Err(_) => (Start::Restore(None), Some(skipped(sid))),
+    }
+}
+
 /// `restore` (SESS-030) marks a tab brought back after a quit or a crash; `session` is its last
 /// known session id. Both are left out for a plain new tab, which never carries a resume form.
 // Async: finding the program reads the registry and looks in every PATH folder for each
@@ -808,8 +835,28 @@ fn credited_name(stem: &str, packages: bool) -> Option<&'static str> {
 #[allow(clippy::too_many_arguments)]
 #[tauri::command(async)]
 pub fn agent_start_line(app: tauri::AppHandle, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, id: String, extra: Vec<String>, prompt: String, picked: Option<bool>, restore: Option<bool>, session: Option<String>) -> Result<StartLine, String> {
-    let settings = store.lock().map_err(|e| e.to_string())?.settings();
-    let start = if restore.unwrap_or(false) { Start::Restore(session.as_deref().map(str::trim).filter(|s| !s.is_empty())) } else { Start::Fresh };
+    let (settings, store_dir) = {
+        let store = store.lock().map_err(|e| e.to_string())?;
+        (store.settings(), store.dir())
+    };
+    let mut start = if restore.unwrap_or(false) { Start::Restore(session.as_deref().map(str::trim).filter(|s| !s.is_empty())) } else { Start::Fresh };
+    // START-01: a restored Claude pane resumes only when its conversation is really on disk.
+    if id == "claude" && matches!(start, Start::Restore(Some(_))) {
+        let roots = crate::sessions::list::roots_for(
+            &settings,
+            |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty()),
+            std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from),
+            Some(&store_dir),
+        );
+        let (checked, skipped) = restorable(&roots, &id, start);
+        start = checked;
+        if let Some(line) = skipped {
+            match tauri::Manager::path(&app).app_data_dir() {
+                Ok(dir) => crate::diag::write(&dir, &line),
+                Err(_) => eprintln!("kolux-rs: {line}"),
+            }
+        }
+    }
     // SESS-005: a line that cannot be put together is refused here, before any pane is made, and
     // the refusal names the agent.
     let name = agent_name(&id);
@@ -1104,6 +1151,10 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
     let opener = "xdg-open";
     crate::winproc::command(opener).arg(url).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+#[path = "agents_restore_board_tests.rs"]
+mod restore_board_tests;
 
 #[cfg(test)]
 mod tests {
