@@ -447,6 +447,12 @@ pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>
                 if nested::foreign_event(row.cwd.as_deref(), row.session_id.as_deref(), ended, &event) {
                     return (200, None);
                 }
+                // P1 (round 3): a resume keeps the pane's session id, so the latch above would never
+                // clear for it and the next event from a nested agent elsewhere would take the live
+                // row. A SessionStart for the id the pane already knows is the pane's own agent back.
+                if ended && nested::resumed_same_session(row.session_id.as_deref(), &event) {
+                    agent_hooks::saved::forget_ended(pane_key);
+                }
             }
         }
     }

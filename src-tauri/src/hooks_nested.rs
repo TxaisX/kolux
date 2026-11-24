@@ -53,6 +53,21 @@ pub fn foreign_event(known_cwd: Option<&str>, known_session: Option<&str>, known
     !known_session.eq_ignore_ascii_case(event_session) && !same_or_ancestor(event_cwd, known_cwd)
 }
 
+/// Round 3 P1: `claude -c` / `claude --resume` and `codex resume` keep the session id, so the pane's
+/// latch (`saved::ended`) would stay set for that id for the whole resumed session, and the first
+/// event from a nested agent elsewhere would take the live row. A `SessionStart` that names the
+/// very session the pane already knows is the pane's own agent coming back, not a nested one, so
+/// the latch is lifted for it (trimmed, ASCII case ignored).
+pub fn resumed_same_session(known_session: Option<&str>, event: &Value) -> bool {
+    if event.get("hook_event_name").and_then(Value::as_str) != Some("SessionStart") {
+        return false;
+    }
+    match (non_blank(known_session), non_blank(event.get("session_id").and_then(Value::as_str))) {
+        (Some(known), Some(start)) => known.eq_ignore_ascii_case(start),
+        _ => false,
+    }
+}
+
 /// The text, trimmed; none when it is absent or blank.
 fn non_blank(s: Option<&str>) -> Option<&str> {
     s.map(str::trim).filter(|s| !s.is_empty())

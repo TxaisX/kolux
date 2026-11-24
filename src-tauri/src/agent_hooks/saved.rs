@@ -382,10 +382,18 @@ pub fn note_ended(pane_key: u32) {
     ended.push((pane_key, id));
 }
 
+/// START-05: whether `live_id` is the session latched as ended for `pane_key` (trimmed, ASCII case
+/// ignored). Kept apart from the statics so the comparison can be tested on its own (round 3 P3):
+/// the latch is keyed to the session id, so a pane that reports a new one is not the ended one.
+fn ended_in(ended: &[(u32, String)], pane_key: u32, live_id: &str) -> bool {
+    let live = live_id.trim();
+    !live.is_empty() && ended.iter().any(|(k, s)| *k == pane_key && s.eq_ignore_ascii_case(live))
+}
+
 /// START-05: whether the pane's live row names a session already marked ended.
 pub fn ended(pane_key: u32) -> bool {
     let Some(id) = live_row(pane_key).and_then(|r| r.session_id) else { return false };
-    ENDED.lock().unwrap_or_else(|p| p.into_inner()).iter().any(|(k, s)| *k == pane_key && s.eq_ignore_ascii_case(id.trim()))
+    ended_in(&ENDED.lock().unwrap_or_else(|p| p.into_inner()), pane_key, &id)
 }
 
 /// START-05: drops a pane's latch once the pane has no live row left (its agent slept, or its
@@ -396,14 +404,21 @@ pub fn forget_ended(pane_key: u32) {
 
 /// TERM-123: the window did not end the pane after `at_pane_sleep` (its state changed meanwhile), so the
 /// row goes back among the live ones and the save is rewritten with it; the record stays, as workspace
-/// sleep's does (the next event or the quit rewrites it).
+/// sleep's does (the next event or the quit rewrites it). Round 3: `at_pane_sleep` dropped the pane's
+/// latch, so it is set again when the foreground poll still has the shell in front (a restart then
+/// reads as a fresh start, not as a foreign one).
 pub fn unsleep(store: &crate::state::Store, row: Row) {
+    let pane_key = row.pane_key;
+    let shell_in_front = crate::status::SESSIONS.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).and_then(|s| s.terminal).is_some_and(|t| crate::foreground::found_front(t) == Some(crate::foreground::Front::Shell));
     let rows: Vec<Row> = {
         let mut live = LIVE.lock().unwrap_or_else(|p| p.into_inner());
         let live = live.get_or_insert_with(HashMap::new);
-        live.entry(row.pane_key).or_insert(row);
+        live.entry(pane_key).or_insert(row);
         live.values().cloned().collect()
     };
+    if shell_in_front {
+        note_ended(pane_key);
+    }
     if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
         eprintln!("kolux: the agents' status could not be saved: {e}");
     }
@@ -490,3 +505,22 @@ pub fn agent_status_saved(store: tauri::State<'_, Mutex<crate::state::Store>>, k
     }
     restored()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ended_in;
+
+    /// Round 3 P3: the comparison `ended` makes, on its own. The latch is keyed to the session id,
+    /// not to the pane: a new session in the same pane, another pane, or a blank id is not ended.
+    #[test]
+    fn p3_the_ended_latch_is_keyed_to_the_live_session_id() {
+        let latched = [(7u32, "s1".to_string())];
+        assert!(ended_in(&latched, 7, "s1"), "the latched session itself");
+        assert!(ended_in(&latched, 7, " S1 "), "trimmed, letter case ignored");
+        assert!(!ended_in(&latched, 7, "s-new"), "a new session in the pane is not the ended one");
+        assert!(!ended_in(&latched, 8, "s1"), "another pane's latch does not apply");
+        assert!(!ended_in(&[], 7, "s1"), "no latch");
+        assert!(!ended_in(&latched, 7, "   "), "a blank live id is nobody's");
+    }
+}
+

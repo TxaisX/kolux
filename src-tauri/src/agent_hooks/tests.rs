@@ -2761,3 +2761,35 @@ fn f1_a_restarted_agent_in_a_shell_pane_keeps_its_hooks() {
     crate::status::terminal_ended(terminal);
     let _ = fs::remove_dir_all(&dir);
 }
+
+/// P1 (round 3): `claude -c` / `claude --resume` (and `codex resume`) keep the pane's session id, so
+/// the latch (`saved::ended`) would stay set for that id for the whole resumed session and the first
+/// event from a nested agent elsewhere would take the live row. A SessionStart naming the same
+/// session lifts the latch, and the nested agent's event is dropped again.
+#[test]
+fn p1_a_resume_that_keeps_the_session_id_lifts_the_latch() {
+    let _turn = SAVED_ROWS.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = temp("p1-resumed");
+    let store = crate::state::Store::open(&dir).unwrap();
+    let (pane, terminal) = (902, 1902);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    let event = |name: &str, sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"{name}","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let start = |sid: &str, cwd: &str| format!(r#"{{"hook_event_name":"SessionStart","source":"resume","session_id":"{sid}","cwd":{}}}"#, json!(cwd));
+    let ask = |body: &str| crate::hooks::answer(&hook_request(pane, terminal, body), "tok");
+    let row = |sid: &str, cwd: &str| Row { pane_key: pane, agent: "claude".into(), state: "done".into(), at: now, session_id: Some(sid.into()), cwd: Some(cwd.into()), stop: None, hook_version: Some(crate::hooks::HOOK_VERSION), pid: None, pid_started: None, children: Vec::new() };
+    // The pane's own agent reported earlier, then the foreground poll saw the shell again: latch set.
+    assert!(ask(&start("s1", r"C:\work\app")).1.is_some(), "the pane's agent starts");
+    saved::unsleep(&store, row("s1", r"C:\work\app"));
+    saved::note_ended(pane);
+    assert!(saved::ended(pane), "the live session is marked ended");
+    // `claude -c` in the pane's folder: the same session id comes back, so it is the pane's own.
+    assert!(ask(&start("s1", r"C:\work\app")).1.is_some(), "the resumed start is heard");
+    assert!(!saved::ended(pane), "a start for the latched id lifts the latch");
+    assert!(ask(&event("PostToolUse", "s1", r"C:\work\app")).1.is_some(), "the resumed session is the pane's own");
+    // A nested agent's event from another folder is dropped again, not taken as the pane's.
+    assert!(ask(&event("PostToolUse", "s-nested", r"D:\elsewhere")).1.is_none(), "a foreign event is dropped after the resume");
+    // Hand the live row back, so the rest of the suite starts from an empty LIVE set.
+    saved::at_pane_sleep(&store, pane, std::time::Duration::ZERO).unwrap();
+    crate::status::terminal_ended(terminal);
+    let _ = fs::remove_dir_all(&dir);
+}
