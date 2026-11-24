@@ -30,7 +30,9 @@ export function nextTick(resets: (number | null | undefined)[], now: number = Da
   if (!ahead.length) return null;
   const left = Math.min(...ahead) - now;
   const unit = left <= 86_400_000 ? MINUTE : HOUR;
-  return (left % unit || unit) + 250;
+  // A remainder of 0 means the countdown changes within the next millisecond, so wait a moment
+  // rather than a whole unit (T5-F01).
+  return (left % unit) + 250;
 }
 
 /** The hover line both pills share: the weekly limit, what is left, and when it resets. */
