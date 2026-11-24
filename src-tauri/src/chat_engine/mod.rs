@@ -699,13 +699,14 @@ impl Engines {
         }
     }
 
-    /// Ends every chat's process and the shared OpenCode server (the app is quitting).
+    /// Ends every chat's process and the shared OpenCode server (the app is quitting). An OpenCode chat
+    /// sends no stop on the way out: ending the server ends its turn, and quit never waits on it.
     pub fn close_all(&self) {
         let all: Vec<Chat> = self.map.lock().unwrap_or_else(|e| e.into_inner()).drain().map(|(_, c)| c).collect();
         for chat in all {
             match chat {
                 Chat::Stream(e) => e.close(),
-                Chat::Open(c) => c.close(),
+                Chat::Open(c) => c.close_for_quit(),
             }
         }
         self.open.shutdown();
@@ -825,10 +826,12 @@ pub async fn chat_start(app: tauri::AppHandle, chat_id: String, cwd: String, mod
     };
     // The caller's own variables first; the sign-in wins (ACCT-024 already refused a clash).
     let mut env: Vec<(String, String)> = extra_env.into_iter().chain(sign_in).collect();
-    // One OpenCode server answers every chat, so it cannot be started with one folder's variables:
-    // it always carries the Everyday folder's git rule, whichever chat happens to start it.
+    // One OpenCode server answers every chat, so it cannot be started with one chat's variables: it
+    // always starts with the server's own environment (`open_env`), whichever chat wakes it. The
+    // pane's extra variables cannot be carried per session and are not used for an OpenCode chat.
     if agent == opencode::AGENT {
         env.extend(everyday_rule());
+        engines(&app).open_server().set_env(open_env(&app)?);
     }
     // Txais (2026-11-21): chat panes follow the same 200k cap, handoff line and note as terminal
     // panes. The cap goes on here (the CLI's own variable) rather than inside the engine, so the
@@ -885,7 +888,7 @@ pub async fn chat_end(app: tauri::AppHandle, chat_id: String) -> Result<(), Stri
 }
 
 /// What the shared OpenCode server is started with: the sign-in and settings a terminal's OpenCode
-/// gets. Only the call that starts the server uses it.
+/// gets. Every command that may start the server sets it first, so every start uses the same one.
 fn open_env(app: &tauri::AppHandle) -> Result<Vec<(String, String)>, String> {
     use tauri::Manager;
     let store = app.state::<Mutex<crate::state::Store>>();
