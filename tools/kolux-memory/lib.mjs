@@ -61,13 +61,18 @@ const SECRETS = [
   /\bAIza[0-9A-Za-z_-]{30,}\b/g,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
   /\b(Bearer)\s+[A-Za-z0-9._~+/-]{20,}=*/g,
-  /(api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*["']?([A-Za-z0-9._~+/-]{16,})["']?/gi,
+  // The key and the value may each carry the quote JSON puts around them, so the
+  // separator does not always follow the key directly: `password=hunter2`,
+  // `{"password":"hunter2"}`, `api_key: 'hunter2'`.
+  /(api[_-]?key|secret|password|passwd|token)\b["']?\s*[:=]\s*["']?([A-Za-z0-9._~+/-]{16,})/gi,
 ];
 
 export function redact(text) {
   let s = textOf(text);
-  for (const re of SECRETS) s = s.replace(re, (m, a, b) => {
-    if (a && typeof a === "string" && /^(api|secret|password|passwd|token|bearer)$/i.test(a)) return `${a}: [redacted]`;
+  for (const re of SECRETS) s = s.replace(re, (m, key, value) => {
+    // A key/value match: keep the key, the separator and the quotes; replace only the value.
+    if (typeof value === "string") return m.slice(0, m.length - value.length) + "[redacted]";
+    if (key && typeof key === "string" && /^(api|secret|password|passwd|token|bearer)$/i.test(key)) return `${key}: [redacted]`;
     return "[redacted]";
   });
   return s;
