@@ -71,7 +71,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   /** The pane already has a name the user gave it, so the first message must not replace it. */
   named?: boolean;
   /** Names the session after its first message, as a chat app does, once per pane. */
-  onName?: (name: string) => void;
+  onName?: (name: string | null) => void;
   /** The model this chat starts on; null takes the last pick or the chat's cheap default. */
   model?: string | null;
   /** The effort level this chat starts on; null takes the last pick. */
@@ -583,6 +583,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     markLegacy(false);
     if (say) setNote(say);
     namedOnce.current = false;
+    // The old chat's own name leaves the tab and the sidebar row: this one has none yet (a name the user chose stays).
+    if (!byUser.current) onName?.(null);
     setSession(null);
     legacyOld.current = null;
     reportSession.current?.(null);
@@ -610,7 +612,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         const history = await chatHistory(agent, cwd, id);
         resetView();
         markLegacy(false);
-        namedOnce.current = true;
+        // A chat with words in it is named by the column (and by OpenCode's late title); one with nothing said in
+        // it is named by the first message sent, like a new chat. The old chat's automatic name goes either way.
+        namedOnce.current = history.items.length > 0;
+        if (!byUser.current) onName?.(null);
         setItems(applyRead([], history));
         setSession(id);
         legacyOld.current = null;

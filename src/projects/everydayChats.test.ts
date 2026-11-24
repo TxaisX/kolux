@@ -141,3 +141,12 @@ test("round 3 P2: a name the user chose is marked, reads back, and the chat's ow
   // a user name with no text is not a name
   expect(setEverydayUserName(list, "a", "  ")).toBe(list);
 });
+
+test("round 3 P3: a chat left behind takes its automatic name off the row, but never a name the user chose", () => {
+  const list = [rec("a", { name: "Greeting" }), rec("b", { name: "Mine", nameByUser: true })];
+  const next = setEverydayName(list, "a", null);
+  expect(next[0].name).toBeUndefined();
+  expect(everydayChatName(next[0])).toBe("New chat");
+  expect(setEverydayName(next, "a", null)).toBe(next);
+  expect(setEverydayName(list, "b", null)).toBe(list);
+});

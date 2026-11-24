@@ -115,6 +115,9 @@ export const HistoryView = memo(function HistoryView({ mode, sessions, now, acti
 });
 
 
+/** How long after a reply the list is read again while the open chat still has no title (ms). Mutable for tests. */
+export const LATE_TITLE = { first: 3000, second: 7000 };
+
 type ColumnProps = {
   cwd: string | null;
   mode: ColumnMode;
@@ -143,22 +146,40 @@ export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, 
   const [menu, setMenu] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
+  // Round 3 P3: OpenCode writes a chat's title a little after the reply ends, so the list read right then can still
+  // call the open chat "New chat". When it does, the list is read again about 3 s and about 10 s after the reply,
+  // and then no more. Each reply (a new `refreshKey`) starts the count over; the timer goes with the column.
+  const latest = useRef({ activeId, activeStarted });
+  latest.current = { activeId, activeStarted };
+  const late = useRef({ key: refreshKey, tries: 0 });
+  const [lateTick, setLateTick] = useState(0);
   useEffect(() => {
     if (!cwd) return;
     let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (late.current.key !== refreshKey) late.current = { key: refreshKey, tries: 0 };
     void listChatSessions(cwd).then(
       (list) => {
         if (!live) return;
         setSessions(list);
         setNow(Date.now());
         setFailed(null);
+        const { activeId: open, activeStarted: said } = latest.current;
+        const tries = late.current.tries;
+        if (open !== null && said && titleOf(list, open) === null && tries < 2) {
+          timer = setTimeout(() => {
+            late.current.tries = tries + 1;
+            setLateTick((n) => n + 1);
+          }, tries === 0 ? LATE_TITLE.first : LATE_TITLE.second);
+        }
       },
       () => live && setFailed("Could not read your past chats."),
     );
     return () => {
       live = false;
+      clearTimeout(timer);
     };
-  }, [cwd, refreshKey]);
+  }, [cwd, refreshKey, lateTick]);
 
   // Review 2 P2-5: a row is blank by what is in it, not by its title. The list carries no message count, so a row
   // still called "New chat" (or OpenCode's "New session ...") is read to see if words are in it, and one with words
@@ -191,8 +212,14 @@ export const HistoryColumn = memo(function HistoryColumn({ cwd, mode, activeId, 
   const reported = useRef<{ id: string | null; title: string } | null>(null);
   useEffect(() => {
     const title = titleOf(sessions, activeId);
+    // No title yet (a new chat, or one OpenCode has not named): nothing is reported, and what was reported before is
+    // forgotten, so coming back to a named chat reports its title again.
+    if (title === null) {
+      reported.current = null;
+      return;
+    }
     // Another chat is a new thing to report, even when it has the same title as the last one.
-    if (title === null || (reported.current?.id === activeId && reported.current.title === title)) return;
+    if (reported.current?.id === activeId && reported.current.title === title) return;
     reported.current = { id: activeId, title };
     onTitle?.(title);
   }, [sessions, activeId, onTitle]);

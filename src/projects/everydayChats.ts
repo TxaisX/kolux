@@ -136,13 +136,22 @@ export function touchEverydayChat(list: readonly EverydayChat[], id: string, now
 }
 
 /** The list with one chat named; the same list when the name is already that. An empty name is ignored. */
-export function setEverydayName(list: readonly EverydayChat[], id: string, name: string): EverydayChat[] {
-  const clean = name.trim();
-  if (!clean) return list as EverydayChat[];
+export function setEverydayName(list: readonly EverydayChat[], id: string, name: string | null): EverydayChat[] {
+  const clean = name === null ? null : name.trim();
+  if (clean === "") return list as EverydayChat[];
   let changed = false;
   const next = list.map((c) => {
     // A name the user chose is not replaced by the chat's own title.
-    if (c.id !== id || c.name === clean || c.nameByUser) return c;
+    if (c.id !== id || c.nameByUser) return c;
+    if (clean === null) {
+      // `null`: the chat it named has been left, so the row reads New chat again.
+      if (c.name === undefined) return c;
+      changed = true;
+      const out = { ...c };
+      delete out.name;
+      return out;
+    }
+    if (c.name === clean) return c;
     changed = true;
     return { ...c, name: clean };
   });

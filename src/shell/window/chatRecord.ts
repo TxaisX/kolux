@@ -15,11 +15,18 @@ export function withUserTitle(panes: readonly Pane[], key: number, title: string
   });
 }
 
-/** A name the chat gave itself (its first message, then the history column's title). Never over a user's name. */
-export function withAutoTitle(panes: readonly Pane[], key: number, title: string): Pane[] {
+/** A name the chat gave itself (its first message, then the history column's title). Never over a user's name.
+ *  `null` takes the automatic name away: the chat it named has been left (New chat, or another chat opened). */
+export function withAutoTitle(panes: readonly Pane[], key: number, title: string | null): Pane[] {
   const at = panes.find((x) => x.key === key);
-  if (!at || at.titleByUser || at.title === title) return panes as Pane[];
-  return panes.map((x) => (x.key === key ? { ...x, title } : x));
+  if (!at || at.titleByUser || (at.title ?? null) === title) return panes as Pane[];
+  return panes.map((x) => {
+    if (x.key !== key) return x;
+    const next: Pane = { ...x };
+    if (title === null) delete next.title;
+    else next.title = title;
+    return next;
+  });
 }
 
 /** The conversation a chat pane is on, so a restart reopens it. `legacy` is the older Claude conversation this

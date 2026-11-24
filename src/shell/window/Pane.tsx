@@ -137,7 +137,7 @@ export default function WindowPane({ pane: p, active, tabs }: { pane: Pane; acti
     rename: (name: string | undefined) => renamePane(p.key, name),
     // A kept Everyday chat takes the name its first message gives it, so the row reads that after the tab is gone.
     // It is the chat's own name, not one the user chose: it never sets `titleByUser`, and never replaces one that is.
-    chatName: (name: string) => {
+    chatName: (name: string | null) => {
       setPanes((ps) => withAutoTitle(ps, p.key, name));
       if (p.everyday && !p.titleByUser) saveChats((list) => setEverydayName(list, p.everyday!, name));
     },
