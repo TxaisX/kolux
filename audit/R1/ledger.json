@@ -1,0 +1,110 @@
+{
+  "area": "R1",
+  "files": [
+    {
+      "path": "src-tauri/src/agent_shell.rs",
+      "symbols": ["via_shell", "kind_of", "is_script_shim", "Remembered", "decode_script", "hard_args"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the wrapper that starts agents through the shell: shell-kind lookup, remembered shell paths and their stamps, the command-line limits, and the C-runtime and PowerShell quoting round trips. The argv/quoting helpers agree with the tests; nothing provable found."
+    },
+    {
+      "path": "src-tauri/src/foreground.rs",
+      "symbols": ["Front", "found_front", "UNICODE_STRING", "by_name", "UnixPane", "front_within"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the process walk and the per-pid credit cache that answer which agent is in front of a shell pane. The indexed walk is asserted to answer as the linear scan did, and a terminal that is gone is forgotten. No defect found."
+    },
+    {
+      "path": "src-tauri/src/procs.rs",
+      "symbols": ["has_children", "kill_tree", "with_process", "assign_handle", "kill_args", "has_child_within_20s"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the Windows job-object setup, the process walk, the kill argument list and the wait/gone checks. Handles are closed on both branches and the kill argument parsing ends its options. Nothing provable without a live process tree."
+    },
+    {
+      "path": "src-tauri/src/pty.rs",
+      "symbols": ["PtySession", "fallback_note", "resolve_bare", "spawn_first", "a_program_with_arguments_runs_through_the_pty_and_prints", "acct046_a_shell_that_will_not_start_gives_way_to_the_next"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read spawn_first and its fallback order, the PTY reader/writer split, the shell search, resize and the reply/key-event encoding. A child that starts but then fails to give a reader, a writer or a pump is left running while Err is returned; noted, but it needs a real PTY failure to prove."
+    },
+    {
+      "path": "src-tauri/src/pty_link.rs",
+      "symbols": ["Link", "Handler", "RemoteWriter", "after_saved", "adopted_id", "t184b_events_before_the_handlers_are_held_in_order_and_capped"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the early-event table and its byte cap, the remote writer, the adoption id rule, and the after-crash resume in missed/after_saved. The overlap rule only matters when the tail starts inside the probe. No provable defect."
+    },
+    {
+      "path": "src-tauri/src/pty_service.rs",
+      "symbols": ["ENDPOINT_FILE", "protocol", "launch_detached", "ensure", "deaf_service", "row1014_stop_ends_at_its_one_deadline_when_the_service_ignores_it"],
+      "verdict": "findings",
+      "findings": ["R1-F01"],
+      "note": "Read spawn, answer, attach, detach, the endpoint record and the client handshake. F01: the error arm of spawn removes the terminal's snapshot but not its entry in Inner::flows, so every failed start leaks one flow for the life of the service; the exit handler and kill remove both."
+    },
+    {
+      "path": "src-tauri/src/sendonce.rs",
+      "symbols": ["Send", "SETTLE_QUIET_MS", "Delivery", "submit_verdict", "orch055_the_windows_pause_grows_with_the_prompt_and_is_capped", "t605_a_pasted_prompt_loses_escapes_and_control_characters_but_keeps_lines_and_tabs"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the send state machine end to end: the settle window and its cap, paste, the size-scaled Enter pause, the writer/cancel ticket, and the large-paste echo wait. Every phase returns Enter once and the hold checks come first; no defect found."
+    },
+    {
+      "path": "src-tauri/src/shell_history.rs",
+      "symbols": ["FIELD", "kind_of", "normal", "term119_plan_gives_each_command_its_own_answer_and_sweeps_only_the_folders_given", "stamp", "link_dir"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the per-worktree key and record file, the fish session name round trip, and the sweep's missing/grace logic. Path normalisation and the verbatim UNC form agree with each other; no defect found."
+    },
+    {
+      "path": "src-tauri/src/shell_marks.rs",
+      "symbols": ["ShellKind", "wrap", "write_files", "acct047_bash_shim_takes_login_over_and_guards_the_debug_trap"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the PowerShell, zsh, bash and fish prompt shims and the file writer. Suspected but not provable: the bash PROMPT_COMMAND append can produce a double semicolon when the user's value already ends in one; kept as a note, not a finding."
+    },
+    {
+      "path": "src-tauri/src/terminal.rs",
+      "symbols": ["OUTPUT_EVENT", "LOG_LINES", "handlers", "quiet_for", "dt_c248_a_live_terminal_hands_its_snapshot_to_the_pane_by_key", "t075_c_generation_is_fixed_and_typing_from_a_replaced_run_is_refused"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the registry, OutputLog and History caps and trimming, the flow pause/ack pair, snapshot resync, warm shells, pane adoption and the generation guards. Caps, trims and guards held; nothing else provable without a live PTY."
+    },
+    {
+      "path": "src-tauri/src/terminal/flood.rs",
+      "symbols": ["LINE_LEN", "numbered", "snap_len", "backlog_with"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the flood harness: numbered lines, the batched path against the old per-chunk path, the cap on a line that never ends, and the slow-pane window. The measured costs match the caps enforced in output_batch; no defect found."
+    },
+    {
+      "path": "src-tauri/src/terminal/output_batch.rs",
+      "symbols": ["OutputItem", "Queue", "wait_until", "a_flood_past_the_byte_cap_goes_without_waiting_for_the_window"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the per-frame batcher: the express first chunk, the windowed flush across panes, the byte cap, flush_now and the panic recovery. Arrival order and each chunk's own seq are kept; no defect found."
+    },
+    {
+      "path": "src-tauri/src/terminal/output_channel.rs",
+      "symbols": ["Body", "Readers", "hand", "probe"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the per-webview channel table: a resubscribe replaces the old channel, a closed view is dropped before a send, and a message no reader takes falls back to the event. Keys are unique per subscription, so dropping a channel by key is sound; no defect found."
+    },
+    {
+      "path": "src-tauri/src/terminal/output_frame.rs",
+      "symbols": ["MAGIC", "CHUNK_HEADER"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the binary frame layout and compared it byte for byte with the page decoder and its tests; no mismatch found."
+    },
+    {
+      "path": "src-tauri/src/terminal_exit.rs",
+      "symbols": ["CLOSED_BY_KOLUX", "exit_reason"],
+      "verdict": "clean",
+      "findings": [],
+      "note": "Read the exit-note wording and the tail cap; the clauses read correctly for a pane Kolux closed, one that exited, and one that was killed."
+    }
+  ]
+}
