@@ -126,7 +126,11 @@ function gitRoot(repo) {
 
 function readGit(repo) {
   if (!gitRoot(repo)) return { commits: [], worktrees: [] };
-  const fmt = "%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%b";
+  // `%b` holds the whole body, newlines and blank lines included, so the record needs an end
+  // marker: without one the first newline after the header reads as the end of the record and
+  // every body line after it is treated as --numstat output. %x1d is a group separator no commit
+  // message carries, and it closes the message before git appends the numstat block.
+  const fmt = "%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%b%x1d";
   let raw = "";
   try {
     raw = execFileSync("git", ["-C", repo, "log", "--all", "--date=iso-strict", `--pretty=format:${fmt}`, "--numstat"], {
@@ -139,10 +143,12 @@ function readGit(repo) {
   }
   const commits = [];
   for (const rec of raw.split("\x1e").slice(1)) {
-    const nl = rec.indexOf("\n");
-    const head = nl >= 0 ? rec.slice(0, nl) : rec;
-    const rest = nl >= 0 ? rec.slice(nl + 1) : "";
-    const [sha, author, email, date, subject, ...tail] = head.split("\x1f");
+    // The marker is the record's last one: git C-quotes unusual bytes in the numstat paths, so a
+    // body that happens to carry one still keeps its text instead of being cut at it.
+    const msgEnd = rec.lastIndexOf("\x1d");
+    const msg = msgEnd >= 0 ? rec.slice(0, msgEnd) : rec;
+    const rest = msgEnd >= 0 ? rec.slice(msgEnd + 1) : "";
+    const [sha, author, email, date, subject, body] = msg.split("\x1f", 6);
     if (!sha || !/^[0-9a-f]{7,40}$/.test(sha)) continue;
     let files = 0;
     let insertions = 0;
@@ -154,7 +160,7 @@ function readGit(repo) {
       if (m[1] !== "-") insertions += Number(m[1]);
       if (m[2] !== "-") deletions += Number(m[2]);
     }
-    commits.push({ sha, author: author || "", email: email || "", date: isoDate(date), subject: subject || "", body: tail.join("\x1f") || "", files, insertions, deletions });
+    commits.push({ sha, author: author || "", email: email || "", date: isoDate(date), subject: subject || "", body: body || "", files, insertions, deletions });
   }
   let worktrees = [];
   try {
