@@ -19,6 +19,7 @@ use tauri::{AppHandle, Emitter, Manager};
 // STAT-004 / STAT-005: which agents get hooks, removal, the shared install lock (T-152).
 #[path = "agent_hooks/mod.rs"]
 pub mod agent_hooks;
+#[cfg(test)] #[path = "hooks_land_script_board_tests.rs"] mod land_script_board_tests;
 
 pub const EVENT: &str = "agent-status";
 pub const TOKEN_HEADER: &str = "x-kolux-token";
@@ -51,6 +52,10 @@ pub const ENDPOINT_FILE: &str = "agent-hooks-endpoint.txt";
 pub const PANE_ENDPOINT_PREFIX: &str = "agent-hooks-endpoint-";
 /// T-793: what the shared `ENDPOINT_FILE` carries where a token used to be: no pane can post with it.
 const NO_TOKEN: &str = "-";
+/// LAND-02: the line the hook scripts and the land script both use to read the running Kolux's port and
+/// token from the endpoint file, so a pane that outlived a Kolux restart still reaches it. The land
+/// script carries this line character for character.
+const ENDPOINT_LINE: &str = r#"if defined KE if exist "%KE%" for /f "usebackq tokens=1,2" %%a in ("%KE%") do (set "KP=%%a" & set "KT=%%b")"#;
 pub const HOOK_VERSION: u32 = 1;
 /// Claude Code's events Kolux listens to. `PreCompact` is never installed (COMPAT 3.4).
 pub const CLAUDE_EVENTS: [&str; 12] = [
@@ -964,6 +969,10 @@ pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     // A crash leaves the last run's per-pane files; their tokens mean nothing to this run.
     remove_endpoint_files(data_dir);
     std::fs::write(&endpoint, format!("{port} {NO_TOKEN}\n")).map_err(|e| e.to_string())?;
+    // LAND-02: the script an agent runs to land its work. A failed write is logged and never stops the listener.
+    if let Err(e) = write_land_script(&home_dir()) {
+        eprintln!("kolux: land script: {e}");
+    }
     let raise = app.clone();
     let land_app = app.clone();
     let line = Line {
@@ -1141,7 +1150,7 @@ fn script(agent: &str, route: &str, prints: bool) -> String {
         "set \"KT=%KOLUX_AGENT_HOOK_TOKEN%\"",
         "set \"KE=%KOLUX_HOOK_ENDPOINT%\"",
         "rem The endpoint file names the Kolux running now, so a pane outlives a Kolux restart.",
-        "if defined KE if exist \"%KE%\" for /f \"usebackq tokens=1,2\" %%a in (\"%KE%\") do (set \"KP=%%a\" & set \"KT=%%b\")",
+        ENDPOINT_LINE,
         "set \"KC=%CLAUDE_CONFIG_DIR%\"",
         // FIX-2: an unset variable's `%KC:...%` is not empty text but a broken line that stops
         // the whole script, so the edits run only on lines reached when KC is set.
@@ -1205,6 +1214,80 @@ fn write_script(home: &Path, name: &str, script: &str) -> Result<String, String>
         std::fs::write(&file, script).map_err(|e| e.to_string())?;
     }
     Ok(file.to_string_lossy().replace('\\', "/"))
+}
+
+/// LAND-02: the script an agent runs to land its work.
+pub const LAND_SCRIPT: &str = "kolux-land.cmd";
+
+/// LAND-02: where the land script sits under `home`: `<home>/.kolux/bin/kolux-land.cmd`. No disk access.
+/// It is never `SCRIPT_DIR`: the shim folder's `claude.cmd` / `codex.cmd` must never be shadowed on PATH.
+pub fn land_script_in(home: &Path) -> PathBuf {
+    home.join(".kolux").join("bin").join(LAND_SCRIPT)
+}
+
+/// LAND-02 (pinned for LAND-03): the land script's full path in the Kolux home's `bin` folder, computed
+/// without touching the disk. `None` when the home variable is unset or empty.
+pub fn land_script() -> Option<PathBuf> {
+    let home = std::env::var(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).ok().filter(|h| !h.trim().is_empty())?;
+    Some(land_script_in(Path::new(&home)))
+}
+
+/// LAND-02: the land script. An agent runs it from its workspace folder; it posts that folder to the
+/// running Kolux's `/land` route with the pane's own token, prints Kolux's answer, and exits 0 when
+/// Kolux said yes (2xx) or 1 for anything else. The folder goes into the body file as text, never into
+/// a command line, so `&`, `(`, `)`, `!`, `%` and spaces in it change nothing.
+pub fn land_script_text() -> String {
+    [
+        "@echo off",
+        "rem Kolux's land script. Written by Kolux; edits are overwritten.",
+        "setlocal DisableDelayedExpansion",
+        "rem Outside a Kolux pane there is nothing to land.",
+        "if \"%KOLUX_PANE_KEY%\"==\"\" goto nopane",
+        "if \"%KOLUX_HOOK_IDENTITY%\"==\"\" goto nopane",
+        "set \"KP=%KOLUX_AGENT_HOOK_PORT%\"",
+        "set \"KT=%KOLUX_AGENT_HOOK_TOKEN%\"",
+        "set \"KE=%KOLUX_HOOK_ENDPOINT%\"",
+        "rem The endpoint file names the Kolux running now, so a pane outlives a Kolux restart.",
+        ENDPOINT_LINE,
+        "if not defined KP goto noport",
+        "if not defined KT goto noport",
+        "chcp 65001 >NUL",
+        "set \"KF=%TEMP%\\kolux-land-%RANDOM%-%RANDOM%.txt\"",
+        "rem The folder goes into the body file as text: cd prints it and nothing expands it.",
+        "cd >\"%KF%\"",
+        "%SystemRoot%\\System32\\curl.exe -s --fail-with-body -m 150 --noproxy \"*\" -X POST -H \"X-Kolux-Token: %KT%\" -H \"X-Kolux-Pane: %KOLUX_HOOK_IDENTITY%\" --data-binary \"@%KF%\" \"http://127.0.0.1:%KP%/land\"",
+        "set \"RC=%ERRORLEVEL%\"",
+        "del \"%KF%\" >NUL 2>&1",
+        "if not \"%RC%\"==\"0\" exit /b 1",
+        "exit /b 0",
+        ":nopane",
+        "echo Not in a Kolux pane: run kolux-land.cmd from a Kolux terminal.",
+        "exit /b 1",
+        ":noport",
+        "echo Kolux is not running, or its port and token are unknown: start Kolux and run this again.",
+        "exit /b 1",
+        "",
+    ]
+    .join("\r\n")
+}
+
+/// LAND-02: creates `<home>/.kolux/bin` and writes the land script there, only when the file is
+/// missing or its text differs. A file Kolux did not write under that name is refused and left as it
+/// is; an older Kolux-written script is replaced. Returns the file's path. Creates nothing else.
+pub fn write_land_script(home: &Path) -> Result<PathBuf, String> {
+    let dir = home.join(".kolux").join("bin");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let file = land_script_in(home);
+    let script = land_script_text();
+    let old = std::fs::read(&file).ok();
+    if old.as_deref() != Some(script.as_bytes()) {
+        // A file of the user's under Kolux's name is never overwritten, even one that is not text.
+        if old.is_some_and(|o| !o.windows(16).any(|w| w == "Written by Kolux".as_bytes())) {
+            return Err(format!("{} is not Kolux's own script; left alone", file.display()));
+        }
+        std::fs::write(&file, script).map_err(|e| e.to_string())?;
+    }
+    Ok(file)
 }
 
 /// Claude Code's user settings: `~/.claude/settings.json`, or the one in `CLAUDE_CONFIG_DIR`
