@@ -1,0 +1,23 @@
+diff --git a/src-tauri/src/capture.rs b/src-tauri/src/capture.rs
+index 261e7277..b1fd30a8 100644
+--- a/src-tauri/src/capture.rs
++++ b/src-tauri/src/capture.rs
+@@ -42,4 +42,18 @@ mod tests {
+         assert_eq!(parse_time("2000-02-29T12:00:00.5Z"), Some(951_825_600_500));
+         assert_eq!(parse_time("yesterday"), None);
+     }
++
++    #[test]
++    fn audit_r8_f02_an_impossible_date_is_not_a_time() {
++        // A corrupt or hand-edited transcript can carry a date that never existed. It must read
++        // as no time at all, or the chat is sorted by a made-up instant.
++        assert_eq!(parse_time("2026-13-01T00:00:00Z"), None, "month 13");
++        assert_eq!(parse_time("2026-00-10T00:00:00Z"), None, "month 0");
++        assert_eq!(parse_time("2026-01-00T00:00:00Z"), None, "day 0");
++        assert_eq!(parse_time("2026-02-30T00:00:00Z"), None, "30 February");
++        assert_eq!(parse_time("2026-04-31T00:00:00Z"), None, "31 April");
++        assert_eq!(parse_time("2026-01-01T24:00:00Z"), None, "hour 24");
++        assert_eq!(parse_time("2026-01-01T00:60:00Z"), None, "minute 60");
++        assert_eq!(parse_time("2026-01-01T00:00:00Z"), Some(1_767_225_600_000), "a real date still parses");
++    }
+ }
