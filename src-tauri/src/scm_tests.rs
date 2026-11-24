@@ -2175,3 +2175,21 @@ fn r82_a_broken_branch_list_does_not_unstage_by_removal() {
     assert!(said.is_err(), "Git's words come back: {said:?}");
     assert!(listed.as_ref().is_ok_and(|l| l.lines().any(|l| l == "foo")), "foo is still in the index: {listed:?}");
 }
+
+/// R4-F01: a URL scheme is case-insensitive (RFC 3986), and git itself reads `HTTPS://host/o/r`
+/// as the https transport. A remote written that way is the same repository as the lowercase
+/// form; `github_repo` must not lose it (the pull request panel, gh's `--repo` and the saved
+/// per-repository switch all read this function).
+#[test]
+fn audit_r4_f01_uppercase_remote_scheme_is_read_like_lowercase() {
+    let lower = github_repo("https://github.com/o/r", "").expect("the lowercase form is read");
+    assert_eq!(github_repo("HTTPS://github.com/o/r", ""), Some(lower));
+    for (upper, plain) in [
+        ("HTTP://github.com/o/r", "http://github.com/o/r"),
+        ("SSH://git@github.com/o/r.git", "ssh://git@github.com/o/r.git"),
+        ("GIT+SSH://git@github.com/o/r.git", "git+ssh://git@github.com/o/r.git"),
+        ("GIT://github.com/o/r.git", "git://github.com/o/r.git"),
+    ] {
+        assert_eq!(github_repo(upper, ""), github_repo(plain, ""), "{upper}");
+    }
+}
