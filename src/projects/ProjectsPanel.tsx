@@ -31,6 +31,7 @@ import { usePrPoll } from "./usePrPoll";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
 import { AUTO_LAND_FIELD, AUTO_LAND_LABEL, autoLandNote, autoLandWanted } from "./autoLand";
+import { dueOnTick, mergePushed, SWEEP_TICK_MS } from "./sweepPlan";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, overtakenNote, type Linked, type PendingCreate, type PrHead } from "./model";
 import { ArrowRight, Bell, ChevronDown, Close, EyeOff, Funnel, Minus, FolderPlus, Gear, Plus, Rail, Rocket, Target, Box, Pin, Moon, Spark } from "../chrome/icons";
 import { AddProject, StatusEditor, ScanRepos, StartGit, KeptBranches, IconPicker } from "../lazy/menus";
@@ -469,18 +470,20 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     setFresh(unlessSame(unseen));
   };
   // `tick`: the 5 s poll, skipped while a scan runs; any other caller waits its turn and runs once.
-  const refreshWorktrees = useCallback((list: Project[], opts?: { tick?: boolean }) => scanGate.current.run(() => sweepWorktrees(list), { skipIfBusy: opts?.tick }), []);
-  const sweepWorktrees = async (list: Project[]) => {
+  // `only`: the projects that poll scans this time; the full list stays the first argument, so the other
+  // projects keep their rows and a partial sweep never prunes the team record.
+  const refreshWorktrees = useCallback((list: Project[], opts?: { tick?: boolean; only?: Project[] }) => scanGate.current.run(() => sweepWorktrees(list, opts?.only), { skipIfBusy: opts?.tick }), []);
+  const sweepWorktrees = async (list: Project[], only?: Project[]) => {
     const ids = new Set(list.map((p) => p.id));
     const keep = <T,>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([id]) => ids.has(id)));
     const next = keep(scanned.current);
     const unseen = keep(unseenKnown.current);
     let shownAt = 0;
     const teamAtStart = teamRef.current; // DT-C274: the team record this scan can prune
-    let complete = list.length > 0;
+    let complete = list.length > 0 && (only === undefined || only.length === list.length);
     // Each project's answer shows as it arrives (at most ~8 repaints a second), not after the whole sweep.
     await scanProjects(
-      list,
+      only ?? list,
       (p) => invoke<Scanned>("workspace_scan", { projectId: p.id }),
       (p, answer) => {
         if ("ok" in answer) {
@@ -511,12 +514,17 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
     // GIT-065: the same poll keeps each row's unpushed badge current; a failed read keeps the last.
     // Txais (2026-11-12): only a folder's main checkout has a row, so only the mains are read (no git reads for a team's worktrees).
-    const shown = Object.values(next).flat().filter((w) => !w.hidden && w.isMain).map((w) => w.path);
+    // LAG-06: a slow tick asks only about the projects it scanned, and the badges of the others stay.
+    const askedPaths = (only ?? list).flatMap((p) => (next[p.id] ?? []).filter((w) => !w.hidden && w.isMain).map((w) => w.path));
     // One read at a time: a slow round must not pile up behind the next poll.
     if (!pushedBusy.current) {
       pushedBusy.current = true;
-      invoke<Pushed[]>("scm_pushed", { worktrees: shown })
-        .then((list) => setPushedBy(unlessSame(Object.fromEntries(list.map((p) => [p.path, p])))))
+      invoke<Pushed[]>("scm_pushed", { worktrees: askedPaths })
+        .then((list) =>
+          only === undefined
+            ? setPushedBy(unlessSame(Object.fromEntries(list.map((p) => [p.path, p]))))
+            : setPushedBy((prev) => unlessSame(mergePushed(prev, list, askedPaths))(prev)),
+        )
         .catch(() => {})
         .finally(() => (pushedBusy.current = false));
     }
@@ -542,8 +550,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const prBy = usePrPoll(pollPaths, pollActive, pollLinks); // GIT-027: the background poll, by worktree path
   // PROJ-063: a branch switched inside a workspace folder shows on its row within a few seconds.
   // PROJ-041: the same poll notices worktrees made outside Kolux, in both layouts (DT-O2).
+  // LAG-06: only the projects due on this tick are scanned. The project the active folder belongs to is
+  // due every tick; every other project is due on one tick in twelve, so the slow scans spread over the
+  // minute instead of every project being asked about git every 5 seconds. A hidden window asks nothing.
+  const sweepTick = useRef(0);
   useEffect(() => {
-    const t = window.setInterval(() => document.visibilityState === "visible" && refreshWorktrees(projects, { tick: true }).catch(fail), 5000);
+    const t = window.setInterval(() => {
+      const tick = (sweepTick.current += 1);
+      const due = dueOnTick(projects, tick, shown.current, scanned.current, document.visibilityState === "visible");
+      if (due.length > 0) refreshWorktrees(projects, { tick: true, only: due }).catch(fail);
+    }, SWEEP_TICK_MS);
     return () => window.clearInterval(t);
   }, [projects, refreshWorktrees]);
   // A Board status or nest change shows here at once, not on the next poll.
