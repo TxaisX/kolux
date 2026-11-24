@@ -3108,8 +3108,16 @@ pub(crate) fn set_aside_record(repo: &Path, path: &str) -> Result<SetAside, Stri
 /// T-441-c: the worktrees among `all` that Kolux made itself, by the origin record it keeps for
 /// each one it creates (the same test as trust::made_by_kolux). Txais, 2026-10-13: "Only Kolux's
 /// own": a worktree made by Claude Code or any other tool is never forgotten, folder gone or not.
+/// R3-F03: a record alone is no proof. The details form writes a record for any folder the user
+/// names, with no maker, so only a record that names its maker counts.
 pub(crate) fn kolux_made(origins: &serde_json::Map<String, serde_json::Value>, all: Vec<Worktree>) -> Vec<Worktree> {
-    all.into_iter().filter(|w| origins.contains_key(&name_key(&w.path))).collect()
+    all.into_iter().filter(|w| origins.get(&name_key(&w.path)).is_some_and(names_its_maker)).collect()
+}
+
+/// Whether an origin record was written by a Kolux creator (a non-empty `madeBy`), the same test
+/// `trust::made_by_kolux` uses.
+fn names_its_maker(origin: &serde_json::Value) -> bool {
+    origin["madeBy"].as_str().is_some_and(|who| !who.trim().is_empty())
 }
 
 /// The sweep over one project's worktrees: `forget_gone`, and what Kolux remembers about each one
