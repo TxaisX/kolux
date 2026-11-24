@@ -27,7 +27,7 @@ import { ChipRow } from "../status/ChipRow";
 import type { AgentState } from "../projects/rows";
 import { invoke } from "@tauri-apps/api/core";
 import { withMilestones } from "../onboarding/milestoneNote";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Terminal, type ITerminalAddon } from "@xterm/xterm";
 import { xtermLogger } from "./xtermLogger";
@@ -44,7 +44,7 @@ import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, holdsBefore
 import { isFailedResume, RESUME_FAILED_NOTE } from "./layout";
 import { sizeGate } from "./sizeGate";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
-import { onTerminalOutput, onTerminalExit } from "./outputBus";
+import { listenShared as listen, onTerminalOutput, onTerminalExit } from "./outputBus";
 import { notePrinted } from "./printedAddresses";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop, type Rows } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
