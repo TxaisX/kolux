@@ -72,6 +72,10 @@ fn rules_of(dir: &Path, file: &str) -> Vec<Rule> {
         .map(|l| {
             let negate = l.starts_with('!');
             let l = l.trim_start_matches('!').trim_end_matches('/');
+            // A leading `**/` means "in every folder", as Git reads it: `**/build` hides a build
+            // folder at any depth, the same as an unanchored `build`. Dropping it before the
+            // anchored test is what lets the rule match a folder below the top level too.
+            let l = l.strip_prefix("**/").unwrap_or(l);
             let anchored = l.starts_with('/') || l.contains('/');
             Rule { base: dir.to_path_buf(), glob: l.trim_start_matches('/').replace("**/", "").replace("**", "*"), anchored, negate }
         })
