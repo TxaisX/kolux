@@ -1548,6 +1548,37 @@ impl Terminals {
         pid.and_then(crate::procs::has_children).unwrap_or(false)
     }
 
+    /// LAG-11: `busy` for many ids at once, with exactly the same rules, from ONE read of the
+    /// process list instead of one per id. The registry lock is taken once and dropped before the
+    /// list is read (it is never held across the read); a poisoned lock or a failed check reads as
+    /// idle, exactly as `busy` does.
+    pub fn busy_many(&self, ids: &[u32]) -> Vec<bool> {
+        let mut answers = vec![false; ids.len()];
+        let mut asked: Vec<Option<u32>> = Vec::with_capacity(ids.len());
+        let mut slots: Vec<usize> = Vec::with_capacity(ids.len());
+        match self.inner.lock() {
+            Ok(inner) => {
+                for (slot, &id) in ids.iter().enumerate() {
+                    match inner.sessions.get(&id) {
+                        // TERM-132: while a program holds the screen or the mouse the shell is never idle.
+                        Some(_) if inner.marks.contains_key(&id) || inner.owned.get(&id).is_some_and(|o| *o != 0) => answers[slot] = true,
+                        Some(s) => {
+                            asked.push(s.pid());
+                            slots.push(slot);
+                        }
+                        None => {}
+                    }
+                }
+            }
+            Err(_) => return answers,
+        }
+        let found = crate::procs::has_children_many(&asked);
+        for (slot, busy) in slots.into_iter().zip(found) {
+            answers[slot] = busy.unwrap_or(false);
+        }
+        answers
+    }
+
 
     /// TERM-116: what Kolux knows about session `id`, as label/value pairs; `None` when it is gone.
     pub fn describe(&self, id: u32) -> Option<Vec<(&'static str, String)>> {
@@ -2426,10 +2457,13 @@ pub async fn terminal_host_end(terminals: tauri::State<'_, Terminals>, id: u32) 
     .map_err(|e| e.to_string())?
 }
 
-/// TERM-045: for each id, whether closing it would stop a live program.
+/// TERM-045 / LAG-11: for each id, whether closing it would stop a live program. Async and on a
+/// blocking worker, so neither the process-list read nor the wait for it ever runs on the window's
+/// thread; one batch of ids reads that list once instead of once per id.
 #[tauri::command]
-pub fn terminal_busy(terminals: tauri::State<'_, Terminals>, ids: Vec<u32>) -> Vec<bool> {
-    ids.into_iter().map(|id| terminals.busy(id)).collect()
+pub async fn terminal_busy(terminals: tauri::State<'_, Terminals>, ids: Vec<u32>) -> Result<Vec<bool>, String> {
+    let me = terminals.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || me.busy_many(&ids)).await.map_err(|e| e.to_string())
 }
 
 /// TERM-115: async, so the registry lock is taken off the window's thread. LAG-07: the bytes go on
