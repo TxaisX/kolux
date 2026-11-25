@@ -86,7 +86,7 @@ fn sess001_box1_putting_two_agents_on_the_path_makes_exactly_those_two_installed
     let bin = scratch("b1-bin");
     with_env(&empty, &home, || {
         let base = catalogue();
-        assert_eq!(base.len(), 35, "the catalogue lists 35 agents (the 34 of SESS-001 and OpenCode, T-572)");
+        assert_eq!(base.len(), 34, "the catalogue lists 34 agents (SESS-001 without OpenClaude, and OpenCode, T-572)");
         let two = missing(&base, &["claude", "codex"], 2);
         for a in &two {
             put_program(&bin, &a.program);

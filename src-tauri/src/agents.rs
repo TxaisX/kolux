@@ -75,8 +75,8 @@ pub fn grok_home(env: Option<&str>, user: Option<&Path>) -> Option<PathBuf> {
     }
 }
 
-/// The 35 visible agents: the 34 of SESS-001 in its order, then OpenCode, which Txais brought back on
-/// 2026-10-28 (reverses SESS-043; appended so the SESS-001 numbering of the others does not move).
+/// The 34 visible agents: SESS-001's in its order (33 since OpenClaude was removed on 2026-11-24), then
+/// OpenCode, which Txais brought back on 2026-10-28 (reverses SESS-043; appended after the SESS-001 list).
 /// Claude Agent Teams (SESS-042) is skipped (DECISIONS.md).
 pub const CATALOGUE: [Entry; 34] = [
     ("claude", "Claude Code", &["claude"], &["--permission-mode", "auto"]),
@@ -1131,7 +1131,6 @@ pub fn install_page(agent: &str) -> Option<&'static str> {
         "claude" => Some("https://code.claude.com/docs/en/setup"),
         "codex" => Some("https://developers.openai.com/codex/cli"),
         "grok" => Some("https://x.ai/cli"),
-
         "autohand" => Some("https://docs.autohand.ai/guides/cli-quick-start"),
         "ante" => Some("https://docs.antigma.ai/"),
         "mimo-code" => Some("https://mimo.xiaomi.com/mimocode/install"),
