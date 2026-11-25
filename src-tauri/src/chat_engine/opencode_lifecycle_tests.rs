@@ -457,6 +457,7 @@ fn stop_after_a_lost_stream_still_interrupts_the_run() {
     let (_, _, gen) = server.wake().unwrap();
     let (seen, sink) = sink();
     let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one")]);
     for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" }))] {
         chat.heard(&k, &d);
     }
@@ -836,6 +837,19 @@ fn kinds_in(out: &[ChatEvent]) -> Vec<String> {
     out.iter().map(|e| serde_json::to_value(e).unwrap()["kind"].as_str().unwrap_or_default().to_string()).collect()
 }
 
+/// Marks messages as the chat's own, as OpenCode's answer to its `prompt` call does.
+fn mine(chat: &OpenChat, sent: &[(&str, &str)]) {
+    let mut i = chat.lock();
+    for (id, text) in sent {
+        i.tr.admit(id, text);
+    }
+}
+
+/// The subtypes of the results one chat was sent.
+fn results_for(seen: &Seen, chat: &str) -> Vec<String> {
+    seen.lock().unwrap().iter().filter(|(c, _)| c == chat).filter_map(|(_, e)| if let ChatEvent::Result(r) = e { Some(r.subtype.clone()) } else { None }).collect()
+}
+
 fn results_seen(seen: &Seen) -> Vec<TurnResult> {
     seen.lock().unwrap().iter().filter_map(|(_, e)| if let ChatEvent::Result(r) = e { Some(r.clone()) } else { None }).collect()
 }
@@ -980,9 +994,15 @@ fn after_gap(active: bool, waiting: &'static [&'static str], has: &'static [&'st
 }
 
 fn chat_on(fake: &Fake) -> (Arc<Server>, Arc<OpenChat>, Seen) {
+    chat_that_sent(fake, &[("m1", "one"), ("m2", "two")])
+}
+
+/// A chat on a quick server that is being woken, with the messages it sent itself.
+fn chat_that_sent(fake: &Fake, sent: &[(&str, &str)]) -> (Arc<Server>, Arc<OpenChat>, Seen) {
     let server = quick_server_on(fake, 8);
     let (seen, sink) = sink();
     let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 1, sink);
+    mine(&chat, sent);
     let w = Arc::clone(&server);
     std::thread::spawn(move || {
         let _ = w.wake();
@@ -1039,7 +1059,7 @@ fn a_message_taken_up_in_the_gap_is_followed_to_its_end() {
 fn a_run_ended_by_a_shutdown_in_the_gap_is_not_waited_for() {
     let first = m1_running_m2_waiting()[..3].to_vec();
     let fake = gap_fake(first, Vec::new(), after_gap(false, &[], &["m1"], NO_IDLE));
-    let (server, chat, seen) = chat_on(&fake);
+    let (server, chat, seen) = chat_that_sent(&fake, &[("m1", "one")]);
     wait_until("the lost turn is ended on the page", Duration::from_secs(5), || results_seen(&seen).len() == 1);
     wait_until("the unseen run is known to be over", Duration::from_secs(5), || !chat.lock().tr.orphaned());
     assert_eq!(results_seen(&seen).len(), 1);
@@ -1120,6 +1140,7 @@ fn a_stop_asks_opencode_to_cancel_the_waiting_messages() {
     let (_, _, gen) = server.wake().unwrap();
     let (seen, sink) = sink();
     let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one"), ("m2", "two")]);
     for (k, d) in [queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two")] {
         chat.heard(&k, &d);
     }
@@ -1226,10 +1247,11 @@ fn a_gap_answer_for_a_closed_chat_is_not_sent() {
     let (server, _) = server_on(&fake);
     let (seen, sink) = sink();
     let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
+    mine(&chat, &[("m1", "one")]);
     let (k, d) = queued("m1", "one");
     chat.heard(&k, &d);
     chat.lock().closed = true;
-    chat.reconciled(&Gap { active: false, fates: vec![("m1".to_string(), Fate::Gone)], failed: false });
+    chat.reconciled(&Gap { active: false, fates: vec![("m1".to_string(), Fate::Gone)], failed: false, ends_at_ask: 0 });
     assert!(kinds_of(&seen, "c1").is_empty(), "nothing after the close");
     assert!(chat.busy(), "and nothing was settled for it");
 }
@@ -1239,7 +1261,7 @@ fn a_gap_answer_for_a_closed_chat_is_not_sent() {
 fn a_gap_answer_does_not_repeat_what_the_stream_said() {
     let mut tr = Translator::new(SES);
     fed(&mut tr, &[queued("m2", "two"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" }))]);
-    let out = tr.reconcile(&Gap { active: false, fates: vec![("m2".to_string(), Fate::Taken)], failed: false }, Instant::now());
+    let out = tr.reconcile(&Gap { active: false, fates: vec![("m2".to_string(), Fate::Taken)], failed: false, ends_at_ask: 0 }, Instant::now());
     assert!(out.is_empty(), "{out:?}");
     assert_eq!(results_of(&fed(&mut tr, &[ev("session.execution.succeeded", json!({}))])).len(), 1);
 }
@@ -1249,7 +1271,7 @@ fn a_gap_answer_does_not_repeat_what_the_stream_said() {
 fn a_message_whose_unseen_run_failed_gets_one_error_result() {
     let mut tr = Translator::new(SES);
     fed(&mut tr, &[queued("m2", "two")]);
-    let out = tr.reconcile(&Gap { active: false, fates: vec![("m2".to_string(), Fate::Taken)], failed: true }, Instant::now());
+    let out = tr.reconcile(&Gap { active: false, fates: vec![("m2".to_string(), Fate::Taken)], failed: true, ends_at_ask: 0 }, Instant::now());
     assert_eq!(kinds_in(&out), ["user", "result"]);
     assert_eq!(subtypes(&results_of(&out)), ["error_during_execution"]);
     assert!(!tr.busy());
@@ -1262,4 +1284,222 @@ fn a_late_prompt_answer_does_not_set_a_taken_message_waiting_again() {
     fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), ev("session.execution.succeeded", json!({}))]);
     tr.admit("m1", "one");
     assert!(!tr.busy());
+}
+
+// ---- Review 5 ----
+
+// P2-1: one session open in two chats. Only the chat that sent a message owns it: the other chat's
+// Stop and close leave the run and the waiting message alone, and it gets no result for them.
+#[test]
+fn a_stop_in_one_chat_leaves_the_other_chats_run_and_waiting_message_alone() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let a = OpenChat::attach(&server, "a", spec(Vec::new()), SES, None, gen, Arc::clone(&sink));
+    let b = OpenChat::attach(&server, "b", spec(Vec::new()), SES, None, gen, sink);
+    // A sent both messages: OpenCode's answers to A's `prompt` calls named them.
+    mine(&a, &[("m1", "one"), ("m2", "two")]);
+    let both = |e: (String, Value)| {
+        a.heard(&e.0, &e.1);
+        b.heard(&e.0, &e.1);
+    };
+    for e in [queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two")] {
+        both(e);
+    }
+    assert_eq!(b.stop(), Some(StopHow::Ended));
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 0, "A's run is not interrupted");
+    assert_eq!(fake.count("DELETE", &format!("/api/session/{SES}/inbox/m2")), 0, "A's waiting message is not cancelled");
+    assert_eq!(kinds_of(&seen, "b"), ["user", "stopped"], "B mirrors the message and hears its Stop, with no result");
+    assert!(a.lock().tr.running() && a.lock().tr.own_waiting() == ["m2"], "A's run and waiting message are as they were");
+    both(ev("session.inbox.cancelled", json!({ "inboxID": "m2" })));
+    assert_eq!(results_for(&seen, "a"), ["cancelled"], "the chat that sent m2 is told it was cancelled");
+    assert!(results_for(&seen, "b").is_empty(), "the other chat is not");
+    b.close();
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 0, "closing B does not stop A's run either");
+    // A's own Stop does stop it.
+    assert!(a.stop().is_some());
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 1);
+    server.shutdown();
+}
+
+// P2-1: the run's end gives each chat one result per message of its own, and the chat that only
+// mirrored the run one result, which closes the turn its page drew.
+#[test]
+fn a_run_gives_each_chat_results_for_its_own_messages_only() {
+    let (mut a, mut b) = (Translator::new(SES).own_only(), Translator::new(SES).own_only());
+    a.admit("m1", "one");
+    a.admit("m2", "two");
+    let events = [queued("m1", "one"), queued("m2", "two"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.execution.succeeded", json!({}))];
+    assert_eq!(kinds_in(&fed(&mut a, &events)), ["user", "user", "result", "result"]);
+    assert!(!b.busy(), "a message another chat sent does not make this one busy");
+    assert_eq!(kinds_in(&fed(&mut b, &events)), ["user", "user", "result"]);
+    assert!(!a.busy() && !b.busy());
+}
+
+// P2-1: the stream can be ahead of the answer to the `prompt` call. The message is still this chat's.
+#[test]
+fn a_message_delivered_before_its_prompt_answer_is_still_the_chats_own() {
+    let mut tr = Translator::new(SES).own_only();
+    fed(&mut tr, &[queued("m1", "one"), queued("m2", "two"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), ev("session.inbox.delivered", json!({ "inboxID": "m2" }))]);
+    assert!(!tr.engaged(), "nothing of this chat yet");
+    tr.admit("m1", "one");
+    tr.admit("m2", "two");
+    assert!(tr.engaged());
+    assert_eq!(kinds_in(&fed(&mut tr, &[ev("session.execution.succeeded", json!({}))])), ["result", "result"]);
+}
+
+// P2-2: OpenCode said "running" and "m2 was taken up", and that run's end is heard before the answer
+// is applied. The answer is old news: m2 gets its one result, and the chat is not left busy.
+#[test]
+fn a_run_end_heard_while_opencode_was_asked_gives_one_result_and_leaves_the_chat_idle() {
+    let mut tr = Translator::new(SES);
+    let now = Instant::now();
+    fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two")]);
+    tr.lost(Vec::new(), now);
+    let asked = tr.ends();
+    assert!(fed(&mut tr, &[ev("session.execution.succeeded", json!({}))]).is_empty(), "the unseen run's end");
+    let out = tr.reconcile(&Gap { active: true, fates: vec![("m2".to_string(), Fate::Taken)], failed: false, ends_at_ask: asked }, now);
+    assert_eq!(kinds_in(&out), ["user", "result"]);
+    assert!(!tr.running() && !tr.busy(), "no turn is left running with no end to come");
+}
+
+// P3-1: OpenCode's reads were ahead of the stream. m2 got its result from the reads; the stream then
+// replays the run that took it up, and that run adds nothing.
+#[test]
+fn a_run_replayed_after_its_message_was_answered_adds_no_second_result() {
+    let mut tr = Translator::new(SES);
+    let now = Instant::now();
+    fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two")]);
+    tr.lost(Vec::new(), now);
+    let out = tr.reconcile(&Gap { active: false, fates: vec![("m2".to_string(), Fate::Taken)], failed: false, ends_at_ask: tr.ends() }, now);
+    assert_eq!(subtypes(&results_of(&out)), ["success"]);
+    let late = fed(&mut tr, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.text.delta", json!({ "assistantMessageID": "a2", "ordinal": 0, "delta": "late" })), ev("session.execution.succeeded", json!({}))]);
+    assert!(late.is_empty(), "the replayed run adds nothing: {:?}", kinds_in(&late));
+    assert!(!tr.busy() && !tr.orphaned());
+    // The next message runs as usual.
+    assert_eq!(kinds_in(&fed(&mut tr, &[queued("m3", "three"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m3" })), ev("session.execution.succeeded", json!({}))])), ["user", "result"]);
+}
+
+// P3-6: a chat closed while an answer about the gap is being sent hears nothing after its `exit`.
+#[test]
+fn nothing_follows_the_exit_of_a_chat_closed_during_a_gap_answer() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let seen: Seen = Arc::default();
+    let (tx, rx) = mpsc::channel::<()>();
+    let (s, first) = (Arc::clone(&seen), Mutex::new(Some(tx)));
+    // The first event sent tells the closer to go, and takes a while to send.
+    let sink: Sink = Arc::new(move |id: &str, ev: &ChatEvent| {
+        s.lock().unwrap().push((id.to_string(), ev.clone()));
+        if let Some(tx) = first.lock().unwrap().take() {
+            let _ = tx.send(());
+            std::thread::sleep(Duration::from_millis(300));
+        }
+    });
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one"), ("m2", "two")]);
+    let c = Arc::clone(&chat);
+    let closing = std::thread::spawn(move || {
+        rx.recv().unwrap();
+        c.close();
+    });
+    chat.reconciled(&Gap { active: false, fates: vec![("m1".to_string(), Fate::Gone), ("m2".to_string(), Fate::Gone)], failed: false, ends_at_ask: 0 });
+    closing.join().unwrap();
+    assert_eq!(kinds_of(&seen, "c1"), ["result", "result", "exit"], "the exit is the last thing the page hears");
+    server.shutdown();
+}
+
+// P3-6: the same for a Stop that gave up waiting.
+#[test]
+fn a_stop_that_ends_after_the_chat_closed_sends_nothing_after_the_exit() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one")]);
+    for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" }))] {
+        chat.heard(&k, &d);
+    }
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the stop asked OpenCode", Duration::from_secs(5), || fake.any(&format!("/api/session/{SES}/interrupt")));
+    chat.close();
+    stopping.join().unwrap();
+    assert_eq!(kinds_of(&seen, "c1").last().map(String::as_str), Some("exit"), "{:?}", kinds_of(&seen, "c1"));
+    server.shutdown();
+}
+
+// P3-2: the server went away while m2 waited. The next server is asked what became of it; here it
+// has it nowhere, so it is told cancelled instead of waiting forever.
+#[test]
+fn a_new_server_is_asked_about_a_message_that_waited_when_the_old_one_went() {
+    let state = after_gap(false, &[], &[], IDLE_OK);
+    let fake = fake(move |m: &str, p: &str| {
+        if m == "GET" {
+            if let Some(r) = state(p) {
+                return r;
+            }
+        }
+        plain(m, p)
+    });
+    let (server, _) = server_on(&fake);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
+    mine(&chat, &[("m2", "two")]);
+    chat.server_gone(1, None, ExitReason::Sleep);
+    assert!(chat.busy(), "m2 still waits as far as Kolux knows");
+    server.wake().unwrap();
+    wait_until("the new server answered for m2", Duration::from_secs(5), || !chat.busy());
+    assert_eq!(subtypes(&results_seen(&seen)), ["cancelled"]);
+    server.shutdown();
+}
+
+// P3-3: a committed revert removes waiting messages with no `inbox.cancelled`: OpenCode is asked.
+#[test]
+fn a_committed_revert_asks_opencode_about_the_waiting_messages() {
+    let state = after_gap(false, &[], &[], IDLE_OK);
+    let fake = fake(move |m: &str, p: &str| {
+        if p == "/api/event" {
+            return Reply::Stream(vec![(Duration::ZERO, CONNECTED.to_string()), (Duration::from_millis(300), frame("session.revert.committed", json!({ "to": "msg_x" })))]);
+        }
+        if m == "GET" {
+            if let Some(r) = state(p) {
+                return r;
+            }
+        }
+        plain(m, p)
+    });
+    let (server, _) = server_on(&fake);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 1, sink);
+    mine(&chat, &[("m2", "two")]);
+    server.wake().unwrap();
+    wait_until("OpenCode answered for m2 after the revert", Duration::from_secs(5), || !chat.busy());
+    assert_eq!(subtypes(&results_seen(&seen)), ["cancelled"]);
+    server.shutdown();
+}
+
+// P3-5: a resume pick that gets a server error is kept for the next message, and the page is told.
+#[test]
+fn a_resume_pick_that_gets_a_server_error_is_said_and_kept() {
+    let fake = fake(|m: &str, p: &str| {
+        if m == "POST" && p.ends_with("/model") {
+            return Reply::Json(500, "{\"message\":\"boom\"}".to_string());
+        }
+        if m == "GET" && p == format!("/api/session/{SES}") {
+            return Reply::Json(200, format!("{{\"data\":{{\"id\":\"{SES}\",\"model\":{{\"id\":\"real\",\"providerID\":\"opencode\"}}}}}}"));
+        }
+        plain(m, p)
+    });
+    let (server, _) = server_on(&fake);
+    let (seen, sink) = sink();
+    let mut pick = spec(Vec::new());
+    pick.model = Some("opencode/next".to_string());
+    let chat = OpenChat::open(&server, "c1", pick, Some(SES.to_string()), sink).expect("the chat opens");
+    assert_eq!(waiting_pick(&chat).as_deref(), Some("next"), "the pick is tried again with the next message");
+    assert!(kinds_of(&seen, "c1").contains(&"stderr".to_string()), "the page is told the chat is not on the pick yet");
+    server.shutdown();
 }
