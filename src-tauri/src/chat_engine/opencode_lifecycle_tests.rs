@@ -1840,7 +1840,7 @@ fn opened_mid_run(fake: &Fake) -> (Arc<Server>, Arc<OpenChat>, Arc<OpenChat>, Se
     for (k, d) in [queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" }))] {
         a.heard(&k, &d);
     }
-    both(&a, &b, &[said("a1", "hi")]);
+    both(&a, &b, &[ev("session.step.started", json!({ "assistantMessageID": "a1" })), said("a1", "hi")]);
     (server, a, b, seen)
 }
 
@@ -1883,16 +1883,22 @@ fn closing_a_chat_opened_mid_run_leaves_the_other_chats_run_alone() {
     server.shutdown();
 }
 
-// P2-1: any of a run's own events says a run is going on, whichever is heard first. With none heard, a
-// waiting message of the chat's own is still a reason to interrupt (its run may be starting unheard).
+// P2-1: any event that starts or carries on a piece of a run's work says a run is going on, whichever
+// is heard first (review 8 P3-2: not one that ends a piece; see
+// `a_stray_event_after_a_runs_end_starts_no_run`). With none heard, a waiting message of the chat's own
+// is still a reason to interrupt (its run may be starting unheard).
 #[test]
 fn a_run_never_heard_starting_is_known_from_its_own_activity() {
     let heard = [
-        said("a1", "hi"),
         ev("session.step.started", json!({ "assistantMessageID": "a1" })),
+        ev("session.text.started", json!({ "assistantMessageID": "a1", "ordinal": 0 })),
+        ev("session.text.delta", json!({ "assistantMessageID": "a1", "ordinal": 0, "delta": "hi" })),
+        ev("session.reasoning.started", json!({ "assistantMessageID": "a1", "ordinal": 0 })),
         ev("session.reasoning.delta", json!({ "assistantMessageID": "a1", "ordinal": 0, "delta": "hm" })),
+        ev("session.tool.input.started", json!({ "assistantMessageID": "a1", "id": "t1", "name": "bash" })),
+        ev("session.tool.input.delta", json!({ "assistantMessageID": "a1", "id": "t1", "delta": "{" })),
         ev("session.tool.called", json!({ "assistantMessageID": "a1", "id": "t1", "name": "bash", "input": {} })),
-        ev("session.tool.success", json!({ "id": "t1", "content": [] })),
+        ev("session.tool.progress", json!({ "id": "t1" })),
     ];
     for one in heard {
         let mut tr = Translator::new(SES).own_only();
@@ -2158,4 +2164,176 @@ fn a_send_that_ends_before_its_prompt_call_is_not_left_on_its_way() {
     chat.close();
     assert!(chat.send("hi", &[]).is_err(), "the chat is closed");
     assert_eq!(chat.lock().tr.outgoing, 0);
+}
+
+// Review 8 P1-1: the stream can be ahead of the answer to a `prompt` call. A run that takes up a
+// message while a call of this chat is on its way may be that call's message: until the answer says
+// whose it is, the run counts as the chat's own for its Stop and its close.
+#[test]
+fn a_run_that_takes_up_a_message_while_this_chat_sends_may_be_its_own() {
+    let started = || ev("session.execution.started", json!({}));
+    let delivered = |id: &str| ev("session.inbox.delivered", json!({ "inboxID": id }));
+    let ended = || ev("session.execution.succeeded", json!({}));
+    // Heard queued, then taken up, all before the answer.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[queued("m1", "one"), started(), delivered("m1"), said("a1", "hi")]);
+    assert!(tr.running() && tr.runs_mine() && tr.engaged(), "the run may be this chat's own");
+    tr.sent();
+    assert!(tr.admit("m1", "one").is_empty());
+    assert!(tr.runs_mine(), "the answer named it: the run is this chat's own");
+    assert_eq!(subtypes(&results_of(&fed(&mut tr, &[ended()]))), ["success"]);
+    assert!(!tr.runs_mine() && !tr.engaged());
+    // Never heard queued.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[started(), delivered("m1")]);
+    assert!(tr.runs_mine() && tr.engaged());
+    // The answer names another message: the one taken up was another chat's, and the run is too.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[queued("m_a", "one"), started(), delivered("m_a")]);
+    assert!(tr.runs_mine());
+    tr.sent();
+    tr.admit("m_b", "two");
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged(), "the run is another chat's");
+    assert_eq!(tr.own_waiting(), ["m_b"]);
+    // A call with no answer says nothing of whose it was: the run stays stoppable until it ends.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[started(), delivered("m1")]);
+    tr.sent();
+    tr.sent_unheard("one", Instant::now());
+    assert!(tr.runs_mine());
+    fed(&mut tr, &[ended()]);
+    assert!(!tr.runs_mine() && !tr.engaged());
+    // A message taken up before the send began is another chat's: nothing changes for that run.
+    let mut tr = Translator::new(SES).own_only();
+    fed(&mut tr, &[queued("m_a", "one"), started(), delivered("m_a")]);
+    tr.sending();
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged());
+    // The next run is nobody's again.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[started(), delivered("m_a"), ended(), started()]);
+    assert!(tr.running() && !tr.runs_mine());
+    // A send that ended before its `prompt` call sent nothing: the message taken up was not its own.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[started(), delivered("m_a")]);
+    assert!(tr.runs_mine());
+    tr.unsent();
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged());
+}
+
+// Review 8 P1-1, the two-pane side: a send that fails before its `prompt` call (here the model pick)
+// leaves no doubt behind about a run that took up another chat's message meanwhile.
+#[test]
+fn a_send_that_fails_before_its_prompt_call_leaves_the_other_chats_run_alone() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { slow(Duration::from_millis(300), Reply::Json(500, "{\"message\":\"boom\"}".to_string())) } else { plain(m, p) });
+    let (server, chat, _) = chat_with_a_waiting_pick(&fake);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("hi", &[]));
+    wait_until("the model pick is posted", Duration::from_secs(5), || fake.count("POST", &format!("/api/session/{SES}/model")) == 1);
+    for (k, d) in [queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" }))] {
+        chat.heard(&k, &d);
+    }
+    assert!(chat.lock().tr.runs_mine(), "while the send is on its way, the run may be this chat's own");
+    assert!(sending.join().unwrap().is_err(), "the pick was not applied");
+    assert!(!fake.any("/prompt"));
+    assert!(chat.lock().tr.running() && !chat.lock().tr.runs_mine());
+    assert_eq!(chat.stop(), Some(StopHow::Ended));
+    assert_eq!(interrupts(&fake), 0, "the other chat's run is not interrupted");
+    server.shutdown();
+}
+
+// Review 8 P1-1, the single pane from end to end: a send, the stream ahead of the `prompt` answer
+// (the run starts, takes the message up and replies), then Stop. The run is interrupted once, and the
+// page's count is back at 0 once the run has ended and the answer has come.
+#[test]
+fn a_stop_right_after_a_send_interrupts_the_run_when_the_stream_is_ahead_of_the_answer() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Late(Duration::from_millis(600), "{\"data\":{\"id\":\"m1\",\"type\":\"user\"}}".to_string()) } else { plain(m, p) });
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("one", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    for (k, d) in [queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), said("a1", "hi")] {
+        chat.heard(&k, &d);
+    }
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the interrupt is posted", Duration::from_secs(2), || interrupts(&fake) == 1 || stopping.is_finished());
+    assert_eq!(interrupts(&fake), 1, "the chat's own run is interrupted");
+    let (k, d) = ev("session.execution.interrupted", json!({}));
+    chat.heard(&k, &d);
+    assert_eq!(stopping.join().unwrap(), Some(StopHow::Interrupt));
+    sending.join().unwrap().unwrap();
+    assert_eq!(interrupts(&fake), 1, "exactly one interrupt");
+    assert_eq!(kinds_of(&seen, "c1"), ["user", "assistant", "stopped", "result"]);
+    assert_eq!(results_for(&seen, "c1"), ["error_during_execution"]);
+    assert_eq!(page_count(&seen, "c1", 0, 1), 0);
+    assert!(!chat.busy() && !chat.lock().tr.running());
+    server.shutdown();
+}
+
+// Review 8 P3-1: a run first heard from its own events (its start and the delivery were missed) while
+// a message of this chat waits, with nothing saying it is another chat's run, may be that message's
+// run: Stop interrupts it. A run heard before the message was sent is another chat's.
+#[test]
+fn a_run_first_heard_while_an_own_message_waits_is_stopped() {
+    let step = || ev("session.step.started", json!({ "assistantMessageID": "a1" }));
+    let mut tr = Translator::new(SES).own_only();
+    tr.admit("m1", "one");
+    fed(&mut tr, &[step(), said("a1", "hi")]);
+    assert!(tr.running() && tr.runs_mine() && tr.engaged(), "the run may be the waiting message's");
+    // The other order: the run was going on before the message was sent.
+    let mut tr = Translator::new(SES).own_only();
+    fed(&mut tr, &[step(), said("a1", "hi")]);
+    tr.admit("m1", "one");
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged());
+    // Another chat's waiting message is no reason.
+    let mut tr = Translator::new(SES).own_only();
+    fed(&mut tr, &[queued("m_a", "one"), step()]);
+    assert!(tr.running() && !tr.runs_mine());
+
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one")]);
+    for (k, d) in [step(), said("a1", "hi")] {
+        chat.heard(&k, &d);
+    }
+    assert!(chat.stop().is_some());
+    assert_eq!(interrupts(&fake), 1, "the run may be this chat's own");
+    assert_eq!(fake.count("DELETE", &format!("/api/session/{SES}/inbox/m1")), 1);
+    assert_eq!(kinds_of(&seen, "c1").last().map(String::as_str), Some("stopped"));
+    server.shutdown();
+}
+
+// Review 8 P3-2: only an event that starts or carries on a piece of work says a run is going on. One
+// that ends a piece, heard late after the run's own end, starts no run: the chat is not left running.
+#[test]
+fn a_stray_event_after_a_runs_end_starts_no_run() {
+    let strays = [
+        said("a1", "late"),
+        ev("session.reasoning.ended", json!({ "assistantMessageID": "a1", "ordinal": 0, "text": "hm" })),
+        ev("session.tool.success", json!({ "id": "t1", "content": [] })),
+        ev("session.tool.failed", json!({ "id": "t1", "error": { "message": "no" } })),
+        ev("session.tool.input.ended", json!({ "assistantMessageID": "a1", "id": "t1" })),
+        ev("session.step.ended", json!({ "assistantMessageID": "a1" })),
+        ev("session.step.failed", json!({ "assistantMessageID": "a1" })),
+    ];
+    for one in strays {
+        let mut tr = Translator::new(SES).own_only();
+        tr.admit("m1", "one");
+        fed(&mut tr, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), said("a1", "hi")]);
+        assert_eq!(subtypes(&results_of(&fed(&mut tr, &[ev("session.execution.succeeded", json!({}))]))), ["success"]);
+        fed(&mut tr, std::slice::from_ref(&one));
+        assert!(!tr.running() && !tr.busy(), "{} after the run's end starts no run", one.0);
+    }
 }
