@@ -1,6 +1,7 @@
 // CHAT-018 (T-329): Stop interrupts the agent. The button's modes and double-click guard (stop.ts), and
 // stopPane (send.ts): a send still waiting is cancelled before Escape goes out; Escape never goes into a menu.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import * as stop from "./stop";
 import { STOP_ARM_MS, buttonMode, stopArmed } from "./stop";
 import { CANCELLED_NOTE, INTERRUPT_KEY, boxSend, forgetHearing, hearStates, setClock, sendToPane, stopPane } from "./send";
 
@@ -36,6 +37,16 @@ describe("the Send / Stop button", () => {
     expect(stopArmed(1000, 1699)).toBe(false);
     expect(stopArmed(1000, 1700)).toBe(true);
     expect(stopArmed(null, 0)).toBe(true);
+  });
+  // Live check 6: Stop pressed 50 to 600 ms after a message sent with Enter was swallowed by the guard,
+  // so the engine was never asked and the reply ran to its end.
+  it("a Stop right after a send from the keyboard counts at once: only a click on Send starts the guard", () => {
+    const sentByEnter = stop.guardedFrom("key", 1000);
+    expect(sentByEnter).toBeNull();
+    for (const ms of [0, 50, 200, 300, 600]) expect(stopArmed(sentByEnter, 1000 + ms)).toBe(true);
+    const sentByClick = stop.guardedFrom("click", 1000);
+    expect(stopArmed(sentByClick, 1300)).toBe(false);
+    expect(stopArmed(sentByClick, 1700)).toBe(true);
   });
 });
 

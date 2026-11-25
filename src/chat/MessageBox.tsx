@@ -14,7 +14,7 @@ import { MAX_ATTACHMENTS, dropHere, isImageName, nameOf, pastedName, refusal, se
 import { CHAT_AGENT } from "./opencode";
 import { LAUNCH_NOTE, MODEL_NOT_SENT, TERMINAL_NOTE, confirmModel, controlsOff, failedChange, hasControls, loadSaved, modelCommand, opensPicker, routeOf, saveChoice, sentChange, type Change, type Choice } from "./controls";
 import { ModelControls } from "./ModelControls";
-import { buttonMode, stopArmed } from "./stop";
+import { buttonMode, guardedFrom, stopArmed, type SentBy } from "./stop";
 import { useDismiss } from "./ux";
 
 /** `fill` puts text in the box with the caret at its end and focuses it, sending nothing (a suggestion chip). */
@@ -54,7 +54,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   const draft = useRef(text);
   const box = useRef<HTMLTextAreaElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
-  // CHAT-018: when this box last sent, so a quick second click on Send is never taken as Stop.
+  // CHAT-018: when the Send button last sent by a click, so a quick second click on it is never taken as
+  // Stop. A send from the keyboard clears it: Stop counts at once after Enter.
   const sentAt = useRef<number | null>(null);
   const fillRef = useRef<(t: string) => void>(() => {});
   useImperativeHandle(
@@ -291,7 +292,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   };
   fillRef.current = (t) => change(t, t.length);
 
-  const submit =(override?: string) => {
+  const submit = (override?: string, by: SentBy = "key") => {
     const typed = override ?? text;
     if (!live || blocked || !sendable(typed, attachments)) return;
     // CHAT-024: a bare /model opens the model list instead of going to the agent as text.
@@ -300,7 +301,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
       change("", 0);
       return;
     }
-    sentAt.current = Date.now();
+    sentAt.current = guardedFrom(by, Date.now());
     if (!onSend(withPaths(typed, attachments))) return;
     addHistory(paneKey, typed);
     attachments.forEach(forget);
@@ -317,7 +318,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   };
   const mode = buttonMode(working, !!blocked);
   const click = () => {
-    if (mode === "send") return submit();
+    if (mode === "send") return submit(undefined, "click");
     if (stopArmed(sentAt.current, Date.now())) onStop?.();
   };
 
