@@ -578,18 +578,73 @@ enum Chat {
     Open(Arc<opencode::OpenChat>),
 }
 
+impl Chat {
+    /// Closes the chat and ends its process (an OpenCode chat stops listening).
+    fn close(&self) {
+        match self {
+            Chat::Stream(e) => e.close(),
+            Chat::Open(c) => c.close(),
+        }
+    }
+}
+
+/// One start of a chat id: its number among the starts of that id (see [`Engines::opening`]).
+struct Opening {
+    latest: Arc<AtomicU64>,
+    turn: u64,
+}
+
+impl Opening {
+    /// A later start of the same chat id has begun.
+    fn overtaken(&self) -> bool {
+        self.latest.load(Ordering::SeqCst) != self.turn
+    }
+}
+
 /// Every open chat, by chat id. No count limit. The one OpenCode server every OpenCode chat talks to
 /// lives here too, so it starts with the first such chat and ends with the app.
 #[derive(Clone, Default)]
 pub struct Engines {
     map: Arc<Mutex<HashMap<String, Chat>>>,
+    /// The number of the latest start of each chat id (see [`Engines::opening`]).
+    opens: Arc<Mutex<HashMap<String, Arc<AtomicU64>>>>,
     cfg: Config,
     open: Arc<opencode::Server>,
 }
 
 impl Engines {
     pub fn new(cfg: Config) -> Self {
-        Engines { map: Arc::default(), open: Arc::new(opencode::Server::new(cfg.clone())), cfg }
+        Engines { map: Arc::default(), opens: Arc::default(), open: Arc::new(opencode::Server::new(cfg.clone())), cfg }
+    }
+
+    /// A start of `chat_id` begins, and is the latest one from here. Two starts of one chat id can
+    /// be on their way at once (each runs on a thread of its own, and opening a chat on a server
+    /// that is still starting takes seconds): only the latest may become the chat. Answers the
+    /// start's number and the sink its chat speaks through, which goes quiet the moment a later
+    /// start of the same id begins, so the page hears nothing of a chat that lost its id (no `exit`
+    /// of it either). The sink reads one number and takes no lock.
+    fn opening(&self, chat_id: &str, sink: Sink) -> (Opening, Sink) {
+        let latest = Arc::clone(self.opens.lock().unwrap_or_else(|e| e.into_inner()).entry(chat_id.to_string()).or_default());
+        let turn = latest.fetch_add(1, Ordering::SeqCst) + 1;
+        let gate = Arc::clone(&latest);
+        let quiet_when_overtaken: Sink = Arc::new(move |id: &str, ev: &ChatEvent| {
+            if gate.load(Ordering::SeqCst) == turn {
+                sink(id, ev);
+            }
+        });
+        (Opening { latest, turn }, quiet_when_overtaken)
+    }
+
+    /// The chat a start opened takes its chat id, unless a later start of that id has begun. Answers
+    /// the chat the caller must close (outside every lock): the chat itself when it was overtaken,
+    /// or an older chat it replaced. Checked and placed under the map's lock, so of two starts the
+    /// later one always ends up as the chat.
+    fn land(&self, chat_id: &str, opening: &Opening, chat: Chat) -> Option<Chat> {
+        let mut map = self.map.lock().unwrap_or_else(|e| e.into_inner());
+        if opening.overtaken() {
+            return Some(chat);
+        }
+        map.insert(chat_id.to_string(), chat)
     }
 
     fn get(&self, chat_id: &str) -> Result<Chat, String> {
@@ -628,8 +683,18 @@ impl Engines {
             }
         }
         self.close(chat_id);
-        let chat = opencode::OpenChat::open(&self.open, chat_id, spec, resume, sink)?;
-        self.map.lock().unwrap_or_else(|e| e.into_inner()).insert(chat_id.to_string(), Chat::Open(chat));
+        let (opening, sink) = self.opening(chat_id, sink);
+        // A start still on its way that placed its chat between the two lines above: quiet now.
+        self.close(chat_id);
+        let chat = match opencode::OpenChat::open(&self.open, chat_id, spec, resume, sink) {
+            Ok(chat) => chat,
+            // The later start speaks for the chat: its page is told nothing of this one's failure.
+            Err(_) if opening.overtaken() => return Ok(()),
+            Err(e) => return Err(e),
+        };
+        if let Some(lost) = self.land(chat_id, &opening, Chat::Open(chat)) {
+            lost.close();
+        }
         Ok(())
     }
 
@@ -652,6 +717,9 @@ impl Engines {
             return Err(format!("The folder {} does not exist.", spec.cwd.display()));
         }
         self.close(chat_id);
+        let (opening, sink) = self.opening(chat_id, sink);
+        // A start still on its way that placed its chat between the two lines above: quiet now.
+        self.close(chat_id);
         // Review P2 (2026-11-23): a fresh conversation starts from the note too. A process that takes it
         // on its command line clears this at spawn; any other (a shim) carries it in the
         // first message. A resumed conversation already has it.
@@ -664,11 +732,18 @@ impl Engines {
         });
         {
             let mut inner = lock(&engine.inner);
-            engine.spawn(&mut inner)?;
+            match engine.spawn(&mut inner) {
+                Ok(()) => {}
+                // The later start speaks for the chat: its page is told nothing of this one's failure.
+                Err(_) if opening.overtaken() => return Ok(()),
+                Err(e) => return Err(e),
+            }
         }
         let watcher = Arc::clone(&engine);
         std::thread::spawn(move || watcher.watch_idle());
-        self.map.lock().unwrap_or_else(|e| e.into_inner()).insert(chat_id.to_string(), Chat::Stream(engine));
+        if let Some(lost) = self.land(chat_id, &opening, Chat::Stream(engine)) {
+            lost.close();
+        }
         Ok(())
     }
 
@@ -693,10 +768,8 @@ impl Engines {
     /// OpenCode). Closing a chat that is not open does nothing.
     pub fn close(&self, chat_id: &str) {
         let chat = self.map.lock().unwrap_or_else(|e| e.into_inner()).remove(chat_id);
-        match chat {
-            Some(Chat::Stream(e)) => e.close(),
-            Some(Chat::Open(c)) => c.close(),
-            None => {}
+        if let Some(chat) = chat {
+            chat.close();
         }
     }
 
