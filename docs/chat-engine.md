@@ -101,7 +101,9 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
 - **A run that takes up a message while the chat sends may be the chat's own.** OpenCode can start
   the run, deliver the message and stream the reply before the `prompt` call is answered. So a run
   that takes up a message not known to be the chat's own while one of the chat's `prompt` calls is
-  on its way counts as possibly the chat's own: its Stop and its close interrupt it. The answer
+  on its way counts as possibly the chat's own: its Stop and its close interrupt it. So does a run
+  that starts while such a call is on its way, before any delivery is heard (OpenCode publishes a
+  run's start before its delivery). The answer
   settles it: it names that message (the run is the chat's own) or another one (the run is another
   chat's, and is left alone from then on). A call that ends with no answer settles nothing, so the
   run stays stoppable until it ends. A message taken up before the send began does not count, and

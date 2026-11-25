@@ -2212,11 +2212,20 @@ fn a_run_that_takes_up_a_message_while_this_chat_sends_may_be_its_own() {
     fed(&mut tr, &[queued("m_a", "one"), started(), delivered("m_a")]);
     tr.sending();
     assert!(tr.running() && !tr.runs_mine() && !tr.engaged());
-    // The next run is nobody's again.
+    // The next run is nobody's again once no call of this chat is on its way.
     let mut tr = Translator::new(SES).own_only();
     tr.sending();
-    fed(&mut tr, &[started(), delivered("m_a"), ended(), started()]);
+    fed(&mut tr, &[started(), delivered("m_a"), ended()]);
+    tr.sent();
+    fed(&mut tr, &[started()]);
     assert!(tr.running() && !tr.runs_mine());
+    // A run that starts while a call of this chat is on its way may be that call's.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[started()]);
+    assert!(tr.running() && tr.runs_mine() && tr.engaged());
+    tr.unsent();
+    assert!(!tr.runs_mine());
     // A send that ended before its `prompt` call sent nothing: the message taken up was not its own.
     let mut tr = Translator::new(SES).own_only();
     tr.sending();
@@ -2276,6 +2285,34 @@ fn a_stop_right_after_a_send_interrupts_the_run_when_the_stream_is_ahead_of_the_
     assert_eq!(results_for(&seen, "c1"), ["error_during_execution"]);
     assert_eq!(page_count(&seen, "c1", 0, 1), 0);
     assert!(!chat.busy() && !chat.lock().tr.running());
+    server.shutdown();
+}
+
+// Review 9 P2-1: Stop between the run's start and its delivery, with the prompt answer still out,
+// interrupts: a run that starts while this chat's own call is on its way may be that call's.
+#[test]
+fn a_stop_between_a_runs_start_and_its_delivery_interrupts_the_run() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Late(Duration::from_millis(600), "{\"data\":{\"id\":\"m1\",\"type\":\"user\"}}".to_string()) } else { plain(m, p) });
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("one", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    for (k, d) in [queued("m1", "one"), ev("session.execution.started", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the interrupt is posted", Duration::from_secs(2), || interrupts(&fake) == 1 || stopping.is_finished());
+    assert_eq!(interrupts(&fake), 1, "the run that started during this chat's send is interrupted");
+    let (k, d) = ev("session.execution.interrupted", json!({}));
+    chat.heard(&k, &d);
+    assert_eq!(stopping.join().unwrap(), Some(StopHow::Interrupt));
+    sending.join().unwrap().unwrap();
+    assert_eq!(interrupts(&fake), 1, "exactly one interrupt");
+    assert_eq!(page_count(&seen, "c1", 0, 1), 0);
     server.shutdown();
 }
 

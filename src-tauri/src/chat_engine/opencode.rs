@@ -566,7 +566,13 @@ impl Translator {
         }
         match missed {
             Some((_, None)) => return vec![self.cancelled()],
-            Some((_, Some(failed))) => return vec![self.unseen(failed)],
+            Some((_, Some(failed))) => {
+                // Its run was cut from view: that run is this chat's own, so Stop still reaches it.
+                if self.orphan {
+                    self.mine_run = true;
+                }
+                return vec![self.unseen(failed)];
+            }
             None => {}
         }
         if self.foreign.remove(id) {
@@ -706,12 +712,14 @@ impl Translator {
                 self.maybe_mine = false;
             }
             // A new run is nobody's yet. One this chat was already told took up its message (the
-            // reads after a gap can be ahead of the stream) stays its own.
+            // reads after a gap can be ahead of the stream) stays its own. One that starts while a
+            // `prompt` call of this chat is on its way may be that call's (OpenCode publishes the
+            // start before the delivery): the answer, or `unsent`, settles it.
             "session.execution.started" => {
                 if self.delivered == 0 {
                     self.mine_run = false;
                 }
-                self.maybe_mine = false;
+                self.maybe_mine = self.strict && self.outgoing > 0;
                 self.foreign.clear();
             }
             _ => {}
