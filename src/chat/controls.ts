@@ -179,9 +179,10 @@ export function savedArgs(agent: string, saved: Saved = loadSaved()): string[] {
 }
 
 /** Row 389: the seat fields the launch pane starts from when `agent` is picked: its saved model, effort
- * and fast mode (cleaned by loadSaved), or no model so the pick stays explicit when nothing is saved. */
+ * and fast mode (cleaned by loadSaved), or no model so the pick stays explicit when nothing is saved.
+ * An OpenCode chat's pick stays with the chat here too (see savedArgs). */
 export function savedSeat(agent: string, saved: Saved = loadSaved()): { model: string | null; effort?: string; fast?: boolean } {
-  const c = saved[agent];
+  const c = agent === CHAT_AGENT ? undefined : saved[agent];
   return { model: c?.model ?? null, effort: c?.effort, fast: c?.fast };
 }
 

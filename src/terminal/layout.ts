@@ -9,6 +9,7 @@ import type { Agent } from "../chrome/VendorMark";
 import { focusIn, panesIn } from "../workspaces";
 import { resumeId, uniqueOwners } from "../sessions/ownership";
 import { isTabColor, type TabColors } from "./tabColor";
+import { withoutRefusedFlags } from "../launch/seats";
 
 export const LAYOUT_FIELD = "savedLayout";
 
@@ -276,6 +277,7 @@ function readPane(v: unknown): SavedPane | null {
   }
   if (o.view !== undefined && strOrNull(o.view)) p.view = o.view;
   if (str(o.agentId)) p.agentId = o.agentId;
+  p.args = withoutRefusedFlags(p.args, p.agentId);
   if (str(o.forkOf) && o.forkOf !== "") p.forkOf = o.forkOf;
   const own = resumeId({ session: str(o.session) ? o.session : undefined, forkOf: p.forkOf });
   if (own !== null) p.session = own;
