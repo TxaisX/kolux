@@ -181,10 +181,20 @@ export function modelsFor(agentId: string): ModelChoice[] {
   return [...list, { id: DEFAULT_MODEL, label: "Program default" }];
 }
 
-/** The arguments a model pick adds to the start line; none for the program's own default. `agentId`
- *  is kept for the callers that pass it: every agent takes the same flag. */
-export function modelArgs(model: string | null, _agentId?: string | null): string[] {
-  if (model === null || model === DEFAULT_MODEL) return [];
+/** OpenCode's terminal has no `--model` flag (2.4.1, "Unrecognized flag: --model"): it starts on the
+ *  model set inside OpenCode. A chat's model is handed to the chat engine, never to a start line. */
+const takesNoModel = (agentId: string | null | undefined) => agentId === "opencode";
+
+/** A start line saved earlier, without any model flag its program refuses. */
+export function withoutRefusedFlags(args: string[], agentId: string | null | undefined): string[] {
+  if (!takesNoModel(agentId)) return args;
+  return args.filter((a, i) => a !== "--model" && args[i - 1] !== "--model" && !a.startsWith("--model="));
+}
+
+/** The arguments a model pick adds to the start line; none for the program's own default, and none
+ *  for a program that takes no model flag. Every other agent takes the same flag. */
+export function modelArgs(model: string | null, agentId?: string | null): string[] {
+  if (model === null || model === DEFAULT_MODEL || takesNoModel(agentId)) return [];
   return ["--model", model];
 }
 
@@ -225,10 +235,16 @@ export function offeredLineup(saved: unknown, installedIds: string[]): Lineup | 
   return lineupAgents(l).some((a) => installedIds.includes(a)) ? l : null;
 }
 
+/** A kept seat of a program that takes no model flag forgets its model, with the effort and fast mode
+ *  that went with it, so the form never names a model the session will not use. */
+const withoutRefusedModel = (s: Seat): Seat => (s.model !== null && takesNoModel(s.agent) ? { ...s, model: null, effort: undefined, fast: undefined } : s);
+
 /** A saved model the agent no longer lists is dropped (model: null), so the seat asks for a pick
- * instead of starting with a --model the program rejects. An agent with no list keeps it. */
+ * instead of starting with a --model the program rejects. Another agent with no list keeps it; one
+ * that takes no model flag drops it (withoutRefusedModel). */
 export const knownModel = (s: Seat): Seat => {
   if (s.agent === null || s.agent === TERMINAL || s.model === null) return s;
+  if (takesNoModel(s.agent)) return withoutRefusedModel(s);
   const list = modelsFor(s.agent);
   // Job 13 F6: Grok and Cursor list some models only through the live search; until it answers, a remembered one stays.
   const waiting = LISTED.includes(s.agent) && !discovered[s.agent];
@@ -349,7 +365,7 @@ export function renameShape(list: SavedShape[], i: number, name: string): SavedS
 }
 
 /** SESS-020: the seats back as saved; a seat whose agent is no longer installed comes back blank. */
-export const restoreShape = (shape: SavedShape, installedIds: string[]): Seat[] => clearMissing(shape.seats.map((s) => ({ ...s })), installedIds);
+export const restoreShape = (shape: SavedShape, installedIds: string[]): Seat[] => clearMissing(shape.seats.map((s) => ({ ...s })), installedIds).map(withoutRefusedModel);
 
 /** SESS-008: what the remove-session shortcut closes among the panes in front: the newest chooser
  * (silently, `chooser` true), else the focused pane, else the last one. A lone chooser stays, so
