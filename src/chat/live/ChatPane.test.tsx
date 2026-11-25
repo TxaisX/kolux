@@ -583,3 +583,50 @@ test("live A: after New chat and a first reply, the header, the Everyday row and
   expect(seen.row).toBe("Acknowledgment response");
   await until(() => find(c, (n) => n.attrs.class === "wui-title").some((n) => n.textContent === "Acknowledgment response"), "the column row");
 });
+
+// Bug F: a message queued behind a long turn, then Stop. The engine asks OpenCode to cancel it; each confirmed
+// cancel is one `result` with subtype "cancelled" and no echo. The bubble must not stay on "Responding...".
+const queuedScene = async () => {
+  h.script = (cmd) => (cmd === "chat_models" ? MODELS : cmd === "chat_sessions" ? [] : cmd === "artifacts_scan" ? { rows: [], skipped: [] } : cmd === "chat_stop" ? "interrupt" : undefined);
+  const c = await pane();
+  await until(() => starts().length === 1, "the start");
+  await emit({ kind: "init", sessionId: "ses_q" });
+  await sendText(c, "a very long prompt");
+  await until(() => h.calls.filter((x) => x.cmd === "chat_send").length === 1, "the first send");
+  await emit({ kind: "user", text: ["a very long prompt"] });
+  await sendText(c, "say cherry");
+  await until(() => h.calls.filter((x) => x.cmd === "chat_send").length === 2, "the queued send");
+  await settle(50);
+  return c;
+};
+
+test("bug F: a queued bubble is removed by a cancelled result", async () => {
+  const c = await queuedScene();
+  expect(said(c, "say cherry")).toBe(true);
+  await emit({ kind: "stopped", how: "interrupt" });
+  await emit({ kind: "result", subtype: "cancelled", isError: true, errors: ["Stopped before it ran."] });
+  expect(said(c, "say cherry")).toBe(false);
+  expect(said(c, "Responding")).toBe(false);
+  expect(said(c, "A message was not run.")).toBe(true);
+});
+
+test("bug F: after stopped, an unconfirmed queued bubble shows Waiting to send, never Responding", async () => {
+  const c = await queuedScene();
+  expect(said(c, "Responding")).toBe(true);
+  await emit({ kind: "stopped", how: "interrupt" });
+  expect(said(c, "say cherry")).toBe(true);
+  expect(said(c, "Responding")).toBe(false);
+  expect(said(c, "Waiting to send")).toBe(true);
+});
+
+test("bug F: a held queued bubble is cleared by a later echo", async () => {
+  const c = await queuedScene();
+  await emit({ kind: "stopped", how: "interrupt" });
+  expect(said(c, "Waiting to send")).toBe(true);
+  await emit({ kind: "user", text: ["say cherry"] });
+  await settle(50);
+  expect(said(c, "Waiting to send")).toBe(false);
+  expect(said(c, "Responding")).toBe(false);
+  expect(find(c, (n) => String(n.attrs.class ?? "").includes("pending"))).toHaveLength(0);
+  expect(said(c, "say cherry")).toBe(true);
+});

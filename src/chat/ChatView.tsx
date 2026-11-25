@@ -377,6 +377,7 @@ function ChatRow({ row, onImage }: { row: Row; onImage: (src: string) => void })
     return (
       <div className={`chat-msg user pending${row.failed ? " failed" : ""}`}>
         <div className="chat-text">{row.text}</div>
+        {row.held && !row.failed && <div className="chat-status" role="status">Waiting to send</div>}
         {row.failed && <div className="chat-fail" role="alert">This message did not arrive. Look at the terminal.</div>}
       </div>
     );
