@@ -94,7 +94,17 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
   without naming an inbox id makes the chat count every message of the session as its own from then
   on (it cannot tell them apart). A message OpenCode settles before the answer to its `prompt` call
   is applied (it cancels it, or a run takes it up and ends) gets its one `result` when that answer
-  names it: `cancelled`, or the plain outcome of that run.
+  names it: `cancelled`, or the plain outcome of that run. That holds for a message never heard
+  queued too: a delivery that names an unknown message while one of the chat's `prompt` calls is on
+  its way is kept until that call's answer says whose it is. If the answer comes while the run still
+  goes on, the run is the chat's own from there and its end gives the message's `result`.
+- **A run is known from its start or from its own events.** A chat opened in the middle of a run
+  never hears `session.execution.started`. Any step, text, reasoning or tool event of the run, or
+  the delivery of a waiting message, tells it a run is going on. Whose run it is does not change by
+  that: it is the chat's own only once it took up a message of the chat. So a message the chat sends
+  behind a run it opened into waits like any other, and the chat's Stop and close leave that run
+  alone. Not covered: a chat that has heard nothing at all of a run going on cannot know of it, and
+  with a message of its own waiting its Stop or close posts the interrupt.
 - **A run's end gives a chat as many `result`s as its page counted for that run.** The page counts
   1 for each send, takes 1 off for each `result`, and counts 1 for a reply (`assistant`) that comes
   while it counts 0. So a chat that counts only its own messages gets, when a run ends:
@@ -111,9 +121,12 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
   took up messages of both chats gives each chat one `result` per message of its own. A chat opened
   in the middle of a run never hears it start; once it has shown a reply of the run, the run's end
   gives it its `result` like any other. A Stop that leaves the run going (it is not this chat's)
-  sets the page's count to 0, so the next reply shown draws the turn afresh. Not covered: the page
-  counts a send a moment before the engine knows of it (until the `prompt` call is posted), and a
-  mirrored reply shown in that moment is taken for a drawn turn.
+  sets the page's count to 0, so the next reply shown draws the turn afresh. A message counts as on
+  its way from the start of the chat's send, before the server is woken and a waiting model pick is
+  posted, as the page counts it from there; a send that ends before its `prompt` call (the server
+  did not start, the pick was not applied) takes it back, as the page does on the send's error. A
+  lost stream ends a turn the page drew of a mirrored run too (`connection_lost`), so the page is
+  not left counting a run whose end may be missed.
 - **After a lost stream** the engine asks OpenCode what happened in the gap instead of guessing. For
   each chat with a cut run or a waiting message it reads `GET /api/session/active` (the sessions
   running now), `GET /api/session/{id}/inbox` (the messages still waiting) and, for each waiting
@@ -141,7 +154,9 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
   `exit`.
 - **Nothing follows a chat's `exit`.** Every event a chat sends after it opened (a stream event's,
   the answer about a gap, a lost stream's `result`, the end of a Stop, a `stderr` line from Kolux,
-  a server's end) is sent with the chat's lock held, after checking the chat is not closed. A close
+  a server's end, and what a send or a model pick tells the page: `started` after a wake, `init`,
+  the `stderr` line of a refused pick) is sent with the chat's lock held, after checking the chat is
+  not closed. A close
   marks the chat closed under the same lock before it sends `exit`, so it waits for an event being
   sent and nothing comes after it. The sink (a Tauri `emit`) takes no lock of the engine, so
   holding the chat's lock over it cannot deadlock.
@@ -232,14 +247,18 @@ server is never ended for one chat's stop. A run the page was already told is ov
 an earlier stop with no answer) is still interrupted. A Stop acts only on the chat's own messages
 (see "Only a chat's own messages are its own"). The interrupt is posted when the run going on is
 this chat's own (it took up a message of this chat), or when no run is known to be going on and a
-message of this chat waits (its run may be starting with nothing heard of it yet). A run another
-pane started is never interrupted from here, whether this chat has nothing in the session or only a
-message waiting behind that run: the run goes on and stays mirrored, there is no wait and no cut
-turn, and the chat answers `stopped {how: "ended"}` at once. One exception: while one of this
-chat's own `prompt` calls is still on its way, or ended within the last 5 seconds without naming
-its inbox item, the interrupt is posted, because that message may be starting a run unheard. An
-OpenCode chat always answers `stopped` (and returns `"ended"` or `"interrupt"`, never `null`), so
-the page never waits. A close follows the same rule for its interrupt.
+message of this chat may be starting one with nothing heard of it yet: a message that waits, a
+`prompt` call still on its way, or one that ended within the last 5 seconds without naming its
+inbox item. With nothing running there is nothing to wait for, so that Stop answers
+`stopped {how: "interrupt"}` as soon as OpenCode took the interrupt. A run known to be going on that
+another pane started is never interrupted from here, whatever this chat has in the session: nothing,
+a message waiting behind that run, or one still on its way. The run goes on and stays mirrored,
+there is no wait and no cut turn, and the chat answers `stopped {how: "ended"}` at once. A chat
+opened in the middle of that run knows it from the run's own events (see "A run is known from its
+start or from its own events"). An OpenCode chat always answers `stopped` (and returns `"ended"` or
+`"interrupt"`, never `null`), so the page never waits. A close posts its interrupt for the chat's
+own run, or for a message of its own that waits while no run is known; a message still on its way
+is no reason for it.
 
 A Stop also takes back the chat's own messages still waiting, whoever's run is going on: each one is
 cancelled with `DELETE /api/session/{id}/inbox/{inboxID}` (after the interrupt, when one is posted).
