@@ -41,9 +41,21 @@ const STREAM_STEADY: Duration = Duration::from_secs(5);
 /// How long after a `prompt` call that named no inbox item a Stop still counts that message as maybe
 /// starting unheard.
 const SENT_UNHEARD: Duration = Duration::from_secs(5);
-/// The events only a run sends while it goes on: its steps, its text, its reasoning and its tool
-/// calls. Any of them tells a chat that never heard the run start that one is going on.
-const RUN_EVENTS: [&str; 4] = ["session.step.", "session.text.", "session.reasoning.", "session.tool."];
+/// The events that start or carry on a piece of a run's work: a step, text, reasoning, a tool call.
+/// Any of them tells a chat that never heard the run start that one is going on. An event that ends
+/// a piece (`*.ended`, a tool's outcome, a failed step) is left out: one heard late, after the run's
+/// own end, would leave the chat running for good.
+const RUN_EVENTS: [&str; 9] = [
+    "session.step.started",
+    "session.text.started",
+    "session.text.delta",
+    "session.reasoning.started",
+    "session.reasoning.delta",
+    "session.tool.input.started",
+    "session.tool.input.delta",
+    "session.tool.called",
+    "session.tool.progress",
+];
 /// How many taken-up or cancelled inbox ids a chat remembers.
 const DONE_KEPT: usize = 64;
 /// Reads of a model list that came back empty, before the empty list is the answer.
@@ -303,8 +315,15 @@ pub struct Translator {
     /// this chat's own when its `prompt` answer comes after its delivery was heard.
     foreign: HashSet<String>,
     /// The running turn (or the cut run still going in OpenCode) took up one of this chat's own
-    /// messages.
+    /// messages, or was first heard from its own events while one waited (its start and the delivery
+    /// were missed, so the run may be that message's).
     mine_run: bool,
+    /// The running turn took up a message, not known to be this chat's own, while a `prompt` call of
+    /// this chat was on its way: OpenCode's stream can be ahead of the call's answer, so the run may
+    /// be this chat's own. The answer settles it ([`Translator::admit`]): it names that message (then
+    /// `mine_run`) or another one. A call that ends with no answer settles nothing, so the doubt
+    /// stays until the run ends.
+    maybe_mine: bool,
     /// Run ends heard so far.
     ends: u64,
     /// Own messages given their result from OpenCode's reads after a gap (their run was not seen). If
@@ -351,8 +370,12 @@ impl Translator {
     /// The run going on (or the cut run still going in OpenCode) is this chat's own: it took up a
     /// message of this chat. That is what a Stop or a close may interrupt. A run only another chat's
     /// messages started is not this chat's to stop, even while a message of this chat waits behind it.
+    ///
+    /// A run that may be this chat's own, with nothing saying so yet, counts too (see `maybe_mine`
+    /// and `mine_run`): a chat alone on its session must always be able to stop its run, and that
+    /// wins over leaving another chat's run alone.
     pub fn runs_mine(&self) -> bool {
-        (self.running || self.orphan) && (!self.strict || self.mine_run)
+        (self.running || self.orphan) && (!self.strict || self.mine_run || self.maybe_mine)
     }
 
     /// What a Stop or a close may interrupt: this chat's own run, or, with no run known to be going
@@ -379,6 +402,15 @@ impl Translator {
     /// A `prompt` call of this chat ended, whatever its answer.
     pub fn sent(&mut self) {
         self.outgoing = self.outgoing.saturating_sub(1);
+    }
+
+    /// A send of this chat ended before its `prompt` call: nothing was sent, so a message a run took
+    /// up meanwhile was not this chat's.
+    pub fn unsent(&mut self) {
+        self.sent();
+        if self.outgoing == 0 {
+            self.maybe_mine = false;
+        }
     }
 
     /// A `prompt` call of this chat ended without naming its inbox item (see `unheard`).
@@ -527,8 +559,10 @@ impl Translator {
         }
         let missed = self.missed.iter().position(|(m, _)| m == id).and_then(|at| self.missed.remove(at));
         if self.outgoing == 0 {
-            // No call is left whose answer could name one of them.
+            // No call is left whose answer could name one of them, or the message the running turn
+            // took up (if this answer names that one, the turn is made this chat's own below).
             self.missed.clear();
+            self.maybe_mine = false;
         }
         match missed {
             Some((_, None)) => return vec![self.cancelled()],
@@ -616,6 +650,7 @@ impl Translator {
         if !active && !self.running {
             self.orphan = false;
             self.mine_run = false;
+            self.maybe_mine = false;
         }
         out
     }
@@ -668,6 +703,7 @@ impl Translator {
             "session.execution.succeeded" | "session.execution.interrupted" | "session.execution.failed" => {
                 self.ends += 1;
                 self.mine_run = false;
+                self.maybe_mine = false;
             }
             // A new run is nobody's yet. One this chat was already told took up its message (the
             // reads after a gap can be ahead of the stream) stays its own.
@@ -675,6 +711,7 @@ impl Translator {
                 if self.delivered == 0 {
                     self.mine_run = false;
                 }
+                self.maybe_mine = false;
                 self.foreign.clear();
             }
             _ => {}
@@ -707,10 +744,18 @@ impl Translator {
             }
         }
         // A chat opened in the middle of a run never hears it start. The run's own events say one is
-        // going on all the same, so the chat knows it: a message of its own waiting behind that run
-        // is then no reason for its Stop or its close to interrupt (see `engaged`), and a lost stream
-        // cuts the run like any other. Whose run it is does not change here.
-        if !self.running && RUN_EVENTS.iter().any(|p| kind.starts_with(p)) {
+        // going on all the same, so the chat knows it: a message it sends behind that run is then no
+        // reason for its Stop or its close to interrupt (see `engaged`), and a lost stream cuts the
+        // run like any other.
+        //
+        // Whose run it is: with nothing of this chat's own waiting, another chat's (the run was
+        // going on before this chat sent anything). With a message of its own already waiting and
+        // nothing saying the run is another chat's, the run may be that message's (its start and the
+        // delivery were missed), so it counts as this chat's own to stop.
+        if !self.running && RUN_EVENTS.contains(&kind) {
+            if self.strict && self.delivered == 0 && self.foreign.is_empty() && self.inbox.keys().any(|id| self.own.contains(id)) {
+                self.mine_run = true;
+            }
             self.begin(now);
         }
         let s = |k: &str| text_of(data, k);
@@ -762,6 +807,9 @@ impl Translator {
                             self.delivered += 1;
                             self.mine_run = true;
                         } else {
+                            // Taken up while a `prompt` call of this chat is on its way: it may be
+                            // that call's message, heard here before the call's answer.
+                            self.maybe_mine |= self.outgoing > 0;
                             self.foreign.insert(id);
                         }
                         Self::echo(text).into_iter().collect()
@@ -771,6 +819,7 @@ impl Translator {
                     // still gives it its result (in this run, or after its end; see `foreign`, `missed`).
                     None => {
                         if self.strict && self.outgoing > 0 {
+                            self.maybe_mine = true;
                             self.foreign.insert(id);
                         }
                         Vec::new()
@@ -1973,13 +2022,14 @@ impl OpenChat {
             }
             // The page counts the message from the moment it is sent, so the chat does too: a reply
             // of another chat's run mirrored while the server wakes or a model pick is posted draws
-            // no turn of its own. Every way out of this send takes it back (`sent`).
+            // no turn of its own. Every way out of this send takes it back (`sent`, or `unsent` when
+            // the `prompt` call was never made).
             i.tr.sending();
         }
         let (api, pid, gen) = match self.server.wake() {
             Ok(up) => up,
             Err(e) => {
-                self.lock().tr.sent();
+                self.lock().tr.unsent();
                 return Err(e);
             }
         };
@@ -2033,7 +2083,7 @@ impl OpenChat {
                 },
             };
             if let Some(line) = line {
-                self.lock().tr.sent();
+                self.lock().tr.unsent();
                 self.tell(&[ChatEvent::Stderr { line: line.clone() }]);
                 return Err(line);
             }
@@ -2069,10 +2119,14 @@ impl OpenChat {
     /// over anyway (the shared server is never ended for one chat's stop).
     ///
     /// A run the page was already told is over but OpenCode may still be running (a lost stream, a
-    /// stop that got no answer) is stopped too, when it is this chat's own. A run that took up none of
-    /// this chat's messages is left alone (another pane is running it), whatever this chat has in the
-    /// session: nothing, a message waiting behind that run, or one still on its way. A chat opened in
-    /// the middle of that run knows it from the run's own events. With no run known to be going on,
+    /// stop that got no answer) is stopped too, when it is this chat's own. A run that may be this
+    /// chat's own with nothing saying so yet is stopped like its own (see [`Translator::runs_mine`]):
+    /// one that took up a message while a `prompt` call of this chat was on its way (the stream can be
+    /// ahead of the call's answer, which is a Stop right after a send in a single pane), or one first
+    /// heard from its own events while a message of this chat waited. Any other run took up none of
+    /// this chat's messages and is left alone (another pane is running it), whatever this chat has in
+    /// the session: nothing, a message waiting behind that run, or one still on its way. A chat opened
+    /// in the middle of that run knows it from the run's own events. With no run known to be going on,
     /// OpenCode is asked to stop for a message of this chat that waits (see [`Translator::engaged`])
     /// or may be starting a run unheard: a `prompt` call still on its way, or one that just ended
     /// without naming its inbox item (see [`Translator::starting_unheard`]). The page still hears
@@ -2085,9 +2139,10 @@ impl OpenChat {
     pub fn stop(&self) -> Option<StopHow> {
         let (session, mine, waiting) = {
             let i = self.lock();
-            // This chat's own run, or, with no run known to be going on, a message of its own that
-            // waits or may be starting a run unheard. A run known to be going on that is not this
-            // chat's own is another chat's, whatever this chat has waiting or on its way.
+            // This chat's own run (or one that may be its own: see `runs_mine`), or, with no run
+            // known to be going on, a message of its own that waits or may be starting a run
+            // unheard. Any other run known to be going on is another chat's, whatever this chat has
+            // waiting or on its way.
             (i.session.clone(), i.tr.engaged() || i.tr.starting_unheard(Instant::now()), i.tr.own_waiting())
         };
         let api = self.server.api();
