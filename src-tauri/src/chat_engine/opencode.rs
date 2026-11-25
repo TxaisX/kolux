@@ -41,6 +41,8 @@ const STREAM_STEADY: Duration = Duration::from_secs(5);
 /// How long after a `prompt` call that named no inbox item a Stop still counts that message as maybe
 /// starting unheard.
 const SENT_UNHEARD: Duration = Duration::from_secs(5);
+/// What `chat_send` fails with when a Stop was pressed before the message reached OpenCode.
+const STOPPED_UNSENT: &str = "Not sent: Stop was pressed before the message reached OpenCode.";
 /// The events that start or carry on a piece of a run's work: a step, text, reasoning, a tool call.
 /// Any of them tells a chat that never heard the run start that one is going on. An event that ends
 /// a piece (`*.ended`, a tool's outcome, a failed step) is left out: one heard late, after the run's
@@ -297,6 +299,12 @@ pub struct Translator {
     own: HashSet<String>,
     /// `prompt` calls of this chat still on their way to OpenCode. The page has counted each one.
     outgoing: u32,
+    /// Of those, the calls made and not answered yet: OpenCode has, or is getting, a message nothing
+    /// was heard of yet. A Stop waits for their answers (see [`OpenChat::stop`]).
+    posted: u32,
+    /// Stops pressed in this chat so far. A send that finds this changed right before its `prompt`
+    /// call was stopped before it sent anything, and does not make the call.
+    stops: u64,
     /// When a `prompt` call of this chat last ended without naming its inbox item (no answer, or one
     /// with no id), and the text it sent: the message may be queued or starting with nothing heard of
     /// it yet. A message heard queued soon after with that text is taken as this chat's own.
@@ -395,19 +403,42 @@ impl Translator {
     }
 
     /// A `prompt` call of this chat is on its way. The page counts the message from here.
-    pub fn sending(&mut self) {
+    /// Answers the Stops pressed so far, for [`Translator::posting`].
+    pub fn sending(&mut self) -> u64 {
         self.outgoing += 1;
+        self.stops
+    }
+
+    /// The send that began at `since` (what [`Translator::sending`] answered) is about to make its
+    /// `prompt` call. False when a Stop was pressed meanwhile: the message must not be sent.
+    pub fn posting(&mut self, since: u64) -> bool {
+        if self.stops != since {
+            return false;
+        }
+        self.posted += 1;
+        true
+    }
+
+    /// A Stop was pressed in this chat.
+    pub fn stop_pressed(&mut self) {
+        self.stops += 1;
+    }
+
+    /// A `prompt` call of this chat is made and not answered yet.
+    pub fn posted(&self) -> bool {
+        self.posted > 0
     }
 
     /// A `prompt` call of this chat ended, whatever its answer.
     pub fn sent(&mut self) {
         self.outgoing = self.outgoing.saturating_sub(1);
+        self.posted = self.posted.saturating_sub(1);
     }
 
     /// A send of this chat ended before its `prompt` call: nothing was sent, so a message a run took
     /// up meanwhile was not this chat's.
     pub fn unsent(&mut self) {
-        self.sent();
+        self.outgoing = self.outgoing.saturating_sub(1);
         if self.outgoing == 0 {
             self.maybe_mine = false;
         }
@@ -2023,7 +2054,7 @@ impl OpenChat {
         if !images.is_empty() {
             return Err("Pictures cannot be sent in this chat yet.".to_string());
         }
-        {
+        let since = {
             let mut i = self.lock();
             if i.closed {
                 return Err(format!("No open chat {}.", self.id));
@@ -2032,8 +2063,8 @@ impl OpenChat {
             // of another chat's run mirrored while the server wakes or a model pick is posted draws
             // no turn of its own. Every way out of this send takes it back (`sent`, or `unsent` when
             // the `prompt` call was never made).
-            i.tr.sending();
-        }
+            i.tr.sending()
+        };
         let (api, pid, gen) = match self.server.wake() {
             Ok(up) => up,
             Err(e) => {
@@ -2096,6 +2127,17 @@ impl OpenChat {
                 return Err(line);
             }
         }
+        {
+            // A Stop pressed since this send began (the server woke, a pick was posted) stops the
+            // message before it is sent: nothing is posted, and the page takes the failed send back.
+            // Checked under the chat's lock, where a Stop counts itself, so a Stop either finds this
+            // call made (and waits for its run) or keeps it from being made.
+            let mut i = self.lock();
+            if !i.tr.posting(since) {
+                i.tr.unsent();
+                return Err(STOPPED_UNSENT.to_string());
+            }
+        }
         let sent = api.ok("POST", &format!("/api/session/{session}/prompt"), Some(json!({ "text": text })));
         let mut i = self.lock();
         i.tr.sent();
@@ -2145,20 +2187,37 @@ impl OpenChat {
     /// result comes only with OpenCode's word for it (`session.inbox.cancelled`); one OpenCode does
     /// not cancel stays waiting and gets its result from the run that takes it up.
     pub fn stop(&self) -> Option<StopHow> {
-        let (session, mine, waiting) = {
-            let i = self.lock();
+        let (session, mine, waiting, mut hit) = {
+            let mut i = self.lock();
+            // A send of this chat that has not made its `prompt` call yet no longer makes it.
+            i.tr.stop_pressed();
+            // The run the interrupt of this press is for, by the ends heard before it.
+            let hit = i.tr.runs_mine().then(|| i.tr.ends());
             // This chat's own run (or one that may be its own: see `runs_mine`), or, with no run
             // known to be going on, a message of its own that waits or may be starting a run
             // unheard. Any other run known to be going on is another chat's, whatever this chat has
             // waiting or on its way.
-            (i.session.clone(), i.tr.engaged() || i.tr.starting_unheard(Instant::now()), i.tr.own_waiting())
+            (i.session.clone(), i.tr.engaged() || i.tr.starting_unheard(Instant::now()), i.tr.own_waiting(), hit)
         };
         let api = self.server.api();
-        let asked = mine && api.as_ref().is_some_and(|api| api.ok("POST", &format!("/api/session/{session}/interrupt"), None).is_ok());
-        if let Some(api) = &api {
+        let interrupt = |api: &Api| api.ok("POST", &format!("/api/session/{session}/interrupt"), None).is_ok();
+        // Takes back the waiting messages not asked about yet. `kept`: the ones OpenCode did not
+        // cancel (a run is taking them up, or the call did not land).
+        let mut tried: HashSet<String> = HashSet::new();
+        let mut kept: HashSet<String> = HashSet::new();
+        let mut take_back = |api: &Api, waiting: &[String]| {
             for id in waiting.iter().filter(|id| valid_session(id)) {
-                let _ = api.call("DELETE", &format!("/api/session/{session}/inbox/{id}"), None);
+                if tried.insert(id.clone()) && !api.call("DELETE", &format!("/api/session/{session}/inbox/{id}"), None).is_ok_and(|(code, _)| (200..300).contains(&code)) {
+                    kept.insert(id.clone());
+                }
             }
+            waiting.iter().any(|id| kept.contains(id))
+        };
+        let mut asked = mine && api.as_ref().is_some_and(interrupt);
+        // The interrupt for a run of this chat's own did not land: there is nothing to wait for.
+        let mut failed = !asked && (hit.is_some() || api.is_none());
+        if let Some(api) = &api {
+            take_back(api, &waiting);
         }
         if !mine {
             // Nothing of this chat runs or may be starting. A run another chat started on the same
@@ -2172,21 +2231,44 @@ impl OpenChat {
             return Some(StopHow::Ended);
         }
         let end = Instant::now() + self.server.cfg.stop_grace;
+        // A message sent a moment ago may not have started its run yet, so the interrupt of the press
+        // found nothing to stop. While a `prompt` call of this chat is on the wire, or a message of
+        // its own waits that OpenCode did not cancel, the Stop goes on: a message that shows up
+        // waiting is taken back, and a run of this chat's own that starts is interrupted, once per
+        // run. The page hears `stopped` only when that run has ended, so no reply follows a Stop.
+        // All of it outside the chat's lock.
         let how = loop {
-            if !asked || Instant::now() >= end {
-                break StopHow::Ended;
+            let (run, going, ends, waiting, posted) = {
+                let i = self.lock();
+                (i.tr.runs_mine(), i.tr.running() || i.tr.orphaned(), i.tr.ends(), i.tr.own_waiting(), i.tr.posted())
+            };
+            if failed || Instant::now() >= end {
+                // No answer in time. With no run known there is no turn to cut.
+                break if asked && !going { StopHow::Interrupt } else { StopHow::Ended };
             }
-            let i = self.lock();
-            if !i.tr.running() && !i.tr.orphaned() {
-                break StopHow::Interrupt;
+            let Some(api) = &api else { break StopHow::Ended };
+            if run && hit != Some(ends) {
+                hit = Some(ends);
+                if interrupt(api) {
+                    asked = true;
+                } else {
+                    failed = true;
+                    continue;
+                }
             }
-            drop(i);
+            let held = take_back(api, &waiting) || posted;
+            if !run && !held {
+                break if asked { StopHow::Interrupt } else { StopHow::Ended };
+            }
             std::thread::sleep(Duration::from_millis(20));
         };
         // Under the chat's lock, so nothing of this Stop follows the `exit` of a chat closed meanwhile.
         let mut i = self.lock();
         if !i.closed {
-            if how == StopHow::Ended {
+            // A run that started while this Stop waited and is not this chat's own is another pane's:
+            // it goes on, mirrored here, and is not cut.
+            let others = (i.tr.running() || i.tr.orphaned()) && !i.tr.runs_mine();
+            if how == StopHow::Ended && !others {
                 // The turn is over on the page. A message still waiting is kept until OpenCode says
                 // what became of it.
                 for e in &i.tr.cut(Instant::now()) {

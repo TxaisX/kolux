@@ -2374,3 +2374,67 @@ fn a_stray_event_after_a_runs_end_starts_no_run() {
         assert!(!tr.running() && !tr.busy(), "{} after the run's end starts no run", one.0);
     }
 }
+
+// Review 9 P3-2, the first half: a Stop pressed while a send is still on its way to its `prompt` call
+// (the server wakes, a model pick is posted) keeps the message from being sent at all. The send ends
+// as one that failed, which is how the page takes a message back. A later send goes out as usual.
+#[test]
+fn a_stop_before_the_prompt_call_keeps_the_message_from_being_sent() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Late(Duration::from_millis(150), "{}".to_string()) } else { plain(m, p) });
+    let (server, chat, seen) = chat_with_a_waiting_pick(&fake);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("one", &[]));
+    wait_until("the pick is being posted", Duration::from_secs(5), || fake.any("/model"));
+    assert_eq!(chat.stop(), Some(StopHow::Interrupt));
+    assert!(sending.join().unwrap().is_err(), "the page takes the send back");
+    assert!(!fake.any("/prompt"), "a message stopped before it was sent is never sent");
+    assert_eq!(chat.lock().tr.outgoing, 0);
+    assert!(kinds_of(&seen, "c1").iter().any(|k| *k == "stopped"));
+    assert!(results_for(&seen, "c1").is_empty(), "nothing ran, so nothing has a result");
+    chat.send("two", &[]).unwrap();
+    assert!(fake.any("/prompt"), "the Stop is over: the next message is sent");
+    server.shutdown();
+}
+
+// Review 9 P3-2, the second half: a Stop pressed after the `prompt` call went out and before anything
+// of its run is heard. The interrupt of that moment reaches a session with nothing running, and the
+// message can no longer be taken back (OpenCode refuses: the run is taking it up). The Stop is not
+// over yet: it waits for the run to start, interrupts it once, and tells the page `stopped` only
+// when that run has ended, so no reply follows a Stop.
+#[test]
+fn a_stop_while_the_prompt_call_is_on_its_way_interrupts_the_run_it_starts() {
+    let fake = fake(|m: &str, p: &str| {
+        if p.ends_with("/prompt") {
+            Reply::Late(Duration::from_millis(80), "{\"data\":{\"id\":\"m1\",\"type\":\"user\"}}".to_string())
+        } else if m == "DELETE" {
+            Reply::Json(404, "{}".to_string())
+        } else {
+            plain(m, p)
+        }
+    });
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("one", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the interrupt of the press is posted", Duration::from_secs(2), || interrupts(&fake) == 1 || stopping.is_finished());
+    for (k, d) in [queued("m1", "one"), ev("session.execution.started", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    wait_until("the run that started is interrupted", Duration::from_secs(2), || interrupts(&fake) == 2 || stopping.is_finished());
+    assert_eq!(interrupts(&fake), 2, "one interrupt at the press, and exactly one for the run once it starts");
+    assert!(!stopping.is_finished(), "the page is not told `stopped` while the run goes on");
+    for (k, d) in [ev("session.inbox.delivered", json!({ "inboxID": "m1" })), said("a1", "1"), ev("session.execution.interrupted", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(stopping.join().unwrap(), Some(StopHow::Interrupt));
+    sending.join().unwrap().unwrap();
+    assert_eq!(interrupts(&fake), 2, "the run is interrupted once");
+    assert_eq!(kinds_of(&seen, "c1").last().map(|k| k.to_string()), Some("stopped".to_string()), "nothing follows the Stop");
+    assert_eq!(page_count(&seen, "c1", 0, 1), 0);
+    server.shutdown();
+}
