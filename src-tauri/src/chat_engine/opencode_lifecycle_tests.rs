@@ -1503,3 +1503,327 @@ fn a_resume_pick_that_gets_a_server_error_is_said_and_kept() {
     assert!(kinds_of(&seen, "c1").contains(&"stderr".to_string()), "the page is told the chat is not on the pick yet");
     server.shutdown();
 }
+
+// ---- Review 6 ----
+
+/// Two chats on one session of a running stand-in server, with one sink for both.
+fn two_chats(fake: &Fake) -> (Arc<Server>, Arc<OpenChat>, Arc<OpenChat>, Seen) {
+    let (server, _) = server_on(fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let a = OpenChat::attach(&server, "a", spec(Vec::new()), SES, None, gen, Arc::clone(&sink));
+    let b = OpenChat::attach(&server, "b", spec(Vec::new()), SES, None, gen, sink);
+    (server, a, b, seen)
+}
+
+fn both(a: &Arc<OpenChat>, b: &Arc<OpenChat>, events: &[(String, Value)]) {
+    for (k, d) in events {
+        a.heard(k, d);
+        b.heard(k, d);
+    }
+}
+
+/// The page's count of open turns (`stillWaiting` in src/chat/live/events.ts) after the events `chat`
+/// was sent from `skip` on, starting at `count`. A send adds 1 on the page itself.
+fn page_count(seen: &Seen, chat: &str, skip: usize, mut count: u32) -> u32 {
+    for (_, e) in seen.lock().unwrap().iter().filter(|(c, _)| c == chat).skip(skip) {
+        match e {
+            ChatEvent::Result(_) => count = count.saturating_sub(1),
+            ChatEvent::Stopped { .. } | ChatEvent::Exit { .. } => count = 0,
+            ChatEvent::Assistant { parent_tool_use_id: None, .. } if count == 0 => count = 1,
+            _ => {}
+        }
+    }
+    count
+}
+
+fn sent_to(seen: &Seen, chat: &str) -> usize {
+    seen.lock().unwrap().iter().filter(|(c, _)| c == chat).count()
+}
+
+// P1-1: B's page drew A's run as a turn (0 to 1), then B sent a message (2) that the same run took
+// up. The run's end gives B one result for the drawn turn and one for its message.
+#[test]
+fn a_message_steered_into_a_mirrored_run_gets_a_result_beside_the_drawn_turns() {
+    let fake = fake(plain);
+    let (server, a, b, seen) = two_chats(&fake);
+    mine(&a, &[("m_a", "one")]);
+    both(&a, &b, &[queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" })), said("a1", "hi")]);
+    let drawn = page_count(&seen, "b", 0, 0);
+    assert_eq!(drawn, 1, "B's page drew the mirrored turn");
+    let at = sent_to(&seen, "b");
+    // B sends: its page counts 2.
+    mine(&b, &[("m_b", "two")]);
+    both(&a, &b, &[queued("m_b", "two"), ev("session.inbox.delivered", json!({ "inboxID": "m_b" })), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success", "success"], "the drawn turn and B's own message");
+    assert_eq!(page_count(&seen, "b", at, drawn + 1), 0, "B's page is idle");
+    assert_eq!(results_for(&seen, "a"), ["success"], "A sent one message");
+    assert!(!b.busy());
+    server.shutdown();
+}
+
+// P1-1, the other end: the drawn turn's result is not kept back for a message the run did not take up.
+#[test]
+fn a_message_sent_into_a_drawn_run_that_does_not_take_it_waits_for_its_own_run() {
+    let fake = fake(plain);
+    let (server, a, b, seen) = two_chats(&fake);
+    mine(&a, &[("m_a", "one")]);
+    both(&a, &b, &[queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" })), said("a1", "hi")]);
+    mine(&b, &[("m_b", "two")]);
+    both(&a, &b, &[queued("m_b", "two"), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success"], "the drawn turn is closed; m_b still waits");
+    assert!(b.busy());
+    both(&a, &b, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_b" })), said("a2", "two done"), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success", "success"]);
+    assert_eq!(results_for(&seen, "a"), ["success", "success"], "A draws B's run from 0 and gets its one result");
+    server.shutdown();
+}
+
+// P2-1: B sent before the first mirrored reply, so its page counts 1 for its own message and draws
+// no turn for A's run. A's run does not take the message up: its end gives B no result (one would be
+// taken for the message's). The message's own run gives exactly one.
+#[test]
+fn a_mirrored_run_that_passes_over_a_waiting_message_gives_its_chat_no_result() {
+    let fake = fake(plain);
+    let (server, a, b, seen) = two_chats(&fake);
+    mine(&a, &[("m_a", "one")]);
+    both(&a, &b, &[queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" }))]);
+    mine(&b, &[("m_b", "two")]);
+    both(&a, &b, &[queued("m_b", "two"), said("a1", "hi"), ev("session.execution.succeeded", json!({}))]);
+    assert!(results_for(&seen, "b").is_empty(), "A's run is not B's message's run: {:?}", kinds_of(&seen, "b"));
+    assert_eq!(page_count(&seen, "b", 0, 1), 1, "B's page still waits for its message");
+    assert!(b.busy());
+    both(&a, &b, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_b" })), said("a2", "two done"), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success"], "exactly one result, from the message's own run");
+    assert_eq!(page_count(&seen, "b", 0, 1), 0);
+    server.shutdown();
+}
+
+// P2-1 while the message is still on its way: the `prompt` call has no answer yet when the mirrored
+// run draws and ends. The page already counts the message, so the run's end gives no result.
+#[test]
+fn a_mirrored_run_that_ends_while_a_message_is_on_its_way_gives_no_result() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Late(Duration::from_millis(500), "{\"data\":{\"id\":\"m_b\",\"type\":\"user\"}}".to_string()) } else { plain(m, p) });
+    let (server, a, b, seen) = two_chats(&fake);
+    mine(&a, &[("m_a", "one")]);
+    both(&a, &b, &[queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" }))]);
+    let c = Arc::clone(&b);
+    let sending = std::thread::spawn(move || c.send("two", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    both(&a, &b, &[said("a1", "hi"), ev("session.execution.succeeded", json!({}))]);
+    assert!(results_for(&seen, "b").is_empty(), "{:?}", kinds_of(&seen, "b"));
+    sending.join().unwrap().unwrap();
+    assert!(b.busy(), "the message waits from OpenCode's answer");
+    both(&a, &b, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_b" })), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success"]);
+    server.shutdown();
+}
+
+// A run with nothing of B's in it: B's page drew it from 0, and its end gives B exactly one result.
+#[test]
+fn a_plain_mirrored_run_gives_exactly_one_result() {
+    let fake = fake(plain);
+    let (server, a, b, seen) = two_chats(&fake);
+    mine(&a, &[("m_a", "one"), ("m_a2", "more")]);
+    both(&a, &b, &[queued("m_a", "one"), queued("m_a2", "more"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" })), ev("session.inbox.delivered", json!({ "inboxID": "m_a2" })), said("a1", "hi"), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success"]);
+    assert_eq!(page_count(&seen, "b", 0, 0), 0);
+    assert_eq!(results_for(&seen, "a"), ["success", "success"]);
+    // The next mirrored run is drawn and closed the same way.
+    mine(&a, &[("m_a3", "again")]);
+    both(&a, &b, &[queued("m_a3", "again"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a3" })), said("a2", "yo"), ev("session.execution.interrupted", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success", "error_during_execution"], "the one result carries the run's outcome");
+    server.shutdown();
+}
+
+// P2-2: B has only a message of its own waiting while A's run goes on. B's Stop takes its message
+// back and leaves A's run alone: no interrupt, no wait, no cut turn. So does B's close.
+#[test]
+fn a_stop_with_only_a_waiting_message_takes_it_back_and_leaves_the_other_chats_run() {
+    let fake = fake(plain);
+    let (server, a, b, seen) = two_chats(&fake);
+    mine(&a, &[("m_a", "one")]);
+    both(&a, &b, &[queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" }))]);
+    mine(&b, &[("m_b", "two")]);
+    both(&a, &b, &[queued("m_b", "two")]);
+    let began = Instant::now();
+    assert_eq!(b.stop(), Some(StopHow::Ended));
+    assert!(began.elapsed() < cfg().stop_grace, "nothing of B runs, so its Stop does not wait");
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 0, "A's run is not interrupted");
+    assert_eq!(fake.count("DELETE", &format!("/api/session/{SES}/inbox/m_b")), 1, "B's waiting message is taken back");
+    assert_eq!(kinds_of(&seen, "b"), ["user", "stopped"], "no cut turn: A's run is still mirrored");
+    assert!(!b.lock().tr.orphaned() && a.lock().tr.running());
+    both(&a, &b, &[said("a1", "hi")]);
+    assert_eq!(kinds_of(&seen, "b"), ["user", "stopped", "assistant"], "the run's reply is still shown in B");
+    b.close();
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 0, "closing B with its message still waiting does not stop A's run");
+    assert!(a.stop().is_some());
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 1, "A's own Stop does");
+    server.shutdown();
+}
+
+// A Stop that leaves the other chat's run going sets the page's count to 0, so the turn the page drew
+// is no longer owed a result: one would be taken for a message sent after the Stop.
+#[test]
+fn a_stop_in_a_drawn_run_leaves_no_result_owed_for_the_drawn_turn() {
+    let fake = fake(plain);
+    let (server, a, b, seen) = two_chats(&fake);
+    mine(&a, &[("m_a", "one")]);
+    both(&a, &b, &[queued("m_a", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_a" })), said("a1", "hi")]);
+    assert_eq!(b.stop(), Some(StopHow::Ended));
+    assert_eq!(page_count(&seen, "b", 0, 0), 0, "the Stop set B's page to 0");
+    let at = sent_to(&seen, "b");
+    // B sends: its page counts 1. The run ends without taking the message up.
+    mine(&b, &[("m_b", "two")]);
+    both(&a, &b, &[queued("m_b", "two"), ev("session.execution.succeeded", json!({}))]);
+    assert!(results_for(&seen, "b").is_empty(), "{:?}", kinds_of(&seen, "b"));
+    assert_eq!(page_count(&seen, "b", at, 1), 1, "B's page still waits for its message");
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 0);
+    server.shutdown();
+}
+
+// The answer to a `prompt` call comes after the message's whole run: it was taken up and its run
+// ended as nobody's. The answer gives the chat that sent it its one result.
+#[test]
+fn a_message_whose_run_ended_before_its_prompt_answer_gets_its_result() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Late(Duration::from_millis(500), "{\"data\":{\"id\":\"m_b\",\"type\":\"user\"}}".to_string()) } else { plain(m, p) });
+    let (server, a, b, seen) = two_chats(&fake);
+    let c = Arc::clone(&b);
+    let sending = std::thread::spawn(move || c.send("two", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    both(&a, &b, &[queued("m_b", "two"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m_b" })), said("a1", "hi"), ev("session.execution.succeeded", json!({}))]);
+    assert!(results_for(&seen, "b").is_empty(), "not known as B's yet: {:?}", kinds_of(&seen, "b"));
+    sending.join().unwrap().unwrap();
+    assert_eq!(results_for(&seen, "b"), ["success"]);
+    assert_eq!(page_count(&seen, "b", 0, 1), 0);
+    assert_eq!(results_for(&seen, "a"), ["success"], "A drew the run from 0");
+    assert!(!b.busy());
+    server.shutdown();
+}
+
+// P3-1: a chat opened in the middle of a run never heard it start. It drew the reply, so the run's
+// end still gives it one result.
+#[test]
+fn a_chat_opened_in_the_middle_of_a_run_gets_the_runs_result() {
+    for mut tr in [Translator::new(SES).own_only(), Translator::new(SES)] {
+        let out = fed(&mut tr, &[said("a1", "hi"), ev("session.execution.succeeded", json!({}))]);
+        assert_eq!(kinds_in(&out), ["assistant", "result"]);
+        assert!(!tr.busy());
+        // A run's end with nothing shown still adds nothing.
+        assert!(fed(&mut tr, &[ev("session.execution.succeeded", json!({}))]).is_empty());
+    }
+}
+
+// P3-4: a run's end is sent under the chat's lock, so a close that comes while it is being sent waits,
+// and its `exit` is the last thing the page hears.
+#[test]
+fn nothing_follows_the_exit_of_a_chat_closed_while_a_runs_end_is_sent() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let seen: Seen = Arc::default();
+    let (tx, rx) = mpsc::channel::<()>();
+    let (s, first) = (Arc::clone(&seen), Mutex::new(Some(tx)));
+    // The first result sent tells the closer to go, and takes a while to send.
+    let sink: Sink = Arc::new(move |id: &str, ev: &ChatEvent| {
+        s.lock().unwrap().push((id.to_string(), ev.clone()));
+        if matches!(ev, ChatEvent::Result(_)) {
+            if let Some(tx) = first.lock().unwrap().take() {
+                let _ = tx.send(());
+                std::thread::sleep(Duration::from_millis(300));
+            }
+        }
+    });
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one"), ("m2", "two")]);
+    for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), ev("session.inbox.delivered", json!({ "inboxID": "m2" }))] {
+        chat.heard(&k, &d);
+    }
+    let c = Arc::clone(&chat);
+    let closing = std::thread::spawn(move || {
+        rx.recv().unwrap();
+        c.close();
+    });
+    let (k, d) = ev("session.execution.succeeded", json!({}));
+    chat.heard(&k, &d);
+    closing.join().unwrap();
+    assert_eq!(kinds_of(&seen, "c1"), ["user", "user", "result", "result", "exit"], "the exit is the last thing the page hears");
+    server.shutdown();
+}
+
+// P3-4: every event a chat sends on its own (a stream event, a line from Kolux, a lost stream, the
+// server going away) is sent with the chat's lock held, which is what keeps it from following a
+// close's `exit`. A closed chat sends nothing.
+#[test]
+fn a_chats_events_are_sent_under_its_lock_and_never_after_it_closed() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let held: Arc<Mutex<Vec<(String, bool)>>> = Arc::default();
+    let slot: Arc<Mutex<Option<Arc<OpenChat>>>> = Arc::default();
+    let (h, sl) = (Arc::clone(&held), Arc::clone(&slot));
+    let sink: Sink = Arc::new(move |_: &str, ev: &ChatEvent| {
+        let locked = sl.lock().unwrap().as_ref().is_some_and(|c| c.inner.try_lock().is_err());
+        h.lock().unwrap().push((serde_json::to_value(ev).unwrap()["kind"].as_str().unwrap_or_default().to_string(), locked));
+    });
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    *slot.lock().unwrap() = Some(Arc::clone(&chat));
+    mine(&chat, &[("m1", "one")]);
+    for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), said("a1", "hi")] {
+        chat.heard(&k, &d);
+    }
+    chat.say("a line");
+    chat.stream_lost();
+    chat.server_gone(1, None, ExitReason::Sleep);
+    let seen = held.lock().unwrap().clone();
+    assert_eq!(seen.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), ["user", "assistant", "stderr", "result", "exit"]);
+    assert!(seen.iter().all(|(_, locked)| *locked), "each one is sent with the chat's lock held: {seen:?}");
+    // Closed: nothing more is sent.
+    chat.lock().closed = true;
+    let (k, d) = said("a2", "late");
+    chat.heard(&k, &d);
+    chat.say("late");
+    chat.stream_lost();
+    chat.server_gone(1, None, ExitReason::Sleep);
+    assert_eq!(held.lock().unwrap().len(), seen.len());
+    slot.lock().unwrap().take();
+    server.shutdown();
+}
+
+// P3-2: a `prompt` call that got no answer makes a message heard queued soon after this chat's own
+// only when it carries the text that was sent. Another chat's message heard first is not taken, and
+// does not use the claim up.
+#[test]
+fn an_unanswered_send_claims_only_the_message_with_its_text() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Json(500, "{}".to_string()) } else { plain(m, p) });
+    let (server, a, b, seen) = two_chats(&fake);
+    assert!(b.send("mine", &[]).is_err(), "the call got no answer");
+    both(&a, &b, &[queued("x1", "another chat's")]);
+    assert!(b.lock().tr.own_waiting().is_empty(), "a message with another text is not B's");
+    both(&a, &b, &[queued("x2", "mine")]);
+    assert_eq!(b.lock().tr.own_waiting(), ["x2"], "the message with the sent text is");
+    both(&a, &b, &[queued("x3", "mine")]);
+    assert_eq!(b.lock().tr.own_waiting(), ["x2"], "one send claims one message");
+    assert!(a.lock().tr.own_waiting().is_empty());
+    both(&a, &b, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "x2" })), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_for(&seen, "b"), ["success"]);
+    server.shutdown();
+}
+
+// P3-5a: OpenCode cancelled a message before the answer to its `prompt` call was applied, so nobody
+// was told. The answer then gives the chat that sent it its "cancelled" result.
+#[test]
+fn a_message_cancelled_before_its_prompt_answer_is_told_cancelled() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Late(Duration::from_millis(500), "{\"data\":{\"id\":\"m_b\",\"type\":\"user\"}}".to_string()) } else { plain(m, p) });
+    let (server, a, b, seen) = two_chats(&fake);
+    let c = Arc::clone(&b);
+    let sending = std::thread::spawn(move || c.send("two", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    both(&a, &b, &[queued("m_b", "two"), ev("session.inbox.cancelled", json!({ "inboxID": "m_b" }))]);
+    assert!(results_for(&seen, "b").is_empty(), "not known as B's yet");
+    sending.join().unwrap().unwrap();
+    assert_eq!(results_for(&seen, "b"), ["cancelled"]);
+    assert!(results_for(&seen, "a").is_empty(), "the other chat is told nothing");
+    assert!(!b.busy());
+    server.shutdown();
+}
