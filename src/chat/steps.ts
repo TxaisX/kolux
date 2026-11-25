@@ -199,7 +199,8 @@ export function fold(rows: Row[], open: boolean, cwd: string | null = null): Vie
     out.push({ row: "working", id: `working-${turn.user!.id}`, since: turn.user!.at, label: latest?.background ? "Monitoring background work" : "Working" });
   }
   out.push(...tail);
-  if (tail.some((t) => t.row === "pending")) out.push({ row: "responding", id: "responding" });
+  // A send a Stop passed over (`held`) is not being answered: it shows as waiting, not as responding.
+  if (tail.some((t) => t.row === "pending" && !t.held)) out.push({ row: "responding", id: "responding" });
   return out;
 }
 

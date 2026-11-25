@@ -109,7 +109,8 @@ export function userWords(text: string): string {
 
 /** The page's count of messages sent and not yet answered, after one event. Claude Code answers each
  *  queued message with a result of its own, so the working line stays until the count is back to 0. A
- *  stop, or the process ending, leaves nothing waiting (a stop cancels what was queued). A reply while
+ *  stop, or the process ending, leaves nothing waiting (a message the stop left unrun gets its own cancelled
+ *  result, which is OpenCode's confirmed word, or runs with the next send and is echoed then). A reply while
  *  nothing is waiting is a turn the page did not count (a message sent after a Stop, or a turn the agent
  *  started itself), so it waits for that turn's result; a subagent's reply is not a new turn. */
 export function stillWaiting(waiting: number, ev: ChatEvent): number {

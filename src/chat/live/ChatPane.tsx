@@ -20,7 +20,7 @@ import { useKeymap } from "../../keys/KeymapContext";
 import { chatHistory, chatIdOf, endChat, hearChat, readKeptChat, sendChat, startChat, stopChat } from "./client";
 import { announceDeleted, claimSession, holderOf, onSessionDeleted, releaseSession, sameFolder } from "./sessionBus";
 import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
-import { applyRead, combine, livePending, prunePending, type ChatItem, type Pending } from "../model";
+import { applyRead, combine, dropCancelled, holdPending, livePending, prunePending, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
 import { Composer, type ComposerHandle } from "../MessageBox";
 import { BrowserChoice, LinkContext, type LinkHost } from "../ChatText";
@@ -247,6 +247,10 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // stay while a message queued behind it still runs.
           waiting.current = stillWaiting(waiting.current, ev);
           if (ev.kind === "result" || ev.kind === "stopped") setOpen(waiting.current > 0);
+          // A stop leaves the sends it passed over waiting (no "Responding"); each cancelled result then takes the
+          // oldest one away, and an echo (a later send ran it) clears it through `prunePending`.
+          if (ev.kind === "stopped") setSent(holdPending);
+          if (ev.kind === "result" && ev.subtype === "cancelled") setSent(dropCancelled);
           if (ev.kind === "result") setLost(ev.subtype === "connection_lost");
           else if (ev.kind === "init" || ev.kind === "assistant" || ev.kind === "stopped" || ev.kind === "exit") setLost(false);
           // A reply while nothing was waiting is a turn the page did not count: it runs until its result.
