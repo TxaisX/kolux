@@ -105,7 +105,14 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
   that starts while such a call is on its way, before any delivery is heard (OpenCode publishes a
   run's start before its delivery). The answer
   settles it: it names that message (the run is the chat's own) or another one (the run is another
-  chat's, and is left alone from then on). A call that ends with no answer settles nothing, so the
+  chat's, and is left alone from then on). An answer that names a message still waiting, while the
+  run has taken nothing up yet, leaves the doubt standing: the run is about to take that message
+  up. The same holds in the other order: a run that starts while a message of the chat waits
+  (answered, not delivered yet) may be its own. That doubt ends with the delivery of the message
+  (the run is the chat's own), with the delivery of a queued message of another chat while no call
+  of this chat is on its way (the run is that chat's), or with OpenCode cancelling the message.
+  Before 2026-11-24 the answer dropped the doubt, so a Stop pressed between the answer and the
+  delivery answered `stopped` at once and the reply streamed. A call that ends with no answer settles nothing, so the
   run stays stoppable until it ends. A message taken up before the send began does not count, and
   a send that ends before its `prompt` call (the server did not start, the model pick failed) drops
   the doubt. This is the everyday single-pane case, and it wins over the two-pane rule: with one
@@ -275,8 +282,9 @@ an earlier stop with no answer) is still interrupted. A Stop acts only on the ch
    a `prompt` call of this chat was on its way and the answer has not said whose it is (see "A run
    that takes up a message while the chat sends may be the chat's own"), or it was first heard
    from its own events while a message of this chat waited (see "A run is known from its start or
-   from its own events"). This is a Stop right after a send in a single pane, where OpenCode's
-   stream is ahead of its answer.
+   from its own events"), or it started while a message of this chat waited, or while its `prompt`
+   call was on its way, and has taken nothing up yet. This is a Stop right after a send in a single
+   pane, where OpenCode's stream is ahead of its answer or the answer ahead of the delivery.
 3. No run is known to be going on and a message of this chat may be starting one with nothing
    heard of it yet: a message that waits, a `prompt` call still on its way, or one that ended
    within the last 5 seconds without naming its inbox item. That interrupt reaches a session with
@@ -294,12 +302,23 @@ close that:
   row is marked failed), so nothing is left waiting. Every Stop counts for this, also one that
   leaves another pane's run alone. A message sent after the Stop goes out as usual.
 - *Sent, not started.* While a `prompt` call of this chat is on the wire, or a message of its own
-  waits that OpenCode did not cancel (the `DELETE` was refused: a run is taking it up), the Stop is
-  not over. It keeps looking, every 20 ms and for the stop grace at most: a message of this chat
-  that shows up waiting is cancelled, and a run that starts and is or may be this chat's own is
-  interrupted, once per run. `stopped` goes to the page only when that run has ended, so no reply
-  follows a Stop. If nothing is heard within the stop grace, the Stop gives up: `stopped {how:
-  "interrupt"}` when no run is known, `"ended"` with a cut turn when one of its own still runs.
+  that this Stop asked to take back still waits, the Stop is not over. It keeps looking, every
+  20 ms and for the stop grace at most: a message of this chat that shows up waiting is asked to
+  be cancelled (once), and a run that starts and is or may be this chat's own is interrupted, once
+  per run. `stopped` goes to the page only when that run has ended, so no reply follows a Stop. If
+  nothing is heard within the stop grace, the Stop gives up: `stopped {how: "interrupt"}` when no
+  run is known, `"ended"` with a cut turn when one of its own still runs.
+
+  The answer to the `DELETE` does not end the wait. Seen live on 2026-11-24, on the first send
+  after a launch (the `prompt` call took 330 ms, Stop was pressed 60 ms in): OpenCode answered the
+  `DELETE` of the waiting message with a 2xx, and one millisecond later started the run and
+  delivered that message to it. The Stop had ended on the 2xx, the page was told `stopped`, and the
+  reply streamed after it. So the Stop waits for OpenCode's own word on the stream:
+  `session.inbox.cancelled` (the message will not run), or the message's delivery (the run that
+  took it up is interrupted and waited for).
+
+  A chat closed while its Stop waits ends the Stop at once: it returns `"ended"`, and the page
+  hears nothing after the `exit`.
 
 With nothing on the wire and nothing left waiting there is nothing to wait for, and the Stop answers
 `stopped {how: "interrupt"}` as soon as OpenCode took the interrupt.
@@ -322,9 +341,11 @@ A Stop also takes back the chat's own messages still waiting, whoever's run is g
 cancelled with `DELETE /api/session/{id}/inbox/{inboxID}` (after the interrupt, when one is posted).
 Another chat's waiting messages are not touched. A close does not take waiting messages back: they
 stay in OpenCode's inbox. A message gets its `cancelled` result only when OpenCode
-says so (`session.inbox.cancelled`), which can be after `stopped`. If OpenCode does not cancel one
-(it was taken up first, or the call did not land), the message stays waiting and gets its `result`
-from the run that takes it up, which OpenCode starts with the next message sent.
+says so (`session.inbox.cancelled`). The Stop waits for that word, so the `cancelled` result comes
+before `stopped`; it comes after only when OpenCode says it later than the stop grace. If OpenCode
+does not cancel one (the call did not land, or nothing was said in time), the message stays waiting
+and gets its `result` from the run that takes it up, which OpenCode starts with the next message
+sent. One a run took up during the Stop gets its `result` from that run, which the Stop interrupts.
 
 **Sleep and exit.** The server is ended after `IDLE_SLEEP` (10 minutes) with no event and no busy
 chat, or after `BUSY_IDLE_SLEEP` (60 minutes) of silence while a turn looks busy; every open chat
@@ -365,6 +386,15 @@ The page's side of the three OpenCode commands is `src/chat/opencode.ts` (`listC
 
 - `chat_start` on a chat id that is already open closes the old one first. It starts the process
   at once; `cwd` must be an existing folder.
+- Two `chat_start` calls for one chat id can be on their way at once (each runs on a thread of its
+  own, and opening an OpenCode chat on a server that is still starting takes seconds). Only the
+  latest becomes the chat. Every start takes a number for its chat id; the chat an older start
+  opened speaks through a sink that goes quiet the moment a later start begins, never takes the
+  id, and is closed (it stops listening, its process ends) with no `exit` on the page. A chat
+  that takes the id closes the one it replaced. The overtaken call still answers without an
+  error, so the page shows none. Before 2026-11-24 both chats listened to their sessions and the
+  earlier one could overwrite the later; the overtaken chat was never closed. An overtaken
+  OpenCode start leaves the empty session it made saved in OpenCode.
 - `chat_send` writes one user message. A chat with no process (asleep, crashed, or stopped by
   ending the process) starts again first, with `--resume <session id>` when one is known.
   A send while a turn runs is written straight away; the agent queues it.

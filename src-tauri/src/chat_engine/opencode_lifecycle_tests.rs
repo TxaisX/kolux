@@ -247,7 +247,7 @@ fn one_session_in_two_chats_reaches_both_and_closing_one_keeps_the_other() {
 fn quitting_skips_the_interrupts_and_ends_the_server_at_once() {
     let fake = fake(|m: &str, p: &str| if p.ends_with("/interrupt") { Reply::Late(Duration::from_secs(4), "{}".to_string()) } else { plain(m, p) });
     let (server, _) = server_on(&fake);
-    let engines = Engines { map: Arc::default(), cfg: cfg(), open: Arc::clone(&server) };
+    let engines = Engines { cfg: cfg(), open: Arc::clone(&server), ..Engines::default() };
     let (_, _, gen) = server.wake().unwrap();
     let (_, sink) = sink();
     let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
@@ -2437,4 +2437,272 @@ fn a_stop_while_the_prompt_call_is_on_its_way_interrupts_the_run_it_starts() {
     assert_eq!(kinds_of(&seen, "c1").last().map(|k| k.to_string()), Some("stopped".to_string()), "nothing follows the Stop");
     assert_eq!(page_count(&seen, "c1", 0, 1), 0);
     server.shutdown();
+}
+
+/// A chat on a stand-in OpenCode whose `prompt` call answers late, naming `m1`.
+fn late_prompt(m: &str, p: &str) -> Reply {
+    if p.ends_with("/prompt") {
+        Reply::Late(Duration::from_millis(60), "{\"data\":{\"id\":\"m1\",\"type\":\"user\"}}".to_string())
+    } else {
+        plain(m, p)
+    }
+}
+
+// Review 10 P2-B, the live bug (the first send after a launch, Stop 60 ms later): OpenCode answered
+// the take-back of the waiting message with a 2xx, and a run took the message up all the same one
+// millisecond later. An accepted take-back is not OpenCode's word that the message will not run: the
+// Stop holds while a message it tried to take back still waits, and interrupts the run that takes
+// it up. The page hears `stopped` only when that run has ended.
+#[test]
+fn a_stop_holds_while_a_message_it_took_back_still_waits() {
+    let fake = fake(late_prompt);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("one", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the waiting message is taken back", Duration::from_secs(2), || fake.count("DELETE", &format!("/api/session/{SES}/inbox/m1")) == 1 || stopping.is_finished());
+    sending.join().unwrap().unwrap();
+    std::thread::sleep(Duration::from_millis(45));
+    assert!(!stopping.is_finished(), "an accepted take-back does not end the Stop: the message still waits");
+    for (k, d) in [queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" }))] {
+        chat.heard(&k, &d);
+    }
+    wait_until("the run that took the message up is interrupted", Duration::from_secs(2), || interrupts(&fake) == 2 || stopping.is_finished());
+    assert_eq!(interrupts(&fake), 2, "one interrupt at the press, and one for the run that took the message up");
+    for (k, d) in [said("a1", "1"), ev("session.execution.interrupted", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(stopping.join().unwrap(), Some(StopHow::Interrupt));
+    assert_eq!(kinds_of(&seen, "c1").last().map(String::as_str), Some("stopped"), "nothing follows the Stop");
+    assert_eq!(page_count(&seen, "c1", 0, 1), 0);
+    server.shutdown();
+}
+
+// Review 10 P2-B and P3-C: when OpenCode does cancel the message, the Stop ends on that word, and
+// the message's "cancelled" result reaches the page before `stopped`, not after it (where it would
+// be counted against the next message).
+#[test]
+fn a_stop_ends_on_opencodes_word_that_the_message_was_cancelled() {
+    let fake = fake(late_prompt);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("one", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the waiting message is taken back", Duration::from_secs(2), || fake.count("DELETE", &format!("/api/session/{SES}/inbox/m1")) == 1 || stopping.is_finished());
+    sending.join().unwrap().unwrap();
+    for (k, d) in [queued("m1", "one"), ev("session.inbox.cancelled", json!({ "inboxID": "m1" }))] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(stopping.join().unwrap(), Some(StopHow::Interrupt));
+    assert_eq!(interrupts(&fake), 1, "nothing ran, so only the interrupt of the press");
+    let kinds = kinds_of(&seen, "c1");
+    assert_eq!(kinds[kinds.len().saturating_sub(2)..], ["result", "stopped"], "the cancelled result comes before `stopped`: {kinds:?}");
+    assert_eq!(results_for(&seen, "c1"), ["cancelled"]);
+    server.shutdown();
+}
+
+// Review 10 P2-B, the second half: between the answer to a `prompt` call and the delivery of its
+// message, the run that is about to take the message up is already heard starting. That run may be
+// this chat's own, in either order of the answer and the start, until something says otherwise.
+#[test]
+fn a_run_that_starts_while_an_own_message_waits_may_be_its_own() {
+    let started = || ev("session.execution.started", json!({}));
+    let delivered = |id: &str| ev("session.inbox.delivered", json!({ "inboxID": id }));
+    // The stream ahead of the answer: the run starts while the call is on its way, and the answer
+    // names a message that still waits.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[queued("m1", "one"), started()]);
+    tr.sent();
+    tr.admit("m1", "one");
+    assert!(tr.running() && tr.runs_mine() && tr.engaged(), "the run may be about to take the message up");
+    fed(&mut tr, &[delivered("m1")]);
+    assert!(tr.runs_mine());
+    fed(&mut tr, &[ev("session.execution.interrupted", json!({}))]);
+    assert!(!tr.runs_mine() && !tr.engaged());
+    // The answer first, then the start.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    tr.sent();
+    tr.admit("m1", "one");
+    fed(&mut tr, &[queued("m1", "one"), started()]);
+    assert!(tr.running() && tr.runs_mine() && tr.engaged(), "the run may be about to take the message up");
+    fed(&mut tr, &[delivered("m1")]);
+    assert!(tr.runs_mine());
+    // The run takes up another chat's message instead: it is that chat's, and this chat's waits on.
+    let mut tr = Translator::new(SES).own_only();
+    tr.admit("m1", "one");
+    fed(&mut tr, &[queued("m_a", "other"), started(), delivered("m_a")]);
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged(), "the run is another chat's");
+    assert_eq!(tr.own_waiting(), ["m1"]);
+    // The stream ahead of the answer, and the run already took up another chat's message.
+    let mut tr = Translator::new(SES).own_only();
+    tr.sending();
+    fed(&mut tr, &[queued("m_a", "other"), started(), delivered("m_a")]);
+    tr.sent();
+    tr.admit("m1", "one");
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged(), "the run is another chat's");
+    // The message is cancelled: nothing of this chat is left for the run.
+    let mut tr = Translator::new(SES).own_only();
+    tr.admit("m1", "one");
+    fed(&mut tr, &[started(), ev("session.inbox.cancelled", json!({ "inboxID": "m1" }))]);
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged());
+    // A run with nothing of this chat waiting at its start stays nobody's.
+    let mut tr = Translator::new(SES).own_only();
+    fed(&mut tr, &[started()]);
+    tr.admit("m1", "one");
+    assert!(tr.running() && !tr.runs_mine() && !tr.engaged());
+}
+
+// Review 10 P2-B, the question left open: a fresh Stop pressed between the answer to the `prompt`
+// call and the delivery of its message (the run is heard starting, and has taken nothing up yet).
+// It interrupts that run and waits for its end; it used to answer `stopped` at once and let the
+// reply stream.
+#[test]
+fn a_stop_between_the_answer_and_the_delivery_interrupts_the_run() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one")]);
+    for (k, d) in [queued("m1", "one"), ev("session.execution.started", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the run is interrupted", Duration::from_secs(2), || interrupts(&fake) == 1 || stopping.is_finished());
+    assert_eq!(interrupts(&fake), 1, "the run about to take up this chat's message is interrupted");
+    assert!(!stopping.is_finished(), "the page is not told `stopped` while the run goes on");
+    for (k, d) in [ev("session.inbox.delivered", json!({ "inboxID": "m1" })), said("a1", "1"), ev("session.execution.interrupted", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(stopping.join().unwrap(), Some(StopHow::Interrupt));
+    assert_eq!(interrupts(&fake), 1, "the run is interrupted once");
+    assert_eq!(kinds_of(&seen, "c1").last().map(String::as_str), Some("stopped"), "nothing follows the Stop");
+    assert_eq!(page_count(&seen, "c1", 0, 1), 0);
+    server.shutdown();
+}
+
+// Review 10 P3-B: a Stop that is holding (here for a message OpenCode would not give back) ends at
+// once when its chat is closed, as `Ended`, and tells the page nothing after the `exit`.
+#[test]
+fn a_stop_ends_at_once_when_its_chat_is_closed() {
+    let fake = fake(|m: &str, p: &str| if m == "DELETE" { Reply::Json(404, "{}".to_string()) } else { plain(m, p) });
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    mine(&chat, &[("m1", "one")]);
+    let c = Arc::clone(&chat);
+    let stopping = std::thread::spawn(move || c.stop());
+    wait_until("the take-back is refused", Duration::from_secs(2), || fake.count("DELETE", &format!("/api/session/{SES}/inbox/m1")) == 1 || stopping.is_finished());
+    assert!(!stopping.is_finished(), "the Stop holds for the message that still waits");
+    chat.close();
+    assert_eq!(stopping.join().unwrap(), Some(StopHow::Ended), "a closed chat has nothing left to wait for");
+    assert_eq!(kinds_of(&seen, "c1").last().map(String::as_str), Some("exit"), "nothing follows the `exit`");
+    server.shutdown();
+}
+
+/// A stand-in OpenCode that names a new session per `POST /api/session`, the first one slowly.
+fn slow_first_session() -> Fake {
+    let made = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    fake(move |m: &str, p: &str| {
+        if m == "POST" && p == "/api/session" {
+            let n = made.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let body = format!("{{\"data\":{{\"id\":\"ses_made{n}\"}}}}");
+            if n == 0 {
+                Reply::Late(Duration::from_millis(300), body)
+            } else {
+                Reply::Json(200, body)
+            }
+        } else {
+            plain(m, p)
+        }
+    })
+}
+
+/// The chats the server sends events to, whatever their session.
+fn routed(server: &Arc<Server>) -> Vec<*const OpenChat> {
+    server.lock().chats.values().flatten().map(Arc::as_ptr).collect()
+}
+
+/// The session the last `init` sent to the page names.
+fn last_init(seen: &Seen, chat: &str) -> Option<String> {
+    seen.lock().unwrap().iter().rev().find_map(|(c, e)| match e {
+        ChatEvent::Init(i) if c == chat => Some(i.session_id.clone()),
+        _ => None,
+    })
+}
+
+// Review 10 P2-A: two starts of one chat id at the same time (the pane's first start is still waking
+// the server when New chat asks again). Only the later start's chat is kept: the one overtaken is
+// closed without a word to the page (no `exit`, and nothing of its own after the later start began),
+// stops listening, and never takes the id over. Its call still ends well, so the page shows no error.
+#[test]
+fn a_start_overtaken_by_a_later_start_of_the_same_chat_leaves_no_chat_behind() {
+    let fake = slow_first_session();
+    let (server, _) = server_on(&fake);
+    let engines = Engines { cfg: cfg(), open: Arc::clone(&server), ..Engines::default() };
+    let (seen, sink) = sink();
+    let (e, s) = (engines.clone(), Arc::clone(&sink));
+    let first = std::thread::spawn(move || e.start("c1", spec(Vec::new()), None, s));
+    wait_until("the first start is making its session", Duration::from_secs(5), || fake.count("POST", "/api/session") == 1);
+    engines.start("c1", spec(Vec::new()), None, sink).unwrap();
+    first.join().unwrap().expect("the overtaken start is not an error on the page");
+    let Ok(Chat::Open(kept)) = engines.get("c1") else { panic!("the chat is open") };
+    assert_eq!(kept.session_id(), "ses_made1", "the later start's chat is the chat");
+    assert_eq!(routed(&server), [Arc::as_ptr(&kept)], "the overtaken chat no longer listens");
+    assert_eq!(last_init(&seen, "c1").as_deref(), Some("ses_made1"), "the page knows the session of the chat that is kept");
+    assert!(!kinds_of(&seen, "c1").iter().any(|k| k == "exit"), "the overtaken chat is closed without an `exit`");
+    engines.close_all();
+}
+
+// Review 10 P2-A, the rule itself: every start of a chat id takes a number. The sink of an older
+// start is quiet from the moment a later one begins; the chat an older start opened does not take
+// the id; and a chat that does take it hands back the one it replaced, to be closed.
+#[test]
+fn only_the_latest_start_of_a_chat_id_becomes_the_chat() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let engines = Engines { cfg: cfg(), open: Arc::clone(&server), ..Engines::default() };
+    let (seen, sink) = sink();
+    let stopped = ChatEvent::Stopped { how: StopHow::Ended };
+    let (first, older) = engines.opening("c1", Arc::clone(&sink));
+    older("c1", &stopped);
+    assert_eq!(sent_to(&seen, "c1"), 1, "the only start of the id is heard");
+    let (second, later) = engines.opening("c1", Arc::clone(&sink));
+    older("c1", &stopped);
+    assert_eq!(sent_to(&seen, "c1"), 1, "a start is quiet once a later one has begun");
+    later("c1", &stopped);
+    assert_eq!(sent_to(&seen, "c1"), 2);
+    let (other, _) = engines.opening("c2", Arc::clone(&sink));
+    assert!(first.overtaken() && !second.overtaken() && !other.overtaken(), "each chat id counts its own starts");
+    let a = OpenChat::attach(&server, "c1", spec(Vec::new()), "ses_a", None, gen, older);
+    let b = OpenChat::attach(&server, "c1", spec(Vec::new()), "ses_b", None, gen, later);
+    assert!(engines.land("c1", &second, Chat::Open(Arc::clone(&b))).is_none());
+    assert!(matches!(engines.land("c1", &first, Chat::Open(Arc::clone(&a))), Some(Chat::Open(lost)) if Arc::ptr_eq(&lost, &a)), "the overtaken start's chat is handed back to be closed");
+    assert!(matches!(engines.get("c1"), Ok(Chat::Open(kept)) if Arc::ptr_eq(&kept, &b)), "and never takes the id");
+    a.close();
+    assert_eq!(routed(&server), [Arc::as_ptr(&b)]);
+    assert_eq!(sent_to(&seen, "c1"), 2, "its `exit` is not heard");
+    // A chat that takes the id hands back the one it replaces.
+    let (third, latest) = engines.opening("c1", sink);
+    let c = OpenChat::attach(&server, "c1", spec(Vec::new()), "ses_c", None, gen, latest);
+    assert!(matches!(engines.land("c1", &third, Chat::Open(Arc::clone(&c))), Some(Chat::Open(lost)) if Arc::ptr_eq(&lost, &b)));
+    b.close();
+    assert_eq!(routed(&server), [Arc::as_ptr(&c)]);
+    assert_eq!(kinds_of(&seen, "c1"), ["stopped", "stopped"], "nothing of the chats that lost the id reached the page");
+    engines.close_all();
 }
